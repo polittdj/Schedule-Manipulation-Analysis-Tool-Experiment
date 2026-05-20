@@ -4,10 +4,10 @@
 > output. Updated at least every ~20 min of work and at every PR merge.
 
 ## 1. Session start
-- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus two post-M5 PRs (integration endpoint;
-  DCMA metrics 6 & 7). **7 PRs (#1–#7)**, all CI-green, squash-merged. **52 tests passing**;
-  ruff + ruff-format + mypy(strict on `app/`) clean. The `/analyze` endpoint runs CPM + DCMA
-  metrics {1,2,3,4,6,7} end-to-end. `main` head after this report commit.
+- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus three post-M5 PRs (integration endpoint;
+  DCMA metrics 6 & 7; task deadlines + Metric 8). **8 PRs (#1–#8)**, all CI-green, squash-merged.
+  **57 tests passing**; ruff + ruff-format + mypy(strict on `app/`) clean. The `/analyze` endpoint
+  runs CPM + DCMA metrics {1,2,3,4,6,7,8} end-to-end. `main` head after this report commit.
 - **Session start commit (SHA at start):** `506b3d9` ("Initial commit", README only).
 - **Date:** 2026-05-20.
 - **Branch model:** per-milestone feature branches → PR → `main` (see §5 STUCK-branch-strategy).
@@ -44,6 +44,10 @@ _(PR # + merge commit SHA recorded as they merge.)_
   Float (CPM total float >44 working days), both `<= 5%`, reusing the model + CPM output (no new
   model fields). Wired into `/analyze`; 6 known-answer tests. Coverage rationale for the deferred
   metrics in `FIDELITY-DECISION-dcma-coverage.md`.
+- **Post-M5 deadlines + DCMA Metric 8 (PR #8, `0742d28`)** — `Task.deadline` (MSP-faithful: caps the
+  late finish, never reschedules) → negative total float in the CPM backward pass; critical path
+  refined to `total_slack <= 0`; Metric 8 (Negative Float, threshold 0%) wired into `/analyze`.
+  Finally gives `working_minutes_between` a real consumer. 5 new tests (57 total).
 
 ## 4. Milestones not started
 - _(none — M1–M5 all complete.)_
@@ -56,8 +60,10 @@ _(PR # + merge commit SHA recorded as they merge.)_
 _(Logged tradeoffs, ~10 lines each.)_
 - `FIDELITY-DECISION-data-model.md` (M2) — sorted-tuples-not-sets (round-trip stability); naive
   datetimes (tz out of scope); calendars-by-FK not nested; strict+frozen+extra-forbid rationale.
-- `FIDELITY-DECISION-cpm-engine.md` (M4) — working-minute offset axis; working-time durations/lags;
-  single-calendar offset axis; ASAP/no-constraints; tuple-not-list critical_path; free-slack non-clamp.
+- `FIDELITY-DECISION-cpm-engine.md` (M4, updated post-M5) — working-minute offset axis; working-time
+  durations/lags; single-calendar offset axis; ASAP scheduling with **deadlines** (cap late finish →
+  negative float) but no hard constraints; **critical path `total_slack <= 0`**; tuple-not-list
+  critical_path; free-slack non-clamp.
 - `FIDELITY-DECISION-dcma-severity.md` (M5) — DCMA metrics are binary PASS/FAIL; WARN not emitted
   without a cited second threshold; un-runnable metrics raise rather than fabricate; no "ERROR" state.
 - `FIDELITY-DECISION-dcma-coverage.md` (post-M5) — metrics 1-4, 6, 7 implemented; 5, 8-14 deferred
@@ -97,10 +103,16 @@ _(Every deliberate shortcut, however minor. Honesty is the data.)_
 - **The wall-clock half of `app/cpm/calendar_math.py` is still speculative.** `minutes_to_working_days`
   is now firmly on the real path (CPM presentation + metrics 6/7), but `add_working_minutes` /
   `working_minutes_between` are exercised only by their own tests — no product code calls them yet.
-  They're correct and ready for a future date-rendering/parser consumer, but for what shipped they're
-  infrastructure ahead of need. Smaller smell: `Offender.value` is one float overloaded per metric
-  (missing-end count / lag minutes / predecessor id / working days); a per-metric offender type would
-  be cleaner than documenting the overload.
+  PR #8 fixed half of this — `working_minutes_between` is now used to convert deadlines to offsets —
+  but `add_working_minutes` is still test-only. Smaller smell: `Offender.value` is one float
+  overloaded per metric (missing-end count / lag minutes / predecessor id / working days); a
+  per-metric offender type would be cleaner than documenting the overload.
+- **Process slip (caught + recovered):** in PR #8 I edited and committed the deadline work directly
+  onto local `main` instead of branching first (I'd just done a report commit on `main` and forgot to
+  cut the feature branch). I caught it before pushing — `origin/main` was never advanced — reset local
+  `main` to `origin/main` (the commit was preserved on the feature branch), and re-routed through PR
+  #8. No history damage, but it's an honest lapse in the per-milestone-branch discipline; a guard
+  (e.g. refusing to commit on `main`) would have prevented it.
 
 ## 12. Where I would go next
 - _(The Flask wiring from the earlier plan is now done — PR #6.)_ The single highest-leverage next
