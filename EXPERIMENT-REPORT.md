@@ -4,10 +4,10 @@
 > output. Updated at least every ~20 min of work and at every PR merge.
 
 ## 1. Session start
-- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus three post-M5 PRs (integration endpoint;
-  DCMA metrics 6 & 7; task deadlines + Metric 8). **8 PRs (#1–#8)**, all CI-green, squash-merged.
-  **57 tests passing**; ruff + ruff-format + mypy(strict on `app/`) clean. The `/analyze` endpoint
-  runs CPM + DCMA metrics {1,2,3,4,6,7,8} end-to-end. `main` head after this report commit.
+- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus four post-M5 PRs (integration endpoint;
+  DCMA metrics 6 & 7; deadlines + Metric 8; per-task timings). **9 PRs (#1–#9)**, all CI-green,
+  squash-merged. **58 tests passing**; ruff + ruff-format + mypy(strict on `app/`) clean. `POST
+  /analyze` runs CPM + DCMA metrics {1,2,3,4,6,7,8} and reports per-task timings end-to-end.
 - **Session start commit (SHA at start):** `506b3d9` ("Initial commit", README only).
 - **Date:** 2026-05-20.
 - **Branch model:** per-milestone feature branches → PR → `main` (see §5 STUCK-branch-strategy).
@@ -48,6 +48,9 @@ _(PR # + merge commit SHA recorded as they merge.)_
   late finish, never reschedules) → negative total float in the CPM backward pass; critical path
   refined to `total_slack <= 0`; Metric 8 (Negative Float, threshold 0%) wired into `/analyze`.
   Finally gives `working_minutes_between` a real consumer. 5 new tests (57 total).
+- **Post-M5 per-task timings (PR #9, `925e3cd`)** — the `/analyze` report now exposes per-task
+  ES/EF/LS/LF + total/free slack (minutes), total slack in working days, and an `is_critical` flag —
+  a forensic report should surface the computed schedule, not just the critical path. 58 tests total.
 
 ## 4. Milestones not started
 - _(none — M1–M5 all complete.)_
