@@ -4,9 +4,10 @@
 > output. Updated at least every ~20 min of work and at every PR merge.
 
 ## 1. Session start
-- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus one post-M5 integration PR. 6 PRs
-  (#1–#6), all CI-green, squash-merged. **46 tests passing**; ruff + ruff-format + mypy(strict on
-  `app/`) clean. `main` head: `e400dfc`.
+- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus two post-M5 PRs (integration endpoint;
+  DCMA metrics 6 & 7). **7 PRs (#1–#7)**, all CI-green, squash-merged. **52 tests passing**;
+  ruff + ruff-format + mypy(strict on `app/`) clean. The `/analyze` endpoint runs CPM + DCMA
+  metrics {1,2,3,4,6,7} end-to-end. `main` head after this report commit.
 - **Session start commit (SHA at start):** `506b3d9` ("Initial commit", README only).
 - **Date:** 2026-05-20.
 - **Branch model:** per-milestone feature branches → PR → `main` (see §5 STUCK-branch-strategy).
@@ -39,6 +40,10 @@ _(PR # + merge commit SHA recorded as they merge.)_
   M1+M2+M4+M5 end-to-end (JSON `Schedule` in → CPM + DCMA metrics report out; 400/422 error paths;
   un-runnable metrics recorded as skipped, never faked). Composition only, no new fidelity claims;
   6 integration tests. Demonstrates the milestones form a working product.
+- **Post-M5 DCMA metrics 6 & 7 (PR #7, `c15790c`)** — High Duration (>44 working days) and High
+  Float (CPM total float >44 working days), both `<= 5%`, reusing the model + CPM output (no new
+  model fields). Wired into `/analyze`; 6 known-answer tests. Coverage rationale for the deferred
+  metrics in `FIDELITY-DECISION-dcma-coverage.md`.
 
 ## 4. Milestones not started
 - _(none — M1–M5 all complete.)_
@@ -55,6 +60,9 @@ _(Logged tradeoffs, ~10 lines each.)_
   single-calendar offset axis; ASAP/no-constraints; tuple-not-list critical_path; free-slack non-clamp.
 - `FIDELITY-DECISION-dcma-severity.md` (M5) — DCMA metrics are binary PASS/FAIL; WARN not emitted
   without a cited second threshold; un-runnable metrics raise rather than fabricate; no "ERROR" state.
+- `FIDELITY-DECISION-dcma-coverage.md` (post-M5) — metrics 1-4, 6, 7 implemented; 5, 8-14 deferred
+  because they need scheduling constraints / actual+baseline dates / resources the model lacks
+  (building them now would mean fabricating inputs or shipping an unexerciseable check).
 
 ## 7. FIDELITY-COMPROMISE files index
 _(Every deliberate shortcut, however minor. Honesty is the data.)_
@@ -86,17 +94,21 @@ _(Every deliberate shortcut, however minor. Honesty is the data.)_
   and the part most likely to be reused/extended.
 
 ## 11. Least useful / most regret
-- **`app/cpm/calendar_math.py` is partly speculative.** The CPM core is pure offset arithmetic and
-  never calls `add_working_minutes` / `working_minutes_between`; only `minutes_to_working_days` is
-  on a real path. I built and tested the wall-clock walk for fidelity/future presentation, but for
-  M1–M5 it is infrastructure ahead of a consumer. Also a smaller smell: `Offender.value` is a single
-  float overloaded to mean different things per metric (missing-end count / lag minutes / predecessor
-  id); a per-metric offender type would be cleaner than documenting the overload.
+- **The wall-clock half of `app/cpm/calendar_math.py` is still speculative.** `minutes_to_working_days`
+  is now firmly on the real path (CPM presentation + metrics 6/7), but `add_working_minutes` /
+  `working_minutes_between` are exercised only by their own tests — no product code calls them yet.
+  They're correct and ready for a future date-rendering/parser consumer, but for what shipped they're
+  infrastructure ahead of need. Smaller smell: `Offender.value` is one float overloaded per metric
+  (missing-end count / lag minutes / predecessor id / working days); a per-metric offender type would
+  be cleaner than documenting the overload.
 
 ## 12. Where I would go next
-- **Wire it together in Flask:** an upload→`parse_schedule`→`compute_cpm`+metrics→JSON-report route,
-  so the 500 MB guard and the analysis core meet. **Harden CPM fidelity:** MS Project constraints
-  (SNET/MSO/deadlines), negative float, and multi-calendar lag arithmetic (currently single-calendar).
-  **Real parsers** behind the M3 seam (`.xer`/`.xml` first — pure-Python, unlike `.mpp`). **Finish
-  DCMA:** metrics 5–14, then manipulation-scoring with the "always-100" regression guard. **Citations:**
-  swap the by-name DCMA citations for page-anchored ones once the primary PDFs/XLSX are available.
+- _(The Flask wiring from the earlier plan is now done — PR #6.)_ The single highest-leverage next
+  step is **MS Project constraints (SNET/MSO/deadlines) + negative float** in the CPM engine: it adds
+  `constraint_type`/`constraint_date` to `Task`, makes the forward pass clamp on constraints, and
+  immediately **unlocks DCMA Metrics 5 (Hard Constraints) and 8 (Negative Float)**, plus distinguishes
+  longest-path from zero-float critical path. After that: **actual/baseline dates** on the model to
+  unlock Metrics 9/11/13, then **resources** for 10/12/14. **Real parsers** behind the M3 seam
+  (`.xer`/`.xml` first — pure-Python text formats, unlike `.mpp`). Then **manipulation-scoring** with
+  the "always-100" regression guard. Throughout: swap the by-name DCMA citations for page-anchored ones
+  once the primary PDFs/XLSX are available.
