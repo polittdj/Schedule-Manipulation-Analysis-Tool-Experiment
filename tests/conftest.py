@@ -10,7 +10,7 @@ from datetime import date, datetime
 
 import pytest
 
-from app.models import Calendar, Relation, RelationType, Schedule, Task
+from app.models import Calendar, ConstraintType, Relation, RelationType, Schedule, Task
 
 # Monday 2026-01-05, 08:00 — a working day aligned with the default day start.
 DEFAULT_PROJECT_START = datetime(2026, 1, 5, 8, 0, 0)
@@ -39,6 +39,8 @@ def make_task(
     name: str | None = None,
     duration_minutes: int = 480,
     calendar_id: int = 1,
+    constraint_type: ConstraintType = ConstraintType.ASAP,
+    constraint_date: datetime | None = None,
     deadline: datetime | None = None,
 ) -> Task:
     return Task(
@@ -46,6 +48,8 @@ def make_task(
         name=name if name is not None else f"Task {unique_id}",
         duration_minutes=duration_minutes,
         calendar_id=calendar_id,
+        constraint_type=constraint_type,
+        constraint_date=constraint_date,
         deadline=deadline,
     )
 

@@ -17,7 +17,7 @@ from app.cpm.calendar_math import (
     working_minutes_between,
 )
 from app.exceptions import CPMError
-from app.models import RelationType, Schedule
+from app.models import ConstraintType, RelationType, Schedule
 from tests.conftest import make_calendar, make_relation, make_schedule, make_task
 
 DAY = 480
@@ -126,6 +126,62 @@ def test_deadline_drives_negative_float() -> None:
     assert b.total_slack == -3 * DAY
     assert a.total_slack == -3 * DAY  # negative float propagates to the predecessor
     assert result.critical_path == (1, 2)  # total_slack <= 0 -> both critical
+
+
+# --- date constraints (project start is Mon 2026-01-05 08:00) --------------------------
+
+
+def test_snet_delays_successor_and_gives_predecessor_float() -> None:
+    snet = datetime(2026, 1, 8, 8, 0)  # Thu 08:00 = 3 working days in
+    tasks = (
+        make_task(1, duration_minutes=2 * DAY),
+        make_task(
+            2, duration_minutes=2 * DAY, constraint_type=ConstraintType.SNET, constraint_date=snet
+        ),
+    )
+    result = compute_cpm(make_schedule(tasks=tasks, relations=(make_relation(1, 2),)))
+    a, b = result.by_id(1), result.by_id(2)
+    assert b.early_start == 3 * DAY  # SNET pushed it past the logic start (2d)
+    assert (b.early_finish, result.project_finish) == (5 * DAY, 5 * DAY)
+    assert a.total_slack == 1 * DAY  # A can slip a day without delaying B's constrained start
+    assert b.total_slack == 0
+    assert result.critical_path == (2,)
+
+
+def test_mso_conflict_drives_negative_float_on_predecessor() -> None:
+    mso = datetime(2026, 1, 6, 8, 0)  # Tue 08:00 = 1 working day in
+    tasks = (
+        make_task(1, duration_minutes=2 * DAY),
+        make_task(
+            2, duration_minutes=2 * DAY, constraint_type=ConstraintType.MSO, constraint_date=mso
+        ),
+    )
+    result = compute_cpm(make_schedule(tasks=tasks, relations=(make_relation(1, 2),)))
+    a, b = result.by_id(1), result.by_id(2)
+    assert b.early_start == 1 * DAY  # pinned by MSO, ignoring the 2-day predecessor
+    assert b.total_slack == 0
+    assert a.total_slack == -1 * DAY  # A cannot finish in time -> negative float
+    assert result.critical_path == (1, 2)
+
+
+def test_fnlt_cap_drives_negative_float() -> None:
+    fnlt = datetime(2026, 1, 7, 8, 0)  # Wed 08:00 = 2 working days in
+    tasks = (
+        make_task(
+            1, duration_minutes=3 * DAY, constraint_type=ConstraintType.FNLT, constraint_date=fnlt
+        ),
+    )
+    result = compute_cpm(make_schedule(tasks=tasks, relations=()))
+    a = result.by_id(1)
+    assert a.early_finish == 3 * DAY  # forward pass unaffected
+    assert a.late_finish == 2 * DAY  # FNLT caps the late finish
+    assert a.total_slack == -1 * DAY
+
+
+def test_alap_constraint_raises_cpm_error() -> None:
+    tasks = (make_task(1, constraint_type=ConstraintType.ALAP),)
+    with pytest.raises(CPMError):
+        compute_cpm(make_schedule(tasks=tasks, relations=()))
 
 
 # --- calendar math ---------------------------------------------------------------------

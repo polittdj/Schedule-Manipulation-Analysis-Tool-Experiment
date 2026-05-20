@@ -14,14 +14,16 @@
    Multi-calendar schedules make `EF(P) + L` ambiguous when predecessor and successor differ;
    cross-calendar conversion is deferred. Known-answer tests use one calendar, so they are exact.
 
-4. **As-soon-as-possible scheduling; deadlines, but not hard constraints.** The forward pass is
-   pure logic (every task starts as early as its predecessors allow) — SNET/MSO/MFO *scheduling*
-   constraints are still out of scope (modelling them without faithful CPM support would risk
-   silently-wrong dates). **Deadlines** (post-M5) are supported: a deadline caps the late finish in
-   the backward pass without rescheduling the task, so a missed deadline produces **negative total
-   float** that propagates back along the driving path. Because negative float can now occur, the
-   **critical path is `total_slack <= 0`** (not `== 0`); with no deadlines all slack is `>= 0`, so
-   this is identical to the original `== 0`.
+4. **As-soon-as-possible scheduling with honored date constraints and deadlines.** The forward
+   pass is logic-driven; **date constraints** (SNET/FNET/SNLT/FNLT/MSO/MFO) and **deadlines** are
+   then honored under MS Project's default "honor constraint dates" mode — hard constraints can
+   override logic and surface the conflict as **negative total float** propagating along the driving
+   path. Because negative float can occur, the **critical path is `total_slack <= 0`** (not `== 0`);
+   with no constraints/deadlines all slack is `>= 0`, so this is identical to the original `== 0`.
+   **ALAP is deliberately NOT supported** — `compute_cpm` raises `CPMError` rather than computing
+   wrong dates, since faithful as-late-as-possible scheduling needs a backward-driven pass I have not
+   built. Multi-constraint precedence edge cases follow the simple floor/cap/pin rules in
+   `docs/cpm-model.md` (faithful for the common cases; exotic combinations are not separately tuned).
 
 5. **`critical_path` is a `tuple`, not the spec's `list`.** A frozen dataclass with a `list`
    field is only shallow-immutable; a tuple makes the result genuinely immutable (and hashable).
