@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 from app.metrics.base import MetricOptions, MetricResult, Offender, ThresholdConfig
+from app.metrics.duration import run_high_duration
+from app.metrics.high_float import run_high_float
 from app.metrics.lags import run_lags
 from app.metrics.leads import run_leads
 from app.metrics.logic import run_missing_logic
@@ -14,6 +16,8 @@ __all__ = [
     "MetricResult",
     "Offender",
     "ThresholdConfig",
+    "run_high_duration",
+    "run_high_float",
     "run_lags",
     "run_leads",
     "run_missing_logic",

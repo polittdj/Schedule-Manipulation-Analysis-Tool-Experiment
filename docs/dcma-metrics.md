@@ -11,6 +11,8 @@ Each metric is a pure function `run_<name>(schedule, options) -> MetricResult`. 
 | 2 | Leads (Negative Lag) | relations with `lag < 0` / all relations | `0%` (any lead fails) | the lead relations | lag minutes (negative) |
 | 3 | Lags (Positive Lag) | relations with `lag > 0` / all relations | `<= 5%` | the lagged relations | lag minutes (positive) |
 | 4 | Relationship Types | FS relations / all relations | `>= 90%` | the **non-FS** relations | predecessor UniqueID |
+| 6 | High Duration | tasks with duration > 44 working days / all tasks | `<= 5%` | the long tasks | duration (working days) |
+| 7 | High Float | tasks with total float > 44 working days / all tasks | `<= 5%` | the high-float tasks | total float (working days) |
 
 Notes:
 - Metric 4 is an AT_LEAST metric: the numerator counts the *good* (FS) relations while the
@@ -22,3 +24,11 @@ Notes:
 - Thresholds are the canonical DCMA 14-Point Assessment values; citations are by assessment name
   because the primary sources were unavailable this session (see
   `FIDELITY-COMPROMISE-dcma-citations.md`).
+- **Metrics 6/7** convert minutes to working days per each task's own calendar; the "44 working
+  days" bar is the canonical DCMA threshold. Metric 6 uses the single modelled duration as the
+  baseline duration. Metric 7 consumes the CPM total float.
+- **Coverage:** Metrics 1-4, 6, 7 are implemented. The remaining DCMA points need data the model
+  does not yet carry and are deferred (see `FIDELITY-DECISION-dcma-coverage.md`): Metric 5
+  (Hard Constraints) and 8 (Negative Float) need scheduling constraints; 9 (Invalid Dates),
+  11 (Missed Tasks), 13 (BEI) need actual/baseline dates; 10 (Resources), 12 (CPLI/critical-path
+  test), 14 need resources or a baseline.
