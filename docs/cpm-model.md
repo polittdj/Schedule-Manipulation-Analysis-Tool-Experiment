@@ -49,6 +49,24 @@ up as **negative total float** that propagates back along the driving path.
 - Topological order is Kahn's algorithm with the ready-queue tie-broken by ascending
   UniqueID (deterministic). A logic cycle raises `CPMError`.
 
+## Date constraints
+Constraints are honored under MS Project's default **"honor constraint dates"** behaviour:
+a hard constraint can override logic and surface the conflict as negative float. The
+`constraint_date` converts to a working-minute offset (same axis as ES/EF).
+
+| type | kind | forward (early) | backward (late) |
+|------|------|-----------------|-----------------|
+| SNET (Start No Earlier Than) | soft | `ES = max(logic, offset)` | — |
+| FNET (Finish No Earlier Than) | soft | `ES = max(logic, offset - d)` | — |
+| SNLT (Start No Later Than) | hard | — | `LF = min(logic, offset + d)` |
+| FNLT (Finish No Later Than) | hard | — | `LF = min(logic, offset)` |
+| MSO (Must Start On) | hard | `ES = offset` (pin) | `LF = offset + d` (pin) |
+| MFO (Must Finish On) | hard | `ES = offset - d` (pin) | `LF = offset` (pin) |
+
+ASAP is the unconstrained default. **ALAP is not yet supported** — `compute_cpm` raises
+`CPMError` rather than computing wrong dates. A deadline (above) behaves like an FNLT cap but
+is a separate field. Hard constraints (SNLT/FNLT/MSO/MFO) are what DCMA Metric 5 counts.
+
 ## Worked examples (8h/day = 480 min; values shown in days)
 
 ### Example 1 — merge + a slack branch (all FS, lag 0)

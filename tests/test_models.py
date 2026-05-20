@@ -8,7 +8,7 @@ from datetime import date, datetime
 import pytest
 from pydantic import ValidationError
 
-from app.models import RelationType, Schedule, Task
+from app.models import ConstraintType, RelationType, Schedule, Task
 from tests.conftest import make_calendar, make_relation, make_schedule, make_task
 
 
@@ -103,3 +103,25 @@ def test_task_deadline_round_trips() -> None:
     assert restored == task
     assert restored.deadline == datetime(2026, 3, 1, 17, 0)
     assert make_task(2).deadline is None  # defaults to no deadline
+
+
+def test_dated_constraint_requires_a_date() -> None:
+    with pytest.raises(ValidationError):
+        make_task(1, constraint_type=ConstraintType.SNET)  # no constraint_date
+
+
+def test_asap_constraint_forbids_a_date() -> None:
+    with pytest.raises(ValidationError):
+        make_task(
+            1, constraint_type=ConstraintType.ASAP, constraint_date=datetime(2026, 3, 1, 8, 0)
+        )
+
+
+def test_task_constraint_round_trips() -> None:
+    task = make_task(
+        1, constraint_type=ConstraintType.MSO, constraint_date=datetime(2026, 3, 1, 8, 0)
+    )
+    restored = Task.model_validate_json(task.model_dump_json())
+    assert restored == task
+    assert restored.constraint_type == ConstraintType.MSO
+    assert make_task(2).constraint_type == ConstraintType.ASAP  # default

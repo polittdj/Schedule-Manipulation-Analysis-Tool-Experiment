@@ -8,7 +8,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.calendar import Calendar
-from app.models.enums import RelationType
+from app.models.enums import ConstraintType, RelationType
 
 
 class Task(BaseModel):
@@ -24,9 +24,19 @@ class Task(BaseModel):
     name: str
     duration_minutes: int = Field(ge=0)  # working-time minutes; a milestone has 0
     calendar_id: int
+    constraint_type: ConstraintType = ConstraintType.ASAP
+    constraint_date: datetime | None = None
     # Optional finish deadline. Like MS Project, a deadline does NOT reschedule the task; it
     # caps the late finish for slack, so a missed deadline surfaces as negative total float.
     deadline: datetime | None = None
+
+    @model_validator(mode="after")
+    def _check_constraint(self) -> Self:
+        if self.constraint_type.needs_date and self.constraint_date is None:
+            raise ValueError(f"{self.constraint_type} requires a constraint_date")
+        if not self.constraint_type.needs_date and self.constraint_date is not None:
+            raise ValueError(f"{self.constraint_type} must not have a constraint_date")
+        return self
 
 
 class Relation(BaseModel):

@@ -14,6 +14,40 @@ class RelationType(StrEnum):
     SF = "SF"  # Start-to-Finish
 
 
+class ConstraintType(StrEnum):
+    """MS Project task date constraints.
+
+    Soft (logic-driven): ASAP, ALAP, SNET (Start No Earlier Than), FNET (Finish No Earlier
+    Than). Hard (can override logic / cause negative float): SNLT (Start No Later Than),
+    FNLT (Finish No Later Than), MSO (Must Start On), MFO (Must Finish On). The CPM engine
+    schedules under MS Project's default "honor constraint dates" behaviour.
+    """
+
+    ASAP = "ASAP"
+    ALAP = "ALAP"
+    SNET = "SNET"
+    SNLT = "SNLT"
+    FNET = "FNET"
+    FNLT = "FNLT"
+    MSO = "MSO"
+    MFO = "MFO"
+
+    @property
+    def is_hard(self) -> bool:
+        """Whether this is a hard constraint (DCMA Metric 5 counts these)."""
+        return self in {
+            ConstraintType.SNLT,
+            ConstraintType.FNLT,
+            ConstraintType.MSO,
+            ConstraintType.MFO,
+        }
+
+    @property
+    def needs_date(self) -> bool:
+        """Whether this constraint requires a constraint_date (all but ASAP/ALAP)."""
+        return self not in {ConstraintType.ASAP, ConstraintType.ALAP}
+
+
 class Severity(StrEnum):
     """Metric outcome severity. Exactly three states — no ERROR, no fourth state.
 
