@@ -4,10 +4,11 @@
 > output. Updated at least every ~20 min of work and at every PR merge.
 
 ## 1. Session start
-- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus four post-M5 PRs (integration endpoint;
-  DCMA metrics 6 & 7; deadlines + Metric 8; per-task timings). **9 PRs (#1–#9)**, all CI-green,
-  squash-merged. **58 tests passing**; ruff + ruff-format + mypy(strict on `app/`) clean. `POST
-  /analyze` runs CPM + DCMA metrics {1,2,3,4,6,7,8} and reports per-task timings end-to-end.
+- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus six post-M5 PRs (integration endpoint;
+  metrics 6 & 7; deadlines + Metric 8; per-task timings; CPM date constraints; Metric 5). **11 PRs
+  (#1–#11)**, all CI-green, squash-merged. **68 tests passing**; ruff + ruff-format + mypy(strict on
+  `app/`) clean. `POST /analyze` runs CPM (with date constraints/deadlines) + **DCMA Metrics 1–8** and
+  reports per-task timings end-to-end.
 - **Session start commit (SHA at start):** `506b3d9` ("Initial commit", README only).
 - **Date:** 2026-05-20.
 - **Branch model:** per-milestone feature branches → PR → `main` (see §5 STUCK-branch-strategy).
@@ -51,6 +52,12 @@ _(PR # + merge commit SHA recorded as they merge.)_
 - **Post-M5 per-task timings (PR #9, `925e3cd`)** — the `/analyze` report now exposes per-task
   ES/EF/LS/LF + total/free slack (minutes), total slack in working days, and an `is_critical` flag —
   a forensic report should surface the computed schedule, not just the critical path. 58 tests total.
+- **Post-M5 CPM date constraints (PR #10, `1a76008`)** — `ConstraintType` (SNET/SNLT/FNET/FNLT/MSO/
+  MFO + ASAP/ALAP) on `Task`; CPM honors them under MSP's "honor constraint dates" mode (floor early /
+  cap late / pin hard), surfacing conflicts as negative float; ALAP raises rather than mis-schedule.
+  Hand-computed known-answer tests (SNET float, MSO/FNLT negative float). 65 tests total.
+- **Post-M5 DCMA Metric 5 (PR #11, `dbe3ad1`)** — Hard Constraints (MSO/MFO/SNLT/FNLT), `<= 5%`,
+  wired into `/analyze`. **Completes DCMA Metrics 1–8.** 68 tests total.
 
 ## 4. Milestones not started
 - _(none — M1–M5 all complete.)_
@@ -118,12 +125,14 @@ _(Every deliberate shortcut, however minor. Honesty is the data.)_
   (e.g. refusing to commit on `main`) would have prevented it.
 
 ## 12. Where I would go next
-- _(The Flask wiring from the earlier plan is now done — PR #6.)_ The single highest-leverage next
-  step is **MS Project constraints (SNET/MSO/deadlines) + negative float** in the CPM engine: it adds
-  `constraint_type`/`constraint_date` to `Task`, makes the forward pass clamp on constraints, and
-  immediately **unlocks DCMA Metrics 5 (Hard Constraints) and 8 (Negative Float)**, plus distinguishes
-  longest-path from zero-float critical path. After that: **actual/baseline dates** on the model to
-  unlock Metrics 9/11/13, then **resources** for 10/12/14. **Real parsers** behind the M3 seam
-  (`.xer`/`.xml` first — pure-Python text formats, unlike `.mpp`). Then **manipulation-scoring** with
-  the "always-100" regression guard. Throughout: swap the by-name DCMA citations for page-anchored ones
-  once the primary PDFs/XLSX are available.
+- _(Done since the original plan: Flask `/analyze` wiring (PR #6); deadlines + negative float (#8);
+  date constraints (#10); DCMA Metrics 5–8 (#7,#8,#11). DCMA 1–8 now complete.)_
+- **Add actual/baseline dates** to the model (status date, baseline start/finish, % complete) to
+  unlock the remaining DCMA points: 9 (Invalid Dates), 11 (Missed Tasks), 13 (Baseline Execution
+  Index); then **resources** for 10 (Resources), 12 (CPLI/critical-path test), 14.
+- **Real parsers** behind the M3 seam — `.xer`/`.xml` (Primavera) first, since they're pure-text
+  (unlike `.mpp`, which needs MS Project COM). This is where `add_working_minutes` finally earns its
+  keep (mapping parsed wall-clock dates onto the working calendar).
+- **ALAP scheduling** (currently raises) needs a backward-driven pass.
+- **Manipulation-scoring** with the "always-100" regression guard.
+- Swap the by-name DCMA citations for page-anchored ones once the primary PDFs/XLSX are available.
