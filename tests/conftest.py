@@ -42,6 +42,11 @@ def make_task(
     constraint_type: ConstraintType = ConstraintType.ASAP,
     constraint_date: datetime | None = None,
     deadline: datetime | None = None,
+    percent_complete: int = 0,
+    actual_start: datetime | None = None,
+    actual_finish: datetime | None = None,
+    baseline_finish: datetime | None = None,
+    resource_names: Sequence[str] = (),
 ) -> Task:
     return Task(
         unique_id=unique_id,
@@ -51,6 +56,11 @@ def make_task(
         constraint_type=constraint_type,
         constraint_date=constraint_date,
         deadline=deadline,
+        percent_complete=percent_complete,
+        actual_start=actual_start,
+        actual_finish=actual_finish,
+        baseline_finish=baseline_finish,
+        resource_names=tuple(resource_names),
     )
 
 
@@ -76,6 +86,8 @@ def make_schedule(
     calendars: Sequence[Calendar] | None = None,
     tasks: Sequence[Task] | None = None,
     relations: Sequence[Relation] | None = None,
+    status_date: datetime | None = None,
+    baseline_finish: datetime | None = None,
 ) -> Schedule:
     return Schedule(
         name=name,
@@ -83,6 +95,8 @@ def make_schedule(
         calendars=tuple(calendars) if calendars is not None else (make_calendar(),),
         tasks=tuple(tasks) if tasks is not None else (make_task(1), make_task(2)),
         relations=tuple(relations) if relations is not None else (make_relation(1, 2),),
+        status_date=status_date,
+        baseline_finish=baseline_finish,
     )
 
 

@@ -125,3 +125,44 @@ def test_task_constraint_round_trips() -> None:
     assert restored == task
     assert restored.constraint_type == ConstraintType.MSO
     assert make_task(2).constraint_type == ConstraintType.ASAP  # default
+
+
+def test_tracking_data_round_trips() -> None:
+    task = make_task(
+        1,
+        percent_complete=100,
+        actual_start=datetime(2026, 1, 5, 8, 0),
+        actual_finish=datetime(2026, 1, 7, 16, 0),
+        baseline_finish=datetime(2026, 1, 6, 16, 0),
+        resource_names=("Alice", "Bob"),
+    )
+    restored = Task.model_validate_json(task.model_dump_json())
+    assert restored == task
+    assert restored.resource_names == ("Alice", "Bob")
+
+
+def test_schedule_status_and_baseline_round_trip() -> None:
+    schedule = make_schedule(
+        status_date=datetime(2026, 2, 1, 8, 0), baseline_finish=datetime(2026, 3, 1, 16, 0)
+    )
+    dumped = schedule.model_dump_json()
+    assert Schedule.model_validate_json(dumped).model_dump_json() == dumped
+
+
+def test_actual_finish_requires_actual_start() -> None:
+    with pytest.raises(ValidationError):
+        make_task(1, actual_finish=datetime(2026, 1, 7, 16, 0))  # no actual_start
+
+
+def test_actual_finish_must_not_precede_start() -> None:
+    with pytest.raises(ValidationError):
+        make_task(
+            1,
+            actual_start=datetime(2026, 1, 7, 8, 0),
+            actual_finish=datetime(2026, 1, 5, 8, 0),
+        )
+
+
+def test_percent_complete_bounds() -> None:
+    with pytest.raises(ValidationError):
+        make_task(1, percent_complete=150)

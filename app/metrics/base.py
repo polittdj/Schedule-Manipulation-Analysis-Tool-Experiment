@@ -48,9 +48,14 @@ class MetricResult:
     numerator: int
     denominator: int
     offenders: tuple[Offender, ...]
+    # Index/ratio metrics (e.g. CPLI) report a directly-measured value instead of a count
+    # percentage; ``None`` for the count-based metrics.
+    measured: float | None = None
 
     @property
     def percentage(self) -> float:
+        if self.denominator == 0:
+            return 0.0
         return 100.0 * self.numerator / self.denominator
 
 
