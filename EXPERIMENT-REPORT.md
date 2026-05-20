@@ -4,8 +4,9 @@
 > output. Updated at least every ~20 min of work and at every PR merge.
 
 ## 1. Session start
-- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`.** 5 PRs (#1–#5), all CI-green, squash-merged.
-  40 tests passing; ruff + ruff-format + mypy(strict on `app/`) clean. `main` head: `f35de79`.
+- **STATUS: M1–M5 ALL COMPLETE & MERGED TO `main`**, plus one post-M5 integration PR. 6 PRs
+  (#1–#6), all CI-green, squash-merged. **46 tests passing**; ruff + ruff-format + mypy(strict on
+  `app/`) clean. `main` head: `e400dfc`.
 - **Session start commit (SHA at start):** `506b3d9` ("Initial commit", README only).
 - **Date:** 2026-05-20.
 - **Branch model:** per-milestone feature branches → PR → `main` (see §5 STUCK-branch-strategy).
@@ -32,8 +33,12 @@ _(PR # + merge commit SHA recorded as they merge.)_
   cited second threshold); `MetricError` on empty denominator. M1 ≤5%, M2 0% leads, M3 ≤5% lags,
   M4 ≥90% FS. CI green in 22s; 12 new tests (40 total).
 
-## 3. Milestones in progress
-- _(none — all five milestones merged.)_
+## 3. Milestones in progress / beyond-scope work
+- _(no milestone in progress — all five merged.)_
+- **Post-M5 integration (PR #6, `e400dfc`)** — `analyze_schedule` + `POST /analyze` compose
+  M1+M2+M4+M5 end-to-end (JSON `Schedule` in → CPM + DCMA metrics report out; 400/422 error paths;
+  un-runnable metrics recorded as skipped, never faked). Composition only, no new fidelity claims;
+  6 integration tests. Demonstrates the milestones form a working product.
 
 ## 4. Milestones not started
 - _(none — M1–M5 all complete.)_
