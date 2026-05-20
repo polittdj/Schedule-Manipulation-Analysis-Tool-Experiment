@@ -16,12 +16,14 @@ _(PR # + merge commit SHA recorded as they merge.)_
 - **M1 — Scaffolding** — PR #1, squash-merged to `main` as **`d0ba6cf`**. Flask app-factory,
   500 MB upload guard + 413 handler, flask-free exception base, pinned reqs, ruff/mypy-strict/pytest,
   GitHub Actions CI. CI green in 16s; 3 smoke tests pass. (Branch `m1-scaffolding`, pre-squash `96845c7`.)
+- **M2 — Pydantic data model** — PR #2, squash-merged to `main` as **`1f98960`**. Frozen/strict/
+  extra-forbid `Calendar`/`Task`/`Relation`/`Schedule`; sorted-tuple collections; referential-integrity
+  validator; UniqueID identity; byte-equal JSON round-trip. CI green in 20s; 12 new tests (15 total).
 
 ## 3. Milestones in progress
-- **M2 — Pydantic data model:** starting on branch `m2-data-model` off `main`.
+- **M3 — Parser stub:** starting on branch `m3-parser-stub` off `main`.
 
 ## 4. Milestones not started
-- M3 — Parser stub.
 - M4 — CPM engine.
 - M5 — DCMA metrics 1–4.
 
@@ -31,7 +33,10 @@ _(PR # + merge commit SHA recorded as they merge.)_
 
 ## 6. FIDELITY-DECISION files index
 _(Logged tradeoffs, ~10 lines each.)_
-- None yet. Anticipated: durations/lags as working-time minutes; single-calendar CPM offset axis; binary PASS/FAIL severity (WARN not emitted without a cited second threshold); naive datetimes.
+- `FIDELITY-DECISION-data-model.md` (M2) — sorted-tuples-not-sets (round-trip stability); naive
+  datetimes (tz out of scope); calendars-by-FK not nested; strict+frozen+extra-forbid rationale.
+- Anticipated (M4/M5): durations/lags as working-time minutes; single-calendar CPM offset axis;
+  binary PASS/FAIL severity (WARN not emitted without a cited second threshold).
 
 ## 7. FIDELITY-COMPROMISE files index
 _(Every deliberate shortcut, however minor. Honesty is the data.)_
