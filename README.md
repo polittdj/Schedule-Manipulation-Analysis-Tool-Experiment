@@ -7,12 +7,14 @@ is an **autonomous build experiment** — see [`EXPERIMENT-REPORT.md`](EXPERIMEN
 > Fidelity-first: results aim to match Acumen Fuse / Steelray / MS Project semantics.
 > Speed and elegance are tiebreakers, never overrides.
 
-## Status (milestones)
-- **M1 — Scaffolding:** Flask app factory, 500 MB upload guard + 413 handler, CI. ← current
-- M2 — Pydantic data model (Schedule / Task / Relation / Calendar).
-- M3 — Parser seam (stub; real `.mpp` parsing needs MS Project COM and is out of scope here).
-- M4 — CPM engine (forward/backward pass, total/free slack, critical path).
-- M5 — DCMA metrics 1–4 (missing logic, leads, lags, relationship types).
+## Status
+- **M1 — Scaffolding:** Flask app factory, 500 MB upload guard + 413 handler, CI.
+- **M2 — Data model:** strict/frozen Pydantic `Schedule`/`Task`/`Relation`/`Calendar` (+ constraints, deadlines, baseline/actual tracking data).
+- **M3 — Parser seam:** monkeypatchable stub (real `.mpp` parsing needs MS Project COM, out of scope).
+- **M4 — CPM engine:** FS/SS/FF/SF + lag, MS Project date constraints, deadlines, total/free slack, negative float, critical path.
+- **M5+ — DCMA metrics:** **all 14** of the DCMA 14-Point assessment, plus an integrity/health score.
+
+See [`docs/dcma-metrics.md`](docs/dcma-metrics.md) and [`docs/cpm-model.md`](docs/cpm-model.md).
 
 ## Layout
 - `app/` — application package: `create_app` factory, config, error handlers, routes.
@@ -35,9 +37,10 @@ flask --app "app:create_app" run        # http://localhost:5000/health
 curl -X POST http://localhost:5000/analyze \
   -H 'Content-Type: application/json' --data-binary @schedule.json
 ```
-`POST /analyze` validates a JSON `Schedule`, runs the CPM engine and the DCMA metrics, and returns
-per-task timings (ES/EF/LS/LF/slack), the critical path, project finish (working days), and
-per-metric results.
+`POST /analyze` validates a JSON `Schedule`, runs the CPM engine and all 14 DCMA metrics, and
+returns per-task timings (ES/EF/LS/LF/slack), the critical path, project finish (working days),
+per-metric results, and an integrity/health score (share of runnable metrics that pass, with the
+failing metrics listed as findings).
 
 ## Security note
 Schedule files (`*.mpp`, `*.xer`, `*.xml`) may carry Controlled Unclassified Information

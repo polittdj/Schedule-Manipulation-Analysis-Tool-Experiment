@@ -131,6 +131,14 @@ def test_all_fourteen_metrics_run_end_to_end() -> None:
     assert by_id[12].severity == Severity.PASS  # delay propagates through the chain
 
 
+def test_report_health_surfaces_findings() -> None:
+    # A 3-task chain fails Metric 1 (open ends), so the integrity score must be below 100.
+    report = analyze_schedule(_chain(3))
+    assert report.health.score < 100.0
+    assert 1 in report.health.findings  # missing-logic finding
+    assert report.to_dict()["health"]["metrics_failed"] >= 1
+
+
 def test_analyze_flags_non_fs_relation() -> None:
     tasks = (make_task(1), make_task(2), make_task(3))
     relations = (

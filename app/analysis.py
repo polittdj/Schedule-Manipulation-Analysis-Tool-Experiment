@@ -14,6 +14,7 @@ from typing import Any
 from app.cpm import TaskTiming, compute_cpm
 from app.cpm.calendar_math import minutes_to_working_days
 from app.exceptions import MetricError
+from app.health import HealthAssessment, assess_health
 from app.metrics import (
     run_bei,
     run_cpli,
@@ -53,6 +54,7 @@ class AnalysisReport:
     minutes_per_working_day: int
     metrics: tuple[MetricResult, ...]
     skipped_metrics: tuple[SkippedMetric, ...]
+    health: HealthAssessment
 
     def to_dict(self) -> dict[str, Any]:
         critical = set(self.critical_path)
@@ -61,6 +63,7 @@ class AnalysisReport:
             "project_finish_minutes": self.project_finish_minutes,
             "project_finish_working_days": self.project_finish_working_days,
             "critical_path": list(self.critical_path),
+            "health": self.health.to_dict(),
             "tasks": [
                 {
                     "unique_id": t.unique_id,
@@ -148,4 +151,5 @@ def analyze_schedule(schedule: Schedule) -> AnalysisReport:
         minutes_per_working_day=presentation_calendar.hours_per_day * 60,
         metrics=tuple(metrics),
         skipped_metrics=tuple(skipped),
+        health=assess_health(metrics),
     )
