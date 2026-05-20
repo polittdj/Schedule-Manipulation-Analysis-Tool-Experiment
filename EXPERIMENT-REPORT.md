@@ -13,13 +13,14 @@
 
 ## 2. Milestones completed
 _(PR # + merge commit SHA recorded as they merge.)_
-- None yet.
+- **M1 — Scaffolding** — PR #1, squash-merged to `main` as **`d0ba6cf`**. Flask app-factory,
+  500 MB upload guard + 413 handler, flask-free exception base, pinned reqs, ruff/mypy-strict/pytest,
+  GitHub Actions CI. CI green in 16s; 3 smoke tests pass. (Branch `m1-scaffolding`, pre-squash `96845c7`.)
 
 ## 3. Milestones in progress
-- **M1 — Scaffolding:** seeding report + STUCK scaffolding on `main`; M1 work starts next on `m1-scaffolding`.
+- **M2 — Pydantic data model:** starting on branch `m2-data-model` off `main`.
 
 ## 4. Milestones not started
-- M2 — Pydantic data model.
 - M3 — Parser stub.
 - M4 — CPM engine.
 - M5 — DCMA metrics 1–4.
@@ -38,8 +39,12 @@ _(Every deliberate shortcut, however minor. Honesty is the data.)_
 
 ## 8. Tools / dependencies introduced (rationale)
 - **Python 3.13 venv** — M1 target runtime (default `python3` is 3.11; 3.13 at `/usr/bin/python3.13`).
-- **Flask 3.x** — the web app (M1). **pydantic 2.x** — strict frozen data model (M2).
-- **pytest** (tests), **ruff** (lint+format), **mypy** (strict types on `app/`) — dev/CI. All pip-only, pinned.
+- **Flask 3.1.3** — the web app (M1). **pydantic 2.13.4** — strict frozen data model (M2).
+- **pytest 9.0.3** (tests), **ruff 0.15.13** (lint+format), **mypy 2.1.0** (strict types on `app/`) — dev/CI.
+- All pip-only and pinned (`requirements.txt` + `requirements-dev.txt`). pip network access confirmed.
+- **Workflow facts:** direct push to `main` works; required CI check `check` gates the PR; MCP
+  `enable_pr_auto_merge` refuses while checks are pending, so the merge path is: wait for CI success
+  (via MCP check-run polling) → `merge_pull_request`. No blocking branch protection beyond the CI check.
 
 ## 9. Open questions I would ask if I could
 - Are the canonical DCMA thresholds to be sourced from DECM 8.0, the DCMA 14-Point Assessment, or a project-specific override table? (Defaulting to the well-known 14-Point values.)
