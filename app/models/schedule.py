@@ -29,6 +29,12 @@ class Task(BaseModel):
     # Optional finish deadline. Like MS Project, a deadline does NOT reschedule the task; it
     # caps the late finish for slack, so a missed deadline surfaces as negative total float.
     deadline: datetime | None = None
+    # Progress / baseline tracking data (drives DCMA Metrics 9-14).
+    percent_complete: int = Field(default=0, ge=0, le=100)
+    actual_start: datetime | None = None
+    actual_finish: datetime | None = None
+    baseline_finish: datetime | None = None
+    resource_names: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _check_constraint(self) -> Self:
@@ -36,6 +42,18 @@ class Task(BaseModel):
             raise ValueError(f"{self.constraint_type} requires a constraint_date")
         if not self.constraint_type.needs_date and self.constraint_date is not None:
             raise ValueError(f"{self.constraint_type} must not have a constraint_date")
+        return self
+
+    @model_validator(mode="after")
+    def _check_progress(self) -> Self:
+        if self.actual_finish is not None and self.actual_start is None:
+            raise ValueError("actual_finish requires actual_start")
+        if (
+            self.actual_start is not None
+            and self.actual_finish is not None
+            and self.actual_finish < self.actual_start
+        ):
+            raise ValueError("actual_finish must not precede actual_start")
         return self
 
 
@@ -73,6 +91,8 @@ class Schedule(BaseModel):
     calendars: tuple[Calendar, ...]
     tasks: tuple[Task, ...]
     relations: tuple[Relation, ...]
+    status_date: datetime | None = None  # data date — the "as of" date for progress metrics
+    baseline_finish: datetime | None = None  # project baseline finish (drives CPLI)
 
     @model_validator(mode="after")
     def _check_integrity(self) -> Self:
