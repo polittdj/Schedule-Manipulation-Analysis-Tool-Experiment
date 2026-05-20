@@ -6,6 +6,7 @@ the Flask route in ``app.routes`` is a thin wrapper over ``analyze_schedule``.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -13,16 +14,16 @@ from typing import Any
 from app.cpm import compute_cpm
 from app.cpm.calendar_math import minutes_to_working_days
 from app.exceptions import MetricError
-from app.metrics import run_lags, run_leads, run_missing_logic, run_relationship_types
+from app.metrics import (
+    run_high_duration,
+    run_high_float,
+    run_lags,
+    run_leads,
+    run_missing_logic,
+    run_relationship_types,
+)
 from app.metrics.base import MetricResult
 from app.models import Schedule
-
-_METRIC_RUNNERS = (
-    (1, run_missing_logic),
-    (2, run_leads),
-    (3, run_lags),
-    (4, run_relationship_types),
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,11 +88,19 @@ def analyze_schedule(schedule: Schedule) -> AnalysisReport:
 
     metrics: list[MetricResult] = []
     skipped: list[SkippedMetric] = []
-    for metric_id, runner in _METRIC_RUNNERS:
+
+    def run(metric_id: int, runner: Callable[[], MetricResult]) -> None:
         try:
-            metrics.append(runner(schedule))
+            metrics.append(runner())
         except MetricError as exc:
             skipped.append(SkippedMetric(metric_id=metric_id, reason=str(exc)))
+
+    run(1, lambda: run_missing_logic(schedule))
+    run(2, lambda: run_leads(schedule))
+    run(3, lambda: run_lags(schedule))
+    run(4, lambda: run_relationship_types(schedule))
+    run(6, lambda: run_high_duration(schedule))
+    run(7, lambda: run_high_float(schedule, cpm))
 
     presentation_calendar = schedule.calendars[0]
     return AnalysisReport(
