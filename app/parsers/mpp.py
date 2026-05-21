@@ -13,6 +13,8 @@ that ``.xml`` (which this tool reads with no Java).
 
 from __future__ import annotations
 
+import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -45,6 +47,19 @@ _RELATION = {
 }
 
 
+def _use_bundled_jre() -> None:
+    """If this is a frozen build that bundled a JRE (``jre/`` beside the app), point JPype at it
+    so .mpp works with no separately-installed Java. An explicit JAVA_HOME always wins."""
+    if os.environ.get("JAVA_HOME"):
+        return
+    base = getattr(sys, "_MEIPASS", None)
+    if base is None:
+        return
+    bundled = os.path.join(base, "jre")
+    if os.path.isdir(bundled):
+        os.environ["JAVA_HOME"] = bundled
+
+
 def _ensure_mpxj() -> Any:
     """Import mpxj and start the JVM, or raise NotImplementedError with guidance."""
     try:
@@ -52,6 +67,7 @@ def _ensure_mpxj() -> Any:
     except ImportError as exc:
         raise NotImplementedError(_UNAVAILABLE_MESSAGE) from exc
     if not mpxj.isJVMStarted():
+        _use_bundled_jre()
         try:
             mpxj.startJVM()
         except Exception as exc:  # no/!broken Java runtime
