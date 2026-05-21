@@ -50,8 +50,15 @@
       <div class="row">
         <button class="primary" onclick="analyze()">Analyze schedule</button>
         <button class="ghost" onclick="loadExample()">Load example</button>
+        <label class="ghost" style="display:inline-block;line-height:1">Open .json file…
+          <input id="file" type="file" accept=".json,application/json" style="display:none" onchange="openFile(event)">
+        </label>
+        <button class="ghost" onclick="saveFile()">Save .json</button>
       </div>
-      <p class="hint">Time is in working minutes — 1 work day = 8h = <code>480</code>. <code>"FS"</code> means task B starts after task A finishes.</p>
+      <p class="hint">Loads/saves the tool's own <code>.json</code> schedule format (you can also drag a
+      <code>.json</code> file onto the box). It does <b>not</b> read MS Project <code>.mpp</code> or
+      Primavera <code>.xer</code>/<code>.xml</code> files. Time is in working minutes — 1 work day =
+      8h = <code>480</code>; <code>"FS"</code> means task B starts after task A finishes.</p>
     </section>
     <section class="card">
       <h2>2. Results</h2>
@@ -77,6 +84,25 @@
 
     function loadExample() {
       document.getElementById("schedule").value = JSON.stringify(EXAMPLE, null, 2);
+    }
+
+    function _readInto(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { document.getElementById("schedule").value = reader.result; };
+      reader.readAsText(file);
+    }
+    function openFile(event) {
+      _readInto(event.target.files[0]);
+      event.target.value = "";  // allow re-opening the same file
+    }
+    function saveFile() {
+      const blob = new Blob([document.getElementById("schedule").value], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "schedule.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
     }
 
     function scoreColor(s) { return s >= 95 ? "var(--ok)" : s >= 80 ? "var(--warn)" : "var(--bad)"; }
@@ -132,6 +158,14 @@
       out_set(html);
     }
     function out_set(html) { document.getElementById("results").innerHTML = html; }
+
+    // Drag a .json file straight onto the text box.
+    const _box = document.getElementById("schedule");
+    _box.addEventListener("dragover", (e) => e.preventDefault());
+    _box.addEventListener("drop", (e) => {
+      e.preventDefault();
+      _readInto(e.dataTransfer.files[0]);
+    });
 
     loadExample();
   </script>
