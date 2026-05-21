@@ -7,6 +7,20 @@ is an **autonomous build experiment** — see [`EXPERIMENT-REPORT.md`](EXPERIMEN
 > Fidelity-first: results aim to match Acumen Fuse / Steelray / MS Project semantics.
 > Speed and elegance are tiebreakers, never overrides.
 
+## Get a ready-to-run app (no Python at all)
+The easiest option — a single self-contained program, nothing to install:
+1. On GitHub, open the **Actions** tab → **Build apps** → **Run workflow** (or push a tag like `v0.1.0`).
+2. When it finishes, open that run and download the artifact for your system from **Artifacts**:
+   `ScheduleTool-windows`, `ScheduleTool-macos`, or `ScheduleTool-linux`.
+3. Unzip it and **double-click `ScheduleTool`** (`ScheduleTool.exe` on Windows). Your browser opens
+   to the tool. A small console window stays open — close it to stop the tool.
+   - First open on macOS may be blocked: right-click → **Open** → **Open**. (The app is unsigned.)
+
+Prefer to build it yourself? Double-click **`build-app.command`** (macOS/Linux) or
+**`build-app.bat`** (Windows) — it produces the same program in the `dist/` folder. (Building needs
+Python 3.13 once; *running* the result does not. PyInstaller can't cross-build, so build on the OS
+you want the app for.)
+
 ## Quick start — click to run (no terminal)
 You need **Python 3.13** installed once (from python.org). Then:
 1. Download this project (green **Code** button → **Download ZIP**, then unzip — or `git clone`).
