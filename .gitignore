@@ -28,3 +28,6 @@ htmlcov/
 .idea/
 .vscode/
 .DS_Store
+
+# Bundled JRE produced at build time (do not commit)
+jre/

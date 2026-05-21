@@ -9,6 +9,8 @@ the app for (CI does all three automatically — see .github/workflows/build-app
 Output: dist/ScheduleTool  (dist/ScheduleTool.exe on Windows).
 """
 
+import os
+
 from PyInstaller.utils.hooks import collect_all
 
 # Bundle the Jinja template, and fully collect pydantic (its core is a compiled extension).
@@ -20,6 +22,19 @@ for _pkg in ("pydantic", "pydantic_core"):
     datas += _d
     binaries += _b
     hiddenimports += _h
+
+# Optional native-.mpp support: bundle MPXJ + JPype when installed, plus a jlink'd JRE in ./jre
+# (the build workflow creates it). When present, the frozen app reads .mpp with no separate Java.
+for _pkg in ("mpxj", "jpype"):
+    try:
+        _d, _b, _h = collect_all(_pkg)
+        datas += _d
+        binaries += _b
+        hiddenimports += _h
+    except Exception:  # noqa: S110, BLE001 - package simply absent in a lean build
+        pass
+if os.path.isdir("jre"):
+    datas.append(("jre", "jre"))
 
 a = Analysis(
     ["launch.py"],
