@@ -54,6 +54,7 @@ metrics ship in the trust-root spine.)_
 | `sra` | Monte-Carlo SRA: BetaPERT 3-point sampling → P50/P80/P95 + per-task criticality index (default spread O=0.75D, M=D, P=1.5D) | SRA-MONTE-CARLO / BETA-PERT (Acumen Fuse Risk; Primavera Risk Analysis) | method cited (practice); default spread is a **tool default**, not parity; page-anchor source-pending |
 | `diff_engine` | Objective version-pair deltas (duration/float/date shifts, became-critical/recovered, predecessor add/remove); UniqueID-matched, absolute-status-date ordered | ACUMEN comparative (`ProjectTimeNow`/`ProjectPreviousTimeNow`); deltas are arithmetic | objective facts; comparative frame cited (practice); page-anchor source-pending |
 | `float_analysis` | Float burn-rate + trend bands CRITICAL / SEVERE_EROSION (≤−10d) / ERODING (<−1d) / STABLE / IMPROVING (>+1d) | **tool-original extension** — thresholds are tool defaults, not from DCMA/DECM/Acumen | **EXTENSION** — never presented as reference-tool parity |
+| `exec_summary` health band | GREEN (≥90%) / YELLOW (≥70%) / RED (else, or any negative float) over the DCMA integrity score | **tool-original extension** — a synthesis over DCMA outcomes | **EXTENSION** — never presented as reference-tool parity |
 
 ## Foundational semantics cited by the trust-root spine
 
