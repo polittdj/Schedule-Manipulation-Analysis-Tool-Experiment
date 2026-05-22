@@ -8,10 +8,12 @@ Models are ``frozen`` (immutable, hashable), ``strict`` (no silent type
 coercion), and ``extra="forbid"`` (an unknown field is an error, not a silent
 drop) so that an invalid schedule is *unconstructable*.
 
-Freeze status: FREEZE-CANDIDATE. Formal freeze (version tag + change-control
-note) lands at the end of the trust-root spine, before the Phase-5 analysis
-fan-out. The tracking/constraint fields are declared now -- even though this
-slice does not yet consume all of them -- so the freeze does not churn later.
+Freeze status: FROZEN at SCHEMA_VERSION below (end of the trust-root spine,
+before the Phase-5 analysis fan-out). The tracking/constraint fields were
+declared up front and have survived the importer, version_matcher, and full CPM
+unchanged. CHANGE CONTROL: any field add/remove/rename requires bumping
+``SCHEMA_VERSION`` and updating ``tests/test_schema_freeze.py`` in the same
+change (the field-set guard test fails otherwise) -- this is deliberate.
 """
 
 from __future__ import annotations
@@ -20,6 +22,9 @@ import datetime as dt
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+# Bump on ANY change to a model's field set (see test_schema_freeze.py).
+SCHEMA_VERSION = "1.0.0"
 
 _STRICT = ConfigDict(frozen=True, extra="forbid", strict=True)
 
