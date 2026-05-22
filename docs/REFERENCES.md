@@ -66,3 +66,6 @@ metrics ship in the trust-root spine.)_
 | Working-minute axis | durations/lags in working minutes; 480 = one 8h day | MS Project duration model | cited (practice) |
 | MSPDI ConstraintType / link-Type codes | 0=ASAP..7=FNLT; link 0=FF,1=FS,2=SF,3=SS | MS Project object model / MSPDI | cited; verify per-version on Windows |
 | MSPDI `<LinkLag>` unit | tenths-of-a-minute (assumed) | MSPDI schema | **source-pending** (H-MSPDI-LAG-UNIT) |
+| XER structure / identity | tab-delimited `%T`/`%F`/`%R`/`%E` records; UniqueID = `TASK.task_id` (never `task_code`); `TASKPRED.task_id`=successor, `pred_task_id`=predecessor; duration `target_drtn_hr_cnt` (hours x60 = working min); lag `lag_hr_cnt` (hours, signed) | Oracle Primavera P6 XER import/export format (P6 schema: PROJECT/TASK/TASKPRED) | cited (practice); page-anchor source-pending |
+| XER `pred_type` codes | PR_FS=FS, PR_SS=SS, PR_FF=FF, PR_SF=SF | Primavera P6 relationship-type enumeration | cited (practice); verify per-version |
+| XER `cstr_type` codes | CS_ALAP=ALAP, CS_MSO=MSO, CS_MEO=MFO, CS_MSOA=SNET, CS_MSOB=SNLT, CS_MEOA=FNET, CS_MEOB=FNLT; unknown/blank=ASAP | Primavera P6 constraint enumeration | **source-pending** (verify against live P6; fixture asserts no value that depends on it) |
