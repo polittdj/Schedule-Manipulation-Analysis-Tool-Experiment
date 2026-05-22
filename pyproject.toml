@@ -9,6 +9,8 @@ description = "Local-only, CUI-compliant forensic schedule-analysis tool (DCMA-1
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2,<3",
+    "openpyxl>=3.1,<4",
+    "python-docx>=1,<2",
 ]
 
 [project.optional-dependencies]
@@ -42,3 +44,7 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 packages = ["schedule_forensics"]
+
+[[tool.mypy.overrides]]
+module = ["openpyxl.*", "docx.*"]
+ignore_missing_imports = true

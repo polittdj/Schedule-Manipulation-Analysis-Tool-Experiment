@@ -1,2 +1,4 @@
 # Runtime dependencies (pinned). Install: pip install -r requirements.txt
 pydantic==2.13.4
+openpyxl==3.1.5
+python-docx==1.2.0
