@@ -17,7 +17,7 @@ from schedule_forensics.schemas import (
 
 
 def test_schema_version_is_frozen() -> None:
-    assert SCHEMA_VERSION == "1.0.0"
+    assert SCHEMA_VERSION == "1.1.0"
 
 
 def test_schedule_field_set_is_frozen() -> None:
@@ -45,7 +45,9 @@ def test_task_field_set_is_frozen() -> None:
         "percent_complete",
         "actual_start",
         "actual_finish",
+        "baseline_start",
         "baseline_finish",
+        "budgeted_cost",
         "resource_names",
     }
 

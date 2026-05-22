@@ -8,12 +8,16 @@ Models are ``frozen`` (immutable, hashable), ``strict`` (no silent type
 coercion), and ``extra="forbid"`` (an unknown field is an error, not a silent
 drop) so that an invalid schedule is *unconstructable*.
 
-Freeze status: FROZEN at SCHEMA_VERSION below (end of the trust-root spine,
-before the Phase-5 analysis fan-out). The tracking/constraint fields were
-declared up front and have survived the importer, version_matcher, and full CPM
-unchanged. CHANGE CONTROL: any field add/remove/rename requires bumping
-``SCHEMA_VERSION`` and updating ``tests/test_schema_freeze.py`` in the same
-change (the field-set guard test fails otherwise) -- this is deliberate.
+Freeze status: FROZEN at SCHEMA_VERSION below. CHANGE CONTROL: any field
+add/remove/rename requires bumping ``SCHEMA_VERSION`` and updating
+``tests/test_schema_freeze.py`` in the same change (the field-set guard test
+fails otherwise) -- this is deliberate. Change log:
+
+  * v1.0.0 -- trust-root spine (before the Phase-5 analysis fan-out).
+  * v1.1.0 -- added earned-value fields ``Task.baseline_start`` and
+    ``Task.budgeted_cost`` (the budget-at-completion basis) to support the SPI /
+    SPI(t) earned-value indices; both default to "absent" so prior schedules
+    remain valid and EV metrics SKIP (never fabricate) when they are unset.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Bump on ANY change to a model's field set (see test_schema_freeze.py).
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "1.1.0"
 
 _STRICT = ConfigDict(frozen=True, extra="forbid", strict=True)
 
@@ -82,7 +86,9 @@ class Task(BaseModel):
     percent_complete: float = Field(default=0.0, ge=0.0, le=100.0)
     actual_start: dt.datetime | None = None
     actual_finish: dt.datetime | None = None
+    baseline_start: dt.datetime | None = None  # v1.1.0: earned-value PV time-phasing
     baseline_finish: dt.datetime | None = None
+    budgeted_cost: float = Field(default=0.0, ge=0.0)  # v1.1.0: BAC, earned-value basis
     resource_names: tuple[str, ...] = ()
 
 
