@@ -1,26 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "schedule-manipulation-analysis-tool"
-version = "0.1.0"
-description = "Forensic schedule-analysis tool: DCMA-14 quality metrics and CPM analysis."
-requires-python = ">=3.13"
+name = "schedule-forensics"
+version = "0.0.1"
+description = "Local-only, CUI-compliant forensic schedule-analysis tool (DCMA-14, CPM, SRA)."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py311"
+src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM", "C4"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 addopts = "-q"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.11"
 strict = true
-files = ["app"]
-
-[[tool.mypy.overrides]]
-module = "tests.*"
-ignore_errors = true
+mypy_path = "src"
+packages = ["schedule_forensics"]
