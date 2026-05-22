@@ -106,7 +106,7 @@ integration step owns merges.
 
 | Owner | Writes |
 |---|---|
-| `schema-author` | `src/schedule_forensics/schemas.py` |
+| `schema-author` | `src/schedule_forensics/schemas.py`, `src/schedule_forensics/metrics_common.py` (shared metric contract) |
 | `parser-author` | `src/schedule_forensics/importers/**`, `scripts/validate_against_msp.py` |
 | `cpm-author` | `src/schedule_forensics/cpm.py`, `src/schedule_forensics/version_matcher.py` |
 | `metric-author` (one per module) | the dispatched module + its test (e.g. `driving_path.py`, `diff_engine.py`, `float_analysis.py`, `performance_indices.py`, `sra.py`, `dcma_checks.py`) |
