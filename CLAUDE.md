@@ -108,7 +108,7 @@ integration step owns merges.
 |---|---|
 | `schema-author` | `src/schedule_forensics/schemas.py` |
 | `parser-author` | `src/schedule_forensics/importers/**`, `scripts/validate_against_msp.py` |
-| `cpm-author` | `src/schedule_forensics/cpm.py` |
+| `cpm-author` | `src/schedule_forensics/cpm.py`, `src/schedule_forensics/version_matcher.py` |
 | `metric-author` (one per module) | the dispatched module + its test (e.g. `driving_path.py`, `diff_engine.py`, `float_analysis.py`, `performance_indices.py`, `sra.py`, `dcma_checks.py`) |
 | `report-author` | `src/schedule_forensics/report_excel.py`, `report_word.py` |
 | `ui-author` | the Flask app + templates/static |
