@@ -65,6 +65,15 @@ and review gates, not good intentions.
   conversion. *Mitigation:* fixtures use `PT...H` forms only; documented in the
   importer.
 
+- **H-CONSTRAINT-DATETIME (source-pending).** The CPM honors SNET/FNET/SNLT/FNLT
+  + deadlines under MS Project's "honor constraint dates" mode (conflicts surface
+  as negative float). The `datetime_to_offset` mapping uses working-day
+  granularity + a clamped intraday term; the exact intraday/non-working-day and
+  honor-mode semantics are a defined model **pending live-MS Project validation**
+  (unavailable on Linux). ALAP/MSO/MFO are deferred: the engine RAISES rather than
+  emit a silently-wrong schedule. Tests use 08:00 day-aligned constraint dates so
+  expected offsets are exact.
+
 - **H-CALENDAR-DEFERRED.** The MSPDI `<Calendars>` block is not yet parsed; the
   default `Calendar` (480 min/day, Mon-Fri) is used. Multi-shift / per-task
   calendars and lunch breaks are deferred. *Mitigation:* documented in the

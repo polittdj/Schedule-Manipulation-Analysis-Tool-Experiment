@@ -72,22 +72,8 @@ def test_ss_perturbation_changes_start() -> None:
     assert compute_cpm(lagged).timings[2].early_start == 480
 
 
-def test_constraint_raises_until_supported() -> None:
-    schedule = _sched(
-        [
-            _task(
-                1,
-                480,
-                constraint_type=ConstraintType.SNET,
-                constraint_date=dt.datetime(2025, 2, 1, 8),
-            )
-        ]
-    )
-    with pytest.raises(CPMError, match="constraints"):
-        compute_cpm(schedule)
-
-
-def test_deadline_raises_until_supported() -> None:
-    schedule = _sched([_task(1, 480, deadline=dt.datetime(2025, 2, 1, 8))])
-    with pytest.raises(CPMError, match="deadline"):
+def test_pin_constraint_raises_until_supported() -> None:
+    # MSO/MFO/ALAP are deferred -- the engine refuses rather than mis-schedule.
+    schedule = _sched([_task(1, 480, constraint_type=ConstraintType.MSO)])
+    with pytest.raises(CPMError, match="not yet honored"):
         compute_cpm(schedule)
