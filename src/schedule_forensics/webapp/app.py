@@ -17,7 +17,10 @@ Routes:
 
 from __future__ import annotations
 
+import argparse
 import io
+import os
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import pydantic
@@ -32,7 +35,12 @@ from schedule_forensics.report_word import build_word_document
 from schedule_forensics.schemas import Schedule
 
 # ── LAW 1 constant ────────────────────────────────────────────────────────────
+# HOST is fixed and intentionally NOT configurable: the server binds loopback only.
 HOST: str = "127.0.0.1"
+
+# ── Port configuration (host is fixed; only the port may vary) ────────────────
+DEFAULT_PORT: int = 5000
+PORT_ENV_VAR: str = "SF_PORT"
 
 # ── In-memory state (no disk writes) ─────────────────────────────────────────
 # Holds at most one Schedule + ScheduleAnalysis at a time.
@@ -457,10 +465,53 @@ def create_app() -> Flask:
     return app
 
 
-def main() -> None:
-    """Entry point for running the development server locally."""
+def _validate_port(port: int, *, source: str) -> int:
+    """Reject ports outside the valid TCP range (fail closed, never silently clamp)."""
+    if not (1 <= port <= 65535):
+        raise ValueError(f"{source} must be in the range 1..65535, got {port}.")
+    return port
+
+
+def resolve_port(cli_port: int | None, environ: Mapping[str, str]) -> int:
+    """Resolve the UI port: ``--port`` CLI arg > ``SF_PORT`` env var > default 5000.
+
+    Only the port is configurable; HOST stays fixed at 127.0.0.1 (LAW 1). An
+    out-of-range or non-integer value raises ``ValueError`` rather than silently
+    falling back, so the operator always binds the port they intended.
+    """
+    if cli_port is not None:
+        return _validate_port(cli_port, source="--port")
+    raw = environ.get(PORT_ENV_VAR)
+    if raw is not None and raw.strip() != "":
+        try:
+            env_port = int(raw.strip())
+        except ValueError as exc:
+            raise ValueError(f"{PORT_ENV_VAR}={raw!r} is not a valid integer port.") from exc
+        return _validate_port(env_port, source=PORT_ENV_VAR)
+    return DEFAULT_PORT
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Entry point for running the development server locally.
+
+    The port is configurable via ``--port`` or the ``SF_PORT`` environment
+    variable (default 5000); ``--port`` takes precedence. The host is fixed at
+    127.0.0.1 (LAW 1) and is intentionally NOT configurable.
+    """
+    parser = argparse.ArgumentParser(
+        prog="schedule_forensics.webapp",
+        description="Run the Schedule Forensics localhost UI (binds 127.0.0.1 only).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help=f"Port to bind on 127.0.0.1 (default: {PORT_ENV_VAR} env var, else {DEFAULT_PORT}).",
+    )
+    args = parser.parse_args(argv)
+    port = resolve_port(args.port, os.environ)
     app = create_app()
-    app.run(host=HOST, port=5000)
+    app.run(host=HOST, port=port)
 
 
 if __name__ == "__main__":

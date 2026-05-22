@@ -25,7 +25,7 @@ import pytest
 
 from schedule_forensics.report_excel import CUI_NOTICE
 from schedule_forensics.schemas import Relation, Schedule, Task
-from schedule_forensics.webapp import HOST, create_app
+from schedule_forensics.webapp import DEFAULT_PORT, HOST, PORT_ENV_VAR, create_app, resolve_port
 from schedule_forensics.webapp.app import _STATE, _clear_state
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -72,6 +72,46 @@ def client() -> Generator[object, None, None]:
 def test_host_constant_is_loopback() -> None:
     """LAW 1: the server MUST bind to 127.0.0.1 only."""
     assert HOST == "127.0.0.1"
+
+
+# ── Port resolution (--port > SF_PORT > default; fail closed on bad input) ────
+
+
+def test_resolve_port_default_when_unset() -> None:
+    """No CLI arg and no env var → default port 5000."""
+    assert resolve_port(None, {}) == DEFAULT_PORT
+    assert DEFAULT_PORT == 5000
+
+
+def test_resolve_port_env_var_used_when_no_cli() -> None:
+    """SF_PORT is honoured when --port is absent."""
+    assert resolve_port(None, {PORT_ENV_VAR: "5050"}) == 5050
+
+
+def test_resolve_port_cli_overrides_env() -> None:
+    """--port takes precedence over SF_PORT (explicit beats environment)."""
+    assert resolve_port(8080, {PORT_ENV_VAR: "5050"}) == 8080
+
+
+def test_resolve_port_blank_env_falls_back_to_default() -> None:
+    """An empty/whitespace SF_PORT is treated as unset, not as an error."""
+    assert resolve_port(None, {PORT_ENV_VAR: "   "}) == DEFAULT_PORT
+
+
+def test_resolve_port_non_integer_env_fails_closed() -> None:
+    """A non-integer SF_PORT raises rather than silently using the default (fail closed)."""
+    with pytest.raises(ValueError, match=PORT_ENV_VAR):
+        resolve_port(None, {PORT_ENV_VAR: "not-a-port"})
+
+
+def test_resolve_port_out_of_range_fails_closed() -> None:
+    """Ports outside 1..65535 raise rather than being clamped (fail closed)."""
+    with pytest.raises(ValueError, match="1..65535"):
+        resolve_port(70000, {})
+    with pytest.raises(ValueError, match="1..65535"):
+        resolve_port(0, {})
+    with pytest.raises(ValueError, match="1..65535"):
+        resolve_port(None, {PORT_ENV_VAR: "99999"})
 
 
 # ── Basic route smoke tests ───────────────────────────────────────────────────

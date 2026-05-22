@@ -9,6 +9,13 @@ LAW 1 compliance:
 - POST /wipe destroys all in-memory state.
 """
 
-from schedule_forensics.webapp.app import HOST, create_app, main
+from schedule_forensics.webapp.app import (
+    DEFAULT_PORT,
+    HOST,
+    PORT_ENV_VAR,
+    create_app,
+    main,
+    resolve_port,
+)
 
-__all__ = ["HOST", "create_app", "main"]
+__all__ = ["DEFAULT_PORT", "HOST", "PORT_ENV_VAR", "create_app", "main", "resolve_port"]
