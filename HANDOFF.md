@@ -13,7 +13,7 @@
 git checkout claude/charming-cerf-iddZv && git pull
 python3 -m venv .venv && . .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -e . && pip install -r requirements-dev.txt
-ruff check . && ruff format --check . && mypy && pytest      # expect: all clean, ~306 pass / 2 skip
+ruff check . && ruff format --check . && mypy && pytest      # expect: all clean, ~321 pass / 3 skip
 python -m schedule_forensics.webapp                # serves http://127.0.0.1:5000 (--port / SF_PORT)
 ```
 
@@ -55,7 +55,7 @@ JPype.** Do not "restore" COM-as-trust-root from the original master directive.
 Pipeline runs end-to-end: **MS Project XML / JSON `Schedule` → CPM → full DCMA-14 +
 driving-path + SRA + multi-version diff/float-trend → composition + health score →
 Excel/Word reports → executive summary → localhost UI.** Now also: XER ingestion +
-earned-value SPI/SPI(t). 23 source modules, ~306 tests. Module map
+earned-value SPI/SPI(t). 24 source modules, ~321 tests. Module map
 (`src/schedule_forensics/`):
 
 | Module | Role |
@@ -63,6 +63,7 @@ earned-value SPI/SPI(t). 23 source modules, ~306 tests. Module map
 | `schemas.py` | **FROZEN v1.1.0** Pydantic model (`Schedule/Task/Relation/Calendar`); strict, immutable, integrity-guarded; UniqueID-only identity. v1.1.0 added `Task.baseline_start` + `Task.budgeted_cost` (EV basis). `SCHEMA_VERSION` + `tests/test_schema_freeze.py` enforce change-control. |
 | `importers/msp_xml.py` | Pure-Python MSPDI (MS Project XML) importer. Dup-UID → `ImporterError`. |
 | `importers/xer.py` | Pure-Python Primavera P6 XER importer (`%T/%F/%R/%E`); UniqueID = `task_id`; multi-project → majority project; constraint codes source-pending. |
+| `importers/mpp_mpxj.py` | Native `.mpp` via MPXJ **subprocess** (never JPype); `SF_MPXJ_CMD`/`SF_MPXJ_JAR` → MSPDI → `parse_msp_xml`; killable; fail-closed. See `docs/MPXJ.md`. |
 | `performance_indices.py` | Earned-value **SPI** (EV/PV) + **SPI(t)** (Lipke earned schedule); SKIP without EV data; **CEI deferred source-pending**. Not in the DCMA health score. |
 | `version_matcher.py` | Orders versions by absolute `status_date`; UniqueID-keyed added/deleted/matched. |
 | `cpm.py` | CPM forward/backward on an **integer working-minute axis** (480 min = 1 day). All link types FS/SS/FF/SF + lag; SNET/FNET/SNLT/FNLT + deadlines; total/free float incl. negative; critical path = `total_float<=0`. **ALAP/MSO/MFO raise `CPMError` (fail closed)** pending live-MSP validation. `datetime_to_offset` converts dates. |
@@ -111,20 +112,23 @@ DONE (this session; see `PHASE-COMPLETE-9.md`):
   **schema v1.1.0** bump (`Task.baseline_start` + `Task.budgeted_cost`). Wired into
   `analysis.py` (kept out of the DCMA health score) + Excel/Word/UI. **CEI is
   deferred source-pending** — no single citable definition; not faked (LAW 2).
-- ✅ **Phase-9 hardening rounds 1–2** — fixed the importer error contract (dup
-  UID/task_id → `ImporterError`); +12 edge-case tests; 3 clean runs.
+- ✅ **Phase-9 hardening rounds 1–3** — fixed the importer error contract (dup
+  UID/task_id → `ImporterError`); +17 edge-case tests incl. end-to-end XER≡MSPDI
+  full-analysis parity; XER wired into the UI upload; 3 clean runs.
+- ✅ **MPXJ-as-subprocess** native `.mpp` (`importers/mpp_mpxj.py`) — out-of-process,
+  killable; configured via `SF_MPXJ_CMD`/`SF_MPXJ_JAR`; converts → MSPDI → reuses
+  `parse_msp_xml`; **never JPype**. Hermetic stub tests + a live integration test
+  (passed against real MPXJ 16.2.0; skips by default). Setup: `docs/MPXJ.md` +
+  `tools/mpxj/MpxjToMspdi.java`.
 
-REMAINING (all environment- or input-constrained — see PHASE-COMPLETE-9 §OPEN):
-1. **MPXJ-as-subprocess** for native `.mpp` (`importers/mpp_mpxj.py`): invoke an
-   MPXJ JAR/CLI via `subprocess` (Java 21 present; Maven reachable). **NEVER
-   in-process JPype.** Behind the importer interface; killable. **Caveat:** a true
-   binary `.mpp` fixture CANNOT be created on Linux (MPXJ reads but does not write
-   `.mpp`; no MS Project here) — the `.mpp` path is Windows-validated only; here it
-   can be exercised via MPXJ converting an `.mpx`/MSPDI fixture → MSPDI XML →
-   existing `parse_msp_xml`.
-2. **COM importer** (Windows-only): behind the importer interface; `skip`/`xfail`
+REMAINING (all environment- or input-constrained):
+1. **COM importer** (Windows-only): behind the importer interface; `skip`/`xfail`
    off-Windows; conformance test `COM output == MPXJ output` runnable only on
-   Windows. `scripts/validate_against_msp.py` is the (stub) harness.
+   Windows. `scripts/validate_against_msp.py` is the (stub) harness. Cannot be
+   validated on Linux — write the scaffolding here, validate on the user's box.
+2. **Native `.mpp` last mile**: validate the MPXJ path against a REAL binary
+   `.mpp` on a machine that has one (cannot be authored on Linux). Optionally wire
+   `.mpp` upload into the webapp once MPXJ is a standard server-side dependency.
 3. **Golden-file parity harness** (needs the user to supply Acumen/SSI/MSP outputs
    for a known schedule); live-MS Project validation on real `.mpp` (Windows-local).
 4. **CEI**: pin a citable definition (+ likely an `actual_cost` schema field)
