@@ -47,5 +47,5 @@ mypy_path = "src"
 packages = ["schedule_forensics"]
 
 [[tool.mypy.overrides]]
-module = ["openpyxl.*", "docx.*"]
+module = ["openpyxl.*", "docx.*", "win32com.*", "pythoncom", "pywintypes"]
 ignore_missing_imports = true
