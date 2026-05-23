@@ -56,6 +56,13 @@ def test_build_command_from_jar() -> None:
     assert cmd == ["java", "-jar", "/opt/mpxj.jar", "IN", "OUT"]
 
 
+def test_build_command_from_home() -> None:
+    cmd = _build_command("IN", "OUT", {"SF_MPXJ_HOME": "/opt/mpxj"})
+    assert cmd[:2] == ["java", "-cp"]
+    assert "/opt/mpxj/classes" in cmd[2] and "/opt/mpxj/lib/*" in cmd[2]
+    assert cmd[3:] == ["MpxjToMspdi", "IN", "OUT"]
+
+
 def test_build_command_template_missing_tokens_raises() -> None:
     with pytest.raises(ImporterError, match="placeholders"):
         _build_command("IN", "OUT", {"SF_MPXJ_CMD": "java -jar x.jar"})
@@ -64,6 +71,7 @@ def test_build_command_template_missing_tokens_raises() -> None:
 def test_mpxj_configured_reflects_env() -> None:
     assert mpxj_configured({"SF_MPXJ_JAR": "x.jar"}) is True
     assert mpxj_configured({"SF_MPXJ_CMD": "java {input} {output}"}) is True
+    assert mpxj_configured({"SF_MPXJ_HOME": "/opt/mpxj"}) is True
     assert mpxj_configured({}) is False
 
 

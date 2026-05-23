@@ -15,7 +15,19 @@ the tool is unaffected.
 > temp MSPDI file that is deleted immediately after parsing; no schedule data
 > leaves the machine.
 
-## One-time setup (verified with MPXJ 16.2.0, Java 21)
+## Quick setup (recommended)
+
+```sh
+bash tools/mpxj/setup.sh                  # needs Java (JDK >= 17) + Maven
+export SF_MPXJ_HOME="$PWD/tools/mpxj"      # the dir setup.sh populated
+```
+
+That downloads MPXJ + dependencies into `tools/mpxj/lib`, compiles the converter
+into `tools/mpxj/classes`, and `SF_MPXJ_HOME` makes both the CLI and the **web UI**
+parse native `.mpp` / `.mpx` uploads. To have it ready in every session, set
+`SF_MPXJ_HOME` and run `setup.sh` from your environment's setup / SessionStart hook.
+
+## Manual setup (equivalent, verified with MPXJ 16.2.0, Java 21)
 
 Resolve MPXJ + its dependencies into a `lib/` directory and compile the tiny
 converter in `tools/mpxj/`. `pom.xml` is shown inline because the repo's
@@ -53,8 +65,10 @@ Java expands the `lib/*` classpath wildcard itself):
 export SF_MPXJ_CMD="java -cp $PWD/classes:$PWD/lib/* MpxjToMspdi {input} {output}"
 ```
 
-(Alternatively, build a single runnable jar and set `SF_MPXJ_JAR=/path/to.jar`;
-the importer then runs `java -jar <jar> {input} {output}`.)
+Resolution order is `SF_MPXJ_CMD` > `SF_MPXJ_JAR` > `SF_MPXJ_HOME`. The quick
+setup above uses `SF_MPXJ_HOME` (the importer then runs
+`java -cp <home>/classes:<home>/lib/* MpxjToMspdi {input} {output}`). Alternatively
+build a single runnable jar and set `SF_MPXJ_JAR=/path/to.jar`.
 
 Then in Python:
 

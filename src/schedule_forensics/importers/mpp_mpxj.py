@@ -41,7 +41,15 @@ from schedule_forensics.schemas import Calendar, Schedule
 
 _CMD_ENV = "SF_MPXJ_CMD"
 _JAR_ENV = "SF_MPXJ_JAR"
+_HOME_ENV = "SF_MPXJ_HOME"  # dir with classes/ + lib/ produced by tools/mpxj/setup.sh
 _DEFAULT_TIMEOUT_S = 120.0
+
+# Message shown when no MPXJ runner is configured (kept user-actionable).
+_NOT_CONFIGURED = (
+    f"native .mpp parsing needs MPXJ (Java). Run tools/mpxj/setup.sh, then set "
+    f"{_HOME_ENV} to that dir -- or set {_CMD_ENV} (a command template with "
+    f"{{input}}/{{output}}) or {_JAR_ENV} (a runnable MPXJ jar). See docs/MPXJ.md."
+)
 
 
 class ImporterError(ValueError):
@@ -49,13 +57,18 @@ class ImporterError(ValueError):
 
 
 def mpxj_configured(environ: Mapping[str, str] | None = None) -> bool:
-    """True iff an MPXJ runner is configured (``SF_MPXJ_CMD`` or ``SF_MPXJ_JAR``)."""
+    """True iff an MPXJ runner is configured (``SF_MPXJ_HOME``/``_CMD``/``_JAR``)."""
     env = os.environ if environ is None else environ
-    return bool(env.get(_CMD_ENV) or env.get(_JAR_ENV))
+    return bool(env.get(_HOME_ENV) or env.get(_CMD_ENV) or env.get(_JAR_ENV))
 
 
 def _build_command(input_path: str, output_path: str, env: Mapping[str, str]) -> list[str]:
-    """Build the converter argv from the configured env (no shell; argv list)."""
+    """Build the converter argv from the configured env (no shell; argv list).
+
+    Resolution order: SF_MPXJ_CMD (explicit template) > SF_MPXJ_JAR (runnable jar) >
+    SF_MPXJ_HOME (the classes/+lib/ dir from setup.sh). Java expands the ``lib/*``
+    classpath wildcard itself.
+    """
     cmd_template = env.get(_CMD_ENV)
     if cmd_template:
         tokens = shlex.split(cmd_template)
@@ -69,11 +82,11 @@ def _build_command(input_path: str, output_path: str, env: Mapping[str, str]) ->
     jar = env.get(_JAR_ENV)
     if jar:
         return ["java", "-jar", jar, input_path, output_path]
-    raise ImporterError(
-        f"MPXJ is not configured: set {_CMD_ENV} (a command template containing "
-        f"{{input}}/{{output}}) or {_JAR_ENV} (a runnable MPXJ jar). MPXJ is an optional, "
-        "user-provided dependency (see importers/mpp_mpxj.py)."
-    )
+    home = env.get(_HOME_ENV)
+    if home:
+        classpath = os.path.join(home, "classes") + os.pathsep + os.path.join(home, "lib", "*")
+        return ["java", "-cp", classpath, "MpxjToMspdi", input_path, output_path]
+    raise ImporterError(f"MPXJ is not configured: {_NOT_CONFIGURED}")
 
 
 def parse_mpp(

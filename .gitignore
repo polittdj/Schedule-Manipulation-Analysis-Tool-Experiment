@@ -41,3 +41,7 @@ venv/
 build/
 dist/
 *.log
+
+# --- MPXJ local install (produced by tools/mpxj/setup.sh; not source) ---
+tools/mpxj/lib/
+tools/mpxj/classes/
