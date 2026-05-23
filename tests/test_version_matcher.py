@@ -38,6 +38,16 @@ def test_order_by_status_date_not_input_order() -> None:
     assert [s.name for s in ordered] == ["Jan", "Feb", "March"]
 
 
+def test_order_is_stable_on_status_date_tie() -> None:
+    # Two versions sharing a status_date keep their INPUT order (documented stable
+    # sort), so a tie never silently reorders the comparative series.
+    same = dt.datetime(2025, 3, 1)
+    a = _v(same, [_t(1)], name="A")
+    b = _v(same, [_t(2)], name="B")
+    assert [s.name for s in order_versions([a, b])] == ["A", "B"]
+    assert [s.name for s in order_versions([b, a])] == ["B", "A"]
+
+
 def test_order_raises_without_status_date() -> None:
     with_status = _v(dt.datetime(2025, 1, 1), [_t(1)])
     without_status = _v(None, [_t(1)], name="NoStatus")

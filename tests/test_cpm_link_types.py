@@ -64,6 +64,34 @@ def test_sf_link_finishes_when_predecessor_starts() -> None:
     assert result.timings[2].early_start == 480
 
 
+def test_ff_link_with_lag() -> None:
+    # A(1d) ->FF(+1d) B(1d): B finishes one working day after A finishes.
+    result = compute_cpm(_sched([_task(1, 480), _task(2, 480)], [_rel(1, 2, RelationType.FF, 480)]))
+    assert result.timings[2].early_finish == 960  # A.EF(480) + 480 lag
+    assert result.timings[2].early_start == 480
+    assert result.project_finish == 960
+
+
+def test_fs_lead_pulls_successor_earlier() -> None:
+    # A(1d) ->FS(-0.5d lead) B(1d): a negative lag (lead) lets B start before A finishes.
+    result = compute_cpm(
+        _sched([_task(1, 480), _task(2, 480)], [_rel(1, 2, RelationType.FS, -240)])
+    )
+    assert result.timings[2].early_start == 240  # A.EF(480) - 240 lead
+    assert result.timings[2].early_finish == 720
+    assert result.project_finish == 720
+
+
+def test_disconnected_components_finish_at_max() -> None:
+    # Two independent tasks (no relations): project finish is the max (960). The
+    # shorter task floats to that finish; only the longer task is critical.
+    result = compute_cpm(_sched([_task(1, 480), _task(2, 960)]))
+    assert result.project_finish == 960
+    assert result.timings[1].total_float == 480  # shorter task has slack to the finish
+    assert result.timings[2].total_float == 0
+    assert result.timings[2].is_critical is True
+
+
 def test_ss_perturbation_changes_start() -> None:
     # Mutation discipline: adding lag to the SS link must shift the successor.
     base = _sched([_task(1, 960), _task(2, 480)], [_rel(1, 2, RelationType.SS)])
