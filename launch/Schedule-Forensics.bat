@@ -25,7 +25,8 @@ if not exist ".venv\Scripts\python.exe" (
   echo First run: setting up the environment ^(one-time, ~1-2 minutes^)...
   %PYLAUNCH% -m venv .venv || goto :setupfail
   ".venv\Scripts\python.exe" -m pip install --upgrade pip
-  ".venv\Scripts\python.exe" -m pip install -e . || goto :setupfail
+  rem [com] adds pywin32 so the "MS Project (COM)" .mpp reader works on Windows.
+  ".venv\Scripts\python.exe" -m pip install -e ".[com]" || goto :setupfail
 )
 
 echo.

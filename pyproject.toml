@@ -20,6 +20,12 @@ dev = [
     "ruff",
     "mypy",
 ]
+# Optional Windows-only COM path: drives an installed MS Project to read native
+# .mpp (importers/com_msproject.py). The environment marker keeps pywin32 off
+# non-Windows installs, so `pip install -e ".[com]"` is a no-op except on Windows.
+com = [
+    "pywin32>=306; platform_system == 'Windows'",
+]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
