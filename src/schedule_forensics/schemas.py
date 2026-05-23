@@ -18,6 +18,10 @@ fails otherwise) -- this is deliberate. Change log:
     ``Task.budgeted_cost`` (the budget-at-completion basis) to support the SPI /
     SPI(t) earned-value indices; both default to "absent" so prior schedules
     remain valid and EV metrics SKIP (never fabricate) when they are unset.
+  * v1.2.0 -- added ``Task.finish`` (the forecast / current scheduled finish, as
+    frozen in an export) to support CEI (Current Execution Index, PASEG 10.4.5),
+    which reads each period-start version's forecast finish. Defaults to None;
+    CEI reports "insufficient data" when it is absent.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # Bump on ANY change to a model's field set (see test_schema_freeze.py).
-SCHEMA_VERSION = "1.1.0"
+SCHEMA_VERSION = "1.2.0"
 
 _STRICT = ConfigDict(frozen=True, extra="forbid", strict=True)
 
@@ -86,6 +90,7 @@ class Task(BaseModel):
     percent_complete: float = Field(default=0.0, ge=0.0, le=100.0)
     actual_start: dt.datetime | None = None
     actual_finish: dt.datetime | None = None
+    finish: dt.datetime | None = None  # v1.2.0: forecast/scheduled finish (for CEI)
     baseline_start: dt.datetime | None = None  # v1.1.0: earned-value PV time-phasing
     baseline_finish: dt.datetime | None = None
     budgeted_cost: float = Field(default=0.0, ge=0.0)  # v1.1.0: BAC, earned-value basis
