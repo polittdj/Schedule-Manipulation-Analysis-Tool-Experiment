@@ -122,10 +122,12 @@ DONE (this session; see `PHASE-COMPLETE-9.md`):
   `tools/mpxj/MpxjToMspdi.java`.
 
 REMAINING (all environment- or input-constrained):
-1. **COM importer** (Windows-only): behind the importer interface; `skip`/`xfail`
-   off-Windows; conformance test `COM output == MPXJ output` runnable only on
-   Windows. `scripts/validate_against_msp.py` is the (stub) harness. Cannot be
-   validated on Linux — write the scaffolding here, validate on the user's box.
+1. ✅ **COM importer** **DONE** (`importers/com_msproject.py`): pure
+   `schedule_from_com_project` mapping unit-tested on Linux with a fake COM object;
+   `parse_mpp_via_com` is the Windows-only driver (guarded win32com import,
+   headless, ReadOnly, defensive teardown). `scripts/validate_against_msp.py` wired
+   to it. **Still must be validated against a real `.mpp` on Windows** (enum codes
+   + minute units are source-pending, gotcha 10).
 2. **Native `.mpp` last mile**: validate the MPXJ path against a REAL binary
    `.mpp` on a machine that has one (cannot be authored on Linux). Optionally wire
    `.mpp` upload into the webapp once MPXJ is a standard server-side dependency.
