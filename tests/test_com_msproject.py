@@ -23,9 +23,19 @@ import pytest
 
 from schedule_forensics.importers.com_msproject import (
     ComUnavailableError,
+    _com_error_message,
     schedule_from_com_project,
 )
 from schedule_forensics.schemas import ConstraintType, RelationType
+
+
+class _FakeComError(Exception):
+    """Duck-types pywintypes.com_error (has .hresult / .strerror) for off-Windows tests."""
+
+    def __init__(self, hresult: int, strerror: str) -> None:
+        super().__init__(hresult, strerror)
+        self.hresult = hresult
+        self.strerror = strerror
 
 
 # --------------------------------------------------------------------------- #
@@ -329,3 +339,30 @@ def test_parse_mpp_via_com_raises_off_windows() -> None:
 
     with pytest.raises(ComUnavailableError):
         parse_mpp_via_com("anything.mpp")
+
+
+# --------------------------------------------------------------------------- #
+# COM HRESULT -> guidance translation (pure; runs on Linux against a fake error).
+# --------------------------------------------------------------------------- #
+def test_com_error_message_server_exec_failure_is_actionable() -> None:
+    # 0x80080005 (the error the user hit) -> the message must name the code and the
+    # two highest-yield fixes (manual first-run, and not running elevated).
+    msg = _com_error_message(_FakeComError(-2146959355, "Server execution failed"), "x.mpp")
+    assert "0x80080005" in msg
+    assert "Administrator" in msg
+    assert "MPXJ" in msg  # always offers the no-MS-Project fallback
+
+
+def test_com_error_message_class_not_registered_points_at_install() -> None:
+    msg = _com_error_message(_FakeComError(-2147221164, "Class not registered"), "x.mpp")
+    assert "not registered" in msg
+    assert "0x80040154" in msg
+
+
+def test_com_error_message_unknown_code_still_names_code_and_fallback() -> None:
+    # An unmapped HRESULT must still surface the hex code and the MPXJ fallback,
+    # never an opaque tuple.
+    msg = _com_error_message(_FakeComError(-2147024891, "Access is denied"), "plan.mpp")
+    assert "0x80070005" in msg
+    assert "Access is denied" in msg
+    assert "MPXJ" in msg

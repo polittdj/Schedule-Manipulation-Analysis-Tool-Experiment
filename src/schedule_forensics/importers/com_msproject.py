@@ -89,6 +89,47 @@ _RELATION_BY_CODE: dict[int, RelationType] = {
 # MS Project writes "no date" as a pre-1985 sentinel; treat anything older as absent.
 _DATE_SENTINEL_YEAR = 1985
 
+# COM HRESULTs we translate into actionable guidance (pywintypes reports them as
+# signed 32-bit ints). Verified codes; see _com_error_message.
+_CO_E_SERVER_EXEC_FAILURE = -2146959355  # 0x80080005 -- the server EXE failed to launch
+_REGDB_E_CLASSNOTREG = -2147221164  # 0x80040154 -- ProgID/CLSID not registered
+_CO_E_CLASSSTRING = -2147221005  # 0x800401F3 -- invalid class string
+
+
+def _com_error_message(exc: object, path: str) -> str:
+    """Translate a pythoncom/pywintypes ``com_error`` into actionable guidance.
+
+    The raw error is an opaque tuple like ``(-2146959355, 'Server execution failed',
+    None, None)``; this maps the common, fixable HRESULTs to remediation steps so the
+    UI can show a next action instead of the tuple. Unknown codes fall through to a
+    generic message that still names the code and points at the MPXJ reader.
+    """
+    hresult = getattr(exc, "hresult", None)
+    if hresult == _CO_E_SERVER_EXEC_FAILURE:
+        return (
+            "MS Project's COM automation server failed to start (0x80080005, "
+            "'Server execution failed'). Fixes, in order: (1) open MS Project once "
+            "manually, let it finish any first-run / activation, then close it and "
+            "retry; (2) make sure this tool is NOT running as Administrator (Office "
+            "refuses automation from an elevated process); (3) end any stuck "
+            "MSPROJECT.EXE in Task Manager and retry; (4) Quick-Repair your "
+            "Office/Project install. Or switch to the MPXJ reader (needs no MS Project)."
+        )
+    if hresult in (_REGDB_E_CLASSNOTREG, _CO_E_CLASSSTRING):
+        code = f"0x{hresult & 0xFFFFFFFF:08X}"
+        return (
+            f"MS Project COM is not registered on this machine ({code}). Is the "
+            "desktop MS Project actually installed (not just Project for the web or "
+            "another Office app)? Otherwise use the MPXJ reader, which needs no MS Project."
+        )
+    detail = getattr(exc, "strerror", None) or str(exc)
+    code = f"0x{hresult & 0xFFFFFFFF:08X}" if isinstance(hresult, int) else "unknown code"
+    return (
+        f"MS Project COM call failed ({code}: {detail}) while reading {path}. Try "
+        "opening MS Project manually once and retrying, run the tool un-elevated, or "
+        "switch to the MPXJ reader."
+    )
+
 
 def _getattr_or_none(obj: object, name: str) -> Any:
     """Read ``obj.name`` defensively. COM accessors can be absent or raise.
@@ -421,16 +462,21 @@ def parse_mpp_via_com(
     app: Any = None
     opened = False
     try:
-        app = win32com.client.Dispatch("MSProject.Application")
-        # Headless BEFORE opening anything (gotcha 2 / Commandment 6).
-        app.Visible = False
-        app.DisplayAlerts = False
-        # Absolute path, READ-ONLY (gotcha 7): never lock or risk modifying the
-        # source .mpp. FileOpenEx(Name, ReadOnly, ...) -> the 2nd positional is
-        # ReadOnly, so it must be True.
-        app.FileOpenEx(abspath, True)
-        opened = True
-        project = app.ActiveProject
+        try:
+            app = win32com.client.Dispatch("MSProject.Application")
+            # Headless BEFORE opening anything (gotcha 2 / Commandment 6).
+            app.Visible = False
+            app.DisplayAlerts = False
+            # Absolute path, READ-ONLY (gotcha 7): never lock or risk modifying the
+            # source .mpp. FileOpenEx(Name, ReadOnly, ...) -> the 2nd positional is
+            # ReadOnly, so it must be True.
+            app.FileOpenEx(abspath, True)
+            opened = True
+            project = app.ActiveProject
+        except pythoncom.com_error as exc:
+            # Translate the opaque COM tuple (e.g. 0x80080005) into a next action
+            # rather than leaking it to the UI as an "unexpected error".
+            raise ComImporterError(_com_error_message(exc, abspath)) from exc
         if project is None:
             raise ComImporterError(f"MS Project opened {abspath} but exposed no ActiveProject")
         return schedule_from_com_project(project, calendar=calendar)
