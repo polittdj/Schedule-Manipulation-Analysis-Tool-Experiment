@@ -10,10 +10,13 @@ from __future__ import annotations
 import datetime as dt
 from pathlib import Path
 
+from schedule_forensics.analysis import analyze_schedule
 from schedule_forensics.cpm import compute_cpm, offset_to_datetime
 from schedule_forensics.importers.msp_xml import parse_msp_xml
+from schedule_forensics.importers.xer import parse_xer
 
 FIXTURE = Path(__file__).parent / "fixtures" / "msp_xml" / "simple_network.xml"
+XER_FIXTURE = Path(__file__).parent / "fixtures" / "xer" / "simple_network.xer"
 
 
 def test_xml_to_cpm_matches_hand_calc() -> None:
@@ -32,3 +35,21 @@ def test_xml_to_cpm_matches_hand_calc() -> None:
     # 5 working days from Mon 2025-01-06 08:00 -> Fri 2025-01-10 16:00 (no weekend crossed).
     finish = offset_to_datetime(schedule.project_start, result.project_finish, schedule.calendar)
     assert finish == dt.datetime(2025, 1, 10, 16)
+
+
+def test_xer_and_mspdi_yield_equivalent_full_analysis() -> None:
+    """The XER and MSPDI fixtures describe the same network, so the FULL analysis
+    (CPM + DCMA-14 + driving path + health) must be identical via either importer
+    -- proving XER is a drop-in for MSPDI through the whole stack, not just at the
+    Schedule level (test_importer_xer covers the Schedule-level parity)."""
+    msp = analyze_schedule(parse_msp_xml(FIXTURE))
+    xer = analyze_schedule(parse_xer(XER_FIXTURE))
+
+    assert msp.project_finish == xer.project_finish == 2400
+    assert msp.critical_path == xer.critical_path == (1, 2, 4)
+    assert msp.driving_chain == xer.driving_chain
+    assert msp.health_score == xer.health_score
+    # Every DCMA metric resolves to the same id + status via either importer.
+    assert [(m.metric_id, m.status) for m in msp.dcma] == [
+        (m.metric_id, m.status) for m in xer.dcma
+    ]
