@@ -34,13 +34,38 @@ def main(argv: list[str]) -> int:
         print("usage: python scripts/validate_against_msp.py <path-to.mpp>")
         return 2
 
-    # TODO (Windows-only, deferred): open argv[1] via COM (ReadOnly, headless),
-    # parse the same file via the COM importer, diff every field per task, and
-    # write a field-by-field report under local_validation_results/.
-    print(
-        "validate_against_msp: COM is present but the COM importer is not yet "
-        "implemented (Windows-only enhancement, deferred). Nothing to validate.",
+    # Windows-only: read the same .mpp via the COM importer and report each task's
+    # required fields. The COM driver opens headless + ReadOnly and tears the app
+    # down in finally (see importers/com_msproject.py). This is the on-Windows
+    # ground-truth check the Linux unit tests cannot perform (docs/HAZARDS.md
+    # H-NO-COM-HERE); a full field-by-field diff vs a second COM read is the next
+    # increment. Results stay LOCAL (LAW 1).
+    from schedule_forensics.importers.com_msproject import (
+        ComUnavailableError,
+        parse_mpp_via_com,
     )
+
+    mpp_path = argv[1]
+    try:
+        schedule = parse_mpp_via_com(mpp_path)
+    except ComUnavailableError as exc:
+        print(f"validate_against_msp: {exc}")
+        return 0
+    except Exception as exc:  # noqa: BLE001 -- surface any import failure to the operator
+        print(f"validate_against_msp: failed to read {mpp_path!r} via COM: {exc}")
+        return 1
+
+    print(f"validate_against_msp: COM read OK -- {schedule.name!r}")
+    print(f"  project_start={schedule.project_start.isoformat()}")
+    status = schedule.status_date.isoformat() if schedule.status_date else "None"
+    print(f"  status_date={status}")
+    print(f"  tasks={len(schedule.tasks)}  relations={len(schedule.relations)}")
+    for task in schedule.tasks:
+        print(
+            f"    UID={task.unique_id} dur_min={task.duration_minutes} "
+            f"constraint={task.constraint_type.value} pct={task.percent_complete} "
+            f"name={task.name!r}"
+        )
     return 0
 
 
