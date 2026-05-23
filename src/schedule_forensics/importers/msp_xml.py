@@ -26,6 +26,8 @@ import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+import pydantic
+
 from schedule_forensics.schemas import (
     Calendar,
     ConstraintType,
@@ -192,14 +194,19 @@ def parse_msp_xml_string(xml_text: str, *, calendar: Calendar | None = None) -> 
         r for r in relations if r.predecessor_id in task_ids and r.successor_id in task_ids
     ]
 
-    return Schedule(
-        name=_child_text(root, "Name") or _child_text(root, "Title") or "Untitled",
-        project_start=project_start,
-        status_date=_parse_datetime(_child_text(root, "StatusDate")),
-        calendar=calendar if calendar is not None else Calendar(),
-        tasks=tuple(tasks),
-        relations=tuple(relations),
-    )
+    try:
+        return Schedule(
+            name=_child_text(root, "Name") or _child_text(root, "Title") or "Untitled",
+            project_start=project_start,
+            status_date=_parse_datetime(_child_text(root, "StatusDate")),
+            calendar=calendar if calendar is not None else Calendar(),
+            tasks=tuple(tasks),
+            relations=tuple(relations),
+        )
+    except pydantic.ValidationError as exc:
+        # e.g. a duplicate UID in the source: surface a clean importer error
+        # rather than a raw pydantic traceback (the UI shows this verbatim).
+        raise ImporterError(f"MSPDI does not form a valid schedule: {exc}") from exc
 
 
 def parse_msp_xml(path: str | os.PathLike[str], *, calendar: Calendar | None = None) -> Schedule:

@@ -41,6 +41,8 @@ import os
 from collections import Counter
 from pathlib import Path
 
+import pydantic
+
 from schedule_forensics.schemas import (
     Calendar,
     ConstraintType,
@@ -256,14 +258,19 @@ def parse_xer_string(xer_text: str, *, calendar: Calendar | None = None) -> Sche
         if r.predecessor_id in task_ids and r.successor_id in task_ids
     ]
 
-    return Schedule(
-        name=(project.get("proj_short_name") or "").strip() or proj_id or "Untitled",
-        project_start=project_start,
-        status_date=_parse_xer_datetime(project.get("last_recalc_date")),
-        calendar=calendar if calendar is not None else Calendar(),
-        tasks=tuple(tasks),
-        relations=tuple(relations),
-    )
+    try:
+        return Schedule(
+            name=(project.get("proj_short_name") or "").strip() or proj_id or "Untitled",
+            project_start=project_start,
+            status_date=_parse_xer_datetime(project.get("last_recalc_date")),
+            calendar=calendar if calendar is not None else Calendar(),
+            tasks=tuple(tasks),
+            relations=tuple(relations),
+        )
+    except pydantic.ValidationError as exc:
+        # e.g. a duplicate task_id or a self-referential link in the source data:
+        # surface a clean importer error rather than a raw pydantic traceback.
+        raise ImporterError(f"XER does not form a valid schedule: {exc}") from exc
 
 
 def parse_xer(path: str | os.PathLike[str], *, calendar: Calendar | None = None) -> Schedule:

@@ -247,3 +247,64 @@ def test_missing_plan_start_date_raises() -> None:
 def test_garbage_is_rejected() -> None:
     with pytest.raises(ImporterError):
         parse_xer_string("this is not an XER file\njust prose, no record tags\n")
+
+
+# ── Hardening: real-world edge cases ──────────────────────────────────────────
+
+
+def test_duplicate_task_id_raises_importer_error() -> None:
+    # A duplicate task_id must surface as a clean ImporterError, not a raw
+    # pydantic ValidationError (clean importer contract / better UI message).
+    doc = _xer_doc(
+        _table("PROJECT", _PROJECT_FIELDS, [["1", "P", "2025-01-06 08:00"]]),
+        _table(
+            "TASK",
+            _TASK_FIELDS,
+            [["1", "1", "A", "TT_Task", "8"], ["1", "1", "B", "TT_Task", "8"]],
+        ),
+    )
+    with pytest.raises(ImporterError):
+        parse_xer_string(doc)
+
+
+def test_crlf_line_endings_parse() -> None:
+    # Real P6 exports use Windows CRLF line endings; the parser must handle them.
+    doc = _xer_doc(
+        _table("PROJECT", _PROJECT_FIELDS, [["1", "P", "2025-01-06 08:00"]]),
+        _table("TASK", _TASK_FIELDS, [["1", "1", "A - Foundation", "TT_Task", "8"]]),
+    ).replace("\n", "\r\n")
+    tasks = parse_xer_string(doc).tasks
+    assert len(tasks) == 1
+    assert tasks[0].name == "A - Foundation"  # no stray trailing \r in the value
+
+
+def test_fractional_duration_hours() -> None:
+    doc = _xer_doc(
+        _table("PROJECT", _PROJECT_FIELDS, [["1", "P", "2025-01-06 08:00"]]),
+        _table("TASK", _TASK_FIELDS, [["1", "1", "A", "TT_Task", "7.5"]]),
+    )
+    assert parse_xer_string(doc).tasks[0].duration_minutes == 450  # 7.5h x 60
+
+
+def test_short_row_pads_missing_trailing_fields() -> None:
+    # A %R row with fewer values than %F fields: missing trailing fields are blank,
+    # not an error (duration -> 0, constraint -> ASAP).
+    doc = _xer_doc(
+        _table("PROJECT", _PROJECT_FIELDS, [["1", "P", "2025-01-06 08:00"]]),
+        _table(
+            "TASK",
+            ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt", "cstr_type"],
+            [["1", "1", "A", "TT_Task"]],  # missing duration + cstr_type
+        ),
+    )
+    task = parse_xer_string(doc).tasks[0]
+    assert task.duration_minutes == 0
+    assert task.constraint_type is ConstraintType.ASAP
+
+
+def test_start_milestone_type_is_milestone() -> None:
+    doc = _xer_doc(
+        _table("PROJECT", _PROJECT_FIELDS, [["1", "P", "2025-01-06 08:00"]]),
+        _table("TASK", _TASK_FIELDS, [["1", "1", "Kickoff", "TT_Mile", "0"]]),
+    )
+    assert parse_xer_string(doc).tasks[0].is_milestone is True

@@ -80,6 +80,21 @@ def test_not_well_formed_xml_raises() -> None:
         parse_msp_xml_string("<Project><unclosed>")
 
 
+def test_duplicate_uid_raises_importer_error() -> None:
+    # Two tasks with the same UID must surface as a clean ImporterError, not a raw
+    # pydantic ValidationError (the UI renders the message verbatim).
+    xml = (
+        '<Project xmlns="http://schemas.microsoft.com/project">'
+        "<Name>dup</Name><StartDate>2025-01-06T08:00:00</StartDate>"
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>1</UID><Name>B</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks></Project>"
+    )
+    with pytest.raises(ImporterError):
+        parse_msp_xml_string(xml)
+
+
 def test_duration_mutation_is_actually_read() -> None:
     # Mutation discipline: editing the XML duration changes the parsed value,
     # proving the importer reads the field rather than returning a constant.

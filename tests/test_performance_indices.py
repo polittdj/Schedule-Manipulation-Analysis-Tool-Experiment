@@ -149,6 +149,24 @@ def test_skip_when_planned_value_zero() -> None:
     assert "planned value" in spi.detail.lower()
 
 
+def test_spi_t_caps_when_fully_earned() -> None:
+    # All work complete by the status date (EV == BAC): ES caps at the latest
+    # baseline finish (960); AT == 960 -> SPI(t) == 1.0 (exercises the EV>=BAC path).
+    sched = _sched(_D8, _task(1, 100.0, _D6, _D7), _task(2, 100.0, _D7, _D8))
+    assert compute_spi(sched).measured == pytest.approx(1.0)
+    assert compute_spi_t(sched).measured == pytest.approx(1.0)
+
+
+def test_milestone_budget_counts_in_planned_value() -> None:
+    # A zero-length baseline (milestone, baseline_start == baseline_finish) jumps
+    # its planned fraction 0->1 at its date. Milestone @ offset 480, 100% done,
+    # status @ 480 -> PV == EV == budget -> SPI 1.0 (not SKIPPED, not div-by-zero).
+    milestone = _task(1, 100.0, _D7, _D7)
+    spi = compute_spi(_sched(_D7, milestone))
+    assert spi.status is MetricStatus.PASS
+    assert spi.measured == pytest.approx(1.0)
+
+
 def test_summary_tasks_excluded() -> None:
     # A summary task with a budget must not contribute (it is a rollup).
     summary = Task(
