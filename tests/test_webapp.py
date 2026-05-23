@@ -319,7 +319,10 @@ def test_analyze_mpp_without_mpxj_returns_clean_400(
         content_type="multipart/form-data",
     )
     assert resp.status_code == 400
-    assert "MPXJ" in resp.data.decode()
+    body = resp.data.decode()
+    assert "MPXJ" in body
+    # The dead-end error points the user at the no-Java COM alternative.
+    assert "MS Project (COM)" in body
 
 
 # ── native .mpp via the COM reader (Windows-only live; routing faked here) ────

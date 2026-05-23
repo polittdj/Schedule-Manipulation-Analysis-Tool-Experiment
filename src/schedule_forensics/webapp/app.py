@@ -605,10 +605,17 @@ def create_app() -> Flask:
                     # surface its actionable message and point back at MPXJ / XML.
                     error = f"{name}: {exc}"
                     break
+                except MpxjImporterError as exc:
+                    # MPXJ chosen but unconfigured/failed. On a machine with MS Project,
+                    # the COM reader needs no Java -- point the user at it directly.
+                    error = (
+                        f"{name}: {exc} If MS Project is installed on this machine, "
+                        "select the 'MS Project (COM)' reader above and try again."
+                    )
+                    break
                 except (
                     MspImporterError,
                     XerImporterError,
-                    MpxjImporterError,
                     ComImporterError,
                 ) as exc:
                     error = f"{name}: {exc}"
