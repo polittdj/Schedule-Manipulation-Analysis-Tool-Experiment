@@ -487,6 +487,41 @@ def test_analyze_multiple_files_shows_comparative_cei(client: object) -> None:
     assert "1.00" in body  # CEI = 1 finished / 1 forecast-to-finish
 
 
+def test_analyze_multiple_files_shows_trend_analysis(client: object) -> None:
+    """Two status-dated versions with a slipping finish render the Trend Analysis section."""
+    from flask.testing import FlaskClient
+
+    c: FlaskClient = client  # type: ignore[assignment]
+
+    def _ver(status: str, dur_hours: int) -> bytes:
+        # 1->2 FS chain; task 2's duration sets the finish, so it slips across versions.
+        return (
+            '<Project xmlns="http://schemas.microsoft.com/project">'
+            "<Name>v</Name><StartDate>2025-01-06T08:00:00</StartDate>"
+            f"<StatusDate>{status}</StatusDate><Tasks>"
+            "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task>"
+            f"<Task><UID>2</UID><Name>B</Name><Duration>PT{dur_hours}H0M0S</Duration>"
+            "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+            "</Task></Tasks></Project>"
+        ).encode()
+
+    resp = c.post(
+        "/analyze",
+        data={
+            "schedule_files": [
+                (io.BytesIO(_ver("2025-01-31T17:00:00", 8)), "v1.xml"),
+                (io.BytesIO(_ver("2025-02-28T17:00:00", 24)), "v2.xml"),
+            ]
+        },
+        content_type="multipart/form-data",
+    )
+    assert resp.status_code == 200
+    body = resp.data.decode()
+    assert "Trend Analysis" in body
+    assert "Version trajectory" in body
+    assert "slipping" in body  # finish moved later across the two versions
+
+
 # ── /analyze with garbage input → 400 ────────────────────────────────────────
 
 
