@@ -46,6 +46,7 @@ from schedule_forensics.importers.xer import parse_xer_string
 from schedule_forensics.report_excel import CUI_NOTICE, build_excel_workbook
 from schedule_forensics.report_word import build_word_document
 from schedule_forensics.schemas import Schedule
+from schedule_forensics.trend_analysis import TrendReport, analyze_version_trends
 from schedule_forensics.version_matcher import VersionMatchError
 
 # ── LAW 1 constant ────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ _STATE: dict[str, Any] = {
     "versions": [],
     "cei": (),
     "cei_note": None,
+    "trends": None,
 }
 
 
@@ -89,6 +91,7 @@ def _clear_state() -> None:
     _STATE["versions"] = []
     _STATE["cei"] = ()
     _STATE["cei_note"] = None
+    _STATE["trends"] = None
 
 
 # ── Inline HTML template (no external assets — LAW 1) ─────────────────────────
@@ -288,6 +291,79 @@ _TEMPLATE = """<!DOCTYPE html>
     </p>
     {% endif %}
   </div>
+
+  {% if trends and trends.n_versions > 1 %}
+  <div class="card">
+    <h3>Trend Analysis
+      <span class="ext-tag" title="Tool-original extension; not reference-tool parity">ext</span>
+    </h3>
+    {% if trends.finish_days_net_change is not none %}
+    <p>
+      Project finish moved from
+      <strong>{{ "%.1f"|format(trends.finish_days_first) }}</strong> to
+      <strong>{{ "%.1f"|format(trends.finish_days_last) }}</strong> working days across
+      {{ trends.n_versions }} versions
+      (<strong>{{ "%+.1f"|format(trends.finish_days_net_change) }}</strong> days &mdash;
+      {% if trends.finish_days_net_change > 0 %}slipping
+      {% elif trends.finish_days_net_change < 0 %}pulling in
+      {% else %}no net change{% endif %}).
+    </p>
+    {% endif %}
+
+    <h4>Version trajectory</h4>
+    <table>
+      <thead><tr><th>#</th><th>Status date</th><th>Finish (working days)</th>
+        <th>Health</th><th>Band</th><th>Critical tasks</th></tr></thead>
+      <tbody>
+        {% for s in trends.snapshots %}
+        <tr>
+          <td>{{ s.index + 1 }}</td>
+          <td>{{ s.status_date.date() if s.status_date else "n/a" }}</td>
+          <td>{{ "%.1f"|format(s.project_finish_days)
+                if s.project_finish_days is not none else "n/a" }}</td>
+          <td>{{ "%.1f"|format(s.health_score) ~ "%"
+                if s.health_score is not none else "n/a" }}</td>
+          <td><span class="band band-{{ s.band }}">{{ s.band }}</span></td>
+          <td>{{ s.n_critical }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h4>Float erosion (per task, across versions)</h4>
+    <p>
+      {% for band, n in trends.band_counts.items() %}{{ band }}:
+        <strong>{{ n }}</strong>{{ ", " if not loop.last else "" }}{% endfor %}
+    </p>
+    {% set eroders = trends.worst_eroders(8) %}
+    {% if eroders %}
+    <table>
+      <thead><tr><th>UniqueID</th><th>Earliest float (d)</th><th>Latest float (d)</th>
+        <th>Net change (d)</th><th>Trend</th></tr></thead>
+      <tbody>
+        {% for t in eroders %}
+        <tr>
+          <td>{{ t.unique_id }}</td>
+          <td>{{ "%.1f"|format(t.earliest_float_days) }}</td>
+          <td>{{ "%.1f"|format(t.latest_float_days) }}</td>
+          <td>{{ "%+.1f"|format(t.net_change_days) }}</td>
+          <td>
+            <span class="status-{{ 'FAIL'
+                  if t.trend in ('CRITICAL', 'SEVERE_EROSION')
+                  else 'SKIPPED' }}">{{ t.trend }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <p style="font-size:11px;color:#777;margin-top:6px;">
+      <span class="ext-tag">ext</span> Trend Analysis is a tool-original extension
+      (the cross-version trajectory framing and float-erosion bands); the per-version
+      finish and health values are objective, but the trend layer is not reference-tool parity.
+    </p>
+  </div>
+  {% endif %}{# end trend analysis #}
   {% endif %}{# end comparative #}
 
   {% if analysis %}
@@ -509,6 +585,20 @@ def _compute_comparative(schedules: list[Schedule]) -> tuple[tuple[Any, ...], st
         return (), f"CEI not computed: {exc}"
 
 
+def _compute_trends(schedules: list[Schedule]) -> TrendReport | None:
+    """Multi-version trend report across >=2 versions; ``None`` if not computable.
+
+    Needs a ``status_date`` on every version to order the series; if one is missing
+    (``VersionMatchError``) the trend section is simply omitted (fail safe, never
+    a crash or a fabricated trajectory)."""
+    if len(schedules) < 2:
+        return None
+    try:
+        return analyze_version_trends(schedules)
+    except VersionMatchError:
+        return None
+
+
 def _store_results(parsed: list[tuple[str, Schedule]]) -> None:
     """Populate _STATE from the parsed (filename, Schedule) pairs."""
     schedules = [sched for _, sched in parsed]
@@ -528,6 +618,7 @@ def _store_results(parsed: list[tuple[str, Schedule]]) -> None:
     cei_periods, cei_note = _compute_comparative(schedules)
     _STATE["cei"] = cei_periods
     _STATE["cei_note"] = cei_note
+    _STATE["trends"] = _compute_trends(schedules)
 
 
 def _render_page(
@@ -555,6 +646,7 @@ def _render_page(
         versions=_STATE.get("versions") or [],
         cei_periods=_STATE.get("cei") or (),
         cei_note=_STATE.get("cei_note"),
+        trends=_STATE.get("trends"),
     )
     return (html, status) if status != 200 else html
 
@@ -654,7 +746,7 @@ def create_app() -> Flask:
         if analysis is None:
             return redirect(url_for("index"))
         buf = io.BytesIO()
-        build_excel_workbook(analysis).save(buf)
+        build_excel_workbook(analysis, trends=_STATE.get("trends")).save(buf)
         buf.seek(0)
         return send_file(
             buf,
@@ -670,7 +762,7 @@ def create_app() -> Flask:
         if analysis is None:
             return redirect(url_for("index"))
         buf = io.BytesIO()
-        build_word_document(analysis).save(buf)
+        build_word_document(analysis, trends=_STATE.get("trends")).save(buf)
         buf.seek(0)
         return send_file(
             buf,

@@ -41,6 +41,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from schedule_forensics.analysis import ScheduleAnalysis
 from schedule_forensics.metrics_common import MetricStatus
+from schedule_forensics.trend_analysis import TrendReport
 
 CUI_NOTICE: str = (
     "CONTROLLED UNCLASSIFIED INFORMATION (CUI) — generated locally; "
@@ -238,8 +239,94 @@ def _build_findings_sheet(ws: Worksheet, analysis: ScheduleAnalysis) -> None:
     _autofit_columns(ws)
 
 
-def build_excel_workbook(analysis: ScheduleAnalysis) -> Workbook:
-    """Build and return an openpyxl ``Workbook`` (Summary / DCMA / Findings sheets)."""
+def _build_trends_sheet(ws: Worksheet, trends: TrendReport) -> None:
+    """Multi-version trend analysis (TOOL-ORIGINAL EXTENSION): trajectory + float erosion."""
+    _add_cui_banner(ws, "A1:F1")
+    row = 2
+
+    if trends.finish_days_net_change is not None:
+        ws.cell(row=row, column=1, value="Finish drift (working days)").font = Font(bold=True)
+        ws.cell(
+            row=row,
+            column=2,
+            value=(
+                f"{trends.finish_days_first:.1f} -> {trends.finish_days_last:.1f} "
+                f"(net {trends.finish_days_net_change:+.1f})"
+            ),
+        )
+        row += 2
+
+    ws.cell(row=row, column=1, value="Version Trajectory").font = Font(bold=True)
+    row += 1
+    traj_headers = ["#", "Status date", "Finish (working days)", "Health %", "Band", "Critical"]
+    for col, header in enumerate(traj_headers, start=1):
+        cell = ws.cell(row=row, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = _header_fill()
+    row += 1
+    for snap in trends.snapshots:
+        ws.cell(row=row, column=1, value=snap.index + 1)
+        ws.cell(
+            row=row,
+            column=2,
+            value=snap.status_date.date().isoformat() if snap.status_date else "n/a",
+        )
+        ws.cell(
+            row=row,
+            column=3,
+            value=snap.project_finish_days if snap.project_finish_days is not None else "n/a",
+        )
+        ws.cell(
+            row=row, column=4, value=snap.health_score if snap.health_score is not None else "n/a"
+        )
+        ws.cell(row=row, column=5, value=snap.band)
+        ws.cell(row=row, column=6, value=snap.n_critical)
+        row += 1
+    row += 1
+
+    ws.cell(row=row, column=1, value="Float Erosion bands (per task)").font = Font(bold=True)
+    row += 1
+    for band, count in trends.band_counts.items():
+        ws.cell(row=row, column=1, value=band)
+        ws.cell(row=row, column=2, value=count)
+        row += 1
+    row += 1
+
+    eroders = trends.worst_eroders(20)
+    if eroders:
+        ws.cell(row=row, column=1, value="Biggest float losers (worst first)").font = Font(
+            bold=True
+        )
+        row += 1
+        er_headers = [
+            "UniqueID",
+            "Earliest float (d)",
+            "Latest float (d)",
+            "Net change (d)",
+            "Trend",
+        ]
+        for col, header in enumerate(er_headers, start=1):
+            cell = ws.cell(row=row, column=col, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = _header_fill()
+        row += 1
+        for trend in eroders:
+            ws.cell(row=row, column=1, value=trend.unique_id)
+            ws.cell(row=row, column=2, value=trend.earliest_float_days)
+            ws.cell(row=row, column=3, value=trend.latest_float_days)
+            ws.cell(row=row, column=4, value=trend.net_change_days)
+            ws.cell(row=row, column=5, value=str(trend.trend))
+            row += 1
+
+    _autofit_columns(ws)
+
+
+def build_excel_workbook(analysis: ScheduleAnalysis, trends: TrendReport | None = None) -> Workbook:
+    """Build and return an openpyxl ``Workbook``.
+
+    Always writes Summary / DCMA / Earned Value / Findings sheets. When *trends* is
+    given and spans 2+ versions, also appends a **Trends** sheet (tool-original
+    extension: version trajectory + float-erosion bands)."""
     wb = Workbook()
     summary = wb.active
     assert summary is not None  # a fresh Workbook always has an active sheet
@@ -248,9 +335,15 @@ def build_excel_workbook(analysis: ScheduleAnalysis) -> Workbook:
     _build_dcma_sheet(wb.create_sheet("DCMA"), analysis)
     _build_ev_sheet(wb.create_sheet("Earned Value"), analysis)
     _build_findings_sheet(wb.create_sheet("Findings"), analysis)
+    if trends is not None and trends.n_versions > 1:
+        _build_trends_sheet(wb.create_sheet("Trends"), trends)
     return wb
 
 
-def build_excel_report(analysis: ScheduleAnalysis, path: str | os.PathLike[str]) -> None:
+def build_excel_report(
+    analysis: ScheduleAnalysis,
+    path: str | os.PathLike[str],
+    trends: TrendReport | None = None,
+) -> None:
     """Write an Excel ``.xlsx`` report for *analysis* to *path* (all data stays local)."""
-    build_excel_workbook(analysis).save(path)
+    build_excel_workbook(analysis, trends=trends).save(path)

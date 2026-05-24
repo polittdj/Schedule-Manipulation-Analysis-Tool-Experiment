@@ -46,6 +46,7 @@ from docx.shared import Pt, RGBColor
 
 from schedule_forensics.analysis import ScheduleAnalysis
 from schedule_forensics.metrics_common import MetricStatus
+from schedule_forensics.trend_analysis import TrendReport
 
 CUI_NOTICE: str = (
     "CONTROLLED UNCLASSIFIED INFORMATION (CUI) — generated locally; "
@@ -241,6 +242,94 @@ def _add_findings(doc: Document, analysis: ScheduleAnalysis) -> None:
         run.italic = True
 
 
+def _fill_header_row(table: Any, headers: list[str]) -> None:
+    """Bold white-on-blue header row for *table* (row 0)."""
+    hdr_row = table.rows[0]
+    for col_idx, header in enumerate(headers):
+        cell = hdr_row.cells[col_idx]
+        para = cell.paragraphs[0]
+        para.clear()
+        run = para.add_run(header)
+        run.bold = True
+        run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+        _set_cell_bg(cell, "4472C4")
+
+
+def _add_trend_section(doc: Document, trends: TrendReport) -> None:
+    """Multi-version trend analysis (TOOL-ORIGINAL EXTENSION): trajectory + float erosion."""
+    doc.add_heading("Trend Analysis (tool-original extension)", level=1)
+
+    if trends.finish_days_net_change is not None:
+        direction = (
+            "slipping"
+            if trends.finish_days_net_change > 0
+            else "pulling in"
+            if trends.finish_days_net_change < 0
+            else "no net change"
+        )
+        para = doc.add_paragraph()
+        run = para.add_run("Finish drift: ")
+        run.bold = True
+        para.add_run(
+            f"{trends.finish_days_first:.1f} → {trends.finish_days_last:.1f} working days "
+            f"across {trends.n_versions} versions "
+            f"({trends.finish_days_net_change:+.1f} days, {direction})."
+        )
+
+    doc.add_heading("Version trajectory", level=2)
+    traj_headers = ["#", "Status date", "Finish (days)", "Health %", "Band", "Critical"]
+    table = doc.add_table(rows=1 + len(trends.snapshots), cols=len(traj_headers))
+    table.style = "Table Grid"
+    _fill_header_row(table, traj_headers)
+    for row_idx, snap in enumerate(trends.snapshots, start=1):
+        values = [
+            str(snap.index + 1),
+            snap.status_date.date().isoformat() if snap.status_date else "n/a",
+            f"{snap.project_finish_days:.1f}" if snap.project_finish_days is not None else "n/a",
+            f"{snap.health_score:.1f}" if snap.health_score is not None else "n/a",
+            snap.band,
+            str(snap.n_critical),
+        ]
+        row = table.rows[row_idx]
+        for col_idx, val in enumerate(values):
+            row.cells[col_idx].text = val
+
+    doc.add_heading("Float erosion (per task across versions)", level=2)
+    tally = ", ".join(f"{band}: {count}" for band, count in trends.band_counts.items())
+    doc.add_paragraph(tally)
+
+    eroders = trends.worst_eroders(20)
+    if eroders:
+        er_headers = [
+            "UniqueID",
+            "Earliest float (d)",
+            "Latest float (d)",
+            "Net change (d)",
+            "Trend",
+        ]
+        et = doc.add_table(rows=1 + len(eroders), cols=len(er_headers))
+        et.style = "Table Grid"
+        _fill_header_row(et, er_headers)
+        for row_idx, trend in enumerate(eroders, start=1):
+            values = [
+                str(trend.unique_id),
+                f"{trend.earliest_float_days:.1f}",
+                f"{trend.latest_float_days:.1f}",
+                f"{trend.net_change_days:+.1f}",
+                str(trend.trend),
+            ]
+            row = et.rows[row_idx]
+            for col_idx, val in enumerate(values):
+                row.cells[col_idx].text = val
+
+    run = doc.add_paragraph().add_run(
+        "Trend Analysis is a tool-original extension (the cross-version trajectory framing and "
+        "float-erosion bands); per-version finish and health values are objective, but the trend "
+        "layer must not be presented as reference-tool parity (parity-honesty rule -- CLAUDE.md)."
+    )
+    run.italic = True
+
+
 def _add_extension_footnote(doc: Document, analysis: ScheduleAnalysis) -> None:
     extension_ids = [m.metric_id for m in analysis.dcma if m.is_extension]
     if not extension_ids:
@@ -255,8 +344,12 @@ def _add_extension_footnote(doc: Document, analysis: ScheduleAnalysis) -> None:
     run.italic = True
 
 
-def build_word_document(analysis: ScheduleAnalysis) -> Document:
-    """Build and return a python-docx ``Document`` from *analysis* (no disk I/O)."""
+def build_word_document(analysis: ScheduleAnalysis, trends: TrendReport | None = None) -> Document:
+    """Build and return a python-docx ``Document`` from *analysis* (no disk I/O).
+
+    When *trends* is given and spans 2+ versions, a **Trend Analysis** section
+    (tool-original extension: version trajectory + float erosion) is added before
+    the extensions footnote."""
     doc = docx.Document()
     _add_title(doc)
     _add_cui_banner(doc)
@@ -264,10 +357,16 @@ def build_word_document(analysis: ScheduleAnalysis) -> Document:
     _add_dcma_table(doc, analysis)
     _add_ev_table(doc, analysis)
     _add_findings(doc, analysis)
+    if trends is not None and trends.n_versions > 1:
+        _add_trend_section(doc, trends)
     _add_extension_footnote(doc, analysis)
     return doc
 
 
-def build_word_report(analysis: ScheduleAnalysis, path: str | os.PathLike[str]) -> None:
+def build_word_report(
+    analysis: ScheduleAnalysis,
+    path: str | os.PathLike[str],
+    trends: TrendReport | None = None,
+) -> None:
     """Write a Word ``.docx`` report for *analysis* to *path* (all data stays local)."""
-    build_word_document(analysis).save(os.fspath(path))
+    build_word_document(analysis, trends=trends).save(os.fspath(path))
