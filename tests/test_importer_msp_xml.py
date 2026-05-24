@@ -42,6 +42,76 @@ def test_parse_fixture_fields() -> None:
     assert all(task.constraint_type is ConstraintType.ASAP for task in schedule.tasks)
 
 
+def _mspdi_with_progress() -> str:
+    """MSPDI with progress (PercentComplete/Actuals), a nested baseline, and resources."""
+    return (
+        '<Project xmlns="http://schemas.microsoft.com/project">'
+        "<Name>P</Name><StartDate>2026-03-02T08:00:00</StartDate>"
+        "<StatusDate>2026-05-24T17:00:00</StatusDate>"
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>Done</Name><Duration>PT16H0M0S</Duration>"
+        "<PercentComplete>100</PercentComplete>"
+        "<ActualStart>2026-03-02T08:00:00</ActualStart>"
+        "<ActualFinish>2026-03-03T17:00:00</ActualFinish>"
+        # Number=1 listed first; the primary baseline (Number=0) must still win.
+        "<Baseline><Number>1</Number><Start>2030-01-01T08:00:00</Start>"
+        "<Finish>2030-01-02T17:00:00</Finish></Baseline>"
+        "<Baseline><Number>0</Number><Start>2026-03-02T08:00:00</Start>"
+        "<Finish>2026-03-04T17:00:00</Finish></Baseline>"
+        "</Task>"
+        "<Task><UID>2</UID><Name>Bare</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+        "<Resources>"
+        "<Resource><UID>0</UID><Name></Name></Resource>"  # blank/null -> skipped
+        "<Resource><UID>1</UID><Name>Carpenter</Name></Resource>"
+        "<Resource><UID>2</UID><Name>Crane</Name></Resource>"
+        "</Resources>"
+        "<Assignments>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>1</ResourceUID></Assignment>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>2</ResourceUID></Assignment>"
+        "<Assignment><TaskUID>1</TaskUID><ResourceUID>0</ResourceUID></Assignment>"  # null
+        "<Assignment><TaskUID>2</TaskUID><ResourceUID>99</ResourceUID></Assignment>"  # unknown
+        "</Assignments>"
+        "</Project>"
+    )
+
+
+def test_parses_percent_actuals_baseline_and_resources() -> None:
+    by_id = {t.unique_id: t for t in parse_msp_xml_string(_mspdi_with_progress()).tasks}
+    t1 = by_id[1]
+    assert t1.percent_complete == 100.0
+    assert t1.actual_start == dt.datetime(2026, 3, 2, 8)
+    assert t1.actual_finish == dt.datetime(2026, 3, 3, 17)
+    # The primary baseline (Number=0) wins even though Number=1 is listed first.
+    assert t1.baseline_start == dt.datetime(2026, 3, 2, 8)
+    assert t1.baseline_finish == dt.datetime(2026, 3, 4, 17)
+    # Resources resolved + de-duplicated in order; blank + unknown resource UIDs skipped.
+    assert t1.resource_names == ("Carpenter", "Crane")
+
+
+def test_missing_progress_fields_default_safely() -> None:
+    by_id = {t.unique_id: t for t in parse_msp_xml_string(_mspdi_with_progress()).tasks}
+    t2 = by_id[2]  # a bare task: no progress, baseline, or assignment
+    assert t2.percent_complete == 0.0
+    assert t2.actual_start is None
+    assert t2.baseline_start is None
+    assert t2.baseline_finish is None
+    assert t2.resource_names == ()
+
+
+def test_project_baseline_finish_rolls_up_to_latest_task() -> None:
+    # The project baseline finish (needed by CPLI/DCMA-13) is the latest task
+    # baseline finish: here task 1's primary baseline finishes 2026-03-04.
+    schedule = parse_msp_xml_string(_mspdi_with_progress())
+    assert schedule.baseline_finish == dt.datetime(2026, 3, 4, 17)
+
+
+def test_no_baselines_leaves_project_baseline_finish_none() -> None:
+    # A schedule with no task baselines must not fabricate a project baseline.
+    schedule = parse_msp_xml_string(_minimal_mspdi(name="P", title=None))
+    assert schedule.baseline_finish is None
+
+
 def _minimal_mspdi(*, name: str | None, title: str | None) -> str:
     name_el = f"<Name>{name}</Name>" if name is not None else ""
     title_el = f"<Title>{title}</Title>" if title is not None else ""
