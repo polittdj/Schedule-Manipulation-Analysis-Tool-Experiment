@@ -19,7 +19,11 @@ Document structure
 5. Earned-Value Indices table: SPI / SPI(t) (SKIPPED rows when the schedule
    carries no earned-value data; never fabricated).
 6. Findings list: one bullet per failing metric, or a "no failing metrics" note.
-7. If any metric has ``is_extension=True``, a footnote distinguishing those rows
+7. Optional Schedule Risk Analysis section (only when an
+   :class:`~schedule_forensics.sra.SRAResult` is supplied): Monte-Carlo finish
+   percentiles (P50/P80/P95, working days) + per-activity criticality index
+   (reference-tool capability; default duration spread captioned as a tool heuristic).
+8. If any metric has ``is_extension=True``, a footnote distinguishing those rows
    as tool-original extensions (parity-honesty).
 
 CUI / LAW 1: no schedule data leaves the machine; all writes are to the
@@ -46,6 +50,7 @@ from docx.shared import Pt, RGBColor
 
 from schedule_forensics.analysis import ScheduleAnalysis
 from schedule_forensics.metrics_common import MetricStatus
+from schedule_forensics.sra import SRAResult
 from schedule_forensics.trend_analysis import TrendReport
 
 CUI_NOTICE: str = (
@@ -330,6 +335,66 @@ def _add_trend_section(doc: Document, trends: TrendReport) -> None:
     run.italic = True
 
 
+def _add_sra_section(doc: Document, sra: SRAResult) -> None:
+    """Monte-Carlo Schedule Risk Analysis: finish percentiles + criticality index.
+
+    The SRA method (finish distribution + criticality index) is a reference-tool
+    capability (Acumen Fuse Risk tab / Primavera Risk Analysis) -- NOT flagged a
+    tool-original extension. The DEFAULT duration spread that seeds it IS the
+    tool's own heuristic (source-pending) and is captioned as such. Finish offsets
+    render in working days (offset / 480.0), consistent with the rest of the report."""
+    doc.add_heading("Schedule Risk Analysis (Monte Carlo)", level=1)
+
+    def _row(label: str, value: object) -> None:
+        para = doc.add_paragraph(style="List Bullet")
+        run_label = para.add_run(f"{label}: ")
+        run_label.bold = True
+        para.add_run(str(value))
+
+    _row("Monte-Carlo iterations", sra.iterations)
+    _row(
+        "Deterministic finish (working days)",
+        f"{sra.deterministic_finish / _MINUTES_PER_DAY:.1f}",
+    )
+    _row("Mean finish (working days)", f"{sra.mean_finish / _MINUTES_PER_DAY:.1f}")
+
+    doc.add_heading("Finish percentiles (working days)", level=2)
+    pct_headers = ["Percentile", "Finish (working days)"]
+    table = doc.add_table(rows=1 + 3, cols=len(pct_headers))
+    table.style = "Table Grid"
+    _fill_header_row(table, pct_headers)
+    for row_idx, (label, offset) in enumerate(
+        (("P50", sra.p50), ("P80", sra.p80), ("P95", sra.p95)), start=1
+    ):
+        row = table.rows[row_idx]
+        row.cells[0].text = label
+        row.cells[1].text = f"{offset / _MINUTES_PER_DAY:.1f}"
+
+    doc.add_heading("Criticality index (per activity)", level=2)
+    ranked = sorted(sra.criticality_index.items(), key=lambda kv: (-kv[1], kv[0]))
+    on_path = [(uid, ci) for uid, ci in ranked if ci > 0.0]
+    if on_path:
+        ci_headers = ["UniqueID", "Criticality index (%)"]
+        ct = doc.add_table(rows=1 + len(on_path[:25]), cols=len(ci_headers))
+        ct.style = "Table Grid"
+        _fill_header_row(ct, ci_headers)
+        for row_idx, (uid, ci) in enumerate(on_path[:25], start=1):
+            row = ct.rows[row_idx]
+            row.cells[0].text = str(uid)
+            row.cells[1].text = f"{100.0 * ci:.1f}"
+    else:
+        run = doc.add_paragraph().add_run("no activity reached the critical path in any iteration")
+        run.italic = True
+
+    run = doc.add_paragraph().add_run(
+        "The SRA method (finish distribution + criticality index) mirrors Acumen Fuse / "
+        "Primavera Risk Analysis (reference parity). The default duration spread that seeds it is "
+        "the tool's own heuristic (source-pending); in an engagement the analyst supplies "
+        "per-activity risk ranges. The distribution models duration uncertainty only."
+    )
+    run.italic = True
+
+
 def _add_extension_footnote(doc: Document, analysis: ScheduleAnalysis) -> None:
     extension_ids = [m.metric_id for m in analysis.dcma if m.is_extension]
     if not extension_ids:
@@ -344,12 +409,18 @@ def _add_extension_footnote(doc: Document, analysis: ScheduleAnalysis) -> None:
     run.italic = True
 
 
-def build_word_document(analysis: ScheduleAnalysis, trends: TrendReport | None = None) -> Document:
+def build_word_document(
+    analysis: ScheduleAnalysis,
+    trends: TrendReport | None = None,
+    sra: SRAResult | None = None,
+) -> Document:
     """Build and return a python-docx ``Document`` from *analysis* (no disk I/O).
 
     When *trends* is given and spans 2+ versions, a **Trend Analysis** section
-    (tool-original extension: version trajectory + float erosion) is added before
-    the extensions footnote."""
+    (tool-original extension: version trajectory + float erosion) is added. When
+    *sra* is given, a **Schedule Risk Analysis** section (Monte-Carlo finish
+    percentiles + criticality index; reference-tool capability) is added. Both
+    precede the extensions footnote."""
     doc = docx.Document()
     _add_title(doc)
     _add_cui_banner(doc)
@@ -359,6 +430,8 @@ def build_word_document(analysis: ScheduleAnalysis, trends: TrendReport | None =
     _add_findings(doc, analysis)
     if trends is not None and trends.n_versions > 1:
         _add_trend_section(doc, trends)
+    if sra is not None:
+        _add_sra_section(doc, sra)
     _add_extension_footnote(doc, analysis)
     return doc
 
@@ -367,6 +440,7 @@ def build_word_report(
     analysis: ScheduleAnalysis,
     path: str | os.PathLike[str],
     trends: TrendReport | None = None,
+    sra: SRAResult | None = None,
 ) -> None:
     """Write a Word ``.docx`` report for *analysis* to *path* (all data stays local)."""
-    build_word_document(analysis, trends=trends).save(os.fspath(path))
+    build_word_document(analysis, trends=trends, sra=sra).save(os.fspath(path))

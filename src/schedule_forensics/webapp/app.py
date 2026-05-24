@@ -31,6 +31,7 @@ from flask.typing import ResponseReturnValue
 
 from schedule_forensics.analysis import ScheduleAnalysis, analyze_schedule
 from schedule_forensics.cei import CEIError, compute_cei
+from schedule_forensics.cpm import CPMError
 from schedule_forensics.exec_summary import generate_executive_summary, health_band
 from schedule_forensics.importers.com_msproject import (
     ComImporterError,
@@ -46,6 +47,7 @@ from schedule_forensics.importers.xer import parse_xer_string
 from schedule_forensics.report_excel import CUI_NOTICE, build_excel_workbook
 from schedule_forensics.report_word import build_word_document
 from schedule_forensics.schemas import Schedule
+from schedule_forensics.sra import SRAResult, run_sra
 from schedule_forensics.trend_analysis import TrendReport, analyze_version_trends
 from schedule_forensics.version_matcher import VersionMatchError
 
@@ -56,6 +58,22 @@ HOST: str = "127.0.0.1"
 # ── Port configuration (host is fixed; only the port may vary) ────────────────
 DEFAULT_PORT: int = 5000
 PORT_ENV_VAR: str = "SF_PORT"
+
+# ── Schedule Risk Analysis (Monte Carlo) defaults ─────────────────────────────
+# SRA cost is iterations x CPM, run synchronously for the displayed version only.
+# A fixed seed keeps the result reproducible (LAW 2 / determinism); the iteration
+# count is a deliberate UI default that balances tail stability against request
+# latency. The result is computed ONCE here and reused by the dashboard and both
+# report downloads, so the UI and the reports always agree.
+_SRA_ITERATIONS: int = 1000
+_SRA_SEED: int = 12345
+# Auto-SRA is skipped above this non-summary activity count to keep /analyze
+# responsive (the cost grows with activities x iterations). The schedule is still
+# fully analyzed; the skip is surfaced to the user, never silent.
+_SRA_MAX_TASKS: int = 300
+# How many highest-criticality activities to surface in the dashboard card.
+_SRA_TOP_CRITICALITY: int = 15
+_MINUTES_PER_DAY: float = 480.0
 
 # ── Native .mpp/.mpx reader choice (user-selectable in the upload form) ───────
 # "mpxj" -> cross-platform MPXJ subprocess (default); "com" -> MS Project COM
@@ -81,6 +99,8 @@ _STATE: dict[str, Any] = {
     "cei": (),
     "cei_note": None,
     "trends": None,
+    "sra": None,
+    "sra_note": None,
 }
 
 
@@ -92,6 +112,8 @@ def _clear_state() -> None:
     _STATE["cei"] = ()
     _STATE["cei_note"] = None
     _STATE["trends"] = None
+    _STATE["sra"] = None
+    _STATE["sra_note"] = None
 
 
 # ── Inline HTML template (no external assets — LAW 1) ─────────────────────────
@@ -512,6 +534,57 @@ _TEMPLATE = """<!DOCTYPE html>
     </p>
   </div>
 
+  {% if sra %}
+  <!-- Schedule Risk Analysis (Monte Carlo) -->
+  <div class="card">
+    <h3>Schedule Risk Analysis (Monte Carlo)</h3>
+    <p style="color:#555;margin-bottom:8px;">
+      {{ sra.iterations }} iterations over per-activity duration uncertainty
+      (re-running the CPM each trial). Finish values are in working days.
+    </p>
+    <div class="summary-grid" style="margin-bottom:12px;">
+      <span class="sg-label">Deterministic finish (days):</span>
+      <span class="sg-value">{{ "%.1f"|format(sra.deterministic_days) }}</span>
+      <span class="sg-label">Mean finish (days):</span>
+      <span class="sg-value">{{ "%.1f"|format(sra.mean_days) }}</span>
+    </div>
+    <table>
+      <thead><tr><th>Percentile</th><th>Finish (working days)</th></tr></thead>
+      <tbody>
+        <tr><td>P50</td><td>{{ "%.1f"|format(sra.p50_days) }}</td></tr>
+        <tr><td>P80</td><td>{{ "%.1f"|format(sra.p80_days) }}</td></tr>
+        <tr><td>P95</td><td>{{ "%.1f"|format(sra.p95_days) }}</td></tr>
+      </tbody>
+    </table>
+    {% if sra.top_criticality %}
+    <h4>Criticality index (top activities)</h4>
+    <table>
+      <thead><tr><th>UniqueID</th><th>Criticality index (%)</th></tr></thead>
+      <tbody>
+        {% for uid, pct in sra.top_criticality %}
+        <tr><td>{{ uid }}</td><td>{{ "%.1f"|format(pct) }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#555;">No activity reached the critical path in any iteration.</p>
+    {% endif %}
+    <p style="font-size:11px;color:#777;margin-top:6px;">
+      The SRA method (finish distribution + criticality index) mirrors Acumen Fuse
+      / Primavera Risk Analysis (reference parity). The default duration spread that
+      seeds it is the tool's own heuristic (source&#8209;pending) &mdash; in an engagement
+      the analyst supplies per&#8209;activity risk ranges; the distribution models duration
+      uncertainty only.
+    </p>
+  </div>
+  {% elif sra_note %}
+  <!-- SRA skipped (e.g. schedule too large for the in-browser Monte-Carlo run) -->
+  <div class="card">
+    <h3>Schedule Risk Analysis (Monte Carlo)</h3>
+    <p style="color:#555;">{{ sra_note }}</p>
+  </div>
+  {% endif %}{# end SRA #}
+
   <!-- Download reports + wipe -->
   <div class="card">
     <h3>Reports &amp; Session Control</h3>
@@ -599,6 +672,33 @@ def _compute_trends(schedules: list[Schedule]) -> TrendReport | None:
         return None
 
 
+def _compute_sra(schedule: Schedule) -> tuple[SRAResult | None, str | None]:
+    """Monte-Carlo SRA for the displayed schedule; ``(result, note)``.
+
+    Run only for the displayed (latest) version -- it is expensive (``iterations``
+    x CPM) and the dashboard shows one schedule. Two fail-safe paths return no
+    result (never a fabricated distribution):
+
+    * **too large** -- above ``_SRA_MAX_TASKS`` non-summary activities the run is
+      skipped to keep the request responsive; the ``note`` says so (the
+      deterministic analysis is unaffected), so the skip is transparent, not silent.
+    * **unschedulable base** -- ``run_sra`` raises ``CPMError`` on a logic cycle or
+      a deferred ALAP/MSO/MFO constraint; the card is simply omitted (the dashboard
+      already surfaces the CPM error separately), so ``note`` stays ``None``."""
+    n_activities = sum(1 for t in schedule.tasks if not t.is_summary)
+    if n_activities > _SRA_MAX_TASKS:
+        return None, (
+            f"Schedule Risk Analysis was skipped automatically: {n_activities} activities exceed "
+            f"the {_SRA_MAX_TASKS}-activity threshold for the in-browser Monte-Carlo run. The "
+            f"deterministic analysis above is complete; run SRA via the library "
+            f"(schedule_forensics.sra.run_sra) for large schedules."
+        )
+    try:
+        return run_sra(schedule, iterations=_SRA_ITERATIONS, seed=_SRA_SEED), None
+    except CPMError:
+        return None, None
+
+
 def _store_results(parsed: list[tuple[str, Schedule]]) -> None:
     """Populate _STATE from the parsed (filename, Schedule) pairs."""
     schedules = [sched for _, sched in parsed]
@@ -606,6 +706,9 @@ def _store_results(parsed: list[tuple[str, Schedule]]) -> None:
     latest = _latest_index(schedules)
     _STATE["schedule"] = schedules[latest]
     _STATE["analysis"] = analyses[latest]
+    sra_result, sra_note = _compute_sra(schedules[latest])
+    _STATE["sra"] = sra_result
+    _STATE["sra_note"] = sra_note
     _STATE["versions"] = [
         {
             "name": name,
@@ -619,6 +722,29 @@ def _store_results(parsed: list[tuple[str, Schedule]]) -> None:
     _STATE["cei"] = cei_periods
     _STATE["cei_note"] = cei_note
     _STATE["trends"] = _compute_trends(schedules)
+
+
+def _sra_view(sra: SRAResult | None) -> dict[str, Any] | None:
+    """Pre-format an :class:`SRAResult` for the template (working-day display values).
+
+    Keeps the Jinja template free of arithmetic and sorting: finish offsets are
+    converted to working days (offset / 480.0) and the criticality index is ranked
+    descending (then by ``unique_id`` for a stable tie-break), filtered to the
+    activities that reached the critical path at least once, and capped. ``None``
+    in -> ``None`` out (the card is simply omitted)."""
+    if sra is None:
+        return None
+    ranked = sorted(sra.criticality_index.items(), key=lambda kv: (-kv[1], kv[0]))
+    top = [(uid, 100.0 * ci) for uid, ci in ranked if ci > 0.0][:_SRA_TOP_CRITICALITY]
+    return {
+        "iterations": sra.iterations,
+        "deterministic_days": sra.deterministic_finish / _MINUTES_PER_DAY,
+        "mean_days": sra.mean_finish / _MINUTES_PER_DAY,
+        "p50_days": sra.p50 / _MINUTES_PER_DAY,
+        "p80_days": sra.p80 / _MINUTES_PER_DAY,
+        "p95_days": sra.p95 / _MINUTES_PER_DAY,
+        "top_criticality": top,
+    }
 
 
 def _render_page(
@@ -647,6 +773,8 @@ def _render_page(
         cei_periods=_STATE.get("cei") or (),
         cei_note=_STATE.get("cei_note"),
         trends=_STATE.get("trends"),
+        sra=_sra_view(_STATE.get("sra")),
+        sra_note=_STATE.get("sra_note"),
     )
     return (html, status) if status != 200 else html
 
@@ -746,7 +874,7 @@ def create_app() -> Flask:
         if analysis is None:
             return redirect(url_for("index"))
         buf = io.BytesIO()
-        build_excel_workbook(analysis, trends=_STATE.get("trends")).save(buf)
+        build_excel_workbook(analysis, trends=_STATE.get("trends"), sra=_STATE.get("sra")).save(buf)
         buf.seek(0)
         return send_file(
             buf,
@@ -762,7 +890,7 @@ def create_app() -> Flask:
         if analysis is None:
             return redirect(url_for("index"))
         buf = io.BytesIO()
-        build_word_document(analysis, trends=_STATE.get("trends")).save(buf)
+        build_word_document(analysis, trends=_STATE.get("trends"), sra=_STATE.get("sra")).save(buf)
         buf.seek(0)
         return send_file(
             buf,
