@@ -20,7 +20,9 @@ under CUI; see `inference.py`.)
    *(This dev environment's network policy blocks the Ollama download, so the
    integration here is verified against a faithful mocked server; you install the
    real app locally.)*
-2. **Pull a model** — a small instruct model is plenty for rephrasing:
+2. **Pull a model** (run in a **terminal** — PowerShell or Windows Terminal on
+   Windows, Terminal on macOS/Linux — *not* the Python `>>>` prompt) — a small
+   instruct model is plenty for rephrasing:
    ```sh
    ollama pull llama3.2          # ~2 GB; or llama3.2:1b (~1.3 GB) for low-RAM machines
    ```
@@ -30,19 +32,41 @@ under CUI; see `inference.py`.)
 
 ## Turn it on for Schedule Forensics
 
-Set one environment variable before launching the web app:
+> **Run these in a terminal, not in Python.** `ollama`, `python`, etc. are programs
+> you launch from a shell (PowerShell / Windows Terminal on Windows; Terminal on
+> macOS/Linux) with your project virtual environment active — never at the Python
+> `>>>` prompt.
 
-```sh
-export SF_OLLAMA_MODEL=llama3.2          # the model you pulled
-# optional, defaults to 127.0.0.1:11434 (loopback only):
-export SF_OLLAMA_HOST=127.0.0.1:11434
+Set one environment variable, then launch the app **in the same window** (the
+variable only lasts for that shell session). Pick your shell:
+
+**Windows — PowerShell** (note: `$env:`, not `export`):
+```powershell
+$env:SF_OLLAMA_MODEL = "llama3.2"          # the model you pulled
+# optional (defaults to 127.0.0.1:11434, loopback only):
+# $env:SF_OLLAMA_HOST = "127.0.0.1:11434"
 python -m schedule_forensics.webapp
 ```
 
+**Windows — Command Prompt (`cmd.exe`)** (note: `set`):
+```bat
+set SF_OLLAMA_MODEL=llama3.2
+python -m schedule_forensics.webapp
+```
+
+**macOS / Linux — bash/zsh:**
+```sh
+export SF_OLLAMA_MODEL=llama3.2            # the model you pulled
+# optional: export SF_OLLAMA_HOST=127.0.0.1:11434
+python -m schedule_forensics.webapp
+```
+
+Easiest of all: skip the manual variable entirely and use the **one-click
+launcher** (`launch/` — double-click the desktop icon). It auto-detects Ollama,
+starts it, sets `SF_OLLAMA_MODEL`, and opens the app for you.
+
 That's it — the executive summary on the dashboard (and in the Word/Excel reports)
-will be rephrased by your local model. The one-click launcher (see the project
-launcher docs) sets `SF_OLLAMA_MODEL` and starts Ollama for you automatically when
-it is installed.
+will be rephrased by your local model.
 
 ### Selecting a backend (precedence)
 
