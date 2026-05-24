@@ -19,6 +19,10 @@ Sheets
 * **Earned Value** -- header row + the SPI / SPI(t) indices (SKIPPED rows when the
   schedule carries no earned-value data; never fabricated).
 * **Findings** -- one row per failing metric, or a "no failing metrics" note.
+* **Risk (SRA)** -- present only when an :class:`~schedule_forensics.sra.SRAResult`
+  is supplied: Monte-Carlo finish percentiles (P50/P80/P95, working days) +
+  per-activity criticality index (reference-tool capability; the default duration
+  spread that seeds it is the tool's own heuristic, captioned as such).
 
 CUI / LAW 1: no schedule data leaves the machine; all writes are local. The
 ``CUI_NOTICE`` constant is the single source of truth (in every sheet).
@@ -41,6 +45,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from schedule_forensics.analysis import ScheduleAnalysis
 from schedule_forensics.metrics_common import MetricStatus
+from schedule_forensics.sra import SRAResult
 from schedule_forensics.trend_analysis import TrendReport
 
 CUI_NOTICE: str = (
@@ -321,12 +326,91 @@ def _build_trends_sheet(ws: Worksheet, trends: TrendReport) -> None:
     _autofit_columns(ws)
 
 
-def build_excel_workbook(analysis: ScheduleAnalysis, trends: TrendReport | None = None) -> Workbook:
+def _build_sra_sheet(ws: Worksheet, sra: SRAResult) -> None:
+    """Monte-Carlo Schedule Risk Analysis: finish percentiles + criticality index.
+
+    The Monte-Carlo SRA method (finish distribution + per-activity criticality
+    index) is a reference-tool capability (Acumen Fuse Risk tab / Primavera Risk
+    Analysis) and is NOT a tool-original extension. The DEFAULT duration spread
+    used to seed it IS the tool's own heuristic (source-pending) -- captioned as
+    such below, never presented as parity. Finish offsets are rendered in working
+    days (offset / 480.0), consistent with the rest of the report."""
+    _add_cui_banner(ws, "A1:C1")
+    row = 2
+
+    ws.cell(row=row, column=1, value="Monte-Carlo iterations").font = Font(bold=True)
+    ws.cell(row=row, column=2, value=sra.iterations)
+    row += 1
+    ws.cell(row=row, column=1, value="Deterministic finish (working days)").font = Font(bold=True)
+    ws.cell(row=row, column=2, value=sra.deterministic_finish / _MINUTES_PER_DAY)
+    row += 1
+    ws.cell(row=row, column=1, value="Mean finish (working days)").font = Font(bold=True)
+    ws.cell(row=row, column=2, value=sra.mean_finish / _MINUTES_PER_DAY)
+    row += 2
+
+    ws.cell(row=row, column=1, value="Finish percentiles (working days)").font = Font(bold=True)
+    row += 1
+    for col, header in enumerate(("Percentile", "Finish (working days)"), start=1):
+        cell = ws.cell(row=row, column=col, value=header)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = _header_fill()
+    row += 1
+    for label, offset in (("P50", sra.p50), ("P80", sra.p80), ("P95", sra.p95)):
+        ws.cell(row=row, column=1, value=label)
+        ws.cell(row=row, column=2, value=offset / _MINUTES_PER_DAY)
+        row += 1
+    row += 1
+
+    ws.cell(row=row, column=1, value="Criticality index (per activity)").font = Font(bold=True)
+    row += 1
+    ranked = sorted(sra.criticality_index.items(), key=lambda kv: (-kv[1], kv[0]))
+    on_path = [(uid, ci) for uid, ci in ranked if ci > 0.0]
+    if on_path:
+        for col, header in enumerate(("UniqueID", "Criticality index (%)"), start=1):
+            cell = ws.cell(row=row, column=col, value=header)
+            cell.font = Font(bold=True, color="FFFFFF")
+            cell.fill = _header_fill()
+        row += 1
+        for uid, ci in on_path[:25]:
+            ws.cell(row=row, column=1, value=uid)
+            ws.cell(row=row, column=2, value=100.0 * ci)
+            row += 1
+    else:
+        ws.cell(
+            row=row, column=1, value="no activity reached the critical path in any iteration"
+        ).font = Font(italic=True)
+        row += 1
+    row += 1
+
+    note = ws.cell(
+        row=row,
+        column=1,
+        value=(
+            "SRA method (finish distribution + criticality index) mirrors Acumen Fuse / "
+            "Primavera Risk Analysis (reference parity). The default duration spread that seeds "
+            "it is the tool's own heuristic (source-pending); in an engagement the analyst "
+            "supplies per-activity risk ranges. Distribution is over duration uncertainty only."
+        ),
+    )
+    note.font = Font(italic=True)
+    note.alignment = Alignment(wrap_text=True)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+
+    _autofit_columns(ws)
+
+
+def build_excel_workbook(
+    analysis: ScheduleAnalysis,
+    trends: TrendReport | None = None,
+    sra: SRAResult | None = None,
+) -> Workbook:
     """Build and return an openpyxl ``Workbook``.
 
     Always writes Summary / DCMA / Earned Value / Findings sheets. When *trends* is
     given and spans 2+ versions, also appends a **Trends** sheet (tool-original
-    extension: version trajectory + float-erosion bands)."""
+    extension: version trajectory + float-erosion bands). When *sra* is given,
+    appends a **Risk (SRA)** sheet (Monte-Carlo finish percentiles + criticality
+    index; reference-tool capability)."""
     wb = Workbook()
     summary = wb.active
     assert summary is not None  # a fresh Workbook always has an active sheet
@@ -337,6 +421,8 @@ def build_excel_workbook(analysis: ScheduleAnalysis, trends: TrendReport | None 
     _build_findings_sheet(wb.create_sheet("Findings"), analysis)
     if trends is not None and trends.n_versions > 1:
         _build_trends_sheet(wb.create_sheet("Trends"), trends)
+    if sra is not None:
+        _build_sra_sheet(wb.create_sheet("Risk (SRA)"), sra)
     return wb
 
 
@@ -344,6 +430,7 @@ def build_excel_report(
     analysis: ScheduleAnalysis,
     path: str | os.PathLike[str],
     trends: TrendReport | None = None,
+    sra: SRAResult | None = None,
 ) -> None:
     """Write an Excel ``.xlsx`` report for *analysis* to *path* (all data stays local)."""
-    build_excel_workbook(analysis, trends=trends).save(path)
+    build_excel_workbook(analysis, trends=trends, sra=sra).save(path)

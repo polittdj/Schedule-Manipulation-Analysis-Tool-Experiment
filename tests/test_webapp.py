@@ -224,6 +224,49 @@ def test_dashboard_renders_earned_value_number(client: object) -> None:
     assert "0.7500" in body  # SPI = 150/200, formatted to 4 dp in the template
 
 
+def test_dashboard_renders_sra_card(client: object) -> None:
+    """A single-schedule analysis renders the Monte-Carlo SRA card with percentiles."""
+    from flask.testing import FlaskClient
+
+    c: FlaskClient = client  # type: ignore[assignment]
+    resp = c.post("/analyze", data={"json_text": _minimal_schedule().model_dump_json()})
+    body = resp.data.decode()
+    assert "Schedule Risk Analysis (Monte Carlo)" in body
+    assert "P50" in body and "P80" in body and "P95" in body
+    assert "Criticality index" in body
+    # Parity-honesty (LAW 2): the default spread is named a tool heuristic, not parity.
+    assert "source" in body and "Acumen" in body
+
+
+def test_sra_stored_and_wiped(client: object) -> None:
+    """SRA is computed into _STATE on analyze and destroyed by /wipe (LAW 1)."""
+    from flask.testing import FlaskClient
+
+    c: FlaskClient = client  # type: ignore[assignment]
+    c.post("/analyze", data={"json_text": _minimal_schedule().model_dump_json()})
+    assert _STATE["sra"] is not None
+    c.post("/wipe")
+    assert _STATE["sra"] is None
+
+
+def test_sra_skipped_for_large_schedule_with_note(
+    client: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Above the activity cap, SRA is skipped (not run) and the skip is surfaced, not silent."""
+    from flask.testing import FlaskClient
+
+    c: FlaskClient = client  # type: ignore[assignment]
+    # Drop the cap to 1 so the 2-task minimal schedule trips it (fast, deterministic).
+    monkeypatch.setattr("schedule_forensics.webapp.app._SRA_MAX_TASKS", 1)
+    resp = c.post("/analyze", data={"json_text": _minimal_schedule().model_dump_json()})
+    body = resp.data.decode()
+    assert resp.status_code == 200
+    assert _STATE["sra"] is None  # SRA did NOT run
+    assert _STATE["sra_note"] is not None
+    assert "skipped automatically" in body  # the skip reason is shown to the user
+    assert "P50" not in body  # ... and no percentile card is rendered
+
+
 # ── /analyze with MS Project XML fixture ─────────────────────────────────────
 
 
