@@ -1,13 +1,23 @@
-"""Local-only validation harness: diff the importer output vs. live MS Project COM.
+"""Local-only validation harness: read a ``.mpp`` via COM and cross-check vs MPXJ.
 
-WINDOWS + MS PROJECT ONLY. This script is intentionally a guarded stub on every
+WINDOWS + MS PROJECT ONLY for the COM read. This script is a guarded no-op on every
 other platform (this build is developed on Linux, where COM is unavailable -- see
-docs/HAZARDS.md, H-NO-COM-HERE). On a Windows machine with MS Project installed,
-it opens the same `.mpp` file via COM and via the (future) COM importer and diffs
-every field for every task, field-by-field.
+docs/HAZARDS.md, H-NO-COM-HERE). On a Windows machine with MS Project installed it:
 
-Results are written under ``local_validation_results/`` (gitignored). Real `.mpp`
-files and their derived results are NEVER committed (LAW 1).
+  1. opens the ``.mpp`` via the COM importer (headless, ReadOnly) and prints each
+     task's key fields; then
+  2. reads the SAME ``.mpp`` via the cross-platform MPXJ importer (if a Java/MPXJ
+     runner is configured) and diffs the two reads field-by-field
+     (:func:`schedule_forensics.schedule_compare.diff_schedules`).
+
+Two independent readers agreeing on every field is the ground-truth check for the
+COM mapping's ``source-pending`` assumptions -- gotcha 5 (durations/lags in MINUTES)
+and gotcha 10 (the ConstraintType / Dependency.Type enum codes). Any disagreement is
+printed for the operator to adjudicate against the MS Project UI (LAW 2). The MPXJ
+cross-check is SKIPPED (not failed) when no runner is configured.
+
+All output goes to stdout; nothing is written or transmitted. Real ``.mpp`` files
+and any values derived from them are CUI and are NEVER committed (LAW 1).
 
 Usage (Windows): python scripts/validate_against_msp.py path\\to\\schedule.mpp
 """
@@ -38,8 +48,7 @@ def main(argv: list[str]) -> int:
     # required fields. The COM driver opens headless + ReadOnly and tears the app
     # down in finally (see importers/com_msproject.py). This is the on-Windows
     # ground-truth check the Linux unit tests cannot perform (docs/HAZARDS.md
-    # H-NO-COM-HERE); a full field-by-field diff vs a second COM read is the next
-    # increment. Results stay LOCAL (LAW 1).
+    # H-NO-COM-HERE). Results stay LOCAL (LAW 1).
     from schedule_forensics.importers.com_msproject import (
         ComUnavailableError,
         parse_mpp_via_com,
@@ -66,6 +75,33 @@ def main(argv: list[str]) -> int:
             f"constraint={task.constraint_type.value} pct={task.percent_complete} "
             f"name={task.name!r}"
         )
+
+    # Cross-check: read the SAME .mpp via the cross-platform MPXJ importer and diff
+    # field-by-field. Two INDEPENDENT readers agreeing is strong evidence the COM
+    # gotcha-5 (minutes) and gotcha-10 (constraint/relation enum codes) mappings are
+    # correct; any disagreement is printed for the operator to adjudicate against the
+    # MS Project UI rather than silently trusted (LAW 2). MPXJ is optional, so this
+    # cross-check is skipped (not failed) when no Java/MPXJ runner is configured.
+    from schedule_forensics.importers.mpp_mpxj import ImporterError as MpxjError
+    from schedule_forensics.importers.mpp_mpxj import mpxj_configured, parse_mpp
+    from schedule_forensics.schedule_compare import diff_schedules
+
+    if not mpxj_configured():
+        print("  COM-vs-MPXJ cross-check skipped: no MPXJ runner (install Java / set SF_MPXJ_*).")
+        return 0
+    try:
+        mpxj_schedule = parse_mpp(mpp_path)
+    except MpxjError as exc:
+        print(f"  COM-vs-MPXJ cross-check skipped: MPXJ read failed: {exc}")
+        return 0
+
+    diffs = diff_schedules(schedule, mpxj_schedule, a_label="COM", b_label="MPXJ")
+    if not diffs:
+        print("  COM vs MPXJ: identical on every compared field -- no drift.")
+        return 0
+    print(f"  COM vs MPXJ: {len(diffs)} field difference(s) -- verify against the MS Project UI:")
+    for line in diffs:
+        print(f"    - {line}")
     return 0
 
 
