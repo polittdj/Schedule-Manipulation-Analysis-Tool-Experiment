@@ -24,10 +24,14 @@ Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude
 - **✅ SSI parity captured:** `docs/PLAN/SSI-DRIVING-SLACK.md` — focus UID 143
   ("Obtain certificate of occupancy", commercial-construction sample), full golden
   Driving-Slack-by-UID table, methodology, and SSI `Path NN` vs. tool slack-tier note.
-- **Phase 1 REMAINING:** metric catalog + formulas (from `DeltekAcumen811MetricDevelopersGuide.pdf`
-  + `DeltekDECMMetricsOct2025.xlsx` + `.aft`) → `docs/PLAN/METRICS-CATALOG.md`; Acumen golden
-  parity targets (Project2 vs Project5) → `docs/PLAN/PARITY-TARGETS.md`; `.pbix` metrics/visuals;
-  the written setup direction → `docs/PLAN/SETUP-DIRECTION.md`. Then HANDOFF → `awaiting Gate 2 GO`.
+- **✅ Acumen golden parity targets captured:** `docs/PLAN/PARITY-TARGETS.md` — Project2 vs
+  Project5 (status 5/24/2026 vs 8/27/2026; finish 9/14/2027 vs 12/22/2027, −99-day slip);
+  Schedule-Quality summary, DCMA-14 ribbon (score 57→49, BEI 0.74→0.59, Missed 18→37), baseline
+  compliance/half-step-delay, Logic Analysis (P2 only, 176 rels), SN change metrics, and the top
+  manipulation/trend deltas.
+- **Phase 1 REMAINING:** metric catalog + formulas → `docs/PLAN/METRICS-CATALOG.md` (extraction
+  agent running); `.pbix` metrics/visuals (binary — needs local unzip); the written setup
+  direction → `docs/PLAN/SETUP-DIRECTION.md`. Then HANDOFF → `awaiting Gate 2 GO`.
 - **Binary-file note:** `.aft` (Acumen) and `.pbix` are not text-extractable via the Drive
   `read_file_content` path and are too large to base64 into context. Plan: pull bytes to the
   container disk for local parsing, OR source metric formulas from the readable
