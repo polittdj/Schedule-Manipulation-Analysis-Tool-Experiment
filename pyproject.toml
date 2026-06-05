@@ -1,0 +1,78 @@
+# pyproject.toml — STUB (greenfield, session A1 / Phase 0)
+#
+# This is a minimal-but-real project definition so the package resolves, tooling
+# (ruff/mypy/pytest/coverage/bandit) has a home, and `pip install -e '.[dev]'`
+# works. Runtime dependencies and the full tool configuration are added during
+# Phase 2 build milestones (see docs/PLAN/BUILD-PLAN.md). Do not add cloud/network
+# client libraries here without an explicit ADR — see the egress guard (§7).
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "schedule-forensics"
+version = "0.0.0"
+description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary — see LICENSE (placeholder)" }
+authors = [{ name = "Schedule Forensics build" }]
+keywords = ["scheduling", "cpm", "forensic", "dcma", "acumen", "nasa", "cui"]
+classifiers = [
+  "Private :: Do Not Upload",
+  "Programming Language :: Python :: 3.12",
+  "Operating System :: OS Independent",
+]
+
+# Runtime deps intentionally empty at greenfield; added per milestone in Phase 2.
+dependencies = []
+
+[project.optional-dependencies]
+# Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
+# tightened when first wired into CI during Phase 2.
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "bandit>=1.7",
+  "pip-audit>=2.7",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# --- ruff: lint + format -------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+# --- mypy: types ---------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+warn_unused_configs = true
+
+# --- pytest + coverage ---------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["schedule_forensics"]
+
+[tool.coverage.report]
+show_missing = true
+# Coverage gates (§7): engine >=85%, overall >=70%. Enforced in CI during Phase 2.
+
+# --- bandit: security ----------------------------------------------------------
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "tools"]

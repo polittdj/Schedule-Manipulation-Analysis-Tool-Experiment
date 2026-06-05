@@ -1,8 +1,11 @@
 # Schedule Manipulation Analysis Tool
 
-> **Status: greenfield.** This `main` was reset to a clean starting point on 2026-06-05.
-> The previous build remains in git history (and in PR #47) but is intentionally **not**
-> on `main` — it is a reference, not a source to copy.
+> **Status: greenfield — Phase 0 scaffold complete, awaiting Gate 1.** `main` was reset to
+> a clean starting point on 2026-06-05; session **A1** then laid the durable-state scaffold
+> and the reference-intake folder on branch `claude/intelligent-fermat-3MBqk`. The previous
+> build remains in git history (and in PR #47) but is intentionally **not** on `main` — it
+> is a reference, not a source to copy. Current state of the build always lives in
+> [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md).
 
 A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native
 Microsoft Project / Primavera schedules, runs comparative and forensic analysis
@@ -47,6 +50,16 @@ in git, never only in chat history.
 
 Everything else (the prior application code, tests, reports, and harness config) was
 removed; session **A1** rebuilds the project from the prompt.
+
+## Build state & where to look
+
+- **`docs/STATE/HANDOFF.md`** — single source of truth for "where we are / what's next."
+- `docs/STATE/SESSION-LOG.md` — append-only per-session history.
+- `docs/PLAN/BUILD-PLAN.md`, `docs/PLAN/RTM.md` — plan + requirements traceability (stubs
+  until the Phase 2 plan session).
+- `docs/adr/` — architecture decision records · `docs/risks.md` — risk register.
+- **`00_REFERENCE_INTAKE/DEPOSIT-HERE.md`** — what to deposit at **Gate 1** (reference and
+  golden-parity files). Everything dropped there is git-ignored (CUI defense).
 
 ## Getting started
 

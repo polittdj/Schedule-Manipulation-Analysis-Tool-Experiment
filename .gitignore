@@ -1,14 +1,31 @@
 # =====================================================================
 # LAW 1 -- DATA SOVEREIGNTY (CUI). Schedule data must NEVER be committed.
 # Block every schedule-bearing format at the VCS layer (fail closed).
+# Covers the full §0.1 intake set plus common derivatives.
 # =====================================================================
 *.mpp
 *.mpp.bak
+*.mpt
 *.mpx
 *.xer
 *.xml
+*.pmxml
 *.csv
+*.xls
+*.xlsx
+*.pbix
+*.mspdi
 docs/sources/*.mpp
+
+# =====================================================================
+# REFERENCE INTAKE (00_REFERENCE_INTAKE/) — the user deposits possibly-CUI
+# reference/golden files here at Gate 1. Block EVERYTHING in this folder
+# except the deposit instructions, so a deposited file can never be
+# committed by accident. Fail closed.
+# =====================================================================
+00_REFERENCE_INTAKE/*
+!00_REFERENCE_INTAKE/DEPOSIT-HERE.md
+!00_REFERENCE_INTAKE/.gitkeep
 
 # Runtime data directories (uploads / parsed / derived / exports).
 session_data/

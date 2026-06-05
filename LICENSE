@@ -1,0 +1,22 @@
+LICENSE — PLACEHOLDER (to be finalized)
+=======================================
+
+Copyright (c) 2026. All rights reserved.
+
+This repository contains the source code for a local, NASA-themed forensic
+schedule-analysis tool. A final license has not yet been selected.
+
+Until a license is chosen and committed here:
+
+  * No grant of rights is made. All rights are reserved by the copyright holder.
+  * Do not redistribute this source outside its authorized environment.
+
+IMPORTANT — this license covers SOURCE CODE ONLY. It does NOT, and cannot,
+grant any rights over schedule data, parsed derivatives, reports, or any
+Controlled Unclassified Information (CUI) processed by this tool. Such data is
+never part of this repository (see .gitignore) and is governed solely by the
+data owner's controls and applicable U.S. Government / NASA CUI policy.
+
+TODO (tracked for a later session): choose and commit the final license text
+(e.g. an internal/government-use notice or an approved open-source license),
+and record the decision as an ADR under docs/adr/.
