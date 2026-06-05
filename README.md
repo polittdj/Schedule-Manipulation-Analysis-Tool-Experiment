@@ -1,11 +1,11 @@
 # Schedule Manipulation Analysis Tool
 
-> **Status: greenfield — Phase 0 scaffold complete, awaiting Gate 1.** `main` was reset to
-> a clean starting point on 2026-06-05; session **A1** then laid the durable-state scaffold
-> and the reference-intake folder on branch `claude/intelligent-fermat-3MBqk`. The previous
-> build remains in git history (and in PR #47) but is intentionally **not** on `main` — it
-> is a reference, not a source to copy. Current state of the build always lives in
-> [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md).
+> **Status: Phase 2 build — Milestone M1 complete (real CI, quality gates, egress guard).**
+> Gates 1 & 2 passed; the full plan (17 milestones) is in `docs/PLAN/`. Build work is on branch
+> `claude/intelligent-johnson-18yZD` (which continues the A1/A2 plan from PR #51); `main` remains
+> the 2026-06-05 greenfield reset. The previous build remains in git history (and in PR #47) but
+> is intentionally **not** on `main` — it is a reference, not a source to copy. Current state of
+> the build always lives in [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md).
 
 A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native
 Microsoft Project / Primavera schedules, runs comparative and forensic analysis

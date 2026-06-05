@@ -14,7 +14,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## A. Platform, UX, packaging
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| A1 | All parsing/analysis/metrics/forensics in Python | whole `src/` (engine pure Python) | CI builds/runs | — | M1+ | ◻ stack chosen |
+| A1 | All parsing/analysis/metrics/forensics in Python | whole `src/` (engine pure Python) | CI builds/runs | `tests/test_smoke.py` | M1+ | ▣ skeleton+CI in Python (M1) |
 | A2 | Desktop icon → 100% local → opens in browser | `launcher.py`, `web/app.py` | launch smoke test | — | M16,M13 | ☐ |
 | A3 | Dark-mode, NASA-themed, intuitive UI | `web/templates`,`web/static` theme | UI smoke/snapshot | — | M13 | ☐ |
 | A4 | Interactive Power-BI-style viz; add/remove fields; drill into metadata; local assets (no CDN) | `web/static` ECharts+Tabulator | air-gap test + interaction test | — | M14 | ☐ |
@@ -56,7 +56,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## G. Data locality
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| G1 | No data off-machine; all compute local/offline | `net_guard.py`, `ai` routing, `.gitignore` | **egress-guard test** | — | M1,M12 | ◻ `.gitignore` in place; guard pending |
+| G1 | No data off-machine; all compute local/offline | `net_guard.py`, `ai` routing, `.gitignore` | **egress-guard test** | `tests/guards/test_egress.py` (passing) | M1,M12 | ▣ guard+test+hooks in (M1); runtime routing M12 |
 
 ## Global units & formatting (§3)
 | ID | Requirement | Module | Test | M | Status |
@@ -68,11 +68,11 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## Cross-cutting QC/PM (§7)
 | ID | Requirement | Evidence | M | Status |
 |----|-------------|----------|---|--------|
-| Q1 | TDD + pytest; coverage (engine ≥85%, overall ≥70%) | `pyproject.toml` configured | M1 | ◻ configured |
-| Q2 | ruff + mypy(strict) + bandit + pip-audit | `pyproject.toml` configured | M1 | ◻ configured |
-| Q3 | Network-egress guard test | `net_guard.py` + test | M1 | ☐ |
-| Q4 | CI: lint+types+tests+security+parity; red blocks merge | `.github/workflows/ci.yml` (placeholder now) | M1 | ◻ placeholder |
-| Q5 | Branches, Conventional Commits, draft PRs, no force-push, DoD | this branch + PR #51 | all | ◻ in effect |
-| Q6 | ADRs, risk register, change log | ADR 0000–0005, `docs/risks.md` | all | ◻ in effect |
-| Q7 | Structured logging w/ CUI redaction | `logging_redaction.py` | M1 | ☐ |
+| Q1 | TDD + pytest; coverage (engine ≥85%, overall ≥70%) | overall gate `--cov-fail-under=70` + engine gate `coverage report --include='*/engine/*' --fail-under=85` (CI) | M1 | ✔ enforced+passing (overall 99%) |
+| Q2 | ruff + mypy(strict) + bandit + pip-audit | all four live in `ci.yml`; passing locally | M1 | ✔ live in CI |
+| Q3 | Network-egress guard test | `net_guard.py` + `tests/guards/test_egress.py` | M1 | ✔ |
+| Q4 | CI: lint+types+tests+security+parity; red blocks merge | `.github/workflows/ci.yml` (lint/types/tests/security live; parity at M9) | M1,M9 | ▣ security pipeline live; +parity M9 |
+| Q5 | Branches, Conventional Commits, draft PRs, no force-push, DoD | branch `claude/intelligent-johnson-18yZD` (continues PR #51 work); force-push denied | all | ◻ in effect |
+| Q6 | ADRs, risk register, change log | ADR 0000–0006, `docs/risks.md` | all | ◻ in effect |
+| Q7 | Structured logging w/ CUI redaction | `logging_redaction.py` + `tests/test_logging_redaction.py` | M1 | ✔ |
 | Q8 | Docs: user guide, metric dictionary, parity report | `METRICS-CATALOG.md` + M17 | M17 | ◻ catalog ready |

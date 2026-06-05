@@ -139,4 +139,66 @@ this file is the running history.
   real CI + quality gates + egress guard).
 
 ### Commit SHAs
-- (added on commit)
+- `9ffe53e` — full BUILD-PLAN + RTM (Plan session, on `claude/intelligent-fermat-3MBqk`).
+
+---
+
+## A3 — 2026-06-05 — Phase 2 build: Milestone M1 (skeleton + real CI + quality gates + egress guard)
+
+- **Session:** A3   **Next session:** A4   **Model/mode:** Opus 4.8 (1M) + Ultracode
+- **Branch:** `claude/intelligent-johnson-18yZD` (assigned this session)
+- **Milestone:** M1 — stand up the real project so every later milestone has green rails. No
+  schedule logic.
+
+### Branch reconciliation (important)
+- A1/A2 ran on `claude/intelligent-fermat-3MBqk` (PR #51, tip `9ffe53e`). This session was
+  assigned a **different**, fresh branch `claude/intelligent-johnson-18yZD` sitting at the
+  greenfield reset `882dec3` with none of the plan. Since `882dec3` is the direct ancestor of
+  `9ffe53e`, I **fast-forwarded `johnson` onto `9ffe53e`** (`git merge --ff-only`) — lossless,
+  full history preserved — then built M1 on top. All pushes go only to `johnson` (never to
+  `fermat`, per the branch rule). The `johnson` PR supersedes/continues PR #51. Recorded in
+  ADR-0006 §6.
+- The "Workflow" orchestration tool referenced by Ultracode is not present in this environment;
+  used the `Agent` sub-agent primitive (claude-code-guide) to confirm the Claude Code
+  settings/hooks schema, as the build prompt prescribes.
+
+### What changed
+- **Package skeleton:** `src/schedule_forensics/{model,importers,engine,engine/metrics,ai,web,
+  reports}/__init__.py` (docstring'd stubs with `__all__`), keeping `import schedule_forensics`
+  working. Added `net_guard.py` and `logging_redaction.py`.
+- **Egress guard** (`net_guard.py`, G1/Q3): matches forbidden remote-HTTP/cloud distributions
+  against the package's **declared runtime** dependency set (not raw importability — avoids the
+  `pip-audit`→`requests` false positive) + asserts no cloud SDK is importable;
+  `assert_local_only()` fail-closed; `is_loopback_host()` predicate. Rationale in ADR-0006 §1.
+- **CUI-redacted structured logging** (`logging_redaction.py`, Q7): JSON formatter + redacting
+  filter; inert/idempotent `<file:mpp#hash>` token; loopback URLs preserved.
+- **Real CI** (`.github/workflows/ci.yml`, Q1/Q2/Q4): ruff + ruff-format + mypy(strict) + pytest
+  + overall coverage gate (≥70%) + **engine coverage gate (≥85%)** + bandit + pip-audit. Kept
+  the status-check contexts `test (3.11)`, `test (3.13)`, `check` so branch protection stays
+  satisfied. Python-only at M1 (JDK/MPXJ jobs arrive M4).
+- **Hooks:** `.githooks/pre-commit` (blocks schedule/Office/pickle commits, exempts
+  `tests/fixtures/`; activated via `core.hooksPath`, tested: blocks `.mpp`, allows fixture
+  `.xml`) + `.claude/hooks/session_start.sh` (toolchain verify + re-activates the guard;
+  fail-soft, exits 0).
+- **pyproject:** overall coverage `fail_under = 70`; `addopts` strict markers/config; header
+  updated from STUB to the real QC toolchain note.
+- **Docs:** ADR-0006 (M1 rails + branch note), `docs/PLAN/CLAUDE-CODE-SETTINGS.md` (recommended
+  settings.json), RTM rows A1/G1/Q1–Q4/Q7 updated, risks R-01 refreshed, HANDOFF (A3→A4),
+  this entry.
+
+### Tests / parity
+- 39 tests pass. Coverage 99% overall (net_guard 99%, logging_redaction 100%); engine gate 100%.
+  ruff/mypy(strict)/bandit clean; pip-audit reports no known vulnerabilities. Parity: N/A at M1.
+
+### Decisions / blockers
+- ADR-0006 records the egress-guard scoping, the inert redaction token, the dual CUI hooks, the
+  coverage-gate split, and the branch continuation.
+- **Open item (user action):** `.claude/settings.json` (permission allowlist + SessionStart hook
+  registration) could not be written by the agent — it widens the agent's own permissions, which
+  the safety classifier reserves for explicit user approval. Content provided in
+  `docs/PLAN/CLAUDE-CODE-SETTINGS.md`. Not a blocker for M2.
+- Next session A4 = **M2** (domain model + units).
+
+### Commit SHAs
+- `2592054` — M1 implementation (skeleton, net_guard, logging_redaction, CI, hooks, pyproject).
+- M1 durable state (ADR-0006, RTM, HANDOFF, SESSION-LOG, risks, settings doc) — the following commit.
