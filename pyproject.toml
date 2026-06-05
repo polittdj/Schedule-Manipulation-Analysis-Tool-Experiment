@@ -29,8 +29,12 @@ classifiers = [
   "Operating System :: OS Independent",
 ]
 
-# Runtime deps intentionally empty at greenfield; added per milestone in Phase 2.
-dependencies = []
+# Runtime dependencies (added per milestone in Phase 2). pydantic powers the frozen,
+# strict, UniqueID-keyed domain model (M2). It is a local, pure data-validation library
+# with no remote/cloud client, so the CUI egress guard (net_guard.py) stays green.
+dependencies = [
+  "pydantic>=2",
+]
 
 [project.optional-dependencies]
 # Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
@@ -62,6 +66,7 @@ python_version = "3.11"
 strict = true
 files = ["src"]
 warn_unused_configs = true
+plugins = ["pydantic.mypy"]
 
 # --- pytest + coverage ---------------------------------------------------------
 [tool.pytest.ini_options]
