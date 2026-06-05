@@ -2,21 +2,31 @@
 
 This session: A1     Next session: A2
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **awaiting Gate 1 GO** (deposit channel set up; awaiting upload + `GO`)
+Phase/Gate: **Gate 1 PASSED — `GO` received 2026-06-05.** Phase 1 pending **full deposit**.
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/intelligent-fermat-3MBqk`
 
-## Gate 1 update (A1, post-setup)
-- **Data-owner attestation (ADR-0003):** user states *"None of the files are CUI that I am
-  providing."* Hosted-session ingestion of the reference set is therefore permitted. CUI
-  defenses (fail-closed `.gitignore`) remain in place; reference/golden files never enter git.
-- **Intake channel:** a Google Drive folder **"Schedule-Forensics — Reference Intake"**
-  (`1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`) was created in the user's Drive. User uploads all
-  files there; Phase 1 pulls them via the Google Drive connector into `00_REFERENCE_INTAKE/`,
-  verifying/organizing/renaming.
-- **Detected from filenames (non-CUI metadata):** SSI driving-path **target UniqueID = 143**;
-  comparison project label is **"Project 2-5"**; `.pbix` is `NSATDeploymentRevisionAlpha.pbix`.
-- **Still needed:** the **two source `.mpp` schedules** are NOT in the listed set — re-confirm
-  non-CUI when provided (§0.1 re-applies). Without them, §6.B `.mpp` parity is deferred.
+## Gate 1 outcome (A1)
+- **Data-owner attestation (ADR-0003):** the provided reference/golden files are **non-CUI**;
+  the **real schedules the finished tool analyzes at runtime WILL be CUI** (Law 1/2 bind the
+  shipped tool's runtime). Fail-closed `.gitignore` retained; reference/golden files never
+  enter git. The two `.mpp` (`Project2.mpp`, `Project5.mpp`) are included as **non-CUI**
+  reference (sample/test projects).
+- **Confirmed parity inputs** → recorded in `docs/PLAN/PARITY-INPUTS.md`: compared pair
+  `Project2.mpp ↔ Project5.mpp`; SSI driving-path **target UniqueID = 143** in `Project5.mpp`
+  (user corrected 142 → **143**); MSP **2603 / Build 16.0.19822.20240 (64-bit)**; thresholds
+  **secondary >0 ≤10 days**, **tertiary >10 ≤20 days** (user-configurable per project).
+- **Intake channel:** Google Drive folder **"Schedule-Forensics — Reference Intake"**
+  (id `1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`). Phase 1 pulls from it into `00_REFERENCE_INTAKE/`.
+- **⚠️ DEPOSIT INCOMPLETE (as of 17:21Z):** the Drive connector sees **only 3** files in the
+  folder — `NASA Metrics_Complete_20260423.aft`, `PPC-Handbook.pdf`,
+  `DeltekPPMEncryptionConversionUtilityGuide.pdf`. Title/recency search finds **none** of the
+  parity-critical files (Acumen `Project 2-5` exports, `SSI UID_143`, `.pbix`, the two `.mpp`,
+  `DeltekAcumen811MetricDevelopersGuide.pdf`, `DeltekDECMMetricsOct2025.xlsx`). Either upload
+  still propagating or files placed outside the folder. **Re-verify before analysis.**
+- **Binary-file note:** `.aft` (Acumen) and `.pbix` are not text-extractable via the Drive
+  `read_file_content` path and are too large to base64 into context. Plan: pull bytes to the
+  container disk for local parsing, OR source metric formulas from the readable
+  `DeltekAcumen811MetricDevelopersGuide.pdf` + `DeltekDECMMetricsOct2025.xlsx` instead.
 Green baseline: CI is the **greenfield placeholder** (passes by asserting the two build
 docs exist). No application code yet. Verify locally: `python -c "import schedule_forensics, sys; print(schedule_forensics.__version__)"` (prints `0.0.0`) and `ls docs/PLAN docs/STATE docs/adr 00_REFERENCE_INTAKE`.
 
@@ -59,9 +69,15 @@ Parity status: N/A (no engine yet; golden exports not yet deposited).
     wholesale). Also: verify its `commercial_construction_p5` golden fixture (in history) is a
     public/non-CUI sample.
 
-## Next session (A2 — Phase 1; runs ONLY after the user replies `GO` at Gate 1)
+## Next session (A2 — Phase 1; Gate 1 GO already received)
+- **Precondition:** the Drive intake folder must be **fully populated** (see DEPOSIT
+  INCOMPLETE note above). If the connector still sees only a partial set, ask the user to
+  confirm all files finished uploading **into** folder `1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`
+  before analyzing. Do not analyze a partial set as if complete.
 - **Milestone:** Phase 1 — verify deposits, analyze references, write the setup direction →
   set HANDOFF to `awaiting Gate 2 GO`, STOP. (One milestone; do not start Phase 2 planning.)
+- **Confirmed inputs:** see `docs/PLAN/PARITY-INPUTS.md` (target UID 143, pair, thresholds,
+  versions, CUI scope) — already captured; do not re-ask the user for these.
 - **Acceptance criteria:**
   - Every deposited file verified present, readable, and **confirmed non-CUI**; anything
     missing/ambiguous/possibly-CUI is listed and the user is asked **before** reading it.
@@ -76,12 +92,18 @@ Parity status: N/A (no engine yet; golden exports not yet deposited).
   `docs/PLAN/SSI-DRIVING-SLACK.md`, `docs/PLAN/SETUP-DIRECTION.md`; update
   `docs/PLAN/RTM.md`, `docs/STATE/HANDOFF.md`, `docs/STATE/SESSION-LOG.md`, `docs/risks.md`.
 - **First 3 concrete steps:**
-  1. Run the start-of-session ritual (read this file + BUILD-PLAN + RTM; confirm model/branch;
-     confirm green baseline).
-  2. `ls -R 00_REFERENCE_INTAKE/` and verify each expected item; for each, confirm non-CUI
-     before reading. If hosted session + CUI present → STOP and direct the user to run locally.
-  3. Spawn parallel **Explore** sub-agents to read the metrics library, `.pbix` export, and the
-     Acumen/SSI golden exports; record catalog + parity targets in `docs/PLAN/`.
+  1. Run the start-of-session ritual (read this file + BUILD-PLAN + RTM + PARITY-INPUTS;
+     confirm model/branch; confirm green baseline).
+  2. List the Drive intake folder (`mcp__Google_Drive__search_files`, `parentId =
+     '1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV'`); compare against the expected ~28-file inventory.
+     If incomplete, ask the user to finish the upload before proceeding. Pull readable files
+     (PDF/xlsx/docx) via `read_file_content`; pull binaries (`.aft`, `.pbix`, `.mpp`) as bytes
+     to the container disk under `00_REFERENCE_INTAKE/` for local parsing.
+  3. Spawn parallel **Explore** sub-agents to extract: the Acumen metric catalog + formulas
+     (primary source: `DeltekAcumen811MetricDevelopersGuide.pdf`, `DeltekDECMMetricsOct2025.xlsx`,
+     the `.aft` libraries); the SSI driving-slack methodology + the **UID-143** target numbers;
+     the `.pbix` metrics/visuals. Record in `docs/PLAN/METRICS-CATALOG.md`,
+     `docs/PLAN/PARITY-TARGETS.md`, `docs/PLAN/SSI-DRIVING-SLACK.md`.
 
 Open questions / blockers: **none blocking the gate.** Awaiting user deposits + `GO` (Gate 1).
 Key decision to confirm: CUI siting (gap #7) and reuse policy (gap #13).

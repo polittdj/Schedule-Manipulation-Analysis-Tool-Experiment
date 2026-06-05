@@ -62,3 +62,12 @@ this file is the running history.
   "one place" transfer channel; Phase 1 mirrors it into `00_REFERENCE_INTAKE/`.
 - Noted from filenames: SSI target **UniqueID = 143**; the two source `.mpp` schedules are
   not yet in the set (re-confirm non-CUI when provided). Updated HANDOFF + risks.
+
+### Addendum 2 (A1) — Gate 1 `GO` received
+- User confirmed CUI scope (reference files non-CUI; **runtime data CUI**), the compared pair
+  `Project2.mpp ↔ Project5.mpp`, SSI target **UniqueID 143** (corrected from a transient 142),
+  MSP **2603/16.0.19822.20240 64-bit**, and thresholds (secondary >0 ≤10d, tertiary >10 ≤20d,
+  user-configurable). Recorded in `docs/PLAN/PARITY-INPUTS.md`.
+- **Deposit verification:** Drive connector sees only **3** of ~28 files in the intake folder;
+  parity-critical files not yet visible (upload still propagating or placed elsewhere). Phase 1
+  (A2) must re-verify the full set before analysis. No analysis performed on the partial set.
