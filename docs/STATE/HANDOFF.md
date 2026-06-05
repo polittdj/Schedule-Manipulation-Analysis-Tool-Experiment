@@ -2,8 +2,21 @@
 
 This session: A1     Next session: A2
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **awaiting Gate 1 GO**
+Phase/Gate: **awaiting Gate 1 GO** (deposit channel set up; awaiting upload + `GO`)
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/intelligent-fermat-3MBqk`
+
+## Gate 1 update (A1, post-setup)
+- **Data-owner attestation (ADR-0003):** user states *"None of the files are CUI that I am
+  providing."* Hosted-session ingestion of the reference set is therefore permitted. CUI
+  defenses (fail-closed `.gitignore`) remain in place; reference/golden files never enter git.
+- **Intake channel:** a Google Drive folder **"Schedule-Forensics — Reference Intake"**
+  (`1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`) was created in the user's Drive. User uploads all
+  files there; Phase 1 pulls them via the Google Drive connector into `00_REFERENCE_INTAKE/`,
+  verifying/organizing/renaming.
+- **Detected from filenames (non-CUI metadata):** SSI driving-path **target UniqueID = 143**;
+  comparison project label is **"Project 2-5"**; `.pbix` is `NSATDeploymentRevisionAlpha.pbix`.
+- **Still needed:** the **two source `.mpp` schedules** are NOT in the listed set — re-confirm
+  non-CUI when provided (§0.1 re-applies). Without them, §6.B `.mpp` parity is deferred.
 Green baseline: CI is the **greenfield placeholder** (passes by asserting the two build
 docs exist). No application code yet. Verify locally: `python -c "import schedule_forensics, sys; print(schedule_forensics.__version__)"` (prints `0.0.0`) and `ls docs/PLAN docs/STATE docs/adr 00_REFERENCE_INTAKE`.
 
@@ -31,9 +44,8 @@ Parity status: N/A (no engine yet; golden exports not yet deposited).
 6. **`NOTES.md`** answers: the `.mpp` pair; SSI target UniqueID + which file + MS Project
    version; Acumen version/calendar/status-date; known Acumen↔SSI disagreements; default
    secondary/tertiary day-thresholds; any units/rounding expectations.
-7. **CUI siting decision:** this appears to be a hosted/web session. If **any** deposit is
-   CUI, do **not** upload it here — run the build on a local, offline, authorized machine
-   (see checklist §A). Confirm the posture before depositing.
+7. ~~CUI siting decision~~ **RESOLVED** — data owner attested all provided files are non-CUI
+   (ADR-0003); hosted-session ingestion permitted via the Drive intake folder above.
 
 **Needed before/within Phase 2 (not blocking Gate 1):**
 8. **JDK ≥ 17** on the build/run machine (MPXJ native-`.mpp` path needs a Java runtime).

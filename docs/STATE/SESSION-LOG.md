@@ -52,4 +52,13 @@ this file is the running history.
   is in `docs/STATE/HANDOFF.md`.
 
 ### Commit SHAs
-- (added on commit)
+- `8b2b4b5` — Phase 0 scaffold.
+
+### Addendum (A1, post–Gate 1 setup)
+- User listed the reference/golden file set (Deltek/Acumen guides, NASA/DECM metric
+  libraries, `Project 2-5` Acumen exports, `SSI UID_143` directional-path exports, the
+  `NSATDeploymentRevisionAlpha.pbix`) and **attested none are CUI** → ADR-0003.
+- Created a Google Drive intake folder (`1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`) as the
+  "one place" transfer channel; Phase 1 mirrors it into `00_REFERENCE_INTAKE/`.
+- Noted from filenames: SSI target **UniqueID = 143**; the two source `.mpp` schedules are
+  not yet in the set (re-confirm non-CUI when provided). Updated HANDOFF + risks.
