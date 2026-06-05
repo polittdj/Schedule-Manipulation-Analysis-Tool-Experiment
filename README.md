@@ -1,84 +1,56 @@
-# Schedule Forensics
+# Schedule Manipulation Analysis Tool
 
-A **local-only, CUI-compliant** forensic schedule-analysis tool. It ingests
-project schedules (MS Project / Primavera), runs critical-path (CPM) analysis and
-schedule-quality/forensic metrics (DCMA-14, SPI/CEI/BEI, SRA, manipulation
-detection), and produces Excel/Word reports plus a plain-English executive
-summary. It runs entirely on `127.0.0.1` — **no schedule data ever leaves the
-machine** (see `CLAUDE.md`, Law 1).
+> **Status: greenfield.** This `main` was reset to a clean starting point on 2026-06-05.
+> The previous build remains in git history (and in PR #47) but is intentionally **not**
+> on `main` — it is a reference, not a source to copy.
 
-> Fidelity-first: results aim to match Deltek Acumen Fuse / Steelray-SSI /
-> Microsoft Project semantics. Speed and elegance are tiebreakers, never
-> overrides (Law 2).
+A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native
+Microsoft Project / Primavera schedules, runs comparative and forensic analysis
+(CPM / driving slack, DCMA, manipulation-trend detection, parity to Acumen Fuse v8.11.0
+and SSI), and produces interactive, locally-rendered reports with a local AI narrative.
+It runs **entirely on the local machine**.
 
-## Status
+## The two laws
 
-A complete, offline forensic analysis engine runs end-to-end (MS Project XML or a
-JSON `Schedule` → CPM → full DCMA-14 + driving-path + SRA + multi-version
-diff/float-trend → Excel/Word reports + a plain-English executive summary), with a
-localhost web UI. **Built and green:**
+1. **Data sovereignty (CUI).** No schedule data, file content, task name, date, UniqueID,
+   or derived metric ever leaves the local machine. No cloud API call ever receives
+   schedule content. Default to local Ollama; fail closed when in doubt.
+2. **Fidelity over speed.** Numbers must match the reference tools (Acumen Fuse v8.11.0,
+   SSI, Microsoft Project) on the same inputs. A fast, wrong number is worthless in a
+   forensic/testimony context.
 
-- **Frozen data model** (`schemas.py`, v1.0.0): strict, immutable,
-  referential-integrity guarded; cross-version identity by `UniqueID` only.
-- **Ingestion**: MS Project XML importer (pure-Python). XER / native `.mpp`
-  (MPXJ-subprocess) / optional Windows-only COM are **deferred**.
-- **CPM engine** (`cpm.py`): forward/backward pass on an integer working-minute
-  axis; all four link types (FS/SS/FF/SF) + lag; SNET/FNET/SNLT/FNLT + deadlines;
-  total/free float (incl. negative); critical path. ALAP/MSO/MFO **fail closed**
-  (raise) pending live-MS Project validation.
-- **Version matcher**, **DCMA 14-Point** (all 14), **driving path** (SSI slack),
-  **SRA** (Monte-Carlo BetaPERT), **diff/float-trend** (manipulation analysis),
-  an **analysis composition layer** + integrity score, **Excel/Word reports**, and
-  a **pluggable executive summary** (NullInferenceBackend default; CUI-gated).
-- **Localhost UI** (`webapp/`): Flask on `127.0.0.1`, upload → dashboard → report
-  download, session-wipe, CUI banner.
+## How this build is run
 
-**Deferred / next:** Primavera XER + MPXJ-subprocess + COM ingestion; cost-based
-SPI/CEI earned-value indices (a deliberate schema v1.1.0 bump); the local Ollama
-model wiring (a human-in-loop step); validation against live MS Project on real
-`.mpp` (Windows-local).
+This tool is built autonomously across many sessions. Everything you need is in two files
+at the repo root:
 
-## Run the tool (localhost UI)
+- **[`AUTONOMOUS-BUILD-PROMPT.md`](./AUTONOMOUS-BUILD-PROMPT.md)** — the paste-ready build
+  prompt. Paste its full contents into the **first** session (named **A1**), running on
+  **Opus 4.8 (1M context)** with **Ultracode**.
+- **[`AUTONOMOUS-BUILD-SETUP-CHECKLIST.md`](./AUTONOMOUS-BUILD-SETUP-CHECKLIST.md)** —
+  environment/settings prerequisites and the per-session run workflow.
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-PYTHONPATH=src python -m schedule_forensics.webapp   # serves http://127.0.0.1:5000
-```
+Sessions are named sequentially `A1, A2, A3, …`. Each session does exactly **one
+milestone**, writes a durable handoff to `docs/STATE/HANDOFF.md`, and stops; every later
+session is resumed with a single stable resume line (see the prompt). All build state lives
+in git, never only in chat history.
 
-Open `http://127.0.0.1:5000`, paste a JSON `Schedule` (or upload MS Project XML),
-and click Analyze. Use **Wipe** to destroy all in-memory data. Nothing leaves the
-machine (Law 1).
+## What is retained on this clean `main`
 
-## Develop
+- `AUTONOMOUS-BUILD-PROMPT.md`, `AUTONOMOUS-BUILD-SETUP-CHECKLIST.md` — the build spec.
+- `.gitignore` — hard CUI defense (blocks every schedule-bearing format and runtime data
+  directory from ever being committed).
+- `tools/mpxj/` — the vendored, self-contained **MPXJ native `.mpp` reader** (prebuilt
+  jars + the compiled `MpxjToMspdi` converter). It parses native `.mpp` with only a Java
+  runtime — no Maven, no build step — and is auto-discovered by the importer. Kept because
+  parsing native `.mpp` without conversion is a core requirement.
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements-dev.txt
-ruff check . && ruff format --check . && mypy && pytest
-```
+Everything else (the prior application code, tests, reports, and harness config) was
+removed; session **A1** rebuilds the project from the prompt.
 
-Both Python 3.11 and 3.13 work; the project targets **3.11+**.
+## Getting started
 
-## Layout
-
-- `src/schedule_forensics/` — the package (schema, importers, CPM engine).
-- `tests/` — pytest suite; `tests/fixtures/` holds **synthetic** schedules only.
-- `docs/` — `ARCHITECTURE.md`, `REFERENCES.md` (source manifest), `HAZARDS.md`.
-- `scripts/` — local validation harness (`validate_against_msp.py`, Windows/COM).
-- `CLAUDE.md` — the project constitution (the two laws, commandments, hazards,
-  file-ownership manifest). Read it before contributing.
-
-## Platform note
-
-The primary ingestion path (MS Project XML + Primavera XER + native `.mpp` via
-MPXJ-as-subprocess) is cross-platform. COM automation is an **optional
-Windows-only** enhancement, validated locally; it is never the only path.
-
-## Security note (CUI)
-
-Schedule files (`*.mpp`, `*.xer`, `*.xml`, `*.mpx`, `*.csv`) may carry Controlled
-Unclassified Information and are git-ignored. Do not commit real schedule data.
-Only synthetic fixtures under `tests/fixtures/` are tracked.
+1. Read `AUTONOMOUS-BUILD-SETUP-CHECKLIST.md` and decide **where** to run (CUI-sensitive
+   reference files must not go into a cloud/web session).
+2. Open session **A1** on Opus 4.8 (1M context) + Ultracode, pointed at this repo.
+3. Paste the full contents of `AUTONOMOUS-BUILD-PROMPT.md` and follow the gates.
