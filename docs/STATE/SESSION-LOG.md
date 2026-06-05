@@ -106,3 +106,37 @@ this file is the running history.
   `py311` (was 3.12; would have failed to install in this env + the CI 3.11 job).
 - Still at **Gate 2** awaiting the user's `GO` + a few confirmations (DCMA reference, Acumen
   version, `.pbix` handling). Next session A2 = Phase 2 Plan.
+
+---
+
+## A2 — 2026-06-05 — Phase 2: Plan session (BUILD-PLAN + RTM)
+
+- **Session:** A2   **Next session:** A3   **Model/mode:** Opus 4.8 (1M) + Ultracode
+- **Branch:** `claude/intelligent-fermat-3MBqk`
+- **Milestone:** Phase 2 Plan — produce the full `BUILD-PLAN.md` + complete `RTM.md`, then stop.
+  (Gate 2 `GO` received; defaults adopted: DCMA-14 primary + DECM extended, Acumen v8.11.0,
+  `.pbix`→M15.)
+
+### What changed
+- **ADR-0004** (architecture & stack): Python 3.11; pydantic v2 frozen UID-keyed model
+  (minutes→days); MPXJ subprocess + MSPDI/XER importers; pure-Python engine; FastAPI + Jinja2 +
+  HTMX UI with vendored ECharts + Tabulator (air-gapped); pluggable Null/Ollama AI (cloud only on
+  unclassified toggle). **ADR-0005** (parity strategy): parity suite = gate; commit non-CUI golden
+  fixtures (MSPDI + case.json) under `tests/fixtures/golden/`; UID-only matching; deterministic
+  minutes→days; deltas documented + driven to zero.
+- **`BUILD-PLAN.md`** rewritten: full architecture, package layout, and **17 ordered
+  session-sized milestones (M1–M17)** with acceptance criteria + parity gates (M6 SSI, M7/M8
+  Acumen, M9 suite), dependencies, cross-cutting QC, and Definition of Done.
+- **`RTM.md`** completed: every §6.A–§6.G + units + §7 row mapped to module/test/evidence/
+  milestone/status.
+- Overwrote `HANDOFF.md` for A2→A3 (next milestone M1).
+
+### Tests / parity
+- N/A (planning session; no code). CI placeholder still green.
+
+### Decisions / blockers
+- See ADR-0004/0005 + HANDOFF "Decisions". No blockers. Next session A3 builds **M1** (skeleton +
+  real CI + quality gates + egress guard).
+
+### Commit SHAs
+- (added on commit)
