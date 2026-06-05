@@ -15,13 +15,13 @@ name = "schedule-forensics"
 version = "0.0.0"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = { text = "Proprietary — see LICENSE (placeholder)" }
 authors = [{ name = "Schedule Forensics build" }]
 keywords = ["scheduling", "cpm", "forensic", "dcma", "acumen", "nasa", "cui"]
 classifiers = [
   "Private :: Do Not Upload",
-  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.11",
   "Operating System :: OS Independent",
 ]
 
@@ -46,7 +46,7 @@ where = ["src"]
 # --- ruff: lint + format -------------------------------------------------------
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 src = ["src", "tests"]
 
 [tool.ruff.lint]
@@ -54,7 +54,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
 # --- mypy: types ---------------------------------------------------------------
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 strict = true
 files = ["src"]
 warn_unused_configs = true

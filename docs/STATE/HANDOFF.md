@@ -18,9 +18,12 @@ Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude
 - **Intake channel:** Google Drive folder **"Schedule-Forensics — Reference Intake"**
   (id `1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`). Phase 1 pulls from it into `00_REFERENCE_INTAKE/`.
 - **✅ DEPOSIT COMPLETE (as of 17:29Z):** all **27** screenshot files present in the intake
-  folder. Full file→Drive-ID map in `docs/PLAN/INTAKE-MANIFEST.md`. **MISSING: `Project2.mpp`,
-  `Project5.mpp`** (source schedules; needed for §6.B native-parse parity — re-confirm non-CUI
-  when provided).
+  folder. Full file→Drive-ID map in `docs/PLAN/INTAKE-MANIFEST.md`. **`Project2.mpp` + `Project5.mpp` now DEPOSITED**
+  (2026-06-05; user said "Project4" but the folder has Project5 — typo; the correct
+  Project2-vs-Project5 pair; non-CUI sample). Reference + source set now complete.
+- **✅ Build env verified (hosted container):** JDK **21** (MPXJ native-`.mpp` works here), Node
+  **22**, **Python 3.11.15** (`pyproject.toml` retargeted `>=3.11`, matches CI matrix), MPXJ
+  runner present (`MpxjToMspdi.class` + `mpxj-16.2.0.jar`).
 - **✅ SSI parity captured:** `docs/PLAN/SSI-DRIVING-SLACK.md` — focus UID 143
   ("Obtain certificate of occupancy", commercial-construction sample), full golden
   Driving-Slack-by-UID table, methodology, and SSI `Path NN` vs. tool slack-tier note.

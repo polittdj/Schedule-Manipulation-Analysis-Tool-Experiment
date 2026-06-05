@@ -23,9 +23,12 @@ we bundle JS viz assets via a local toolchain. Keep destructive ops (rm -rf, for
   ≥17, ollama reachable) and prints versions, so a session fails fast if the env is wrong.
 
 ## 4. Environment prerequisites (build/run machine)
-- **[action]** **Python 3.12+** + venv (`pip install -e '.[dev]'`).
-- **[action]** **JDK ≥ 17** — required by the vendored MPXJ toolchain to parse native `.mpp`
-  (the only way to hit §6.B parity from the source schedules). Verify `java -version`.
+- **[action]** **Python 3.11+** + venv (`pip install -e '.[dev]'`). *Note: this hosted build
+  container runs **Python 3.11.15**, so `pyproject.toml` targets `>=3.11` (also matches the CI
+  matrix 3.11/3.13). If you standardize the build host on 3.12+, bump it back.*
+- **[verified ✓]** **JDK 21** is present in this hosted container, and the **MPXJ runner is
+  vendored** — so native `.mpp` parsing works here now (no extra install). On any other build
+  host, install **JDK ≥ 17**. Verify `java -version`.
 - **[action]** **Ollama** on `localhost:11434` with a capable model pulled (see §6).
 - **[action, optional]** Windows **MS Project + pywin32** if you want the COM cross-check path
   (Acumen/SSI were produced on **MS Project Online Desktop Client, MSO 2603, Build
@@ -48,10 +51,9 @@ we bundle JS viz assets via a local toolchain. Keep destructive ops (rm -rf, for
   (file + UniqueID + task name) — enforced in code, not left to the model.
 
 ## 7. Phase-1-specific gaps to close before/at Phase 2
-- **[action] Provide `Project2.mpp` and `Project5.mpp`** in the Drive intake folder. Without the
-  source schedules the engine can't *reproduce* the Acumen/SSI golden numbers — only compare the
-  exports to each other. (Re-confirm non-CUI when added; they're the same commercial-construction
-  sample.)
+- **✅ `Project2.mpp` + `Project5.mpp` provided** (2026-06-05). The user said "Project4" but the
+  folder has **Project5** (typo; Project5 is the correct target for all golden numbers). Source
+  set complete.
 - **[action] Power BI `.pbix`:** the 14 MB `NSATDeploymentRevisionAlpha.pbix` can't be parsed
   through the Drive connector in a hosted session (binary/too large to stream into context). To
   use its extra metrics/visuals, either (a) run the relevant build milestone on a machine with the

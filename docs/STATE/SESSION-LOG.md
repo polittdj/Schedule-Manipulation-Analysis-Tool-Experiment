@@ -96,3 +96,13 @@ this file is the running history.
   file reads to sub-agents and committing after each artifact. Next session **A2 = Phase 2 Plan**.
 - HANDOFF set to **awaiting Gate 2 GO**. Commits: 8b2b4b5, e490125, cd64aa9, 9a5a210, 1d229d3,
   ddf51e5 (+ this).
+
+### Addendum 5 (A1) — source `.mpp` deposited + build env verified
+- User deposited the source schedules: **Project2.mpp** + **Project5.mpp** (user wrote
+  "Project4" — typo; no Project4 in folder; Project5 is the correct target for all golden
+  numbers). IDs recorded in `INTAKE-MANIFEST.md`. Reference + source set now COMPLETE.
+- Verified the hosted build container: **JDK 21**, **Node 22**, **Python 3.11.15**, MPXJ runner
+  present → native `.mpp` parsing works here. Retargeted `pyproject.toml` to **`>=3.11`** /
+  `py311` (was 3.12; would have failed to install in this env + the CI 3.11 job).
+- Still at **Gate 2** awaiting the user's `GO` + a few confirmations (DCMA reference, Acumen
+  version, `.pbix` handling). Next session A2 = Phase 2 Plan.

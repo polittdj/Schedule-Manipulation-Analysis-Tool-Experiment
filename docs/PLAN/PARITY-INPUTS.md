@@ -7,6 +7,9 @@ file-derived values against the actual exports during Phase 1 analysis.
 ## Compared schedules (the §6.B pair)
 - **`Project2.mpp` ↔ `Project5.mpp`** — the two MS Project files that were compared.
   The Acumen comparison + per-file exports are labeled **"Project 2-5"** accordingly.
+  **Both deposited 2026-06-05** (IDs in `INTAKE-MANIFEST.md`). *The user's message said
+  "Project4.mpp", but the folder contains Project5.mpp (no Project4) — treated as a typo;
+  Project5 is the correct target. Confirm if wrong.*
 - The SSI driving-path analysis was run **in `Project5.mpp`**.
 - *To confirm in Phase 1 (from file metadata/status dates):* which file is the earlier vs.
   later revision (do not assume from the numbers).

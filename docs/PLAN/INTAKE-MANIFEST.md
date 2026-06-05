@@ -6,8 +6,17 @@ present (= the full screenshot set). Files are non-CUI (data-owner attestation, 
 git-ignored; pull from Drive by ID. `R` = readable via `read_file_content` (text);
 `B` = binary/large → download bytes to disk and parse locally (do not base64 into context).
 
-> **MISSING: `Project2.mpp`, `Project5.mpp`** — the two source schedules (needed for §6.B
-> native-parse parity). Not yet deposited. Re-confirm non-CUI when provided.
+## Source schedules (§6.B native parse) — DEPOSITED 2026-06-05
+| File | Drive ID | Size | Notes |
+|---|---|---|---|
+| Project2.mpp | `1qhrYLEMAAwapunbPdsRAlDn_AJHa7H_C` | 691 KB | modified 2026-05-24 (matches Project2 status date) |
+| Project5.mpp | `1alUm2PePzAR9ylpadBjXw0GCQ5klhaBy` | 807 KB | the SSI/Acumen "Project5" target |
+
+> The user's message said "Project2.mpp and **Project4**.mpp", but the folder contains
+> **Project2.mpp + Project5.mpp** (no Project4) — treated as a typo; **Project5** is the correct
+> target (all golden Acumen/SSI numbers are Project2-vs-Project5). Confirm if wrong.
+> Binary (`B`): download bytes to disk and convert via the MPXJ runner (`java -cp
+> tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <in.mpp> <out.xml>`) → MSPDI for the importer.
 
 ## Golden parity numbers — Acumen Fuse v8.11.0 ("Project 2-5"; Project2 vs Project5)
 | File | Drive ID | RW |
