@@ -1,10 +1,14 @@
-# pyproject.toml — STUB (greenfield, session A1 / Phase 0)
+# pyproject.toml — project definition + QC toolchain (§7)
 #
-# This is a minimal-but-real project definition so the package resolves, tooling
-# (ruff/mypy/pytest/coverage/bandit) has a home, and `pip install -e '.[dev]'`
-# works. Runtime dependencies and the full tool configuration are added during
-# Phase 2 build milestones (see docs/PLAN/BUILD-PLAN.md). Do not add cloud/network
-# client libraries here without an explicit ADR — see the egress guard (§7).
+# Real project definition so the package resolves, tooling (ruff/mypy/pytest/
+# coverage/bandit) has a home, and `pip install -e '.[dev]'` works. The full
+# QC/PM toolchain is wired into CI from milestone M1 (.github/workflows/ci.yml).
+# Runtime dependencies are added per build milestone (see docs/PLAN/BUILD-PLAN.md).
+#
+# CUI guardrail: do NOT add any cloud/remote-HTTP client to `dependencies` without
+# an explicit ADR — the egress guard (src/schedule_forensics/net_guard.py, tested
+# by tests/guards/test_egress.py) fails CI if a forbidden distribution lands in the
+# runtime dependency set.
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -63,7 +67,7 @@ warn_unused_configs = true
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --strict-markers --strict-config"
 
 [tool.coverage.run]
 branch = true
@@ -71,7 +75,9 @@ source = ["schedule_forensics"]
 
 [tool.coverage.report]
 show_missing = true
-# Coverage gates (§7): engine >=85%, overall >=70%. Enforced in CI during Phase 2.
+# Coverage gates (§7): overall >=70% (this `fail_under`); engine >=85% is enforced
+# as a separate CI step (`coverage report --include='*/engine/*' --fail-under=85`).
+fail_under = 70
 
 # --- bandit: security ----------------------------------------------------------
 [tool.bandit]
