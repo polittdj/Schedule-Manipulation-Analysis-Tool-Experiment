@@ -274,3 +274,66 @@ this file is the running history.
 - `ae5a60f` — `.claude/settings.json` (M1 open item resolved).
 - `d09e196` — M2 model + units + tests + pydantic dep.
 - M2 durable state (ADR-0007, RTM, HANDOFF, this entry) — the following commit.
+
+---
+
+## A5 — 2026-06-05 — Phase 2 build, Milestone **M3** (MSPDI + XER importers, synthetic)
+
+- **Session:** A5 (Opus 4.8 1M + Ultracode). **Next:** A6.
+- **Milestone:** M3 — parse hand-authored MSPDI XML + Primavera XER into the M2 `Schedule`. No
+  native `.mpp` yet (M4), no CPM yet (M5).
+
+### Branch reconciliation (same lossless pattern as A3/A4)
+- Handed fresh branch `claude/elegant-thompson-7opMM` at greenfield `882dec3` (bare — no `docs/`).
+  Lineage: A1/A2 → `fermat` (#51, closed); A3/M1 → `johnson` (#52); A4/M2 → `festive-maxwell` (#53,
+  tip `4f8cf24`). Since `882dec3` is the ancestor of `4f8cf24`, **fast-forwarded `elegant-thompson`
+  onto `4f8cf24`** (`git merge --ff-only`, lossless) and built M3 on top. Push only to
+  `elegant-thompson`; its PR supersedes/continues #53.
+- Confirmed model/mode: Opus 4.8 (1M) + Ultracode. The "Workflow" tool Ultracode references is not
+  present in this environment; used `Agent`/`Explore` sub-agents the build prompt prescribes — two
+  parallel Explore agents enumerated the prior build's MSPDI/XER mapping tables from commit `0324ba4`
+  (study-only; clean-room reimplementation, not copied).
+
+### Start-of-session investigation (important)
+- The resume line named A5 + `docs/STATE/HANDOFF.md`, but the assigned branch was bare greenfield.
+  Did **not** fabricate state: traced the real state via `git ls-remote` + the PR list (found the
+  build on `fermat`/`johnson`/`festive-maxwell`), fast-forwarded onto A4's tip. The operator's
+  framing (A5 → M3) was correct; HANDOFF lives on the prior session branch.
+
+### What changed (M3 — commit `88dca6c`)
+- **`importers/_common.py`** — `ImporterError` + deterministic value parsing (ISO-8601 duration →
+  working minutes; XER hours → minutes, sign-preserving; ISO datetime + pre-1985 sentinel → None;
+  float/percent). All conversions `Decimal` + `ROUND_HALF_UP`.
+- **`importers/mspdi.py`** — namespaced MSPDI → `Schedule`; ConstraintType 0-7, link Type 0-3,
+  Resource Type 0-2; primary baseline (Number 0) → baseline dates/duration/cost(BAC); Assignments →
+  resource ids+names; **DTD/ENTITY rejected before parse** (XXE / billion-laughs defense on untrusted
+  CUI files), minimal justified `# nosec B405/B314` (defusedxml considered, rejected per stdlib
+  directive).
+- **`importers/xer.py`** — `%T/%F/%R/%E` tables, fields by name; TASK/TASKPRED/RSRC/TASKRSRC/PROJWBS/
+  PROJECT; `CS_*`/`PR_*`/`RT_*`/`TT_*` maps; dotted WBS path; multi-project selection (most tasks)
+  with cross-project links excluded as out-of-scope; cp1252 fallback decode.
+- **UniqueID is the sole identity**; malformed input fails loudly (dangling/self-loop/dup UID via the
+  model validators → `ImporterError`); in-scope data never silently dropped.
+
+### Tests / parity
+- 92 importer tests (`tests/importers/test_{common,mspdi,xer}.py`) on 2 synthetic non-CUI fixtures
+  (`tests/fixtures/{mspdi,xer}/commercial_construction.*` — every model field, all four link types,
+  milestone/summary/inactive, lead/lag, baseline, resources/assignments, + loud-failure edges).
+- Importers **100% line+branch**; full suite **256 passing, 99.90% overall**. ruff + ruff-format +
+  mypy(strict) + bandit clean; egress guard green (no new deps). Parity: N/A at M3.
+
+### Decisions / blockers
+- **ADR-0008**: clean-room stdlib importers; mapping tables; fail-loud contract; deterministic units;
+  XXE hardening; **source-pending** flags (MSPDI `LinkLag` tenths-of-minute; XER `cstr_type` set;
+  XER `target_*`→baseline + %-from-`phys_complete_pct`) → validate M4/M9.
+- **risks**: R-11 (source-pending mappings); R-12 (CUI reference files are gitignored and don't cross
+  ephemeral sessions — `00_REFERENCE_INTAKE/` is empty in a fresh clone). R-10 marked resolved.
+- **Sandbox caveat:** `pip-audit` flags this image's old `setuptools`/`wheel`/`urllib3` (recent 2026
+  CVEs) — **local-only; CI green** on identical deps (verified on `festive-maxwell` CI run #255). M3
+  added no deps. Local `mypy`/`pip-audit` on PATH are isolated (no pydantic) → use `python -m <tool>`.
+- No blockers for M4 code; the only thing to resolve at M4 start is R-12 (real `.mpp` availability).
+  Next session A6 = **M4** (native `.mpp` via MPXJ + multi-file ≤10 loader).
+
+### Commit SHAs
+- `88dca6c` — feat(m3): MSPDI + XER importers + fixtures + 92 tests.
+- M3 durable state (ADR-0008, RTM B1/B3, risks R-11/R-12, HANDOFF, this entry) — the following commit.

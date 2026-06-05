@@ -1,90 +1,94 @@
 # Handoff — 2026-06-05
 
-This session: A4     Next session: A5
+This session: A5     Next session: A6
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1, M2 complete. Next milestone = M3.** (No gate
+Phase/Gate: **Phase 2 — build. Milestones M1, M2, M3 complete. Next milestone = M4.** (No gate
 ahead until DONE; gates 1 & 2 already passed.)
-Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @
-`claude/festive-maxwell-zIB6D`.
+Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/elegant-thompson-7opMM`.
 
 ## Operator standing directive (persisted 2026-06-05 — honor every session)
 The operator instructed: **"For this and all other decisions, do what you recommend unless it
 violates an original instruction; in those cases find a way to accomplish it. Failure is not an
-option. Maximum effort."** Act on this in every session: make the sensible call and proceed
-autonomously without pausing for confirmation on routine decisions; reserve questions for genuine
-forks or hard guardrails.
+option. Maximum effort."** Make the sensible call and proceed autonomously on routine decisions;
+reserve questions for genuine forks or hard guardrails.
 
-## Branch note (read this — same lossless pattern as A3)
-Each session is handed a fresh branch at the greenfield reset `882dec3`. A1/A2 ran on
-`claude/intelligent-fermat-3MBqk` (PR #51, closed); A3 ran on `claude/intelligent-johnson-18yZD`
-(PR #52, tip `a8cdc03`). **This session (A4)** was assigned `claude/festive-maxwell-zIB6D` at
-`882dec3`; since `882dec3` is the ancestor of `a8cdc03`, the branch was **fast-forwarded onto the
-completed M1 work** (`git merge --ff-only a8cdc03`, lossless) and M2 built on top. **All work now
-lives on `festive-maxwell`; push only there.** The `festive-maxwell` PR supersedes/continues
-PR #52 (close #52 once the new PR is open). If A5 is again handed a new branch at `882dec3`,
-repeat: fast-forward it onto this session's tip, then build M3.
+## Branch note (read this — same lossless pattern as A3/A4)
+Each session is handed a fresh branch at the greenfield reset `882dec3`. Lineage: A1/A2 →
+`fermat` (PR #51, closed); A3/M1 → `johnson` (PR #52); A4/M2 → `festive-maxwell` (PR #53, tip
+`4f8cf24`). **This session (A5)** was assigned `claude/elegant-thompson-7opMM` at `882dec3`; since
+`882dec3` is the ancestor of `4f8cf24`, the branch was **fast-forwarded onto the completed M2 work**
+(`git merge --ff-only origin/claude/festive-maxwell-zIB6D`, lossless) and M3 built on top. **All work
+now lives on `elegant-thompson`; push only there.** Its PR supersedes/continues PR #53 (close #53
+once the new PR is open). If A6 is again handed a new branch at `882dec3`, repeat: fast-forward it
+onto this session's tip (`git merge --ff-only origin/claude/elegant-thompson-7opMM`), then build M4.
 
-Green baseline (verify locally — all green, **163 tests, 99.79% coverage**):
-`pip install -e '.[dev]' && ruff check . && ruff format --check . && mypy &&
-pytest --cov=schedule_forensics --cov-fail-under=70 &&
-coverage report --include='*/schedule_forensics/model/*' &&  # M2: 100%
-coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
-bandit -q -r src && pip-audit --progress-spinner=off`
-Note: a fresh clone needs `git config core.hooksPath .githooks` (the SessionStart hook does this;
-done this session) and `pip install -e '.[dev]'` (pytest-cov etc. are not pre-installed).
+Green baseline (all green — **256 tests, 99.90% coverage; importers 100%**). Verify locally:
+`pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
+python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
+python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
+python -m bandit -q -r src`
+Sandbox notes: (1) a fresh clone needs `git config core.hooksPath .githooks` (the SessionStart hook
+does this) and `pip install -e '.[dev]'`. (2) **Prefer `python -m <tool>`** — this image also has
+isolated `mypy`/`pip-audit`/`ruff` on PATH; the bare `mypy` there can't import pydantic. CI installs
+into one env and uses bare tool names (correct there). (3) **`pip-audit` flags this sandbox's old
+`setuptools`/`wheel`/`urllib3`** (2026 CVEs) — **local-only; CI is green** on the same deps (verified
+on `festive-maxwell` run #255). M3 added **no** dependencies, so nothing to fix; do not chase these.
 
-## Completed this session (M2 — domain model + units; plus the M1 settings open item)
-- **`.claude/settings.json` created** (commit `ae5a60f`) — resolves the M1 open item. The operator
-  gave the specific authorization the classifier required ("Create .claude/settings.json from
-  docs/PLAN/CLAUDE-CODE-SETTINGS.md"); content is verbatim from that doc. SessionStart hook now
-  registered; curated allowlist active; force-push denied.
-- **M2 model** (commit `d09e196`, `src/schedule_forensics/model/`, schema **v2.0.0**): frozen +
-  strict + `extra="forbid"`, hashable, **UniqueID-keyed**. `task.py` (Task — source-of-truth fields
-  for DCMA/EVM/forensics; ConstraintType; intrinsic properties only), `relationship.py`
-  (Relationship, RelationshipType FS/SS/FF/SF, lag/lead; self-loop rejected), `resource.py`,
-  `calendar.py` (8h/Mon-Fri working time, `is_working_day`), `schedule.py` (container; referential
-  integrity at construction; `tasks_by_id`/`task_by_id`/`predecessors_of`/`successors_of`),
-  `_base.py`, `__init__.py` (+ `SCHEMA_VERSION`).
-- **`units.py`** (§3, U1-U3): internal working **minutes** → **days** with **deterministic Decimal
-  rounding** (`ROUND_HALF_UP`, no binary-float drift — improves on prior `minutes/480.0`);
-  `format_days` `"<n> day(s)"`; `format_percent` always signed with `%`; `ratio_to_percent`;
-  `MINUTES_PER_DAY = 480`.
-- **Design rule (carried forward):** the model stores **only source fields**; CPM/float/driving
-  slack/DCMA/EVM are **computed by the engine, never persisted** (so values can't drift). ADR-0007.
-- **pyproject:** `pydantic>=2` runtime dep (egress guard stays green) + `pydantic.mypy` plugin.
-- **Tests:** 124 new (`tests/model/`, `tests/test_units.py`, incl. a schema-freeze guard). model/ +
-  units.py **100%** coverage; full suite 163 passing; ruff/mypy(strict)/bandit/pip-audit clean.
-- **Docs:** ADR-0007, RTM (U1/U2/U3 → ✔, B3 → ◻ model UID-key landed), this HANDOFF, SESSION-LOG A4.
+## Completed this session (M3 — MSPDI + XER importers, synthetic)
+- **`importers/_common.py`** — `ImporterError` + deterministic parsing: ISO-8601 `PnDTnHnMnS` →
+  working minutes; XER hour-counts → minutes (sign-preserving leads); ISO datetime with pre-1985
+  "not set" sentinel → `None`; float/percent. All via `Decimal` + `ROUND_HALF_UP` (no float drift).
+- **`importers/mspdi.py`** (`parse_mspdi`/`parse_mspdi_text`) — namespaced MSPDI → `Schedule`.
+  ConstraintType 0-7, link Type 0-3, Resource Type 0-2; primary baseline (Number 0) → baseline
+  dates + duration + cost(BAC); Assignments → `resource_ids`+`resource_names`. Rejects DTD/ENTITY
+  before parse (XXE / billion-laughs defense); minimal justified `# nosec B405/B314`.
+- **`importers/xer.py`** (`parse_xer`/`parse_xer_text`) — `%T/%F/%R/%E` tables, fields read by name;
+  TASK/TASKPRED/RSRC/TASKRSRC/PROJWBS/PROJECT; `CS_*`/`PR_*`/`RT_*`/`TT_*` maps; dotted PROJWBS WBS
+  path; multi-project selection (most tasks) with cross-project links excluded as out-of-scope;
+  cp1252 fallback decode.
+- **UniqueID is the sole identity**; malformed input fails loudly (`ImporterError`) — dangling/
+  self-loop/dup-UID surfaced from the model validators, never silently dropped.
+- **Tests:** 92 importer tests; 2 synthetic non-CUI fixtures (`tests/fixtures/{mspdi,xer}/
+  commercial_construction.*`). Importers **100% line+branch**; full suite **256 passing, 99.90%**.
+  ruff + ruff-format + mypy(strict) + bandit clean; egress guard green (no new deps).
+- **Docs:** ADR-0008 (mapping tables, source-pending flags, XXE hardening, deferrals); RTM B1/B3
+  updated; risks R-11 (source-pending mappings), R-12 (CUI files don't cross sessions); this HANDOFF;
+  SESSION-LOG A5.
+- **Commits:** `88dca6c` (feat: importers + tests + fixtures) + the M3 durable-state docs commit.
 
-Parity status: N/A through M2 (no metrics yet). Parity suite begins M6 (SSI) / M7-M8 (Acumen) / M9.
+Parity status: N/A through M3 (no metrics yet; synthetic field-coverage only). Numeric parity begins
+M6 (SSI) / M7-M8 (Acumen) / M9. Source-pending mappings (R-11) validated at M4/M9.
 
-## Next session (A5 — Milestone **M3**: MSPDI + XER importers, synthetic)
-- **Milestone:** parse hand-authored **MSPDI XML** and **Primavera XER** fixtures into the M2
-  `Schedule` model. No native `.mpp` yet (that is M4, via MPXJ→MSPDI). No CPM yet.
-- **Acceptance criteria (from BUILD-PLAN M3):**
-  - `src/schedule_forensics/importers/mspdi.py` and `importers/xer.py`: parse synthetic files into
-    `Schedule`/`Task`/`Relationship`/`Resource`/`Calendar`; **all metadata accessible**; tasks
-    keyed by **UniqueID**. Map source units → the model's canonical working **minutes** (MSPDI
-    `<Duration>` ISO-8601 `PTnHnMnS`; XER `target_drtn_hr_cnt` hours × 60), and source enums →
-    `ConstraintType` / `RelationshipType` (MSPDI numeric codes 0-7 / link types 0-3; XER `PR_*`/`CS_*`).
-  - **Field-coverage tests** on hand-authored, non-CUI fixtures under `tests/fixtures/` (the
-    pre-commit guard exempts `tests/fixtures/`): assert each model field is populated from a known
-    input; round-trip UID keying; referential integrity holds; bad input fails loudly (no silent drop).
-  - ≥90% coverage on the new importers; mypy-strict + ruff clean; egress guard still green (use only
-    stdlib `xml.etree`/`csv`-style parsing — **no network, no new remote deps**).
-- **Files:** `src/schedule_forensics/importers/{mspdi,xer}.py`; `tests/importers/test_*.py`;
-  `tests/fixtures/*.xml` + `*.xer`; update RTM (B1 partial — synthetic path; B3) + add an ADR if a
-  mapping decision is non-obvious (e.g. MSPDI lag units, XER constraint codes — flag `source-pending`
-  rather than guessing, per Law 2). Study reference (do not copy): prior build
-  `git show 0324ba4:src/schedule_forensics/importers/msp_xml.py` and `.../xer.py`.
+## Next session (A6 — Milestone **M4**: native `.mpp` ingest via MPXJ + multi-file ≤10)
+- **Milestone (BUILD-PLAN M4):** `importers/mpp_mpxj.py` (subprocess wrapper around the vendored
+  `tools/mpxj` `MpxjToMspdi` → MSPDI text → `parse_mspdi_text`) + `importers/loader.py` (load ≤10
+  files at once, dispatch by extension `.mpp`/`.xml`/`.xer`, UID-keyed, per-file `source_file` for
+  citations). COM path stubbed/`xfail` off-Windows.
+- **Acceptance:** `Project2.mpp` + `Project5.mpp` → MSPDI → model with **144 activities, UID 2–145**
+  each; ≤10 load; metadata intact. **Commit the MSPDI conversions as golden fixtures** (non-CUI,
+  ADR-0005) so later parity (M5-M9) is reproducible without the `.mpp`.
+- **⚠ BLOCKER to check first (R-12):** the real `.mpp` files are **CUI, gitignored, and do NOT
+  travel between sessions** — `00_REFERENCE_INTAKE/` in a fresh clone has only `DEPOSIT-HERE.md`.
+  Step 1 below decides the path.
+- **Files:** `src/schedule_forensics/importers/{mpp_mpxj,loader}.py`; `tests/importers/test_{mpp_mpxj,loader}.py`;
+  `tests/fixtures/` (golden MSPDI from the real conversions, if files present); update RTM B1 → ▣/✔;
+  ADR if the MPXJ invocation/encoding has a non-obvious decision. Study reference (do not copy):
+  `git show 0324ba4:src/schedule_forensics/importers/mpp_mpxj.py` (and `loader.py`) and
+  `tools/mpxj/{setup.sh,MpxjToMspdi.java}`.
 - **First 3 steps:**
-  1. Start-of-session ritual (read this + BUILD-PLAN M3 + RTM B1/B3; fast-forward branch if fresh;
-     `pip install -e '.[dev]'`, `git config core.hooksPath .githooks`; confirm 163-test baseline green).
-  2. TDD: hand-author a small MSPDI fixture exercising every model field, write the field-coverage
-     test, then implement `mspdi.py` to pass it; repeat for XER.
-  3. Run the full local gate; commit; end-of-session ritual; print the A6 resume line.
+  1. Start-of-session ritual (read this + BUILD-PLAN M4 + RTM B1; fast-forward branch if fresh;
+     `pip install -e '.[dev]'`, `git config core.hooksPath .githooks`; confirm 256-test green via
+     `python -m pytest`). Then **check `ls 00_REFERENCE_INTAKE/` for `Project2.mpp`/`Project5.mpp`**
+     and `java -version` (JDK 21 present). If `.mpp` absent → ask the operator to re-deposit them, or
+     build+test `mpp_mpxj.py`/`loader.py` against a generated/synthetic `.mpp` and the existing MSPDI/
+     XER fixtures, deferring the 144-activity parity assertion until the files are available.
+  2. TDD: `loader.py` first (format-dispatch + ≤10 cap + per-file `source_file`), tested against the
+     M3 MSPDI/XER fixtures (format-agnostic, no `.mpp` needed); then `mpp_mpxj.py` wrapping the MPXJ
+     runner (verify the exact `java -cp tools/mpxj/...` invocation; capture stdout MSPDI; UTF-8).
+  3. If `.mpp` present: convert Project2/5, assert 144 acts / UID 2–145, commit golden MSPDI fixtures.
+     Run the full local gate; end-of-session ritual; print the A7 resume line.
 
-Open questions / blockers: none blocking M3. Non-blocking confirmations still carrying safe
-defaults (recorded in ADRs/HANDOFF): MSPDI lag-unit scaling and XER constraint-code mapping should
-be implemented as the prior build had them but flagged `source-pending` until validated against a
-real export (M4/M9). The `.claude/settings.json` item is now resolved.
+Open questions / blockers: **R-12 (real `.mpp` not in this clone)** is the one thing to resolve at
+M4 start — non-blocking for the wrapper/loader code, blocking only for the real-number 144-activity
+assertion + golden MSPDI fixtures. Non-blocking source-pending mappings (R-11) carry safe defaults
+(ADR-0008), validated at M4/M9.

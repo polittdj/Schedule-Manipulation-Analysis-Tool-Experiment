@@ -23,9 +23,9 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## B. Ingestion & parity (non-negotiable)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/mpp_mpxj.py`,`loader.py` | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `INTAKE-MANIFEST.md` | M4 | ◻ toolchain verified (JDK21+MPXJ) |
+| B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/mspdi.py`,`importers/xer.py`,`_common.py` (M3); `importers/mpp_mpxj.py`,`loader.py` (M4) | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `INTAKE-MANIFEST.md`; `tests/importers/*` | M3,M4 | ◻ **M3: MSPDI + XER importers (synthetic, UID-keyed, all metadata; 100% cov, 92 tests)** — the model-ingestion path `.mpp` feeds via MPXJ→MSPDI; native `.mpp` + ≤10 loader at M4 |
 | B2 | Exact match to **Acumen v8.11.0** AND **SSI**; parity suite = gate | `engine/metrics/*`, `tests/parity` | parity suite (UID-keyed) | `PARITY-TARGETS.md`,`SSI-DRIVING-SLACK.md` | M6,M7,M8,M9 | ◻ targets captured |
-| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity) | M2,M4,M11 | ◻ model UID-key + integrity landed (M2); diff M11 |
+| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `importers/*` (M3), `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity); `tests/importers/*` (UID keying) | M2,M3,M4,M11 | ◻ model UID-key + integrity landed (M2); **M3: importers key tasks/resources by UID, links by UID endpoints**; diff M11 |
 
 ## C. CPM, driving slack & path tracing (SSI parity)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
