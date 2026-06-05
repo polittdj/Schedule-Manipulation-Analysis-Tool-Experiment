@@ -25,7 +25,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 |----|-------------|-----------------|------|----------|---|--------|
 | B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/mpp_mpxj.py`,`loader.py` | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `INTAKE-MANIFEST.md` | M4 | ◻ toolchain verified (JDK21+MPXJ) |
 | B2 | Exact match to **Acumen v8.11.0** AND **SSI**; parity suite = gate | `engine/metrics/*`, `tests/parity` | parity suite (UID-keyed) | `PARITY-TARGETS.md`,`SSI-DRIVING-SLACK.md` | M6,M7,M8,M9 | ◻ targets captured |
-| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `engine/diff.py` | diff test asserts UID-only | — | M4,M11 | ☐ |
+| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity) | M2,M4,M11 | ◻ model UID-key + integrity landed (M2); diff M11 |
 
 ## C. CPM, driving slack & path tracing (SSI parity)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
@@ -61,9 +61,9 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## Global units & formatting (§3)
 | ID | Requirement | Module | Test | M | Status |
 |----|-------------|--------|------|---|--------|
-| U1 | Durations in `day`/`days` | `model/units.py` | unit-render test | M2 | ☐ |
-| U2 | Percentages with a sign | `model/units.py` | percent-format test | M2 | ☐ |
-| U3 | Minutes internal → days deterministic rounding (no float drift) | `model/units.py` | rounding/no-drift test | M2 | ☐ |
+| U1 | Durations in `day`/`days` | `model/units.py` (`format_days`/`format_minutes_as_days`) | `tests/test_units.py` (format_days, "<n> day(s)") | M2 | ✔ |
+| U2 | Percentages with a sign | `model/units.py` (`format_percent`/`format_signed_percent`) | `tests/test_units.py` (percent-format) | M2 | ✔ |
+| U3 | Minutes internal → days deterministic rounding (no float drift) | `model/units.py` (`minutes_to_days`, Decimal+ROUND_HALF_UP) | `tests/test_units.py` (rounding/no-drift determinism) | M2 | ✔ |
 
 ## Cross-cutting QC/PM (§7)
 | ID | Requirement | Evidence | M | Status |

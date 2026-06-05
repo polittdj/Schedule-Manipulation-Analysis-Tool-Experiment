@@ -1,91 +1,90 @@
 # Handoff — 2026-06-05
 
-This session: A3     Next session: A4
+This session: A4     Next session: A5
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestone M1 complete. Next milestone = M2.** (No gate ahead
-until DONE; gates 1 & 2 already passed.)
+Phase/Gate: **Phase 2 — build. Milestones M1, M2 complete. Next milestone = M3.** (No gate
+ahead until DONE; gates 1 & 2 already passed.)
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @
-`claude/intelligent-johnson-18yZD`.
+`claude/festive-maxwell-zIB6D`.
 
 ## Operator standing directive (persisted 2026-06-05 — honor every session)
 The operator instructed: **"For this and all other decisions, do what you recommend unless it
 violates an original instruction; in those cases find a way to accomplish it. Failure is not an
 option. Maximum effort."** Act on this in every session: make the sensible call and proceed
-autonomously without pausing for confirmation on routine decisions; reserve questions for
-genuine forks or hard guardrails. **One bound:** do not defeat a Claude Code safety guardrail
-(e.g. the auto-mode classifier that reserves writing `.claude/settings.json` for the operator) —
-that requires the operator's own action, documented below.
-Green baseline: **CI is now the real pipeline** (ruff + ruff-format + mypy-strict + pytest +
-coverage gates + bandit + pip-audit). Verify locally:
+autonomously without pausing for confirmation on routine decisions; reserve questions for genuine
+forks or hard guardrails.
+
+## Branch note (read this — same lossless pattern as A3)
+Each session is handed a fresh branch at the greenfield reset `882dec3`. A1/A2 ran on
+`claude/intelligent-fermat-3MBqk` (PR #51, closed); A3 ran on `claude/intelligent-johnson-18yZD`
+(PR #52, tip `a8cdc03`). **This session (A4)** was assigned `claude/festive-maxwell-zIB6D` at
+`882dec3`; since `882dec3` is the ancestor of `a8cdc03`, the branch was **fast-forwarded onto the
+completed M1 work** (`git merge --ff-only a8cdc03`, lossless) and M2 built on top. **All work now
+lives on `festive-maxwell`; push only there.** The `festive-maxwell` PR supersedes/continues
+PR #52 (close #52 once the new PR is open). If A5 is again handed a new branch at `882dec3`,
+repeat: fast-forward it onto this session's tip, then build M3.
+
+Green baseline (verify locally — all green, **163 tests, 99.79% coverage**):
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && mypy &&
 pytest --cov=schedule_forensics --cov-fail-under=70 &&
+coverage report --include='*/schedule_forensics/model/*' &&  # M2: 100%
 coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
-bandit -q -r src && pip-audit --progress-spinner=off`  → all green (39 tests, 99% coverage).
+bandit -q -r src && pip-audit --progress-spinner=off`
+Note: a fresh clone needs `git config core.hooksPath .githooks` (the SessionStart hook does this;
+done this session) and `pip install -e '.[dev]'` (pytest-cov etc. are not pre-installed).
 
-## Branch note (read this)
-A1/A2 ran on `claude/intelligent-fermat-3MBqk` (PR #51, tip `9ffe53e`). This session was
-assigned the fresh branch `claude/intelligent-johnson-18yZD` (at greenfield `882dec3`). Since
-`882dec3` is the ancestor of `9ffe53e`, `johnson` was **fast-forwarded onto the completed
-plan** (lossless) and M1 built on top. **All work now lives on `johnson`; push only there.**
-The `johnson` PR supersedes/continues PR #51 (recommend closing #51 once the `johnson` PR is
-open). Details: ADR-0006 §6, SESSION-LOG A3.
+## Completed this session (M2 — domain model + units; plus the M1 settings open item)
+- **`.claude/settings.json` created** (commit `ae5a60f`) — resolves the M1 open item. The operator
+  gave the specific authorization the classifier required ("Create .claude/settings.json from
+  docs/PLAN/CLAUDE-CODE-SETTINGS.md"); content is verbatim from that doc. SessionStart hook now
+  registered; curated allowlist active; force-push denied.
+- **M2 model** (commit `d09e196`, `src/schedule_forensics/model/`, schema **v2.0.0**): frozen +
+  strict + `extra="forbid"`, hashable, **UniqueID-keyed**. `task.py` (Task — source-of-truth fields
+  for DCMA/EVM/forensics; ConstraintType; intrinsic properties only), `relationship.py`
+  (Relationship, RelationshipType FS/SS/FF/SF, lag/lead; self-loop rejected), `resource.py`,
+  `calendar.py` (8h/Mon-Fri working time, `is_working_day`), `schedule.py` (container; referential
+  integrity at construction; `tasks_by_id`/`task_by_id`/`predecessors_of`/`successors_of`),
+  `_base.py`, `__init__.py` (+ `SCHEMA_VERSION`).
+- **`units.py`** (§3, U1-U3): internal working **minutes** → **days** with **deterministic Decimal
+  rounding** (`ROUND_HALF_UP`, no binary-float drift — improves on prior `minutes/480.0`);
+  `format_days` `"<n> day(s)"`; `format_percent` always signed with `%`; `ratio_to_percent`;
+  `MINUTES_PER_DAY = 480`.
+- **Design rule (carried forward):** the model stores **only source fields**; CPM/float/driving
+  slack/DCMA/EVM are **computed by the engine, never persisted** (so values can't drift). ADR-0007.
+- **pyproject:** `pydantic>=2` runtime dep (egress guard stays green) + `pydantic.mypy` plugin.
+- **Tests:** 124 new (`tests/model/`, `tests/test_units.py`, incl. a schema-freeze guard). model/ +
+  units.py **100%** coverage; full suite 163 passing; ruff/mypy(strict)/bandit/pip-audit clean.
+- **Docs:** ADR-0007, RTM (U1/U2/U3 → ✔, B3 → ◻ model UID-key landed), this HANDOFF, SESSION-LOG A4.
 
-## Completed this session (M1 — skeleton + real CI + quality gates + egress guard)
-- Real package layout under `src/schedule_forensics/`: `model/ importers/ engine/
-  engine/metrics/ ai/ web/ reports/` stubs (each docstring'd, `__all__`), plus `net_guard.py`
-  and `logging_redaction.py`. `import schedule_forensics` and every layer import cleanly.
-- **`net_guard.py`** — egress guard (Law 1). Checks the declared *runtime* dependency closure
-  for forbidden remote-HTTP/cloud distributions + asserts no cloud SDK is importable;
-  `assert_local_only()` fail-closed; `is_loopback_host()` for the future Ollama client. Rationale
-  (false-positive avoidance) in ADR-0006 §1.
-- **`logging_redaction.py`** — structured JSON logs, CUI-redacted, with an inert/idempotent
-  `<file:mpp#hash>` token; loopback URLs preserved.
-- **CI** (`.github/workflows/ci.yml`): real pipeline, same status contexts (`test (3.11)`,
-  `test (3.13)`, `check`). Overall coverage gate ≥70%, **engine gate ≥85%** as a dedicated step.
-- **CUI hooks:** `.githooks/pre-commit` (blocks schedule/Office/pickle commits; active via
-  `core.hooksPath`) + `.claude/hooks/session_start.sh` (toolchain verify + re-activates guard).
-- Tests: `tests/test_smoke.py`, `tests/guards/test_egress.py`, `tests/test_logging_redaction.py`
-  (39 tests; net_guard 99%, logging_redaction 100%).
-- Docs: ADR-0006, RTM rows A1/G1/Q1–Q4/Q7 updated, risks R-01 refreshed, this HANDOFF +
-  SESSION-LOG A3.
+Parity status: N/A through M2 (no metrics yet). Parity suite begins M6 (SSI) / M7-M8 (Acumen) / M9.
 
-Parity status: N/A at M1 (no metrics yet). Parity suite begins M6 (SSI) / M7–M8 (Acumen) / M9.
-
-## ⚠ One open item requiring USER action (not a blocker)
-`.claude/settings.json` (curated permission allowlist + SessionStart hook **registration**)
-cannot be created by the agent. The Claude Code auto-mode classifier blocks **any** agent write
-to that path — both the full file and a hooks-only variant — as self-modification, and it
-explicitly states a general "do what you recommend" is **not** the specific authorization
-required (two attempts made A3; both denied). This is a deliberate guardrail; the agent will not
-bypass it. It is **not essential** — M1's CI, egress guard, and git pre-commit guard all work
-without it; only the SessionStart auto-run is unavailable until the file exists.
-
-**To resolve, the operator does ONE of:**
-1. Paste the contents of **`docs/PLAN/CLAUDE-CODE-SETTINGS.md`** into `.claude/settings.json`
-   yourself (simplest), or
-2. Add a settings permission rule allowing the agent to write `.claude/settings.json`, then tell
-   a session to create it, or
-3. Give a future session the **specific** instruction: *"Create `.claude/settings.json` from
-   `docs/PLAN/CLAUDE-CODE-SETTINGS.md`."* (specific authorization may satisfy the classifier).
-
-## Next session (A4 — Milestone **M2**: domain model + units)
-- **Milestone:** pydantic v2 frozen, UniqueID-keyed domain model + `units.py`. No CPM yet.
-- **Acceptance criteria (from BUILD-PLAN M2):**
-  - `model/schedule.py`, `task.py`, `relationship.py`, `resource.py`, `calendar.py` — pydantic v2
-    **frozen** models; Schedule keyed by **UniqueID** (never row id/name); all schedule metadata
-    representable.
-  - `model/units.py` — internal **minutes** → **days** with deterministic rounding (no binary-float
-    drift); duration renders as `"<n> day(s)"`; percentages render **with a sign** (RTM U1–U3).
-  - ≥90% unit coverage on `model/` + `units.py`; mypy-strict clean; ruff clean.
-  - Add `pydantic>=2` to `[project].dependencies` — the egress guard must still pass (pydantic is
-    not forbidden; confirm `pip-audit` stays green).
-- **Files:** `src/schedule_forensics/model/{schedule,task,relationship,resource,calendar,units}.py`;
-  `tests/model/test_*.py`; update `pyproject.toml` (runtime dep) and RTM (U1–U3, partial B3/C1).
+## Next session (A5 — Milestone **M3**: MSPDI + XER importers, synthetic)
+- **Milestone:** parse hand-authored **MSPDI XML** and **Primavera XER** fixtures into the M2
+  `Schedule` model. No native `.mpp` yet (that is M4, via MPXJ→MSPDI). No CPM yet.
+- **Acceptance criteria (from BUILD-PLAN M3):**
+  - `src/schedule_forensics/importers/mspdi.py` and `importers/xer.py`: parse synthetic files into
+    `Schedule`/`Task`/`Relationship`/`Resource`/`Calendar`; **all metadata accessible**; tasks
+    keyed by **UniqueID**. Map source units → the model's canonical working **minutes** (MSPDI
+    `<Duration>` ISO-8601 `PTnHnMnS`; XER `target_drtn_hr_cnt` hours × 60), and source enums →
+    `ConstraintType` / `RelationshipType` (MSPDI numeric codes 0-7 / link types 0-3; XER `PR_*`/`CS_*`).
+  - **Field-coverage tests** on hand-authored, non-CUI fixtures under `tests/fixtures/` (the
+    pre-commit guard exempts `tests/fixtures/`): assert each model field is populated from a known
+    input; round-trip UID keying; referential integrity holds; bad input fails loudly (no silent drop).
+  - ≥90% coverage on the new importers; mypy-strict + ruff clean; egress guard still green (use only
+    stdlib `xml.etree`/`csv`-style parsing — **no network, no new remote deps**).
+- **Files:** `src/schedule_forensics/importers/{mspdi,xer}.py`; `tests/importers/test_*.py`;
+  `tests/fixtures/*.xml` + `*.xer`; update RTM (B1 partial — synthetic path; B3) + add an ADR if a
+  mapping decision is non-obvious (e.g. MSPDI lag units, XER constraint codes — flag `source-pending`
+  rather than guessing, per Law 2). Study reference (do not copy): prior build
+  `git show 0324ba4:src/schedule_forensics/importers/msp_xml.py` and `.../xer.py`.
 - **First 3 steps:**
-  1. Start-of-session ritual (read this + BUILD-PLAN M2 + RTM U1–U3; confirm branch/baseline green).
-  2. TDD `units.py` first (minutes↔days rounding table + signed-percent), then the frozen models.
-  3. Wire `pydantic>=2`; run the full local gate; commit; end-of-session ritual.
+  1. Start-of-session ritual (read this + BUILD-PLAN M3 + RTM B1/B3; fast-forward branch if fresh;
+     `pip install -e '.[dev]'`, `git config core.hooksPath .githooks`; confirm 163-test baseline green).
+  2. TDD: hand-author a small MSPDI fixture exercising every model field, write the field-coverage
+     test, then implement `mspdi.py` to pass it; repeat for XER.
+  3. Run the full local gate; commit; end-of-session ritual; print the A6 resume line.
 
-Open questions / blockers: none blocking M2. The `.claude/settings.json` item above is a
-convenience awaiting user approval, not a blocker. Pending non-blocking confirmations (DCMA
-scope, Acumen version) retain the safe defaults recorded in ADR/HANDOFF (A2).
+Open questions / blockers: none blocking M3. Non-blocking confirmations still carrying safe
+defaults (recorded in ADRs/HANDOFF): MSPDI lag-unit scaling and XER constraint-code mapping should
+be implemented as the prior build had them but flagged `source-pending` until validated against a
+real export (M4/M9). The `.claude/settings.json` item is now resolved.

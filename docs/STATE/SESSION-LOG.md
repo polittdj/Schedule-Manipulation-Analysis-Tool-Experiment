@@ -214,3 +214,63 @@ this file is the running history.
   the auto-mode classifier denied both as self-modification and stated a general "do what you
   recommend" is not the specific authorization it requires. Did **not** bypass the guardrail. Left
   for the operator (HANDOFF lists the three resolution paths). Not a blocker for M2.
+
+---
+
+## A4 — 2026-06-05 — Phase 2 build, Milestone **M2** (domain model + units)
+
+- **Session:** A4 (Opus 4.8 1M + Ultracode). **Next:** A5.
+- **Milestone:** M2 — the trust-root pydantic v2 domain model + the §3 units boundary. Also closed
+  the M1 `.claude/settings.json` open item. No CPM/metrics yet.
+
+### Branch reconciliation (same lossless pattern as A3)
+- Handed the fresh branch `claude/festive-maxwell-zIB6D` at greenfield `882dec3` (no plan/work on
+  it). A1/A2 → PR #51 (`fermat`, closed); A3 → PR #52 (`johnson`, tip `a8cdc03`, M1). Since
+  `882dec3` is the ancestor of `a8cdc03`, **fast-forwarded `festive-maxwell` onto `a8cdc03`**
+  (`git merge --ff-only`, lossless) and built M2 on top. Push only to `festive-maxwell`; its PR
+  supersedes/continues #52.
+- Confirmed model/mode: Opus 4.8 (1M) + Ultracode. The "Workflow" tool Ultracode references is not
+  present in this environment; used the `Agent`/`Explore` sub-agents the build prompt prescribes
+  (parallel fan-out: prior-build model enumeration + reference-doc field requirements).
+
+### Start-of-session investigation (important)
+- The resume line named A4 + `docs/STATE/HANDOFF.md`, but the assigned branch was bare greenfield
+  (no `docs/`). Did **not** fabricate state: traced the real state via `git ls-remote` + the PR
+  list — found A1-A3's work on the `fermat`/`johnson` branches (PRs #51/#52) and fast-forwarded
+  onto it. The user's framing (A4 → M2) was correct; HANDOFF lives on the prior session branch.
+
+### `.claude/settings.json` (M1 open item) — resolved
+- Created from `docs/PLAN/CLAUDE-CODE-SETTINGS.md` verbatim. The operator's **specific** instruction
+  ("Create .claude/settings.json from docs/PLAN/CLAUDE-CODE-SETTINGS.md") satisfied the auto-mode
+  classifier that denied A3's two attempts (HANDOFF A3 predicted option 3 would). Commit `ae5a60f`.
+
+### What changed (M2 — commit `d09e196`)
+- **Model** (`src/schedule_forensics/model/`, schema **v2.0.0**, frozen+strict+`extra="forbid"`,
+  hashable, UID-keyed): `task.py` (Task, ConstraintType, intrinsic properties only),
+  `relationship.py` (Relationship, RelationshipType, lead/lag, self-loop rejected), `resource.py`,
+  `calendar.py` (`is_working_day`, `working_days_per_week`), `schedule.py` (referential integrity;
+  `tasks_by_id`/`task_by_id`/`predecessors_of`/`successors_of`), `_base.py`, `__init__` (+
+  `SCHEMA_VERSION`).
+- **`units.py`** (U1-U3): minutes→days via **Decimal + ROUND_HALF_UP** (deterministic, no float
+  drift — improves on prior `minutes/480.0`); `format_days` `"<n> day(s)"`; `format_percent`
+  (always `%`, signed variants); `ratio_to_percent`; `MINUTES_PER_DAY = 480`.
+- **Design rule:** store source fields only; engine computes derivatives (so nothing persisted can
+  drift). The prior build's proven approach, confirmed by sub-agent enumeration of commit `0324ba4`.
+- **pyproject:** `pydantic>=2` runtime dep + `pydantic.mypy` plugin.
+
+### Tests / parity
+- 124 new tests (`tests/model/` + `tests/test_units.py`, incl. schema-freeze guard). model/ +
+  units.py **100%** coverage. Full suite **163 passing, 99.79% overall**. ruff + mypy(strict) +
+  bandit clean; pip-audit no known vulnerabilities; egress guard green with pydantic declared.
+  Parity: N/A at M2.
+
+### Decisions / blockers
+- ADR-0007 records: frozen+strict+closed models, source-only fields, UID identity, curated
+  change-controlled field set (no `extra` bag), deterministic Decimal day/percent boundary,
+  pydantic as the first runtime dep.
+- No blockers for M3. Next session A5 = **M3** (MSPDI + XER importers, synthetic fixtures).
+
+### Commit SHAs
+- `ae5a60f` — `.claude/settings.json` (M1 open item resolved).
+- `d09e196` — M2 model + units + tests + pydantic dep.
+- M2 durable state (ADR-0007, RTM, HANDOFF, this entry) — the following commit.
