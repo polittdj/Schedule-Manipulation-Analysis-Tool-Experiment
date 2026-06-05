@@ -71,3 +71,14 @@ this file is the running history.
 - **Deposit verification:** Drive connector sees only **3** of ~28 files in the intake folder;
   parity-critical files not yet visible (upload still propagating or placed elsewhere). Phase 1
   (A2) must re-verify the full set before analysis. No analysis performed on the partial set.
+
+### Addendum 3 (A1) — deposit completed; Phase 1 started
+- Upload completed: **27 files** present (full screenshot set); file→Drive-ID map recorded in
+  `docs/PLAN/INTAKE-MANIFEST.md`. Still missing: `Project2.mpp`, `Project5.mpp`.
+- **Analyzed the two SSI UID-143 exports** → `docs/PLAN/SSI-DRIVING-SLACK.md`: focus task UID
+  143 "Obtain certificate of occupancy" (commercial-construction sample, non-CUI); captured the
+  full golden Driving-Slack-by-UniqueID table + column schema + methodology. This is the §6.C
+  parity gold.
+- Remaining Phase 1 (metric catalog, Acumen parity targets, `.pbix`, setup direction) launched
+  via parallel Explore sub-agents reading from Drive. Will synthesize their findings into
+  `docs/PLAN/` then set HANDOFF to `awaiting Gate 2 GO`.

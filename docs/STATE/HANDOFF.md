@@ -2,7 +2,7 @@
 
 This session: A1     Next session: A2
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Gate 1 PASSED — `GO` received 2026-06-05.** Phase 1 pending **full deposit**.
+Phase/Gate: **Gate 1 PASSED.** Phase 1 **IN PROGRESS** (deposit complete; SSI parity captured).
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/intelligent-fermat-3MBqk`
 
 ## Gate 1 outcome (A1)
@@ -17,12 +17,17 @@ Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude
   **secondary >0 ≤10 days**, **tertiary >10 ≤20 days** (user-configurable per project).
 - **Intake channel:** Google Drive folder **"Schedule-Forensics — Reference Intake"**
   (id `1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`). Phase 1 pulls from it into `00_REFERENCE_INTAKE/`.
-- **⚠️ DEPOSIT INCOMPLETE (as of 17:21Z):** the Drive connector sees **only 3** files in the
-  folder — `NASA Metrics_Complete_20260423.aft`, `PPC-Handbook.pdf`,
-  `DeltekPPMEncryptionConversionUtilityGuide.pdf`. Title/recency search finds **none** of the
-  parity-critical files (Acumen `Project 2-5` exports, `SSI UID_143`, `.pbix`, the two `.mpp`,
-  `DeltekAcumen811MetricDevelopersGuide.pdf`, `DeltekDECMMetricsOct2025.xlsx`). Either upload
-  still propagating or files placed outside the folder. **Re-verify before analysis.**
+- **✅ DEPOSIT COMPLETE (as of 17:29Z):** all **27** screenshot files present in the intake
+  folder. Full file→Drive-ID map in `docs/PLAN/INTAKE-MANIFEST.md`. **MISSING: `Project2.mpp`,
+  `Project5.mpp`** (source schedules; needed for §6.B native-parse parity — re-confirm non-CUI
+  when provided).
+- **✅ SSI parity captured:** `docs/PLAN/SSI-DRIVING-SLACK.md` — focus UID 143
+  ("Obtain certificate of occupancy", commercial-construction sample), full golden
+  Driving-Slack-by-UID table, methodology, and SSI `Path NN` vs. tool slack-tier note.
+- **Phase 1 REMAINING:** metric catalog + formulas (from `DeltekAcumen811MetricDevelopersGuide.pdf`
+  + `DeltekDECMMetricsOct2025.xlsx` + `.aft`) → `docs/PLAN/METRICS-CATALOG.md`; Acumen golden
+  parity targets (Project2 vs Project5) → `docs/PLAN/PARITY-TARGETS.md`; `.pbix` metrics/visuals;
+  the written setup direction → `docs/PLAN/SETUP-DIRECTION.md`. Then HANDOFF → `awaiting Gate 2 GO`.
 - **Binary-file note:** `.aft` (Acumen) and `.pbix` are not text-extractable via the Drive
   `read_file_content` path and are too large to base64 into context. Plan: pull bytes to the
   container disk for local parsing, OR source metric formulas from the readable
