@@ -82,3 +82,17 @@ this file is the running history.
 - Remaining Phase 1 (metric catalog, Acumen parity targets, `.pbix`, setup direction) launched
   via parallel Explore sub-agents reading from Drive. Will synthesize their findings into
   `docs/PLAN/` then set HANDOFF to `awaiting Gate 2 GO`.
+
+### Addendum 4 (A1) — Phase 1 COMPLETE → Gate 2
+- Both background sub-agents returned. Synthesized into durable docs:
+  `docs/PLAN/PARITY-TARGETS.md` (Acumen golden: P2 vs P5, DCMA score 57→49, BEI 0.74→0.59,
+  Missed 18→37, −99-day finish slip) and `docs/PLAN/METRICS-CATALOG.md` (DCMA-14 ribbon +
+  DECM V7.0 143-metric formulas + Acumen engine + EVM indices + cost fields).
+- Wrote `docs/PLAN/SETUP-DIRECTION.md` (Gate 2 deliverable) and updated `docs/PLAN/RTM.md`
+  with the Phase-1 evidence block.
+- `.pbix` deep analysis deferred to Phase 2 (14 MB binary; can't stream via Drive connector).
+- **Note on session discipline:** A1 ended up covering **both Phase 0 and Phase 1** (the user
+  drove continuously with GO/rescan/continue). Kept main context lean by delegating the heavy
+  file reads to sub-agents and committing after each artifact. Next session **A2 = Phase 2 Plan**.
+- HANDOFF set to **awaiting Gate 2 GO**. Commits: 8b2b4b5, e490125, cd64aa9, 9a5a210, 1d229d3,
+  ddf51e5 (+ this).

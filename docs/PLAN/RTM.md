@@ -8,6 +8,17 @@
 Status legend: ☐ Not started · ◻ In progress · ▣ Implemented · ✔ Implemented + Tested +
 Validated.
 
+## Phase 1 evidence captured (design inputs — not yet implemented)
+- **Metric formulas/definitions** (A5, E1): `docs/PLAN/METRICS-CATALOG.md` — DCMA-14 ribbon +
+  DECM V7.0 (143 metrics) + Acumen engine + EVM indices + cost fields.
+- **Acumen golden parity targets** (B2): `docs/PLAN/PARITY-TARGETS.md` — Project2 vs Project5.
+- **SSI driving-slack golden + methodology** (C1/C2/C3): `docs/PLAN/SSI-DRIVING-SLACK.md` —
+  focus UID 143, full driving-slack-by-UID table, thresholds.
+- **Confirmed inputs** (B1/B3/units): `docs/PLAN/PARITY-INPUTS.md`. **Intake**:
+  `docs/PLAN/INTAKE-MANIFEST.md`. **Setup**: `docs/PLAN/SETUP-DIRECTION.md`.
+- Outstanding inputs: the two source `.mpp` (needed to *reproduce* B2/C2 numbers) and the
+  `.pbix` visuals/measures (A4 reference) — both deferred to Phase 2 per SETUP-DIRECTION.
+
 ## A. Platform, UX, and packaging
 
 | ID | Requirement | Design | Module | Test | Parity/Evidence | Status |

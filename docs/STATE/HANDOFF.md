@@ -2,7 +2,7 @@
 
 This session: A1     Next session: A2
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Gate 1 PASSED.** Phase 1 **IN PROGRESS** (deposit complete; SSI parity captured).
+Phase/Gate: **Phase 1 COMPLETE — awaiting Gate 2 GO.** (Phase 0 + Phase 1 both done in A1.)
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/intelligent-fermat-3MBqk`
 
 ## Gate 1 outcome (A1)
@@ -29,9 +29,11 @@ Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude
   Schedule-Quality summary, DCMA-14 ribbon (score 57→49, BEI 0.74→0.59, Missed 18→37), baseline
   compliance/half-step-delay, Logic Analysis (P2 only, 176 rels), SN change metrics, and the top
   manipulation/trend deltas.
-- **Phase 1 REMAINING:** metric catalog + formulas → `docs/PLAN/METRICS-CATALOG.md` (extraction
-  agent running); `.pbix` metrics/visuals (binary — needs local unzip); the written setup
-  direction → `docs/PLAN/SETUP-DIRECTION.md`. Then HANDOFF → `awaiting Gate 2 GO`.
+- **✅ Metric catalog captured:** `docs/PLAN/METRICS-CATALOG.md` (DCMA-14 ribbon + DECM V7.0 +
+  Acumen engine + EVM indices + cost fields).
+- **✅ Setup direction written:** `docs/PLAN/SETUP-DIRECTION.md` (Gate 2 deliverable).
+- **Deferred to Phase 2:** `.pbix` metrics/visuals (14 MB binary — can't stream via the Drive
+  connector; needs local unzip or exported DAX+screenshots — see SETUP-DIRECTION §7).
 - **Binary-file note:** `.aft` (Acumen) and `.pbix` are not text-extractable via the Drive
   `read_file_content` path and are too large to base64 into context. Plan: pull bytes to the
   container disk for local parsing, OR source metric formulas from the readable
@@ -53,8 +55,11 @@ docs exist). No application code yet. Verify locally: `python -c "import schedul
 
 Parity status: N/A (no engine yet; golden exports not yet deposited).
 
-## GAP LIST — what I still need to guarantee success
-**Blocking Gate 1 (the user must deposit / decide):**
+## GAP LIST (historical — Gate 1)
+> Items 1–7 below were the Gate-1 blockers; **all now satisfied** (27 files deposited +
+> non-CUI attestation). **Live outstanding items moved to `docs/PLAN/SETUP-DIRECTION.md` §7**
+> (mainly: provide the `.mpp` pair, pull an Ollama model, JDK 17/Python 3.12 on the build host).
+**Blocking Gate 1 (the user must deposit / decide) — RESOLVED:**
 1. **`.pbix`** metrics/visuals reference (or sanitized DAX/measure text + visual screenshots).
 2. **The two compared `.mpp`** files (the exact pair behind the golden numbers).
 3. **Acumen Fuse v8.11.0**: the **comparison output** + **raw per-file exports** (golden numbers).
@@ -78,41 +83,28 @@ Parity status: N/A (no engine yet; golden exports not yet deposited).
     wholesale). Also: verify its `commercial_construction_p5` golden fixture (in history) is a
     public/non-CUI sample.
 
-## Next session (A2 — Phase 1; Gate 1 GO already received)
-- **Precondition:** the Drive intake folder must be **fully populated** (see DEPOSIT
-  INCOMPLETE note above). If the connector still sees only a partial set, ask the user to
-  confirm all files finished uploading **into** folder `1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV`
-  before analyzing. Do not analyze a partial set as if complete.
-- **Milestone:** Phase 1 — verify deposits, analyze references, write the setup direction →
-  set HANDOFF to `awaiting Gate 2 GO`, STOP. (One milestone; do not start Phase 2 planning.)
-- **Confirmed inputs:** see `docs/PLAN/PARITY-INPUTS.md` (target UID 143, pair, thresholds,
-  versions, CUI scope) — already captured; do not re-ask the user for these.
-- **Acceptance criteria:**
-  - Every deposited file verified present, readable, and **confirmed non-CUI**; anything
-    missing/ambiguous/possibly-CUI is listed and the user is asked **before** reading it.
-  - Extracted into `docs/PLAN/`: the full Acumen metric/measure catalog **with formulas**;
-    the `.pbix` metric set + example visuals; the SSI **driving-slack methodology**; and the
-    **exact target numbers** the parity suite must reproduce (with their source citations).
-  - A written **setup direction**: every Claude Code setting/permission/hook/add-on/env
-    prerequisite/mode to enable for an autonomous, compliant build (baseline =
-    `AUTONOMOUS-BUILD-SETUP-CHECKLIST.md`) plus anything specific to what was found.
-  - HANDOFF updated to `awaiting Gate 2 GO`; SESSION-LOG appended (A2→A3).
-- **Files to create/modify:** `docs/PLAN/METRICS-CATALOG.md`, `docs/PLAN/PARITY-TARGETS.md`,
-  `docs/PLAN/SSI-DRIVING-SLACK.md`, `docs/PLAN/SETUP-DIRECTION.md`; update
-  `docs/PLAN/RTM.md`, `docs/STATE/HANDOFF.md`, `docs/STATE/SESSION-LOG.md`, `docs/risks.md`.
+## Next session (A2 — Phase 2 **Plan session**; runs only after **Gate 2 GO**)
+- **Precondition:** Gate 2 GO. Ideally the `.mpp` pair is in the Drive folder by then and an
+  Ollama model is pulled (SETUP-DIRECTION §7), but the Plan session itself only writes docs.
+- **Milestone:** Produce the **full** `docs/PLAN/BUILD-PLAN.md` (architecture + ordered,
+  session-sized milestones) and the **complete** `docs/PLAN/RTM.md` (every §6.A–§6.G row with
+  design + module + test + parity-evidence plan). Then end-of-session ritual and STOP. **Do not
+  start building** in the Plan session.
+- **Design inputs already on disk** (read these, don't re-derive): `METRICS-CATALOG.md`,
+  `PARITY-TARGETS.md`, `SSI-DRIVING-SLACK.md`, `PARITY-INPUTS.md`, `INTAKE-MANIFEST.md`,
+  `SETUP-DIRECTION.md`; reference architecture in git history (PR #47 head `0324ba4`) — study,
+  don't lift wholesale.
 - **First 3 concrete steps:**
-  1. Run the start-of-session ritual (read this file + BUILD-PLAN + RTM + PARITY-INPUTS;
+  1. Start-of-session ritual (read this file + BUILD-PLAN + RTM + the Phase-1 docs above;
      confirm model/branch; confirm green baseline).
-  2. List the Drive intake folder (`mcp__Google_Drive__search_files`, `parentId =
-     '1kb24_-j73V5QSK2FC6FjjmsDvKW6SccV'`); compare against the expected ~28-file inventory.
-     If incomplete, ask the user to finish the upload before proceeding. Pull readable files
-     (PDF/xlsx/docx) via `read_file_content`; pull binaries (`.aft`, `.pbix`, `.mpp`) as bytes
-     to the container disk under `00_REFERENCE_INTAKE/` for local parsing.
-  3. Spawn parallel **Explore** sub-agents to extract: the Acumen metric catalog + formulas
-     (primary source: `DeltekAcumen811MetricDevelopersGuide.pdf`, `DeltekDECMMetricsOct2025.xlsx`,
-     the `.aft` libraries); the SSI driving-slack methodology + the **UID-143** target numbers;
-     the `.pbix` metrics/visuals. Record in `docs/PLAN/METRICS-CATALOG.md`,
-     `docs/PLAN/PARITY-TARGETS.md`, `docs/PLAN/SSI-DRIVING-SLACK.md`.
+  2. Re-list the Drive folder; if the `.mpp` pair has been added, pull `Project2.mpp` /
+     `Project5.mpp` to disk for the §6.B/C engine milestones (re-confirm non-CUI).
+  3. Draft the architecture + the ordered milestone list in `BUILD-PLAN.md`; expand `RTM.md`
+     to full design/test/parity-evidence per row. Then stop.
 
-Open questions / blockers: **none blocking the gate.** Awaiting user deposits + `GO` (Gate 1).
-Key decision to confirm: CUI siting (gap #7) and reuse policy (gap #13).
+Open questions / blockers to confirm with the user (non-blocking for the Plan session):
+- Provide `Project2.mpp` + `Project5.mpp` (SETUP-DIRECTION §7) — needed to *reproduce* parity.
+- Authoritative DCMA reference = classic **DCMA-14** (default) vs the broader DECM V7.0?
+- Confirm Acumen Fuse parity version **v8.11.0**.
+- `.pbix` handling (local unzip vs exported DAX+screenshots) for the UI/visuals milestone.
+- Reuse policy for the prior build (study-only, confirmed implicitly) + NASA theme assets.
