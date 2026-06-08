@@ -22,6 +22,17 @@ from schedule_forensics.engine.dcma_audit import (
     ScheduleAudit,
     audit_schedule,
 )
+from schedule_forensics.engine.diff import (
+    FieldDelta,
+    TaskDiff,
+    VersionDiff,
+    diff_versions,
+)
+from schedule_forensics.engine.manipulation import (
+    TrendPoint,
+    detect_manipulation,
+    trend_across_versions,
+)
 from schedule_forensics.engine.driving_slack import (
     DEFAULT_SECONDARY_MAX_DAYS,
     DEFAULT_TERTIARY_MAX_DAYS,
@@ -53,22 +64,29 @@ __all__ = [
     "Category",
     "Citation",
     "DrivingSlackResult",
+    "FieldDelta",
     "Finding",
     "FloatResult",
     "PathTier",
     "ScheduleAudit",
     "ScheduleFloatSummary",
     "Severity",
+    "TaskDiff",
     "TaskTiming",
+    "TrendPoint",
+    "VersionDiff",
     "analyze_floats",
     "ancestors_of",
     "audit_schedule",
     "compute_cpm",
     "compute_driving_slack",
     "datetime_to_offset",
+    "detect_manipulation",
+    "diff_versions",
     "driving_path",
     "offset_to_datetime",
     "recommend",
     "summarize_floats",
     "topo_order",
+    "trend_across_versions",
 ]
