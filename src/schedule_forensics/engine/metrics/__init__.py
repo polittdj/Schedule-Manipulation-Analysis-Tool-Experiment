@@ -12,13 +12,25 @@ from schedule_forensics.engine.metrics._common import (
     Direction,
     MetricResult,
 )
+from schedule_forensics.engine.metrics.change_metrics import (
+    compute_change_metrics,
+    compute_net_finish_impact,
+)
 from schedule_forensics.engine.metrics.dcma14 import compute_dcma14
+from schedule_forensics.engine.metrics.evm import (
+    compute_baseline_compliance,
+    compute_evm_indices,
+)
 from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
 
 __all__ = [
     "CheckStatus",
     "Direction",
     "MetricResult",
+    "compute_baseline_compliance",
+    "compute_change_metrics",
     "compute_dcma14",
+    "compute_evm_indices",
+    "compute_net_finish_impact",
     "compute_schedule_quality",
 ]
