@@ -73,6 +73,9 @@ plugins = ["pydantic.mypy"]
 minversion = "8.0"
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
+markers = [
+  "parity: Acumen Fuse v8.11.0 / SSI golden acceptance gate (§6.B) over the committed golden fixtures (tests/parity/).",
+]
 
 [tool.coverage.run]
 branch = true

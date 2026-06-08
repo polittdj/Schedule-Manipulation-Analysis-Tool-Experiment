@@ -58,6 +58,9 @@ jobs:
       - name: Engine coverage gate (>=85%)
         run: coverage report --include='*/schedule_forensics/engine/*' --fail-under=85
 
+      - name: Parity gate (Acumen Fuse v8.11.0 + SSI golden, §6.B)
+        run: pytest -m parity -p no:cacheprovider
+
       - name: Security (bandit)
         run: bandit -q -r src
 
