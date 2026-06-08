@@ -731,3 +731,44 @@ this file is the running history.
 ### Commit SHAs
 - `15fab65` — feat(m12): local-AI backend + cited narrative.
 - M12 durable state (ADR-0017, RTM D1/D2/F1/F2/F3/G1, HANDOFF A14→A15, this entry) — the following commit.
+
+---
+
+## A15 — 2026-06-08 — Phase 2 build, Milestone **M13** (local web UI shell, §6.A)
+
+- **Session:** A15 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A16.
+- **Milestone:** M13 — a usable, local, dark-NASA dashboard over the M1–M12 engine.
+
+### What changed (M13 — commit `2974ef2`)
+- **`web/app.py`** — local-only FastAPI app (`create_app`, `run()` binds 127.0.0.1 and refuses a
+  non-loopback host). Routes: dashboard + upload (≤10; MSPDI/XER in memory, `.mpp` via temp file + MPXJ),
+  `/analysis/{name}` (DCMA audit + cited recommendations + AI narrative), `/compare` (manipulation trends +
+  CPM/progress trend), `/settings` (classification + model list/pull/select), `/help` (metric dictionary),
+  `/session/wipe`, JSON `/api/analysis/{name}` (M14 seam). Dark NASA theme, no CDN; no schedule data logged.
+- **`web/help.py`** — `METRIC_DICTIONARY`: definition + formula + source for every emitted metric; a
+  coverage test asserts every engine `metric_id` is documented (no unexplained figure in the UI).
+- **`ai/backend.py`** — `banner_for(config)`: the persistent CUI banner is config-driven (UNCLASSIFIED+
+  cloud names the endpoint) and separate from the fail-closed `route_backend` selection.
+- **deps** — `fastapi`, **plain `uvicorn`** (no `[standard]` → no forbidden `websockets`), `jinja2`,
+  `python-multipart` (runtime); `httpx` (dev, TestClient). `E501` per-file-ignored for the HTML/CSS view.
+
+### CUI / egress
+- Egress guard **22/22 still green** with the new runtime deps (none forbidden; plain uvicorn did not pull
+  `websockets`). Server binds 127.0.0.1 only; output HTML-escaped; logs are paths/counts only.
+
+### Parity / tests
+- +11 tests; full suite **414 passing, 3 skipped**; `web/app` **92%** (uncovered = the `.mpp` temp-file
+  upload path needing a JRE, + a few exception fallbacks), `web/help` **100%**; parity **10/10**;
+  ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0018**: local FastAPI shell; config-driven banner; metric-dictionary coverage; dependency/egress
+  vetting. RTM **A3/A5/F2 → ✔**, **A2 → ◻** (local server done; desktop icon M16), **A4 → ◻** (JSON seam in;
+  vendored visuals M14).
+- No blockers for M14. Next A16 = **M14** (vendor ECharts + Tabulator locally; interactive charts/grid/
+  Gantt with add/remove-fields + drill-to-metadata on `/api/analysis`; air-gap test). **M15 (.pbix) stays
+  blocked** until the operator re-deposits the file (R-12).
+
+### Commit SHAs
+- `2974ef2` — feat(m13): local FastAPI web shell.
+- M13 durable state (ADR-0018, RTM A2/A3/A4/A5/F2, HANDOFF A15→A16, this entry) — the following commit.

@@ -15,10 +15,10 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
 | A1 | All parsing/analysis/metrics/forensics in Python | whole `src/` (engine pure Python) | CI builds/runs | `tests/test_smoke.py` | M1+ | ▣ skeleton+CI in Python (M1) |
-| A2 | Desktop icon → 100% local → opens in browser | `launcher.py`, `web/app.py` | launch smoke test | — | M16,M13 | ☐ |
-| A3 | Dark-mode, NASA-themed, intuitive UI | `web/templates`,`web/static` theme | UI smoke/snapshot | — | M13 | ☐ |
-| A4 | Interactive Power-BI-style viz; add/remove fields; drill into metadata; local assets (no CDN) | `web/static` ECharts+Tabulator | air-gap test + interaction test | — | M14 | ☐ |
-| A5 | In-tool help: every metric/measure/analysis defined w/ supporting detail (UID, task, file) | `web/help.py` + catalog | help-coverage test (all metrics defined+cited) | `METRICS-CATALOG.md` | M13 | ◻ catalog ready |
+| A2 | Desktop icon → 100% local → opens in browser | `web/app.py` (`run()` on 127.0.0.1); `launcher.py` (M16) | `tests/web/test_app.py` (routes) + launch smoke | — | M16,M13 | ◻ **M13: local server `run()` binds 127.0.0.1 (refuses non-loopback); opens in browser.** Desktop icon/packaging M16 |
+| A3 | Dark-mode, NASA-themed, intuitive UI | `web/app.py` (dark NASA theme, no CDN) | `tests/web/test_app.py` (home/analysis render) | — | M13 | ✔ **M13: dark NASA-themed dashboard (upload, audit, findings, narrative, compare, settings, help).** |
+| A4 | Interactive Power-BI-style viz; add/remove fields; drill into metadata; local assets (no CDN) | `web/static` ECharts+Tabulator on `/api/analysis` | air-gap test + interaction test | — | M14 | ◻ JSON API seam in (M13); vendored visuals M14 |
+| A5 | In-tool help: every metric/measure/analysis defined w/ supporting detail (UID, task, file) | `web/help.py` (`METRIC_DICTIONARY`) | `tests/web/test_help.py` (coverage: every emitted metric documented) | `METRICS-CATALOG.md` | M13 | ✔ **M13: metric dictionary (definition+formula+source per metric) + `/help`; coverage test asserts no unexplained figure.** |
 
 ## B. Ingestion & parity (non-negotiable)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
@@ -50,7 +50,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
 | F1 | Ollama default local model | `ai/ollama.py`,`ai/backend.py` | `tests/ai/test_backends.py` (routing) | — | M12 | ✔ **M12: `AIConfig` default = Ollama; `route_backend` selects it when available, else Null.** |
-| F2 | Download + switch models in-app (list/pull/select) | `ai/ollama.py` (list/pull) + `web` settings (M13) | `tests/ai/test_backends.py` (list/pull/generate via injected opener) | — | M12,M13 | ▣ **M12: `list_models`/`pull_model`/`generate` over loopback Ollama.** UI panel = M13 |
+| F2 | Download + switch models in-app (list/pull/select) | `ai/ollama.py` (list/pull) + `web/app.py` `/settings` | `tests/ai/test_backends.py` + `tests/web/test_app.py` (settings panel) | — | M12,M13 | ✔ **M12 backend + M13 settings panel: list installed models, select active model/backend, classification toggle with persistent banner.** |
 | F3 | Sensible default model; no cloud by default | `ai/backend.py` (`AIConfig`, `route_backend`) | `tests/ai/test_backends.py` (fail-closed) | `SETUP-DIRECTION §6` | M12 | ✔ **M12: default model set; CLASSIFIED refuses cloud / fails closed to local; cloud only on explicit UNCLASSIFIED + banner.** |
 
 ## G. Data locality
