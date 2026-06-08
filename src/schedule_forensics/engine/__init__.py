@@ -28,11 +28,6 @@ from schedule_forensics.engine.diff import (
     VersionDiff,
     diff_versions,
 )
-from schedule_forensics.engine.manipulation import (
-    TrendPoint,
-    detect_manipulation,
-    trend_across_versions,
-)
 from schedule_forensics.engine.driving_slack import (
     DEFAULT_SECONDARY_MAX_DAYS,
     DEFAULT_TERTIARY_MAX_DAYS,
@@ -46,6 +41,11 @@ from schedule_forensics.engine.float_analysis import (
     ScheduleFloatSummary,
     analyze_floats,
     summarize_floats,
+)
+from schedule_forensics.engine.manipulation import (
+    TrendPoint,
+    detect_manipulation,
+    trend_across_versions,
 )
 from schedule_forensics.engine.path_trace import ancestors_of, topo_order
 from schedule_forensics.engine.recommendations import (

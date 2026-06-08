@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 from pathlib import Path
 
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
@@ -26,9 +27,7 @@ def _s(tasks: list[Task], rels: list[Relationship] | None = None, **kw: object) 
 def _chain(durations: dict[int, int], **task_kw: object) -> Schedule:
     tasks = [Task(unique_id=u, name=f"T{u}", duration_minutes=d) for u, d in durations.items()]
     uids = list(durations)
-    rels = [
-        Relationship(predecessor_id=a, successor_id=b) for a, b in zip(uids, uids[1:], strict=False)
-    ]
+    rels = [Relationship(predecessor_id=a, successor_id=b) for a, b in itertools.pairwise(uids)]
     return _s(tasks, rels, **task_kw)
 
 
