@@ -99,7 +99,7 @@ def _scheduled_tasks(schedule: Schedule) -> list[Task]:
     return [t for t in schedule.tasks if not t.is_summary]
 
 
-def _es_lower_bound(rel: RelationshipType, es_p: int, ef_p: int, lag: int, dur_s: int) -> int:
+def es_lower_bound(rel: RelationshipType, es_p: int, ef_p: int, lag: int, dur_s: int) -> int:
     """Lower bound a predecessor link imposes on the successor's early start."""
     if rel is RelationshipType.FS:
         return ef_p + lag
@@ -110,7 +110,7 @@ def _es_lower_bound(rel: RelationshipType, es_p: int, ef_p: int, lag: int, dur_s
     return es_p + lag - dur_s  # SF
 
 
-def _lf_upper_bound(rel: RelationshipType, ls_s: int, lf_s: int, lag: int, dur_p: int) -> int:
+def lf_upper_bound(rel: RelationshipType, ls_s: int, lf_s: int, lag: int, dur_p: int) -> int:
     """Upper bound a successor link imposes on the predecessor's late finish."""
     if rel is RelationshipType.FS:
         return ls_s - lag
@@ -121,7 +121,7 @@ def _lf_upper_bound(rel: RelationshipType, ls_s: int, lf_s: int, lag: int, dur_p
     return lf_s - lag + dur_p  # SF
 
 
-def _link_slack(rel: RelationshipType, es_p: int, ef_p: int, es_s: int, ef_s: int, lag: int) -> int:
+def link_slack(rel: RelationshipType, es_p: int, ef_p: int, es_s: int, ef_s: int, lag: int) -> int:
     """Relationship slack for free float: how far P may slip before this link binds.
 
     Reduces to the standard FS free float. For SS/FF/SF this is the slack at the
@@ -309,7 +309,7 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
             es = es_pin[tid]
         else:
             bounds = [
-                _es_lower_bound(rel, early_start[p], early_finish[p], lag, dur_s)
+                es_lower_bound(rel, early_start[p], early_finish[p], lag, dur_s)
                 for p, rel, lag in preds[tid]
             ]
             if tid in es_floor:
@@ -329,7 +329,7 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
     for tid in reversed(order):
         dur_p = duration[tid]
         bounds = [
-            _lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)
+            lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)
             for s, rel, lag in succs[tid]
         ]
         if tid in lf_cap:
@@ -343,7 +343,7 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
         total = late_start[tid] - early_start[tid]
         if succs[tid]:
             free = min(
-                _link_slack(
+                link_slack(
                     rel, early_start[tid], early_finish[tid], early_start[s], early_finish[s], lag
                 )
                 for s, rel, lag in succs[tid]
