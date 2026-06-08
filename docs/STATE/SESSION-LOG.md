@@ -463,3 +463,39 @@ this file is the running history.
 ### Commit SHAs
 - `6cf1fe0` — feat(m6): driving slack + path trace (SSI parity 107/107) + golden + tests.
 - M6 durable state (ADR-0011, RTM C2✔/C3, HANDOFF A8→A9, this entry) — the following commit.
+
+---
+
+## A9 — 2026-06-08 — Phase 2 build, Milestone **M7** (Acumen Schedule Quality + DCMA-14 — ⛳ gate)
+
+- **Session:** A9 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A10.
+- **Milestone:** M7 — Acumen Fuse parity (§A Schedule Quality + §B DCMA-14 ribbon).
+
+### What changed (M7 — commit `9015fcd`)
+- **`engine/metrics/_common.py`** — `MetricResult` (count/population/value/threshold/status/offenders),
+  `Direction`+`evaluate`, shared populations.
+- **`engine/metrics/schedule_quality.py`** — §A: Missing Logic, Logic Density (2×links/acts), Critical
+  (incomplete ∧ tf≤0), Hard, Negative Float, Insufficient Detail, Lags/Leads, Merge Hotspot (≥3 preds).
+- **`engine/metrics/dcma14.py`** — all 14 checks, pass/fail vs canonical thresholds; date checks on
+  stored progress-aware dates + status date; DCMA-04 split FS/SS-FF/SF; CPLI=(len+float)/len; BEI=
+  completed/baselined-due; critical-path test (100-day delay flow-through).
+- **Golden** `tests/fixtures/golden/project2_5/case.json` (§A/§B values + deltas + deferred scores).
+
+### Parity / tests (THE GATE)
+- Every §A metric + **13/14 DCMA checks match Acumen EXACTLY** (Critical 41/37, Logic Density
+  2.79/2.83, Missed 18/37, BEI 0.74/0.59, CPLI 1/1, Lags 2/1, SS-FF 1/0, …).
+- **Residuals (ADR-0012 → M9):** High Float 43/40 vs Acumen 44/41 (+1, progress-aware float on one
+  near-status activity; pass/fail unaffected). Composite scores (SQ 88, DCMA 57/49) use Acumen
+  proprietary weighting not in the exports/guide → M9 calibration.
+- Metrics **100%** cov; full suite **339 passing**; ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0012**: metric definitions/denominators; High Float delta; composite-score deferral. RTM
+  B2 → ▣ (Acumen §A+13/14 + SSI ✔), E1 → ▣ (DCMA-14 engine).
+- No blockers. Next A10 = **M8** (EVM indices SPI/SPI(t)/CPI/CEI/TCPI + baseline/Half-Step-Delay §C +
+  Schedule-Network change metrics §E; Net Finish Impact −99d). Needs both schedules (version-to-version
+  SN metrics) + EVM cost fields.
+
+### Commit SHAs
+- `9015fcd` — feat(m7): Acumen SQ + DCMA-14 metrics + golden + tests.
+- M7 durable state (ADR-0012, RTM B2/E1, HANDOFF A9→A10, this entry) — the following commit.
