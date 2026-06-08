@@ -30,10 +30,18 @@ classifiers = [
 ]
 
 # Runtime dependencies (added per milestone in Phase 2). pydantic powers the frozen,
-# strict, UniqueID-keyed domain model (M2). It is a local, pure data-validation library
-# with no remote/cloud client, so the CUI egress guard (net_guard.py) stays green.
+# strict, UniqueID-keyed domain model (M2). The M13 web layer adds FastAPI + Jinja2 + a
+# bare uvicorn server. CUI guardrail: NONE of these pull a forbidden HTTP client into the
+# runtime — uvicorn is the plain build (NOT uvicorn[standard], which would add the
+# forbidden `websockets` distribution); the server is inbound/local-only and binds to
+# 127.0.0.1. The egress guard (net_guard.py) stays green (no requests/httpx/urllib3/
+# websockets/aiohttp runtime dep, no importable cloud SDK).
 dependencies = [
   "pydantic>=2",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "jinja2>=3.1",
+  "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +54,9 @@ dev = [
   "mypy>=1.11",
   "bandit>=1.7",
   "pip-audit>=2.7",
+  # httpx backs starlette's TestClient (web route tests). DEV-ONLY — it is a forbidden
+  # *runtime* distribution (egress guard), so it must never enter `dependencies`.
+  "httpx>=0.27",
 ]
 
 [tool.setuptools.packages.find]
@@ -59,6 +70,11 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The web view module embeds HTML/CSS string literals where an 80-100 col limit is
+# meaningless; line-length is not enforced there (the logic stays readable regardless).
+"src/schedule_forensics/web/app.py" = ["E501"]
 
 # --- mypy: types ---------------------------------------------------------------
 [tool.mypy]

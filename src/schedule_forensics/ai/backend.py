@@ -56,6 +56,26 @@ class Banner:
     text: str
 
 
+def banner_for(config: AIConfig) -> Banner:
+    """The persistent UI banner for a config's *intent* (independent of backend availability).
+
+    Warns whenever the project is set to UNCLASSIFIED + cloud — naming the external endpoint —
+    so the operator always sees the CUI risk of their current setting (§0.2). Actual
+    generation still fails closed via :func:`route_backend` (cloud is only ever used when a
+    real cloud backend is wired AND the project is UNCLASSIFIED).
+    """
+    if config.classification is Classification.UNCLASSIFIED and config.backend == "cloud":
+        return Banner(
+            cloud_active=True,
+            endpoint=config.endpoint,
+            text=f"UNCLASSIFIED MODE — AI may send to external endpoint {config.endpoint}. "
+            "Do not use with CUI.",
+        )
+    return Banner(
+        cloud_active=False, endpoint=None, text="Local-only — no data leaves this machine."
+    )
+
+
 def route_backend(
     config: AIConfig,
     *,

@@ -7,4 +7,14 @@ the model-settings panel. Milestones **M13-M14**; see ``docs/PLAN/BUILD-PLAN.md`
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from schedule_forensics.web.app import SessionState, create_app, run
+from schedule_forensics.web.help import METRIC_DICTIONARY, MetricDoc, metric_doc
+
+__all__ = [
+    "METRIC_DICTIONARY",
+    "MetricDoc",
+    "SessionState",
+    "create_app",
+    "metric_doc",
+    "run",
+]

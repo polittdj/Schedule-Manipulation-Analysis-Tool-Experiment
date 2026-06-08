@@ -14,6 +14,7 @@ from schedule_forensics.ai.backend import (
     AIConfig,
     Banner,
     Classification,
+    banner_for,
     route_backend,
 )
 from schedule_forensics.ai.citations import (
@@ -38,6 +39,7 @@ __all__ = [
     "OllamaBackend",
     "UncitedStatementError",
     "assert_all_cited",
+    "banner_for",
     "build_narrative",
     "reattach",
     "route_backend",
