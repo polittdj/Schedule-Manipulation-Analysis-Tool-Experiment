@@ -429,3 +429,37 @@ this file is the running history.
 ### Commit SHAs
 - `ed3c2a8` — feat(m5): CPM forward/backward pass + total/free float + engine tests.
 - M5 durable state (ADR-0010, RTM C1, HANDOFF A7→A8, this entry) — the following commit.
+
+---
+
+## A8 — 2026-06-08 — Phase 2 build, Milestone **M6** (driving slack + path trace — ⛳ SSI parity gate)
+
+- **Session:** A8 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A9.
+- **Milestone:** M6 — driving slack to a target UID, the SSI parity gate.
+
+### What changed (M6 — commit `6cf1fe0`)
+- **`engine/path_trace.py`** — `ancestors_of()` (transitive drivers of a focus task; summary/
+  non-network links excluded) + deterministic `topo_order()`.
+- **`engine/driving_slack.py`** — `compute_driving_slack(schedule, target_uid)`: anchored backward
+  pass (`LF_focus = EF_focus`) over the focus's ancestors → per-task driving slack (min + days),
+  on-driving-path flag, user tiers (DRIVING/SECONDARY/TERTIARY/BEYOND, defaults 10/20); `driving_path()`.
+- **`cpm.py`** — link-bound helpers made public (`es_lower_bound`/`lf_upper_bound`/`link_slack`) for reuse.
+- **Golden** `tests/fixtures/golden/ssi_uid143/case.json` — SSI table (107 UIDs) per ADR-0005.
+
+### Parity / tests (THE GATE)
+- **107/107 exact** for Project5 / UID 143 vs SSI. **Key finding:** driving slack must be measured
+  against the schedule's **stored progress-aware dates** (`Task.start`/`finish`), not a from-scratch
+  CPM pass — else 4 completed-late activities (UID 8/13/14/16) compute +16 days too much slack. Falls
+  back to CPM dates when stored dates absent (synthetic).
+- Engine **100%** (cpm/float/driving_slack/path_trace); full suite **333 passing**; ruff/format/
+  mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0011**: anchored backward pass; the stored-progress-aware-dates rule (the parity key); tiers
+  vs SSI Path NN; golden fixture. RTM C2 → ✔, C3 → ▣ (UI wiring M13).
+- No blockers. Next A9 = **M7** (Acumen Schedule Quality + DCMA-14 — ⛳ Acumen parity gate; reproduce
+  `PARITY-TARGETS §A/§B`: SQ score 88, DCMA score 57/49, BEI 0.74/0.59, Missed 18/37, …).
+
+### Commit SHAs
+- `6cf1fe0` — feat(m6): driving slack + path trace (SSI parity 107/107) + golden + tests.
+- M6 durable state (ADR-0011, RTM C2✔/C3, HANDOFF A8→A9, this entry) — the following commit.

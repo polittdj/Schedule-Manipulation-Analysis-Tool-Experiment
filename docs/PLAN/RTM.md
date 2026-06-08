@@ -31,8 +31,8 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
 | C1 | Critical path fwd/bwd pass; total float, free float, driving slack | `engine/cpm.py`,`float_analysis.py` (M5); `driving_slack.py` (M6) | synthetic CPM + float parity (`tests/engine/*`); golden critical 41/37 | `tests/engine/test_{cpm,float_analysis}.py` | M5,M6 | ▣ **M5: CPM fwd/bwd + total/free float; all link types + constraints (MSO/MFO pinned, ALAP refused); engine 100% cov; golden raw-critical 43/37, Acumen-critical 41/37 ✓.** Driving slack = M6 |
-| C2 | Target UID endpoint → trace driving path → Driving Slack in days == MSP+SSI | `engine/path_trace.py`,`driving_slack.py` | **SSI parity test (Project5/UID 143)** | `SSI-DRIVING-SLACK.md` | M6 | ◻ golden captured |
-| C3 | User sets secondary/tertiary day-thresholds at upload | `web` upload form + engine params | threshold-classification test | `PARITY-INPUTS.md` (>0≤10 / >10≤20) | M6,M13 | ◻ defaults captured |
+| C2 | Target UID endpoint → trace driving path → Driving Slack in days == MSP+SSI | `engine/path_trace.py`,`driving_slack.py` | **SSI parity test (Project5/UID 143)** | `tests/fixtures/golden/ssi_uid143/case.json`; `tests/engine/test_driving_slack.py` | M6 | ✔ **M6: anchored backward pass on progress-aware dates; Project5/UID 143 driving slack == SSI for all 107 UIDs exactly.** |
+| C3 | User sets secondary/tertiary day-thresholds at upload | `web` upload form + `engine` params | threshold-classification test | `PARITY-INPUTS.md` (>0≤10 / >10≤20); `test_driving_slack.py` | M6,M13 | ▣ **M6: engine tiers configurable (DRIVING/SECONDARY/TERTIARY/BEYOND), defaults 10/20; tested.** Upload-form wiring M13 |
 
 ## D. Forensic & trend analysis
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
