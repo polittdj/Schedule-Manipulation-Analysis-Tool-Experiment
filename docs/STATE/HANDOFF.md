@@ -16,7 +16,21 @@ is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/rem
 confirm it has this M13 work (`git log --oneline | grep m13`), `git merge --ff-only` onto it. Never start
 from greenfield.
 
-Green baseline (all green — **414 passed, 3 skipped; parity gate 10/10; egress 22/22; engine ~99%; overall ~99%**). Verify:
+**CI is GREEN** on `b675f23` (run 282, Python 3.11 + 3.13). Two CI-hygiene fixes landed after M13
+(`28eff10` ruff, `b675f23` bandit) — see the lesson below.
+
+### CI hygiene (LESSON — do this every milestone)
+CI was silently red from ~M10/M11 while the local gate looked green, because: (1) some commits
+staged only a subset of paths, leaving ruff fixes uncommitted (CI lints the *committed* tree); and
+(2) the local bandit check was piped to `tail`, masking its non-zero exit. **Always:** `git add -A`
+(or stage every changed path) before committing a milestone, and run the gate with **honored exit
+codes** — never `bandit ... | tail` (the pipe hides the exit). Confirm with the one-liner gate:
+`ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics
+--cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85
+&& pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all must exit 0.
+After pushing, verify the CI run's conclusion is `success` (webhooks do NOT deliver CI success).
+
+Green baseline (all green — **414 passed, 3 skipped; parity gate 10/10; egress 22/22; engine ~99%; overall ~99%; CI green b675f23**). Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
 python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
