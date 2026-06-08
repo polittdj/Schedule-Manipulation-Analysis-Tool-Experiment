@@ -613,3 +613,41 @@ this file is the running history.
 - `7ec84b0` — test(m9): consolidated parity acceptance gate + CI wiring + `parity` marker.
 - M9 durable state (ADR-0014, RTM B2/Q4, risks R-02/R-13, HANDOFF A11→A12, this entry) — the following
   commit.
+
+---
+
+## A12 — 2026-06-08 — Phase 2 build, Milestone **M10** (DCMA audit + recommendations, §6.E)
+
+- **Session:** A12 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A13.
+- **Milestone:** M10 — turn the M7–M9 numbers into an analyst-facing, fully-cited audit + recommendation
+  layer (no new parity golden).
+
+### What changed (M10 — commit `0f66e97`)
+- **`engine/dcma_audit.py`** — `audit_schedule()` → `ScheduleAudit` of 16 `AuditCheck` rows (14 checks;
+  DCMA-04 split FS/SS-FF/SF), each with pass/fail vs threshold, **cited offenders** (`Citation` =
+  file+UID+task name) and a plain-language suggested improvement; pass/NA rows get a fixed note.
+- **`engine/recommendations.py`** — `recommend(current, prior?, target_uid?)` → severity-ordered
+  RISK/OPPORTUNITY/CONCERN `Finding`s synthesized from failed DCMA checks, §C late/not-completed,
+  §E change + Net Finish Impact (slip = HIGH concern; slips/float-erosion/no-longer-critical = forensic
+  watch-list for M11), and the driving-path opportunity to a target UID.
+- **`engine/metrics/dcma14.py`** — enriched BEI with its baselined-due-but-unfinished offenders so the BEI
+  finding is citable (count/value unchanged — parity gate stays green).
+
+### Citations (§6.E hard rule)
+- Every finding is cited file+UID+task. Per-activity metrics cite offenders directly; project-level BEI
+  cites its due-unfinished set; Net Finish Impact cites the finish-controlling activities (early finish ==
+  network finish). A test asserts `all(f.citations for f in findings)`.
+
+### Parity / tests
+- +7 tests; full suite **374 passing, 3 skipped**; `dcma_audit` **100%**, `recommendations` **98%**;
+  parity gate **10/10**; ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0015**: audit/recommendation design; rule-based + deterministic (AI only rephrases at M12;
+  manipulation-trend deepens the §E watch-list at M11). RTM **E1 → ✔**, **E2 → ✔**.
+- No blockers. Next A13 = **M11** (UID-only version diff + manipulation-trend detection: deleted logic,
+  shortened durations, deleted tasks, baseline/actual-date changes; reproduce the P2→P5 signals, cited).
+
+### Commit SHAs
+- `0f66e97` — feat(m10): DCMA audit + recommendations.
+- M10 durable state (ADR-0015, RTM E1/E2, HANDOFF A12→A13, this entry) — the following commit.

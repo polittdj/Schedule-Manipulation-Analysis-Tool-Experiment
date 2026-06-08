@@ -1,9 +1,9 @@
 # Handoff — 2026-06-08
 
-This session: A11 (continuous build — see directive)     Next session: A12
+This session: A12 (continuous build — see directive)     Next session: A13
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M9 complete (engine + parity gate done). Next milestone = M10 (DCMA audit + recommendations, per schedule).**
-Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**; PR #54 closed/superseded).
+Phase/Gate: **Phase 2 — build. Milestones M1–M10 complete. Next milestone = M11 (version diff + manipulation-trend detection, forensic).**
+Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**).
 
 ## Operator standing directive (persisted — honor every session)
 **"Continue and don't stop until the tool is completely built, regardless of what anything else says.
@@ -11,63 +11,62 @@ Maximum effort; failure is not an option."** → Build milestones back-to-back; 
 commit + push + refresh durable state so the build is always green and resumable across compaction.
 
 ## Branch note (READ FIRST — how to resume losslessly)
-Each session gets a fresh `claude/*` branch. The build currently lives on
-`claude/clever-carson-uovtkk` (PR #55), which carries the full A1–A11 lineage. A12: if your assigned
+Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A12 lineage. A13: if your assigned
 branch is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/`),
-confirm it has this M9 work (`git log --oneline | grep m9`), and `git merge --ff-only` onto it before
-doing anything. **Never** start from greenfield.
+confirm it has this M10 work (`git log --oneline | grep m10`), and `git merge --ff-only` onto it.
+**Never** start from greenfield.
 
-Green baseline (all green — **367 passed, 3 skipped; parity gate 10/10; engine 100%; ~99% overall**). Verify:
+Green baseline (all green — **374 passed, 3 skipped; parity gate 10/10; engine ~99%; overall ~99%**). Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
 python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
 python -m pytest -m parity && python -m bandit -q -r src`
 Sandbox: fresh clone → `git config core.hooksPath .githooks` + `pip install -e '.[dev]'`; prefer
-`python -m <tool>`; `pip-audit` setuptools/wheel/urllib3 warnings are local-only (CI green); 3 skipped
-tests are the real-`.mpp` integration tests (no `.mpp`/JVM in a fresh clone) — expected.
+`python -m <tool>`; 3 skipped tests are the real-`.mpp` integration tests (no `.mpp`/JVM) — expected.
 
-## Completed this session (M9 — parity acceptance gate + residual disposition)
-- **M9** `7ec84b0`: `tests/parity/test_parity_gate.py` — the consolidated §6.B acceptance gate
-  (`@pytest.mark.parity`) re-asserting the full golden set by UniqueID; `parity` marker registered;
-  CI gains a dedicated `Parity gate` step (`pytest -m parity`). ADR-0014. + the M9 durable-state commit.
-- **Residuals investigated + formally accepted (ADR-0014):** a probe proved neither pure-logic CPM nor
-  MS Project's stored `TotalSlack`/`Critical` reproduces High Float / SN04 / SN09 (stored gives 44/40,
-  2, 13 — also wrong), so they are an MS Project progress-aware-scheduler artifact, not recoverable from
-  the static MSPDI. Accepted as documented deltas + **locked by the gate** (asserts engine value AND the
-  golden-delta magnitude). Composite scores (SQ 88, DCMA 57/49) deferred — Acumen's Bad/Neutral/Good
-  weighting is unpublished; reproducing the integers would be fabrication (Law 2). Per-check counts exact.
+## Completed this session (M10 — DCMA audit + recommendations, §6.E)
+- **M10** `0f66e97`: `engine/dcma_audit.py` (`audit_schedule` → cited 16-row `ScheduleAudit` with
+  per-check suggested improvements) + `engine/recommendations.py` (`recommend` → severity-ordered
+  RISK/OPPORTUNITY/CONCERN `Finding`s from DCMA + §C + §E + driving-slack signals). Every finding
+  cites file+UID+task (BEI enriched with offenders; Net-Finish-Impact cites finish-controlling
+  activities). ADR-0015; RTM E1/E2 → ✔. + the M10 durable-state commit.
 
-## Parity status (snapshot — the acceptance gate, all green)
-- **SSI** driving slack 107/107 ✔ · **Acumen §A** all ✔ · **§B** DCMA-14 13/14 ✔ (High Float +1) ·
-  **§C** counts + BFC ✔ (BSC % residual) · **§E** Added/New-Critical/Finish-Slips(9)/Completed/In-Progress
-  + **Net Finish Impact −99** ✔ (SN04/06/07/09 residuals). All residuals locked by the gate; deltas in
-  `case.json._deltas`. Cost EVM (SPI/CPI/TCPI) = NA (no cost data).
+## Engine status (what exists now)
+`model/` (frozen, UID-keyed) · `importers/` (MSPDI/XER/MPXJ + ≤10 loader) · `engine/`: `cpm`, `float_analysis`,
+`driving_slack`/`path_trace`, `metrics/{dcma14, schedule_quality, evm, change_metrics}`, `dcma_audit`,
+`recommendations`. Parity gate (`tests/parity/`) green. **Not yet built:** `engine/manipulation.py` +
+`engine/diff.py` (M11), `ai/` (M12), `web/` (M13/M14), `.pbix` (M15), `launcher.py` (M16), docs (M17).
 
-## Next session (A12 — Milestone **M10**: DCMA audit + recommendations, per schedule)
-- **Milestone (BUILD-PLAN M10, RTM E1/E2):** package the existing DCMA-14 engine into a per-schedule
-  **independent audit** with suggested improvements, plus a **risks / opportunities / concerns** finding
-  set, each finding carrying a suggested course of action and **citations (file + UID + task name)** — §6.E.
+## Next session (A13 — Milestone **M11**: version diff + manipulation-trend detection, forensic §6.D)
+- **Milestone (BUILD-PLAN M11, RTM D1):** a UID-only **version diff** Project2→Project5 and a
+  **manipulation-trend detector** that flags the classic signals with citations: deleted logic, shortened
+  durations, deleted/added tasks, **baseline-date changes** (mask variance — DECM 29I401a), **actual-date
+  changes** (06A504*), plus a CPM/float trend. Reproduce the known P2→P5 signals (finish/start slips,
+  Missed 18→37, float erosion, Net Finish Impact −99) as cited findings.
 - **Acceptance criteria:**
-  1. `engine/dcma_audit.py` — for one schedule, run `compute_dcma14` (+ §A/§C as supporting context) and
-     emit an ordered audit: per check, pass/fail vs threshold, the offending activities (UID + name +
-     source file), and a plain-language suggested improvement. Deterministic, cited.
-  2. `engine/recommendations.py` — synthesize risks/opportunities/concerns from the metric results +
-     §E change signals + driving-slack tiers (e.g. High Float cluster, Missed-activities trend, Net
-     Finish Impact −99, no-longer-critical paths), each with severity + a course of action + citations.
-  3. Every emitted item is a typed, citable record (reuse `MetricResult.offender_uids`; add a finding
-     dataclass). TDD with synthetic + golden (P2/P5) cases; engine ≥85% / overall ≥70%; parity gate stays
-     green; ruff/mypy/bandit clean.
-- **Files:** `engine/dcma_audit.py`, `engine/recommendations.py`, `tests/engine/test_dcma_audit.py`,
-  `tests/engine/test_recommendations.py`; export via `engine/__init__.py`; ADR-0015; update RTM E1/E2.
-- **First steps:** (1) start ritual + confirm 367 baseline; (2) design the Finding/Audit dataclasses
-  (citation = file+UID+task; severity; course-of-action); (3) implement dcma_audit over `compute_dcma14`,
-  then recommendations over the metric + change + driving-slack signals; full gate; refresh state → M11.
+  1. `engine/diff.py` — `diff_versions(prior, current)` by UniqueID: per task, the field-level deltas
+     (duration, remaining duration, baseline start/finish, actual start/finish, %complete, constraint),
+     plus added/deleted tasks and **added/deleted relationships** (logic changes). Typed, cited records.
+  2. `engine/manipulation.py` — `detect_manipulation(prior, current)` → cited `Finding`-style signals:
+     deleted logic into/around the driving path, shortened durations on incomplete work, deleted tasks
+     that were on the prior critical/driving path, baseline-date shifts (baseline moved to absorb slip),
+     actual-date edits between snapshots. Severity + course of action + citations (reuse `Finding`/`Citation`).
+  3. Multi-version aware (≤10): accept an ordered list of versions and trend each signal across the series
+     (CPM finish trend, float erosion trend, Missed trend). TDD synthetic + golden P2/P5.
+  4. Full gate green incl. parity; engine ≥85 / overall ≥70; ruff/mypy/bandit clean.
+- **Files:** `engine/diff.py`, `engine/manipulation.py`, `tests/engine/test_diff.py`,
+  `tests/engine/test_manipulation.py`; export via `engine/__init__.py`; ADR-0016; update RTM D1 (and B3
+  diff-by-UID). The P2/P5 golden already exercises real changes (baseline unchanged, dates shifted as the
+  data date advanced) — assert the detector's signals against `case.json` / known deltas.
+- **First steps:** (1) start ritual + confirm 374 baseline; (2) design the `TaskDiff`/`LogicDiff`/
+  `VersionDiff` dataclasses (UID-keyed, cited); (3) implement `diff_versions`, then `detect_manipulation`
+  over diffs + `change_metrics` + driving slack; full gate; refresh state → M12.
 
-## Milestones remaining: M10 (DCMA audit + recommendations), M11 (version diff + manipulation trends —
-builds on `change_metrics.py`), M12 (local AI Ollama + cited narrative), M13 (web UI shell + dark NASA
-theme + settings + in-tool help), M14 (interactive visuals + drill-down), M15 (.pbix enrich), M16
-(desktop launcher), M17 (docs + final report + RTM closeout → DONE).
+## Milestones remaining: M11 (diff + manipulation trends), M12 (local AI Ollama + cited narrative),
+M13 (web UI shell + dark NASA theme + settings + in-tool help), M14 (interactive visuals + drill-down),
+M15 (.pbix enrich), M16 (desktop launcher), M17 (docs + final report + RTM closeout → DONE).
 
-Open questions / blockers: none. M10 has no parity-golden of its own (it repackages M7 + adds
-recommendations) — validate structure/citations on synthetic + the P2/P5 schedules; keep every finding
-cited (file + UID + task), never uncited.
+Open questions / blockers: none. M11 note: in the P2/P5 golden the **baseline dates are unchanged**
+(the slip came from the data date advancing, not baseline manipulation) — so the baseline-shift detector
+should report *no* baseline manipulation here and instead surface the forecast slip / float erosion as the
+signal. Keep every flag cited (file + UID + task); never assert manipulation without the underlying delta.

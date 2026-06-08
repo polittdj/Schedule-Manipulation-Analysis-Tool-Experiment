@@ -43,8 +43,8 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## E. Independent audits & recommendations
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| E1 | Independent DCMA compliance audit per schedule + suggested improvements | `engine/metrics/dcma14.py` (M7); `engine/dcma_audit.py` (M10) | DCMA audit parity test | `tests/engine/metrics/test_dcma14.py`; `PARITY-TARGETS §B` | M7,M10 | ▣ **M7: 14-check DCMA-14 engine with pass/fail + offender UIDs (golden-validated).** Audit packaging + recommendations M10 |
-| E2 | Risks/opportunities/concerns each w/ course of action + citations | `engine/recommendations.py` | recommendation tests w/ citations | — | M10 | ☐ |
+| E1 | Independent DCMA compliance audit per schedule + suggested improvements | `engine/metrics/dcma14.py` (M7); `engine/dcma_audit.py` (M10) | `tests/engine/test_dcma_audit.py` + parity gate | `tests/engine/metrics/test_dcma14.py`; `PARITY-TARGETS §B` | M7,M10 | ✔ **M10: `audit_schedule` → 16-row `ScheduleAudit` (14 checks, DCMA-04 split), each with pass/fail, cited offenders (file+UID+task) + plain-language suggested improvement.** |
+| E2 | Risks/opportunities/concerns each w/ course of action + citations | `engine/recommendations.py` | `tests/engine/test_recommendations.py` (every finding cited) | golden P5-vs-P2 findings | M10 | ✔ **M10: `recommend()` → cited RISK/OPPORTUNITY/CONCERN `Finding`s (severity-ordered) from DCMA + §C + §E + driving-slack signals; every finding cites file+UID+task (incl. BEI + Net-Finish-Impact).** |
 
 ## F. Local AI backend
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
