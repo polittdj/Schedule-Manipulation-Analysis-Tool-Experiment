@@ -337,3 +337,53 @@ this file is the running history.
 ### Commit SHAs
 - `88dca6c` — feat(m3): MSPDI + XER importers + fixtures + 92 tests.
 - M3 durable state (ADR-0008, RTM B1/B3, risks R-11/R-12, HANDOFF, this entry) — the following commit.
+
+---
+
+## A6 — 2026-06-08 — Phase 2 build, Milestone **M4** (native `.mpp` via MPXJ + multi-file loader)
+
+- **Session:** A6 (Opus 4.8 1M + Ultracode). **Next:** A7. Ran **back-to-back with A5 in one operator
+  sitting** — the operator said "continue" after M3, so M4 proceeded in the same chat session on the
+  same branch `claude/elegant-thompson-7opMM` (PR #54 now carries M3 + M4).
+- **Milestone:** M4 — native `.mpp` ingestion + the ≤10 multi-file loader.
+
+### Unblocking R-12 (real `.mpp` not in the fresh sandbox)
+- M4 needs `Project2.mpp`/`Project5.mpp`, which are gitignored and didn't travel into this clone.
+  Verified via the Google Drive connector that both are still in the operator's "Schedule-Forensics —
+  Reference Intake" folder (IDs match `INTAKE-MANIFEST.md`), but the connector returns inline base64 —
+  impractical to pull a 700 KB binary into a cloud session. Surfaced the constraint; the operator
+  **uploaded both `.mpp` directly into the session workspace** (`/root/.claude/uploads/...`). Staged
+  them into the gitignored `00_REFERENCE_INTAKE/mpp/`.
+
+### What changed (M4 — commit `e9b8451`)
+- **`importers/mpp_mpxj.py`** — `parse_mpp()` runs the vendored MPXJ runner out-of-process
+  (`java -cp tools/mpxj/... MpxjToMspdi <in> <tmp.xml>`, fixed argv, `shell=False`, 300 s timeout) →
+  MSPDI → `parse_mspdi_text`; original file name kept for citations; `SF_MPXJ_HOME` override; fail-loud.
+- **`importers/loader.py`** — extension dispatch (`.mpp`/`.mpt`→MPXJ, `.xml`/`.mspdi`→MSPDI,
+  `.xer`→XER); `load_schedules()` enforces ≤10; one UID-keyed `Schedule` per file (no merge).
+- **Golden inputs** committed (ADR-0005): `tests/fixtures/golden/project2_5/{Project2,Project5}.mspdi.xml`
+  (distilled MSPDI of the non-CUI samples) — parity reproducible in CI without raw `.mpp`/JVM. Raw
+  `.mpp` stay gitignored.
+
+### Validation / tests
+- Real uploads: Project2 (status 2026-05-24) + Project5 (status 2026-08-27, later/slipped) each →
+  **145 rows = UID-0 summary + 144 activities (UID 2–145)** — matches the M4 acceptance criterion.
+- Real-`.mpp` integration tests (skip without files/JVM) + JVM-free wrapper orchestration & every error
+  path (faked subprocess) + committed golden inputs. Importers **100% line+branch**; full suite
+  **280 passing, 99.91%**; ruff/ruff-format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0009**: out-of-process MPXJ (not in-process JPype); loader dispatch + ≤10; commit distilled
+  MSPDI not raw `.mpp` (reconciles ADR-0003 "never commit raw" with ADR-0005 "commit distilled");
+  CI strategy (skip real-`.mpp`, cover via golden + faked subprocess).
+- **risks**: R-12 → **mitigated** (direct upload worked; golden MSPDI committed so M5-M9 need no raw
+  `.mpp`). Future raw-`.mpp` milestones still need a re-upload.
+- **Committed real-derived data:** the distilled Project2/5 MSPDI (non-CUI, attested) are now on the
+  public PR branch per ADR-0005 — flagged to the operator; reversible before merge if unwanted.
+- No blockers for M5. Next session A7 = **M5** (CPM forward/backward pass + total/free float); not
+  blocked by R-12 (uses the committed golden MSPDI). One design call at M5 start: calendar parsing
+  vs default 8h/Mon-Fri (record an ADR).
+
+### Commit SHAs
+- `e9b8451` — feat(m4): native `.mpp` via MPXJ + loader + golden parity inputs + tests.
+- M4 durable state (ADR-0009, RTM B1✔/B3, risks R-12, HANDOFF A6→A7, this entry) — the following commit.

@@ -23,9 +23,9 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## B. Ingestion & parity (non-negotiable)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/mspdi.py`,`importers/xer.py`,`_common.py` (M3); `importers/mpp_mpxj.py`,`loader.py` (M4) | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `INTAKE-MANIFEST.md`; `tests/importers/*` | M3,M4 | ◻ **M3: MSPDI + XER importers (synthetic, UID-keyed, all metadata; 100% cov, 92 tests)** — the model-ingestion path `.mpp` feeds via MPXJ→MSPDI; native `.mpp` + ≤10 loader at M4 |
+| B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/{mspdi,xer,_common}.py` (M3); `importers/{mpp_mpxj,loader}.py` (M4) | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `tests/importers/*`; golden `tests/fixtures/golden/project2_5/` | M3,M4 | ✔ **M4: native `.mpp` via out-of-process MPXJ + ≤10 loader; Project2/5 → 144 acts UID 2–145 validated on the real uploads; distilled MSPDI committed as golden inputs; importers 100% cov.** (Field-value parity vs Acumen/SSI = B2, M6–M9.) |
 | B2 | Exact match to **Acumen v8.11.0** AND **SSI**; parity suite = gate | `engine/metrics/*`, `tests/parity` | parity suite (UID-keyed) | `PARITY-TARGETS.md`,`SSI-DRIVING-SLACK.md` | M6,M7,M8,M9 | ◻ targets captured |
-| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `importers/*` (M3), `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity); `tests/importers/*` (UID keying) | M2,M3,M4,M11 | ◻ model UID-key + integrity landed (M2); **M3: importers key tasks/resources by UID, links by UID endpoints**; diff M11 |
+| B3 | Cross-version matching by **UniqueID only** | `model` UID key, `importers/*` (M3/M4), `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity); `tests/importers/*` (UID keying; P2/P5 same UID set) | M2,M3,M4,M11 | ◻ model UID-key + integrity (M2); importers key by UID (M3); **M4: Project2/Project5 parse to the same UID set (golden test)**; diff M11 |
 
 ## C. CPM, driving slack & path tracing (SSI parity)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
