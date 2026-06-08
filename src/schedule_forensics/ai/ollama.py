@@ -28,10 +28,13 @@ DEFAULT_MODEL = "llama3.1:8b"
 
 
 def _urllib_opener(url: str, data: bytes | None, timeout: float) -> str:
+    # nosec note: the URL is built from a loopback-validated endpoint (OllamaBackend.__init__
+    # rejects any non-127.0.0.1/localhost host), so this open can only ever reach the local
+    # machine — never a remote/file/custom scheme.
     method = "POST" if data is not None else "GET"
-    request = urllib.request.Request(url, data=data, method=method)
+    request = urllib.request.Request(url, data=data, method=method)  # nosec B310
     request.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(request, timeout=timeout) as response:
+    with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
         body: bytes = response.read()
     return body.decode("utf-8")
 

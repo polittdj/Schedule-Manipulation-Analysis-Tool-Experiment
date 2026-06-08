@@ -289,7 +289,8 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
 
 
 def _status_class(status: object) -> str:
-    return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")
+    # the values are CSS class names (not secrets); B105 is a false positive here.
+    return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
 
 
 def _analysis_body(state: SessionState, sch: Schedule) -> str:

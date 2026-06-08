@@ -97,7 +97,7 @@ _IMPROVEMENTS: dict[str, str] = {
     "DCMA14": "Raise the Baseline Execution Index toward >= 0.95 by completing the work "
     "baselined to finish by the data date.",
 }
-_PASS_NOTE = "Within the DCMA tolerance — no action required."
+_OK_NOTE = "Within the DCMA tolerance — no action required."
 _NA_NOTE = "Not applicable for this schedule (inputs absent)."
 
 
@@ -107,7 +107,7 @@ def audit_schedule(schedule: Schedule, cpm_result: CPMResult | None = None) -> S
     checks: list[AuditCheck] = []
     for metric_id, result in results.items():
         improvement = (
-            _PASS_NOTE
+            _OK_NOTE
             if result.status is CheckStatus.PASS
             else _NA_NOTE
             if result.status is CheckStatus.NOT_APPLICABLE
