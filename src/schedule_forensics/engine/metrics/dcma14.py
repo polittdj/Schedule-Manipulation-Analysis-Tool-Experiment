@@ -215,6 +215,8 @@ def compute_dcma14(
 
     # DCMA-14 BEI — activities completed vs activities baselined to complete by status.
     completed = sum(1 for t in due if t.actual_finish is not None)
+    # the activities dragging BEI below 1.0 — baselined-due but not actually finished (citable)
+    bei_offenders = tuple(t.unique_id for t in due if t.actual_finish is None)
     if due and status_dt is not None:
         bei = completed / len(due)
         out["DCMA14"] = MetricResult(
@@ -227,6 +229,7 @@ def compute_dcma14(
             evaluate(bei, 0.95, Direction.GE),
             0.95,
             Direction.GE,
+            bei_offenders,
         )
     else:
         out["DCMA14"] = MetricResult(

@@ -16,6 +16,12 @@ from schedule_forensics.engine.cpm import (
     datetime_to_offset,
     offset_to_datetime,
 )
+from schedule_forensics.engine.dcma_audit import (
+    AuditCheck,
+    Citation,
+    ScheduleAudit,
+    audit_schedule,
+)
 from schedule_forensics.engine.driving_slack import (
     DEFAULT_SECONDARY_MAX_DAYS,
     DEFAULT_TERTIARY_MAX_DAYS,
@@ -31,24 +37,38 @@ from schedule_forensics.engine.float_analysis import (
     summarize_floats,
 )
 from schedule_forensics.engine.path_trace import ancestors_of, topo_order
+from schedule_forensics.engine.recommendations import (
+    Category,
+    Finding,
+    Severity,
+    recommend,
+)
 
 __all__ = [
     "DEFAULT_SECONDARY_MAX_DAYS",
     "DEFAULT_TERTIARY_MAX_DAYS",
+    "AuditCheck",
     "CPMError",
     "CPMResult",
+    "Category",
+    "Citation",
     "DrivingSlackResult",
+    "Finding",
     "FloatResult",
     "PathTier",
+    "ScheduleAudit",
     "ScheduleFloatSummary",
+    "Severity",
     "TaskTiming",
     "analyze_floats",
     "ancestors_of",
+    "audit_schedule",
     "compute_cpm",
     "compute_driving_slack",
     "datetime_to_offset",
     "driving_path",
     "offset_to_datetime",
+    "recommend",
     "summarize_floats",
     "topo_order",
 ]
