@@ -569,3 +569,47 @@ this file is the running history.
 - `6d982bf` — feat(m8): EVM indices + baseline compliance (§C) + Schedule-Network change (§E).
 - M8 durable state (ADR-0013, RTM B2/D1/Q5, risks R-09/R-13, HANDOFF A10→A11, this entry) — the
   following commit.
+
+---
+
+## A11 — 2026-06-08 — Phase 2 build, Milestone **M9** (parity acceptance gate + residual disposition)
+
+- **Session:** A11 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A12.
+- **Milestone:** M9 — consolidate the scattered golden assertions into the single §6.B acceptance gate,
+  wire it into CI, and formally disposition every M7/M8 residual.
+
+### What changed (M9 — commit `7ec84b0`)
+- **`tests/parity/test_parity_gate.py`** — one `@pytest.mark.parity` module re-asserting the full golden
+  set over the committed fixtures, by UniqueID: Acumen §A Schedule Quality, §B DCMA-14, §C baseline
+  compliance, §E change + Net Finish Impact, SSI driving slack (107/107). Exact where exact; documented
+  residuals asserted at their engine value AND with the golden-delta magnitude locked.
+- **`pyproject.toml`** — registered the `parity` marker (`--strict-markers`).
+- **`.github/workflows/ci.yml`** — dedicated `Parity gate` step (`pytest -m parity`) so a parity break
+  shows independently of the unit suite.
+
+### Residual disposition (the M9 decision — ADR-0014)
+- **Probe:** tested whether MS Project's stored progress-aware values close the residuals. Stored
+  `TotalSlack>44d` → High Float **44/40** (golden 44/41, fixes P2 only — MSP omits TotalSlack for some
+  rows); stored Critical transitions → SN04 **2**, SN09 **13** (golden 1/6). **Neither pure-logic CPM nor
+  stored MSP values reproduce them** → an MS Project internal-scheduler artifact, not recoverable from the
+  static MSPDI.
+- **Decision:** formally **accept** the deltas (High Float +1, BSC %, SN04 0/1, SN06 9/10, SN07 7/8,
+  SN09 4/6, SN01 header 126/144) as documented + **gate-locked**; keep the engine on pure-logic CPM
+  (independence/auditability, ADR-0010). **Composite scores deferred** (Acumen Bad/Neutral/Good weighting
+  unpublished; reproducing 88/57/49 would be fabrication — Law 2). Per-check counts/pass-fail are exact.
+
+### Parity / tests
+- Parity gate **10/10**; full suite **367 passing, 3 skipped**; engine **100%**, overall **~99%**;
+  ruff/format/mypy(strict)/bandit clean. CI now runs the parity gate as a named step.
+
+### Decisions / blockers
+- **ADR-0014**: parity gate as the §6.B artifact; probe-backed residual acceptance; composite-score
+  deferral rationale. RTM **B2 → ✔** (gate live, residuals tracked), **Q4 → ✔** (CI parity step).
+  Risks **R-02 → Mitigated**, **R-13 → Accepted**.
+- No blockers. Next A12 = **M10** (DCMA audit + recommendations per schedule; every finding cited
+  file+UID+task — §6.E).
+
+### Commit SHAs
+- `7ec84b0` — test(m9): consolidated parity acceptance gate + CI wiring + `parity` marker.
+- M9 durable state (ADR-0014, RTM B2/Q4, risks R-02/R-13, HANDOFF A11→A12, this entry) — the following
+  commit.
