@@ -387,3 +387,45 @@ this file is the running history.
 ### Commit SHAs
 - `e9b8451` — feat(m4): native `.mpp` via MPXJ + loader + golden parity inputs + tests.
 - M4 durable state (ADR-0009, RTM B1✔/B3, risks R-12, HANDOFF A6→A7, this entry) — the following commit.
+
+---
+
+## A7 — 2026-06-08 — Phase 2 build, Milestone **M5** (CPM forward/backward pass + total/free float)
+
+- **Session:** A7 (Opus 4.8 1M + Ultracode). **Next:** A8. Operator directive this session: **"continue
+  and don't stop until the tool is completely built — maximum effort"** → building milestones
+  back-to-back, committing + pushing + refreshing durable state after each so the build stays
+  resumable across compaction. On `claude/elegant-thompson-7opMM` (PR #54).
+- **Start:** fast-forwarded the local branch from `cf4fead` (M3) to the pushed M4 tip `0da1c39`
+  (`git merge --ff-only origin/...`); confirmed the 280-test green baseline.
+
+### What changed (M5 — commit `ed3c2a8`)
+- **`engine/cpm.py`** — `compute_cpm()` forward+backward pass on an integer working-minute axis →
+  per-task `TaskTiming` (early/late start/finish, total/free float, is_critical), UID-keyed
+  `CPMResult`. All four link types (FS/SS/FF/SF) + lag/lead; constraints SNET/FNET (floors),
+  SNLT/FNLT (caps), **MSO/MFO (pins — improves on the prior build which refused them)**, deadline
+  (cap); **ALAP + malformed constraints refused with `CPMError`** (fail loud). Summary tasks excluded;
+  deterministic Kahn topo sort; `required_finish_offset` for M6; calendar offset↔datetime helpers.
+- **`engine/float_analysis.py`** — day-denominated per-task float (deterministic `Decimal`) +
+  `ScheduleFloatSummary`. Two critical notions kept distinct: pure CPM (`total_float<=0`) vs the
+  **Acumen "Critical" metric** (`<=0` AND not complete).
+
+### Parity / tests
+- **Key finding:** Acumen "Critical" = `total_float<=0` **and** incomplete. Golden fixtures: raw
+  critical **43/37**, incomplete-critical **41/37** == Acumen `PARITY-TARGETS` 41/37 exactly. Network
+  finish **391/462** working days.
+- Hand-verified synthetic networks (linear/diamond/all link types/lags/multi-finish), every constraint
+  + error path, calendar round-trips, golden sanity. **Engine 100% line+branch**; full suite **308
+  passing, 99.93%**; ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0010**: working-minute axis; constraint model (MSO/MFO pinned, ALAP refused, H-CONSTRAINT
+  intraday/conflict limitations documented); the pure-CPM vs Acumen-metric critical split (the parity
+  key); calendars — default 8h/Mon-Fri sufficient, named-calendar parsing deferred (no schedule needs
+  it). RTM C1 → ▣.
+- No blockers. Next A8 = **M6** (driving slack + path trace to target UID — the **SSI parity gate**,
+  Project5 / UID 143, reproduce `SSI-DRIVING-SLACK.md` exactly), using `compute_cpm(required_finish_offset)`.
+
+### Commit SHAs
+- `ed3c2a8` — feat(m5): CPM forward/backward pass + total/free float + engine tests.
+- M5 durable state (ADR-0010, RTM C1, HANDOFF A7→A8, this entry) — the following commit.

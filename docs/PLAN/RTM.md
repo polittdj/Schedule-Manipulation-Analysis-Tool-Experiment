@@ -30,7 +30,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## C. CPM, driving slack & path tracing (SSI parity)
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| C1 | Critical path fwd/bwd pass; total float, free float, driving slack | `engine/cpm.py`,`float_analysis.py`,`driving_slack.py` | synthetic CPM + float parity | — | M5,M6 | ☐ |
+| C1 | Critical path fwd/bwd pass; total float, free float, driving slack | `engine/cpm.py`,`float_analysis.py` (M5); `driving_slack.py` (M6) | synthetic CPM + float parity (`tests/engine/*`); golden critical 41/37 | `tests/engine/test_{cpm,float_analysis}.py` | M5,M6 | ▣ **M5: CPM fwd/bwd + total/free float; all link types + constraints (MSO/MFO pinned, ALAP refused); engine 100% cov; golden raw-critical 43/37, Acumen-critical 41/37 ✓.** Driving slack = M6 |
 | C2 | Target UID endpoint → trace driving path → Driving Slack in days == MSP+SSI | `engine/path_trace.py`,`driving_slack.py` | **SSI parity test (Project5/UID 143)** | `SSI-DRIVING-SLACK.md` | M6 | ◻ golden captured |
 | C3 | User sets secondary/tertiary day-thresholds at upload | `web` upload form + engine params | threshold-classification test | `PARITY-INPUTS.md` (>0≤10 / >10≤20) | M6,M13 | ◻ defaults captured |
 

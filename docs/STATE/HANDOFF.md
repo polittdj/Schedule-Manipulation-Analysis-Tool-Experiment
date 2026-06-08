@@ -1,84 +1,70 @@
 # Handoff — 2026-06-08
 
-This session: A6 (ran back-to-back with A5 in one operator sitting)     Next session: A7
+This session: A7 (continuous build — see directive)     Next session: A8
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M4 complete. Next milestone = M5.** (No gate ahead
-until DONE; gates 1 & 2 already passed.)
+Phase/Gate: **Phase 2 — build. Milestones M1–M5 complete. Next milestone = M6 (⛳ SSI parity gate).**
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/elegant-thompson-7opMM`
-(draft **PR #54**, now carrying M3 **and** M4).
+(draft **PR #54**).
 
 ## Operator standing directive (persisted — honor every session)
-**"For this and all other decisions, do what you recommend unless it violates an original
-instruction; in those cases find a way to accomplish it. Failure is not an option. Maximum effort."**
-Make the sensible call and proceed autonomously on routine decisions; reserve questions for genuine
-forks or hard guardrails.
+**"Continue and don't stop until the tool is completely built, regardless of what anything else says.
+Maximum effort; failure is not an option."** → Build milestones back-to-back; after EACH milestone
+commit + push + refresh durable state (HANDOFF/SESSION-LOG/RTM/ADR) so the build is always green and
+resumable across compaction. Make the sensible call autonomously; reserve questions for genuine forks.
 
 ## Branch note (lossless pattern)
-Lineage: A1/A2 → `fermat` (#51, closed); A3/M1 → `johnson` (#52, closed); A4/M2 → `festive-maxwell`
-(#53, closed); A5/M3 + A6/M4 → **`elegant-thompson`** (#54, open). If A7 is handed a new branch at
+All work is on `claude/elegant-thompson-7opMM` (PR #54). If a session is handed a fresh branch at
 greenfield `882dec3`, fast-forward it onto this tip
-(`git merge --ff-only origin/claude/elegant-thompson-7opMM`) and build M5; otherwise continue here.
+(`git merge --ff-only origin/claude/elegant-thompson-7opMM`) before building. (A7 did exactly this
+from the M4 tip.)
 
-Green baseline (all green — **280 tests, 99.91% coverage; importers 100%**). Verify locally:
+Green baseline (all green — **308 passed, 3 skipped; 99.93% overall; engine 100%**). Verify locally:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
 python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
 python -m bandit -q -r src`
-Sandbox notes: (1) fresh clone needs `git config core.hooksPath .githooks` + `pip install -e '.[dev]'`.
-(2) **Prefer `python -m <tool>`** — the bare `mypy`/`pip-audit` on PATH are isolated installs without
-pydantic. (3) **`pip-audit` flags this image's old `setuptools`/`wheel`/`urllib3`** (2026 CVEs) —
-local-only; CI green on identical deps (no project deps added in M3/M4). (4) Java 21 is present
-(SessionStart preflight); needed only for native `.mpp` (M4) and not by CI.
+Sandbox notes: (1) fresh clone → `git config core.hooksPath .githooks` + `pip install -e '.[dev]'`.
+(2) Prefer `python -m <tool>` (bare `mypy`/`pip-audit` on PATH lack pydantic). (3) `pip-audit` flags
+the image's old setuptools/wheel/urllib3 — local-only, CI green, no project deps added. (4) The 3
+skipped tests are the real-`.mpp` integration tests (no `.mpp`/JVM in a fresh clone) — expected.
 
-## Completed this session (M4 — native `.mpp` via MPXJ + multi-file loader)
-- **`importers/mpp_mpxj.py`** — `parse_mpp()` runs the vendored MPXJ runner out-of-process
-  (`java -cp tools/mpxj/... MpxjToMspdi <in> <tmp.xml>`) → MSPDI → `parse_mspdi_text`. Local-only;
-  original file name kept for citations; `SF_MPXJ_HOME` override; fail-loud `ImporterError`.
-- **`importers/loader.py`** — `load_schedule()` dispatches by extension (`.mpp`/`.mpt`→MPXJ,
-  `.xml`/`.mspdi`→MSPDI, `.xer`→XER); `load_schedules()` enforces the **≤10** cap; one UID-keyed
-  `Schedule` per file (no merge — diff is M11).
-- **Golden parity inputs** (ADR-0005), `tests/fixtures/golden/project2_5/{Project2,Project5}.mspdi.xml`
-  — the distilled MSPDI conversions of the non-CUI samples, **committed** so §6.B parity is
-  reproducible in CI with no raw `.mpp`/JVM. The raw `.mpp` stay gitignored in `00_REFERENCE_INTAKE/mpp/`.
-- **Validated on the real uploads:** Project2.mpp (status 2026-05-24) and Project5.mpp (status
-  2026-08-27, later/slipped) each → **145 rows = UID-0 project summary + 144 activities (UID 2–145)**,
-  matching the M4 acceptance criterion. P2 176 links / P5 178 links; 32 resources each.
-- **Tests:** real-`.mpp` integration (skip without files/JVM) + JVM-free wrapper orchestration & every
-  error path (faked subprocess) + the committed golden inputs. Importers **100% line+branch**; full
-  suite **280 passing, 99.91%**. ruff/ruff-format/mypy(strict)/bandit clean.
-- **Docs:** ADR-0009 (out-of-process MPXJ, loader, golden-fixture reconciliation of ADR-0003/0005,
-  CI strategy); RTM B1 → ✔, B3 updated; risk R-12 → mitigated; this HANDOFF; SESSION-LOG A6.
-- **Commits:** `e9b8451` (feat M4) + the M4 durable-state docs commit.
+## Completed this session (M5 — CPM + float; commit `ed3c2a8`)
+- `engine/cpm.py` (`compute_cpm` → UID-keyed `CPMResult`/`TaskTiming`; all link types; constraints
+  SNET/FNET/SNLT/FNLT + MSO/MFO pins + deadline; ALAP/malformed refused; `required_finish_offset` for
+  M6; calendar offset↔datetime helpers) and `engine/float_analysis.py` (day float + summary; pure-CPM
+  vs Acumen-metric critical). Engine **100%**; golden critical **41/37 == Acumen** exactly. ADR-0010.
 
-Parity status: §6.B **ingestion** validated (144 acts, UID 2–145). Field-value parity (B2) begins
-M6 (SSI) / M7-M8 (Acumen) / M9, fed by the committed golden MSPDI + (later) expected-value JSON.
+## Next session (A8 — Milestone **M6**: driving slack + path trace ⛳ **SSI parity gate**)
+- **Milestone (BUILD-PLAN M6, RTM C2/C3):** `engine/driving_slack.py` + `engine/path_trace.py`.
+  User enters a **target UniqueID** → the engine traces the driving logic path to it and reports
+  **Driving Slack in days per task**, matching the SSI MS Project add-on **exactly** for `Project5` /
+  target **UID 143** ("Obtain certificate of occupancy"). Secondary (>0 ≤10d) / tertiary (>10 ≤20d)
+  day-thresholds are user-set at upload (defaults in `PARITY-INPUTS.md`); classify each task.
+- **THE GOLD:** `docs/PLAN/SSI-DRIVING-SLACK.md` — the full SSI Driving-Slack-by-UniqueID table for
+  Project5/UID 143, with column schema + methodology. **Read it first**; reproduce the per-UID days
+  exactly. This is a hard gate (CI red blocks).
+- **Mechanism (likely):** driving slack to a target = re-run CPM with the backward pass anchored at the
+  target's finish (`compute_cpm(required_finish_offset=target_early_finish)` or an analogous
+  target-relative late-date pass), then driving slack per task = (late dates relative to the target) −
+  (early dates); a task is **on the driving path** when its slack-to-target ≤ 0. Verify the precise SSI
+  definition against the golden table (it may anchor on the target's LATE finish / use relationship
+  driving flags). Build it to match the numbers, not from first principles alone.
+- **Not blocked by R-12** — uses the committed golden MSPDI (`tests/fixtures/golden/project2_5/`).
+- **Files:** `src/schedule_forensics/engine/{driving_slack,path_trace}.py`;
+  `tests/engine/test_{driving_slack,path_trace}.py`; a `tests/fixtures/golden/ssi_uid143/case.json`
+  (expected per-UID driving-slack days transcribed from `SSI-DRIVING-SLACK.md`, per ADR-0005) + a
+  parity test asserting engine == that JSON; update RTM C2/C3; ADR-0011 for the driving-slack
+  definition. Study (don't copy): `git show 0324ba4:src/schedule_forensics/driving_path.py`.
+- **First steps:** (1) start ritual + confirm 308-test baseline; (2) read `SSI-DRIVING-SLACK.md` fully
+  + `git show 0324ba4:src/schedule_forensics/driving_path.py`; prototype driving slack for Project5/UID
+  143 against the golden numbers BEFORE writing the module (as M5 did for the critical counts);
+  (3) once the prototype matches, write `driving_slack.py`/`path_trace.py` + `case.json` + parity test;
+  full gate; refresh durable state; continue to M7.
 
-## Next session (A7 — Milestone **M5**: CPM forward/backward pass + total/free float)
-- **Milestone (BUILD-PLAN M5):** `engine/cpm.py` + `engine/float_analysis.py` — forward/backward
-  pass over the UID-keyed network; **total float** and **free float** per task. Honor constraints
-  (SNET/FNET/MSO/MFO/SNLT/FNLT) and working calendars. Pure, deterministic, integer working minutes.
-- **Not blocked by R-12** — M5 computes on the **committed golden MSPDI** (`tests/fixtures/golden/
-  project2_5/`) + synthetic fixtures; no raw `.mpp` needed.
-- **Acceptance:** synthetic CPM cases pass (hand-verified early/late dates + float on a small
-  A→{B,C}→D network with lags/constraints); sanity-check critical-task counts against Acumen
-  (`PARITY-TARGETS.md`: Project2 **41** critical / Project5 **37**) — treat as a sanity range at M5,
-  exact parity is M7/M9. Engine coverage ≥85% (CI gate).
-- **Likely sub-task — calendars:** CPM needs real working time, but the importers currently use the
-  default 8h/Mon-Fri `Calendar` (calendar parsing was deferred in M3/M4, ADR-0008/0009). Decide at M5
-  start: parse MSPDI `<Calendars>` (the golden files have them) for accurate dates, **or** compute CPM
-  on the default calendar first and add calendar parsing as M5b. Flag in an ADR; don't guess silently.
-- **Files:** `src/schedule_forensics/engine/{cpm,float_analysis}.py`; `tests/engine/test_*.py`;
-  synthetic fixtures; update RTM C1. Study reference (do not copy): prior build
-  `git show 0324ba4:src/schedule_forensics/engine/cpm.py` (and `float_analysis.py`).
-- **First 3 steps:**
-  1. Start-of-session ritual (read this + BUILD-PLAN M5 + RTM C1; fast-forward branch if fresh;
-     `pip install -e '.[dev]'`; confirm 280-test baseline via `python -m pytest`).
-  2. Decide the calendar approach (above); TDD a small synthetic network with known early/late
-     dates + total/free float, implement `cpm.py`/`float_analysis.py` to pass it.
-  3. Sanity-check critical counts on the golden Project2/5; run the full gate; end-of-session ritual;
-     print the A8 resume line.
+## Milestones remaining: M6 (SSI parity ⛳), M7 (Acumen SQ+DCMA-14 ⛳), M8 (EVM/baseline/SN change ⛳),
+M9 (parity suite gate), M10 (DCMA audit + recommendations), M11 (diff + manipulation trends),
+M12 (local AI + cited narrative), M13 (web UI shell), M14 (interactive visuals), M15 (.pbix enrich),
+M16 (desktop launcher/packaging), M17 (docs + final report + RTM closeout → DONE).
 
-Open questions / blockers: none blocking M5. The calendar approach is the one design decision to make
-at M5 start (record as an ADR). The raw `.mpp` uploaded this session are gitignored and won't persist
-to A7 — that's fine, M5 uses the committed golden MSPDI; only later raw-`.mpp` milestones need a
-re-upload (R-12).
+Open questions / blockers: none. The one judgement call at M6 is matching SSI's exact driving-slack
+definition from the golden table (prototype-first, like M5).
