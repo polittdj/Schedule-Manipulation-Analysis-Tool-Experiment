@@ -499,3 +499,17 @@ this file is the running history.
 ### Commit SHAs
 - `9015fcd` — feat(m7): Acumen SQ + DCMA-14 metrics + golden + tests.
 - M7 durable state (ADR-0012, RTM B2/E1, HANDOFF A9→A10, this entry) — the following commit.
+
+### Addendum (A9) — M8 reconnaissance + session checkpoint
+- This continuous sitting delivered **M5 + M6 + M7** (three exact-parity gates: critical 41/37; SSI
+  driving slack 107/107; Acumen §A + 13/14 DCMA exact). All green and pushed.
+- **M8 recon done** (prototyped vs golden, captured in HANDOFF "A9 RECON ALREADY DONE"): §C baseline
+  compliance counts all EXACT (27/46, 9/9, 11/18, 7/19, BFC 33%/20%; start side exact; BSC % a minor
+  denominator delta); **Net Finish Impact −99 CRACKED** (version-pair, calendar-day: P2 finish
+  2027-08-30 → P5 2027-12-07); SPI/CPI → NA (schedules not cost-loaded). **§E SN slip/erosion metrics
+  are a research wall (R-13)** — naive "later finish" gives 99/100 vs golden 9/10 because the forecast
+  shifts ~99d as the data date advances; need Acumen's snapshot-delta semantics. Exact §E so far:
+  Total 144/144, Added 0, New-Critical 0, Completed 20/27, In-Progress 3/2.
+- **Checkpoint rationale:** stopping the *session* here (not the build) with everything green/pushed
+  and M8 fully de-risked in the HANDOFF, rather than ship guessed §E parity numbers (fidelity law) or
+  risk a context-overflow corrupting the M5–M7 work. Next session A10 implements M8 from the recon.

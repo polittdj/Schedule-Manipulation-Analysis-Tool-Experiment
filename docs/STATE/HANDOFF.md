@@ -43,14 +43,32 @@ tests are the real-`.mpp` integration tests (no `.mpp`/JVM in a fresh clone) —
   - **§E** (P2→P5 version diff): SN01 Total 144/144, SN02 Added 144/0, SN04 No-Longer-Critical 0/1,
     SN05 Finish Slips 0/9, SN06 Start Slips 0/10, SN07 Rem-Dur Increases 0/8, SN09 Float Erosion 0/6,
     SN18 Completed 20/27, SN19 In-Progress 3/2. These compare the two versions **by UniqueID**.
-- **Approach (prototype-first, as M5–M7):** prototype each §C/§E metric against the committed golden
-  MSPDI (both projects) BEFORE finalizing. §C baseline compliance = stored finish vs baseline_finish,
-  on-time = actual_finish ≤ baseline_finish, relative to status. §E SN = compare P2 vs P5 task-by-UID
-  (finish slip = P5 finish > P2 finish; float erosion = P5 tf < P2 tf; etc.). Net Finish Impact =
-  P5 project finish − P2 project finish in working days (≈ −99). Cost-based SPI/CPI need BCWP/BCWS/ACWP
-  — **check whether the schedules are cost-loaded** (`Task.budgeted_cost/cost/actual_cost`); if absent,
-  mark those indices NOT_APPLICABLE (never fabricate). SPI(t) earned-schedule from baseline + status.
-  Study (don't copy): `git show 0324ba4:src/schedule_forensics/performance_indices.py` and `:cei.py`.
+- **A9 RECON ALREADY DONE (prototype results — build from these):**
+  - **§C compliance counts all EXACT** (per project): finish-due = `baseline_finish ≤ status` (27/46);
+    On-Time = complete ∧ `actual_finish ≤ baseline_finish` (9/9); Late (11/18); Not-Completed (7/19);
+    BFC = OnTime/finish-due = 33%/20% ✓. Start side analogous: start-due `baseline_start ≤ status`
+    (29/48), Started-On-Time = `actual_start ≤ baseline_start` (11/11), Late (12/18), Not-Started
+    (6/19). **BSC minor delta:** OnTime/start-due = 38%/23% but golden shows **41%/25%** (denominator
+    quirk — 11/27 = 41%; document, drive to zero M9). Counts are exact.
+  - **Net Finish Impact = −99 ✓ CRACKED:** it is a **version-pair, CALENDAR-day** metric =
+    `(P2 forecast-finish date − P5 forecast-finish date)`. Via CPM: P2 finish 2027-08-30, P5 2027-12-07
+    → diff **−99 calendar days**. P2 column = 0 (first/reference snapshot, no prior). Use
+    `offset_to_datetime(project_start, cpm.project_finish, cal)` then `.days` between the two dates.
+  - **SPI/CPI → NOT_APPLICABLE:** the schedules are **NOT cost-loaded** (budgeted_cost/cost/actual_cost
+    all empty for every task). Mark cost-based EVM NA (never fabricate). SPI(t) earned-schedule may be
+    derivable from baseline + status; BEI/CPLI already done (M7).
+  - **§E SN-change = the HARD PART (research wall, R-13):** these are snapshot-delta (P2→P5 by UID).
+    EXACT already: SN01 Total 144/144, SN02 Added 0 (P5 vs P2), SN03 New Critical 0, SN18 Completed
+    20/27, SN19 In-Progress 3/2. **NOT yet matched:** SN05 Finish Slips (golden 9 — "finish later in
+    P5" gives 99 because the whole remaining schedule shifts ~99d as the data date advances; baseline
+    dates are UNCHANGED so it's not baseline manipulation); SN06 Start Slips (golden 10, "later start"
+    gives 100); SN07 Rem-Dur Increases (golden 8; cur-dur-larger=7, remaining-dur-larger=5);
+    SN09 Float Erosion (golden 6; pure-logic `tf P5<tf P2`=4); SN04 No-Longer-Critical (golden 1; got
+    6). These need Acumen's exact "vs prior period" semantics (likely a threshold and/or
+    progress-aware float, possibly the per-version baseline snapshot inside the `.mpp`) — prototype
+    hard against the golden; if genuinely not reproducible from the MSPDI, document each delta with
+    citations (ADR-0005 §5) and drive toward zero with M11 (manipulation-trend) context. Study (don't
+    copy): `git show 0324ba4:src/schedule_forensics/{trend_analysis,schedule_compare,diff_engine,performance_indices,cei}.py`.
 - **Not blocked by R-12** — committed golden MSPDI. **Files:** `engine/metrics/{evm,change_metrics}.py`;
   `tests/engine/metrics/test_{evm,change_metrics}.py`; extend `case.json` with §C/§E golden; ADR-0013;
   update RTM B2/D1. Engine ≥85%.
