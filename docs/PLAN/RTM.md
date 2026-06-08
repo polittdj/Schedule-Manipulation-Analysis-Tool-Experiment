@@ -24,7 +24,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
 | B1 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/{mspdi,xer,_common}.py` (M3); `importers/{mpp_mpxj,loader}.py` (M4) | Project2/5 parse: 144 acts, UID 2–145; ≤10 load | `tests/importers/*`; golden `tests/fixtures/golden/project2_5/` | M3,M4 | ✔ **M4: native `.mpp` via out-of-process MPXJ + ≤10 loader; Project2/5 → 144 acts UID 2–145 validated on the real uploads; distilled MSPDI committed as golden inputs; importers 100% cov.** (Field-value parity vs Acumen/SSI = B2, M6–M9.) |
-| B2 | Exact match to **Acumen v8.11.0** AND **SSI**; parity suite = gate | `engine/metrics/*`, `engine/driving_slack.py`, `tests/parity` | parity suite (UID-keyed) | `tests/fixtures/golden/{ssi_uid143,project2_5}/case.json` | M6,M7,M8,M9 | ▣ **SSI driving slack ✔ (M6, 107/107); Acumen §A + 13/14 DCMA ✔ exact (M7).** Residuals: High Float +1, composite scores (M9). EVM/SN = M8; suite consolidates M9 |
+| B2 | Exact match to **Acumen v8.11.0** AND **SSI**; parity suite = gate | `engine/metrics/*`, `engine/driving_slack.py`, `tests/parity` | parity suite (UID-keyed) | `tests/fixtures/golden/{ssi_uid143,project2_5}/case.json` | M6,M7,M8,M9 | ▣ **SSI driving slack ✔ (M6, 107/107); Acumen §A + 13/14 DCMA ✔ (M7); §C baseline-compliance counts + BFC + Net Finish Impact −99 + §E Added/New-Critical/Finish-Slips(9)/Completed/In-Progress ✔ (M8).** Residuals (→M9): High Float +1, composite scores; BSC %, SN04/06/07/09 (progress-aware float / snapshot granularity, ADR-0013). Parity suite consolidates M9 |
 | B3 | Cross-version matching by **UniqueID only** | `model` UID key, `importers/*` (M3/M4), `engine/diff.py` | diff test asserts UID-only | `model/schedule.py` (UID-keyed, integrity); `tests/importers/*` (UID keying; P2/P5 same UID set) | M2,M3,M4,M11 | ◻ model UID-key + integrity (M2); importers key by UID (M3); **M4: Project2/Project5 parse to the same UID set (golden test)**; diff M11 |
 
 ## C. CPM, driving slack & path tracing (SSI parity)
@@ -37,7 +37,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## D. Forensic & trend analysis
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| D1 | Local AI story + CPM trend + manipulation trends (deleted logic/shortened durations/deleted tasks) + industry analyses | `ai/narrative.py`,`engine/manipulation.py`,`diff.py` | manipulation-detection tests (P2→P5) | `PARITY-TARGETS §F` deltas | M11,M12 | ☐ |
+| D1 | Local AI story + CPM trend + manipulation trends (deleted logic/shortened durations/deleted tasks) + industry analyses | `ai/narrative.py`,`engine/manipulation.py`,`diff.py`; `engine/metrics/change_metrics.py` (M8 seam) | manipulation-detection tests (P2→P5) | `PARITY-TARGETS §F` deltas; `tests/engine/metrics/test_change_metrics.py` | M8,M11,M12 | ◻ **M8: version-pair change metrics (prior→current by UID) — Net Finish Impact −99d, finish/start slips, float erosion, completion deltas, added/deleted (cited offender UIDs).** Trend/narrative M11/M12 |
 | D2 | Every AI statement cited (file, UID, task) | `ai/citations.py` | citation-enforcement test (fail if uncited) | — | M12 | ☐ |
 
 ## E. Independent audits & recommendations
@@ -72,7 +72,7 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | Q2 | ruff + mypy(strict) + bandit + pip-audit | all four live in `ci.yml`; passing locally | M1 | ✔ live in CI |
 | Q3 | Network-egress guard test | `net_guard.py` + `tests/guards/test_egress.py` | M1 | ✔ |
 | Q4 | CI: lint+types+tests+security+parity; red blocks merge | `.github/workflows/ci.yml` (lint/types/tests/security live; parity at M9) | M1,M9 | ▣ security pipeline live; +parity M9 |
-| Q5 | Branches, Conventional Commits, draft PRs, no force-push, DoD | branch `claude/intelligent-johnson-18yZD` (continues PR #51 work); force-push denied | all | ◻ in effect |
+| Q5 | Branches, Conventional Commits, draft PRs, no force-push, DoD | each session fast-forwards its assigned feature branch onto the prior tip (lossless); **A10 on `claude/clever-carson-uovtkk`** (FF onto `elegant-thompson` A1–A9 tip); Conventional Commits; draft PR; no force-push to `main` | all | ◻ in effect |
 | Q6 | ADRs, risk register, change log | ADR 0000–0006, `docs/risks.md` | all | ◻ in effect |
 | Q7 | Structured logging w/ CUI redaction | `logging_redaction.py` + `tests/test_logging_redaction.py` | M1 | ✔ |
 | Q8 | Docs: user guide, metric dictionary, parity report | `METRICS-CATALOG.md` + M17 | M17 | ◻ catalog ready |

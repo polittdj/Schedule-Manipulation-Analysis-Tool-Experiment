@@ -513,3 +513,59 @@ this file is the running history.
 - **Checkpoint rationale:** stopping the *session* here (not the build) with everything green/pushed
   and M8 fully de-risked in the HANDOFF, rather than ship guessed §E parity numbers (fidelity law) or
   risk a context-overflow corrupting the M5–M7 work. Next session A10 implements M8 from the recon.
+
+---
+
+## A10 — 2026-06-08 — Phase 2 build, Milestone **M8** (EVM/baseline §C + Schedule-Network §E)
+
+- **Session:** A10 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A11.
+- **Milestone:** M8 — EVM indices + baseline-compliance/Half-Step-Delay (§C) + Schedule-Network change
+  metrics (§E) + the forensic Net Finish Impact, built from the A9 recon.
+- **Branch:** assigned `claude/clever-carson-uovtkk` was at greenfield `882dec3`; located the A1–A9 tip
+  on `claude/elegant-thompson-7opMM` and **fast-forwarded onto it (lossless, 26 commits)** before any
+  work (R-09). Build continued on `clever-carson-uovtkk`.
+
+### What changed (M8 — commit `6d982bf`)
+- **`engine/metrics/evm.py`** — `compute_baseline_compliance` (§C: Forecast-to-be-Finished/Started,
+  Completed/Started On-Time/Late, Not-Completed/Started, Baseline Finish/Start Compliance) +
+  `compute_evm_indices` (SPI/CPI/TCPI = NA without cost, CEI finish/start, count-based SPI(t)).
+- **`engine/metrics/change_metrics.py`** — `compute_change_metrics` (prior→current by UniqueID: SN01
+  Total, SN02 Added, SN03 New-Critical, SN04 No-Longer-Critical, SN05/06 Finish/Start Slips, SN07
+  Rem-Dur Increases, SN09 Float Erosion, SN18 Completed, SN19 In-Progress) + `compute_net_finish_impact`.
+- **`metrics/__init__.py`** exports the four new entry points; **golden `case.json`** extended with §C +
+  §E targets, the first-snapshot (P2) values, and the tracked `_deltas`.
+
+### Parity / tests (THE GATE)
+- **Exact vs golden:** §C every count (27/46, 9/9, 11/18, 7/19; 29/48, 11/11, 12/18, 6/19) + **BFC
+  33%/20%**; **Net Finish Impact -99 days** (version-pair, CPM calendar-day: P2 2027-08-30 → P5
+  2027-12-07); §E **Added 0**, **New Critical 0**, **Finish Date Slips 9** (= prior-plan-due-by-new-data
+  -date ∧ still incomplete = 16 planned − 7 newly completed), **Completed 20→27**, **In-Progress 3→2**.
+- **Cost EVM** SPI/CPI/TCPI = NOT_APPLICABLE — the golden schedules carry no cost (never fabricated).
+- **Residuals (ADR-0013 → M9):** SN04 No-Longer-Critical 0 vs 1 and SN09 Float Erosion 4 vs 6 (Acumen
+  reads MS Project's progress-aware total slack/Critical flag; engine uses pure-logic CPM float — same
+  root cause as the M7 High-Float +1); SN06 Start Slips 9 vs 10 and SN07 Rem-Dur 7 vs 8 (±1 snapshot
+  granularity); BSC % 38/23 vs 41/25 (denominator quirk). All in `case.json._deltas`.
+- +18 tests; new modules **100%** cov; full suite **357 passing, 3 skipped**; ruff/format/mypy(strict)/
+  bandit all clean; engine ≥85 / overall ≥70 gates hold (engine 100%, overall ~99%).
+
+### How the §E semantics were cracked (R-13)
+- Re-ran the prototype against the committed golden MSPDI (A9 recon was lost with its container):
+  naive forecast-finish diff = 99/100 (whole schedule rides the ~99-day data-date advance); the
+  **finish-delta histogram** + windowing showed Acumen's slip = activities the **prior plan** placed
+  on/before the **new** data date that are **still incomplete** → exactly 9. Net Finish Impact confirmed
+  as the version-pair CPM calendar-day diff (-99). The slip/erosion/critical-change residuals trace to
+  MS Project's progress-aware float (the MSPDI stores `TotalSlack`/`Critical`/variances), which the
+  engine deliberately doesn't consume — documented, not guessed (fidelity law).
+
+### Decisions / blockers
+- **ADR-0013**: two new modules + `MetricResult` reuse; §C/§E definitions; Net Finish Impact = CPM
+  version-pair calendar-day diff; cost EVM NA; the four §E + BSC + SN01-population residuals and their
+  one root cause. RTM B2 → ▣ (adds §C + §E exact set), D1 → ◻ (first forensic change signals). R-13 →
+  Mitigated. R-09 branch note updated for the clever-carson fast-forward.
+- No blockers. Next A11 = **M9** (parity-suite consolidation in `tests/parity/` + CI wiring + drive the
+  progress-aware-float residuals to zero or formally accept them; resolve composite scores).
+
+### Commit SHAs
+- `6d982bf` — feat(m8): EVM indices + baseline compliance (§C) + Schedule-Network change (§E).
+- M8 durable state (ADR-0013, RTM B2/D1/Q5, risks R-09/R-13, HANDOFF A10→A11, this entry) — the
+  following commit.
