@@ -651,3 +651,42 @@ this file is the running history.
 ### Commit SHAs
 - `0f66e97` — feat(m10): DCMA audit + recommendations.
 - M10 durable state (ADR-0015, RTM E1/E2, HANDOFF A12→A13, this entry) — the following commit.
+
+---
+
+## A13 — 2026-06-08 — Phase 2 build, Milestone **M11** (version diff + manipulation trends, §6.D)
+
+- **Session:** A13 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A14.
+- **Milestone:** M11 — the UID-only version diff and the schedule-manipulation-trend detector that §6.D
+  needs, validated against the P2/P5 golden.
+
+### What changed (M11 — commit `1b841cc`)
+- **`engine/diff.py`** — `diff_versions(prior, current)` matches by **UniqueID only** (summaries excluded)
+  → `VersionDiff`: added/deleted tasks, per-UID `TaskDiff`/`FieldDelta` over durations + baseline/actual/
+  forecast dates + %complete + constraint, and added/removed logic links (set-diffed by pred+succ+type+lag).
+- **`engine/manipulation.py`** — `detect_manipulation(current, prior)` → cited, severity-ordered Findings:
+  deleted tasks (HIGH if on the prior critical path), deleted logic, shortened durations on incomplete
+  work, baseline-date changes (DECM 29I401a, HIGH), edited actuals (DECM 06A504*, HIGH — date→date, not
+  None→date). `trend_across_versions(≤10)` → per-version CPM finish + completed/in-progress/critical.
+
+### Forensic validation (the key result)
+- **No false positives on the honest P2→P5:** `detect_manipulation(p5, p2) == ()` — baselines unchanged,
+  no deleted tasks/logic, no edited actuals, no shortened incomplete durations; the −99-day slip is the
+  data date advancing, not manipulation. Diff confirms: 0 added/deleted, 106 changed (forecast/progress),
+  2 links added, 0 removed. Synthetic tests prove each detector fires on a real signal. Trend: finish
+  2027-08-30→2027-12-07, completed 20→27, critical 41→37.
+
+### Parity / tests
+- +11 tests; full suite **385 passing, 3 skipped**; `diff` **100%**, `manipulation` **98%**; parity gate
+  **10/10**; ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0016**: UID-only diff + manipulation detector design; honest-progress silence as a feature; trend
+  helper. RTM **D1 → ▣** (deterministic manipulation/diff/trend done; AI story = M12), **B3 → ✔** (UID-only).
+- No blockers. Next A14 = **M12** (pluggable local AI: Null default + Ollama via stdlib urllib to
+  127.0.0.1:11434; list/pull/select; cited narrative — every sentence cited; CUI fail-closed routing +
+  persistent unclassified banner; egress guard holds).
+
+### Commit SHAs
+- `1b841cc` — feat(m11): version diff + manipulation detection + trend.
+- M11 durable state (ADR-0016, RTM D1/B3, HANDOFF A13→A14, this entry) — the following commit.

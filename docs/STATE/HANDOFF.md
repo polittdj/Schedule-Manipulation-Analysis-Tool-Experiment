@@ -1,8 +1,8 @@
 # Handoff — 2026-06-08
 
-This session: A12 (continuous build — see directive)     Next session: A13
+This session: A13 (continuous build — see directive)     Next session: A14
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M10 complete. Next milestone = M11 (version diff + manipulation-trend detection, forensic).**
+Phase/Gate: **Phase 2 — build. Milestones M1–M11 complete (full analysis engine done). Next milestone = M12 (local AI backend + cited narrative).**
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**).
 
 ## Operator standing directive (persisted — honor every session)
@@ -10,63 +10,68 @@ Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude
 Maximum effort; failure is not an option."** → Build milestones back-to-back; after EACH milestone
 commit + push + refresh durable state so the build is always green and resumable across compaction.
 
-## Branch note (READ FIRST — how to resume losslessly)
-Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A12 lineage. A13: if your assigned
-branch is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/`),
-confirm it has this M10 work (`git log --oneline | grep m10`), and `git merge --ff-only` onto it.
-**Never** start from greenfield.
+## Branch note (READ FIRST)
+Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A13 lineage. A14: if your assigned branch
+is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/`),
+confirm it has this M11 work (`git log --oneline | grep m11`), and `git merge --ff-only` onto it. Never
+start from greenfield.
 
-Green baseline (all green — **374 passed, 3 skipped; parity gate 10/10; engine ~99%; overall ~99%**). Verify:
+Green baseline (all green — **385 passed, 3 skipped; parity gate 10/10; engine ~99%; overall ~99%**). Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
 python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
 python -m pytest -m parity && python -m bandit -q -r src`
 Sandbox: fresh clone → `git config core.hooksPath .githooks` + `pip install -e '.[dev]'`; prefer
-`python -m <tool>`; 3 skipped tests are the real-`.mpp` integration tests (no `.mpp`/JVM) — expected.
+`python -m <tool>`; 3 skipped tests are the real-`.mpp` integration tests — expected.
 
-## Completed this session (M10 — DCMA audit + recommendations, §6.E)
-- **M10** `0f66e97`: `engine/dcma_audit.py` (`audit_schedule` → cited 16-row `ScheduleAudit` with
-  per-check suggested improvements) + `engine/recommendations.py` (`recommend` → severity-ordered
-  RISK/OPPORTUNITY/CONCERN `Finding`s from DCMA + §C + §E + driving-slack signals). Every finding
-  cites file+UID+task (BEI enriched with offenders; Net-Finish-Impact cites finish-controlling
-  activities). ADR-0015; RTM E1/E2 → ✔. + the M10 durable-state commit.
+## Completed this session (M11 — version diff + manipulation trends, §6.D)
+- **M11** `1b841cc`: `engine/diff.py` (`diff_versions` by UniqueID → `VersionDiff`) + `engine/manipulation.py`
+  (`detect_manipulation` → cited Findings: deleted tasks/logic, shortened durations, baseline 29I401a +
+  actual 06A504* date edits; **no false positives on the honest P2→P5**; `trend_across_versions` →
+  CPM/progress trend). ADR-0016; RTM D1 → ▣, B3 → ✔. + the M11 durable-state commit.
 
-## Engine status (what exists now)
-`model/` (frozen, UID-keyed) · `importers/` (MSPDI/XER/MPXJ + ≤10 loader) · `engine/`: `cpm`, `float_analysis`,
-`driving_slack`/`path_trace`, `metrics/{dcma14, schedule_quality, evm, change_metrics}`, `dcma_audit`,
-`recommendations`. Parity gate (`tests/parity/`) green. **Not yet built:** `engine/manipulation.py` +
-`engine/diff.py` (M11), `ai/` (M12), `web/` (M13/M14), `.pbix` (M15), `launcher.py` (M16), docs (M17).
+## Engine status — the analysis core is COMPLETE (M1–M11)
+`model/` · `importers/` (MSPDI/XER/MPXJ, ≤10 loader) · `engine/`: cpm, float_analysis, driving_slack/
+path_trace, metrics/{dcma14, schedule_quality, evm, change_metrics}, dcma_audit, recommendations, diff,
+manipulation. Parity gate green. **Remaining = product surface:** `ai/` (M12), `web/` (M13/M14), `.pbix`
+(M15), `launcher.py` (M16), docs/final report (M17).
 
-## Next session (A13 — Milestone **M11**: version diff + manipulation-trend detection, forensic §6.D)
-- **Milestone (BUILD-PLAN M11, RTM D1):** a UID-only **version diff** Project2→Project5 and a
-  **manipulation-trend detector** that flags the classic signals with citations: deleted logic, shortened
-  durations, deleted/added tasks, **baseline-date changes** (mask variance — DECM 29I401a), **actual-date
-  changes** (06A504*), plus a CPM/float trend. Reproduce the known P2→P5 signals (finish/start slips,
-  Missed 18→37, float erosion, Net Finish Impact −99) as cited findings.
+## Next session (A14 — Milestone **M12**: local AI backend (Ollama) + cited narrative, §6.D/§6.F)
+- **Milestone (BUILD-PLAN M12, RTM D1/D2/F1/F2/F3, G1):** a **pluggable** AI backend (Null default +
+  Ollama) that can list/pull/select local models in-app, plus a "generate a story" narrative where
+  **every sentence is cited** (file + UID + task), built on the M10/M11 `Finding`/`TrendPoint` signals.
+  CUI fail-closed routing: local Ollama only by default; cloud only behind an explicit "unclassified"
+  toggle with a **persistent banner naming the endpoint**; never auto-fall-back to cloud.
+- **CUI / egress (HARD — Law 1):** the egress guard forbids `requests`/`httpx`/`aiohttp`/`urllib3`/
+  websockets as **runtime** deps and forbids cloud SDK modules; loopback (`127.0.0.1`/`localhost`) is
+  allowed. So the **Ollama backend must use stdlib `urllib.request` to `http://127.0.0.1:11434`** (the
+  guard already names this) and add **no** forbidden runtime dependency. `tests/guards/test_egress.py`
+  must stay green. Validate the target host with `net_guard`'s loopback check before any call.
 - **Acceptance criteria:**
-  1. `engine/diff.py` — `diff_versions(prior, current)` by UniqueID: per task, the field-level deltas
-     (duration, remaining duration, baseline start/finish, actual start/finish, %complete, constraint),
-     plus added/deleted tasks and **added/deleted relationships** (logic changes). Typed, cited records.
-  2. `engine/manipulation.py` — `detect_manipulation(prior, current)` → cited `Finding`-style signals:
-     deleted logic into/around the driving path, shortened durations on incomplete work, deleted tasks
-     that were on the prior critical/driving path, baseline-date shifts (baseline moved to absorb slip),
-     actual-date edits between snapshots. Severity + course of action + citations (reuse `Finding`/`Citation`).
-  3. Multi-version aware (≤10): accept an ordered list of versions and trend each signal across the series
-     (CPM finish trend, float erosion trend, Missed trend). TDD synthetic + golden P2/P5.
-  4. Full gate green incl. parity; engine ≥85 / overall ≥70; ruff/mypy/bandit clean.
-- **Files:** `engine/diff.py`, `engine/manipulation.py`, `tests/engine/test_diff.py`,
-  `tests/engine/test_manipulation.py`; export via `engine/__init__.py`; ADR-0016; update RTM D1 (and B3
-  diff-by-UID). The P2/P5 golden already exercises real changes (baseline unchanged, dates shifted as the
-  data date advanced) — assert the detector's signals against `case.json` / known deltas.
-- **First steps:** (1) start ritual + confirm 374 baseline; (2) design the `TaskDiff`/`LogicDiff`/
-  `VersionDiff` dataclasses (UID-keyed, cited); (3) implement `diff_versions`, then `detect_manipulation`
-  over diffs + `change_metrics` + driving slack; full gate; refresh state → M12.
+  1. `ai/backend.py` — `AIBackend` protocol (`generate`, `list_models`, `pull_model`, `is_available`) +
+     an `AIConfig` (classification CLASSIFIED default / UNCLASSIFIED; active model; endpoint).
+  2. `ai/null.py` — `NullBackend` (deterministic, offline, **default**): renders the narrative from the
+     cited findings with no model — used in CI and as the fail-closed fallback.
+  3. `ai/ollama.py` — `OllamaBackend` via **stdlib urllib to 127.0.0.1:11434** (list/pull/generate);
+     fail-loud if unreachable; never a remote host. Unit-test request/payload construction without a live
+     server (inject a transport / monkeypatch urlopen); mark any live-server test skip-if-unavailable.
+  4. `ai/citations.py` — enforce that **every sentence** in the narrative carries ≥1 citation; raise if
+     not (a test feeds an uncited sentence and asserts the raise). `ai/narrative.py` — assemble the
+     "story" (CPM trend, manipulation trends, audit, recommendations) as cited statements; if a backend
+     polishes the prose, re-verify citation coverage on the output (AI rephrases, never invents).
+  5. CUI routing: `route_backend(config)` returns the local backend when CLASSIFIED; cloud only when
+     UNCLASSIFIED **and** a banner is produced naming the endpoint; fail closed to Null otherwise. Test
+     the fail-closed paths. Egress guard + full gate + parity stay green; engine ≥85 / overall ≥70.
+- **Files:** `ai/{backend,null,ollama,citations,narrative}.py`, `tests/ai/test_*`; export via `ai/__init__.py`;
+  ADR-0017; update RTM D1/D2/F1/F2/F3. Do **not** add runtime deps (stdlib only for AI transport).
+- **First steps:** (1) start ritual + confirm 385 baseline + egress guard green; (2) design `AIBackend`
+  protocol + `CitedStatement`/`Narrative` types (sentence → citations); (3) NullBackend + citations
+  enforcement first (CI-safe), then OllamaBackend (urllib/loopback) + CUI routing; full gate; → M13.
 
-## Milestones remaining: M11 (diff + manipulation trends), M12 (local AI Ollama + cited narrative),
-M13 (web UI shell + dark NASA theme + settings + in-tool help), M14 (interactive visuals + drill-down),
-M15 (.pbix enrich), M16 (desktop launcher), M17 (docs + final report + RTM closeout → DONE).
+## Milestones remaining: M12 (local AI + cited narrative), M13 (web UI shell + dark NASA theme + settings
++ in-tool help/metric dictionary), M14 (interactive visuals + drill-down), M15 (.pbix enrich), M16
+(desktop launcher), M17 (docs + final report + RTM closeout → DONE).
 
-Open questions / blockers: none. M11 note: in the P2/P5 golden the **baseline dates are unchanged**
-(the slip came from the data date advancing, not baseline manipulation) — so the baseline-shift detector
-should report *no* baseline manipulation here and instead surface the forecast slip / float erosion as the
-signal. Keep every flag cited (file + UID + task); never assert manipulation without the underlying delta.
+Open questions / blockers: none. M12 guardrail: keep AI transport **stdlib-only to loopback**; the
+narrative's facts come from the cited engine Findings (the model only rephrases) so the story can never
+fabricate or leak — that is both the §6.D citation requirement and the §6.G/Law 1 CUI defense.
