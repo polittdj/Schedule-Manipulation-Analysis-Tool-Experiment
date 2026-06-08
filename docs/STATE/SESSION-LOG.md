@@ -690,3 +690,44 @@ this file is the running history.
 ### Commit SHAs
 - `1b841cc` — feat(m11): version diff + manipulation detection + trend.
 - M11 durable state (ADR-0016, RTM D1/B3, HANDOFF A13→A14, this entry) — the following commit.
+
+---
+
+## A14 — 2026-06-08 — Phase 2 build, Milestone **M12** (local AI backend + cited narrative, §6.D/F/G)
+
+- **Session:** A14 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A15.
+- **Milestone:** M12 — pluggable local-AI layer + the cited "generate a story" narrative, CUI fail-closed.
+
+### What changed (M12 — commit `15fab65`)
+- **`ai/backend.py`** — `AIBackend` protocol + `AIConfig` (CLASSIFIED default) + `route_backend`:
+  CLASSIFIED returns only a local backend (Ollama if available else Null) and **refuses cloud**; cloud
+  only on explicit UNCLASSIFIED + a persistent `Banner` naming the endpoint; never auto-cloud.
+- **`ai/null.py`** — `NullBackend` (offline default/fallback; `generate` verbatim — never invents).
+- **`ai/ollama.py`** — `OllamaBackend` via **stdlib urllib to 127.0.0.1:11434** (list/pull/generate);
+  endpoint loopback-validated at construction (remote → `CUIEgressError`); injectable opener for tests.
+- **`ai/citations.py` + `ai/narrative.py`** — `CitedStatement`/`assert_all_cited`/`reattach` +
+  `build_narrative` over the M10/M11 cited findings; a model may rephrase prose but citations come from
+  the engine and are re-verified — no uncited or fabricated statement can ship. Clean schedule → cited
+  clean-bill.
+
+### CUI / egress
+- AI transport is **stdlib-only to loopback**; no forbidden runtime distribution added; `assert_local_only`
+  + the egress test stay green. Remote endpoints fail closed (`CUIEgressError`). Tested: CLASSIFIED refuses
+  cloud, UNCLASSIFIED+cloud emits the banner, Ollama remote-endpoint raises.
+
+### Parity / tests
+- +18 tests; full suite **403 passing, 3 skipped**; ai backend/null/narrative/citations **100%**,
+  ollama **88%** (only the live `urllib` opener uncovered — needs a running Ollama, like the real-`.mpp`
+  skips); parity gate **10/10**; ruff/format/mypy(strict)/bandit clean.
+
+### Decisions / blockers
+- **ADR-0017**: pluggable backend + fail-closed routing + loopback-only Ollama + citation enforcement.
+  RTM **D1/D2 → ✔** (cited AI story), **F1/F3 → ✔** (Ollama default, no-cloud-by-default), **F2 → ▣**
+  (list/pull/select done; UI panel M13), **G1 → ✔** (runtime routing local fail-closed).
+- No blockers. Next A15 = **M13** (FastAPI web shell + dark NASA theme + model settings + metric
+  dictionary + session wipe; add fastapi/plain-uvicorn/jinja2 runtime deps — keep `websockets`/`httpx`
+  out of runtime; bind 127.0.0.1; egress guard must stay green).
+
+### Commit SHAs
+- `15fab65` — feat(m12): local-AI backend + cited narrative.
+- M12 durable state (ADR-0017, RTM D1/D2/F1/F2/F3/G1, HANDOFF A14→A15, this entry) — the following commit.

@@ -37,8 +37,8 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## D. Forensic & trend analysis
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| D1 | Local AI story + CPM trend + manipulation trends (deleted logic/shortened durations/deleted tasks) + industry analyses | `engine/diff.py`,`engine/manipulation.py`,`engine/metrics/change_metrics.py`; `ai/narrative.py` (M12) | `tests/engine/test_{diff,manipulation}.py` (P2→P5 + synthetic) | `PARITY-TARGETS §F` deltas; golden P2/P5 | M8,M11,M12 | ▣ **M8: §E change metrics + Net Finish Impact −99. M11: UID-only `diff_versions` + `detect_manipulation` (deleted tasks/logic, shortened durations, baseline 29I401a + actual 06A504* date edits — cited, severity-ordered; no false positives on the honest P2→P5) + `trend_across_versions` (CPM/progress trend).** AI story = M12 |
-| D2 | Every AI statement cited (file, UID, task) | `ai/citations.py` | citation-enforcement test (fail if uncited) | — | M12 | ☐ |
+| D1 | Local AI story + CPM trend + manipulation trends (deleted logic/shortened durations/deleted tasks) + industry analyses | `engine/{diff,manipulation,metrics/change_metrics}.py`; `ai/narrative.py` | `tests/engine/test_{diff,manipulation}.py`; `tests/ai/test_narrative.py` | golden P2/P5; `PARITY-TARGETS §F` | M8,M11,M12 | ✔ **M8/M11 engine signals + M12 `build_narrative` → cited forensic story (CPM trend, manipulation trends, audit, recommendations); NullBackend default, Ollama optional.** |
+| D2 | Every AI statement cited (file, UID, task) | `ai/citations.py` (`assert_all_cited`, `reattach`) | `tests/ai/test_{citations,narrative}.py` (raise-if-uncited) | golden narrative all-cited | M12 | ✔ **M12: `CitedStatement` + hard gate; a model may rephrase prose but citations come from the engine and are re-verified — no uncited statement can ship.** |
 
 ## E. Independent audits & recommendations
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
@@ -49,14 +49,14 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 ## F. Local AI backend
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| F1 | Ollama default local model | `ai/ollama.py`,`ai/backend.py` | backend-selection test | — | M12 | ☐ |
-| F2 | Download + switch models in-app (list/pull/select) | `web` settings + `ai` backend | settings/model-switch test | — | M12,M13 | ☐ |
-| F3 | Sensible default model; no cloud by default | `ai` config | default-model + no-cloud test | `SETUP-DIRECTION §6` | M12 | ☐ |
+| F1 | Ollama default local model | `ai/ollama.py`,`ai/backend.py` | `tests/ai/test_backends.py` (routing) | — | M12 | ✔ **M12: `AIConfig` default = Ollama; `route_backend` selects it when available, else Null.** |
+| F2 | Download + switch models in-app (list/pull/select) | `ai/ollama.py` (list/pull) + `web` settings (M13) | `tests/ai/test_backends.py` (list/pull/generate via injected opener) | — | M12,M13 | ▣ **M12: `list_models`/`pull_model`/`generate` over loopback Ollama.** UI panel = M13 |
+| F3 | Sensible default model; no cloud by default | `ai/backend.py` (`AIConfig`, `route_backend`) | `tests/ai/test_backends.py` (fail-closed) | `SETUP-DIRECTION §6` | M12 | ✔ **M12: default model set; CLASSIFIED refuses cloud / fails closed to local; cloud only on explicit UNCLASSIFIED + banner.** |
 
 ## G. Data locality
 | ID | Requirement | Design / module | Test | Evidence | M | Status |
 |----|-------------|-----------------|------|----------|---|--------|
-| G1 | No data off-machine; all compute local/offline | `net_guard.py`, `ai` routing, `.gitignore` | **egress-guard test** | `tests/guards/test_egress.py` (passing) | M1,M12 | ▣ guard+test+hooks in (M1); runtime routing M12 |
+| G1 | No data off-machine; all compute local/offline | `net_guard.py`, `ai/{backend,ollama}.py` routing, `.gitignore` | `tests/guards/test_egress.py` + `tests/ai/test_backends.py` (loopback guard + fail-closed) | `tests/guards/test_egress.py` (passing) | M1,M12 | ✔ **M1 guard+test+hooks; M12 AI routing is local fail-closed (loopback-validated Ollama; cloud refused unless UNCLASSIFIED+banner; stdlib transport — no forbidden runtime dep).** |
 
 ## Global units & formatting (§3)
 | ID | Requirement | Module | Test | M | Status |
