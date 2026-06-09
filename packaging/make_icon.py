@@ -55,11 +55,7 @@ def _ico(png: bytes) -> bytes:
 
 
 def main() -> None:
-    pixels = [
-        ACCENT if _triangle(col, row) else BG
-        for row in range(SIZE)
-        for col in range(SIZE)
-    ]
+    pixels = [ACCENT if _triangle(col, row) else BG for row in range(SIZE) for col in range(SIZE)]
     out = Path(__file__).parent / "windows" / "schedule-forensics.ico"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(_ico(_png(pixels)))
