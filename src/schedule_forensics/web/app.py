@@ -107,6 +107,9 @@ font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
 .linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
 cursor:pointer;text-decoration:underline}
 .row-actions{font-size:13px}.row-actions a{color:var(--accent)}
+.notice{padding:10px 14px;border-radius:8px;margin:0 0 12px;font-size:14px}
+.notice.ok{background:#0d2818;border:1px solid var(--ok);color:var(--ok)}
+.notice.err{background:#3a1d1d;border:1px solid var(--bad);color:var(--bad)}
 """
 
 # Keep-alive + quit: every page beats every 3s so the server knows the browser is open;
@@ -134,12 +137,21 @@ _LAYOUT = Template(
 )
 
 
+@dataclass(frozen=True)
+class _Flash:
+    """A one-shot import result message shown on the next dashboard render."""
+
+    accepted: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+
+
 @dataclass
 class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk persistence."""
 
     schedules: dict[str, Schedule] = field(default_factory=dict)
     ai_config: AIConfig = field(default_factory=AIConfig)
+    flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
@@ -151,6 +163,19 @@ def _banner_html(state: SessionState) -> str:
     banner = banner_for(state.ai_config)
     css = "cloud" if banner.cloud_active else "local"
     return f'<div class="banner {css}">{html.escape(banner.text)}</div>'
+
+
+def _flash_html(flash: _Flash | None) -> str:
+    """Render one-shot import feedback (loaded N / per-file errors), or nothing."""
+    if flash is None or (not flash.accepted and not flash.errors):
+        return ""
+    parts: list[str] = []
+    if flash.accepted:
+        names = ", ".join(_e(a) for a in flash.accepted)
+        parts.append(f'<div class="notice ok">Loaded {len(flash.accepted)}: {names}</div>')
+    for err in flash.errors:
+        parts.append(f'<div class="notice err">Could not import {_e(err)}</div>')
+    return "".join(parts)
 
 
 def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
@@ -219,6 +244,8 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:
         st = session()
+        flash = _flash_html(st.flash)
+        st.flash = None  # one-shot: clear after rendering
         rows = "".join(
             f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
             f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
@@ -241,6 +268,7 @@ def create_app(
             else ""
         )
         body = f"""
+{flash}
 <section class=hero>
   <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
   <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
@@ -305,21 +333,31 @@ def create_app(
     @app.post("/upload")
     async def upload(files: list[UploadFile]) -> RedirectResponse:
         st = session()
-        accepted = 0
+        accepted: list[str] = []
+        errors: list[str] = []
         for upload_file in files[:MAX_FILES]:
             name = upload_file.filename or "schedule"
             data = await upload_file.read()
             try:
                 schedule = _parse_upload(name, data)
-            except (ImporterError, ValueError, OSError):
-                logger.warning(
-                    "rejected upload (unparseable); ext=%s bytes=%d", Path(name).suffix, len(data)
-                )
+            except (ImporterError, ValueError, OSError) as exc:
+                reason = str(exc).splitlines()[0][:160] if str(exc) else "unreadable file"
+                errors.append(f"{name}: {reason}")
+                logger.warning("rejected upload; ext=%s bytes=%d", Path(name).suffix, len(data))
                 continue
             key = _unique_key(_clean_key(name), st.schedules)
             st.schedules[key] = schedule.model_copy(update={"source_file": name})
-            accepted += 1
-        logger.info("loaded %d schedule(s); total now %d", accepted, len(st.schedules))
+            accepted.append(key)
+        logger.info(
+            "loaded %d schedule(s); %d rejected; total now %d",
+            len(accepted),
+            len(errors),
+            len(st.schedules),
+        )
+        st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors))
+        # a single clean open jumps straight to its report; otherwise back to the dashboard
+        if len(accepted) == 1 and not errors:
+            return RedirectResponse(url=f"/analysis/{quote(accepted[0])}", status_code=303)
         return RedirectResponse(url="/", status_code=303)
 
     @app.get("/analysis/{name}", response_class=HTMLResponse)
