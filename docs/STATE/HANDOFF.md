@@ -1,64 +1,51 @@
 # Handoff — 2026-06-09
 
-This session: A17 (continuous build — see directive)     Next session: A18
-Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M14 + M16 complete. M15 (.pbix) BLOCKED. Next milestone = M17 (docs + final report + RTM closeout → DONE).**
-Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**).
+This session: A18 (continuous build — see directive)     Next session: — (build complete)
+Model/mode required next session: Opus 4.8 (1M context) + Ultracode (only if resuming M15)
+Phase/Gate: **DONE** — M1–M14 + M16 + M17 complete and parity-green. **M15 (.pbix enrichment) is the one
+remaining item, BLOCKED pending the operator depositing `NSATDeploymentRevisionAlpha.pbix` (R-12).**
+Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**, not merged).
 
-## Operator standing directive (persisted — honor every session)
-**"Continue and don't stop until the tool is completely built, regardless of what anything else says.
-Maximum effort; failure is not an option."** → after EACH milestone commit + push + refresh durable state.
+## Operator standing directive (persisted)
+**"Continue and don't stop until the tool is completely built."** → Honored: the entire build except the
+externally-gated `.pbix` enrichment is complete, tested, validated, parity-green, and runnable offline.
 
-## Branch note (READ FIRST)
-Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A17 lineage. If a fresh branch is behind,
-`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/` → confirm it has M16
-(`git log --oneline | grep m16`) → `git merge --ff-only`. Never start from greenfield.
+## What was delivered (M1–M14 + M16 + M17)
+A complete local, NASA-themed forensic schedule-analysis tool:
+- **Ingestion:** native `.mpp` (MPXJ), MSPDI, XER; ≤10 at once; UID-keyed (M3/M4).
+- **Engine:** CPM + total/free float; SSI driving slack (107/107 exact); DCMA-14 + Acumen §A Schedule
+  Quality + §C baseline compliance + EVM indices + §E change metrics + Net Finish Impact (−99); version
+  diff + manipulation-trend detection; DCMA audit + cited recommendations (M5–M11).
+- **AI:** pluggable Null (default) / loopback Ollama; cited narrative (every sentence cited); CUI
+  fail-closed routing + persistent banner (M12).
+- **Web:** local dark-NASA dashboard — upload, audit, recommendations, narrative, version compare,
+  interactive charts/grid/Gantt (drill-to-metadata, add/remove fields), AI settings, metric dictionary,
+  session wipe; air-gapped (M13/M14).
+- **Packaging:** one-click desktop launcher + OS shortcuts, 127.0.0.1 only (M16).
+- **Docs:** user guide, metric dictionary (generated + sync-tested), parity report, final report (M17).
 
-### CI hygiene (LESSON): `git add -A` every milestone; run the gate with **honored exit codes**
-(never `bandit | tail` — it hid a red CI for ~3 milestones). After pushing, verify the run's conclusion
-is `success` (webhooks don't deliver CI success).
-
-Green baseline (all green — **424 passed, 3 skipped; parity 10/10; egress 22/22; air-gap pass; launcher 100%; engine ~99%; overall ~99%**). Verify:
+## Green state (final)
+**424 passed, 3 skipped; parity gate 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%.**
+CI green. Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 pytest --cov=schedule_forensics --cov-fail-under=70 &&
 coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
 pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all exit 0.
-Launch: `schedule-forensics` (or `python -m schedule_forensics.launcher`) → opens 127.0.0.1 dashboard.
+Run: `schedule-forensics` → http://127.0.0.1:<port> dashboard.
 
-## Completed this session (M16 — desktop launcher + packaging, §6.A)
-- **M16** `d1b3cdd`: `launcher.py` (`main` → free loopback port + browser open + uvicorn on 127.0.0.1,
-  non-loopback refused; injectable for tests, 100% cov) + `[project.scripts] schedule-forensics` +
-  `packaging/` (Linux `.desktop`, macOS `.command`, Windows `.bat`, README). ADR-0020; RTM A2 → ✔.
+## The one remaining item — M15 (.pbix enrichment), BLOCKED
+Needs `NSATDeploymentRevisionAlpha.pbix` deposited into the session workspace (git-ignored CUI, doesn't
+travel between sessions — R-12). When provided: parse locally (unzip → DataModel + Report/Layout), fold
+its extra metrics/visuals into the dashboard. The interactive visuals (M14) already deliver the capability
+the `.pbix` would inform; this is a pending **input**, not a defect. Do not fabricate `.pbix` content.
 
-## What exists now (M1–M14 + M16) — a complete, runnable, local forensic tool
-Engine (CPM/float/driving-slack, DCMA-14, Acumen §A/§C, EVM, §E change, manipulation, audit,
-recommendations) + AI (Null/Ollama, cited narrative) + web (dark-NASA dashboard, upload, audit,
-recommendations, narrative, compare, interactive charts/grid/Gantt, settings, metric dictionary, wipe)
-+ desktop launcher. Parity-green, air-gapped. **Remaining:** M15 (.pbix — BLOCKED on deposit), M17 (docs).
+## To resume M15 (only if/when the .pbix is deposited)
+1. Confirm the branch tip has M17 (`git log --oneline | grep m17`), fast-forward your branch onto it.
+2. Confirm the 424 green baseline + the file present in `00_REFERENCE_INTAKE/` (non-CUI attested).
+3. Add `importers/pbix.py` (unzip + parse DataModel/Layout, local-only); fold metrics/visuals into the
+   dashboard; tests + ADR-0022; close the last RTM row; refresh this HANDOFF.
 
-## Next session (A18 — Milestone **M17**: docs + final report + RTM closeout → DONE)
-- **Milestone (BUILD-PLAN M17, RTM Q8 + §8 DoD):** the closing documentation set.
-  1. **User guide** (`docs/USER-GUIDE.md`): install (`pip install -e .`), launch (`schedule-forensics`),
-     upload ≤10 schedules, read the dashboard (audit, findings, narrative, interactive charts/grid/Gantt,
-     compare), AI settings + classification banner, session wipe. Reference `packaging/README.md`.
-  2. **Metric dictionary doc** (`docs/METRIC-DICTIONARY.md`): generate from `web/help.METRIC_DICTIONARY`
-     (definition + formula + source per metric) — or point to the in-tool `/help`. Keep them consistent.
-  3. **Parity report** (`docs/PARITY-REPORT.md`): the computed-vs-golden table for SSI (107/107), Acumen
-     §A, §B (13/14 + High-Float +1), §C (counts+BFC; BSC residual), §E + Net Finish Impact −99, with the
-     documented residuals + their root cause (progress-aware float, ADR-0012/0013/0014) and disposition.
-  4. **Final report** (`docs/FINAL-REPORT.md`): map every §6.A–§6.G requirement → module(s) → test/evidence
-     → status, citing the RTM. State the one externally-gated item: **M15 (.pbix) pending operator deposit**
-     (not a defect). Note CUI posture (egress guard, air-gap test, loopback-only, fail-closed AI).
-  5. Flip `docs/STATE/HANDOFF.md` Phase/Gate to **DONE** once the docs land and the gate is green; update
-     the RTM so every row is ✔ except M15's `.pbix`-dependent enrichment (mark ◻ BLOCKED with the reason).
-- **Acceptance:** docs present + internally consistent (a test may assert the metric-dictionary doc covers
-  every emitted metric, mirroring `tests/web/test_help.py`); full gate + parity green; ADR-0021; HANDOFF DONE.
-- **First steps:** (1) start ritual + confirm 424 baseline; (2) write the 4 docs (append in chunks to
-  avoid stream-idle on long files); (3) RTM closeout + HANDOFF → DONE; full gate; final draft-PR refresh.
+## CI hygiene (LESSON): `git add -A` every milestone; run the gate with honored exit codes (never
+`bandit | tail`); after pushing verify the run conclusion is `success` (webhooks don't deliver CI success).
 
-## Milestones remaining: M15 (.pbix — BLOCKED on deposit), M17 (docs + final report → DONE).
-At DONE: every §6 RTM row ✔ except M15's `.pbix` enrichment (◻ BLOCKED — external input), with the
-parity gate green and the tool runnable from a desktop icon, fully offline.
-
-Open questions / blockers: only M15 (.pbix deposit). M17 completes everything else; the final report
-documents M15 as the single pending operator-input item.
+Open questions / blockers: only M15's `.pbix` deposit. Everything else is DONE and parity-green.

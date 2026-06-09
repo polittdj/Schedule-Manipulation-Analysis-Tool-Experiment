@@ -75,4 +75,4 @@ Status: ☐ Not started · ◻ In progress / inputs ready · ▣ Implemented · 
 | Q5 | Branches, Conventional Commits, draft PRs, no force-push, DoD | each session fast-forwards its assigned feature branch onto the prior tip (lossless); **A10 on `claude/clever-carson-uovtkk`** (FF onto `elegant-thompson` A1–A9 tip); Conventional Commits; draft PR; no force-push to `main` | all | ◻ in effect |
 | Q6 | ADRs, risk register, change log | ADR 0000–0006, `docs/risks.md` | all | ◻ in effect |
 | Q7 | Structured logging w/ CUI redaction | `logging_redaction.py` + `tests/test_logging_redaction.py` | M1 | ✔ |
-| Q8 | Docs: user guide, metric dictionary, parity report | `METRICS-CATALOG.md` + M17 | M17 | ◻ catalog ready |
+| Q8 | Docs: user guide, metric dictionary, parity report, final report | `docs/{USER-GUIDE,METRIC-DICTIONARY,PARITY-REPORT,FINAL-REPORT}.md` | M17 | ✔ **M17: all four shipped; metric-dictionary doc generated from `web.help` + sync-tested; final report maps every §6 requirement → evidence.** |

@@ -843,3 +843,35 @@ this file is the running history.
 ### Commit SHAs
 - `d1b3cdd` — feat(m16): desktop launcher + OS shortcuts.
 - M16 durable state (ADR-0020, RTM A2, HANDOFF A17→A18, this entry) — the following commit.
+
+---
+
+## A18 — 2026-06-09 — Phase 2 build, Milestone **M17** (docs + final report → DONE)
+
+- **Session:** A18 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** none
+  (build complete except the externally-gated M15 .pbix).
+- **Milestone:** M17 — closing documentation set + requirement→evidence final report + closeout.
+
+### What changed (M17)
+- **`docs/USER-GUIDE.md`** — install, launch (`schedule-forensics`), upload ≤10, read the dashboard
+  (audit, findings, narrative, interactive charts/grid/Gantt, compare), AI settings + banner, wipe, and
+  the CUI posture.
+- **`docs/METRIC-DICTIONARY.md`** — generated from `web.help.render_dictionary_markdown()`; a sync test
+  (`tests/web/test_docs.py`) keeps it identical to the in-tool `/help`.
+- **`docs/PARITY-REPORT.md`** — computed-vs-golden tables (SSI 107/107; Acumen §A/§B/§C/§E; Net Finish
+  Impact −99) + the residual disposition (one root cause: progress-aware float; gate-locked) + cost-EVM NA.
+- **`docs/FINAL-REPORT.md`** — every §6.A–§6.G requirement → module → evidence → status; M15 flagged as
+  the single BLOCKED (pending .pbix) item.
+- **`web/help.py`** — `render_dictionary_markdown()` (single source for the doc). RTM Q8 → ✔. ADR-0021.
+
+### Closeout
+- **Phase/Gate → DONE.** Every §6 RTM row Implemented+Tested+Validated **except** §6.A `.pbix`
+  enrichment (M15), ◻ BLOCKED on the operator's deposit (R-12) — a pending input, not a defect.
+- Full suite green (parity + egress + air-gap included); tool runs from a desktop icon, offline.
+
+### Parity / tests
+- +4 doc tests; full suite **428 passed, 3 skipped**; parity 10/10; egress 22/22; air-gap pass;
+  bandit exit 0; pip-audit OK; engine ~99%, overall ~99%.
+
+### Commit SHAs
+- M17 docs + closeout — this commit (feat/docs).

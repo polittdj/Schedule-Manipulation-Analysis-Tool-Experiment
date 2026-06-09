@@ -1,0 +1,62 @@
+# Metric dictionary
+
+> Generated from `schedule_forensics.web.help.METRIC_DICTIONARY`. To regenerate:
+> `python -c "from schedule_forensics.web.help import render_dictionary_markdown as r; open('docs/METRIC-DICTIONARY.md','w').write(r())"`
+
+Every metric/measure the tool emits, with its formula and source. Each computed value also cites **file + UniqueID + task name** so it can be verified in the parent schedule (§6).
+
+| Metric | Definition | Formula | Source |
+|--------|------------|---------|--------|
+| Logic | Incomplete activities missing a predecessor and/or successor. | `count(incomplete without pred or succ) / incomplete <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Leads | Relationships with a negative lag (a lead). | `count(lag < 0) == 0` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Lags | Relationships with a positive lag into an incomplete successor. | `count(lag > 0) / links <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| FS Relationships | Share of relationships that are Finish-to-Start. | `count(FS) / links >= 90%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| SS/FF Relationships | Start-Start / Finish-Finish links into incomplete work. | `count(SS|FF into incomplete)` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| SF Relationships | Start-to-Finish relationships (discouraged). | `count(SF into incomplete)` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Hard Constraints | Activities with a hard/mandatory constraint (MSO/MFO/SNLT/FNLT). | `count(hard constraint) / activities <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| High Float | Incomplete activities with total float > 44 working days. | `count(total_float > 44d) / incomplete <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Negative Float | Incomplete activities with total float < 0. | `count(total_float < 0) == 0` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| High Duration | Incomplete activities with baseline duration > 44 working days. | `count(baseline_dur > 44d) / incomplete <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Invalid Dates | Actuals after the status date, or an incomplete forecast in the past. | `count(invalid actual/forecast vs status) == 0` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Resources | Incomplete, real-duration activities with no resource assigned. | `count(no resource) / incomplete-with-duration <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Missed Activities | Baselined-due-by-status activities not finished on time. | `count(due not finished on time) / due <= 5%` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Critical Path Test | A delay on a critical activity must flow to the project finish. | `inject delay on critical task -> finish moves by the delay` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| CPLI | Critical Path Length Index. | `(crit path length + project total float) / crit path length >= 0.95` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| BEI | Baseline Execution Index. | `activities completed / activities baselined-to-complete-by-status >= 0.95` | DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012). |
+| Missing Logic | Activities with an open start or finish (no pred/succ). | `count(open-ended) / activities <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Logic Density | Average relationships per activity. | `2 x links / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Critical | Incomplete activities on the critical path. | `count(total_float <= 0 and incomplete)` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Hard Constraints | Activities with a hard/mandatory constraint. | `count(hard constraint) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Negative Float | Incomplete activities with total float < 0. | `count(total_float < 0) / incomplete` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Insufficient Detail | Activities with a baseline duration > 44 working days. | `count(baseline_dur > 44d) / activities <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Number of Lags | Relationships carrying a positive lag. | `count(lag > 0) / activities <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Number of Leads | Relationships carrying a negative lag. | `count(lag < 0) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Merge Hotspot | Activities with 3 or more predecessors (a merge point). | `count(predecessors >= 3) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Forecast to be Finished | Activities the baseline placed on/before the status date. | `count(baseline_finish <= status) / activities` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Completed On Time | Due activities completed on/before their baseline finish. | `count(complete and actual_finish <= baseline_finish) / due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Completed Late | Due activities completed after their baseline finish. | `count(complete and actual_finish > baseline_finish) / due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Not Completed | Due activities not yet complete. | `count(due and incomplete) / due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Baseline Finish Compliance | Share of due activities finished on time (BFC). | `completed_on_time / forecast_to_be_finished` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Forecast to be Started | Activities the baseline placed to start on/before the status date. | `count(baseline_start <= status) / activities` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Started On Time | Start-due activities started on/before their baseline start. | `count(actual_start <= baseline_start) / start-due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Started Late | Start-due activities started after their baseline start. | `count(actual_start > baseline_start) / start-due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Not Started | Start-due activities not yet started. | `count(start-due without actual_start) / start-due` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Baseline Start Compliance | Share of start-due activities started on time (BSC). | `started_on_time / forecast_to_be_started` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| SPI | Schedule Performance Index (cost-based; NA without cost). | `BCWP / BCWS` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| CPI | Cost Performance Index (NA without cost). | `BCWP / ACWP` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| TCPI | To-Complete Performance Index (NA without cost). | `(BAC - BCWP) / (BAC - ACWP)` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| CEI (Finish) | Current Execution Index, finish side (= BFC). | `completed_on_time / forecast_to_be_finished` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| CEI (Start) | Current Execution Index, start side (= BSC). | `started_on_time / forecast_to_be_started` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| SPI(t) | Time-based Earned-Schedule index (count-based; informational). | `Earned Schedule / Actual Time` | EVM performance indices (METRICS-CATALOG §3, ADR-0013). |
+| Total Activities | Count of schedulable activities in the version. | `count(non-summary activities)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Activities Added | Activities present in the current version but not the prior (by UID). | `current UIDs - prior UIDs` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| New Critical | Activities newly on the critical path vs the prior version. | `critical-incomplete now and not before (present in both)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| No Longer Critical | Activities that left the critical path while still incomplete. | `critical-incomplete before, not now, still incomplete` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Finish Date Slips | Activities the prior plan placed to finish by now, still incomplete. | `prior forecast_finish <= status and incomplete now` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Start Date Slips | Activities the prior plan placed to start by now, still not started. | `prior forecast_start <= status and not started now` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Remaining Duration Increases | Activities whose duration grew vs the prior version. | `count(duration_now > duration_prior)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Float Erosion | Incomplete activities whose total float decreased vs the prior version. | `count(total_float_now < total_float_prior and incomplete)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Completed | Activities at 100% complete. | `count(percent_complete >= 100)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| In-Progress | Activities between 0% and 100% complete. | `count(0 < percent_complete < 100)` | Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016). |
+| Net Finish Impact | Calendar-day move of the project finish vs the prior version. | `(prior CPM finish date) - (current CPM finish date), in days` | Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013). |
+| Driving Slack | Days an activity may slip before it delays the focus (target UID). | `anchored backward pass to the focus task; days of slack to the focus` | SSI MS Project add-on driving slack (SSI-DRIVING-SLACK.md, ADR-0011). |

@@ -419,3 +419,28 @@ def metric_doc(metric_id: str) -> MetricDoc | None:
 
 def documented_metric_ids() -> frozenset[str]:
     return frozenset(METRIC_DICTIONARY)
+
+
+def render_dictionary_markdown() -> str:
+    """Render the metric dictionary as a Markdown table — the source of `docs/METRIC-DICTIONARY.md`.
+
+    `docs/METRIC-DICTIONARY.md` is generated from this (a test asserts it stays in sync), so the
+    in-tool `/help` page and the committed doc can never drift apart.
+    """
+    lines = [
+        "# Metric dictionary",
+        "",
+        "> Generated from `schedule_forensics.web.help.METRIC_DICTIONARY`. To regenerate:",
+        '> `python -c "from schedule_forensics.web.help import render_dictionary_markdown as r;'
+        " open('docs/METRIC-DICTIONARY.md','w').write(r())\"`",
+        "",
+        "Every metric/measure the tool emits, with its formula and source. Each computed "
+        "value also cites **file + UniqueID + task name** so it can be verified in the parent "
+        "schedule (§6).",
+        "",
+        "| Metric | Definition | Formula | Source |",
+        "|--------|------------|---------|--------|",
+    ]
+    for doc in METRIC_DICTIONARY.values():
+        lines.append(f"| {doc.name} | {doc.definition} | `{doc.formula}` | {doc.source} |")
+    return "\n".join(lines) + "\n"
