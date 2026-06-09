@@ -1,8 +1,8 @@
 # Handoff — 2026-06-08
 
-This session: A15 (continuous build — see directive)     Next session: A16
+This session: A16 (continuous build — see directive)     Next session: A17
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M13 complete (engine + AI + web shell). Next milestone = M14 (interactive Power-BI-style visuals + drill-down).**
+Phase/Gate: **Phase 2 — build. Milestones M1–M14 complete. M15 (.pbix) is BLOCKED (file not deposited). Next milestone = M16 (desktop launcher + packaging).**
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**).
 
 ## Operator standing directive (persisted — honor every session)
@@ -11,77 +11,67 @@ Maximum effort; failure is not an option."** → Build milestones back-to-back; 
 commit + push + refresh durable state so the build is always green and resumable across compaction.
 
 ## Branch note (READ FIRST)
-Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A15 lineage. A16: if your assigned branch
+Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A16 lineage. A17: if your assigned branch
 is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/`),
-confirm it has this M13 work (`git log --oneline | grep m13`), `git merge --ff-only` onto it. Never start
+confirm it has this M14 work (`git log --oneline | grep m14`), `git merge --ff-only` onto it. Never start
 from greenfield.
 
-**CI is GREEN** on `b675f23` (run 282, Python 3.11 + 3.13). Two CI-hygiene fixes landed after M13
-(`28eff10` ruff, `b675f23` bandit) — see the lesson below.
+### CI hygiene (LESSON — do every milestone)
+Stage **every** changed path (`git add -A`) before committing, and run the gate with **honored exit
+codes** — never `bandit ... | tail` (the pipe hides a non-zero exit; that masked a red CI for ~3
+milestones). Confirm each step exits 0, then verify the pushed CI run's conclusion is `success`
+(webhooks do NOT deliver CI success).
 
-### CI hygiene (LESSON — do this every milestone)
-CI was silently red from ~M10/M11 while the local gate looked green, because: (1) some commits
-staged only a subset of paths, leaving ruff fixes uncommitted (CI lints the *committed* tree); and
-(2) the local bandit check was piped to `tail`, masking its non-zero exit. **Always:** `git add -A`
-(or stage every changed path) before committing a milestone, and run the gate with **honored exit
-codes** — never `bandit ... | tail` (the pipe hides the exit). Confirm with the one-liner gate:
-`ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics
---cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85
-&& pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all must exit 0.
-After pushing, verify the CI run's conclusion is `success` (webhooks do NOT deliver CI success).
-
-Green baseline (all green — **414 passed, 3 skipped; parity gate 10/10; egress 22/22; engine ~99%; overall ~99%; CI green b675f23**). Verify:
+Green baseline (all green — **420 passed, 3 skipped; parity 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%; CI green b675f23+**). Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
-python -m pytest --cov=schedule_forensics --cov-fail-under=70 &&
-python -m coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
-python -m pytest -m parity && python -m bandit -q -r src`
-Run the app locally: `python -c "from schedule_forensics.web import run; run()"` → http://127.0.0.1:8765.
+pytest --cov=schedule_forensics --cov-fail-under=70 &&
+coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
+pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all must exit 0.
+Run the app: `python -c "from schedule_forensics.web import run; run()"` → http://127.0.0.1:8765.
 
-## Completed this session (M13 — local FastAPI web shell, §6.A)
-- **M13** `2974ef2`: `web/app.py` (local-only FastAPI on 127.0.0.1 — upload ≤10, per-file audit +
-  recommendations + AI narrative, `/compare` manipulation+trend, `/settings` model panel + CUI banner,
-  `/help` metric dictionary, `/session/wipe`, JSON `/api/analysis`) + `web/help.py` (metric dictionary,
-  coverage-tested) + `ai.banner_for` (config-driven persistent banner). Runtime deps fastapi/uvicorn(plain)/
-  jinja2/python-multipart added; egress guard stays green. ADR-0018; RTM A3/A5/F2 → ✔, A2/A4 → ◻. + the
-  M13 durable-state commit.
+## Completed this session (M14 — interactive visuals, §6.A)
+- **M14** `903327c`: `web/static/app.js` + `app.css` (dependency-free, fully local — SVG charts,
+  interactive activity grid with add/remove columns + sort + click-to-drill-into-metadata w/ citation,
+  Gantt tiered by driving/secondary/tertiary path to a target UID). `web/app.py`: StaticFiles mount,
+  `/api/analysis` activities rows, new `/api/driving/{name}`. **Air-gap test** enforces no-CDN. ADR-0019;
+  RTM A4 → ✔. + the M14 durable-state commit.
 
-## What exists now (M1–M13)
-Full analysis engine + AI narrative + a working local dark-NASA dashboard. Public surfaces:
-`schedule_forensics.engine`, `schedule_forensics.ai`, `schedule_forensics.web` (`create_app`, `run`).
-**Remaining:** M14 (interactive visuals), M15 (.pbix — blocked, R-12), M16 (desktop launcher/packaging),
-M17 (docs + final report → DONE).
+## What exists now (M1–M14) — a complete, usable, local forensic tool
+Engine (CPM/float/driving-slack, DCMA-14, Acumen §A/§C, EVM, §E change, manipulation, audit,
+recommendations) + AI (Null/Ollama, cited narrative) + web (dark-NASA dashboard, upload, audit,
+recommendations, narrative, compare, **interactive charts/grid/Gantt**, settings, metric dictionary,
+wipe). Parity gate green; air-gapped. **Remaining:** M15 (.pbix — BLOCKED), M16 (launcher), M17 (docs).
 
-## Next session (A16 — Milestone **M14**: interactive Power-BI-style visuals + drill-down, §6.A)
-- **Milestone (BUILD-PLAN M14, RTM A4):** vendor **ECharts + Tabulator locally** (no CDN — air-gapped) and
-  build interactive dashboard visuals on the M13 `/api/analysis/{name}` JSON: charts (DCMA pass/fail,
-  §A/§C bars, EVM), a sortable/filterable activity **Tabulator** grid where the user can **add/remove
-  fields** and **drill into the underlying metadata of any data point** (click a metric/bar/row → the
-  cited offending activities: file + UID + task + the values), and a **Gantt** highlighting the
-  driving/secondary/tertiary paths to a chosen target UID (reuse `compute_driving_slack` tiers).
-- **CUI / air-gap (HARD):** all JS/CSS assets served from `web/static/` (committed, vendored) — **no CDN,
-  no external URL** anywhere in the templates/JS. Add an **air-gap test** that scans the served HTML/JS for
-  `http://`/`https://`/`//cdn` references and fails if any points off-box (allow only relative `/static`).
-  The vendored ECharts/Tabulator are non-CUI third-party libs (license-compatible) committed under
-  `web/static/vendor/`. Keep the egress guard green (these are static files, not runtime deps).
-- **Acceptance criteria:** dashboard renders charts + grid + Gantt from `/api/analysis` (extend the JSON
-  with per-activity rows incl. CPM float/driving-slack + offender metadata as needed); add/remove-fields
-  + drill-to-metadata interactions work (test the JSON contract + a DOM-light assertion via TestClient on
-  the served HTML/JS presence); air-gap test passes; full gate + parity green; overall ≥70.
-- **Files:** `web/static/vendor/echarts.min.js`, `web/static/vendor/tabulator.min.{js,css}`,
-  `web/static/app.js`, `web/static/app.css` (extract from the inline CSS), `web/app.py` (mount
-  `StaticFiles`, extend `/api/analysis` with activity rows + a `/api/driving/{name}?target=` endpoint),
-  templates; `tests/web/test_visuals.py` + `tests/web/test_airgap.py`; ADR-0019; update RTM A4.
-- **First steps:** (1) start ritual + confirm 414 baseline + egress green; (2) mount `StaticFiles` +
-  vendor the two libs locally + write the air-gap test FIRST (red→green); (3) extend the JSON API with
-  activity rows + driving-slack, then the charts/grid/Gantt JS; full gate; → M15.
+## ⚠ M15 is BLOCKED (do this when ready, else skip to M16)
+**M15 (.pbix enrichment)** needs `NSATDeploymentRevisionAlpha.pbix` in the session workspace. It is
+git-ignored CUI and does **not** travel between sessions (R-12), so it is currently absent. When the
+operator re-deposits it: parse locally (unzip → DataModel + Report/Layout), fold its extra metrics/
+visuals into the dashboard (improve on them). **Until then, skip M15** — M14 already delivers the
+interactive visuals the .pbix would have informed. Do not fabricate .pbix content.
 
-## Milestones remaining: M14 (interactive visuals), M15 (.pbix enrich — **BLOCKED until the operator
-re-deposits `NSATDeploymentRevisionAlpha.pbix`; gitignored CUI doesn't travel between sessions, R-12**),
-M16 (desktop launcher + packaging — wrap `web.run()` + OS shortcut), M17 (docs + final report + RTM
-closeout → DONE).
+## Next session (A17 — Milestone **M16**: desktop launcher + packaging, §6.A)
+- **Milestone (BUILD-PLAN M16, RTM A2):** a one-click **desktop launcher** that starts the local server
+  (`schedule_forensics.web.run`, 127.0.0.1) and opens the default browser, plus an OS shortcut so it runs
+  from a desktop icon — fully offline.
+- **Acceptance criteria:**
+  1. `src/schedule_forensics/launcher.py` — `main()`: pick a free loopback port, start uvicorn in a
+     thread (or subprocess), `webbrowser.open("http://127.0.0.1:<port>")`, and on Ollama presence
+     auto-start it is **out of scope** (local-only; the app already routes to Null when Ollama is down).
+     Bind 127.0.0.1 only (assert via `net_guard.is_loopback_host`). Clean shutdown on Ctrl-C.
+  2. A console entry point `schedule-forensics = schedule_forensics.launcher:main` in `pyproject.toml`
+     `[project.scripts]`, and OS shortcut generators: a Linux `.desktop`, a Windows `.bat`/`.lnk` hint,
+     and a macOS `.command` — written under `packaging/` (or generated by a `--install-shortcut` flag).
+  3. Tests (no real server bind in CI): unit-test port selection, the loopback assertion (reject a
+     non-loopback host), and that `main` wires `run` + `webbrowser.open` (monkeypatch both). Full gate +
+     parity + air-gap stay green; overall ≥70.
+- **Files:** `src/schedule_forensics/launcher.py`, `packaging/*` (shortcuts + a README), `pyproject.toml`
+  `[project.scripts]`; `tests/test_launcher.py`; ADR-0020; update RTM A2.
+- **First steps:** (1) start ritual + confirm 420 baseline; (2) write `launcher.py` (free-port + loopback
+  guard + browser open) with monkeypatched tests FIRST; (3) entry point + shortcut files; full gate; → M17.
 
-Open questions / blockers: none for M14. **Flag at M15:** the `.pbix` reference must be re-deposited into
-the session workspace before M15 can parse it; M14 already delivers the interactive visuals the .pbix would
-have informed (improve further once the .pbix is available). Vendoring ECharts/Tabulator needs network at
-*build time* to fetch the libs once — if the session is air-gapped, obtain them via the operator or a
-local mirror; they are then committed and the runtime stays offline.
+## Milestones remaining: M15 (.pbix — BLOCKED on deposit), M16 (desktop launcher), M17 (docs + final
+report + RTM closeout → DONE). At M17, DoD needs all RTM rows ✔; M15 stays ◻ until the .pbix is deposited
+— note it in the final report as the one externally-gated item (everything else complete + parity-green).
+
+Open questions / blockers: only M15 (.pbix deposit). M16/M17 are unblocked and can complete the tool's
+packaging + docs now; the final report should flag M15 as pending operator input, not a build defect.

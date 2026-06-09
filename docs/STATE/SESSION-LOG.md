@@ -772,3 +772,45 @@ this file is the running history.
 ### Commit SHAs
 - `2974ef2` — feat(m13): local FastAPI web shell.
 - M13 durable state (ADR-0018, RTM A2/A3/A4/A5/F2, HANDOFF A15→A16, this entry) — the following commit.
+
+---
+
+## A16 — 2026-06-08 — Phase 2 build, Milestone **M14** (interactive visuals, §6.A)
+
+- **Session:** A16 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A17.
+- **Milestone:** M14 — interactive, drill-down, air-gapped visuals on the M13 JSON API.
+
+### What changed (M14 — commit `903327c`)
+- **`web/static/app.js` + `app.css`** — dependency-free, fully local viz (no CDN, no third-party lib —
+  the strongest air-gap posture for a CUI tool): SVG bar charts (DCMA pass/fail, baseline compliance),
+  an interactive **activity grid** with add/remove columns + sortable headers + **click-to-drill** (each
+  row shows all metadata + its citation file+UID+task), and a **Gantt** coloured by driving/secondary/
+  tertiary path tier to a user-entered target UID (reuses the M6 SSI-parity driving slack: 36/12/12).
+- **`web/app.py`** — mount `StaticFiles` at `/static`; link `app.css`; `/api/analysis` gains `activities`
+  rows (dates, total/free float days, %complete, critical, source file); new `/api/driving/{name}` returns
+  tiered rows + CPM ordinals for the Gantt; analysis page mounts `#viz` by **session key** (not project
+  title) so the client fetches the right resource.
+
+### Air-gap (§6.A / Law 1)
+- `tests/web/test_airgap.py` scans every served page + static asset for absolute/protocol-relative/remote
+  `src`/`href` URLs; only loopback + same-origin `/static` allowed. **Zero external references** — the
+  no-CDN guarantee is enforced, not just intended.
+
+### Design decision
+- Chose **vanilla JS/SVG over vendoring ECharts/Tabulator** (ADR-0019): nothing fetched at build/run time,
+  no large binary blob in git, fully auditable, air-gap trivially provable. The §6.A intent (interactive,
+  local, no-CDN, drill-down, add/remove fields) is met; the named libs were a means, not the end.
+
+### Parity / tests
+- +6 tests; full suite **420 passing, 3 skipped**; `web/app` **93%** (uncovered = `.mpp` temp path needing
+  a JRE + AI exception fallbacks); parity 10/10; egress 22/22; air-gap pass; bandit exit 0; pip-audit OK.
+
+### Decisions / blockers
+- **ADR-0019**: dependency-free local viz + air-gap test. RTM **A4 → ✔**; A2 now has the full browser
+  dashboard (desktop icon = M16).
+- **M15 (.pbix) is BLOCKED** — the file isn't deposited (R-12); skip until the operator provides it.
+  Next A17 = **M16** (desktop launcher + packaging; wrap `web.run()` on 127.0.0.1 + OS shortcut).
+
+### Commit SHAs
+- `903327c` — feat(m14): interactive visuals.
+- M14 durable state (ADR-0019, RTM A4, HANDOFF A16→A17, this entry) — the following commit.
