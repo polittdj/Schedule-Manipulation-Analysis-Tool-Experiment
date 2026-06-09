@@ -814,3 +814,32 @@ this file is the running history.
 ### Commit SHAs
 - `903327c` — feat(m14): interactive visuals.
 - M14 durable state (ADR-0019, RTM A4, HANDOFF A16→A17, this entry) — the following commit.
+
+---
+
+## A17 — 2026-06-09 — Phase 2 build, Milestone **M16** (desktop launcher + packaging, §6.A)
+
+- **Session:** A17 (continuous build within the A7 sitting; Opus 4.8 1M + Ultracode). **Next:** A18.
+- **Milestone:** M16 — one-click desktop launch of the local dashboard.
+
+### What changed (M16 — commit `d1b3cdd`)
+- **`launcher.py`** — `main()` picks a free loopback port, opens the default browser, and serves the
+  FastAPI app via uvicorn on 127.0.0.1; refuses any non-loopback host (Law 1). serve/browser/timer are
+  injectable → unit-tested without a real bind (launcher 100% cov); a live run confirmed it serves + prints
+  the URL, then was stopped.
+- **`pyproject.toml`** `[project.scripts]` → `schedule-forensics`; **`packaging/`** → Linux `.desktop`,
+  macOS `.command`, Windows `.bat` (with `python -m` fallback) + README, all invoking the entry point.
+
+### Parity / tests
+- +4 tests; full suite **424 passing, 3 skipped**; launcher **100%**; egress 22/22; parity 10/10;
+  air-gap pass; bandit exit 0; pip-audit OK.
+
+### Decisions / blockers
+- **ADR-0020**: launcher design (free loopback port, injected serve/browser, non-loopback refused) +
+  OS shortcuts. RTM **A2 → ✔**.
+- **M15 (.pbix) remains BLOCKED** (no deposit). Next A18 = **M17** (docs + final report + RTM closeout →
+  DONE; M15 documented as the single externally-gated item).
+
+### Commit SHAs
+- `d1b3cdd` — feat(m16): desktop launcher + OS shortcuts.
+- M16 durable state (ADR-0020, RTM A2, HANDOFF A17→A18, this entry) — the following commit.

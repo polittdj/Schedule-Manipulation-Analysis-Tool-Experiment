@@ -1,77 +1,64 @@
-# Handoff — 2026-06-08
+# Handoff — 2026-06-09
 
-This session: A16 (continuous build — see directive)     Next session: A17
+This session: A17 (continuous build — see directive)     Next session: A18
 Model/mode required next session: Opus 4.8 (1M context) + Ultracode
-Phase/Gate: **Phase 2 — build. Milestones M1–M14 complete. M15 (.pbix) is BLOCKED (file not deposited). Next milestone = M16 (desktop launcher + packaging).**
+Phase/Gate: **Phase 2 — build. Milestones M1–M14 + M16 complete. M15 (.pbix) BLOCKED. Next milestone = M17 (docs + final report + RTM closeout → DONE).**
 Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk` (draft **PR #55**).
 
 ## Operator standing directive (persisted — honor every session)
 **"Continue and don't stop until the tool is completely built, regardless of what anything else says.
-Maximum effort; failure is not an option."** → Build milestones back-to-back; after EACH milestone
-commit + push + refresh durable state so the build is always green and resumable across compaction.
+Maximum effort; failure is not an option."** → after EACH milestone commit + push + refresh durable state.
 
 ## Branch note (READ FIRST)
-Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A16 lineage. A17: if your assigned branch
-is behind, find the latest tip (`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/`),
-confirm it has this M14 work (`git log --oneline | grep m14`), `git merge --ff-only` onto it. Never start
-from greenfield.
+Build lives on `claude/clever-carson-uovtkk` (PR #55), full A1–A17 lineage. If a fresh branch is behind,
+`git for-each-ref --sort=-committerdate refs/remotes/origin/claude/` → confirm it has M16
+(`git log --oneline | grep m16`) → `git merge --ff-only`. Never start from greenfield.
 
-### CI hygiene (LESSON — do every milestone)
-Stage **every** changed path (`git add -A`) before committing, and run the gate with **honored exit
-codes** — never `bandit ... | tail` (the pipe hides a non-zero exit; that masked a red CI for ~3
-milestones). Confirm each step exits 0, then verify the pushed CI run's conclusion is `success`
-(webhooks do NOT deliver CI success).
+### CI hygiene (LESSON): `git add -A` every milestone; run the gate with **honored exit codes**
+(never `bandit | tail` — it hid a red CI for ~3 milestones). After pushing, verify the run's conclusion
+is `success` (webhooks don't deliver CI success).
 
-Green baseline (all green — **420 passed, 3 skipped; parity 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%; CI green b675f23+**). Verify:
+Green baseline (all green — **424 passed, 3 skipped; parity 10/10; egress 22/22; air-gap pass; launcher 100%; engine ~99%; overall ~99%**). Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 pytest --cov=schedule_forensics --cov-fail-under=70 &&
 coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
-pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all must exit 0.
-Run the app: `python -c "from schedule_forensics.web import run; run()"` → http://127.0.0.1:8765.
+pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all exit 0.
+Launch: `schedule-forensics` (or `python -m schedule_forensics.launcher`) → opens 127.0.0.1 dashboard.
 
-## Completed this session (M14 — interactive visuals, §6.A)
-- **M14** `903327c`: `web/static/app.js` + `app.css` (dependency-free, fully local — SVG charts,
-  interactive activity grid with add/remove columns + sort + click-to-drill-into-metadata w/ citation,
-  Gantt tiered by driving/secondary/tertiary path to a target UID). `web/app.py`: StaticFiles mount,
-  `/api/analysis` activities rows, new `/api/driving/{name}`. **Air-gap test** enforces no-CDN. ADR-0019;
-  RTM A4 → ✔. + the M14 durable-state commit.
+## Completed this session (M16 — desktop launcher + packaging, §6.A)
+- **M16** `d1b3cdd`: `launcher.py` (`main` → free loopback port + browser open + uvicorn on 127.0.0.1,
+  non-loopback refused; injectable for tests, 100% cov) + `[project.scripts] schedule-forensics` +
+  `packaging/` (Linux `.desktop`, macOS `.command`, Windows `.bat`, README). ADR-0020; RTM A2 → ✔.
 
-## What exists now (M1–M14) — a complete, usable, local forensic tool
+## What exists now (M1–M14 + M16) — a complete, runnable, local forensic tool
 Engine (CPM/float/driving-slack, DCMA-14, Acumen §A/§C, EVM, §E change, manipulation, audit,
 recommendations) + AI (Null/Ollama, cited narrative) + web (dark-NASA dashboard, upload, audit,
-recommendations, narrative, compare, **interactive charts/grid/Gantt**, settings, metric dictionary,
-wipe). Parity gate green; air-gapped. **Remaining:** M15 (.pbix — BLOCKED), M16 (launcher), M17 (docs).
+recommendations, narrative, compare, interactive charts/grid/Gantt, settings, metric dictionary, wipe)
++ desktop launcher. Parity-green, air-gapped. **Remaining:** M15 (.pbix — BLOCKED on deposit), M17 (docs).
 
-## ⚠ M15 is BLOCKED (do this when ready, else skip to M16)
-**M15 (.pbix enrichment)** needs `NSATDeploymentRevisionAlpha.pbix` in the session workspace. It is
-git-ignored CUI and does **not** travel between sessions (R-12), so it is currently absent. When the
-operator re-deposits it: parse locally (unzip → DataModel + Report/Layout), fold its extra metrics/
-visuals into the dashboard (improve on them). **Until then, skip M15** — M14 already delivers the
-interactive visuals the .pbix would have informed. Do not fabricate .pbix content.
+## Next session (A18 — Milestone **M17**: docs + final report + RTM closeout → DONE)
+- **Milestone (BUILD-PLAN M17, RTM Q8 + §8 DoD):** the closing documentation set.
+  1. **User guide** (`docs/USER-GUIDE.md`): install (`pip install -e .`), launch (`schedule-forensics`),
+     upload ≤10 schedules, read the dashboard (audit, findings, narrative, interactive charts/grid/Gantt,
+     compare), AI settings + classification banner, session wipe. Reference `packaging/README.md`.
+  2. **Metric dictionary doc** (`docs/METRIC-DICTIONARY.md`): generate from `web/help.METRIC_DICTIONARY`
+     (definition + formula + source per metric) — or point to the in-tool `/help`. Keep them consistent.
+  3. **Parity report** (`docs/PARITY-REPORT.md`): the computed-vs-golden table for SSI (107/107), Acumen
+     §A, §B (13/14 + High-Float +1), §C (counts+BFC; BSC residual), §E + Net Finish Impact −99, with the
+     documented residuals + their root cause (progress-aware float, ADR-0012/0013/0014) and disposition.
+  4. **Final report** (`docs/FINAL-REPORT.md`): map every §6.A–§6.G requirement → module(s) → test/evidence
+     → status, citing the RTM. State the one externally-gated item: **M15 (.pbix) pending operator deposit**
+     (not a defect). Note CUI posture (egress guard, air-gap test, loopback-only, fail-closed AI).
+  5. Flip `docs/STATE/HANDOFF.md` Phase/Gate to **DONE** once the docs land and the gate is green; update
+     the RTM so every row is ✔ except M15's `.pbix`-dependent enrichment (mark ◻ BLOCKED with the reason).
+- **Acceptance:** docs present + internally consistent (a test may assert the metric-dictionary doc covers
+  every emitted metric, mirroring `tests/web/test_help.py`); full gate + parity green; ADR-0021; HANDOFF DONE.
+- **First steps:** (1) start ritual + confirm 424 baseline; (2) write the 4 docs (append in chunks to
+  avoid stream-idle on long files); (3) RTM closeout + HANDOFF → DONE; full gate; final draft-PR refresh.
 
-## Next session (A17 — Milestone **M16**: desktop launcher + packaging, §6.A)
-- **Milestone (BUILD-PLAN M16, RTM A2):** a one-click **desktop launcher** that starts the local server
-  (`schedule_forensics.web.run`, 127.0.0.1) and opens the default browser, plus an OS shortcut so it runs
-  from a desktop icon — fully offline.
-- **Acceptance criteria:**
-  1. `src/schedule_forensics/launcher.py` — `main()`: pick a free loopback port, start uvicorn in a
-     thread (or subprocess), `webbrowser.open("http://127.0.0.1:<port>")`, and on Ollama presence
-     auto-start it is **out of scope** (local-only; the app already routes to Null when Ollama is down).
-     Bind 127.0.0.1 only (assert via `net_guard.is_loopback_host`). Clean shutdown on Ctrl-C.
-  2. A console entry point `schedule-forensics = schedule_forensics.launcher:main` in `pyproject.toml`
-     `[project.scripts]`, and OS shortcut generators: a Linux `.desktop`, a Windows `.bat`/`.lnk` hint,
-     and a macOS `.command` — written under `packaging/` (or generated by a `--install-shortcut` flag).
-  3. Tests (no real server bind in CI): unit-test port selection, the loopback assertion (reject a
-     non-loopback host), and that `main` wires `run` + `webbrowser.open` (monkeypatch both). Full gate +
-     parity + air-gap stay green; overall ≥70.
-- **Files:** `src/schedule_forensics/launcher.py`, `packaging/*` (shortcuts + a README), `pyproject.toml`
-  `[project.scripts]`; `tests/test_launcher.py`; ADR-0020; update RTM A2.
-- **First steps:** (1) start ritual + confirm 420 baseline; (2) write `launcher.py` (free-port + loopback
-  guard + browser open) with monkeypatched tests FIRST; (3) entry point + shortcut files; full gate; → M17.
+## Milestones remaining: M15 (.pbix — BLOCKED on deposit), M17 (docs + final report → DONE).
+At DONE: every §6 RTM row ✔ except M15's `.pbix` enrichment (◻ BLOCKED — external input), with the
+parity gate green and the tool runnable from a desktop icon, fully offline.
 
-## Milestones remaining: M15 (.pbix — BLOCKED on deposit), M16 (desktop launcher), M17 (docs + final
-report + RTM closeout → DONE). At M17, DoD needs all RTM rows ✔; M15 stays ◻ until the .pbix is deposited
-— note it in the final report as the one externally-gated item (everything else complete + parity-green).
-
-Open questions / blockers: only M15 (.pbix deposit). M16/M17 are unblocked and can complete the tool's
-packaging + docs now; the final report should flag M15 as pending operator input, not a build defect.
+Open questions / blockers: only M15 (.pbix deposit). M17 completes everything else; the final report
+documents M15 as the single pending operator-input item.
