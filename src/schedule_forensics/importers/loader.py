@@ -19,6 +19,7 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from schedule_forensics.importers._common import ImporterError
+from schedule_forensics.importers.json_schedule import parse_json
 from schedule_forensics.importers.mpp_mpxj import parse_mpp
 from schedule_forensics.importers.mspdi import parse_mspdi
 from schedule_forensics.importers.xer import parse_xer
@@ -28,13 +29,14 @@ from schedule_forensics.model import Schedule
 MAX_FILES = 10
 
 #: Extension (lower-cased) → importer. ``.xml`` is treated as MSPDI (Primavera uses
-#: ``.xer``; ``.pmxml`` P6 XML is a later importer).
+#: ``.xer``; ``.pmxml`` P6 XML is a later importer); ``.json`` is the tool's own format.
 _PARSERS: dict[str, Callable[[str | os.PathLike[str]], Schedule]] = {
     ".mpp": parse_mpp,
     ".mpt": parse_mpp,
     ".xml": parse_mspdi,
     ".mspdi": parse_mspdi,
     ".xer": parse_xer,
+    ".json": parse_json,
 }
 
 

@@ -11,6 +11,11 @@ source raises :class:`ImporterError`.
 from __future__ import annotations
 
 from schedule_forensics.importers._common import ImporterError
+from schedule_forensics.importers.json_schedule import (
+    parse_json,
+    parse_json_text,
+    to_json_text,
+)
 from schedule_forensics.importers.loader import (
     MAX_FILES,
     load_schedule,
@@ -26,10 +31,13 @@ __all__ = [
     "ImporterError",
     "load_schedule",
     "load_schedules",
+    "parse_json",
+    "parse_json_text",
     "parse_mpp",
     "parse_mspdi",
     "parse_mspdi_text",
     "parse_xer",
     "parse_xer_text",
     "supported_extensions",
+    "to_json_text",
 ]

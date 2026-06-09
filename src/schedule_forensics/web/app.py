@@ -19,10 +19,11 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from jinja2 import Template
 
@@ -44,13 +45,17 @@ from schedule_forensics.engine import (
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import compute_baseline_compliance
+from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
     load_schedule,
+    parse_json,
+    parse_json_text,
     parse_mspdi_text,
     parse_xer_text,
     supported_extensions,
+    to_json_text,
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import is_loopback_host
@@ -60,6 +65,10 @@ logger = logging.getLogger("schedule_forensics.web")
 
 #: Locally-vendored static assets (CSS/JS) — served from /static; no CDN, no external fetch.
 _STATIC_DIR = Path(__file__).parent / "static"
+#: Bundled, non-CUI sample schedule for the "Load example" button.
+_EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
+#: File types the open/import picker accepts.
+_ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
 
 _CSS = """
 :root{--bg:#0b0e14;--panel:#121826;--ink:#e6edf3;--muted:#8b98a5;--accent:#4aa3ff;
@@ -82,6 +91,22 @@ border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
 button,input[type=submit]{background:var(--accent);color:#04111f;border:0;border-radius:7px;
 padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:#0a0f1a;color:var(--ink);
 border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+code{background:#0a0f1a;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
+.hero{margin:6px 2px 20px}.hero h2{font-size:22px;color:var(--ink);margin:0 0 8px}
+.hero p{max-width:760px;margin:0}
+.dropzone{border:2px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;
+transition:border-color .15s,background .15s;background:#0e1422}
+.dropzone.over{border-color:var(--accent);background:#10203a}
+.dropzone.busy{opacity:.6;pointer-events:none}
+.dz-icon{font-size:34px;color:var(--accent);line-height:1}
+.dz-title{font-size:16px;margin:10px 0 4px}
+.dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;background:var(--accent);color:#04111f;border-radius:7px;padding:9px 18px;
+font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
+.btn-link{color:var(--accent);font-weight:600}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
+cursor:pointer;text-decoration:underline}
+.row-actions{font-size:13px}.row-actions a{color:var(--accent)}
 """
 
 # Keep-alive + quit: every page beats every 3s so the server knows the browser is open;
@@ -194,31 +219,88 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:
         st = session()
-        exts = ", ".join(sorted(supported_extensions()))
         rows = "".join(
-            f'<tr><td><a href="/analysis/{_e(name)}">{_e(name)}</a></td>'
-            f"<td>{len(sch.tasks)}</td><td class=muted>{_e(sch.source_file or '-')}</td></tr>"
+            f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
+            f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
+            f'<td class=row-actions><a href="/analysis/{quote(name)}">Open report</a>'
+            f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
             for name, sch in st.schedules.items()
         )
         loaded = (
-            f"<table><tr><th>Schedule</th><th>Tasks</th><th>File</th></tr>{rows}</table>"
+            "<div class=panel><h2>Loaded schedules</h2>"
+            "<table><tr><th>Schedule</th><th>Activities</th><th>Source</th><th></th></tr>"
+            f"{rows}</table>"
+            + (
+                '<p style="margin-top:14px"><a class=btn-link href="/compare">'
+                "Compare the two most recent versions &rarr;</a></p>"
+                if len(st.schedules) >= 2
+                else ""
+            )
+            + "</div>"
             if rows
-            else "<p class=muted>No schedules loaded yet.</p>"
-        )
-        compare = (
-            '<p><a href="/compare">Compare the two most recent versions &rarr;</a></p>'
-            if len(st.schedules) >= 2
             else ""
         )
         body = f"""
-<div class=panel><h2>Upload schedules (up to {MAX_FILES})</h2>
-<form action="/upload" method=post enctype="multipart/form-data">
-<input type=file name=files multiple>
-<input type=submit value="Analyze">
-<p class=muted>Supported: {_e(exts)}. Files are parsed locally and never leave this machine.</p>
-</form></div>
-<div class=panel><h2>Loaded schedules</h2>{loaded}{compare}</div>"""
+<section class=hero>
+  <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
+  <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
+  Acumen-Fuse&nbsp;&amp;&nbsp;SSI-parity metrics, driving-path and manipulation-trend analysis, and a
+  cited AI narrative &mdash; nothing leaves this computer.</p>
+</section>
+<div class=panel>
+  <div id=dropzone class=dropzone>
+    <div class=dz-icon>&#8682;</div>
+    <p class=dz-title>Drop a schedule here, or
+      <button type=button class=linkbtn id=pickBtn>choose a file&hellip;</button></p>
+    <p class=muted>Microsoft Project <code>.mpp</code> / <code>.mpt</code>, MS Project XML
+      <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>
+      &mdash; up to {MAX_FILES} at once.</p>
+    <div class=dz-actions>
+      <a class=btn href="/example">Load example</a>
+      <span class=muted>or import your own file above</span>
+    </div>
+  </div>
+  <form id=uploadForm action="/upload" method=post enctype="multipart/form-data" hidden>
+    <input id=fileInput type=file name=files multiple accept="{_ACCEPT}">
+  </form>
+</div>
+{loaded}
+<script>(function(){{
+  var form=document.getElementById('uploadForm'),input=document.getElementById('fileInput'),
+      dz=document.getElementById('dropzone');
+  function go(files){{ if(!files||!files.length)return; var fd=new FormData();
+    for(var i=0;i<files.length;i++)fd.append('files',files[i]);
+    dz.classList.add('busy'); fetch('/upload',{{method:'POST',body:fd}}).then(function(){{location.href='/';}}); }}
+  document.getElementById('pickBtn').onclick=function(){{input.click();}};
+  input.onchange=function(){{go(input.files);}};
+  ['dragover','dragenter'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.add('over');}});}});
+  ['dragleave','drop'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.remove('over');}});}});
+  dz.addEventListener('drop',function(ev){{go(ev.dataTransfer.files);}});
+}}());</script>"""
         return _page(st, "Dashboard", body)
+
+    @app.get("/example")
+    def load_example() -> RedirectResponse:
+        st = session()
+        schedule = parse_json(_EXAMPLE).model_copy(update={"source_file": "house_build.json"})
+        key = _unique_key(_clean_key(schedule.name), st.schedules)
+        st.schedules[key] = schedule
+        logger.info("loaded bundled example schedule")
+        return RedirectResponse(url=f"/analysis/{quote(key)}", status_code=303)
+
+    @app.get("/download/{name}")
+    def download_json(name: str) -> Response:
+        st = session()
+        key = name[:-5] if name.endswith(".json") else name
+        sch = st.schedules.get(key)
+        if sch is None:
+            return Response("not found", status_code=404)
+        filename = f"{key}.json".replace('"', "")
+        return Response(
+            to_json_text(sch),
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     @app.post("/upload")
     async def upload(files: list[UploadFile]) -> RedirectResponse:
@@ -353,6 +435,8 @@ def _unique_key(base: str, existing: dict[str, Schedule]) -> str:
 def _parse_upload(name: str, data: bytes) -> Schedule:
     """Parse uploaded bytes by extension — text formats in memory, .mpp via a temp file."""
     suffix = Path(name).suffix.lower()
+    if suffix == ".json":
+        return parse_json_text(data.decode("utf-8"))
     if suffix in {".xml", ".mspdi"}:
         return parse_mspdi_text(data.decode("utf-8"))
     if suffix == ".xer":

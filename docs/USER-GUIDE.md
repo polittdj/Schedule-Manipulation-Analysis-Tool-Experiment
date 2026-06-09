@@ -33,8 +33,11 @@ dashboard. Stop it with `Ctrl-C`.
 
 ## 3. Use the dashboard
 
-1. **Upload** up to **10** schedules at once (`.mpp` `.mpt` `.xml`/`.mspdi` `.xer`). Files are parsed
-   locally; nothing is uploaded anywhere. Each becomes an entry on the dashboard.
+1. **Open or import** a schedule from the landing page — drag a file onto the dropzone or click
+   **choose a file…** (`.json` `.xml`/`.mspdi` `.xer` `.mpp` `.mpt`, up to **10** at once), or click
+   **Load example** to try the bundled sample project instantly. Files are parsed **locally**;
+   nothing is uploaded anywhere. Each loaded schedule is listed with **Open report** and
+   **Save .json** (exports the normalised schedule as a re-openable `.json`).
 2. **Analysis** (click a schedule):
    - **DCMA-14 audit** — each of the 14 checks with pass/fail vs threshold and a plain-language
      suggested improvement; failing checks list the offending activities.
