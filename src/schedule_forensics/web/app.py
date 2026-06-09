@@ -17,8 +17,9 @@ import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fastapi import FastAPI, Form, Request, UploadFile
+from fastapi import FastAPI, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from jinja2 import Template
 
 from schedule_forensics.ai import (
@@ -30,7 +31,13 @@ from schedule_forensics.ai import (
     route_backend,
 )
 from schedule_forensics.ai.narrative import build_narrative
-from schedule_forensics.engine import audit_schedule, recommend
+from schedule_forensics.engine import (
+    analyze_floats,
+    audit_schedule,
+    compute_cpm,
+    compute_driving_slack,
+    recommend,
+)
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import compute_baseline_compliance
 from schedule_forensics.importers import (
@@ -46,6 +53,9 @@ from schedule_forensics.net_guard import is_loopback_host
 from schedule_forensics.web.help import METRIC_DICTIONARY
 
 logger = logging.getLogger("schedule_forensics.web")
+
+#: Locally-vendored static assets (CSS/JS) — served from /static; no CDN, no external fetch.
+_STATIC_DIR = Path(__file__).parent / "static"
 
 _CSS = """
 :root{--bg:#0b0e14;--panel:#121826;--ink:#e6edf3;--muted:#8b98a5;--accent:#4aa3ff;
@@ -73,7 +83,8 @@ border:1px solid var(--line);border-radius:7px;padding:7px 9px}
 _LAYOUT = Template(
     """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>{{ title }} — Schedule Forensics</title><style>{{ css }}</style></head><body>
+<title>{{ title }} — Schedule Forensics</title><style>{{ css }}</style>
+<link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <a href="/session/wipe" onclick="return confirm('Wipe all loaded schedules?')">Wipe Session</a></nav></header>
@@ -123,6 +134,7 @@ def create_app(state: SessionState | None = None) -> FastAPI:
     """Build the FastAPI app. ``state`` lets a test/launcher inject a fresh session."""
     app = FastAPI(title="Schedule Forensics", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
+    app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     def session() -> SessionState:
         s: SessionState = app.state.session
@@ -183,7 +195,7 @@ def create_app(state: SessionState | None = None) -> FastAPI:
         sch = st.schedules.get(name)
         if sch is None:
             return _page(st, "Not found", f"<div class=panel>No schedule named {_e(name)}.</div>")
-        return _page(st, name, _analysis_body(st, sch))
+        return _page(st, name, _analysis_body(name, sch))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -192,6 +204,19 @@ def create_app(state: SessionState | None = None) -> FastAPI:
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
         return JSONResponse(_analysis_data(sch))
+
+    @app.get("/api/driving/{name}")
+    def driving_json(
+        name: str,
+        target: int = Query(...),
+        secondary: int = Query(10),
+        tertiary: int = Query(20),
+    ) -> JSONResponse:
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        return JSONResponse(_driving_data(sch, target, secondary, tertiary))
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -293,7 +318,7 @@ def _status_class(status: object) -> str:
     return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
 
 
-def _analysis_body(state: SessionState, sch: Schedule) -> str:
+def _analysis_body(key: str, sch: Schedule) -> str:
     audit = audit_schedule(sch)
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
@@ -311,7 +336,21 @@ def _analysis_body(state: SessionState, sch: Schedule) -> str:
     )
     narrative = build_narrative(sch)
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
-    return f"""
+    viz = f"""
+<div class=panel><h2>Interactive analysis</h2>
+<div id=viz data-name="{_e(key)}">
+<div class=charts id=charts></div>
+<div class=viz-controls>Driving path to target UID:
+<input id=targetUid type=number min=1 placeholder="UID">
+secondary&le;<input id=secMax type=number value=10>d
+tertiary&le;<input id=terMax type=number value=20>d
+<button id=ganttBtn type=button>Trace</button></div>
+<div id=gantt></div>
+<h3>Activities <span class=muted>(toggle columns; click a row to drill into its metadata)</span></h3>
+<div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
+</div></div>
+<script src="/static/app.js"></script>"""
+    return f"""{viz}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A</p>
 <table><tr><th>Check</th><th>Status</th><th>Value</th><th>Suggested improvement</th></tr>{audit_rows}</table></div>
@@ -333,6 +372,7 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
             for c in audit.checks
         },
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
+        "activities": _activity_rows(sch),
         "findings": [
             {
                 "severity": str(f.severity),
@@ -346,6 +386,61 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
             for f in recommend(sch)
         ],
     }
+
+
+def _iso_date(value: object) -> str:
+    return value.date().isoformat() if hasattr(value, "date") else ""
+
+
+def _activity_rows(sch: Schedule) -> list[dict[str, object]]:
+    """Per-activity rows for the interactive grid (float in days, citable metadata)."""
+    by_id = sch.tasks_by_id
+    rows: list[dict[str, object]] = []
+    for fr in analyze_floats(sch):
+        task = by_id[fr.unique_id]
+        rows.append(
+            {
+                "unique_id": fr.unique_id,
+                "name": task.name,
+                "wbs": task.wbs or "",
+                "start": _iso_date(task.start),
+                "finish": _iso_date(task.finish),
+                "total_float_days": float(fr.total_float_days),
+                "free_float_days": float(fr.free_float_days),
+                "percent_complete": task.percent_complete,
+                "is_critical": fr.is_critical,
+                "source_file": sch.source_file,
+            }
+        )
+    return rows
+
+
+def _driving_data(sch: Schedule, target: int, secondary: int, tertiary: int) -> dict[str, object]:
+    """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID."""
+    by_id = sch.tasks_by_id
+    if target not in by_id:
+        return {"target_uid": target, "target_name": None, "rows": []}
+    cpm = compute_cpm(sch)
+    results = compute_driving_slack(
+        sch, target_uid=target, secondary_max_days=secondary, tertiary_max_days=tertiary
+    )
+    rows = []
+    for uid in sorted(results):
+        timing = cpm.timings.get(uid)
+        rows.append(
+            {
+                "unique_id": uid,
+                "name": by_id[uid].name,
+                "tier": str(results[uid].tier),
+                "driving_slack_days": int(results[uid].driving_slack_days),
+                "on_driving_path": results[uid].on_driving_path,
+                "start_ord": timing.early_start if timing else None,
+                "finish_ord": timing.early_finish if timing else None,
+            }
+        )
+    # order the Gantt by start so the driving chain reads top-to-bottom
+    rows.sort(key=lambda r: (r["start_ord"] is None, r["start_ord"]))
+    return {"target_uid": target, "target_name": by_id[target].name, "rows": rows}
 
 
 def _compare_body(prior: Schedule, current: Schedule) -> str:
