@@ -1,0 +1,63 @@
+{
+  "_source": "docs/PLAN/PARITY-TARGETS.md §A (Schedule Quality) + §B (DCMA-14) + §C (baseline compliance / HSD) + §E (Schedule-Network change). Acumen Fuse exports for the non-CUI commercial-construction sample (ADR-0003/0005).",
+  "_deltas": {
+    "DCMA06_high_float": "engine computes 43 (P2) / 40 (P5); Acumen golden is 44 / 41 (+1). One near-status activity per project carries MS Project's progress-aware total float > 44d while the pure-logic CPM gives <= 44d. Pass/fail (>>5%) unaffected. ADR-0012; tracked to zero at M9.",
+    "baseline_start_compliance": "engine computes started-on-time / forecast-to-be-started = 38% (P2) / 23% (P5); Acumen golden is 41% / 25%. Denominator quirk (recon found 11/27 = 41% for P2); the underlying counts are exact. ADR-0013; tracked to zero at M9.",
+    "SN01_total_activities": "engine reports 126 (schedulable / non-summary activities, the population used by every other framework here); Acumen's §E header counts all 144 task rows (incl. 18 WBS summaries; excl. the single project-summary root). Headline-only; the forensic change counts are unaffected. ADR-0013.",
+    "SN04_no_longer_critical": "engine computes 0; Acumen golden is 1. Critical transition depends on MS Project's progress-aware Critical flag (same root cause as DCMA06). ADR-0013; tracked to zero at M9.",
+    "SN06_start_date_slips": "engine computes 9; Acumen golden is 10 (+1) — per-snapshot start-slip granularity. ADR-0013; tracked to zero at M9.",
+    "SN07_remaining_duration_increases": "engine computes 7; Acumen golden is 8 (+1). ADR-0013; tracked to zero at M9.",
+    "SN09_float_erosion": "engine computes 4 (pure-logic CPM total-float decreases); Acumen golden is 6 (MS Project progress-aware total slack). Same root cause as DCMA06. ADR-0013; tracked to zero at M9."
+  },
+  "_scores_deferred": {
+    "schedule_quality_score": 88,
+    "dcma_score": {"Project2": 57, "Project5": 49},
+    "note": "Acumen composite scores use a proprietary Bad/Neutral/Good weighting not published in the exports or the Acumen 8.11 metric guide. Per-check counts/pass-fail are reproduced exactly; the composite scores are an M9 calibration item (ADR-0012)."
+  },
+  "Project2": {
+    "denominators": {"activities": 126, "incomplete": 106, "relationships": 176, "due_by_status": 27},
+    "schedule_quality": {
+      "missing_logic": 6, "logic_density": 2.79, "critical": 41, "hard_constraints": 0,
+      "negative_float": 0, "insufficient_detail": 1, "number_of_lags": 2, "number_of_leads": 0,
+      "merge_hotspot": 10
+    },
+    "dcma14": {
+      "DCMA01": 4, "DCMA02": 0, "DCMA03": 2, "DCMA04_FS_pct": 99, "DCMA04_SSFF": 1, "DCMA04_SF": 0,
+      "DCMA05": 0, "DCMA06": 44, "DCMA07": 0, "DCMA08": 1, "DCMA09": 0, "DCMA10": 0, "DCMA11": 18,
+      "DCMA12": "PASS", "DCMA13": 1.0, "DCMA14": 0.74
+    },
+    "baseline_compliance": {
+      "forecast_to_be_finished": 27, "completed_on_time": 9, "completed_late": 11, "not_completed": 7,
+      "baseline_finish_compliance_pct": 33,
+      "forecast_to_be_started": 29, "started_on_time": 11, "started_late": 12, "not_started": 6,
+      "baseline_start_compliance_pct": 41
+    }
+  },
+  "Project5": {
+    "denominators": {"activities": 126, "incomplete": 99, "relationships": 178, "due_by_status": 46},
+    "schedule_quality": {
+      "missing_logic": 6, "logic_density": 2.83, "critical": 37, "hard_constraints": 0,
+      "negative_float": 0, "insufficient_detail": 1, "number_of_lags": 2, "number_of_leads": 0,
+      "merge_hotspot": 10
+    },
+    "dcma14": {
+      "DCMA01": 4, "DCMA02": 0, "DCMA03": 1, "DCMA04_FS_pct": 99, "DCMA04_SSFF": 0, "DCMA04_SF": 0,
+      "DCMA05": 0, "DCMA06": 41, "DCMA07": 0, "DCMA08": 0, "DCMA09": 0, "DCMA10": 0, "DCMA11": 37,
+      "DCMA12": "PASS", "DCMA13": 1.0, "DCMA14": 0.59
+    },
+    "baseline_compliance": {
+      "forecast_to_be_finished": 46, "completed_on_time": 9, "completed_late": 18, "not_completed": 19,
+      "baseline_finish_compliance_pct": 20,
+      "forecast_to_be_started": 48, "started_on_time": 11, "started_late": 18, "not_started": 19,
+      "baseline_start_compliance_pct": 25
+    }
+  },
+  "change_P2_to_P5": {
+    "_comparison": "Project5 (current) vs Project2 (prior) — Acumen §E PP & Change, matched by UniqueID.",
+    "total_activities": 144, "activities_added": 0, "new_critical": 0, "no_longer_critical": 1,
+    "finish_date_slips": 9, "start_date_slips": 10, "remaining_duration_increases": 8,
+    "float_erosion": 6, "completed": 27, "in_progress": 2,
+    "net_finish_impact_days": -99,
+    "_first_snapshot_P2": {"activities_added": 144, "completed": 20, "in_progress": 3, "net_finish_impact_days": 0}
+  }
+}

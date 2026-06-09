@@ -1,0 +1,39 @@
+/* Schedule Forensics — interactive visuals (M14). Vendored locally; no CDN, no external fetch. */
+#viz { margin-top: 6px; }
+.viz-controls { margin: 14px 0; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.viz-controls input[type=number] { width: 74px; }
+.charts { display: flex; gap: 24px; flex-wrap: wrap; }
+.chart { flex: 1 1 320px; min-width: 280px; }
+.chart h3, #gantt h3 { font-size: 13px; color: var(--muted); margin: 6px 0; font-weight: 600; }
+.bar-row { display: grid; grid-template-columns: 150px 1fr 48px; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
+.bar-track { background: #0a0f1a; border-radius: 4px; height: 16px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; }
+.bar-fill.ok { background: var(--ok); }
+.bar-fill.bad { background: var(--bad); }
+.bar-fill.warn { background: var(--warn); }
+.bar-fill.accent { background: var(--accent); }
+.field-toggles { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; color: var(--muted); }
+.field-toggles label { cursor: pointer; }
+#grid table { width: 100%; }
+#grid th { cursor: pointer; user-select: none; }
+#grid th.sorted::after { content: " \25B4"; }
+#grid th.sorted.desc::after { content: " \25BE"; }
+#grid tr.crit td:first-child { border-left: 3px solid var(--bad); }
+#grid tbody tr { cursor: pointer; }
+#grid tbody tr:hover { background: #18202f; }
+.drill { margin-top: 12px; padding: 12px 14px; background: #0a0f1a; border: 1px solid var(--line); border-radius: 8px; display: none; }
+.drill.show { display: block; }
+.drill h3 { margin: 0 0 8px; color: var(--accent); font-size: 14px; }
+.drill dl { display: grid; grid-template-columns: 180px 1fr; gap: 2px 12px; font-size: 13px; margin: 0; }
+.drill dt { color: var(--muted); }
+.gantt-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 8px; margin: 2px 0; font-size: 12px; }
+.gantt-track { position: relative; height: 14px; background: #0a0f1a; border-radius: 3px; }
+.gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
+.tier-DRIVING { background: var(--bad); }
+.tier-SECONDARY { background: var(--warn); }
+.tier-TERTIARY { background: var(--accent); }
+.tier-BEYOND { background: #3a4759; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0; flex-wrap: wrap; }
+.legend span::before { content: "\25A0 "; }
+.legend .tier-DRIVING { color: var(--bad); } .legend .tier-SECONDARY { color: var(--warn); }
+.legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: #6b7a8d; }

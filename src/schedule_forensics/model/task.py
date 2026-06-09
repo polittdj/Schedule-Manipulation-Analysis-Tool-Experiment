@@ -1,0 +1,103 @@
+"""Task (activity) model — the schedule's atomic unit, keyed by UniqueID.
+
+``unique_id`` is the **sole** cross-version identity (never the row ID, which
+renumbers on insert/delete; never the name, which is not unique). Every field here is
+a value the schedule file records; CPM dates, total/free float, driving slack, and the
+DCMA/EVM metrics are derived by the engine and are deliberately **not** stored on the
+task. Durations are integer working minutes (``480`` == one 8-hour day); a 0-minute,
+``is_milestone`` task is an instantaneous event. Optional date/cost fields default to
+``None`` meaning *"not provided by the source"* — never assume 0/empty.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+from enum import StrEnum
+
+from pydantic import Field
+
+from schedule_forensics.model._base import StrictFrozenModel
+
+
+class ConstraintType(StrEnum):
+    """Task date-constraint type (MS Project ``ConstraintType`` enumeration)."""
+
+    ASAP = "ASAP"  # as soon as possible (default — no constraint)
+    ALAP = "ALAP"  # as late as possible
+    SNET = "SNET"  # start no earlier than (soft)
+    SNLT = "SNLT"  # start no later than (hard)
+    FNET = "FNET"  # finish no earlier than (soft)
+    FNLT = "FNLT"  # finish no later than (hard)
+    MSO = "MSO"  # must start on (hard)
+    MFO = "MFO"  # must finish on (hard)
+
+
+#: The constraint types the DCMA "Hard Constraints" check counts (06A209a, MS Project
+#: set): mandatory/must dates plus the no-later-than caps. ASAP/ALAP/SNET/FNET are soft.
+_HARD_CONSTRAINTS: frozenset[ConstraintType] = frozenset(
+    {ConstraintType.MSO, ConstraintType.MFO, ConstraintType.SNLT, ConstraintType.FNLT}
+)
+
+
+class Task(StrictFrozenModel):
+    """A single schedule activity. ``unique_id`` is the only cross-version key."""
+
+    # --- identity ---
+    unique_id: int
+    name: str
+    wbs: str | None = None  # WBS code (display / traceability; never an identity key)
+
+    # --- duration (working minutes; 0 + is_milestone == instantaneous event) ---
+    duration_minutes: int = Field(ge=0)
+    remaining_duration_minutes: int | None = Field(default=None, ge=0)
+    baseline_duration_minutes: int | None = Field(default=None, ge=0)
+
+    # --- classification ---
+    is_milestone: bool = False
+    is_summary: bool = False  # WBS rollup; excluded from the CPM network and DCMA denominators
+    is_level_of_effort: bool = False
+    is_active: bool = True
+
+    # --- constraints ---
+    constraint_type: ConstraintType = ConstraintType.ASAP
+    constraint_date: dt.datetime | None = None
+    deadline: dt.datetime | None = None
+
+    # --- progress / status ---
+    percent_complete: float = Field(default=0.0, ge=0.0, le=100.0)
+    physical_percent_complete: float | None = Field(default=None, ge=0.0, le=100.0)
+
+    # --- dates as recorded in the source (forecast / actual / baseline) ---
+    start: dt.datetime | None = None  # current scheduled/forecast start
+    finish: dt.datetime | None = None  # current scheduled/forecast finish
+    actual_start: dt.datetime | None = None
+    actual_finish: dt.datetime | None = None
+    baseline_start: dt.datetime | None = None
+    baseline_finish: dt.datetime | None = None
+
+    # --- cost / earned value ---
+    cost: float | None = Field(default=None, ge=0.0)  # scheduled cost
+    actual_cost: float | None = Field(default=None, ge=0.0)  # ACWP basis
+    budgeted_cost: float = Field(default=0.0, ge=0.0)  # baseline cost / BAC (EV basis)
+
+    # --- resource assignment (DCMA Resources check) ---
+    resource_names: tuple[str, ...] = ()
+    resource_ids: tuple[int, ...] = ()
+
+    @property
+    def is_complete(self) -> bool:
+        """DCMA convention: a task is complete at 100% (incomplete is strictly < 100)."""
+        return self.percent_complete >= 100.0
+
+    @property
+    def is_in_progress(self) -> bool:
+        return 0.0 < self.percent_complete < 100.0
+
+    @property
+    def is_not_started(self) -> bool:
+        return self.percent_complete <= 0.0
+
+    @property
+    def has_hard_constraint(self) -> bool:
+        """True for the hard/mandatory constraint types the DCMA check counts."""
+        return self.constraint_type in _HARD_CONSTRAINTS

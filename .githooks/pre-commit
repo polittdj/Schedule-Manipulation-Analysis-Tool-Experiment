@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# CUI pre-commit guard (Law 1, defense-in-depth behind .gitignore).
+#
+# Rejects any staged schedule / Office / Power BI / pickle artifact so that
+# Controlled Unclassified Information can never be committed, even with `git add -f`.
+# Synthetic, hand-authored, non-CUI test fixtures under tests/fixtures/ are the only
+# exception (they contain no real data).
+#
+# Activate with:  git config core.hooksPath .githooks
+# (the SessionStart hook does this automatically each session).
+set -euo pipefail
+
+blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|csv|xls|xlsx|pbix|mspdi|pkl|pickle)$'
+allow_prefix='tests/fixtures/'
+
+violations=()
+while IFS= read -r path; do
+  [ -z "$path" ] && continue
+  case "$path" in
+    "$allow_prefix"*) continue ;;  # synthetic non-CUI fixtures are allowed
+  esac
+  if printf '%s\n' "$path" | grep -qiE "$blocked_re"; then
+    violations+=("$path")
+  fi
+done < <(git diff --cached --name-only --diff-filter=AM)
+
+if [ "${#violations[@]}" -gt 0 ]; then
+  {
+    echo "COMMIT BLOCKED — CUI/schedule artifacts must never be committed (Law 1):"
+    for v in "${violations[@]}"; do echo "  - $v"; done
+    echo
+    echo "If a file is a synthetic, non-CUI test fixture, place it under ${allow_prefix}."
+    echo "Real schedule data stays out of git (see .gitignore)."
+  } >&2
+  exit 1
+fi
+exit 0

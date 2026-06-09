@@ -1,0 +1,37 @@
+# SYNTHETIC, NON-CUI TEST FIXTURE (M3). Hand-authored Primavera P6 XER.
+# Contains no real schedule data. Tab-delimited %T/%F/%R/%E records.
+ERMHDR	19.12	2025-02-01	Project	admin	Admin	dbxDatabaseNoName	Project Management	USD
+%T	PROJECT
+%F	proj_id	proj_short_name	plan_start_date	plan_end_date	last_recalc_date
+%R	1000	CC-A	2025-01-06 08:00	2025-03-31 17:00	2025-02-01 17:00
+%T	PROJWBS
+%F	wbs_id	proj_id	parent_wbs_id	wbs_short_name	wbs_name
+%R	5000	1000		CC	Commercial Construction
+%R	5001	1000	5000	DESIGN	Design Phase
+%R	5002	1000	5000	CONSTR	Construction
+%T	RSRC
+%F	rsrc_id	rsrc_name	rsrc_short_name	rsrc_type	cost_per_qty
+%R	100	Architect	ARCH	RT_Labor	150
+%R	101	Concrete	CONC	RT_Mat	95.5
+%R	102	Crane	CRANE	RT_Equip	220
+%T	TASK
+%F	task_id	proj_id	wbs_id	task_code	task_name	task_type	complete_pct_type	phys_complete_pct	target_drtn_hr_cnt	remain_drtn_hr_cnt	cstr_type	cstr_date	act_start_date	act_end_date	early_start_date	early_end_date	target_start_date	target_end_date
+%R	2001	1000	5001	A1000	Schematic Design	TT_Task	CP_Phys	100	80	0	CS_MSOA	2025-01-06 08:00	2025-01-06 08:00	2025-01-17 16:30	2025-01-06 08:00	2025-01-17 17:00	2025-01-06 08:00	2025-01-17 17:00
+%R	2002	1000	5001	A1010	Permitting	TT_Task	CP_Phys	40	40	16	CS_MSO	2025-01-20 08:00	2025-01-20 08:00		2025-01-20 08:00	2025-01-24 17:00		
+%R	2003	1000	5002	A1020	Construction	TT_Task	CP_Phys	0	160	160	CS_MEOB	2025-03-15 17:00			2025-01-27 08:00	2025-03-15 17:00	2025-01-27 08:00	2025-03-15 17:00
+%R	2004	1000	5002	A1030	Substantial Completion	TT_FinMile	CP_Phys	0	0	0					2025-03-15 17:00	2025-03-15 17:00		
+%R	2000	1000	5000	WBS-CC	Commercial Construction	TT_WBS	CP_Drtn	0	0	0								
+%T	TASKPRED
+%F	task_pred_id	task_id	pred_task_id	pred_type	lag_hr_cnt
+%R	9001	2002	2001	PR_FS	8
+%R	9002	2003	2002	PR_SS	0
+%R	9003	2003	2001	PR_FF	0
+%R	9004	2004	2003	PR_FS	-4
+%R	9005	2004	2002	PR_SF	0
+%T	TASKRSRC
+%F	taskrsrc_id	task_id	rsrc_id
+%R	7001	2001	100
+%R	7002	2003	100
+%R	7003	2003	101
+%R	7004	2003	102
+%E
