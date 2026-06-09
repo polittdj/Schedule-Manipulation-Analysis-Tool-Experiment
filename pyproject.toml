@@ -44,6 +44,10 @@ dependencies = [
   "python-multipart>=0.0.9",
 ]
 
+[project.scripts]
+# One-command launcher: starts the local dashboard on 127.0.0.1 and opens the browser.
+schedule-forensics = "schedule_forensics.launcher:main"
+
 [project.optional-dependencies]
 # Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
 # tightened when first wired into CI during Phase 2.

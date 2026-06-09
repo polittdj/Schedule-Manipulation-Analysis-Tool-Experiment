@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Schedule Forensics
+Comment=Local, NASA-themed forensic schedule-analysis tool (offline / CUI-safe)
+Exec=schedule-forensics
+Terminal=true
+Categories=Office;ProjectManagement;
