@@ -14,9 +14,13 @@ from __future__ import annotations
 import html
 import logging
 import tempfile
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,6 +84,18 @@ padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:#0a0f1a;
 border:1px solid var(--line);border-radius:7px;padding:7px 9px}
 """
 
+# Keep-alive + quit: every page beats every 3s so the server knows the browser is open;
+# when all windows close, the beats stop and the launcher's watchdog shuts the server down
+# (that is how closing the tool turns everything off). "Quit" stops it immediately.
+_HEARTBEAT_JS = """<script>(function(){
+function beat(){fetch('/api/heartbeat',{method:'POST'}).catch(function(){});}
+beat();var hb=setInterval(beat,3000);
+window.sfQuit=function(){clearInterval(hb);
+fetch('/api/shutdown',{method:'POST'}).catch(function(){});
+document.body.innerHTML='<main><div class=panel><h2>Schedule Forensics stopped</h2>'+
+'<p class=muted>The local server is shutting down. You can close this window.</p></div></main>';
+return false;};}());</script>"""
+
 _LAYOUT = Template(
     """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
@@ -87,8 +103,9 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
-<a href="/session/wipe" onclick="return confirm('Wipe all loaded schedules?')">Wipe Session</a></nav></header>
-<main>{{ banner }}{{ body }}</main></body></html>"""
+<a href="/session/wipe" onclick="return confirm('Wipe all loaded schedules?')">Wipe Session</a>
+<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
+<main>{{ banner }}{{ body }}</main>{{ heartbeat }}</body></html>"""
 )
 
 
@@ -122,7 +139,13 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
 
 def _page(state: SessionState, title: str, body: str) -> HTMLResponse:
     return HTMLResponse(
-        _LAYOUT.render(title=title, css=_CSS, banner=_banner_html(state), body=body)
+        _LAYOUT.render(
+            title=title,
+            css=_CSS,
+            banner=_banner_html(state),
+            body=body,
+            heartbeat=_HEARTBEAT_JS,
+        )
     )
 
 
@@ -130,15 +153,43 @@ def _e(text: object) -> str:
     return html.escape(str(text))
 
 
-def create_app(state: SessionState | None = None) -> FastAPI:
-    """Build the FastAPI app. ``state`` lets a test/launcher inject a fresh session."""
+def create_app(
+    state: SessionState | None = None,
+    *,
+    auto_shutdown: bool = False,
+    idle_grace: float = 10.0,
+) -> FastAPI:
+    """Build the FastAPI app. ``state`` lets a test/launcher inject a fresh session.
+
+    ``auto_shutdown`` (set by the desktop launcher) makes :func:`serve` run a watchdog that
+    stops the server once the browser stops sending heartbeats for ``idle_grace`` seconds —
+    so closing the window turns the whole tool off. ``request_shutdown`` is wired by
+    :func:`serve`; the in-page "Quit" control and the watchdog both call it.
+    """
     app = FastAPI(title="Schedule Forensics", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
+    app.state.auto_shutdown = auto_shutdown
+    app.state.idle_grace = idle_grace
+    app.state.last_beat = time.monotonic()
+    app.state.browser_seen = False  # armed once the first heartbeat arrives
+    app.state.shutting_down = False
+    app.state.request_shutdown = None  # set by serve() to flip the server's should_exit
     app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
 
     def session() -> SessionState:
         s: SessionState = app.state.session
         return s
+
+    @app.post("/api/heartbeat")
+    def heartbeat() -> JSONResponse:
+        app.state.last_beat = time.monotonic()
+        app.state.browser_seen = True
+        return JSONResponse({"ok": True})
+
+    @app.post("/api/shutdown")
+    def shutdown() -> JSONResponse:
+        _trigger_shutdown(app)
+        return JSONResponse({"stopping": True})
 
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:
@@ -502,12 +553,57 @@ def _settings_body(state: SessionState) -> str:
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.</p></div>"""
 
 
-def run(
-    host: str = "127.0.0.1", port: int = 8765
-) -> None:  # pragma: no cover - launcher entrypoint
-    """Serve the app on a loopback address only (refuses a non-local host — Law 1)."""
-    import uvicorn
+def _trigger_shutdown(app: FastAPI) -> None:
+    """Request a graceful server stop, once (idempotent). No-op if no server is wired."""
+    if app.state.shutting_down:
+        return
+    app.state.shutting_down = True
+    callback = app.state.request_shutdown
+    if callback is not None:
+        callback()
 
+
+def _is_idle(browser_seen: bool, idle_seconds: float, grace: float) -> bool:
+    """True once a browser has connected and then gone quiet for longer than ``grace``."""
+    return browser_seen and idle_seconds > grace
+
+
+def _watchdog(app: FastAPI, *, poll: float = 2.0) -> None:
+    """Stop the server when the browser stops beating (closing the window = tool off)."""
+    grace = app.state.idle_grace
+    while not app.state.shutting_down:
+        time.sleep(poll)
+        if _is_idle(app.state.browser_seen, time.monotonic() - app.state.last_beat, grace):
+            logger.info("no browser heartbeat for %.0fs — shutting the tool down", grace)
+            _trigger_shutdown(app)
+            return
+
+
+def serve(
+    app: FastAPI,
+    host: str = "127.0.0.1",
+    port: int = 8765,
+    *,
+    server_factory: Callable[[uvicorn.Config], uvicorn.Server] = uvicorn.Server,
+    log_level: str = "warning",
+) -> None:
+    """Serve ``app`` on a loopback address (refuses a non-local host — Law 1).
+
+    Wires graceful shutdown: the in-page Quit control, ``POST /api/shutdown``, and (when the
+    app was built with ``auto_shutdown``) the browser-gone watchdog all flip the server's
+    ``should_exit``, so the process ends cleanly with nothing left running.
+    """
     if not is_loopback_host(host):
         raise ValueError(f"refusing to bind a non-loopback host {host!r} (CUI: local-only).")
-    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
+    server = server_factory(uvicorn.Config(app, host=host, port=port, log_level=log_level))
+    app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
+    if app.state.auto_shutdown:
+        threading.Thread(target=_watchdog, args=(app,), daemon=True).start()
+    server.run()
+
+
+def run(
+    host: str = "127.0.0.1", port: int = 8765, *, auto_shutdown: bool = False
+) -> None:  # pragma: no cover - server entrypoint (covered via serve() unit tests)
+    """Serve the app on loopback. ``auto_shutdown`` enables the browser-gone watchdog."""
+    serve(create_app(auto_shutdown=auto_shutdown), host=host, port=port)
