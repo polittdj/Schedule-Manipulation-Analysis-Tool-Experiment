@@ -32,6 +32,15 @@ def test_landing_is_a_professional_open_import_dashboard(client: TestClient) -> 
     assert ".mpp" in page and ".json" in page and ".xer" in page  # supported formats shown
 
 
+def test_dropzone_uses_native_form_submit_not_fetch(client: TestClient) -> None:
+    # W2 regression guard: a fetch() POST auto-follows the 303 on a hidden request, swallowing
+    # both the single-file jump to /analysis/... and the one-shot import flash. The dropzone must
+    # submit the real <form> so the browser follows the redirect itself.
+    page = client.get("/").text
+    assert "form.submit()" in page
+    assert "fetch('/upload'" not in page and 'fetch("/upload"' not in page
+
+
 def test_load_example_opens_a_full_report(client: TestClient) -> None:
     redirect = client.get("/example", follow_redirects=False)
     assert redirect.status_code == 303
