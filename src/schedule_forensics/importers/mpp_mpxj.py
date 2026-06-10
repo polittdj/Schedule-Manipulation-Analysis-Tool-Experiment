@@ -16,6 +16,7 @@ runner, an unreadable file, or an MPXJ failure all raise :class:`ImporterError`.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess  # nosec B404  # used only to run the vendored MPXJ converter (no shell)
 import tempfile
@@ -27,6 +28,62 @@ from schedule_forensics.model import Schedule
 
 #: Hard cap on the MPXJ conversion (seconds) so a hung JVM can't stall the tool.
 _CONVERT_TIMEOUT_S = 300
+
+#: Standard Windows JDK/JRE install roots — Windows installers often do NOT update PATH,
+#: and a desktop shortcut won't see PATH changes until the next login anyway, so we look
+#: in the well-known places ourselves (each contains versioned dirs like ``jdk-21.0.4+7``).
+_WINDOWS_JAVA_ROOTS = (
+    Path(r"C:\Program Files\Eclipse Adoptium"),
+    Path(r"C:\Program Files\Microsoft"),
+    Path(r"C:\Program Files\Java"),
+    Path(r"C:\Program Files\Amazon Corretto"),
+    Path(r"C:\Program Files\Zulu"),
+    Path(r"C:\Program Files (x86)\Eclipse Adoptium"),
+    Path(r"C:\Program Files (x86)\Java"),
+)
+
+#: Standard POSIX JVM locations (Linux distro packages, macOS bundles).
+_POSIX_JAVA_GLOBS = (
+    "usr/lib/jvm/*/bin/java",
+    "Library/Java/JavaVirtualMachines/*/Contents/Home/bin/java",
+)
+
+
+def _java_version_key(java_path: Path) -> tuple[int, ...]:
+    """Sort key from the install dir name (e.g. ``jdk-21.0.4+7`` → (21, 0, 4, 7))."""
+    install_dir = java_path.parent.parent  # <install>/bin/java -> <install>
+    numbers = re.findall(r"\d+", install_dir.name)
+    return tuple(int(n) for n in numbers) or (0,)
+
+
+def _find_java() -> str | None:
+    """Locate a ``java`` executable: ``SF_JAVA`` → ``JAVA_HOME`` → PATH → known install dirs.
+
+    The explicit overrides come first so an operator can always pin the JVM; the
+    well-known-folder scan rescues the common Windows case where Java is installed
+    but not on PATH. Newest-versioned install wins among the scanned candidates.
+    """
+    explicit = os.environ.get("SF_JAVA")
+    if explicit and Path(explicit).is_file():
+        return explicit
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        for name in ("java.exe", "java"):
+            candidate = Path(java_home) / "bin" / name
+            if candidate.is_file():
+                return str(candidate)
+    on_path = shutil.which("java")
+    if on_path:
+        return on_path
+    candidates: list[Path] = []
+    for root in _WINDOWS_JAVA_ROOTS:
+        if root.is_dir():
+            candidates.extend(p for p in root.glob("*/bin/java.exe") if p.is_file())
+    for pattern in _POSIX_JAVA_GLOBS:
+        candidates.extend(p for p in Path("/").glob(pattern) if p.is_file())
+    if candidates:
+        return str(max(candidates, key=_java_version_key))
+    return None
 
 
 def _mpxj_home() -> Path:
@@ -40,10 +97,13 @@ def _mpxj_home() -> Path:
 
 def _build_command(mpxj_home: Path, input_path: Path, output_path: Path) -> list[str]:
     """Assemble the ``java -cp <classes>:<lib/*> MpxjToMspdi <in> <out>`` argv."""
-    java = shutil.which("java")
+    java = _find_java()
     if java is None:
         raise ImporterError(
-            "Java runtime not found on PATH — a JRE/JDK >= 17 is required to parse native .mpp"
+            "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, and the standard "
+            "install folders) — native .mpp needs a JRE/JDK 17+. Install one with "
+            "'winget install EclipseAdoptium.Temurin.21.JRE' (or from adoptium.net), "
+            "then restart the tool. If Java lives somewhere custom, set JAVA_HOME."
         )
     classpath = os.pathsep.join([str(mpxj_home / "classes"), str(mpxj_home / "lib" / "*")])
     return [java, "-cp", classpath, "MpxjToMspdi", str(input_path), str(output_path)]
