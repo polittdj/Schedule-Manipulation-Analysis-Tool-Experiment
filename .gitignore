@@ -72,3 +72,6 @@ dist/
 #     (it is only used for Primavera P6 SQLite, never for .mpp); a local
 #     tools/mpxj/setup.* re-run would re-fetch it, but it stays out of git. ---
 tools/mpxj/lib/sqlite-jdbc*.jar
+
+# --- Portable drop-in JRE (no-admin machines): extracted locally, never committed ---
+tools/jre/
