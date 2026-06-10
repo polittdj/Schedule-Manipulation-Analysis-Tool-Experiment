@@ -64,10 +64,11 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**424 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
+TDD + pytest (**469 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
-all wired into CI on every push (Python 3.11 + 3.13); Conventional Commits on a feature branch with a
-draft PR (#55, not merged); 21 ADRs (`docs/adr/`), a risk register (`docs/risks.md`), durable state
+wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
+with PRs (#55–#57 merged to `main`; #58 = import feedback + full-audit remediation); 24 ADRs
+(`docs/adr/`, incl. ADR-0024 audit remediation), a risk register (`docs/risks.md`), durable state
 (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
 ## Definition of Done (§8)
