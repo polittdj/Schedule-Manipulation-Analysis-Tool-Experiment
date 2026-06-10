@@ -59,11 +59,18 @@ the heartbeat stops); the in-page **Quit** control stops it immediately.
    the bundled sample. Files parse locally; the dashboard tells you exactly what loaded and what
    failed (no silent failures). Each schedule lists **Open report** and **Save .json**.
 2. **Analysis** — DCMA-14 audit (pass/fail vs threshold + suggested fix), severity-ordered
-   risks/opportunities/concerns (each cited: file + UniqueID + task), a cited AI narrative, and
-   interactive charts + an activity grid + a driving-path Gantt.
-3. **Compare** (≥2 versions) — CPM/progress trend and manipulation-trend signals (deleted logic,
-   shortened durations, deleted tasks, baseline/actual edits) with the Net Finish Impact in calendar
-   days. Honest progress raises no false flags.
+   risks/opportunities/concerns (each cited: file + UniqueID + task), a cited AI narrative,
+   interactive charts, an **MS-Project-style Gantt grid** (add/remove columns beside a timeline with
+   critical bars, progress, milestones, summaries and the data-date line), and a driving-path Gantt.
+3. **Trend** (≥2 versions, 10+ supported) — every version ordered by data date: headline table, Net
+   Finish Impact across the series, trend charts, per-metric quality-trend sentences, and
+   manipulation signals per consecutive pair.
+4. **Executive Briefing** — a print-ready, fully cited diagnostic briefing in the Acumen Fuse style
+   (workbook summary, trend analysis, per-project summaries with behind/ahead-of-schedule days, and
+   per-project quality verdicts).
+5. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
+   manipulation-trend signals (deleted logic, shortened durations, deleted tasks, baseline/actual
+   edits) with the Net Finish Impact in calendar days. Honest progress raises no false flags.
 
 See [`docs/USER-GUIDE.md`](./docs/USER-GUIDE.md) for the full walkthrough and
 [`docs/METRIC-DICTIONARY.md`](./docs/METRIC-DICTIONARY.md) (also at `/help`) for a definition + formula
