@@ -78,13 +78,15 @@ def test_missing_mpxj_runner_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         parse_mpp(sample)
 
 
-def _no_java_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
+def _no_java_anywhere(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Blind every Java-discovery channel (the test host may genuinely have a JDK)."""
     monkeypatch.delenv("SF_JAVA", raising=False)
     monkeypatch.delenv("JAVA_HOME", raising=False)
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
     monkeypatch.setattr(mpp_mpxj.shutil, "which", lambda _name: None)
     monkeypatch.setattr(mpp_mpxj, "_WINDOWS_JAVA_ROOTS", ())
     monkeypatch.setattr(mpp_mpxj, "_POSIX_JAVA_GLOBS", ())
+    monkeypatch.setattr(mpp_mpxj, "_portable_jre_dir", lambda: tmp_path / "no-jre-here")
 
 
 def test_java_not_found_raises_with_install_help(
@@ -92,7 +94,7 @@ def test_java_not_found_raises_with_install_help(
 ) -> None:
     sample = tmp_path / "x.mpp"
     sample.write_bytes(b"dummy")
-    _no_java_anywhere(monkeypatch)
+    _no_java_anywhere(monkeypatch, tmp_path)
     with pytest.raises(ImporterError, match="Java runtime not found") as exc:
         parse_mpp(sample)
     # the message tells the user exactly how to fix it
@@ -102,7 +104,7 @@ def test_java_not_found_raises_with_install_help(
 def test_find_java_prefers_sf_java_then_java_home(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _no_java_anywhere(monkeypatch)
+    _no_java_anywhere(monkeypatch, tmp_path)
     jdk_bin = tmp_path / "jdk" / "bin"
     jdk_bin.mkdir(parents=True)
     java_home_java = jdk_bin / "java"
@@ -120,7 +122,7 @@ def test_find_java_scans_windows_roots_and_picks_newest(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Windows installers often do NOT update PATH; the importer must still find the JVM.
-    _no_java_anywhere(monkeypatch)
+    _no_java_anywhere(monkeypatch, tmp_path)
     for version in ("jdk-9.0.4", "jdk-21.0.4+7", "jdk-17.0.2"):
         exe = tmp_path / version / "bin" / "java.exe"
         exe.parent.mkdir(parents=True)
@@ -129,6 +131,26 @@ def test_find_java_scans_windows_roots_and_picks_newest(
     found = mpp_mpxj._find_java()
     # numeric version ordering: 21 beats 17 beats 9 (lexicographic would pick jdk-9)
     assert found is not None and "jdk-21.0.4+7" in found
+
+
+def test_find_java_uses_a_portable_jre_dropped_into_tools_jre(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # No-admin machines: extracting a JRE zip into tools/jre must be enough — no env vars.
+    _no_java_anywhere(monkeypatch, tmp_path)
+    jre = tmp_path / "jre"
+    nested = jre / "jdk-21.0.11+10-jre" / "bin" / "java.exe"  # the zip's own top folder kept
+    nested.parent.mkdir(parents=True)
+    nested.write_text("")
+    monkeypatch.setattr(mpp_mpxj, "_portable_jre_dir", lambda: jre)
+    assert mpp_mpxj._find_java() == str(nested)
+    # a flat extraction (bin/ directly under tools/jre) is also found on its own
+    flat = jre / "bin" / "java.exe"
+    flat.parent.mkdir(parents=True)
+    flat.write_text("")
+    found = mpp_mpxj._find_java()
+    assert found in (str(nested), str(flat))  # both layouts discoverable; versioned dir wins
+    assert found == str(nested)
 
 
 def test_conversion_failure_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

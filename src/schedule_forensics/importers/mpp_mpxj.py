@@ -56,12 +56,23 @@ def _java_version_key(java_path: Path) -> tuple[int, ...]:
     return tuple(int(n) for n in numbers) or (0,)
 
 
-def _find_java() -> str | None:
-    """Locate a ``java`` executable: ``SF_JAVA`` → ``JAVA_HOME`` → PATH → known install dirs.
+def _portable_jre_dir() -> Path:
+    """The repo-local drop-in JRE folder (``tools/jre``) — for machines without admin rights.
 
-    The explicit overrides come first so an operator can always pin the JVM; the
-    well-known-folder scan rescues the common Windows case where Java is installed
-    but not on PATH. Newest-versioned install wins among the scanned candidates.
+    Extracting a portable JRE zip (e.g. Adoptium's ``OpenJDK21U-jre_*_windows_*.zip``) into
+    this folder needs no installer and no elevation; the tool finds it with no configuration.
+    """
+    return Path(__file__).resolve().parents[3] / "tools" / "jre"
+
+
+def _find_java() -> str | None:
+    """Locate a ``java`` executable — explicit pins first, then progressively wider scans.
+
+    Order: ``SF_JAVA`` → ``JAVA_HOME`` → PATH → the repo's portable ``tools/jre`` drop-in →
+    user-scope installs (``%LOCALAPPDATA%\\Programs``, no admin) → machine-wide install
+    folders. The folder scans rescue the common Windows cases where Java exists but is not
+    on PATH (installers often skip it; locked-down machines can't install at all). Newest
+    version wins among scanned candidates.
     """
     explicit = os.environ.get("SF_JAVA")
     if explicit and Path(explicit).is_file():
@@ -75,8 +86,28 @@ def _find_java() -> str | None:
     on_path = shutil.which("java")
     if on_path:
         return on_path
+    # repo-local portable JRE: tools/jre/bin/java or tools/jre/<extracted-dir>/bin/java
+    portable = _portable_jre_dir()
+    portable_hits = [
+        p
+        for pattern in ("bin/java.exe", "bin/java", "*/bin/java.exe", "*/bin/java")
+        for p in portable.glob(pattern)
+        if p.is_file()
+    ]
+    if portable_hits:
+        return str(max(portable_hits, key=_java_version_key))
     candidates: list[Path] = []
-    for root in _WINDOWS_JAVA_ROOTS:
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    user_roots = (
+        (
+            Path(local_appdata) / "Programs" / "Eclipse Adoptium",
+            Path(local_appdata) / "Programs" / "Microsoft",
+            Path(local_appdata) / "Programs" / "Java",
+        )
+        if local_appdata
+        else ()
+    )
+    for root in (*user_roots, *_WINDOWS_JAVA_ROOTS):
         if root.is_dir():
             candidates.extend(p for p in root.glob("*/bin/java.exe") if p.is_file())
     for pattern in _POSIX_JAVA_GLOBS:
@@ -100,10 +131,11 @@ def _build_command(mpxj_home: Path, input_path: Path, output_path: Path) -> list
     java = _find_java()
     if java is None:
         raise ImporterError(
-            "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, and the standard "
-            "install folders) — native .mpp needs a JRE/JDK 17+. Install one with "
-            "'winget install EclipseAdoptium.Temurin.21.JRE' (or from adoptium.net), "
-            "then restart the tool. If Java lives somewhere custom, set JAVA_HOME."
+            "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, tools/jre, and the "
+            "standard install folders) — native .mpp needs a JRE/JDK 17+. No admin rights? "
+            "Extract a portable JRE zip from adoptium.net into the tool's tools/jre folder "
+            "and restart. Otherwise install with 'winget install "
+            "EclipseAdoptium.Temurin.21.JRE', or set JAVA_HOME to a custom location."
         )
     classpath = os.pathsep.join([str(mpxj_home / "classes"), str(mpxj_home / "lib" / "*")])
     return [java, "-cp", classpath, "MpxjToMspdi", str(input_path), str(output_path)]
