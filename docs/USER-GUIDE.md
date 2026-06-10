@@ -15,8 +15,11 @@ pip install -e .                # installs the `schedule-forensics` launcher com
 ```
 
 - **Python 3.11+** is required. **Native `.mpp`** ingestion also needs a **Java runtime (JRE/JDK 17+)**
-  — the vendored MPXJ reader (`tools/mpxj/`) is auto-discovered; no Maven/build step. `.xml` (MSPDI)
-  and `.xer` (Primavera) parse with no Java.
+  — Windows: `winget install EclipseAdoptium.Temurin.21.JRE` (or download from
+  [adoptium.net](https://adoptium.net)), then restart the tool. Java is found via `JAVA_HOME`, PATH,
+  or the standard install folders (set `JAVA_HOME` for a custom location). The vendored MPXJ reader
+  (`tools/mpxj/`) is auto-discovered; no Maven/build step. `.xml` (MSPDI) and `.xer` (Primavera)
+  parse with no Java.
 - **Local AI is optional.** The narrative works offline with the deterministic Null backend. For
   AI-polished narratives, install [Ollama](https://ollama.com) and pull a model; the in-app **AI
   Settings** panel lists/pulls/selects models. While the project is CLASSIFIED the tool only ever

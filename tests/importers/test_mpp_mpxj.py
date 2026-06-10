@@ -78,12 +78,57 @@ def test_missing_mpxj_runner_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPa
         parse_mpp(sample)
 
 
-def test_java_not_found_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def _no_java_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Blind every Java-discovery channel (the test host may genuinely have a JDK)."""
+    monkeypatch.delenv("SF_JAVA", raising=False)
+    monkeypatch.delenv("JAVA_HOME", raising=False)
+    monkeypatch.setattr(mpp_mpxj.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(mpp_mpxj, "_WINDOWS_JAVA_ROOTS", ())
+    monkeypatch.setattr(mpp_mpxj, "_POSIX_JAVA_GLOBS", ())
+
+
+def test_java_not_found_raises_with_install_help(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sample = tmp_path / "x.mpp"
     sample.write_bytes(b"dummy")
-    monkeypatch.setattr(mpp_mpxj.shutil, "which", lambda _name: None)
-    with pytest.raises(ImporterError, match="Java runtime not found"):
+    _no_java_anywhere(monkeypatch)
+    with pytest.raises(ImporterError, match="Java runtime not found") as exc:
         parse_mpp(sample)
+    # the message tells the user exactly how to fix it
+    assert "winget" in str(exc.value) and "JAVA_HOME" in str(exc.value)
+
+
+def test_find_java_prefers_sf_java_then_java_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _no_java_anywhere(monkeypatch)
+    jdk_bin = tmp_path / "jdk" / "bin"
+    jdk_bin.mkdir(parents=True)
+    java_home_java = jdk_bin / "java"
+    java_home_java.write_text("")
+    monkeypatch.setenv("JAVA_HOME", str(tmp_path / "jdk"))
+    assert mpp_mpxj._find_java() == str(java_home_java)
+    # an explicit SF_JAVA outranks JAVA_HOME
+    pinned = tmp_path / "pinned-java"
+    pinned.write_text("")
+    monkeypatch.setenv("SF_JAVA", str(pinned))
+    assert mpp_mpxj._find_java() == str(pinned)
+
+
+def test_find_java_scans_windows_roots_and_picks_newest(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Windows installers often do NOT update PATH; the importer must still find the JVM.
+    _no_java_anywhere(monkeypatch)
+    for version in ("jdk-9.0.4", "jdk-21.0.4+7", "jdk-17.0.2"):
+        exe = tmp_path / version / "bin" / "java.exe"
+        exe.parent.mkdir(parents=True)
+        exe.write_text("")
+    monkeypatch.setattr(mpp_mpxj, "_WINDOWS_JAVA_ROOTS", (tmp_path,))
+    found = mpp_mpxj._find_java()
+    # numeric version ordering: 21 beats 17 beats 9 (lexicographic would pick jdk-9)
+    assert found is not None and "jdk-21.0.4+7" in found
 
 
 def test_conversion_failure_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
