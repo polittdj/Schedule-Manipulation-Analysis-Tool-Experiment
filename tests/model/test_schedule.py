@@ -136,3 +136,28 @@ def test_frozen() -> None:
     s = Schedule(name="P", project_start=_START, tasks=(_task(1),))
     with pytest.raises(ValidationError):
         s.name = "Q"  # type: ignore[misc]
+
+
+def test_tasks_by_id_is_cached() -> None:
+    # the UID map is built once and reused (hot path); the model is frozen so it cannot stale
+    s = Schedule(name="P", project_start=_START, tasks=(_task(2, "a"), _task(3, "b")))
+    assert s.tasks_by_id is s.tasks_by_id
+    assert s.resources_by_id is s.resources_by_id
+
+
+def test_cache_does_not_perturb_hash_or_equality() -> None:
+    a = Schedule(name="P", project_start=_START, tasks=(_task(2),))
+    b = Schedule(name="P", project_start=_START, tasks=(_task(2),))
+    before = hash(a)
+    _ = a.tasks_by_id  # prime the cache
+    assert hash(a) == before  # cache lives outside the field-driven hash
+    assert a == b and hash(a) == hash(b)  # equality/hash ignore the non-field cache
+
+
+def test_model_copy_rebuilds_the_cache_from_updated_fields() -> None:
+    s = Schedule(name="P", project_start=_START, tasks=(_task(2, "a"),))
+    _ = s.tasks_by_id  # prime with {2}
+    changed = s.model_copy(update={"tasks": (_task(7, "z"),)})
+    assert set(changed.tasks_by_id) == {7}  # never inherits the stale {2} map
+    same = s.model_copy(update={"source_file": "x.mpp"})
+    assert set(same.tasks_by_id) == {2} and same.source_file == "x.mpp"
