@@ -55,6 +55,21 @@ def test_detect_deleted_task_on_critical_path() -> None:
     assert any(c.unique_id == 2 for c in deleted.citations)
 
 
+def test_deleted_logic_citations_carry_the_prior_file() -> None:
+    # §6 contract: every citation names its source file — deleted-logic findings cite the prior.
+    prior = _chain({1: DAY, 2: 2 * DAY, 3: DAY}, source_file="prior.mpp")
+    current = _s(
+        [
+            Task(unique_id=1, name="T1", duration_minutes=DAY),
+            Task(unique_id=3, name="T3", duration_minutes=DAY),
+        ]
+    )
+    logic = next(
+        f for f in detect_manipulation(current, prior) if f.metric_id == "MANIP_DELETED_LOGIC"
+    )
+    assert logic.citations and all(c.source_file == "prior.mpp" for c in logic.citations)
+
+
 def test_detect_shortened_duration_on_incomplete() -> None:
     prior = _s([Task(unique_id=1, name="A", duration_minutes=10 * DAY)])
     current = _s([Task(unique_id=1, name="A", duration_minutes=4 * DAY, percent_complete=20.0)])

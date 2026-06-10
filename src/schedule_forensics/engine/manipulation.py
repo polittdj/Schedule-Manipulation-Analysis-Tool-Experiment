@@ -61,7 +61,7 @@ def detect_manipulation(
     findings: list[Finding] = []
 
     findings.extend(_deleted_tasks(diff, prior_by_id, prior_critical, prior.source_file))
-    findings.extend(_deleted_logic(diff, prior_by_id))
+    findings.extend(_deleted_logic(diff, prior_by_id, prior.source_file))
     findings.extend(_shortened_durations(diff, prior_by_id, cur_by_id, current.source_file))
     findings.extend(_baseline_date_changes(diff, cur_by_id, current.source_file))
     findings.extend(_actual_date_changes(diff, cur_by_id, current.source_file))
@@ -99,7 +99,9 @@ def _deleted_tasks(
     ]
 
 
-def _deleted_logic(diff: VersionDiff, prior_by_id: dict[int, Task]) -> list[Finding]:
+def _deleted_logic(
+    diff: VersionDiff, prior_by_id: dict[int, Task], prior_file: str | None
+) -> list[Finding]:
     if not diff.removed_links:
         return []
     # cite the successor end of each removed link (the activity that lost a driver)
@@ -107,7 +109,7 @@ def _deleted_logic(diff: VersionDiff, prior_by_id: dict[int, Task]) -> list[Find
     for pred, succ, _type, _lag in diff.removed_links:
         task = prior_by_id.get(succ) or prior_by_id.get(pred)
         if task is not None and task.unique_id not in seen:
-            seen[task.unique_id] = Citation(None, task.unique_id, task.name)
+            seen[task.unique_id] = _cite(prior_file, task)
     return [
         Finding(
             category=Category.CONCERN,
