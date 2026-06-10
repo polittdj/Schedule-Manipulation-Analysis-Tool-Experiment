@@ -481,11 +481,13 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
         return parse_mspdi_text(data.decode("utf-8"))
     if suffix == ".xer":
         return parse_xer_text(data.decode("utf-8", errors="replace"))
-    # native .mpp / .mpt — needs the MPXJ runner + a JRE; write to a local temp file
-    with tempfile.NamedTemporaryFile(suffix=suffix or ".mpp", delete=True) as handle:
-        handle.write(data)
-        handle.flush()
-        return load_schedule(Path(handle.name))
+    # native .mpp / .mpt — needs the MPXJ runner + a JRE. Write into a temp *directory* and
+    # close the file before parsing: on Windows an open NamedTemporaryFile handle blocks the
+    # MPXJ java subprocess from reading the path (the upload would always fail on Windows).
+    with tempfile.TemporaryDirectory(prefix="sf-upload-") as tmp:
+        temp_path = Path(tmp) / f"upload{suffix or '.mpp'}"
+        temp_path.write_bytes(data)
+        return load_schedule(temp_path)
 
 
 def _status_class(status: object) -> str:
