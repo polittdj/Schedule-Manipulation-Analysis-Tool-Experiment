@@ -47,7 +47,10 @@ from schedule_forensics.engine import (
 from schedule_forensics.engine.cpm import CPMResult
 from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
-from schedule_forensics.engine.metrics import compute_baseline_compliance
+from schedule_forensics.engine.metrics import (
+    compute_baseline_compliance,
+    compute_net_finish_impact,
+)
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.importers import (
@@ -378,6 +381,16 @@ def create_app(
         keys = list(st.schedules)
         prior_key, current_key = keys[-2], keys[-1]
         prior, current = st.schedules[prior_key], st.schedules[current_key]
+        # Forensic order is by data date (the Acumen/SSI ProjectTimeNow pattern), not load
+        # order: the snapshot with the earlier status date is the prior, whichever was
+        # uploaded first. Load order stands only when a data date is missing or tied.
+        if (
+            prior.status_date is not None
+            and current.status_date is not None
+            and prior.status_date > current.status_date
+        ):
+            prior_key, current_key = current_key, prior_key
+            prior, current = current, prior
         prior_cpm = st.analysis_for(prior_key, prior).cpm
         current_cpm = st.analysis_for(current_key, current).cpm
         return _page(st, "Compare", _compare_body(prior, current, prior_cpm, current_cpm))
@@ -618,6 +631,23 @@ def _compare_body(
 ) -> str:
     manip = detect_manipulation(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
     trend = trend_across_versions([prior, current])
+    impact = compute_net_finish_impact(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
+    days = int(impact.value)
+    if days < 0:
+        impact_html = (
+            f"<p>Net Finish Impact: <b class=fail>{days} calendar days</b> "
+            "&mdash; the project finish moved later since the prior version.</p>"
+        )
+    elif days > 0:
+        impact_html = (
+            f"<p>Net Finish Impact: <b class=pass>+{days} calendar days</b> "
+            "&mdash; the project finish moved earlier since the prior version.</p>"
+        )
+    else:
+        impact_html = (
+            "<p>Net Finish Impact: <b class=pass>0 calendar days</b> "
+            "&mdash; the project finish is unchanged.</p>"
+        )
     manip_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.title)}</td>'
         f"<td class=muted>{_e(f.course_of_action)}</td></tr>"
@@ -630,7 +660,9 @@ def _compare_body(
     )
     return f"""
 <div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
-<table><tr><th>Version</th><th>Project finish</th><th>Completed</th><th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table></div>
+<p class=muted>Versions are ordered by data date (oldest first); the trend reads prior &rarr; current.</p>
+<table><tr><th>Version</th><th>Project finish</th><th>Completed</th><th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table>
+{impact_html}</div>
 <div class=panel><h2>Manipulation-trend signals</h2>
 <table><tr><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""
