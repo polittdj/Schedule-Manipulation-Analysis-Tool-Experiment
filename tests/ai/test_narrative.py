@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
 
 from schedule_forensics.ai.citations import assert_all_cited
 from schedule_forensics.ai.narrative import build_narrative
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
@@ -35,10 +32,10 @@ class _ShoutBackend:
         return prompt.upper()
 
 
-def test_golden_narrative_is_fully_cited() -> None:
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    narrative = build_narrative(p5, p2, target_uid=143)
+def test_golden_narrative_is_fully_cited(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    narrative = build_narrative(golden_project5, golden_project2, target_uid=143)
     assert narrative.statements
     assert_all_cited(narrative.statements)  # §6.D — every statement cited
     text = narrative.to_text()
@@ -46,9 +43,10 @@ def test_golden_narrative_is_fully_cited() -> None:
     assert "Project2.mspdi.xml → Project5.mspdi.xml" in narrative.title
 
 
-def test_backend_rephrases_text_but_keeps_citations() -> None:
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
+def test_backend_rephrases_text_but_keeps_citations(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    p2, p5 = golden_project2, golden_project5
     plain = build_narrative(p5, p2)
     shouted = build_narrative(p5, p2, backend=_ShoutBackend())
     # same number of statements + identical citations, but rephrased (upper-cased) prose

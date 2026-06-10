@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 
 import pytest
@@ -13,7 +12,6 @@ from schedule_forensics.web.app import SessionState, create_app
 EXAMPLE = (
     Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/examples/house_build.json"
 )
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette.*")
 
 
 @pytest.fixture

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
     compute_change_metrics,
@@ -12,15 +10,11 @@ from schedule_forensics.engine.metrics import (
     compute_net_finish_impact,
     compute_schedule_quality,
 )
-from schedule_forensics.importers import parse_mspdi
+from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.web.help import METRIC_DICTIONARY, documented_metric_ids, metric_doc
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 
-
-def _emitted_metric_ids() -> set[str]:
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
+def _emitted_metric_ids(p2: Schedule, p5: Schedule) -> set[str]:
     ids: set[str] = set()
     for results in (
         compute_dcma14(p5),
@@ -35,8 +29,10 @@ def _emitted_metric_ids() -> set[str]:
     return ids
 
 
-def test_every_emitted_metric_is_documented() -> None:
-    emitted = _emitted_metric_ids()
+def test_every_emitted_metric_is_documented(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    emitted = _emitted_metric_ids(golden_project2, golden_project5)
     missing = emitted - documented_metric_ids()
     assert not missing, f"undocumented metrics in the in-tool dictionary: {sorted(missing)}"
 

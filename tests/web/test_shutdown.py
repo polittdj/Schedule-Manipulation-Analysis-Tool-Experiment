@@ -4,15 +4,12 @@ from __future__ import annotations
 
 import threading
 import time
-import warnings
 
 import pytest
 import uvicorn
 from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import _is_idle, _watchdog, create_app, serve
-
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette.*")
 
 
 class _FakeServer:

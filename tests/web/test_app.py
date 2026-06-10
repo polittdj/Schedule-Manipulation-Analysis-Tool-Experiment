@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 
 import pytest
@@ -11,8 +10,6 @@ from fastapi.testclient import TestClient
 from schedule_forensics.web.app import SessionState, _clean_key, _unique_key, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
-
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette.*")
 
 
 @pytest.fixture

@@ -9,7 +9,6 @@ must not happen is each *view* repeating that whole set.)"""
 
 from __future__ import annotations
 
-import warnings
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +30,6 @@ from schedule_forensics.web.app import SessionState, create_app
 EXAMPLE = (
     Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/examples/house_build.json"
 )
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette.*")
 
 # every module that holds a bound `compute_cpm` reference — patch them all so the count is
 # honest no matter which call site fires.

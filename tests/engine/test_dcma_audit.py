@@ -3,16 +3,13 @@
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
 
 from schedule_forensics.engine.dcma_audit import Citation, audit_schedule
 from schedule_forensics.engine.metrics import CheckStatus
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
@@ -23,8 +20,8 @@ def test_citation_str_format() -> None:
     assert "uploaded schedule" in str(Citation(None, 1, "A"))
 
 
-def test_golden_audit_project5() -> None:
-    audit = audit_schedule(parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml"))
+def test_golden_audit_project5(golden_project5: Schedule) -> None:
+    audit = audit_schedule(golden_project5)
     assert audit.source_file == "Project5.mspdi.xml"
     assert len(audit.checks) == 16  # 14 checks, DCMA-04 split into FS / SS-FF / SF rows
     assert audit.passed + audit.failed + audit.not_applicable == 16

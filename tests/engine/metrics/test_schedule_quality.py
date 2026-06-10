@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from schedule_forensics.engine.metrics import compute_schedule_quality
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -20,10 +20,9 @@ DAY = 480
 
 
 @pytest.mark.parametrize("project", ["Project2", "Project5"])
-def test_golden_schedule_quality_parity(project: str) -> None:
+def test_golden_schedule_quality_parity(project: str, golden: Callable[[str], Schedule]) -> None:
     case = json.loads((GOLDEN / "project2_5" / "case.json").read_text())[project]
-    schedule = parse_mspdi(GOLDEN / "project2_5" / f"{project}.mspdi.xml")
-    q = compute_schedule_quality(schedule)
+    q = compute_schedule_quality(golden(project))
     g = case["schedule_quality"]
     for key in (
         "missing_logic",

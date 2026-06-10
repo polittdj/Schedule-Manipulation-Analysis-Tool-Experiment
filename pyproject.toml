@@ -96,6 +96,10 @@ addopts = "-ra --strict-markers --strict-config"
 markers = [
   "parity: Acumen Fuse v8.11.0 / SSI golden acceptance gate (§6.B) over the committed golden fixtures (tests/parity/).",
 ]
+filterwarnings = [
+  # starlette's TestClient still imports httpx; the deprecation is upstream, not ours.
+  "ignore:Using `httpx` with `starlette.testclient`:DeprecationWarning",
+]
 
 [tool.coverage.run]
 branch = true

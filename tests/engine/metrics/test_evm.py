@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -19,7 +20,6 @@ from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
     compute_evm_indices,
 )
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -33,10 +33,9 @@ def _sched(tasks: list[Task], **kw: object) -> Schedule:
 
 
 @pytest.mark.parametrize("project", ["Project2", "Project5"])
-def test_golden_baseline_compliance_parity(project: str) -> None:
+def test_golden_baseline_compliance_parity(project: str, golden: Callable[[str], Schedule]) -> None:
     case = json.loads((GOLDEN / "project2_5" / "case.json").read_text())[project]
-    schedule = parse_mspdi(GOLDEN / "project2_5" / f"{project}.mspdi.xml")
-    c = compute_baseline_compliance(schedule)
+    c = compute_baseline_compliance(golden(project))
     g = case["baseline_compliance"]
 
     # every §C count is exact
@@ -145,9 +144,8 @@ def test_started_on_time_late_not_started() -> None:
     assert c["not_started"].offender_uids == (3,)
 
 
-def test_evm_indices_na_without_cost() -> None:
-    schedule = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    e = compute_evm_indices(schedule)
+def test_evm_indices_na_without_cost(golden_project5: Schedule) -> None:
+    e = compute_evm_indices(golden_project5)
     assert e["spi"].status is CheckStatus.NOT_APPLICABLE
     assert e["cpi"].status is CheckStatus.NOT_APPLICABLE
     assert e["tcpi"].status is CheckStatus.NOT_APPLICABLE
@@ -185,10 +183,9 @@ def test_evm_indices_cost_loaded() -> None:
     assert e["tcpi"].value == 1.25
 
 
-def test_cei_equals_baseline_compliance() -> None:
-    schedule = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    c = compute_baseline_compliance(schedule)
-    e = compute_evm_indices(schedule)
+def test_cei_equals_baseline_compliance(golden_project2: Schedule) -> None:
+    c = compute_baseline_compliance(golden_project2)
+    e = compute_evm_indices(golden_project2)
     assert e["cei_finish"].value == c["baseline_finish_compliance"].value
     assert e["cei_start"].value == c["baseline_start_compliance"].value
 

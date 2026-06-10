@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
 
 from schedule_forensics.engine.diff import diff_versions
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
@@ -22,10 +19,8 @@ def _s(tasks: list[Task], rels: list[Relationship] | None = None, **kw: object) 
     )
 
 
-def test_golden_diff_p2_to_p5() -> None:
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    d = diff_versions(p2, p5)
+def test_golden_diff_p2_to_p5(golden_project2: Schedule, golden_project5: Schedule) -> None:
+    d = diff_versions(golden_project2, golden_project5)
     assert d.prior_file == "Project2.mspdi.xml" and d.current_file == "Project5.mspdi.xml"
     assert d.added_tasks == () and d.deleted_tasks == ()  # identical UID set
     assert (

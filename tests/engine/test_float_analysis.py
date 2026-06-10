@@ -4,20 +4,18 @@ the Acumen "Critical" parity sanity against the committed golden fixtures."""
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
 from schedule_forensics.engine.float_analysis import analyze_floats, summarize_floats
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
 
 
 def _diamond() -> Schedule:
@@ -81,10 +79,13 @@ def test_summary_counts() -> None:
     ],
 )
 def test_golden_critical_parity(
-    name: str, critical_raw: int, critical_incomplete: int, finish_days: Decimal
+    name: str,
+    critical_raw: int,
+    critical_incomplete: int,
+    finish_days: Decimal,
+    golden: Callable[[str], Schedule],
 ) -> None:
-    s = parse_mspdi(GOLDEN / f"{name}.mspdi.xml")
-    summary = summarize_floats(s)
+    summary = summarize_floats(golden(name))
     assert summary.task_count == 126
     assert summary.critical_count == critical_raw
     # Acumen "Critical" metric excludes completed activities -> matches PARITY-TARGETS (41/37).

@@ -7,25 +7,19 @@ Asserts the cited risk/opportunity/concern set, that every finding carries a cit
 from __future__ import annotations
 
 import datetime as dt
-from pathlib import Path
+from collections.abc import Callable
 
 from schedule_forensics.engine.recommendations import Category, Severity, recommend
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
 
-def _p(name: str) -> Schedule:
-    return parse_mspdi(GOLDEN / "project2_5" / f"{name}.mspdi.xml")
-
-
-def test_golden_recommendations_p5_vs_p2() -> None:
-    findings = recommend(_p("Project5"), _p("Project2"), target_uid=143)
+def test_golden_recommendations_p5_vs_p2(golden: Callable[[str], Schedule]) -> None:
+    findings = recommend(golden("Project5"), golden("Project2"), target_uid=143)
     by_id = {f.metric_id: f for f in findings}
 
     # version-pair forensic signals are present and cited
@@ -52,8 +46,10 @@ def test_golden_recommendations_p5_vs_p2() -> None:
     assert ranks == sorted(ranks)
 
 
-def test_recommend_single_schedule_has_no_change_or_path_findings() -> None:
-    findings = recommend(_p("Project5"))  # no prior, no target_uid
+def test_recommend_single_schedule_has_no_change_or_path_findings(
+    golden: Callable[[str], Schedule],
+) -> None:
+    findings = recommend(golden("Project5"))  # no prior, no target_uid
     ids = {f.metric_id for f in findings}
     assert "HSD10" not in ids and "SN05" not in ids and "driving_path" not in ids
     # still surfaces DCMA + compliance concerns, all cited

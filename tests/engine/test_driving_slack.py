@@ -15,7 +15,6 @@ from schedule_forensics.engine.driving_slack import (
     compute_driving_slack,
     driving_path,
 )
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -71,10 +70,9 @@ def test_target_with_no_ancestors() -> None:
     assert results[2].driving_slack_minutes == 0
 
 
-def test_golden_ssi_driving_slack_parity() -> None:
+def test_golden_ssi_driving_slack_parity(golden_project5: Schedule) -> None:
     case = json.loads((GOLDEN / "ssi_uid143" / "case.json").read_text())
-    schedule = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    results = compute_driving_slack(schedule, target_uid=case["focus_task_uid"])
+    results = compute_driving_slack(golden_project5, target_uid=case["focus_task_uid"])
 
     expected = {int(uid): days for uid, days in case["driving_slack_days_by_uid"].items()}
     # exact, UniqueID-keyed: every traced task and no extras
@@ -91,4 +89,4 @@ def test_golden_ssi_driving_slack_parity() -> None:
     assert tiers[PathTier.DRIVING] == 36
     assert tiers[PathTier.SECONDARY] == 12  # 5/7/10-day groups
     assert tiers[PathTier.TERTIARY] == 12  # 12/16/20-day groups
-    assert len(driving_path(schedule, results)) == 36
+    assert len(driving_path(golden_project5, results)) == 36
