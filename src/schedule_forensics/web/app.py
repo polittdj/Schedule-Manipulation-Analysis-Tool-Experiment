@@ -35,6 +35,7 @@ from schedule_forensics.ai import (
     banner_for,
     route_backend,
 )
+from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.engine import (
     analyze_floats,
@@ -43,9 +44,12 @@ from schedule_forensics.engine import (
     compute_driving_slack,
     recommend,
 )
+from schedule_forensics.engine.cpm import CPMResult
+from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import compute_baseline_compliance
-from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
@@ -149,6 +153,39 @@ class _Flash:
     errors: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True)
+class _Analysis:
+    """Everything a report view needs, computed once from a single CPM pass per schedule.
+
+    Building this runs the network just once and threads that CPM through the audit, the
+    baseline-compliance panel, the findings, the narrative, and the activity grid — instead
+    of each view recomputing the CPM several times over.
+    """
+
+    cpm: CPMResult
+    audit: ScheduleAudit
+    compliance: dict[str, MetricResult]
+    findings: tuple[Finding, ...]
+    narrative: Narrative
+    activity_rows: list[dict[str, object]]
+
+
+def _compute_analysis(sch: Schedule) -> _Analysis:
+    """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere)."""
+    cpm = compute_cpm(sch)
+    return _Analysis(
+        cpm=cpm,
+        audit=audit_schedule(sch, cpm),
+        compliance=compute_baseline_compliance(sch, cpm),
+        findings=recommend(sch, current_cpm=cpm),
+        # single-schedule narrative is deterministic (NullBackend) and CPM-threaded, so it is
+        # safe to cache alongside the rest; if a per-request AI backend is wired in later, move
+        # the narrative back out of the cached analysis.
+        narrative=build_narrative(sch, current_cpm=cpm),
+        activity_rows=_activity_rows(sch, cpm),
+    )
+
+
 @dataclass
 class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk persistence."""
@@ -156,9 +193,21 @@ class SessionState:
     schedules: dict[str, Schedule] = field(default_factory=dict)
     ai_config: AIConfig = field(default_factory=AIConfig)
     flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
+    # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
+    # under the same key recomputes. Bounded by the ≤10 loaded schedules; cleared on wipe.
+    analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
+
+    def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
+        """The cached analysis for ``key``, recomputing only if the schedule object changed."""
+        cached = self.analyses.get(key)
+        if cached is not None and cached[0] is sch:
+            return cached[1]
+        analysis = _compute_analysis(sch)
+        self.analyses[key] = (sch, analysis)
+        return analysis
 
 
 def _banner_html(state: SessionState) -> str:
@@ -372,7 +421,7 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return _page(st, "Not found", f"<div class=panel>No schedule named {_e(name)}.</div>")
-        return _page(st, name, _analysis_body(name, sch))
+        return _page(st, name, _analysis_body(name, sch, st.analysis_for(name, sch)))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -380,7 +429,7 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_analysis_data(sch))
+        return JSONResponse(_analysis_data(sch, st.analysis_for(name, sch)))
 
     @app.get("/api/driving/{name}")
     def driving_json(
@@ -393,7 +442,9 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_driving_data(sch, target, secondary, tertiary))
+        return JSONResponse(
+            _driving_data(sch, st.analysis_for(name, sch).cpm, target, secondary, tertiary)
+        )
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -402,8 +453,12 @@ def create_app(
             return _page(
                 st, "Compare", "<div class=panel>Load at least two versions to compare.</div>"
             )
-        prior, current = st.ordered()[-2], st.ordered()[-1]
-        return _page(st, "Compare", _compare_body(prior, current))
+        keys = list(st.schedules)
+        prior_key, current_key = keys[-2], keys[-1]
+        prior, current = st.schedules[prior_key], st.schedules[current_key]
+        prior_cpm = st.analysis_for(prior_key, prior).cpm
+        current_cpm = st.analysis_for(current_key, current).cpm
+        return _page(st, "Compare", _compare_body(prior, current, prior_cpm, current_cpm))
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
@@ -447,6 +502,7 @@ def create_app(
     def wipe() -> RedirectResponse:
         st = session()
         st.schedules.clear()
+        st.analyses.clear()
         st.flash = None
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
@@ -505,15 +561,15 @@ def _status_class(status: object) -> str:
     return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
 
 
-def _analysis_body(key: str, sch: Schedule) -> str:
-    audit = audit_schedule(sch)
+def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
+    audit = analysis.audit
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
         f"<td>{_e(round(c.value, 1))}{_e(c.unit)}</td>"
         f"<td class=muted>{_e(c.suggested_improvement)}</td></tr>"
         for c in audit.checks
     )
-    findings = recommend(sch, target_uid=None)
+    findings = analysis.findings
     find_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.category)}</td>'
         f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td>"
@@ -521,7 +577,7 @@ def _analysis_body(key: str, sch: Schedule) -> str:
         f"{_e(f' +{len(f.citations) - 2} more' if len(f.citations) > 2 else '')}</td></tr>"
         for f in findings
     )
-    narrative = build_narrative(sch)
+    narrative = analysis.narrative
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
     viz = f"""
 <div class=panel><h2>Interactive analysis</h2>
@@ -547,9 +603,9 @@ tertiary&le;<input id=terMax type=number value=20>d
 <div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
 
 
-def _analysis_data(sch: Schedule) -> dict[str, object]:
-    audit = audit_schedule(sch)
-    compliance = compute_baseline_compliance(sch)
+def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
+    audit = analysis.audit
+    compliance = analysis.compliance
     return {
         "name": sch.name,
         "source_file": sch.source_file,
@@ -559,7 +615,7 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
             for c in audit.checks
         },
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
-        "activities": _activity_rows(sch),
+        "activities": analysis.activity_rows,
         "findings": [
             {
                 "severity": str(f.severity),
@@ -570,7 +626,7 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
                     for c in f.citations
                 ],
             }
-            for f in recommend(sch)
+            for f in analysis.findings
         ],
     }
 
@@ -579,11 +635,11 @@ def _iso_date(value: object) -> str:
     return value.date().isoformat() if hasattr(value, "date") else ""
 
 
-def _activity_rows(sch: Schedule) -> list[dict[str, object]]:
+def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     """Per-activity rows for the interactive grid (float in days, citable metadata)."""
     by_id = sch.tasks_by_id
     rows: list[dict[str, object]] = []
-    for fr in analyze_floats(sch):
+    for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
         rows.append(
             {
@@ -602,14 +658,19 @@ def _activity_rows(sch: Schedule) -> list[dict[str, object]]:
     return rows
 
 
-def _driving_data(sch: Schedule, target: int, secondary: int, tertiary: int) -> dict[str, object]:
+def _driving_data(
+    sch: Schedule, cpm: CPMResult, target: int, secondary: int, tertiary: int
+) -> dict[str, object]:
     """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID."""
     by_id = sch.tasks_by_id
     if target not in by_id:
         return {"target_uid": target, "target_name": None, "rows": []}
-    cpm = compute_cpm(sch)
     results = compute_driving_slack(
-        sch, target_uid=target, secondary_max_days=secondary, tertiary_max_days=tertiary
+        sch,
+        target_uid=target,
+        secondary_max_days=secondary,
+        tertiary_max_days=tertiary,
+        cpm_result=cpm,
     )
     rows = []
     for uid in sorted(results):
@@ -630,10 +691,11 @@ def _driving_data(sch: Schedule, target: int, secondary: int, tertiary: int) -> 
     return {"target_uid": target, "target_name": by_id[target].name, "rows": rows}
 
 
-def _compare_body(prior: Schedule, current: Schedule) -> str:
-    manip = detect_manipulation(current, prior)
+def _compare_body(
+    prior: Schedule, current: Schedule, prior_cpm: CPMResult, current_cpm: CPMResult
+) -> str:
+    manip = detect_manipulation(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
     trend = trend_across_versions([prior, current])
-    impact = next((s for s in trend), None)
     manip_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.title)}</td>'
         f"<td class=muted>{_e(f.course_of_action)}</td></tr>"
@@ -644,7 +706,6 @@ def _compare_body(prior: Schedule, current: Schedule) -> str:
         f"<td>{p.completed}</td><td>{p.in_progress}</td><td>{p.critical}</td></tr>"
         for p in trend
     )
-    _ = impact
     return f"""
 <div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
 <table><tr><th>Version</th><th>Project finish</th><th>Completed</th><th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table></div>
