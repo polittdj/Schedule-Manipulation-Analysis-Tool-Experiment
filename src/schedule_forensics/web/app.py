@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
+from typing import cast
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import quote
@@ -571,7 +572,9 @@ secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button></div>
 <div id=gantt></div>
-<h3>Activities <span class=muted>(toggle columns; click a row to drill into its metadata)</span></h3>
+<h3>Activities &amp; Gantt <span class=muted>(add/remove columns; bars on the right — red = critical,
+diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
+metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
 </div></div>
 <script src="/static/app.js"></script>"""
@@ -592,6 +595,7 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
         "name": sch.name,
         "source_file": sch.source_file,
         "tasks": len(sch.tasks),
+        "status_date": sch.status_date.date().isoformat() if sch.status_date else None,
         "dcma": {
             c.metric_id: {"status": str(c.status), "count": c.count, "value": c.value}
             for c in audit.checks
@@ -618,8 +622,13 @@ def _iso_date(value: object) -> str:
 
 
 def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
-    """Per-activity rows for the interactive grid (float in days, citable metadata)."""
+    """Per-activity rows for the interactive grid + Gantt (float in days, citable metadata).
+
+    Scheduled activities carry their CPM floats; WBS summary rows (which the CPM excludes)
+    are included too so the Gantt reads like the source plan, with null floats.
+    """
     by_id = sch.tasks_by_id
+    per_day = sch.calendar.working_minutes_per_day
     rows: list[dict[str, object]] = []
     for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
@@ -630,13 +639,43 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "wbs": task.wbs or "",
                 "start": _iso_date(task.start),
                 "finish": _iso_date(task.finish),
+                "baseline_start": _iso_date(task.baseline_start),
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
                 "total_float_days": float(fr.total_float_days),
                 "free_float_days": float(fr.free_float_days),
                 "percent_complete": task.percent_complete,
                 "is_critical": fr.is_critical,
+                "is_milestone": task.is_milestone,
+                "is_summary": False,
+                "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
             }
         )
+    for task in sch.tasks:
+        if not task.is_summary:
+            continue
+        rows.append(
+            {
+                "unique_id": task.unique_id,
+                "name": task.name,
+                "wbs": task.wbs or "",
+                "start": _iso_date(task.start),
+                "finish": _iso_date(task.finish),
+                "baseline_start": _iso_date(task.baseline_start),
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
+                "total_float_days": None,
+                "free_float_days": None,
+                "percent_complete": task.percent_complete,
+                "is_critical": False,
+                "is_milestone": task.is_milestone,
+                "is_summary": True,
+                "resource_names": ", ".join(task.resource_names),
+                "source_file": sch.source_file,
+            }
+        )
+    rows.sort(key=lambda r: cast(int, r["unique_id"]))
     return rows
 
 
