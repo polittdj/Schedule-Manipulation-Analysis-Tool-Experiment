@@ -42,10 +42,10 @@ def test_dropzone_uses_native_form_submit_not_fetch(client: TestClient) -> None:
 
 
 def test_load_example_opens_a_full_report(client: TestClient) -> None:
-    redirect = client.get("/example", follow_redirects=False)
+    redirect = client.post("/example", follow_redirects=False)
     assert redirect.status_code == 303
     assert redirect.headers["location"].startswith("/analysis/")
-    report = client.get("/example").text  # follows the redirect to the report
+    report = client.post("/example").text  # follows the redirect to the report
     assert "DCMA-14 audit" in report and "AI narrative" in report and "id=viz" in report
     assert client.get("/healthz").json()["loaded"] >= 1
 
@@ -63,7 +63,7 @@ def test_open_json_file(client: TestClient) -> None:
 
 
 def test_save_json_round_trips(client: TestClient) -> None:
-    client.get("/example")
+    client.post("/example")
     key = "House Build (example)"
     resp = client.get("/download/" + urllib.parse.quote(key) + ".json")
     assert resp.status_code == 200
@@ -79,3 +79,9 @@ def test_save_json_round_trips(client: TestClient) -> None:
 
 def test_download_missing_is_404(client: TestClient) -> None:
     assert client.get("/download/nope.json").status_code == 404
+
+
+def test_download_filename_strips_header_injection_chars() -> None:
+    from schedule_forensics.web.app import _safe_filename
+
+    assert _safe_filename('a"b\\c\r\nd.json') == "abcd.json"  # quotes/backslash/CRLF removed

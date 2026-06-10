@@ -78,6 +78,9 @@ font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:#070a10;border-bottom:1px solid var(--line);
 padding:14px 22px;display:flex;align-items:center;gap:18px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
 header nav a{margin-right:14px;color:var(--muted)}header nav a:hover{color:var(--ink)}
+header nav form.navform{display:inline;margin:0 14px 0 0}
+header nav .navform button{color:var(--muted);text-decoration:none;font:inherit;cursor:pointer}
+header nav .navform button:hover{color:var(--ink)}
 main{max-width:1100px;margin:0 auto;padding:24px}.panel{background:var(--panel);border:1px solid var(--line);
 border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
@@ -131,7 +134,8 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
-<a href="/session/wipe" onclick="return confirm('Wipe all loaded schedules?')">Wipe Session</a>
+<form action="/session/wipe" method=post class=navform
+onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
 <main>{{ banner }}{{ body }}</main>{{ heartbeat }}</body></html>"""
 )
@@ -284,7 +288,7 @@ def create_app(
       <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>
       &mdash; up to {MAX_FILES} at once.</p>
     <div class=dz-actions>
-      <a class=btn href="/example">Load example</a>
+      <form action="/example" method=post><button type=submit class=btn>Load example</button></form>
       <span class=muted>or import your own file above</span>
     </div>
   </div>
@@ -309,7 +313,7 @@ def create_app(
 }}());</script>"""
         return _page(st, "Dashboard", body)
 
-    @app.get("/example")
+    @app.post("/example")
     def load_example() -> RedirectResponse:
         st = session()
         schedule = parse_json(_EXAMPLE).model_copy(update={"source_file": "house_build.json"})
@@ -325,7 +329,7 @@ def create_app(
         sch = st.schedules.get(key)
         if sch is None:
             return Response("not found", status_code=404)
-        filename = f"{key}.json".replace('"', "")
+        filename = _safe_filename(f"{key}.json")
         return Response(
             to_json_text(sch),
             media_type="application/json",
@@ -439,10 +443,11 @@ def create_app(
         )
         return _page(st, "Metric Dictionary", body)
 
-    @app.get("/session/wipe")
+    @app.post("/session/wipe")
     def wipe() -> RedirectResponse:
         st = session()
         st.schedules.clear()
+        st.flash = None
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -451,6 +456,11 @@ def create_app(
         return JSONResponse({"status": "ok", "loaded": len(session().schedules)})
 
     return app
+
+
+def _safe_filename(name: str) -> str:
+    """Strip characters that could break out of the Content-Disposition filename (header hygiene)."""
+    return name.translate({ord(c): None for c in '"\\\r\n'})
 
 
 def _clean_key(name: str) -> str:

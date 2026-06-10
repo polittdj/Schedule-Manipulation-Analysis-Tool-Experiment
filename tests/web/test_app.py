@@ -75,8 +75,14 @@ def test_settings_banner_classified_then_unclassified(client: TestClient) -> Non
 def test_session_wipe_clears_uploads(client: TestClient) -> None:
     _upload(client, "Project5")
     assert client.get("/healthz").json()["loaded"] == 1
-    client.get("/session/wipe")
+    client.post("/session/wipe")
     assert client.get("/healthz").json()["loaded"] == 0
+
+
+def test_destructive_routes_reject_get(client: TestClient) -> None:
+    # GET must not mutate state: a browser link-prefetch could otherwise wipe/load silently.
+    assert client.get("/session/wipe").status_code == 405
+    assert client.get("/example").status_code == 405
 
 
 def test_unparseable_upload_is_rejected_not_crash(client: TestClient) -> None:
