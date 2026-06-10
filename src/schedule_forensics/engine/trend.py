@@ -43,6 +43,8 @@ class MetricTrend:
     labels: tuple[str, ...]  # version labels, oldest first
     values: tuple[float, ...]  # the trended value per version (count, or value for ratios)
     lower_is_better: bool | None  # None = neutral metric (highest/lowest wording)
+    worst_index: int | None = None  # index of the worst version (None: constant or neutral)
+    worst_offender_uids: tuple[int, ...] = ()  # the worst version's offending activities
 
     @property
     def direction(self) -> str:
@@ -117,6 +119,13 @@ def compute_quality_trend(
         values = tuple(
             float(r.value) if metric_id == "logic_density" else float(r.count) for r in results
         )
+        worst_index: int | None = None
+        worst_offenders: tuple[int, ...] = ()
+        if lower_is_better is not None and any(v != values[0] for v in values):
+            worst_index = max(range(len(values)), key=lambda i: values[i])
+            if not lower_is_better:
+                worst_index = min(range(len(values)), key=lambda i: values[i])
+            worst_offenders = results[worst_index].offender_uids
         out.append(
             MetricTrend(
                 metric_id=metric_id,
@@ -124,6 +133,8 @@ def compute_quality_trend(
                 labels=labels,
                 values=values,
                 lower_is_better=lower_is_better,
+                worst_index=worst_index,
+                worst_offender_uids=worst_offenders,
             )
         )
     return tuple(out)
