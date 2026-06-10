@@ -55,6 +55,19 @@ def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: Test
     assert page.status_code == 200
     assert "Project finish" in page.text  # the CPM/progress trend table
     assert "honest progress" in page.text  # no manipulation flagged on the clean P2->P5
+    assert "Net Finish Impact" in page.text  # the headline number is on the page
+    assert "-99 calendar days" in page.text  # golden P2->P5 slip (validated parity target)
+
+
+def test_compare_orders_versions_by_data_date_not_load_order(client: TestClient) -> None:
+    # Loading the NEWER snapshot first must not reverse the forensic comparison: the
+    # version with the earlier data date is the prior (ProjectTimeNow ordering).
+    _upload(client, "Project5")  # newer status date, loaded first
+    _upload(client, "Project2")  # older status date, loaded second
+    page = client.get("/compare").text
+    assert "Project2.mspdi.xml &rarr; Project5.mspdi.xml" in page  # chronological, not load order
+    assert "-99 calendar days" in page  # impact computed in the correct direction
+    assert "honest progress" in page  # still no false manipulation flags
 
 
 def test_settings_banner_classified_then_unclassified(client: TestClient) -> None:
