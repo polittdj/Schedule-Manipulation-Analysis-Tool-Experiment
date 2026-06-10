@@ -40,7 +40,17 @@ def _external_refs(text: str) -> list[str]:
 
 
 def test_no_external_references_anywhere(client: TestClient) -> None:
-    pages = ["/", "/analysis/Project5", "/settings", "/help", "/static/app.js", "/static/app.css"]
+    pages = [
+        "/",
+        "/analysis/Project5",
+        "/settings",
+        "/help",
+        "/static/app.js",
+        "/static/app.css",
+        "/static/base.css",
+        "/static/home.js",
+        "/static/heartbeat.js",
+    ]
     offenders: dict[str, list[str]] = {}
     for path in pages:
         refs = _external_refs(client.get(path).text)

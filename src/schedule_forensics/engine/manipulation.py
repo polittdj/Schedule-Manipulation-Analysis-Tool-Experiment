@@ -27,7 +27,12 @@ from dataclasses import dataclass
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.diff import VersionDiff, diff_versions
-from schedule_forensics.engine.recommendations import Category, Finding, Severity
+from schedule_forensics.engine.recommendations import (
+    SEVERITY_ORDER,
+    Category,
+    Finding,
+    Severity,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -66,8 +71,7 @@ def detect_manipulation(
     findings.extend(_baseline_date_changes(diff, cur_by_id, current.source_file))
     findings.extend(_actual_date_changes(diff, cur_by_id, current.source_file))
 
-    order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.INFO: 3}
-    findings.sort(key=lambda f: (order[f.severity], f.metric_id))
+    findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.metric_id))
     return tuple(findings)
 
 

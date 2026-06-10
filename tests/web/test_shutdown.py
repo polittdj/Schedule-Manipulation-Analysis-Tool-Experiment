@@ -44,7 +44,10 @@ def test_every_page_carries_heartbeat_and_quit() -> None:
     client = TestClient(create_app())
     for path in ("/", "/settings", "/help"):
         page = client.get(path).text
-        assert "/api/heartbeat" in page and "sfQuit" in page
+        assert "/static/heartbeat.js" in page and "sfQuit" in page  # beat script + Quit control
+    # the heartbeat script itself beats and exposes the Quit hook
+    hb = client.get("/static/heartbeat.js").text
+    assert "/api/heartbeat" in hb and "sfQuit" in hb and "/api/shutdown" in hb
 
 
 def test_is_idle_decision() -> None:

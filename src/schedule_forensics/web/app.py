@@ -74,74 +74,17 @@ _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 #: File types the open/import picker accepts.
 _ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
 
-_CSS = """
-:root{--bg:#0b0e14;--panel:#121826;--ink:#e6edf3;--muted:#8b98a5;--accent:#4aa3ff;
---ok:#3fb950;--warn:#d29922;--bad:#f85149;--line:#243044}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
-font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-a{color:var(--accent);text-decoration:none}header{background:#070a10;border-bottom:1px solid var(--line);
-padding:14px 22px;display:flex;align-items:center;gap:18px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
-header nav a{margin-right:14px;color:var(--muted)}header nav a:hover{color:var(--ink)}
-header nav form.navform{display:inline;margin:0 14px 0 0}
-header nav .navform button{color:var(--muted);text-decoration:none;font:inherit;cursor:pointer}
-header nav .navform button:hover{color:var(--ink)}
-main{max-width:1100px;margin:0 auto;padding:24px}.panel{background:var(--panel);border:1px solid var(--line);
-border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
-border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
-.pass{color:var(--ok)}.fail{color:var(--bad)}.na{color:var(--muted)}
-.sev-HIGH{color:var(--bad);font-weight:600}.sev-MEDIUM{color:var(--warn)}.sev-LOW,.sev-INFO{color:var(--muted)}
-.banner{padding:10px 16px;border-radius:8px;margin:0 0 16px;font-weight:600}
-.banner.local{background:#0d2818;border:1px solid var(--ok);color:var(--ok)}
-.banner.cloud{background:#3a1d1d;border:1px solid var(--bad);color:var(--bad)}
-.muted{color:var(--muted)}.cite{color:var(--muted);font-size:12px}
-button,input[type=submit]{background:var(--accent);color:#04111f;border:0;border-radius:7px;
-padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:#0a0f1a;color:var(--ink);
-border:1px solid var(--line);border-radius:7px;padding:7px 9px}
-code{background:#0a0f1a;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
-.hero{margin:6px 2px 20px}.hero h2{font-size:22px;color:var(--ink);margin:0 0 8px}
-.hero p{max-width:760px;margin:0}
-.dropzone{border:2px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;
-transition:border-color .15s,background .15s;background:#0e1422}
-.dropzone.over{border-color:var(--accent);background:#10203a}
-.dropzone.busy{opacity:.6;pointer-events:none}
-.dz-icon{font-size:34px;color:var(--accent);line-height:1}
-.dz-title{font-size:16px;margin:10px 0 4px}
-.dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
-.btn{display:inline-block;background:var(--accent);color:#04111f;border-radius:7px;padding:9px 18px;
-font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
-.btn-link{color:var(--accent);font-weight:600}
-.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
-cursor:pointer;text-decoration:underline}
-.row-actions{font-size:13px}.row-actions a{color:var(--accent)}
-.notice{padding:10px 14px;border-radius:8px;margin:0 0 12px;font-size:14px}
-.notice.ok{background:#0d2818;border:1px solid var(--ok);color:var(--ok)}
-.notice.err{background:#3a1d1d;border:1px solid var(--bad);color:var(--bad)}
-"""
-
-# Keep-alive + quit: every page beats every 3s so the server knows the browser is open;
-# when all windows close, the beats stop and the launcher's watchdog shuts the server down
-# (that is how closing the tool turns everything off). "Quit" stops it immediately.
-_HEARTBEAT_JS = """<script>(function(){
-function beat(){fetch('/api/heartbeat',{method:'POST'}).catch(function(){});}
-beat();var hb=setInterval(beat,3000);
-window.sfQuit=function(){clearInterval(hb);
-fetch('/api/shutdown',{method:'POST'}).catch(function(){});
-document.body.innerHTML='<main><div class=panel><h2>Schedule Forensics stopped</h2>'+
-'<p class=muted>The local server is shutting down. You can close this window.</p></div></main>';
-return false;};}());</script>"""
-
 _LAYOUT = Template(
     """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>{{ title }} — Schedule Forensics</title><style>{{ css }}</style>
-<link rel=stylesheet href="/static/app.css"></head><body>
+<title>{{ title }} — Schedule Forensics</title>
+<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
-<main>{{ banner }}{{ body }}</main>{{ heartbeat }}</body></html>"""
+<main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script></body></html>"""
 )
 
 
@@ -241,15 +184,7 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
 
 
 def _page(state: SessionState, title: str, body: str) -> HTMLResponse:
-    return HTMLResponse(
-        _LAYOUT.render(
-            title=title,
-            css=_CSS,
-            banner=_banner_html(state),
-            body=body,
-            heartbeat=_HEARTBEAT_JS,
-        )
-    )
+    return HTMLResponse(_LAYOUT.render(title=title, banner=_banner_html(state), body=body))
 
 
 def _e(text: object) -> str:
@@ -346,20 +281,7 @@ def create_app(
   </form>
 </div>
 {loaded}
-<script>(function(){{
-  var form=document.getElementById('uploadForm'),input=document.getElementById('fileInput'),
-      dz=document.getElementById('dropzone');
-  // Native form submit (no fetch): the browser follows the 303 itself, so the single-file
-  // jump to /analysis/... and the one-shot import flash both survive (a fetch would auto-follow
-  // the redirect on a hidden request and swallow both).
-  function submit(){{ dz.classList.add('busy'); form.submit(); }}
-  document.getElementById('pickBtn').onclick=function(){{input.click();}};
-  input.onchange=function(){{ if(input.files&&input.files.length)submit(); }};
-  ['dragover','dragenter'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.add('over');}});}});
-  ['dragleave','drop'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.remove('over');}});}});
-  dz.addEventListener('drop',function(ev){{ var f=ev.dataTransfer&&ev.dataTransfer.files;
-    if(f&&f.length){{input.files=f;submit();}} }});
-}}());</script>"""
+<script src="/static/home.js"></script>"""
         return _page(st, "Dashboard", body)
 
     @app.post("/example")

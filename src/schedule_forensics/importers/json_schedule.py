@@ -23,14 +23,14 @@ from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.task import ConstraintType, Task
 
 _DATE_FIELDS = (
-    ("start", "start"),
-    ("finish", "finish"),
-    ("actual_start", "actual_start"),
-    ("actual_finish", "actual_finish"),
-    ("baseline_start", "baseline_start"),
-    ("baseline_finish", "baseline_finish"),
-    ("constraint_date", "constraint_date"),
-    ("deadline", "deadline"),
+    "start",
+    "finish",
+    "actual_start",
+    "actual_finish",
+    "baseline_start",
+    "baseline_finish",
+    "constraint_date",
+    "deadline",
 )
 
 
@@ -96,9 +96,9 @@ def _task(raw: dict[str, Any]) -> Task:
     for key in ("remaining_duration_minutes", "baseline_duration_minutes"):
         if raw.get(key) is not None:
             fields[key] = int(raw[key])
-    for src, dest in _DATE_FIELDS:
-        if raw.get(src) is not None:
-            fields[dest] = _dt(raw[src])
+    for field in _DATE_FIELDS:
+        if raw.get(field) is not None:
+            fields[field] = _dt(raw[field])
     if raw.get("constraint_type"):
         fields["constraint_type"] = ConstraintType(str(raw["constraint_type"]))
     if isinstance(fields.get("resource_names"), list):
@@ -180,10 +180,10 @@ def to_json_text(schedule: Schedule) -> str:
             task["percent_complete"] = t.percent_complete
         if t.resource_names:
             task["resource_names"] = list(t.resource_names)
-        for src, _dest in _DATE_FIELDS:
-            value = iso(getattr(t, src))
+        for field in _DATE_FIELDS:
+            value = iso(getattr(t, field))
             if value is not None:
-                task[src] = value
+                task[field] = value
         if t.constraint_type is not ConstraintType.ASAP:
             task["constraint_type"] = str(t.constraint_type)
         out["tasks"].append(task)

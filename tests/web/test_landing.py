@@ -34,9 +34,10 @@ def test_dropzone_uses_native_form_submit_not_fetch(client: TestClient) -> None:
     # W2 regression guard: a fetch() POST auto-follows the 303 on a hidden request, swallowing
     # both the single-file jump to /analysis/... and the one-shot import flash. The dropzone must
     # submit the real <form> so the browser follows the redirect itself.
-    page = client.get("/").text
-    assert "form.submit()" in page
-    assert "fetch('/upload'" not in page and 'fetch("/upload"' not in page
+    assert "/static/home.js" in client.get("/").text  # dropzone logic is the served static file
+    home_js = client.get("/static/home.js").text
+    assert "form.submit()" in home_js
+    assert "fetch('/upload'" not in home_js and 'fetch("/upload"' not in home_js
 
 
 def test_load_example_opens_a_full_report(client: TestClient) -> None:

@@ -46,6 +46,10 @@ class Severity(StrEnum):
     INFO = "INFO"
 
 
+#: Most-severe-first sort key, shared by the recommender and the manipulation detector.
+SEVERITY_ORDER = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.INFO: 3}
+
+
 @dataclass(frozen=True)
 class Finding:
     """One cited recommendation: category + severity + course of action + provenance."""
@@ -94,8 +98,7 @@ def recommend(
     if target_uid is not None:
         findings.extend(_driving_path_findings(current, target_uid))
 
-    order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.INFO: 3}
-    findings.sort(key=lambda f: (order[f.severity], f.metric_id))
+    findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.metric_id))
     return tuple(findings)
 
 
