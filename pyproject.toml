@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "0.0.0"
+version = "1.0.0"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -43,6 +43,10 @@ dependencies = [
   "jinja2>=3.1",
   "python-multipart>=0.0.9",
 ]
+
+[project.urls]
+Repository = "https://github.com/polittdj/schedule-manipulation-analysis-tool-experiment"
+Documentation = "https://github.com/polittdj/schedule-manipulation-analysis-tool-experiment/tree/main/docs"
 
 [project.scripts]
 # One-command launcher: starts the local dashboard on 127.0.0.1 and opens the browser.
@@ -95,6 +99,10 @@ testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
 markers = [
   "parity: Acumen Fuse v8.11.0 / SSI golden acceptance gate (§6.B) over the committed golden fixtures (tests/parity/).",
+]
+filterwarnings = [
+  # starlette's TestClient still imports httpx; the deprecation is upstream, not ours.
+  "ignore:Using `httpx` with `starlette.testclient`:DeprecationWarning",
 ]
 
 [tool.coverage.run]

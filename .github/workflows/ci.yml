@@ -11,8 +11,10 @@ name: CI
 # required in CI (local-only, §6.F).
 
 on:
+  # Push runs only on main; branch pushes are covered by their pull_request run (which also
+  # carries the branch-protection contexts), so a PR push no longer triggers the matrix twice.
   push:
-    branches: ["**"]
+    branches: ["main"]
   pull_request:
   workflow_dispatch:
 
@@ -31,12 +33,14 @@ jobs:
       matrix:
         python-version: ["3.11", "3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
 
       - name: Install (package + dev toolchain)
         run: |

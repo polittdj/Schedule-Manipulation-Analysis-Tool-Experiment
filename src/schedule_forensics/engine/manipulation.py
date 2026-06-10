@@ -27,7 +27,12 @@ from dataclasses import dataclass
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.diff import VersionDiff, diff_versions
-from schedule_forensics.engine.recommendations import Category, Finding, Severity
+from schedule_forensics.engine.recommendations import (
+    SEVERITY_ORDER,
+    Category,
+    Finding,
+    Severity,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -61,13 +66,12 @@ def detect_manipulation(
     findings: list[Finding] = []
 
     findings.extend(_deleted_tasks(diff, prior_by_id, prior_critical, prior.source_file))
-    findings.extend(_deleted_logic(diff, prior_by_id))
+    findings.extend(_deleted_logic(diff, prior_by_id, prior.source_file))
     findings.extend(_shortened_durations(diff, prior_by_id, cur_by_id, current.source_file))
     findings.extend(_baseline_date_changes(diff, cur_by_id, current.source_file))
     findings.extend(_actual_date_changes(diff, cur_by_id, current.source_file))
 
-    order = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.INFO: 3}
-    findings.sort(key=lambda f: (order[f.severity], f.metric_id))
+    findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.metric_id))
     return tuple(findings)
 
 
@@ -99,7 +103,9 @@ def _deleted_tasks(
     ]
 
 
-def _deleted_logic(diff: VersionDiff, prior_by_id: dict[int, Task]) -> list[Finding]:
+def _deleted_logic(
+    diff: VersionDiff, prior_by_id: dict[int, Task], prior_file: str | None
+) -> list[Finding]:
     if not diff.removed_links:
         return []
     # cite the successor end of each removed link (the activity that lost a driver)
@@ -107,7 +113,7 @@ def _deleted_logic(diff: VersionDiff, prior_by_id: dict[int, Task]) -> list[Find
     for pred, succ, _type, _lag in diff.removed_links:
         task = prior_by_id.get(succ) or prior_by_id.get(pred)
         if task is not None and task.unique_id not in seen:
-            seen[task.unique_id] = Citation(None, task.unique_id, task.name)
+            seen[task.unique_id] = _cite(prior_file, task)
     return [
         Finding(
             category=Category.CONCERN,

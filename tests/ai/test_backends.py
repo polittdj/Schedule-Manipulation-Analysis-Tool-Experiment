@@ -69,6 +69,26 @@ def test_ollama_unavailable_when_opener_errors() -> None:
     assert OllamaBackend(opener=boom).is_available() is False
 
 
+def test_ollama_probes_use_a_short_timeout_but_generate_uses_the_long_one() -> None:
+    # W6: the settings page probes (is_available / list_models) must not hang for the full
+    # generate timeout when the port is firewalled; generate/pull keep the long timeout.
+    seen: dict[str, float] = {}
+
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        seen[url.rsplit("/", 1)[-1]] = timeout
+        if url.endswith("/api/tags"):
+            return json.dumps({"models": []})
+        return json.dumps({"response": "ok", "status": "success"})
+
+    ob = OllamaBackend(opener=opener, timeout=120.0, probe_timeout=2.0)
+    ob.is_available()
+    ob.list_models()
+    ob.generate("x")
+    ob.pull_model("m")
+    assert seen["tags"] == 2.0  # the availability/model-list probe is fast
+    assert seen["generate"] == 120.0 and seen["pull"] == 120.0  # real work keeps the long timeout
+
+
 def test_route_classified_refuses_cloud_fails_closed() -> None:
     be, banner = route_backend(
         AIConfig(classification=Classification.CLASSIFIED, backend="cloud"),

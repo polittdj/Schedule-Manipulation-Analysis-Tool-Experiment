@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Mapping
+from functools import cached_property
 from types import MappingProxyType
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
@@ -59,29 +60,35 @@ class Schedule(StrictFrozenModel):
             raise ValueError("duplicate Resource.unique_id within a Schedule")
         return self
 
-    @property
+    def model_copy(self, *, update: Mapping[str, Any] | None = None, deep: bool = False) -> Self:
+        """Copy the schedule, dropping any primed UID-map caches so they rebuild from the copy's
+        (possibly updated) fields — the cache can never go stale across a copy."""
+        copy = super().model_copy(update=update, deep=deep)
+        for key in ("tasks_by_id", "resources_by_id"):
+            copy.__dict__.pop(key, None)
+        return copy
+
+    @cached_property
     def tasks_by_id(self) -> Mapping[int, Task]:
-        """An immutable UniqueID → Task view (the canonical UID-keyed access)."""
+        """An immutable UniqueID → Task view (the canonical UID-keyed access).
+
+        Built once and cached: the model is frozen, so this mapping can never go stale,
+        and the engine hits it from many call sites per analysis.
+        """
         return MappingProxyType({t.unique_id: t for t in self.tasks})
 
     def task_by_id(self, unique_id: int) -> Task:
         """Return the task with ``unique_id`` (the sole cross-version key); raise ``KeyError``."""
-        for task in self.tasks:
-            if task.unique_id == unique_id:
-                return task
-        raise KeyError(unique_id)
+        return self.tasks_by_id[unique_id]
 
-    @property
+    @cached_property
     def resources_by_id(self) -> Mapping[int, Resource]:
-        """An immutable UniqueID → Resource view."""
+        """An immutable UniqueID → Resource view (built once and cached; the model is frozen)."""
         return MappingProxyType({r.unique_id: r for r in self.resources})
 
     def resource_by_id(self, unique_id: int) -> Resource:
         """Return the resource with ``unique_id``; raise ``KeyError`` if absent."""
-        for resource in self.resources:
-            if resource.unique_id == unique_id:
-                return resource
-        raise KeyError(unique_id)
+        return self.resources_by_id[unique_id]
 
     def predecessors_of(self, unique_id: int) -> tuple[Relationship, ...]:
         """Relationships whose successor is ``unique_id`` (incoming logic)."""

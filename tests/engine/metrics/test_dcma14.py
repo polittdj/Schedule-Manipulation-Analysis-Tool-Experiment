@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from schedule_forensics.engine.metrics import CheckStatus, compute_dcma14
 from schedule_forensics.engine.metrics._common import FORTY_FOUR_DAYS_MIN
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
@@ -31,10 +31,9 @@ def _sched(tasks: list[Task], rels: list[Relationship] | None = None, **kw: obje
 
 
 @pytest.mark.parametrize("project", ["Project2", "Project5"])
-def test_golden_dcma14_parity(project: str) -> None:
+def test_golden_dcma14_parity(project: str, golden: Callable[[str], Schedule]) -> None:
     case = json.loads((GOLDEN / "project2_5" / "case.json").read_text())[project]
-    schedule = parse_mspdi(GOLDEN / "project2_5" / f"{project}.mspdi.xml")
-    d = compute_dcma14(schedule)
+    d = compute_dcma14(golden(project))
     g = case["dcma14"]
 
     # exact, count-keyed (every check but High Float)

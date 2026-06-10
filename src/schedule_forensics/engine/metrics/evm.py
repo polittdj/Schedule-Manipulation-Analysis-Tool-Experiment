@@ -253,11 +253,12 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
     """Count-based Earned-Schedule SPI(t) = Earned Schedule / Actual Time.
 
     Earned value (EV) = activities complete by the status date. Earned Schedule (ES) =
-    the working-time offset at which the *baseline* planned that many finishes (linearly
-    interpolated between the bracketing baseline-finish offsets). SPI(t) = ES / AT, with
-    AT = working time from project start to the status date. < 1 == behind schedule.
-    No Acumen golden target exists for this index (informational; the golden schedules
-    are not cost-loaded so the cost SPI is NA) — it is unit-tested on synthetic data.
+    the working-time offset of the EV-th planned (baseline) finish — a step function over
+    the sorted baseline-finish offsets, not interpolated (this is a count-based index with
+    no fractional earned schedule). SPI(t) = ES / AT, with AT = working time from project
+    start to the status date. < 1 == behind schedule. No Acumen golden target exists for
+    this index (informational; the golden schedules are not cost-loaded so the cost SPI is
+    NA) — it is unit-tested on synthetic data.
     """
     status_off = to_offset(schedule, schedule.status_date)
     if status_off is None or status_off <= 0:
@@ -270,13 +271,8 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
     ev = sum(1 for t in tasks if t.percent_complete >= 100.0)
     if ev <= 0 or not planned:
         return _na_index("spi_t", "SPI(t)")
-    if ev >= len(planned):
-        es = float(planned[-1])
-    else:
-        # ES sits at the EV-th planned finish (1-indexed); interpolate to the prior point.
-        hi = planned[ev - 1]
-        lo = planned[ev - 2] if ev >= 2 else 0
-        es = float(lo + (hi - lo))
+    # ES is the offset of the EV-th planned finish (1-indexed), capped at the last one.
+    es = float(planned[min(ev, len(planned)) - 1])
     spi_t = es / status_off
     return MetricResult(
         "spi_t",

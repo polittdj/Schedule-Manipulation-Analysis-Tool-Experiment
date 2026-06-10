@@ -1,69 +1,91 @@
 # Schedule Manipulation Analysis Tool
 
-> **Status: Phase 2 build — Milestone M1 complete (real CI, quality gates, egress guard).**
-> Gates 1 & 2 passed; the full plan (17 milestones) is in `docs/PLAN/`. Build work is on branch
-> `claude/intelligent-johnson-18yZD` (which continues the A1/A2 plan from PR #51); `main` remains
-> the 2026-06-05 greenfield reset. The previous build remains in git history (and in PR #47) but
-> is intentionally **not** on `main` — it is a reference, not a source to copy. Current state of
-> the build always lives in [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md).
+> **Status: built (M1–M17 complete; M15 `.pbix` export is the one deferred item).** The tool runs
+> end-to-end: ingest → CPM/forensic analysis → interactive, locally-rendered report → cited local-AI
+> narrative. Current state always lives in [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md); the
+> finished-build summary is in [`docs/FINAL-REPORT.md`](./docs/FINAL-REPORT.md).
 
-A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native
-Microsoft Project / Primavera schedules, runs comparative and forensic analysis
-(CPM / driving slack, DCMA, manipulation-trend detection, parity to Acumen Fuse v8.11.0
-and SSI), and produces interactive, locally-rendered reports with a local AI narrative.
-It runs **entirely on the local machine**.
+A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native Microsoft
+Project / Primavera schedules, runs comparative and forensic analysis (CPM / driving slack, DCMA-14,
+Acumen Fuse v8.11.0 & SSI parity metrics, EVM, manipulation-trend detection), and produces
+interactive, locally-rendered reports with a cited local-AI narrative — **entirely on your machine**.
+Nothing about a schedule ever leaves the box.
 
 ## The two laws
 
-1. **Data sovereignty (CUI).** No schedule data, file content, task name, date, UniqueID,
-   or derived metric ever leaves the local machine. No cloud API call ever receives
-   schedule content. Default to local Ollama; fail closed when in doubt.
-2. **Fidelity over speed.** Numbers must match the reference tools (Acumen Fuse v8.11.0,
-   SSI, Microsoft Project) on the same inputs. A fast, wrong number is worthless in a
-   forensic/testimony context.
+1. **Data sovereignty (CUI).** No schedule data, file content, task name, date, UniqueID, or derived
+   metric ever leaves the local machine. No cloud API call ever receives schedule content. The AI
+   defaults to local Ollama and fails closed when in doubt. A network-egress guard fails the build if
+   any forbidden cloud HTTP client enters the runtime, and an air-gap test fails if any served page
+   references a remote asset.
+2. **Fidelity over speed.** Numbers must match the reference tools (Acumen Fuse v8.11.0, SSI,
+   Microsoft Project) on the same inputs. A fast, wrong number is worthless in a forensic/testimony
+   context. Parity is gate-locked (`pytest -m parity`).
 
-## How this build is run
+## Install
 
-This tool is built autonomously across many sessions. Everything you need is in two files
-at the repo root:
+```bash
+python -m venv .venv
+. .venv/bin/activate            # Windows: .venv\Scripts\Activate.ps1
+pip install -e .                # installs the `schedule-forensics` launcher command
+```
 
-- **[`AUTONOMOUS-BUILD-PROMPT.md`](./AUTONOMOUS-BUILD-PROMPT.md)** — the paste-ready build
-  prompt. Paste its full contents into the **first** session (named **A1**), running on
-  **Opus 4.8 (1M context)** with **Ultracode**.
-- **[`AUTONOMOUS-BUILD-SETUP-CHECKLIST.md`](./AUTONOMOUS-BUILD-SETUP-CHECKLIST.md)** —
-  environment/settings prerequisites and the per-session run workflow.
+- **Python 3.11+** required. Native **`.mpp`** ingestion also needs a **Java runtime (JRE/JDK 17+)** —
+  the vendored MPXJ reader (`tools/mpxj/`) is auto-discovered (no Maven/build step). `.xml` (MSPDI),
+  `.xer` (Primavera) and the tool's own `.json` parse with no Java.
+- **Local AI is optional.** The narrative works offline with the deterministic Null backend; for
+  AI-polished prose, install [Ollama](https://ollama.com) and pull a model (the in-app **AI Settings**
+  panel lists/pulls/selects models). While CLASSIFIED the tool only ever reaches a loopback model
+  server.
 
-Sessions are named sequentially `A1, A2, A3, …`. Each session does exactly **one
-milestone**, writes a durable handoff to `docs/STATE/HANDOFF.md`, and stops; every later
-session is resumed with a single stable resume line (see the prompt). All build state lives
-in git, never only in chat history.
+## Launch
 
-## What is retained on this clean `main`
+- **Terminal:** `schedule-forensics` (or `python -m schedule_forensics.launcher`).
+- **Desktop shortcut:** use the one for your OS in [`packaging/`](./packaging/README.md) (Windows
+  `.ps1` installer, Linux `.desktop`, macOS `.command`).
 
-- `AUTONOMOUS-BUILD-PROMPT.md`, `AUTONOMOUS-BUILD-SETUP-CHECKLIST.md` — the build spec.
-- `.gitignore` — hard CUI defense (blocks every schedule-bearing format and runtime data
-  directory from ever being committed).
-- `tools/mpxj/` — the vendored, self-contained **MPXJ native `.mpp` reader** (prebuilt
-  jars + the compiled `MpxjToMspdi` converter). It parses native `.mpp` with only a Java
-  runtime — no Maven, no build step — and is auto-discovered by the importer. Kept because
-  parsing native `.mpp` without conversion is a core requirement.
+The launcher picks a free **127.0.0.1** port, starts the server, and opens your browser at the
+dashboard. **Closing the last browser window turns the tool off** (the server's watchdog stops it when
+the heartbeat stops); the in-page **Quit** control stops it immediately.
 
-Everything else (the prior application code, tests, reports, and harness config) was
-removed; session **A1** rebuilds the project from the prompt.
+## Use
+
+1. **Open or import** on the landing page — drag a file onto the dropzone or click **choose a file…**
+   (`.json` / `.xml` / `.mspdi` / `.xer` / `.mpp` / `.mpt`, up to 10 at once), or **Load example** for
+   the bundled sample. Files parse locally; the dashboard tells you exactly what loaded and what
+   failed (no silent failures). Each schedule lists **Open report** and **Save .json**.
+2. **Analysis** — DCMA-14 audit (pass/fail vs threshold + suggested fix), severity-ordered
+   risks/opportunities/concerns (each cited: file + UniqueID + task), a cited AI narrative, and
+   interactive charts + an activity grid + a driving-path Gantt.
+3. **Compare** (≥2 versions) — CPM/progress trend and manipulation-trend signals (deleted logic,
+   shortened durations, deleted tasks, baseline/actual edits) with the Net Finish Impact in calendar
+   days. Honest progress raises no false flags.
+
+See [`docs/USER-GUIDE.md`](./docs/USER-GUIDE.md) for the full walkthrough and
+[`docs/METRIC-DICTIONARY.md`](./docs/METRIC-DICTIONARY.md) (also at `/help`) for a definition + formula
++ source for every metric the tool emits.
+
+## How this build was run
+
+Built autonomously across sessions `A1, A2, …`, one milestone each, with all state committed to git
+(never only in chat). The build spec and per-session workflow are in
+[`AUTONOMOUS-BUILD-PROMPT.md`](./AUTONOMOUS-BUILD-PROMPT.md) and
+[`AUTONOMOUS-BUILD-SETUP-CHECKLIST.md`](./AUTONOMOUS-BUILD-SETUP-CHECKLIST.md).
 
 ## Build state & where to look
 
 - **`docs/STATE/HANDOFF.md`** — single source of truth for "where we are / what's next."
 - `docs/STATE/SESSION-LOG.md` — append-only per-session history.
-- `docs/PLAN/BUILD-PLAN.md`, `docs/PLAN/RTM.md` — plan + requirements traceability (stubs
-  until the Phase 2 plan session).
-- `docs/adr/` — architecture decision records · `docs/risks.md` — risk register.
-- **`00_REFERENCE_INTAKE/DEPOSIT-HERE.md`** — what to deposit at **Gate 1** (reference and
-  golden-parity files). Everything dropped there is git-ignored (CUI defense).
+- `docs/FINAL-REPORT.md` — the finished-build summary · `docs/PARITY-REPORT.md` — how the numbers
+  match Acumen Fuse v8.11.0 / SSI.
+- `docs/PLAN/` — build plan + requirements traceability (RTM) · `docs/adr/` — architecture decision
+  records · `docs/risks.md` — risk register.
+- `00_REFERENCE_INTAKE/DEPOSIT-HERE.md` — where reference / golden-parity files go (git-ignored, CUI
+  defense).
 
-## Getting started
+## Quality
 
-1. Read `AUTONOMOUS-BUILD-SETUP-CHECKLIST.md` and decide **where** to run (CUI-sensitive
-   reference files must not go into a cloud/web session).
-2. Open session **A1** on Opus 4.8 (1M context) + Ultracode, pointed at this repo.
-3. Paste the full contents of `AUTONOMOUS-BUILD-PROMPT.md` and follow the gates.
+`ruff` + `ruff format` + `mypy --strict` + `pytest` with coverage gates (engine ≥85%, overall ≥70%),
+a named parity gate, `bandit`, and `pip-audit`, all wired into CI on Python 3.11 and 3.13. The runtime
+is **standard-library-only** for I/O (no `requests`/`httpx`/etc.); the only runtime dependencies are
+pydantic, FastAPI, a plain uvicorn, Jinja2 and python-multipart.

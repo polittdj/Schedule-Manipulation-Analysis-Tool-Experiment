@@ -35,6 +35,7 @@ from schedule_forensics.ai import (
     banner_for,
     route_backend,
 )
+from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.engine import (
     analyze_floats,
@@ -43,9 +44,12 @@ from schedule_forensics.engine import (
     compute_driving_slack,
     recommend,
 )
+from schedule_forensics.engine.cpm import CPMResult
+from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import compute_baseline_compliance
-from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
@@ -70,68 +74,59 @@ _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 #: File types the open/import picker accepts.
 _ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
 
-_CSS = """
-:root{--bg:#0b0e14;--panel:#121826;--ink:#e6edf3;--muted:#8b98a5;--accent:#4aa3ff;
---ok:#3fb950;--warn:#d29922;--bad:#f85149;--line:#243044}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
-font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-a{color:var(--accent);text-decoration:none}header{background:#070a10;border-bottom:1px solid var(--line);
-padding:14px 22px;display:flex;align-items:center;gap:18px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
-header nav a{margin-right:14px;color:var(--muted)}header nav a:hover{color:var(--ink)}
-main{max-width:1100px;margin:0 auto;padding:24px}.panel{background:var(--panel);border:1px solid var(--line);
-border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
-border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
-.pass{color:var(--ok)}.fail{color:var(--bad)}.na{color:var(--muted)}
-.sev-HIGH{color:var(--bad);font-weight:600}.sev-MEDIUM{color:var(--warn)}.sev-LOW,.sev-INFO{color:var(--muted)}
-.banner{padding:10px 16px;border-radius:8px;margin:0 0 16px;font-weight:600}
-.banner.local{background:#0d2818;border:1px solid var(--ok);color:var(--ok)}
-.banner.cloud{background:#3a1d1d;border:1px solid var(--bad);color:var(--bad)}
-.muted{color:var(--muted)}.cite{color:var(--muted);font-size:12px}
-button,input[type=submit]{background:var(--accent);color:#04111f;border:0;border-radius:7px;
-padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:#0a0f1a;color:var(--ink);
-border:1px solid var(--line);border-radius:7px;padding:7px 9px}
-code{background:#0a0f1a;border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
-.hero{margin:6px 2px 20px}.hero h2{font-size:22px;color:var(--ink);margin:0 0 8px}
-.hero p{max-width:760px;margin:0}
-.dropzone{border:2px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;
-transition:border-color .15s,background .15s;background:#0e1422}
-.dropzone.over{border-color:var(--accent);background:#10203a}
-.dropzone.busy{opacity:.6;pointer-events:none}
-.dz-icon{font-size:34px;color:var(--accent);line-height:1}
-.dz-title{font-size:16px;margin:10px 0 4px}
-.dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
-.btn{display:inline-block;background:var(--accent);color:#04111f;border-radius:7px;padding:9px 18px;
-font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
-.btn-link{color:var(--accent);font-weight:600}
-.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
-cursor:pointer;text-decoration:underline}
-.row-actions{font-size:13px}.row-actions a{color:var(--accent)}
-"""
-
-# Keep-alive + quit: every page beats every 3s so the server knows the browser is open;
-# when all windows close, the beats stop and the launcher's watchdog shuts the server down
-# (that is how closing the tool turns everything off). "Quit" stops it immediately.
-_HEARTBEAT_JS = """<script>(function(){
-function beat(){fetch('/api/heartbeat',{method:'POST'}).catch(function(){});}
-beat();var hb=setInterval(beat,3000);
-window.sfQuit=function(){clearInterval(hb);
-fetch('/api/shutdown',{method:'POST'}).catch(function(){});
-document.body.innerHTML='<main><div class=panel><h2>Schedule Forensics stopped</h2>'+
-'<p class=muted>The local server is shutting down. You can close this window.</p></div></main>';
-return false;};}());</script>"""
-
 _LAYOUT = Template(
     """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>{{ title }} — Schedule Forensics</title><style>{{ css }}</style>
-<link rel=stylesheet href="/static/app.css"></head><body>
+<title>{{ title }} — Schedule Forensics</title>
+<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
-<a href="/session/wipe" onclick="return confirm('Wipe all loaded schedules?')">Wipe Session</a>
+<form action="/session/wipe" method=post class=navform
+onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
-<main>{{ banner }}{{ body }}</main>{{ heartbeat }}</body></html>"""
+<main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script></body></html>"""
 )
+
+
+@dataclass(frozen=True)
+class _Flash:
+    """A one-shot import result message shown on the next dashboard render."""
+
+    accepted: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class _Analysis:
+    """Everything a report view needs, computed once from a single CPM pass per schedule.
+
+    Building this runs the network just once and threads that CPM through the audit, the
+    baseline-compliance panel, the findings, the narrative, and the activity grid — instead
+    of each view recomputing the CPM several times over.
+    """
+
+    cpm: CPMResult
+    audit: ScheduleAudit
+    compliance: dict[str, MetricResult]
+    findings: tuple[Finding, ...]
+    narrative: Narrative
+    activity_rows: list[dict[str, object]]
+
+
+def _compute_analysis(sch: Schedule) -> _Analysis:
+    """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere)."""
+    cpm = compute_cpm(sch)
+    return _Analysis(
+        cpm=cpm,
+        audit=audit_schedule(sch, cpm),
+        compliance=compute_baseline_compliance(sch, cpm),
+        findings=recommend(sch, current_cpm=cpm),
+        # single-schedule narrative is deterministic (NullBackend) and CPM-threaded, so it is
+        # safe to cache alongside the rest; if a per-request AI backend is wired in later, move
+        # the narrative back out of the cached analysis.
+        narrative=build_narrative(sch, current_cpm=cpm),
+        activity_rows=_activity_rows(sch, cpm),
+    )
 
 
 @dataclass
@@ -140,9 +135,22 @@ class SessionState:
 
     schedules: dict[str, Schedule] = field(default_factory=dict)
     ai_config: AIConfig = field(default_factory=AIConfig)
+    flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
+    # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
+    # under the same key recomputes. Bounded by the ≤10 loaded schedules; cleared on wipe.
+    analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
+
+    def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
+        """The cached analysis for ``key``, recomputing only if the schedule object changed."""
+        cached = self.analyses.get(key)
+        if cached is not None and cached[0] is sch:
+            return cached[1]
+        analysis = _compute_analysis(sch)
+        self.analyses[key] = (sch, analysis)
+        return analysis
 
 
 def _banner_html(state: SessionState) -> str:
@@ -151,6 +159,19 @@ def _banner_html(state: SessionState) -> str:
     banner = banner_for(state.ai_config)
     css = "cloud" if banner.cloud_active else "local"
     return f'<div class="banner {css}">{html.escape(banner.text)}</div>'
+
+
+def _flash_html(flash: _Flash | None) -> str:
+    """Render one-shot import feedback (loaded N / per-file errors), or nothing."""
+    if flash is None or (not flash.accepted and not flash.errors):
+        return ""
+    parts: list[str] = []
+    if flash.accepted:
+        names = ", ".join(_e(a) for a in flash.accepted)
+        parts.append(f'<div class="notice ok">Loaded {len(flash.accepted)}: {names}</div>')
+    for err in flash.errors:
+        parts.append(f'<div class="notice err">Could not import {_e(err)}</div>')
+    return "".join(parts)
 
 
 def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
@@ -163,15 +184,7 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
 
 
 def _page(state: SessionState, title: str, body: str) -> HTMLResponse:
-    return HTMLResponse(
-        _LAYOUT.render(
-            title=title,
-            css=_CSS,
-            banner=_banner_html(state),
-            body=body,
-            heartbeat=_HEARTBEAT_JS,
-        )
-    )
+    return HTMLResponse(_LAYOUT.render(title=title, banner=_banner_html(state), body=body))
 
 
 def _e(text: object) -> str:
@@ -219,6 +232,8 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     def home() -> HTMLResponse:
         st = session()
+        flash = _flash_html(st.flash)
+        st.flash = None  # one-shot: clear after rendering
         rows = "".join(
             f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
             f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
@@ -241,6 +256,7 @@ def create_app(
             else ""
         )
         body = f"""
+{flash}
 <section class=hero>
   <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
   <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
@@ -256,7 +272,7 @@ def create_app(
       <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>
       &mdash; up to {MAX_FILES} at once.</p>
     <div class=dz-actions>
-      <a class=btn href="/example">Load example</a>
+      <form action="/example" method=post><button type=submit class=btn>Load example</button></form>
       <span class=muted>or import your own file above</span>
     </div>
   </div>
@@ -265,21 +281,10 @@ def create_app(
   </form>
 </div>
 {loaded}
-<script>(function(){{
-  var form=document.getElementById('uploadForm'),input=document.getElementById('fileInput'),
-      dz=document.getElementById('dropzone');
-  function go(files){{ if(!files||!files.length)return; var fd=new FormData();
-    for(var i=0;i<files.length;i++)fd.append('files',files[i]);
-    dz.classList.add('busy'); fetch('/upload',{{method:'POST',body:fd}}).then(function(){{location.href='/';}}); }}
-  document.getElementById('pickBtn').onclick=function(){{input.click();}};
-  input.onchange=function(){{go(input.files);}};
-  ['dragover','dragenter'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.add('over');}});}});
-  ['dragleave','drop'].forEach(function(e){{dz.addEventListener(e,function(ev){{ev.preventDefault();dz.classList.remove('over');}});}});
-  dz.addEventListener('drop',function(ev){{go(ev.dataTransfer.files);}});
-}}());</script>"""
+<script src="/static/home.js"></script>"""
         return _page(st, "Dashboard", body)
 
-    @app.get("/example")
+    @app.post("/example")
     def load_example() -> RedirectResponse:
         st = session()
         schedule = parse_json(_EXAMPLE).model_copy(update={"source_file": "house_build.json"})
@@ -295,7 +300,7 @@ def create_app(
         sch = st.schedules.get(key)
         if sch is None:
             return Response("not found", status_code=404)
-        filename = f"{key}.json".replace('"', "")
+        filename = _safe_filename(f"{key}.json")
         return Response(
             to_json_text(sch),
             media_type="application/json",
@@ -305,21 +310,31 @@ def create_app(
     @app.post("/upload")
     async def upload(files: list[UploadFile]) -> RedirectResponse:
         st = session()
-        accepted = 0
+        accepted: list[str] = []
+        errors: list[str] = []
         for upload_file in files[:MAX_FILES]:
             name = upload_file.filename or "schedule"
             data = await upload_file.read()
             try:
                 schedule = _parse_upload(name, data)
-            except (ImporterError, ValueError, OSError):
-                logger.warning(
-                    "rejected upload (unparseable); ext=%s bytes=%d", Path(name).suffix, len(data)
-                )
+            except (ImporterError, ValueError, OSError) as exc:
+                reason = str(exc).splitlines()[0][:160] if str(exc) else "unreadable file"
+                errors.append(f"{name}: {reason}")
+                logger.warning("rejected upload; ext=%s bytes=%d", Path(name).suffix, len(data))
                 continue
             key = _unique_key(_clean_key(name), st.schedules)
             st.schedules[key] = schedule.model_copy(update={"source_file": name})
-            accepted += 1
-        logger.info("loaded %d schedule(s); total now %d", accepted, len(st.schedules))
+            accepted.append(key)
+        logger.info(
+            "loaded %d schedule(s); %d rejected; total now %d",
+            len(accepted),
+            len(errors),
+            len(st.schedules),
+        )
+        st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors))
+        # a single clean open jumps straight to its report; otherwise back to the dashboard
+        if len(accepted) == 1 and not errors:
+            return RedirectResponse(url=f"/analysis/{quote(accepted[0])}", status_code=303)
         return RedirectResponse(url="/", status_code=303)
 
     @app.get("/analysis/{name}", response_class=HTMLResponse)
@@ -328,7 +343,7 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return _page(st, "Not found", f"<div class=panel>No schedule named {_e(name)}.</div>")
-        return _page(st, name, _analysis_body(name, sch))
+        return _page(st, name, _analysis_body(name, sch, st.analysis_for(name, sch)))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -336,7 +351,7 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_analysis_data(sch))
+        return JSONResponse(_analysis_data(sch, st.analysis_for(name, sch)))
 
     @app.get("/api/driving/{name}")
     def driving_json(
@@ -349,7 +364,9 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_driving_data(sch, target, secondary, tertiary))
+        return JSONResponse(
+            _driving_data(sch, st.analysis_for(name, sch).cpm, target, secondary, tertiary)
+        )
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -358,8 +375,12 @@ def create_app(
             return _page(
                 st, "Compare", "<div class=panel>Load at least two versions to compare.</div>"
             )
-        prior, current = st.ordered()[-2], st.ordered()[-1]
-        return _page(st, "Compare", _compare_body(prior, current))
+        keys = list(st.schedules)
+        prior_key, current_key = keys[-2], keys[-1]
+        prior, current = st.schedules[prior_key], st.schedules[current_key]
+        prior_cpm = st.analysis_for(prior_key, prior).cpm
+        current_cpm = st.analysis_for(current_key, current).cpm
+        return _page(st, "Compare", _compare_body(prior, current, prior_cpm, current_cpm))
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
@@ -399,10 +420,12 @@ def create_app(
         )
         return _page(st, "Metric Dictionary", body)
 
-    @app.get("/session/wipe")
+    @app.post("/session/wipe")
     def wipe() -> RedirectResponse:
         st = session()
         st.schedules.clear()
+        st.analyses.clear()
+        st.flash = None
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -411,6 +434,11 @@ def create_app(
         return JSONResponse({"status": "ok", "loaded": len(session().schedules)})
 
     return app
+
+
+def _safe_filename(name: str) -> str:
+    """Strip characters that could break out of the Content-Disposition filename (header hygiene)."""
+    return name.translate({ord(c): None for c in '"\\\r\n'})
 
 
 def _clean_key(name: str) -> str:
@@ -441,11 +469,13 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
         return parse_mspdi_text(data.decode("utf-8"))
     if suffix == ".xer":
         return parse_xer_text(data.decode("utf-8", errors="replace"))
-    # native .mpp / .mpt — needs the MPXJ runner + a JRE; write to a local temp file
-    with tempfile.NamedTemporaryFile(suffix=suffix or ".mpp", delete=True) as handle:
-        handle.write(data)
-        handle.flush()
-        return load_schedule(Path(handle.name))
+    # native .mpp / .mpt — needs the MPXJ runner + a JRE. Write into a temp *directory* and
+    # close the file before parsing: on Windows an open NamedTemporaryFile handle blocks the
+    # MPXJ java subprocess from reading the path (the upload would always fail on Windows).
+    with tempfile.TemporaryDirectory(prefix="sf-upload-") as tmp:
+        temp_path = Path(tmp) / f"upload{suffix or '.mpp'}"
+        temp_path.write_bytes(data)
+        return load_schedule(temp_path)
 
 
 def _status_class(status: object) -> str:
@@ -453,15 +483,15 @@ def _status_class(status: object) -> str:
     return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
 
 
-def _analysis_body(key: str, sch: Schedule) -> str:
-    audit = audit_schedule(sch)
+def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
+    audit = analysis.audit
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
         f"<td>{_e(round(c.value, 1))}{_e(c.unit)}</td>"
         f"<td class=muted>{_e(c.suggested_improvement)}</td></tr>"
         for c in audit.checks
     )
-    findings = recommend(sch, target_uid=None)
+    findings = analysis.findings
     find_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.category)}</td>'
         f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td>"
@@ -469,7 +499,7 @@ def _analysis_body(key: str, sch: Schedule) -> str:
         f"{_e(f' +{len(f.citations) - 2} more' if len(f.citations) > 2 else '')}</td></tr>"
         for f in findings
     )
-    narrative = build_narrative(sch)
+    narrative = analysis.narrative
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
     viz = f"""
 <div class=panel><h2>Interactive analysis</h2>
@@ -495,9 +525,9 @@ tertiary&le;<input id=terMax type=number value=20>d
 <div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
 
 
-def _analysis_data(sch: Schedule) -> dict[str, object]:
-    audit = audit_schedule(sch)
-    compliance = compute_baseline_compliance(sch)
+def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
+    audit = analysis.audit
+    compliance = analysis.compliance
     return {
         "name": sch.name,
         "source_file": sch.source_file,
@@ -507,7 +537,7 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
             for c in audit.checks
         },
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
-        "activities": _activity_rows(sch),
+        "activities": analysis.activity_rows,
         "findings": [
             {
                 "severity": str(f.severity),
@@ -518,7 +548,7 @@ def _analysis_data(sch: Schedule) -> dict[str, object]:
                     for c in f.citations
                 ],
             }
-            for f in recommend(sch)
+            for f in analysis.findings
         ],
     }
 
@@ -527,11 +557,11 @@ def _iso_date(value: object) -> str:
     return value.date().isoformat() if hasattr(value, "date") else ""
 
 
-def _activity_rows(sch: Schedule) -> list[dict[str, object]]:
+def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     """Per-activity rows for the interactive grid (float in days, citable metadata)."""
     by_id = sch.tasks_by_id
     rows: list[dict[str, object]] = []
-    for fr in analyze_floats(sch):
+    for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
         rows.append(
             {
@@ -550,14 +580,19 @@ def _activity_rows(sch: Schedule) -> list[dict[str, object]]:
     return rows
 
 
-def _driving_data(sch: Schedule, target: int, secondary: int, tertiary: int) -> dict[str, object]:
+def _driving_data(
+    sch: Schedule, cpm: CPMResult, target: int, secondary: int, tertiary: int
+) -> dict[str, object]:
     """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID."""
     by_id = sch.tasks_by_id
     if target not in by_id:
         return {"target_uid": target, "target_name": None, "rows": []}
-    cpm = compute_cpm(sch)
     results = compute_driving_slack(
-        sch, target_uid=target, secondary_max_days=secondary, tertiary_max_days=tertiary
+        sch,
+        target_uid=target,
+        secondary_max_days=secondary,
+        tertiary_max_days=tertiary,
+        cpm_result=cpm,
     )
     rows = []
     for uid in sorted(results):
@@ -578,10 +613,11 @@ def _driving_data(sch: Schedule, target: int, secondary: int, tertiary: int) -> 
     return {"target_uid": target, "target_name": by_id[target].name, "rows": rows}
 
 
-def _compare_body(prior: Schedule, current: Schedule) -> str:
-    manip = detect_manipulation(current, prior)
+def _compare_body(
+    prior: Schedule, current: Schedule, prior_cpm: CPMResult, current_cpm: CPMResult
+) -> str:
+    manip = detect_manipulation(current, prior, current_cpm=current_cpm, prior_cpm=prior_cpm)
     trend = trend_across_versions([prior, current])
-    impact = next((s for s in trend), None)
     manip_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.title)}</td>'
         f"<td class=muted>{_e(f.course_of_action)}</td></tr>"
@@ -592,7 +628,6 @@ def _compare_body(prior: Schedule, current: Schedule) -> str:
         f"<td>{p.completed}</td><td>{p.in_progress}</td><td>{p.critical}</td></tr>"
         for p in trend
     )
-    _ = impact
     return f"""
 <div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
 <table><tr><th>Version</th><th>Project finish</th><th>Completed</th><th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table></div>

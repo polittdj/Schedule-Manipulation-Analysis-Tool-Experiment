@@ -35,5 +35,5 @@ egress + air-gap guards stay green.
   (UX/help) and B1 (ingestion) are reinforced; `.json` joins `.mpp/.xml/.mspdi/.xer` in
   `supported_extensions`.
 - +`importers/json_schedule.py` (92%), new landing/example/download routes (web/app 93%), and
-  `tests/importers/test_json_schedule.py` + `tests/web/test_landing.py`. Full suite 452 passing;
-  parity + egress + air-gap green.
+  `tests/importers/test_json_schedule.py` + `tests/web/test_landing.py`. Full suite 469 passing
+  (after the M-AUDIT remediation, ADR-0024); parity + egress + air-gap green.

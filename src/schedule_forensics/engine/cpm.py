@@ -138,13 +138,23 @@ def link_slack(rel: RelationshipType, es_p: int, ef_p: int, es_s: int, ef_s: int
 
 
 def _count_working_days(calendar: Calendar, d0: dt.date, d1: dt.date) -> int:
-    """Number of working days in the half-open range ``[d0, d1)`` (requires ``d0 <= d1``)."""
-    count = 0
-    cur = d0
-    while cur < d1:
-        if cur.weekday() in calendar.work_weekdays and cur not in calendar.holidays:
-            count += 1
-        cur += dt.timedelta(days=1)
+    """Number of working days in the half-open range ``[d0, d1)`` (requires ``d0 <= d1``).
+
+    Full-weeks arithmetic + a short (<7-day) remainder loop, then subtract the holidays
+    that fall on a working weekday inside the range — O(weeks-of-remainder + holidays),
+    not O(days). Equivalent to the day-by-day count (see ``test_cpm_date_equivalence``).
+    """
+    total = (d1 - d0).days
+    if total <= 0:
+        return 0
+    workdays = set(calendar.work_weekdays)
+    full_weeks, remainder = divmod(total, 7)
+    count = full_weeks * len(workdays)
+    w0 = d0.weekday()
+    # the remainder days are d0+full_weeks*7+i for i in [0,remainder); weekday == (w0+i)%7
+    count += sum(1 for i in range(remainder) if (w0 + i) % 7 in workdays)
+    # a holiday only ever removed a day that was otherwise a working weekday
+    count -= sum(1 for h in calendar.holidays if d0 <= h < d1 and h.weekday() in workdays)
     return count
 
 
@@ -175,6 +185,35 @@ def _next_working_day(day: dt.datetime, calendar: Calendar) -> dt.datetime:
     return nxt
 
 
+def _advance_working_days(start_day: dt.date, k: int, calendar: Calendar) -> dt.date:
+    """The working day ``k`` working-days after ``start_day`` (which must be a working day).
+
+    Week-jump + short remainder step, then compensate for any working-weekday holidays the
+    jump passed over (each pushes the result one more working day; the newly-traversed span
+    may add more, so it iterates — but only over holidays, never day-by-day). Equivalent to
+    applying ``_next_working_day`` ``k`` times (see ``test_cpm_date_equivalence``).
+    """
+    if k <= 0:
+        return start_day
+    workdays = set(calendar.work_weekdays)
+    wdpw = len(workdays)
+    holidays = calendar.holidays
+    cur = start_day
+    needed = k
+    while needed > 0:
+        full_weeks, remainder = divmod(needed, wdpw)
+        nxt = cur + dt.timedelta(days=full_weeks * 7)  # same weekday, full*wdpw weekdays on
+        steps = remainder
+        while steps > 0:
+            nxt += dt.timedelta(days=1)
+            if nxt.weekday() in workdays:
+                steps -= 1
+        # working-weekday holidays in (cur, nxt] did not actually advance us — make them up
+        needed = sum(1 for h in holidays if cur < h <= nxt and h.weekday() in workdays)
+        cur = nxt
+    return cur
+
+
 def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> dt.datetime:
     """Convert a non-negative working-minute offset to a wall-clock datetime.
 
@@ -189,11 +228,19 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
     day = start
     while day.date().weekday() not in calendar.work_weekdays or day.date() in calendar.holidays:
         day = _next_working_day(day, calendar)
-    remaining = minutes
-    while remaining > per_day:
-        remaining -= per_day
-        day = _next_working_day(day, calendar)
-    return day + dt.timedelta(minutes=remaining)
+    # Whole working days consumed, then the intraday remainder. An exact multiple of per_day
+    # lands at the END of the last full day (the strict ``remaining > per_day`` boundary), so
+    # one fewer day is advanced and the remainder is a full day's minutes.
+    quotient, remainder = divmod(minutes, per_day)
+    if minutes == 0:
+        advance, intraday = 0, 0
+    elif remainder == 0:
+        advance, intraday = quotient - 1, per_day
+    else:
+        advance, intraday = quotient, remainder
+    target_date = _advance_working_days(day.date(), advance, calendar)
+    day += dt.timedelta(days=(target_date - day.date()).days)  # preserve time-of-day exactly
+    return day + dt.timedelta(minutes=intraday)
 
 
 def _topo_order(task_ids: list[int], edges: list[tuple[int, int]]) -> list[int]:

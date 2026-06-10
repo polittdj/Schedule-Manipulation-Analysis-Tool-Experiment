@@ -4,16 +4,13 @@ from __future__ import annotations
 
 import datetime as dt
 import itertools
-from pathlib import Path
 
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.recommendations import Severity
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
@@ -31,12 +28,12 @@ def _chain(durations: dict[int, int], **task_kw: object) -> Schedule:
     return _s(tasks, rels, **task_kw)
 
 
-def test_golden_p2_to_p5_has_no_false_positive_manipulation() -> None:
+def test_golden_p2_to_p5_has_no_false_positive_manipulation(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
     # Honest progress: baselines unchanged, no deleted tasks/logic, no edited actuals, no
     # shortened durations on incomplete work -> the detector must stay silent (no false flags).
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    assert detect_manipulation(p5, p2) == ()
+    assert detect_manipulation(golden_project5, golden_project2) == ()
 
 
 def test_detect_deleted_task_on_critical_path() -> None:
@@ -53,6 +50,21 @@ def test_detect_deleted_task_on_critical_path() -> None:
     deleted = next(f for f in findings if f.metric_id == "MANIP_DELETED_TASK")
     assert deleted.severity is Severity.HIGH  # the deleted task was on the prior critical path
     assert any(c.unique_id == 2 for c in deleted.citations)
+
+
+def test_deleted_logic_citations_carry_the_prior_file() -> None:
+    # §6 contract: every citation names its source file — deleted-logic findings cite the prior.
+    prior = _chain({1: DAY, 2: 2 * DAY, 3: DAY}, source_file="prior.mpp")
+    current = _s(
+        [
+            Task(unique_id=1, name="T1", duration_minutes=DAY),
+            Task(unique_id=3, name="T3", duration_minutes=DAY),
+        ]
+    )
+    logic = next(
+        f for f in detect_manipulation(current, prior) if f.metric_id == "MANIP_DELETED_LOGIC"
+    )
+    assert logic.citations and all(c.source_file == "prior.mpp" for c in logic.citations)
 
 
 def test_detect_shortened_duration_on_incomplete() -> None:
@@ -156,10 +168,10 @@ def test_all_manipulation_findings_are_cited() -> None:
     assert findings and all(f.citations for f in findings)
 
 
-def test_trend_across_versions_orders_and_counts() -> None:
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
-    trend = trend_across_versions([p2, p5])
+def test_trend_across_versions_orders_and_counts(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    trend = trend_across_versions([golden_project2, golden_project5])
     assert len(trend) == 2
     assert trend[0].version_index == 0 and trend[1].version_index == 1
     assert trend[0].completed == 20 and trend[1].completed == 27  # progress between snapshots

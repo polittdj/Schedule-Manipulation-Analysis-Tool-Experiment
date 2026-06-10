@@ -51,6 +51,7 @@ class OllamaBackend:
         model: str = DEFAULT_MODEL,
         *,
         timeout: float = 120.0,
+        probe_timeout: float = 2.0,
         opener: Opener | None = None,
     ) -> None:
         host = urlparse(endpoint).hostname or ""
@@ -62,10 +63,13 @@ class OllamaBackend:
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self._timeout = timeout
+        # short timeout for the availability/model-list probes so a firewalled (DROP) port can't
+        # stall the settings page for the full generate timeout; generate/pull keep ``timeout``.
+        self._probe_timeout = probe_timeout
         self._open: Opener = opener or _urllib_opener
 
-    def _get(self, path: str) -> Any:
-        return json.loads(self._open(f"{self.endpoint}{path}", None, self._timeout))
+    def _get(self, path: str, *, timeout: float | None = None) -> Any:
+        return json.loads(self._open(f"{self.endpoint}{path}", None, timeout or self._timeout))
 
     def _post(self, path: str, payload: dict[str, Any]) -> Any:
         data = json.dumps(payload).encode("utf-8")
@@ -73,14 +77,14 @@ class OllamaBackend:
 
     def is_available(self) -> bool:
         try:
-            self._get("/api/tags")
+            self._get("/api/tags", timeout=self._probe_timeout)
         except Exception:
             return False
         return True
 
     def list_models(self) -> tuple[str, ...]:
         """Names of the models installed in the local Ollama (``GET /api/tags``)."""
-        payload = self._get("/api/tags")
+        payload = self._get("/api/tags", timeout=self._probe_timeout)
         models = payload.get("models", []) if isinstance(payload, dict) else []
         return tuple(m["name"] for m in models if isinstance(m, dict) and "name" in m)
 

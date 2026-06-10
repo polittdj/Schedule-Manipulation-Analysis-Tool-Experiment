@@ -9,7 +9,6 @@ remote host (no CUI-leaking beacon, no offline breakage).
 from __future__ import annotations
 
 import re
-import warnings
 from pathlib import Path
 
 import pytest
@@ -18,7 +17,6 @@ from fastapi.testclient import TestClient
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="starlette.*")
 
 _ABSOLUTE_URL = re.compile(r"""\bhttps?://[^\s"'<>)]+""", re.IGNORECASE)
 _PROTOCOL_RELATIVE = re.compile(r"""["'(]//[^\s"'<>)]+""")
@@ -42,7 +40,17 @@ def _external_refs(text: str) -> list[str]:
 
 
 def test_no_external_references_anywhere(client: TestClient) -> None:
-    pages = ["/", "/analysis/Project5", "/settings", "/help", "/static/app.js", "/static/app.css"]
+    pages = [
+        "/",
+        "/analysis/Project5",
+        "/settings",
+        "/help",
+        "/static/app.js",
+        "/static/app.css",
+        "/static/base.css",
+        "/static/home.js",
+        "/static/heartbeat.js",
+    ]
     offenders: dict[str, list[str]] = {}
     for path in pages:
         refs = _external_refs(client.get(path).text)

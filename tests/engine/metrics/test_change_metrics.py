@@ -18,7 +18,6 @@ from schedule_forensics.engine.metrics import (
     compute_change_metrics,
     compute_net_finish_impact,
 )
-from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -34,10 +33,11 @@ def _sched(tasks: list[Task], rels: list[Relationship] | None = None, **kw: obje
     )
 
 
-def test_golden_change_parity_p2_to_p5() -> None:
+def test_golden_change_parity_p2_to_p5(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
     g = json.loads((GOLDEN / "project2_5" / "case.json").read_text())["change_P2_to_P5"]
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    p5 = parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml")
+    p2, p5 = golden_project2, golden_project5
     ch = compute_change_metrics(p5, p2)
 
     # exact (float-independent forensic counts)
@@ -62,19 +62,18 @@ def test_golden_change_parity_p2_to_p5() -> None:
         assert ch[key].count != golden  # the tracked delta is real, not accidental parity
 
 
-def test_golden_first_snapshot_p2_has_no_prior() -> None:
+def test_golden_first_snapshot_p2_has_no_prior(golden_project2: Schedule) -> None:
     g = json.loads((GOLDEN / "project2_5" / "case.json").read_text())["change_P2_to_P5"][
         "_first_snapshot_P2"
     ]
-    p2 = parse_mspdi(GOLDEN / "project2_5" / "Project2.mspdi.xml")
-    ch = compute_change_metrics(p2, None)
+    ch = compute_change_metrics(golden_project2, None)
     assert ch["completed"].count == g["completed"]  # 20
     assert ch["in_progress"].count == g["in_progress"]  # 3
     assert ch["new_critical"].count == 0
     assert ch["finish_date_slips"].count == 0  # no prior to slip against
     # every schedulable activity is "added" in the first snapshot
     assert ch["activities_added"].count == ch["total_activities"].count
-    impact = compute_net_finish_impact(p2, None)
+    impact = compute_net_finish_impact(golden_project2, None)
     assert impact.value == g["net_finish_impact_days"] == 0
     assert impact.status is CheckStatus.NOT_APPLICABLE
 

@@ -3,8 +3,9 @@
 ``main()`` is the console entry point (``schedule-forensics``) and the target of the OS
 desktop shortcuts under ``packaging/``. It picks a free **loopback** port, opens the default
 browser at the dashboard, and serves the FastAPI app on 127.0.0.1 only — refusing any
-non-loopback host (Law 1: nothing leaves the machine). The server (``uvicorn.run``) and the
-browser open are injectable so the wiring is unit-tested without binding a real port.
+non-loopback host (Law 1: nothing leaves the machine). The server (``web.app.serve``, which
+wires graceful shutdown) and the browser open are injectable so the wiring is unit-tested
+without binding a real port.
 """
 
 from __future__ import annotations
