@@ -967,3 +967,30 @@ this file is the running history.
 ### Parity / tests
 - **562 passed, 3 skipped** (36 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean.
+
+
+## Deferred-audit-items sitting — 2026-06-11 (PR #69; Fable 5)
+
+- No operator feedback pending (no open issues; #68 merged) → worked the four ADR-0026
+  deferred items in HANDOFF priority order (all closed; ADR-0027):
+  1. **Calendar-true day math**: the DCMA "44 working days" tripwire
+     (`forty_four_days_min(schedule)` — DCMA06/DCMA08/Insufficient Detail), the DCMA12
+     100-day injection, driving-slack tier bands + day values, and float/network-finish day
+     rendering all derive from `calendar.working_minutes_per_day` (480 hardcode retired).
+     Bites only non-8h JSON calendars today; goldens byte-identical.
+  2. **XER `CP_Units`** percent complete reads TASKRSRC quantities (actual `act_reg_qty +
+     act_ot_qty` ÷ at-completion incl. `remain_qty`, summed per task); duration share stays
+     the fallback (no quantities / zero at-completion).
+  3. **AI figure gate + per-request backend**: `reattach` now discards any rephrase that
+     drops/invents/alters a numeric figure (`preserves_figures`, multiset-exact, fail
+     closed) — then the settings-selected backend was wired to actually drive the prose:
+     report narrative polished once per (schedule, backend, model) (`SessionState.polished`),
+     briefing built with the routed backend, generation failures degrade deterministic
+     (never 500), 15s probe cache (`backend_cache`) reset on settings save.
+  4. **Trend labels**: identical filenames no longer collapse to "…" — empty-after-prefix
+     labels fall back to the version's data date (or `v<n>`).
+- M15 (.pbix) still blocked — `00_REFERENCE_INTAKE/` remains empty.
+
+### Parity / tests
+- **579 passed, 3 skipped** (17 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean; zero new dependencies.

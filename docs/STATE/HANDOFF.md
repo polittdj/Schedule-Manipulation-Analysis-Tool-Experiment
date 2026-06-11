@@ -1,9 +1,10 @@
-# Handoff — 2026-06-11 (full-audit + operator-features sitting)
+# Handoff — 2026-06-11 (deferred-audit-items sitting)
 
-**This session:** operator-requested full quality audit (3-agent fan-out; ~25 real findings fixed)
-+ features: session-wide **target UID**, **light/dark theme**, **20-file batch cap** (PR #68).
-**Next session:** operator feedback + the deferred audit items below; only the externally-gated
-**M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
+**This session:** closed all four ADR-0026 deferred items (PR #69, ADR-0027): calendar-true
+day math, XER **CP_Units** from TASKRSRC quantities, the **AI figure gate + per-request
+backend** (real generation is now safely wired), and the trend-label data-date fallback.
+**Next session:** operator feedback first; then the remaining deferred work below; only the
+externally-gated **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -31,7 +32,7 @@
 enhancements. **M15 (.pbix enrichment) is the ONLY remaining milestone, BLOCKED** pending the operator
 depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fabricate `.pbix` content.
 
-## What shipped earlier sittings (PRs #58–#67)
+## What shipped earlier sittings (PRs #58–#68)
 - **#58** Full-audit remediation (ADR-0024): dropzone native form-submit; Windows `.mpp` temp-file fix;
   POST-only wipe/example; never-uncited citation; SPI(t); cached UID maps; one `_Analysis`/CPM per
   schedule; O(weeks) CPM date math (equivalence-swept); 2s Ollama probes; CI push-main-only + action
@@ -54,43 +55,35 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   (`/trend?target=<uid>`) and **de-overlapped chart labels** (strip common filename prefix, rotate −35°).
 - **#67** Bow Wave / CEI hardening: capped month axis sheds the OLDEST months first (the newest
   status month + CEI period never fall off); CEI exactly 0.00 styles red/fail (falsy-zero bug).
-  All of #58–#67 are **merged to `main`**.
+- **#68** (ADR-0026) Full audit (3-agent fan-out; ~25 findings fixed: §6 citation crash class
+  closed via NA-on-empty-populations + terminal citation anchors; BEI early completions;
+  XER got MSPDI's tolerance classes + `complete_pct_type`-aware percents + UTF-16; MSPDI
+  percent lags; NaN/Infinity = noise; `MANIP_ACTUAL_ERASED`; CUI redaction + JSON round-trip
+  fidelity) + operator features: **session-wide Target UID** (`POST /target`, report panel +
+  auto-trace, trend default focus, compare movement), **light/dark theme** (`theme.js`,
+  CSS variables, live-re-theming SVG), **batch cap 10 → 20**.
+  All of #58–#68 are **merged to `main`**.
 
-## What shipped this sitting (PR #68) — full audit + operator features
-**Features (operator-requested):**
-- **Session-wide Target UID** (header form, `POST /target`, `SessionState.target_uid`): report
-  page gains a Target-activity panel (dates/floats/%/flags/variance-vs-baseline) + auto-runs the
-  driving trace; `/trend` focuses on it by default (explicit `?target=` — even blank — overrides);
-  `/compare` adds the focus-movement panel; wipe clears it; redirects are local-only.
-- **Light/dark theme**: all CSS on custom properties + `html[data-theme=light]`; `static/theme.js`
-  applies the localStorage choice pre-paint; SVG charts route `var()` colors via `style` so they
-  re-theme live. Toggle in the header.
-- **Batch cap 10 → 20** (`MAX_FILES` in `importers/loader.py`); upload flash names dropped overflow.
-**Audit fixes (3 parallel review agents; every fix has a regression test):**
-- **§6 citation crash class closed for good**: empty DCMA populations are NA (never 0%→FAIL with
-  no offenders); DCMA09 NA without a status date; ALL citation fallbacks (recommendations,
-  briefing, narrative `_clean_bill`) terminate at the first task rows — a summary-only template
-  renders a report instead of 500ing. BEI counts early completions (DCMA numerator = all finished
-  by status).
-- **Summary-UID targets**: `recommend(target_uid=summary)` and `/api/driving` no longer
-  KeyError/500 — named note instead; `/api/driving` returns 422 (not 500) for logic-cycle files.
-- **XER importer got MSPDI's tolerance classes** (shared in `importers/_common.py`): ALAP/dateless
-  constraints → ASAP; dangling/self/duplicate TASKPRED dropped+counted; physical % clamped;
-  **`complete_pct_type`-aware percent complete** (actual dates rule; CP_Drtn derives from
-  remaining/target — phys-only read imported finished duration-type work as 0%); UTF-16 BOM.
-- **MSPDI percent lags** (`LagFormat` 19/20): tenths of a **percent of the predecessor duration**,
-  not tenths of a minute; links now build in a second pass. xsd:boolean "true"/"false" accepted.
-- **NaN/Infinity numerics** are noise (absent), not crashes/EVM poison. Upload decode unified with
-  file-path importers (`decode_xer_bytes`, utf-8-sig).
-- **Manipulation**: erased actuals (date→None, progress un-statused) raise `MANIP_ACTUAL_ERASED`
-  (HIGH). Schedule-quality metrics attach their offender lists (briefing cites real offenders).
-- **CUI**: pydantic `hide_input_in_errors`; redaction covers `.json` names, UNC paths, quoted/
-  whole-string spaced filenames, non-str log extras. `Save .json` round-trips milestones/
-  summaries/WBS/durations/costs/calendar exactly.
-- **Web polish**: trend focus chart never fabricates 0-points for versions missing the activity;
-  the page's resolved focus always drives `/api/trend`; driving-path legend readable (tier
-  backgrounds scoped to bars); unknown-schedule page is 404; Ollama probe timeout falsy-zero trap.
-All under **ADR-0026**.
+## What shipped this sitting (PR #69) — the four ADR-0026 deferred items (ADR-0027)
+1. **Calendar-true day math**: every day↔minute boundary derives from
+   `calendar.working_minutes_per_day` — the DCMA "44 working days" tripwire is now
+   `forty_four_days_min(schedule)` (`metrics/_common.py`; DCMA06/DCMA08/Insufficient Detail),
+   DCMA12 injects `100 working days` on the schedule's calendar, driving-slack tier bands +
+   `driving_slack_days` convert per-calendar, and `float_analysis` day rendering does too.
+   Only non-8h JSON calendars behave differently (MSPDI/XER calendar parsing still deferred,
+   ADR-0008); the default 480 keeps goldens byte-identical.
+2. **XER `CP_Units`** percent complete from TASKRSRC quantities (`_units_percent_by_task`):
+   actual (`act_reg_qty`+`act_ot_qty`) ÷ at-completion (actual+`remain_qty`), summed per task;
+   actual dates still rule; quantity-less / zero-at-completion falls back to the duration share.
+3. **AI figure gate + per-request backend**: `reattach` keeps a rephrase only if it preserves
+   the source's numeric figures exactly (`preserves_figures`, multiset; fail-closed to the
+   verbatim sentence) — with that in place, the settings-selected backend now actually drives
+   the prose: the report narrative is polished once per (schedule, backend, model)
+   (`SessionState.polished`, `_polished_narrative`), the briefing builds with the routed
+   backend, generation failure degrades deterministic (never a 500), and routing is cached 15s
+   (`SessionState.backend_cache`, reset on settings save) so a down Ollama can't slow renders.
+4. **Trend labels**: identical filenames no longer collapse to "…" — a label that empties
+   after the common-prefix strip falls back to the version's data date (`trend.js shortLabels`).
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -126,22 +119,24 @@ All under **ADR-0026**.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**562 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**579 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
+(In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
+venv has been missing the web deps.)
 
 ## Next steps / open items
-1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes now live in
+1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
    `importers/_common.py` (shared by both importers); ALWAYS re-run `pytest -m parity`.
-2. **Deferred audit items** (documented in ADR-0026, in rough priority order):
-   - the **480-min day** is hardcoded in day-based thresholds/conversions (`metrics/_common.py`
-     `FORTY_FOUR_DAYS_MIN`, `driving_slack` tier bands, `minutes_to_days` call sites) — only bites
-     non-8h calendars (JSON imports today; MSPDI/XER calendar parsing is still deferred ADR-0008);
-   - **CP_Units** percent from TASKRSRC quantities (currently duration-approximated);
-   - AI backend: the settings-selected Ollama backend never drives the cached narrative/briefing
-     (NullBackend always used), and `reattach` re-verifies citations but not figures — wire a
-     per-request backend + a number-preservation check before enabling real generation;
-   - trend `shortLabels` collapses identical filenames to "…" (label by data date as fallback).
+   The ADR-0026 deferred audit items are all closed (PR #69, ADR-0027).
+2. **Remaining deferred work** (rough priority order):
+   - **MSPDI/XER calendar parsing** (ADR-0008): `.mpp`/`.xer` imports still assume the default
+     8h/Mon-Fri calendar; once parsed, the calendar-true day math from ADR-0027 applies
+     automatically (thresholds/tiers/day-rendering already ride `working_minutes_per_day`);
+   - **TASKRSRC cost roll-up** (per-task costs from assignments/expenses, ADR-0008);
+   - if the operator enables real Ollama generation: watch quality — every rephrase is gated
+     (citations + exact figures, fail-closed to verbatim), so a chatty model degrades to the
+     deterministic text rather than misleading anyone.
 3. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
    (`engine/bow_wave.py` axis window `_MONTHS_BEFORE/AFTER`; `static/cei.js` layout) if they don't match.
 4. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
