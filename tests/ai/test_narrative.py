@@ -32,6 +32,15 @@ class _ShoutBackend:
         return prompt.upper()
 
 
+class _FabricatorBackend(_ShoutBackend):
+    """A fake model that invents a figure — its rephrases must all be discarded."""
+
+    name = "fabricator"
+
+    def generate(self, prompt: str) -> str:
+        return "Everything is fine, only 12345 minor issues remain."
+
+
 def test_golden_narrative_is_fully_cited(
     golden_project2: Schedule, golden_project5: Schedule
 ) -> None:
@@ -54,6 +63,17 @@ def test_backend_rephrases_text_but_keeps_citations(
     assert [s.citations for s in shouted.statements] == [s.citations for s in plain.statements]
     assert any(s.text.isupper() for s in shouted.statements if s.text.strip())
     assert_all_cited(shouted.statements)
+
+
+def test_figure_mangling_backend_falls_back_to_verbatim_statements(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    # the fabricator replaces every statement with invented numbers; the figure gate in
+    # reattach must discard each rephrase, leaving the deterministic narrative verbatim
+    plain = build_narrative(golden_project5, golden_project2)
+    mangled = build_narrative(golden_project5, golden_project2, backend=_FabricatorBackend())
+    assert [s.text for s in mangled.statements] == [s.text for s in plain.statements]
+    assert "12345" not in mangled.to_text()
 
 
 def test_clean_schedule_gets_cited_clean_bill() -> None:
