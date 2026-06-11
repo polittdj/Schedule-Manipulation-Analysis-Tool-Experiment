@@ -1,8 +1,8 @@
-# Handoff — 2026-06-11 (operator-driven enhancement sitting)
+# Handoff — 2026-06-11 (steady-state sitting)
 
-**This session:** real-world `.mpp` hardening + new visual analytics (PRs #58–#65).
+**This session:** resume verification + Bow Wave/CEI hardening (PR #67).
 **Next session:** no required milestone — respond to operator feedback; only the externally-gated
-**M15 (.pbix)** remains blocked. Model/mode: Opus 4.8 (1M context).
+**M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -30,7 +30,7 @@
 enhancements. **M15 (.pbix enrichment) is the ONLY remaining milestone, BLOCKED** pending the operator
 depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fabricate `.pbix` content.
 
-## What shipped this sitting (PRs #58–#65)
+## What shipped the prior sitting (PRs #58–#66; #66 = the docs/handoff PR)
 - **#58** Full-audit remediation (ADR-0024): dropzone native form-submit; Windows `.mpp` temp-file fix;
   POST-only wipe/example; never-uncited citation; SPI(t); cached UID maps; one `_Analysis`/CPM per
   schedule; O(weeks) CPM date math (equivalence-swept); 2s Ollama probes; CI push-main-only + action
@@ -51,7 +51,16 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   data-date marker, "CEI – x.xx" callout, **Prev/Next + Auto-play movie**; CEI = finished ÷ what the
   prior snapshot planned for the month after its data date. Plus **Trend focus UID**
   (`/trend?target=<uid>`) and **de-overlapped chart labels** (strip common filename prefix, rotate −35°).
-  All of #58–#65 are **merged to `main`** (this doc PR is the only thing in flight).
+  All of #58–#66 are **merged to `main`**.
+
+## What shipped this sitting (PR #67)
+- **#67** Bow Wave / CEI hardening (found by reviewing the newest #64/#65 surfaces — no operator
+  feedback was pending): (a) the 48-month axis cap truncated from the RIGHT, so ≥18 months of
+  completed history + a >28-month status span silently pushed the **newest** snapshot's data-date
+  marker and CEI period off the axis while keeping stale history — the cap now sheds the **oldest**
+  months first and never the newest status month or its CEI period; (b) `_cei_body`'s
+  `(s.cei or 1) < 0.8` made a CEI of exactly **0.00** (the worst score) render green via falsy
+  zero — now `is not None and < 0.8`, matching `cei.js`. Regression tests for both.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -87,7 +96,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**523 passed, 3 skipped; parity 10/10; engine ≈99%; overall ≈99%; egress + air-gap green; bandit/pip-
+**526 passed, 3 skipped; parity 10/10; engine ≈99%; overall ≈99%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 
@@ -106,4 +115,4 @@ Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and continue exactly per its
 > "Next steps / open items". Stay on branch `claude/clever-carson-uovtkk` (recreate from `origin/main`),
 > keep `pytest -m parity` at 10/10, open draft PRs (don't merge — the operator does), and never let
-> schedule data leave the machine. Model: Opus 4.8 (1M).
+> schedule data leave the machine. Model: Fable 5 (1M).

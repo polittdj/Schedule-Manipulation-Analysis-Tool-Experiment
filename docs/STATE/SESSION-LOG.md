@@ -918,3 +918,26 @@ this file is the running history.
 ### Parity / tests
 - **523 passed, 3 skipped**; parity 10/10; engine ≈99%, overall ≈99%; egress + air-gap green;
   ruff + format + mypy(strict) + bandit clean (3.11 + 3.13).
+
+## Steady-state sitting — 2026-06-11 (PR #67; Fable 5)
+
+- Resumed per HANDOFF on a fresh clone; verified every gate green **before** any change
+  (523 passed, 3 skipped; parity 10/10; CI on `main` green through #66). No operator feedback
+  pending (no issues / PR comments); `.pbix` still not deposited — **M15 stays blocked**.
+- With no feedback to act on, reviewed the newest least-soaked surfaces (#64/#65) and found two
+  real bugs, fixed as **PR #67 — Bow Wave / CEI hardening**:
+  - `engine/bow_wave.py`: the 48-month axis cap truncated from the RIGHT, so ≥18 months of
+    completed history + a >28-month status span (plausible for the operator's program) silently
+    pushed the **newest** snapshot's data-date marker (`status_index=None`) and CEI period off the
+    axis while keeping stale history — violating the code's own "every status month on-axis"
+    comment. The cap now sheds the **oldest** months first, then surplus look-ahead, then the
+    oldest status months; the newest status month and its CEI period are never shed.
+  - `web/app.py` `_cei_body`: `(s.cei or 1) < 0.8` — a CEI of exactly **0.00** (the worst score:
+    nothing the prior snapshot planned actually finished) rendered green/pass via falsy zero.
+    Now `is not None and < 0.8`, matching `cei.js`'s correct handling.
+- Docs brought current (HANDOFF green state + model line, FINAL-REPORT §7 counts/PR range +
+  post-build bullets for #64/#65).
+
+### Parity / tests
+- **526 passed, 3 skipped** (3 new regression tests); parity 10/10; engine ≈99%, overall ≈99%;
+  ruff + format + mypy(strict) + bandit clean.
