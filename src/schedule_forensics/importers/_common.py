@@ -70,7 +70,9 @@ def parse_datetime(value: str | None) -> dt.datetime | None:
         return None
     if parsed.year < _MIN_REAL_YEAR:
         return None
-    return parsed
+    # some exports tag datetimes with an offset/Z; the working-time axis is wall-clock local,
+    # and mixing aware + naive datetimes breaks comparisons downstream — keep the local time.
+    return parsed.replace(tzinfo=None)
 
 
 def _dec(group: str | None) -> Decimal:
@@ -137,11 +139,13 @@ def parse_float(value: str | None) -> float | None:
 
 
 def parse_percent(value: str | None) -> float:
-    """Parse a percent value (0-100); ``None``/empty → ``0.0``.
+    """Parse a percent value, clamped to ``0..100``; ``None``/empty → ``0.0``.
 
-    The model bounds-checks ``0 <= pct <= 100`` and raises on a violation, so an
-    out-of-range source value fails loudly at construction rather than being
-    silently clamped.
+    Real exports occasionally carry out-of-range percents (tool quirks, P6 round-trips);
+    they are data noise, not corruption — clamp to the valid range rather than reject the
+    whole file (the model still bounds-checks ``0 <= pct <= 100`` as the backstop).
     """
     parsed = parse_float(value)
-    return 0.0 if parsed is None else parsed
+    if parsed is None:
+        return 0.0
+    return min(100.0, max(0.0, parsed))

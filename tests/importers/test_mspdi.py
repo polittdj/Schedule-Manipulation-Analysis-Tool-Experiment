@@ -299,6 +299,45 @@ def test_dateless_hard_constraint_is_normalized_to_asap() -> None:
     assert sch.tasks_by_id[1].constraint_type is ConstraintType.ASAP
 
 
+def test_timezone_tagged_dates_are_naive_local() -> None:
+    # some exports tag datetimes with Z/offsets; aware+naive mixes crash comparisons later
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<Start>2025-01-06T08:00:00Z</Start><Finish>2025-01-06T17:00:00-05:00</Finish>"
+        "</Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    t = sch.tasks_by_id[1]
+    assert t.start == dt.datetime(2025, 1, 6, 8, 0) and t.start.tzinfo is None
+    assert t.finish is not None and t.finish.tzinfo is None
+
+
+def test_out_of_range_percent_is_clamped_not_fatal() -> None:
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<PercentComplete>120</PercentComplete></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration>"
+        "<PercentComplete>-5</PercentComplete></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].percent_complete == 100.0
+    assert sch.tasks_by_id[2].percent_complete == 0.0
+
+
+def test_negative_costs_are_tolerated() -> None:
+    # credits/adjustments appear as negative Cost/ActualCost in real exports; a negative
+    # BASELINE cost (the EV budget basis) clamps to 0 instead of sinking the file
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<Cost>-150.5</Cost><ActualCost>-75</ActualCost>"
+        "<Baseline><Number>0</Number><Cost>-200</Cost></Baseline></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    t = sch.tasks_by_id[1]
+    assert t.cost == -150.5 and t.actual_cost == -75.0  # preserved (real data)
+    assert t.budgeted_cost == 0.0  # clamped (EV basis must be non-negative)
+
+
 def test_dated_constraint_is_preserved() -> None:
     # a well-formed dated constraint must still be honored (no over-normalization)
     body = (
@@ -365,13 +404,15 @@ def test_baseline_fallback_to_first_when_no_number_zero() -> None:
     assert sched.task_by_id(1).baseline_finish == dt.datetime(2025, 2, 2, 17, 0)
 
 
-def test_task_bounds_violation_raises() -> None:
+def test_physical_percent_is_clamped_and_absent_stays_none() -> None:
     body = (
         "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
-        "<PercentComplete>150</PercentComplete></Task></Tasks>"
+        "<PhysicalPercentComplete>150</PhysicalPercentComplete></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="task UID 1 is invalid"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].physical_percent_complete == 100.0
+    assert sch.tasks_by_id[2].physical_percent_complete is None
 
 
 def test_namespaceless_document_parses() -> None:

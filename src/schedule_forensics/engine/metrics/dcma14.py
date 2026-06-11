@@ -320,6 +320,9 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
         evaluate(measured, 0.0, Direction.EQ),
         0.0,
         Direction.EQ,
+        # on FAIL, cite the tested activity: its injected delay did not flow to the finish —
+        # the verifiable starting point for repairing the broken controlling logic (§6).
+        offender_uids=() if moved else (target.unique_id,),
     )
 
 
@@ -334,6 +337,14 @@ def _cpli(result: CPMResult) -> MetricResult:
         )
     project_float = min((t.total_float for t in result.timings.values()), default=0)
     cpli = (length + project_float) / length
+    status = evaluate(cpli, 0.95, Direction.GE)
+    # on FAIL, cite the most-negative-float activities — the chain that is consuming the
+    # project's float and dragging CPLI under threshold (verifiable, §6).
+    offenders: tuple[int, ...] = ()
+    if status is CheckStatus.FAIL:
+        offenders = tuple(
+            sorted(uid for uid, t in result.timings.items() if t.total_float == project_float)
+        )
     return MetricResult(
         "DCMA13",
         "CPLI",
@@ -341,7 +352,8 @@ def _cpli(result: CPMResult) -> MetricResult:
         1,
         round(cpli, 2),
         "ratio",
-        evaluate(cpli, 0.95, Direction.GE),
+        status,
         0.95,
         Direction.GE,
+        offenders,
     )

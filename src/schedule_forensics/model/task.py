@@ -76,8 +76,11 @@ class Task(StrictFrozenModel):
     baseline_finish: dt.datetime | None = None
 
     # --- cost / earned value ---
-    cost: float | None = Field(default=None, ge=0.0)  # scheduled cost
-    actual_cost: float | None = Field(default=None, ge=0.0)  # ACWP basis
+    # scheduled/actual cost may legitimately be negative in real exports (credits,
+    # adjustments); the BAC basis (budgeted_cost) stays non-negative (EV cannot be earned
+    # against a negative budget — importers clamp a negative baseline cost to 0).
+    cost: float | None = None  # scheduled cost
+    actual_cost: float | None = None  # ACWP basis
     budgeted_cost: float = Field(default=0.0, ge=0.0)  # baseline cost / BAC (EV basis)
 
     # --- resource assignment (DCMA Resources check) ---

@@ -26,9 +26,9 @@ def _upload(client: TestClient, name: str) -> None:
 
 
 def test_trend_view_needs_two_versions(client: TestClient) -> None:
-    assert "at least two versions" in client.get("/trend").text
+    assert "at least two analyzable versions" in client.get("/trend").text
     _upload(client, "Project5")
-    assert "at least two versions" in client.get("/trend").text
+    assert "at least two analyzable versions" in client.get("/trend").text
     assert client.get("/api/trend").status_code == 400
 
 
@@ -57,7 +57,7 @@ def test_api_trend_serves_chart_series(client: TestClient) -> None:
 
 
 def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> None:
-    assert "Load at least one schedule" in client.get("/briefing").text
+    assert "Load at least one analyzable schedule" in client.get("/briefing").text
     _upload(client, "Project2")
     _upload(client, "Project5")
     page = client.get("/briefing").text

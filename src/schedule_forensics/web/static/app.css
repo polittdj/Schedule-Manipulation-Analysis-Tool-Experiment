@@ -38,6 +38,13 @@
 .g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: #e6edf3; transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
 #grid tr.sum td { color: #aab6c4; font-weight: 600; }
+#grid .filter-row td { padding: 2px 4px; }
+#grid .filter-row input { width: 100%; min-width: 56px; font-size: 12px; padding: 3px 6px; }
+.gantt-bar.done { opacity: .45; }
+.gantt-row.done span { color: #5c6b7c; text-decoration: line-through; }
+#gantt .g-ms { position: absolute; top: 2px; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg); }
+#gantt .g-ms.tier-DRIVING { background: var(--bad); } #gantt .g-ms.tier-SECONDARY { background: var(--warn); }
+#gantt .g-ms.tier-TERTIARY { background: var(--accent); } #gantt .g-ms.tier-BEYOND { background: #3a4759; }
 .gantt-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 8px; margin: 2px 0; font-size: 12px; }
 .gantt-track { position: relative; height: 14px; background: #0a0f1a; border-radius: 3px; }
 .gantt-bar { position: absolute; height: 100%; border-radius: 3px; }

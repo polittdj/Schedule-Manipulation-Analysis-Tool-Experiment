@@ -400,56 +400,78 @@ def create_app(
             return _page(
                 st, "Compare", "<div class=panel>Load at least two versions to compare.</div>"
             )
-        keys = list(st.schedules)
-        prior_key, current_key = keys[-2], keys[-1]
-        prior, current = st.schedules[prior_key], st.schedules[current_key]
         # Forensic order is by data date (the Acumen/SSI ProjectTimeNow pattern), not load
-        # order: the snapshot with the earlier status date is the prior, whichever was
-        # uploaded first. Load order stands only when a data date is missing or tied.
-        if (
-            prior.status_date is not None
-            and current.status_date is not None
-            and prior.status_date > current.status_date
-        ):
-            prior_key, current_key = current_key, prior_key
-            prior, current = current, prior
-        prior_cpm = st.analysis_for(prior_key, prior).cpm
-        current_cpm = st.analysis_for(current_key, current).cpm
-        return _page(st, "Compare", _compare_body(prior, current, prior_cpm, current_cpm))
+        # order; unschedulable versions (e.g. a logic cycle) are skipped, never a 500.
+        schedules, cpms, skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return _page(
+                st,
+                "Compare",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least two analyzable versions to compare.</div>",
+            )
+        prior, current = schedules[-2], schedules[-1]
+        body = _skipped_notice(skipped) + _compare_body(prior, current, cpms[-2], cpms[-1])
+        return _page(st, "Compare", body)
+
+    def _solvable_versions() -> tuple[list[Schedule], list[CPMResult], list[str]]:
+        """Ordered (schedules, cpms) for every loaded version whose network solves,
+        plus the names of versions skipped (e.g. a logic cycle) — multi-version views
+        must degrade to the analyzable subset, never 500 on one bad file."""
+        st = session()
+        schedules: list[Schedule] = []
+        cpms: list[CPMResult] = []
+        skipped: list[str] = []
+        for key, sch in st.ordered_versions():
+            try:
+                cpms.append(st.analysis_for(key, sch).cpm)
+                schedules.append(sch)
+            except CPMError:
+                skipped.append(key)
+        return schedules, cpms, skipped
+
+    def _skipped_notice(skipped: list[str]) -> str:
+        if not skipped:
+            return ""
+        names = ", ".join(_e(s) for s in skipped)
+        return (
+            f'<div class="notice err">Skipped (network cannot be solved — see each report '
+            f"for the reason): {names}</div>"
+        )
 
     @app.get("/trend", response_class=HTMLResponse)
     def trend_view() -> HTMLResponse:
         st = session()
-        if len(st.schedules) < 2:
+        schedules, cpms, skipped = _solvable_versions()
+        if len(schedules) < 2:
             return _page(
-                st, "Trend", "<div class=panel>Load at least two versions to see a trend.</div>"
+                st,
+                "Trend",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least two analyzable versions to see a trend.</div>",
             )
-        pairs = st.ordered_versions()
-        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
-        return _page(st, "Trend", _trend_body([s for _, s in pairs], cpms))
+        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms))
 
     @app.get("/api/trend")
     def trend_json() -> JSONResponse:
-        st = session()
-        if len(st.schedules) < 2:
-            return JSONResponse({"error": "need at least two versions"}, status_code=400)
-        pairs = st.ordered_versions()
-        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
-        return JSONResponse(_trend_data([s for _, s in pairs], cpms))
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        return JSONResponse(_trend_data(schedules, cpms))
 
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
         st = session()
-        if not st.schedules:
+        schedules, cpms, skipped = _solvable_versions()
+        if not schedules:
             return _page(
                 st,
                 "Executive Briefing",
-                "<div class=panel>Load at least one schedule to build the briefing.</div>",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least one analyzable schedule to build the briefing.</div>",
             )
-        pairs = st.ordered_versions()
-        schedules = [s for _, s in pairs]
-        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
-        return _page(st, "Executive Briefing", _briefing_body(build_briefing(schedules, cpms=cpms)))
+        body = _skipped_notice(skipped) + _briefing_body(build_briefing(schedules, cpms=cpms))
+        return _page(st, "Executive Briefing", body)
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
@@ -594,7 +616,8 @@ def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
 <input id=targetUid type=number min=1 placeholder="UID">
 secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
-<button id=ganttBtn type=button>Trace</button></div>
+<button id=ganttBtn type=button>Trace</button>
+<label><input id=showDone type=checkbox checked> show completed tasks</label></div>
 <div id=gantt></div>
 <h3>Activities &amp; Gantt <span class=muted>(add/remove columns; bars on the right — red = critical,
 diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
@@ -720,19 +743,22 @@ def _driving_data(
     rows = []
     for uid in sorted(results):
         timing = cpm.timings.get(uid)
+        task = by_id[uid]
         rows.append(
             {
                 "unique_id": uid,
-                "name": by_id[uid].name,
+                "name": task.name,
                 "tier": str(results[uid].tier),
                 "driving_slack_days": int(results[uid].driving_slack_days),
                 "on_driving_path": results[uid].on_driving_path,
                 "start_ord": timing.early_start if timing else None,
                 "finish_ord": timing.early_finish if timing else None,
+                "percent_complete": task.percent_complete,
+                "is_milestone": task.is_milestone,
             }
         )
-    # order the Gantt by start so the driving chain reads top-to-bottom
-    rows.sort(key=lambda r: (r["start_ord"] is None, r["start_ord"]))
+    # waterfall order: earliest finish first, so the chain cascades to the target's finish
+    rows.sort(key=lambda r: (r["finish_ord"] is None, r["finish_ord"], r["start_ord"]))
     return {"target_uid": target, "target_name": by_id[target].name, "rows": rows}
 
 

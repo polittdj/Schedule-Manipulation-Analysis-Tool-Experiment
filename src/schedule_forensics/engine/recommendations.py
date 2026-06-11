@@ -102,11 +102,32 @@ def recommend(
     return tuple(findings)
 
 
+def _finish_driver_citations(schedule: Schedule, cpm: CPMResult) -> tuple[Citation, ...]:
+    """Cite the activities controlling the project finish (early finish == network finish).
+
+    The fallback for schedule-level checks (e.g. Critical Path Test, CPLI) that can fail
+    without per-activity offenders — the §6 never-uncited invariant must hold for every
+    finding, and the finish-controlling chain is the verifiable anchor of those checks.
+    """
+    return _cite(
+        schedule,
+        tuple(
+            sorted(uid for uid, t in cpm.timings.items() if t.early_finish == cpm.project_finish)
+        ),
+    )
+
+
 def _dcma_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
     audit = audit_schedule(schedule, cpm_cur)
     out: list[Finding] = []
+    fallback: tuple[Citation, ...] | None = None
     for check in audit.failed_checks:
         severity = Severity.HIGH if check.metric_id in _HIGH_SEVERITY_DCMA else Severity.MEDIUM
+        citations = check.citations
+        if not citations:
+            if fallback is None:
+                fallback = _finish_driver_citations(schedule, cpm_cur)
+            citations = fallback
         out.append(
             Finding(
                 category=Category.CONCERN,
@@ -118,7 +139,7 @@ def _dcma_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
                     f"{check.threshold} threshold."
                 ),
                 course_of_action=check.suggested_improvement,
-                citations=check.citations,
+                citations=citations,
             )
         )
     return out

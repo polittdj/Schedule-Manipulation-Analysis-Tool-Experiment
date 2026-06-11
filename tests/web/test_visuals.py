@@ -65,6 +65,23 @@ def test_app_js_renders_the_gantt_timeline(client: TestClient) -> None:
     assert ".g-bar" in css and ".g-status" in css
 
 
+def test_driving_rows_carry_completion_and_milestone_flags(client: TestClient) -> None:
+    # the trace's "show completed" toggle and milestone diamonds need these per row
+    dj = client.get("/api/driving/Project5?target=143").json()
+    assert all("percent_complete" in r and "is_milestone" in r for r in dj["rows"])
+    # waterfall order: earliest finish first
+    finishes = [r["finish_ord"] for r in dj["rows"] if r["finish_ord"] is not None]
+    assert finishes == sorted(finishes)
+
+
+def test_grid_filters_and_trace_toggle_are_wired(client: TestClient) -> None:
+    page = client.get("/analysis/Project5").text
+    assert "id=showDone" in page  # user chooses whether completed tasks display in the trace
+    js = client.get("/static/app.js").text
+    assert "rowMatches" in js and "filter-row" in js  # per-column filters (MS-Project style)
+    assert "showDone" in js and "lastDriving" in js  # completed-toggle re-renders the trace
+
+
 def test_driving_endpoint_returns_tiers_and_gantt_ordinals(client: TestClient) -> None:
     dj = client.get("/api/driving/Project5?target=143&secondary=10&tertiary=20").json()
     assert dj["target_uid"] == 143 and dj["rows"]

@@ -264,7 +264,9 @@ def _parse_task(
             constraint_date=constraint_date,
             deadline=parse_datetime(_text(task_el, "Deadline")),
             percent_complete=parse_percent(_text(task_el, "PercentComplete")),
-            physical_percent_complete=parse_float(_text(task_el, "PhysicalPercentComplete")),
+            physical_percent_complete=_clamped_percent_or_none(
+                _text(task_el, "PhysicalPercentComplete")
+            ),
             start=parse_datetime(_text(task_el, "Start")),
             finish=parse_datetime(_text(task_el, "Finish")),
             actual_start=parse_datetime(_text(task_el, "ActualStart")),
@@ -279,6 +281,13 @@ def _parse_task(
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc
+
+
+def _clamped_percent_or_none(value: str | None) -> float | None:
+    """Optional percent clamped to 0..100; absent stays ``None`` (same noise class as
+    ``parse_percent`` — out-of-range physical % must not sink the file)."""
+    parsed = parse_float(value)
+    return None if parsed is None else min(100.0, max(0.0, parsed))
 
 
 def _optional_minutes(parent: ET.Element, tag: str) -> int | None:
@@ -309,7 +318,9 @@ def _primary_baseline(
     return (
         parse_datetime(_text(chosen, "Start")),
         parse_datetime(_text(chosen, "Finish")),
-        0.0 if cost is None else cost,
+        # the BAC basis cannot be negative (EV is never earned against a negative budget);
+        # a negative baseline cost (a credit) clamps to 0 rather than rejecting the file
+        max(0.0, cost) if cost is not None else 0.0,
         duration,
     )
 

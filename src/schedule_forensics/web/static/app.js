@@ -170,16 +170,58 @@
     return cell;
   }
 
+  const filters = {}; // field key -> filter text (MS-Project-style per-column filter)
+
+  function rowMatches(act, fields) {
+    return fields.every((f) => {
+      const needle = (filters[f.key] || "").trim();
+      if (!needle) return true;
+      const raw = act[f.key];
+      // numeric comparators: >5, <10, =3 (work on the raw value when it is a number)
+      const m = needle.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
+      if (m && typeof raw === "number") {
+        const n = parseFloat(m[2]);
+        if (m[1] === ">") return raw > n;
+        if (m[1] === "<") return raw < n;
+        if (m[1] === ">=") return raw >= n;
+        if (m[1] === "<=") return raw <= n;
+        return raw === n;
+      }
+      return fmt(raw).toLowerCase().includes(needle.toLowerCase());
+    });
+  }
+
+  function renderBody(tbody, fields, range) {
+    const rows = activities
+      .filter((act) => rowMatches(act, fields))
+      .sort((a, b) => {
+        const x = a[sortKey], y = b[sortKey];
+        const cmp = x < y ? -1 : x > y ? 1 : 0;
+        return sortDesc ? -cmp : cmp;
+      });
+    tbody.innerHTML = "";
+    rows.forEach((act) => {
+      const tr = el("tr");
+      if (act.is_critical) tr.className = "crit";
+      if (act.is_summary) tr.className = (tr.className + " sum").trim();
+      fields.forEach((f) => tr.appendChild(el("td", { text: fmt(act[f.key]) })));
+      if (range) tr.appendChild(timelineCell(act, range));
+      tr.addEventListener("click", () => drill(act));
+      tbody.appendChild(tr);
+    });
+    if (!rows.length) {
+      const tr = el("tr");
+      tr.appendChild(el("td", { class: "muted", text: "No activities match the filters." }));
+      tbody.appendChild(tr);
+    }
+  }
+
   function renderGrid() {
     const grid = document.getElementById("grid");
     const fields = ALL_FIELDS.filter((f) => f.on);
-    const rows = activities.slice().sort((a, b) => {
-      const x = a[sortKey], y = b[sortKey];
-      const cmp = x < y ? -1 : x > y ? 1 : 0;
-      return sortDesc ? -cmp : cmp;
-    });
-    const range = timeRange(rows);
+    const range = timeRange(activities);
     const table = el("table", { class: "gantt-grid" });
+    const thead = el("thead");
     const head = el("tr");
     fields.forEach((f) => {
       const th = el("th", { text: f.label });
@@ -197,16 +239,23 @@
       });
       head.appendChild(th);
     }
-    table.appendChild(head);
-    rows.forEach((act) => {
-      const tr = el("tr");
-      if (act.is_critical) tr.className = "crit";
-      if (act.is_summary) tr.className = (tr.className + " sum").trim();
-      fields.forEach((f) => tr.appendChild(el("td", { text: fmt(act[f.key]) })));
-      if (range) tr.appendChild(timelineCell(act, range));
-      tr.addEventListener("click", () => drill(act));
-      table.appendChild(tr);
+    thead.appendChild(head);
+    // per-column filter row (type to filter; numbers also take >n, <n, >=n, <=n, =n)
+    const filterRow = el("tr", { class: "filter-row" });
+    const tbody = el("tbody");
+    fields.forEach((f) => {
+      const td = el("td");
+      const input = el("input", { type: "text", placeholder: "filter…", value: filters[f.key] || "" });
+      input.addEventListener("input", () => { filters[f.key] = input.value; renderBody(tbody, fields, range); });
+      input.addEventListener("click", (ev) => ev.stopPropagation());
+      td.appendChild(input);
+      filterRow.appendChild(td);
     });
+    if (range) filterRow.appendChild(el("td", { class: "muted" }));
+    thead.appendChild(filterRow);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    renderBody(tbody, fields, range);
     grid.innerHTML = "";
     grid.appendChild(table);
   }
@@ -226,28 +275,43 @@
     panel.appendChild(dl);
   }
 
+  let lastDriving = null; // re-render the trace when "show completed" toggles
+
   function renderGantt(driving) {
+    lastDriving = driving;
     const box = document.getElementById("gantt");
     box.innerHTML = "";
-    box.appendChild(el("h3", { text: "Driving path to UID " + driving.target_uid + " — " + (driving.target_name || "") }));
+    box.appendChild(el("h3", { text: "Driving path to UID " + driving.target_uid + " — " + (driving.target_name || "") + " (waterfall: earliest finish first)" }));
     const legend = el("div", { class: "legend" });
     ["DRIVING", "SECONDARY", "TERTIARY", "BEYOND"].forEach((t) =>
       legend.appendChild(el("span", { class: "tier-" + t, text: t.toLowerCase() })));
     box.appendChild(legend);
-    const rows = driving.rows;
-    if (!rows.length) { box.appendChild(el("p", { class: "muted", text: "No ancestors trace to that UID." })); return; }
+    const showDone = document.getElementById("showDone");
+    const includeDone = !showDone || showDone.checked;
+    // waterfall: earliest finish -> latest finish (the server pre-sorts; keep it stable here)
+    const rows = driving.rows
+      .filter((r) => includeDone || (r.percent_complete || 0) < 100)
+      .slice()
+      .sort((a, b) => (a.finish_ord ?? Infinity) - (b.finish_ord ?? Infinity));
+    if (!rows.length) { box.appendChild(el("p", { class: "muted", text: "No activities to show (try enabling completed tasks)." })); return; }
     const times = rows.flatMap((r) => [r.start_ord, r.finish_ord]).filter((x) => x != null);
     const lo = Math.min(...times), hi = Math.max(...times), span = Math.max(1, hi - lo);
     rows.forEach((r) => {
       const track = el("div", { class: "gantt-track" });
-      if (r.start_ord != null && r.finish_ord != null) {
+      const done = (r.percent_complete || 0) >= 100;
+      if (r.is_milestone && r.start_ord != null) {
+        // milestones render as diamonds at their date, tinted by tier
+        const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + ((r.start_ord - lo) / span) * 100 + "%" });
+        ms.title = r.name + " (milestone) — driving slack " + r.driving_slack_days + "d (" + r.tier + ")";
+        track.appendChild(ms);
+      } else if (r.start_ord != null && r.finish_ord != null) {
         const left = ((r.start_ord - lo) / span) * 100;
         const width = Math.max(1, ((r.finish_ord - r.start_ord) / span) * 100);
-        const bar = el("div", { class: "gantt-bar tier-" + r.tier, style: "left:" + left + "%;width:" + width + "%" });
-        bar.title = r.name + " — driving slack " + r.driving_slack_days + "d (" + r.tier + ")";
+        const bar = el("div", { class: "gantt-bar tier-" + r.tier + (done ? " done" : ""), style: "left:" + left + "%;width:" + width + "%" });
+        bar.title = r.name + " — driving slack " + r.driving_slack_days + "d (" + r.tier + ")" + (done ? " — complete" : "");
         track.appendChild(bar);
       }
-      box.appendChild(el("div", { class: "gantt-row" }, [
+      box.appendChild(el("div", { class: "gantt-row" + (done ? " done" : "") }, [
         el("span", { text: "UID " + r.unique_id + " " + r.name.slice(0, 22) }), track,
       ]));
     });
@@ -276,4 +340,6 @@
     .catch(() => { document.getElementById("charts").textContent = "Failed to load analysis."; });
 
   document.getElementById("ganttBtn").addEventListener("click", loadGantt);
+  const showDone = document.getElementById("showDone");
+  if (showDone) showDone.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
 })();
