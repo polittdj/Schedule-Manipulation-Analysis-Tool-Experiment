@@ -151,7 +151,7 @@ def _shortened_durations(
             severity=Severity.MEDIUM,
             metric_id="MANIP_SHORTENED_DURATION",
             title=f"{len(offenders)} incomplete activities had their duration shortened",
-            detail="Remaining duration was reduced on still-incomplete work — a common way to "
+            detail="Total duration was reduced on still-incomplete work — a common way to "
             "absorb a slip without moving the finish date.",
             course_of_action="Confirm the shorter durations reflect a real plan change with "
             "basis, not compression to mask a slip.",
@@ -188,30 +188,51 @@ def _baseline_date_changes(
 def _actual_date_changes(
     diff: VersionDiff, cur_by_id: dict[int, Task], current_file: str | None
 ) -> list[Finding]:
-    offenders: list[Citation] = []
+    edited: list[Citation] = []
+    erased: list[Citation] = []
     for td in diff.changed_tasks:
         for field in ("actual_start", "actual_finish"):
             delta = td.changed(field)
+            if delta is None or delta.before is None:
+                # a newly-set actual (None -> date) is normal progress, not manipulation
+                continue
             # an EDITED actual (was a date, now a different date) is the 06A504* signal;
-            # a newly-set actual (None -> date) is normal progress, not manipulation.
-            if delta is not None and delta.before is not None and delta.after is not None:
-                offenders.append(_cite(current_file, cur_by_id[td.unique_id]))
-                break
-    if not offenders:
-        return []
-    return [
-        Finding(
-            category=Category.CONCERN,
-            severity=Severity.HIGH,
-            metric_id="MANIP_ACTUAL_CHANGE",
-            title=f"{len(offenders)} activities had a previously-reported actual date changed",
-            detail="An actual start/finish reported in the prior snapshot was changed in this "
-            "one (DECM 06A504a/b) — recorded history should not move.",
-            course_of_action="Investigate why a recorded actual date changed; confirm it was a "
-            "correction with basis, not a rewrite of progress history.",
-            citations=tuple(offenders),
+            # an ERASED actual (date -> None) un-statuses recorded progress — the classic
+            # history rewrite — and is at least as suspect.
+            bucket = edited if delta.after is not None else erased
+            bucket.append(_cite(current_file, cur_by_id[td.unique_id]))
+            break
+    out: list[Finding] = []
+    if edited:
+        out.append(
+            Finding(
+                category=Category.CONCERN,
+                severity=Severity.HIGH,
+                metric_id="MANIP_ACTUAL_CHANGE",
+                title=f"{len(edited)} activities had a previously-reported actual date changed",
+                detail="An actual start/finish reported in the prior snapshot was changed in "
+                "this one (DECM 06A504a/b) — recorded history should not move.",
+                course_of_action="Investigate why a recorded actual date changed; confirm it "
+                "was a correction with basis, not a rewrite of progress history.",
+                citations=tuple(edited),
+            )
         )
-    ]
+    if erased:
+        out.append(
+            Finding(
+                category=Category.CONCERN,
+                severity=Severity.HIGH,
+                metric_id="MANIP_ACTUAL_ERASED",
+                title=f"{len(erased)} activities had a previously-reported actual date erased",
+                detail="An actual start/finish reported in the prior snapshot is gone in this "
+                "one — progress was rolled back, which recorded history should never do.",
+                course_of_action="Investigate why recorded progress was un-statused; confirm a "
+                "legitimate correction (e.g. a mis-keyed actual), not a slip being hidden by "
+                "re-opening completed work.",
+                citations=tuple(erased),
+            )
+        )
+    return out
 
 
 @dataclass(frozen=True)

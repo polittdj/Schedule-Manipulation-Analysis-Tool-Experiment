@@ -90,6 +90,7 @@ def compute_schedule_quality(
         round(percent(len(crit), n_inc), 0),
         "%",
         CheckStatus.NOT_APPLICABLE,
+        offender_uids=crit,
     )
 
     hard = tuple(t.unique_id for t in tasks if t.has_hard_constraint)
@@ -101,6 +102,7 @@ def compute_schedule_quality(
         percent(len(hard), n_tasks),
         "%",
         CheckStatus.NOT_APPLICABLE,
+        offender_uids=hard,
     )
 
     neg = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) < 0)
@@ -112,6 +114,7 @@ def compute_schedule_quality(
         percent(len(neg), n_inc),
         "%",
         CheckStatus.NOT_APPLICABLE,
+        offender_uids=neg,
     )
 
     insuff = tuple(
@@ -144,6 +147,7 @@ def compute_schedule_quality(
         percent(len(leads), n_tasks),
         "%",
         CheckStatus.NOT_APPLICABLE,
+        offender_uids=leads,
     )
 
     merge = tuple(uid for uid, c in npred.items() if c >= MERGE_HOTSPOT_MIN_PREDECESSORS)

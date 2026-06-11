@@ -108,13 +108,15 @@ def _finish_driver_citations(schedule: Schedule, cpm: CPMResult) -> tuple[Citati
     The fallback for schedule-level checks (e.g. Critical Path Test, CPLI) that can fail
     without per-activity offenders — the §6 never-uncited invariant must hold for every
     finding, and the finish-controlling chain is the verifiable anchor of those checks.
+    With no schedulable activities at all (e.g. a summary-only template), the first task
+    rows are the terminal anchor — a citation can never be empty.
     """
-    return _cite(
-        schedule,
-        tuple(
-            sorted(uid for uid, t in cpm.timings.items() if t.early_finish == cpm.project_finish)
-        ),
+    uids = tuple(
+        sorted(uid for uid, t in cpm.timings.items() if t.early_finish == cpm.project_finish)
     )
+    if not uids:
+        uids = tuple(t.unique_id for t in schedule.tasks[:3])
+    return _cite(schedule, uids)
 
 
 def _dcma_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
@@ -259,8 +261,9 @@ def _change_findings(
 
 
 def _driving_path_findings(schedule: Schedule, target_uid: int) -> list[Finding]:
-    if target_uid not in schedule.tasks_by_id:
-        return []
+    task = schedule.tasks_by_id.get(target_uid)
+    if task is None or task.is_summary:
+        return []  # summary rollups are not in the logic network — nothing to trace
     results = compute_driving_slack(schedule, target_uid=target_uid)
     on_path = tuple(sorted(uid for uid, r in results.items() if r.on_driving_path))
     if not on_path:

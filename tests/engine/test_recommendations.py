@@ -88,3 +88,25 @@ def test_driving_path_opportunity_and_missing_target() -> None:
     assert opp and opp[0].category is Category.OPPORTUNITY and opp[0].citations
     # an unknown target UID yields no driving-path finding (no crash)
     assert not any(f.metric_id == "driving_path" for f in recommend(s, target_uid=999))
+
+
+def test_summary_only_schedule_yields_cited_findings_never_empty() -> None:
+    # a summary-only template solves to an empty CPM timing set; any finding it produces
+    # must still cite something (the terminal fallback: the first task rows) — an
+    # offender-less finding once 500'd every page via the §6 citation gate
+    s = Schedule(
+        name="template",
+        project_start=MON,
+        tasks=(Task(unique_id=0, name="Root", duration_minutes=0, is_summary=True),),
+    )
+    for finding in recommend(s):
+        assert finding.citations, finding.metric_id
+
+
+def test_summary_target_uid_is_ignored_not_a_keyerror(
+    golden: Callable[[str], Schedule],
+) -> None:
+    # UID 0 is MS Project's project-summary row: present in tasks_by_id but absent from
+    # the logic network — recommend() must skip the trace, not raise KeyError
+    findings = recommend(golden("Project2"), target_uid=0)
+    assert not any(f.metric_id == "driving_path" for f in findings)

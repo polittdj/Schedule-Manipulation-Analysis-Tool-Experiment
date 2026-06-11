@@ -27,17 +27,29 @@ def _statement(finding: Finding) -> CitedStatement:
 
 
 def _clean_bill(schedule: Schedule, cpm: CPMResult) -> CitedStatement:
-    """A cited 'no issues found' statement for a well-formed schedule (cites the finish driver)."""
+    """A cited 'no issues found' statement for a well-formed schedule (cites the finish driver).
+
+    A summary-only file has no finish drivers at all — the first task rows are the
+    terminal citation anchor (§6: a statement can never be uncited).
+    """
     tasks = schedule.tasks_by_id
     drivers = tuple(
         Citation(schedule.source_file, uid, tasks[uid].name)
         for uid, t in cpm.timings.items()
         if t.early_finish == cpm.project_finish and uid in tasks
     )
+    if drivers:
+        return CitedStatement(
+            text="No DCMA, compliance, or manipulation findings were raised; the schedule is "
+            "well-formed. The cited activities control the project finish.",
+            citations=drivers,
+        )
     return CitedStatement(
-        text="No DCMA, compliance, or manipulation findings were raised; the schedule is "
-        "well-formed. The cited activities control the project finish.",
-        citations=drivers,
+        text="No DCMA, compliance, or manipulation findings were raised. No schedulable "
+        "activities were found (summary rows only) — the cited rows are the file's contents.",
+        citations=tuple(
+            Citation(schedule.source_file, t.unique_id, t.name) for t in schedule.tasks[:3]
+        ),
     )
 
 

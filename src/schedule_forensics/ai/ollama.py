@@ -69,7 +69,11 @@ class OllamaBackend:
         self._open: Opener = opener or _urllib_opener
 
     def _get(self, path: str, *, timeout: float | None = None) -> Any:
-        return json.loads(self._open(f"{self.endpoint}{path}", None, timeout or self._timeout))
+        return json.loads(
+            self._open(
+                f"{self.endpoint}{path}", None, self._timeout if timeout is None else timeout
+            )
+        )
 
     def _post(self, path: str, payload: dict[str, Any]) -> Any:
         data = json.dumps(payload).encode("utf-8")
