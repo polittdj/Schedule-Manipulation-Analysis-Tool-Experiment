@@ -162,6 +162,75 @@ def parse_float(value: str | None) -> float | None:
     return float(number) if number.is_finite() else None
 
 
+def weekday_from_source(day: int) -> int | None:
+    """MSPDI/XER day-of-week (``1``=Sunday … ``7``=Saturday) → ``date.weekday()``
+    (Mon=0 … Sun=6). Out-of-range values are data noise → ``None``."""
+    return (day + 5) % 7 if 1 <= day <= 7 else None
+
+
+def clock_minutes(value: str | None) -> int | None:
+    """A wall-clock time-of-day (``HH:MM`` or ``HH:MM:SS``) → minutes since midnight.
+
+    ``None`` for absent/garbage values (calendar fields legitimately carry noise; a bad
+    working-time span must not sink the file). Seconds are dropped — working-time grids
+    are minute-resolution.
+    """
+    if value is None:
+        return None
+    match = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?$", value.strip())
+    if match is None:
+        return None
+    hours, minutes = int(match.group(1)), int(match.group(2))
+    if hours > 24 or minutes > 59:
+        return None
+    return hours * 60 + minutes
+
+
+def working_span_minutes(start: str | None, finish: str | None) -> int:
+    """Length of one working-time span (``08:00``→``12:00`` = 240), 0 when unusable.
+
+    A finish of ``00:00`` with a later start is the sources' end-of-day midnight
+    (24:00) — P6 and MS Project both write it for spans that run to midnight.
+    """
+    from_min = clock_minutes(start)
+    to_min = clock_minutes(finish)
+    if from_min is None or to_min is None:
+        return 0
+    if to_min == 0 and from_min > 0:
+        to_min = 24 * 60
+    return max(0, to_min - from_min)
+
+
+def dominant_day_minutes(day_totals: list[int]) -> int | None:
+    """The most common positive per-day working-minute total (ties → the larger).
+
+    The engine models one contiguous working block per day, so a calendar whose days
+    differ (e.g. a half-day Friday) is represented by its dominant day length —
+    deterministic and documented (ADR-0028). ``None`` when no day has positive minutes.
+    """
+    positives = [m for m in day_totals if m > 0]
+    if not positives:
+        return None
+    counts: dict[int, int] = {}
+    for m in positives:
+        counts[m] = counts.get(m, 0) + 1
+    return max(counts, key=lambda m: (counts[m], m))
+
+
+#: P6 stores calendar exception dates as Excel serial day numbers (days since 1899-12-30).
+_EXCEL_EPOCH = dt.date(1899, 12, 30)
+
+
+def excel_serial_to_date(serial: int) -> dt.date | None:
+    """An Excel serial day number → :class:`datetime.date`; ``None`` outside 1985..2200
+    (the same "not set"/noise window as :func:`parse_datetime`)."""
+    try:
+        day = _EXCEL_EPOCH + dt.timedelta(days=serial)
+    except OverflowError:
+        return None
+    return day if _MIN_REAL_YEAR <= day.year <= 2200 else None
+
+
 def clamped_percent_or_none(value: str | None) -> float | None:
     """Optional percent clamped to 0..100; absent stays ``None`` (same noise class as
     :func:`parse_percent` — an out-of-range physical % must not sink the file)."""

@@ -39,10 +39,13 @@ from schedule_forensics.importers._common import (
     DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
     clamped_percent_or_none,
+    dominant_day_minutes,
     iso_duration_to_minutes,
     parse_datetime,
     parse_float,
     parse_percent,
+    weekday_from_source,
+    working_span_minutes,
 )
 from schedule_forensics.model import (
     Calendar,
@@ -54,6 +57,7 @@ from schedule_forensics.model import (
     Schedule,
     Task,
 )
+from schedule_forensics.model.units import MINUTES_PER_DAY
 
 logger = logging.getLogger("schedule_forensics.importers.mspdi")
 
@@ -166,7 +170,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             project_finish=project_finish,
             status_date=status_date,
             baseline_finish=baseline_finish,
-            calendar=Calendar(),  # calendar parsing deferred (ADR-0008); default 8h Mon-Fri
+            calendar=_parse_project_calendar(root),  # ADR-0028; defaults on any surprise
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
@@ -212,6 +216,128 @@ def _bool(parent: ET.Element, tag: str, *, default: bool) -> bool:
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true"}
+
+
+# --- calendar ---------------------------------------------------------------------
+
+#: Defensive cap when expanding one exception date range into holidays — real holiday
+#: ranges are days long; a malformed multi-decade range must not balloon the model.
+_MAX_EXCEPTION_RANGE_DAYS = 366
+
+
+def _parse_project_calendar(root: ET.Element) -> Calendar:
+    """``Project/CalendarUID`` → the model :class:`Calendar` (ADR-0028).
+
+    Reads the project calendar's working weekdays, its dominant per-day working-minute
+    total, and its non-working exceptions (holidays). A derived calendar with no day
+    pattern of its own walks its base chain (cycle-safe); exceptions collect across the
+    chain. The engine models ONE schedule-level calendar with one contiguous block per
+    day, so varying day lengths use the dominant total and per-task/per-resource
+    calendars stay out of scope (both documented). Any structural surprise degrades to
+    the standard 8h/Mon-Fri default with a logged note — a bad calendar must never sink
+    an otherwise valid schedule (the Law-2 tolerance posture).
+    """
+    try:
+        return _project_calendar(root)
+    except Exception:
+        logger.warning("unreadable project calendar; using the standard 8h/Mon-Fri default")
+        return Calendar()
+
+
+def _project_calendar(root: ET.Element) -> Calendar:
+    calendars_el = root.find("Calendars")
+    target_uid = _text(root, "CalendarUID")
+    if calendars_el is None or target_uid is None:
+        return Calendar()
+    by_uid: dict[str, ET.Element] = {}
+    for el in calendars_el.findall("Calendar"):
+        uid = _text(el, "UID")
+        if uid is not None:
+            by_uid[uid] = el
+    cal_el = by_uid.get(target_uid)
+    if cal_el is None:
+        return Calendar()
+
+    # the base-calendar chain: the project calendar first, then its bases (cycle-safe;
+    # the "-1" base UID of a base calendar resolves to nothing and ends the walk)
+    chain: list[ET.Element] = []
+    seen: set[str] = set()
+    cursor: ET.Element | None = cal_el
+    cursor_uid = target_uid
+    while cursor is not None and cursor_uid not in seen:
+        chain.append(cursor)
+        seen.add(cursor_uid)
+        base_uid = _text(cursor, "BaseCalendarUID")
+        cursor = by_uid.get(base_uid) if base_uid is not None else None
+        cursor_uid = base_uid or ""
+
+    work_weekdays: set[int] = set()
+    day_totals: list[int] = []
+    holidays: set[dt.date] = set()
+    skipped_working_exceptions = 0
+    pattern_found = False
+    for el in chain:
+        weekdays_el = el.find("WeekDays")
+        entries = [] if weekdays_el is None else weekdays_el.findall("WeekDay")
+        # old-style exception entries (DayType 0 + TimePeriod) apply at every chain level
+        for wd in entries:
+            if (_int(wd, "DayType") or 0) != 0:
+                continue
+            if _bool(wd, "DayWorking", default=False):
+                skipped_working_exceptions += 1  # extra working days are out of model scope
+            else:
+                holidays.update(_exception_range(wd.find("TimePeriod")))
+        # the weekday pattern comes from the FIRST chain member that defines one (a
+        # derived resource/project calendar without WeekDays inherits its base's week)
+        day_entries = [wd for wd in entries if (_int(wd, "DayType") or 0) != 0]
+        if day_entries and not pattern_found:
+            pattern_found = True
+            for wd in day_entries:
+                weekday = weekday_from_source(_int(wd, "DayType") or 0)
+                if weekday is None or not _bool(wd, "DayWorking", default=False):
+                    continue
+                work_weekdays.add(weekday)
+                minutes = sum(
+                    working_span_minutes(_text(wt, "FromTime"), _text(wt, "ToTime"))
+                    for wt in wd.iter("WorkingTime")
+                )
+                if minutes > 0:
+                    day_totals.append(minutes)
+        # modern exceptions, collected across the whole chain
+        for exc in el.iter("Exception"):
+            if _bool(exc, "DayWorking", default=False):
+                skipped_working_exceptions += 1
+            else:
+                holidays.update(_exception_range(exc.find("TimePeriod")))
+
+    if not work_weekdays:
+        return Calendar()  # no usable weekday pattern anywhere — keep the safe default
+    if skipped_working_exceptions:
+        logger.info(
+            "ignored %d working calendar exception(s) (outside the single-block day model)",
+            skipped_working_exceptions,
+        )
+    # a DayWorking day with no WorkingTimes means "the default times" (480) in MS Project
+    minutes_per_day = dominant_day_minutes(day_totals) or MINUTES_PER_DAY
+    return Calendar(
+        name=_text(cal_el, "Name") or "Standard",
+        working_minutes_per_day=minutes_per_day,
+        work_weekdays=tuple(sorted(work_weekdays)),
+        # a weekend holiday is a no-op for the engine; keep the model lean
+        holidays=tuple(sorted(h for h in holidays if h.weekday() in work_weekdays)),
+    )
+
+
+def _exception_range(period_el: ET.Element | None) -> set[dt.date]:
+    """A ``TimePeriod``'s ``FromDate``..``ToDate`` (inclusive) as dates, capped defensively."""
+    if period_el is None:
+        return set()
+    start = parse_datetime(_text(period_el, "FromDate"))
+    finish = parse_datetime(_text(period_el, "ToDate"))
+    if start is None or finish is None or finish < start:
+        return set()
+    days = min((finish.date() - start.date()).days, _MAX_EXCEPTION_RANGE_DAYS - 1)
+    return {start.date() + dt.timedelta(days=i) for i in range(days + 1)}
 
 
 # --- task ------------------------------------------------------------------------

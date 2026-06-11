@@ -994,3 +994,29 @@ this file is the running history.
 ### Parity / tests
 - **579 passed, 3 skipped** (17 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies.
+
+
+## Calendar-parsing sitting — 2026-06-11 (PR #70; Fable 5)
+
+- PR #69 (the four ADR-0026 deferred items) was **merged**; post-merge `main` CI green;
+  continued with the top remaining deferred item: **MSPDI/XER project-calendar parsing**
+  (ADR-0028) — `.mpp`/`.xml`/`.xer` no longer assume the 8h/Mon-Fri default.
+- Shared helpers in `importers/_common.py` (`weekday_from_source`, `clock_minutes`,
+  `working_span_minutes` incl. midnight-end, `dominant_day_minutes` modal-with-larger-tiebreak,
+  `excel_serial_to_date` with the 1985..2200 noise window).
+- **MSPDI** `_parse_project_calendar`: CalendarUID → base-calendar chain (cycle-safe; derived
+  calendars inherit the base week, exceptions collect across the chain); legacy DayType-0 and
+  modern Exceptions; DayWorking-without-times → 480; exception ranges capped at 366 days.
+- **XER** `_parse_project_calendar`: PROJECT.clndr_id → CALENDAR row (default_flag=Y fallback);
+  packed `clndr_data` via anchored patterns (day nodes / s|f spans / d|serial exceptions);
+  base_clndr_id chain; day_hr_cnt fallback.
+- **Fail-soft everywhere**: a bad calendar logs + degrades to the default, never sinks the file.
+  Working exceptions (changed hours) are skipped + logged (single-block model). Weekend
+  holidays dropped. `Save .json` round-trips holidays now.
+- **Parity-verified by inspection + pinned test**: the goldens' project calendar is the textbook
+  Standard (2×4h Mon-Fri, zero exceptions across all 35/36 calendars' relevant chain) → parsing
+  is behaviorally identical to the old default; the curated XER fixture has no CALENDAR table.
+
+### Parity / tests
+- **608 passed, 3 skipped** (29 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean; zero new dependencies.

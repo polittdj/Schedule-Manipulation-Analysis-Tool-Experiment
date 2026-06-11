@@ -94,3 +94,63 @@ def test_parse_float_rejects_garbage() -> None:
 )
 def test_parse_percent(value: str | None, expected: float) -> None:
     assert parse_percent(value) == expected
+
+
+def test_weekday_from_source_maps_sunday1_to_python_weekdays() -> None:
+    from schedule_forensics.importers._common import weekday_from_source
+
+    assert weekday_from_source(1) == 6  # Sunday
+    assert weekday_from_source(2) == 0  # Monday
+    assert weekday_from_source(7) == 5  # Saturday
+    assert weekday_from_source(0) is None  # out of range = data noise
+    assert weekday_from_source(8) is None
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("08:00", 480),
+        ("08:00:00", 480),
+        ("17:30", 1050),
+        ("00:00", 0),
+        ("24:00", 1440),
+        (None, None),
+        ("", None),
+        ("8am", None),  # garbage is noise, never a crash
+        ("25:00", None),
+        ("08:61", None),
+    ],
+)
+def test_clock_minutes(value: str | None, expected: int | None) -> None:
+    from schedule_forensics.importers._common import clock_minutes
+
+    assert clock_minutes(value) == expected
+
+
+def test_working_span_minutes_handles_midnight_end_and_garbage() -> None:
+    from schedule_forensics.importers._common import working_span_minutes
+
+    assert working_span_minutes("08:00", "12:00") == 240
+    assert working_span_minutes("13:00:00", "17:00:00") == 240
+    # a 00:00 finish after a later start is the sources' end-of-day midnight (24:00)
+    assert working_span_minutes("18:00", "00:00") == 360
+    assert working_span_minutes("12:00", "08:00") == 0  # inverted span is noise
+    assert working_span_minutes(None, "12:00") == 0
+    assert working_span_minutes("08:00", "junk") == 0
+
+
+def test_dominant_day_minutes_is_modal_with_larger_tiebreak() -> None:
+    from schedule_forensics.importers._common import dominant_day_minutes
+
+    assert dominant_day_minutes([480, 480, 480, 480, 240]) == 480  # half-day Friday
+    assert dominant_day_minutes([600, 600, 480, 480]) == 600  # tie -> the larger
+    assert dominant_day_minutes([0, 0]) is None
+    assert dominant_day_minutes([]) is None
+
+
+def test_excel_serial_to_date_with_noise_window() -> None:
+    from schedule_forensics.importers._common import excel_serial_to_date
+
+    assert excel_serial_to_date(45852) == dt.date(2025, 7, 14)
+    assert excel_serial_to_date(1) is None  # 1900 — below the 1985 "not set" window
+    assert excel_serial_to_date(10**9) is None  # overflow is noise, not a crash
