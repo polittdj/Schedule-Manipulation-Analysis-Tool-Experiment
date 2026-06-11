@@ -1,81 +1,109 @@
-# Handoff — 2026-06-10 (evening)
+# Handoff — 2026-06-11 (operator-driven enhancement sitting)
 
-This session: operator-driven enhancements (PRs #58–#62, all merged)     Next session: — (build complete)
-Model/mode required next session: Opus 4.8 (1M context) (only if resuming M15)
-Phase/Gate: **DONE** — M1–M14 + M16 + M17 complete and parity-green, plus the full-audit remediation
-(ADR-0024) and the multi-version analysis suite (ADR-0025). **M15 (.pbix enrichment) is the one
-remaining item, BLOCKED pending the operator depositing `NSATDeploymentRevisionAlpha.pbix` (R-12).**
-Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` — `main` carries everything
-(#55–#62 merged); work branch `claude/clever-carson-uovtkk` is recreated from `main` per PR.
+**This session:** real-world `.mpp` hardening + new visual analytics (PRs #58–#65).
+**Next session:** no required milestone — respond to operator feedback; only the externally-gated
+**M15 (.pbix)** remains blocked. Model/mode: Opus 4.8 (1M context).
 
-## Operator standing directive (persisted)
-**"Continue and don't stop until the tool is completely built."** → Honored: the entire build except the
-externally-gated `.pbix` enrichment is complete, tested, validated, parity-green, and runnable offline.
+> READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
+> per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
+> chat history — everything important is committed to git.
 
-## What was delivered (M1–M14 + M16 + M17)
-A complete local, NASA-themed forensic schedule-analysis tool:
-- **Ingestion:** native `.mpp` (MPXJ), MSPDI, XER; ≤10 at once; UID-keyed (M3/M4).
-- **Engine:** CPM + total/free float; SSI driving slack (107/107 exact); DCMA-14 + Acumen §A Schedule
-  Quality + §C baseline compliance + EVM indices + §E change metrics + Net Finish Impact (−99); version
-  diff + manipulation-trend detection; DCMA audit + cited recommendations (M5–M11).
-- **AI:** pluggable Null (default) / loopback Ollama; cited narrative (every sentence cited); CUI
-  fail-closed routing + persistent banner (M12).
-- **Web:** local dark-NASA dashboard — upload, audit, recommendations, narrative, version compare,
-  interactive charts/grid/Gantt (drill-to-metadata, add/remove fields), AI settings, metric dictionary,
-  session wipe; air-gapped (M13/M14).
-- **Packaging:** one-click desktop launcher + OS shortcuts, 127.0.0.1 only (M16).
-- **Docs:** user guide, metric dictionary (generated + sync-tested), parity report, final report (M17).
+## Repo / branch / PR mechanics (how this build runs)
+- Repo: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment`. Everything ships to **`main`** via PRs.
+- Work branch is always **`claude/clever-carson-uovtkk`**, recreated from `origin/main` for each new PR
+  (the prior branch is deleted on squash-merge). To start fresh work:
+  `git fetch origin main && git checkout -B claude/clever-carson-uovtkk origin/main`.
+- Commit identity must be `Claude <noreply@anthropic.com>` (a Stop hook checks this — if it flags
+  unverified commits run `git config user.email noreply@anthropic.com && git config user.name Claude`
+  then `git rebase --exec "git commit --amend --no-edit --reset-author" origin/main`). **Force-push is
+  blocked**; to publish a rebased branch whose remote tip moved, do an empty `git merge -s ours <old-tip>`
+  so the push is a fast-forward (used this trick once already).
+- After each push, open a **draft PR**. The operator merges PRs themselves (do NOT merge). Watch CI via
+  the github MCP tools; CI **success is not delivered by webhook** — verify it explicitly. `send_later`
+  is NOT available in this environment, so for the post-merge `main` run, use a short background
+  `sleep` then re-check `actions_list`/`get_check_runs`. Unsubscribe once a PR is merged.
+- CI: ruff + ruff format + mypy --strict + pytest (cov ≥70 overall, engine ≥85) + `pytest -m parity`
+  (10/10, **non-negotiable**) + bandit + pip-audit, on push-to-main + every PR, Python 3.11 & 3.13.
 
-## Audit remediation (this session)
-A three-track audit (engine/model/importers; web/AI/launcher/packaging; tests/CI/docs/hygiene) found
-29 issues, fixed across 13 commits on `claude/clever-carson-uovtkk`:
-- **Bugs:** dropzone now submits the real form so import feedback survives in real browsers; native
-  `.mpp` upload writes a *closed* temp file (Windows handle bug); `/session/wipe` + `/example` are
-  POST-only (GET could prefetch-mutate); download filename sanitized; deleted-logic citations carry the
-  prior file (never-uncited contract); SPI(t) Earned-Schedule dead interpolation simplified.
-- **Perf:** `tasks_by_id`/`resources_by_id` cached on the frozen model; each report computes one
-  `_Analysis` (one CPM) reused across page/JSON/driving views; CPM date math is O(weeks) not O(days)
-  (equivalence-swept against the old loops); Ollama availability probes use a 2 s timeout.
-- **CI/hygiene/docs:** push runs on `main` only, `checkout@v5`/`setup-python@v6`, pip cache; shared
-  session-scoped golden fixtures + central warning filter; this doc set refreshed; `pyproject` 1.0.0.
+## Build status
+**DONE** — M1–M14, M16, M17 complete + a full audit remediation + a large run of operator-driven
+enhancements. **M15 (.pbix enrichment) is the ONLY remaining milestone, BLOCKED** pending the operator
+depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fabricate `.pbix` content.
 
-## Operator-driven enhancements (PRs #59–#62, merged after the audit)
-- **Java discovery (#59/#60):** native `.mpp` works without Java on PATH — SF_JAVA → JAVA_HOME →
-  PATH → the repo's **portable `tools/jre/` drop-in** (gitignored; no admin rights needed) →
-  user-scope `%LOCALAPPDATA%\Programs` → machine install roots; newest version wins; actionable
-  not-found error. The operator's locked-down work machine is the driving case.
-- **Compare correctness (#61):** the compare pair is ordered by **data date** (ProjectTimeNow), not
-  load order, and the page shows the **Net Finish Impact** in calendar days.
-- **Multi-version suite (#62, ADR-0025):** `/trend` across 10+ versions (headline table, Net Finish
-  Impact across the series, quality-trend sentences, consecutive-pair manipulation signals, SVG
-  charts via `static/trend.js`); `/briefing` — the cited, print-ready **Diagnostic Executive
-  Briefing** (`ai/briefing.py`, golden-pinned counts); the activity grid is now an **MS-Project-
-  style Gantt** (timeline column with month ticks, critical/progress/milestone/summary bars,
-  data-date line, add/remove fields incl. duration/baselines/resources). New `engine/trend.py`.
-  Ten-version end-to-end test locks the 10-file requirement.
+## What shipped this sitting (PRs #58–#65)
+- **#58** Full-audit remediation (ADR-0024): dropzone native form-submit; Windows `.mpp` temp-file fix;
+  POST-only wipe/example; never-uncited citation; SPI(t); cached UID maps; one `_Analysis`/CPM per
+  schedule; O(weeks) CPM date math (equivalence-swept); 2s Ollama probes; CI push-main-only + action
+  bumps + pip cache; conftest golden fixtures; CSS/JS → `static/`; pyproject 1.0.0.
+- **#59 / #60** Java discovery without admin: `SF_JAVA`→`JAVA_HOME`→PATH→**portable `tools/jre/` drop-in**
+  (gitignored)→`%LOCALAPPDATA%\Programs`→machine roots, newest-version wins; actionable not-found error.
+- **#61** Compare ordered by **data date** (not load order) + Net Finish Impact on the page.
+- **#62** (ADR-0025) Trend across 10+ versions; Executive Briefing; **MS-Project-style Gantt** (timeline
+  column, add/remove fields, milestones/summaries/critical/data-date). New `engine/trend.py`,
+  `ai/briefing.py`.
+- **#63** Docs/state refresh.
+- **#64** Real-world `.mpp` tolerance (see lessons) + **schedule-level DCMA findings stay cited** (root-
+  cause of the operator's "Internal Server Error") + resilient `/trend` `/compare` `/briefing` (skip &
+  name unschedulable versions) + grid **per-column filters** + trace "show completed" toggle + waterfall
+  driving Gantt + milestone diamonds.
+- **#65** (OPEN as of writing — may be merged) **Bow Wave / CEI** animated view (`engine/bow_wave.py`,
+  `/cei`, `static/cei.js`): per-snapshot monthly finish bars (baselined/scheduled/finished), dashed
+  data-date marker, "CEI – x.xx" callout, **Prev/Next + Auto-play movie**; CEI = finished ÷ what the
+  prior snapshot planned for the month after its data date. Plus **Trend focus UID**
+  (`/trend?target=<uid>`) and **de-overlapped chart labels** (strip common filename prefix, rotate −35°).
 
-## Green state (final)
-**497 passed, 3 skipped; parity gate 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%.**
-CI green. Verify:
-`pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
-pytest --cov=schedule_forensics --cov-fail-under=70 &&
-coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 &&
-pytest -m parity && bandit -q -r src && pip-audit --progress-spinner=off` — all exit 0.
-Run: `schedule-forensics` → http://127.0.0.1:<port> dashboard.
+## Lessons learned (carry forward)
+- **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
+  importer (the `.mpp`→MSPDI→model path) was stricter than both the CPM engine and the XER importer.
+  Real files need tolerance for: **external/cross-project predecessor links** (drop), self/duplicate
+  links (drop), **ALAP** and **dateless constraints** (→ASAP), **timezone-tagged dates** (→naive local),
+  **out-of-range %-complete** (clamp 0–100), **negative scheduled/actual costs** (keep; clamp only the
+  baseline/BAC to ≥0). All in `importers/mspdi.py` + `importers/_common.py` + `model/task.py`.
+- **The §6 "every statement cited" gate is a real crash surface.** A schedule-level DCMA check (Critical
+  Path Test, CPLI) that FAILS had no per-activity offenders → uncited finding → `UncitedStatementError`
+  → every page for that schedule 500'd. Fixed by citing the tested/most-negative-float activities AND a
+  fallback in `recommendations._dcma_findings` (cite the finish-controlling chain for any offender-less
+  failed check). **Any new finding source must guarantee a citation.**
+- **Multi-version views must degrade, never 500** on one bad file — see `_solvable_versions()` in
+  `web/app.py` (skip + name unschedulable versions).
+- **Parity is the guardrail for all of this:** every tolerance/normalization only fires on constructs the
+  curated files lack, so goldens parse byte-identically (145 tasks, 176/178 links) and `pytest -m parity`
+  stays 10/10. Run it after any importer/engine change.
+- **Acumen "summary" count excludes the UID-0 project row** (briefing uses 18, not 19).
 
-## The one remaining item — M15 (.pbix enrichment), BLOCKED
-Needs `NSATDeploymentRevisionAlpha.pbix` deposited into the session workspace (git-ignored CUI, doesn't
-travel between sessions — R-12). When provided: parse locally (unzip → DataModel + Report/Layout), fold
-its extra metrics/visuals into the dashboard. The interactive visuals (M14) already deliver the capability
-the `.pbix` would inform; this is a pending **input**, not a defect. Do not fabricate `.pbix` content.
+## Operator environment (CRITICAL — this caused most friction)
+- **Windows, work laptop, NO admin rights.** Cannot run MSI installers (`winget` Java install exits 1602).
+  → Java via the **portable JRE zip extracted into `…\tools\jre\`** (no admin). Steps are in
+  `docs/USER-GUIDE.md` + `README.md`.
+- Install folder: `C:\Users\dpolitte\Documents\Schedule-Manipulation-Analysis-Tool-Experiment`.
+  PowerShell needs the `.\` prefix: `.\.venv\Scripts\Activate.ps1`. Editable install — after
+  `git pull origin main` no reinstall is needed unless deps changed.
+- The launcher prints `…serving the dashboard at http://127.0.0.1:<RANDOM-PORT>`; the dark
+  **"▲ SCHEDULE FORENSICS"** page is the real tool. A separate **OLD program on `127.0.0.1:5000`**
+  (white, "Schedule Manipulation Analysis **Tool**", JSON paste box) is a stale pre-greenfield app — NOT
+  this codebase; tell the operator to ignore `:5000`.
+- Operator workflow: merge each PR on GitHub, then `git pull origin main` + relaunch. They paste
+  PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
-## To resume M15 (only if/when the .pbix is deposited)
-1. Confirm the branch tip has M17 (`git log --oneline | grep m17`), fast-forward your branch onto it.
-2. Confirm the 497 green baseline + the file present in `00_REFERENCE_INTAKE/` (non-CUI attested).
-3. Add `importers/pbix.py` (unzip + parse DataModel/Layout, local-only); fold metrics/visuals into the
-   dashboard; tests + ADR-0022; close the last RTM row; refresh this HANDOFF.
+## Green state
+**523 passed, 3 skipped; parity 10/10; engine ≈99%; overall ≈99%; egress + air-gap green; bandit/pip-
+audit clean (3.11 + 3.13).** Verify locally:
+`ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 
-## CI hygiene (LESSON): `git add -A` every milestone; run the gate with honored exit codes (never
-`bandit | tail`); after pushing verify the run conclusion is `success` (webhooks don't deliver CI success).
+## Next steps / open items
+1. **Confirm PR #65 merged & green on `main`** (if still open: watch CI, the operator merges).
+2. **Respond to operator feedback** on real `.mpp` files — if files still fail, the dashboard now names
+   the reason; add the next tolerance class in `importers/mspdi.py` (mirror to `xer.py` when relevant)
+   and ALWAYS re-run `pytest -m parity`.
+3. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
+   (`engine/bow_wave.py` axis window `_MONTHS_BEFORE/AFTER`; `static/cei.js` layout) if they don't match.
+4. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
+   `importers/pbix.py`: unzip → DataModel/Layout, local-only; fold into dashboard; ADR; close last RTM row).
+5. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
 
-Open questions / blockers: only M15's `.pbix` deposit. Everything else is DONE and parity-green.
+## Resume command for a NEW session
+Paste this as the first message:
+> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and continue exactly per its
+> "Next steps / open items". Stay on branch `claude/clever-carson-uovtkk` (recreate from `origin/main`),
+> keep `pytest -m parity` at 10/10, open draft PRs (don't merge — the operator does), and never let
+> schedule data leave the machine. Model: Opus 4.8 (1M).
