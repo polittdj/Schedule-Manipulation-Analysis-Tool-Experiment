@@ -1,6 +1,6 @@
 """Local-only FastAPI web app — the dark, NASA-themed forensic dashboard (M13, §6.A).
 
-Runs entirely on the local machine (binds 127.0.0.1 only): upload up to ten schedules,
+Runs entirely on the local machine (binds 127.0.0.1 only): upload up to twenty schedules,
 see each one's DCMA audit, Acumen §A/§C metrics, cited risk/opportunity/concern findings
 and AI narrative, compare two versions (manipulation trends + Net Finish Impact), manage the
 local AI model + classification (with the persistent CUI banner), browse the in-tool metric
@@ -11,6 +11,7 @@ Power-BI-style visuals are layered on at M14; M13 is the shell + server-rendered
 
 from __future__ import annotations
 
+import datetime as dt
 import html
 import logging
 import tempfile
@@ -60,6 +61,7 @@ from schedule_forensics.engine.trend import compute_quality_trend, order_version
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
+    decode_xer_bytes,
     load_schedule,
     parse_json,
     parse_json_text,
@@ -85,6 +87,7 @@ _LAYOUT = Template(
     """<!doctype html><html lang=en><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>{{ title }} — Schedule Forensics</title>
+<script src="/static/theme.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a>
@@ -92,7 +95,14 @@ _LAYOUT = Template(
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
-<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
+<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>
+<form action="/target" method=post class="navform targetform"
+title="Focus every view on one activity (blank = clear)">
+<input type=hidden name=next_url value="/">
+<label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
+<button type=submit class=linkbtn>Set</button></form>
+<button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
+</nav></header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script></body></html>"""
 )
 
@@ -146,8 +156,11 @@ class SessionState:
     ai_config: AIConfig = field(default_factory=AIConfig)
     flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
-    # under the same key recomputes. Bounded by the ≤10 loaded schedules; cleared on wipe.
+    # under the same key recomputes. Bounded by the ≤MAX_FILES loaded schedules; cleared on wipe.
     analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
+    # optional session-wide target activity: every view that can focus on a UniqueID
+    # (report trace, trend focus, compare movement) defaults to this when set.
+    target_uid: int | None = None
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
@@ -197,8 +210,27 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
         return None
 
 
-def _page(state: SessionState, title: str, body: str) -> HTMLResponse:
-    return HTMLResponse(_LAYOUT.render(title=title, banner=_banner_html(state), body=body))
+def _page(state: SessionState, title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
+    return HTMLResponse(
+        _LAYOUT.render(
+            title=title,
+            banner=_banner_html(state),
+            body=body,
+            target=state.target_uid if state.target_uid is not None else "",
+        ),
+        status_code=status_code,
+    )
+
+
+def _parse_uid(value: str | None) -> int | None:
+    """A UniqueID from form/query text — blank, non-numeric, or non-positive means none."""
+    if value is None:
+        return None
+    text = value.strip()
+    if not text.isdigit():
+        return None
+    uid = int(text)
+    return uid if uid > 0 else None
 
 
 def _e(text: object) -> str:
@@ -332,6 +364,12 @@ def create_app(
         st = session()
         accepted: list[str] = []
         errors: list[str] = []
+        if len(files) > MAX_FILES:
+            dropped = len(files) - MAX_FILES
+            errors.append(
+                f"{dropped} file(s) beyond the {MAX_FILES}-file batch cap "
+                "(load them in a second batch)"
+            )
         for upload_file in files[:MAX_FILES]:
             name = upload_file.filename or "schedule"
             data = await upload_file.read()
@@ -362,12 +400,17 @@ def create_app(
         st = session()
         sch = st.schedules.get(name)
         if sch is None:
-            return _page(st, "Not found", f"<div class=panel>No schedule named {_e(name)}.</div>")
+            return _page(
+                st,
+                "Not found",
+                f"<div class=panel>No schedule named {_e(name)}.</div>",
+                status_code=404,
+            )
         try:
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc))
-        return _page(st, name, _analysis_body(name, sch, analysis))
+        return _page(st, name, _analysis_body(name, sch, analysis, st.target_uid))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -392,9 +435,11 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(
-            _driving_data(sch, st.analysis_for(name, sch).cpm, target, secondary, tertiary)
-        )
+        try:
+            cpm = st.analysis_for(name, sch).cpm
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_driving_data(sch, cpm, target, secondary, tertiary))
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -415,6 +460,8 @@ def create_app(
             )
         prior, current = schedules[-2], schedules[-1]
         body = _skipped_notice(skipped) + _compare_body(prior, current, cpms[-2], cpms[-1])
+        if st.target_uid is not None:
+            body += _focus_panel([prior, current], [cpms[-2], cpms[-1]], st.target_uid)
         return _page(st, "Compare", body)
 
     def _solvable_versions() -> tuple[list[Schedule], list[CPMResult], list[str]]:
@@ -443,7 +490,7 @@ def create_app(
         )
 
     @app.get("/trend", response_class=HTMLResponse)
-    def trend_view(target: int | None = Query(None)) -> HTMLResponse:
+    def trend_view(target: str | None = Query(None)) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -453,14 +500,19 @@ def create_app(
                 _skipped_notice(skipped)
                 + "<div class=panel>Load at least two analyzable versions to see a trend.</div>",
             )
-        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms, target))
+        # an explicit ?target= (even blank, from the Focus form) wins; otherwise the
+        # session-wide target focuses the trend automatically
+        uid = _parse_uid(target) if target is not None else st.target_uid
+        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms, uid))
 
     @app.get("/api/trend")
-    def trend_json(target: int | None = Query(None)) -> JSONResponse:
+    def trend_json(target: str | None = Query(None)) -> JSONResponse:
+        st = session()
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
-        return JSONResponse(_trend_data(schedules, cpms, target))
+        uid = _parse_uid(target) if target is not None else st.target_uid
+        return JSONResponse(_trend_data(schedules, cpms, uid))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view() -> HTMLResponse:
@@ -541,12 +593,22 @@ def create_app(
         )
         return _page(st, "Metric Dictionary", body)
 
+    @app.post("/target")
+    def set_target(uid: str = Form(""), next_url: str = Form("/")) -> RedirectResponse:
+        """Set (or clear, with a blank/invalid uid) the session-wide target activity."""
+        st = session()
+        st.target_uid = _parse_uid(uid)
+        # local redirect only: a path on this app, never a scheme/host ("//host" included)
+        dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
+        return RedirectResponse(url=dest, status_code=303)
+
     @app.post("/session/wipe")
     def wipe() -> RedirectResponse:
         st = session()
         st.schedules.clear()
         st.analyses.clear()
         st.flash = None
+        st.target_uid = None
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -583,13 +645,15 @@ def _unique_key(base: str, existing: dict[str, Schedule]) -> str:
 
 def _parse_upload(name: str, data: bytes) -> Schedule:
     """Parse uploaded bytes by extension — text formats in memory, .mpp via a temp file."""
+    # decode EXACTLY like the file-path importers so the same file can never parse
+    # differently (or reject) depending on whether it was opened or uploaded
     suffix = Path(name).suffix.lower()
     if suffix == ".json":
-        return parse_json_text(data.decode("utf-8"))
+        return parse_json_text(data.decode("utf-8-sig"))
     if suffix in {".xml", ".mspdi"}:
-        return parse_mspdi_text(data.decode("utf-8"))
+        return parse_mspdi_text(data.decode("utf-8-sig", errors="replace"))
     if suffix == ".xer":
-        return parse_xer_text(data.decode("utf-8", errors="replace"))
+        return parse_xer_text(decode_xer_bytes(data))
     # native .mpp / .mpt — needs the MPXJ runner + a JRE. Write into a temp *directory* and
     # close the file before parsing: on Windows an open NamedTemporaryFile handle blocks the
     # MPXJ java subprocess from reading the path (the upload would always fail on Windows).
@@ -620,7 +684,61 @@ def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
     )
 
 
-def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
+def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
+    """The session target activity's metrics in THIS schedule (or a gentle absence note)."""
+    row = next((r for r in analysis.activity_rows if r["unique_id"] == target), None)
+    if row is None:
+        return (
+            f"<div class=panel><h2>Target activity UID {target}</h2>"
+            f'<p class="notice err">This schedule does not contain UniqueID {target}.</p></div>'
+        )
+    variance = ""
+    if row["finish"] and row["baseline_finish"]:
+        days = (
+            dt.date.fromisoformat(str(row["finish"]))
+            - dt.date.fromisoformat(str(row["baseline_finish"]))
+        ).days
+        cls = "fail" if days > 0 else "pass"
+        variance = (
+            f"<tr><th>Finish vs baseline</th>"
+            f"<td><b class={cls}>{days:+d} calendar days</b></td></tr>"
+        )
+    flags = ", ".join(
+        label
+        for label, on in (
+            ("critical", row["is_critical"]),
+            ("milestone", row["is_milestone"]),
+            ("summary", row["is_summary"]),
+        )
+        if on
+    )
+    cells = "".join(
+        f"<tr><th>{label}</th><td>{_e(value)}</td></tr>"
+        for label, value in (
+            ("Start", row["start"] or "—"),
+            ("Finish", row["finish"] or "—"),
+            ("Baseline finish", row["baseline_finish"] or "—"),
+            (
+                "Total float (days)",
+                row["total_float_days"] if row["total_float_days"] is not None else "—",
+            ),
+            (
+                "Free float (days)",
+                row["free_float_days"] if row["free_float_days"] is not None else "—",
+            ),
+            ("% complete", row["percent_complete"]),
+            ("Flags", flags or "—"),
+        )
+    )
+    return f"""
+<div class=panel><h2>Target activity &mdash; UID {target}: {_e(row["name"])}</h2>
+<p class=muted>The session-wide target: the trace below runs to it automatically, the Trend page
+focuses on it, and Compare shows its movement. Set or clear it in the header.</p>
+<table>{cells}{variance}</table>
+<p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
+
+
+def _analysis_body(key: str, sch: Schedule, analysis: _Analysis, target: int | None = None) -> str:
     audit = analysis.audit
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
@@ -638,12 +756,13 @@ def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
     )
     narrative = analysis.narrative
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
-    viz = f"""
+    target_panel = _target_panel(sch, analysis, target) if target is not None else ""
+    viz = f"""{target_panel}
 <div class=panel><h2>Interactive analysis</h2>
 <div id=viz data-name="{_e(key)}">
 <div class=charts id=charts></div>
 <div class=viz-controls>Driving path to target UID:
-<input id=targetUid type=number min=1 placeholder="UID">
+<input id=targetUid type=number min=1 placeholder="UID" value="{target if target is not None else ""}">
 secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button>
@@ -762,7 +881,20 @@ def _driving_data(
     """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID."""
     by_id = sch.tasks_by_id
     if target not in by_id:
-        return {"target_uid": target, "target_name": None, "rows": []}
+        return {
+            "target_uid": target,
+            "target_name": None,
+            "rows": [],
+            "note": f"UID {target} is not in this schedule.",
+        }
+    if by_id[target].is_summary:
+        # summary rollups are not in the logic network — tracing one raised before
+        return {
+            "target_uid": target,
+            "target_name": by_id[target].name,
+            "rows": [],
+            "note": f"UID {target} is a summary rollup — pick one of its activities instead.",
+        }
     results = compute_driving_slack(
         sch,
         target_uid=target,
@@ -854,16 +986,28 @@ def _focus_rows(
 def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
     names = [s.tasks_by_id[target].name for s in schedules if target in s.tasks_by_id]
     title = f"Focus activity UID {target}" + (f" &mdash; {_e(names[0])}" if names else "")
+    focus_rows = _focus_rows(schedules, cpms, target)
     rows = "".join(
         f"<tr><td>{_e(label)}</td><td>{_e(finish)}</td><td>{_e(pct)}</td></tr>"
-        for label, finish, pct in _focus_rows(schedules, cpms, target)
+        for label, finish, pct in focus_rows
     )
     note = "" if names else '<p class="notice err">No loaded version contains that UniqueID.</p>'
+    known = [finish for _, finish, _ in focus_rows if finish != "—"]
+    movement = ""
+    if len(known) >= 2:
+        # same sign convention as Net Finish Impact: negative == moved later (a slip)
+        days = (dt.date.fromisoformat(known[0]) - dt.date.fromisoformat(known[-1])).days
+        cls, word = ("fail", "later") if days < 0 else ("pass", "earlier or unchanged")
+        movement = (
+            f"<p>Computed finish moved <b class={cls}>{days:+d} calendar days</b> "
+            f"({word}) between the first and last version that schedule it.</p>"
+        )
     return f"""
 <div class=panel><h2>{title}</h2>{note}
 <p class=muted>The focus activity's computed finish and progress across the versions
 (its movement is charted below).</p>
-<table><tr><th>Version</th><th>Computed finish</th><th>% complete</th></tr>{rows}</table></div>"""
+<table><tr><th>Version</th><th>Computed finish</th><th>% complete</th></tr>{rows}</table>
+{movement}</div>"""
 
 
 def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None) -> str:
@@ -897,9 +1041,9 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | 
     focus_form = f"""
 <div class=panel><form method=get action=/trend class=viz-controls>
 Focus the trend on a specific activity &mdash; UniqueID:
-<input name=target type=number min=0 value="{target if target is not None else ""}"
+<input name=target type=number min=1 value="{target if target is not None else ""}"
 placeholder="UID"> <button type=submit>Focus</button>
-{'<a class=btn-link href="/trend">clear focus</a>' if target is not None else ""}
+{'<a class=btn-link href="/trend?target=">clear focus</a>' if target is not None else ""}
 </form></div>"""
     return f"""
 <div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
