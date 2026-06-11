@@ -1,9 +1,10 @@
-# Handoff — 2026-06-11 (deferred-items sittings: ADR-0027 close-out + calendar parsing)
+# Handoff — 2026-06-11 (deferred-items sittings: ADR-0027/0028/0029)
 
-**This session (two PRs):** closed all four ADR-0026 deferred items (PR #69, ADR-0027:
-calendar-true day math, XER CP_Units, AI figure gate + per-request backend, trend-label
-fallback — **merged**), then landed **MSPDI/XER project-calendar parsing** (PR #70,
-ADR-0028): work week, day length, holidays — `.mpp`/`.xml`/`.xer` no longer assume 8h/Mon-Fri.
+**This session (three PRs):** closed all four ADR-0026 deferred items (PR #69, ADR-0027 —
+**merged**), landed **MSPDI/XER project-calendar parsing** (PR #70, ADR-0028 — **merged**:
+work week, day length, holidays; `.mpp`/`.xml`/`.xer` no longer assume 8h/Mon-Fri), then the
+**XER cost roll-up** (PR #71, ADR-0029: TASKRSRC+PROJCOST → cost/actual/budget; cost-loaded
+`.xer` now drives real SPI/CPI/TCPI).
 **Next session:** operator feedback first; then the remaining deferred work below; only the
 externally-gated **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
 
@@ -65,7 +66,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   CSS variables, live-re-theming SVG), **batch cap 10 → 20**.
   All of #58–#68 are **merged to `main`**.
 
-## What shipped this sitting — PR #69 (merged) + PR #70
+## What shipped this sitting — PRs #69, #70 (both merged) + #71
 
 **PR #69 (ADR-0027) — the four ADR-0026 deferred items, MERGED:**
 1. **Calendar-true day math**: every day↔minute boundary derives from
@@ -86,7 +87,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
 4. **Trend labels**: identical filenames no longer collapse to "…" — a label that empties
    after the common-prefix strip falls back to the version's data date (`trend.js shortLabels`).
 
-**PR #70 (ADR-0028) — MSPDI/XER project-calendar parsing:**
+**PR #70 (ADR-0028) — MSPDI/XER project-calendar parsing, MERGED:**
 - Importers fill `Schedule.calendar` from the source's project calendar: **work weekdays**
   (source day 1=Sun..7=Sat → `weekday_from_source`), **per-day minutes** (span sums; differing
   days use the **dominant/modal** total — single-block model approximation), **holidays**
@@ -103,6 +104,14 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
 - **Fail-soft**: any calendar surprise logs + degrades to the 8h/Mon-Fri default — never sinks
   the file. `Save .json` round-trips **holidays** now. Goldens' calendar IS the textbook
   standard (verified + pinned) → parity untouched.
+
+**PR #71 (ADR-0029) — XER per-task cost roll-up:**
+- `xer._costs_by_task` sums TASKRSRC assignment costs + PROJCOST expenses per task:
+  `actual_cost` = act_reg+act_ot+expense act (ACWP basis); `cost` = actual + remaining
+  (at-completion total); `budgeted_cost` = Σ target_cost **clamped ≥ 0** (the BAC/EV rule;
+  credits in actual/remaining preserved). **Absence is honest**: fields set only when the
+  file carried a value — cost-less `.xer` identical (EVM stays NA); the curated fixture has
+  no cost columns (pinned). Cost-loaded `.xer` now drives real SPI/CPI/TCPI.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -138,7 +147,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**608 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**612 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -149,7 +158,6 @@ venv has been missing the web deps.)
    `importers/_common.py` (shared by both importers); ALWAYS re-run `pytest -m parity`.
    The ADR-0026 deferred audit items are all closed (PR #69, ADR-0027).
 2. **Remaining deferred work** (rough priority order):
-   - **TASKRSRC cost roll-up** (per-task costs from assignments/expenses, ADR-0008);
    - **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — the engine models
      one schedule-level calendar; only worth doing if the operator's real programs mix
      calendars materially;

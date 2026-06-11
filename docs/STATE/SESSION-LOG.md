@@ -1020,3 +1020,19 @@ this file is the running history.
 ### Parity / tests
 - **608 passed, 3 skipped** (29 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies.
+
+
+## Cost-rollup sitting — 2026-06-11 (PR #71; Fable 5)
+
+- PR #70 (calendar parsing) **merged** (post-merge main CI green; the one PR comment was a
+  Codex-bot quota notice, no action). Continued with the next deferred item: **XER per-task
+  cost roll-up** (ADR-0029).
+- `xer._costs_by_task`: TASKRSRC assignment costs + PROJCOST expenses → per-task
+  `actual_cost` (act_reg+act_ot+expense act), `cost` (actual + remaining), `budgeted_cost`
+  (Σ target_cost clamped ≥0 — the MSPDI baseline-cost rule). Absence is honest (None unless
+  the file carried a value; cost-less files identical, EVM stays NA). Credits preserved.
+- Cost-loaded `.xer` files now drive real SPI/CPI/TCPI (end-to-end test: CPI 1.25).
+
+### Parity / tests
+- **612 passed, 3 skipped** (4 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean; zero new dependencies.
