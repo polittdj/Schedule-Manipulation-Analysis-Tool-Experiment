@@ -22,6 +22,8 @@ import datetime as dt
 import re
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
+from schedule_forensics.model.task import ConstraintType
+
 
 class ImporterError(ValueError):
     """A source file could not be parsed into a valid :class:`Schedule`.
@@ -35,6 +37,21 @@ class ImporterError(ValueError):
 #: Both MS Project and P6 write "no date" as a pre-1985 sentinel (year 0/1, or a
 #: 1984 placeholder). A parsed datetime before this is treated as absent.
 _MIN_REAL_YEAR = 1985
+
+#: Constraints that require a date to be meaningful (and that the CPM engine acts on); a
+#: real-world export sometimes carries one of these with the date cleared (a stale
+#: leftover) — meaningless and unschedulable, so importers normalize it to ASAP. Shared
+#: by the MSPDI and XER importers so the tolerance classes cannot drift apart.
+DATE_REQUIRING_CONSTRAINTS = frozenset(
+    {
+        ConstraintType.SNET,
+        ConstraintType.FNET,
+        ConstraintType.SNLT,
+        ConstraintType.FNLT,
+        ConstraintType.MSO,
+        ConstraintType.MFO,
+    }
+)
 
 #: ISO-8601 duration grammar (``PnDTnHnMnS``); every component optional, decimals
 #: allowed. MS Project task durations are almost always ``PT<h>H<m>M<s>S`` (working
@@ -122,20 +139,34 @@ def hours_to_minutes(value: str | None) -> int:
         hours = Decimal(text)
     except InvalidOperation as exc:
         raise ImporterError(f"unparseable hour count: {value!r}") from exc
+    if not hours.is_finite():
+        return 0  # "NaN"/"Infinity" parse as Decimals but are data noise — same as empty
     return int((hours * _MINUTES_PER_HOUR).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def parse_float(value: str | None) -> float | None:
-    """Parse an optional decimal number; ``None``/empty → ``None`` (never 0)."""
+    """Parse an optional decimal number; ``None``/empty → ``None`` (never 0).
+
+    ``"NaN"``/``"Infinity"`` are valid :class:`Decimal` constructions but poison
+    every downstream sum/comparison — they are data noise and read as absent.
+    """
     if value is None:
         return None
     text = value.strip()
     if not text:
         return None
     try:
-        return float(Decimal(text))
+        number = Decimal(text)
     except InvalidOperation as exc:
         raise ImporterError(f"unparseable number: {value!r}") from exc
+    return float(number) if number.is_finite() else None
+
+
+def clamped_percent_or_none(value: str | None) -> float | None:
+    """Optional percent clamped to 0..100; absent stays ``None`` (same noise class as
+    :func:`parse_percent` — an out-of-range physical % must not sink the file)."""
+    parsed = parse_float(value)
+    return None if parsed is None else min(100.0, max(0.0, parsed))
 
 
 def parse_percent(value: str | None) -> float:

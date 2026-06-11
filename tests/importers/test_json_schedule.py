@@ -135,3 +135,54 @@ def test_constraint_and_dates_survive_round_trip() -> None:
     assert '"constraint_type": "MSO"' in out and '"constraint_date"' in out
     reparsed = parse_json_text(out)
     assert str(reparsed.tasks_by_id[1].constraint_type) == "MSO"
+
+
+def test_save_json_round_trip_preserves_structure_and_costs() -> None:
+    # the tool's own format must not silently demote milestones/summaries or drop WBS,
+    # durations, costs, or the calendar's exact minute count on a Save -> reopen cycle
+    import datetime as dt
+
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    original = Schedule(
+        name="rt",
+        project_start=dt.datetime(2025, 1, 6, 8, 0),
+        calendar=Calendar(name="Tens", working_minutes_per_day=600, work_weekdays=(0, 1, 2, 3)),
+        tasks=(
+            Task(unique_id=0, name="Root", duration_minutes=0, is_summary=True, wbs="1"),
+            Task(
+                unique_id=1,
+                name="Build",
+                duration_minutes=600,
+                wbs="1.1",
+                remaining_duration_minutes=300,
+                baseline_duration_minutes=600,
+                cost=1500.0,
+                actual_cost=700.0,
+                budgeted_cost=1400.0,
+            ),
+            Task(unique_id=2, name="Done", duration_minutes=0, is_milestone=True, wbs="1.2"),
+        ),
+    )
+    reread = parse_json_text(to_json_text(original))
+    root, build, done = (reread.tasks_by_id[uid] for uid in (0, 1, 2))
+    assert root.is_summary and done.is_milestone
+    assert (build.wbs, build.remaining_duration_minutes, build.baseline_duration_minutes) == (
+        "1.1",
+        300,
+        600,
+    )
+    assert (build.cost, build.actual_cost, build.budgeted_cost) == (1500.0, 700.0, 1400.0)
+    assert reread.calendar.working_minutes_per_day == 600
+    assert reread.calendar.work_weekdays == (0, 1, 2, 3)
+
+
+def test_hours_per_day_rounds_not_truncates() -> None:
+    sched = parse_json_text(
+        '{"name": "c", "project_start": "2025-01-06T08:00", '
+        '"calendars": [{"name": "odd", "hours_per_day": 2.05}], '
+        '"tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 60}]}'
+    )
+    assert sched.calendar.working_minutes_per_day == 123  # int() truncated this to 122

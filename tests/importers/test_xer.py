@@ -196,7 +196,9 @@ def test_non_integer_task_id_raises() -> None:
         parse_xer_text(text)
 
 
-def test_dangling_relationship_raises() -> None:
+def test_dangling_relationship_is_dropped() -> None:
+    # filtered/partial P6 exports legitimately carry TASKPRED rows whose endpoint is not
+    # in the file — the real-world tolerance class drops the row, never the whole file
     text = _xer(
         [
             _MIN_PROJECT,
@@ -212,8 +214,8 @@ def test_dangling_relationship_raises() -> None:
             ),
         ]
     )
-    with pytest.raises(ImporterError, match="not in the file"):
-        parse_xer_text(text)
+    sched = parse_xer_text(text)
+    assert sched.relationships == ()
 
 
 def test_duplicate_task_id_raises() -> None:
@@ -339,7 +341,9 @@ def test_blank_lines_and_orphan_records_ignored() -> None:
     assert set(sched.tasks_by_id) == {1}
 
 
-def test_task_bounds_violation_raises() -> None:
+def test_out_of_range_physical_percent_is_clamped() -> None:
+    # 150% physical complete is data noise (tool quirks / P6 round-trips) — clamp to the
+    # valid range like the MSPDI importer, never reject the whole file
     text = _xer(
         [
             _MIN_PROJECT,
@@ -353,16 +357,18 @@ def test_task_bounds_violation_raises() -> None:
                     "phys_complete_pct",
                     "complete_pct_type",
                     "target_drtn_hr_cnt",
+                    "act_start_date",
                 ],
-                [["1", "1", "A", "TT_Task", "150", "CP_Phys", "8"]],
-            ),  # 150% > 100 -> invalid
+                [["1", "1", "A", "TT_Task", "150", "CP_Phys", "8", "2025-01-06 08:00"]],
+            ),
         ]
     )
-    with pytest.raises(ImporterError, match="task task_id 1 is invalid"):
-        parse_xer_text(text)
+    task = parse_xer_text(text).tasks_by_id[1]
+    assert task.physical_percent_complete == 100.0
+    assert task.percent_complete == 100.0  # started + CP_Phys reads the (clamped) physical
 
 
-def test_self_loop_relationship_raises() -> None:
+def test_self_loop_relationship_is_dropped() -> None:
     text = _xer(
         [
             _MIN_PROJECT,
@@ -378,8 +384,8 @@ def test_self_loop_relationship_raises() -> None:
             ),
         ]
     )
-    with pytest.raises(ImporterError, match="invalid logic link"):
-        parse_xer_text(text)
+    sched = parse_xer_text(text)
+    assert sched.relationships == ()  # self-referential row dropped, schedule kept
 
 
 def test_taskpred_missing_task_id_raises() -> None:
@@ -511,3 +517,155 @@ def test_wbs_path_edge_cases() -> None:
     assert sched.task_by_id(1).wbs == "LEAF"
     assert sched.task_by_id(2).wbs is None
     assert sched.task_by_id(3).wbs is None
+
+
+def test_alap_and_dateless_constraints_normalize_to_asap() -> None:
+    # the same real-world tolerance class as MSPDI: ALAP (out of scope for the early-date
+    # engine) and a date-requiring constraint with the date cleared both collapse to ASAP
+    # instead of the CPM refusing the whole schedule
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                [
+                    "task_id",
+                    "proj_id",
+                    "task_name",
+                    "task_type",
+                    "target_drtn_hr_cnt",
+                    "cstr_type",
+                    "cstr_date",
+                ],
+                [
+                    ["1", "1", "A", "TT_Task", "8", "CS_ALAP", ""],
+                    ["2", "1", "B", "TT_Task", "8", "CS_MSOA", ""],  # SNET, date cleared
+                    ["3", "1", "C", "TT_Task", "8", "CS_MSOA", "2025-02-03 08:00"],
+                ],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.tasks_by_id[1].constraint_type is ConstraintType.ASAP
+    assert sched.tasks_by_id[2].constraint_type is ConstraintType.ASAP
+    assert sched.tasks_by_id[2].constraint_date is None
+    assert sched.tasks_by_id[3].constraint_type is ConstraintType.SNET  # dated one survives
+
+
+def test_duration_percent_type_derives_progress_from_durations() -> None:
+    # P6's default CP_Drtn keeps phys_complete_pct at 0 while work progresses; the
+    # activity % must derive from remaining vs target duration (and actual dates rule)
+    cols = [
+        "task_id",
+        "proj_id",
+        "task_name",
+        "task_type",
+        "complete_pct_type",
+        "phys_complete_pct",
+        "target_drtn_hr_cnt",
+        "remain_drtn_hr_cnt",
+        "act_start_date",
+        "act_end_date",
+    ]
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                cols,
+                [
+                    # finished: actual end is a fact -> 100 even with phys 0
+                    [
+                        "1",
+                        "1",
+                        "Done",
+                        "TT_Task",
+                        "CP_Drtn",
+                        "0",
+                        "80",
+                        "0",
+                        "2025-01-06 08:00",
+                        "2025-01-17 17:00",
+                    ],
+                    # in progress: 60 of 80 hours remain -> 25%
+                    [
+                        "2",
+                        "1",
+                        "Doing",
+                        "TT_Task",
+                        "CP_Drtn",
+                        "0",
+                        "80",
+                        "60",
+                        "2025-01-06 08:00",
+                        "",
+                    ],
+                    # not started -> 0
+                    ["3", "1", "Todo", "TT_Task", "CP_Drtn", "0", "80", "80", "", ""],
+                ],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.tasks_by_id[1].percent_complete == 100.0
+    assert sched.tasks_by_id[2].percent_complete == 25.0
+    assert sched.tasks_by_id[3].percent_complete == 0.0
+
+
+def test_duplicate_taskpred_rows_are_deduplicated() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "8"], ["2", "1", "B", "TT_Task", "8"]],
+            ),
+            (
+                "TASKPRED",
+                ["task_id", "pred_task_id", "pred_type", "lag_hr_cnt"],
+                [["2", "1", "PR_FS", "0"], ["2", "1", "PR_FS", "0"]],  # duplicate row
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert len(sched.relationships) == 1  # would double-count DCMA logic/lag edges
+
+
+def test_utf16_xer_decodes_via_bom(tmp_path: Path) -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "Tâche", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    path = tmp_path / "exported.xer"
+    path.write_bytes(text.encode("utf-16"))  # BOM-tagged, as P6 writes on some locales
+    sched = parse_xer(path)
+    assert sched.tasks_by_id[1].name == "Tâche"
+
+
+def test_nan_and_infinity_numerics_are_noise_not_crashes() -> None:
+    # Decimal("NaN")/Decimal("Infinity") construct fine and once escaped as raw
+    # InvalidOperation (a 500 through the upload path) or poisoned downstream sums
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "8"], ["2", "1", "B", "TT_Task", "8"]],
+            ),
+            (
+                "TASKPRED",
+                ["task_id", "pred_task_id", "pred_type", "lag_hr_cnt"],
+                [["2", "1", "PR_FS", "Infinity"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.relationships[0].lag_minutes == 0  # non-finite lag is data noise

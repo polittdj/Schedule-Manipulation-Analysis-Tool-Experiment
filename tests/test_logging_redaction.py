@@ -133,3 +133,39 @@ def test_filter_passes_non_string_message_through() -> None:
     record = logging.LogRecord("x", logging.INFO, "/x.py", 1, 42, None, None)
     assert filt.filter(record) is True
     assert record.getMessage() == "42"
+
+
+def test_redacts_quoted_filename_with_spaces() -> None:
+    out = lr.redact("could not import 'Site Alpha rebaseline.mpp': bad header")
+    assert "Site Alpha" not in out and "rebaseline" not in out
+    assert "<file:mpp#" in out and "bad header" in out
+
+
+def test_redacts_unc_paths() -> None:
+    out = lr.redact(r"reading \\hq-srv01\plans\ims\current.mpp now")
+    assert "hq-srv01" not in out and "plans" not in out
+    assert "now" in out
+
+
+def test_redacts_json_schedule_filenames() -> None:
+    # "Save .json" writes the tool's own schedule format — those names are CUI too
+    out = lr.redact("saved NSAT_deploy_rev3.json for review")
+    assert "NSAT" not in out and "<file:json#" in out
+
+
+def test_non_string_extras_are_redacted_in_json_lines() -> None:
+    import io
+    import json as jsonlib
+
+    stream = io.StringIO()
+    lr.configure_logging(stream=stream)
+    logger = lr.get_logger("test_extras")
+    logger.info(
+        "batch done",
+        extra={"names": ["Site Alpha rebaseline.mpp", 3], "meta": {"src": "Q3 IMS.xer"}},
+    )
+    payload = jsonlib.loads(stream.getvalue())
+    blob = jsonlib.dumps(payload)
+    assert "Site Alpha" not in blob and "rebaseline" not in blob and "Q3 IMS" not in blob
+    # reset global handler state for other tests
+    lr.configure_logging(stream=io.StringIO())
