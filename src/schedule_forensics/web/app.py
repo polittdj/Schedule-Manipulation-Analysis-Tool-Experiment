@@ -46,7 +46,7 @@ from schedule_forensics.engine import (
     compute_driving_slack,
     recommend,
 )
-from schedule_forensics.engine.cpm import CPMResult
+from schedule_forensics.engine.cpm import CPMError, CPMResult
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
@@ -360,7 +360,11 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return _page(st, "Not found", f"<div class=panel>No schedule named {_e(name)}.</div>")
-        return _page(st, name, _analysis_body(name, sch, st.analysis_for(name, sch)))
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError as exc:
+            return _page(st, name, _unschedulable_panel(sch, exc))
+        return _page(st, name, _analysis_body(name, sch, analysis))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -368,7 +372,11 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
-        return JSONResponse(_analysis_data(sch, st.analysis_for(name, sch)))
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_analysis_data(sch, analysis))
 
     @app.get("/api/driving/{name}")
     def driving_json(
@@ -542,6 +550,22 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
 def _status_class(status: object) -> str:
     # the values are CSS class names (not secrets); B105 is a false positive here.
     return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
+
+
+def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
+    """A readable notice when the network itself cannot be scheduled (e.g. a logic cycle).
+
+    The schedule still loaded; only the CPM-derived analysis is unavailable. We name the
+    reason (no schedule contents — CUI) instead of returning a server error.
+    """
+    return (
+        f"<div class=panel><h2>{_e(sch.name)} &mdash; cannot compute the network</h2>"
+        f'<div class="notice err">This schedule loaded, but its critical-path network '
+        f"could not be solved: {_e(exc)}</div>"
+        "<p class=muted>The most common cause is a circular dependency (a logic loop) in the "
+        "predecessor/successor links. Open the file in Microsoft Project and resolve the loop, "
+        "then re-import. The activity list is still available from the dashboard.</p></div>"
+    )
 
 
 def _analysis_body(key: str, sch: Schedule, analysis: _Analysis) -> str:

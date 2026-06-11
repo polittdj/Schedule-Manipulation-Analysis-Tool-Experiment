@@ -235,24 +235,80 @@ def test_duplicate_uid_raises() -> None:
         parse_mspdi_text(_doc(body))
 
 
-def test_self_loop_relationship_raises() -> None:
+def test_self_loop_relationship_is_dropped_not_fatal() -> None:
+    # A self-referential link is meaningless; drop it and keep the schedule (don't sink the file).
     body = (
         "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
         "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
         "</Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="logic link"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.tasks) == 1 and sch.relationships == ()
 
 
-def test_dangling_relationship_raises() -> None:
+def test_external_predecessor_link_is_dropped_not_fatal() -> None:
+    # Real MS Project exports link to external/sub-project UIDs not in this file. The CPM
+    # engine already ignores such edges; the importer must not let the model reject the file.
     body = (
-        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
-        "<PredecessorLink><PredecessorUID>999</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<PredecessorLink><PredecessorUID>9999</PredecessorUID><Type>1</Type></PredecessorLink>"
         "</Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="valid schedule"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.tasks) == 2
+    # the in-file 1->2 link survives; the external 9999->2 link is dropped
+    pairs = {(r.predecessor_id, r.successor_id) for r in sch.relationships}
+    assert pairs == {(1, 2)}
+
+
+def test_duplicate_predecessor_link_is_deduped() -> None:
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "</Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.relationships) == 1
+
+
+def test_alap_constraint_is_normalized_to_asap() -> None:
+    # ALAP is out of scope for the early-date CPM (it would refuse the schedule); normalize it.
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>1</ConstraintType>"
+        "<ConstraintDate>2025-02-01T08:00:00</ConstraintDate></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.ASAP
+    assert sch.tasks_by_id[1].constraint_date is None
+
+
+def test_dateless_hard_constraint_is_normalized_to_asap() -> None:
+    # SNLT (code 5) with no ConstraintDate is a stale leftover — meaningless and unschedulable.
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>5</ConstraintType></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.ASAP
+
+
+def test_dated_constraint_is_preserved() -> None:
+    # a well-formed dated constraint must still be honored (no over-normalization)
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>4</ConstraintType>"
+        "<ConstraintDate>2025-02-01T08:00:00</ConstraintDate></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.SNET
+    assert sch.tasks_by_id[1].constraint_date == dt.datetime(2025, 2, 1, 8, 0)
 
 
 def test_predecessor_link_without_uid_raises() -> None:
