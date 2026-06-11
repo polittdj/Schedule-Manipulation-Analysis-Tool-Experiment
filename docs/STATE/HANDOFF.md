@@ -1,7 +1,8 @@
-# Handoff — 2026-06-11 (steady-state sitting)
+# Handoff — 2026-06-11 (full-audit + operator-features sitting)
 
-**This session:** resume verification + Bow Wave/CEI hardening (PR #67).
-**Next session:** no required milestone — respond to operator feedback; only the externally-gated
+**This session:** operator-requested full quality audit (3-agent fan-out; ~25 real findings fixed)
++ features: session-wide **target UID**, **light/dark theme**, **20-file batch cap** (PR #68).
+**Next session:** operator feedback + the deferred audit items below; only the externally-gated
 **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
@@ -30,7 +31,7 @@
 enhancements. **M15 (.pbix enrichment) is the ONLY remaining milestone, BLOCKED** pending the operator
 depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fabricate `.pbix` content.
 
-## What shipped the prior sitting (PRs #58–#66; #66 = the docs/handoff PR)
+## What shipped earlier sittings (PRs #58–#67)
 - **#58** Full-audit remediation (ADR-0024): dropzone native form-submit; Windows `.mpp` temp-file fix;
   POST-only wipe/example; never-uncited citation; SPI(t); cached UID maps; one `_Analysis`/CPM per
   schedule; O(weeks) CPM date math (equivalence-swept); 2s Ollama probes; CI push-main-only + action
@@ -51,16 +52,45 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   data-date marker, "CEI – x.xx" callout, **Prev/Next + Auto-play movie**; CEI = finished ÷ what the
   prior snapshot planned for the month after its data date. Plus **Trend focus UID**
   (`/trend?target=<uid>`) and **de-overlapped chart labels** (strip common filename prefix, rotate −35°).
-  All of #58–#66 are **merged to `main`**.
+- **#67** Bow Wave / CEI hardening: capped month axis sheds the OLDEST months first (the newest
+  status month + CEI period never fall off); CEI exactly 0.00 styles red/fail (falsy-zero bug).
+  All of #58–#67 are **merged to `main`**.
 
-## What shipped this sitting (PR #67)
-- **#67** Bow Wave / CEI hardening (found by reviewing the newest #64/#65 surfaces — no operator
-  feedback was pending): (a) the 48-month axis cap truncated from the RIGHT, so ≥18 months of
-  completed history + a >28-month status span silently pushed the **newest** snapshot's data-date
-  marker and CEI period off the axis while keeping stale history — the cap now sheds the **oldest**
-  months first and never the newest status month or its CEI period; (b) `_cei_body`'s
-  `(s.cei or 1) < 0.8` made a CEI of exactly **0.00** (the worst score) render green via falsy
-  zero — now `is not None and < 0.8`, matching `cei.js`. Regression tests for both.
+## What shipped this sitting (PR #68) — full audit + operator features
+**Features (operator-requested):**
+- **Session-wide Target UID** (header form, `POST /target`, `SessionState.target_uid`): report
+  page gains a Target-activity panel (dates/floats/%/flags/variance-vs-baseline) + auto-runs the
+  driving trace; `/trend` focuses on it by default (explicit `?target=` — even blank — overrides);
+  `/compare` adds the focus-movement panel; wipe clears it; redirects are local-only.
+- **Light/dark theme**: all CSS on custom properties + `html[data-theme=light]`; `static/theme.js`
+  applies the localStorage choice pre-paint; SVG charts route `var()` colors via `style` so they
+  re-theme live. Toggle in the header.
+- **Batch cap 10 → 20** (`MAX_FILES` in `importers/loader.py`); upload flash names dropped overflow.
+**Audit fixes (3 parallel review agents; every fix has a regression test):**
+- **§6 citation crash class closed for good**: empty DCMA populations are NA (never 0%→FAIL with
+  no offenders); DCMA09 NA without a status date; ALL citation fallbacks (recommendations,
+  briefing, narrative `_clean_bill`) terminate at the first task rows — a summary-only template
+  renders a report instead of 500ing. BEI counts early completions (DCMA numerator = all finished
+  by status).
+- **Summary-UID targets**: `recommend(target_uid=summary)` and `/api/driving` no longer
+  KeyError/500 — named note instead; `/api/driving` returns 422 (not 500) for logic-cycle files.
+- **XER importer got MSPDI's tolerance classes** (shared in `importers/_common.py`): ALAP/dateless
+  constraints → ASAP; dangling/self/duplicate TASKPRED dropped+counted; physical % clamped;
+  **`complete_pct_type`-aware percent complete** (actual dates rule; CP_Drtn derives from
+  remaining/target — phys-only read imported finished duration-type work as 0%); UTF-16 BOM.
+- **MSPDI percent lags** (`LagFormat` 19/20): tenths of a **percent of the predecessor duration**,
+  not tenths of a minute; links now build in a second pass. xsd:boolean "true"/"false" accepted.
+- **NaN/Infinity numerics** are noise (absent), not crashes/EVM poison. Upload decode unified with
+  file-path importers (`decode_xer_bytes`, utf-8-sig).
+- **Manipulation**: erased actuals (date→None, progress un-statused) raise `MANIP_ACTUAL_ERASED`
+  (HIGH). Schedule-quality metrics attach their offender lists (briefing cites real offenders).
+- **CUI**: pydantic `hide_input_in_errors`; redaction covers `.json` names, UNC paths, quoted/
+  whole-string spaced filenames, non-str log extras. `Save .json` round-trips milestones/
+  summaries/WBS/durations/costs/calendar exactly.
+- **Web polish**: trend focus chart never fabricates 0-points for versions missing the activity;
+  the page's resolved focus always drives `/api/trend`; driving-path legend readable (tier
+  backgrounds scoped to bars); unknown-schedule page is 404; Ollama probe timeout falsy-zero trap.
+All under **ADR-0026**.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -96,19 +126,27 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**526 passed, 3 skipped; parity 10/10; engine ≈99%; overall ≈99%; egress + air-gap green; bandit/pip-
+**562 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 
 ## Next steps / open items
-1. **Respond to operator feedback** on real `.mpp` files — if files still fail, the dashboard now names
-   the reason; add the next tolerance class in `importers/mspdi.py` (mirror to `xer.py` when relevant)
-   and ALWAYS re-run `pytest -m parity`.
-2. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
+1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes now live in
+   `importers/_common.py` (shared by both importers); ALWAYS re-run `pytest -m parity`.
+2. **Deferred audit items** (documented in ADR-0026, in rough priority order):
+   - the **480-min day** is hardcoded in day-based thresholds/conversions (`metrics/_common.py`
+     `FORTY_FOUR_DAYS_MIN`, `driving_slack` tier bands, `minutes_to_days` call sites) — only bites
+     non-8h calendars (JSON imports today; MSPDI/XER calendar parsing is still deferred ADR-0008);
+   - **CP_Units** percent from TASKRSRC quantities (currently duration-approximated);
+   - AI backend: the settings-selected Ollama backend never drives the cached narrative/briefing
+     (NullBackend always used), and `reattach` re-verifies citations but not figures — wire a
+     per-request backend + a number-preservation check before enabling real generation;
+   - trend `shortLabels` collapses identical filenames to "…" (label by data date as fallback).
+3. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
    (`engine/bow_wave.py` axis window `_MONTHS_BEFORE/AFTER`; `static/cei.js` layout) if they don't match.
-3. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
+4. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
    `importers/pbix.py`: unzip → DataModel/Layout, local-only; fold into dashboard; ADR; close last RTM row).
-4. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
+5. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
 
 ## Resume command for a NEW session
 Paste this as the first message:

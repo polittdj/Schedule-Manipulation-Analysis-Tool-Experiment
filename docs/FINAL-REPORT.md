@@ -64,13 +64,13 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**526 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
+TDD + pytest (**562 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#67 merged to `main`: build, audit remediation, no-admin Java discovery, data-date
-compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp` tolerance, and the
-Bow Wave/CEI view); 25 ADRs (`docs/adr/`, incl.
-ADR-0024 audit remediation and ADR-0025 multi-version analysis suite), a risk register
+with PRs (#55–#68 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
+compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp`/`.xer` tolerance,
+the Bow Wave/CEI view, and the target-UID/theme/20-file features); 26 ADRs (`docs/adr/`, incl.
+ADR-0024/0026 audit remediations and ADR-0025 multi-version analysis suite), a risk register
 (`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
 ## Post-build enhancements (operator-driven, merged)
@@ -92,6 +92,14 @@ ADR-0024 audit remediation and ADR-0025 multi-version analysis suite), a risk re
   monthly finish bars (baselined/scheduled/finished) with data-date marker and CEI callout,
   Prev/Next + Auto-play; the capped month axis sheds the oldest months first (the newest status
   month and its CEI period never fall off); trend focus UID; de-overlapped chart labels.
+- **Session-wide Target UID**: header control; report target panel + automatic driving trace,
+  default trend focus, compare movement — every focusable view honors one chosen activity.
+- **Light/dark theme** (header toggle, localStorage, charts re-theme live) and a **20-file**
+  batch cap (raised from §6.B's 10 at operator request).
+- **Second audit remediation (ADR-0026)**: §6 citation crash class closed (empty populations NA +
+  terminal citation anchors), XER tolerance parity with MSPDI + percent-type-aware progress,
+  percent lags, NaN/Infinity hygiene, erased-actuals manipulation signal, CUI hardening
+  (`hide_input_in_errors`, broader log redaction), faithful `Save .json` round-trip.
 
 ## Definition of Done (§8)
 - Every §6 RTM row `Implemented + Tested + Validated` — **except §6.A `.pbix` enrichment (M15)**, ◻ BLOCKED

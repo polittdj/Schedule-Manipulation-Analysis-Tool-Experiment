@@ -55,7 +55,7 @@ the heartbeat stops); the in-page **Quit** control stops it immediately.
 ## Use
 
 1. **Open or import** on the landing page — drag a file onto the dropzone or click **choose a file…**
-   (`.json` / `.xml` / `.mspdi` / `.xer` / `.mpp` / `.mpt`, up to 10 at once), or **Load example** for
+   (`.json` / `.xml` / `.mspdi` / `.xer` / `.mpp` / `.mpt`, up to 20 at once), or **Load example** for
    the bundled sample. Files parse locally; the dashboard tells you exactly what loaded and what
    failed (no silent failures). Each schedule lists **Open report** and **Save .json**.
 2. **Analysis** — DCMA-14 audit (pass/fail vs threshold + suggested fix), severity-ordered
