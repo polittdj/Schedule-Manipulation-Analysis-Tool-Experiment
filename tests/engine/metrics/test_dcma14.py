@@ -14,7 +14,8 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.metrics import CheckStatus, compute_dcma14
-from schedule_forensics.engine.metrics._common import FORTY_FOUR_DAYS_MIN
+from schedule_forensics.engine.metrics._common import forty_four_days_min
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
@@ -183,8 +184,39 @@ def test_bei_not_applicable_without_baseline() -> None:
     assert d["DCMA14"].status is CheckStatus.NOT_APPLICABLE
 
 
-def test_high_float_uses_44_day_threshold() -> None:
-    assert FORTY_FOUR_DAYS_MIN == 44 * 480
+def test_high_float_uses_44_day_threshold_on_the_schedules_calendar() -> None:
+    # the tripwire is defined in working DAYS; the minute value scales with the calendar
+    standard = _sched([Task(unique_id=1, name="A", duration_minutes=DAY)])
+    assert forty_four_days_min(standard) == 44 * 480
+    tens = _sched(
+        [Task(unique_id=1, name="A", duration_minutes=600)],
+        calendar=Calendar(name="Tens", working_minutes_per_day=600),
+    )
+    assert forty_four_days_min(tens) == 44 * 600
+
+
+def test_ten_hour_calendar_high_duration_compares_days_not_minutes() -> None:
+    # 45 x 480 = 21600 minutes is 45 days on the standard calendar (an offender) but only
+    # 36 days on a 10-hour calendar — the hardcoded 480-min threshold falsely flagged it.
+    task = Task(unique_id=1, name="A", duration_minutes=600, baseline_duration_minutes=45 * 480)
+    d10 = compute_dcma14(
+        _sched([task], calendar=Calendar(name="Tens", working_minutes_per_day=600))
+    )
+    assert d10["DCMA08"].count == 0
+    d8 = compute_dcma14(_sched([task]))
+    assert d8["DCMA08"].count == 1
+
+
+def test_ten_hour_calendar_high_float_compares_days_not_minutes() -> None:
+    # Parallel to a 41-day driver, task 2 carries 40 working days of float = 24000 minutes
+    # on the 600-min calendar. 24000 > 44x480 made it a false offender; 40 days is under
+    # the 44-day tripwire on this schedule's own calendar.
+    tasks = [
+        Task(unique_id=1, name="driver", duration_minutes=41 * 600),
+        Task(unique_id=2, name="floaty", duration_minutes=600),
+    ]
+    d = compute_dcma14(_sched(tasks, calendar=Calendar(name="Tens", working_minutes_per_day=600)))
+    assert d["DCMA06"].count == 0
 
 
 def test_no_links_is_na_not_fail() -> None:

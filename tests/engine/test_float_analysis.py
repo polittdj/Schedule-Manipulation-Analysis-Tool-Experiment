@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest
 
 from schedule_forensics.engine.float_analysis import analyze_floats, summarize_floats
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -69,6 +70,27 @@ def test_summary_counts() -> None:
     assert summary.critical_incomplete_count == 3  # none complete
     assert summary.negative_float_count == 0
     assert summary.network_finish_days == Decimal("6")
+
+
+def test_float_days_convert_on_the_schedules_calendar() -> None:
+    # On a 10-hour (600-min) calendar, 600 minutes of float is 1 day — not 1.25 days
+    # (the hardcoded 480-min conversion this build retired).
+    tasks = [
+        Task(unique_id=1, name="driver", duration_minutes=2 * 600),
+        Task(unique_id=2, name="floaty", duration_minutes=600),
+    ]
+    s = Schedule(
+        name="tens",
+        project_start=MON,
+        calendar=Calendar(name="Tens", working_minutes_per_day=600),
+        tasks=tuple(tasks),
+    )
+    floats = {f.unique_id: f for f in analyze_floats(s)}
+    assert floats[2].total_float_minutes == 600
+    assert floats[2].total_float_days == Decimal("1.00")
+    summary = summarize_floats(s)
+    assert summary.network_finish_minutes == 2 * 600
+    assert summary.network_finish_days == Decimal("2.00")
 
 
 @pytest.mark.parametrize(

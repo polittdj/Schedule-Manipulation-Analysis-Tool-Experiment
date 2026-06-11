@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.metrics import compute_schedule_quality
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -72,3 +73,20 @@ def test_missing_logic_flags_open_ends() -> None:
         Schedule(name="s", project_start=MON, tasks=tuple(tasks), relationships=tuple(rels))
     )
     assert q["missing_logic"].count == 2
+
+
+def test_insufficient_detail_compares_days_on_the_schedules_calendar() -> None:
+    # 45 x 480 minutes is 45 days at 480/day (an offender) but 36 days on a 10-hour
+    # calendar — the "44 working days" tripwire is defined in days, not minutes.
+    task = Task(unique_id=1, name="A", duration_minutes=600, baseline_duration_minutes=45 * 480)
+    q10 = compute_schedule_quality(
+        Schedule(
+            name="tens",
+            project_start=MON,
+            calendar=Calendar(name="Tens", working_minutes_per_day=600),
+            tasks=(task,),
+        )
+    )
+    assert q10["insufficient_detail"].count == 0
+    q8 = compute_schedule_quality(Schedule(name="s", project_start=MON, tasks=(task,)))
+    assert q8["insufficient_detail"].count == 1

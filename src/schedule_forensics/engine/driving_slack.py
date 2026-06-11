@@ -35,7 +35,7 @@ from schedule_forensics.engine.cpm import (
 from schedule_forensics.engine.path_trace import ancestors_of, topo_order
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.units import MINUTES_PER_DAY, minutes_to_days
+from schedule_forensics.model.units import minutes_to_days
 
 #: §6.C default day-thresholds the user may override at upload (`PARITY-INPUTS.md`).
 DEFAULT_SECONDARY_MAX_DAYS = 10
@@ -87,12 +87,15 @@ def _date_basis(
     return early_start, early_finish
 
 
-def _classify(slack_minutes: int, secondary_max_days: int, tertiary_max_days: int) -> PathTier:
+def _classify(
+    slack_minutes: int, secondary_max_days: int, tertiary_max_days: int, minutes_per_day: int
+) -> PathTier:
+    """Tier a slack against the user's day bands — days convert on the schedule's calendar."""
     if slack_minutes <= 0:
         return PathTier.DRIVING
-    if slack_minutes <= secondary_max_days * MINUTES_PER_DAY:
+    if slack_minutes <= secondary_max_days * minutes_per_day:
         return PathTier.SECONDARY
-    if slack_minutes <= tertiary_max_days * MINUTES_PER_DAY:
+    if slack_minutes <= tertiary_max_days * minutes_per_day:
         return PathTier.TERTIARY
     return PathTier.BEYOND
 
@@ -135,14 +138,15 @@ def compute_driving_slack(
         late_start[uid] = late_finish[uid] - span[uid]
 
     results: dict[int, DrivingSlackResult] = {}
+    per_day = schedule.calendar.working_minutes_per_day
     for uid in trace:
         slack = late_finish[uid] - early_finish[uid]
         results[uid] = DrivingSlackResult(
             unique_id=uid,
             driving_slack_minutes=slack,
-            driving_slack_days=minutes_to_days(slack),
+            driving_slack_days=minutes_to_days(slack, minutes_per_day=per_day),
             on_driving_path=slack <= 0,
-            tier=_classify(slack, secondary_max_days, tertiary_max_days),
+            tier=_classify(slack, secondary_max_days, tertiary_max_days, per_day),
         )
     return results
 

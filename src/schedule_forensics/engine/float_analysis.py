@@ -67,6 +67,7 @@ def analyze_floats(
     """
     result = cpm_result if cpm_result is not None else compute_cpm(schedule)
     tasks_by_id = schedule.tasks_by_id
+    per_day = schedule.calendar.working_minutes_per_day  # days render on the schedule's own axis
     out: list[FloatResult] = []
     for uid in sorted(result.timings):
         timing = result.timings[uid]
@@ -76,8 +77,8 @@ def analyze_floats(
                 unique_id=uid,
                 total_float_minutes=timing.total_float,
                 free_float_minutes=timing.free_float,
-                total_float_days=minutes_to_days(timing.total_float),
-                free_float_days=minutes_to_days(timing.free_float),
+                total_float_days=minutes_to_days(timing.total_float, minutes_per_day=per_day),
+                free_float_days=minutes_to_days(timing.free_float, minutes_per_day=per_day),
                 is_critical=timing.is_critical,
                 is_complete=task.is_complete,
             )
@@ -97,5 +98,7 @@ def summarize_floats(
         critical_incomplete_count=sum(1 for f in floats if f.is_critical_incomplete),
         negative_float_count=sum(1 for f in floats if f.total_float_minutes < 0),
         network_finish_minutes=result.project_finish,
-        network_finish_days=minutes_to_days(result.project_finish),
+        network_finish_days=minutes_to_days(
+            result.project_finish, minutes_per_day=schedule.calendar.working_minutes_per_day
+        ),
     )
