@@ -965,3 +965,138 @@ def test_unreadable_calendar_row_degrades_to_the_default_not_an_error() -> None:
     sch = parse_xer_text(text)
     assert sch.calendar.working_minutes_per_day == 480
     assert sch.tasks_by_id[1].name == "A"
+
+
+# --- cost roll-up (ADR-0029) ---------------------------------------------------------
+
+
+def test_costs_roll_up_from_assignments_and_expenses() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [
+                    ["1", "1", "A", "TT_Task", "8"],
+                    ["2", "1", "B", "TT_Task", "8"],
+                    ["3", "1", "C", "TT_Task", "8"],
+                ],
+            ),
+            (
+                "TASKRSRC",
+                [
+                    "taskrsrc_id",
+                    "task_id",
+                    "rsrc_id",
+                    "act_reg_cost",
+                    "act_ot_cost",
+                    "remain_cost",
+                    "target_cost",
+                ],
+                [
+                    # two assignments on task 1 sum component-wise
+                    ["1", "1", "100", "100", "20", "80", "150"],
+                    ["2", "1", "101", "50", "", "50", "100"],
+                    # task 2 is budget-loaded only: actuals/remaining were never recorded
+                    ["3", "2", "100", "", "", "", "300"],
+                ],
+            ),
+            (
+                "PROJCOST",
+                ["cost_item_id", "task_id", "act_cost", "remain_cost", "target_cost"],
+                [["10", "1", "30", "10", "40"]],  # an expense on task 1 joins the sums
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    one = sched.tasks_by_id[1]
+    assert one.actual_cost == 200.0  # 100+20 + 50 + 30 (assignments + expense)
+    assert one.cost == 340.0  # actual 200 + remaining 80+50+10
+    assert one.budgeted_cost == 290.0  # targets 150+100+40
+    two = sched.tasks_by_id[2]
+    assert two.budgeted_cost == 300.0
+    assert two.actual_cost is None  # never recorded — absence is honest, not 0
+    assert two.cost is None
+    three = sched.tasks_by_id[3]  # no cost rows at all
+    assert (three.cost, three.actual_cost, three.budgeted_cost) == (None, None, 0.0)
+
+
+def test_negative_budget_clamps_but_actual_credits_survive() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "8"]],
+            ),
+            (
+                "TASKRSRC",
+                ["taskrsrc_id", "task_id", "rsrc_id", "act_reg_cost", "remain_cost", "target_cost"],
+                [["1", "1", "100", "-25", "0", "-50"]],
+            ),
+        ]
+    )
+    t = parse_xer_text(text).tasks_by_id[1]
+    assert t.actual_cost == -25.0  # a credit is real data — preserved
+    assert t.budgeted_cost == 0.0  # the BAC/EV basis cannot be negative — clamped
+    assert t.cost == -25.0
+
+
+def test_cost_loaded_xer_drives_the_evm_indices() -> None:
+    # a finished, baselined, cost-loaded activity: CPI = EV/ACWP = 100/80 = 1.25 and
+    # SPI = 1.0 — previously every XER reported the cost indices as NA
+    from schedule_forensics.engine.metrics import compute_evm_indices
+
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "last_recalc_date"],
+                [["1", "P1", "2025-01-06 08:00", "2025-02-01 17:00"]],
+            ),
+            (
+                "TASK",
+                [
+                    "task_id",
+                    "proj_id",
+                    "task_name",
+                    "task_type",
+                    "target_drtn_hr_cnt",
+                    "target_start_date",
+                    "target_end_date",
+                    "act_start_date",
+                    "act_end_date",
+                ],
+                [
+                    [
+                        "1",
+                        "1",
+                        "Done",
+                        "TT_Task",
+                        "8",
+                        "2025-01-06 08:00",
+                        "2025-01-06 17:00",
+                        "2025-01-06 08:00",
+                        "2025-01-06 17:00",
+                    ]
+                ],
+            ),
+            (
+                "TASKRSRC",
+                ["taskrsrc_id", "task_id", "rsrc_id", "act_reg_cost", "remain_cost", "target_cost"],
+                [["1", "1", "100", "80", "0", "100"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    indices = compute_evm_indices(sched)
+    assert indices["cpi"].value == 1.25
+    assert indices["spi"].value == 1.0
+
+
+def test_fixture_without_cost_columns_stays_cost_free(schedule: Schedule) -> None:
+    # the curated fixture's TASKRSRC has no cost columns — fields keep their defaults
+    t = schedule.task_by_id(2001)
+    assert (t.cost, t.actual_cost, t.budgeted_cost) == (None, None, 0.0)
