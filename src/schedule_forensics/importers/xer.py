@@ -14,7 +14,8 @@ exports), cross-project rows, self-references, duplicates — are valid real-wor
 states and are dropped with a count logged (the same tolerance classes as the MSPDI
 importer; ALAP and dateless date-constraints likewise normalize to ASAP).
 
-Deferred (ADR-0008, carried to a later milestone): per-task cost roll-up from
+``TASKRSRC`` quantities drive the ``CP_Units`` percent complete (actual ÷ at-completion
+units). Deferred (ADR-0008, carried to a later milestone): per-task cost roll-up from
 ``TASKRSRC``/expenses and detailed ``CALENDAR`` parsing (the default 8h/Mon-Fri
 calendar is used). The parity-critical ingestion path is MSPDI (from ``.mpp`` via
 MPXJ, M4); XER is a secondary native format.
@@ -140,9 +141,11 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
     uids_by_task, names_by_task = _parse_assignments(
         tables.get("TASKRSRC", []), resource_name_by_id
     )
+    units_pct_by_task = _units_percent_by_task(tables.get("TASKRSRC", []))
 
     tasks = [
-        _parse_task(row, wbs_short, wbs_parent, uids_by_task, names_by_task) for row in task_rows
+        _parse_task(row, wbs_short, wbs_parent, uids_by_task, names_by_task, units_pct_by_task)
+        for row in task_rows
     ]
     all_task_ids = {_req_int(t, "task_id") for t in all_tasks}
     in_scope_ids = {t.unique_id for t in tasks}
@@ -288,6 +291,7 @@ def _parse_task(
     wbs_parent: dict[str, str | None],
     uids_by_task: dict[int, tuple[int, ...]],
     names_by_task: dict[int, tuple[str, ...]],
+    units_pct_by_task: dict[int, float],
 ) -> Task:
     task_id = _req_int(row, "task_id")
     task_type = _g(row, "task_type") or ""
@@ -320,7 +324,7 @@ def _parse_task(
             constraint_type=constraint_type,
             constraint_date=constraint_date,
             deadline=None,  # P6 deadlines are a secondary constraint (deferred)
-            percent_complete=_percent_complete(row),
+            percent_complete=_percent_complete(row, units_pct_by_task.get(task_id)),
             physical_percent_complete=(
                 clamped_percent_or_none(physical)
                 if _g(row, "complete_pct_type") == "CP_Phys"
@@ -339,23 +343,27 @@ def _parse_task(
         raise ImporterError(f"task task_id {task_id} is invalid: {exc}") from exc
 
 
-def _percent_complete(row: Row) -> float:
+def _percent_complete(row: Row, units_pct: float | None = None) -> float:
     """P6 activity % complete honoring ``complete_pct_type``.
 
     ``phys_complete_pct`` only carries the user-maintained *physical* % — under the
     P6-default ``CP_Drtn`` it stays 0 while work progresses, so reading it universally
     imported finished work as "not started". Actual dates are facts and rule first:
-    finished → 100, not started → 0. In between, ``CP_Phys`` reads the physical %, and
-    ``CP_Drtn``/``CP_Units`` derive duration % = (target - remaining) / target
-    (for ``CP_Units`` the duration share is the closest honest stand-in until TASKRSRC
-    quantities are parsed; the physical % is the fallback when durations are absent).
+    finished → 100, not started → 0. In between, ``CP_Phys`` reads the physical %,
+    ``CP_Units`` reads the TASKRSRC quantity share (``units_pct``, actual ÷
+    at-completion units) when the file carries quantities, and ``CP_Drtn`` — or any
+    type left without a usable basis — derives duration % = (target - remaining) /
+    target, with the physical % as the last fallback.
     """
     if _g(row, "act_end_date") is not None:
         return 100.0
     if _g(row, "act_start_date") is None:
         return 0.0
-    if (_g(row, "complete_pct_type") or "CP_Drtn") == "CP_Phys":
+    pct_type = _g(row, "complete_pct_type") or "CP_Drtn"
+    if pct_type == "CP_Phys":
         return parse_percent(_g(row, "phys_complete_pct"))
+    if pct_type == "CP_Units" and units_pct is not None:
+        return units_pct
     target = parse_float(_g(row, "target_drtn_hr_cnt"))
     remain = parse_float(_g(row, "remain_drtn_hr_cnt"))
     if not target or target <= 0 or remain is None:
@@ -439,6 +447,36 @@ def _parse_resources(rsrc_rows: list[Row]) -> list[Resource]:
         except pydantic.ValidationError as exc:
             raise ImporterError(f"resource rsrc_id {rsrc_id} is invalid: {exc}") from exc
     return resources
+
+
+def _units_percent_by_task(taskrsrc_rows: list[Row]) -> dict[int, float]:
+    """``TASKRSRC`` quantities → per-task units % complete (P6 "Units % Complete").
+
+    Units % = actual ÷ at-completion units summed across the task's assignments, where
+    actual = ``act_reg_qty`` + ``act_ot_qty`` and at-completion = actual + ``remain_qty``.
+    Tasks with no parseable quantities (or zero at-completion units) are absent —
+    :func:`_percent_complete` falls back to the duration share for those, so a file
+    without quantities behaves exactly as before.
+    """
+    actual: dict[int, float] = {}
+    remaining: dict[int, float] = {}
+    for row in taskrsrc_rows:
+        task_id = _opt_int(row, "task_id")
+        if task_id is None:
+            continue
+        regular = parse_float(_g(row, "act_reg_qty"))
+        overtime = parse_float(_g(row, "act_ot_qty"))
+        remain = parse_float(_g(row, "remain_qty"))
+        if regular is None and overtime is None and remain is None:
+            continue  # an assignment with no quantities carries no progress signal
+        actual[task_id] = actual.get(task_id, 0.0) + (regular or 0.0) + (overtime or 0.0)
+        remaining[task_id] = remaining.get(task_id, 0.0) + (remain or 0.0)
+    out: dict[int, float] = {}
+    for task_id, act in actual.items():
+        at_completion = act + remaining[task_id]
+        if at_completion > 0:
+            out[task_id] = min(100.0, max(0.0, 100.0 * act / at_completion))
+    return out
 
 
 def _parse_assignments(
