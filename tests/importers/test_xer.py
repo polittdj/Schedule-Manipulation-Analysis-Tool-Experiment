@@ -612,6 +612,97 @@ def test_duration_percent_type_derives_progress_from_durations() -> None:
     assert sched.tasks_by_id[3].percent_complete == 0.0
 
 
+def test_units_percent_type_reads_taskrsrc_quantities() -> None:
+    # P6 "Units % Complete" = actual ÷ at-completion units across the task's assignments
+    # (at-completion = actual + remaining). Previously CP_Units approximated via the
+    # duration share; with TASKRSRC quantities present the real basis is used.
+    cols = [
+        "task_id",
+        "proj_id",
+        "task_name",
+        "task_type",
+        "complete_pct_type",
+        "target_drtn_hr_cnt",
+        "remain_drtn_hr_cnt",
+        "act_start_date",
+        "act_end_date",
+    ]
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                cols,
+                [
+                    # single assignment: (30 + 10) actual ÷ (40 + 60) at-completion = 40%
+                    ["1", "1", "Single", "TT_Task", "CP_Units", "80", "70", "2025-01-06 08:00", ""],
+                    # two assignments summed: (40 + 20) ÷ (60 + 100) = 37.5%
+                    ["2", "1", "Multi", "TT_Task", "CP_Units", "80", "70", "2025-01-06 08:00", ""],
+                    # no quantities anywhere -> duration share fallback: (80-60)/80 = 25%
+                    ["3", "1", "NoQty", "TT_Task", "CP_Units", "80", "60", "2025-01-06 08:00", ""],
+                    # an actual finish is a fact and rules over any quantity arithmetic
+                    [
+                        "4",
+                        "1",
+                        "Done",
+                        "TT_Task",
+                        "CP_Units",
+                        "80",
+                        "0",
+                        "2025-01-06 08:00",
+                        "2025-01-17 17:00",
+                    ],
+                ],
+            ),
+            (
+                "TASKRSRC",
+                ["taskrsrc_id", "task_id", "rsrc_id", "act_reg_qty", "act_ot_qty", "remain_qty"],
+                [
+                    ["1", "1", "100", "30", "10", "60"],
+                    ["2", "2", "100", "30", "10", "60"],
+                    ["3", "2", "101", "20", "", "40"],
+                    ["4", "4", "100", "10", "0", "0"],
+                ],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.tasks_by_id[1].percent_complete == 40.0
+    assert sched.tasks_by_id[2].percent_complete == 37.5
+    assert sched.tasks_by_id[3].percent_complete == 25.0
+    assert sched.tasks_by_id[4].percent_complete == 100.0
+
+
+def test_units_percent_zero_at_completion_falls_back_to_duration_share() -> None:
+    # all-zero quantities give no units basis (0 ÷ 0) — never a fabricated 0%/100%;
+    # the duration share (80-20)/80 = 75% is the honest stand-in
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                [
+                    "task_id",
+                    "proj_id",
+                    "task_name",
+                    "task_type",
+                    "complete_pct_type",
+                    "target_drtn_hr_cnt",
+                    "remain_drtn_hr_cnt",
+                    "act_start_date",
+                ],
+                [["1", "1", "A", "TT_Task", "CP_Units", "80", "20", "2025-01-06 08:00"]],
+            ),
+            (
+                "TASKRSRC",
+                ["taskrsrc_id", "task_id", "rsrc_id", "act_reg_qty", "act_ot_qty", "remain_qty"],
+                [["1", "1", "100", "0", "0", "0"]],
+            ),
+        ]
+    )
+    assert parse_xer_text(text).tasks_by_id[1].percent_complete == 75.0
+
+
 def test_duplicate_taskpred_rows_are_deduplicated() -> None:
     text = _xer(
         [

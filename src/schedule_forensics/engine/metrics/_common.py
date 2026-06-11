@@ -17,8 +17,16 @@ from schedule_forensics.engine.cpm import datetime_to_offset
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-#: DCMA "44 working days" tripwire, in working minutes (44 x 480).
-FORTY_FOUR_DAYS_MIN = 44 * 480
+#: The DCMA high-float / high-duration tripwire, in working DAYS. The minute value
+#: depends on the schedule's calendar — use :func:`forty_four_days_min`.
+FORTY_FOUR_DAYS = 44
+
+
+def forty_four_days_min(schedule: Schedule) -> int:
+    """The DCMA "44 working days" tripwire in working minutes, on THIS schedule's
+    calendar (44 x 480 for the standard 8-hour day; a 10-hour-day calendar tripwires
+    at 44 x 600 — the threshold is defined in days, not minutes)."""
+    return FORTY_FOUR_DAYS * schedule.calendar.working_minutes_per_day
 
 
 class CheckStatus(StrEnum):

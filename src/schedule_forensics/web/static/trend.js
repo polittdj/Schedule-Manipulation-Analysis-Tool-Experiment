@@ -25,7 +25,11 @@
 
   // Version names often share a long common prefix (e.g. "USA_marvik_USA_marvik_…");
   // strip it (keeping a leading …) and cap the length so axis labels never overlap.
-  function shortLabels(labels) {
+  // Identical filenames (re-uploads of the same export) would collapse to a bare "…" —
+  // those fall back to the version's data date (or index) so labels stay tellable apart.
+  function shortLabels(versions) {
+    var labels = versions.map(function (v) { return v.label; });
+    function fallback(i) { return versions[i].status_date || "v" + (i + 1); }
     if (labels.length < 2) return labels.map(function (l) { return l.slice(0, 16); });
     var prefix = labels[0];
     labels.forEach(function (l) {
@@ -34,8 +38,10 @@
       prefix = prefix.slice(0, i);
     });
     var cut = prefix.length >= 6 ? prefix.length : 0;
-    return labels.map(function (l) {
-      var s = (cut ? "…" + l.slice(cut) : l).replace(/\.(mpp|xml|xer|json|mspdi)$/i, "");
+    return labels.map(function (l, i) {
+      var s = (cut ? l.slice(cut) : l).replace(/\.(mpp|xml|xer|json|mspdi)$/i, "");
+      if (!s) return fallback(i);
+      if (cut) s = "…" + s;
       return s.length > 16 ? s.slice(0, 15) + "…" : s;
     });
   }
@@ -89,7 +95,7 @@
   fetch("/api/trend?target=" + encodeURIComponent(target || ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (data) {
-      var labels = shortLabels(data.versions.map(function (v) { return v.label; }));
+      var labels = shortLabels(data.versions);
       // the focus activity's finish movement leads when a target UID is set
       if (data.target && data.target.finishes && data.target.finishes.some(function (f) { return f; })) {
         var fin = data.target.finishes.map(function (f) { return f ? Date.parse(f) / 86400000 : null; });

@@ -115,3 +115,6 @@ def test_trend_labels_are_deoverlapped(client: TestClient) -> None:
     js = client.get("/static/trend.js").text
     assert "shortLabels" in js  # common-prefix stripping for long version names
     assert "rotate(-35" in js  # rotated axis labels never overlap
+    # identical filenames collapse to nothing after the prefix strip — the data date
+    # (or version index) labels those instead of a bare "…"
+    assert "status_date ||" in js

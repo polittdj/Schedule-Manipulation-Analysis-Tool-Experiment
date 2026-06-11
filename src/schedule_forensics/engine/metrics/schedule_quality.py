@@ -20,11 +20,11 @@ from collections import Counter
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
 from schedule_forensics.engine.metrics._common import (
-    FORTY_FOUR_DAYS_MIN,
     CheckStatus,
     Direction,
     MetricResult,
     evaluate,
+    forty_four_days_min,
     is_incomplete,
     non_summary,
     percent,
@@ -121,7 +121,7 @@ def compute_schedule_quality(
         t.unique_id
         for t in tasks
         if t.baseline_duration_minutes is not None
-        and t.baseline_duration_minutes > FORTY_FOUR_DAYS_MIN
+        and t.baseline_duration_minutes > forty_four_days_min(schedule)
     )
     out["insufficient_detail"] = _pct_result(
         "insufficient_detail",

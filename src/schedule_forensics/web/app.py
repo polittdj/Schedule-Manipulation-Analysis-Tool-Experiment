@@ -30,11 +30,13 @@ from fastapi.staticfiles import StaticFiles
 from jinja2 import Template
 
 from schedule_forensics.ai import (
+    AIBackend,
     AIConfig,
     Classification,
     NullBackend,
     OllamaBackend,
     banner_for,
+    reattach,
     route_backend,
 )
 from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
@@ -140,9 +142,9 @@ def _compute_analysis(sch: Schedule) -> _Analysis:
         audit=audit_schedule(sch, cpm),
         compliance=compute_baseline_compliance(sch, cpm),
         findings=recommend(sch, current_cpm=cpm),
-        # single-schedule narrative is deterministic (NullBackend) and CPM-threaded, so it is
-        # safe to cache alongside the rest; if a per-request AI backend is wired in later, move
-        # the narrative back out of the cached analysis.
+        # the cached narrative is always the deterministic (NullBackend) one; a real
+        # session-selected backend rephrases it per request via _polished_narrative
+        # (citations re-attached, figures re-verified — see ai.citations.reattach).
         narrative=build_narrative(sch, current_cpm=cpm),
         activity_rows=_activity_rows(sch, cpm),
     )
@@ -161,6 +163,12 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
+    # the routed AI backend, cached briefly (config, probed-at, backend) so report renders
+    # don't re-probe a down Ollama every time; reset on a settings change / TTL lapse.
+    backend_cache: tuple[AIConfig, float, AIBackend] | None = None
+    # per-schedule narrative as polished by a real (non-null) backend:
+    # key -> (schedule identity, "backend/model" stamp, narrative). Cleared on wipe.
+    polished: dict[str, tuple[Schedule, str, Narrative]] = field(default_factory=dict)
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
@@ -208,6 +216,59 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
         return OllamaBackend(endpoint=config.endpoint, model=config.model)
     except Exception:
         return None
+
+
+#: How long a routed-backend probe result is trusted before re-probing (seconds). Keeps
+#: report renders from paying the Ollama availability probe on every page view, while an
+#: Ollama started mid-session is still picked up promptly.
+_BACKEND_PROBE_TTL = 15.0
+
+
+def _active_backend(state: SessionState) -> AIBackend:
+    """The session's routed AI backend (fail-closed local — `route_backend`).
+
+    The routing result is cached for ``_BACKEND_PROBE_TTL`` seconds per config value; a
+    settings save resets the cache so changes take effect immediately.
+    """
+    cached = state.backend_cache
+    now = time.monotonic()
+    if cached is not None and cached[0] == state.ai_config and now - cached[1] < _BACKEND_PROBE_TTL:
+        return cached[2]
+    backend, _banner = route_backend(
+        state.ai_config,
+        null_backend=NullBackend(),
+        ollama_backend=_ollama_or_none(state.ai_config),
+    )
+    state.backend_cache = (state.ai_config, now, backend)
+    return backend
+
+
+def _polished_narrative(
+    state: SessionState, key: str, sch: Schedule, analysis: _Analysis
+) -> Narrative:
+    """The report narrative, rephrased by the session-selected backend when one is active.
+
+    The Null backend (the default, and the fail-closed route) returns the cached
+    deterministic narrative at zero cost. A real backend rephrases each statement once per
+    (schedule, backend, model) — `reattach` re-verifies citations AND figures, so polish can
+    never drop a citation or alter a number — and any generation failure falls back to the
+    deterministic narrative (a dying model server must never 500 the report)."""
+    backend = _active_backend(state)
+    if backend.name == "null":
+        return analysis.narrative
+    stamp = f"{backend.name}/{getattr(backend, 'model', '')}"
+    cached = state.polished.get(key)
+    if cached is not None and cached[0] is sch and cached[1] == stamp:
+        return cached[2]
+    sources = analysis.narrative.statements
+    try:
+        polished = tuple(backend.generate(s.text) for s in sources)
+    except Exception:
+        logger.warning("AI narrative generation failed; serving the deterministic narrative")
+        return analysis.narrative
+    narrative = Narrative(title=analysis.narrative.title, statements=reattach(polished, sources))
+    state.polished[key] = (sch, stamp, narrative)
+    return narrative
 
 
 def _page(state: SessionState, title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
@@ -410,7 +471,8 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc))
-        return _page(st, name, _analysis_body(name, sch, analysis, st.target_uid))
+        narrative = _polished_narrative(st, name, sch, analysis)
+        return _page(st, name, _analysis_body(name, sch, analysis, st.target_uid, narrative))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -552,7 +614,15 @@ def create_app(
                 _skipped_notice(skipped)
                 + "<div class=panel>Load at least one analyzable schedule to build the briefing.</div>",
             )
-        body = _skipped_notice(skipped) + _briefing_body(build_briefing(schedules, cpms=cpms))
+        # the session-selected backend may polish the briefing prose (citations + figures
+        # re-verified by reattach inside build_briefing); a generation failure degrades to
+        # the deterministic briefing instead of a 500
+        try:
+            briefing = build_briefing(schedules, cpms=cpms, backend=_active_backend(st))
+        except Exception:
+            logger.warning("AI briefing generation failed; serving the deterministic briefing")
+            briefing = build_briefing(schedules, cpms=cpms)
+        body = _skipped_notice(skipped) + _briefing_body(briefing)
         return _page(st, "Executive Briefing", body)
 
     @app.get("/settings", response_class=HTMLResponse)
@@ -574,6 +644,7 @@ def create_app(
         st.ai_config = AIConfig(
             classification=cls, backend=backend, model=model, endpoint=st.ai_config.endpoint
         )
+        st.backend_cache = None  # re-route immediately — a settings change must take effect now
         return RedirectResponse(url="/settings", status_code=303)
 
     @app.get("/help", response_class=HTMLResponse)
@@ -607,6 +678,7 @@ def create_app(
         st = session()
         st.schedules.clear()
         st.analyses.clear()
+        st.polished.clear()
         st.flash = None
         st.target_uid = None
         logger.info("session wiped")
@@ -738,7 +810,13 @@ focuses on it, and Compare shows its movement. Set or clear it in the header.</p
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
 
 
-def _analysis_body(key: str, sch: Schedule, analysis: _Analysis, target: int | None = None) -> str:
+def _analysis_body(
+    key: str,
+    sch: Schedule,
+    analysis: _Analysis,
+    target: int | None = None,
+    narrative: Narrative | None = None,
+) -> str:
     audit = analysis.audit
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
@@ -754,8 +832,8 @@ def _analysis_body(key: str, sch: Schedule, analysis: _Analysis, target: int | N
         f"{_e(f' +{len(f.citations) - 2} more' if len(f.citations) > 2 else '')}</td></tr>"
         for f in findings
     )
-    narrative = analysis.narrative
-    story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
+    story_source = narrative if narrative is not None else analysis.narrative
+    story = "".join(f"<li>{_e(s.rendered())}</li>" for s in story_source.statements)
     target_panel = _target_panel(sch, analysis, target) if target is not None else ""
     viz = f"""{target_panel}
 <div class=panel><h2>Interactive analysis</h2>

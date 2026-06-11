@@ -20,11 +20,11 @@ from collections import Counter
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
 from schedule_forensics.engine.metrics._common import (
-    FORTY_FOUR_DAYS_MIN,
     CheckStatus,
     Direction,
     MetricResult,
     evaluate,
+    forty_four_days_min,
     is_incomplete,
     non_summary,
     percent,
@@ -38,8 +38,9 @@ from schedule_forensics.model.task import ConstraintType
 _HARD_CONSTRAINTS = frozenset(
     {ConstraintType.MSO, ConstraintType.MFO, ConstraintType.SNLT, ConstraintType.FNLT}
 )
-#: Injected delay for the critical-path test (DCMA-12), working minutes (100 days).
-_CRITICAL_PATH_TEST_DELAY_MIN = 100 * 480
+#: Injected delay for the critical-path test (DCMA-12), in working DAYS — converted
+#: on the schedule's own calendar at test time.
+_CRITICAL_PATH_TEST_DELAY_DAYS = 100
 
 
 def compute_dcma14(
@@ -132,10 +133,10 @@ def compute_dcma14(
         "DCMA05", "Hard Constraints", len(hard), n_tasks, "%", 5.0, Direction.LE, hard
     )
 
-    # DCMA-06 High float — incomplete activities with total float > 44 working days.
-    high_float = tuple(
-        t.unique_id for t in incomplete if tf.get(t.unique_id, 0) > FORTY_FOUR_DAYS_MIN
-    )
+    # DCMA-06 High float — incomplete activities with total float > 44 working days
+    # (the day threshold converts on this schedule's own calendar).
+    forty_four = forty_four_days_min(schedule)
+    high_float = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) > forty_four)
     out["DCMA06"] = _r(
         "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
     )
@@ -148,8 +149,7 @@ def compute_dcma14(
     high_dur = tuple(
         t.unique_id
         for t in incomplete
-        if t.baseline_duration_minutes is not None
-        and t.baseline_duration_minutes > FORTY_FOUR_DAYS_MIN
+        if t.baseline_duration_minutes is not None and t.baseline_duration_minutes > forty_four
     )
     out["DCMA08"] = _r(
         "DCMA08", "High Duration", len(high_dur), n_inc, "%", 5.0, Direction.LE, high_dur
@@ -326,9 +326,8 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
             Direction.EQ,
         )
     target = by_id[min(targets)]
-    delayed = target.model_copy(
-        update={"duration_minutes": target.duration_minutes + _CRITICAL_PATH_TEST_DELAY_MIN}
-    )
+    delay_min = _CRITICAL_PATH_TEST_DELAY_DAYS * schedule.calendar.working_minutes_per_day
+    delayed = target.model_copy(update={"duration_minutes": target.duration_minutes + delay_min})
     perturbed = schedule.model_copy(
         update={
             "tasks": tuple(
@@ -339,7 +338,7 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     # `result` already proved the network schedulable; only a duration grew, so this
     # recompute cannot newly cycle/refuse — any CPMError propagates (fail loud).
     new_result = compute_cpm(perturbed)
-    moved = new_result.project_finish - result.project_finish == _CRITICAL_PATH_TEST_DELAY_MIN
+    moved = new_result.project_finish - result.project_finish == delay_min
     measured = 0.0 if moved else 1.0
     return MetricResult(
         "DCMA12",

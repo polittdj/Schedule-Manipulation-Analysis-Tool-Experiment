@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from decimal import Decimal
 from pathlib import Path
 
 from schedule_forensics.engine.driving_slack import (
@@ -15,6 +16,7 @@ from schedule_forensics.engine.driving_slack import (
     compute_driving_slack,
     driving_path,
 )
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -68,6 +70,32 @@ def test_target_with_no_ancestors() -> None:
     results = compute_driving_slack(_net(), target_uid=2)  # B is a start task
     assert set(results) == {2}
     assert results[2].driving_slack_minutes == 0
+
+
+def test_tier_bands_convert_days_on_the_schedules_calendar() -> None:
+    # On a 10-hour (600-min) calendar, A->T carries 9 working days of slack (5400 min).
+    # Tiering against hardcoded 480-min days read that as 11.25d -> TERTIARY; the bands
+    # are defined in days, so on this calendar it is 9d -> SECONDARY (default band <=10).
+    tasks = [
+        Task(unique_id=1, name="A", duration_minutes=600),
+        Task(unique_id=2, name="B", duration_minutes=10 * 600),
+        Task(unique_id=3, name="T", duration_minutes=600),
+    ]
+    rels = [
+        Relationship(predecessor_id=1, successor_id=3),
+        Relationship(predecessor_id=2, successor_id=3),
+    ]
+    sched = Schedule(
+        name="tens",
+        project_start=MON,
+        calendar=Calendar(name="Tens", working_minutes_per_day=600),
+        tasks=tuple(tasks),
+        relationships=tuple(rels),
+    )
+    results = compute_driving_slack(sched, target_uid=3)
+    assert results[1].driving_slack_minutes == 9 * 600
+    assert results[1].driving_slack_days == Decimal("9.00")  # not 11.25
+    assert results[1].tier is PathTier.SECONDARY
 
 
 def test_golden_ssi_driving_slack_parity(golden_project5: Schedule) -> None:

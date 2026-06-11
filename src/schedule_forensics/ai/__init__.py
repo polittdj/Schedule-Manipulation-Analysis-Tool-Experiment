@@ -22,6 +22,7 @@ from schedule_forensics.ai.citations import (
     Narrative,
     UncitedStatementError,
     assert_all_cited,
+    preserves_figures,
     reattach,
 )
 from schedule_forensics.ai.narrative import build_narrative
@@ -41,6 +42,7 @@ __all__ = [
     "assert_all_cited",
     "banner_for",
     "build_narrative",
+    "preserves_figures",
     "reattach",
     "route_backend",
 ]
