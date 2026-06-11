@@ -86,6 +86,8 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
     }
     if weekdays:
         kwargs["work_weekdays"] = tuple(int(d) for d in weekdays)
+    if raw.get("holidays"):
+        kwargs["holidays"] = tuple(dt.date.fromisoformat(str(h)) for h in raw["holidays"])
     return Calendar(**kwargs)
 
 
@@ -172,6 +174,8 @@ def to_json_text(schedule: Schedule) -> str:
                 "hours_per_day": cal.working_minutes_per_day / 60,
                 "working_minutes_per_day": cal.working_minutes_per_day,
                 "work_weekdays": list(cal.work_weekdays),
+                # holidays round-trip exactly (imported calendars carry them now)
+                "holidays": [d.isoformat() for d in cal.holidays],
             }
         ],
         "tasks": [],

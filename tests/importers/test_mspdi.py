@@ -508,3 +508,187 @@ def test_nan_cost_is_noise_not_poison() -> None:
     )
     sched = parse_mspdi_text(_doc(body))
     assert sched.tasks_by_id[1].cost is None
+
+
+# --- project calendar (ADR-0028) ---------------------------------------------------
+
+_TASK_A = "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks>"
+
+
+def _weekday(day_type: int, *spans: tuple[str, str]) -> str:
+    if not spans:
+        return f"<WeekDay><DayType>{day_type}</DayType><DayWorking>0</DayWorking></WeekDay>"
+    times = "".join(
+        f"<WorkingTime><FromTime>{s}</FromTime><ToTime>{f}</ToTime></WorkingTime>" for s, f in spans
+    )
+    return (
+        f"<WeekDay><DayType>{day_type}</DayType><DayWorking>1</DayWorking>"
+        f"<WorkingTimes>{times}</WorkingTimes></WeekDay>"
+    )
+
+
+def test_project_calendar_weekdays_minutes_and_holidays() -> None:
+    # 10h Tue-Sat calendar (DayType 3..7) with a single-day holiday, a 3-day holiday
+    # range, and a WORKING exception (changed hours) that must NOT become a holiday
+    ten_hour = [_weekday(1), _weekday(2)] + [
+        _weekday(d, ("07:00:00", "12:00:00"), ("13:00:00", "18:00:00")) for d in (3, 4, 5, 6, 7)
+    ]
+    body = f"""
+<CalendarUID>7</CalendarUID>
+<Calendars><Calendar><UID>7</UID><Name>TenHour</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID>
+<WeekDays>{"".join(ten_hour)}</WeekDays>
+<Exceptions>
+<Exception><TimePeriod><FromDate>2025-07-04T00:00:00</FromDate>
+<ToDate>2025-07-04T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+<Exception><TimePeriod><FromDate>2025-12-24T00:00:00</FromDate>
+<ToDate>2025-12-26T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+<Exception><TimePeriod><FromDate>2025-08-05T00:00:00</FromDate>
+<ToDate>2025-08-05T23:59:00</ToDate></TimePeriod><DayWorking>1</DayWorking></Exception>
+</Exceptions>
+</Calendar></Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.name == "TenHour"
+    assert cal.working_minutes_per_day == 600
+    assert cal.work_weekdays == (1, 2, 3, 4, 5)  # Tue..Sat
+    assert cal.holidays == (
+        dt.date(2025, 7, 4),
+        dt.date(2025, 12, 24),
+        dt.date(2025, 12, 25),
+        dt.date(2025, 12, 26),
+    )
+
+
+def test_derived_project_calendar_inherits_base_week_and_collects_chain_exceptions() -> None:
+    # the project calendar (UID 9) has no WeekDays of its own — its base (UID 1)
+    # provides the week pattern, and exceptions on BOTH levels become holidays
+    base_week = (
+        [_weekday(1)]
+        + [_weekday(d, ("08:00:00", "12:00:00"), ("13:00:00", "17:00:00")) for d in (2, 3, 4, 5, 6)]
+        + [_weekday(7)]
+    )
+    body = f"""
+<CalendarUID>9</CalendarUID>
+<Calendars>
+<Calendar><UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID><WeekDays>{"".join(base_week)}</WeekDays>
+<Exceptions><Exception><TimePeriod><FromDate>2025-01-20T00:00:00</FromDate>
+<ToDate>2025-01-20T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+</Exceptions></Calendar>
+<Calendar><UID>9</UID><Name>Site</Name><IsBaseCalendar>0</IsBaseCalendar>
+<BaseCalendarUID>1</BaseCalendarUID>
+<Exceptions><Exception><TimePeriod><FromDate>2025-02-17T00:00:00</FromDate>
+<ToDate>2025-02-17T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+</Exceptions></Calendar>
+</Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.name == "Site"
+    assert cal.working_minutes_per_day == 480
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)
+    assert cal.holidays == (dt.date(2025, 1, 20), dt.date(2025, 2, 17))
+
+
+def test_missing_or_unmatched_calendar_uses_the_default() -> None:
+    # no Calendars section at all
+    assert parse_mspdi_text(_doc(_TASK_A)).calendar.working_minutes_per_day == 480
+    # a CalendarUID that resolves to nothing
+    body = f"<CalendarUID>99</CalendarUID><Calendars/>{_TASK_A}"
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.working_minutes_per_day == 480
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)
+    assert cal.holidays == ()
+
+
+def test_working_day_without_working_times_means_default_minutes() -> None:
+    # DayWorking=1 with no WorkingTimes is MS Project's "use the default times"
+    week = "<WeekDay><DayType>2</DayType><DayWorking>1</DayWorking></WeekDay>"
+    body = f"""
+<CalendarUID>3</CalendarUID>
+<Calendars><Calendar><UID>3</UID><Name>Bare</Name>
+<WeekDays>{week}</WeekDays></Calendar></Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.work_weekdays == (0,)
+    assert cal.working_minutes_per_day == 480
+
+
+def test_golden_calendar_parses_to_the_standard_default_shape(
+    golden_project5: Schedule,
+) -> None:
+    # the goldens' project calendar IS the textbook standard — parsing it must be
+    # behaviorally identical to the old hardcoded default (the parity guarantee)
+    cal = golden_project5.calendar
+    assert cal.name == "Standard"
+    assert cal.working_minutes_per_day == 480
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)
+    assert cal.holidays == ()
+
+
+def test_imported_holiday_shifts_the_computed_dates() -> None:
+    # A(1d) -> B(1d) from Monday 2025-01-06 with Tuesday 2025-01-07 a holiday:
+    # B's computed finish must skip to Wednesday — the parsed calendar reaches the CPM
+    from schedule_forensics.engine.cpm import compute_cpm, offset_to_datetime
+
+    week = (
+        [_weekday(1)]
+        + [_weekday(d, ("08:00:00", "12:00:00"), ("13:00:00", "17:00:00")) for d in (2, 3, 4, 5, 6)]
+        + [_weekday(7)]
+    )
+    body = f"""
+<CalendarUID>1</CalendarUID>
+<Calendars><Calendar><UID>1</UID><Name>Standard</Name>
+<WeekDays>{"".join(week)}</WeekDays>
+<Exceptions><Exception><TimePeriod><FromDate>2025-01-07T00:00:00</FromDate>
+<ToDate>2025-01-07T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>
+</Exceptions></Calendar></Calendars>
+<Tasks>
+<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task>
+<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>
+<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink></Task>
+</Tasks>"""
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.calendar.holidays == (dt.date(2025, 1, 7),)
+    cpm = compute_cpm(sch)
+    finish = offset_to_datetime(sch.project_start, cpm.timings[2].early_finish, sch.calendar)
+    assert finish.date() == dt.date(2025, 1, 8)  # Tuesday holiday skipped
+
+
+def test_unreadable_calendar_degrades_to_the_default_not_an_error() -> None:
+    # a garbage DayType inside the calendar must never sink the schedule — the
+    # calendar degrades to the standard default and the file still loads
+    body = f"""
+<CalendarUID>5</CalendarUID>
+<Calendars><Calendar><UID>5</UID><Name>Broken</Name>
+<WeekDays><WeekDay><DayType>abc</DayType><DayWorking>1</DayWorking></WeekDay></WeekDays>
+</Calendar></Calendars>{_TASK_A}"""
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.calendar.working_minutes_per_day == 480
+    assert sch.calendar.name == "Standard"
+    assert sch.tasks_by_id[1].name == "A"  # the schedule itself parsed fine
+
+
+def test_old_style_daytype_zero_exception_and_all_nonworking_week() -> None:
+    # the legacy WeekDay DayType-0 encoding: a non-working TimePeriod is a holiday;
+    # a working one (changed hours) is skipped
+    week = [
+        _weekday(2, ("08:00:00", "16:00:00")),
+        "<WeekDay><DayType>0</DayType><DayWorking>0</DayWorking>"
+        "<TimePeriod><FromDate>2025-01-13T00:00:00</FromDate>"
+        "<ToDate>2025-01-13T23:59:00</ToDate></TimePeriod></WeekDay>",
+        "<WeekDay><DayType>0</DayType><DayWorking>1</DayWorking>"
+        "<TimePeriod><FromDate>2025-01-18T00:00:00</FromDate>"
+        "<ToDate>2025-01-18T23:59:00</ToDate></TimePeriod></WeekDay>",
+    ]
+    body = f"""
+<CalendarUID>4</CalendarUID>
+<Calendars><Calendar><UID>4</UID><Name>Legacy</Name>
+<WeekDays>{"".join(week)}</WeekDays></Calendar></Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.work_weekdays == (0,)  # Monday only
+    assert cal.working_minutes_per_day == 480
+    assert cal.holidays == (dt.date(2025, 1, 13),)  # the working exception is not a day off
+    # and a calendar whose every weekday is non-working keeps the safe default
+    dead = f"""
+<CalendarUID>6</CalendarUID>
+<Calendars><Calendar><UID>6</UID><Name>Dead</Name>
+<WeekDays>{_weekday(1)}{_weekday(2)}</WeekDays></Calendar></Calendars>{_TASK_A}"""
+    assert parse_mspdi_text(_doc(dead)).calendar.work_weekdays == (0, 1, 2, 3, 4)

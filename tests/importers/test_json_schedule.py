@@ -186,3 +186,25 @@ def test_hours_per_day_rounds_not_truncates() -> None:
         '"tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 60}]}'
     )
     assert sched.calendar.working_minutes_per_day == 123  # int() truncated this to 122
+
+
+def test_save_json_round_trips_calendar_holidays() -> None:
+    # imported calendars now carry holidays (ADR-0028) — the tool's own format must
+    # round-trip them exactly, never silently drop a day off
+    import datetime as dt
+
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    original = Schedule(
+        name="hol",
+        project_start=dt.datetime(2025, 1, 6, 8, 0),
+        calendar=Calendar(
+            name="Site",
+            holidays=(dt.date(2025, 1, 20), dt.date(2025, 7, 4)),
+        ),
+        tasks=(Task(unique_id=1, name="A", duration_minutes=480),),
+    )
+    reread = parse_json_text(to_json_text(original))
+    assert reread.calendar.holidays == (dt.date(2025, 1, 20), dt.date(2025, 7, 4))

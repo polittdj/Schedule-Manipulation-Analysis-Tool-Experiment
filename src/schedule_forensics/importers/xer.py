@@ -15,16 +15,19 @@ states and are dropped with a count logged (the same tolerance classes as the MS
 importer; ALAP and dateless date-constraints likewise normalize to ASAP).
 
 ``TASKRSRC`` quantities drive the ``CP_Units`` percent complete (actual ÷ at-completion
-units). Deferred (ADR-0008, carried to a later milestone): per-task cost roll-up from
-``TASKRSRC``/expenses and detailed ``CALENDAR`` parsing (the default 8h/Mon-Fri
-calendar is used). The parity-critical ingestion path is MSPDI (from ``.mpp`` via
-MPXJ, M4); XER is a secondary native format.
+units); the project's ``CALENDAR`` row drives the schedule calendar (work weekdays,
+per-day minutes, holidays — ADR-0028). Deferred (ADR-0008, carried to a later
+milestone): per-task cost roll-up from ``TASKRSRC``/expenses and per-task calendars
+(the engine models one schedule-level calendar). The parity-critical ingestion path is
+MSPDI (from ``.mpp`` via MPXJ, M4); XER is a secondary native format.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import os
+import re
 from collections import Counter
 
 import pydantic
@@ -33,10 +36,14 @@ from schedule_forensics.importers._common import (
     DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
     clamped_percent_or_none,
+    dominant_day_minutes,
+    excel_serial_to_date,
     hours_to_minutes,
     parse_datetime,
     parse_float,
     parse_percent,
+    weekday_from_source,
+    working_span_minutes,
 )
 from schedule_forensics.model import (
     Calendar,
@@ -159,7 +166,7 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             project_finish=parse_datetime(_g(project, "plan_end_date")),
             status_date=parse_datetime(_g(project, "last_recalc_date")),
             baseline_finish=None,  # P6 baseline lives in a separate project (deferred)
-            calendar=Calendar(),  # CALENDAR parsing deferred (ADR-0008)
+            calendar=_parse_project_calendar(tables, project),  # ADR-0028
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
@@ -422,6 +429,123 @@ def _parse_relationships(
             dropped,
         )
     return relationships
+
+
+# --- calendar -----------------------------------------------------------------------
+
+#: ``clndr_data`` day-of-week nodes look like ``(0||3()`` (3 = Tuesday; 1=Sun..7=Sat).
+_CLNDR_DAY_RE = re.compile(r"\(0\|\|([1-7])\(\)")
+#: One working-time span inside a day or exception node: ``s|08:00|f|17:00``.
+_CLNDR_SPAN_RE = re.compile(r"s\|(\d{1,2}:\d{2})\|f\|(\d{1,2}:\d{2})")
+#: An exception node: ``(0||N(d|45292)`` — ``d|`` carries the Excel serial day number.
+_CLNDR_EXCEPTION_RE = re.compile(r"\(0\|\|\d+\(d\|(\d+)\)")
+
+
+def _parse_project_calendar(tables: Tables, project: Row) -> Calendar:
+    """The project's ``CALENDAR`` row → the model :class:`Calendar` (ADR-0028).
+
+    ``PROJECT.clndr_id`` picks the row (fallback: the ``default_flag=Y`` row); the
+    packed ``clndr_data`` yields the work weekdays, the dominant per-day working-minute
+    total, and full non-working exception days (holidays). A row with no parseable day
+    grid walks its ``base_clndr_id`` chain (cycle-safe), then falls back to
+    ``day_hr_cnt``. The engine models ONE schedule-level calendar (per-task
+    ``TASK.clndr_id`` calendars stay deferred). Any structural surprise degrades to
+    the standard 8h/Mon-Fri default with a logged note — a bad calendar must never
+    sink an otherwise valid schedule.
+    """
+    try:
+        return _project_calendar(tables, project)
+    except Exception:
+        logger.warning("unreadable project calendar; using the standard 8h/Mon-Fri default")
+        return Calendar()
+
+
+def _project_calendar(tables: Tables, project: Row) -> Calendar:
+    rows = tables.get("CALENDAR", [])
+    if not rows:
+        return Calendar()
+    by_id = {cal_id: r for r in rows if (cal_id := _g(r, "clndr_id")) is not None}
+    proj_cal_id = _g(project, "clndr_id")
+    row = by_id.get(proj_cal_id) if proj_cal_id is not None else None
+    if row is None:
+        row = next((r for r in rows if (_g(r, "default_flag") or "").upper() == "Y"), None)
+    if row is None:
+        return Calendar()
+    name = _g(row, "clndr_name") or "Standard"
+
+    # the day grid comes from this row, else its base chain (cycle-safe)
+    seen: set[str] = set()
+    cursor: Row | None = row
+    weekdays: set[int] = set()
+    day_totals: list[int] = []
+    holidays: set[dt.date] = set()
+    while cursor is not None and (_g(cursor, "clndr_id") or "") not in seen:
+        seen.add(_g(cursor, "clndr_id") or "")
+        weekdays, day_totals, holidays = _parse_clndr_data(cursor.get("clndr_data") or "")
+        if weekdays:
+            break
+        base_id = _g(cursor, "base_clndr_id")
+        cursor = by_id.get(base_id) if base_id is not None else None
+
+    if not weekdays:
+        # no parseable day grid anywhere — day_hr_cnt is the only remaining signal
+        hours = parse_float(_g(row, "day_hr_cnt"))
+        if hours is not None and hours > 0:
+            return Calendar(
+                name=name, working_minutes_per_day=hours_to_minutes(_g(row, "day_hr_cnt"))
+            )
+        return Calendar(name=name)
+    minutes_per_day = dominant_day_minutes(day_totals)
+    if minutes_per_day is None:  # unreachable while weekdays implies positive totals
+        return Calendar(name=name)
+    return Calendar(
+        name=name,
+        working_minutes_per_day=minutes_per_day,
+        work_weekdays=tuple(sorted(weekdays)),
+        # a weekend holiday is a no-op for the engine; keep the model lean
+        holidays=tuple(sorted(h for h in holidays if h.weekday() in weekdays)),
+    )
+
+
+def _parse_clndr_data(data: str) -> tuple[set[int], list[int], set[dt.date]]:
+    """P6's packed ``clndr_data`` → (work weekdays, per-day minute totals, holidays).
+
+    The format is a nested ``(0||key(params)(children))`` token tree; rather than a
+    full grammar, anchored patterns read it positionally: day nodes ``(0||<1-7>()``
+    own the ``s|HH:MM|f|HH:MM`` spans up to the next day node, and ``Exceptions``
+    entries ``(0||N(d|<serial>)`` with **no** working span are full days off
+    (holidays; a span means changed hours — outside the single-block model, skipped).
+    Tolerant by construction: anything unrecognized contributes nothing.
+    """
+    exceptions_at = data.find("Exceptions")
+    day_part = data if exceptions_at < 0 else data[:exceptions_at]
+    exception_part = "" if exceptions_at < 0 else data[exceptions_at:]
+
+    weekdays: set[int] = set()
+    day_totals: list[int] = []
+    day_marks = list(_CLNDR_DAY_RE.finditer(day_part))
+    for i, mark in enumerate(day_marks):
+        end = day_marks[i + 1].start() if i + 1 < len(day_marks) else len(day_part)
+        spans = _CLNDR_SPAN_RE.findall(day_part[mark.end() : end])
+        minutes = sum(working_span_minutes(start, finish) for start, finish in spans)
+        weekday = weekday_from_source(int(mark.group(1)))
+        if minutes <= 0 or weekday is None:
+            continue  # a day node without a working span is a non-working day
+        weekdays.add(weekday)
+        day_totals.append(minutes)
+
+    holidays: set[dt.date] = set()
+    exception_marks = list(_CLNDR_EXCEPTION_RE.finditer(exception_part))
+    for i, mark in enumerate(exception_marks):
+        end = (
+            exception_marks[i + 1].start() if i + 1 < len(exception_marks) else len(exception_part)
+        )
+        if _CLNDR_SPAN_RE.search(exception_part[mark.end() : end]):
+            continue  # changed working hours, not a day off
+        day = excel_serial_to_date(int(mark.group(1)))
+        if day is not None:
+            holidays.add(day)
+    return weekdays, day_totals, holidays
 
 
 # --- resources & assignments ------------------------------------------------------

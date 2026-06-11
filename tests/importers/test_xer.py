@@ -760,3 +760,208 @@ def test_nan_and_infinity_numerics_are_noise_not_crashes() -> None:
     )
     sched = parse_xer_text(text)
     assert sched.relationships[0].lag_minutes == 0  # non-finite lag is data noise
+
+
+# --- project calendar (ADR-0028) ----------------------------------------------------
+
+
+def _clndr_data(days: dict[int, list[tuple[str, str]]], exceptions: list[tuple[int, str]]) -> str:
+    """Build a P6 ``clndr_data`` blob: days = {1..7: [(from, to), ...]},
+    exceptions = [(excel_serial, "" | "HH:MM-HH:MM"), ...] ("" = full day off)."""
+    day_nodes = []
+    for day in range(1, 8):
+        spans = days.get(day, [])
+        inner = "".join(f"(0||{i}(s|{s}|f|{f})())" for i, (s, f) in enumerate(spans))
+        day_nodes.append(f"(0||{day}()({inner}))" if inner else f"(0||{day}())")
+    exc_nodes = []
+    for i, (serial, hours) in enumerate(exceptions):
+        if hours:
+            start, finish = hours.split("-")
+            exc_nodes.append(f"(0||{i}(d|{serial})((0||0(s|{start}|f|{finish})())))")
+        else:
+            exc_nodes.append(f"(0||{i}(d|{serial})())")
+    return (
+        "(0||CalendarData()("
+        f"(0||DaysOfWeek()({''.join(day_nodes)}))"
+        f"(0||Exceptions()({''.join(exc_nodes)}))"
+        "))"
+    )
+
+
+_FOUR_TENS = {d: [("07:00", "12:00"), ("13:00", "18:00")] for d in (2, 3, 4, 5)}  # Mon-Thu
+
+
+def test_project_calendar_from_clndr_data() -> None:
+    holiday = (dt.date(2025, 7, 14) - dt.date(1899, 12, 30)).days  # a Monday
+    changed_hours = holiday + 1  # a working exception: changed hours, NOT a day off
+    data = _clndr_data(_FOUR_TENS, [(holiday, ""), (changed_hours, "08:00-12:00")])
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "100"]],
+            ),
+            (
+                "CALENDAR",
+                ["clndr_id", "default_flag", "clndr_name", "day_hr_cnt", "clndr_data"],
+                [["100", "Y", "4x10", "10", data]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "10"]],
+            ),
+        ]
+    )
+    cal = parse_xer_text(text).calendar
+    assert cal.name == "4x10"
+    assert cal.working_minutes_per_day == 600
+    assert cal.work_weekdays == (0, 1, 2, 3)  # Mon-Thu
+    assert cal.holidays == (dt.date(2025, 7, 14),)  # the changed-hours day is NOT one
+
+
+def test_project_clndr_id_selects_among_calendars_with_default_flag_fallback() -> None:
+    five_eights = {d: [("08:00", "12:00"), ("13:00", "17:00")] for d in (2, 3, 4, 5, 6)}
+    rows = [
+        ["100", "Y", "Corporate", "8", _clndr_data(five_eights, [])],
+        ["200", "N", "Field", "10", _clndr_data(_FOUR_TENS, [])],
+    ]
+    base = [
+        (
+            "CALENDAR",
+            ["clndr_id", "default_flag", "clndr_name", "day_hr_cnt", "clndr_data"],
+            rows,
+        ),
+        (
+            "TASK",
+            ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+            [["1", "1", "A", "TT_Task", "10"]],
+        ),
+    ]
+    # the project's clndr_id wins
+    linked = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "200"]],
+            ),
+            *base,
+        ]
+    )
+    assert parse_xer_text(linked).calendar.name == "Field"
+    assert parse_xer_text(linked).calendar.working_minutes_per_day == 600
+    # a dangling clndr_id falls back to the default_flag=Y row
+    dangling = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "999"]],
+            ),
+            *base,
+        ]
+    )
+    assert parse_xer_text(dangling).calendar.name == "Corporate"
+    assert parse_xer_text(dangling).calendar.working_minutes_per_day == 480
+
+
+def test_calendar_base_chain_provides_the_day_grid() -> None:
+    # the project calendar has no parseable grid of its own; its base supplies it
+    five_eights = {d: [("08:00", "12:00"), ("13:00", "17:00")] for d in (2, 3, 4, 5, 6)}
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "300"]],
+            ),
+            (
+                "CALENDAR",
+                ["clndr_id", "base_clndr_id", "clndr_name", "clndr_data"],
+                [
+                    ["300", "100", "Project Default", ""],
+                    ["100", "", "Corporate", _clndr_data(five_eights, [])],
+                ],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    cal = parse_xer_text(text).calendar
+    assert cal.name == "Project Default"  # named by the project's row
+    assert cal.working_minutes_per_day == 480  # grid from the base
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)
+
+
+def test_unparseable_clndr_data_falls_back_to_day_hr_cnt_then_default() -> None:
+    project = (
+        "PROJECT",
+        ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+        [["1", "P1", "2025-01-06 08:00", "100"]],
+    )
+    task = (
+        "TASK",
+        ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+        [["1", "1", "A", "TT_Task", "10"]],
+    )
+    with_hours = _xer(
+        [
+            project,
+            (
+                "CALENDAR",
+                ["clndr_id", "clndr_name", "day_hr_cnt", "clndr_data"],
+                [["100", "Tens", "10", "garbage that is not calendar data"]],
+            ),
+            task,
+        ]
+    )
+    cal = parse_xer_text(with_hours).calendar
+    assert cal.working_minutes_per_day == 600  # day_hr_cnt
+    assert cal.work_weekdays == (0, 1, 2, 3, 4)  # default week
+    without_hours = _xer(
+        [
+            project,
+            ("CALENDAR", ["clndr_id", "clndr_name", "clndr_data"], [["100", "Odd", "junk"]]),
+            task,
+        ]
+    )
+    assert parse_xer_text(without_hours).calendar.working_minutes_per_day == 480
+
+
+def test_no_calendar_table_keeps_the_default(schedule: Schedule) -> None:
+    # the curated fixture has no CALENDAR table — behaviorally identical to before
+    assert schedule.calendar.working_minutes_per_day == 480
+    assert schedule.calendar.work_weekdays == (0, 1, 2, 3, 4)
+    assert schedule.calendar.holidays == ()
+
+
+def test_unreadable_calendar_row_degrades_to_the_default_not_an_error() -> None:
+    # a non-numeric day_hr_cnt (with no parseable day grid) trips the fail-soft
+    # guard: the calendar defaults, the schedule still loads
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "100"]],
+            ),
+            (
+                "CALENDAR",
+                ["clndr_id", "clndr_name", "day_hr_cnt", "clndr_data"],
+                [["100", "Odd", "ten hours", "junk"]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    sch = parse_xer_text(text)
+    assert sch.calendar.working_minutes_per_day == 480
+    assert sch.tasks_by_id[1].name == "A"
