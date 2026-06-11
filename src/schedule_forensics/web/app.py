@@ -46,7 +46,8 @@ from schedule_forensics.engine import (
     compute_driving_slack,
     recommend,
 )
-from schedule_forensics.engine.cpm import CPMError, CPMResult
+from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
+from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
@@ -86,7 +87,8 @@ _LAYOUT = Template(
 <title>{{ title }} — Schedule Forensics</title>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/briefing">Executive Briefing</a>
+<nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a>
+<a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
@@ -262,6 +264,7 @@ def create_app(
                 "Executive briefing &rarr;</a>"
                 + (
                     ' &middot; <a class=btn-link href="/trend">Trend across all versions &rarr;</a>'
+                    ' &middot; <a class=btn-link href="/cei">Bow Wave / CEI &rarr;</a>'
                     ' &middot; <a class=btn-link href="/compare">Compare the two most recent &rarr;</a>'
                     if len(st.schedules) >= 2
                     else ""
@@ -440,7 +443,7 @@ def create_app(
         )
 
     @app.get("/trend", response_class=HTMLResponse)
-    def trend_view() -> HTMLResponse:
+    def trend_view(target: int | None = Query(None)) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -450,14 +453,41 @@ def create_app(
                 _skipped_notice(skipped)
                 + "<div class=panel>Load at least two analyzable versions to see a trend.</div>",
             )
-        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms))
+        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms, target))
 
     @app.get("/api/trend")
-    def trend_json() -> JSONResponse:
+    def trend_json(target: int | None = Query(None)) -> JSONResponse:
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
-        return JSONResponse(_trend_data(schedules, cpms))
+        return JSONResponse(_trend_data(schedules, cpms, target))
+
+    @app.get("/cei", response_class=HTMLResponse)
+    def cei_view() -> HTMLResponse:
+        st = session()
+        if len(st.schedules) < 2:
+            return _page(
+                st,
+                "Bow Wave / CEI",
+                "<div class=panel>Load at least two versions (monthly snapshots) to run the "
+                "bow-wave / CEI analysis.</div>",
+            )
+        try:
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+        except ValueError as exc:
+            return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
+        return _page(st, "Bow Wave / CEI", _cei_body(wave))
+
+    @app.get("/api/cei")
+    def cei_json() -> JSONResponse:
+        st = session()
+        if len(st.schedules) < 2:
+            return JSONResponse({"error": "need at least two versions"}, status_code=400)
+        try:
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_cei_data(wave))
 
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
@@ -804,7 +834,39 @@ def _compare_body(
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""
 
 
-def _trend_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+def _focus_rows(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int
+) -> list[tuple[str, str, str]]:
+    """Per version: (label, the focus UID's computed finish date, % complete) — '—' if absent."""
+    rows: list[tuple[str, str, str]] = []
+    for sch, cpm in zip(schedules, cpms, strict=True):
+        label = sch.source_file or sch.name
+        timing = cpm.timings.get(target)
+        task = sch.tasks_by_id.get(target)
+        if timing is None or task is None:
+            rows.append((label, "—", "—"))
+            continue
+        finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar)
+        rows.append((label, finish.date().isoformat(), f"{task.percent_complete:g}%"))
+    return rows
+
+
+def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
+    names = [s.tasks_by_id[target].name for s in schedules if target in s.tasks_by_id]
+    title = f"Focus activity UID {target}" + (f" &mdash; {_e(names[0])}" if names else "")
+    rows = "".join(
+        f"<tr><td>{_e(label)}</td><td>{_e(finish)}</td><td>{_e(pct)}</td></tr>"
+        for label, finish, pct in _focus_rows(schedules, cpms, target)
+    )
+    note = "" if names else '<p class="notice err">No loaded version contains that UniqueID.</p>'
+    return f"""
+<div class=panel><h2>{title}</h2>{note}
+<p class=muted>The focus activity's computed finish and progress across the versions
+(its movement is charted below).</p>
+<table><tr><th>Version</th><th>Computed finish</th><th>% complete</th></tr>{rows}</table></div>"""
+
+
+def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None) -> str:
     """The multi-version trend view: table, quality-trend sentences, pairwise signals, charts."""
     points = trend_across_versions(schedules, cpms)
     trend_rows = "".join(
@@ -831,13 +893,23 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
                 f'<tr><td>{step}</td><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td>'
                 f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td></tr>"
             )
+    focus_panel = _focus_panel(schedules, cpms, target) if target is not None else ""
+    focus_form = f"""
+<div class=panel><form method=get action=/trend class=viz-controls>
+Focus the trend on a specific activity &mdash; UniqueID:
+<input name=target type=number min=0 value="{target if target is not None else ""}"
+placeholder="UID"> <button type=submit>Focus</button>
+{'<a class=btn-link href="/trend">clear focus</a>' if target is not None else ""}
+</form></div>"""
     return f"""
 <div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
 <table><tr><th>Version</th><th>Data date</th><th>Project finish</th><th>Completed</th>
 <th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
-<div class=panel><h2>Trend charts</h2><div id=trendCharts class=charts></div></div>
+{focus_form}{focus_panel}
+<div class=panel><h2>Trend charts</h2><div id=trendCharts class=charts
+data-target="{target if target is not None else ""}"></div></div>
 <div class=panel><h2>Schedule-quality trends</h2>
 <p class=muted>How each Acumen &sect;A quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
@@ -847,10 +919,34 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
 <script src="/static/trend.js"></script>"""
 
 
-def _trend_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+def _trend_data(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None
+) -> dict[str, object]:
     """JSON for the trend charts: per-version headline numbers + quality-metric series."""
     points = trend_across_versions(schedules, cpms)
+    focus: dict[str, object] | None = None
+    if target is not None:
+        finishes: list[str | None] = []
+        percents: list[float | None] = []
+        for sch, cpm in zip(schedules, cpms, strict=True):
+            timing = cpm.timings.get(target)
+            task = sch.tasks_by_id.get(target)
+            if timing is None or task is None:
+                finishes.append(None)
+                percents.append(None)
+            else:
+                fin = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar)
+                finishes.append(fin.date().isoformat())
+                percents.append(task.percent_complete)
+        names = [s.tasks_by_id[target].name for s in schedules if target in s.tasks_by_id]
+        focus = {
+            "uid": target,
+            "name": names[0] if names else None,
+            "finishes": finishes,
+            "percents": percents,
+        }
     return {
+        "target": focus,
         "versions": [
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
@@ -866,6 +962,60 @@ def _trend_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, o
             t.metric_id: {"name": t.name, "values": list(t.values)}
             for t in compute_quality_trend(schedules, cpms)
         },
+    }
+
+
+def _cei_body(wave: BowWave) -> str:
+    """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table."""
+    rows = "".join(
+        f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
+        f"<td>{s.cei_planned if s.cei_planned is not None else '—'}</td>"
+        f"<td>{s.cei_scheduled if s.cei_scheduled is not None else '—'}</td>"
+        f"<td>{s.cei_finished if s.cei_finished is not None else '—'}</td>"
+        f"<td><b class={'fail' if (s.cei or 1) < 0.8 else 'pass'}>"
+        f"{f'{s.cei:.2f}' if s.cei is not None else '—'}</b></td></tr>"
+        for s in wave.snapshots
+    )
+    return f"""
+<div class=panel><h2>Bow Wave &mdash; Activity Finishes by month</h2>
+<p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
+finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
+as a swelling wave of blue just past each data date. Step through the snapshots or press
+Auto-play to watch the wave move.</p>
+<div class=viz-controls>
+<button id=prevSnap type=button>&#9664; Prev</button>
+<span id=snapLabel class=muted></span>
+<button id=nextSnap type=button>Next &#9654;</button>
+<button id=autoPlay type=button>&#9654; Auto-play</button>
+</div>
+<div id=ceiChart></div></div>
+<div class=panel><h2>CEI &mdash; Current Execution Index</h2>
+<p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
+finish in the following month, how many this snapshot re-scheduled for that month and how
+many actually finished. CEI = finished &divide; previously planned (1.00 = executed to plan).</p>
+<table><tr><th>Snapshot</th><th>Period</th><th>Previously planned</th><th>Re-scheduled</th>
+<th>Actually finished</th><th>CEI</th></tr>{rows}</table></div>
+<script src="/static/cei.js"></script>"""
+
+
+def _cei_data(wave: BowWave) -> dict[str, object]:
+    return {
+        "months": list(wave.month_labels),
+        "snapshots": [
+            {
+                "label": s.label,
+                "status_index": s.status_index,
+                "baselined": list(s.baselined),
+                "scheduled": list(s.scheduled),
+                "finished": list(s.finished),
+                "cei": s.cei,
+                "cei_period": s.cei_period,
+                "cei_planned": s.cei_planned,
+                "cei_scheduled": s.cei_scheduled,
+                "cei_finished": s.cei_finished,
+            }
+            for s in wave.snapshots
+        ],
     }
 
 

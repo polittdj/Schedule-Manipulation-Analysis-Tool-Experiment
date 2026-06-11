@@ -61,23 +61,32 @@ dashboard. Stop it with `Ctrl-C`.
    per-version headline table (finish / completed / in-progress / critical), the **Net Finish
    Impact across the series**, **trend charts** (project finish, completed, critical, missing
    logic), per-metric **schedule-quality trend** sentences (improving/worsening, best and worst
-   version named), and **manipulation-trend signals for each consecutive pair**.
-4. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
+   version named), and **manipulation-trend signals for each consecutive pair**. Enter a
+   **focus UniqueID** to trend a specific activity: its computed finish and % complete per
+   version, plus a finish-movement chart.
+4. **Bow Wave / CEI** (≥2 versions): per snapshot, the monthly **Activity Finishes** chart —
+   gold = baselined to finish, blue = scheduled to finish, green = actually finished, with the
+   dashed data-date marker. Step **Prev/Next** through snapshots or press **Auto-play** to watch
+   the bow wave of slipped work push right like a movie. The **CEI (Current Execution Index)**
+   table compares, for each snapshot, what the *previous* snapshot planned to finish in the
+   following month vs what this snapshot re-scheduled and what actually finished
+   (CEI = finished ÷ previously planned; 1.00 = executed to plan).
+5. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
    summary (versions, earliest start, latest completion), the cross-version **Trend Analysis**, a
    per-project summary (dates, % complete/in-progress/planned, milestones/summaries, baseline
    window and **behind/ahead-of-schedule days**), and a per-project **schedule-quality verdict**
    for every DCMA check. Every sentence carries its **file + UID + task** citation; the local AI
    may polish the prose but can never change a number. Use the browser's **Print** for a hand-out.
-5. **Compare** (with ≥2 versions loaded): the two most recent versions in data-date order — CPM/
+6. **Compare** (with ≥2 versions loaded): the two most recent versions in data-date order — CPM/
    progress trend and **manipulation-trend signals** (deleted logic, shortened durations, deleted
    tasks, baseline/actual date edits) with the **Net Finish Impact** in calendar days. Honest
    progress shows no false flags.
-6. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
+7. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
    project **classification**. A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
-7. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every** metric
+8. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every** metric
    the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
-8. **Wipe Session** — clears all loaded schedules and derivatives from memory.
+9. **Wipe Session** — clears all loaded schedules and derivatives from memory.
 
 ## 4. Verifying a number (forensic use)
 

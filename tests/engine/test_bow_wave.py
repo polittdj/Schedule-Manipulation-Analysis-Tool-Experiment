@@ -1,0 +1,129 @@
+"""Bow-wave / CEI tests — hand-verified monthly buckets + the CEI pair math."""
+
+from __future__ import annotations
+
+import datetime as dt
+
+import pytest
+
+from schedule_forensics.engine.bow_wave import compute_bow_wave
+from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import Task
+
+DAY = 480
+
+
+def _t(
+    uid: int,
+    *,
+    finish: str | None = None,
+    actual: str | None = None,
+    baseline: str | None = None,
+    done: bool = False,
+) -> Task:
+    return Task(
+        unique_id=uid,
+        name=f"T{uid}",
+        duration_minutes=DAY,
+        finish=dt.datetime.fromisoformat(finish) if finish else None,
+        actual_finish=dt.datetime.fromisoformat(actual) if actual else None,
+        baseline_finish=dt.datetime.fromisoformat(baseline) if baseline else None,
+        percent_complete=100.0 if done else 0.0,
+    )
+
+
+def _snap(name: str, status: str, tasks: list[Task]) -> Schedule:
+    return Schedule(
+        name=name,
+        source_file=f"{name}.mpp",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        status_date=dt.datetime.fromisoformat(status),
+        tasks=tuple(tasks),
+    )
+
+
+def test_monthly_buckets_and_cei_pair() -> None:
+    # April snapshot: 3 tasks planned (scheduled) to finish in May.
+    april = _snap(
+        "April",
+        "2026-04-30T17:00",
+        [
+            _t(1, finish="2026-05-10T17:00", baseline="2026-05-08T17:00"),
+            _t(2, finish="2026-05-20T17:00", baseline="2026-05-15T17:00"),
+            _t(3, finish="2026-05-28T17:00", baseline="2026-04-20T17:00"),
+            _t(4, finish="2026-04-10T17:00", actual="2026-04-10T17:00", done=True),
+        ],
+    )
+    # May snapshot: only 1 of those 3 actually finished in May; 2 re-scheduled into June.
+    may = _snap(
+        "May",
+        "2026-05-31T17:00",
+        [
+            _t(1, finish="2026-05-10T17:00", actual="2026-05-10T17:00", done=True),
+            _t(2, finish="2026-06-12T17:00", baseline="2026-05-15T17:00"),
+            _t(3, finish="2026-06-25T17:00", baseline="2026-04-20T17:00"),
+            _t(4, finish="2026-04-10T17:00", actual="2026-04-10T17:00", done=True),
+        ],
+    )
+    wave = compute_bow_wave([april, may])
+    assert [s.label for s in wave.snapshots] == ["April.mpp", "May.mpp"]
+    may_i = wave.month_labels.index("May-26")
+    june_i = wave.month_labels.index("Jun-26")
+
+    a, m = wave.snapshots
+    assert a.scheduled[may_i] == 3  # April plan: 3 finishes in May
+    assert a.cei is None  # first snapshot has no prior to compare against
+    # CEI period for the May snapshot = the month after April's data date = May
+    assert m.cei_period == "May-26"
+    assert m.cei_planned == 3  # April said 3 would finish in May
+    assert m.cei_finished == 1  # only 1 actually did
+    assert m.cei_scheduled == 1  # May's own schedule now shows 1 May finish
+    assert m.cei == pytest.approx(0.33, abs=0.01)
+    assert m.scheduled[june_i] == 2  # the bow wave: 2 finishes pushed into June
+    # status-date markers sit on the axis
+    assert wave.month_labels[a.status_index] == "Apr-26"
+    assert wave.month_labels[m.status_index] == "May-26"
+
+
+def test_baselined_bucket_counts_baseline_finishes() -> None:
+    snap = _snap(
+        "S",
+        "2026-04-30T17:00",
+        [
+            _t(1, baseline="2026-03-05T17:00", finish="2026-04-01T17:00"),
+            _t(2, baseline="2026-03-25T17:00", finish="2026-05-01T17:00"),
+        ],
+    )
+    wave = compute_bow_wave([snap])
+    i = wave.month_labels.index("Mar-26")
+    assert wave.snapshots[0].baselined[i] == 2
+
+
+def test_zero_planned_yields_cei_none_not_division_error() -> None:
+    s1 = _snap("A", "2026-04-30T17:00", [_t(1, finish="2026-08-01T17:00")])
+    s2 = _snap("B", "2026-05-31T17:00", [_t(1, finish="2026-08-01T17:00")])
+    wave = compute_bow_wave([s1, s2])
+    assert wave.snapshots[1].cei is None  # nothing planned for May -> CEI undefined
+    assert wave.snapshots[1].cei_planned == 0
+
+
+def test_requires_at_least_one_schedule_and_some_dates() -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        compute_bow_wave([])
+    bare = Schedule(
+        name="bare",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        tasks=(Task(unique_id=1, name="A", duration_minutes=DAY),),
+    )
+    with pytest.raises(ValueError, match="no finish dates"):
+        compute_bow_wave([bare])
+
+
+def test_golden_pair_profiles_are_consistent(golden_project2, golden_project5) -> None:
+    wave = compute_bow_wave([golden_project2, golden_project5])
+    p2, p5 = wave.snapshots
+    # totals across the axis reconcile with the known golden progress counts
+    assert sum(p2.finished) == 20 and sum(p5.finished) == 27  # actual finishes
+    assert len(wave.month_labels) == len(p2.baselined) == len(p5.scheduled)
+    # the later snapshot's CEI compares against P2's plan for the month after P2's data date
+    assert p5.cei_period is not None and p5.cei_planned is not None
