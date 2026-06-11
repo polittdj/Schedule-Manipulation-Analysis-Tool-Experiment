@@ -235,24 +235,119 @@ def test_duplicate_uid_raises() -> None:
         parse_mspdi_text(_doc(body))
 
 
-def test_self_loop_relationship_raises() -> None:
+def test_self_loop_relationship_is_dropped_not_fatal() -> None:
+    # A self-referential link is meaningless; drop it and keep the schedule (don't sink the file).
     body = (
         "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
         "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
         "</Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="logic link"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.tasks) == 1 and sch.relationships == ()
 
 
-def test_dangling_relationship_raises() -> None:
+def test_external_predecessor_link_is_dropped_not_fatal() -> None:
+    # Real MS Project exports link to external/sub-project UIDs not in this file. The CPM
+    # engine already ignores such edges; the importer must not let the model reject the file.
     body = (
-        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
-        "<PredecessorLink><PredecessorUID>999</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<PredecessorLink><PredecessorUID>9999</PredecessorUID><Type>1</Type></PredecessorLink>"
         "</Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="valid schedule"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.tasks) == 2
+    # the in-file 1->2 link survives; the external 9999->2 link is dropped
+    pairs = {(r.predecessor_id, r.successor_id) for r in sch.relationships}
+    assert pairs == {(1, 2)}
+
+
+def test_duplicate_predecessor_link_is_deduped() -> None:
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type></PredecessorLink>"
+        "</Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert len(sch.relationships) == 1
+
+
+def test_alap_constraint_is_normalized_to_asap() -> None:
+    # ALAP is out of scope for the early-date CPM (it would refuse the schedule); normalize it.
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>1</ConstraintType>"
+        "<ConstraintDate>2025-02-01T08:00:00</ConstraintDate></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.ASAP
+    assert sch.tasks_by_id[1].constraint_date is None
+
+
+def test_dateless_hard_constraint_is_normalized_to_asap() -> None:
+    # SNLT (code 5) with no ConstraintDate is a stale leftover — meaningless and unschedulable.
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>5</ConstraintType></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.ASAP
+
+
+def test_timezone_tagged_dates_are_naive_local() -> None:
+    # some exports tag datetimes with Z/offsets; aware+naive mixes crash comparisons later
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<Start>2025-01-06T08:00:00Z</Start><Finish>2025-01-06T17:00:00-05:00</Finish>"
+        "</Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    t = sch.tasks_by_id[1]
+    assert t.start == dt.datetime(2025, 1, 6, 8, 0) and t.start.tzinfo is None
+    assert t.finish is not None and t.finish.tzinfo is None
+
+
+def test_out_of_range_percent_is_clamped_not_fatal() -> None:
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<PercentComplete>120</PercentComplete></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration>"
+        "<PercentComplete>-5</PercentComplete></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].percent_complete == 100.0
+    assert sch.tasks_by_id[2].percent_complete == 0.0
+
+
+def test_negative_costs_are_tolerated() -> None:
+    # credits/adjustments appear as negative Cost/ActualCost in real exports; a negative
+    # BASELINE cost (the EV budget basis) clamps to 0 instead of sinking the file
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<Cost>-150.5</Cost><ActualCost>-75</ActualCost>"
+        "<Baseline><Number>0</Number><Cost>-200</Cost></Baseline></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    t = sch.tasks_by_id[1]
+    assert t.cost == -150.5 and t.actual_cost == -75.0  # preserved (real data)
+    assert t.budgeted_cost == 0.0  # clamped (EV basis must be non-negative)
+
+
+def test_dated_constraint_is_preserved() -> None:
+    # a well-formed dated constraint must still be honored (no over-normalization)
+    body = (
+        "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
+        "<ConstraintType>4</ConstraintType>"
+        "<ConstraintDate>2025-02-01T08:00:00</ConstraintDate></Task></Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].constraint_type is ConstraintType.SNET
+    assert sch.tasks_by_id[1].constraint_date == dt.datetime(2025, 2, 1, 8, 0)
 
 
 def test_predecessor_link_without_uid_raises() -> None:
@@ -309,13 +404,15 @@ def test_baseline_fallback_to_first_when_no_number_zero() -> None:
     assert sched.task_by_id(1).baseline_finish == dt.datetime(2025, 2, 2, 17, 0)
 
 
-def test_task_bounds_violation_raises() -> None:
+def test_physical_percent_is_clamped_and_absent_stays_none() -> None:
     body = (
         "<Tasks><Task><UID>1</UID><Duration>PT8H0M0S</Duration>"
-        "<PercentComplete>150</PercentComplete></Task></Tasks>"
+        "<PhysicalPercentComplete>150</PhysicalPercentComplete></Task>"
+        "<Task><UID>2</UID><Duration>PT8H0M0S</Duration></Task></Tasks>"
     )
-    with pytest.raises(ImporterError, match="task UID 1 is invalid"):
-        parse_mspdi_text(_doc(body))
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].physical_percent_complete == 100.0
+    assert sch.tasks_by_id[2].physical_percent_complete is None
 
 
 def test_namespaceless_document_parses() -> None:

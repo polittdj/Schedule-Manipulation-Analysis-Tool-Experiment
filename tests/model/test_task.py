@@ -45,8 +45,6 @@ def test_required_fields() -> None:
         ("percent_complete", -0.1),
         ("percent_complete", 100.1),
         ("physical_percent_complete", 100.1),
-        ("cost", -1.0),
-        ("actual_cost", -1.0),
         ("budgeted_cost", -1.0),
     ],
 )
@@ -55,6 +53,12 @@ def test_bounds_enforced(field: str, value: float) -> None:
     base[field] = value
     with pytest.raises(ValidationError):
         Task(**base)  # type: ignore[arg-type]
+
+
+def test_negative_scheduled_and_actual_costs_are_allowed() -> None:
+    # real exports carry credits/adjustments; only the BAC basis (budgeted_cost) must be >= 0
+    t = Task(unique_id=1, name="x", duration_minutes=0, cost=-150.5, actual_cost=-75.0)
+    assert t.cost == -150.5 and t.actual_cost == -75.0
 
 
 def test_strict_rejects_wrong_types() -> None:

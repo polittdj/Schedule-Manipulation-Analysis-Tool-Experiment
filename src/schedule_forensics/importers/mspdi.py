@@ -13,14 +13,22 @@ XXE and "billion laughs" expansion — making the stdlib parser safe on untruste
 (see ADR-0008).
 
 **UniqueID is the sole identity.** Tasks/resources are keyed by ``UID``; relationships
-reference endpoints by ``UID`` only. A dangling or self-referential link, or a
-duplicate UID, makes the schedule *unconstructable* (the model validators raise) and is
-surfaced as :class:`ImporterError` — never silently dropped.
+reference endpoints by ``UID`` only. A duplicate UID makes the schedule *unconstructable*
+(the model validators raise) → :class:`ImporterError`.
+
+**Real-world tolerance (matching the XER importer):** a genuine MS Project export carries
+constructs the curated parity files never do — **external / cross-project predecessor
+links** (to a master/sub-project UID not in this file), self-referential or duplicate
+links, **ALAP** constraints (out of scope for the early-date CPM), and date-requiring
+constraints with the date cleared. These are *valid* schedule states, not corruption, so
+they are normalized on import (links dropped, those constraints collapsed to ASAP) and
+logged by count — never silently changing a parity-relevant value of a well-formed file.
 """
 
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import os
 import xml.etree.ElementTree as ET  # nosec B405  # hardened below: DTD/entity decls rejected
 from decimal import Decimal
@@ -45,6 +53,8 @@ from schedule_forensics.model import (
     Task,
 )
 
+logger = logging.getLogger("schedule_forensics.importers.mspdi")
+
 # --- source enum maps (MS Project standard codes) ---------------------------------
 
 #: MSPDI ``Task/ConstraintType`` numeric code → model constraint.
@@ -58,6 +68,20 @@ _CONSTRAINT_BY_CODE: dict[int, ConstraintType] = {
     6: ConstraintType.FNET,
     7: ConstraintType.FNLT,
 }
+
+#: Constraints that require a date to be meaningful (and that the CPM engine acts on); a
+#: real-world export sometimes carries one of these with the date cleared (a stale
+#: leftover) — meaningless and unschedulable, so it is normalized to ASAP on import.
+_DATE_REQUIRING_CONSTRAINTS = frozenset(
+    {
+        ConstraintType.SNET,
+        ConstraintType.FNET,
+        ConstraintType.SNLT,
+        ConstraintType.FNLT,
+        ConstraintType.MSO,
+        ConstraintType.MFO,
+    }
+)
 
 #: MSPDI ``PredecessorLink/Type`` numeric code → model link type.
 _RELATIONSHIP_BY_CODE: dict[int, RelationshipType] = {
@@ -134,6 +158,8 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
         tasks.append(task)
         relationships.extend(_parse_predecessor_links(task_el, task.unique_id))
 
+    relationships = _in_file_links(relationships, {t.unique_id for t in tasks})
+
     project_finish = parse_datetime(_text(root, "FinishDate"))
     status_date = parse_datetime(_text(root, "StatusDate"))
     baseline_finish = _project_baseline_finish(root)
@@ -208,6 +234,18 @@ def _parse_task(
 
     constraint_code = _int(task_el, "ConstraintType")
     constraint_type = _CONSTRAINT_BY_CODE.get(constraint_code or 0, ConstraintType.ASAP)
+    constraint_date = parse_datetime(_text(task_el, "ConstraintDate"))
+    # Normalize two valid-but-unschedulable real-world constraint states the curated parity
+    # files never contain (the CPM engine would otherwise refuse the whole schedule, Law 2):
+    #   * ALAP — as-late-as-possible is out of scope for this early-date engine;
+    #   * a date-requiring constraint whose date is missing/sentinel — meaningless.
+    # Both collapse to ASAP (no constraint). ALAP/SNET/etc. are not "Hard Constraints" unless
+    # dated, so the DCMA §B counts are unaffected for well-formed schedules.
+    if constraint_type is ConstraintType.ALAP or (
+        constraint_type in _DATE_REQUIRING_CONSTRAINTS and constraint_date is None
+    ):
+        constraint_type = ConstraintType.ASAP
+        constraint_date = None
     bl_start, bl_finish, bl_cost, bl_duration = _primary_baseline(task_el)
 
     try:
@@ -223,10 +261,12 @@ def _parse_task(
             is_level_of_effort=False,  # not represented in MSPDI (ADR-0008)
             is_active=_bool(task_el, "Active", default=True),
             constraint_type=constraint_type,
-            constraint_date=parse_datetime(_text(task_el, "ConstraintDate")),
+            constraint_date=constraint_date,
             deadline=parse_datetime(_text(task_el, "Deadline")),
             percent_complete=parse_percent(_text(task_el, "PercentComplete")),
-            physical_percent_complete=parse_float(_text(task_el, "PhysicalPercentComplete")),
+            physical_percent_complete=_clamped_percent_or_none(
+                _text(task_el, "PhysicalPercentComplete")
+            ),
             start=parse_datetime(_text(task_el, "Start")),
             finish=parse_datetime(_text(task_el, "Finish")),
             actual_start=parse_datetime(_text(task_el, "ActualStart")),
@@ -241,6 +281,13 @@ def _parse_task(
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc
+
+
+def _clamped_percent_or_none(value: str | None) -> float | None:
+    """Optional percent clamped to 0..100; absent stays ``None`` (same noise class as
+    ``parse_percent`` — out-of-range physical % must not sink the file)."""
+    parsed = parse_float(value)
+    return None if parsed is None else min(100.0, max(0.0, parsed))
 
 
 def _optional_minutes(parent: ET.Element, tag: str) -> int | None:
@@ -271,7 +318,9 @@ def _primary_baseline(
     return (
         parse_datetime(_text(chosen, "Start")),
         parse_datetime(_text(chosen, "Finish")),
-        0.0 if cost is None else cost,
+        # the BAC basis cannot be negative (EV is never earned against a negative budget);
+        # a negative baseline cost (a credit) clamps to 0 rather than rejecting the file
+        max(0.0, cost) if cost is not None else 0.0,
         duration,
     )
 
@@ -301,6 +350,8 @@ def _parse_predecessor_links(task_el: ET.Element, successor_uid: int) -> list[Re
             raise ImporterError(
                 f"a <PredecessorLink> on task {successor_uid} has no <PredecessorUID>"
             )
+        if predecessor_uid == successor_uid:
+            continue  # a self-referential link is meaningless; drop it (the model forbids it)
         type_code = _int(link_el, "Type")
         link_type = _RELATIONSHIP_BY_CODE.get(
             1 if type_code is None else type_code, RelationshipType.FS
@@ -319,6 +370,40 @@ def _parse_predecessor_links(task_el: ET.Element, successor_uid: int) -> list[Re
                 f"invalid logic link {predecessor_uid}->{successor_uid}: {exc}"
             ) from exc
     return links
+
+
+def _in_file_links(relationships: list[Relationship], task_uids: set[int]) -> list[Relationship]:
+    """Keep only logic links whose endpoints are both activities in *this* file.
+
+    Real MS Project exports carry **external / cross-project** predecessor links (to a
+    master or sub-project's UID) and occasional self-referential or duplicate links. The
+    CPM engine already ignores edges whose endpoints are outside the task set, but the
+    strict :class:`Schedule` model would reject the whole schedule — so a single external
+    link sank an otherwise valid file. We drop those links here (matching the XER
+    importer's existing cross-project handling) and log the count (no CUI — a number only).
+    """
+    kept: list[Relationship] = []
+    seen: set[tuple[int, int, RelationshipType]] = set()
+    dropped = 0
+    for r in relationships:
+        key = (r.predecessor_id, r.successor_id, r.type)
+        if (
+            r.predecessor_id not in task_uids
+            or r.successor_id not in task_uids
+            or r.predecessor_id == r.successor_id
+            or key in seen
+        ):
+            dropped += 1
+            continue
+        seen.add(key)
+        kept.append(r)
+    if dropped:
+        logger.info(
+            "dropped %d logic link(s) not resolvable within this file "
+            "(external/cross-project, self-referential, or duplicate)",
+            dropped,
+        )
+    return kept
 
 
 def _link_lag_to_minutes(value: str | None) -> int:
