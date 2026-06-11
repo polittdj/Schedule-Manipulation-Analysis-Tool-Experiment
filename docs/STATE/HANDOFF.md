@@ -1,12 +1,12 @@
-# Handoff — 2026-06-10
+# Handoff — 2026-06-10 (evening)
 
-This session: full-build audit remediation (bugs / perf / CI / cleanup / docs)     Next session: — (build complete)
+This session: operator-driven enhancements (PRs #58–#62, all merged)     Next session: — (build complete)
 Model/mode required next session: Opus 4.8 (1M context) (only if resuming M15)
-Phase/Gate: **DONE** — M1–M14 + M16 + M17 complete and parity-green, plus a top-to-bottom audit
-remediation (13 commits). **M15 (.pbix enrichment) is the one remaining item, BLOCKED pending the
-operator depositing `NSATDeploymentRevisionAlpha.pbix` (R-12).**
-Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ `claude/clever-carson-uovtkk`
-(**PR #58** — import feedback + full-audit remediation; #55–#57 merged to `main`).
+Phase/Gate: **DONE** — M1–M14 + M16 + M17 complete and parity-green, plus the full-audit remediation
+(ADR-0024) and the multi-version analysis suite (ADR-0025). **M15 (.pbix enrichment) is the one
+remaining item, BLOCKED pending the operator depositing `NSATDeploymentRevisionAlpha.pbix` (R-12).**
+Repo/branch: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` — `main` carries everything
+(#55–#62 merged); work branch `claude/clever-carson-uovtkk` is recreated from `main` per PR.
 
 ## Operator standing directive (persisted)
 **"Continue and don't stop until the tool is completely built."** → Honored: the entire build except the
@@ -39,8 +39,23 @@ A three-track audit (engine/model/importers; web/AI/launcher/packaging; tests/CI
 - **CI/hygiene/docs:** push runs on `main` only, `checkout@v5`/`setup-python@v6`, pip cache; shared
   session-scoped golden fixtures + central warning filter; this doc set refreshed; `pyproject` 1.0.0.
 
+## Operator-driven enhancements (PRs #59–#62, merged after the audit)
+- **Java discovery (#59/#60):** native `.mpp` works without Java on PATH — SF_JAVA → JAVA_HOME →
+  PATH → the repo's **portable `tools/jre/` drop-in** (gitignored; no admin rights needed) →
+  user-scope `%LOCALAPPDATA%\Programs` → machine install roots; newest version wins; actionable
+  not-found error. The operator's locked-down work machine is the driving case.
+- **Compare correctness (#61):** the compare pair is ordered by **data date** (ProjectTimeNow), not
+  load order, and the page shows the **Net Finish Impact** in calendar days.
+- **Multi-version suite (#62, ADR-0025):** `/trend` across 10+ versions (headline table, Net Finish
+  Impact across the series, quality-trend sentences, consecutive-pair manipulation signals, SVG
+  charts via `static/trend.js`); `/briefing` — the cited, print-ready **Diagnostic Executive
+  Briefing** (`ai/briefing.py`, golden-pinned counts); the activity grid is now an **MS-Project-
+  style Gantt** (timeline column with month ticks, critical/progress/milestone/summary bars,
+  data-date line, add/remove fields incl. duration/baselines/resources). New `engine/trend.py`.
+  Ten-version end-to-end test locks the 10-file requirement.
+
 ## Green state (final)
-**469 passed, 3 skipped; parity gate 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%.**
+**497 passed, 3 skipped; parity gate 10/10; egress 22/22; air-gap pass; engine ~99%; overall ~99%.**
 CI green. Verify:
 `pip install -e '.[dev]' && ruff check . && ruff format --check . && python -m mypy &&
 pytest --cov=schedule_forensics --cov-fail-under=70 &&
@@ -56,7 +71,7 @@ the `.pbix` would inform; this is a pending **input**, not a defect. Do not fabr
 
 ## To resume M15 (only if/when the .pbix is deposited)
 1. Confirm the branch tip has M17 (`git log --oneline | grep m17`), fast-forward your branch onto it.
-2. Confirm the 469 green baseline + the file present in `00_REFERENCE_INTAKE/` (non-CUI attested).
+2. Confirm the 497 green baseline + the file present in `00_REFERENCE_INTAKE/` (non-CUI attested).
 3. Add `importers/pbix.py` (unzip + parse DataModel/Layout, local-only); fold metrics/visuals into the
    dashboard; tests + ADR-0022; close the last RTM row; refresh this HANDOFF.
 
