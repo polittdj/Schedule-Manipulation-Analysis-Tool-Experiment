@@ -119,6 +119,90 @@ def test_requires_at_least_one_schedule_and_some_dates() -> None:
         compute_bow_wave([bare])
 
 
+def _history_months(n: int, start_year: int = 2022) -> list[Task]:
+    """``n`` months of completed history starting Jan of ``start_year`` (one finish each)."""
+    tasks = []
+    year, month = start_year, 1
+    for uid in range(1, n + 1):
+        d = dt.datetime(year, month, 15, 17, 0)
+        tasks.append(
+            Task(
+                unique_id=uid,
+                name=f"H{uid}",
+                duration_minutes=DAY,
+                finish=d,
+                actual_finish=d,
+                baseline_finish=d,
+                percent_complete=100.0,
+            )
+        )
+        year, month = (year, month + 1) if month < 12 else (year + 1, 1)
+    return tasks
+
+
+def test_axis_cap_sheds_oldest_months_keeping_newest_status() -> None:
+    # 24 months of completed history + quarterly statuses spanning 30 months pushes the
+    # axis over the 48-month cap. The oldest history must be shed — the newest snapshot's
+    # data date (and the axis month after the last status) must stay on the axis.
+    snaps = []
+    year, month = 2024, 1
+    for i in range(11):  # statuses Jan-24 .. Jul-26
+        status = dt.datetime(year, month, 28, 17, 0)
+        year, month = (year, month + 3) if month + 3 <= 12 else (year + 1, month + 3 - 12)
+        open_finish = dt.datetime(year, month, 15, 17, 0)
+        tasks = [
+            *_history_months(24),
+            Task(
+                unique_id=99,
+                name="open",
+                duration_minutes=DAY,
+                finish=open_finish,
+                baseline_finish=open_finish,
+            ),
+        ]
+        snaps.append(
+            Schedule(
+                name=f"S{i}",
+                source_file=f"S{i}.mpp",
+                project_start=dt.datetime(2022, 1, 5, 8, 0),
+                status_date=status,
+                tasks=tuple(tasks),
+            )
+        )
+    wave = compute_bow_wave(snaps)
+    assert len(wave.month_labels) == 48  # capped
+    last = wave.snapshots[-1]
+    assert last.status_index is not None  # the newest data date is never shed
+    assert wave.month_labels[last.status_index] == "Jul-26"
+    assert last.cei_period == "May-26" and last.cei_planned is not None
+    assert wave.month_labels[0] == "Nov-22"  # the oldest history months were shed
+    assert wave.month_labels[-1] == "Oct-26"  # the look-ahead end survives within budget
+
+
+def test_axis_cap_extreme_status_span_drops_oldest_statuses_not_newest() -> None:
+    # Statuses six years apart cannot both fit under the cap: the OLD one falls off the
+    # axis (gracefully — no marker, no CEI), the newest stays.
+    def snap(name: str, status: dt.datetime, finish: dt.datetime) -> Schedule:
+        return Schedule(
+            name=name,
+            source_file=f"{name}.mpp",
+            project_start=dt.datetime(2020, 1, 6, 8, 0),
+            status_date=status,
+            tasks=(Task(unique_id=1, name="A", duration_minutes=DAY, finish=finish),),
+        )
+
+    old = snap("old", dt.datetime(2020, 1, 31, 17, 0), dt.datetime(2020, 2, 14, 17, 0))
+    new = snap("new", dt.datetime(2026, 1, 31, 17, 0), dt.datetime(2026, 2, 13, 17, 0))
+    wave = compute_bow_wave([old, new])
+    assert len(wave.month_labels) == 48
+    assert wave.snapshots[0].status_index is None  # the ancient snapshot fell off-axis
+    newest = wave.snapshots[1]
+    assert newest.status_index is not None
+    assert wave.month_labels[newest.status_index] == "Jan-26"
+    assert wave.month_labels[-1] == "Feb-26"  # the newest CEI period anchors the right edge
+    assert newest.cei is None  # its CEI period (Feb-20) was shed with the old history
+
+
 def test_golden_pair_profiles_are_consistent(golden_project2, golden_project5) -> None:
     wave = compute_bow_wave([golden_project2, golden_project5])
     p2, p5 = wave.snapshots

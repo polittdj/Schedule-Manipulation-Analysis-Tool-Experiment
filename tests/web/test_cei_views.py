@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from schedule_forensics.web.app import SessionState, create_app
+from schedule_forensics.engine.bow_wave import BowWave, SnapshotProfile
+from schedule_forensics.web.app import SessionState, _cei_body, create_app
 
 GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 
@@ -59,6 +60,31 @@ def test_api_cei_serves_shared_axis_profiles(client: TestClient) -> None:
     assert snaps[0]["cei"] is None  # first snapshot has no prior
     assert snaps[1]["cei_period"] is not None  # the later one carries the CEI comparison
     assert snaps[1]["status_index"] is not None  # data-date marker on the shared axis
+
+
+def test_cei_zero_is_styled_as_fail_not_pass() -> None:
+    # CEI 0.00 (nothing the prior snapshot planned actually finished) is the WORST score —
+    # it must render red/fail. A falsy-zero shortcut once made it green.
+    def profile(cei: float | None) -> SnapshotProfile:
+        return SnapshotProfile(
+            label="S",
+            status_index=0,
+            baselined=(0,),
+            scheduled=(0,),
+            finished=(0,),
+            cei=cei,
+            cei_period="May-26",
+            cei_planned=3,
+            cei_scheduled=0,
+            cei_finished=0,
+        )
+
+    body = _cei_body(BowWave(month_labels=("May-26",), snapshots=(profile(0.0),)))
+    assert "class=fail>0.00" in body
+    body = _cei_body(BowWave(month_labels=("May-26",), snapshots=(profile(1.0),)))
+    assert "class=pass>1.00" in body
+    body = _cei_body(BowWave(month_labels=("May-26",), snapshots=(profile(None),)))
+    assert "class=pass>—" in body  # no measurement is neutral, not a failure
 
 
 def test_cei_js_renders_grouped_bars_and_autoplay(client: TestClient) -> None:

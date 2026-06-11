@@ -64,11 +64,12 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**497 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
+TDD + pytest (**526 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#62 merged to `main`: build, audit remediation, no-admin Java discovery, data-date
-compare ordering, and the multi-version trend/briefing/Gantt suite); 25 ADRs (`docs/adr/`, incl.
+with PRs (#55–#67 merged to `main`: build, audit remediation, no-admin Java discovery, data-date
+compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp` tolerance, and the
+Bow Wave/CEI view); 25 ADRs (`docs/adr/`, incl.
 ADR-0024 audit remediation and ADR-0025 multi-version analysis suite), a risk register
 (`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
@@ -83,6 +84,14 @@ ADR-0024 audit remediation and ADR-0025 multi-version analysis suite), a risk re
   milestone/summary bars, data-date line, add/remove fields (incl. duration, baselines, resources).
 - **No-admin native `.mpp`**: Java discovery via SF_JAVA → JAVA_HOME → PATH → portable
   `tools/jre/` drop-in → user-scope and machine install roots.
+- **Real-world `.mpp` tolerance**: external/self/duplicate predecessor links dropped; ALAP and
+  dateless constraints → ASAP; timezone-tagged dates → naive local; %-complete clamped 0–100;
+  schedule-level DCMA findings always cited (the §6 gate can never 500 a page); multi-version
+  views skip + name unschedulable versions. Goldens parse byte-identically — parity 10/10.
+- **Bow Wave / CEI** (`/cei`, `engine/bow_wave.py`, `static/cei.js`): animated per-snapshot
+  monthly finish bars (baselined/scheduled/finished) with data-date marker and CEI callout,
+  Prev/Next + Auto-play; the capped month axis sheds the oldest months first (the newest status
+  month and its CEI period never fall off); trend focus UID; de-overlapped chart labels.
 
 ## Definition of Done (§8)
 - Every §6 RTM row `Implemented + Tested + Validated` — **except §6.A `.pbix` enrichment (M15)**, ◻ BLOCKED

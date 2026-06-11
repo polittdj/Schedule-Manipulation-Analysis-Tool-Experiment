@@ -34,7 +34,9 @@ from schedule_forensics.model.schedule import Schedule
 #: roughly -14/+7 months around each status date; the union across snapshots is used).
 _MONTHS_BEFORE_FIRST_STATUS = 18
 _MONTHS_AFTER_LAST_STATUS = 12
-#: Hard cap on the axis length so a stray far-future date cannot explode the chart.
+#: Hard cap on the axis length so a stray far-future date cannot explode the chart. When
+#: over the cap, the oldest months are shed first — the newest status month and its CEI
+#: period always stay on-axis.
 _MAX_MONTHS = 48
 
 _MONTH_ABBR = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -87,7 +89,8 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
     """Monthly finish profiles + CEI for ``schedules`` (given oldest → newest).
 
     Requires at least one schedule. The month axis is shared across snapshots (clamped to
-    the data span and to ±18/12 months around the status dates, max 48 buckets).
+    the data span and to ±18/12 months around the status dates, max 48 buckets — when over
+    the cap the oldest months are shed first, never the newest status month).
     """
     if not schedules:
         raise ValueError("the bow-wave analysis needs at least one schedule version")
@@ -107,14 +110,22 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
     if not data_months:
         raise ValueError("no finish dates found in any loaded version (nothing to profile)")
     statuses = [s for s in status_yms if s is not None]
-    # the axis always contains every status month and its CEI period (status+1); data months
-    # are clamped to a window around the statuses so an outlier date can't explode the chart
+    # the axis contains every status month and its CEI period (status+1); data months are
+    # clamped to a window around the statuses so an outlier date can't explode the chart
     lo, hi = min(data_months), max(data_months)
     if statuses:
         lo = min(max(lo, min(statuses) - _MONTHS_BEFORE_FIRST_STATUS), min(statuses))
         hi = max(min(hi, max(statuses) + _MONTHS_AFTER_LAST_STATUS), max(statuses) + 1)
-    if hi - lo + 1 > _MAX_MONTHS:
-        hi = lo + _MAX_MONTHS - 1
+    over = hi - lo + 1 - _MAX_MONTHS
+    if over > 0:
+        # Over the cap: shed the oldest history first, then surplus look-ahead, then the
+        # oldest status months — never the newest status month or its CEI period (the
+        # animation's "now"). Shed status months degrade gracefully (status_index/CEI None).
+        lo = min(lo + over, min(statuses)) if statuses else lo + over
+        over = hi - lo + 1 - _MAX_MONTHS
+        if over > 0:
+            hi = max(hi - over, max(statuses) + 1)
+            lo = max(lo, hi - _MAX_MONTHS + 1)
     n = hi - lo + 1
 
     profiles: list[SnapshotProfile] = []
