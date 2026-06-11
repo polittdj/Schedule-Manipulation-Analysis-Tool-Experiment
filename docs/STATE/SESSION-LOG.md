@@ -898,3 +898,23 @@ this file is the running history.
 ### Parity / tests
 - Full suite **497 passed, 3 skipped**; parity 10/10; egress + air-gap green; engine ≈99%,
   overall ≈99%; ruff + format + mypy(strict) + bandit + pip-audit green on 3.11 + 3.13.
+
+## Operator feedback sitting (cont.) — 2026-06-11 (PRs #64, #65)
+
+- **PR #64 — real-world `.mpp` support** (extends #59/#60): MSPDI importer tolerates external/
+  cross-project + self/duplicate predecessor links (drop), ALAP + dateless constraints (→ASAP),
+  timezone-tagged dates (→naive local), out-of-range %-complete (clamp), negative scheduled/actual
+  costs (keep; baseline clamps ≥0). **Schedule-level DCMA findings (Critical Path Test, CPLI) now
+  cite their activities** — root cause of the operator's "Internal Server Error" (uncited finding →
+  narrative citation gate → 500 on every page for that schedule). `/trend` `/compare` `/briefing`
+  skip + name unschedulable versions. Grid gained per-column filters; driving trace gained a
+  "show completed" toggle, waterfall (earliest-finish) order, and milestone diamonds.
+- **PR #65 — Bow Wave / CEI** (`engine/bow_wave.py`, `/cei`, `static/cei.js`): per-snapshot monthly
+  finish bars (baselined/scheduled/finished) + dashed data-date marker + "CEI – x.xx" callout, with
+  Prev/Next + Auto-play animation; CEI = finished ÷ prior-snapshot plan for the month after its data
+  date. Trend focus UID (`/trend?target=`); de-overlapped trend labels (prefix-strip + rotate).
+- Lessons + the operator's no-admin Windows environment captured in HANDOFF.md (read it first).
+
+### Parity / tests
+- **523 passed, 3 skipped**; parity 10/10; engine ≈99%, overall ≈99%; egress + air-gap green;
+  ruff + format + mypy(strict) + bandit clean (3.11 + 3.13).
