@@ -1,7 +1,8 @@
-"""Multi-file loader — ingest up to 10 schedules at once, keyed by format.
+"""Multi-file loader — ingest up to 20 schedules at once, keyed by format.
 
-The single entry point the app uses to ingest a user's upload set (§6.B: "parse up
-to 10 native ``.mpp`` files at once"). It dispatches each file to the right importer
+The single entry point the app uses to ingest a user's upload set (§6.B required "parse up
+to 10 native ``.mpp`` files at once"; the operator later raised the cap to 20). It
+dispatches each file to the right importer
 by extension — native ``.mpp``/``.mpt`` via MPXJ (M4), MSPDI ``.xml`` and Primavera
 ``.xer`` directly (M3) — and returns one frozen, UniqueID-keyed
 :class:`~schedule_forensics.model.schedule.Schedule` per file (each carrying its own
@@ -25,8 +26,9 @@ from schedule_forensics.importers.mspdi import parse_mspdi
 from schedule_forensics.importers.xer import parse_xer
 from schedule_forensics.model import Schedule
 
-#: §6.B hard cap — at most this many schedules may be loaded in one batch.
-MAX_FILES = 10
+#: Hard cap — at most this many schedules may be loaded in one batch (§6.B required 10;
+#: raised to 20 at the operator's request).
+MAX_FILES = 20
 
 #: Extension (lower-cased) → importer. ``.xml`` is treated as MSPDI (Primavera uses
 #: ``.xer``; ``.pmxml`` P6 XML is a later importer); ``.json`` is the tool's own format.

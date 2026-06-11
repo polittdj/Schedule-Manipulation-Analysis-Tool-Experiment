@@ -1,0 +1,136 @@
+"""Session-wide target UID, light/dark theme toggle, and the 20-file batch cap."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from schedule_forensics.importers import MAX_FILES
+from schedule_forensics.web.app import SessionState, create_app
+
+GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
+EXAMPLE = (
+    Path(__file__).resolve().parents[2]
+    / "src"
+    / "schedule_forensics"
+    / "web"
+    / "examples"
+    / "house_build.json"
+)
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(create_app(SessionState()))
+
+
+def _upload(client: TestClient, name: str) -> None:
+    data = (GOLDEN / "project2_5" / f"{name}.mspdi.xml").read_bytes()
+    assert (
+        client.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")}).status_code
+        == 200
+    )
+
+
+# ---- light / dark theme ----
+
+
+def test_every_page_carries_theme_toggle_and_script(client: TestClient) -> None:
+    page = client.get("/").text
+    assert 'src="/static/theme.js"' in page
+    assert "id=themeToggle" in page
+
+
+def test_theme_js_persists_and_applies_data_theme(client: TestClient) -> None:
+    js = client.get("/static/theme.js").text
+    assert "localStorage" in js and "sf-theme" in js
+    assert 'setAttribute("data-theme"' in js
+
+
+def test_base_css_defines_the_light_palette(client: TestClient) -> None:
+    css = client.get("/static/base.css").text
+    assert "html[data-theme=light]" in css
+    # no hard-coded page colors left outside the variable blocks: spot-check the
+    # surfaces that used to be fixed-dark
+    assert "background:var(--header-bg)" in css
+    assert "color:var(--btn-ink)" in css
+
+
+def test_svg_charts_route_theme_variables_via_style(client: TestClient) -> None:
+    for asset in ("cei.js", "trend.js"):
+        js = client.get(f"/static/{asset}").text
+        assert 'indexOf("var(")' in js  # the svgEl helper themes fill/stroke live
+        assert "var(--ink)" in js
+
+
+# ---- session-wide target UID ----
+
+
+def test_set_target_redirects_back_and_prefills_everywhere(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    r = client.post("/target", data={"uid": "143", "next_url": "/trend"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/trend"
+    # the report page shows the target panel and pre-fills the trace box
+    page = client.get("/analysis/Project2").text
+    assert "Target activity" in page and 'value="143"' in page
+    # the trend page focuses automatically (no ?target= needed)
+    page = client.get("/trend").text
+    assert "Focus activity UID 143" in page
+    # compare shows the target's movement between the two versions
+    page = client.get("/compare").text
+    assert "Focus activity UID 143" in page and "Computed finish moved" in page
+
+
+def test_explicit_blank_target_overrides_the_session_target(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    client.post("/target", data={"uid": "143", "next_url": "/"})
+    # the Focus form submitted blank (the old 422 crash) clears focus for that view only
+    r = client.get("/trend?target=")
+    assert r.status_code == 200
+    assert "Focus activity UID" not in r.text
+
+
+def test_blank_or_invalid_uid_clears_the_target(client: TestClient) -> None:
+    _upload(client, "Project2")
+    client.post("/target", data={"uid": "143", "next_url": "/"})
+    client.post("/target", data={"uid": "  ", "next_url": "/"})
+    assert "Target activity" not in client.get("/analysis/Project2").text
+    client.post("/target", data={"uid": "143", "next_url": "/"})
+    client.post("/target", data={"uid": "abc", "next_url": "/"})
+    assert "Target activity" not in client.get("/analysis/Project2").text
+
+
+def test_target_absent_from_a_version_degrades_gently(client: TestClient) -> None:
+    _upload(client, "Project2")
+    client.post("/target", data={"uid": "999999", "next_url": "/"})
+    page = client.get("/analysis/Project2").text
+    assert "does not contain UniqueID 999999" in page
+
+
+def test_target_redirect_never_leaves_the_app(client: TestClient) -> None:
+    for evil in ("//evil.example", "http://evil.example/x", "javascript:alert(1)"):
+        r = client.post("/target", data={"uid": "1", "next_url": evil}, follow_redirects=False)
+        assert r.headers["location"] == "/"
+
+
+def test_wipe_clears_the_target(client: TestClient) -> None:
+    _upload(client, "Project2")
+    client.post("/target", data={"uid": "143", "next_url": "/"})
+    client.post("/session/wipe")
+    _upload(client, "Project2")
+    assert "Target activity" not in client.get("/analysis/Project2").text
+
+
+# ---- the 20-file batch cap ----
+
+
+def test_upload_accepts_up_to_twenty_and_names_the_overflow(client: TestClient) -> None:
+    data = EXAMPLE.read_bytes()
+    files = [("files", (f"v{i}.json", data, "application/json")) for i in range(MAX_FILES + 1)]
+    page = client.post("/upload", files=files).text
+    assert f"1 file(s) beyond the {MAX_FILES}-file batch cap" in page
+    assert f"Loaded {MAX_FILES}:" in page
