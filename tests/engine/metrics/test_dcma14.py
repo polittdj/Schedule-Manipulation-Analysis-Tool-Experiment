@@ -185,3 +185,43 @@ def test_bei_not_applicable_without_baseline() -> None:
 
 def test_high_float_uses_44_day_threshold() -> None:
     assert FORTY_FOUR_DAYS_MIN == 44 * 480
+
+
+def test_no_links_is_na_not_fail() -> None:
+    # zero logic links once read as FS-share 0/0 = 0% >= 90 -> FAIL with no offenders —
+    # the §6 uncited-finding crash class. An empty population is NA across the board.
+    d = compute_dcma14(_sched([Task(unique_id=1, name="A", duration_minutes=DAY)]))
+    for key in ("DCMA04_FS", "DCMA02", "DCMA03"):
+        assert d[key].status is CheckStatus.NOT_APPLICABLE, key
+
+
+def test_no_status_date_makes_invalid_dates_na() -> None:
+    # neither invalid-dates condition is assessable without a data date — NA, not PASS
+    d = compute_dcma14(_sched([Task(unique_id=1, name="A", duration_minutes=DAY)]))
+    assert d["DCMA09"].status is CheckStatus.NOT_APPLICABLE
+
+
+def test_bei_counts_early_completions_beyond_the_due_set() -> None:
+    # DCMA's BEI numerator is ALL activities completed by the status date, not just the
+    # baselined-due set: one due-but-unfinished + one finished early = 1/1, not 0/1.
+    status = MON + dt.timedelta(days=10)
+    tasks = [
+        Task(
+            unique_id=1,
+            name="due",
+            duration_minutes=DAY,
+            baseline_finish=MON + dt.timedelta(days=5),
+        ),
+        Task(
+            unique_id=2,
+            name="early",
+            duration_minutes=DAY,
+            baseline_finish=MON + dt.timedelta(days=30),
+            actual_start=MON + dt.timedelta(days=3),
+            actual_finish=MON + dt.timedelta(days=4),
+            percent_complete=100.0,
+        ),
+    ]
+    bei = compute_dcma14(_sched(tasks, status_date=status))["DCMA14"]
+    assert bei.count == 1 and bei.population == 1 and bei.value == 1.0
+    assert bei.offender_uids == (1,)  # the due-but-unfinished activity stays citable

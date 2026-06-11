@@ -451,3 +451,60 @@ def test_assignment_to_unknown_or_unassigned_resource() -> None:
     t = parse_mspdi_text(_doc(body)).task_by_id(1)
     assert t.resource_ids == (99,)  # the unassigned (-65535) sentinel is dropped
     assert t.resource_names == ()  # UID 99 has no defined resource -> no name
+
+
+def test_percent_lag_format_reads_share_of_predecessor_duration() -> None:
+    # LagFormat 19 (percent): LinkLag is tenths of a percent of the PREDECESSOR's
+    # duration — FS+25% on a 2-day (960-min) predecessor is 240 minutes, not the
+    # 25 "minutes" a tenths-of-a-minute reading fabricates
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT16H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type>"
+        "<LinkLag>250</LinkLag><LagFormat>19</LagFormat></PredecessorLink></Task>"
+        "</Tasks>"
+    )
+    sched = parse_mspdi_text(_doc(body))
+    assert sched.relationships[0].lag_minutes == 240
+
+
+def test_time_lag_formats_still_read_tenths_of_minutes() -> None:
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT16H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        "<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type>"
+        "<LinkLag>4800</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>"
+        "</Tasks>"
+    )
+    sched = parse_mspdi_text(_doc(body))
+    assert sched.relationships[0].lag_minutes == 480
+
+
+def test_xsd_boolean_true_false_words_are_read() -> None:
+    # MS Project writes "1"/"0" but xsd:boolean admits "true"/"false" (third-party tools)
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>M</Name><Duration>PT0H0M0S</Duration>"
+        "<Milestone>true</Milestone></Task>"
+        "<Task><UID>2</UID><Name>S</Name><Duration>PT0H0M0S</Duration>"
+        "<Summary>TRUE</Summary></Task>"
+        "<Task><UID>3</UID><Name>N</Name><Duration>PT8H0M0S</Duration>"
+        "<Milestone>false</Milestone></Task>"
+        "</Tasks>"
+    )
+    sched = parse_mspdi_text(_doc(body))
+    assert sched.tasks_by_id[1].is_milestone
+    assert sched.tasks_by_id[2].is_summary
+    assert not sched.tasks_by_id[3].is_milestone
+
+
+def test_nan_cost_is_noise_not_poison() -> None:
+    # Decimal("NaN") constructs successfully — it must read as absent, never reach EVM sums
+    body = (
+        "<Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration>"
+        "<Cost>NaN</Cost></Task></Tasks>"
+    )
+    sched = parse_mspdi_text(_doc(body))
+    assert sched.tasks_by_id[1].cost is None

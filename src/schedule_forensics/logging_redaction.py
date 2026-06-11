@@ -29,7 +29,8 @@ import re
 import sys
 from typing import TextIO
 
-#: Schedule / Office / Power BI extensions whose *file names* are treated as CUI.
+#: Schedule / Office / Power BI extensions whose *file names* are treated as CUI
+#: (``json`` included: "Save .json" writes the tool's own schedule format).
 SENSITIVE_EXTENSIONS: tuple[str, ...] = (
     "mpp",
     "mpt",
@@ -42,19 +43,39 @@ SENSITIVE_EXTENSIONS: tuple[str, ...] = (
     "xlsx",
     "csv",
     "xml",
+    "json",
 )
 
 # A bare file name ending in a sensitive extension, anchored at a token boundary
-# so it never swallows preceding safe words.
+# so it never swallows preceding safe words (no spaces — prose stays intact).
 _SENSITIVE_FILE_RE = re.compile(
     r"(?<![\w./\\-])[\w.\-]*\.(?P<ext>" + "|".join(SENSITIVE_EXTENSIONS) + r")\b",
     re.IGNORECASE,
 )
 
-# Absolute filesystem paths (POSIX or Windows), excluding URL paths (no preceding
-# word char, ``:`` or ``/``). Segments exclude spaces so trailing prose is safe.
+# A string that IS a file name in its entirety (a structured extra, a list element)
+# may contain spaces — the string boundary bounds the match, no prose to protect.
+_WHOLE_SENSITIVE_FILE_RE = re.compile(
+    r"^[^\n]{1,200}\.(?P<ext>" + "|".join(SENSITIVE_EXTENSIONS) + r")$",
+    re.IGNORECASE,
+)
+
+# A QUOTED file name may contain spaces ("Site Alpha rebaseline.mpp") — quoting is how
+# spaced names reach logs (exception reprs, f-string quoting), and the quotes bound the
+# match so surrounding prose is never swallowed.
+_QUOTED_SENSITIVE_FILE_RE = re.compile(
+    r"""(?P<q>["'])(?P<name>[^"'\n]{1,160}?\.(?P<ext>"""
+    + "|".join(SENSITIVE_EXTENSIONS)
+    + r"""))(?P=q)""",
+    re.IGNORECASE,
+)
+
+# Absolute filesystem paths (POSIX, Windows drive, or UNC), excluding URL paths (no
+# preceding word char, ``:`` or ``/``). Segments exclude spaces so trailing prose is
+# safe; the UNC form (\\server\share\…) is the realistic case on CUI networks.
 _POSIX_PATH_RE = re.compile(r"(?<![\w:/])(?:/[\w.\-]+){2,}")
 _WINDOWS_PATH_RE = re.compile(r"(?<![\w/])[A-Za-z]:\\[\w.\-\\]+")
+_UNC_PATH_RE = re.compile(r"(?<![\w\\])\\\\[\w.\-]+(?:\\[\w.\-]+)+")
 
 # Standard LogRecord attributes — anything else in ``record.__dict__`` is an
 # operator-supplied ``extra`` field and is carried through (redacted).
@@ -74,6 +95,12 @@ def _redact_sensitive_file(match: re.Match[str]) -> str:
     return f"<file:{ext}#{_hash(match.group(0))}>"
 
 
+def _redact_quoted_file(match: re.Match[str]) -> str:
+    quote = match.group("q")
+    ext = match.group("ext").lower()
+    return f"{quote}<file:{ext}#{_hash(match.group('name'))}>{quote}"
+
+
 def _redact_path(match: re.Match[str]) -> str:
     text = match.group(0)
     tail = text.replace("\\", "/").rpartition("/")[2]
@@ -86,13 +113,31 @@ def redact(text: str) -> str:
     """Return ``text`` with CUI-bearing file names and absolute paths removed."""
     if not text:
         return text
+    whole = _WHOLE_SENSITIVE_FILE_RE.match(text.strip())
+    if whole is not None:  # the string IS a file name (spaces and all)
+        return f"<file:{whole.group('ext').lower()}#{_hash(text.strip())}>"
+    text = _UNC_PATH_RE.sub(_redact_path, text)
     text = _WINDOWS_PATH_RE.sub(_redact_path, text)
     text = _POSIX_PATH_RE.sub(_redact_path, text)
+    text = _QUOTED_SENSITIVE_FILE_RE.sub(_redact_quoted_file, text)
     return _SENSITIVE_FILE_RE.sub(_redact_sensitive_file, text)
 
 
 def _redact_value(value: object) -> object:
-    return redact(value) if isinstance(value, str) else value
+    """Redact strings; recurse into containers; stringify-and-redact anything else.
+
+    A non-str ``extra`` (a list of names, a dict, a ``Path``) must not bypass
+    redaction on its way into the JSON line.
+    """
+    if isinstance(value, str):
+        return redact(value)
+    if isinstance(value, dict):
+        return {key: _redact_value(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_redact_value(item) for item in value]
+    if isinstance(value, (int, float, bool)) or value is None:
+        return value
+    return redact(str(value))  # Path and friends serialize via str — redact that form
 
 
 class CUIRedactingFilter(logging.Filter):

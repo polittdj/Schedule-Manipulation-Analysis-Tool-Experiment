@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.importers import (
+    MAX_FILES,
     ImporterError,
     load_schedule,
     load_schedules,
@@ -80,12 +81,13 @@ def test_empty_batch_raises() -> None:
 
 def test_too_many_files_raises() -> None:
     with pytest.raises(ImporterError, match="too many files"):
-        load_schedules([MSPDI] * 11)
+        load_schedules([MSPDI] * (MAX_FILES + 1))
 
 
 def test_max_files_boundary_ok() -> None:
-    schedules = load_schedules([MSPDI] * 10)
-    assert len(schedules) == 10
+    assert MAX_FILES == 20  # §6.B required 10; the operator raised the cap to 20
+    schedules = load_schedules([MSPDI] * MAX_FILES)
+    assert len(schedules) == MAX_FILES
 
 
 @needs_real_mpp

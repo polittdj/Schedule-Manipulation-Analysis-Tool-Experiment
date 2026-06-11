@@ -281,6 +281,10 @@
     lastDriving = driving;
     const box = document.getElementById("gantt");
     box.innerHTML = "";
+    if (driving.note && !(driving.rows || []).length) {
+      box.appendChild(el("p", { class: "muted", text: driving.note }));
+      return;
+    }
     box.appendChild(el("h3", { text: "Driving path to UID " + driving.target_uid + " — " + (driving.target_name || "") + " (waterfall: earliest finish first)" }));
     const legend = el("div", { class: "legend" });
     ["DRIVING", "SECONDARY", "TERTIARY", "BEYOND"].forEach((t) =>
@@ -336,6 +340,8 @@
       renderCharts(data);
       renderToggles();
       renderGrid();
+      // a session-wide target pre-fills the trace box — run the trace right away
+      if (document.getElementById("targetUid").value) loadGantt();
     })
     .catch(() => { document.getElementById("charts").textContent = "Failed to load analysis."; });
 

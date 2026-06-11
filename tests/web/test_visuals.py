@@ -101,3 +101,32 @@ def test_analysis_page_wires_the_interactive_viz(client: TestClient) -> None:
     assert "id=viz" in page and 'data-name="Project5"' in page
     assert "/static/app.js" in page and "/static/app.css" in page
     assert "id=gantt" in page and "id=grid" in page and "id=fieldToggles" in page
+
+
+def test_driving_summary_target_returns_note_not_500(client: TestClient) -> None:
+    # Project5 UID 0 is the project-summary row: not in the logic network. Tracing it
+    # raised KeyError -> 500 (and the session-wide target auto-trace made that constant).
+    r = client.get("/api/driving/Project5?target=0")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["rows"] == [] and "summary" in data["note"]
+
+
+def test_driving_on_unschedulable_schedule_is_422_not_500(client: TestClient) -> None:
+    cyc = (
+        b"<Project xmlns='http://schemas.microsoft.com/project'>"
+        b"<StartDate>2026-01-05T08:00:00</StartDate><Tasks>"
+        b"<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration>"
+        b"<PredecessorLink><PredecessorUID>2</PredecessorUID></PredecessorLink></Task>"
+        b"<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        b"<PredecessorLink><PredecessorUID>1</PredecessorUID></PredecessorLink></Task>"
+        b"</Tasks></Project>"
+    )
+    client.post("/upload", files={"files": ("Cycle.xml", cyc, "text/xml")})
+    r = client.get("/api/driving/Cycle?target=1")
+    assert r.status_code == 422  # the page-level routes already degraded; this one 500'd
+
+
+def test_unknown_analysis_page_is_404(client: TestClient) -> None:
+    r = client.get("/analysis/NoSuchSchedule")
+    assert r.status_code == 404 and "No schedule named" in r.text

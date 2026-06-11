@@ -61,13 +61,20 @@ def _label(schedule: Schedule) -> str:
 
 
 def _finish_drivers(schedule: Schedule, cpm: CPMResult) -> tuple[Citation, ...]:
-    """Cite the activities that control the project finish (early finish == network finish)."""
+    """Cite the activities that control the project finish (early finish == network finish).
+
+    With no schedulable activities at all (a summary-only template), the first task rows
+    are the terminal anchor — the §6 never-uncited invariant must hold for every statement.
+    """
     by_id = schedule.tasks_by_id
-    return tuple(
+    drivers = tuple(
         Citation(_label(schedule), uid, by_id[uid].name)
         for uid, t in sorted(cpm.timings.items())
         if t.early_finish == cpm.project_finish
     )
+    if not drivers:
+        drivers = tuple(Citation(_label(schedule), t.unique_id, t.name) for t in schedule.tasks[:3])
+    return drivers
 
 
 def _cite(schedule: Schedule, uids: tuple[int, ...]) -> tuple[Citation, ...]:

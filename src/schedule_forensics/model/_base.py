@@ -21,6 +21,10 @@ from pydantic import BaseModel, ConfigDict
 
 
 class StrictFrozenModel(BaseModel):
-    """Immutable (frozen + hashable), strict (no coercion), closed (extra forbidden)."""
+    """Immutable (frozen + hashable), strict (no coercion), closed (extra forbidden).
 
-    model_config = ConfigDict(frozen=True, extra="forbid", strict=True)
+    ``hide_input_in_errors`` keeps schedule contents (task names, dates, costs — CUI)
+    out of ValidationError text, which importers wrap into user-facing messages.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid", strict=True, hide_input_in_errors=True)

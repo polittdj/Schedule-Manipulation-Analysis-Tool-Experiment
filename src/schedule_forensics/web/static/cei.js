@@ -12,11 +12,17 @@
   var box = document.getElementById("ceiChart");
   if (!box) return;
   var NS = "http://www.w3.org/2000/svg";
-  var GOLD = "#d29922", BLUE = "#4aa3ff", GREEN = "#3fb950";
+  var GOLD = "var(--warn)", BLUE = "var(--accent)", GREEN = "var(--ok)";
 
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);
-    for (var k in attrs) node.setAttribute(k, attrs[k]);
+    for (var k in attrs) {
+      // CSS variables are not valid in SVG presentation attributes; route them via style
+      // so the charts recolor live when the light/dark theme switches.
+      if ((k === "fill" || k === "stroke") && String(attrs[k]).indexOf("var(") === 0) {
+        node.style[k] = attrs[k];
+      } else node.setAttribute(k, attrs[k]);
+    }
     return node;
   }
 
@@ -46,12 +52,12 @@
     var y = function (v) { return padT + (1 - v / top) * (H - padT - padB); };
 
     // title + CEI callout (the reference deck's "CEI - .36")
-    var title = svgEl("text", { x: W / 2, y: 20, "text-anchor": "middle", fill: "#e6edf3", "font-size": 16, "font-weight": 600 });
+    var title = svgEl("text", { x: W / 2, y: 20, "text-anchor": "middle", fill: "var(--ink)", "font-size": 16, "font-weight": 600 });
     title.textContent = "Activity Finishes — As of " + snap.label;
     svg.appendChild(title);
     if (snap.cei != null || snap.cei_planned != null) {
       var cei = svgEl("text", { x: W - padR, y: 22, "text-anchor": "end", "font-size": 18, "font-weight": 700,
-        fill: snap.cei != null && snap.cei < 0.8 ? "#f85149" : "#3fb950" });
+        fill: snap.cei != null && snap.cei < 0.8 ? "var(--bad)" : "var(--ok)" });
       cei.textContent = "CEI – " + (snap.cei != null ? snap.cei.toFixed(2) : "n/a") +
         (snap.cei_period ? " (" + snap.cei_period + ")" : "");
       svg.appendChild(cei);
@@ -60,8 +66,8 @@
     // y gridlines
     [0.25, 0.5, 0.75, 1].forEach(function (frac) {
       var gy = y(top * frac);
-      svg.appendChild(svgEl("line", { x1: padL, y1: gy, x2: W - padR, y2: gy, stroke: "#243044", "stroke-width": 1 }));
-      var lab = svgEl("text", { x: padL - 6, y: gy + 4, "text-anchor": "end", fill: "#8b98a5", "font-size": 10 });
+      svg.appendChild(svgEl("line", { x1: padL, y1: gy, x2: W - padR, y2: gy, stroke: "var(--line)", "stroke-width": 1 }));
+      var lab = svgEl("text", { x: padL - 6, y: gy + 4, "text-anchor": "end", fill: "var(--muted)", "font-size": 10 });
       lab.textContent = String(Math.round(top * frac));
       svg.appendChild(lab);
     });
@@ -80,7 +86,7 @@
         var bx = x0 + sd[2] * barW - barW / 2;
         svg.appendChild(svgEl("rect", { x: bx, y: y(v), width: barW, height: y(0) - y(v), fill: sd[1] }));
         if (slot > 26) {
-          var t = svgEl("text", { x: bx + barW / 2, y: y(v) - 3, "text-anchor": "middle", fill: "#e6edf3", "font-size": 9 });
+          var t = svgEl("text", { x: bx + barW / 2, y: y(v) - 3, "text-anchor": "middle", fill: "var(--ink)", "font-size": 9 });
           t.textContent = String(v);
           svg.appendChild(t);
         }
@@ -88,7 +94,7 @@
       // month labels, thinned to avoid overlap
       var step = Math.ceil(n / 16);
       if (i % step === 0) {
-        var ml = svgEl("text", { x: x0, y: H - padB + 16, "text-anchor": "end", fill: "#8b98a5", "font-size": 10,
+        var ml = svgEl("text", { x: x0, y: H - padB + 16, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
           transform: "rotate(-35 " + x0 + " " + (H - padB + 16) + ")" });
         ml.textContent = months[i];
         svg.appendChild(ml);
@@ -110,7 +116,7 @@
     var lx = padL;
     legend.forEach(function (item) {
       svg.appendChild(svgEl("rect", { x: lx, y: H - 12, width: 10, height: 10, fill: item[1] }));
-      var lt = svgEl("text", { x: lx + 14, y: H - 3, fill: "#8b98a5", "font-size": 11 });
+      var lt = svgEl("text", { x: lx + 14, y: H - 3, fill: "var(--muted)", "font-size": 11 });
       lt.textContent = item[0];
       svg.appendChild(lt);
       lx += 14 + item[0].length * 6 + 22;

@@ -177,3 +177,37 @@ def test_trend_across_versions_orders_and_counts(
     assert trend[0].completed == 20 and trend[1].completed == 27  # progress between snapshots
     assert trend[0].critical == 41 and trend[1].critical == 37
     assert trend[1].project_finish > trend[0].project_finish  # the finish slipped later
+
+
+def test_detect_erased_actual_date() -> None:
+    # date -> None (progress un-statused) is the classic history rewrite and must flag —
+    # it used to read as normal statusing because only date -> date edits were checked
+    prior = _s(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                percent_complete=100.0,
+                actual_start=dt.datetime(2025, 1, 6, 8, 0),
+                actual_finish=dt.datetime(2025, 1, 7, 17, 0),
+            )
+        ]
+    )
+    current = _s(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                percent_complete=50.0,
+                actual_start=dt.datetime(2025, 1, 6, 8, 0),
+            )
+        ]
+    )
+    findings = [
+        f for f in detect_manipulation(current, prior) if f.metric_id == "MANIP_ACTUAL_ERASED"
+    ]
+    assert len(findings) == 1
+    assert findings[0].severity is Severity.HIGH
+    assert findings[0].citations[0].unique_id == 1

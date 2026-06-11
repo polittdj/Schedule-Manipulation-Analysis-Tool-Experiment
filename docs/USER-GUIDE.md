@@ -38,7 +38,7 @@ dashboard. Stop it with `Ctrl-C`.
 ## 3. Use the dashboard
 
 1. **Open or import** a schedule from the landing page — drag a file onto the dropzone or click
-   **choose a file…** (`.json` `.xml`/`.mspdi` `.xer` `.mpp` `.mpt`, up to **10** at once), or click
+   **choose a file…** (`.json` `.xml`/`.mspdi` `.xer` `.mpp` `.mpt`, up to **20** at once), or click
    **Load example** to try the bundled sample project instantly. Files are parsed **locally**;
    nothing is uploaded anywhere. Each loaded schedule is listed with **Open report** and
    **Save .json** (exports the normalised schedule as a re-openable `.json`).
@@ -57,6 +57,9 @@ dashboard. Stop it with `Ctrl-C`.
      an amber line at the **data date**; sort any column, **click any row to drill into its full
      metadata + citation**. A separate driving-path Gantt highlights the **driving / secondary /
      tertiary** path to a target UniqueID you enter.
+   - **Target activity panel** — when a session-wide Target UID is set (see below), the report
+     opens with the target's dates, floats, % complete, flags, and finish-vs-baseline variance,
+     and the driving-path trace to it runs automatically.
 3. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
    per-version headline table (finish / completed / in-progress / critical), the **Net Finish
    Impact across the series**, **trend charts** (project finish, completed, critical, missing
@@ -84,9 +87,19 @@ dashboard. Stop it with `Ctrl-C`.
 7. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
    project **classification**. A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
-8. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every** metric
-   the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
-9. **Wipe Session** — clears all loaded schedules and derivatives from memory.
+8. **Target UID (header)** — type any activity's UniqueID into the header's **Target UID** box and
+   press **Set** to focus the whole session on that activity: the report page opens with its
+   **Target activity** panel and auto-runs the driving-path trace to it, the **Trend** page focuses
+   on it automatically, and **Compare** shows its computed-finish movement between versions. Leave
+   the box blank and press Set (or **Wipe Session**) to clear it. A summary UID is named as such —
+   pick one of its activities for a trace.
+9. **Light / dark mode** — the header's **theme button** (☀/☾) switches between the dark default
+   and a bright theme; the choice is stored locally in your browser (`localStorage`) and applies
+   to every page, charts included. Nothing about the preference leaves the machine.
+10. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every**
+    metric the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
+11. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
+    Target UID).
 
 ## 4. Verifying a number (forensic use)
 

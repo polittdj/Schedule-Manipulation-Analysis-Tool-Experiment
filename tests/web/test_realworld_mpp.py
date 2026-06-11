@@ -118,3 +118,23 @@ def test_logic_cycle_shows_readable_notice_not_500(client: TestClient) -> None:
     assert page.status_code == 200  # not a 500
     assert "cannot compute the network" in page.text and "circular dependency" in page.text
     assert client.get("/api/analysis/Loop").status_code == 422  # API reports it cleanly
+
+
+def test_summary_only_template_renders_report_not_500(client: TestClient) -> None:
+    # a file with ONLY summary rows (a template) has an empty CPM timing set; the §6
+    # citation gate once raised UncitedStatementError -> 500 on every page for it
+    body = (
+        "<Task><UID>0</UID><Name>Root</Name><Summary>1</Summary>"
+        "<Duration>PT0H0M0S</Duration></Task>"
+        "<Task><UID>1</UID><Name>Phase A</Name><Summary>1</Summary>"
+        "<Duration>PT0H0M0S</Duration></Task>"
+    )
+    r = client.post(
+        "/upload",
+        files={"files": ("Template.xml", _mspdi(body), "text/xml")},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303
+    page = client.get("/analysis/Template")
+    assert page.status_code == 200
+    assert "Internal Server Error" not in page.text

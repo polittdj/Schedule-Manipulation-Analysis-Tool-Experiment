@@ -91,7 +91,9 @@ def compute_dcma14(
         n_links,
         float(len(leads)),
         "count",
-        evaluate(float(len(leads)), 0.0, Direction.EQ),
+        CheckStatus.NOT_APPLICABLE
+        if n_links == 0
+        else evaluate(float(len(leads)), 0.0, Direction.EQ),
         0.0,
         Direction.EQ,
         leads,
@@ -174,9 +176,23 @@ def compute_dcma14(
             bad = True
         if bad:
             invalid.append(t.unique_id)
-    out["DCMA09"] = _r(
-        "DCMA09", "Invalid Dates", len(invalid), n_tasks, "%", 0.0, Direction.EQ, tuple(invalid)
-    )
+    if status_dt is None:
+        # without a data date neither condition can be assessed — NA, not a fabricated PASS
+        out["DCMA09"] = MetricResult(
+            "DCMA09",
+            "Invalid Dates",
+            0,
+            n_tasks,
+            0.0,
+            "%",
+            CheckStatus.NOT_APPLICABLE,
+            0.0,
+            Direction.EQ,
+        )
+    else:
+        out["DCMA09"] = _r(
+            "DCMA09", "Invalid Dates", len(invalid), n_tasks, "%", 0.0, Direction.EQ, tuple(invalid)
+        )
 
     # DCMA-10 Resources — incomplete, real-duration activities with no resource assigned.
     candidates = [t for t in incomplete if t.duration_minutes > 0]
@@ -213,8 +229,14 @@ def compute_dcma14(
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
     out["DCMA13"] = _cpli(result)
 
-    # DCMA-14 BEI — activities completed vs activities baselined to complete by status.
-    completed = sum(1 for t in due if t.actual_finish is not None)
+    # DCMA-14 BEI — ALL activities actually finished by the status date vs activities
+    # baselined to complete by then (the DCMA numerator is not restricted to the due set,
+    # so early completions count and BEI can legitimately exceed 1.0).
+    completed = sum(
+        1
+        for t in tasks
+        if t.actual_finish is not None and status_dt is not None and t.actual_finish <= status_dt
+    )
     # the activities dragging BEI below 1.0 — baselined-due but not actually finished (citable)
     bei_offenders = tuple(t.unique_id for t in due if t.actual_finish is None)
     if due and status_dt is not None:
@@ -257,8 +279,17 @@ def _r(
     direction: Direction | None,
     offenders: tuple[int, ...],
 ) -> MetricResult:
-    """Build a percentage-valued :class:`MetricResult` and evaluate it."""
+    """Build a percentage-valued :class:`MetricResult` and evaluate it.
+
+    An empty population is NOT_APPLICABLE, never a fabricated ``0%`` — a GE-direction
+    check (FS Relationships ≥ 90%) would otherwise FAIL with zero offenders on a
+    schedule with no logic links at all (an offender-less finding then violates the §6
+    citation contract downstream).
+    """
     value = percent(count, population)
+    status = (
+        CheckStatus.NOT_APPLICABLE if population == 0 else evaluate(value, threshold, direction)
+    )
     return MetricResult(
         metric_id,
         name,
@@ -266,7 +297,7 @@ def _r(
         population,
         value,
         unit,
-        evaluate(value, threshold, direction),
+        status,
         threshold,
         direction,
         offenders,

@@ -24,11 +24,12 @@ from schedule_forensics.importers.loader import (
 )
 from schedule_forensics.importers.mpp_mpxj import parse_mpp
 from schedule_forensics.importers.mspdi import parse_mspdi, parse_mspdi_text
-from schedule_forensics.importers.xer import parse_xer, parse_xer_text
+from schedule_forensics.importers.xer import decode_xer_bytes, parse_xer, parse_xer_text
 
 __all__ = [
     "MAX_FILES",
     "ImporterError",
+    "decode_xer_bytes",
     "load_schedule",
     "load_schedules",
     "parse_json",

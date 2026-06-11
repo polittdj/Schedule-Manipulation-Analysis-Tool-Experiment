@@ -941,3 +941,29 @@ this file is the running history.
 ### Parity / tests
 - **526 passed, 3 skipped** (3 new regression tests); parity 10/10; engine ≈99%, overall ≈99%;
   ruff + format + mypy(strict) + bandit clean.
+
+
+## Full-audit + operator-features sitting — 2026-06-11 (PR #68; Fable 5)
+
+- Operator work order: full quality audit + fix everything; batch cap → 20; light/dark theme;
+  a target UID every metric view honors; improvement recommendations; refreshed resume prompt.
+- **Features:** session-wide Target UID (header form → `POST /target`; report target panel +
+  auto-trace; trend default focus; compare movement panel; local-only redirects), light/dark theme
+  (CSS variables + `html[data-theme=light]` + `theme.js` pre-paint localStorage; SVG charts re-theme
+  via style-routed `var()`), `MAX_FILES` 10 → 20 (+ overflow named in the flash).
+- **Audit:** three parallel review agents (engine+metrics / web+ai / importers+model) returned ~25
+  genuine findings; all fixed with regression tests (see ADR-0026). Highlights: empty DCMA
+  populations are NA (the 0%→FAIL/no-offender §6 crash); terminal citation anchors in
+  recommendations/briefing/narrative (summary-only files render); BEI counts early completions;
+  summary-UID targets degrade instead of KeyError/500; `/api/driving` 422 on cycles; XER gained the
+  MSPDI tolerance classes + `complete_pct_type`-aware percents + UTF-16; MSPDI percent lags
+  (LagFormat 19/20 = share of predecessor duration); NaN/Infinity = noise; erased actuals flag
+  `MANIP_ACTUAL_ERASED`; schedule-quality offenders attached; pydantic `hide_input_in_errors`;
+  redaction (json/UNC/spaced names/extras); JSON round-trip fidelity; trend chart never fabricates
+  0-points; legend visible; 404s; Ollama falsy-timeout.
+- Deferred (HANDOFF next-steps + ADR-0026): 480-min-day hardcode, CP_Units quantities, AI
+  number-preservation + per-request backend, shortLabels collapse.
+
+### Parity / tests
+- **562 passed, 3 skipped** (36 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean.

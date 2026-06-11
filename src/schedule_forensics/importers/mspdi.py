@@ -36,7 +36,9 @@ from decimal import Decimal
 import pydantic
 
 from schedule_forensics.importers._common import (
+    DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
+    clamped_percent_or_none,
     iso_duration_to_minutes,
     parse_datetime,
     parse_float,
@@ -69,20 +71,6 @@ _CONSTRAINT_BY_CODE: dict[int, ConstraintType] = {
     7: ConstraintType.FNLT,
 }
 
-#: Constraints that require a date to be meaningful (and that the CPM engine acts on); a
-#: real-world export sometimes carries one of these with the date cleared (a stale
-#: leftover) — meaningless and unschedulable, so it is normalized to ASAP on import.
-_DATE_REQUIRING_CONSTRAINTS = frozenset(
-    {
-        ConstraintType.SNET,
-        ConstraintType.FNET,
-        ConstraintType.SNLT,
-        ConstraintType.FNLT,
-        ConstraintType.MSO,
-        ConstraintType.MFO,
-    }
-)
-
 #: MSPDI ``PredecessorLink/Type`` numeric code → model link type.
 _RELATIONSHIP_BY_CODE: dict[int, RelationshipType] = {
     0: RelationshipType.FF,
@@ -99,10 +87,12 @@ _RESOURCE_BY_CODE: dict[int, ResourceType] = {
     2: ResourceType.COST,
 }
 
-#: MSPDI ``LinkLag`` is stored in tenths of a minute (``LagFormat`` only governs the
-#: *displayed* unit, not storage), so ``LinkLag / 10`` is working minutes directly.
-#: SOURCE-PENDING (ADR-0008): re-confirm against a real export at M4/M9.
+#: MSPDI ``LinkLag`` is stored in tenths of a minute for time-unit ``LagFormat``s, so
+#: ``LinkLag / 10`` is working minutes directly. For the PERCENT formats (19 / elapsed
+#: 20) it is stored in tenths of a percent of the PREDECESSOR's duration instead —
+#: ``FS+25%`` arrives as ``LinkLag=250, LagFormat=19``.
 _LINKLAG_TENTHS_PER_MINUTE = Decimal(10)
+_PERCENT_LAG_FORMATS = frozenset({19, 20})
 
 
 def parse_mspdi(path: str | os.PathLike[str]) -> Schedule:
@@ -149,16 +139,19 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     assigned_uids_by_task, assigned_names_by_task = _parse_assignments(root, resource_name_by_uid)
 
     tasks: list[Task] = []
-    relationships: list[Relationship] = []
+    raw_links: list[tuple[int, ET.Element]] = []
     tasks_el = root.find("Tasks")
     for task_el in [] if tasks_el is None else tasks_el.findall("Task"):
         if _text(task_el, "IsNull") == "1":
             continue  # an explicitly null placeholder row (not a real activity)
         task = _parse_task(task_el, assigned_uids_by_task, assigned_names_by_task)
         tasks.append(task)
-        relationships.extend(_parse_predecessor_links(task_el, task.unique_id))
+        raw_links.extend((task.unique_id, el) for el in task_el.findall("PredecessorLink"))
 
-    relationships = _in_file_links(relationships, {t.unique_id for t in tasks})
+    # links resolve after all tasks parse: a percent lag is a share of the PREDECESSOR's
+    # duration, and predecessors can appear later in the file than their successors
+    durations = {t.unique_id: t.duration_minutes for t in tasks}
+    relationships = _in_file_links(_build_links(raw_links, durations), {t.unique_id for t in tasks})
 
     project_finish = parse_datetime(_text(root, "FinishDate"))
     status_date = parse_datetime(_text(root, "StatusDate"))
@@ -213,11 +206,12 @@ def _int(parent: ET.Element, tag: str) -> int | None:
 
 
 def _bool(parent: ET.Element, tag: str, *, default: bool) -> bool:
-    """MSPDI boolean (``"1"``/``"0"``); absent → ``default``."""
+    """MSPDI boolean; absent → ``default``. MS Project writes ``"1"``/``"0"`` but
+    xsd:boolean also admits ``"true"``/``"false"``, which third-party exporters use."""
     raw = _text(parent, tag)
     if raw is None:
         return default
-    return raw == "1"
+    return raw.strip().lower() in {"1", "true"}
 
 
 # --- task ------------------------------------------------------------------------
@@ -242,7 +236,7 @@ def _parse_task(
     # Both collapse to ASAP (no constraint). ALAP/SNET/etc. are not "Hard Constraints" unless
     # dated, so the DCMA §B counts are unaffected for well-formed schedules.
     if constraint_type is ConstraintType.ALAP or (
-        constraint_type in _DATE_REQUIRING_CONSTRAINTS and constraint_date is None
+        constraint_type in DATE_REQUIRING_CONSTRAINTS and constraint_date is None
     ):
         constraint_type = ConstraintType.ASAP
         constraint_date = None
@@ -264,7 +258,7 @@ def _parse_task(
             constraint_date=constraint_date,
             deadline=parse_datetime(_text(task_el, "Deadline")),
             percent_complete=parse_percent(_text(task_el, "PercentComplete")),
-            physical_percent_complete=_clamped_percent_or_none(
+            physical_percent_complete=clamped_percent_or_none(
                 _text(task_el, "PhysicalPercentComplete")
             ),
             start=parse_datetime(_text(task_el, "Start")),
@@ -281,13 +275,6 @@ def _parse_task(
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc
-
-
-def _clamped_percent_or_none(value: str | None) -> float | None:
-    """Optional percent clamped to 0..100; absent stays ``None`` (same noise class as
-    ``parse_percent`` — out-of-range physical % must not sink the file)."""
-    parsed = parse_float(value)
-    return None if parsed is None else min(100.0, max(0.0, parsed))
 
 
 def _optional_minutes(parent: ET.Element, tag: str) -> int | None:
@@ -341,10 +328,12 @@ def _project_baseline_finish(root: ET.Element) -> dt.datetime | None:
 # --- relationships ---------------------------------------------------------------
 
 
-def _parse_predecessor_links(task_el: ET.Element, successor_uid: int) -> list[Relationship]:
-    """A task's ``<PredecessorLink>`` children → incoming :class:`Relationship` edges."""
+def _build_links(
+    raw_links: list[tuple[int, ET.Element]], pred_durations: dict[int, int]
+) -> list[Relationship]:
+    """``(successor_uid, <PredecessorLink>)`` pairs → :class:`Relationship` edges."""
     links: list[Relationship] = []
-    for link_el in task_el.findall("PredecessorLink"):
+    for successor_uid, link_el in raw_links:
         predecessor_uid = _int(link_el, "PredecessorUID")
         if predecessor_uid is None:
             raise ImporterError(
@@ -356,13 +345,19 @@ def _parse_predecessor_links(task_el: ET.Element, successor_uid: int) -> list[Re
         link_type = _RELATIONSHIP_BY_CODE.get(
             1 if type_code is None else type_code, RelationshipType.FS
         )
+        if _int(link_el, "LagFormat") in _PERCENT_LAG_FORMATS:
+            lag = _percent_lag_to_minutes(
+                _text(link_el, "LinkLag"), pred_durations.get(predecessor_uid, 0)
+            )
+        else:
+            lag = _link_lag_to_minutes(_text(link_el, "LinkLag"))
         try:
             links.append(
                 Relationship(
                     predecessor_id=predecessor_uid,
                     successor_id=successor_uid,
                     type=link_type,
-                    lag_minutes=_link_lag_to_minutes(_text(link_el, "LinkLag")),
+                    lag_minutes=lag,
                 )
             )
         except pydantic.ValidationError as exc:
@@ -408,13 +403,27 @@ def _in_file_links(relationships: list[Relationship], task_uids: set[int]) -> li
 
 def _link_lag_to_minutes(value: str | None) -> int:
     """MSPDI ``LinkLag`` (tenths of a minute, sign preserved) → working minutes."""
+    tenths = _lag_tenths(value)
+    return int((tenths / _LINKLAG_TENTHS_PER_MINUTE).to_integral_value(rounding="ROUND_HALF_UP"))
+
+
+def _percent_lag_to_minutes(value: str | None, pred_duration_minutes: int) -> int:
+    """``LinkLag`` under a percent ``LagFormat`` (tenths of a percent of the predecessor's
+    duration, sign preserved) → working minutes. ``FS+25%`` on a 10-day predecessor is
+    1 200 minutes, not the 25 "minutes" a tenths-of-a-minute reading would fabricate."""
+    tenths_of_pct = _lag_tenths(value)
+    share = tenths_of_pct / Decimal(1000)  # tenths of a percent -> fraction
+    return int((share * pred_duration_minutes).to_integral_value(rounding="ROUND_HALF_UP"))
+
+
+def _lag_tenths(value: str | None) -> Decimal:
     if value is None or not value.strip():
-        return 0
+        return Decimal(0)
     try:
         tenths = Decimal(value.strip())
     except (ValueError, ArithmeticError) as exc:
         raise ImporterError(f"unparseable <LinkLag>: {value!r}") from exc
-    return int((tenths / _LINKLAG_TENTHS_PER_MINUTE).to_integral_value(rounding="ROUND_HALF_UP"))
+    return tenths if tenths.is_finite() else Decimal(0)  # NaN/Infinity are data noise
 
 
 # --- resources & assignments -----------------------------------------------------

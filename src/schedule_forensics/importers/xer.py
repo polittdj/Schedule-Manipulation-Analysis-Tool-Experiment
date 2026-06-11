@@ -8,10 +8,11 @@ ends the file. Fields are read **by name**, never by position, so column reorder
 is harmless. Only the standard library is used (the CUI egress guard stays green).
 
 **UniqueID is the sole identity.** Tasks are keyed by ``task_id``; logic
-(``TASKPRED``) and assignments (``TASKRSRC``) reference tasks by ``task_id`` only. A
-relationship pointing at a ``task_id`` absent from the whole file is malformed and
-raises :class:`ImporterError`; a relationship that merely crosses into a *different*
-project in a multi-project export is out of scope and is excluded (not an error).
+(``TASKPRED``) and assignments (``TASKRSRC``) reference tasks by ``task_id`` only.
+Links the selected project cannot resolve — dangling endpoints (filtered/partial
+exports), cross-project rows, self-references, duplicates — are valid real-world P6
+states and are dropped with a count logged (the same tolerance classes as the MSPDI
+importer; ALAP and dateless date-constraints likewise normalize to ASAP).
 
 Deferred (ADR-0008, carried to a later milestone): per-task cost roll-up from
 ``TASKRSRC``/expenses and detailed ``CALENDAR`` parsing (the default 8h/Mon-Fri
@@ -21,13 +22,16 @@ MPXJ, M4); XER is a secondary native format.
 
 from __future__ import annotations
 
+import logging
 import os
 from collections import Counter
 
 import pydantic
 
 from schedule_forensics.importers._common import (
+    DATE_REQUIRING_CONSTRAINTS,
     ImporterError,
+    clamped_percent_or_none,
     hours_to_minutes,
     parse_datetime,
     parse_float,
@@ -43,6 +47,8 @@ from schedule_forensics.model import (
     Schedule,
     Task,
 )
+
+logger = logging.getLogger("schedule_forensics.importers.xer")
 
 Row = dict[str, str]
 Tables = dict[str, list[Row]]
@@ -91,11 +97,19 @@ def parse_xer(path: str | os.PathLike[str]) -> Schedule:
             data = handle.read()
     except OSError as exc:
         raise ImporterError(f"cannot read XER file: {exc}") from exc
+    return parse_xer_text(decode_xer_bytes(data), source_file=os.path.basename(file_path))
+
+
+def decode_xer_bytes(data: bytes) -> str:
+    """Decode raw XER bytes: BOM-tagged UTF-16 first, then UTF-8, then the legacy
+    Windows cp1252 P6 exports. Shared by the file path and the web upload path so the
+    same file can never parse differently depending on how it entered the tool."""
+    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
+        return data.decode("utf-16")
     try:
-        text = data.decode("utf-8")
+        return data.decode("utf-8")
     except UnicodeDecodeError:
-        text = data.decode("cp1252", errors="replace")  # legacy Windows P6 exports
-    return parse_xer_text(text, source_file=os.path.basename(file_path))
+        return data.decode("cp1252", errors="replace")
 
 
 def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
@@ -280,6 +294,16 @@ def _parse_task(
     constraint = _g(row, "cstr_type")
     physical = _g(row, "phys_complete_pct")
     name = _g(row, "task_name") or _g(row, "task_code") or f"Task {task_id}"
+    constraint_type = _CONSTRAINT_BY_XER.get(constraint or "", ConstraintType.ASAP)
+    constraint_date = parse_datetime(_g(row, "cstr_date"))
+    # the same real-world normalization the MSPDI importer applies (Law 2): ALAP is out of
+    # scope for the early-date engine, and a date-requiring constraint with the date
+    # cleared is meaningless — both collapse to ASAP instead of refusing the schedule
+    if constraint_type is ConstraintType.ALAP or (
+        constraint_type in DATE_REQUIRING_CONSTRAINTS and constraint_date is None
+    ):
+        constraint_type = ConstraintType.ASAP
+        constraint_date = None
 
     try:
         return Task(
@@ -293,12 +317,14 @@ def _parse_task(
             is_summary=task_type == "TT_WBS",
             is_level_of_effort=task_type == "TT_LOE",
             is_active=True,  # XER has no per-task active flag (status_code is progress)
-            constraint_type=_CONSTRAINT_BY_XER.get(constraint or "", ConstraintType.ASAP),
-            constraint_date=parse_datetime(_g(row, "cstr_date")),
+            constraint_type=constraint_type,
+            constraint_date=constraint_date,
             deadline=None,  # P6 deadlines are a secondary constraint (deferred)
-            percent_complete=parse_percent(physical),
+            percent_complete=_percent_complete(row),
             physical_percent_complete=(
-                parse_float(physical) if _g(row, "complete_pct_type") == "CP_Phys" else None
+                clamped_percent_or_none(physical)
+                if _g(row, "complete_pct_type") == "CP_Phys"
+                else None
             ),
             start=parse_datetime(_g(row, "early_start_date")),
             finish=parse_datetime(_g(row, "early_end_date")),
@@ -313,6 +339,30 @@ def _parse_task(
         raise ImporterError(f"task task_id {task_id} is invalid: {exc}") from exc
 
 
+def _percent_complete(row: Row) -> float:
+    """P6 activity % complete honoring ``complete_pct_type``.
+
+    ``phys_complete_pct`` only carries the user-maintained *physical* % — under the
+    P6-default ``CP_Drtn`` it stays 0 while work progresses, so reading it universally
+    imported finished work as "not started". Actual dates are facts and rule first:
+    finished → 100, not started → 0. In between, ``CP_Phys`` reads the physical %, and
+    ``CP_Drtn``/``CP_Units`` derive duration % = (target - remaining) / target
+    (for ``CP_Units`` the duration share is the closest honest stand-in until TASKRSRC
+    quantities are parsed; the physical % is the fallback when durations are absent).
+    """
+    if _g(row, "act_end_date") is not None:
+        return 100.0
+    if _g(row, "act_start_date") is None:
+        return 0.0
+    if (_g(row, "complete_pct_type") or "CP_Drtn") == "CP_Phys":
+        return parse_percent(_g(row, "phys_complete_pct"))
+    target = parse_float(_g(row, "target_drtn_hr_cnt"))
+    remain = parse_float(_g(row, "remain_drtn_hr_cnt"))
+    if not target or target <= 0 or remain is None:
+        return parse_percent(_g(row, "phys_complete_pct"))
+    return min(100.0, max(0.0, 100.0 * (1.0 - remain / target)))
+
+
 # --- relationships ----------------------------------------------------------------
 
 
@@ -321,32 +371,48 @@ def _parse_relationships(
 ) -> list[Relationship]:
     """``TASKPRED`` → :class:`Relationship` edges (UID-keyed).
 
-    A reference to a ``task_id`` absent from the entire file is malformed → raise.
-    A reference to a task in another project (present in ``all_task_ids`` but not
-    ``in_scope_ids``) is out of scope → excluded (not an error).
+    Real exports (filtered or multi-project) carry rows this file cannot resolve:
+    endpoints absent from the file entirely (an external/partial-export link), links
+    into another project, self-referential rows, and duplicates. All are *valid P6
+    states*, not corruption — they are dropped and logged by count (no CUI — numbers
+    only), matching the MSPDI importer's tolerance classes.
     """
     relationships: list[Relationship] = []
+    seen: set[tuple[int, int, RelationshipType]] = set()
+    dropped = 0
     for row in pred_rows:
         successor = _req_int(row, "task_id")
         predecessor = _req_int(row, "pred_task_id")
-        for endpoint in (successor, predecessor):
-            if endpoint not in all_task_ids:
-                raise ImporterError(
-                    f"TASKPRED references task_id {endpoint}, which is not in the file"
-                )
-        if successor not in in_scope_ids or predecessor not in in_scope_ids:
-            continue  # a cross-project link; out of scope for the selected project
+        link_type = _RELATIONSHIP_BY_XER.get(_g(row, "pred_type") or "", RelationshipType.FS)
+        key = (predecessor, successor, link_type)
+        if (
+            successor not in all_task_ids  # dangling endpoint (filtered/partial export)
+            or predecessor not in all_task_ids
+            or successor not in in_scope_ids  # cross-project link; out of scope
+            or predecessor not in in_scope_ids
+            or predecessor == successor  # self-referential row
+            or key in seen  # duplicate TASKPRED row (would double-count DCMA edges)
+        ):
+            dropped += 1
+            continue
+        seen.add(key)
         try:
             relationships.append(
                 Relationship(
                     predecessor_id=predecessor,
                     successor_id=successor,
-                    type=_RELATIONSHIP_BY_XER.get(_g(row, "pred_type") or "", RelationshipType.FS),
+                    type=link_type,
                     lag_minutes=hours_to_minutes(_g(row, "lag_hr_cnt")),
                 )
             )
         except pydantic.ValidationError as exc:
             raise ImporterError(f"invalid logic link {predecessor}->{successor}: {exc}") from exc
+    if dropped:
+        logger.info(
+            "dropped %d TASKPRED link(s) not resolvable within this project "
+            "(external/cross-project, dangling, self-referential, or duplicate)",
+            dropped,
+        )
     return relationships
 
 

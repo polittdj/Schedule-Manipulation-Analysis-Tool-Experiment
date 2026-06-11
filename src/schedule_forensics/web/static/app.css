@@ -6,7 +6,7 @@
 .chart { flex: 1 1 320px; min-width: 280px; }
 .chart h3, #gantt h3 { font-size: 13px; color: var(--muted); margin: 6px 0; font-weight: 600; }
 .bar-row { display: grid; grid-template-columns: 150px 1fr 48px; align-items: center; gap: 8px; margin: 3px 0; font-size: 13px; }
-.bar-track { background: #0a0f1a; border-radius: 4px; height: 16px; overflow: hidden; }
+.bar-track { background: var(--field-bg); border-radius: 4px; height: 16px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 4px; }
 .bar-fill.ok { background: var(--ok); }
 .bar-fill.bad { background: var(--bad); }
@@ -20,8 +20,8 @@
 #grid th.sorted.desc::after { content: " \25BE"; }
 #grid tr.crit td:first-child { border-left: 3px solid var(--bad); }
 #grid tbody tr { cursor: pointer; }
-#grid tbody tr:hover { background: #18202f; }
-.drill { margin-top: 12px; padding: 12px 14px; background: #0a0f1a; border: 1px solid var(--line); border-radius: 8px; display: none; }
+#grid tbody tr:hover { background: var(--hover); }
+.drill { margin-top: 12px; padding: 12px 14px; background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; display: none; }
 .drill.show { display: block; }
 .drill h3 { margin: 0 0 8px; color: var(--accent); font-size: 14px; }
 .drill dl { display: grid; grid-template-columns: 180px 1fr; gap: 2px 12px; font-size: 13px; margin: 0; }
@@ -30,29 +30,31 @@
 .gantt-grid th.g-head { position: relative; min-width: 320px; width: 45%; cursor: default; }
 .g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; }
 .g-cell { padding: 4px 6px; }
-.g-track { position: relative; height: 16px; background: #0a0f1a; border-radius: 3px; overflow: hidden; }
+.g-track { position: relative; height: 16px; background: var(--field-bg); border-radius: 3px; overflow: hidden; }
 .g-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; background: var(--accent); }
 .g-bar.g-crit { background: var(--bad); }
-.g-bar.g-sum { top: 6px; height: 4px; background: #aab6c4; border-radius: 1px; }
-.g-done { height: 100%; background: rgba(255,255,255,.45); border-radius: 3px 0 0 3px; }
-.g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: #e6edf3; transform: translateX(-50%) rotate(45deg); }
+.g-bar.g-sum { top: 6px; height: 4px; background: var(--sum-ink); border-radius: 1px; }
+.g-done { height: 100%; background: var(--done-overlay); border-radius: 3px 0 0 3px; }
+.g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--ink); transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
-#grid tr.sum td { color: #aab6c4; font-weight: 600; }
+#grid tr.sum td { color: var(--sum-ink); font-weight: 600; }
 #grid .filter-row td { padding: 2px 4px; }
 #grid .filter-row input { width: 100%; min-width: 56px; font-size: 12px; padding: 3px 6px; }
 .gantt-bar.done { opacity: .45; }
-.gantt-row.done span { color: #5c6b7c; text-decoration: line-through; }
+.gantt-row.done span { color: var(--muted); text-decoration: line-through; }
 #gantt .g-ms { position: absolute; top: 2px; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg); }
 #gantt .g-ms.tier-DRIVING { background: var(--bad); } #gantt .g-ms.tier-SECONDARY { background: var(--warn); }
-#gantt .g-ms.tier-TERTIARY { background: var(--accent); } #gantt .g-ms.tier-BEYOND { background: #3a4759; }
+#gantt .g-ms.tier-TERTIARY { background: var(--accent); } #gantt .g-ms.tier-BEYOND { background: var(--beyond); }
 .gantt-row { display: grid; grid-template-columns: 170px 1fr; align-items: center; gap: 8px; margin: 2px 0; font-size: 12px; }
-.gantt-track { position: relative; height: 14px; background: #0a0f1a; border-radius: 3px; }
+.gantt-track { position: relative; height: 14px; background: var(--field-bg); border-radius: 3px; }
 .gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
-.tier-DRIVING { background: var(--bad); }
-.tier-SECONDARY { background: var(--warn); }
-.tier-TERTIARY { background: var(--accent); }
-.tier-BEYOND { background: #3a4759; }
+/* tier colors apply to the BARS only — the legend text uses the color rules below
+   (an unscoped background made the legend labels same-color-on-same-color: invisible) */
+.gantt-bar.tier-DRIVING { background: var(--bad); }
+.gantt-bar.tier-SECONDARY { background: var(--warn); }
+.gantt-bar.tier-TERTIARY { background: var(--accent); }
+.gantt-bar.tier-BEYOND { background: var(--beyond); }
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0; flex-wrap: wrap; }
 .legend span::before { content: "\25A0 "; }
 .legend .tier-DRIVING { color: var(--bad); } .legend .tier-SECONDARY { color: var(--warn); }
-.legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: #6b7a8d; }
+.legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: var(--beyond-ink); }

@@ -72,8 +72,13 @@ def parse_json_text(text: str) -> Schedule:
 
 
 def _calendar(raw: dict[str, Any]) -> Calendar:
-    hours = raw.get("hours_per_day")
-    wmpd = int(hours * 60) if hours else int(raw.get("working_minutes_per_day", 480))
+    # prefer the exact minute count when present (the writer emits both); a bare
+    # hours_per_day is rounded, not truncated (123 min -> 2.05 h must come back as 123)
+    if raw.get("working_minutes_per_day") is not None:
+        wmpd = int(raw["working_minutes_per_day"])
+    else:
+        hours = raw.get("hours_per_day")
+        wmpd = round(hours * 60) if hours else 480
     weekdays = raw.get("work_weekdays")
     kwargs: dict[str, Any] = {
         "name": str(raw.get("name", "Standard")),
@@ -96,6 +101,9 @@ def _task(raw: dict[str, Any]) -> Task:
     for key in ("remaining_duration_minutes", "baseline_duration_minutes"):
         if raw.get(key) is not None:
             fields[key] = int(raw[key])
+    for key in ("cost", "actual_cost", "budgeted_cost"):
+        if raw.get(key) is not None:
+            fields[key] = float(raw[key])
     for field in _DATE_FIELDS:
         if raw.get(field) is not None:
             fields[field] = _dt(raw[field])
@@ -156,7 +164,16 @@ def to_json_text(schedule: Schedule) -> str:
     out: dict[str, Any] = {
         "name": schedule.name,
         "project_start": schedule.project_start.isoformat(),
-        "calendars": [{"name": cal.name, "hours_per_day": cal.working_minutes_per_day / 60}],
+        # working_minutes_per_day is the exact round-trip value; hours_per_day stays for
+        # human readability (the parser prefers the minute count)
+        "calendars": [
+            {
+                "name": cal.name,
+                "hours_per_day": cal.working_minutes_per_day / 60,
+                "working_minutes_per_day": cal.working_minutes_per_day,
+                "work_weekdays": list(cal.work_weekdays),
+            }
+        ],
         "tasks": [],
         "relationships": [
             {
@@ -180,6 +197,24 @@ def to_json_text(schedule: Schedule) -> str:
             task["percent_complete"] = t.percent_complete
         if t.resource_names:
             task["resource_names"] = list(t.resource_names)
+        # every field the parser reads is written back: a Save .json round-trip must not
+        # silently demote milestones/summaries or drop WBS, durations, or costs
+        if t.wbs:
+            task["wbs"] = t.wbs
+        if t.is_milestone:
+            task["is_milestone"] = True
+        if t.is_summary:
+            task["is_summary"] = True
+        if t.remaining_duration_minutes is not None:
+            task["remaining_duration_minutes"] = t.remaining_duration_minutes
+        if t.baseline_duration_minutes is not None:
+            task["baseline_duration_minutes"] = t.baseline_duration_minutes
+        if t.cost is not None:
+            task["cost"] = t.cost
+        if t.actual_cost is not None:
+            task["actual_cost"] = t.actual_cost
+        if t.budgeted_cost:
+            task["budgeted_cost"] = t.budgeted_cost
         for field in _DATE_FIELDS:
             value = iso(getattr(t, field))
             if value is not None:
