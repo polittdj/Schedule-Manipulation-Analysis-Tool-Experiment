@@ -1,8 +1,9 @@
-# Handoff — 2026-06-11 (deferred-audit-items sitting)
+# Handoff — 2026-06-11 (deferred-items sittings: ADR-0027 close-out + calendar parsing)
 
-**This session:** closed all four ADR-0026 deferred items (PR #69, ADR-0027): calendar-true
-day math, XER **CP_Units** from TASKRSRC quantities, the **AI figure gate + per-request
-backend** (real generation is now safely wired), and the trend-label data-date fallback.
+**This session (two PRs):** closed all four ADR-0026 deferred items (PR #69, ADR-0027:
+calendar-true day math, XER CP_Units, AI figure gate + per-request backend, trend-label
+fallback — **merged**), then landed **MSPDI/XER project-calendar parsing** (PR #70,
+ADR-0028): work week, day length, holidays — `.mpp`/`.xml`/`.xer` no longer assume 8h/Mon-Fri.
 **Next session:** operator feedback first; then the remaining deferred work below; only the
 externally-gated **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
 
@@ -64,14 +65,14 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   CSS variables, live-re-theming SVG), **batch cap 10 → 20**.
   All of #58–#68 are **merged to `main`**.
 
-## What shipped this sitting (PR #69) — the four ADR-0026 deferred items (ADR-0027)
+## What shipped this sitting — PR #69 (merged) + PR #70
+
+**PR #69 (ADR-0027) — the four ADR-0026 deferred items, MERGED:**
 1. **Calendar-true day math**: every day↔minute boundary derives from
    `calendar.working_minutes_per_day` — the DCMA "44 working days" tripwire is now
    `forty_four_days_min(schedule)` (`metrics/_common.py`; DCMA06/DCMA08/Insufficient Detail),
    DCMA12 injects `100 working days` on the schedule's calendar, driving-slack tier bands +
    `driving_slack_days` convert per-calendar, and `float_analysis` day rendering does too.
-   Only non-8h JSON calendars behave differently (MSPDI/XER calendar parsing still deferred,
-   ADR-0008); the default 480 keeps goldens byte-identical.
 2. **XER `CP_Units`** percent complete from TASKRSRC quantities (`_units_percent_by_task`):
    actual (`act_reg_qty`+`act_ot_qty`) ÷ at-completion (actual+`remain_qty`), summed per task;
    actual dates still rule; quantity-less / zero-at-completion falls back to the duration share.
@@ -84,6 +85,24 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
    (`SessionState.backend_cache`, reset on settings save) so a down Ollama can't slow renders.
 4. **Trend labels**: identical filenames no longer collapse to "…" — a label that empties
    after the common-prefix strip falls back to the version's data date (`trend.js shortLabels`).
+
+**PR #70 (ADR-0028) — MSPDI/XER project-calendar parsing:**
+- Importers fill `Schedule.calendar` from the source's project calendar: **work weekdays**
+  (source day 1=Sun..7=Sat → `weekday_from_source`), **per-day minutes** (span sums; differing
+  days use the **dominant/modal** total — single-block model approximation), **holidays**
+  (full non-working exceptions; working exceptions skipped + logged; weekend holidays dropped;
+  ranges capped at 366 days).
+- **MSPDI**: `Project/CalendarUID` resolved with a cycle-safe **base-calendar chain** (derived
+  calendars inherit the base week; exceptions collect across the chain); legacy `DayType=0`
+  and modern `<Exceptions>` both read; `DayWorking` with no times → 480. `.mpp` via MPXJ gets
+  this for free.
+- **XER**: `PROJECT.clndr_id` → CALENDAR row (fallback `default_flag=Y`); packed `clndr_data`
+  read with anchored patterns (`(0||<1-7>()` day nodes, `s|HH:MM|f|HH:MM` spans,
+  `(0||N(d|<serial>)` exceptions, Excel serial epoch 1899-12-30); grid-less rows walk
+  `base_clndr_id`, then `day_hr_cnt`, then default.
+- **Fail-soft**: any calendar surprise logs + degrades to the 8h/Mon-Fri default — never sinks
+  the file. `Save .json` round-trips **holidays** now. Goldens' calendar IS the textbook
+  standard (verified + pinned) → parity untouched.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -119,7 +138,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**579 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**608 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -130,13 +149,16 @@ venv has been missing the web deps.)
    `importers/_common.py` (shared by both importers); ALWAYS re-run `pytest -m parity`.
    The ADR-0026 deferred audit items are all closed (PR #69, ADR-0027).
 2. **Remaining deferred work** (rough priority order):
-   - **MSPDI/XER calendar parsing** (ADR-0008): `.mpp`/`.xer` imports still assume the default
-     8h/Mon-Fri calendar; once parsed, the calendar-true day math from ADR-0027 applies
-     automatically (thresholds/tiers/day-rendering already ride `working_minutes_per_day`);
    - **TASKRSRC cost roll-up** (per-task costs from assignments/expenses, ADR-0008);
+   - **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — the engine models
+     one schedule-level calendar; only worth doing if the operator's real programs mix
+     calendars materially;
    - if the operator enables real Ollama generation: watch quality — every rephrase is gated
      (citations + exact figures, fail-closed to verbatim), so a chatty model degrades to the
-     deterministic text rather than misleading anyone.
+     deterministic text rather than misleading anyone;
+   - watch operator feedback on parsed calendars (PR #70): a real `.mpp`/`.xer` with an exotic
+     calendar that degrades oddly → the fail-soft log line "unreadable project calendar" names
+     the path to debug.
 3. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
    (`engine/bow_wave.py` axis window `_MONTHS_BEFORE/AFTER`; `static/cei.js` layout) if they don't match.
 4. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
