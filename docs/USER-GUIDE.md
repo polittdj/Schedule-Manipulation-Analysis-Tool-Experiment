@@ -50,19 +50,34 @@ dashboard. Stop it with `Ctrl-C`.
      with a course of action.
    - **AI narrative** — a cited "story" of the schedule's health (CPM/manipulation trends, audit,
      recommendations). The model only rephrases the cited facts; it never invents a number.
-   - **Interactive analysis** — charts (DCMA pass/fail, baseline compliance); an **activity grid** where
-     you **add/remove columns**, sort, and **click any row to drill into its full metadata + citation**;
-     and a **Gantt** that, for a **target UniqueID** you enter, highlights the **driving / secondary /
-     tertiary** path to it (set the day thresholds in the controls).
-3. **Compare** (with ≥2 versions loaded): a version-to-version view — CPM/progress trend and
-   **manipulation-trend signals** (deleted logic, shortened durations, deleted tasks, baseline/actual
-   date edits) with the **Net Finish Impact** in calendar days. Honest progress shows no false flags.
-4. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
+   - **Interactive analysis** — charts (DCMA pass/fail, baseline compliance); an **MS-Project-style
+     Gantt grid**: data columns you **add/remove** (UID, dates, baseline dates, duration, floats,
+     % complete, resources, WBS…) beside a **timeline** with month ticks — red bars = critical,
+     a translucent overlay = progress, diamonds = milestones, thin gray bars = WBS summaries, and
+     an amber line at the **data date**; sort any column, **click any row to drill into its full
+     metadata + citation**. A separate driving-path Gantt highlights the **driving / secondary /
+     tertiary** path to a target UniqueID you enter.
+3. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
+   per-version headline table (finish / completed / in-progress / critical), the **Net Finish
+   Impact across the series**, **trend charts** (project finish, completed, critical, missing
+   logic), per-metric **schedule-quality trend** sentences (improving/worsening, best and worst
+   version named), and **manipulation-trend signals for each consecutive pair**.
+4. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
+   summary (versions, earliest start, latest completion), the cross-version **Trend Analysis**, a
+   per-project summary (dates, % complete/in-progress/planned, milestones/summaries, baseline
+   window and **behind/ahead-of-schedule days**), and a per-project **schedule-quality verdict**
+   for every DCMA check. Every sentence carries its **file + UID + task** citation; the local AI
+   may polish the prose but can never change a number. Use the browser's **Print** for a hand-out.
+5. **Compare** (with ≥2 versions loaded): the two most recent versions in data-date order — CPM/
+   progress trend and **manipulation-trend signals** (deleted logic, shortened durations, deleted
+   tasks, baseline/actual date edits) with the **Net Finish Impact** in calendar days. Honest
+   progress shows no false flags.
+6. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
    project **classification**. A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
-5. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every** metric
+7. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every** metric
    the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
-6. **Wipe Session** — clears all loaded schedules and derivatives from memory.
+8. **Wipe Session** — clears all loaded schedules and derivatives from memory.
 
 ## 4. Verifying a number (forensic use)
 

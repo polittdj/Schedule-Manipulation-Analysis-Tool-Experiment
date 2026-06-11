@@ -66,19 +66,24 @@
     ]);
   }
 
-  // ---- interactive activity grid: add/remove fields + drill-into-metadata ----
+  // ---- interactive activity grid + Gantt: add/remove fields + drill-into-metadata ----
   const ALL_FIELDS = [
     { key: "unique_id", label: "UID", on: true },
     { key: "name", label: "Name", on: true },
+    { key: "duration_days", label: "Duration (d)", on: false },
     { key: "start", label: "Start", on: true },
     { key: "finish", label: "Finish", on: true },
+    { key: "baseline_start", label: "Baseline start", on: false },
+    { key: "baseline_finish", label: "Baseline finish", on: false },
     { key: "total_float_days", label: "Total float (d)", on: true },
     { key: "free_float_days", label: "Free float (d)", on: false },
     { key: "percent_complete", label: "% complete", on: true },
-    { key: "is_critical", label: "Critical", on: true },
+    { key: "is_critical", label: "Critical", on: false },
+    { key: "resource_names", label: "Resources", on: false },
     { key: "wbs", label: "WBS", on: false },
   ];
   let activities = [];
+  let statusDate = null; // ISO date from the schedule's data date (vertical marker)
   let sortKey = "unique_id";
   let sortDesc = false;
 
@@ -101,6 +106,70 @@
     return v == null ? "" : String(v);
   }
 
+  // ---- timeline helpers (the MS-Project-style Gantt column) ----
+  const DAY_MS = 86400000;
+
+  function timeRange(rows) {
+    const dates = rows
+      .flatMap((r) => [r.start, r.finish])
+      .filter(Boolean)
+      .map((d) => Date.parse(d));
+    if (!dates.length) return null;
+    const lo = Math.min(...dates), hi = Math.max(...dates);
+    return { lo, span: Math.max(DAY_MS, hi - lo) };
+  }
+
+  function pct(range, t) {
+    return Math.max(0, Math.min(100, ((t - range.lo) / range.span) * 100));
+  }
+
+  function monthTicks(range) {
+    // first-of-month markers across the range, for the timeline header
+    const ticks = [];
+    const d = new Date(range.lo);
+    d.setUTCDate(1);
+    for (;;) {
+      d.setUTCMonth(d.getUTCMonth() + 1);
+      const t = d.getTime();
+      if (t >= range.lo + range.span) break;
+      ticks.push({ left: pct(range, t), label: (d.getUTCMonth() + 1) + "/" + (d.getUTCFullYear() % 100) });
+    }
+    // thin out so labels never overlap (cap ~12 labels)
+    const step = Math.ceil(ticks.length / 12);
+    return ticks.filter((_, i) => i % step === 0);
+  }
+
+  function timelineCell(act, range) {
+    const cell = el("td", { class: "g-cell" });
+    const track = el("div", { class: "g-track" });
+    if (statusDate) {
+      const sd = Date.parse(statusDate);
+      if (sd >= range.lo && sd <= range.lo + range.span) {
+        track.appendChild(el("div", { class: "g-status", style: "left:" + pct(range, sd) + "%" }));
+      }
+    }
+    const s = act.start ? Date.parse(act.start) : null;
+    const f = act.finish ? Date.parse(act.finish) : null;
+    if (act.is_milestone && s != null) {
+      const ms = el("div", { class: "g-ms", style: "left:" + pct(range, s) + "%" });
+      ms.title = act.name + " (milestone) " + act.start;
+      track.appendChild(ms);
+    } else if (s != null && f != null) {
+      const left = pct(range, s);
+      const width = Math.max(0.6, pct(range, f) - left);
+      const cls = act.is_summary ? "g-bar g-sum" : act.is_critical ? "g-bar g-crit" : "g-bar";
+      const bar = el("div", { class: cls, style: "left:" + left + "%;width:" + width + "%" });
+      bar.title = act.name + "  " + act.start + " → " + act.finish +
+        (act.is_summary ? " (summary)" : "  " + (act.percent_complete || 0) + "%");
+      if (!act.is_summary && act.percent_complete > 0) {
+        bar.appendChild(el("div", { class: "g-done", style: "width:" + Math.min(100, act.percent_complete) + "%" }));
+      }
+      track.appendChild(bar);
+    }
+    cell.appendChild(track);
+    return cell;
+  }
+
   function renderGrid() {
     const grid = document.getElementById("grid");
     const fields = ALL_FIELDS.filter((f) => f.on);
@@ -109,7 +178,8 @@
       const cmp = x < y ? -1 : x > y ? 1 : 0;
       return sortDesc ? -cmp : cmp;
     });
-    const table = el("table");
+    const range = timeRange(rows);
+    const table = el("table", { class: "gantt-grid" });
     const head = el("tr");
     fields.forEach((f) => {
       const th = el("th", { text: f.label });
@@ -120,11 +190,20 @@
       });
       head.appendChild(th);
     });
+    if (range) {
+      const th = el("th", { class: "g-head", text: "Timeline" });
+      monthTicks(range).forEach((tick) => {
+        th.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "%", text: tick.label }));
+      });
+      head.appendChild(th);
+    }
     table.appendChild(head);
     rows.forEach((act) => {
       const tr = el("tr");
       if (act.is_critical) tr.className = "crit";
+      if (act.is_summary) tr.className = (tr.className + " sum").trim();
       fields.forEach((f) => tr.appendChild(el("td", { text: fmt(act[f.key]) })));
+      if (range) tr.appendChild(timelineCell(act, range));
       tr.addEventListener("click", () => drill(act));
       table.appendChild(tr);
     });
@@ -189,6 +268,7 @@
     .then((r) => r.json())
     .then((data) => {
       activities = data.activities || [];
+      statusDate = data.status_date || null;
       renderCharts(data);
       renderToggles();
       renderGrid();

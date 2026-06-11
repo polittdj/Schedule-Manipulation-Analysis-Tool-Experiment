@@ -28,13 +28,41 @@ def test_static_assets_are_served_locally(client: TestClient) -> None:
 
 
 def test_analysis_json_has_citable_activity_rows(client: TestClient) -> None:
-    acts = client.get("/api/analysis/Project5").json()["activities"]
-    assert len(acts) == 126  # schedulable activities
+    data = client.get("/api/analysis/Project5").json()
+    acts = data["activities"]
+    normal = [a for a in acts if not a["is_summary"]]
+    summaries = [a for a in acts if a["is_summary"]]
+    assert len(normal) == 126  # schedulable activities (CPM-covered)
+    assert len(summaries) == 19  # WBS summaries incl. the UID-0 project row (Gantt rows)
     row = next(a for a in acts if a["unique_id"] == 143)
-    # the drill-down fields the grid exposes, each verifiable against the parent file
-    for key in ("name", "start", "finish", "total_float_days", "is_critical", "source_file"):
+    # the drill-down + Gantt fields the grid exposes, each verifiable against the parent file
+    for key in (
+        "name",
+        "start",
+        "finish",
+        "baseline_start",
+        "baseline_finish",
+        "duration_days",
+        "total_float_days",
+        "percent_complete",
+        "is_critical",
+        "is_milestone",
+        "is_summary",
+        "resource_names",
+        "source_file",
+    ):
         assert key in row
     assert row["is_critical"] is True and row["source_file"] == "Project5.mspdi.xml"
+    assert data["status_date"] == "2026-08-27"  # the data-date marker the Gantt draws
+    assert all(s["total_float_days"] is None for s in summaries)  # no CPM float on summaries
+
+
+def test_app_js_renders_the_gantt_timeline(client: TestClient) -> None:
+    js = client.get("/static/app.js").text
+    assert "timelineCell" in js and "monthTicks" in js  # the MS-Project-style timeline column
+    assert "g-ms" in js and "g-sum" in js and "g-crit" in js  # milestone/summary/critical bars
+    css = client.get("/static/app.css").text
+    assert ".g-bar" in css and ".g-status" in css
 
 
 def test_driving_endpoint_returns_tiers_and_gantt_ordinals(client: TestClient) -> None:

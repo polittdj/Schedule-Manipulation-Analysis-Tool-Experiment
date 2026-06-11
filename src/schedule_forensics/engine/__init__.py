@@ -54,6 +54,11 @@ from schedule_forensics.engine.recommendations import (
     Severity,
     recommend,
 )
+from schedule_forensics.engine.trend import (
+    MetricTrend,
+    compute_quality_trend,
+    order_versions,
+)
 
 __all__ = [
     "DEFAULT_SECONDARY_MAX_DAYS",
@@ -67,6 +72,7 @@ __all__ = [
     "FieldDelta",
     "Finding",
     "FloatResult",
+    "MetricTrend",
     "PathTier",
     "ScheduleAudit",
     "ScheduleFloatSummary",
@@ -80,11 +86,13 @@ __all__ = [
     "audit_schedule",
     "compute_cpm",
     "compute_driving_slack",
+    "compute_quality_trend",
     "datetime_to_offset",
     "detect_manipulation",
     "diff_versions",
     "driving_path",
     "offset_to_datetime",
+    "order_versions",
     "recommend",
     "summarize_floats",
     "topo_order",

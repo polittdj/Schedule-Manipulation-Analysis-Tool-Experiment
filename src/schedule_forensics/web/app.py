@@ -19,6 +19,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import cast
 from urllib.parse import quote
 
 import uvicorn
@@ -35,6 +36,7 @@ from schedule_forensics.ai import (
     banner_for,
     route_backend,
 )
+from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.engine import (
@@ -45,7 +47,7 @@ from schedule_forensics.engine import (
     recommend,
 )
 from schedule_forensics.engine.cpm import CPMResult
-from schedule_forensics.engine.dcma_audit import ScheduleAudit
+from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
@@ -53,6 +55,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.recommendations import Finding
+from schedule_forensics.engine.trend import compute_quality_trend, order_versions
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
@@ -83,7 +86,8 @@ _LAYOUT = Template(
 <title>{{ title }} — Schedule Forensics</title>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
+<nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/briefing">Executive Briefing</a>
+<a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a></nav></header>
@@ -145,6 +149,11 @@ class SessionState:
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
+
+    def ordered_versions(self) -> list[tuple[str, Schedule]]:
+        """(key, schedule) pairs ordered by data date, oldest first (undated keep load order)."""
+        by_obj = {id(s): k for k, s in self.schedules.items()}
+        return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
 
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
         """The cached analysis for ``key``, recomputing only if the schedule object changed."""
@@ -249,10 +258,15 @@ def create_app(
             "<table><tr><th>Schedule</th><th>Activities</th><th>Source</th><th></th></tr>"
             f"{rows}</table>"
             + (
-                '<p style="margin-top:14px"><a class=btn-link href="/compare">'
-                "Compare the two most recent versions &rarr;</a></p>"
-                if len(st.schedules) >= 2
-                else ""
+                '<p style="margin-top:14px"><a class=btn-link href="/briefing">'
+                "Executive briefing &rarr;</a>"
+                + (
+                    ' &middot; <a class=btn-link href="/trend">Trend across all versions &rarr;</a>'
+                    ' &middot; <a class=btn-link href="/compare">Compare the two most recent &rarr;</a>'
+                    if len(st.schedules) >= 2
+                    else ""
+                )
+                + "</p>"
             )
             + "</div>"
             if rows
@@ -395,6 +409,40 @@ def create_app(
         current_cpm = st.analysis_for(current_key, current).cpm
         return _page(st, "Compare", _compare_body(prior, current, prior_cpm, current_cpm))
 
+    @app.get("/trend", response_class=HTMLResponse)
+    def trend_view() -> HTMLResponse:
+        st = session()
+        if len(st.schedules) < 2:
+            return _page(
+                st, "Trend", "<div class=panel>Load at least two versions to see a trend.</div>"
+            )
+        pairs = st.ordered_versions()
+        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
+        return _page(st, "Trend", _trend_body([s for _, s in pairs], cpms))
+
+    @app.get("/api/trend")
+    def trend_json() -> JSONResponse:
+        st = session()
+        if len(st.schedules) < 2:
+            return JSONResponse({"error": "need at least two versions"}, status_code=400)
+        pairs = st.ordered_versions()
+        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
+        return JSONResponse(_trend_data([s for _, s in pairs], cpms))
+
+    @app.get("/briefing", response_class=HTMLResponse)
+    def briefing_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Executive Briefing",
+                "<div class=panel>Load at least one schedule to build the briefing.</div>",
+            )
+        pairs = st.ordered_versions()
+        schedules = [s for _, s in pairs]
+        cpms = [st.analysis_for(k, s).cpm for k, s in pairs]
+        return _page(st, "Executive Briefing", _briefing_body(build_briefing(schedules, cpms=cpms)))
+
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
         st = session()
@@ -524,7 +572,9 @@ secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button></div>
 <div id=gantt></div>
-<h3>Activities <span class=muted>(toggle columns; click a row to drill into its metadata)</span></h3>
+<h3>Activities &amp; Gantt <span class=muted>(add/remove columns; bars on the right — red = critical,
+diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
+metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
 </div></div>
 <script src="/static/app.js"></script>"""
@@ -545,6 +595,7 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
         "name": sch.name,
         "source_file": sch.source_file,
         "tasks": len(sch.tasks),
+        "status_date": sch.status_date.date().isoformat() if sch.status_date else None,
         "dcma": {
             c.metric_id: {"status": str(c.status), "count": c.count, "value": c.value}
             for c in audit.checks
@@ -571,8 +622,13 @@ def _iso_date(value: object) -> str:
 
 
 def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
-    """Per-activity rows for the interactive grid (float in days, citable metadata)."""
+    """Per-activity rows for the interactive grid + Gantt (float in days, citable metadata).
+
+    Scheduled activities carry their CPM floats; WBS summary rows (which the CPM excludes)
+    are included too so the Gantt reads like the source plan, with null floats.
+    """
     by_id = sch.tasks_by_id
+    per_day = sch.calendar.working_minutes_per_day
     rows: list[dict[str, object]] = []
     for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
@@ -583,13 +639,43 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "wbs": task.wbs or "",
                 "start": _iso_date(task.start),
                 "finish": _iso_date(task.finish),
+                "baseline_start": _iso_date(task.baseline_start),
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
                 "total_float_days": float(fr.total_float_days),
                 "free_float_days": float(fr.free_float_days),
                 "percent_complete": task.percent_complete,
                 "is_critical": fr.is_critical,
+                "is_milestone": task.is_milestone,
+                "is_summary": False,
+                "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
             }
         )
+    for task in sch.tasks:
+        if not task.is_summary:
+            continue
+        rows.append(
+            {
+                "unique_id": task.unique_id,
+                "name": task.name,
+                "wbs": task.wbs or "",
+                "start": _iso_date(task.start),
+                "finish": _iso_date(task.finish),
+                "baseline_start": _iso_date(task.baseline_start),
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
+                "total_float_days": None,
+                "free_float_days": None,
+                "percent_complete": task.percent_complete,
+                "is_critical": False,
+                "is_milestone": task.is_milestone,
+                "is_summary": True,
+                "resource_names": ", ".join(task.resource_names),
+                "source_file": sch.source_file,
+            }
+        )
+    rows.sort(key=lambda r: cast(int, r["unique_id"]))
     return rows
 
 
@@ -666,6 +752,94 @@ def _compare_body(
 <div class=panel><h2>Manipulation-trend signals</h2>
 <table><tr><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""
+
+
+def _trend_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+    """The multi-version trend view: table, quality-trend sentences, pairwise signals, charts."""
+    points = trend_across_versions(schedules, cpms)
+    trend_rows = "".join(
+        f"<tr><td>{_e(p.source_file or p.version_index)}</td>"
+        f"<td>{_e(p.status_date.date()) if p.status_date else '-'}</td>"
+        f"<td>{_e(p.project_finish.date())}</td>"
+        f"<td>{p.completed}</td><td>{p.in_progress}</td><td>{p.critical}</td></tr>"
+        for p in points
+    )
+    quality_items = "".join(
+        f"<li>{_e(t.sentence())}</li>" for t in compute_quality_trend(schedules, cpms)
+    )
+    impact = compute_net_finish_impact(
+        schedules[-1], schedules[0], current_cpm=cpms[-1], prior_cpm=cpms[0]
+    )
+    days = int(impact.value)
+    cls, word = ("fail", "later") if days < 0 else ("pass", "earlier or unchanged")
+    signal_rows: list[str] = []
+    for i in range(len(schedules) - 1):
+        prior, current = schedules[i], schedules[i + 1]
+        step = f"{_e(prior.source_file or prior.name)} &rarr; {_e(current.source_file or current.name)}"
+        for f in detect_manipulation(current, prior, current_cpm=cpms[i + 1], prior_cpm=cpms[i]):
+            signal_rows.append(
+                f'<tr><td>{step}</td><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td>'
+                f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td></tr>"
+            )
+    return f"""
+<div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
+<table><tr><th>Version</th><th>Data date</th><th>Project finish</th><th>Completed</th>
+<th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table>
+<p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
+&mdash; the project finish moved {word} between the first and last version.</p></div>
+<div class=panel><h2>Trend charts</h2><div id=trendCharts class=charts></div></div>
+<div class=panel><h2>Schedule-quality trends</h2>
+<p class=muted>How each Acumen &sect;A quality metric moves across the versions.</p>
+<ul>{quality_items}</ul></div>
+<div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
+<table><tr><th>Step</th><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
+{"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table></div>
+<script src="/static/trend.js"></script>"""
+
+
+def _trend_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+    """JSON for the trend charts: per-version headline numbers + quality-metric series."""
+    points = trend_across_versions(schedules, cpms)
+    return {
+        "versions": [
+            {
+                "label": p.source_file or f"v{p.version_index + 1}",
+                "status_date": p.status_date.date().isoformat() if p.status_date else None,
+                "finish": p.project_finish.date().isoformat(),
+                "completed": p.completed,
+                "in_progress": p.in_progress,
+                "critical": p.critical,
+            }
+            for p in points
+        ],
+        "quality": {
+            t.metric_id: {"name": t.name, "values": list(t.values)}
+            for t in compute_quality_trend(schedules, cpms)
+        },
+    }
+
+
+def _cite_tag(citations: tuple[Citation, ...]) -> str:
+    shown = "; ".join(str(c) for c in citations[:3])
+    extra = f"; +{len(citations) - 3} more" if len(citations) > 3 else ""
+    return f"{shown}{extra}"
+
+
+def _briefing_body(briefing: ExecutiveBriefing) -> str:
+    """Render the ExecutiveBriefing as panels (print-friendly; every sentence cited)."""
+    parts = [
+        f"<div class=panel><h2>{_e(briefing.title)}</h2>"
+        f"<p class=muted>Report generated on {_e(briefing.generated_on.strftime('%A, %B %d, %Y'))}."
+        " Every statement cites file + UniqueID + task name; use the browser's Print for a"
+        " hand-out copy.</p></div>"
+    ]
+    for section in briefing.sections:
+        items = "".join(
+            f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
+            for s in section.statements
+        )
+        parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
+    return "".join(parts)
 
 
 def _settings_body(state: SessionState) -> str:

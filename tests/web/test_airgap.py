@@ -33,7 +33,13 @@ def client() -> TestClient:
 
 
 def _external_refs(text: str) -> list[str]:
-    found = [u for u in _ABSOLUTE_URL.findall(text) if not any(h in u for h in _LOOPBACK)]
+    # W3C XML namespace URIs (e.g. createElementNS's "http://www.w3.org/2000/svg") are
+    # identifiers compared by string value — the browser never dereferences them.
+    found = [
+        u
+        for u in _ABSOLUTE_URL.findall(text)
+        if not any(h in u for h in _LOOPBACK) and not u.startswith("http://www.w3.org/")
+    ]
     found += _PROTOCOL_RELATIVE.findall(text)
     found += _REMOTE_ASSET.findall(text)
     return found
@@ -43,6 +49,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
     pages = [
         "/",
         "/analysis/Project5",
+        "/briefing",
         "/settings",
         "/help",
         "/static/app.js",
@@ -50,6 +57,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/static/base.css",
         "/static/home.js",
         "/static/heartbeat.js",
+        "/static/trend.js",
     ]
     offenders: dict[str, list[str]] = {}
     for path in pages:

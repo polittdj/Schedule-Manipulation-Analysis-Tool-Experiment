@@ -227,15 +227,20 @@ class TrendPoint:
     critical: int
 
 
-def trend_across_versions(schedules: Sequence[Schedule]) -> tuple[TrendPoint, ...]:
+def trend_across_versions(
+    schedules: Sequence[Schedule], cpms: Sequence[CPMResult] | None = None
+) -> tuple[TrendPoint, ...]:
     """Per-version CPM finish + completion/criticality counts across an ordered series (≤10).
 
     Versions are taken in the order given (chronological by status date is the caller's
-    responsibility). Drives the §6.D CPM-trend story and the dashboard trend charts.
+    responsibility). ``cpms`` (parallel to ``schedules``) avoids re-solving networks the
+    caller already has. Drives the §6.D CPM-trend story and the dashboard trend charts.
     """
+    if cpms is not None and len(cpms) != len(schedules):
+        raise ValueError("cpms must parallel schedules")
     points: list[TrendPoint] = []
     for idx, schedule in enumerate(schedules):
-        cpm = compute_cpm(schedule)
+        cpm = cpms[idx] if cpms is not None else compute_cpm(schedule)
         finish = offset_to_datetime(schedule.project_start, cpm.project_finish, schedule.calendar)
         leaves = [t for t in schedule.tasks if not t.is_summary]
         completed = sum(1 for t in leaves if t.percent_complete >= 100.0)
