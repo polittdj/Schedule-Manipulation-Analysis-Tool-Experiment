@@ -972,7 +972,7 @@ def _cei_body(wave: BowWave) -> str:
         f"<td>{s.cei_planned if s.cei_planned is not None else '—'}</td>"
         f"<td>{s.cei_scheduled if s.cei_scheduled is not None else '—'}</td>"
         f"<td>{s.cei_finished if s.cei_finished is not None else '—'}</td>"
-        f"<td><b class={'fail' if (s.cei or 1) < 0.8 else 'pass'}>"
+        f"<td><b class={'fail' if s.cei is not None and s.cei < 0.8 else 'pass'}>"
         f"{f'{s.cei:.2f}' if s.cei is not None else '—'}</b></td></tr>"
         for s in wave.snapshots
     )
