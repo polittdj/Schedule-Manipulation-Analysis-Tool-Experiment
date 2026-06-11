@@ -875,3 +875,26 @@ this file is the running history.
 
 ### Commit SHAs
 - M17 docs + closeout — this commit (feat/docs).
+
+## Operator-driven enhancements — 2026-06-10 (PRs #58–#62, all merged)
+
+- **Session:** post-build remediation + feature sitting (operator in the loop, merging each PR).
+- **PR #58 — Import feedback + full-audit remediation** (ADR-0024): 13 commits — dropzone native
+  form submit; Windows .mpp temp-file fix; POST-only wipe/example; never-uncited citation fix;
+  SPI(t) honest step function; cached UID maps; single-compute `_Analysis` per schedule; O(weeks)
+  CPM date math (equivalence-swept); 2s Ollama probes; CI main-only push + action bumps + pip
+  cache; conftest golden fixtures; CSS/JS extracted to static/; docs + pyproject 1.0.0.
+- **PR #59 — Java discovery beyond PATH**: SF_JAVA → JAVA_HOME → PATH → standard install roots,
+  newest-version ordering; actionable not-found error (operator hit 'Java not found' with .mpp).
+- **PR #60 — Portable JRE drop-in**: `tools/jre/` (gitignored) + `%LOCALAPPDATA%\Programs` scan —
+  native .mpp without admin rights (operator's work machine blocks the MSI installer).
+- **PR #61 — Compare in data-date order + Net Finish Impact on the page** (operator's first real
+  comparison ran backwards in load order).
+- **PR #62 — Multi-version analysis suite** (ADR-0025): `/trend` across 10+ versions with SVG
+  charts + quality-trend sentences + consecutive-pair signals; `/briefing` Diagnostic Executive
+  Briefing (cited, AI-polishable); MS-Project-style Gantt (timeline column, add/remove fields,
+  milestones/summaries/critical/data-date); ten-version end-to-end test.
+
+### Parity / tests
+- Full suite **497 passed, 3 skipped**; parity 10/10; egress + air-gap green; engine ≈99%,
+  overall ≈99%; ruff + format + mypy(strict) + bandit + pip-audit green on 3.11 + 3.13.

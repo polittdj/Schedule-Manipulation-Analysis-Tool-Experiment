@@ -64,12 +64,25 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**469 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
+TDD + pytest (**497 passed, 3 skipped**); coverage gates **engine ≥85% (≈99%), overall ≥70% (≈99%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#57 merged to `main`; #58 = import feedback + full-audit remediation); 24 ADRs
-(`docs/adr/`, incl. ADR-0024 audit remediation), a risk register (`docs/risks.md`), durable state
-(`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
+with PRs (#55–#62 merged to `main`: build, audit remediation, no-admin Java discovery, data-date
+compare ordering, and the multi-version trend/briefing/Gantt suite); 25 ADRs (`docs/adr/`, incl.
+ADR-0024 audit remediation and ADR-0025 multi-version analysis suite), a risk register
+(`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
+
+## Post-build enhancements (operator-driven, merged)
+- **Trend across 10+ versions** (`/trend`, `engine/trend.py`): data-date-ordered headline table,
+  Net Finish Impact across the series, §A quality-trend sentences (best/worst version named),
+  consecutive-pair manipulation signals, SVG trend charts — ten-version end-to-end test.
+- **Diagnostic Executive Briefing** (`/briefing`, `ai/briefing.py`): Acumen-style, print-ready,
+  every sentence cited (file + UID + task); golden-pinned progress counts; AI may rephrase, never
+  alter a number.
+- **MS-Project-style Gantt** on every report: timeline column with month ticks, critical/progress/
+  milestone/summary bars, data-date line, add/remove fields (incl. duration, baselines, resources).
+- **No-admin native `.mpp`**: Java discovery via SF_JAVA → JAVA_HOME → PATH → portable
+  `tools/jre/` drop-in → user-scope and machine install roots.
 
 ## Definition of Done (§8)
 - Every §6 RTM row `Implemented + Tested + Validated` — **except §6.A `.pbix` enrichment (M15)**, ◻ BLOCKED
