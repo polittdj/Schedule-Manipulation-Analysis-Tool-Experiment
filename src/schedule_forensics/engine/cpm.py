@@ -178,6 +178,26 @@ def datetime_to_offset(start: dt.datetime, target: dt.datetime, calendar: Calend
     return -_count_working_days(calendar, target.date(), start.date()) * per_day + intraday
 
 
+def _elapsed_finish_offset(
+    project_start: dt.datetime, calendar: Calendar, start_offset: int, minutes: int
+) -> int:
+    """An ELAPSED task's finish offset: wall-clock minutes from its start instant.
+
+    MS Project elapsed durations ("1 eday") ignore both task and project calendars —
+    the finish is start + N clock minutes, then mapped back onto the working axis
+    (a Saturday-morning finish reads as Friday end-of-day for successors)."""
+    start_dt = offset_to_datetime(project_start, max(start_offset, 0), calendar)
+    return datetime_to_offset(project_start, start_dt + dt.timedelta(minutes=minutes), calendar)
+
+
+def _elapsed_start_offset(
+    project_start: dt.datetime, calendar: Calendar, finish_offset: int, minutes: int
+) -> int:
+    """The inverse: an elapsed task's latest start given a finish bound."""
+    finish_dt = offset_to_datetime(project_start, max(finish_offset, 0), calendar)
+    return datetime_to_offset(project_start, finish_dt - dt.timedelta(minutes=minutes), calendar)
+
+
 def _next_working_day(day: dt.datetime, calendar: Calendar) -> dt.datetime:
     nxt = day + dt.timedelta(days=1)
     while nxt.date().weekday() not in calendar.work_weekdays or nxt.date() in calendar.holidays:
@@ -299,19 +319,35 @@ def _constraint_bounds(
             off = datetime_to_offset(
                 schedule.project_start, task.constraint_date, schedule.calendar
             )
+            elapsed = task.duration_is_elapsed and duration[tid] > 0
+
+            def _minus_dur(offset: int, *, _e: bool = elapsed, _d: int = duration[tid]) -> int:
+                if _e:
+                    return _elapsed_start_offset(
+                        schedule.project_start, schedule.calendar, offset, _d
+                    )
+                return offset - _d
+
+            def _plus_dur(offset: int, *, _e: bool = elapsed, _d: int = duration[tid]) -> int:
+                if _e:
+                    return _elapsed_finish_offset(
+                        schedule.project_start, schedule.calendar, offset, _d
+                    )
+                return offset + _d
+
             if ctype is ConstraintType.SNET:
                 es_floor[tid] = off
             elif ctype is ConstraintType.FNET:
-                es_floor[tid] = off - duration[tid]
+                es_floor[tid] = _minus_dur(off)
             elif ctype is ConstraintType.SNLT:
-                lf_cap[tid] = off + duration[tid]
+                lf_cap[tid] = _plus_dur(off)
             elif ctype is ConstraintType.FNLT:
                 lf_cap[tid] = off
             elif ctype is ConstraintType.MSO:  # must start on -> pin start
                 es_pin[tid] = off
-                lf_cap[tid] = off + duration[tid]
+                lf_cap[tid] = _plus_dur(off)
             else:  # MFO — must finish on -> pin finish
-                es_pin[tid] = off - duration[tid]
+                es_pin[tid] = _minus_dur(off)
                 lf_cap[tid] = off
         if task.deadline is not None:
             d_off = datetime_to_offset(schedule.project_start, task.deadline, schedule.calendar)
@@ -348,12 +384,26 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
         succs[pred].append((succ, rel, lag))
 
     # ---- forward pass (ES >= 0 == project start; raised by SNET/FNET; pinned by MSO/MFO) ----
+    elapsed_ids = {t.unique_id for t in tasks if t.duration_is_elapsed and t.duration_minutes > 0}
+    ps, cal = schedule.project_start, schedule.calendar
     early_start: dict[int, int] = {}
     early_finish: dict[int, int] = {}
     for tid in order:
         dur_s = duration[tid]
         if tid in es_pin:
             es = es_pin[tid]
+        elif tid in elapsed_ids:
+            # FF/SF bound the FINISH; convert each to a start bound on the wall clock
+            bounds = []
+            for p, rel, lag in preds[tid]:
+                if rel in (RelationshipType.FS, RelationshipType.SS):
+                    bounds.append(es_lower_bound(rel, early_start[p], early_finish[p], lag, 0))
+                else:
+                    anchor = early_finish[p] if rel is RelationshipType.FF else early_start[p]
+                    bounds.append(_elapsed_start_offset(ps, cal, anchor + lag, dur_s))
+            if tid in es_floor:
+                bounds.append(es_floor[tid])
+            es = max([0, *bounds])
         else:
             bounds = [
                 es_lower_bound(rel, early_start[p], early_finish[p], lag, dur_s)
@@ -363,7 +413,9 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
                 bounds.append(es_floor[tid])
             es = max([0, *bounds])
         early_start[tid] = es
-        early_finish[tid] = es + dur_s
+        early_finish[tid] = (
+            _elapsed_finish_offset(ps, cal, es, dur_s) if tid in elapsed_ids else es + dur_s
+        )
 
     network_finish = max(early_finish.values(), default=0)
     backward_target = (
@@ -375,15 +427,34 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
     late_start: dict[int, int] = {}
     for tid in reversed(order):
         dur_p = duration[tid]
-        bounds = [
-            lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)
-            for s, rel, lag in succs[tid]
-        ]
-        if tid in lf_cap:
-            bounds.append(lf_cap[tid])
-        lf = min([backward_target, *bounds])
-        late_finish[tid] = lf
-        late_start[tid] = lf - dur_p
+        if tid in elapsed_ids:
+            finish_caps = [backward_target]
+            start_caps: list[int] = []
+            for s, rel, lag in succs[tid]:
+                if rel is RelationshipType.FS:
+                    finish_caps.append(late_start[s] - lag)
+                elif rel is RelationshipType.FF:
+                    finish_caps.append(late_finish[s] - lag)
+                elif rel is RelationshipType.SS:
+                    start_caps.append(late_start[s] - lag)
+                else:  # SF: the successor's finish is anchored to THIS task's start
+                    start_caps.append(late_finish[s] - lag)
+            if tid in lf_cap:
+                finish_caps.append(lf_cap[tid])
+            ls_cands = [_elapsed_start_offset(ps, cal, f, dur_p) for f in finish_caps]
+            ls = min(ls_cands + start_caps)
+            late_start[tid] = ls
+            late_finish[tid] = _elapsed_finish_offset(ps, cal, ls, dur_p)
+        else:
+            bounds = [
+                lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)
+                for s, rel, lag in succs[tid]
+            ]
+            if tid in lf_cap:
+                bounds.append(lf_cap[tid])
+            lf = min([backward_target, *bounds])
+            late_finish[tid] = lf
+            late_start[tid] = lf - dur_p
 
     timings: dict[int, TaskTiming] = {}
     for tid in task_ids:

@@ -22,6 +22,14 @@ from schedule_forensics.model.task import Task
 FORTY_FOUR_DAYS = 44
 
 
+def duration_days_axis(minutes: int, *, is_elapsed: bool, calendar_minutes_per_day: int) -> float:
+    """Duration in DAYS on the right axis: elapsed durations ("edays") are wall-clock
+    (1440 min/day, calendars ignored — MS Project semantics); working durations divide
+    by the schedule calendar's working minutes per day."""
+    per = 1440 if is_elapsed else calendar_minutes_per_day
+    return minutes / per if per else 0.0
+
+
 def forty_four_days_min(schedule: Schedule) -> int:
     """The DCMA "44 working days" tripwire in working minutes, on THIS schedule's
     calendar (44 x 480 for the standard 8-hour day; a 10-hour-day calendar tripwires

@@ -1377,3 +1377,29 @@ this file is the running history.
 
 ### Parity / tests
 - **695 passed, 3 skipped** (6 new); parity 10/10; all gates clean.
+
+
+## Elapsed-durations sitting — 2026-06-12 (joined PR #89; Fable 5) — operator bug
+
+- **Operator is CORRECT: "eday" elapsed durations ignore both task and project
+  calendars in MS Project** — confirmed and fixed end-to-end on their
+  Project2(Duration Bomb).mpp (kept in 00_REFERENCE_INTAKE/): UID 171 "1 eday"
+  (Fri 6/12 08:00 -> Sat 6/13 08:00 in MSP) was read as 1440 WORKING minutes ->
+  3 working days -> CPM finish 6/16. Now:
+  - `Task.duration_is_elapsed` (model + JSON round-trip + schema freeze);
+  - MSPDI importer reads `DurationFormat` (elapsed codes 4/6/8/10/12/20 + estimated
+    variants) — the MPXJ .mpp conversion carries it (some elapsed tasks arrive
+    pre-converted to working spans; format-8 ones arrive raw — both handled);
+  - CPM consumes WALL-CLOCK time for elapsed tasks: forward, backward, and
+    constraint-bound math (FNET/SNLT/MSO/MFO) convert through the calendar at the
+    task's own anchor; a Saturday-morning elapsed finish reads Friday-EOD so
+    successors start Monday — exactly MSP;
+  - day-axis displays + DCMA High Duration + Insufficient Detail divide elapsed
+    durations by 1440 (a 30-eday task is 30 days, not 90).
+  - 5 pinned tests incl. the operator's exact UID-171 scenario.
+- Note for the record: the Duration Bomb file's PROJECT finish still differs from
+  MSP (sparse template logic — unlinked tasks pack to the project start in a pure
+  CPM; stored-date views match MSP). Separate, known modeling distinction.
+
+### Parity / tests
+- **700 passed, 3 skipped** (5 new); parity 10/10; all gates clean.

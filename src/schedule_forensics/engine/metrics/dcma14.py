@@ -160,7 +160,8 @@ def compute_dcma14(
     high_dur = tuple(
         t.unique_id
         for t in incomplete
-        if t.baseline_duration_minutes is not None and t.baseline_duration_minutes > forty_four
+        if t.baseline_duration_minutes is not None
+        and t.baseline_duration_minutes > (44 * 1440 if t.duration_is_elapsed else forty_four)
     )
     out["DCMA08"] = _r(
         "DCMA08", "High Duration", len(high_dur), n_inc, "%", 5.0, Direction.LE, high_dur

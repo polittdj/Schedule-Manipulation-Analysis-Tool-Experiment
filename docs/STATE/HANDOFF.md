@@ -283,6 +283,25 @@ venv has been missing the web deps.)
       keep the cited fact sheet alongside; add a SECOND local backend (any
       OpenAI-compatible local endpoint, e.g. LM Studio/llamafile) and a dual-model
       cross-check/collaboration mode. Loopback-only egress stays non-negotiable.
+0b. **M18 additions (operator, 2026-06-12 evening — recorded as memory):**
+   - **BUG — elapsed durations ("eday"/"ewk"/"emon") ignore calendars in MSP and the
+     tool must too** (operator is CORRECT; confirmed on their Project2(Duration Bomb)
+     .mpp, kept in 00_REFERENCE_INTAKE/): UID 171 "1 eday" stores 6/12->6/13 but the
+     engine treats 1440 min as WORKING minutes -> CPM finish 6/16 and "3 days" display.
+     Fix: detect elapsed durations (MSPDI DurationFormat elapsed codes; check what the
+     MPXJ converter emits), model flag, CPM consumes wall-clock time for them, display
+     in edays. Note: through MPXJ some elapsed tasks arrive pre-converted (UID 7's
+     "2 edays" came through as the working-min span), UID 171's did not — handle both.
+   - **AI at full power (accelerates item h):** relax the figure-discard gate; Ollama
+     does brief-tone interpretation/analysis in real time; "Ask the AI" panel on ALL
+     pages (workbook-wide facts on multi-version pages); citations for computed figures
+     + a standing "AI can err — verify against citations" disclaimer.
+   - **Executive Briefing reformat** for readability (sections/cards/tables, not prose
+     walls) + Ollama-polished prose.
+   - **Animate the forecast drift** across versions (Bow-Wave-style stepper).
+   - **Lock Y-axis scales across ALL animated visuals**: scale = max of the displayed
+     metric across every loaded version, held constant through the animation (bow wave,
+     forecast drift, trend, path evolution — all of them).
 1. **TP1-vs-SSI: CLOSED with full parity (2026-06-12).** All 18 traced tasks matched;
    live driving path UID-for-UID; non-zero slacks exact to SSI's display rounding;
    sub-day completed-task fractions are a documented model residual the whole-day floor

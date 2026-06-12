@@ -49,6 +49,9 @@ class Task(StrictFrozenModel):
 
     # --- duration (working minutes; 0 + is_milestone == instantaneous event) ---
     duration_minutes: int = Field(ge=0)
+    #: MS Project elapsed durations ("1 eday"/"2 ewks") consume wall-clock time and
+    #: ignore both the task and project calendars (weekends/holidays included).
+    duration_is_elapsed: bool = False
     remaining_duration_minutes: int | None = Field(default=None, ge=0)
     baseline_duration_minutes: int | None = Field(default=None, ge=0)
 
