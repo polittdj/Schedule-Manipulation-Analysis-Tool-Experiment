@@ -5,11 +5,11 @@ Local, NASA-themed forensic schedule-analysis tool, built autonomously across se
 units rule (§3), and the QC/PM regime (§7) to its implementing module(s) and verifying evidence. The
 authoritative, row-by-row status is `docs/PLAN/RTM.md`; this is the narrative closeout.
 
-**Status: complete and parity-green except one externally-gated item.** Every §6 requirement is
-`Implemented + Tested + Validated` except **§6.A's `.pbix` enrichment (M15)**, which is **blocked pending
-the operator depositing `NSATDeploymentRevisionAlpha.pbix`** (git-ignored CUI does not travel between
-sessions, R-12) — this is a pending input, not a build defect. The acceptance gate (Acumen Fuse v8.11.0 +
-SSI) is green; the tool runs from a desktop icon, fully offline.
+**Status: COMPLETE and parity-green — every milestone (M1–M17) delivered.** Every §6 requirement is
+`Implemented + Tested + Validated`, including **§6.A's `.pbix` enrichment (M15)**: the operator deposited
+`NSATDeploymentRevisionAlpha.pbix` and its measure families now enrich the dashboard (ADR-0030; the deck
+itself stays git-ignored CUI, read locally only). The acceptance gate (Acumen Fuse v8.11.0 + SSI) is
+green; the tool runs from a desktop icon, fully offline.
 
 ## §6.A — Platform, UX & packaging
 | Requirement | Evidence |
@@ -19,7 +19,7 @@ SSI) is green; the tool runs from a desktop icon, fully offline.
 | Dark-mode, NASA-themed, intuitive UI | `web/app.py` dark theme; `tests/web/test_app.py` |
 | Interactive Power-BI-style visuals; add/remove fields; drill into metadata; local assets (no CDN) | `web/static/{app.js,app.css}` (charts, drill-down grid, tiered Gantt); air-gap enforced by `tests/web/test_airgap.py` |
 | In-tool help: every metric defined w/ formula + supporting detail | `web/help.py` `/help` + `docs/METRIC-DICTIONARY.md`; coverage asserted by `tests/web/test_help.py` |
-| **`.pbix` enrichment (M15)** | **◻ BLOCKED — pending operator deposit (R-12). The interactive visuals (M14) already deliver the capability the .pbix would inform.** |
+| **`.pbix` enrichment (M15)** | ✔ **ADR-0030: deck read locally (Layout JSON; DAX is XPress9-compressed → measures reconstructed + documented). Adopted: float bands, completion performance, MEI, staleness, and the three-method finish forecast (`/forecast` + drift table); ambiguous measures deferred pending a DAX export.** |
 
 ## §6.B — Ingestion & parity (acceptance gate)
 | Requirement | Evidence |
@@ -64,15 +64,15 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**615 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
+TDD + pytest (**631 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#73 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
+with PRs (#55–#74 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
 compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp`/`.xer` tolerance,
 the Bow Wave/CEI view, the target-UID/theme/20-file features, the calendar-true day math /
-CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, and the XER cost roll-up); 29 ADRs
+CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, the XER cost roll-up, and the M15 .pbix enrichment); 30 ADRs
 (`docs/adr/`, incl. ADR-0024/0026 audit remediations, ADR-0025 multi-version analysis suite,
-ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, and ADR-0029 XER costs), a risk register
+ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, ADR-0029 XER costs, and ADR-0030 M15), a risk register
 (`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
 ## Post-build enhancements (operator-driven, merged)

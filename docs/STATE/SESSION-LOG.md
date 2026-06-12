@@ -1057,3 +1057,31 @@ this file is the running history.
 ### Parity / tests
 - **615 passed, 3 skipped** (2 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies.
+
+
+## M15 sitting — 2026-06-12 (PR #74; Fable 5) — THE LAST MILESTONE
+
+- PR #73 (calendar visibility) **merged**; then the operator **deposited
+  `NSATDeploymentRevisionAlpha.pbix`** — unblocking M15, the only remaining milestone.
+- **CUI handling:** the deck went into git-ignored `00_REFERENCE_INTAKE/pbix/` and was read
+  locally with stdlib zipfile + the UTF-16 Report/Layout JSON (14 pages, ~120 visuals, all
+  measure bindings enumerated). The **DataModel is XPress9-compressed** → DAX bodies not
+  extractable → every adopted measure is a documented reconstruction (ADR-0030); ambiguous
+  ones (EPI / RatioMeasure / Start-and-Finish Ratio) deferred pending a DAX export, never
+  guessed. Nothing from the deck was committed or quoted.
+- **Adopted + improved (ADR-0030):**
+  - `engine/metrics/float_bands.py` — 0/<5/<10-day total+free float bands (cumulative,
+    calendar-aware edges, offenders cited); 0-day band == Acumen "Critical" 41/37 cross-check.
+  - `engine/metrics/completion_performance.py` — ahead/on/behind split, avg days
+    ahead/late/variance, longer/shorter than planned, duration ratio min/avg/max, **MEI**,
+    staleness (% elapsed since latest actual finish). Honest populations.
+  - `engine/forecast.py` + **`/forecast`** — three-method finish forecast (CPM logic,
+    completion-rate extrapolation, earned-schedule IEAC(t)) with basis lines, §6 citation
+    anchor, and a per-version **forecast-drift table**; `/api/forecast`.
+  - Report page: float-bands + completion-performance panels; `/api/analysis` carries both;
+    22 new metric-dictionary entries (doc regenerated).
+- **All milestones M1–M17 now DONE. No blocked work remains.**
+
+### Parity / tests
+- **631 passed, 3 skipped** (16 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean; zero new dependencies; the .pbix never left the machine.
