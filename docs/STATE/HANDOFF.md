@@ -1,4 +1,4 @@
-# Handoff — 2026-06-12 (PRs #69–#80 **ALL MERGED** — build COMPLETE; post-#80 verified)
+# Handoff — 2026-06-12 (PRs #69–#82 **ALL MERGED** — build COMPLETE + verification battery)
 
 **The twelve-PR session:** #69 ADR-0026 close-out · #70 calendar parsing (ADR-0028) ·
 #71 XER cost roll-up (ADR-0029) · #72 recurring-exception fix · #73 calendar visibility ·
@@ -8,12 +8,15 @@ catch-up · #77 **unique desktop icon + favicon** · #78 pythonw launcher fix (t
 a dead port) · #79 **SSI-style Path Analysis workspace + grounded ask-the-AI** (ADR-0031) ·
 #80 driving tiers on SSI's whole-day axis (the operator's real-file **4-vs-66 driving-task
 discrepancy**) + the server no longer kills itself loading big files (ADR-0032).
-**The post-#80 sitting:** verified the #80 merge + post-merge main CI green, re-ran the full
-local gate (645 passed / parity 10/10), reviewed the #79/#80 surfaces (no defects found),
-and recovered the stranded handoff commit (see lessons). Code, tests, ADRs (32), and user
-docs are mutually consistent; nothing is blocked.
-**Next session: the operator's 4-vs-66 side-by-side re-test result** (requested in PR #80);
-optional items below. Model/mode: Fable 5 (1M context).
+**The post-#80 sittings:** verified the #80 merge + main CI green, reviewed the #79/#80
+surfaces (no defects), recovered the stranded handoff commit (PR #81 — see lessons), and
+built the **synthetic SSI/Fuse verification battery** (PR #82, `docs/TEST-PROJECTS.md`):
+8 generated MSPDI files (TP1 ragged actuals / TP2 4×10 calendar / TP3 seeded DCMA counts /
+TP4 v1–v5 manipulation series) + MSP VBA workflow, 22 pinned tests; the operator's MSP
+import caught a real generator bug (UID-0 rollup) — fixed + guarded same sitting. Code,
+tests, ADRs (32), and user docs are mutually consistent; nothing is blocked.
+**Next session: the operator's SSI/Fuse results on the battery + the real-file 4-vs-66
+re-test** (requested in PR #80); optional items below. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -174,6 +177,25 @@ discarded wholesale.
   heartbeats past the 10s grace → the auto-shutdown watchdog fired. Upload now runs in the
   threadpool; an in-flight request counter holds the watchdog; completions refresh the beat.
 
+**PR #81 (merged) — state-docs recovery:** the prior session's final HANDOFF consolidation
+was stranded on the work branch after #80's merge snapshot; restored as base + updated for
+the merged state (this file's lineage).
+
+**PR #82 (merged) — the synthetic verification battery (`docs/TEST-PROJECTS.md`):**
+`tools/make_test_projects.py` deterministically generates 8 fictional MSPDI files into
+`tests/fixtures/test_projects/` with an **MS-Project-faithful block calendar**: **TP1**
+progressed + ragged actual times (driving tiers to UID 43 = 13/1/2/2; completed UIDs carry
+210/210/120 MINUTES that floor to DRIVING — the #80 4-vs-66 class as a fixture); **TP2**
+4×10 Mon–Thu 600-min calendar + 4 holidays (float bands 7/12/13; the exactly-44-day task
+stays OUT of High Duration — calendar-true boundary); **TP3** hand-seeded DCMA counts
+(Logic 4 / Leads 2 / Lags 3 / FS 76% / Hard 2 / Neg-float 3 / High-dur 2 / Invalid 4 /
+BEI 0.62); **TP4 v1–v5** monthly series whose v4 erases UID 19's actual start AND quietly
+slips its baseline (both MANIP signals fire, pinned; honest v2→v3 fires neither). Plus the
+MSP **VBA module** (SF_VerifyImport / SF_SaveAsMpp / SF_ImportFolderToMpp) and per-file
+SSI/Fuse recipes with pinned expected values. The operator's MSP import caught a real
+generator bug (top-down summary rollup gave UID 0 a year-0001 baseline) — fixed
+deepest-first + a battery-wide date/duration sanity guard.
+
 ## Lessons learned (carry forward)
 - **Real stored dates are ragged to the minute; SSI thinks in whole days.** Any tier/driving
   classification must compare on the floored-day axis or real files undercount the driving
@@ -224,7 +246,7 @@ discarded wholesale.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**645 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**667 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
