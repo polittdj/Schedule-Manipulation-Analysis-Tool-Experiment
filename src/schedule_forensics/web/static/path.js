@@ -177,6 +177,12 @@
       .then(function (res) {
         if (!res.ok) { $("pathStatus").textContent = res.j.error || "Trace failed."; data = null; view.textContent = ""; return; }
         data = res.j;
+        var q = "/" + encodeURIComponent(sched) + "?target=" + encodeURIComponent(target) +
+          "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
+          "&tertiary=" + encodeURIComponent($("pathTer").value || "20");
+        $("pathXlsx").href = "/export/xlsx/path" + q;
+        $("pathDocx").href = "/export/docx/path" + q;
+        $("pathExport").style.display = "";
         render();
       })
       .catch(function () { $("pathStatus").textContent = "Trace failed."; });

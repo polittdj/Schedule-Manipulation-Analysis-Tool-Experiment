@@ -72,3 +72,8 @@
 .field-toggle { margin-right: 6px; font-size: 12px; }
 .ask-answer { white-space: pre-wrap; }
 #askOut ul { font-size: 13px; }
+
+/* M18: per-view export links (local downloads only) */
+.export-bar { margin: 0.4rem 0; display: flex; gap: 0.6rem; justify-content: flex-end; }
+.export-bar a { font-size: 0.85rem; padding: 0.15rem 0.6rem; border: 1px solid var(--border, #345);
+  border-radius: 4px; text-decoration: none; }

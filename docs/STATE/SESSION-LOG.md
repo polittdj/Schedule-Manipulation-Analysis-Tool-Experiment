@@ -1311,3 +1311,25 @@ this file is the running history.
 
 ### Parity / tests
 - **678 passed, 3 skipped** (3 net new); parity 10/10; all gates clean.
+
+
+## Export sitting — 2026-06-12 (PR #88; Fable 5) — M18 item b
+
+- **Every chart/table now exports to Excel AND Word**, with zero new dependencies:
+  - `reports/tables.py` — the neutral Table/TableSet model + builders for every view
+    (summary, DCMA, §A quality, float bands, completion, baseline compliance, findings,
+    full activity grid, path-analysis grid, trend overview + worst-version offenders,
+    CEI + per-snapshot monthly profiles, three-method forecasts).
+  - `reports/xlsx.py` — minimal hand-rolled .xlsx (zip+XML): one sheet per table, bold
+    header styles, inline strings, native numeric cells, Excel sheet-name rules
+    (31-char cap, illegal chars, dedupe), sized columns, byte-deterministic output.
+  - `reports/docx.py` — minimal .docx with a generic block API (Heading/Paragraph/
+    DocTable) that the upcoming narrative Diagnostic Brief will reuse; direct run
+    formatting (no styles part), bordered tables, byte-deterministic.
+  - `/export/{xlsx|docx}/{analysis|path|trend|cei|forecast|compare}` endpoints +
+    export bars on all six pages (path links fill in after a Trace); proper media
+    types + attachment filenames; polite 400/404/422 on bad input.
+- USER-GUIDE: the new "Exporting to Excel and Word" section.
+
+### Parity / tests
+- **689 passed, 3 skipped** (11 new); parity 10/10; all gates clean; zero new deps.
