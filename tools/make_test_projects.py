@@ -496,14 +496,14 @@ def tp1() -> tuple[str, str]:
         T(22, "Steel package fabrication", days=30, wbs="2.2"),
         T(3, "Construction", wbs="3", outline=1, summary=True),
         T(31, "Mobilization", days=5, wbs="3.1"),
-        T(32, "Foundations", days=20, wbs="3.2", resources=(1,)),
+        T(32, "Foundations", days=20, wbs="3.2"),
         T(33, "Steel erection", days=15, wbs="3.3"),
-        T(34, "Building envelope", days=25, wbs="3.4", resources=(1,)),
-        T(35, "MEP rough-in", days=30, wbs="3.5", resources=(2,)),
+        T(34, "Building envelope", days=25, wbs="3.4"),
+        T(35, "MEP rough-in", days=30, wbs="3.5"),
         T(36, "Interior finishes", days=25, wbs="3.6"),
         T(39, "Elevator install & inspection", days=18, wbs="3.7"),
         T(37, "FF&E installation", days=10, wbs="3.8"),
-        T(38, "Commissioning", days=10, wbs="3.9", resources=(3,)),
+        T(38, "Commissioning", days=10, wbs="3.9"),
         T(4, "Closeout", wbs="4", outline=1, summary=True),
         T(41, "Punch list", days=10, wbs="4.1"),
         T(42, "Final inspections", days=5, wbs="4.2"),
@@ -566,8 +566,10 @@ def tp1() -> tuple[str, str]:
         status_date=dd,
         tasks=tasks,
         links=links,
-        resources={1: "GC Crew A", 2: "Electrical Sub", 3: "Commissioning Agent"},
-        assignments=[(32, 1), (34, 1), (35, 2), (38, 3)],
+        # NO resource assignments, by design: MS Project's import of minimal
+        # <Assignment> records rescheduled exactly the assigned tasks and dropped
+        # every link into them (the operator's 23-of-30-links import, twice).
+        # Resource round-trip belongs in a future MSP-authored fixture.
     )
 
 
