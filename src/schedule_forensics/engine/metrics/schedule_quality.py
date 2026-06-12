@@ -6,8 +6,9 @@ counts/percentages against the golden P2/P5 exports:
 
 * Missing Logic 6/6, Logic Density 2.79/2.83 (= 2 x links / activities), Critical
   41/37 (incomplete & total float ≤ 0), Hard Constraints 0/0, Negative Float 0/0,
-  Insufficient Detail 1/0 (baseline duration > 44 days), Number of Lags 2/2, Number
-  of Leads 0/0, Merge Hotspot 10/10 (≥ 3 predecessors).
+  Insufficient Detail 1/1 (baseline duration > 10% of the project working duration),
+  Number of Lags 2/2 / Leads 0/0 (distinct ACTIVITIES, per the golden Fuse
+  briefing), Merge Hotspot 10/10 (≥ 3 predecessors).
 
 The composite Acumen "Score" (88) is a proprietary Bad/Neutral/Good weighting not
 published in the exports or the Acumen metric guide; it is not reproduced here and is
@@ -24,7 +25,6 @@ from schedule_forensics.engine.metrics._common import (
     Direction,
     MetricResult,
     evaluate,
-    forty_four_days_min,
     is_incomplete,
     non_summary,
     percent,
@@ -117,11 +117,24 @@ def compute_schedule_quality(
         offender_uids=neg,
     )
 
+    # Insufficient Detail™ — activities whose baseline (planned) duration exceeds 10%
+    # of the total project working duration. Decoded empirically against the Fuse
+    # goldens (P2: 391 wd -> 39.1 -> exactly the one 60 wd baseline; P5: 462 -> 46.2 ->
+    # same task) and the operator's TP3 Fuse run (104 wd -> 10.4 -> the 8 tasks Fuse
+    # counted, on the BASELINE axis — a 5-day task whose actual span stretched to 47
+    # working days stays out). Both sides measured in working days.
+    per_day = schedule.calendar.working_minutes_per_day
+    project_wd = result.project_finish / per_day
     insuff = tuple(
         t.unique_id
         for t in tasks
-        if t.baseline_duration_minutes is not None
-        and t.baseline_duration_minutes > forty_four_days_min(schedule)
+        if (
+            t.baseline_duration_minutes
+            if t.baseline_duration_minutes is not None
+            else t.duration_minutes
+        )
+        / per_day
+        > project_wd * 0.10
     )
     out["insufficient_detail"] = _pct_result(
         "insufficient_detail",
@@ -133,12 +146,14 @@ def compute_schedule_quality(
         insuff,
     )
 
-    lags = tuple(r.successor_id for r in links if r.lag_minutes > 0)
+    # Fuse counts ACTIVITIES with lags/leads, not lag/lead links ("2 activities (1%)
+    # have 3. Lags" — the golden Fuse briefing): distinct successors, order-preserving.
+    lags = tuple(dict.fromkeys(r.successor_id for r in links if r.lag_minutes > 0))
     out["number_of_lags"] = _pct_result(
         "number_of_lags", "Number of Lags", len(lags), n_tasks, 5.0, Direction.LE, lags
     )
 
-    leads = tuple(r.successor_id for r in links if r.lag_minutes < 0)
+    leads = tuple(dict.fromkeys(r.successor_id for r in links if r.lag_minutes < 0))
     out["number_of_leads"] = MetricResult(
         "number_of_leads",
         "Number of Leads",

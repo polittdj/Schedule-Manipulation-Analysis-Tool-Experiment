@@ -1567,7 +1567,7 @@ Auto-play to watch the wave move.</p>
 <div class=panel><h2>CEI &mdash; Current Execution Index</h2>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
 finish in the following month, how many this snapshot re-scheduled for that month and how
-many actually finished. CEI = finished &divide; previously planned (1.00 = executed to plan).</p>
+how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
 <table><tr><th>Snapshot</th><th>Period</th><th>Previously planned</th><th>Re-scheduled</th>
 <th>Actually finished</th><th>CEI</th></tr>{rows}</table></div>
 <script src="/static/cei.js"></script>"""

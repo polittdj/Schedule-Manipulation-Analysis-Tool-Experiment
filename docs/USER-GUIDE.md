@@ -101,7 +101,7 @@ dashboard. Stop it with `Ctrl-C`.
    the bow wave of slipped work push right like a movie. The **CEI (Current Execution Index)**
    table compares, for each snapshot, what the *previous* snapshot planned to finish in the
    following month vs what this snapshot re-scheduled and what actually finished
-   (CEI = finished ÷ previously planned; 1.00 = executed to plan).
+   (CEI = completed-on-time ÷ previously planned; 1.00 = executed to plan — an unplanned finish in the month earns no credit).
 6. **Forecast** — three independent answers to *"when will it really end?"*: the schedule's own
    **CPM logic**, a **completion-rate extrapolation** (to-go activities at the historical
    completions-per-month pace), and the **earned-schedule IEAC(t)** estimate

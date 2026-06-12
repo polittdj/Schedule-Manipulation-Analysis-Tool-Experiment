@@ -246,13 +246,43 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**675 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**678 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
 venv has been missing the web deps.)
 
-## Next steps / open items
+## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
+0. **M18 program** (multi-PR; item 1 of it shipped as PR #87 — Fuse alignment + CEI fix):
+   a. ~~Fuse/SSI definitional alignment, CEI verification~~ (PR #87: leads/lags as
+      ACTIVITIES, Insufficient Detail = baseline dur > 10% of project working duration,
+      CEI = completed-on-time/planned). Operator's future Fuse runs on clean TP1/TP2
+      (predicted ID 7 / 9) adjudicate the remaining basis ambiguity.
+   b. **Word/Excel export of every chart/table** — stdlib-only .docx/.xlsx writers
+      (both formats are zips of XML; no new deps), export buttons per page.
+   c. **The narrative Diagnostic Brief** — story-of-outliers/conflicts format modeled
+      on the operator's Fuse-generated briefing (they deposited the example .docx;
+      format extracted: prose summary -> trend prose -> per-project paragraphs ->
+      metric sentences with verdict phrases). Citations (schedule + UID) on every
+      claim; visuals (gantt snips / charts); downloadable .docx; keep the existing
+      report-card briefing as a separate page.
+   d. **Reproduce the .pbix visuals** — docs/PLAN/PBIX-VISUALS.md carries the full
+      14-page spec + engine coverage map (extracted this sitting; the deck file is
+      CUI and does NOT persist between sessions). EPI/RatioMeasure/Start-and-Finish
+      Ratio still await the operator's DAX export — do not guess.
+   e. **CPM path-evolution animation** (Bow-Wave-style stepper): per version pair,
+      highlight tasks entering/leaving the critical path, duration changes on it, and
+      **schedule-optics signals** — remaining-duration cuts beyond days-worked, logic
+      changes that absorbed a slip (the path would have pushed right without them).
+   f. **Forecast explainer** — plain-English methodology for the three forecasts with
+      worked examples + visuals, for novices AND fact-checking schedulers.
+   g. **Trend page expansion** — more space per chart, click-through drill-down on any
+      §A metric (offender lists per version), animation, Excel export of series data.
+   h. **AI changes** — relaxed interpretive mode (model may compute/explain beyond the
+      fact sheet) with a permanent "AI can err — verify against citations" banner;
+      keep the cited fact sheet alongside; add a SECOND local backend (any
+      OpenAI-compatible local endpoint, e.g. LM Studio/llamafile) and a dual-model
+      cross-check/collaboration mode. Loopback-only egress stays non-negotiable.
 1. **TP1-vs-SSI: CLOSED with full parity (2026-06-12).** All 18 traced tasks matched;
    live driving path UID-for-UID; non-zero slacks exact to SSI's display rounding;
    sub-day completed-task fractions are a documented model residual the whole-day floor

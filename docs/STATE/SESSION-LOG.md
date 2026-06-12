@@ -1277,3 +1277,37 @@ this file is the running history.
 
 ### Parity / tests
 - **675 passed, 3 skipped**; parity 10/10; all gates clean (docs-only sitting).
+
+
+## Fuse-alignment + CEI-fix sitting — 2026-06-12 (PR #87; Fable 5) — M18 OPENS
+
+- Operator issued the **M18 work order** (recorded in HANDOFF): exact Fuse/SSI
+  definitional alignment ("no exceptions"), CEI verification, Word/Excel export of
+  every chart/table, a narrative Diagnostic Brief (.docx, modeled on the operator's
+  Fuse-generated example), .pbix visual reproduction, CPM path-evolution animation +
+  schedule-optics signals, a plain-English forecast explainer, trend-page expansion
+  with drill-down + animation + Excel export, relaxed interpretive AI with disclaimers
+  + a second local model for cross-checking. They re-deposited the .pbix AND the
+  Fuse-generated "Diagnostic Executive Briefing" for the goldens (format + definitions).
+- **This PR — the alignment + verification slice:**
+  - **Leads/Lags count ACTIVITIES, not links** (Fuse: "2 activities (1%) have Lags"):
+    §A = distinct successors over all activities; DCMA-02/03 = distinct INCOMPLETE
+    successors. Goldens unchanged (P2 2/0, P5 1/0 — P5's second lag successor is
+    complete, which is WHY Fuse shows 1); TP3 now Leads 1 = Fuse exactly.
+  - **Insufficient Detail™ decoded**: baseline duration > 10% of project working
+    duration (both in working days). Fits P2=1, P5=1 (goldens) and TP3=8 with the
+    operator's exact offender set; the old 44-wd rule failed TP3 (2). TP1 predicts 7,
+    TP2 predicts 9 — future Fuse runs adjudicate the remaining basis ambiguity.
+  - **CEI fixed to the dictionary definition** (completed_on_time / forecast_to_be_
+    finished): the numerator now counts only the PRIOR snapshot's planned-for-period
+    set finished by period end — an unplanned spillover finish earns no credit. TP4 v4
+    drops 1.00 -> 0.50 (the manipulated snapshot no longer scores perfect); verified
+    against independent ground-truth recomputation on all four version pairs.
+  - **PBIX visual inventory extracted and committed** (docs/PLAN/PBIX-VISUALS.md):
+    14 pages, all chart/card/pivot bindings by measure name (CUI-safe; the deck file
+    itself never committed), with an engine coverage map for the reproduction work.
+- New pins: TP3 §A ribbon row-for-row vs the operator's Fuse capture; TP4 CEI sequence
+  (None, 0.67, 0.67, 0.50, 0.00); insufficient-detail rule + baseline-axis tests.
+
+### Parity / tests
+- **678 passed, 3 skipped** (3 net new); parity 10/10; all gates clean.
