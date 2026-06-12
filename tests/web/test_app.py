@@ -105,3 +105,42 @@ def test_key_helpers() -> None:
     assert _clean_key("Project5.mspdi.xml") == "Project5"
     assert _clean_key("plan.xer") == "plan"
     assert _unique_key("a", {"a": object(), "a (2)": object()}) == "a (3)"  # type: ignore[dict-item]
+
+
+def test_report_shows_the_working_calendar(client: TestClient) -> None:
+    # the calendar drives every computed date/float (ADR-0028) — the analyst must be
+    # able to verify the time basis on the page and over the API
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert "Working calendar" in page
+    assert "Standard" in page and "8 h/day (480 min)" in page
+    assert "Mon, Tue, Wed, Thu, Fri" in page
+    data = client.get("/api/analysis/Project5").json()
+    assert data["calendar"] == {
+        "name": "Standard",
+        "working_minutes_per_day": 480,
+        "work_weekdays": [0, 1, 2, 3, 4],
+        "holidays": [],
+    }
+
+
+def test_report_calendar_panel_reflects_an_imported_non_default_calendar(
+    client: TestClient,
+) -> None:
+    payload = (
+        '{"name": "tens", "project_start": "2025-01-06T08:00", '
+        '"calendars": [{"name": "Tens", "working_minutes_per_day": 600, '
+        '"work_weekdays": [0, 1, 2, 3], "holidays": ["2025-07-14"]}], '
+        '"tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 600}]}'
+    )
+    resp = client.post(
+        "/upload", files={"files": ("tens.json", payload.encode(), "application/json")}
+    )
+    assert resp.status_code == 200
+    page = client.get("/analysis/tens").text
+    assert "Tens" in page and "10 h/day (600 min)" in page
+    assert "Mon, Tue, Wed, Thu" in page and "Fri" not in page.split("Work week")[1][:60]
+    assert "2025-07-14" in page
+    data = client.get("/api/analysis/tens").json()
+    assert data["calendar"]["working_minutes_per_day"] == 600
+    assert data["calendar"]["holidays"] == ["2025-07-14"]
