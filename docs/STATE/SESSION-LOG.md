@@ -1100,3 +1100,11 @@ this file is the running history.
 
 ### Parity / tests
 - **631 passed, 3 skipped**; parity 10/10; engine ≈98%, overall ≈98%; all gates clean.
+
+
+## Docs-refresh sitting — 2026-06-12 (PR #76; Fable 5)
+
+- PR #75 (exact-ratio IEAC fix) **merged**. With the contract complete, brought the
+  user-facing docs current: USER-GUIDE + README now cover the imported project calendar
+  (+ Working-calendar panel), the low-float bands and completion-performance panels, and
+  the three-method **/forecast** page with the drift table (everything #70–#75 shipped).
