@@ -39,6 +39,7 @@ from schedule_forensics.ai import (
     reattach,
     route_backend,
 )
+from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
 from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
@@ -79,8 +80,9 @@ from schedule_forensics.importers import (
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import is_loopback_host
-from schedule_forensics.reports.docx import render_docx
+from schedule_forensics.reports.docx import Block, render_document, render_docx
 from schedule_forensics.reports.tables import (
+    Table,
     TableSet,
     activities_table,
     bow_wave_tables,
@@ -112,7 +114,7 @@ _LAYOUT = Template(
 <script src="/static/theme.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
+<nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
@@ -871,6 +873,53 @@ def create_app(
         )
         return _export_response(fmt, tableset, "compare-signals")
 
+    @app.get("/brief", response_class=HTMLResponse)
+    def brief_view() -> HTMLResponse:
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if not schedules:
+            return _page(
+                st,
+                "Diagnostic Brief",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least one analyzable schedule to build the "
+                "diagnostic brief.</div>",
+            )
+        brief = build_brief(schedules, cpms)
+        return _page(
+            st,
+            "Diagnostic Brief",
+            _export_bar("brief") + _skipped_notice(skipped) + _brief_body(brief),
+        )
+
+    @app.get("/export/{fmt}/brief")
+    def export_brief(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
+        brief = build_brief(schedules, cpms)
+        if fmt == "docx":
+            blocks = cast("list[Block]", brief_blocks(brief))
+            return Response(
+                content=render_document(blocks),
+                media_type=_EXPORT_MEDIA["docx"][0],
+                headers={"Content-Disposition": 'attachment; filename="diagnostic-brief.docx"'},
+            )
+        tables = tuple(s.table for s in brief.sections if s.table is not None)
+        questions = Table(
+            "Questions the data raises",
+            ("#", "Question (cited)"),
+            tuple(
+                (i + 1, stmt.rendered())
+                for i, stmt in enumerate(p for s in brief.sections for p in s.paragraphs)
+            ),
+        )
+        return _export_response(
+            fmt, TableSet(brief.title, (*tables, questions)), "diagnostic-brief"
+        )
+
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
         st = session()
@@ -1347,6 +1396,31 @@ metadata)</span></h3>
 <table><tr><th>Severity</th><th>Type</th><th>Finding</th><th>Course of action</th><th>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
 <div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
+
+
+def _brief_body(brief: DiagnosticBrief) -> str:
+    """The Diagnostic Brief page: cited prose + the finish table, print-friendly."""
+    parts = [
+        f"<div class=panel><h2>{_e(brief.title)}</h2>",
+        f"<p class=muted>Report generated on {brief.generated_on.strftime('%A, %B %d, %Y')}. "
+        "Every claim carries its citation [schedule, UID, activity] — see the final "
+        "section for how to verify.</p></div>",
+    ]
+    for section in brief.sections:
+        parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2>")
+        for stmt in section.paragraphs:
+            parts.append(f"<p>{_e(stmt.rendered())}</p>")
+        if section.table is not None:
+            head = "".join(f"<th>{_e(str(h))}</th>" for h in section.table.headers)
+            rows = "".join(
+                "<tr>"
+                + "".join(f"<td>{_e('' if c is None else str(c))}</td>" for c in row)
+                + "</tr>"
+                for row in section.table.rows
+            )
+            parts.append(f"<table><tr>{head}</tr>{rows}</table>")
+        parts.append("</div>")
+    return "".join(parts)
 
 
 def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:

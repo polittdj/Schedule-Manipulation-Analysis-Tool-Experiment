@@ -66,6 +66,18 @@ def test_exports_fail_politely_without_data(client: TestClient) -> None:
     assert client.get("/export/gif/trend").status_code == 404  # unknown format
 
 
+def test_brief_page_and_exports(client: TestClient) -> None:
+    assert client.get("/export/docx/brief").status_code == 400  # nothing loaded yet
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/brief").text
+    assert "Diagnostic Brief" in page and "Questions the data raises" in page
+    assert "/export/docx/brief" in page
+    for fmt in ("docx", "xlsx"):
+        r = client.get(f"/export/{fmt}/brief")
+        assert r.status_code == 200 and _is_zip(r.content), fmt
+
+
 def test_pages_carry_the_export_links(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

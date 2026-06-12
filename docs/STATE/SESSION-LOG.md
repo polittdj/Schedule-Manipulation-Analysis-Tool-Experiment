@@ -1355,3 +1355,25 @@ this file is the running history.
 
 ### Parity / tests
 - **689 passed, 3 skipped** (pins added to existing tests); parity 10/10; all gates clean.
+
+
+## Diagnostic-Brief sitting — 2026-06-12 (joined PR #89; Fable 5) — M18 item c
+
+- **`/brief` — the narrative Diagnostic Brief** (`ai/brief.py`): not a report card — a
+  cited story of outliers, conflicts, and questions, modeled on the operator's
+  Fuse-generated example. Sections: workbook summary → **the finish story** (per-version
+  table + the "progress went UP while the finish moved LATER" contradiction call-out) →
+  **questions the data raises** → how-to-verify. Detectors: HIGH manipulation signals
+  per version pair; **remaining-duration cuts faster than elapsed time** (the
+  schedule-optics tell); unfinished work scheduled before the data date; completed
+  tasks at >= 2x planned duration; > 44 wd float islands; forecast-method spread
+  > 45 days; falling/low CEI series. Every paragraph carries citations
+  (schedule + UID + activity, §6) with the finish-controller fallback anchor.
+- Word download (`/export/docx/brief`) renders through the #88 block engine; xlsx
+  variant exports the tables + the cited question list. Nav: "Diagnostic Brief".
+- TP4 verification: narrates the planted UID-19 manipulation pair, the 45%->55%
+  progress-vs-finish contradiction, the 0.67/0.67/0.50/0.00 CEI fall, and the 98-day
+  method spread — all from the engine, all cited.
+
+### Parity / tests
+- **695 passed, 3 skipped** (6 new); parity 10/10; all gates clean.
