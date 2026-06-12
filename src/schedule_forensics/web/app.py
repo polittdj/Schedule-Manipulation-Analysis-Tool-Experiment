@@ -41,9 +41,9 @@ from schedule_forensics.ai import (
 )
 from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
 from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
-from schedule_forensics.ai.citations import Narrative
+from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.narrative import build_narrative
-from schedule_forensics.ai.qa import answer_question, build_fact_sheet
+from schedule_forensics.ai.qa import answer_question, build_fact_sheet, build_workbook_fact_sheet
 from schedule_forensics.engine import (
     analyze_floats,
     audit_schedule,
@@ -299,12 +299,51 @@ def _polished_narrative(
     return narrative
 
 
-def _page(state: SessionState, title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
+def _ask_panel_html(state: SessionState, page_schedule: str | None = None) -> str:
+    """The Ask-the-AI panel every page carries once schedules are loaded (M18 item 4).
+
+    Scope select: the whole workbook (multi-version cited facts) or any single loaded
+    schedule; a page with a natural schedule context pre-selects it. The disclaimer is
+    standing and permanent — answers may be model-interpreted (settings: AI answer mode)
+    but are always grounded by, and shown with, the engine's cited facts.
+    """
+    if not state.schedules:
+        return ""
+    keys = [k for k, _ in state.ordered_versions()]
+    options: list[str] = []
+    if len(keys) > 1:
+        sel = " selected" if page_schedule is None else ""
+        options.append(f'<option value=""{sel}>Workbook — all {len(keys)} versions</option>')
+    for k in keys:
+        sel = " selected" if k == page_schedule or len(keys) == 1 else ""
+        options.append(f'<option value="{_e(k)}"{sel}>{_e(k)}</option>')
+    return f"""
+<div class=panel id=askPanel><h2>Ask the AI</h2>
+<p class=muted><b>AI can err &mdash; verify against citations.</b> Answers are grounded in the
+engine's computed, cited facts, and the matching facts are always shown with the answer.
+With no local model active you get the facts themselves.</p>
+<div class=viz-controls>
+<label>About <select id=askScope>{"".join(options)}</select></label>
+<input id=askInput type=text size=60 maxlength=500
+ placeholder="e.g. Why is the finish slipping? How many critical activities?">
+<button id=askBtn type=button>Ask</button></div>
+<div id=askOut></div></div>
+<script src="/static/ask.js"></script>"""
+
+
+def _page(
+    state: SessionState,
+    title: str,
+    body: str,
+    *,
+    status_code: int = 200,
+    ask_schedule: str | None = None,
+) -> HTMLResponse:
     return HTMLResponse(
         _LAYOUT.render(
             title=title,
             banner=_banner_html(state),
-            body=body,
+            body=body + _ask_panel_html(state, ask_schedule),
             target=state.target_uid if state.target_uid is not None else "",
         ),
         status_code=status_code,
@@ -517,7 +556,12 @@ def create_app(
             return _page(st, name, _unschedulable_panel(sch, exc))
         narrative = _polished_narrative(st, name, sch, analysis)
         bar = _export_bar(f"analysis/{quote(name, safe='')}")
-        return _page(st, name, bar + _analysis_body(name, sch, analysis, st.target_uid, narrative))
+        return _page(
+            st,
+            name,
+            bar + _analysis_body(name, sch, analysis, st.target_uid, narrative),
+            ask_schedule=name,
+        )
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -612,33 +656,16 @@ def create_app(
         keys = [k for k, _ in st.ordered_versions()]
         return _page(st, "Path Analysis", _path_body(keys, st.target_uid))
 
-    @app.post("/api/ask/{name}")
-    def ask(name: str, question: str = Form("")) -> JSONResponse:
-        """Grounded Q&A: engine facts only; the model may phrase, never invent (ai.qa)."""
-        st = session()
-        sch = st.schedules.get(name)
-        if sch is None:
-            return JSONResponse({"error": "not found"}, status_code=404)
-        text = question.strip()[:500]
-        if not text:
-            return JSONResponse({"error": "ask a question"}, status_code=422)
-        try:
-            analysis = st.analysis_for(name, sch)
-        except CPMError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
-        facts = build_fact_sheet(
-            sch,
-            analysis.cpm,
-            analysis.audit,
-            analysis.findings,
-            analysis.float_bands,
-            analysis.completion,
-            compute_finish_forecasts(sch, analysis.cpm),
-        )
-        answer, used = answer_question(_active_backend(st), facts, text)
+    def _ask_response(
+        st: SessionState, facts: tuple[CitedStatement, ...], text: str
+    ) -> JSONResponse:
+        """Shared Q&A response: route the backend, answer in the configured mode."""
+        mode = st.ai_config.qa_mode
+        answer, used = answer_question(_active_backend(st), facts, text, mode=mode)
         return JSONResponse(
             {
                 "answer": answer,  # null => no local model active / answer failed the gate
+                "mode": mode,
                 "facts": [
                     {
                         "text": f.text,
@@ -651,6 +678,55 @@ def create_app(
                 ],
             }
         )
+
+    def _schedule_facts(st: SessionState, name: str, sch: Schedule) -> tuple[CitedStatement, ...]:
+        analysis = st.analysis_for(name, sch)
+        return build_fact_sheet(
+            sch,
+            analysis.cpm,
+            analysis.audit,
+            analysis.findings,
+            analysis.float_bands,
+            analysis.completion,
+            compute_finish_forecasts(sch, analysis.cpm),
+        )
+
+    @app.post("/api/ask/{name}")
+    def ask(name: str, question: str = Form("")) -> JSONResponse:
+        """Grounded Q&A on ONE schedule: engine facts; the configured mode governs prose."""
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        text = question.strip()[:500]
+        if not text:
+            return JSONResponse({"error": "ask a question"}, status_code=422)
+        try:
+            facts = _schedule_facts(st, name, sch)
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return _ask_response(st, facts, text)
+
+    @app.post("/api/ask")
+    def ask_workbook(question: str = Form("")) -> JSONResponse:
+        """Grounded Q&A across EVERY loaded version (the multi-version pages' panel)."""
+        st = session()
+        if not st.schedules:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        text = question.strip()[:500]
+        if not text:
+            return JSONResponse({"error": "ask a question"}, status_code=422)
+        if len(st.schedules) == 1:
+            key, sch = next(iter(st.schedules.items()))
+            try:
+                facts = _schedule_facts(st, key, sch)
+            except CPMError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=422)
+            return _ask_response(st, facts, text)
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
+        return _ask_response(st, build_workbook_fact_sheet(schedules, cpms), text)
 
     @app.get("/trend", response_class=HTMLResponse)
     def trend_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -953,14 +1029,21 @@ def create_app(
         classification: str = Form("CLASSIFIED"),
         backend: str = Form("ollama"),
         model: str = Form("llama3.1:8b"),
+        qa_mode: str = Form("interpretive"),
     ) -> RedirectResponse:
         st = session()
         try:
             cls = Classification(classification)
         except ValueError:
             cls = Classification.CLASSIFIED  # unknown -> safe default
+        if qa_mode not in ("interpretive", "strict"):
+            qa_mode = "interpretive"
         st.ai_config = AIConfig(
-            classification=cls, backend=backend, model=model, endpoint=st.ai_config.endpoint
+            classification=cls,
+            backend=backend,
+            model=model,
+            endpoint=st.ai_config.endpoint,
+            qa_mode=qa_mode,
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         return RedirectResponse(url="/settings", status_code=303)
@@ -1192,9 +1275,9 @@ durations. Day variances are calendar days.</p>
 def _path_body(keys: list[str], target_uid: int | None) -> str:
     """The SSI-style path-analysis workspace: controls, data grid left, scalable Gantt right.
 
-    All interaction is client-side (`static/path.js`) over `/api/driving` + `/api/ask` —
-    field add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
-    line, and the grounded ask-the-AI panel."""
+    All interaction is client-side (`static/path.js`) over `/api/driving` — field
+    add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
+    line. The grounded ask-the-AI panel is the page-shell one (`_ask_panel_html`)."""
     options = "".join(f'<option value="{_e(k)}">{_e(k)}</option>' for k in keys)
     return f"""
 <div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
@@ -1218,15 +1301,6 @@ filter rows, and hide completed work.</p>
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
-<div class=panel><h2>Ask the AI about this schedule</h2>
-<p class=muted>Answers are grounded in the engine's computed, cited facts. With no local
-model active you get the matching facts themselves; a model answer that introduces any
-number the engine never computed is discarded automatically.</p>
-<div class=viz-controls>
-<input id=askInput type=text size=60 maxlength=500
- placeholder="e.g. Why is the finish slipping? How many critical activities?">
-<button id=askBtn type=button>Ask</button></div>
-<div id=askOut></div></div>
 <script src="/static/path.js"></script>"""
 
 
@@ -1935,9 +2009,17 @@ def _settings_body(state: SessionState) -> str:
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
 <p>Model: <input name=model value="{_e(cfg.model)}"></p>
+<p>AI answer mode:
+<select name=qa_mode>
+<option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model may analyze
+and derive figures grounded in the cited facts (the "AI can err" disclaimer rides every answer)</option>
+<option value=strict{sel("strict", cfg.qa_mode)}>Strict — any answer containing a figure the
+engine never computed is discarded wholesale</option>
+</select></p>
 <input type=submit value="Save"></form>
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
-reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.</p></div>"""
+reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
+Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.</p></div>"""
 
 
 def _trigger_shutdown(app: FastAPI) -> None:

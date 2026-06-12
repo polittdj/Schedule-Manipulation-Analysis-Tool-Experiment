@@ -1,13 +1,22 @@
 """Ask-the-AI — grounded question answering over the schedule's computed facts (§6.D).
 
-The analyst types a question; the answer comes from a **fact sheet the engine computed**
-(frame dates, DCMA verdicts, findings, float bands, completion performance, forecasts,
-driving path) — every fact a :class:`CitedStatement`. The selected local backend may
-*phrase* an answer, but it is gated hard: any numeric figure in the model's answer that
-does not appear in the fact sheet **discards the whole answer** (the cited facts are shown
-instead — Law 2: the tool never presents an invented number). With the offline Null
-backend there is no generation at all: the facts matching the question are returned
-verbatim. Everything runs locally; the question and the data never leave the machine.
+The analyst types a question; the answer is grounded in a **fact sheet the engine
+computed** (frame dates, DCMA verdicts, findings, float bands, completion performance,
+forecasts, driving path) — every fact a :class:`CitedStatement`. Two answering modes
+(operator-selectable, M18 "AI at full power"):
+
+* **interpretive** (default): the model may compute differences/ratios from the facts
+  and explain implications — derived figures are allowed; every answer ships with the
+  cited facts alongside and the standing *"AI can err — verify against citations"*
+  disclaimer in the UI.
+* **strict**: any numeric figure in the model's answer that does not appear in the fact
+  sheet **discards the whole answer** (the cited facts are shown instead — the tool
+  presents no number the engine did not compute).
+
+With the offline Null backend there is no generation at all: the facts matching the
+question are returned verbatim. :func:`build_workbook_fact_sheet` extends the same
+contract across every loaded version (multi-version pages). Everything runs locally;
+the question and the data never leave the machine.
 """
 
 from __future__ import annotations
@@ -18,9 +27,11 @@ from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _FIGURE_RE, CitedStatement
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
-from schedule_forensics.engine.forecast import ForecastSet
+from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
+from schedule_forensics.engine.manipulation import detect_manipulation
 from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
 from schedule_forensics.engine.recommendations import Finding
+from schedule_forensics.engine.trend import order_versions
 from schedule_forensics.model.schedule import Schedule
 
 #: Most facts to feed the model / return for a question (keeps prompts small and local).
@@ -123,6 +134,54 @@ def _cite(schedule: Schedule, label: str, uids: tuple[int, ...]) -> tuple[Citati
     return tuple(Citation(label, uid, by_id[uid].name) for uid in uids if uid in by_id)
 
 
+def build_workbook_fact_sheet(
+    schedules: list[Schedule], cpms: list[CPMResult]
+) -> tuple[CitedStatement, ...]:
+    """Cited facts spanning EVERY loaded version — the multi-version pages' ask panel.
+
+    Reuses the Diagnostic Executive Briefing's deterministic, fully-cited statements
+    (workbook frame, cross-version trend, per-project summaries, per-project quality
+    verdicts) and adds the latest consecutive pair's manipulation signals plus the
+    newest version's finish forecasts. Engine-computed only — nothing is generated.
+    """
+    from schedule_forensics.ai.briefing import build_briefing  # local: avoid module cycle
+
+    briefing = build_briefing(schedules, cpms=cpms)
+    facts: list[CitedStatement] = [s for section in briefing.sections for s in section.statements]
+    ordered = order_versions(schedules)
+    by_obj = {id(s): c for s, c in zip(schedules, cpms, strict=True)}
+    if len(ordered) >= 2:
+        prior, current = ordered[-2], ordered[-1]
+        for finding in detect_manipulation(
+            current, prior, current_cpm=by_obj[id(current)], prior_cpm=by_obj[id(prior)]
+        )[:6]:
+            facts.append(
+                CitedStatement(
+                    f"Manipulation signal (latest pair) [{finding.severity}]: {finding.title}. "
+                    f"{finding.course_of_action}",
+                    finding.citations,
+                )
+            )
+    latest, latest_cpm = ordered[-1], by_obj[id(ordered[-1])]
+    label = latest.source_file or latest.name
+    by_id = latest.tasks_by_id
+    drivers = tuple(
+        Citation(label, uid, by_id[uid].name)
+        for uid, t in sorted(latest_cpm.timings.items())
+        if t.early_finish == latest_cpm.project_finish and uid in by_id
+    ) or tuple(Citation(label, t.unique_id, t.name) for t in latest.tasks[:3])
+    for f in compute_finish_forecasts(latest, latest_cpm).forecasts:
+        if f.finish is not None:
+            facts.append(
+                CitedStatement(
+                    f"Latest-version finish forecast ({f.name}): {f.finish.isoformat()} — "
+                    f"{f.basis}.",
+                    drivers,
+                )
+            )
+    return tuple(facts)
+
+
 def relevant_facts(
     facts: tuple[CitedStatement, ...], question: str, limit: int = _MAX_FACTS
 ) -> tuple[CitedStatement, ...]:
@@ -140,33 +199,52 @@ def relevant_facts(
 
 
 def answer_question(
-    backend: AIBackend, facts: tuple[CitedStatement, ...], question: str
+    backend: AIBackend,
+    facts: tuple[CitedStatement, ...],
+    question: str,
+    *,
+    mode: str = "strict",
 ) -> tuple[str | None, tuple[CitedStatement, ...]]:
-    """(model answer or ``None``, the cited facts used). Fail-closed and figure-gated.
+    """(model answer or ``None``, the cited facts used). Fail-closed; mode-gated.
 
     The Null backend (or an empty/failed generation) answers with no prose — the caller
-    shows the facts themselves. A model answer survives only if **every number it contains
-    appears in the fact sheet** (subset gate); otherwise it is discarded wholesale.
+    shows the facts themselves. In **strict** mode a model answer survives only if every
+    number it contains appears in the fact sheet (subset gate; discarded wholesale
+    otherwise). In **interpretive** mode the model may derive figures from the facts
+    (differences, ratios, plain-language analysis) — the caller must show the cited
+    facts alongside and the standing "AI can err" disclaimer.
     """
     chosen = relevant_facts(facts, question)
     if backend.name == "null":
         return None, chosen
-    prompt = (
-        "You are a forensic schedule analyst. Answer the question using ONLY the facts "
-        "below. Quote figures exactly as written; if the facts do not contain the answer, "
-        "say that they do not.\n\nFACTS:\n"
-        + "\n".join(f"- {f.text}" for f in chosen)
-        + f"\n\nQUESTION: {question}\nANSWER:"
-    )
+    if mode == "interpretive":
+        prompt = (
+            "You are a forensic schedule analyst. The cited facts below are your only "
+            "evidence. Answer the question in plain language: you may compute "
+            "differences, ratios, and interpretations FROM these facts and explain "
+            "their implications, but never contradict them or claim data they do not "
+            "contain — say so when the facts are silent. Be concise.\n\nFACTS:\n"
+            + "\n".join(f"- {f.text}" for f in chosen)
+            + f"\n\nQUESTION: {question}\nANSWER:"
+        )
+    else:
+        prompt = (
+            "You are a forensic schedule analyst. Answer the question using ONLY the facts "
+            "below. Quote figures exactly as written; if the facts do not contain the answer, "
+            "say that they do not.\n\nFACTS:\n"
+            + "\n".join(f"- {f.text}" for f in chosen)
+            + f"\n\nQUESTION: {question}\nANSWER:"
+        )
     try:
         text = backend.generate(prompt).strip()
     except Exception:
         return None, chosen
     if not text:
         return None, chosen
-    allowed = set()
-    for f in chosen:
-        allowed.update(_FIGURE_RE.findall(f.text))
-    if set(_FIGURE_RE.findall(text)) - allowed:
-        return None, chosen  # the model introduced a number the engine never computed
+    if mode != "interpretive":
+        allowed = set()
+        for f in chosen:
+            allowed.update(_FIGURE_RE.findall(f.text))
+        if set(_FIGURE_RE.findall(text)) - allowed:
+            return None, chosen  # the model introduced a number the engine never computed
     return text, chosen

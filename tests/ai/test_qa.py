@@ -83,7 +83,7 @@ def test_grounded_answer_survives_and_invented_numbers_are_discarded(
     grounded = _Model(f"Per the facts: {facts[0].text}")
     answer, _ = answer_question(grounded, facts, "what is the schedule frame?")
     assert answer is not None and "Schedule frame" in answer
-    # one invented figure discards the whole answer (Law 2)
+    # one invented figure discards the whole answer (strict mode)
     fabricator = _Model("The project will finish in 99999 days.")
     answer2, used2 = answer_question(fabricator, facts, "when will it finish?")
     assert answer2 is None and used2
@@ -95,3 +95,44 @@ def test_grounded_answer_survives_and_invented_numbers_are_discarded(
 
     answer3, used3 = answer_question(_Boom(""), facts, "anything?")
     assert answer3 is None and used3
+
+
+def test_interpretive_mode_keeps_derived_figures_but_still_grounds(
+    golden_project5: Schedule,
+) -> None:
+    """M18 "AI at full power": the model may COMPUTE from the facts (a derived figure no
+    longer discards the answer) — the cited facts still ride along, and the Null/failed
+    paths stay fail-closed."""
+    facts = _facts(golden_project5)
+    deriver = _Model("The slip works out to 42 working days beyond the baseline.")
+    answer, used = answer_question(deriver, facts, "how bad is it?", mode="interpretive")
+    assert answer is not None and "42" in answer  # derived figure survives
+    assert used  # the cited facts always accompany the answer
+    assert "compute" in deriver.prompts[-1]  # the interpretive prompt was used
+    # the same reply in strict mode is discarded wholesale
+    answer2, _ = answer_question(
+        _Model("The slip works out to 42 working days beyond the baseline."),
+        facts,
+        "how bad is it?",
+        mode="strict",
+    )
+    assert answer2 is None
+    # Null backend and failures stay fail-closed in interpretive mode too
+    answer3, used3 = answer_question(NullBackend(), facts, "anything?", mode="interpretive")
+    assert answer3 is None and used3
+
+
+def test_workbook_fact_sheet_spans_versions_and_is_cited(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    from schedule_forensics.ai.qa import build_workbook_fact_sheet
+
+    schedules = [golden_project2, golden_project5]
+    cpms = [compute_cpm(s) for s in schedules]
+    facts = build_workbook_fact_sheet(schedules, cpms)
+    assert_all_cited(facts)  # §6 — every fact carries file + UID + task
+    text = " ".join(f.text for f in facts)
+    assert "Schedule Forensics analysis" in text  # the workbook frame
+    assert "Project2" in text and "Project5" in text  # both versions narrated
+    assert "Latest-version finish forecast" in text
+    assert "over time" in text  # the cross-version quality-trend sentences are present

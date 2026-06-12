@@ -61,6 +61,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/static/cei.js",
         "/static/theme.js",
         "/static/path.js",
+        "/static/ask.js",
     ]
     offenders: dict[str, list[str]] = {}
     for path in pages:

@@ -45,6 +45,12 @@ class AIConfig:
     backend: str = "ollama"  # "null" | "ollama" | "cloud"
     model: str = "llama3.1:8b"
     endpoint: str = "http://127.0.0.1:11434"
+    #: Ask-the-AI answering mode (operator order, M18): "interpretive" lets the model
+    #: compute/explain beyond the fact sheet (the standing "AI can err — verify against
+    #: citations" disclaimer rides every answer); "strict" wholesale-discards any answer
+    #: containing a figure the engine never computed. Either way the cited facts are
+    #: returned alongside, and locality (Law 1) is unaffected — this only governs prose.
+    qa_mode: str = "interpretive"  # "interpretive" | "strict"
 
 
 @dataclass(frozen=True)
