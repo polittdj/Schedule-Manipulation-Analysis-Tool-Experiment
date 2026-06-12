@@ -1140,3 +1140,19 @@ this file is the running history.
 ### Parity / tests
 - **644 passed, 3 skipped** (12 new); parity 10/10; engine ≈98%, overall ≈98%; all gates
   clean; zero new dependencies.
+
+
+## Real-file path fixes — 2026-06-12 (PR #80; Fable 5)
+
+- Operator ran Path Analysis against a real file + MS Project/SSI side-by-side: tool said
+  **4 driving tasks, SSI said ~66 at 0 days** — root cause: tiering compared slack ≤ 0 to
+  the MINUTE while real stored dates carry time-of-day raggedness; SSI classifies on whole
+  days. Tiers now floor slack to whole working days (ADR-0032); goldens (exact day
+  multiples) byte-identical, parity 10/10.
+- Their reload of the test files then **killed the server** (ERR_CONNECTION_REFUSED):
+  async /upload parsed on the event loop, starving heartbeats past the 10s grace → the
+  auto-shutdown watchdog fired MID-LOAD. Upload now runs in the threadpool and an
+  in-flight request counter holds the watchdog while any work is being served.
+
+### Parity / tests
+- 1 new boundary-pinned regression; parity 10/10; all gates clean.

@@ -118,3 +118,36 @@ def test_golden_ssi_driving_slack_parity(golden_project5: Schedule) -> None:
     assert tiers[PathTier.SECONDARY] == 12  # 5/7/10-day groups
     assert tiers[PathTier.TERTIARY] == 12  # 12/16/20-day groups
     assert len(driving_path(golden_project5, results)) == 36
+
+
+def test_subday_slack_is_driving_like_ssi_displays_it() -> None:
+    # Real stored dates carry minutes of time-of-day raggedness: a chain SSI shows at
+    # "0 days" of driving slack must read DRIVING here, not fall out over a sub-day
+    # offset (a real file read 4 driving tasks where MS Project + SSI showed ~66).
+    tasks = [
+        Task(unique_id=1, name="A", duration_minutes=DAY),  # exactly 1 day of slack
+        Task(unique_id=2, name="B", duration_minutes=2 * DAY - 30),  # 30 ragged minutes
+        Task(unique_id=3, name="C", duration_minutes=DAY - 30),  # a day + 30 minutes over
+        Task(unique_id=4, name="D", duration_minutes=2 * DAY),  # the tight driver
+        Task(unique_id=5, name="T", duration_minutes=DAY),
+    ]
+    rels = [
+        Relationship(predecessor_id=1, successor_id=5),
+        Relationship(predecessor_id=2, successor_id=5),
+        Relationship(predecessor_id=3, successor_id=5),
+        Relationship(predecessor_id=4, successor_id=5),
+    ]
+    sched = Schedule(
+        name="ragged", project_start=MON, tasks=tuple(tasks), relationships=tuple(rels)
+    )
+    results = compute_driving_slack(sched, target_uid=5)
+    assert results[4].driving_slack_minutes == 0 and results[4].on_driving_path
+    # 30 minutes of slack — the time-of-day noise case — displays 0 days: DRIVING
+    assert results[2].driving_slack_minutes == 30
+    assert results[2].tier is PathTier.DRIVING and results[2].on_driving_path
+    # exactly one whole day is NOT driving (matches the old exact-multiple behavior)
+    assert results[1].driving_slack_minutes == DAY
+    assert results[1].tier is PathTier.SECONDARY and not results[1].on_driving_path
+    # one day + ragged minutes floors to 1 day: SECONDARY, not driving
+    assert results[3].driving_slack_minutes == DAY + 30
+    assert results[3].tier is PathTier.SECONDARY and not results[3].on_driving_path
