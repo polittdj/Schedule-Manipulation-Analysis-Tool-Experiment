@@ -63,6 +63,10 @@ logger = logging.getLogger("schedule_forensics.importers.mspdi")
 
 # --- source enum maps (MS Project standard codes) ---------------------------------
 
+#: MSPDI ``Task/DurationFormat`` codes meaning ELAPSED time (em/eh/ed/ew/emo/e%,
+#: plus their "?" estimated variants) — wall-clock durations that ignore calendars.
+_ELAPSED_DURATION_FORMATS = frozenset({4, 6, 8, 10, 12, 20, 36, 38, 40, 42, 44, 52})
+
 #: MSPDI ``Task/ConstraintType`` numeric code → model constraint.
 _CONSTRAINT_BY_CODE: dict[int, ConstraintType] = {
     0: ConstraintType.ASAP,
@@ -395,6 +399,7 @@ def _parse_task(
             name=_text(task_el, "Name") or f"Task {uid}",
             wbs=_text(task_el, "WBS"),
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
+            duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
             remaining_duration_minutes=_optional_minutes(task_el, "RemainingDuration"),
             baseline_duration_minutes=bl_duration,
             is_milestone=_bool(task_el, "Milestone", default=False),

@@ -96,6 +96,7 @@ def _task(raw: dict[str, Any]) -> Task:
         "unique_id": int(raw["unique_id"]),
         "name": str(raw.get("name", f"Task {raw['unique_id']}")),
         "duration_minutes": int(raw.get("duration_minutes", 0)),
+        "duration_is_elapsed": bool(raw.get("duration_is_elapsed", False)),
     }
     for key in ("wbs", "is_milestone", "is_summary", "percent_complete", "resource_names"):
         if key in raw and raw[key] is not None:
@@ -196,6 +197,7 @@ def to_json_text(schedule: Schedule) -> str:
             "unique_id": t.unique_id,
             "name": t.name,
             "duration_minutes": t.duration_minutes,
+            "duration_is_elapsed": t.duration_is_elapsed,
         }
         if t.percent_complete:
             task["percent_complete"] = t.percent_complete
