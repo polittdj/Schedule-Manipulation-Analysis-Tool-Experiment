@@ -122,6 +122,18 @@ def test_interpretive_mode_keeps_derived_figures_but_still_grounds(
     assert answer3 is None and used3
 
 
+def test_figure_agreement_is_deterministic_and_names_the_disagreement() -> None:
+    from schedule_forensics.ai.qa import figure_agreement
+
+    same = figure_agreement("Finish slips 12 days (SPI 0.47).", "SPI 0.47 means 12 days late.")
+    assert "identical figures" in same
+    differ = figure_agreement("The slip is 12 days.", "The slip is 15 days.")
+    assert "DIFFER" in differ and "12" in differ and "15" in differ
+    assert "verify against the cited facts" in differ
+    # figure-free prose counts as agreement (nothing to contradict)
+    assert "identical" in figure_agreement("It is slipping.", "The schedule is late.")
+
+
 def test_workbook_fact_sheet_spans_versions_and_is_cited(
     golden_project2: Schedule, golden_project5: Schedule
 ) -> None:

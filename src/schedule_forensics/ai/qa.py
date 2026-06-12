@@ -22,6 +22,7 @@ the question and the data never leave the machine.
 from __future__ import annotations
 
 import re
+from collections import Counter
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _FIGURE_RE, CitedStatement
@@ -196,6 +197,30 @@ def relevant_facts(
     if len(keep) < min(limit, len(facts)):  # vague question: pad with the leading facts
         keep += [f for f in facts if f not in keep][: limit - len(keep)]
     return tuple(keep)
+
+
+def figure_agreement(primary: str, second: str) -> str:
+    """The dual-model cross-check note: do the two answers cite the same figures?
+
+    Deterministic (engine-computed, never a third model): the numeric figures of each
+    answer are compared as multisets. Agreement is corroboration, not proof — the cited
+    facts remain the ground truth either way.
+    """
+    a, b = Counter(_FIGURE_RE.findall(primary)), Counter(_FIGURE_RE.findall(second))
+    if a == b:
+        return "Cross-check: both models cite identical figures."
+    parts = []
+    only_a = sorted((a - b).elements())
+    only_b = sorted((b - a).elements())
+    if only_a:
+        parts.append("only the primary cites " + ", ".join(only_a[:8]))
+    if only_b:
+        parts.append("only the second cites " + ", ".join(only_b[:8]))
+    return (
+        "Cross-check: the two answers DIFFER on figures ("
+        + "; ".join(parts)
+        + ") — verify against the cited facts."
+    )
 
 
 def answer_question(

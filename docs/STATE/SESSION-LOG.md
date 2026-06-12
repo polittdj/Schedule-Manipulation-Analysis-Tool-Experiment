@@ -1493,3 +1493,13 @@ this file is the running history.
   — §6 for tables); /briefing renders lede paragraph, trend + DCMA-verdict tables with
   a citation column, and side-by-side project cards (polished prose + profile strip).
   Polish remains prose-only; to_text/exports unchanged. **730 passed** (3 new).
+- **Second local backend + dual-model cross-check added to PR #92 (ADR-0036)** — item 4
+  now COMPLETE: `ai/openai_compat.py` (OpenAI-compatible /v1 dialect — LM Studio 1234 /
+  llamafile 8080; stdlib HTTP; loopback enforced at construction, CUIEgressError);
+  usable as the PRIMARY backend ("openai" in route_backend, fail-closed) AND as the
+  cross-check second model (`AIConfig.second_backend/second_model/openai_endpoint`;
+  settings UI + handler loopback guard; 15s-TTL probe cache `SessionState.second_cache`).
+  Cross-check: both local models answer every ask independently; `figure_agreement`
+  (deterministic multiset compare) reports "identical figures" or names the differing
+  numbers; ask.js renders the second answer + colored agreement note. **738 passed**
+  (8 new); parity 10/10; all gates clean.

@@ -130,9 +130,14 @@ dashboard. Stop it with `Ctrl-C`.
    progress trend and **manipulation-trend signals** (deleted logic, shortened durations, deleted
    tasks, baseline/actual date edits) with the **Net Finish Impact** in calendar days. Honest
    progress shows no false flags.
-9. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, the
-   project **classification**, and the **AI answer mode** (interpretive — the default, model may
-   analyze/derive with the standing disclaimer; or strict — uncomputed figures discard the answer).
+9. **AI Settings** — choose the backend (local **Ollama**, any local **OpenAI-compatible**
+   server such as LM Studio (`127.0.0.1:1234`) or llamafile (`127.0.0.1:8080`), or the offline
+   Null), list/pull/select models, the project **classification**, and the **AI answer mode**
+   (interpretive — the default, model may analyze/derive with the standing disclaimer; or
+   strict — uncomputed figures discard the answer). Turn on the **cross-check second model**
+   (Ollama or OpenAI-compatible) and BOTH local models answer every question independently —
+   the engine compares their figures deterministically and reports agreement or names the
+   differing numbers. All model endpoints are **loopback-only** — a remote host is refused.
    A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
 10. **Target UID (header)** — type any activity's UniqueID into the header's **Target UID** box and

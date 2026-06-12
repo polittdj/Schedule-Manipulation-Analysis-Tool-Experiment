@@ -134,6 +134,70 @@ def test_interpretive_mode_keeps_a_derived_figure_strict_discards_it(
     assert body2["facts"]
 
 
+def test_dual_model_cross_check_answers_and_compares(
+    monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
+) -> None:
+    """The M18 cross-check: both local models answer; the engine compares their figures."""
+    import schedule_forensics.web.app as app
+
+    monkeypatch.setattr(app, "_ollama_or_none", lambda config: _Model("The answer is 42 days."))
+    second = _Model("It computes to 41 days.")
+    second.name = "openai-compat"  # type: ignore[attr-defined]
+    monkeypatch.setattr(app, "_second_backend", lambda st: second)
+    _upload(client, "Project5")
+    body = client.post("/api/ask/Project5", data={"question": "how long?"}).json()
+    assert body["answer"] == "The answer is 42 days."
+    assert body["second_answer"] == "It computes to 41 days."
+    assert "openai-compat" in body["second_model"]
+    assert "DIFFER" in body["agreement"] and "42" in body["agreement"] and "41" in body["agreement"]
+    # agreeing answers report corroboration
+    second.reply = "Indeed: 42 days."
+    body2 = client.post("/api/ask/Project5", data={"question": "how long?"}).json()
+    assert "identical figures" in body2["agreement"]
+
+
+def test_cross_check_off_or_unreachable_keeps_the_single_answer_shape(
+    client: TestClient,
+) -> None:
+    _upload(client, "Project5")
+    body = client.post("/api/ask/Project5", data={"question": "status?"}).json()
+    assert body["second_answer"] is None and body["agreement"] is None  # default: off
+
+
+def test_settings_round_trips_the_second_backend_and_loopback_guards_the_endpoint(
+    client: TestClient, state: SessionState
+) -> None:
+    client.post(
+        "/settings",
+        data={
+            "classification": "CLASSIFIED",
+            "backend": "openai",
+            "model": "phi-4",
+            "qa_mode": "interpretive",
+            "openai_endpoint": "http://127.0.0.1:8080",
+            "second_backend": "ollama",
+            "second_model": "qwen2.5",
+        },
+    )
+    cfg = state.ai_config
+    assert cfg.backend == "openai" and cfg.openai_endpoint == "http://127.0.0.1:8080"
+    assert cfg.second_backend == "ollama" and cfg.second_model == "qwen2.5"
+    # a remote endpoint never sticks — reset to the loopback default (Law 1)
+    client.post(
+        "/settings",
+        data={
+            "classification": "CLASSIFIED",
+            "backend": "openai",
+            "model": "phi-4",
+            "openai_endpoint": "http://evil.example.com:1234",
+            "second_backend": "bogus",
+        },
+    )
+    cfg2 = state.ai_config
+    assert cfg2.openai_endpoint == "http://127.0.0.1:1234"
+    assert cfg2.second_backend == "none"
+
+
 def test_settings_round_trips_the_answer_mode(client: TestClient, state: SessionState) -> None:
     client.post(
         "/settings",

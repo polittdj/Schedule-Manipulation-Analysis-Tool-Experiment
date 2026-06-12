@@ -52,6 +52,16 @@
               "the engine's cited facts that match your question:",
           }));
         }
+        if (res.j.second_answer) {
+          out.appendChild(el("p", { class: "muted", text: "Second model (" + (res.j.second_model || "?") + "):" }));
+          out.appendChild(el("p", { class: "ask-answer ask-second", text: res.j.second_answer }));
+        }
+        if (res.j.agreement) {
+          out.appendChild(el("p", {
+            class: res.j.agreement.indexOf("DIFFER") >= 0 ? "ask-agreement differ" : "ask-agreement",
+            text: res.j.agreement,
+          }));
+        }
         var ul = el("ul");
         (res.j.facts || []).forEach(function (f) {
           var cite = (f.citations || []).map(function (c) { return c.task + " (UID " + c.uid + ")"; }).join("; ");

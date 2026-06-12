@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -35,6 +35,7 @@ from schedule_forensics.ai import (
     Classification,
     NullBackend,
     OllamaBackend,
+    OpenAICompatBackend,
     banner_for,
     reattach,
     route_backend,
@@ -43,7 +44,12 @@ from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_bri
 from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.narrative import build_narrative
-from schedule_forensics.ai.qa import answer_question, build_fact_sheet, build_workbook_fact_sheet
+from schedule_forensics.ai.qa import (
+    answer_question,
+    build_fact_sheet,
+    build_workbook_fact_sheet,
+    figure_agreement,
+)
 from schedule_forensics.engine import (
     analyze_floats,
     audit_schedule,
@@ -197,6 +203,8 @@ class SessionState:
     # per-schedule narrative as polished by a real (non-null) backend:
     # key -> (schedule identity, "backend/model" stamp, narrative). Cleared on wipe.
     polished: dict[str, tuple[Schedule, str, Narrative]] = field(default_factory=dict)
+    # the cross-check second model, cached like backend_cache (None = off/unreachable).
+    second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
@@ -246,6 +254,44 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
         return None
 
 
+def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
+    if config.backend != "openai":
+        return None
+    try:
+        # construction enforces loopback (CUIEgressError on a remote host — Law 1)
+        return OpenAICompatBackend(endpoint=config.openai_endpoint, model=config.model)
+    except Exception:
+        return None
+
+
+def _second_backend(state: SessionState) -> AIBackend | None:
+    """The configured cross-check model, probed + cached like the primary (or ``None``).
+
+    Only the two LOCAL backend kinds are constructible here — a cloud second model does
+    not exist by design. Unreachable/missing servers cache as ``None`` (cross-check off)
+    so a down second server costs one probe per TTL, not one per question.
+    """
+    cfg = state.ai_config
+    if cfg.second_backend not in ("ollama", "openai"):
+        return None
+    cached = state.second_cache
+    now = time.monotonic()
+    if cached is not None and cached[0] == cfg and now - cached[1] < _BACKEND_PROBE_TTL:
+        return cached[2]
+    backend: AIBackend | None = None
+    try:
+        if cfg.second_backend == "ollama":
+            backend = OllamaBackend(endpoint=cfg.endpoint, model=cfg.second_model or cfg.model)
+        else:
+            backend = OpenAICompatBackend(endpoint=cfg.openai_endpoint, model=cfg.second_model)
+    except Exception:
+        backend = None
+    if backend is not None and not backend.is_available():
+        backend = None
+    state.second_cache = (cfg, now, backend)
+    return backend
+
+
 #: How long a routed-backend probe result is trusted before re-probing (seconds). Keeps
 #: report renders from paying the Ollama availability probe on every page view, while an
 #: Ollama started mid-session is still picked up promptly.
@@ -266,6 +312,7 @@ def _active_backend(state: SessionState) -> AIBackend:
         state.ai_config,
         null_backend=NullBackend(),
         ollama_backend=_ollama_or_none(state.ai_config),
+        openai_backend=_openai_or_none(state.ai_config),
     )
     state.backend_cache = (state.ai_config, now, backend)
     return backend
@@ -659,13 +706,29 @@ def create_app(
     def _ask_response(
         st: SessionState, facts: tuple[CitedStatement, ...], text: str
     ) -> JSONResponse:
-        """Shared Q&A response: route the backend, answer in the configured mode."""
+        """Shared Q&A response: route the backend(s), answer in the configured mode.
+
+        With a cross-check second model configured and reachable, BOTH models answer
+        independently and a deterministic figure-agreement note is computed — the
+        engine compares, never a third model."""
         mode = st.ai_config.qa_mode
         answer, used = answer_question(_active_backend(st), facts, text, mode=mode)
+        second_answer: str | None = None
+        second_model: str | None = None
+        agreement: str | None = None
+        second = _second_backend(st)
+        if second is not None:
+            second_answer, _ = answer_question(second, facts, text, mode=mode)
+            second_model = f"{second.name}/{getattr(second, 'model', '') or 'default'}"
+            if answer and second_answer:
+                agreement = figure_agreement(answer, second_answer)
         return JSONResponse(
             {
                 "answer": answer,  # null => no local model active / answer failed the gate
                 "mode": mode,
+                "second_answer": second_answer,
+                "second_model": second_model,
+                "agreement": agreement,
                 "facts": [
                     {
                         "text": f.text,
@@ -1030,6 +1093,9 @@ def create_app(
         backend: str = Form("ollama"),
         model: str = Form("llama3.1:8b"),
         qa_mode: str = Form("interpretive"),
+        openai_endpoint: str = Form("http://127.0.0.1:1234"),
+        second_backend: str = Form("none"),
+        second_model: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -1038,14 +1104,24 @@ def create_app(
             cls = Classification.CLASSIFIED  # unknown -> safe default
         if qa_mode not in ("interpretive", "strict"):
             qa_mode = "interpretive"
+        if second_backend not in ("none", "ollama", "openai"):
+            second_backend = "none"
+        # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
+        # remote host from sitting in the config looking accepted
+        if not is_loopback_host(urlparse(openai_endpoint.strip()).hostname or ""):
+            openai_endpoint = "http://127.0.0.1:1234"
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
             model=model,
             endpoint=st.ai_config.endpoint,
             qa_mode=qa_mode,
+            openai_endpoint=openai_endpoint.strip(),
+            second_backend=second_backend,
+            second_model=second_model.strip(),
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
+        st.second_cache = None
         return RedirectResponse(url="/settings", status_code=303)
 
     @app.get("/help", response_class=HTMLResponse)
@@ -2030,7 +2106,10 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
 def _settings_body(state: SessionState) -> str:
     cfg = state.ai_config
     backend, _banner = route_backend(
-        cfg, null_backend=NullBackend(), ollama_backend=_ollama_or_none(cfg)
+        cfg,
+        null_backend=NullBackend(),
+        ollama_backend=_ollama_or_none(cfg),
+        openai_backend=_openai_or_none(cfg),
     )
     models: tuple[str, ...] = ()
     try:
@@ -2038,13 +2117,20 @@ def _settings_body(state: SessionState) -> str:
     except Exception:
         models = ()
     model_list = ", ".join(_e(m) for m in models) or "<span class=muted>none available</span>"
+    second = _second_backend(state)
+    second_status = (
+        f"reachable ({_e(second.name)})"
+        if second is not None
+        else ("off" if cfg.second_backend == "none" else "configured but not reachable")
+    )
 
     def sel(value: str, current: str) -> str:
         return " selected" if value == current else ""
 
     return f"""
 <div class=panel><h2>Local AI</h2>
-<p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}</p>
+<p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
+&middot; cross-check model: <b>{second_status}</b></p>
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>
@@ -2054,10 +2140,14 @@ def _settings_body(state: SessionState) -> str:
 <p>Backend:
 <select name=backend>
 <option value=ollama{sel("ollama", cfg.backend)}>Ollama (local)</option>
+<option value=openai{sel("openai", cfg.backend)}>OpenAI-compatible (local — LM Studio / llamafile / vLLM)</option>
 <option value=null{sel("null", cfg.backend)}>Null (offline, deterministic)</option>
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
 <p>Model: <input name=model value="{_e(cfg.model)}"></p>
+<p>OpenAI-compatible endpoint (loopback only):
+<input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
+ title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model may analyze
@@ -2065,10 +2155,21 @@ and derive figures grounded in the cited facts (the "AI can err" disclaimer ride
 <option value=strict{sel("strict", cfg.qa_mode)}>Strict — any answer containing a figure the
 engine never computed is discarded wholesale</option>
 </select></p>
+<p>Cross-check second model:
+<select name=second_backend>
+<option value=none{sel("none", cfg.second_backend)}>Off</option>
+<option value=ollama{sel("ollama", cfg.second_backend)}>Ollama (local)</option>
+<option value=openai{sel("openai", cfg.second_backend)}>OpenAI-compatible (local)</option>
+</select>
+ model id: <input name=second_model size=20 value="{_e(cfg.second_model)}"
+ title="blank = the server's default/loaded model"></p>
 <input type=submit value="Save"></form>
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
-Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.</p></div>"""
+Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
+With a cross-check model on, both local models answer every question independently and the engine
+compares their figures deterministically — agreement is corroboration, the citations stay the
+ground truth.</p></div>"""
 
 
 def _trigger_shutdown(app: FastAPI) -> None:

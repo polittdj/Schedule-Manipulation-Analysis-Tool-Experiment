@@ -1,4 +1,4 @@
-# Handoff — 2026-06-12 (PRs #81–#91 MERGED; **M18 IN FLIGHT**; PR #92 OPEN — AI at full power pt 1)
+# Handoff — 2026-06-12 (PRs #81–#91 MERGED; **M18 IN FLIGHT**; PR #92 OPEN — item 4 COMPLETE)
 
 **This sitting:** **#90 merged** (the eday fix), then **#91 merged** (M18 items 1–3,
 ADR-0034: the **stored-date CPM mandate** — unstarted MANUAL tasks pin at their stored
@@ -247,7 +247,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**730 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**738 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -255,8 +255,9 @@ venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
 
-**START HERE: merge/verify PR #92** (AI at full power part 1, ADR-0035: interpretive
-Q&A + ask panel on every page + workbook facts + the standing disclaimer).
+**START HERE: merge/verify PR #92** (M18 item 4 COMPLETE — ADR-0035 interpretive
+Q&A/panel/workbook facts/disclaimer/Briefing reformat + ADR-0036 OpenAI-compatible
+second backend with the dual-model cross-check).
 **Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
 is empty in a fresh container) and verify the #91 mandate: computed finish
 **2027-03-04** (was 8/5/2026), completed tasks visible on /path at their actual dates,
@@ -267,12 +268,10 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
    re-verification owed, see above).
 2. ~~Use the FULL screen width~~ (PR #91, merged).
 3. ~~Sparse-logic CPM mandate~~ (PR #91/ADR-0034, merged; re-verification owed).
-4. **AI at full power (operator):** ~~relaxed interpretive mode + ask panel on ALL
-   pages (workbook-wide facts) + standing disclaimer + Executive Briefing reformat
-   (lede/cards/cited tables, prose-only polish)~~ (PR #92/ADR-0035). REMAINING:
-   the **second local AI model** (any OpenAI-compatible local endpoint, e.g.
-   LM Studio/llamafile) and the dual-model cross-check / collaboration mode.
-   Loopback-only egress stays non-negotiable.
+4. ~~AI at full power~~ (PR #92, COMPLETE: interpretive mode + ask panel on ALL
+   pages with workbook-wide facts + standing disclaimer + Briefing reformat
+   [ADR-0035] + the OpenAI-compatible second local backend with the dual-model
+   figure-agreement cross-check [ADR-0036]; loopback-only egress preserved).
 5. **Forecast-drift ANIMATION** across versions (Bow-Wave-style stepper) and
    **locked Y-axis scales on ALL animated visuals** (scale = max of the metric across
    every loaded version, held through the animation — bow wave, drift, trend, path).
@@ -309,10 +308,10 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #92 (AI at full power pt 1;
-> open at handoff), then the Duration Bomb re-verification (re-deposit needed: computed
-> finish must read 3/4/2027, completed tasks on /path, the new logic finding), then
-> the Briefing reformat + the second local backend. Stay on branch
+> M18 backlog in its listed order — start by checking PR #92 (item 4 complete: AI at
+> full power; open at handoff), then the Duration Bomb re-verification (re-deposit
+> needed: computed finish must read 3/4/2027, completed tasks on /path, the new logic
+> finding), then item 5 (forecast-drift animation + locked Y-axes). Stay on branch
 > `claude/clever-carson-uovtkk` (recreate from
 > origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
 > origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
