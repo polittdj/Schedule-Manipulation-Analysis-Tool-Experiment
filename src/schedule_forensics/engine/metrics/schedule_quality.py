@@ -133,7 +133,7 @@ def compute_schedule_quality(
             if t.baseline_duration_minutes is not None
             else t.duration_minutes
         )
-        / per_day
+        / (1440 if t.duration_is_elapsed else per_day)
         > project_wd * 0.10
     )
     out["insufficient_detail"] = _pct_result(

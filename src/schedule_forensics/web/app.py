@@ -1500,7 +1500,11 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "finish": _iso_date(task.finish),
                 "baseline_start": _iso_date(task.baseline_start),
                 "baseline_finish": _iso_date(task.baseline_finish),
-                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
+                "duration_days": round(
+                    task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
+                )
+                if per_day
+                else 0.0,
                 "total_float_days": float(fr.total_float_days),
                 "free_float_days": float(fr.free_float_days),
                 "percent_complete": task.percent_complete,
@@ -1590,7 +1594,11 @@ def _driving_data(
                 "start": day(timing.early_start if timing else None),
                 "finish": day(timing.early_finish if timing else None),
                 "baseline_finish": _iso_date(task.baseline_finish),
-                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
+                "duration_days": round(
+                    task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
+                )
+                if per_day
+                else 0.0,
                 "total_float_days": (
                     float(round(timing.total_float / per_day, 1)) if timing else None
                 ),
