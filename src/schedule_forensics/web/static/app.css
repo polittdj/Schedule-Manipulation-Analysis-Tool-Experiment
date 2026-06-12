@@ -58,3 +58,17 @@
 .legend span::before { content: "\25A0 "; }
 .legend .tier-DRIVING { color: var(--bad); } .legend .tier-SECONDARY { color: var(--warn); }
 .legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: var(--beyond-ink); }
+
+/* SSI-style path-analysis workspace: data grid left, scalable timeline right */
+.path-view { overflow-x: auto; margin-top: 10px; }
+.path-grid td, .path-grid th { white-space: nowrap; }
+.path-timeline, .path-timeline-head { padding: 2px 0 !important; }
+.path-track, .path-scale { position: relative; height: 16px; background: var(--field-bg); }
+.path-scale { height: 18px; }
+.pv-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid-line, rgba(127,127,127,.25)); }
+.pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }
+.pv-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); z-index: 2; }
+.path-grid tr.done td { color: var(--muted); }
+.field-toggle { margin-right: 6px; font-size: 12px; }
+.ask-answer { white-space: pre-wrap; }
+#askOut ul { font-size: 13px; }

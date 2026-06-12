@@ -77,52 +77,63 @@ dashboard. Stop it with `Ctrl-C`.
      schedule / behind** split vs baseline, average days gained/lost, activities longer/shorter
      than planned with the **duration ratio** (min/avg/max), **MEI** (the milestone execution
      index), and the staleness indicator (% of the schedule elapsed since anything finished).
-3. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
+3. **Path Analysis** — the SSI-style workspace: pick a schedule and a **target UniqueID**
+   (the session-wide target pre-fills), set your own **secondary / tertiary day-bands**
+   (> 0 days of driving slack), and **Trace**. The result reads like SSI: your **data on the
+   left** (add/remove columns — UID, name, WBS, tier, slack, start/finish, baseline finish,
+   duration, total float, % complete, resources) and a **scalable Gantt on the right**
+   (zoom slider = pixels per day, horizontal scroll) with month ticks and the **gold
+   data-date line**. Filter rows by tier or name/UID text and **hide 100%-complete** work.
+   Below it, **Ask the AI**: type a question about the schedule — answers are grounded in
+   the engine's computed, cited facts; with no local model active you get the matching
+   facts themselves, and any model answer containing a number the engine never computed is
+   discarded automatically.
+4. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
    per-version headline table (finish / completed / in-progress / critical), the **Net Finish
    Impact across the series**, **trend charts** (project finish, completed, critical, missing
    logic), per-metric **schedule-quality trend** sentences (improving/worsening, best and worst
    version named), and **manipulation-trend signals for each consecutive pair**. Enter a
    **focus UniqueID** to trend a specific activity: its computed finish and % complete per
    version, plus a finish-movement chart.
-4. **Bow Wave / CEI** (≥2 versions): per snapshot, the monthly **Activity Finishes** chart —
+5. **Bow Wave / CEI** (≥2 versions): per snapshot, the monthly **Activity Finishes** chart —
    gold = baselined to finish, blue = scheduled to finish, green = actually finished, with the
    dashed data-date marker. Step **Prev/Next** through snapshots or press **Auto-play** to watch
    the bow wave of slipped work push right like a movie. The **CEI (Current Execution Index)**
    table compares, for each snapshot, what the *previous* snapshot planned to finish in the
    following month vs what this snapshot re-scheduled and what actually finished
    (CEI = finished ÷ previously planned; 1.00 = executed to plan).
-5. **Forecast** — three independent answers to *"when will it really end?"*: the schedule's own
+6. **Forecast** — three independent answers to *"when will it really end?"*: the schedule's own
    **CPM logic**, a **completion-rate extrapolation** (to-go activities at the historical
    completions-per-month pace), and the **earned-schedule IEAC(t)** estimate
    (AT + (PD − ES) / SPI(t)). Each method shows the inputs it used; a method with missing inputs
    shows "—" — never a fabricated date. Methods that disagree are themselves a finding. With ≥2
    versions, the **forecast-drift table** re-runs all three per version — forecasts that keep
    sliding right are the bow-wave signature.
-6. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
+7. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
    summary (versions, earliest start, latest completion), the cross-version **Trend Analysis**, a
    per-project summary (dates, % complete/in-progress/planned, milestones/summaries, baseline
    window and **behind/ahead-of-schedule days**), and a per-project **schedule-quality verdict**
    for every DCMA check. Every sentence carries its **file + UID + task** citation; the local AI
    may polish the prose but can never change a number. Use the browser's **Print** for a hand-out.
-7. **Compare** (with ≥2 versions loaded): the two most recent versions in data-date order — CPM/
+8. **Compare** (with ≥2 versions loaded): the two most recent versions in data-date order — CPM/
    progress trend and **manipulation-trend signals** (deleted logic, shortened durations, deleted
    tasks, baseline/actual date edits) with the **Net Finish Impact** in calendar days. Honest
    progress shows no false flags.
-8. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
+9. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
    project **classification**. A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
-9. **Target UID (header)** — type any activity's UniqueID into the header's **Target UID** box and
+10. **Target UID (header)** — type any activity's UniqueID into the header's **Target UID** box and
    press **Set** to focus the whole session on that activity: the report page opens with its
    **Target activity** panel and auto-runs the driving-path trace to it, the **Trend** page focuses
    on it automatically, and **Compare** shows its computed-finish movement between versions. Leave
    the box blank and press Set (or **Wipe Session**) to clear it. A summary UID is named as such —
    pick one of its activities for a trace.
-10. **Light / dark mode** — the header's **theme button** (☀/☾) switches between the dark default
+11. **Light / dark mode** — the header's **theme button** (☀/☾) switches between the dark default
     and a bright theme; the choice is stored locally in your browser (`localStorage`) and applies
     to every page, charts included. Nothing about the preference leaves the machine.
-11. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every**
+12. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every**
     metric the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
-12. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
+13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).
 
 ## 4. Verifying a number (forensic use)

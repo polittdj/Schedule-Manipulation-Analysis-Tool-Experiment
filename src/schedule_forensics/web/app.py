@@ -42,6 +42,7 @@ from schedule_forensics.ai import (
 from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import Narrative
 from schedule_forensics.ai.narrative import build_narrative
+from schedule_forensics.ai.qa import answer_question, build_fact_sheet
 from schedule_forensics.engine import (
     analyze_floats,
     audit_schedule,
@@ -96,7 +97,8 @@ _LAYOUT = Template(
 <script src="/static/theme.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a>
+<nav><a href="/">Dashboard</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
+<a href="/cei">Bow Wave / CEI</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -559,6 +561,58 @@ def create_app(
             f"for the reason): {names}</div>"
         )
 
+    @app.get("/path", response_class=HTMLResponse)
+    def path_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Path Analysis",
+                "<div class=panel>Load a schedule to run the SSI-style path analysis.</div>",
+            )
+        keys = [k for k, _ in st.ordered_versions()]
+        return _page(st, "Path Analysis", _path_body(keys, st.target_uid))
+
+    @app.post("/api/ask/{name}")
+    def ask(name: str, question: str = Form("")) -> JSONResponse:
+        """Grounded Q&A: engine facts only; the model may phrase, never invent (ai.qa)."""
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        text = question.strip()[:500]
+        if not text:
+            return JSONResponse({"error": "ask a question"}, status_code=422)
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        facts = build_fact_sheet(
+            sch,
+            analysis.cpm,
+            analysis.audit,
+            analysis.findings,
+            analysis.float_bands,
+            analysis.completion,
+            compute_finish_forecasts(sch, analysis.cpm),
+        )
+        answer, used = answer_question(_active_backend(st), facts, text)
+        return JSONResponse(
+            {
+                "answer": answer,  # null => no local model active / answer failed the gate
+                "facts": [
+                    {
+                        "text": f.text,
+                        "citations": [
+                            {"file": c.source_file, "uid": c.unique_id, "task": c.task_name}
+                            for c in f.citations[:3]
+                        ],
+                    }
+                    for f in used
+                ],
+            }
+        )
+
     @app.get("/trend", response_class=HTMLResponse)
     def trend_view(target: str | None = Query(None)) -> HTMLResponse:
         st = session()
@@ -900,6 +954,46 @@ durations. Day variances are calendar days.</p>
 <table>{rows}</table></div>"""
 
 
+def _path_body(keys: list[str], target_uid: int | None) -> str:
+    """The SSI-style path-analysis workspace: controls, data grid left, scalable Gantt right.
+
+    All interaction is client-side (`static/path.js`) over `/api/driving` + `/api/ask` —
+    field add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
+    line, and the grounded ask-the-AI panel."""
+    options = "".join(f'<option value="{_e(k)}">{_e(k)}</option>' for k in keys)
+    return f"""
+<div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
+<p class=muted>Pick a schedule and a target UniqueID: the driving path (slack &le; 0) and the
+secondary/tertiary tiers within your day-bands trace back from it, SSI-style — data on the
+left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
+filter rows, and hide completed work.</p>
+<div class=viz-controls id=pathControls>
+<label>Schedule <select id=pathSchedule>{options}</select></label>
+<label>Target UID <input id=pathTarget type=number min=1 value="{target_uid if target_uid is not None else ""}" placeholder="UID"></label>
+<label>Secondary &le; <input id=pathSec type=number min=1 value=10 title="days of driving slack"> d</label>
+<label>Tertiary &le; <input id=pathTer type=number min=1 value=20 title="days of driving slack"> d</label>
+<button id=pathRun type=button>Trace</button>
+<label><input id=pathHideDone type=checkbox> hide 100% complete</label>
+<label>Tier <select id=pathTier><option value="">all</option><option>DRIVING</option>
+<option>SECONDARY</option><option>TERTIARY</option><option>BEYOND</option></select></label>
+<label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
+<label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
+</div>
+<div id=pathFields class=muted></div>
+<div id=pathStatus class=muted></div>
+<div id=pathView class=path-view></div></div>
+<div class=panel><h2>Ask the AI about this schedule</h2>
+<p class=muted>Answers are grounded in the engine's computed, cited facts. With no local
+model active you get the matching facts themselves; a model answer that introduces any
+number the engine never computed is discarded automatically.</p>
+<div class=viz-controls>
+<input id=askInput type=text size=60 maxlength=500
+ placeholder="e.g. Why is the finish slipping? How many critical activities?">
+<button id=askBtn type=button>Ask</button></div>
+<div id=askOut></div></div>
+<script src="/static/path.js"></script>"""
+
+
 def _forecast_body(schedules: list[Schedule], sets: list[ForecastSet]) -> str:
     """The three-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
     performance, plus the per-version forecast drift."""
@@ -1201,6 +1295,14 @@ def _driving_data(
         tertiary_max_days=tertiary,
         cpm_result=cpm,
     )
+    cal = sch.calendar
+    per_day = cal.working_minutes_per_day
+
+    def day(ordinal: int | None) -> str | None:
+        if ordinal is None:
+            return None
+        return offset_to_datetime(sch.project_start, ordinal, cal).date().isoformat()
+
     rows = []
     for uid in sorted(results):
         timing = cpm.timings.get(uid)
@@ -1209,18 +1311,32 @@ def _driving_data(
             {
                 "unique_id": uid,
                 "name": task.name,
+                "wbs": task.wbs or "",
                 "tier": str(results[uid].tier),
                 "driving_slack_days": int(results[uid].driving_slack_days),
                 "on_driving_path": results[uid].on_driving_path,
                 "start_ord": timing.early_start if timing else None,
                 "finish_ord": timing.early_finish if timing else None,
+                "start": day(timing.early_start if timing else None),
+                "finish": day(timing.early_finish if timing else None),
+                "baseline_finish": _iso_date(task.baseline_finish),
+                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
+                "total_float_days": (
+                    float(round(timing.total_float / per_day, 1)) if timing else None
+                ),
                 "percent_complete": task.percent_complete,
                 "is_milestone": task.is_milestone,
+                "resource_names": ", ".join(task.resource_names),
             }
         )
     # waterfall order: earliest finish first, so the chain cascades to the target's finish
     rows.sort(key=lambda r: (r["finish_ord"] is None, r["finish_ord"], r["start_ord"]))
-    return {"target_uid": target, "target_name": by_id[target].name, "rows": rows}
+    return {
+        "target_uid": target,
+        "target_name": by_id[target].name,
+        "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        "rows": rows,
+    }
 
 
 def _compare_body(
