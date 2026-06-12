@@ -1138,4 +1138,5 @@ this file is the running history.
   verbatim. All local.
 
 ### Parity / tests
-- 12 new tests; parity 10/10; all gates clean; zero new dependencies.
+- **646 passed, 3 skipped** (12 new); parity 10/10; engine ≈98%, overall ≈98%; all gates
+  clean; zero new dependencies.

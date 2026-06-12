@@ -64,10 +64,10 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**631 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
+TDD + pytest (**646 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#74 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
+with PRs (#55–#79 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
 compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp`/`.xer` tolerance,
 the Bow Wave/CEI view, the target-UID/theme/20-file features, the calendar-true day math /
 CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, the XER cost roll-up, and the M15 .pbix enrichment); 30 ADRs

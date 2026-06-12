@@ -29,9 +29,9 @@ _MAX_FACTS = 12
 _WORD_RE = re.compile(r"[a-z0-9]{3,}")
 #: Question words that carry no selection signal.
 _STOPWORDS = frozenset(
-    "the and for are was were will what when where which who why how does did with this "
+    "the and for are was were will what when where which who why how does did with this "  # noqa: SIM905
     "that have has been being can could should would much many tell show give about than "
-    "schedule project activity activities task tasks".split()  # noqa: SIM905
+    "schedule project activity activities task tasks".split()
 )
 
 
@@ -54,9 +54,7 @@ def build_fact_sheet(
     ) or tuple(Citation(label, t.unique_id, t.name) for t in schedule.tasks[:3])
 
     tasks = non_summary(schedule)
-    data_date = (
-        schedule.status_date.date().isoformat() if schedule.status_date else "none recorded"
-    )
+    data_date = schedule.status_date.date().isoformat() if schedule.status_date else "none recorded"
     completed = sum(1 for t in tasks if t.percent_complete >= 100.0)
     in_progress = sum(1 for t in tasks if 0.0 < t.percent_complete < 100.0)
     cpm_finish = offset_to_datetime(
