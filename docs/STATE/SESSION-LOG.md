@@ -1110,3 +1110,9 @@ this file is the running history.
   the three-method **/forecast** page with the drift table (everything #70–#75 shipped).
 - PR #76 merged; final HANDOFF consolidation (PR #77). Session closes with **all of #69–#76
   merged**, main CI green throughout, 631 passed / parity 10/10, and nothing blocked.
+- Operator request: a **unique desktop icon**. Redesigned `packaging/make_icon.py`
+  (stdlib-only, 4x supersampled, deterministic): the dark dashboard tile + white ▲ +
+  red/blue/green Gantt waterfall + gold dashed data-date line, packed as a 5-entry
+  256/128/64/32/16 PNG-in-ICO; same bytes serve as the **browser favicon**
+  (`/static/favicon.ico`, linked in the layout) and a 256px Linux PNG. Sync + determinism
+  pinned by tests; ships on PR #77.

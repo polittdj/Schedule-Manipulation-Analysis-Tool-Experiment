@@ -3,5 +3,7 @@ Type=Application
 Name=Schedule Forensics
 Comment=Local, NASA-themed forensic schedule-analysis tool (offline / CUI-safe)
 Exec=schedule-forensics
+# point Icon at your clone's packaging/schedule-forensics.png (absolute path)
+Icon=schedule-forensics
 Terminal=true
 Categories=Office;ProjectManagement;

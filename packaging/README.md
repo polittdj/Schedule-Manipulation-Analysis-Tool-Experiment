@@ -25,19 +25,26 @@ pip install -e .
 powershell -ExecutionPolicy Bypass -File packaging\windows\Install-Desktop-Shortcut.ps1
 ```
 
-This creates **“Schedule Forensics”** on your Desktop (with the bundled icon). Double-click it:
+This creates **“Schedule Forensics”** on your Desktop (with the tool's own icon). Double-click it:
 the tool starts with **no console window** (it runs `pythonw.exe -m schedule_forensics.launcher`),
-opens your browser, and **stops automatically when you close the window**.
+opens your browser, and **stops automatically when you close the window**. No admin rights are
+needed — the shortcut lives in your own Desktop folder.
 
+- **The icon is the tool's unique mark** — the dark dashboard tile with the white ▲, the
+  red/blue/green Gantt waterfall, and the gold dashed **data-date line** cutting through it —
+  rendered at 256/128/64/32/16 px so it is crisp on the desktop, taskbar, and Alt-Tab. The same
+  image is the **browser-tab favicon**, so the running tool matches the icon you clicked.
 - Portable alternative (no installer): double-click **`packaging\windows\Schedule Forensics.vbs`**
   — works when `pythonw` is on PATH (i.e. the venv is active/installed).
-- The icon is `packaging\windows\schedule-forensics.ico` (regenerate with `python packaging\make_icon.py`).
+- Regenerate the icon (Windows `.ico`, Linux `.png`, web favicon — always in sync) with
+  `python packaging\make_icon.py`.
 
 ## Run (other ways / other OSes)
 
 - **Any OS (terminal):** `schedule-forensics`  (or `python -m schedule_forensics.launcher`)
 - **Linux desktop icon:** copy `schedule-forensics.desktop` to `~/.local/share/applications/`
-  (and/or `~/Desktop/`); mark it trusted/executable.
+  (and/or `~/Desktop/`); mark it trusted/executable, and point its `Icon=` line at your clone's
+  `packaging/schedule-forensics.png` (absolute path) for the tool's mark.
 - **macOS:** double-click `schedule-forensics.command` (run `chmod +x` on it once).
 
 All paths call the same entry point (`schedule_forensics.launcher:main`). The server binds

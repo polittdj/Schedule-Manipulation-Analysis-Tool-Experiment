@@ -29,8 +29,12 @@ pip install -e .                # installs the `schedule-forensics` launcher com
 ## 2. Launch
 
 - **Terminal:** `schedule-forensics`  (or `python -m schedule_forensics.launcher`)
-- **Desktop icon:** use the shortcut for your OS in [`packaging/`](../packaging/README.md)
-  (Linux `.desktop`, macOS `.command`, Windows `.bat`).
+- **Desktop icon:** on Windows run
+  `powershell -ExecutionPolicy Bypass -File packaging\windows\Install-Desktop-Shortcut.ps1`
+  once (no admin needed) to get a double-clickable **Schedule Forensics** Desktop icon with the
+  tool's unique mark — the dark tile with the white ▲, the Gantt waterfall, and the gold
+  data-date line (also the browser-tab favicon). Other OSes: see
+  [`packaging/`](../packaging/README.md) (Linux `.desktop` + PNG icon, macOS `.command`).
 
 The launcher picks a free **127.0.0.1** port, starts the server, and opens your browser at the
 dashboard. Stop it with `Ctrl-C`.
