@@ -83,8 +83,16 @@ def compute_dcma14(
     )
     out["DCMA01"] = _r("DCMA01", "Logic", len(logic_off), n_inc, "%", 5.0, Direction.LE, logic_off)
 
-    # DCMA-02 Leads — relationships with negative lag (count, must be 0).
-    leads = tuple(r.successor_id for r in links if r.lag_minutes < 0)
+    # DCMA-02 Leads — incomplete ACTIVITIES with a negative-lag predecessor link (count,
+    # must be 0). Fuse counts activities, not links ("0 activities (0%) have 2. Leads" in
+    # the golden Fuse briefing): two leads into one task is ONE offender.
+    leads = tuple(
+        dict.fromkeys(
+            r.successor_id
+            for r in links
+            if r.lag_minutes < 0 and pct_by.get(r.successor_id, 0.0) < 100.0
+        )
+    )
     out["DCMA02"] = MetricResult(
         "DCMA02",
         "Leads",
@@ -100,11 +108,14 @@ def compute_dcma14(
         leads,
     )
 
-    # DCMA-03 Lags — relationships with positive lag into an incomplete successor.
+    # DCMA-03 Lags — incomplete ACTIVITIES with a positive-lag predecessor link
+    # (activity-counted like DCMA-02; the golden P5 value 1 is one such activity).
     lags = tuple(
-        r.successor_id
-        for r in links
-        if r.lag_minutes > 0 and pct_by.get(r.successor_id, 0.0) < 100.0
+        dict.fromkeys(
+            r.successor_id
+            for r in links
+            if r.lag_minutes > 0 and pct_by.get(r.successor_id, 0.0) < 100.0
+        )
     )
     out["DCMA03"] = _r("DCMA03", "Lags", len(lags), n_links, "%", 5.0, Direction.LE, lags)
 

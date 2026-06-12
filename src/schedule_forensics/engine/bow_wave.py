@@ -10,9 +10,10 @@ each calendar month carries three counts over the non-summary activities —
 Work that keeps sliding right shows as a swelling "bow wave" of scheduled bars just past
 each snapshot's status date. The **Current Execution Index (CEI)** quantifies it per
 snapshot pair: of the activities the *prior* snapshot planned to finish in the following
-month, how many actually finished —
+month, how many of THOSE actually finished by the end of it (completed_on_time /
+forecast_to_be_finished — the metric dictionary's CEI (Finish) definition) —
 
-    CEI(k) = finished_in_P(snapshot k) / planned_for_P(snapshot k-1)
+    CEI(k) = finished_by_end_of_P(planned set, snapshot k) / planned_for_P(snapshot k-1)
 
 where ``P`` is the calendar month after snapshot ``k-1``'s status date. The view also
 reports what snapshot ``k`` *re-scheduled* for ``P`` (the push-to-the-right evidence).
@@ -96,6 +97,8 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
         raise ValueError("the bow-wave analysis needs at least one schedule version")
 
     per_snapshot: list[tuple[list[dt.datetime], list[dt.datetime], list[dt.datetime]]] = []
+    sched_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> scheduled-finish month
+    fin_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> actual-finish month
     data_months: list[int] = []
     status_yms: list[int | None] = []
     for sch in schedules:
@@ -104,6 +107,10 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
         scheduled = [t.finish for t in tasks if t.finish is not None]
         finished = [t.actual_finish for t in tasks if t.actual_finish is not None]
         per_snapshot.append((baselined, scheduled, finished))
+        sched_ym_by_uid.append({t.unique_id: _ym(t.finish) for t in tasks if t.finish is not None})
+        fin_ym_by_uid.append(
+            {t.unique_id: _ym(t.actual_finish) for t in tasks if t.actual_finish is not None}
+        )
         data_months.extend(_ym(d) for d in (*baselined, *scheduled, *finished))
         status_yms.append(_ym(sch.status_date) if sch.status_date is not None else None)
 
@@ -142,10 +149,19 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
             period = prior_status + 1  # the month after the prior snapshot's data date
             if lo <= period <= hi:
                 i = period - lo
-                prior_scheduled = _bucket(per_snapshot[k - 1][1], lo, n)
-                planned = prior_scheduled[i]
+                # CEI (Finish) = completed_on_time / forecast_to_be_finished (the metric
+                # dictionary's reconstructed deck definition): of the activities the
+                # PRIOR snapshot scheduled to finish in the period, count those whose
+                # actual finish lands by the END of that period — an unplanned finish in
+                # the month earns no credit, an early finish of a planned one does.
+                planned_uids = {uid for uid, ym in sched_ym_by_uid[k - 1].items() if ym == period}
+                planned = len(planned_uids)
                 resched = s[i]
-                done = f[i]
+                done = sum(
+                    1
+                    for uid in planned_uids
+                    if fin_ym_by_uid[k].get(uid) is not None and fin_ym_by_uid[k][uid] <= period
+                )
                 cei_period = _label(period)
                 cei = round(done / planned, 2) if planned else None
         status = status_yms[k]

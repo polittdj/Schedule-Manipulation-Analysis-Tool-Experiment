@@ -177,7 +177,11 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     schedule = _load("TP3_Outage_DCMA_Seeded.xml")
     checks = {c.name: c for c in audit_schedule(schedule).checks}
     assert checks["Logic"].count == 4  # 14 (no pred, in progress), 32/33/42 (no succ)
-    assert checks["Leads"].count == 2
+    # Fuse counts ACTIVITIES, not links: both planted leads target UID 29 -> ONE offender
+    # (operator-verified against the Fuse ribbon: Leads 1, Lags 3).
+    leads = checks["Leads"]
+    assert leads.count == 1
+    assert [c.unique_id for c in leads.citations] == [29]
     assert checks["Lags"].count == 3
     assert checks["FS Relationships"].value == 76.0  # 19 of 25 (< 90% -> FAIL)
     hard = checks["Hard Constraints"]
@@ -190,6 +194,31 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     assert checks["Invalid Dates"].count == 4  # 31 (actual after DD) + 3 stale forecasts
     assert checks["BEI"].value == 0.62  # 8 finished of 13 baselined to finish by the DD
     assert checks["Missed Activities"].count == 7
+
+
+def test_tp3_schedule_quality_matches_the_operators_fuse_ribbon() -> None:
+    """The Fuse §A ribbon values the operator captured on 2026-06-12 — every row."""
+    from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
+
+    sq = compute_schedule_quality(_load("TP3_Outage_DCMA_Seeded.xml"))
+    assert sq["missing_logic"].count == 8  # Fuse: 8 (38%)
+    assert sq["logic_density"].value == 2.38
+    assert sq["critical"].count == 5  # Fuse: 5 (42%)
+    assert sq["hard_constraints"].count == 2
+    assert sq["negative_float"].count == 3
+    assert sq["insufficient_detail"].count == 8  # Fuse: 8 (42%) — the 10%-rule decode
+    assert sq["insufficient_detail"].offender_uids == (13, 14, 23, 24, 25, 26, 27, 29)
+    assert sq["number_of_lags"].count == 3  # Fuse: 3 (14%) — distinct activities
+    assert sq["number_of_leads"].count == 1  # Fuse: 1 (5%) — both leads target UID 29
+    assert sq["merge_hotspot"].count == 2
+
+
+def test_tp4_cei_follows_the_completed_on_time_definition() -> None:
+    """CEI (Finish) = completed_on_time / forecast_to_be_finished (metric dictionary):
+    v4 must NOT get credit for an unplanned March-spillover finish (0.50, not 1.00)."""
+    versions = [_load(f"TP4_DataCenter_v{i}.xml") for i in range(1, 6)]
+    ceis = [s.cei for s in compute_bow_wave(versions).snapshots]
+    assert ceis == [None, 0.67, 0.67, 0.5, 0.0]
 
 
 def test_tp4_series_orders_trends_and_flags_the_v4_manipulation() -> None:

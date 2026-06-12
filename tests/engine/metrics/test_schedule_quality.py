@@ -10,7 +10,6 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.metrics import compute_schedule_quality
-from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -75,18 +74,53 @@ def test_missing_logic_flags_open_ends() -> None:
     assert q["missing_logic"].count == 2
 
 
-def test_insufficient_detail_compares_days_on_the_schedules_calendar() -> None:
-    # 45 x 480 minutes is 45 days at 480/day (an offender) but 36 days on a 10-hour
-    # calendar — the "44 working days" tripwire is defined in days, not minutes.
-    task = Task(unique_id=1, name="A", duration_minutes=600, baseline_duration_minutes=45 * 480)
-    q10 = compute_schedule_quality(
+def test_insufficient_detail_is_ten_percent_of_project_working_duration() -> None:
+    """Fuse's Insufficient Detail™: baseline duration > 10% of the project's working
+    duration, both in working days (decoded against the golden Fuse briefing and the
+    operator's TP3 Fuse run). The same 30-day task offends in a 100-day project
+    (30 > 10) but not in a 400-day one (30 < 40)."""
+    long_task = Task(unique_id=1, name="A", duration_minutes=30 * DAY, percent_complete=0.0)
+    rels = (Relationship(predecessor_id=1, successor_id=2),)
+    q_small = compute_schedule_quality(
         Schedule(
-            name="tens",
+            name="s",
             project_start=MON,
-            calendar=Calendar(name="Tens", working_minutes_per_day=600),
-            tasks=(task,),
+            tasks=(long_task, Task(unique_id=2, name="B", duration_minutes=70 * DAY)),
+            relationships=rels,
         )
     )
-    assert q10["insufficient_detail"].count == 0
-    q8 = compute_schedule_quality(Schedule(name="s", project_start=MON, tasks=(task,)))
-    assert q8["insufficient_detail"].count == 1
+    assert q_small["insufficient_detail"].count == 2  # 30 and 70 both > 10% of 100 wd
+    q_big = compute_schedule_quality(
+        Schedule(
+            name="s",
+            project_start=MON,
+            tasks=(long_task, Task(unique_id=2, name="B", duration_minutes=370 * DAY)),
+            relationships=rels,
+        )
+    )
+    # project = 400 wd -> threshold 40: the 30-day task is fine, the 370-day one offends
+    assert q_big["insufficient_detail"].count == 1
+    assert q_big["insufficient_detail"].offender_uids == (2,)
+
+
+def test_insufficient_detail_uses_the_baseline_duration_when_present() -> None:
+    """A 5-day-planned task whose actual span stretched to 47 working days stays OUT —
+    Fuse counted TP3's offenders on the baseline axis (the operator-verified set of 8)."""
+    stretched = Task(
+        unique_id=1,
+        name="A",
+        duration_minutes=47 * DAY,
+        baseline_duration_minutes=5 * DAY,
+        percent_complete=100.0,
+    )
+    spacer = Task(unique_id=2, name="B", duration_minutes=60 * DAY, percent_complete=0.0)
+    q = compute_schedule_quality(
+        Schedule(
+            name="s",
+            project_start=MON,
+            tasks=(stretched, spacer),
+            relationships=(Relationship(predecessor_id=1, successor_id=2),),
+        )
+    )
+    # project ~107 wd -> threshold ~10.7: baseline 5 d stays out; the 60 d spacer counts
+    assert q["insufficient_detail"].offender_uids == (2,)
