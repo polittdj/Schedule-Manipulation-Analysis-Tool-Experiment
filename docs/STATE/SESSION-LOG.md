@@ -1116,3 +1116,10 @@ this file is the running history.
   256/128/64/32/16 PNG-in-ICO; same bytes serve as the **browser favicon**
   (`/static/favicon.ico`, linked in the layout) and a 256px Linux PNG. Sync + determinism
   pinned by tests; ships on PR #77.
+- **Operator-hit bug (the new desktop icon):** clicking it opened the browser onto a dead
+  port (ERR_CONNECTION_REFUSED). Root cause: `pythonw.exe` launches with
+  `sys.stdout`/`sys.stderr = None`; `print()` drops silently but **uvicorn's logging setup
+  touches the streams** → the server died right after the browser-open timer fired. Fixed
+  (PR #78): `launcher._ensure_streams()` rebinds missing streams to devnull (never a log
+  file — request paths carry schedule names, CUI stays off disk); regression test drives
+  the real uvicorn.Config path with None streams (fails without the guard, by demonstration).

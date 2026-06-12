@@ -10,7 +10,9 @@ without binding a real port.
 
 from __future__ import annotations
 
+import os
 import socket
+import sys
 import threading
 import webbrowser
 from collections.abc import Callable
@@ -25,6 +27,22 @@ _BROWSER_DELAY = 1.0
 
 Serve = Callable[..., None]
 Browser = Callable[[str], bool]
+
+
+def _ensure_streams() -> None:
+    """Make a no-console launch survivable (the desktop icon runs ``pythonw.exe``).
+
+    Under ``pythonw`` (and other windowless launches) ``sys.stdout``/``sys.stderr`` are
+    ``None``: ``print()`` is silently dropped, but uvicorn's logging setup calls
+    ``sys.stdout.isatty()`` — the server died right after the browser-open timer started,
+    so the icon opened a browser onto a dead port (ERR_CONNECTION_REFUSED). Missing
+    streams are rebound to a devnull sink — deliberately **not** a log file: request
+    paths carry schedule names, and CUI stays off disk.
+    """
+    for name in ("stdout", "stderr"):
+        if getattr(sys, name) is None:
+            # the sink must outlive this function — uvicorn holds it for the process life
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))  # noqa: SIM115
 
 
 def find_free_port(host: str = DEFAULT_HOST) -> int:
@@ -51,6 +69,7 @@ def main(
     off). ``serve``/``browser``/``timer`` are injectable for testing; by default they are
     :func:`schedule_forensics.web.app.serve` / ``webbrowser.open`` / ``threading.Timer``.
     """
+    _ensure_streams()  # pythonw (the desktop icon) launches with stdout/stderr = None
     if not is_loopback_host(host):
         raise ValueError(f"refusing to bind non-loopback host {host!r} — the tool is local-only.")
     serve_fn = serve or serve_app
