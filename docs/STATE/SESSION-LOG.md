@@ -1123,3 +1123,20 @@ this file is the running history.
   (PR #78): `launcher._ensure_streams()` rebinds missing streams to devnull (never a log
   file — request paths carry schedule names, CUI stays off disk); regression test drives
   the real uvicorn.Config path with None streams (fails without the guard, by demonstration).
+
+
+## Path-analysis sitting — 2026-06-12 (PR #79; Fable 5)
+
+- Operator work order → **/path**, the SSI-style workspace (ADR-0031): target UID +
+  user-defined secondary/tertiary day-bands over the SSI-parity driving-slack engine;
+  data grid left (add/remove columns, tier/substring filters, hide-100%-complete),
+  **scalable** Gantt right (px/day zoom, month ticks, gold data-date line);
+  `/api/driving` extended with the SSI grid fields + ISO dates + data date.
+- **Ask the AI** (`ai/qa.py`, `POST /api/ask/{schedule}`): engine-computed cited fact
+  sheet; term-overlap selection; local model may phrase, **figure-subset gate** discards
+  any answer containing a number the engine never computed; Null backend = matching facts
+  verbatim. All local.
+
+### Parity / tests
+- **644 passed, 3 skipped** (12 new); parity 10/10; engine ≈98%, overall ≈98%; all gates
+  clean; zero new dependencies.

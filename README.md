@@ -65,18 +65,21 @@ the heartbeat stops); the in-page **Quit** control stops it immediately.
    behind, duration ratios, MEI), interactive charts, an **MS-Project-style Gantt grid** (add/remove
    columns beside a timeline with critical bars, progress, milestones, summaries and the data-date
    line), and a driving-path Gantt.
-3. **Trend** (≥2 versions, 10+ supported) — every version ordered by data date: headline table, Net
+3. **Path Analysis** — SSI-style: target UID + user-defined secondary/tertiary day-bands;
+   data grid left (add/remove/filter columns, hide completed), scalable Gantt right with the
+   data-date line; plus **Ask the AI** — grounded, cited, never an invented number.
+4. **Trend** (≥2 versions, 10+ supported) — every version ordered by data date: headline table, Net
    Finish Impact across the series, trend charts, per-metric quality-trend sentences, and
    manipulation signals per consecutive pair.
-4. **Bow Wave / CEI** (≥2 versions) — animated per-snapshot monthly finish bars with the data-date
+5. **Bow Wave / CEI** (≥2 versions) — animated per-snapshot monthly finish bars with the data-date
    marker and the Current Execution Index table; auto-play to watch slipped work push right.
-5. **Forecast** — three independent finish forecasts (CPM logic, completion-rate extrapolation,
+6. **Forecast** — three independent finish forecasts (CPM logic, completion-rate extrapolation,
    earned-schedule IEAC(t)) with the inputs each used, plus a per-version forecast-drift table.
    Missing inputs show "—", never a fabricated date.
-6. **Executive Briefing** — a print-ready, fully cited diagnostic briefing in the Acumen Fuse style
+7. **Executive Briefing** — a print-ready, fully cited diagnostic briefing in the Acumen Fuse style
    (workbook summary, trend analysis, per-project summaries with behind/ahead-of-schedule days, and
    per-project quality verdicts).
-7. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
+8. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
    manipulation-trend signals (deleted logic, shortened durations, deleted tasks, baseline/actual
    edits) with the Net Finish Impact in calendar days. Honest progress raises no false flags.
 
