@@ -810,6 +810,37 @@ focuses on it, and Compare shows its movement. Set or clear it in the header.</p
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
 
 
+_WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def _calendar_panel(sch: Schedule) -> str:
+    """The working calendar the analysis runs on — imported from the file (ADR-0028).
+
+    Every computed date, float, and day-denominated threshold rides this calendar, so the
+    analyst must be able to verify the time basis (and spot a fail-soft default) on the page.
+    """
+    cal = sch.calendar
+    days = ", ".join(_WEEKDAY_NAMES[d] for d in cal.work_weekdays)
+    hours_text = f"{cal.working_minutes_per_day / 60:g} h/day ({cal.working_minutes_per_day} min)"
+    if cal.holidays:
+        shown = ", ".join(d.isoformat() for d in cal.holidays[:10])
+        extra = f" (+{len(cal.holidays) - 10} more)" if len(cal.holidays) > 10 else ""
+        holidays = f"{len(cal.holidays)} — {shown}{extra}"
+    else:
+        holidays = "none"
+    return f"""
+<div class=panel><h2>Working calendar</h2>
+<p class=muted>The time basis behind every computed date, float, and day-denominated
+threshold — imported from the file's project calendar (the standard 8h/Mon-Fri default
+when the file carries none).</p>
+<table>
+<tr><th>Calendar</th><td>{_e(cal.name)}</td></tr>
+<tr><th>Working day</th><td>{_e(hours_text)}</td></tr>
+<tr><th>Work week</th><td>{_e(days)}</td></tr>
+<tr><th>Holidays</th><td>{_e(holidays)}</td></tr>
+</table></div>"""
+
+
 def _analysis_body(
     key: str,
     sch: Schedule,
@@ -853,6 +884,7 @@ metadata)</span></h3>
 </div></div>
 <script src="/static/app.js"></script>"""
     return f"""{viz}
+{_calendar_panel(sch)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A</p>
 <table><tr><th>Check</th><th>Status</th><th>Value</th><th>Suggested improvement</th></tr>{audit_rows}</table></div>
@@ -870,6 +902,12 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
         "source_file": sch.source_file,
         "tasks": len(sch.tasks),
         "status_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        "calendar": {
+            "name": sch.calendar.name,
+            "working_minutes_per_day": sch.calendar.working_minutes_per_day,
+            "work_weekdays": list(sch.calendar.work_weekdays),
+            "holidays": [d.isoformat() for d in sch.calendar.holidays],
+        },
         "dcma": {
             c.metric_id: {"status": str(c.status), "count": c.count, "value": c.value}
             for c in audit.checks

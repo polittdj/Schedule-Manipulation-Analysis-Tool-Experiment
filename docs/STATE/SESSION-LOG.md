@@ -1043,3 +1043,17 @@ this file is the running history.
 ### Parity / tests
 - **613 passed, 3 skipped** (5 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies.
+
+
+## Calendar-visibility sitting — 2026-06-12 (PR #73; Fable 5)
+
+- PRs #71 (cost roll-up) and #72 (recurring-exception fix) both **merged**; post-merge main
+  CI green on both squashes. No issues/feedback pending; intake still empty (M15 blocked).
+- Small transparency feature: the report page now shows the **Working calendar** panel
+  (name, h/day + exact minutes, work week, holidays with a 10-date preview) and
+  `/api/analysis` carries a `calendar` object — the time basis behind every computed
+  date/float/threshold is verifiable on the page (and a fail-soft default is visible).
+
+### Parity / tests
+- **615 passed, 3 skipped** (2 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+  mypy(strict) + bandit clean; zero new dependencies.
