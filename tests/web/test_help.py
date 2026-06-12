@@ -5,8 +5,10 @@ from __future__ import annotations
 from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
     compute_change_metrics,
+    compute_completion_performance,
     compute_dcma14,
     compute_evm_indices,
+    compute_float_bands,
     compute_net_finish_impact,
     compute_schedule_quality,
 )
@@ -22,6 +24,8 @@ def _emitted_metric_ids(p2: Schedule, p5: Schedule) -> set[str]:
         compute_baseline_compliance(p5),
         compute_evm_indices(p5),
         compute_change_metrics(p5, p2),
+        compute_float_bands(p5),
+        compute_completion_performance(p5),
     ):
         ids.update(r.metric_id for r in results.values())
     ids.add(compute_net_finish_impact(p5, p2).metric_id)
