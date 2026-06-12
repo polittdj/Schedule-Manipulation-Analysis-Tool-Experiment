@@ -1215,5 +1215,12 @@ this file is the running history.
   values; README docs index points at it. 14 new pinned tests incl. byte-determinism
   generator↔fixtures sync.
 
+- **MSP import found a real generator bug** (operator hit it on TP1): summary rollups
+  computed top-down, so the UID-0 project row read its child summaries' placeholder
+  dates - a year-0001 baseline + PT4227840H duration that MS Project rejects (the
+  engine never reads summary dates, so only the MSP round-trip could catch it).
+  Fixed deepest-first + baseline-axis read; baselines now emit DurationFormat; a new
+  guard pins every battery date to 2026-2028 and durations < 300 days (8 new tests).
+
 ### Parity / tests
-- **659 passed, 3 skipped** (14 new); parity 10/10; all gates clean; zero new deps.
+- **667 passed, 3 skipped** (22 new); parity 10/10; all gates clean; zero new deps.
