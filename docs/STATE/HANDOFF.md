@@ -247,7 +247,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**727 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**730 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -268,11 +268,11 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
 2. ~~Use the FULL screen width~~ (PR #91, merged).
 3. ~~Sparse-logic CPM mandate~~ (PR #91/ADR-0034, merged; re-verification owed).
 4. **AI at full power (operator):** ~~relaxed interpretive mode + ask panel on ALL
-   pages (workbook-wide facts) + standing disclaimer~~ (PR #92/ADR-0035). REMAINING:
-   **Executive Briefing reformat** for readability (sections/cards/tables) with
-   Ollama polish; then the **second local AI model** (any OpenAI-compatible local
-   endpoint, e.g. LM Studio/llamafile) and the dual-model cross-check / collaboration
-   mode. Loopback-only egress stays non-negotiable.
+   pages (workbook-wide facts) + standing disclaimer + Executive Briefing reformat
+   (lede/cards/cited tables, prose-only polish)~~ (PR #92/ADR-0035). REMAINING:
+   the **second local AI model** (any OpenAI-compatible local endpoint, e.g.
+   LM Studio/llamafile) and the dual-model cross-check / collaboration mode.
+   Loopback-only egress stays non-negotiable.
 5. **Forecast-drift ANIMATION** across versions (Bow-Wave-style stepper) and
    **locked Y-axis scales on ALL animated visuals** (scale = max of the metric across
    every loaded version, held through the animation — bow wave, drift, trend, path).

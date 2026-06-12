@@ -77,3 +77,8 @@
 .export-bar { margin: 0.4rem 0; display: flex; gap: 0.6rem; justify-content: flex-end; }
 .export-bar a { font-size: 0.85rem; padding: 0.15rem 0.6rem; border: 1px solid var(--border, #345);
   border-radius: 4px; text-decoration: none; }
+
+/* M18: Executive Briefing readability reformat — side-by-side project cards */
+.brief-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; margin: 0 0 18px; }
+.brief-cards .panel { margin: 0; }
+.brief-lede p { font-size: 15px; }

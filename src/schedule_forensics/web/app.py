@@ -40,7 +40,7 @@ from schedule_forensics.ai import (
     route_backend,
 )
 from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
-from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
+from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.ai.qa import answer_question, build_fact_sheet, build_workbook_fact_sheet
@@ -1961,20 +1961,69 @@ def _cite_tag(citations: tuple[Citation, ...]) -> str:
     return f"{shown}{extra}"
 
 
+def _briefing_table_html(section: BriefingSection) -> str:
+    """A section's cited table: engine figures verbatim, a citation column per row."""
+    table = section.table
+    if table is None or not table.rows:
+        return ""
+    head = ""
+    if table.headers:
+        head = "<tr>" + "".join(f"<th>{_e(h)}</th>" for h in table.headers) + "<th></th></tr>"
+    body = "".join(
+        "<tr>"
+        + "".join(f"<td>{_e(cell)}</td>" for cell in row)
+        + f"<td class=cite>{_e(_cite_tag(cites))}</td></tr>"
+        for row, cites in zip(table.rows, table.row_citations, strict=True)
+    )
+    return f"<table>{head}{body}</table>"
+
+
 def _briefing_body(briefing: ExecutiveBriefing) -> str:
-    """Render the ExecutiveBriefing as panels (print-friendly; every sentence cited)."""
+    """Render the ExecutiveBriefing readably (M18 reformat): the workbook lede as prose,
+    the cross-version trend and per-project quality verdicts as cited tables, and the
+    project summaries as side-by-side cards (polished prose + a profile strip). Every
+    statement and every table row carries its file + UID + task citation (§6)."""
     parts = [
         f"<div class=panel><h2>{_e(briefing.title)}</h2>"
         f"<p class=muted>Report generated on {_e(briefing.generated_on.strftime('%A, %B %d, %Y'))}."
         " Every statement cites file + UniqueID + task name; use the browser's Print for a"
         " hand-out copy.</p></div>"
     ]
+    cards: list[str] = []
+
+    def flush_cards() -> None:
+        if cards:
+            parts.append(f"<div class=brief-cards>{''.join(cards)}</div>")
+            cards.clear()
+
     for section in briefing.sections:
-        items = "".join(
-            f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
+        prose = "".join(
+            f"<p>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></p>"
             for s in section.statements
         )
-        parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
+        if section.kind == "project":
+            cards.append(
+                f"<div class=panel><h2>{_e(section.heading)}</h2>"
+                f"{prose}{_briefing_table_html(section)}</div>"
+            )
+            continue
+        flush_cards()
+        if section.kind == "lede":
+            parts.append(
+                f'<div class="panel brief-lede"><h2>{_e(section.heading)}</h2>{prose}</div>'
+            )
+        elif section.kind in ("trend", "quality"):
+            parts.append(
+                f"<div class=panel><h2>{_e(section.heading)}</h2>"
+                f"{_briefing_table_html(section)}</div>"
+            )
+        else:  # prose fallback — any future section kind stays readable and cited
+            items = "".join(
+                f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
+                for s in section.statements
+            )
+            parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
+    flush_cards()
     return "".join(parts)
 
 

@@ -1,4 +1,4 @@
-# ADR-0035 — AI at full power: interpretive Q&A, the ask panel on every page, the standing disclaimer
+# ADR-0035 — AI at full power: interpretive Q&A, the ask panel on every page, the standing disclaimer, the Briefing reformat
 
 Date: 2026-06-12 · Status: accepted
 
@@ -43,8 +43,16 @@ legitimate derived analysis ("the spread between the three forecasts is N days")
    on the same local routing (`route_backend`, fail-closed; air-gap tests extended over
    `ask.js`).
 
-## Still open (next PRs in the order)
+6. **Executive Briefing readability reformat** (same PR): `BriefingSection` carries a
+   ``kind`` ("lede" | "trend" | "project" | "quality") and an optional structured,
+   cited ``BriefingTable`` (``row_citations`` align 1:1 with rows — §6 holds for table
+   rows exactly as for prose). The page renders the workbook summary as a lede
+   paragraph, the cross-version trend and per-project DCMA verdicts as cited tables,
+   and the project summaries as side-by-side cards (polished prose + a profile strip).
+   The backend polishes **prose only** — table figures are engine data, never touched;
+   ``to_text``/exports keep the prose statements unchanged.
 
-Executive Briefing readability reformat (sections/cards/tables) with Ollama polish,
-then the second OpenAI-compatible local backend (LM Studio / llamafile class) with the
+## Still open (next PR in the order)
+
+The second OpenAI-compatible local backend (LM Studio / llamafile class) with the
 dual-model cross-check/collaboration mode.

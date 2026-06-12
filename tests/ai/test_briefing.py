@@ -82,6 +82,34 @@ def test_briefing_quality_section_has_verdicts(golden_project2, golden_project5)
     assert "This is the target state." in texts  # at least one passing check verdict
 
 
+def test_briefing_sections_carry_kinds_and_cited_tables(golden_project2, golden_project5) -> None:
+    """The M18 readability reformat: lede / trend table / project cards / quality tables —
+    every table row cited exactly like prose (§6)."""
+    b = build_briefing([golden_project2, golden_project5], today=TODAY)
+    by_kind = {s.kind for s in b.sections}
+    assert by_kind == {"lede", "trend", "project", "quality"}
+    for section in b.sections:
+        if section.kind == "lede":
+            assert section.table is None
+            continue
+        assert section.table is not None, section.heading
+        assert len(section.table.rows) == len(section.table.row_citations)
+        assert all(cites for cites in section.table.row_citations)  # §6: never uncited
+    trend = next(s for s in b.sections if s.kind == "trend")
+    assert trend.table is not None
+    assert trend.table.headers == ("Metric", "Oldest → newest", "Trend")
+    assert len(trend.table.rows) == len(trend.statements)  # one row per trended metric
+    project = next(s for s in b.sections if s.kind == "project")
+    assert project.table is not None and project.table.headers == ()
+    labels = [row[0] for row in project.table.rows]
+    for expected in ("Start", "Completion", "Activities", "Complete", "Milestones"):
+        assert expected in labels
+    quality = next(s for s in b.sections if s.kind == "quality")
+    assert quality.table is not None
+    assert quality.table.headers == ("DCMA check", "Count", "Value", "Verdict")
+    assert len(quality.table.rows) == len(quality.statements)  # one row per applicable check
+
+
 def test_briefing_single_version_skips_trend(golden_project5) -> None:
     b = build_briefing([golden_project5], today=TODAY)
     assert [s.heading for s in b.sections] == [

@@ -29,11 +29,34 @@ from schedule_forensics.model.task import Task
 
 
 @dataclass(frozen=True)
+class BriefingTable:
+    """A structured, cited table view of a section's figures (readability reformat).
+
+    ``headers`` may be empty for a label/value profile strip. ``row_citations`` aligns
+    1:1 with ``rows`` — the §6 cited-everything contract holds for table rows exactly
+    as it does for prose statements.
+    """
+
+    headers: tuple[str, ...]
+    rows: tuple[tuple[str, ...], ...]
+    row_citations: tuple[tuple[Citation, ...], ...]
+
+
+@dataclass(frozen=True)
 class BriefingSection:
-    """One titled section of the executive briefing."""
+    """One titled section of the executive briefing.
+
+    ``statements`` carry the cited prose (polished by the local backend, exported by
+    ``to_text``); ``kind`` + ``table`` drive the readable page rendering — the lede
+    paragraph, the cross-version trend table, the per-project profile cards, and the
+    per-check quality verdict tables. Figures in tables are engine-computed verbatim
+    (the model polishes prose only, never data).
+    """
 
     heading: str
     statements: tuple[CitedStatement, ...]
+    kind: str = "prose"  # "lede" | "trend" | "project" | "quality" | "prose"
+    table: BriefingTable | None = None
 
 
 @dataclass(frozen=True)
@@ -113,12 +136,14 @@ def _workbook_section(
         f"{_day(finishes[latest_i].date())}."
     )
     citations = _finish_drivers(schedules[latest_i], cpms[latest_i])
-    return BriefingSection("Workbook Summary", (CitedStatement(text, citations),))
+    return BriefingSection("Workbook Summary", (CitedStatement(text, citations),), kind="lede")
 
 
 def _trend_section(schedules: list[Schedule], cpms: list[CPMResult]) -> BriefingSection:
     trends = compute_quality_trend(schedules, cpms)
     statements: list[CitedStatement] = []
+    rows: list[tuple[str, ...]] = []
+    row_citations: list[tuple[Citation, ...]] = []
     for trend in trends:
         if trend.worst_index is not None and trend.worst_offender_uids:
             citations = _cite(schedules[trend.worst_index], trend.worst_offender_uids[:10])
@@ -127,7 +152,18 @@ def _trend_section(schedules: list[Schedule], cpms: list[CPMResult]) -> Briefing
         else:
             citations = _finish_drivers(schedules[-1], cpms[-1])
         statements.append(CitedStatement(trend.sentence(), citations))
-    return BriefingSection("Trend Analysis", tuple(statements))
+        rows.append((trend.name, " → ".join(f"{v:g}" for v in trend.values), trend.direction))
+        row_citations.append(citations)
+    return BriefingSection(
+        "Trend Analysis",
+        tuple(statements),
+        kind="trend",
+        table=BriefingTable(
+            headers=("Metric", "Oldest → newest", "Trend"),
+            rows=tuple(rows),
+            row_citations=tuple(row_citations),
+        ),
+    )
 
 
 def _project_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
@@ -160,6 +196,20 @@ def _project_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
             drivers,
         )
     ]
+    profile: list[tuple[str, ...]] = [
+        ("Start", _day(schedule.project_start.date())),
+        ("Completion", _day(finish.date())),
+        (
+            "Status date",
+            _day(schedule.status_date.date()) if schedule.status_date else "not statused",
+        ),
+        ("Activities", str(n)),
+        ("Complete", f"{complete} ({_pct(complete, n):g}%)"),
+        ("In progress", f"{in_progress} ({_pct(in_progress, n):g}%)"),
+        ("Planned", f"{planned} ({_pct(planned, n):g}%)"),
+        ("Milestones", str(milestones)),
+        ("Summaries", str(summaries)),
+    ]
     baseline_start, baseline_finish = _baseline_window(tasks)
     if baseline_start is not None and baseline_finish is not None:
         delta_days = (finish.date() - baseline_finish.date()).days
@@ -176,7 +226,23 @@ def _project_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
                 drivers,
             )
         )
-    return BriefingSection(f"{label} Project", tuple(statements))
+        profile.append(("Baseline window", f"{baseline_start.date()} → {baseline_finish.date()}"))
+        profile.append(
+            (
+                "Vs baseline",
+                f"{delta_days:+d} days" if delta_days else "on schedule",
+            )
+        )
+    return BriefingSection(
+        f"{label} Project",
+        tuple(statements),
+        kind="project",
+        table=BriefingTable(
+            headers=(),
+            rows=tuple(profile),
+            row_citations=tuple(drivers for _ in profile),
+        ),
+    )
 
 
 def _verdict(status: CheckStatus) -> str:
@@ -192,6 +258,8 @@ def _quality_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
     audit = audit_schedule(schedule, cpm)
     fallback = _finish_drivers(schedule, cpm)
     statements: list[CitedStatement] = []
+    rows: list[tuple[str, ...]] = []
+    row_citations: list[tuple[Citation, ...]] = []
     for check in audit.checks:
         if check.status is CheckStatus.NOT_APPLICABLE:
             continue
@@ -200,10 +268,24 @@ def _quality_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
             f"{check.name}: {check.count} of {check.population} activities ({value}). "
             f"{_verdict(check.status)}"
         )
+        verdict = _verdict(check.status)
         if check.status is CheckStatus.FAIL and check.suggested_improvement:
             text += f" {check.suggested_improvement}"
-        statements.append(CitedStatement(text, check.citations or fallback))
-    return BriefingSection(f"{label} Schedule Quality Analysis", tuple(statements))
+            verdict += f" {check.suggested_improvement}"
+        citations = check.citations or fallback
+        statements.append(CitedStatement(text, citations))
+        rows.append((check.name, f"{check.count} of {check.population}", value, verdict))
+        row_citations.append(citations)
+    return BriefingSection(
+        f"{label} Schedule Quality Analysis",
+        tuple(statements),
+        kind="quality",
+        table=BriefingTable(
+            headers=("DCMA check", "Count", "Value", "Verdict"),
+            rows=tuple(rows),
+            row_citations=tuple(row_citations),
+        ),
+    )
 
 
 def build_briefing(
@@ -244,7 +326,12 @@ def build_briefing(
         assert_all_cited(section.statements)
         polished = tuple(be.generate(s.text) for s in section.statements)
         polished_sections.append(
-            BriefingSection(section.heading, reattach(polished, section.statements))
+            BriefingSection(
+                section.heading,
+                reattach(polished, section.statements),
+                kind=section.kind,
+                table=section.table,  # tables are engine data — the model never touches them
+            )
         )
     return ExecutiveBriefing(
         title="Schedule Forensics — Diagnostic Executive Briefing",

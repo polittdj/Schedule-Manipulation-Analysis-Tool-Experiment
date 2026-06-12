@@ -1488,3 +1488,8 @@ this file is the running history.
 ### Parity / tests
 - **727 passed, 3 skipped** (10 new); parity 10/10; ruff/format/mypy/bandit(unpiped)
   clean.
+- **Briefing reformat added to the same PR #92** (the rest of item 4's first tranche):
+  `BriefingSection.kind` + structured cited `BriefingTable` (rows' citations align 1:1
+  — §6 for tables); /briefing renders lede paragraph, trend + DCMA-verdict tables with
+  a citation column, and side-by-side project cards (polished prose + profile strip).
+  Polish remains prose-only; to_text/exports unchanged. **730 passed** (3 new).
