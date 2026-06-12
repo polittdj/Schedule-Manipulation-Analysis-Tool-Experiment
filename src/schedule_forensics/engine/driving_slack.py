@@ -43,12 +43,17 @@ DEFAULT_TERTIARY_MAX_DAYS = 20
 
 
 class PathTier(StrEnum):
-    """Driving-slack magnitude tier relative to the focus task (user-configurable bands)."""
+    """Driving-slack magnitude tier relative to the focus task (user-configurable bands).
 
-    DRIVING = "DRIVING"  # driving slack <= 0 (on the driving/critical path to focus)
-    SECONDARY = "SECONDARY"  # 0 < slack <= secondary_max_days
-    TERTIARY = "TERTIARY"  # secondary_max_days < slack <= tertiary_max_days
-    BEYOND = "BEYOND"  # slack > tertiary_max_days
+    Tiers classify on SSI's axis — **whole working days** (slack floored to days): real
+    schedules carry minutes of time-of-day raggedness in their stored dates, and a chain
+    SSI shows at "0 days" of driving slack must read DRIVING here too, not fall out over
+    a 30-minute offset (the operator's 4-vs-66 driving-task discrepancy)."""
+
+    DRIVING = "DRIVING"  # slack < 1 working day (displays as 0 days — the driving path)
+    SECONDARY = "SECONDARY"  # 0 < whole days <= secondary_max_days
+    TERTIARY = "TERTIARY"  # secondary_max_days < whole days <= tertiary_max_days
+    BEYOND = "BEYOND"  # whole days > tertiary_max_days
 
 
 @dataclass(frozen=True)
@@ -58,7 +63,7 @@ class DrivingSlackResult:
     unique_id: int
     driving_slack_minutes: int
     driving_slack_days: Decimal
-    on_driving_path: bool  # driving_slack <= 0
+    on_driving_path: bool  # < 1 whole working day of slack (SSI's "0 days")
     tier: PathTier
 
 
@@ -90,14 +95,24 @@ def _date_basis(
 def _classify(
     slack_minutes: int, secondary_max_days: int, tertiary_max_days: int, minutes_per_day: int
 ) -> PathTier:
-    """Tier a slack against the user's day bands — days convert on the schedule's calendar."""
-    if slack_minutes <= 0:
+    """Tier a slack against the user's day bands on SSI's whole-working-day axis."""
+    whole_days = _whole_days(slack_minutes, minutes_per_day)
+    if whole_days <= 0:
         return PathTier.DRIVING
-    if slack_minutes <= secondary_max_days * minutes_per_day:
+    if whole_days <= secondary_max_days:
         return PathTier.SECONDARY
-    if slack_minutes <= tertiary_max_days * minutes_per_day:
+    if whole_days <= tertiary_max_days:
         return PathTier.TERTIARY
     return PathTier.BEYOND
+
+
+def _whole_days(slack_minutes: int, minutes_per_day: int) -> int:
+    """Slack in whole working days, floored — the day-granular axis SSI displays.
+
+    Sub-day slack (time-of-day raggedness in real stored dates) reads 0 days; the curated
+    goldens' slacks are exact day multiples, so their values are unchanged (parity-safe).
+    """
+    return slack_minutes // minutes_per_day
 
 
 def compute_driving_slack(
@@ -145,13 +160,14 @@ def compute_driving_slack(
             unique_id=uid,
             driving_slack_minutes=slack,
             driving_slack_days=minutes_to_days(slack, minutes_per_day=per_day),
-            on_driving_path=slack <= 0,
+            # SSI's day axis: anything under one working day of slack IS the driving path
+            on_driving_path=_whole_days(slack, per_day) <= 0,
             tier=_classify(slack, secondary_max_days, tertiary_max_days, per_day),
         )
     return results
 
 
 def driving_path(schedule: Schedule, results: dict[int, DrivingSlackResult]) -> tuple[int, ...]:
-    """The on-driving-path UniqueIDs (slack <= 0), in topological order to the focus."""
+    """The on-driving-path UniqueIDs (under one whole day of slack), topologically ordered."""
     on_path = [uid for uid, r in results.items() if r.on_driving_path]
     return topo_order(schedule, on_path)

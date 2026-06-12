@@ -141,6 +141,10 @@ rounds). Plus a /forecast falsy-zero display trap (#67 class).
 calendar, the three new report panels, and the /forecast page (everything #70–#75 shipped).
 
 ## Lessons learned (carry forward)
+- **Real stored dates are ragged to the minute; SSI thinks in whole days.** Any tier/driving
+  classification must compare on the floored-day axis or real files undercount the driving
+  path drastically (4 vs 66). And **never run imports on the event loop** — heartbeats starve
+  and the auto-shutdown watchdog kills the server mid-load (in-flight requests now hold it).
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
   importer (the `.mpp`→MSPDI→model path) was stricter than both the CPM engine and the XER importer.
   Real files need tolerance for: **external/cross-project predecessor links** (drop), self/duplicate

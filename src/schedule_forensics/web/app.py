@@ -329,7 +329,21 @@ def create_app(
     app.state.browser_seen = False  # armed once the first heartbeat arrives
     app.state.shutting_down = False
     app.state.request_shutdown = None  # set by serve() to flip the server's should_exit
+    app.state.active_requests = 0  # in-flight work holds the auto-shutdown watchdog
     app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+    @app.middleware("http")
+    async def _liveness(request: Request, call_next: Callable) -> Response:  # type: ignore[type-arg]
+        # A long import (several real .mpp files spawning Java) once starved the heartbeat
+        # and the watchdog killed the server MID-LOAD. Any request in flight is proof the
+        # operator is here: count it (the watchdog waits) and refresh the beat on completion.
+        app.state.active_requests += 1
+        try:
+            response: Response = await call_next(request)
+            return response
+        finally:
+            app.state.active_requests -= 1
+            app.state.last_beat = time.monotonic()
 
     def session() -> SessionState:
         s: SessionState = app.state.session
@@ -431,7 +445,9 @@ def create_app(
         )
 
     @app.post("/upload")
-    async def upload(files: list[UploadFile]) -> RedirectResponse:
+    def upload(files: list[UploadFile]) -> RedirectResponse:
+        # sync on purpose: parsing runs in the threadpool, so the event loop keeps serving
+        # heartbeats and pages while big native .mpp files import (Java subprocess each)
         st = session()
         accepted: list[str] = []
         errors: list[str] = []
@@ -443,7 +459,7 @@ def create_app(
             )
         for upload_file in files[:MAX_FILES]:
             name = upload_file.filename or "schedule"
-            data = await upload_file.read()
+            data = upload_file.file.read()
             try:
                 schedule = _parse_upload(name, data)
             except (ImporterError, ValueError, OSError) as exc:
@@ -1653,10 +1669,16 @@ def _is_idle(browser_seen: bool, idle_seconds: float, grace: float) -> bool:
 
 
 def _watchdog(app: FastAPI, *, poll: float = 2.0) -> None:
-    """Stop the server when the browser stops beating (closing the window = tool off)."""
+    """Stop the server when the browser stops beating (closing the window = tool off).
+
+    In-flight requests hold it off: a long import/trace is the opposite of an absent
+    operator, even when the beat goes quiet because the work itself is consuming the
+    server (the mid-load self-shutdown the operator hit)."""
     grace = app.state.idle_grace
     while not app.state.shutting_down:
         time.sleep(poll)
+        if app.state.active_requests > 0:
+            continue
         if _is_idle(app.state.browser_seen, time.monotonic() - app.state.last_beat, grace):
             logger.info("no browser heartbeat for %.0fs — shutting the tool down", grace)
             _trigger_shutdown(app)
