@@ -52,9 +52,12 @@ from schedule_forensics.engine import (
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
+from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
+    compute_completion_performance,
+    compute_float_bands,
     compute_net_finish_impact,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
@@ -93,7 +96,7 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a>
-<a href="/briefing">Executive Briefing</a>
+<a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
@@ -129,6 +132,8 @@ class _Analysis:
     cpm: CPMResult
     audit: ScheduleAudit
     compliance: dict[str, MetricResult]
+    float_bands: dict[str, MetricResult]
+    completion: dict[str, MetricResult]
     findings: tuple[Finding, ...]
     narrative: Narrative
     activity_rows: list[dict[str, object]]
@@ -141,6 +146,8 @@ def _compute_analysis(sch: Schedule) -> _Analysis:
         cpm=cpm,
         audit=audit_schedule(sch, cpm),
         compliance=compute_baseline_compliance(sch, cpm),
+        float_bands=compute_float_bands(sch, cpm),
+        completion=compute_completion_performance(sch),
         findings=recommend(sch, current_cpm=cpm),
         # the cached narrative is always the deterministic (NullBackend) one; a real
         # session-selected backend rephrases it per request via _polished_narrative
@@ -603,6 +610,29 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_cei_data(wave))
 
+    @app.get("/forecast", response_class=HTMLResponse)
+    def forecast_view() -> HTMLResponse:
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if not schedules:
+            return _page(
+                st,
+                "Forecast",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least one analyzable schedule to forecast the "
+                "finish.</div>",
+            )
+        sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
+        return _page(st, "Forecast", _skipped_notice(skipped) + _forecast_body(schedules, sets))
+
+    @app.get("/api/forecast")
+    def forecast_json() -> JSONResponse:
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
+        sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
+        return JSONResponse(_forecast_data(schedules, sets))
+
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
         st = session()
@@ -810,6 +840,145 @@ focuses on it, and Compare shows its movement. Set or clear it in the header.</p
 <p class=cite>{_e(row["name"])} (UID {target}, {_e(row["source_file"] or "schedule")})</p></div>"""
 
 
+def _float_bands_panel(analysis: _Analysis) -> str:
+    """The deck-style low-float bands (M15/ADR-0030): to-go work running out of room."""
+    fb = analysis.float_bands
+
+    def cell(mid: str) -> str:
+        r = fb[mid]
+        return f"<td>{r.count} <span class=muted>({r.value:g}%)</span></td>"
+
+    pop = fb["float_total_0"].population
+    return f"""
+<div class=panel><h2>Float analysis &mdash; low-float bands</h2>
+<p class=muted>Of the {pop} incomplete activities, how many are running out of room: at 0 days
+of float (critical or negative), under 5, and under 10 working days &mdash; cumulative bands on
+this schedule's calendar. A swelling low-float band is the early warning that the schedule is
+losing its ability to absorb slips.</p>
+<table><tr><th></th><th>0 days</th><th>&lt; 5 days</th><th>&lt; 10 days</th></tr>
+<tr><th>Total float</th>{cell("float_total_0")}{cell("float_total_lt5")}{cell("float_total_lt10")}</tr>
+<tr><th>Free float</th>{cell("float_free_0")}{cell("float_free_lt5")}{cell("float_free_lt10")}</tr>
+</table></div>"""
+
+
+def _completion_panel(analysis: _Analysis) -> str:
+    """The deck-style completion-performance read-out (M15/ADR-0030)."""
+    cp = analysis.completion
+
+    def fmt(mid: str) -> str:
+        r = cp[mid]
+        if r.unit == "%":
+            return f"{r.count} of {r.population} ({r.value:g}%)" if r.population else "&mdash;"
+        if r.unit == "days":
+            return f"{r.value:g} days (over {r.count})" if r.count else "&mdash;"
+        return f"{r.value:g}" if r.population else "&mdash;"
+
+    rows = "".join(
+        f"<tr><th>{_e(label)}</th><td>{fmt(mid)}</td></tr>"
+        for mid, label in (
+            ("completed_ahead", "Completed ahead of baseline"),
+            ("completed_on_schedule", "Completed on schedule"),
+            ("completed_behind", "Completed behind baseline"),
+            ("avg_days_ahead", "Average days ahead (early finishers)"),
+            ("avg_days_late", "Average days late (late finishers)"),
+            ("avg_completion_variance", "Average completion variance (+ = late)"),
+            ("longer_than_planned", "Activities longer than planned"),
+            ("shorter_than_planned", "Activities shorter than baseline"),
+            ("duration_ratio_min", "Duration ratio (actual / baseline) — min"),
+            ("duration_ratio_avg", "Duration ratio — average"),
+            ("duration_ratio_max", "Duration ratio — max"),
+            ("mei", "MEI (milestones finished / milestones due)"),
+            ("elapsed_since_last_finish", "Schedule elapsed since latest actual finish"),
+        )
+    )
+    return f"""
+<div class=panel><h2>Completion performance</h2>
+<p class=muted>How the completed work actually performed against its baseline: the
+ahead / on-schedule / behind split, the days gained and lost, and actual-vs-baseline
+durations. Day variances are calendar days.</p>
+<table>{rows}</table></div>"""
+
+
+def _forecast_body(schedules: list[Schedule], sets: list[ForecastSet]) -> str:
+    """The three-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
+    performance, plus the per-version forecast drift."""
+    latest_sch, latest = schedules[-1], sets[-1]
+    by_id = latest_sch.tasks_by_id
+    method_rows = "".join(
+        f"<tr><th>{_e(f.name)}</th>"
+        f"<td><b>{f.finish.isoformat() if f.finish else '&mdash;'}</b></td>"
+        f"<td class=muted>{_e(f.basis)}</td></tr>"
+        for f in latest.forecasts
+    )
+    inputs = "".join(
+        f"<tr><th>{_e(label)}</th><td>{_e(value)}</td></tr>"
+        for label, value in (
+            ("Data date", latest.as_of.isoformat() if latest.as_of else "none recorded"),
+            ("Completed activities", latest.completed_count),
+            ("To-go activities", latest.remaining_count),
+            (
+                "Historical completion rate",
+                f"{latest.rate_per_month:g} / month" if latest.rate_per_month else "n/a",
+            ),
+            ("SPI(t)", f"{latest.spi_t:g}" if latest.spi_t is not None else "n/a"),
+            (
+                "Baseline (planned) finish",
+                latest.planned_finish.isoformat() if latest.planned_finish else "n/a",
+            ),
+        )
+    )
+    cite = "; ".join(
+        f"{by_id[uid].name} (UID {uid})" for uid in latest.citation_uids[:3] if uid in by_id
+    )
+    drift = ""
+    if len(sets) >= 2:
+        drift_rows = "".join(
+            f"<tr><td>{_e(sch.source_file or sch.name)}</td>"
+            f"<td>{fs.as_of.isoformat() if fs.as_of else '-'}</td>"
+            + "".join(
+                f"<td>{f.finish.isoformat() if f.finish else '&mdash;'}</td>" for f in fs.forecasts
+            )
+            + "</tr>"
+            for sch, fs in zip(schedules, sets, strict=True)
+        )
+        drift = f"""
+<div class=panel><h2>Forecast drift across versions</h2>
+<p class=muted>The three forecasts re-run per loaded version (oldest first). Forecasts that
+keep sliding right are the bow-wave signature; methods that diverge from the CPM date tell
+you the logic and the observed performance disagree.</p>
+<table><tr><th>Version</th><th>Data date</th><th>CPM</th><th>Completion rate</th>
+<th>Earned schedule</th></tr>{drift_rows}</table></div>"""
+    return f"""
+<div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
+<p class=muted>Three independent answers to "when will it really end": the schedule's own
+logic (CPM), the observed completion throughput, and earned-schedule performance
+(IEAC(t) = AT + (PD &minus; ES) / SPI(t)). Methods that disagree are themselves a finding.
+A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated date.</p>
+<table><tr><th>Method</th><th>Forecast finish</th><th>Basis</th></tr>{method_rows}</table>
+<h3>Inputs</h3><table>{inputs}</table>
+<p class=cite>Finish-controlling: {_e(cite)}</p></div>{drift}"""
+
+
+def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[str, object]:
+    return {
+        "versions": [
+            {
+                "label": sch.source_file or sch.name,
+                "as_of": fs.as_of.isoformat() if fs.as_of else None,
+                "completed": fs.completed_count,
+                "remaining": fs.remaining_count,
+                "rate_per_month": fs.rate_per_month,
+                "spi_t": fs.spi_t,
+                "planned_finish": fs.planned_finish.isoformat() if fs.planned_finish else None,
+                "forecasts": {
+                    f.method_id: f.finish.isoformat() if f.finish else None for f in fs.forecasts
+                },
+            }
+            for sch, fs in zip(schedules, sets, strict=True)
+        ]
+    }
+
+
 _WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
@@ -885,6 +1054,8 @@ metadata)</span></h3>
 <script src="/static/app.js"></script>"""
     return f"""{viz}
 {_calendar_panel(sch)}
+{_float_bands_panel(analysis)}
+{_completion_panel(analysis)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A</p>
 <table><tr><th>Check</th><th>Status</th><th>Value</th><th>Suggested improvement</th></tr>{audit_rows}</table></div>
@@ -913,6 +1084,14 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
             for c in audit.checks
         },
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
+        "float_bands": {
+            k: {"count": v.count, "population": v.population, "value": v.value}
+            for k, v in analysis.float_bands.items()
+        },
+        "completion": {
+            k: {"count": v.count, "population": v.population, "value": v.value, "unit": v.unit}
+            for k, v in analysis.completion.items()
+        },
         "activities": analysis.activity_rows,
         "findings": [
             {

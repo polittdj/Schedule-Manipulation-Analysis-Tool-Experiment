@@ -39,6 +39,10 @@ _C = "Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR
 _EVM = "EVM performance indices (METRICS-CATALOG §3, ADR-0013)."
 _E = "Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016)."
 _SSI = "SSI MS Project add-on driving slack (SSI-DRIVING-SLACK.md, ADR-0011)."
+_PBIX = (
+    "Reference Power BI deck measure, reconstructed — the deck's DataModel DAX is "
+    "XPress9-compressed and unreadable (M15, ADR-0030)."
+)
 
 
 METRIC_DICTIONARY: dict[str, MetricDoc] = {
@@ -408,6 +412,161 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Days an activity may slip before it delays the focus (target UID).",
         "anchored backward pass to the focus task; days of slack to the focus",
         _SSI,
+    ),
+    # --- M15: reference-deck measure families (ADR-0030) ---
+    "float_total_0": _doc(
+        "float_total_0",
+        "Total Float 0 Days",
+        "Incomplete activities with no total float left (critical or negative).",
+        "count(incomplete, total_float <= 0) / incomplete",
+        _PBIX,
+    ),
+    "float_total_lt5": _doc(
+        "float_total_lt5",
+        "Total Float < 5 Days",
+        "Incomplete activities with under 5 working days of total float (cumulative band).",
+        "count(incomplete, total_float < 5d) / incomplete",
+        _PBIX,
+    ),
+    "float_total_lt10": _doc(
+        "float_total_lt10",
+        "Total Float < 10 Days",
+        "Incomplete activities with under 10 working days of total float (cumulative band).",
+        "count(incomplete, total_float < 10d) / incomplete",
+        _PBIX,
+    ),
+    "float_free_0": _doc(
+        "float_free_0",
+        "Free Float 0 Days",
+        "Incomplete activities with no free float left.",
+        "count(incomplete, free_float <= 0) / incomplete",
+        _PBIX,
+    ),
+    "float_free_lt5": _doc(
+        "float_free_lt5",
+        "Free Float < 5 Days",
+        "Incomplete activities with under 5 working days of free float (cumulative band).",
+        "count(incomplete, free_float < 5d) / incomplete",
+        _PBIX,
+    ),
+    "float_free_lt10": _doc(
+        "float_free_lt10",
+        "Free Float < 10 Days",
+        "Incomplete activities with under 10 working days of free float (cumulative band).",
+        "count(incomplete, free_float < 10d) / incomplete",
+        _PBIX,
+    ),
+    "completed_ahead": _doc(
+        "completed_ahead",
+        "Completed Ahead",
+        "Completed activities that finished before their baseline finish.",
+        "count(actual_finish < baseline_finish) / completed-with-both-dates",
+        _PBIX,
+    ),
+    "completed_on_schedule": _doc(
+        "completed_on_schedule",
+        "Completed On Schedule",
+        "Completed activities that finished exactly on their baseline finish date.",
+        "count(actual_finish == baseline_finish) / completed-with-both-dates",
+        _PBIX,
+    ),
+    "completed_behind": _doc(
+        "completed_behind",
+        "Completed Behind Baseline",
+        "Completed activities that finished after their baseline finish.",
+        "count(actual_finish > baseline_finish) / completed-with-both-dates",
+        _PBIX,
+    ),
+    "avg_days_ahead": _doc(
+        "avg_days_ahead",
+        "Average Days Ahead",
+        "Average calendar days gained, among the early finishers.",
+        "mean(baseline_finish - actual_finish) over completed-ahead",
+        _PBIX,
+    ),
+    "avg_days_late": _doc(
+        "avg_days_late",
+        "Average Days Late",
+        "Average calendar days lost, among the late finishers.",
+        "mean(actual_finish - baseline_finish) over completed-behind",
+        _PBIX,
+    ),
+    "avg_completion_variance": _doc(
+        "avg_completion_variance",
+        "Average Completion Variance",
+        "Signed average finish variance across all completed activities (+ = late).",
+        "mean(actual_finish - baseline_finish) over completed",
+        _PBIX,
+    ),
+    "longer_than_planned": _doc(
+        "longer_than_planned",
+        "Activities Longer Than Planned",
+        "Completed activities whose duration exceeded their baseline duration.",
+        "count(duration > baseline_duration) / completed-with-baseline-duration",
+        _PBIX,
+    ),
+    "shorter_than_planned": _doc(
+        "shorter_than_planned",
+        "Activities Shorter Than Baseline",
+        "Completed activities that took less than their baseline duration.",
+        "count(duration < baseline_duration) / completed-with-baseline-duration",
+        _PBIX,
+    ),
+    "duration_ratio_min": _doc(
+        "duration_ratio_min",
+        "Duration Ratio Min",
+        "Smallest actual-to-baseline duration ratio among completed activities.",
+        "min(duration / baseline_duration)",
+        _PBIX,
+    ),
+    "duration_ratio_avg": _doc(
+        "duration_ratio_avg",
+        "Duration Ratio Average",
+        "Average actual-to-baseline duration ratio among completed activities.",
+        "mean(duration / baseline_duration)",
+        _PBIX,
+    ),
+    "duration_ratio_max": _doc(
+        "duration_ratio_max",
+        "Duration Ratio Max",
+        "Largest actual-to-baseline duration ratio among completed activities.",
+        "max(duration / baseline_duration)",
+        _PBIX,
+    ),
+    "mei": _doc(
+        "mei",
+        "MEI",
+        "Milestone Execution Index — BEI restricted to milestones.",
+        "milestones finished by status / milestones baselined-to-finish by status",
+        _PBIX,
+    ),
+    "elapsed_since_last_finish": _doc(
+        "elapsed_since_last_finish",
+        "% Schedule Elapsed Since Latest Actual Finish",
+        "Share of the elapsed schedule that has passed since anything actually finished.",
+        "(status - max(actual_finish)) / (status - project_start)",
+        _PBIX,
+    ),
+    "forecast_cpm": _doc(
+        "forecast_cpm",
+        "Finish Forecast — Schedule Logic (CPM)",
+        "The network's own computed finish, given its logic, durations, and calendar.",
+        "CPM forward-pass project finish",
+        _PBIX,
+    ),
+    "forecast_rate": _doc(
+        "forecast_rate",
+        "Finish Forecast — Completion Rate",
+        "Throughput extrapolation: to-go activities at the historical completions-per-month pace.",
+        "status + (remaining / (completed / elapsed_months)) months",
+        _PBIX,
+    ),
+    "forecast_earned_schedule": _doc(
+        "forecast_earned_schedule",
+        "Finish Forecast — Earned Schedule",
+        "The standard Earned-Schedule estimate-at-completion on the working-time axis.",
+        "IEAC(t) = AT + (PD - ES) / SPI(t)",
+        _PBIX,
     ),
 }
 

@@ -1,12 +1,12 @@
-# Handoff — 2026-06-11 (deferred-items sittings: ADR-0027/0028/0029)
+# Handoff — 2026-06-12 (ADR-0027..0030 sittings — **M15 DONE; the build is COMPLETE**)
 
-**This session (three PRs):** closed all four ADR-0026 deferred items (PR #69, ADR-0027 —
-**merged**), landed **MSPDI/XER project-calendar parsing** (PR #70, ADR-0028 — **merged**:
-work week, day length, holidays; `.mpp`/`.xml`/`.xer` no longer assume 8h/Mon-Fri), then the
-**XER cost roll-up** (PR #71, ADR-0029: TASKRSRC+PROJCOST → cost/actual/budget; cost-loaded
-`.xer` now drives real SPI/CPI/TCPI).
-**Next session:** operator feedback first; then the remaining deferred work below; only the
-externally-gated **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M context).
+**This session (six PRs):** the four ADR-0026 deferred items (PR #69, ADR-0027), MSPDI/XER
+**calendar parsing** (PR #70, ADR-0028), the **XER cost roll-up** (PR #71, ADR-0029), the
+**recurring-exception fix** (PR #72), **calendar visibility** (PR #73) — all merged — and
+**M15** (PR #74, ADR-0030): the operator deposited the `.pbix`; its measure families now
+enrich the dashboard (float bands, completion performance, MEI, staleness, the three-method
+**/forecast** page with drift). **Every milestone M1–M17 is done; nothing is blocked.**
+**Next session:** operator feedback; optional items below. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -30,9 +30,11 @@ externally-gated **M15 (.pbix)** remains blocked. Model/mode: Fable 5 (1M contex
   (10/10, **non-negotiable**) + bandit + pip-audit, on push-to-main + every PR, Python 3.11 & 3.13.
 
 ## Build status
-**DONE** — M1–M14, M16, M17 complete + a full audit remediation + a large run of operator-driven
-enhancements. **M15 (.pbix enrichment) is the ONLY remaining milestone, BLOCKED** pending the operator
-depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fabricate `.pbix` content.
+**COMPLETE — all milestones M1–M17 delivered** (M15 closed by PR #74/ADR-0030 after the operator
+deposited the `.pbix`). The deck stays git-ignored CUI in `00_REFERENCE_INTAKE/pbix/` on the machine
+that received it; it does NOT travel between cloud sessions (R-12) — if a future session needs it
+again, ask the operator to re-deposit. Its DAX is XPress9-compressed: the reconstructed formulas are
+in the metric dictionary; EPI / RatioMeasure / Start-and-Finish-Ratio await a DAX export.
 
 ## What shipped earlier sittings (PRs #58–#68)
 - **#58** Full-audit remediation (ADR-0024): dropzone native form-submit; Windows `.mpp` temp-file fix;
@@ -117,9 +119,16 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
 span) are skipped + logged instead of contiguously expanding into weeks of false holidays
 (one weekly "Fridays off" pattern erased ~36 working days).
 
-**PR #73 — calendar visibility:** the report page shows a **Working calendar** panel
+**PR #73 (merged) — calendar visibility:** the report page shows a **Working calendar** panel
 (name, h/day + exact minutes, work week, holidays w/ 10-date preview) and `/api/analysis`
 carries a `calendar` object — the imported time basis is verifiable on the page.
+
+**PR #74 (ADR-0030) — M15, the last milestone:** deck read locally (Layout JSON; DataModel
+XPress9-compressed → reconstructed formulas, ambiguous measures deferred pending DAX export);
+adopted **float bands** (0/<5/<10d, calendar-aware, offenders cited; 0-day band == Acumen
+Critical 41/37), **completion performance** (ahead/on/behind, avg days, duration ratios,
+**MEI**, staleness), and the **three-method `/forecast`** (CPM / completion-rate / IEAC(t))
+with the per-version drift table; 22 metric-dictionary entries; RTM A6 + FINAL-REPORT closed.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -155,31 +164,26 @@ carries a `calendar` object — the imported time basis is verifiable on the pag
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**615 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**631 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
 venv has been missing the web deps.)
 
-## Next steps / open items
+## Next steps / open items (all OPTIONAL — the build contract is complete)
 1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
-   `importers/_common.py` (shared by both importers); ALWAYS re-run `pytest -m parity`.
-   The ADR-0026 deferred audit items are all closed (PR #69, ADR-0027).
-2. **Remaining deferred work** (rough priority order):
-   - **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — the engine models
-     one schedule-level calendar; only worth doing if the operator's real programs mix
-     calendars materially;
-   - if the operator enables real Ollama generation: watch quality — every rephrase is gated
-     (citations + exact figures, fail-closed to verbatim), so a chatty model degrades to the
-     deterministic text rather than misleading anyone;
-   - watch operator feedback on parsed calendars (PR #70): a real `.mpp`/`.xer` with an exotic
-     calendar that degrades oddly → the fail-soft log line "unreadable project calendar" names
-     the path to debug.
-3. **Tune the Bow Wave / CEI visuals** against the operator's real data vs the reference decks
-   (`engine/bow_wave.py` axis window `_MONTHS_BEFORE/AFTER`; `static/cei.js` layout) if they don't match.
-4. **M15 (.pbix)** stays blocked until the file is deposited in `00_REFERENCE_INTAKE/` (then
-   `importers/pbix.py`: unzip → DataModel/Layout, local-only; fold into dashboard; ADR; close last RTM row).
-5. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
+   `importers/_common.py`; ALWAYS re-run `pytest -m parity`. Watch for: exotic calendars
+   degrading oddly (the "unreadable project calendar" log line names the path), and how the
+   new M15 surfaces (float bands / completion performance / `/forecast`) read on real data.
+2. **Deck measures awaiting a DAX export** (ADR-0030): EPI, RatioMeasure, Start-and-Finish
+   Ratio — implement exactly when the operator provides the measure text (Tabular Editor
+   export per the intake instructions); do not guess formulas.
+3. **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — only if the
+   operator's real programs mix calendars materially.
+4. If the operator enables real Ollama generation: watch quality — every rephrase is gated
+   (citations + exact figures, fail-closed to verbatim).
+5. **Tune the Bow Wave / CEI visuals** against real data vs the reference decks if they don't match.
+6. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
 
 ## Resume command for a NEW session
 Paste this as the first message:
