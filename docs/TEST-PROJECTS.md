@@ -158,6 +158,27 @@ Both sides should show (the tool's pinned truth):
 If SSI's driving count differs, the per-UID slack column shows which chain diverged —
 that is precisely the comparison PR #80 asked for, on a file where the truth is known.
 
+### ✅ Operator-verified against SSI, 2026-06-12
+
+SSI's "Get all dependencies" trace to UID 43 listed **all 18 tasks**, and every value
+reconciles with the engine:
+
+| UIDs | SSI Driving Slack | Engine | Verdict |
+|---|---|---|---|
+| 14, 31, 32, 33, 34, 36, 38, 41, 42, 43 | 0 | 0 min | ✅ identical — the live driving path matches UID-for-UID |
+| 39 | 7 | 7.00 d | ✅ exact (SECONDARY) |
+| 37 / 35 | 15 / 20 | 15.00 / 20.00 d | ✅ exact (TERTIARY, incl. the 20 d band edge) |
+| 22 / 21 | 24.88 / 70.13 | 24.875 / 70.125 d | ✅ exact to SSI's display rounding (BEYOND) |
+| 11, 12, 13 (completed) | 0.63 / 0.63 / 0.38 | 210 / 210 / 120 min | ✅ same classification — see residual below |
+
+**Documented residual (sub-day only, by design):** SSI measures ragged gaps on the
+real two-block lunch calendar (0.63 = 300 min/480, 0.38 = 180/480); the engine uses its
+single-block model (ADR-0010), giving 0.44/0.25. Both floor to **0 whole days**, so the
+DRIVING classification is identical (ADR-0032) — the whole-day axis absorbs exactly
+this model difference. Consequence: SSI's *"Driving Slack ≤ 0d"* filter compares the
+exact sub-day value and therefore drops completed ragged tasks from its result;
+use **"Get all dependencies"** for the apples-to-apples comparison.
+
 Also worth eyeballing on this file: the report's **Completion performance** panel
 (2 ahead / 2 on / 1 behind, avg 1.5 d early / 5 calendar-days late, MEI 1.00) and
 **/forecast** (CPM 2026-09-16 · completion-rate 2027-01-31 · IEAC(t) 2027-09-21 — a

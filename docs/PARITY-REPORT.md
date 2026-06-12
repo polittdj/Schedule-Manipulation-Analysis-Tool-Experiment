@@ -96,6 +96,32 @@ Bad/Neutral/Good weighting is not published in the exports or the Acumen 8.11 gu
 count and pass/fail is reproduced exactly; the composite integer is left explicit-deferred
 (`case.json._scores_deferred`).
 
+## Battery re-verification — TP1 vs SSI on the operator's machine (2026-06-12)
+
+The synthetic battery (`docs/TEST-PROJECTS.md`) re-verified the SSI parity end-to-end on a
+file deliberately built with real-world time-of-day raggedness (the PR #80 "4-vs-66" class):
+
+| Check | SSI (operator's run) | Computed | Status |
+|---|---|---|---|
+| Tasks traced to UID 43 ("Get all dependencies") | 18 | 18 | ✅ |
+| Live driving path (incomplete, 0 days) | 10 — UIDs 14, 31, 32, 33, 34, 36, 38, 41, 42, 43 | same 10 | ✅ UID-for-UID |
+| Non-zero slacks | 7 / 15 / 20 / 24.88 / 70.13 | 7 / 15 / 20 / 24.875 / 70.125 | ✅ exact to display rounding |
+| Completed ragged tasks (11/12/13) | 0.63 / 0.63 / 0.38 days | 210 / 210 / 120 min | ✅ same whole-day class (see residual) |
+
+**Residual (documented, by design):** sub-day slack fractions differ — SSI measures on the
+real two-block lunch calendar (e.g. 0.63 = 300/480 min), the engine on its single-block
+model (ADR-0010: 0.44 = 210/480). The ADR-0032 whole-day floor absorbs the difference:
+classification agreed on all 18 tasks. SSI's "Driving Slack ≤ 0d" filter uses the exact
+sub-day value, so completed ragged tasks fall out of that view; "Get all dependencies"
+is the comparable run.
+
+Acumen Fuse on TP3 (same sitting): 7 ribbon rows matched exactly (Missing Logic 8,
+Logic Density 2.38, Critical 5, Hard Constraints 2, Negative Float 3, Lags 3, Merge
+Hotspot 2). Two rows remain definitional, pending reconciliation: **Leads** (Fuse counts
+tasks-with-leads = 1; both planted leads target UID 29 — the engine counts lead links = 2)
+and **Insufficient Detail** (Fuse counts long tasks ≈ ≥15 d = 8; the engine uses the DCMA
+44-working-day rule = 2).
+
 ## How to reproduce
 
 ```bash
