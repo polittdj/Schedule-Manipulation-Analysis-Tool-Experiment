@@ -140,6 +140,11 @@ Completed and in-progress actuals carry real-world time-of-day raggedness (16:30
 **UID 43 ("Substantial completion")**, export "All Dependencies"; in Schedule
 Forensics load the same file → Path Analysis → target 43, bands 10 / 20 → Trace.
 
+> No resource assignments, by design: MS Project's import of minimal `<Assignment>`
+> records rescheduled exactly the assigned tasks and dropped every link into them
+> (twice, operator-verified — the 23-of-30-links imports). A resource round-trip
+> fixture should be authored in MS Project itself and curated later.
+
 Both sides should show (the tool's pinned truth):
 
 | Quantity | Expected |
