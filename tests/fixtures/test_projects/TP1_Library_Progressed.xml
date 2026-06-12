@@ -9,16 +9,20 @@
   <StartDate>2026-01-05T08:00:00</StartDate>
   <CalendarUID>1</CalendarUID>
   <DefaultStartTime>08:00:00</DefaultStartTime>
+  <DefaultFinishTime>17:00:00</DefaultFinishTime>
   <MinutesPerDay>480</MinutesPerDay>
   <MinutesPerWeek>2400</MinutesPerWeek>
   <DaysPerMonth>20</DaysPerMonth>
   <HonorConstraints>1</HonorConstraints>
   <StatusDate>2026-03-31T17:00:00</StatusDate>
+  <NewTasksAreManual>0</NewTasksAreManual>
   <Calendars>
     <Calendar>
       <UID>1</UID>
       <Name>Standard</Name>
       <IsBaseCalendar>1</IsBaseCalendar>
+      <IsBaselineCalendar>0</IsBaselineCalendar>
+      <BaseCalendarUID>-1</BaseCalendarUID>
       <WeekDays>
         <WeekDay>
           <DayType>1</DayType>
@@ -106,6 +110,8 @@
       <UID>0</UID>
       <ID>0</ID>
       <Name>TP1 - Riverside Community Library</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <OutlineLevel>0</OutlineLevel>
@@ -127,13 +133,13 @@
         <Duration>PT1440H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>1</UID>
       <ID>1</ID>
       <Name>Design</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1</WBS>
@@ -157,13 +163,13 @@
         <Duration>PT480H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>11</UID>
       <ID>2</ID>
       <Name>Notice to proceed</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.1</WBS>
@@ -188,13 +194,13 @@
         <Duration>PT0H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>12</UID>
       <ID>3</ID>
       <Name>Schematic design</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.2</WBS>
@@ -215,6 +221,7 @@
       <PredecessorLink>
         <PredecessorUID>11</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -225,13 +232,13 @@
         <Duration>PT80H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>15</UID>
       <ID>4</ID>
       <Name>Geotechnical survey</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.3</WBS>
@@ -252,6 +259,7 @@
       <PredecessorLink>
         <PredecessorUID>11</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -262,13 +270,13 @@
         <Duration>PT40H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>13</UID>
       <ID>5</ID>
       <Name>Design development</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.4</WBS>
@@ -289,6 +297,7 @@
       <PredecessorLink>
         <PredecessorUID>12</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -299,13 +308,13 @@
         <Duration>PT120H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>16</UID>
       <ID>6</ID>
       <Name>Interior design package</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.5</WBS>
@@ -326,6 +335,7 @@
       <PredecessorLink>
         <PredecessorUID>12</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -336,13 +346,13 @@
         <Duration>PT64H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>14</UID>
       <ID>7</ID>
       <Name>Permitting &amp; approvals</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>1.6</WBS>
@@ -362,6 +372,7 @@
       <PredecessorLink>
         <PredecessorUID>13</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -372,13 +383,13 @@
         <Duration>PT280H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>2</UID>
       <ID>8</ID>
       <Name>Procurement</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>2</WBS>
@@ -402,13 +413,13 @@
         <Duration>PT360H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>21</UID>
       <ID>9</ID>
       <Name>Long-lead equipment procurement</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>2.1</WBS>
@@ -428,6 +439,7 @@
       <PredecessorLink>
         <PredecessorUID>13</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -438,13 +450,13 @@
         <Duration>PT360H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>22</UID>
       <ID>10</ID>
       <Name>Steel package fabrication</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>2.2</WBS>
@@ -464,6 +476,7 @@
       <PredecessorLink>
         <PredecessorUID>13</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>24000</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -474,13 +487,13 @@
         <Duration>PT240H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>3</UID>
       <ID>11</ID>
       <Name>Construction</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3</WBS>
@@ -502,13 +515,13 @@
         <Duration>PT800H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>31</UID>
       <ID>12</ID>
       <Name>Mobilization</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.1</WBS>
@@ -526,6 +539,7 @@
       <PredecessorLink>
         <PredecessorUID>14</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -536,13 +550,13 @@
         <Duration>PT40H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>32</UID>
       <ID>13</ID>
       <Name>Foundations</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.2</WBS>
@@ -560,6 +574,7 @@
       <PredecessorLink>
         <PredecessorUID>31</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -570,13 +585,13 @@
         <Duration>PT160H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>33</UID>
       <ID>14</ID>
       <Name>Steel erection</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.3</WBS>
@@ -594,12 +609,14 @@
       <PredecessorLink>
         <PredecessorUID>32</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>22</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -610,13 +627,13 @@
         <Duration>PT120H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>34</UID>
       <ID>15</ID>
       <Name>Building envelope</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.4</WBS>
@@ -634,6 +651,7 @@
       <PredecessorLink>
         <PredecessorUID>33</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -644,13 +662,13 @@
         <Duration>PT200H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>35</UID>
       <ID>16</ID>
       <Name>MEP rough-in</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.5</WBS>
@@ -668,6 +686,7 @@
       <PredecessorLink>
         <PredecessorUID>33</PredecessorUID>
         <Type>3</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>24000</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -678,13 +697,13 @@
         <Duration>PT240H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>36</UID>
       <ID>17</ID>
       <Name>Interior finishes</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.6</WBS>
@@ -702,12 +721,14 @@
       <PredecessorLink>
         <PredecessorUID>34</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>35</PredecessorUID>
         <Type>0</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>48000</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -718,13 +739,13 @@
         <Duration>PT200H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>39</UID>
       <ID>18</ID>
       <Name>Elevator install &amp; inspection</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.7</WBS>
@@ -742,6 +763,7 @@
       <PredecessorLink>
         <PredecessorUID>34</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -752,13 +774,13 @@
         <Duration>PT144H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>37</UID>
       <ID>19</ID>
       <Name>FF&amp;E installation</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.8</WBS>
@@ -776,12 +798,14 @@
       <PredecessorLink>
         <PredecessorUID>21</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>34</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -792,13 +816,13 @@
         <Duration>PT80H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>38</UID>
       <ID>20</ID>
       <Name>Commissioning</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>3.9</WBS>
@@ -816,24 +840,28 @@
       <PredecessorLink>
         <PredecessorUID>35</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>36</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>37</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>39</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -844,13 +872,13 @@
         <Duration>PT80H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>4</UID>
       <ID>21</ID>
       <Name>Closeout</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4</WBS>
@@ -872,13 +900,13 @@
         <Duration>PT160H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>41</UID>
       <ID>22</ID>
       <Name>Punch list</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.1</WBS>
@@ -896,6 +924,7 @@
       <PredecessorLink>
         <PredecessorUID>38</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -906,13 +935,13 @@
         <Duration>PT80H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>42</UID>
       <ID>23</ID>
       <Name>Final inspections</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.2</WBS>
@@ -930,6 +959,7 @@
       <PredecessorLink>
         <PredecessorUID>41</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -940,13 +970,13 @@
         <Duration>PT40H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>43</UID>
       <ID>24</ID>
       <Name>Substantial completion</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.3</WBS>
@@ -964,6 +994,7 @@
       <PredecessorLink>
         <PredecessorUID>42</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -974,13 +1005,13 @@
         <Duration>PT0H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>44</UID>
       <ID>25</ID>
       <Name>Owner training</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.4</WBS>
@@ -998,6 +1029,7 @@
       <PredecessorLink>
         <PredecessorUID>38</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -1008,13 +1040,13 @@
         <Duration>PT40H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>45</UID>
       <ID>26</ID>
       <Name>Closeout documentation</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.5</WBS>
@@ -1032,12 +1064,14 @@
       <PredecessorLink>
         <PredecessorUID>44</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>42</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -1048,13 +1082,13 @@
         <Duration>PT40H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
     <Task>
       <UID>46</UID>
       <ID>27</ID>
       <Name>Occupancy</Name>
+      <Active>1</Active>
+      <Manual>0</Manual>
       <Type>0</Type>
       <IsNull>0</IsNull>
       <WBS>4.6</WBS>
@@ -1072,12 +1106,14 @@
       <PredecessorLink>
         <PredecessorUID>43</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
       <PredecessorLink>
         <PredecessorUID>45</PredecessorUID>
         <Type>1</Type>
+        <CrossProject>0</CrossProject>
         <LinkLag>0</LinkLag>
         <LagFormat>7</LagFormat>
       </PredecessorLink>
@@ -1088,8 +1124,6 @@
         <Duration>PT0H0M0S</Duration>
         <DurationFormat>7</DurationFormat>
       </Baseline>
-      <Active>1</Active>
-      <Manual>0</Manual>
     </Task>
   </Tasks>
   <Resources>

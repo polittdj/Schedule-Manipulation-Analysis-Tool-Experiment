@@ -106,6 +106,27 @@ End Sub
 If `FileOpenEx` pops the import wizard anyway (version-dependent), import the files
 manually once — the macro's save/close still does the tedious half.
 
+### Import check — what `SF_VerifyImport` must report
+
+Run it after EVERY import. **The links number is the test**: anything lower means the
+import dropped logic and every downstream comparison is invalid. (MS Project absorbs
+the UID-0 row into its own project-summary task, so the summaries count excludes it.)
+
+| File | Working | Summaries | Milestones | **Links** | Baselined | Status date | Project finish |
+|---|---|---|---|---|---|---|---|
+| TP1_Library_Progressed | 23 | 4 | 3 | **30** | 23 | 3/31/26 | 9/17/26 9:00 AM |
+| TP2_Bridge_4x10_Calendar | 16 | 3 | 2 | **21** | 16 | 4/6/26 | 11/4/26 5:30 PM |
+| TP3_Outage_DCMA_Seeded | 21 | 3 | 2 | **25** | 20 | 4/30/26 | 6/26/26 8:00 AM |
+| TP4_DataCenter_v1 / v2 / v3 | 15 | 0 | 2 | **20** | 15 | monthly | 6/5/26 5:00 PM |
+| TP4_DataCenter_v4 | 15 | 0 | 2 | **20** | 15 | 4/30/26 | 6/26/26 5:00 PM |
+| TP4_DataCenter_v5 | 15 | 0 | 2 | **20** | 15 | 5/29/26 | 7/17/26 5:00 PM |
+
+The task XML mirrors a genuine MS Project export element-for-element (Active/Manual
+directly after Name, `CrossProject` in every link, `NewTasksAreManual 0` in the header)
+— MSP's XML reader is sequence-sensitive, and a misplaced `Manual` flag once made an
+import inherit the machine's "New Tasks: Manually Scheduled" default and drop links.
+A pinned test (`test_task_elements_follow_ms_projects_own_export_order`) keeps it so.
+
 ---
 
 ## TP1 — Library (progressed, ragged actuals) → verify with **SSI**
