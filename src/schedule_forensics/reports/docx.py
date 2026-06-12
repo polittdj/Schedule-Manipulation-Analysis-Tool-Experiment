@@ -14,9 +14,14 @@ import io
 import zipfile
 from collections.abc import Sequence
 from dataclasses import dataclass
-from xml.sax.saxutils import escape
 
 from schedule_forensics.reports.tables import TableSet
+
+
+def _esc(value: str) -> str:
+    """XML-escape text content (this module only WRITES XML; nothing is parsed)."""
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
 
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
 
@@ -110,20 +115,20 @@ def _block_xml(block: Block) -> str:
         return (
             '<w:p><w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>'
             f'<w:r><w:rPr><w:b/><w:sz w:val="{size}"/></w:rPr>'
-            f'<w:t xml:space="preserve">{escape(block.text)}</w:t></w:r></w:p>'
+            f'<w:t xml:space="preserve">{_esc(block.text)}</w:t></w:r></w:p>'
         )
     if isinstance(block, Paragraph):
         italic = "<w:i/>" if block.italic else ""
         lead = (
             f"<w:r><w:rPr><w:b/>{italic}</w:rPr>"
-            f'<w:t xml:space="preserve">{escape(block.lead)} </w:t></w:r>'
+            f'<w:t xml:space="preserve">{_esc(block.lead)} </w:t></w:r>'
             if block.lead
             else ""
         )
         return (
             '<w:p><w:pPr><w:spacing w:after="120"/></w:pPr>'
             f"{lead}<w:r><w:rPr>{italic}</w:rPr>"
-            f'<w:t xml:space="preserve">{escape(block.text)}</w:t></w:r></w:p>'
+            f'<w:t xml:space="preserve">{_esc(block.text)}</w:t></w:r></w:p>'
         )
     return _table_xml(block)
 
@@ -157,7 +162,7 @@ def _cell_xml(value: object, *, bold: bool) -> str:
     return (
         '<w:tc><w:tcPr><w:tcMar><w:left w:w="80" w:type="dxa"/>'
         '<w:right w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>'
-        f'<w:p><w:r>{rpr}<w:t xml:space="preserve">{escape(text)}</w:t></w:r></w:p></w:tc>'
+        f'<w:p><w:r>{rpr}<w:t xml:space="preserve">{_esc(text)}</w:t></w:r></w:p></w:tc>'
     )
 
 

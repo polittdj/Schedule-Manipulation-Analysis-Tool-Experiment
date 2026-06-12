@@ -12,9 +12,19 @@ from __future__ import annotations
 import io
 import re
 import zipfile
-from xml.sax.saxutils import escape
 
 from schedule_forensics.reports.tables import Table, TableSet
+
+
+def _esc(value: str) -> str:
+    """XML-escape text content (this module only WRITES XML; nothing is parsed)."""
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _esc_attr(value: str) -> str:
+    """XML-escape an attribute value (quotes included — sheet names live in attributes)."""
+    return _esc(value).replace('"', "&quot;")
+
 
 #: Excel's hard sheet-name rules: <= 31 chars, none of []:*?/\ .
 _SHEET_BAD = re.compile(r"[\[\]:*?/\\]")
@@ -66,7 +76,7 @@ def render_xlsx(tableset: TableSet) -> bytes:
         _add(zf, "[Content_Types].xml", _CONTENT_TYPES.format(sheets=overrides))
         _add(zf, "_rels/.rels", _ROOT_RELS)
         sheet_tags = "".join(
-            f'<sheet name="{escape(name)}" sheetId="{i + 1}" r:id="rId{i + 1}"/>'
+            f'<sheet name="{_esc_attr(name)}" sheetId="{i + 1}" r:id="rId{i + 1}"/>'
             for i, name in enumerate(sheets)
         )
         _add(
@@ -137,7 +147,7 @@ def _row_xml(r: int, cells: tuple[object, ...], *, style: int) -> str:
         elif isinstance(value, (int, float)):
             out.append(f'<c r="{ref}" s="{style}"><v>{value}</v></c>')
         else:
-            text = escape(str(value))
+            text = _esc(str(value))
             out.append(f'<c r="{ref}" s="{style}" t="inlineStr"><is><t>{text}</t></is></c>')
     return f'<row r="{r}">{"".join(out)}</row>'
 
