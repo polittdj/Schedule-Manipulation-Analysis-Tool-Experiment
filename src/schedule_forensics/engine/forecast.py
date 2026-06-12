@@ -112,7 +112,9 @@ def compute_finish_forecasts(
             schedule.project_start, pd_off, schedule.calendar
         ).date()
         if spi_t is not None and spi_t > 0 and es is not None and at is not None:
-            ieac_off = round(at + max(0.0, pd_off - es) / spi_t)
+            # the forecast divides by the EXACT ratio; only the displayed SPI(t) rounds
+            # (a 2-decimal SPI(t) shifted the golden P5 forecast by 9 days)
+            ieac_off = round(at + max(0.0, pd_off - es) / (es / at))
             es_finish = offset_to_datetime(
                 schedule.project_start, ieac_off, schedule.calendar
             ).date()
@@ -132,7 +134,7 @@ def compute_finish_forecasts(
         completed_count=len(completed),
         remaining_count=len(remaining),
         rate_per_month=round(rate, 2) if rate is not None else None,
-        spi_t=spi_t,
+        spi_t=round(spi_t, 2) if spi_t is not None else None,
         planned_finish=planned_finish,
         forecasts=tuple(forecasts),
         citation_uids=drivers,
@@ -155,4 +157,4 @@ def _earned_schedule(schedule: Schedule) -> tuple[float | None, float | None, fl
     if ev <= 0 or not planned:
         return None, None, None
     es = float(planned[min(ev, len(planned)) - 1])
-    return round(es / status_off, 2), es, float(status_off)
+    return es / status_off, es, float(status_off)  # exact — callers round for display only

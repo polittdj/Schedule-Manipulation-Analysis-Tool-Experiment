@@ -1085,3 +1085,18 @@ this file is the running history.
 ### Parity / tests
 - **631 passed, 3 skipped** (16 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies; the .pbix never left the machine.
+
+
+## Post-M15 review sitting — 2026-06-12 (PR #75; Fable 5)
+
+- PR #74 (M15) **merged**; post-merge main CI green. Build contract complete — so the
+  sitting ran the established newest-code correctness review (the M15 surfaces).
+- **Found + fixed: IEAC(t) divided by the ROUNDED SPI(t)** (2 decimals) instead of the
+  exact ES/AT ratio — on golden Project5 that read the earned-schedule forecast **9 days
+  early** (2029-01-23 vs the correct 2029-02-01). The forecast math now uses the exact
+  ratio; only the displayed SPI(t) rounds. Golden pins updated to the exact values.
+- Also fixed a falsy-zero display trap (#67 class): a completion rate rounding to 0.0
+  rendered "n/a" on /forecast while its forecast date showed (`is not None` now).
+
+### Parity / tests
+- **631 passed, 3 skipped**; parity 10/10; engine ≈98%, overall ≈98%; all gates clean.

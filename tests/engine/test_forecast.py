@@ -100,5 +100,6 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     by_id5 = {f.method_id: f for f in p5.forecasts}
     assert by_id5["cpm"].finish == dt.date(2027, 12, 7)
     assert by_id5["rate"].finish == dt.date(2028, 6, 10)
-    assert by_id5["earned_schedule"].finish == dt.date(2029, 1, 23)
+    # exact-ratio IEAC(t): dividing by the 2-decimal SPI(t) (0.47 vs 0.4651) read 9 days early
+    assert by_id5["earned_schedule"].finish == dt.date(2029, 2, 1)
     assert p5.planned_finish == dt.date(2027, 7, 9)
