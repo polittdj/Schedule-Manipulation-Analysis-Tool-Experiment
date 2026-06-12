@@ -253,8 +253,12 @@ def _anchor(p: T, link: L) -> dt.datetime:
 
 
 def _rollup(tasks: list[T], cal: BlockCalendar, *, baseline_pass: bool) -> None:
-    """Summary rows span their children (MS Project recomputes these on import)."""
-    for i, t in enumerate(tasks):
+    """Summary rows span their children (MS Project recomputes these on import).
+
+    Deepest-first (reverse file order): a parent summary's children include OTHER
+    summaries — computing top-down read their placeholder dates and gave the UID-0
+    project row a year-0001 baseline that MS Project rejected on import."""
+    for i, t in reversed(list(enumerate(tasks))):
         if not t.summary:
             continue
         kids = []
@@ -264,11 +268,16 @@ def _rollup(tasks: list[T], cal: BlockCalendar, *, baseline_pass: bool) -> None:
             kids.append(k)
         if not kids:
             continue
-        s, f = min(k.start for k in kids), max(k.finish for k in kids)
         if baseline_pass:
+            # summary children carry their baseline-pass dates in bl_* (their start/finish
+            # fields are only filled by the current pass) — read the right axis
+            starts = [k.bl_start for k in kids if k.bl_start is not None]
+            finishes = [k.bl_finish for k in kids if k.bl_finish is not None]
+            s, f = min(starts), max(finishes)
             t.bl_start, t.bl_finish = s, f
             t.bl_minutes = cal.work_between(s, f)
         else:
+            s, f = min(k.start for k in kids), max(k.finish for k in kids)
             t.start, t.finish = s, f
             t.duration_minutes = cal.work_between(s, f)
             if any(k.actual_start for k in kids):
@@ -378,6 +387,7 @@ def _task_xml(t: T, tid: int, links: list[L]) -> str:
         out.append(f"        <Start>{_iso(t.bl_start)}</Start>")
         out.append(f"        <Finish>{_iso(bl_finish)}</Finish>")
         out.append(f"        <Duration>{_dur(t.bl_minutes)}</Duration>")
+        out.append("        <DurationFormat>7</DurationFormat>")
         out.append("      </Baseline>")
     out += ["      <Active>1</Active>", "      <Manual>0</Manual>", "    </Task>"]
     return "\n".join(out)

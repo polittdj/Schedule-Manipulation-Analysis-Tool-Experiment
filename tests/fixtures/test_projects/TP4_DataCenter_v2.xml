@@ -125,6 +125,7 @@
         <Start>2026-01-05T08:00:00</Start>
         <Finish>2026-06-05T17:00:00</Finish>
         <Duration>PT880H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -155,6 +156,7 @@
         <Start>2026-01-05T08:00:00</Start>
         <Finish>2026-01-05T08:00:00</Finish>
         <Duration>PT0H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -191,6 +193,7 @@
         <Start>2026-01-05T08:00:00</Start>
         <Finish>2026-01-23T17:00:00</Finish>
         <Duration>PT120H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -227,6 +230,7 @@
         <Start>2026-01-26T08:00:00</Start>
         <Finish>2026-02-06T17:00:00</Finish>
         <Duration>PT80H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -262,6 +266,7 @@
         <Start>2026-02-09T08:00:00</Start>
         <Finish>2026-03-06T17:00:00</Finish>
         <Duration>PT160H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -297,6 +302,7 @@
         <Start>2026-02-09T08:00:00</Start>
         <Finish>2026-03-13T17:00:00</Finish>
         <Duration>PT200H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -333,6 +339,7 @@
         <Start>2026-02-09T08:00:00</Start>
         <Finish>2026-02-27T17:00:00</Finish>
         <Duration>PT120H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -368,6 +375,7 @@
         <Start>2026-01-26T08:00:00</Start>
         <Finish>2026-02-20T17:00:00</Finish>
         <Duration>PT160H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -407,6 +415,7 @@
         <Start>2026-03-16T08:00:00</Start>
         <Finish>2026-04-03T17:00:00</Finish>
         <Duration>PT120H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -440,6 +449,7 @@
         <Start>2026-03-09T08:00:00</Start>
         <Finish>2026-03-20T17:00:00</Finish>
         <Duration>PT80H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -479,6 +489,7 @@
         <Start>2026-03-23T08:00:00</Start>
         <Finish>2026-04-10T17:00:00</Finish>
         <Duration>PT120H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -512,6 +523,7 @@
         <Start>2026-04-06T08:00:00</Start>
         <Finish>2026-05-01T17:00:00</Finish>
         <Duration>PT160H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -551,6 +563,7 @@
         <Start>2026-04-06T08:00:00</Start>
         <Finish>2026-05-01T17:00:00</Finish>
         <Duration>PT160H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -602,6 +615,7 @@
         <Start>2026-05-04T08:00:00</Start>
         <Finish>2026-05-22T17:00:00</Finish>
         <Duration>PT120H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -635,6 +649,7 @@
         <Start>2026-05-25T08:00:00</Start>
         <Finish>2026-06-05T17:00:00</Finish>
         <Duration>PT80H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>
@@ -668,6 +683,7 @@
         <Start>2026-06-05T17:00:00</Start>
         <Finish>2026-06-05T17:00:00</Finish>
         <Duration>PT0H0M0S</Duration>
+        <DurationFormat>7</DurationFormat>
       </Baseline>
       <Active>1</Active>
       <Manual>0</Manual>

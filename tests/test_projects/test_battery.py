@@ -8,6 +8,7 @@ move with it — that is the point of the battery.
 
 from __future__ import annotations
 
+import datetime as dt
 import importlib.util
 import sys
 from collections import Counter
@@ -72,6 +73,29 @@ def test_every_battery_file_parses_and_solves(name: str) -> None:
     schedule = _load(name)
     cpm = compute_cpm(schedule)
     assert cpm.project_finish > 0
+
+
+@pytest.mark.parametrize("name", ALL_FILES)
+def test_every_date_and_duration_is_sane_for_ms_project(name: str) -> None:
+    """Summary rollups (incl. the UID-0 project row) must carry real dates: a top-down
+    rollup once gave UID 0 a year-0001 baseline and a 4-million-hour duration, which
+    MS Project rejected at import (the tool itself ignores summary dates — only this
+    guard and the MSP round-trip see them)."""
+    schedule = _load(name)
+    lo, hi = dt.datetime(2026, 1, 1), dt.datetime(2028, 1, 1)
+    max_minutes = 300 * 600  # < a 300-day task even on the 10-hour calendar
+    for task in schedule.tasks:
+        for value in (
+            task.start,
+            task.finish,
+            task.actual_start,
+            task.actual_finish,
+            task.baseline_start,
+            task.baseline_finish,
+        ):
+            assert value is None or lo <= value <= hi, (name, task.unique_id, value)
+        assert task.duration_minutes <= max_minutes, (name, task.unique_id)
+        assert (task.baseline_duration_minutes or 0) <= max_minutes, (name, task.unique_id)
 
 
 def test_tp1_driving_tiers_floor_ragged_minutes_onto_ssi_day_axis() -> None:
