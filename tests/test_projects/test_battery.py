@@ -152,6 +152,11 @@ def test_tp1_completion_performance_populates_every_split() -> None:
     assert perf["completed_on_schedule"].count == 2
     assert perf["completed_behind"].count == 1
     assert perf["mei"].value == 1.0
+    # the deck-DAX measures, adopted verbatim (ADR-0033) — hand-computed for TP1:
+    # 8 actual starts + 5 actual finishes over 8 actual starts + 23 baseline finishes
+    assert perf["epi"].value == 0.42
+    # 23 scheduled start/finish pairs over 5 completed actual pairs
+    assert perf["start_finish_ratio"].value == 4.6
 
 
 def test_tp2_calendar_imports_exactly_and_drives_the_day_math() -> None:

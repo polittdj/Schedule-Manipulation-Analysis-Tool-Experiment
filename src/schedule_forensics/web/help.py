@@ -540,6 +540,22 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "milestones finished by status / milestones baselined-to-finish by status",
         _PBIX,
     ),
+    "epi": _doc(
+        "epi",
+        "EPI",
+        "Execution Progress Index — the deck's DAX adopted verbatim (ADR-0033): the "
+        "recorded execution events over the events the plan expected once started.",
+        "(n actual starts + n actual finishes) / (n actual starts + n baseline finishes)",
+        _PBIX,
+    ),
+    "start_finish_ratio": _doc(
+        "start_finish_ratio",
+        "Start-to-Finish Ratio",
+        "The deck's DAX adopted verbatim (ADR-0033): scheduled start/finish pairs per "
+        "actually-completed pair; falls toward 1.0 as the schedule finishes things.",
+        "n(start & finish present) / n(actual start & actual finish present)",
+        _PBIX,
+    ),
     "elapsed_since_last_finish": _doc(
         "elapsed_since_last_finish",
         "% Schedule Elapsed Since Latest Actual Finish",
