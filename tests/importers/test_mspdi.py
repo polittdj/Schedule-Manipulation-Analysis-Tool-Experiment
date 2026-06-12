@@ -692,3 +692,34 @@ def test_old_style_daytype_zero_exception_and_all_nonworking_week() -> None:
 <Calendars><Calendar><UID>6</UID><Name>Dead</Name>
 <WeekDays>{_weekday(1)}{_weekday(2)}</WeekDays></Calendar></Calendars>{_TASK_A}"""
     assert parse_mspdi_text(_doc(dead)).calendar.work_weekdays == (0, 1, 2, 3, 4)
+
+
+def test_recurring_exception_is_skipped_not_expanded_into_weeks_of_holidays() -> None:
+    # "every Friday off for 8 weeks": Occurrences=8 over a ~50-day TimePeriod. Expanding
+    # that contiguously erased ~36 working days; a recurrence pattern is out of the
+    # single-block model's scope and must be skipped (logged), not fabricated.
+    week = "".join(_weekday(d, ("08:00:00", "16:00:00")) for d in (2, 3, 4, 5, 6))
+    recurring = """
+<Exception><EnteredByOccurrences>1</EnteredByOccurrences>
+<TimePeriod><FromDate>2025-01-10T00:00:00</FromDate>
+<ToDate>2025-02-28T23:59:00</ToDate></TimePeriod>
+<Occurrences>8</Occurrences><Type>2</Type><DayWorking>0</DayWorking></Exception>"""
+    # a contiguous 3-day shutdown (daily, occurrences == days) still becomes holidays,
+    # as does a plain one with no Occurrences element at all
+    contiguous = """
+<Exception><TimePeriod><FromDate>2025-03-03T00:00:00</FromDate>
+<ToDate>2025-03-05T23:59:00</ToDate></TimePeriod>
+<Occurrences>3</Occurrences><Type>1</Type><DayWorking>0</DayWorking></Exception>
+<Exception><TimePeriod><FromDate>2025-04-07T00:00:00</FromDate>
+<ToDate>2025-04-07T23:59:00</ToDate></TimePeriod><DayWorking>0</DayWorking></Exception>"""
+    body = f"""
+<CalendarUID>1</CalendarUID>
+<Calendars><Calendar><UID>1</UID><Name>Std</Name><WeekDays>{week}</WeekDays>
+<Exceptions>{recurring}{contiguous}</Exceptions></Calendar></Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.holidays == (
+        dt.date(2025, 3, 3),
+        dt.date(2025, 3, 4),
+        dt.date(2025, 3, 5),
+        dt.date(2025, 4, 7),
+    )
