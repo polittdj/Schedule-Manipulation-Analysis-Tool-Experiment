@@ -59,16 +59,24 @@ the heartbeat stops); the in-page **Quit** control stops it immediately.
    the bundled sample. Files parse locally; the dashboard tells you exactly what loaded and what
    failed (no silent failures). Each schedule lists **Open report** and **Save .json**.
 2. **Analysis** — DCMA-14 audit (pass/fail vs threshold + suggested fix), severity-ordered
-   risks/opportunities/concerns (each cited: file + UniqueID + task), a cited AI narrative,
-   interactive charts, an **MS-Project-style Gantt grid** (add/remove columns beside a timeline with
-   critical bars, progress, milestones, summaries and the data-date line), and a driving-path Gantt.
+   risks/opportunities/concerns (each cited: file + UniqueID + task), a cited AI narrative, the
+   **working calendar** (imported from the file: work week, day length, holidays — it drives every
+   computed date), **low-float bands** (0 / <5 / <10 days), **completion performance** (ahead/on/
+   behind, duration ratios, MEI), interactive charts, an **MS-Project-style Gantt grid** (add/remove
+   columns beside a timeline with critical bars, progress, milestones, summaries and the data-date
+   line), and a driving-path Gantt.
 3. **Trend** (≥2 versions, 10+ supported) — every version ordered by data date: headline table, Net
    Finish Impact across the series, trend charts, per-metric quality-trend sentences, and
    manipulation signals per consecutive pair.
-4. **Executive Briefing** — a print-ready, fully cited diagnostic briefing in the Acumen Fuse style
+4. **Bow Wave / CEI** (≥2 versions) — animated per-snapshot monthly finish bars with the data-date
+   marker and the Current Execution Index table; auto-play to watch slipped work push right.
+5. **Forecast** — three independent finish forecasts (CPM logic, completion-rate extrapolation,
+   earned-schedule IEAC(t)) with the inputs each used, plus a per-version forecast-drift table.
+   Missing inputs show "—", never a fabricated date.
+6. **Executive Briefing** — a print-ready, fully cited diagnostic briefing in the Acumen Fuse style
    (workbook summary, trend analysis, per-project summaries with behind/ahead-of-schedule days, and
    per-project quality verdicts).
-5. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
+7. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
    manipulation-trend signals (deleted logic, shortened durations, deleted tasks, baseline/actual
    edits) with the Net Finish Impact in calendar days. Honest progress raises no false flags.
 
