@@ -1,16 +1,19 @@
-# Handoff — 2026-06-12 (post-#80 sitting — **the build is COMPLETE; PRs #69–#80 all merged**)
+# Handoff — 2026-06-12 (PRs #69–#80 **ALL MERGED** — build COMPLETE; post-#80 verified)
 
-**Latest sittings:** after the #69–#76 run (ADR-0027..0030 — M15 closed, every milestone
-M1–M17 done), the operator kept driving: the **desktop icon + favicon** (PR #77), the
-**pythonw dead-port launcher fix** (PR #78), the **SSI-style Path Analysis workspace +
-grounded ask-the-AI** (PR #79, ADR-0031), and the two real-file fixes — **day-granular
-driving tiers** (the 4-vs-66 discrepancy) + **the server surviving heavy loads** (PR #80,
-ADR-0032). The post-#80 sitting verified the merge + post-merge main CI green, re-ran the
-full local gate (645 passed / parity 10/10), reviewed the #79/#80 surfaces (no defects
-found), and brought the state docs current. **Code, tests, ADRs (32), and user docs are
-mutually consistent; nothing is blocked.**
-**Next session:** operator feedback — PR #80 asked for the MS Project + SSI side-by-side
-re-run; optional items below. Model/mode: Fable 5 (1M context).
+**The twelve-PR session:** #69 ADR-0026 close-out · #70 calendar parsing (ADR-0028) ·
+#71 XER cost roll-up (ADR-0029) · #72 recurring-exception fix · #73 calendar visibility ·
+#74 **M15** (the operator deposited the `.pbix` — float bands, completion performance, MEI,
+staleness, three-method **/forecast**; ADR-0030) · #75 exact-ratio IEAC(t) · #76 user-docs
+catch-up · #77 **unique desktop icon + favicon** · #78 pythonw launcher fix (the icon opened
+a dead port) · #79 **SSI-style Path Analysis workspace + grounded ask-the-AI** (ADR-0031) ·
+#80 driving tiers on SSI's whole-day axis (the operator's real-file **4-vs-66 driving-task
+discrepancy**) + the server no longer kills itself loading big files (ADR-0032).
+**The post-#80 sitting:** verified the #80 merge + post-merge main CI green, re-ran the full
+local gate (645 passed / parity 10/10), reviewed the #79/#80 surfaces (no defects found),
+and recovered the stranded handoff commit (see lessons). Code, tests, ADRs (32), and user
+docs are mutually consistent; nothing is blocked.
+**Next session: the operator's 4-vs-66 side-by-side re-test result** (requested in PR #80);
+optional items below. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -72,7 +75,7 @@ in the metric dictionary; EPI / RatioMeasure / Start-and-Finish-Ratio await a DA
   CSS variables, live-re-theming SVG), **batch cap 10 → 20**.
   All of #58–#68 are **merged to `main`**.
 
-## What shipped the ADR-0027..0030 sittings — PRs #69–#76 (all merged)
+## What shipped this session — PRs #69–#80 (all merged)
 
 **PR #69 (ADR-0027) — the four ADR-0026 deferred items, MERGED:**
 1. **Calendar-true day math**: every day↔minute boundary derives from
@@ -142,45 +145,34 @@ rounds). Plus a /forecast falsy-zero display trap (#67 class).
 **PR #76 (merged) — user-docs catch-up:** USER-GUIDE + README now cover the imported
 calendar, the three new report panels, and the /forecast page (everything #70–#75 shipped).
 
-## What shipped the latest sittings — PRs #77–#80 (all merged)
+**PR #77 (merged) — the unique desktop icon + favicon:** `packaging/make_icon.py` redesigned
+(stdlib, 4x supersampled, deterministic): dark tile + white ▲ + Gantt waterfall + gold
+data-date line, 5-entry 256..16 PNG-in-ICO; same bytes = `/static/favicon.ico` + Linux PNG;
+sync/determinism pinned by tests. Installer: `packaging\windows\Install-Desktop-Shortcut.ps1`.
 
-**PR #77 — the unique desktop icon + favicon:** `packaging/make_icon.py` redesigned
-(stdlib-only, 4x supersampled, deterministic): the dark dashboard tile + white ▲ +
-red/blue/green Gantt waterfall + gold dashed data-date line, packed as a 5-entry
-256/128/64/32/16 PNG-in-ICO; the same bytes serve as the **browser favicon**
-(`/static/favicon.ico`, linked in the layout) and a 256px Linux PNG. Sync + determinism
-pinned by tests. Plus the prior HANDOFF consolidation.
+**PR #78 (merged) — the icon opened a dead port:** `pythonw.exe` starts with
+stdout/stderr = None; uvicorn's logging setup touched them and the server died right after
+the browser-open timer. `launcher._ensure_streams()` rebinds missing streams to devnull
+(never a log file — request paths carry schedule names). Regression drives the real
+uvicorn.Config with None streams.
 
-**PR #78 — pythonw dead-port launcher fix:** the desktop icon launches `pythonw.exe` →
-`sys.stdout`/`sys.stderr = None`; `print()` drops silently but **uvicorn's logging setup
-touches the streams** → the server died right after the browser-open timer fired
-(ERR_CONNECTION_REFUSED on a dead port). `launcher._ensure_streams()` rebinds missing
-streams to devnull (never a log file — request paths carry schedule names; CUI stays off
-disk); the regression test drives the real uvicorn.Config path with None streams.
+**PR #79 (merged, ADR-0031) — Path Analysis + ask-the-AI:** `/path` over the SSI-parity
+driving-slack engine: target UID (session target pre-fills), user secondary/tertiary
+day-bands, data grid LEFT (add/remove MS-Project fields; tier/substring filters;
+hide-100%-complete), **scalable** Gantt RIGHT (px/day zoom, month ticks, gold data-date
+line); `/api/driving` extended with grid fields + ISO dates. **Ask the AI** (`ai/qa.py`,
+`POST /api/ask/{schedule}`): engine-computed cited fact sheet; Null backend = matching
+facts verbatim; a model answer containing any figure the engine never computed is
+discarded wholesale.
 
-**PR #79 (ADR-0031) — Path Analysis workspace + grounded ask-the-AI:** **`/path`** —
-target UID (session target pre-fills) + user-defined secondary/tertiary day-bands over the
-SSI-parity driving-slack engine; data grid LEFT (add/remove MS-Project fields; tier /
-substring filters; hide-100%-complete), **scalable Gantt RIGHT** (px/day zoom slider,
-month ticks, gold data-date line); `/api/driving` extended with the SSI grid fields, ISO
-dates, and the data date. **Ask the AI** (`ai/qa.py`, `POST /api/ask/{schedule}`):
-answers come from an engine-computed **cited fact sheet** (frame, forecasts, DCMA
-verdicts, findings, float bands, completion performance); term-overlap selection; a local
-model may phrase, but the **figure-subset gate** discards any answer containing a number
-the engine never computed; the Null backend returns the matching facts verbatim. All local.
-
-**PR #80 (ADR-0032) — day-granular driving tiers + load liveness (both operator-hit):**
-1. Real file read **4 driving tasks where MS Project + SSI showed ~66** — tiering compared
-   slack ≤ 0 to the MINUTE while real stored dates carry time-of-day raggedness; SSI's
-   display axis is whole days. Tiers now classify on **slack floored to whole working
-   days** (`_whole_days`, schedule's own calendar); goldens are exact day multiples →
-   byte-identical, tier counts (36/12/12) unchanged, parity 10/10; boundaries pinned.
-2. Reloading the test files **killed the server** (ERR_CONNECTION_REFUSED): async
-   `/upload` parsed on the event loop, starving heartbeats past the 10s grace → the
-   auto-shutdown watchdog fired MID-LOAD. Upload now runs **sync in the threadpool**, and
-   an HTTP middleware counts **in-flight requests** — the watchdog never fires while any
-   request is being served; every completion refreshes the beat. Browser-close shutdown
-   behavior unchanged.
+**PR #80 (merged, ADR-0032) — real-file fixes:**
+- **Driving tiers classify on whole working days** (slack floored on the schedule's
+  calendar): real stored dates carry time-of-day raggedness, so chains SSI shows at
+  "0 days" carried 30–450 minutes here and fell out of DRIVING (operator measured **4 vs
+  SSI's ~66**). Goldens are exact day multiples → parity untouched; boundaries pinned.
+- **The server killed itself mid-load**: async `/upload` parsed on the event loop, starving
+  heartbeats past the 10s grace → the auto-shutdown watchdog fired. Upload now runs in the
+  threadpool; an in-flight request counter holds the watchdog; completions refresh the beat.
 
 ## Lessons learned (carry forward)
 - **Real stored dates are ragged to the minute; SSI thinks in whole days.** Any tier/driving
@@ -205,6 +197,18 @@ the engine never computed; the Null backend returns the matching facts verbatim.
   stays 10/10. Run it after any importer/engine change.
 - **Acumen "summary" count excludes the UID-0 project row** (briefing uses 18, not 19).
 
+- **Re-create the branch from origin/main after EVERY merge** before new work — building on
+  the stale pre-squash tip made PR #80 initially dirty (it dragged the merged #79 commits);
+  repair = cherry-pick onto fresh main + `-s ours` absorb of the old tip (no force-push).
+- **The Stop hook flags GitHub's own squash commits** (committer noreply@github.com) when the
+  local branch sits on main with nothing pushed: resolve with
+  `git reset --hard origin/claude/clever-carson-uovtkk` — never rewrite merged history.
+- **The GitHub MCP token can expire mid-session** ("requires re-authorization"): PR
+  state can still be inferred via `git ls-remote origin main` (tip changes on merge);
+  creating PRs/reading CI needs the operator to re-authorize the connector.
+- **Heavy work must never run on the event loop** and **classification must use SSI's
+  whole-day axis** (see PR #80 above) — both bit on the operator's first real-file run.
+
 ## Operator environment (CRITICAL — this caused most friction)
 - **Windows, work laptop, NO admin rights.** Cannot run MSI installers (`winget` Java install exits 1602).
   → Java via the **portable JRE zip extracted into `…\tools\jre\`** (no admin). Steps are in
@@ -226,27 +230,30 @@ audit clean (3.11 + 3.13).** Verify locally:
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
 venv has been missing the web deps.)
 
-## Next steps / open items (all OPTIONAL — the build contract is complete)
-1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
-   `importers/_common.py`; ALWAYS re-run `pytest -m parity`. **Pending: PR #80 asked the
-   operator to re-run the MS Project + SSI side-by-side** (same file/UID) — the driving
-   count should now match at day granularity; if it still diverges, get the reported number
-   + any red import-notice text (CUI-safe). Also watch: exotic calendars degrading oddly
-   (the "unreadable project calendar" log line names the path), and how the M15 surfaces
-   (float bands / completion performance / `/forecast`) and `/path` read on real data.
-2. **Deck measures awaiting a DAX export** (ADR-0030): EPI, RatioMeasure, Start-and-Finish
-   Ratio — implement exactly when the operator provides the measure text (Tabular Editor
-   export per the intake instructions); do not guess formulas.
-3. **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — only if the
+## Next steps / open items
+1. **The operator's 4-vs-66 side-by-side re-test** (#80 is merged, post-merge main CI
+   verified green): same file/UID here vs MS Project + SSI, on `/path` — the driving count
+   should now match at day granularity. If it still diverges, get the two counts + any red
+   import-notice text (file + reason — CUI-safe) and chase it (likely suspects: dropped
+   links logged on import, constraint normalization, lag handling).
+2. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
+   `importers/_common.py`; ALWAYS re-run `pytest -m parity`. Watch how the new surfaces
+   (Path Analysis, ask-the-AI, float bands, `/forecast`) read on real data.
+3. **Deck measures awaiting a DAX export** (ADR-0030): EPI, RatioMeasure, Start-and-Finish
+   Ratio — implement exactly when the operator provides the measure text; do not guess.
+4. **per-task calendars** (P6 `TASK.clndr_id`, MSP resource calendars) — only if the
    operator's real programs mix calendars materially.
-4. If the operator enables real Ollama generation: watch quality — every rephrase is gated
-   (citations + exact figures, fail-closed to verbatim).
-5. **Tune the Bow Wave / CEI visuals** against real data vs the reference decks if they don't match.
-6. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
+5. If the operator enables real Ollama generation: watch quality — narrative/briefing
+   rephrases are figure-gated (`reattach`), ask-the-AI is figure-subset-gated (`ai/qa.py`).
+6. **Tune the Bow Wave / CEI visuals** against real data vs the reference decks if they don't match.
+7. Keep `docs/STATE/HANDOFF.md`, `SESSION-LOG.md`, and `docs/FINAL-REPORT.md` test counts current.
 
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and continue exactly per its
-> "Next steps / open items". Stay on branch `claude/clever-carson-uovtkk` (recreate from `origin/main`),
-> keep `pytest -m parity` at 10/10, open draft PRs (don't merge — the operator does), and never let
-> schedule data leave the machine. Model: Fable 5 (1M).
+> "Next steps / open items" — item 1 is the operator's 4-vs-66 side-by-side re-test result, if provided.
+> Stay on branch `claude/clever-carson-uovtkk` (recreate it from origin/main with
+> `git fetch origin main && git checkout -B claude/clever-carson-uovtkk origin/main` — and re-do this
+> after EVERY merge before new work). Run `pip install -e '.[dev]'` into `.venv` first if tools are
+> missing. Keep `pytest -m parity` at 10/10, open draft PRs (don't merge — I do that on GitHub), and
+> never let schedule data leave the machine. Model: Fable 5 (1M context).
