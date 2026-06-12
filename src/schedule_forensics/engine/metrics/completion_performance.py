@@ -88,8 +88,61 @@ def compute_completion_performance(schedule: Schedule) -> dict[str, MetricResult
     out["duration_ratio_max"] = _ratio("duration_ratio_max", "Duration Ratio Max", ratios, max)
 
     out["mei"] = _mei(schedule, tasks)
+    out["epi"] = _epi(tasks)
+    out["start_finish_ratio"] = _start_finish_ratio(tasks)
     out["elapsed_since_last_finish"] = _staleness(schedule)
     return out
+
+
+def _epi(tasks: list[Task]) -> MetricResult:
+    """EPI — Execution Progress Index, the deck's DAX adopted verbatim (ADR-0033):
+
+        (count of actual starts + count of actual finishes)
+        / (count of actual starts + count of baseline finishes)
+
+    The recorded execution events over the events the plan expected once started.
+    1.0 == every started thing also finished against a baselined finish. The one
+    documented deviation: the tool's population is non-summary activities (the deck
+    counts raw table rows, which can include WBS summaries)."""
+    actual_starts = sum(1 for t in tasks if t.actual_start is not None)
+    actual_finishes = sum(1 for t in tasks if t.actual_finish is not None)
+    baseline_finishes = sum(1 for t in tasks if t.baseline_finish is not None)
+    denominator = actual_starts + baseline_finishes
+    value = round((actual_starts + actual_finishes) / denominator, 2) if denominator else 0.0
+    return MetricResult(
+        "epi",
+        "EPI",
+        actual_starts + actual_finishes,
+        denominator,
+        value,
+        "ratio",
+        CheckStatus.NOT_APPLICABLE,
+    )
+
+
+def _start_finish_ratio(tasks: list[Task]) -> MetricResult:
+    """Start-to-Finish Ratio — the deck's DAX adopted verbatim (ADR-0033):
+
+        count(activities with both Start and Finish)
+        / count(activities with both Actual Start and Actual Finish)
+
+    How much of the scheduled universe each completed activity 'carries' — it falls
+    toward 1.0 as the schedule actually finishes things. NA-shaped (0 of 0) until
+    the first activity completes."""
+    scheduled_pairs = sum(1 for t in tasks if t.start is not None and t.finish is not None)
+    actual_pairs = sum(
+        1 for t in tasks if t.actual_start is not None and t.actual_finish is not None
+    )
+    value = round(scheduled_pairs / actual_pairs, 2) if actual_pairs else 0.0
+    return MetricResult(
+        "start_finish_ratio",
+        "Start-to-Finish Ratio",
+        scheduled_pairs,
+        actual_pairs,
+        value,
+        "ratio",
+        CheckStatus.NOT_APPLICABLE,
+    )
 
 
 def _tasks(pairs: list[tuple[Task, int]]) -> list[Task]:

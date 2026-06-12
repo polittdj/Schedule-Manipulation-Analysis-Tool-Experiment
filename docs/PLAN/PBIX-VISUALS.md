@@ -55,5 +55,9 @@ float bands (counts AND the percent variants), BEI, SPI/ES, CEI, forecast + drif
 status profiles. **Gaps to build**: constraint-distribution table, activity-type
 profile, WBS-grouped pivots (completion + SPI/ES by WBS), start/finish-curve slippage
 lines, cumulative actual curves, TotalFloatSum/FreeFloatSum, avg tasks per month,
-remaining-duration card. **Blocked (need DAX export)**: EPI, RatioMeasure,
-Start-and-Finish Ratio (ADR-0030 — do not guess).
+remaining-duration card. **DAX intake complete (ADR-0033)**: EPI and
+Start-to-Finish Ratio adopted verbatim from the operator's SemanticModel export;
+**RatioMeasure does not exist in the model** (dangling visual binding — nothing to
+build). Four deck measures were found defective during intake and documented, not
+adopted (deck CEI divides date-serial sums; "% Schedule Elapsed" reads the earliest
+baseline start; deck SPI inherits it; deck BEI has no data-date cutoff) — ADR-0033.

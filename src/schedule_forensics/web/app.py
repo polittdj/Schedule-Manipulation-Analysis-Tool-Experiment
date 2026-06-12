@@ -1126,6 +1126,8 @@ def _completion_panel(analysis: _Analysis) -> str:
             ("duration_ratio_avg", "Duration ratio — average"),
             ("duration_ratio_max", "Duration ratio — max"),
             ("mei", "MEI (milestones finished / milestones due)"),
+            ("epi", "EPI (execution events recorded / events expected)"),
+            ("start_finish_ratio", "Start-to-Finish Ratio (scheduled pairs / actual pairs)"),
             ("elapsed_since_last_finish", "Schedule elapsed since latest actual finish"),
         )
     )

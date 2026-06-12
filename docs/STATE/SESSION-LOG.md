@@ -1333,3 +1333,25 @@ this file is the running history.
 
 ### Parity / tests
 - **689 passed, 3 skipped** (11 new); parity 10/10; all gates clean; zero new deps.
+
+
+## DAX-intake sitting — 2026-06-12 (PR #89; Fable 5) — M18, ADR-0033
+
+- The operator deposited the deck's **SemanticModel (TMDL — all 122 measures in plain
+  DAX)**, closing ADR-0030's last do-not-guess deferrals. Kept local in
+  00_REFERENCE_INTAKE/ (gitignored); only formulas/findings are committed.
+- **Adopted verbatim** (`completion_performance`): **EPI** = (n actual starts + n actual
+  finishes) / (n actual starts + n baseline finishes); **Start-to-Finish Ratio** =
+  n(start&finish pairs) / n(actual start&finish pairs). Report panel rows + dictionary
+  entries + pins (TP1: 0.42 = 13/31; 4.6 = 23/5; golden values measured P2 0.29/6.3,
+  P5 0.36/4.67).
+- **RatioMeasure does not exist in the model** — the deck visual's binding is dangling;
+  removed from the reproduction spec.
+- **Deck defects found while reading the source DAX** (documented in ADR-0033, NOT
+  adopted): deck-CEI divides sums of date serial numbers; '% Schedule Elapsed Since
+  Latest Actual Finish' reads MIN(Baseline Start) despite its name; deck-SPI inherits
+  that defect; deck-BEI lacks the data-date cutoff. Where deck and tool disagree on
+  these, the deck is the outlier — ADR-0033 is the citation.
+
+### Parity / tests
+- **689 passed, 3 skipped** (pins added to existing tests); parity 10/10; all gates clean.
