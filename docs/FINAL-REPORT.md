@@ -64,15 +64,18 @@ Durations in `day`/`days`; signed percents; minutes→days deterministic roundin
 `tests/test_units.py`).
 
 ## §7 — QC/PM regime
-TDD + pytest (**644 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
+TDD + pytest (**645 passed, 3 skipped**); coverage gates **engine ≥85% (≈98%), overall ≥70% (≈98%)**;
 `ruff` + `mypy --strict` + `bandit` + `pip-audit` + the **parity gate** + the **egress/air-gap guards**,
 wired into CI on `main` push + every PR (Python 3.11 + 3.13); Conventional Commits on feature branches
-with PRs (#55–#79 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
+with PRs (#55–#80 merged to `main`: build, two audit remediations, no-admin Java discovery, data-date
 compare ordering, the multi-version trend/briefing/Gantt suite, real-world `.mpp`/`.xer` tolerance,
 the Bow Wave/CEI view, the target-UID/theme/20-file features, the calendar-true day math /
-CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, the XER cost roll-up, and the M15 .pbix enrichment); 30 ADRs
+CP_Units / AI-figure-gate close-out, MSPDI/XER project-calendar parsing, the XER cost roll-up,
+the M15 .pbix enrichment, the Path Analysis workspace + grounded ask-the-AI, and the day-granular
+driving tiers + load-liveness fixes); 32 ADRs
 (`docs/adr/`, incl. ADR-0024/0026 audit remediations, ADR-0025 multi-version analysis suite,
-ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, ADR-0029 XER costs, and ADR-0030 M15), a risk register
+ADR-0027 deferred-item close-out, ADR-0028 calendar parsing, ADR-0029 XER costs, ADR-0030 M15,
+ADR-0031 path analysis + grounded Q&A, and ADR-0032 day-granular tiering), a risk register
 (`docs/risks.md`), durable state (`docs/STATE/`), and CUI-redacted logging (`logging_redaction.py`).
 
 ## Post-build enhancements (operator-driven, merged)

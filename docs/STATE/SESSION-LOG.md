@@ -1156,3 +1156,32 @@ this file is the running history.
 
 ### Parity / tests
 - 1 new boundary-pinned regression; parity 10/10; all gates clean.
+- Session handoff written with PR #80 still OPEN (CI green, mergeable) — the next session
+  starts by checking its state, then the operator's 4-vs-66 re-test.
+
+
+## Post-#80 verification sitting — 2026-06-12 (docs PR #81; Fable 5)
+
+- PR #80 (day-axis tiers + load liveness) **merged** by the operator at 12:10 UTC;
+  post-merge main CI green on the squash (verified explicitly). No open PRs or issues; no
+  operator feedback yet — #80 asked for the MS Project + SSI **side-by-side re-run**
+  (same file/UID; driving count should now match at day granularity).
+- Fresh container, full local gate green: **645 passed, 3 skipped; parity 10/10;**
+  coverage ≈98% overall / ≈98% engine; ruff + format + mypy(strict) + bandit clean.
+- Newest-code correctness review (#79 `/path` + `ai/qa.py`, #80 day-floor tiers + watchdog
+  middleware): **no defects found.** Checked specifically: the in-flight counter mutates
+  only on the event-loop thread (atomic; the threadpool-run sync upload is held across the
+  await); the figure-subset gate fails closed; the day-band inputs dodge the falsy-zero
+  trap (string "0" is truthy); zoom is range-clamped 2–40; `_driving_data` notes (bad /
+  summary target) degrade without a 500; the grid's truncated slack display agrees with
+  the floored tier axis on positive slack.
+- **Recovered the stranded handoff:** the prior session's final HANDOFF consolidation
+  (commit 7f702e9, "twelve PRs, #80 open") was pushed to the work branch AFTER #80's
+  merge snapshot, so it never landed on main. Restored it as the base (its lessons —
+  branch recreation after every merge, the Stop-hook-vs-squash-commit repair, the MCP
+  token expiry workaround — carry forward), then updated it for the merged state
+  (#69–#80 all merged; next step = the operator's side-by-side). FINAL-REPORT brought to
+  645 / #55–#80 / 32 ADRs (incl. 0031/0032).
+
+### Parity / tests
+- **645 passed, 3 skipped** (no code changes this sitting); parity 10/10; all gates clean.
