@@ -84,6 +84,13 @@ dashboard. Stop it with `Ctrl-C`.
    duration, total float, % complete, resources) and a **scalable Gantt on the right**
    (zoom slider = pixels per day, horizontal scroll) with month ticks and the **gold
    data-date line**. Filter rows by tier or name/UID text and **hide 100%-complete** work.
+   Dates and bars show the schedule's **as-scheduled stored dates** (completed work sits at
+   its actual dates), and the status line reports **trace coverage** — how many of the
+   schedule's activities have a logic path to your target. Activities that never appear are
+   not lost: they have **no predecessor logic** reaching the target (common in sparse-logic /
+   template files); the report's *"dates not supported by logic"* finding names them, and the
+   optional **Date-driven** column marks traced tasks whose dates come from manual/stored
+   placement instead of logic.
    Below it, **Ask the AI**: type a question about the schedule — answers are grounded in
    the engine's computed, cited facts; with no local model active you get the matching
    facts themselves, and any model answer containing a number the engine never computed is

@@ -84,6 +84,58 @@ def test_driving_api_carries_the_ssi_grid_fields(client: TestClient) -> None:
     assert "DRIVING" in tiers  # the critical path to the target is present
 
 
+def test_driving_api_reports_logic_coverage_and_date_driven(client: TestClient) -> None:
+    _upload(client, "Project5")
+    data = client.get("/api/driving/Project5?target=143").json()
+    # the goldens are logic-true: every traced row is logic-driven, none date-driven
+    assert all(r["date_driven"] is False for r in data["rows"])
+    assert "have a logic path to this target" in data["coverage"]
+    assert "not supported by logic" not in data["coverage"]
+
+
+def test_path_rows_display_stored_dates_for_completed_work(client: TestClient) -> None:
+    """The operator's real-file bug class: completed ancestors must show their ACTUAL
+    dates, not the logic-packed CPM dates (a pure forward pass puts finished work at
+    the project start when its actuals ran later than logic requires)."""
+    import json
+
+    payload = {
+        "name": "Progressed",
+        "project_start": "2026-01-05T08:00:00",
+        "status_date": "2026-03-02T08:00:00",
+        "tasks": [
+            # completed late: logic would have finished it weeks before its actuals
+            {
+                "unique_id": 1,
+                "name": "Done late",
+                "duration_minutes": 960,
+                "percent_complete": 100.0,
+                "start": "2026-02-16T08:00:00",
+                "finish": "2026-02-17T17:00:00",
+                "actual_start": "2026-02-16T08:00:00",
+                "actual_finish": "2026-02-17T17:00:00",
+            },
+            {
+                "unique_id": 2,
+                "name": "To go",
+                "duration_minutes": 2400,
+                "start": "2026-03-02T08:00:00",
+                "finish": "2026-03-06T17:00:00",
+            },
+        ],
+        "relationships": [{"predecessor_id": 1, "successor_id": 2}],
+    }
+    resp = client.post(
+        "/upload", files={"files": ("progressed.json", json.dumps(payload), "application/json")}
+    )
+    assert resp.status_code == 200
+    data = client.get("/api/driving/progressed?target=2").json()
+    done = next(r for r in data["rows"] if r["unique_id"] == 1)
+    # the stored/actual dates, NOT the CPM packing at the 2026-01-05 project start
+    assert done["start"] == "2026-02-16" and done["finish"] == "2026-02-17"
+    assert done["percent_complete"] == 100.0  # the hide-100% toggle has data to act on
+
+
 def test_ask_with_null_backend_returns_cited_facts(client: TestClient) -> None:
     _upload(client, "Project5")
     res = client.post("/api/ask/Project5", data={"question": "what is the finish forecast?"})

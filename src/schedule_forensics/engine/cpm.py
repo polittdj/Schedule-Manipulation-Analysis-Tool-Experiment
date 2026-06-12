@@ -13,6 +13,13 @@ Scope of this engine (documented, not silently limited — Law 2):
   ``MSO`` / ``MFO`` **pin** the start / finish (forward pin + matching backward cap,
   so a pinned activity carries zero or — under successor pressure — negative float);
   a task ``deadline`` is a backward cap that can drive negative float.
+* **Stored dates honored where logic does not bind** (ADR-0034): an UNSTARTED
+  manually-scheduled task pins at its stored start (MS Project keeps it there), and an
+  unstarted auto task with no predecessors floors at its stored start (a pure forward
+  pass would pack every unlinked task to the project start — wrong for real
+  sparse-logic files). The affected UniqueIDs are reported on
+  :attr:`CPMResult.date_driven` and surfaced as a cited finding ("dates not supported
+  by logic") — honored, never silently rescheduled.
 * **Refused** (raises :class:`CPMError` rather than emit a silently-wrong schedule —
   Law 2): ``ALAP``. Its as-late-as-possible semantics are backward-pass-driven and
   interact subtly with float; it does not appear in the parity schedules and is out of
@@ -84,6 +91,10 @@ class CPMResult:
     timings: Mapping[int, TaskTiming]
     project_finish: int  # working-minute offset of the network's latest early finish
     critical_path: tuple[int, ...]  # unique_ids with total_float <= 0, in topo order
+    #: UniqueIDs whose forward dates come from their STORED start (manual pin or
+    #: logic-unbound floor — ADR-0034), not from network logic: the schedule reproduces
+    #: the source file, and these are the "dates not supported by logic" the findings cite.
+    date_driven: tuple[int, ...] = ()
 
     def timing(self, unique_id: int) -> TaskTiming:
         """Timing for ``unique_id``; raises ``KeyError`` if the task is not scheduled."""
@@ -355,6 +366,35 @@ def _constraint_bounds(
     return es_floor, es_pin, lf_cap
 
 
+def _stored_date_bounds(
+    schedule: Schedule, tasks: list[Task], has_preds: frozenset[int]
+) -> tuple[dict[int, int], dict[int, int]]:
+    """Stored-start offsets the forward pass honors on UNSTARTED tasks (ADR-0034).
+
+    Real-world sparse-logic / template schedules carry dates network logic does not
+    support: manually-scheduled tasks sit exactly where MS Project stored them, and an
+    auto task without a single predecessor was hand-positioned (a pure forward pass packs
+    them all at the project start — the operator's sparse-logic file computed 2026-08
+    against MSP's 2027-03). Returns ``(pin, floor)``: an unstarted **manual** task PINS
+    at its stored start (MSP keeps it there even against logic); an unstarted,
+    **logic-unbound** auto task FLOORS there (logic/constraints may still push it later).
+    Started work is untouched — actuals anchor the record — and the curated parity
+    schedules' dates are logic-true, so neither rule fires on them (pinned by tests).
+    Offsets clamp at the project start (negative offsets are unrenderable).
+    """
+    pin: dict[int, int] = {}
+    floor: dict[int, int] = {}
+    for task in tasks:
+        if task.start is None or task.actual_start is not None or task.percent_complete > 0:
+            continue
+        off = max(datetime_to_offset(schedule.project_start, task.start, schedule.calendar), 0)
+        if task.is_manual:
+            pin[task.unique_id] = off
+        elif task.unique_id not in has_preds and off > 0:
+            floor[task.unique_id] = off
+    return pin, floor
+
+
 def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None) -> CPMResult:
     """Run the forward and backward passes and return per-task timings.
 
@@ -383,16 +423,20 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
         preds[succ].append((pred, rel, lag))
         succs[pred].append((succ, rel, lag))
 
-    # ---- forward pass (ES >= 0 == project start; raised by SNET/FNET; pinned by MSO/MFO) ----
+    # ---- forward pass (ES >= 0 == project start; raised by SNET/FNET; pinned by MSO/MFO;
+    # stored starts honored for unstarted manual / logic-unbound tasks — ADR-0034) ----
+    has_preds = frozenset(tid for tid in task_ids if preds[tid])
+    stored_pin, stored_floor = _stored_date_bounds(schedule, tasks, has_preds)
     elapsed_ids = {t.unique_id for t in tasks if t.duration_is_elapsed and t.duration_minutes > 0}
     ps, cal = schedule.project_start, schedule.calendar
     early_start: dict[int, int] = {}
     early_finish: dict[int, int] = {}
+    date_driven: list[int] = []
     for tid in order:
         dur_s = duration[tid]
-        if tid in es_pin:
-            es = es_pin[tid]
-        elif tid in elapsed_ids:
+        # the pure logic+constraint early start — computed even under a pin, so the
+        # logic-vs-stored divergence the findings report is measurable
+        if tid in elapsed_ids:
             # FF/SF bound the FINISH; convert each to a start bound on the wall clock
             bounds = []
             for p, rel, lag in preds[tid]:
@@ -403,7 +447,7 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
                     bounds.append(_elapsed_start_offset(ps, cal, anchor + lag, dur_s))
             if tid in es_floor:
                 bounds.append(es_floor[tid])
-            es = max([0, *bounds])
+            logic_es = max([0, *bounds])
         else:
             bounds = [
                 es_lower_bound(rel, early_start[p], early_finish[p], lag, dur_s)
@@ -411,7 +455,18 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
             ]
             if tid in es_floor:
                 bounds.append(es_floor[tid])
-            es = max([0, *bounds])
+            logic_es = max([0, *bounds])
+        if tid in es_pin:
+            es = es_pin[tid]
+        elif tid in stored_pin:
+            es = stored_pin[tid]
+            if es != logic_es:
+                date_driven.append(tid)
+        elif tid in stored_floor and stored_floor[tid] > logic_es:
+            es = stored_floor[tid]
+            date_driven.append(tid)
+        else:
+            es = logic_es
         early_start[tid] = es
         early_finish[tid] = (
             _elapsed_finish_offset(ps, cal, es, dur_s) if tid in elapsed_ids else es + dur_s
@@ -480,4 +535,9 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
         )
 
     critical_path = tuple(tid for tid in order if timings[tid].is_critical)
-    return CPMResult(timings=timings, project_finish=network_finish, critical_path=critical_path)
+    return CPMResult(
+        timings=timings,
+        project_finish=network_finish,
+        critical_path=critical_path,
+        date_driven=tuple(sorted(date_driven)),
+    )

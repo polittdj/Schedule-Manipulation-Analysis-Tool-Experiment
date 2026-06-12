@@ -17,6 +17,8 @@ otherwise — deliberate).
 Change log:
   * v2.0.0 — M2 trust-root model (pydantic v2, modular layout; supersedes the prior
     build's single-module v1.x schema). Source-only fields; engine computes derivatives.
+  * v2.1.0 — additive: ``Task.duration_is_elapsed`` (MSP elapsed durations, PR #90) and
+    ``Task.is_manual`` (MSP manually-scheduled mode; stored-date CPM mandate, ADR-0034).
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
-SCHEMA_VERSION = "2.0.0"
+SCHEMA_VERSION = "2.1.0"
 
 __all__ = [
     "SCHEMA_VERSION",

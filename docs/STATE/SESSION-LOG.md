@@ -1426,3 +1426,37 @@ this file is the running history.
 
 ### Parity / tests
 - **700 passed, 3 skipped**; parity 10/10; all gates clean.
+
+## M18 items 1–3 sitting — 2026-06-12 (PR #91; Fable 5) — resumed post-#90
+
+- **#90 verified + merged** (CI 3/3 green at pickup; operator merged within minutes;
+  subscription cycle closed).
+- **PR #91 — the top three operator orders in one PR (ADR-0034):**
+  1. **Stored-date CPM mandate**: `Task.is_manual` (model v2.1.0; MSPDI `<Manual>`;
+     .json round-trip). The forward pass honors stored starts on UNSTARTED tasks:
+     manual tasks PIN (MSP keeps them placed, even against logic), logic-unbound auto
+     tasks FLOOR (constraints/logic may still push later); offsets clamp at project
+     start; started work untouched. `CPMResult.date_driven` reports the honored
+     anchors; `recommendations` emits the MEDIUM CONCERN **"N scheduled dates are not
+     supported by logic"** citing each (metric `logic_unsupported_dates`, dictionary +
+     METRIC-DICTIONARY.md regenerated). Parity-safe verified BEFORE building: neither
+     rule fires on goldens (single pred-less task at offset 0; all Manual=0) nor TP1–4.
+  2. **Path Analysis completed-tasks fix**: `_driving_data` now displays
+     `driving_slack.date_basis` (public rename) — the stored-date axis the slack math
+     already ran on. Real files' completed ancestors render at ACTUAL dates instead of
+     CPM-packing at project start (stored ISO dates verbatim; CPM fallback for
+     date-less tasks). Per-row `date_driven`, optional "Date-driven" column, and a
+     coverage status line ("N of the schedule's M activities have a logic path to this
+     target") so logic-unreachable work reads explained, not missing. Exports inherit.
+  3. **Full-width layout**: base.css `main{max-width:1100px}` cap removed.
+- Root-cause note: items 1 and 3 were the SAME defect class — pure-logic scheduling
+  on files whose dates logic does not support. The /path "completed tasks never show"
+  on the operator's file is expected to be the unlinked-completed-work case; the
+  coverage note + finding now surface it, and the stored-date display fixes the rows
+  that DO trace.
+- **Duration Bomb re-verification OWED** (file not in this container): finish
+  3/4/2027, /path completed rows, finding citing template tasks.
+
+### Parity / tests
+- **717 passed, 3 skipped** (17 new); parity 10/10; ruff/format/mypy/bandit(unpiped)
+  clean; engine cov ≈97%.

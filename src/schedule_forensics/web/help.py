@@ -259,6 +259,16 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "completed_on_time / forecast_to_be_finished",
         _C,
     ),
+    "logic_unsupported_dates": _doc(
+        "logic_unsupported_dates",
+        "Dates Not Supported by Logic",
+        "Unstarted activities whose stored dates network logic does not produce: "
+        "manually-scheduled tasks pinned where MS Project stored them, and unlinked "
+        "auto tasks floored at their stored start (a pure CPM would pack them at the "
+        "project start). The tool honors the file's dates and cites each divergence.",
+        "count(unstarted tasks where honored stored start != pure logic early start)",
+        "Stored-date CPM mandate (ADR-0034); MS Project manual-task semantics.",
+    ),
     "forecast_to_be_started": _doc(
         "forecast_to_be_started",
         "Forecast to be Started",
