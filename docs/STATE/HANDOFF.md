@@ -235,7 +235,9 @@ venv has been missing the web deps.)
    verified green): same file/UID here vs MS Project + SSI, on `/path` — the driving count
    should now match at day granularity. If it still diverges, get the two counts + any red
    import-notice text (file + reason — CUI-safe) and chase it (likely suspects: dropped
-   links logged on import, constraint normalization, lag handling).
+   links logged on import, constraint normalization, lag handling). The **synthetic
+   battery** (`docs/TEST-PROJECTS.md`, TP1 esp.) gives the same comparison on files where
+   the truth is pinned — operator runs SSI/Fuse on them and reports any disagreement.
 2. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
    `importers/_common.py`; ALWAYS re-run `pytest -m parity`. Watch how the new surfaces
    (Path Analysis, ask-the-AI, float bands, `/forecast`) read on real data.

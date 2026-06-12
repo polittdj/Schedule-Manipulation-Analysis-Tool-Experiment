@@ -1185,3 +1185,35 @@ this file is the running history.
 
 ### Parity / tests
 - **645 passed, 3 skipped** (no code changes this sitting); parity 10/10; all gates clean.
+
+
+## Verification-battery sitting — 2026-06-12 (PR #82; Fable 5)
+
+- Operator asked for copy-paste-able test projects + MSP VBA + step-by-step SSI/Fuse
+  verification — and judged four goldens too few (agreed: they are clean-room files).
+- Built the **synthetic verification battery** (`tools/make_test_projects.py`,
+  deterministic, stdlib + nothing): 8 MSPDI files committed under
+  `tests/fixtures/test_projects/` (the one schedule-format path git allows):
+  - **TP1** progressed library job with RAGGED actual times (16:30/15:00 finishes,
+    9:30/7:00 starts): driving tiers to UID 43 = 13/1/2/2 with completed UIDs 11/12/13
+    carrying 210/210/120 MINUTES that floor to DRIVING (the #80 4-vs-66 signature,
+    now a pinned fixture); completion perf 2 ahead / 2 on / 1 behind, MEI 1.0.
+  - **TP2** bridge job on a **4×10 Mon–Thu 600-min calendar** + 4 holidays: float
+    bands 7/12/13; High Duration counts the 45 d + 86 d tasks and **excludes the
+    exactly-44 d task** (calendar-true boundary pinned).
+  - **TP3** plant outage with hand-seeded DCMA violations: Logic 4, Leads 2, Lags 3,
+    FS 76 %, Hard Constraints 2 (MSO+MFO), Negative Float 3 (the MFO-capped tail),
+    High Duration 2, Invalid Dates 4, BEI 0.62, Missed 7 — all engine-measured + pinned.
+  - **TP4 v1–v5** monthly data-center series: finish story 06-05 → 06-26 → 07-17;
+    v3→v4 plants an **erased actual start + quiet 2-month baseline slip on UID 19** —
+    `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE` both fire citing 19 (pinned);
+    v2→v3 fires neither (pinned); five snapshots feed Trend/Compare/Bow-Wave/drift.
+- Dates computed with an **MS-Project-faithful block calendar** (8–12/13–17 etc.), not
+  the engine's single-block model, so MSP re-derives identical dates on import.
+- `docs/TEST-PROJECTS.md`: import steps, the **VBA module** (SF_VerifyImport,
+  SF_SaveAsMpp, SF_ImportFolderToMpp), per-file SSI/Fuse recipes with the expected
+  values; README docs index points at it. 14 new pinned tests incl. byte-determinism
+  generator↔fixtures sync.
+
+### Parity / tests
+- **659 passed, 3 skipped** (14 new); parity 10/10; all gates clean; zero new deps.

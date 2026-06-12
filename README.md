@@ -100,6 +100,8 @@ Built autonomously across sessions `A1, A2, …`, one milestone each, with all s
 - `docs/STATE/SESSION-LOG.md` — append-only per-session history.
 - `docs/FINAL-REPORT.md` — the finished-build summary · `docs/PARITY-REPORT.md` — how the numbers
   match Acumen Fuse v8.11.0 / SSI.
+- `docs/TEST-PROJECTS.md` — the synthetic verification battery (TP1–TP4): open them in MS Project,
+  run SSI / Fuse side-by-side, and compare against the pinned expected values.
 - `docs/PLAN/` — build plan + requirements traceability (RTM) · `docs/adr/` — architecture decision
   records · `docs/risks.md` — risk register.
 - `00_REFERENCE_INTAKE/DEPOSIT-HERE.md` — where reference / golden-parity files go (git-ignored, CUI
