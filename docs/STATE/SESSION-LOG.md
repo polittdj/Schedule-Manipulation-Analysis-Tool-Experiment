@@ -1224,3 +1224,31 @@ this file is the running history.
 
 ### Parity / tests
 - **667 passed, 3 skipped** (22 new); parity 10/10; all gates clean; zero new deps.
+
+
+## Battery hardening sitting — 2026-06-12 (PR #84; Fable 5)
+
+- Operator ran the battery for real and surfaced two things:
+  1. **Tool on .xml showed 18 traced ✔ but only 10 DRIVING** — their install predates
+     PR #80 (minute-axis tiering): UIDs 11/12/13 (210/210/120 min) read SECONDARY on
+     the stale build. The battery reproduced the 4-vs-66 bug class on cue; fix = pull.
+  2. **MSP imports were silently damaged**: SF_VerifyImport showed 23 of 30 links,
+     "Commissioning before project start," manual-mode tasks, a phantom 11/24/25
+     project start. Root cause vs the genuine MSP export (Project2.mspdi.xml):
+     **`<Active>/<Manual>` belong directly after `<Name>`** — emitted at the task tail
+     they are IGNORED, so the machine's "New Tasks: Manually Scheduled" default took
+     over and link application broke. Generator now mirrors MSP's own element order,
+     adds `<CrossProject>0</CrossProject>` per link, `<NewTasksAreManual>0</NewTasksAreManual>`
+     + `DefaultFinishTime` in the header, `IsBaselineCalendar/BaseCalendarUID` in the
+     calendar. New pinned guard: every task's element sequence must follow the genuine
+     export's order (8 tests). docs/TEST-PROJECTS.md gained the per-file
+     **SF_VerifyImport expectations table** (links count is the pass/fail signal).
+- Fuse on TP3 (operator screenshot): **7 rows matched exactly** (Hard 2, NegFloat 3,
+  Lags 3, Critical 5/42%, Logic Density 2.38, Merge Hotspot 2, Missing Logic 8 — engine
+  agrees: 11,14,15,16,31,32,33,42). Two definitional gaps logged for reconciliation:
+  **Leads 1 vs 2** (Fuse counts tasks-with-leads; both planted leads target UID 29 —
+  engine counts links) and **Insufficient Detail 8 vs 2** (Fuse counts tasks >= ~15 d;
+  tool uses the 44-working-day rule).
+
+### Parity / tests
+- **675 passed, 3 skipped** (8 new); parity 10/10; all gates clean.

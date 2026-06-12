@@ -118,6 +118,11 @@ def _tod(minutes: int) -> dt.time:
     return dt.time(minutes // 60, minutes % 60)
 
 
+def _last_block_end(cal: BlockCalendar) -> int:
+    """The latest end-of-working-time minute across the week (DefaultFinishTime)."""
+    return max(e for blocks in cal.blocks_by_weekday.values() for _, e in blocks)
+
+
 STANDARD = BlockCalendar(
     "Standard",
     {d: ((8 * 60, 12 * 60), (13 * 60, 17 * 60)) for d in range(5)},
@@ -304,6 +309,10 @@ def _calendar_xml(cal: BlockCalendar) -> str:
     """One base calendar, UID 1, in MSPDI WeekDays + Exceptions form."""
     out = ["  <Calendars>", "    <Calendar>", "      <UID>1</UID>"]
     out += [f"      <Name>{escape(cal.name)}</Name>", "      <IsBaseCalendar>1</IsBaseCalendar>"]
+    out += [
+        "      <IsBaselineCalendar>0</IsBaselineCalendar>",
+        "      <BaseCalendarUID>-1</BaseCalendarUID>",
+    ]
     out.append("      <WeekDays>")
     for day_type in range(1, 8):  # MSPDI: 1=Sunday .. 7=Saturday
         weekday = (day_type + 5) % 7  # -> Python Mon=0..Sun=6
@@ -350,6 +359,10 @@ def _task_xml(t: T, tid: int, links: list[L]) -> str:
     )
     out = ["    <Task>", f"      <UID>{t.uid}</UID>", f"      <ID>{tid}</ID>"]
     out.append(f"      <Name>{escape(t.name)}</Name>")
+    # Active/Manual sit directly after Name in genuine MS Project exports — emitted at
+    # the tail they are IGNORED and the user's "New Tasks: Manually Scheduled" default
+    # takes over (the operator's TP1.mpp imported manual with dropped links).
+    out += ["      <Active>1</Active>", "      <Manual>0</Manual>"]
     out += ["      <Type>0</Type>", "      <IsNull>0</IsNull>"]
     if t.wbs:
         out.append(f"      <WBS>{escape(t.wbs)}</WBS>")
@@ -376,6 +389,7 @@ def _task_xml(t: T, tid: int, links: list[L]) -> str:
         out.append("      <PredecessorLink>")
         out.append(f"        <PredecessorUID>{link.pred}</PredecessorUID>")
         out.append(f"        <Type>{link.type}</Type>")
+        out.append("        <CrossProject>0</CrossProject>")
         out.append(f"        <LinkLag>{link.lag * 10}</LinkLag>")
         out.append("        <LagFormat>7</LagFormat>")
         out.append("      </PredecessorLink>")
@@ -389,7 +403,7 @@ def _task_xml(t: T, tid: int, links: list[L]) -> str:
         out.append(f"        <Duration>{_dur(t.bl_minutes)}</Duration>")
         out.append("        <DurationFormat>7</DurationFormat>")
         out.append("      </Baseline>")
-    out += ["      <Active>1</Active>", "      <Manual>0</Manual>", "    </Task>"]
+    out.append("    </Task>")
     return "\n".join(out)
 
 
@@ -421,6 +435,9 @@ def _project_xml(
         f"  <StartDate>{_iso(project_start)}</StartDate>",
         "  <CalendarUID>1</CalendarUID>",
         f"  <DefaultStartTime>{project_start.strftime('%H:%M:%S')}</DefaultStartTime>",
+        "  <DefaultFinishTime>"
+        + _tod(_last_block_end(cal)).strftime("%H:%M:%S")
+        + "</DefaultFinishTime>",
         "  <MinutesPerDay>" + str(per_day) + "</MinutesPerDay>",
         f"  <MinutesPerWeek>{per_day * len(cal.blocks_by_weekday)}</MinutesPerWeek>",
         "  <DaysPerMonth>20</DaysPerMonth>",
@@ -428,6 +445,8 @@ def _project_xml(
     ]
     if status_date is not None:
         out.append(f"  <StatusDate>{_iso(status_date)}</StatusDate>")
+    # imported tasks must never inherit a user's "New Tasks: Manually Scheduled" default
+    out.append("  <NewTasksAreManual>0</NewTasksAreManual>")
     out.append(_calendar_xml(cal))
     out.append("  <Tasks>")
     for tid, t in enumerate(tasks):

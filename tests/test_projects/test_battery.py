@@ -75,6 +75,32 @@ def test_every_battery_file_parses_and_solves(name: str) -> None:
     assert cpm.project_finish > 0
 
 
+#: Task child-element order from a genuine MS Project export (Project2.mspdi.xml).
+#: MSP's XML reader is sequence-sensitive: Active/Manual emitted at the tail were
+#: IGNORED, so the operator's "New Tasks: Manually Scheduled" default took over and
+#: the imported .mpp lost links (the TP1 4-task trace). Order is part of the contract.
+_MSP_TASK_ORDER = [
+    *("UID", "ID", "Name", "Active", "Manual", "Type", "IsNull", "WBS", "OutlineNumber"),
+    *("OutlineLevel", "Priority", "Start", "Finish", "Duration", "DurationFormat"),
+    *("Milestone", "Summary", "PercentComplete", "ActualStart", "ActualFinish"),
+    *("RemainingDuration", "ConstraintType", "ConstraintDate", "PredecessorLink", "Baseline"),
+]
+
+
+@pytest.mark.parametrize("name", ALL_FILES)
+def test_task_elements_follow_ms_projects_own_export_order(name: str) -> None:
+    import xml.etree.ElementTree as ET
+
+    rank = {tag: i for i, tag in enumerate(_MSP_TASK_ORDER)}
+    root = ET.parse(FIXTURES / name).getroot()
+    ns = "{http://schemas.microsoft.com/project}"
+    for task in root.iter(f"{ns}Task"):
+        tags = [child.tag.removeprefix(ns) for child in task]
+        assert set(tags) <= set(_MSP_TASK_ORDER), (name, sorted(set(tags) - set(rank)))
+        ranks = [rank[tag] for tag in tags]
+        assert ranks == sorted(ranks), (name, tags)
+
+
 @pytest.mark.parametrize("name", ALL_FILES)
 def test_every_date_and_duration_is_sane_for_ms_project(name: str) -> None:
     """Summary rollups (incl. the UID-0 project row) must carry real dates: a top-down
