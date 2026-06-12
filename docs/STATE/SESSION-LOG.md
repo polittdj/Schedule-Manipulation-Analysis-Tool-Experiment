@@ -1156,3 +1156,5 @@ this file is the running history.
 
 ### Parity / tests
 - 1 new boundary-pinned regression; parity 10/10; all gates clean.
+- Session handoff written with PR #80 still OPEN (CI green, mergeable) — the next session
+  starts by checking its state, then the operator's 4-vs-66 re-test.
