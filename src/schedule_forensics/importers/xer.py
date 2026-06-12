@@ -15,11 +15,12 @@ states and are dropped with a count logged (the same tolerance classes as the MS
 importer; ALAP and dateless date-constraints likewise normalize to ASAP).
 
 ``TASKRSRC`` quantities drive the ``CP_Units`` percent complete (actual ÷ at-completion
-units); the project's ``CALENDAR`` row drives the schedule calendar (work weekdays,
-per-day minutes, holidays — ADR-0028). Deferred (ADR-0008, carried to a later
-milestone): per-task cost roll-up from ``TASKRSRC``/expenses and per-task calendars
-(the engine models one schedule-level calendar). The parity-critical ingestion path is
-MSPDI (from ``.mpp`` via MPXJ, M4); XER is a secondary native format.
+units); ``TASKRSRC`` assignment costs + ``PROJCOST`` expenses roll up into the per-task
+cost fields (ADR-0029, the EVM basis); the project's ``CALENDAR`` row drives the
+schedule calendar (work weekdays, per-day minutes, holidays — ADR-0028). Deferred
+(ADR-0008): per-task calendars (the engine models one schedule-level calendar). The
+parity-critical ingestion path is MSPDI (from ``.mpp`` via MPXJ, M4); XER is a
+secondary native format.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ import logging
 import os
 import re
 from collections import Counter
+from typing import NamedTuple
 
 import pydantic
 
@@ -149,9 +151,18 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
         tables.get("TASKRSRC", []), resource_name_by_id
     )
     units_pct_by_task = _units_percent_by_task(tables.get("TASKRSRC", []))
+    costs_by_task = _costs_by_task(tables.get("TASKRSRC", []), tables.get("PROJCOST", []))
 
     tasks = [
-        _parse_task(row, wbs_short, wbs_parent, uids_by_task, names_by_task, units_pct_by_task)
+        _parse_task(
+            row,
+            wbs_short,
+            wbs_parent,
+            uids_by_task,
+            names_by_task,
+            units_pct_by_task,
+            costs_by_task,
+        )
         for row in task_rows
     ]
     all_task_ids = {_req_int(t, "task_id") for t in all_tasks}
@@ -299,8 +310,10 @@ def _parse_task(
     uids_by_task: dict[int, tuple[int, ...]],
     names_by_task: dict[int, tuple[str, ...]],
     units_pct_by_task: dict[int, float],
+    costs_by_task: dict[int, _TaskCosts],
 ) -> Task:
     task_id = _req_int(row, "task_id")
+    costs = costs_by_task.get(task_id, _NO_COSTS)
     task_type = _g(row, "task_type") or ""
     constraint = _g(row, "cstr_type")
     physical = _g(row, "phys_complete_pct")
@@ -343,6 +356,9 @@ def _parse_task(
             actual_finish=parse_datetime(_g(row, "act_end_date")),
             baseline_start=parse_datetime(_g(row, "target_start_date")),
             baseline_finish=parse_datetime(_g(row, "target_end_date")),
+            cost=costs.cost,
+            actual_cost=costs.actual,
+            budgeted_cost=costs.budget if costs.budget is not None else 0.0,
             resource_names=names_by_task.get(task_id, ()),
             resource_ids=uids_by_task.get(task_id, ()),
         )
@@ -571,6 +587,72 @@ def _parse_resources(rsrc_rows: list[Row]) -> list[Resource]:
         except pydantic.ValidationError as exc:
             raise ImporterError(f"resource rsrc_id {rsrc_id} is invalid: {exc}") from exc
     return resources
+
+
+class _TaskCosts(NamedTuple):
+    """One task's rolled-up costs: current total, actuals (ACWP), budget (BAC basis)."""
+
+    cost: float | None
+    actual: float | None
+    budget: float | None
+
+
+_NO_COSTS = _TaskCosts(None, None, None)
+
+
+def _costs_by_task(taskrsrc_rows: list[Row], projcost_rows: list[Row]) -> dict[int, _TaskCosts]:
+    """``TASKRSRC`` assignment costs + ``PROJCOST`` expenses → per-task cost roll-up.
+
+    Per task: **actual** = Σ(``act_reg_cost`` + ``act_ot_cost``) + Σ expense ``act_cost``
+    (the ACWP basis); **cost** = actual + Σ remaining (the current at-completion total,
+    the MSPDI ``Cost`` analogue); **budget** = Σ ``target_cost`` clamped to ≥ 0 (the
+    BAC/EV basis cannot be negative — same rule as the MSPDI baseline cost). Absence is
+    honest: a field is set only when the file carried at least one contributing value
+    for that task (a cost-less schedule keeps ``None``/default and the EVM indices stay
+    NA). Negative actual/remaining values (credits, adjustments) are preserved.
+    """
+    actual: dict[int, float] = {}
+    remaining: dict[int, float] = {}
+    target: dict[int, float] = {}
+    has_remaining: set[int] = set()
+
+    def add(bucket: dict[int, float], task_id: int, value: float | None) -> bool:
+        if value is None:
+            return False
+        bucket[task_id] = bucket.get(task_id, 0.0) + value
+        return True
+
+    for row in taskrsrc_rows:
+        task_id = _opt_int(row, "task_id")
+        if task_id is None:
+            continue
+        add(actual, task_id, parse_float(_g(row, "act_reg_cost")))
+        add(actual, task_id, parse_float(_g(row, "act_ot_cost")))
+        if add(remaining, task_id, parse_float(_g(row, "remain_cost"))):
+            has_remaining.add(task_id)
+        add(target, task_id, parse_float(_g(row, "target_cost")))
+    for row in projcost_rows:
+        task_id = _opt_int(row, "task_id")
+        if task_id is None:
+            continue
+        add(actual, task_id, parse_float(_g(row, "act_cost")))
+        if add(remaining, task_id, parse_float(_g(row, "remain_cost"))):
+            has_remaining.add(task_id)
+        add(target, task_id, parse_float(_g(row, "target_cost")))
+
+    out: dict[int, _TaskCosts] = {}
+    for task_id in set(actual) | has_remaining | set(target):
+        act = actual.get(task_id)
+        cost: float | None = None
+        if act is not None or task_id in has_remaining:
+            cost = (act or 0.0) + remaining.get(task_id, 0.0)
+        budget = target.get(task_id)
+        out[task_id] = _TaskCosts(
+            cost=cost,
+            actual=act,
+            budget=max(0.0, budget) if budget is not None else None,
+        )
+    return out
 
 
 def _units_percent_by_task(taskrsrc_rows: list[Row]) -> dict[int, float]:
