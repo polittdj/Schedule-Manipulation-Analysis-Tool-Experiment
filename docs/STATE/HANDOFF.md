@@ -246,20 +246,21 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**667 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**675 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
 venv has been missing the web deps.)
 
 ## Next steps / open items
-1. **The operator's 4-vs-66 side-by-side re-test** (#80 is merged, post-merge main CI
-   verified green): same file/UID here vs MS Project + SSI, on `/path` — the driving count
-   should now match at day granularity. If it still diverges, get the two counts + any red
-   import-notice text (file + reason — CUI-safe) and chase it (likely suspects: dropped
-   links logged on import, constraint normalization, lag handling). The **synthetic
-   battery** (`docs/TEST-PROJECTS.md`, TP1 esp.) gives the same comparison on files where
-   the truth is pinned — operator runs SSI/Fuse on them and reports any disagreement.
+1. **TP1-vs-SSI: CLOSED with full parity (2026-06-12).** All 18 traced tasks matched;
+   live driving path UID-for-UID; non-zero slacks exact to SSI's display rounding;
+   sub-day completed-task fractions are a documented model residual the whole-day floor
+   absorbs (PARITY-REPORT + TEST-PROJECTS carry the verified tables). Remaining battery
+   work: **Fuse re-run on a rebuilt TP3.mpp** (the Leads tasks-vs-links and
+   Insufficient-Detail definitional rows), and **TP4 v1–v5 in the tool** (Compare must
+   flag the UID-19 manipulation pair; Trend + Bow Wave/CEI on the five snapshots).
+   The real-file 4-vs-66 re-test from #80 remains worthwhile but is now low-risk.
 2. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
    `importers/_common.py`; ALWAYS re-run `pytest -m parity`. Watch how the new surfaces
    (Path Analysis, ask-the-AI, float bands, `/forecast`) read on real data.

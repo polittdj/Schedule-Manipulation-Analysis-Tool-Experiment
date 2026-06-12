@@ -1252,3 +1252,28 @@ this file is the running history.
 
 ### Parity / tests
 - **675 passed, 3 skipped** (8 new); parity 10/10; all gates clean.
+
+
+## TP1 verification campaign closed — 2026-06-12 (PRs #84, #85 merged; docs PR #86; Fable 5)
+
+- PR #84 (MSP element order) and #85 (drop TP1 assignments) **merged**, main CI green on
+  both squashes. The operator then re-imported TP1: **SF_VerifyImport matched the
+  manifest exactly** (23/4/3/**30 links**/23, finish 9/17/26 9:00 AM, no error dialogs).
+- **SSI side-by-side CLOSED with full parity:** "Get all dependencies" to UID 43 listed
+  all 18 tasks; the live driving path matched **UID-for-UID** (the same 10 incomplete
+  tasks at 0 days); non-zero slacks matched to SSI's display rounding (7 / 15 / 20 /
+  24.88≙24.875 / 70.13≙70.125). The PR #80 4-vs-66 class is verified fixed end-to-end
+  on the operator's machine, against SSI itself, on a file built to provoke it.
+- **New documented residual:** sub-day fractions on completed ragged tasks differ (SSI
+  real two-block lunch calendar: 0.63/0.38 = 300/180 of 480 min; engine single-block:
+  0.44/0.25 = 210/120) — the ADR-0032 whole-day floor absorbs it; classification agreed
+  18/18. SSI's "≤ 0d" filter uses the exact value, so completed ragged tasks drop from
+  that view — "Get all dependencies" is the comparable run. Recorded in PARITY-REPORT +
+  TEST-PROJECTS (operator-verified results table).
+- Also: the tool's updated build showed 13/18 DRIVING on the .xml (pre-update it showed
+  10 — the stale-build reproduction of the 4-vs-66 class, on cue).
+- Remaining battery work: Fuse re-run on a rebuilt TP3.mpp (Leads / Insufficient-Detail
+  definitional rows), TP4 v1-v5 in the tool (Compare manipulation flags, Trend, CEI).
+
+### Parity / tests
+- **675 passed, 3 skipped**; parity 10/10; all gates clean (docs-only sitting).
