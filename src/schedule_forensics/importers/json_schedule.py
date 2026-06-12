@@ -98,7 +98,14 @@ def _task(raw: dict[str, Any]) -> Task:
         "duration_minutes": int(raw.get("duration_minutes", 0)),
         "duration_is_elapsed": bool(raw.get("duration_is_elapsed", False)),
     }
-    for key in ("wbs", "is_milestone", "is_summary", "percent_complete", "resource_names"):
+    for key in (
+        "wbs",
+        "is_milestone",
+        "is_summary",
+        "is_manual",
+        "percent_complete",
+        "resource_names",
+    ):
         if key in raw and raw[key] is not None:
             fields[key] = raw[key]
     for key in ("remaining_duration_minutes", "baseline_duration_minutes"):
@@ -211,6 +218,8 @@ def to_json_text(schedule: Schedule) -> str:
             task["is_milestone"] = True
         if t.is_summary:
             task["is_summary"] = True
+        if t.is_manual:
+            task["is_manual"] = True
         if t.remaining_duration_minutes is not None:
             task["remaining_duration_minutes"] = t.remaining_duration_minutes
         if t.baseline_duration_minutes is not None:

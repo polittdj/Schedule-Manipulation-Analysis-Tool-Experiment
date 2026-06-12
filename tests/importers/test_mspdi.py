@@ -162,6 +162,20 @@ def _doc(body: str, *, start: str = "<StartDate>2025-01-06T08:00:00</StartDate>"
     return f"<Project {_NS}>{start}{body}</Project>"
 
 
+def test_manual_flag_is_read() -> None:
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Manual>1</Manual><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Manual>0</Manual><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].is_manual is True
+    assert sch.tasks_by_id[2].is_manual is False
+    assert sch.tasks_by_id[3].is_manual is False  # absent element defaults to auto-scheduled
+
+
 # --- loud-failure / edge cases ---------------------------------------------------
 
 

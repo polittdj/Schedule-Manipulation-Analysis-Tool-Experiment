@@ -60,6 +60,10 @@ class Task(StrictFrozenModel):
     is_summary: bool = False  # WBS rollup; excluded from the CPM network and DCMA denominators
     is_level_of_effort: bool = False
     is_active: bool = True
+    #: MS Project "Manually Scheduled" task mode (MSPDI ``<Manual>``): MSP keeps the task
+    #: at its stored dates regardless of logic. The CPM engine honors this for unstarted
+    #: tasks and reports the logic-vs-stored divergence as a cited finding (ADR-0034).
+    is_manual: bool = False
 
     # --- constraints ---
     constraint_type: ConstraintType = ConstraintType.ASAP

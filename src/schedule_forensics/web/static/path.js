@@ -26,6 +26,7 @@
     { key: "duration_days", label: "Dur (d)", on: false },
     { key: "total_float_days", label: "TF (d)", on: false },
     { key: "percent_complete", label: "%", on: true },
+    { key: "date_driven", label: "Date-driven", on: false },
     { key: "resource_names", label: "Resources", on: false },
   ];
   var data = null; // last /api/driving payload
@@ -80,7 +81,8 @@
       ? data.note
       : rows.length + " of " + data.rows.length + " path activities to UID " +
         data.target_uid + " (" + (data.target_name || "?") + ")" +
-        (data.data_date ? " — data date " + data.data_date : "");
+        (data.data_date ? " — data date " + data.data_date : "") +
+        (data.coverage ? " — " + data.coverage : "");
     if (!rows.length) return;
 
     var px = Number($("pathZoom").value); // pixels per calendar day
@@ -127,6 +129,7 @@
       var tr = el("tr", { class: r.percent_complete >= 100 ? "done" : "" });
       on.forEach(function (f) {
         var v = r[f.key];
+        if (typeof v === "boolean") v = v ? "yes" : "—";
         tr.appendChild(el("td", { text: v === null || v === undefined ? "—" : String(v) }));
       });
       var cell = el("td", { class: "path-timeline" });

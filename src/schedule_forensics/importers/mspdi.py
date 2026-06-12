@@ -406,6 +406,7 @@ def _parse_task(
             is_summary=_bool(task_el, "Summary", default=False) or uid == 0,
             is_level_of_effort=False,  # not represented in MSPDI (ADR-0008)
             is_active=_bool(task_el, "Active", default=True),
+            is_manual=_bool(task_el, "Manual", default=False),
             constraint_type=constraint_type,
             constraint_date=constraint_date,
             deadline=parse_datetime(_text(task_el, "Deadline")),

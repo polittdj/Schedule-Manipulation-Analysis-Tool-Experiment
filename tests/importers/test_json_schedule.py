@@ -164,11 +164,14 @@ def test_save_json_round_trip_preserves_structure_and_costs() -> None:
                 budgeted_cost=1400.0,
             ),
             Task(unique_id=2, name="Done", duration_minutes=0, is_milestone=True, wbs="1.2"),
+            Task(unique_id=3, name="Hand-placed", duration_minutes=480, is_manual=True),
         ),
     )
     reread = parse_json_text(to_json_text(original))
     root, build, done = (reread.tasks_by_id[uid] for uid in (0, 1, 2))
     assert root.is_summary and done.is_milestone
+    assert reread.tasks_by_id[3].is_manual is True  # MSP manual mode survives Save .json
+    assert build.is_manual is False
     assert (build.wbs, build.remaining_duration_minutes, build.baseline_duration_minutes) == (
         "1.1",
         300,

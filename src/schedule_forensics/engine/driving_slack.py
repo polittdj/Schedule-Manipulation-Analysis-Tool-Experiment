@@ -67,11 +67,16 @@ class DrivingSlackResult:
     tier: PathTier
 
 
-def _date_basis(
+def date_basis(
     schedule: Schedule, cpm_result: CPMResult | None
 ) -> tuple[dict[int, int], dict[int, int]]:
     """Per-task (early_start, early_finish) offsets from the as-scheduled stored dates,
-    falling back to the CPM forward pass for any task missing them."""
+    falling back to the CPM forward pass for any task missing them.
+
+    This is the axis the slack math runs on — and the axis the Path Analysis page must
+    DISPLAY: on real progressed files the pure CPM packs completed work at the project
+    start (logic alone doesn't reproduce actuals), so grid dates and Gantt bars drawn
+    from CPM timings put finished tasks far from where the file says they ran."""
     cal = schedule.calendar
     start = schedule.project_start
     early_start: dict[int, int] = {}
@@ -131,7 +136,7 @@ def compute_driving_slack(
     """
     ancestors = ancestors_of(schedule, target_uid)
     trace = ancestors | {target_uid}
-    early_start, early_finish = _date_basis(schedule, cpm_result)
+    early_start, early_finish = date_basis(schedule, cpm_result)
     span = {uid: early_finish[uid] - early_start[uid] for uid in trace}
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}

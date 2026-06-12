@@ -54,6 +54,7 @@ from schedule_forensics.engine import (
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
+from schedule_forensics.engine.driving_slack import date_basis
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
@@ -1571,16 +1572,29 @@ def _driving_data(
     )
     cal = sch.calendar
     per_day = cal.working_minutes_per_day
+    # display the AS-SCHEDULED stored-date axis the slack math runs on — pure CPM
+    # timings pack real files' completed work at the project start (wrong bars/dates)
+    basis_start, basis_finish = date_basis(sch, cpm)
+    date_driven = set(cpm.date_driven)
 
     def day(ordinal: int | None) -> str | None:
         if ordinal is None:
             return None
-        return offset_to_datetime(sch.project_start, ordinal, cal).date().isoformat()
+        return offset_to_datetime(sch.project_start, max(ordinal, 0), cal).date().isoformat()
 
     rows = []
     for uid in sorted(results):
         timing = cpm.timings.get(uid)
         task = by_id[uid]
+        start_ord = basis_start.get(uid, timing.early_start if timing else None)
+        finish_ord = basis_finish.get(uid, timing.early_finish if timing else None)
+        if task.start is not None and task.finish is not None:
+            # the same stored-or-CPM split date_basis() makes; stored dates render
+            # verbatim (an actual start may legally predate the project start)
+            start_iso: str | None = task.start.date().isoformat()
+            finish_iso: str | None = task.finish.date().isoformat()
+        else:
+            start_iso, finish_iso = day(start_ord), day(finish_ord)
         rows.append(
             {
                 "unique_id": uid,
@@ -1589,10 +1603,10 @@ def _driving_data(
                 "tier": str(results[uid].tier),
                 "driving_slack_days": int(results[uid].driving_slack_days),
                 "on_driving_path": results[uid].on_driving_path,
-                "start_ord": timing.early_start if timing else None,
-                "finish_ord": timing.early_finish if timing else None,
-                "start": day(timing.early_start if timing else None),
-                "finish": day(timing.early_finish if timing else None),
+                "start_ord": start_ord,
+                "finish_ord": finish_ord,
+                "start": start_iso,
+                "finish": finish_iso,
                 "baseline_finish": _iso_date(task.baseline_finish),
                 "duration_days": round(
                     task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
@@ -1604,15 +1618,26 @@ def _driving_data(
                 ),
                 "percent_complete": task.percent_complete,
                 "is_milestone": task.is_milestone,
+                "date_driven": uid in date_driven,
                 "resource_names": ", ".join(task.resource_names),
             }
         )
     # waterfall order: earliest finish first, so the chain cascades to the target's finish
     rows.sort(key=lambda r: (r["finish_ord"] is None, r["finish_ord"], r["start_ord"]))
+    # the trace is logic-only by definition: say how much of the schedule it covers, so
+    # absent (e.g. unlinked completed) work reads as explained, not missing
+    activities = sum(1 for t in sch.tasks if not t.is_summary)
+    coverage = (
+        f"{len(rows)} of the schedule's {activities} activities have a logic path to this target"
+    )
+    driven_in_trace = sum(1 for r in rows if r["date_driven"])
+    if driven_in_trace:
+        coverage += f"; {driven_in_trace} traced date(s) are not supported by logic (see report)"
     return {
         "target_uid": target,
         "target_name": by_id[target].name,
         "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        "coverage": coverage,
         "rows": rows,
     }
 

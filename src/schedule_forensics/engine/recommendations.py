@@ -92,6 +92,7 @@ def recommend(
     cpm_cur = current_cpm if current_cpm is not None else compute_cpm(current)
     findings: list[Finding] = []
     findings.extend(_dcma_findings(current, cpm_cur))
+    findings.extend(_logic_support_findings(current, cpm_cur))
     findings.extend(_compliance_findings(current, cpm_cur))
     if prior is not None:
         findings.extend(_change_findings(current, prior, cpm_cur, prior_cpm))
@@ -145,6 +146,37 @@ def _dcma_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
             )
         )
     return out
+
+
+def _logic_support_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
+    """The ADR-0034 stored-date divergence: dates the network logic does not support.
+
+    The CPM honored these activities' stored dates (manual pin / logic-unbound floor)
+    because a pure forward pass would have scheduled them elsewhere — on sparse-logic
+    files, packed at the project start. Honest forensics: the schedule reproduces the
+    source file AND the divergence is reported, cited per activity, never silent.
+    """
+    if not cpm_cur.date_driven:
+        return []
+    n = len(cpm_cur.date_driven)
+    return [
+        Finding(
+            category=Category.CONCERN,
+            severity=Severity.MEDIUM,
+            metric_id="logic_unsupported_dates",
+            title=f"{n} scheduled date{'s are' if n != 1 else ' is'} not supported by logic",
+            detail=(
+                "These activities sit at manually-placed / stored dates that predecessor "
+                "logic does not produce — a pure critical-path pass would schedule them "
+                "elsewhere. The tool honors the stored dates so the computed schedule "
+                "matches the source file, and flags the divergence here."
+            ),
+            course_of_action="Tie these activities into the network with real predecessor "
+            "logic (or confirm the manual dates are deliberate); dates that logic cannot "
+            "reproduce cannot be trusted to move correctly when the plan changes.",
+            citations=_cite(schedule, cpm_cur.date_driven),
+        )
+    ]
 
 
 def _compliance_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:

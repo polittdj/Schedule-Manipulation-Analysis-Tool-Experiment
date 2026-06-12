@@ -1,18 +1,20 @@
-# Handoff — 2026-06-12 (PRs #81–#89 MERGED; **M18 IN FLIGHT**; PR #90 OPEN — the eday fix)
+# Handoff — 2026-06-12 (PRs #81–#90 MERGED; **M18 IN FLIGHT**; PR #91 OPEN — backlog items 1–3)
 
-**This session (massive, operator-driven):** verification battery campaign CLOSED with
-**TP1-vs-SSI full parity** (18/18, slacks exact to display rounding) and the MSP import
-pipeline hardened through three real generator bugs the operator's testing caught
-(UID-0 rollup #82→fix, MSP element order #84, assignment mangling #85). Then the
-operator opened **M18** (the big work order) and these shipped: **#87** Fuse-exact
-leads/lags (ACTIVITIES not links) + Insufficient Detail decoded (baseline dur > 10% of
-project working duration) + CEI fixed to completed-on-time/planned (manipulated TP4 v4
-drops 1.00→0.50); **#88** Excel/Word export of every chart/table (stdlib writers);
-**#89** deck DAX adopted verbatim from the operator's SemanticModel deposit (EPI,
-Start-to-Finish Ratio; RatioMeasure doesn't exist; FOUR deck authoring defects
-documented in ADR-0033) + the **narrative Diagnostic Brief** (/brief + Word download).
-**PR #90 (OPEN)** carries the **elapsed-durations (eday) fix** — the operator's
-Duration Bomb find; merged-#89 raced past its push. Model/mode: Fable 5 (1M context).
+**This sitting:** **#90 merged** (the eday fix — verified green, subscribed, operator
+merged minutes in). Then the M18 backlog's top three operator orders shipped together as
+**PR #91 (ADR-0034)**: the **stored-date CPM mandate** (unstarted MANUAL tasks pin at
+their stored start, unstarted logic-unbound auto tasks floor there; `CPMResult.date_driven`
++ the cited **"N dates are not supported by logic"** finding; `Task.is_manual` model
+v2.1.0, MSPDI `<Manual>` read, .json round-trip), the **Path-Analysis completed-tasks
+fix** (the page now displays the slack engine's stored-date axis — real files' finished
+work shows at its ACTUAL dates, not CPM-packed at project start; per-row `date_driven`;
+a trace-coverage status line explains what logic cannot reach), and the **full-width
+layout** (base.css `main` width cap removed). Parity-safe by construction AND verified:
+neither stored-date rule fires on any golden/battery fixture. **VERIFICATION OWED: the
+Duration Bomb .mpp is NOT in this container** — on operator re-deposit, confirm computed
+finish **2027-03-04**, completed tasks visible on /path, and the new finding citing the
+template tasks. Earlier same day: TP1-vs-SSI parity closed, #87 Fuse alignment, #88
+exports, #89 DAX+Brief (see SESSION-LOG). Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -242,7 +244,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**700 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**717 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -250,30 +252,20 @@ venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
 
-**START HERE: merge/verify PR #90** (the eday fix — elapsed durations consume
-wall-clock time exactly like MSP; 5 pinned tests incl. the operator's UID-171 case).
-Then work the backlog in this order:
+**START HERE: merge/verify PR #91** (backlog items 1–3: the stored-date CPM mandate
+ADR-0034, the /path stored-date display + coverage note, the full-width layout).
+**Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
+is empty in a fresh container) and verify: computed finish **2027-03-04** (was
+8/5/2026), completed tasks visible on /path at their actual dates, the
+"dates not supported by logic" finding counting/citing the template tasks, and the
+hide-100% toggle acting on real rows. Items 1–3 below are DONE pending that real-file
+verification; continue the backlog in this order:
 
-1. **BUG (operator): Path Analysis completed tasks never show**, and the
-   "hide 100% complete" toggle does nothing either way. NOTE: TP1's trace DID show
-   completed rows (verified screenshots earlier this session) — so this is
-   conditional: suspect the real-file path (the trace's stored-date basis dropping
-   completed ancestors?, a filter interaction, or a regression). Reproduce on the
-   operator's files (Duration Bomb in 00_REFERENCE_INTAKE/ locally — ask them to
-   re-deposit if needed), fix, and pin.
-2. **LAYOUT (operator): use the FULL screen width.** At 100% zoom the tool uses less
-   than half the screen — the page container is width-capped in app.css. Widen every
-   page (grids/Gantt/charts get the space; test on /path and the report).
-3. **MANDATE (operator): kill the CPM-vs-stored gap on sparse-logic files — "this IS
-   a forensics tool; figure it out and make it work for ALL instances."** The
-   Duration Bomb's computed finish must match MSP (3/4/2027, not 8/5/2026).
-   Investigation leads: inspect the converted MSPDI for `<Manual>` flags and
-   SNET-style constraint dates on the template tasks (the .mpp conversion may carry
-   them and we may be ignoring Manual); design: honor manually-scheduled/stored
-   dates — pin or floor unstarted, logic-unbound tasks at their stored start so the
-   computed schedule reproduces MSP, and report the logic-vs-stored divergence as a
-   cited forensic finding ("N dates are not supported by logic") instead of silently
-   rescheduling. Verify against the Duration Bomb file's MSP finish.
+1. ~~Path Analysis completed tasks never show~~ (PR #91: /path displays the
+   stored-date axis; coverage note explains logic-unreachable work; pinned).
+2. ~~Use the FULL screen width~~ (PR #91: base.css `main` cap removed).
+3. ~~Sparse-logic CPM mandate~~ (PR #91/ADR-0034: manual pin + logic-unbound floor +
+   `date_driven` + cited finding; Duration Bomb re-verification owed, see above).
 4. **AI at full power (operator):** relax the figure-discard gate; Ollama does
    brief-tone interpretation/analysis in real time; "Ask the AI" panel on ALL pages
    (workbook-wide facts on multi-version pages); cite computed figures; standing
@@ -317,9 +309,10 @@ Then work the backlog in this order:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #90 (the eday fix; open at
-> handoff), then the Path-Analysis completed-tasks bug, the full-width layout, and the
-> sparse-logic CPM mandate. Stay on branch `claude/clever-carson-uovtkk` (recreate from
+> M18 backlog in its listed order — start by checking PR #91 (backlog items 1–3; open
+> at handoff), then the Duration Bomb re-verification (re-deposit needed: computed
+> finish must read 3/4/2027, completed tasks on /path, the new logic finding), then
+> AI-at-full-power. Stay on branch `claude/clever-carson-uovtkk` (recreate from
 > origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
 > origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
 > tools are missing. Keep `pytest -m parity` at 10/10, run bandit UNPIPED, open draft
