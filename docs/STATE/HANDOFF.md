@@ -1,11 +1,13 @@
 # Handoff — 2026-06-12 (ADR-0027..0030 sittings — **M15 DONE; the build is COMPLETE**)
 
-**This session (six PRs):** the four ADR-0026 deferred items (PR #69, ADR-0027), MSPDI/XER
-**calendar parsing** (PR #70, ADR-0028), the **XER cost roll-up** (PR #71, ADR-0029), the
-**recurring-exception fix** (PR #72), **calendar visibility** (PR #73) — all merged — and
-**M15** (PR #74, ADR-0030): the operator deposited the `.pbix`; its measure families now
-enrich the dashboard (float bands, completion performance, MEI, staleness, the three-method
-**/forecast** page with drift). **Every milestone M1–M17 is done; nothing is blocked.**
+**This session (eight PRs, ALL MERGED #69–#76):** the four ADR-0026 deferred items (PR #69,
+ADR-0027), MSPDI/XER **calendar parsing** (PR #70, ADR-0028), the **XER cost roll-up** (PR
+#71, ADR-0029), the **recurring-exception fix** (PR #72), **calendar visibility** (PR #73),
+**M15** (PR #74, ADR-0030: the operator deposited the `.pbix`; float bands, completion
+performance, MEI, staleness, the three-method **/forecast** with drift), the **exact-ratio
+IEAC(t) fix** (PR #75 — the 2-decimal SPI(t) read the golden P5 forecast 9 days early), and
+the **USER-GUIDE/README catch-up** (PR #76). **Every milestone M1–M17 is done; nothing is
+blocked; code, tests, ADRs (30), and user docs are mutually consistent.**
 **Next session:** operator feedback; optional items below. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
@@ -123,12 +125,20 @@ span) are skipped + logged instead of contiguously expanding into weeks of false
 (name, h/day + exact minutes, work week, holidays w/ 10-date preview) and `/api/analysis`
 carries a `calendar` object — the imported time basis is verifiable on the page.
 
-**PR #74 (ADR-0030) — M15, the last milestone:** deck read locally (Layout JSON; DataModel
-XPress9-compressed → reconstructed formulas, ambiguous measures deferred pending DAX export);
-adopted **float bands** (0/<5/<10d, calendar-aware, offenders cited; 0-day band == Acumen
-Critical 41/37), **completion performance** (ahead/on/behind, avg days, duration ratios,
-**MEI**, staleness), and the **three-method `/forecast`** (CPM / completion-rate / IEAC(t))
-with the per-version drift table; 22 metric-dictionary entries; RTM A6 + FINAL-REPORT closed.
+**PR #74 (merged, ADR-0030) — M15, the last milestone:** deck read locally (Layout JSON;
+DataModel XPress9-compressed → reconstructed formulas, ambiguous measures deferred pending DAX
+export); adopted **float bands** (0/<5/<10d, calendar-aware, offenders cited; 0-day band ==
+Acumen Critical 41/37), **completion performance** (ahead/on/behind, avg days, duration
+ratios, **MEI**, staleness), and the **three-method `/forecast`** (CPM / completion-rate /
+IEAC(t)) with the per-version drift table; 22 metric-dictionary entries; RTM A6 +
+FINAL-REPORT closed.
+
+**PR #75 (merged) — exact-ratio IEAC(t):** the forecast divided by the 2-decimal display
+SPI(t) (golden P5 read 9 days early); the math now uses the exact ES/AT ratio (display still
+rounds). Plus a /forecast falsy-zero display trap (#67 class).
+
+**PR #76 (merged) — user-docs catch-up:** USER-GUIDE + README now cover the imported
+calendar, the three new report panels, and the /forecast page (everything #70–#75 shipped).
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI

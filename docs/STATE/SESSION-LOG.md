@@ -1108,3 +1108,5 @@ this file is the running history.
   user-facing docs current: USER-GUIDE + README now cover the imported project calendar
   (+ Working-calendar panel), the low-float bands and completion-performance panels, and
   the three-method **/forecast** page with the drift table (everything #70–#75 shipped).
+- PR #76 merged; final HANDOFF consolidation (PR #77). Session closes with **all of #69–#76
+  merged**, main CI green throughout, 631 passed / parity 10/10, and nothing blocked.
