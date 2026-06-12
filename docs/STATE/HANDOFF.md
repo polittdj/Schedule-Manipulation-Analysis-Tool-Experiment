@@ -1,14 +1,16 @@
-# Handoff — 2026-06-12 (ADR-0027..0030 sittings — **M15 DONE; the build is COMPLETE**)
+# Handoff — 2026-06-12 (post-#80 sitting — **the build is COMPLETE; PRs #69–#80 all merged**)
 
-**This session (eight PRs, ALL MERGED #69–#76):** the four ADR-0026 deferred items (PR #69,
-ADR-0027), MSPDI/XER **calendar parsing** (PR #70, ADR-0028), the **XER cost roll-up** (PR
-#71, ADR-0029), the **recurring-exception fix** (PR #72), **calendar visibility** (PR #73),
-**M15** (PR #74, ADR-0030: the operator deposited the `.pbix`; float bands, completion
-performance, MEI, staleness, the three-method **/forecast** with drift), the **exact-ratio
-IEAC(t) fix** (PR #75 — the 2-decimal SPI(t) read the golden P5 forecast 9 days early), and
-the **USER-GUIDE/README catch-up** (PR #76). **Every milestone M1–M17 is done; nothing is
-blocked; code, tests, ADRs (30), and user docs are mutually consistent.**
-**Next session:** operator feedback; optional items below. Model/mode: Fable 5 (1M context).
+**Latest sittings:** after the #69–#76 run (ADR-0027..0030 — M15 closed, every milestone
+M1–M17 done), the operator kept driving: the **desktop icon + favicon** (PR #77), the
+**pythonw dead-port launcher fix** (PR #78), the **SSI-style Path Analysis workspace +
+grounded ask-the-AI** (PR #79, ADR-0031), and the two real-file fixes — **day-granular
+driving tiers** (the 4-vs-66 discrepancy) + **the server surviving heavy loads** (PR #80,
+ADR-0032). The post-#80 sitting verified the merge + post-merge main CI green, re-ran the
+full local gate (645 passed / parity 10/10), reviewed the #79/#80 surfaces (no defects
+found), and brought the state docs current. **Code, tests, ADRs (32), and user docs are
+mutually consistent; nothing is blocked.**
+**Next session:** operator feedback — PR #80 asked for the MS Project + SSI side-by-side
+re-run; optional items below. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -70,7 +72,7 @@ in the metric dictionary; EPI / RatioMeasure / Start-and-Finish-Ratio await a DA
   CSS variables, live-re-theming SVG), **batch cap 10 → 20**.
   All of #58–#68 are **merged to `main`**.
 
-## What shipped this sitting — PRs #69, #70 (both merged) + #71
+## What shipped the ADR-0027..0030 sittings — PRs #69–#76 (all merged)
 
 **PR #69 (ADR-0027) — the four ADR-0026 deferred items, MERGED:**
 1. **Calendar-true day math**: every day↔minute boundary derives from
@@ -140,6 +142,46 @@ rounds). Plus a /forecast falsy-zero display trap (#67 class).
 **PR #76 (merged) — user-docs catch-up:** USER-GUIDE + README now cover the imported
 calendar, the three new report panels, and the /forecast page (everything #70–#75 shipped).
 
+## What shipped the latest sittings — PRs #77–#80 (all merged)
+
+**PR #77 — the unique desktop icon + favicon:** `packaging/make_icon.py` redesigned
+(stdlib-only, 4x supersampled, deterministic): the dark dashboard tile + white ▲ +
+red/blue/green Gantt waterfall + gold dashed data-date line, packed as a 5-entry
+256/128/64/32/16 PNG-in-ICO; the same bytes serve as the **browser favicon**
+(`/static/favicon.ico`, linked in the layout) and a 256px Linux PNG. Sync + determinism
+pinned by tests. Plus the prior HANDOFF consolidation.
+
+**PR #78 — pythonw dead-port launcher fix:** the desktop icon launches `pythonw.exe` →
+`sys.stdout`/`sys.stderr = None`; `print()` drops silently but **uvicorn's logging setup
+touches the streams** → the server died right after the browser-open timer fired
+(ERR_CONNECTION_REFUSED on a dead port). `launcher._ensure_streams()` rebinds missing
+streams to devnull (never a log file — request paths carry schedule names; CUI stays off
+disk); the regression test drives the real uvicorn.Config path with None streams.
+
+**PR #79 (ADR-0031) — Path Analysis workspace + grounded ask-the-AI:** **`/path`** —
+target UID (session target pre-fills) + user-defined secondary/tertiary day-bands over the
+SSI-parity driving-slack engine; data grid LEFT (add/remove MS-Project fields; tier /
+substring filters; hide-100%-complete), **scalable Gantt RIGHT** (px/day zoom slider,
+month ticks, gold data-date line); `/api/driving` extended with the SSI grid fields, ISO
+dates, and the data date. **Ask the AI** (`ai/qa.py`, `POST /api/ask/{schedule}`):
+answers come from an engine-computed **cited fact sheet** (frame, forecasts, DCMA
+verdicts, findings, float bands, completion performance); term-overlap selection; a local
+model may phrase, but the **figure-subset gate** discards any answer containing a number
+the engine never computed; the Null backend returns the matching facts verbatim. All local.
+
+**PR #80 (ADR-0032) — day-granular driving tiers + load liveness (both operator-hit):**
+1. Real file read **4 driving tasks where MS Project + SSI showed ~66** — tiering compared
+   slack ≤ 0 to the MINUTE while real stored dates carry time-of-day raggedness; SSI's
+   display axis is whole days. Tiers now classify on **slack floored to whole working
+   days** (`_whole_days`, schedule's own calendar); goldens are exact day multiples →
+   byte-identical, tier counts (36/12/12) unchanged, parity 10/10; boundaries pinned.
+2. Reloading the test files **killed the server** (ERR_CONNECTION_REFUSED): async
+   `/upload` parsed on the event loop, starving heartbeats past the 10s grace → the
+   auto-shutdown watchdog fired MID-LOAD. Upload now runs **sync in the threadpool**, and
+   an HTTP middleware counts **in-flight requests** — the watchdog never fires while any
+   request is being served; every completion refreshes the beat. Browser-close shutdown
+   behavior unchanged.
+
 ## Lessons learned (carry forward)
 - **Real stored dates are ragged to the minute; SSI thinks in whole days.** Any tier/driving
   classification must compare on the floored-day axis or real files undercount the driving
@@ -178,7 +220,7 @@ calendar, the three new report panels, and the /forecast page (everything #70–
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**631 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**645 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -186,9 +228,12 @@ venv has been missing the web deps.)
 
 ## Next steps / open items (all OPTIONAL — the build contract is complete)
 1. **Respond to operator feedback** on real `.mpp`/`.xer` files — tolerance classes live in
-   `importers/_common.py`; ALWAYS re-run `pytest -m parity`. Watch for: exotic calendars
-   degrading oddly (the "unreadable project calendar" log line names the path), and how the
-   new M15 surfaces (float bands / completion performance / `/forecast`) read on real data.
+   `importers/_common.py`; ALWAYS re-run `pytest -m parity`. **Pending: PR #80 asked the
+   operator to re-run the MS Project + SSI side-by-side** (same file/UID) — the driving
+   count should now match at day granularity; if it still diverges, get the reported number
+   + any red import-notice text (CUI-safe). Also watch: exotic calendars degrading oddly
+   (the "unreadable project calendar" log line names the path), and how the M15 surfaces
+   (float bands / completion performance / `/forecast`) and `/path` read on real data.
 2. **Deck measures awaiting a DAX export** (ADR-0030): EPI, RatioMeasure, Start-and-Finish
    Ratio — implement exactly when the operator provides the measure text (Tabular Editor
    export per the intake instructions); do not guess formulas.
