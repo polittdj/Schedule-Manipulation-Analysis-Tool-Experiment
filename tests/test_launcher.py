@@ -65,3 +65,34 @@ def test_main_can_skip_browser() -> None:
         timer=_ImmediateTimer,
     )
     assert opened == []  # no browser opened when disabled
+
+
+def test_no_console_launch_survives_none_streams(monkeypatch: pytest.MonkeyPatch) -> None:
+    # pythonw.exe (the desktop icon's no-console launch) starts with sys.stdout and
+    # sys.stderr = None: print() is silently dropped, but uvicorn's logging setup calls
+    # sys.stdout.isatty() — the server died right after the browser-open timer fired and
+    # the icon opened a browser onto a dead port (ERR_CONNECTION_REFUSED). The launcher
+    # must rebind the streams and serve normally; this drives the REAL uvicorn.Config
+    # logging setup through web.app.serve with an injected (non-binding) server.
+    import sys
+
+    from schedule_forensics.web import app as web_app
+
+    served: list[tuple[str, int]] = []
+
+    class _FakeServer:
+        def __init__(self, config: Any) -> None:
+            self.config = config
+
+        def run(self) -> None:
+            served.append((self.config.host, self.config.port))
+
+    def serve(app: Any, host: str, port: int) -> None:
+        web_app.serve(app, host, port, server_factory=_FakeServer)
+
+    monkeypatch.setattr(sys, "stdout", None)
+    monkeypatch.setattr(sys, "stderr", None)
+    launcher.main(port=8123, open_browser=False, serve=serve)
+    assert served == [("127.0.0.1", 8123)]
+    assert sys.stdout is not None and sys.stdout.isatty() is False  # uvicorn's probe works
+    assert sys.stderr is not None
