@@ -308,7 +308,9 @@ def _project_calendar(root: ET.Element) -> Calendar:
             if _bool(exc, "DayWorking", default=False):
                 skipped_working_exceptions += 1
             else:
-                holidays.update(_exception_range(exc.find("TimePeriod")))
+                holidays.update(
+                    _exception_range(exc.find("TimePeriod"), occurrences=_int(exc, "Occurrences"))
+                )
 
     if not work_weekdays:
         return Calendar()  # no usable weekday pattern anywhere — keep the safe default
@@ -328,16 +330,35 @@ def _project_calendar(root: ET.Element) -> Calendar:
     )
 
 
-def _exception_range(period_el: ET.Element | None) -> set[dt.date]:
-    """A ``TimePeriod``'s ``FromDate``..``ToDate`` (inclusive) as dates, capped defensively."""
+def _exception_range(
+    period_el: ET.Element | None, *, occurrences: int | None = None
+) -> set[dt.date]:
+    """A ``TimePeriod``'s ``FromDate``..``ToDate`` (inclusive) as dates, capped defensively.
+
+    A **recurring** exception ("every Friday off", a yearly holiday) carries a TimePeriod
+    spanning first..last occurrence — expanding that contiguously would erase whole months
+    of working days. MS Project writes ``Occurrences``: a contiguous daily exception has
+    occurrences == days-in-range; anything else is a recurrence pattern, which the
+    single-block model cannot represent — skipped with a logged note (under-modeling is
+    honest; fabricating weeks of holidays is not).
+    """
     if period_el is None:
         return set()
     start = parse_datetime(_text(period_el, "FromDate"))
     finish = parse_datetime(_text(period_el, "ToDate"))
     if start is None or finish is None or finish < start:
         return set()
-    days = min((finish.date() - start.date()).days, _MAX_EXCEPTION_RANGE_DAYS - 1)
-    return {start.date() + dt.timedelta(days=i) for i in range(days + 1)}
+    days = (finish.date() - start.date()).days + 1
+    if occurrences is not None and occurrences > 1 and occurrences != days:
+        logger.info(
+            "skipped a recurring calendar exception (%d occurrences over %d days — "
+            "recurrence patterns are outside the single-block day model)",
+            occurrences,
+            days,
+        )
+        return set()
+    days = min(days, _MAX_EXCEPTION_RANGE_DAYS)
+    return {start.date() + dt.timedelta(days=i) for i in range(days)}
 
 
 # --- task ------------------------------------------------------------------------

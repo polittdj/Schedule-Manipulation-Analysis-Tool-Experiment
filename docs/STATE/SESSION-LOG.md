@@ -1033,6 +1033,13 @@ this file is the running history.
   the file carried a value; cost-less files identical, EVM stays NA). Credits preserved.
 - Cost-loaded `.xer` files now drive real SPI/CPI/TCPI (end-to-end test: CPI 1.25).
 
+- Self-review of the newest surfaces (ADR-0027/0028/0029) found one real bug in the merged
+  calendar parsing: a **recurring MSPDI exception** ("every Friday off", Occurrences=8 over a
+  50-day TimePeriod) expanded contiguously and erased ~36 working days. Fixed in **PR #72**
+  (#71 merged while the fix was in flight): an exception whose Occurrences disagrees with its
+  day span is skipped + logged (recurrence is outside the single-block model); contiguous
+  daily/occurrence-matching ranges unchanged.
+
 ### Parity / tests
-- **612 passed, 3 skipped** (4 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
+- **613 passed, 3 skipped** (5 new); parity 10/10; engine ≈98%, overall ≈98%; ruff + format +
   mypy(strict) + bandit clean; zero new dependencies.

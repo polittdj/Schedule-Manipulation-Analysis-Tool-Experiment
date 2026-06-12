@@ -34,7 +34,11 @@ with no `<WeekDays>` of its own walks its `BaseCalendarUID` chain (cycle-safe) f
 pattern, while **exceptions collect across the whole chain** (a derived calendar inherits
 its base's holidays plus its own). Both exception encodings are read: modern
 `<Exceptions><Exception>` and the legacy `WeekDay DayType=0 + TimePeriod`. A `DayWorking`
-day with no `WorkingTimes` means "the default times" → 480. The `.mpp` path (MPXJ → MSPDI)
+day with no `WorkingTimes` means "the default times" → 480. **Recurring exceptions**
+("every Friday off") carry a `TimePeriod` spanning first..last occurrence — expanding that
+contiguously would erase whole months of working days, so an exception whose `Occurrences`
+disagrees with its day span is skipped with a logged note (correction landed with PR #72;
+recurrence patterns are outside the single-block model). The `.mpp` path (MPXJ → MSPDI)
 gets all of this for free.
 
 ## Decision 3 — XER: the `PROJECT.clndr_id` CALENDAR row and packed `clndr_data`
