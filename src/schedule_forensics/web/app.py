@@ -918,7 +918,10 @@ def _forecast_body(schedules: list[Schedule], sets: list[ForecastSet]) -> str:
             ("To-go activities", latest.remaining_count),
             (
                 "Historical completion rate",
-                f"{latest.rate_per_month:g} / month" if latest.rate_per_month else "n/a",
+                # `is not None`: a rate rounding to 0.0 must not display as absent (#67 class)
+                f"{latest.rate_per_month:g} / month"
+                if latest.rate_per_month is not None
+                else "n/a",
             ),
             ("SPI(t)", f"{latest.spi_t:g}" if latest.spi_t is not None else "n/a"),
             (

@@ -38,7 +38,7 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
         assert method in page
     assert "2027-12-07" in page  # CPM
     assert "2028-06-10" in page  # rate
-    assert "2029-01-23" in page  # earned schedule
+    assert "2029-02-01" in page  # earned schedule (exact-ratio IEAC)
     assert "SPI(t)" in page and "0.47" in page
     assert "Finish-controlling:" in page  # the §6 citation anchor
     assert "Forecast drift" not in page  # a single version has no drift table
