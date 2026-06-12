@@ -112,6 +112,8 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   credits in actual/remaining preserved). **Absence is honest**: fields set only when the
   file carried a value — cost-less `.xer` identical (EVM stays NA); the curated fixture has
   no cost columns (pinned). Cost-loaded `.xer` now drives real SPI/CPI/TCPI.
+- Also in #71: self-review fix — **recurring MSPDI exceptions** (Occurrences ≠ day span)
+  are skipped + logged instead of contiguously expanding into weeks of false holidays.
 
 ## Lessons learned (carry forward)
 - **The curated goldens (Project2–Project5) are self-contained; real `.mpp` exports are NOT.** The MSPDI
@@ -147,7 +149,7 @@ depositing `NSATDeploymentRevisionAlpha.pbix` (git-ignored CUI, R-12). Do not fa
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**612 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**613 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
