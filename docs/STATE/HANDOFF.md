@@ -1,22 +1,18 @@
-# Handoff — 2026-06-12 (PRs #69–#82 **ALL MERGED** — build COMPLETE + verification battery)
+# Handoff — 2026-06-12 (PRs #81–#89 MERGED; **M18 IN FLIGHT**; PR #90 OPEN — the eday fix)
 
-**The twelve-PR session:** #69 ADR-0026 close-out · #70 calendar parsing (ADR-0028) ·
-#71 XER cost roll-up (ADR-0029) · #72 recurring-exception fix · #73 calendar visibility ·
-#74 **M15** (the operator deposited the `.pbix` — float bands, completion performance, MEI,
-staleness, three-method **/forecast**; ADR-0030) · #75 exact-ratio IEAC(t) · #76 user-docs
-catch-up · #77 **unique desktop icon + favicon** · #78 pythonw launcher fix (the icon opened
-a dead port) · #79 **SSI-style Path Analysis workspace + grounded ask-the-AI** (ADR-0031) ·
-#80 driving tiers on SSI's whole-day axis (the operator's real-file **4-vs-66 driving-task
-discrepancy**) + the server no longer kills itself loading big files (ADR-0032).
-**The post-#80 sittings:** verified the #80 merge + main CI green, reviewed the #79/#80
-surfaces (no defects), recovered the stranded handoff commit (PR #81 — see lessons), and
-built the **synthetic SSI/Fuse verification battery** (PR #82, `docs/TEST-PROJECTS.md`):
-8 generated MSPDI files (TP1 ragged actuals / TP2 4×10 calendar / TP3 seeded DCMA counts /
-TP4 v1–v5 manipulation series) + MSP VBA workflow, 22 pinned tests; the operator's MSP
-import caught a real generator bug (UID-0 rollup) — fixed + guarded same sitting. Code,
-tests, ADRs (32), and user docs are mutually consistent; nothing is blocked.
-**Next session: the operator's SSI/Fuse results on the battery + the real-file 4-vs-66
-re-test** (requested in PR #80); optional items below. Model/mode: Fable 5 (1M context).
+**This session (massive, operator-driven):** verification battery campaign CLOSED with
+**TP1-vs-SSI full parity** (18/18, slacks exact to display rounding) and the MSP import
+pipeline hardened through three real generator bugs the operator's testing caught
+(UID-0 rollup #82→fix, MSP element order #84, assignment mangling #85). Then the
+operator opened **M18** (the big work order) and these shipped: **#87** Fuse-exact
+leads/lags (ACTIVITIES not links) + Insufficient Detail decoded (baseline dur > 10% of
+project working duration) + CEI fixed to completed-on-time/planned (manipulated TP4 v4
+drops 1.00→0.50); **#88** Excel/Word export of every chart/table (stdlib writers);
+**#89** deck DAX adopted verbatim from the operator's SemanticModel deposit (EPI,
+Start-to-Finish Ratio; RatioMeasure doesn't exist; FOUR deck authoring defects
+documented in ADR-0033) + the **narrative Diagnostic Brief** (/brief + Word download).
+**PR #90 (OPEN)** carries the **elapsed-durations (eday) fix** — the operator's
+Duration Bomb find; merged-#89 raced past its push. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -246,62 +242,58 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**678 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
+**700 passed, 3 skipped; parity 10/10; engine ≈98%; overall ≈98%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
 venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
-0. **M18 program** (multi-PR; item 1 of it shipped as PR #87 — Fuse alignment + CEI fix):
-   a. ~~Fuse/SSI definitional alignment, CEI verification~~ (PR #87: leads/lags as
-      ACTIVITIES, Insufficient Detail = baseline dur > 10% of project working duration,
-      CEI = completed-on-time/planned). Operator's future Fuse runs on clean TP1/TP2
-      (predicted ID 7 / 9) adjudicate the remaining basis ambiguity.
-   b. **Word/Excel export of every chart/table** — stdlib-only .docx/.xlsx writers
-      (both formats are zips of XML; no new deps), export buttons per page.
-   c. **The narrative Diagnostic Brief** — story-of-outliers/conflicts format modeled
-      on the operator's Fuse-generated briefing (they deposited the example .docx;
-      format extracted: prose summary -> trend prose -> per-project paragraphs ->
-      metric sentences with verdict phrases). Citations (schedule + UID) on every
-      claim; visuals (gantt snips / charts); downloadable .docx; keep the existing
-      report-card briefing as a separate page.
-   d. **Reproduce the .pbix visuals** — docs/PLAN/PBIX-VISUALS.md carries the full
-      14-page spec + engine coverage map (extracted this sitting; the deck file is
-      CUI and does NOT persist between sessions). EPI/RatioMeasure/Start-and-Finish
-      Ratio still await the operator's DAX export — do not guess.
-   e. **CPM path-evolution animation** (Bow-Wave-style stepper): per version pair,
-      highlight tasks entering/leaving the critical path, duration changes on it, and
-      **schedule-optics signals** — remaining-duration cuts beyond days-worked, logic
-      changes that absorbed a slip (the path would have pushed right without them).
-   f. **Forecast explainer** — plain-English methodology for the three forecasts with
-      worked examples + visuals, for novices AND fact-checking schedulers.
-   g. **Trend page expansion** — more space per chart, click-through drill-down on any
-      §A metric (offender lists per version), animation, Excel export of series data.
-   h. **AI changes** — relaxed interpretive mode (model may compute/explain beyond the
-      fact sheet) with a permanent "AI can err — verify against citations" banner;
-      keep the cited fact sheet alongside; add a SECOND local backend (any
-      OpenAI-compatible local endpoint, e.g. LM Studio/llamafile) and a dual-model
-      cross-check/collaboration mode. Loopback-only egress stays non-negotiable.
-0b. **M18 additions (operator, 2026-06-12 evening — recorded as memory):**
-   - **BUG — elapsed durations ("eday"/"ewk"/"emon") ignore calendars in MSP and the
-     tool must too** (operator is CORRECT; confirmed on their Project2(Duration Bomb)
-     .mpp, kept in 00_REFERENCE_INTAKE/): UID 171 "1 eday" stores 6/12->6/13 but the
-     engine treats 1440 min as WORKING minutes -> CPM finish 6/16 and "3 days" display.
-     Fix: detect elapsed durations (MSPDI DurationFormat elapsed codes; check what the
-     MPXJ converter emits), model flag, CPM consumes wall-clock time for them, display
-     in edays. Note: through MPXJ some elapsed tasks arrive pre-converted (UID 7's
-     "2 edays" came through as the working-min span), UID 171's did not — handle both.
-   - **AI at full power (accelerates item h):** relax the figure-discard gate; Ollama
-     does brief-tone interpretation/analysis in real time; "Ask the AI" panel on ALL
-     pages (workbook-wide facts on multi-version pages); citations for computed figures
-     + a standing "AI can err — verify against citations" disclaimer.
-   - **Executive Briefing reformat** for readability (sections/cards/tables, not prose
-     walls) + Ollama-polished prose.
-   - **Animate the forecast drift** across versions (Bow-Wave-style stepper).
-   - **Lock Y-axis scales across ALL animated visuals**: scale = max of the displayed
-     metric across every loaded version, held constant through the animation (bow wave,
-     forecast drift, trend, path evolution — all of them).
+
+**START HERE: merge/verify PR #90** (the eday fix — elapsed durations consume
+wall-clock time exactly like MSP; 5 pinned tests incl. the operator's UID-171 case).
+Then work the backlog in this order:
+
+1. **BUG (operator): Path Analysis completed tasks never show**, and the
+   "hide 100% complete" toggle does nothing either way. NOTE: TP1's trace DID show
+   completed rows (verified screenshots earlier this session) — so this is
+   conditional: suspect the real-file path (the trace's stored-date basis dropping
+   completed ancestors?, a filter interaction, or a regression). Reproduce on the
+   operator's files (Duration Bomb in 00_REFERENCE_INTAKE/ locally — ask them to
+   re-deposit if needed), fix, and pin.
+2. **LAYOUT (operator): use the FULL screen width.** At 100% zoom the tool uses less
+   than half the screen — the page container is width-capped in app.css. Widen every
+   page (grids/Gantt/charts get the space; test on /path and the report).
+3. **MANDATE (operator): kill the CPM-vs-stored gap on sparse-logic files — "this IS
+   a forensics tool; figure it out and make it work for ALL instances."** The
+   Duration Bomb's computed finish must match MSP (3/4/2027, not 8/5/2026).
+   Investigation leads: inspect the converted MSPDI for `<Manual>` flags and
+   SNET-style constraint dates on the template tasks (the .mpp conversion may carry
+   them and we may be ignoring Manual); design: honor manually-scheduled/stored
+   dates — pin or floor unstarted, logic-unbound tasks at their stored start so the
+   computed schedule reproduces MSP, and report the logic-vs-stored divergence as a
+   cited forensic finding ("N dates are not supported by logic") instead of silently
+   rescheduling. Verify against the Duration Bomb file's MSP finish.
+4. **AI at full power (operator):** relax the figure-discard gate; Ollama does
+   brief-tone interpretation/analysis in real time; "Ask the AI" panel on ALL pages
+   (workbook-wide facts on multi-version pages); cite computed figures; standing
+   "AI can err — verify against citations" disclaimer. Plus: **Executive Briefing
+   reformat** for readability (sections/cards/tables) with Ollama polish. Then the
+   **second local AI model** (any OpenAI-compatible local endpoint) cross-check /
+   collaboration mode. Loopback-only egress stays non-negotiable.
+5. **Forecast-drift ANIMATION** across versions (Bow-Wave-style stepper) and
+   **locked Y-axis scales on ALL animated visuals** (scale = max of the metric across
+   every loaded version, held through the animation — bow wave, drift, trend, path).
+6. **PBIX visual reproduction** — docs/PLAN/PBIX-VISUALS.md is the spec (14 pages,
+   engine coverage map; DAX intake complete, RatioMeasure is a dangling binding).
+7. **CPM path-evolution animation** (Bow-Wave-style): per version pair, highlight
+   tasks entering/leaving the critical path, duration changes on it, and
+   schedule-optics signals (remaining-duration cuts beyond days worked; logic changes
+   that absorbed a slip).
+8. **Forecast explainer** (plain-English methodology + visuals) and **Trend page
+   expansion** (space, per-metric drill-down to offenders per version, animation,
+   Excel export of series).
+
 1. **TP1-vs-SSI: CLOSED with full parity (2026-06-12).** All 18 traced tasks matched;
    live driving path UID-for-UID; non-zero slacks exact to SSI's display rounding;
    sub-day completed-task fractions are a documented model residual the whole-day floor
@@ -324,10 +316,14 @@ venv has been missing the web deps.)
 
 ## Resume command for a NEW session
 Paste this as the first message:
-> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and continue exactly per its
-> "Next steps / open items" — item 1 is the operator's 4-vs-66 side-by-side re-test result, if provided.
-> Stay on branch `claude/clever-carson-uovtkk` (recreate it from origin/main with
-> `git fetch origin main && git checkout -B claude/clever-carson-uovtkk origin/main` — and re-do this
-> after EVERY merge before new work). Run `pip install -e '.[dev]'` into `.venv` first if tools are
-> missing. Keep `pytest -m parity` at 10/10, open draft PRs (don't merge — I do that on GitHub), and
-> never let schedule data leave the machine. Model: Fable 5 (1M context).
+> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
+> M18 backlog in its listed order — start by checking PR #90 (the eday fix; open at
+> handoff), then the Path-Analysis completed-tasks bug, the full-width layout, and the
+> sparse-logic CPM mandate. Stay on branch `claude/clever-carson-uovtkk` (recreate from
+> origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
+> origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
+> tools are missing. Keep `pytest -m parity` at 10/10, run bandit UNPIPED, open draft
+> PRs (don't merge — I do that), and never let schedule data leave the machine.
+> The Duration Bomb .mpp and the SemanticModel zip live in 00_REFERENCE_INTAKE/ on the
+> machine that received them — ask me to re-deposit if a fresh container needs them.
+> Model: Fable 5 (1M context).

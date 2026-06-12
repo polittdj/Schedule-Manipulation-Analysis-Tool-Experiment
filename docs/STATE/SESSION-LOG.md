@@ -1403,3 +1403,26 @@ this file is the running history.
 
 ### Parity / tests
 - **700 passed, 3 skipped** (5 new); parity 10/10; all gates clean.
+
+
+## Session close-out — 2026-06-12 (PR #90; Fable 5)
+
+- **#89 merged** (DAX intake + Diagnostic Brief) — its squash raced past the eday push,
+  so the **elapsed-durations fix rides PR #90** (cherry-picked onto fresh main; 5 pinned
+  tests; verified against the operator's Duration Bomb .mpp in-container).
+- **Operator end-of-session work orders (recorded in HANDOFF backlog, priority order):**
+  1. Path Analysis: completed tasks never show + "hide 100% complete" toggle inert
+     (conditional — TP1 showed completed rows; reproduce on real files).
+  2. Use the FULL screen width (layout is width-capped at ~half screen at 100%).
+  3. MANDATE: kill the CPM-vs-stored gap on sparse-logic files — "this IS a forensics
+     tool; make it work for ALL instances." Duration Bomb must compute MSP's 3/4/2027.
+     Leads: Manual flags / SNET constraints in the conversion; honor stored dates for
+     logic-unbound tasks; report logic-vs-stored divergence as a cited finding.
+  4. AI at full power on every page + Executive Briefing reformat (+ later: second
+     local model cross-check).
+  5. Forecast-drift animation + locked Y-axis scales across all animated visuals.
+- HANDOFF fully consolidated (header through #89, the ordered M18 backlog, new resume
+  prompt). Green state: **700 passed, 3 skipped; parity 10/10.**
+
+### Parity / tests
+- **700 passed, 3 skipped**; parity 10/10; all gates clean.
