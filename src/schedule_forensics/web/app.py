@@ -60,6 +60,7 @@ from schedule_forensics.engine.metrics import (
     compute_completion_performance,
     compute_float_bands,
     compute_net_finish_impact,
+    compute_schedule_quality,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.recommendations import Finding
@@ -78,6 +79,20 @@ from schedule_forensics.importers import (
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import is_loopback_host
+from schedule_forensics.reports.docx import render_docx
+from schedule_forensics.reports.tables import (
+    TableSet,
+    activities_table,
+    bow_wave_tables,
+    dcma_table,
+    driving_table,
+    findings_table,
+    forecast_tables,
+    metric_results_table,
+    schedule_summary_table,
+    trend_tables,
+)
+from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web.help import METRIC_DICTIONARY
 
 logger = logging.getLogger("schedule_forensics.web")
@@ -498,7 +513,8 @@ def create_app(
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc))
         narrative = _polished_narrative(st, name, sch, analysis)
-        return _page(st, name, _analysis_body(name, sch, analysis, st.target_uid, narrative))
+        bar = _export_bar(f"analysis/{quote(name, safe='')}")
+        return _page(st, name, bar + _analysis_body(name, sch, analysis, st.target_uid, narrative))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -547,7 +563,11 @@ def create_app(
                 + "<div class=panel>Load at least two analyzable versions to compare.</div>",
             )
         prior, current = schedules[-2], schedules[-1]
-        body = _skipped_notice(skipped) + _compare_body(prior, current, cpms[-2], cpms[-1])
+        body = (
+            _export_bar("compare")
+            + _skipped_notice(skipped)
+            + _compare_body(prior, current, cpms[-2], cpms[-1])
+        )
         if st.target_uid is not None:
             body += _focus_panel([prior, current], [cpms[-2], cpms[-1]], st.target_uid)
         return _page(st, "Compare", body)
@@ -643,7 +663,11 @@ def create_app(
         # an explicit ?target= (even blank, from the Focus form) wins; otherwise the
         # session-wide target focuses the trend automatically
         uid = _parse_uid(target) if target is not None else st.target_uid
-        return _page(st, "Trend", _skipped_notice(skipped) + _trend_body(schedules, cpms, uid))
+        return _page(
+            st,
+            "Trend",
+            _export_bar("trend") + _skipped_notice(skipped) + _trend_body(schedules, cpms, uid),
+        )
 
     @app.get("/api/trend")
     def trend_json(target: str | None = Query(None)) -> JSONResponse:
@@ -668,7 +692,7 @@ def create_app(
             wave = compute_bow_wave([s for _, s in st.ordered_versions()])
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "Bow Wave / CEI", _cei_body(wave))
+        return _page(st, "Bow Wave / CEI", _export_bar("cei") + _cei_body(wave))
 
     @app.get("/api/cei")
     def cei_json() -> JSONResponse:
@@ -694,7 +718,11 @@ def create_app(
                 "finish.</div>",
             )
         sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
-        return _page(st, "Forecast", _skipped_notice(skipped) + _forecast_body(schedules, sets))
+        return _page(
+            st,
+            "Forecast",
+            _export_bar("forecast") + _skipped_notice(skipped) + _forecast_body(schedules, sets),
+        )
 
     @app.get("/api/forecast")
     def forecast_json() -> JSONResponse:
@@ -703,6 +731,145 @@ def create_app(
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
         sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
         return JSONResponse(_forecast_data(schedules, sets))
+
+    # --- exports (M18): every view's tables, rendered locally as Excel or Word -------
+
+    _EXPORT_MEDIA: dict[str, tuple[str, Callable[[TableSet], bytes]]] = {
+        "xlsx": (
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            render_xlsx,
+        ),
+        "docx": (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            render_docx,
+        ),
+    }
+
+    def _export_response(fmt: str, tableset: TableSet, stem: str) -> Response:
+        media, renderer = _EXPORT_MEDIA[fmt]
+        safe = "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in stem) or "export"
+        return Response(
+            content=renderer(tableset),
+            media_type=media,
+            headers={"Content-Disposition": f'attachment; filename="{safe}.{fmt}"'},
+        )
+
+    def _bad_format(fmt: str) -> JSONResponse | None:
+        if fmt not in _EXPORT_MEDIA:
+            return JSONResponse({"error": "format must be xlsx or docx"}, status_code=404)
+        return None
+
+    @app.get("/export/{fmt}/analysis/{name}")
+    def export_analysis(fmt: str, name: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        quality = compute_schedule_quality(sch, analysis.cpm)
+        tableset = TableSet(
+            f"Schedule Forensics - {sch.name}",
+            (
+                schedule_summary_table(sch),
+                dcma_table(analysis.audit),
+                metric_results_table("Schedule quality (Acumen)", quality),
+                metric_results_table("Float bands", analysis.float_bands),
+                metric_results_table("Completion performance", analysis.completion),
+                metric_results_table("Baseline compliance", analysis.compliance),
+                findings_table(analysis.findings),
+                activities_table(analysis.activity_rows),
+            ),
+        )
+        return _export_response(fmt, tableset, f"{name}-analysis")
+
+    @app.get("/export/{fmt}/path/{name}")
+    def export_path(
+        fmt: str,
+        name: str,
+        target: int = Query(...),
+        secondary: int = Query(10),
+        tertiary: int = Query(20),
+    ) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        try:
+            cpm = st.analysis_for(name, sch).cpm
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        data = _driving_data(sch, cpm, target, secondary, tertiary)
+        rows = data.get("rows") or []
+        if not rows:
+            return JSONResponse({"error": str(data.get("note", "no path"))}, status_code=422)
+        tableset = TableSet(
+            f"Path analysis - {sch.name}",
+            (driving_table(rows, target),),  # type: ignore[arg-type]
+        )
+        return _export_response(fmt, tableset, f"{name}-path-uid{target}")
+
+    @app.get("/export/{fmt}/trend")
+    def export_trend(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        tableset = TableSet(
+            "Schedule-quality trend", trend_tables(compute_quality_trend(schedules, cpms))
+        )
+        return _export_response(fmt, tableset, "trend")
+
+    @app.get("/export/{fmt}/cei")
+    def export_cei(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        if len(st.schedules) < 2:
+            return JSONResponse({"error": "need at least two versions"}, status_code=400)
+        try:
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return _export_response(
+            fmt, TableSet("Bow Wave - CEI", bow_wave_tables(wave)), "bow-wave-cei"
+        )
+
+    @app.get("/export/{fmt}/forecast")
+    def export_forecast(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
+        sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
+        labels = [s.source_file or s.name for s in schedules]
+        return _export_response(
+            fmt, TableSet("Finish forecasts", forecast_tables(labels, sets)), "forecast"
+        )
+
+    @app.get("/export/{fmt}/compare")
+    def export_compare(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        manip = detect_manipulation(
+            schedules[-1], schedules[-2], current_cpm=cpms[-1], prior_cpm=cpms[-2]
+        )
+        tableset = TableSet(
+            "Compare - manipulation signals",
+            (findings_table(manip),),
+        )
+        return _export_response(fmt, tableset, "compare-signals")
 
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
@@ -996,6 +1163,7 @@ filter rows, and hide completed work.</p>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
 </div>
 <div id=pathFields class=muted></div>
+<div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
 <div class=panel><h2>Ask the AI about this schedule</h2>
@@ -1177,6 +1345,16 @@ metadata)</span></h3>
 <table><tr><th>Severity</th><th>Type</th><th>Finding</th><th>Course of action</th><th>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
 <div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
+
+
+def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
+    """The per-view 'download as Excel / Word' links (local files only — Law 1)."""
+    a = f' id="{xlsx_id}"' if xlsx_id else ""
+    b = f' id="{docx_id}"' if docx_id else ""
+    return (
+        f'<div class="export-bar"><a{a} href="/export/xlsx/{path}">&#11015; Excel</a>'
+        f'<a{b} href="/export/docx/{path}">&#11015; Word</a></div>'
+    )
 
 
 def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:

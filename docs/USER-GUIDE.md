@@ -149,3 +149,12 @@ The tool transfers **no data off the machine**: the server binds 127.0.0.1 only,
 bundled locally (no CDN — enforced by an air-gap test), the AI defaults to local and fails closed, and a
 network-egress guard fails the build if any forbidden cloud HTTP client enters the runtime. Schedule
 files, parsed derivatives, and reports are git-ignored and never committed.
+
+## Exporting to Excel and Word
+
+Every analytical page carries **⬇ Excel / ⬇ Word** links (top right): the report page
+(all panels + the full activity grid), Path Analysis (the traced grid — links activate
+after you Trace), Trend, Bow Wave/CEI (the CEI table plus every snapshot's monthly
+data), Forecast, and Compare (the manipulation signals). Files are generated locally
+and download straight from your browser — nothing leaves the machine.
+
