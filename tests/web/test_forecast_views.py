@@ -59,6 +59,39 @@ def test_forecast_drift_table_across_versions_and_api(client: TestClient) -> Non
     assert last["spi_t"] == 0.47 and last["remaining"] == 99
 
 
+def test_forecast_drift_animation_controls_and_locked_axis(client: TestClient) -> None:
+    # item 5: the Bow-Wave-style forecast-drift stepper on a LOCKED date axis
+    _upload(client, "Project5")
+    _upload(client, "Project2")
+    page = client.get("/forecast").text
+    for control in ("id=prevDrift", "id=nextDrift", "id=driftPlay", "id=driftChart"):
+        assert control in page
+    assert "/static/drift.js" in page
+    assert "locked date axis" in page  # the operator-facing explanation
+    data = client.get("/api/forecast").json()
+    axis = data["axis"]
+    # the axis spans every version's forecasts + data dates + baseline finishes
+    all_iso = []
+    for v in data["versions"]:
+        all_iso += [d for d in v["forecasts"].values() if d]
+        if v["as_of"]:
+            all_iso.append(v["as_of"])
+        if v["planned_finish"]:
+            all_iso.append(v["planned_finish"])
+    assert axis["min"] == min(all_iso) and axis["max"] == max(all_iso)
+    # the method lanes the animation plots, in a stable order
+    assert [m["id"] for m in data["methods"]] == ["cpm", "rate", "earned_schedule"]
+
+
+def test_single_version_has_no_drift_animation(client: TestClient) -> None:
+    _upload(client, "Project5")
+    page = client.get("/forecast").text
+    assert "id=driftChart" not in page and "/static/drift.js" not in page
+    # the axis is still well-formed (single version) — drift.js no-ops on <2 versions
+    axis = client.get("/api/forecast").json()["axis"]
+    assert axis["min"] and axis["max"]
+
+
 def test_report_page_shows_float_bands_and_completion_panels(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/analysis/Project5").text

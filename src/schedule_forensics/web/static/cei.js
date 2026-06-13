@@ -28,14 +28,6 @@
 
   var data = null, index = 0, timer = null;
 
-  function maxCount(snap) {
-    var m = 1;
-    [snap.baselined, snap.scheduled, snap.finished].forEach(function (series) {
-      series.forEach(function (v) { if (v > m) m = v; });
-    });
-    return m;
-  }
-
   function render() {
     var snap = data.snapshots[index];
     var months = data.months;
@@ -48,7 +40,9 @@
     var n = months.length;
     var slot = (W - padL - padR) / n;
     var barW = Math.max(1.5, Math.min(7, slot / 4));
-    var top = maxCount(snap);
+    // LOCKED Y-axis: the count scale is the max bar across ALL snapshots (from the API),
+    // held through the animation so the bow wave's growth is visible, not normalized away.
+    var top = Math.max(1, data.max_count || 0);
     var y = function (v) { return padT + (1 - v / top) * (H - padT - padB); };
 
     // title + CEI callout (the reference deck's "CEI - .36")

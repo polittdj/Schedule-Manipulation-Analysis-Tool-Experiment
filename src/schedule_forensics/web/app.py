@@ -1430,8 +1430,19 @@ def _forecast_body(schedules: list[Schedule], sets: list[ForecastSet]) -> str:
 <p class=muted>The three forecasts re-run per loaded version (oldest first). Forecasts that
 keep sliding right are the bow-wave signature; methods that diverge from the CPM date tell
 you the logic and the observed performance disagree.</p>
+<div class=viz-controls>
+<button id=prevDrift type=button>&#9664; Prev</button>
+<span id=driftLabel class=muted></span>
+<button id=nextDrift type=button>Next &#9654;</button>
+<button id=driftPlay type=button>&#9654; Auto-play</button>
+</div>
+<p class=muted>Each forecast marker sits on a <b>locked date axis</b> (held fixed across every
+version); step or play to watch the three forecasts drift toward later dates as the project
+progresses. Faint markers are the prior version's forecasts.</p>
+<div id=driftChart></div>
 <table><tr><th>Version</th><th>Data date</th><th>CPM</th><th>Completion rate</th>
-<th>Earned schedule</th></tr>{drift_rows}</table></div>"""
+<th>Earned schedule</th></tr>{drift_rows}</table></div>
+<script src="/static/drift.js"></script>"""
     return f"""
 <div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
 <p class=muted>Three independent answers to "when will it really end": the schedule's own
@@ -1444,7 +1455,25 @@ A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated dat
 
 
 def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[str, object]:
+    # LOCKED date axis (item 5) for the drift animation: span every version's three
+    # forecasts + data dates + baseline finishes, so the time scale is held fixed through
+    # the stepper and the forecasts visibly drift right rather than the axis rescaling.
+    axis_dates: list[dt.date] = []
+    for fs in sets:
+        if fs.as_of is not None:
+            axis_dates.append(fs.as_of)
+        if fs.planned_finish is not None:
+            axis_dates.append(fs.planned_finish)
+        axis_dates.extend(f.finish for f in fs.forecasts if f.finish is not None)
+    axis = {
+        "min": min(axis_dates).isoformat() if axis_dates else None,
+        "max": max(axis_dates).isoformat() if axis_dates else None,
+    }
+    # the method order/labels the animation plots (stable, deterministic)
+    methods = [{"id": f.method_id, "name": f.name} for f in (sets[-1].forecasts if sets else [])]
     return {
+        "axis": axis,
+        "methods": methods,
         "versions": [
             {
                 "label": sch.source_file or sch.name,
@@ -1459,7 +1488,7 @@ def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[s
                 },
             }
             for sch, fs in zip(schedules, sets, strict=True)
-        ]
+        ],
     }
 
 
@@ -2011,8 +2040,16 @@ how many of those planned activities actually finished by the end of it. CEI = c
 
 
 def _cei_data(wave: BowWave) -> dict[str, object]:
+    # locked Y-axis (item 5): the chart's count scale is the max bar across EVERY snapshot,
+    # held through the animation so the bars stay comparable frame-to-frame (a per-snapshot
+    # max made each frame rescale, hiding the bow wave's growth).
+    max_count = max(
+        (max([0, *s.baselined, *s.scheduled, *s.finished]) for s in wave.snapshots),
+        default=0,
+    )
     return {
         "months": list(wave.month_labels),
+        "max_count": max_count,
         "snapshots": [
             {
                 "label": s.label,
