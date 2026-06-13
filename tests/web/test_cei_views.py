@@ -62,6 +62,22 @@ def test_api_cei_serves_shared_axis_profiles(client: TestClient) -> None:
     assert snaps[1]["status_index"] is not None  # data-date marker on the shared axis
 
 
+def test_api_cei_carries_a_locked_y_axis_max(client: TestClient) -> None:
+    # item 5: the bow-wave count scale is the max bar across EVERY snapshot, served once so
+    # the animation never rescales between frames (the bow wave's growth stays visible).
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    data = client.get("/api/cei").json()
+    every_bar = [
+        v
+        for s in data["snapshots"]
+        for series in ("baselined", "scheduled", "finished")
+        for v in s[series]
+    ]
+    assert data["max_count"] == max(every_bar)  # the global max, not a per-snapshot one
+    assert data["max_count"] >= max(max(s["finished"]) for s in data["snapshots"])
+
+
 def test_cei_zero_is_styled_as_fail_not_pass() -> None:
     # CEI 0.00 (nothing the prior snapshot planned actually finished) is the WORST score —
     # it must render red/fail. A falsy-zero shortcut once made it green.

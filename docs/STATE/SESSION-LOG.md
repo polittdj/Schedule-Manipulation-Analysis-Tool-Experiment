@@ -1503,3 +1503,30 @@ this file is the running history.
   (deterministic multiset compare) reports "identical figures" or names the differing
   numbers; ask.js renders the second answer + colored agreement note. **738 passed**
   (8 new); parity 10/10; all gates clean.
+
+## M18 item 5 — 2026-06-13 (PR #93; Opus 4.8) — forecast-drift animation + locked axes
+
+- **#92 merged** (item 4 — AI at full power); branch recreated from fresh main;
+  post-merge main CI verified green (db285ae).
+- **PR #93 (ADR-0037) — item 5:**
+  - **Forecast-drift animation** (`static/drift.js` + panel in `_forecast_body`, ≥2
+    versions): a Bow-Wave-style Prev/Next/Auto-play stepper over the loaded versions
+    (oldest first), plotting each version's three forecasts (CPM / completion-rate /
+    earned-schedule) as labeled markers in per-method lanes with the data-date and
+    baseline-finish references and a faint trail + drift arrow from the prior version.
+  - **Locked date axis** for the drift (`_forecast_data` → `axis.min/max` across every
+    version's forecasts + data dates + baseline finishes; `methods` carries the stable
+    lane order) — held fixed through the stepper so forecasts drift across a stable
+    scale, not the axis rescaling.
+  - **Bow Wave count axis locked** (`_cei_data` → `max_count` = max bar across ALL
+    snapshots; `cei.js` scales every frame to it) — fixes the per-snapshot rescale that
+    normalized the wave's growth away.
+  - **Trend / Path assessed, no change**: Trend line charts already plot all versions on
+    one fixed per-metric scale (locked by construction, not a stepper); the Path Gantt
+    is a single-schedule date-axis timeline with no animated metric axis (ADR-0037 §4).
+  - Pure presentation: dependency-free local SVG over existing endpoints; air-gap test
+    extended over `drift.js`; parity untouched.
+- Item 3 (#91) Duration Bomb re-verification STILL OWED (file not in this container).
+
+### Parity / tests
+- **741 passed, 3 skipped** (4 new); parity 10/10; ruff/format/mypy/bandit(unpiped) clean.

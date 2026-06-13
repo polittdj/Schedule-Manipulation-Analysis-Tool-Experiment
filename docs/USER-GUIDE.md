@@ -109,7 +109,9 @@ dashboard. Stop it with `Ctrl-C`.
 5. **Bow Wave / CEI** (≥2 versions): per snapshot, the monthly **Activity Finishes** chart —
    gold = baselined to finish, blue = scheduled to finish, green = actually finished, with the
    dashed data-date marker. Step **Prev/Next** through snapshots or press **Auto-play** to watch
-   the bow wave of slipped work push right like a movie. The **CEI (Current Execution Index)**
+   the bow wave of slipped work push right like a movie — the **count axis is locked** to the
+   tallest bar across every snapshot, so the wave's growth is real, not rescaled away each frame.
+   The **CEI (Current Execution Index)**
    table compares, for each snapshot, what the *previous* snapshot planned to finish in the
    following month vs what this snapshot re-scheduled and what actually finished
    (CEI = completed-on-time ÷ previously planned; 1.00 = executed to plan — an unplanned finish in the month earns no credit).
@@ -119,7 +121,10 @@ dashboard. Stop it with `Ctrl-C`.
    (AT + (PD − ES) / SPI(t)). Each method shows the inputs it used; a method with missing inputs
    shows "—" — never a fabricated date. Methods that disagree are themselves a finding. With ≥2
    versions, the **forecast-drift table** re-runs all three per version — forecasts that keep
-   sliding right are the bow-wave signature.
+   sliding right are the bow-wave signature — and a **forecast-drift animation** (Prev/Next/
+   Auto-play, Bow-Wave-style) steps through the versions plotting the three forecasts on a
+   **locked date axis** (held fixed across every version), so you watch the forecasts drift
+   right with the prior version's markers left as a faint trail.
 7. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
    summary (versions, earliest start, latest completion), the cross-version **Trend Analysis**, a
    per-project summary (dates, % complete/in-progress/planned, milestones/summaries, baseline

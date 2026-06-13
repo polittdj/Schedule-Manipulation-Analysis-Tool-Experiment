@@ -1,6 +1,20 @@
-# Handoff — 2026-06-12 (PRs #81–#91 MERGED; **M18 IN FLIGHT**; PR #92 OPEN — item 4 COMPLETE)
+# Handoff — 2026-06-13 (PRs #81–#92 MERGED; **M18 IN FLIGHT**; PR #93 OPEN — item 5)
 
-**This sitting:** **#90 merged** (the eday fix), then **#91 merged** (M18 items 1–3,
+**This sitting (2026-06-13):** **#92 merged** (M18 item 4 — AI at full power; post-merge
+main CI green). Then **PR #93 (ADR-0037) — M18 item 5**: the **forecast-drift animation**
+(`/static/drift.js`, a Bow-Wave-style Prev/Next/Auto-play stepper on the /forecast page,
+shown with ≥2 versions) plotting the three forecasts per version on a **LOCKED date axis**
+(`_forecast_data` → `axis.min/max` across every version's forecasts + data dates +
+baseline finishes), and the **Bow Wave count axis now locked** to the max bar across all
+snapshots (`_cei_data` → `max_count`; `cei.js` no longer rescales each frame). Trend line
+charts were already locked-by-construction (all versions on one fixed per-metric scale)
+and the Path Gantt is a single-schedule timeline — both assessed, no change (ADR-0037 §4).
+Pure presentation; parity untouched. **VERIFICATION STILL OWED (item 3, #91): the Duration
+Bomb .mpp is NOT in this container** — on operator re-deposit, confirm computed finish
+**2027-03-04**, completed tasks visible on /path, the "dates not supported by logic"
+finding citing the template tasks. Model/mode: Opus 4.8 (1M context).
+
+**Prior sitting (2026-06-12):** **#90 merged** (the eday fix), then **#91 merged** (M18 items 1–3,
 ADR-0034: the **stored-date CPM mandate** — unstarted MANUAL tasks pin at their stored
 start, unstarted logic-unbound auto tasks floor there, `CPMResult.date_driven` + the
 cited **"N dates are not supported by logic"** finding, `Task.is_manual` model v2.1.0;
@@ -247,7 +261,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**738 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**741 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -255,9 +269,8 @@ venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
 
-**START HERE: merge/verify PR #92** (M18 item 4 COMPLETE — ADR-0035 interpretive
-Q&A/panel/workbook facts/disclaimer/Briefing reformat + ADR-0036 OpenAI-compatible
-second backend with the dual-model cross-check).
+**START HERE: merge/verify PR #93** (M18 item 5 — ADR-0037: the forecast-drift
+animation on a locked date axis + the Bow Wave's locked count axis).
 **Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
 is empty in a fresh container) and verify the #91 mandate: computed finish
 **2027-03-04** (was 8/5/2026), completed tasks visible on /path at their actual dates,
@@ -272,9 +285,11 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
    pages with workbook-wide facts + standing disclaimer + Briefing reformat
    [ADR-0035] + the OpenAI-compatible second local backend with the dual-model
    figure-agreement cross-check [ADR-0036]; loopback-only egress preserved).
-5. **Forecast-drift ANIMATION** across versions (Bow-Wave-style stepper) and
-   **locked Y-axis scales on ALL animated visuals** (scale = max of the metric across
-   every loaded version, held through the animation — bow wave, drift, trend, path).
+5. ~~Forecast-drift ANIMATION + locked axes on the animated visuals~~ (PR #93/ADR-0037:
+   the /forecast Bow-Wave-style drift stepper on a locked date axis + the Bow Wave count
+   axis locked to the global max across snapshots. Trend charts were already
+   locked-by-construction across versions; the Path Gantt is a single-schedule timeline
+   with no animated metric axis — both assessed, no change needed).
 6. **PBIX visual reproduction** — docs/PLAN/PBIX-VISUALS.md is the spec (14 pages,
    engine coverage map; DAX intake complete, RatioMeasure is a dangling binding).
 7. **CPM path-evolution animation** (Bow-Wave-style): per version pair, highlight
@@ -308,10 +323,11 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #92 (item 4 complete: AI at
-> full power; open at handoff), then the Duration Bomb re-verification (re-deposit
-> needed: computed finish must read 3/4/2027, completed tasks on /path, the new logic
-> finding), then item 5 (forecast-drift animation + locked Y-axes). Stay on branch
+> M18 backlog in its listed order — start by checking PR #93 (item 5 complete:
+> forecast-drift animation + locked axes; open at handoff), then the Duration Bomb
+> re-verification (re-deposit needed: computed finish must read 3/4/2027, completed
+> tasks on /path, the new logic finding), then item 6 (PBIX visual reproduction —
+> docs/PLAN/PBIX-VISUALS.md). Stay on branch
 > `claude/clever-carson-uovtkk` (recreate from
 > origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
 > origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
@@ -319,4 +335,4 @@ Paste this as the first message:
 > PRs (don't merge — I do that), and never let schedule data leave the machine.
 > The Duration Bomb .mpp and the SemanticModel zip live in 00_REFERENCE_INTAKE/ on the
 > machine that received them — ask me to re-deposit if a fresh container needs them.
-> Model: Fable 5 (1M context).
+> Model: Opus 4.8 (1M context).
