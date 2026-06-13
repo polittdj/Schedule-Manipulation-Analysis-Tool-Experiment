@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -35,15 +35,21 @@ from schedule_forensics.ai import (
     Classification,
     NullBackend,
     OllamaBackend,
+    OpenAICompatBackend,
     banner_for,
     reattach,
     route_backend,
 )
 from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
-from schedule_forensics.ai.briefing import ExecutiveBriefing, build_briefing
-from schedule_forensics.ai.citations import Narrative
+from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing, build_briefing
+from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.narrative import build_narrative
-from schedule_forensics.ai.qa import answer_question, build_fact_sheet
+from schedule_forensics.ai.qa import (
+    answer_question,
+    build_fact_sheet,
+    build_workbook_fact_sheet,
+    figure_agreement,
+)
 from schedule_forensics.engine import (
     analyze_floats,
     audit_schedule,
@@ -197,6 +203,8 @@ class SessionState:
     # per-schedule narrative as polished by a real (non-null) backend:
     # key -> (schedule identity, "backend/model" stamp, narrative). Cleared on wipe.
     polished: dict[str, tuple[Schedule, str, Narrative]] = field(default_factory=dict)
+    # the cross-check second model, cached like backend_cache (None = off/unreachable).
+    second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
 
     def ordered(self) -> list[Schedule]:
         return list(self.schedules.values())
@@ -246,6 +254,44 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
         return None
 
 
+def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
+    if config.backend != "openai":
+        return None
+    try:
+        # construction enforces loopback (CUIEgressError on a remote host — Law 1)
+        return OpenAICompatBackend(endpoint=config.openai_endpoint, model=config.model)
+    except Exception:
+        return None
+
+
+def _second_backend(state: SessionState) -> AIBackend | None:
+    """The configured cross-check model, probed + cached like the primary (or ``None``).
+
+    Only the two LOCAL backend kinds are constructible here — a cloud second model does
+    not exist by design. Unreachable/missing servers cache as ``None`` (cross-check off)
+    so a down second server costs one probe per TTL, not one per question.
+    """
+    cfg = state.ai_config
+    if cfg.second_backend not in ("ollama", "openai"):
+        return None
+    cached = state.second_cache
+    now = time.monotonic()
+    if cached is not None and cached[0] == cfg and now - cached[1] < _BACKEND_PROBE_TTL:
+        return cached[2]
+    backend: AIBackend | None = None
+    try:
+        if cfg.second_backend == "ollama":
+            backend = OllamaBackend(endpoint=cfg.endpoint, model=cfg.second_model or cfg.model)
+        else:
+            backend = OpenAICompatBackend(endpoint=cfg.openai_endpoint, model=cfg.second_model)
+    except Exception:
+        backend = None
+    if backend is not None and not backend.is_available():
+        backend = None
+    state.second_cache = (cfg, now, backend)
+    return backend
+
+
 #: How long a routed-backend probe result is trusted before re-probing (seconds). Keeps
 #: report renders from paying the Ollama availability probe on every page view, while an
 #: Ollama started mid-session is still picked up promptly.
@@ -266,6 +312,7 @@ def _active_backend(state: SessionState) -> AIBackend:
         state.ai_config,
         null_backend=NullBackend(),
         ollama_backend=_ollama_or_none(state.ai_config),
+        openai_backend=_openai_or_none(state.ai_config),
     )
     state.backend_cache = (state.ai_config, now, backend)
     return backend
@@ -299,12 +346,51 @@ def _polished_narrative(
     return narrative
 
 
-def _page(state: SessionState, title: str, body: str, *, status_code: int = 200) -> HTMLResponse:
+def _ask_panel_html(state: SessionState, page_schedule: str | None = None) -> str:
+    """The Ask-the-AI panel every page carries once schedules are loaded (M18 item 4).
+
+    Scope select: the whole workbook (multi-version cited facts) or any single loaded
+    schedule; a page with a natural schedule context pre-selects it. The disclaimer is
+    standing and permanent — answers may be model-interpreted (settings: AI answer mode)
+    but are always grounded by, and shown with, the engine's cited facts.
+    """
+    if not state.schedules:
+        return ""
+    keys = [k for k, _ in state.ordered_versions()]
+    options: list[str] = []
+    if len(keys) > 1:
+        sel = " selected" if page_schedule is None else ""
+        options.append(f'<option value=""{sel}>Workbook — all {len(keys)} versions</option>')
+    for k in keys:
+        sel = " selected" if k == page_schedule or len(keys) == 1 else ""
+        options.append(f'<option value="{_e(k)}"{sel}>{_e(k)}</option>')
+    return f"""
+<div class=panel id=askPanel><h2>Ask the AI</h2>
+<p class=muted><b>AI can err &mdash; verify against citations.</b> Answers are grounded in the
+engine's computed, cited facts, and the matching facts are always shown with the answer.
+With no local model active you get the facts themselves.</p>
+<div class=viz-controls>
+<label>About <select id=askScope>{"".join(options)}</select></label>
+<input id=askInput type=text size=60 maxlength=500
+ placeholder="e.g. Why is the finish slipping? How many critical activities?">
+<button id=askBtn type=button>Ask</button></div>
+<div id=askOut></div></div>
+<script src="/static/ask.js"></script>"""
+
+
+def _page(
+    state: SessionState,
+    title: str,
+    body: str,
+    *,
+    status_code: int = 200,
+    ask_schedule: str | None = None,
+) -> HTMLResponse:
     return HTMLResponse(
         _LAYOUT.render(
             title=title,
             banner=_banner_html(state),
-            body=body,
+            body=body + _ask_panel_html(state, ask_schedule),
             target=state.target_uid if state.target_uid is not None else "",
         ),
         status_code=status_code,
@@ -517,7 +603,12 @@ def create_app(
             return _page(st, name, _unschedulable_panel(sch, exc))
         narrative = _polished_narrative(st, name, sch, analysis)
         bar = _export_bar(f"analysis/{quote(name, safe='')}")
-        return _page(st, name, bar + _analysis_body(name, sch, analysis, st.target_uid, narrative))
+        return _page(
+            st,
+            name,
+            bar + _analysis_body(name, sch, analysis, st.target_uid, narrative),
+            ask_schedule=name,
+        )
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -612,33 +703,32 @@ def create_app(
         keys = [k for k, _ in st.ordered_versions()]
         return _page(st, "Path Analysis", _path_body(keys, st.target_uid))
 
-    @app.post("/api/ask/{name}")
-    def ask(name: str, question: str = Form("")) -> JSONResponse:
-        """Grounded Q&A: engine facts only; the model may phrase, never invent (ai.qa)."""
-        st = session()
-        sch = st.schedules.get(name)
-        if sch is None:
-            return JSONResponse({"error": "not found"}, status_code=404)
-        text = question.strip()[:500]
-        if not text:
-            return JSONResponse({"error": "ask a question"}, status_code=422)
-        try:
-            analysis = st.analysis_for(name, sch)
-        except CPMError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
-        facts = build_fact_sheet(
-            sch,
-            analysis.cpm,
-            analysis.audit,
-            analysis.findings,
-            analysis.float_bands,
-            analysis.completion,
-            compute_finish_forecasts(sch, analysis.cpm),
-        )
-        answer, used = answer_question(_active_backend(st), facts, text)
+    def _ask_response(
+        st: SessionState, facts: tuple[CitedStatement, ...], text: str
+    ) -> JSONResponse:
+        """Shared Q&A response: route the backend(s), answer in the configured mode.
+
+        With a cross-check second model configured and reachable, BOTH models answer
+        independently and a deterministic figure-agreement note is computed — the
+        engine compares, never a third model."""
+        mode = st.ai_config.qa_mode
+        answer, used = answer_question(_active_backend(st), facts, text, mode=mode)
+        second_answer: str | None = None
+        second_model: str | None = None
+        agreement: str | None = None
+        second = _second_backend(st)
+        if second is not None:
+            second_answer, _ = answer_question(second, facts, text, mode=mode)
+            second_model = f"{second.name}/{getattr(second, 'model', '') or 'default'}"
+            if answer and second_answer:
+                agreement = figure_agreement(answer, second_answer)
         return JSONResponse(
             {
                 "answer": answer,  # null => no local model active / answer failed the gate
+                "mode": mode,
+                "second_answer": second_answer,
+                "second_model": second_model,
+                "agreement": agreement,
                 "facts": [
                     {
                         "text": f.text,
@@ -651,6 +741,55 @@ def create_app(
                 ],
             }
         )
+
+    def _schedule_facts(st: SessionState, name: str, sch: Schedule) -> tuple[CitedStatement, ...]:
+        analysis = st.analysis_for(name, sch)
+        return build_fact_sheet(
+            sch,
+            analysis.cpm,
+            analysis.audit,
+            analysis.findings,
+            analysis.float_bands,
+            analysis.completion,
+            compute_finish_forecasts(sch, analysis.cpm),
+        )
+
+    @app.post("/api/ask/{name}")
+    def ask(name: str, question: str = Form("")) -> JSONResponse:
+        """Grounded Q&A on ONE schedule: engine facts; the configured mode governs prose."""
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        text = question.strip()[:500]
+        if not text:
+            return JSONResponse({"error": "ask a question"}, status_code=422)
+        try:
+            facts = _schedule_facts(st, name, sch)
+        except CPMError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return _ask_response(st, facts, text)
+
+    @app.post("/api/ask")
+    def ask_workbook(question: str = Form("")) -> JSONResponse:
+        """Grounded Q&A across EVERY loaded version (the multi-version pages' panel)."""
+        st = session()
+        if not st.schedules:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        text = question.strip()[:500]
+        if not text:
+            return JSONResponse({"error": "ask a question"}, status_code=422)
+        if len(st.schedules) == 1:
+            key, sch = next(iter(st.schedules.items()))
+            try:
+                facts = _schedule_facts(st, key, sch)
+            except CPMError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=422)
+            return _ask_response(st, facts, text)
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
+        return _ask_response(st, build_workbook_fact_sheet(schedules, cpms), text)
 
     @app.get("/trend", response_class=HTMLResponse)
     def trend_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -953,16 +1092,36 @@ def create_app(
         classification: str = Form("CLASSIFIED"),
         backend: str = Form("ollama"),
         model: str = Form("llama3.1:8b"),
+        qa_mode: str = Form("interpretive"),
+        openai_endpoint: str = Form("http://127.0.0.1:1234"),
+        second_backend: str = Form("none"),
+        second_model: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         try:
             cls = Classification(classification)
         except ValueError:
             cls = Classification.CLASSIFIED  # unknown -> safe default
+        if qa_mode not in ("interpretive", "strict"):
+            qa_mode = "interpretive"
+        if second_backend not in ("none", "ollama", "openai"):
+            second_backend = "none"
+        # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
+        # remote host from sitting in the config looking accepted
+        if not is_loopback_host(urlparse(openai_endpoint.strip()).hostname or ""):
+            openai_endpoint = "http://127.0.0.1:1234"
         st.ai_config = AIConfig(
-            classification=cls, backend=backend, model=model, endpoint=st.ai_config.endpoint
+            classification=cls,
+            backend=backend,
+            model=model,
+            endpoint=st.ai_config.endpoint,
+            qa_mode=qa_mode,
+            openai_endpoint=openai_endpoint.strip(),
+            second_backend=second_backend,
+            second_model=second_model.strip(),
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
+        st.second_cache = None
         return RedirectResponse(url="/settings", status_code=303)
 
     @app.get("/help", response_class=HTMLResponse)
@@ -1192,9 +1351,9 @@ durations. Day variances are calendar days.</p>
 def _path_body(keys: list[str], target_uid: int | None) -> str:
     """The SSI-style path-analysis workspace: controls, data grid left, scalable Gantt right.
 
-    All interaction is client-side (`static/path.js`) over `/api/driving` + `/api/ask` —
-    field add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
-    line, and the grounded ask-the-AI panel."""
+    All interaction is client-side (`static/path.js`) over `/api/driving` — field
+    add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
+    line. The grounded ask-the-AI panel is the page-shell one (`_ask_panel_html`)."""
     options = "".join(f'<option value="{_e(k)}">{_e(k)}</option>' for k in keys)
     return f"""
 <div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
@@ -1218,15 +1377,6 @@ filter rows, and hide completed work.</p>
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
-<div class=panel><h2>Ask the AI about this schedule</h2>
-<p class=muted>Answers are grounded in the engine's computed, cited facts. With no local
-model active you get the matching facts themselves; a model answer that introduces any
-number the engine never computed is discarded automatically.</p>
-<div class=viz-controls>
-<input id=askInput type=text size=60 maxlength=500
- placeholder="e.g. Why is the finish slipping? How many critical activities?">
-<button id=askBtn type=button>Ask</button></div>
-<div id=askOut></div></div>
 <script src="/static/path.js"></script>"""
 
 
@@ -1887,27 +2037,79 @@ def _cite_tag(citations: tuple[Citation, ...]) -> str:
     return f"{shown}{extra}"
 
 
+def _briefing_table_html(section: BriefingSection) -> str:
+    """A section's cited table: engine figures verbatim, a citation column per row."""
+    table = section.table
+    if table is None or not table.rows:
+        return ""
+    head = ""
+    if table.headers:
+        head = "<tr>" + "".join(f"<th>{_e(h)}</th>" for h in table.headers) + "<th></th></tr>"
+    body = "".join(
+        "<tr>"
+        + "".join(f"<td>{_e(cell)}</td>" for cell in row)
+        + f"<td class=cite>{_e(_cite_tag(cites))}</td></tr>"
+        for row, cites in zip(table.rows, table.row_citations, strict=True)
+    )
+    return f"<table>{head}{body}</table>"
+
+
 def _briefing_body(briefing: ExecutiveBriefing) -> str:
-    """Render the ExecutiveBriefing as panels (print-friendly; every sentence cited)."""
+    """Render the ExecutiveBriefing readably (M18 reformat): the workbook lede as prose,
+    the cross-version trend and per-project quality verdicts as cited tables, and the
+    project summaries as side-by-side cards (polished prose + a profile strip). Every
+    statement and every table row carries its file + UID + task citation (§6)."""
     parts = [
         f"<div class=panel><h2>{_e(briefing.title)}</h2>"
         f"<p class=muted>Report generated on {_e(briefing.generated_on.strftime('%A, %B %d, %Y'))}."
         " Every statement cites file + UniqueID + task name; use the browser's Print for a"
         " hand-out copy.</p></div>"
     ]
+    cards: list[str] = []
+
+    def flush_cards() -> None:
+        if cards:
+            parts.append(f"<div class=brief-cards>{''.join(cards)}</div>")
+            cards.clear()
+
     for section in briefing.sections:
-        items = "".join(
-            f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
+        prose = "".join(
+            f"<p>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></p>"
             for s in section.statements
         )
-        parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
+        if section.kind == "project":
+            cards.append(
+                f"<div class=panel><h2>{_e(section.heading)}</h2>"
+                f"{prose}{_briefing_table_html(section)}</div>"
+            )
+            continue
+        flush_cards()
+        if section.kind == "lede":
+            parts.append(
+                f'<div class="panel brief-lede"><h2>{_e(section.heading)}</h2>{prose}</div>'
+            )
+        elif section.kind in ("trend", "quality"):
+            parts.append(
+                f"<div class=panel><h2>{_e(section.heading)}</h2>"
+                f"{_briefing_table_html(section)}</div>"
+            )
+        else:  # prose fallback — any future section kind stays readable and cited
+            items = "".join(
+                f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
+                for s in section.statements
+            )
+            parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
+    flush_cards()
     return "".join(parts)
 
 
 def _settings_body(state: SessionState) -> str:
     cfg = state.ai_config
     backend, _banner = route_backend(
-        cfg, null_backend=NullBackend(), ollama_backend=_ollama_or_none(cfg)
+        cfg,
+        null_backend=NullBackend(),
+        ollama_backend=_ollama_or_none(cfg),
+        openai_backend=_openai_or_none(cfg),
     )
     models: tuple[str, ...] = ()
     try:
@@ -1915,13 +2117,20 @@ def _settings_body(state: SessionState) -> str:
     except Exception:
         models = ()
     model_list = ", ".join(_e(m) for m in models) or "<span class=muted>none available</span>"
+    second = _second_backend(state)
+    second_status = (
+        f"reachable ({_e(second.name)})"
+        if second is not None
+        else ("off" if cfg.second_backend == "none" else "configured but not reachable")
+    )
 
     def sel(value: str, current: str) -> str:
         return " selected" if value == current else ""
 
     return f"""
 <div class=panel><h2>Local AI</h2>
-<p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}</p>
+<p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
+&middot; cross-check model: <b>{second_status}</b></p>
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>
@@ -1931,13 +2140,36 @@ def _settings_body(state: SessionState) -> str:
 <p>Backend:
 <select name=backend>
 <option value=ollama{sel("ollama", cfg.backend)}>Ollama (local)</option>
+<option value=openai{sel("openai", cfg.backend)}>OpenAI-compatible (local — LM Studio / llamafile / vLLM)</option>
 <option value=null{sel("null", cfg.backend)}>Null (offline, deterministic)</option>
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
 <p>Model: <input name=model value="{_e(cfg.model)}"></p>
+<p>OpenAI-compatible endpoint (loopback only):
+<input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
+ title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
+<p>AI answer mode:
+<select name=qa_mode>
+<option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model may analyze
+and derive figures grounded in the cited facts (the "AI can err" disclaimer rides every answer)</option>
+<option value=strict{sel("strict", cfg.qa_mode)}>Strict — any answer containing a figure the
+engine never computed is discarded wholesale</option>
+</select></p>
+<p>Cross-check second model:
+<select name=second_backend>
+<option value=none{sel("none", cfg.second_backend)}>Off</option>
+<option value=ollama{sel("ollama", cfg.second_backend)}>Ollama (local)</option>
+<option value=openai{sel("openai", cfg.second_backend)}>OpenAI-compatible (local)</option>
+</select>
+ model id: <input name=second_model size=20 value="{_e(cfg.second_model)}"
+ title="blank = the server's default/loaded model"></p>
 <input type=submit value="Save"></form>
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
-reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.</p></div>"""
+reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
+Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
+With a cross-check model on, both local models answer every question independently and the engine
+compares their figures deterministically — agreement is corroboration, the citations stay the
+ground truth.</p></div>"""
 
 
 def _trigger_shutdown(app: FastAPI) -> None:

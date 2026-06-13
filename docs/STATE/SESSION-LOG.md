@@ -1460,3 +1460,46 @@ this file is the running history.
 ### Parity / tests
 - **717 passed, 3 skipped** (17 new); parity 10/10; ruff/format/mypy/bandit(unpiped)
   clean; engine cov ≈97%.
+
+## AI-at-full-power part 1 — 2026-06-12 (PR #92; Fable 5) — post-#91-merge
+
+- **#91 merged** (operator, minutes after open); post-merge main CI verified green;
+  branch recreated from fresh main.
+- **PR #92 (ADR-0035) — M18 item 4, first tranche:**
+  - `AIConfig.qa_mode`: **interpretive (default)** — the model may analyze/derive
+    figures grounded in the cited facts (relaxed per the operator's order); **strict**
+    keeps the ADR-0031 wholesale figure-discard, selectable in AI Settings.
+  - **Ask panel on EVERY page** via the page shell (`_ask_panel_html` +
+    `static/ask.js`): scope select = Workbook (multi-version) or any loaded version;
+    report pre-selects its schedule; the /path-local panel removed (same ids +
+    `/api/ask/{name}` so existing tests/UX carry over).
+  - **Workbook-wide facts**: `ai.qa.build_workbook_fact_sheet` = the briefing's
+    deterministic cited statements + latest-pair manipulation signals + the newest
+    version's three forecasts; `POST /api/ask` serves it (single version routes to the
+    full single-schedule sheet).
+  - Standing **"AI can err — verify against citations"** disclaimer: permanent in the
+    panel, repeated under interpretive answers; responses carry `mode`.
+  - UNCHANGED: narrative/briefing `reattach` figure+citation gates; loopback-only
+    egress (air-gap test extended over ask.js). Bandit B608 false positive (HTML
+    "select…from" wording) avoided by rewording — no nosec added.
+- REMAINING in item 4: Briefing readability reformat (cards/tables + polish), then the
+  second OpenAI-compatible local backend + dual-model cross-check.
+
+### Parity / tests
+- **727 passed, 3 skipped** (10 new); parity 10/10; ruff/format/mypy/bandit(unpiped)
+  clean.
+- **Briefing reformat added to the same PR #92** (the rest of item 4's first tranche):
+  `BriefingSection.kind` + structured cited `BriefingTable` (rows' citations align 1:1
+  — §6 for tables); /briefing renders lede paragraph, trend + DCMA-verdict tables with
+  a citation column, and side-by-side project cards (polished prose + profile strip).
+  Polish remains prose-only; to_text/exports unchanged. **730 passed** (3 new).
+- **Second local backend + dual-model cross-check added to PR #92 (ADR-0036)** — item 4
+  now COMPLETE: `ai/openai_compat.py` (OpenAI-compatible /v1 dialect — LM Studio 1234 /
+  llamafile 8080; stdlib HTTP; loopback enforced at construction, CUIEgressError);
+  usable as the PRIMARY backend ("openai" in route_backend, fail-closed) AND as the
+  cross-check second model (`AIConfig.second_backend/second_model/openai_endpoint`;
+  settings UI + handler loopback guard; 15s-TTL probe cache `SessionState.second_cache`).
+  Cross-check: both local models answer every ask independently; `figure_agreement`
+  (deterministic multiset compare) reports "identical figures" or names the differing
+  numbers; ask.js renders the second answer + colored agreement note. **738 passed**
+  (8 new); parity 10/10; all gates clean.

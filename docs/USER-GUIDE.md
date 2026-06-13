@@ -91,10 +91,14 @@ dashboard. Stop it with `Ctrl-C`.
    template files); the report's *"dates not supported by logic"* finding names them, and the
    optional **Date-driven** column marks traced tasks whose dates come from manual/stored
    placement instead of logic.
-   Below it, **Ask the AI**: type a question about the schedule — answers are grounded in
-   the engine's computed, cited facts; with no local model active you get the matching
-   facts themselves, and any model answer containing a number the engine never computed is
-   discarded automatically.
+   Below it (and on **every page** once schedules are loaded), **Ask the AI**: pick a scope —
+   the **whole workbook** (cross-version facts: trend, manipulation signals, forecasts) or any
+   single version — and type a question. Answers are grounded in the engine's computed, cited
+   facts, which are always shown with the answer; with no local model active you get the
+   matching facts themselves. The default **interpretive** mode lets the model analyze and
+   derive figures grounded in those facts — the standing **"AI can err — verify against
+   citations"** disclaimer rides the panel and every answer; switch to **strict** mode in AI
+   Settings to discard any answer containing a figure the engine never computed.
 4. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
    per-version headline table (finish / completed / in-progress / critical), the **Net Finish
    Impact across the series**, **trend charts** (project finish, completed, critical, missing
@@ -126,8 +130,15 @@ dashboard. Stop it with `Ctrl-C`.
    progress trend and **manipulation-trend signals** (deleted logic, shortened durations, deleted
    tasks, baseline/actual date edits) with the **Net Finish Impact** in calendar days. Honest
    progress shows no false flags.
-9. **AI Settings** — choose the backend (local Ollama / offline Null), list/pull/select models, and the
-   project **classification**. A persistent banner names any external endpoint when UNCLASSIFIED; the
+9. **AI Settings** — choose the backend (local **Ollama**, any local **OpenAI-compatible**
+   server such as LM Studio (`127.0.0.1:1234`) or llamafile (`127.0.0.1:8080`), or the offline
+   Null), list/pull/select models, the project **classification**, and the **AI answer mode**
+   (interpretive — the default, model may analyze/derive with the standing disclaimer; or
+   strict — uncomputed figures discard the answer). Turn on the **cross-check second model**
+   (Ollama or OpenAI-compatible) and BOTH local models answer every question independently —
+   the engine compares their figures deterministically and reports agreement or names the
+   differing numbers. All model endpoints are **loopback-only** — a remote host is refused.
+   A persistent banner names any external endpoint when UNCLASSIFIED; the
    tool **fails closed to local** otherwise.
 10. **Target UID (header)** — type any activity's UniqueID into the header's **Target UID** box and
    press **Set** to focus the whole session on that activity: the report page opens with its

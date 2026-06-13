@@ -28,6 +28,7 @@ from schedule_forensics.ai.citations import (
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.ai.null import NullBackend
 from schedule_forensics.ai.ollama import OllamaBackend
+from schedule_forensics.ai.openai_compat import OpenAICompatBackend
 
 __all__ = [
     "AIBackend",
@@ -38,6 +39,7 @@ __all__ = [
     "Narrative",
     "NullBackend",
     "OllamaBackend",
+    "OpenAICompatBackend",
     "UncitedStatementError",
     "assert_all_cited",
     "banner_for",

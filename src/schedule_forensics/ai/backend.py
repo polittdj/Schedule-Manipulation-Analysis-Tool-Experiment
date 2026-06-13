@@ -42,9 +42,24 @@ class AIConfig:
     """AI settings. Defaults are the safe ones: CLASSIFIED + local Ollama."""
 
     classification: Classification = Classification.CLASSIFIED
-    backend: str = "ollama"  # "null" | "ollama" | "cloud"
+    backend: str = "ollama"  # "null" | "ollama" | "openai" | "cloud"
     model: str = "llama3.1:8b"
     endpoint: str = "http://127.0.0.1:11434"
+    #: Ask-the-AI answering mode (operator order, M18): "interpretive" lets the model
+    #: compute/explain beyond the fact sheet (the standing "AI can err — verify against
+    #: citations" disclaimer rides every answer); "strict" wholesale-discards any answer
+    #: containing a figure the engine never computed. Either way the cited facts are
+    #: returned alongside, and locality (Law 1) is unaffected — this only governs prose.
+    qa_mode: str = "interpretive"  # "interpretive" | "strict"
+    #: Any OpenAI-compatible LOCAL server (LM Studio :1234, llamafile :8080 …) — usable
+    #: as the primary backend ("openai") AND as the cross-check second model. Loopback
+    #: is enforced at backend construction (CUIEgressError otherwise — Law 1).
+    openai_endpoint: str = "http://127.0.0.1:1234"
+    #: The dual-model cross-check (M18): "none" disables; "ollama"/"openai" makes that
+    #: second LOCAL model answer every ask alongside the primary, with a deterministic
+    #: figure-agreement note. Cloud can never be a second model.
+    second_backend: str = "none"  # "none" | "ollama" | "openai"
+    second_model: str = ""
 
 
 @dataclass(frozen=True)
@@ -81,15 +96,18 @@ def route_backend(
     *,
     null_backend: AIBackend,
     ollama_backend: AIBackend | None = None,
+    openai_backend: AIBackend | None = None,
     cloud_backend: AIBackend | None = None,
 ) -> tuple[AIBackend, Banner]:
     """Select the backend, failing closed to local — never auto-cloud (§0.2).
 
-    * CLASSIFIED (default): only a **local** backend is ever returned. ``ollama`` is used
-      when available; otherwise the Null backend. A cloud backend is refused outright.
+    * CLASSIFIED (default): only a **local** backend is ever returned. ``ollama`` /
+      ``openai`` (an OpenAI-compatible loopback server) is used when available;
+      otherwise the Null backend. A cloud backend is refused outright.
     * UNCLASSIFIED + ``backend == "cloud"`` + a cloud backend supplied: cloud is returned
       **with** a persistent banner naming the endpoint.
-    * Anything else (cloud unavailable/ambiguous, ollama down): the Null backend, local banner.
+    * Anything else (cloud unavailable/ambiguous, local server down): the Null backend,
+      local banner.
     """
     local_banner = Banner(
         cloud_active=False, endpoint=None, text="Local-only — no data leaves this machine."
@@ -108,5 +126,7 @@ def route_backend(
 
     if config.backend == "ollama" and ollama_backend is not None and ollama_backend.is_available():
         return ollama_backend, local_banner
+    if config.backend == "openai" and openai_backend is not None and openai_backend.is_available():
+        return openai_backend, local_banner
 
     return null_backend, local_banner

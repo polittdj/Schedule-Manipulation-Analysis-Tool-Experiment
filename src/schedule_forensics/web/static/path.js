@@ -4,8 +4,8 @@
  * horizontal scroll) with month ticks and the gold data-date line. The driving /
  * secondary / tertiary tiers come from /api/driving with the user's own day-bands and
  * target UID; columns are add/removable, rows filterable (tier, substring, hide 100%
- * complete). The Ask-the-AI panel posts to /api/ask — answers are grounded in the
- * engine's cited facts (see ai/qa.py). Dependency-free; nothing leaves the machine.
+ * complete). The Ask-the-AI panel is the page-shell one (ask.js). Dependency-free;
+ * nothing leaves the machine.
  */
 "use strict";
 
@@ -191,40 +191,9 @@
       .catch(function () { $("pathStatus").textContent = "Trace failed."; });
   }
 
-  // --- ask the AI -------------------------------------------------------------------
-  function ask() {
-    var out = $("askOut");
-    var q = $("askInput").value.trim();
-    if (!q) return;
-    out.textContent = "Thinking locally…";
-    var body = new URLSearchParams();
-    body.set("question", q);
-    fetch("/api/ask/" + encodeURIComponent($("pathSchedule").value), { method: "POST", body: body })
-      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        out.textContent = "";
-        if (!res.ok) { out.textContent = res.j.error || "Could not answer."; return; }
-        if (res.j.answer) {
-          out.appendChild(el("p", { class: "ask-answer", text: res.j.answer }));
-          out.appendChild(el("p", { class: "muted", text: "Model-generated from the cited facts below — verify against them." }));
-        } else {
-          out.appendChild(el("p", { class: "muted", text: "No local model is active (or its answer failed the no-invented-numbers gate) — these are the engine's cited facts that match your question:" }));
-        }
-        var ul = el("ul");
-        (res.j.facts || []).forEach(function (f) {
-          var cite = (f.citations || []).map(function (c) { return c.task + " (UID " + c.uid + ")"; }).join("; ");
-          ul.appendChild(el("li", { text: f.text + (cite ? "  [" + cite + "]" : "") }));
-        });
-        out.appendChild(ul);
-      })
-      .catch(function () { out.textContent = "Could not answer."; });
-  }
-
   renderToggles();
   $("pathRun").addEventListener("click", trace);
   ["pathHideDone", "pathTier"].forEach(function (id) { $(id).addEventListener("change", render); });
   ["pathFilter", "pathZoom"].forEach(function (id) { $(id).addEventListener("input", render); });
-  $("askBtn").addEventListener("click", ask);
-  $("askInput").addEventListener("keydown", function (e) { if (e.key === "Enter") ask(); });
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately
 })();

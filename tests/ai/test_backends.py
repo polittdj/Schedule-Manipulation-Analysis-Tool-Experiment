@@ -9,6 +9,7 @@ import pytest
 from schedule_forensics.ai.backend import AIConfig, Classification, route_backend
 from schedule_forensics.ai.null import NullBackend
 from schedule_forensics.ai.ollama import OllamaBackend
+from schedule_forensics.ai.openai_compat import OpenAICompatBackend
 from schedule_forensics.net_guard import CUIEgressError
 
 
@@ -87,6 +88,61 @@ def test_ollama_probes_use_a_short_timeout_but_generate_uses_the_long_one() -> N
     ob.pull_model("m")
     assert seen["tags"] == 2.0  # the availability/model-list probe is fast
     assert seen["generate"] == 120.0 and seen["pull"] == 120.0  # real work keeps the long timeout
+
+
+def test_openai_compat_rejects_remote_endpoint() -> None:
+    with pytest.raises(CUIEgressError):
+        OpenAICompatBackend(endpoint="http://api.example.com:1234")
+    with pytest.raises(CUIEgressError):
+        OpenAICompatBackend(endpoint="http://192.168.1.20:1234")
+
+
+def test_openai_compat_loopback_with_injected_opener() -> None:
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        if url.endswith("/v1/models"):
+            return json.dumps({"data": [{"id": "qwen2.5-7b-instruct"}, {"id": "phi-4"}]})
+        if url.endswith("/v1/chat/completions"):
+            assert data is not None and b"messages" in data
+            return json.dumps({"choices": [{"message": {"content": "rephrased"}}]})
+        return "{}"
+
+    be = OpenAICompatBackend(endpoint="http://127.0.0.1:1234", model="phi-4", opener=opener)
+    assert be.is_local and be.name == "openai-compat"
+    assert be.is_available()
+    assert be.list_models() == ("qwen2.5-7b-instruct", "phi-4")
+    assert be.generate("summarize") == "rephrased"
+    with pytest.raises(RuntimeError):
+        be.pull_model("anything")  # OpenAI-compatible servers load models themselves
+
+
+def test_openai_compat_fails_soft() -> None:
+    def boom(url: str, data: bytes | None, timeout: float) -> str:
+        raise OSError("connection refused")
+
+    assert OpenAICompatBackend(opener=boom).is_available() is False
+
+    def malformed(url: str, data: bytes | None, timeout: float) -> str:
+        return json.dumps({"unexpected": True})
+
+    assert OpenAICompatBackend(opener=malformed).generate("x") == ""  # never raises mid-ask
+
+
+def test_route_openai_when_available_else_null() -> None:
+    def up(url: str, data: bytes | None, timeout: float) -> str:
+        return json.dumps({"data": []})
+
+    def down(url: str, data: bytes | None, timeout: float) -> str:
+        raise OSError("down")
+
+    cfg = AIConfig(backend="openai")
+    be_up, _ = route_backend(
+        cfg, null_backend=NullBackend(), openai_backend=OpenAICompatBackend(opener=up)
+    )
+    assert be_up.name == "openai-compat"
+    be_down, _ = route_backend(
+        cfg, null_backend=NullBackend(), openai_backend=OpenAICompatBackend(opener=down)
+    )
+    assert be_down.name == "null"  # fail-closed to local-deterministic
 
 
 def test_route_classified_refuses_cloud_fails_closed() -> None:

@@ -1,20 +1,23 @@
-# Handoff — 2026-06-12 (PRs #81–#90 MERGED; **M18 IN FLIGHT**; PR #91 OPEN — backlog items 1–3)
+# Handoff — 2026-06-12 (PRs #81–#91 MERGED; **M18 IN FLIGHT**; PR #92 OPEN — item 4 COMPLETE)
 
-**This sitting:** **#90 merged** (the eday fix — verified green, subscribed, operator
-merged minutes in). Then the M18 backlog's top three operator orders shipped together as
-**PR #91 (ADR-0034)**: the **stored-date CPM mandate** (unstarted MANUAL tasks pin at
-their stored start, unstarted logic-unbound auto tasks floor there; `CPMResult.date_driven`
-+ the cited **"N dates are not supported by logic"** finding; `Task.is_manual` model
-v2.1.0, MSPDI `<Manual>` read, .json round-trip), the **Path-Analysis completed-tasks
-fix** (the page now displays the slack engine's stored-date axis — real files' finished
-work shows at its ACTUAL dates, not CPM-packed at project start; per-row `date_driven`;
-a trace-coverage status line explains what logic cannot reach), and the **full-width
-layout** (base.css `main` width cap removed). Parity-safe by construction AND verified:
-neither stored-date rule fires on any golden/battery fixture. **VERIFICATION OWED: the
+**This sitting:** **#90 merged** (the eday fix), then **#91 merged** (M18 items 1–3,
+ADR-0034: the **stored-date CPM mandate** — unstarted MANUAL tasks pin at their stored
+start, unstarted logic-unbound auto tasks floor there, `CPMResult.date_driven` + the
+cited **"N dates are not supported by logic"** finding, `Task.is_manual` model v2.1.0;
+the **Path-Analysis stored-date display** — completed work at ACTUAL dates, per-row
+`date_driven`, trace-coverage status line; the **full-width layout**). Post-merge main
+CI green. Then **PR #92 (ADR-0035) — AI at full power, part 1**: `AIConfig.qa_mode`
+(**interpretive default** — the model may analyze/derive grounded in the cited facts;
+strict = the old wholesale figure-discard, still selectable), the **ask panel on EVERY
+page** via the page shell (`_ask_panel_html` + `static/ask.js`, scope select = workbook
+or any version; the /path-local panel removed, same ids/endpoint), **workbook-wide
+facts** (`build_workbook_fact_sheet` reusing the briefing's cited statements +
+latest-pair manipulation signals + latest forecasts; `POST /api/ask`), and the standing
+**"AI can err — verify against citations"** disclaimer. The narrative/briefing
+`reattach` gates and loopback-only egress are UNCHANGED. **VERIFICATION OWED: the
 Duration Bomb .mpp is NOT in this container** — on operator re-deposit, confirm computed
-finish **2027-03-04**, completed tasks visible on /path, and the new finding citing the
-template tasks. Earlier same day: TP1-vs-SSI parity closed, #87 Fuse alignment, #88
-exports, #89 DAX+Brief (see SESSION-LOG). Model/mode: Fable 5 (1M context).
+finish **2027-03-04**, completed tasks visible on /path, and the logic finding citing
+the template tasks. Model/mode: Fable 5 (1M context).
 
 > READ THIS FILE FIRST to resume. Durable state lives here + `docs/STATE/SESSION-LOG.md` (append-only
 > per-session history) + `docs/adr/` (decisions) + `docs/PLAN/RTM.md` (requirements). Never rely on
@@ -244,7 +247,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**717 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**738 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -252,27 +255,23 @@ venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
 
-**START HERE: merge/verify PR #91** (backlog items 1–3: the stored-date CPM mandate
-ADR-0034, the /path stored-date display + coverage note, the full-width layout).
+**START HERE: merge/verify PR #92** (M18 item 4 COMPLETE — ADR-0035 interpretive
+Q&A/panel/workbook facts/disclaimer/Briefing reformat + ADR-0036 OpenAI-compatible
+second backend with the dual-model cross-check).
 **Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
-is empty in a fresh container) and verify: computed finish **2027-03-04** (was
-8/5/2026), completed tasks visible on /path at their actual dates, the
-"dates not supported by logic" finding counting/citing the template tasks, and the
-hide-100% toggle acting on real rows. Items 1–3 below are DONE pending that real-file
-verification; continue the backlog in this order:
+is empty in a fresh container) and verify the #91 mandate: computed finish
+**2027-03-04** (was 8/5/2026), completed tasks visible on /path at their actual dates,
+the "dates not supported by logic" finding counting/citing the template tasks, and the
+hide-100% toggle acting on real rows. Continue the backlog in this order:
 
-1. ~~Path Analysis completed tasks never show~~ (PR #91: /path displays the
-   stored-date axis; coverage note explains logic-unreachable work; pinned).
-2. ~~Use the FULL screen width~~ (PR #91: base.css `main` cap removed).
-3. ~~Sparse-logic CPM mandate~~ (PR #91/ADR-0034: manual pin + logic-unbound floor +
-   `date_driven` + cited finding; Duration Bomb re-verification owed, see above).
-4. **AI at full power (operator):** relax the figure-discard gate; Ollama does
-   brief-tone interpretation/analysis in real time; "Ask the AI" panel on ALL pages
-   (workbook-wide facts on multi-version pages); cite computed figures; standing
-   "AI can err — verify against citations" disclaimer. Plus: **Executive Briefing
-   reformat** for readability (sections/cards/tables) with Ollama polish. Then the
-   **second local AI model** (any OpenAI-compatible local endpoint) cross-check /
-   collaboration mode. Loopback-only egress stays non-negotiable.
+1. ~~Path Analysis completed tasks never show~~ (PR #91, merged; Duration Bomb
+   re-verification owed, see above).
+2. ~~Use the FULL screen width~~ (PR #91, merged).
+3. ~~Sparse-logic CPM mandate~~ (PR #91/ADR-0034, merged; re-verification owed).
+4. ~~AI at full power~~ (PR #92, COMPLETE: interpretive mode + ask panel on ALL
+   pages with workbook-wide facts + standing disclaimer + Briefing reformat
+   [ADR-0035] + the OpenAI-compatible second local backend with the dual-model
+   figure-agreement cross-check [ADR-0036]; loopback-only egress preserved).
 5. **Forecast-drift ANIMATION** across versions (Bow-Wave-style stepper) and
    **locked Y-axis scales on ALL animated visuals** (scale = max of the metric across
    every loaded version, held through the animation — bow wave, drift, trend, path).
@@ -309,10 +308,11 @@ verification; continue the backlog in this order:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #91 (backlog items 1–3; open
-> at handoff), then the Duration Bomb re-verification (re-deposit needed: computed
-> finish must read 3/4/2027, completed tasks on /path, the new logic finding), then
-> AI-at-full-power. Stay on branch `claude/clever-carson-uovtkk` (recreate from
+> M18 backlog in its listed order — start by checking PR #92 (item 4 complete: AI at
+> full power; open at handoff), then the Duration Bomb re-verification (re-deposit
+> needed: computed finish must read 3/4/2027, completed tasks on /path, the new logic
+> finding), then item 5 (forecast-drift animation + locked Y-axes). Stay on branch
+> `claude/clever-carson-uovtkk` (recreate from
 > origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
 > origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
 > tools are missing. Keep `pytest -m parity` at 10/10, run bandit UNPIPED, open draft
