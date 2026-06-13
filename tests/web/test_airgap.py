@@ -49,6 +49,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
     pages = [
         "/",
         "/analysis/Project5",
+        "/card/Project5",
         "/briefing",
         "/settings",
         "/help",

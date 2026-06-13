@@ -9,7 +9,9 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
 
 ## Page-by-page spec
 
-1. **Metrics** — the schedule's ID card.
+1. **Metrics** — the schedule's ID card. **REPRODUCED** as the `/card/{name}` page
+   (ADR-0038): activity makeup, status split, completion-performance split, the
+   primary-constraint distribution, and the KPI stat-card row.
    - Pie "Schedule Task Makeup": milestones / normal / summary counts.
    - Pivot: all/milestone/summary/normal counts; second pivot: the completed split.
    - Pie "Completion Performance": Completed Ahead / On Schedule / Behind Baseline.
@@ -52,7 +54,7 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
 
 Already computed: counts/splits (Metrics), completion performance + MEI + staleness,
 float bands (counts AND the percent variants), BEI, SPI/ES, CEI, forecast + drift,
-status profiles. **Gaps to build**: constraint-distribution table, activity-type
+status profiles. **Gaps to build**: ~~constraint-distribution table~~ (built, ADR-0038), activity-type
 profile, WBS-grouped pivots (completion + SPI/ES by WBS), start/finish-curve slippage
 lines, cumulative actual curves, TotalFloatSum/FreeFloatSum, avg tasks per month,
 remaining-duration card. **DAX intake complete (ADR-0033)**: EPI and

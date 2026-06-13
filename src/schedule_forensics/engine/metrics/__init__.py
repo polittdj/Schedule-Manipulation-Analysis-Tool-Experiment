@@ -25,15 +25,25 @@ from schedule_forensics.engine.metrics.evm import (
     compute_evm_indices,
 )
 from schedule_forensics.engine.metrics.float_bands import compute_float_bands
+from schedule_forensics.engine.metrics.schedule_card import (
+    ActivityMakeup,
+    ConstraintCount,
+    compute_activity_makeup,
+    compute_constraint_distribution,
+)
 from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
 
 __all__ = [
+    "ActivityMakeup",
     "CheckStatus",
+    "ConstraintCount",
     "Direction",
     "MetricResult",
+    "compute_activity_makeup",
     "compute_baseline_compliance",
     "compute_change_metrics",
     "compute_completion_performance",
+    "compute_constraint_distribution",
     "compute_dcma14",
     "compute_evm_indices",
     "compute_float_bands",

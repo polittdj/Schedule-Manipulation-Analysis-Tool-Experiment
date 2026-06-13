@@ -47,8 +47,15 @@ dashboard. Stop it with `Ctrl-C`.
    nothing is uploaded anywhere. Imports honor the file's **project calendar** — work week, hours
    per day, and holidays drive every computed date, float, and day-based threshold (an unreadable
    calendar degrades safely to the standard 8h/Mon-Fri default). Each loaded schedule is listed
-   with **Open report** and **Save .json** (exports the normalised schedule as a re-openable
-   `.json`, calendar and holidays included).
+   with **Open report**, **Card**, and **Save .json** (exports the normalised schedule as a
+   re-openable `.json`, calendar and holidays included).
+1a. **Schedule Card** (the **Card** link, `/card/<name>`) — the schedule's one-screen ID card
+   (the reference deck's *Metrics* page): the **activity makeup** (normal / milestone / summary),
+   the **status split** (complete / in progress / planned), the **completion-performance** split
+   (ahead / on schedule / behind), the **primary-constraint distribution** (count + %), and a row
+   of **KPI cards** (earliest start, computed finish, data date, % complete, critical-incomplete
+   count, to-go activities and milestones, avg days ahead/late, % elapsed since the last finish).
+   Every figure is computed from the file and cross-checks against the full report.
 2. **Analysis** (click a schedule):
    - **DCMA-14 audit** — each of the 14 checks with pass/fail vs threshold and a plain-language
      suggested improvement; failing checks list the offending activities.

@@ -1,6 +1,18 @@
-# Handoff — 2026-06-13 (PRs #81–#92 MERGED; **M18 IN FLIGHT**; PR #93 OPEN — item 5)
+# Handoff — 2026-06-13 (PRs #81–#93 MERGED; **M18 IN FLIGHT**; PR #94 OPEN — item 6 pg 1)
 
-**This sitting (2026-06-13):** **#92 merged** (M18 item 4 — AI at full power; post-merge
+**This sitting (2026-06-13, cont.):** **#93 merged** (item 5 — forecast-drift animation +
+locked axes; post-merge main CI green). Then **PR #94 (ADR-0038) — M18 item 6, PBIX
+page 1**: a new **`/card/{name}` Schedule Card** reproducing the deck's *Metrics* page —
+activity makeup, status split, completion-performance split, the **primary-constraint
+distribution**, and a KPI stat-card row — all from the schedule's existing analysis plus
+two new tested engine helpers (`compute_activity_makeup`, `compute_constraint_distribution`
+in `engine/metrics/schedule_card.py`; lightweight dataclasses, NOT MetricResult, so the
+dictionary-coverage test is untouched). Linked from the dashboard ("Card" row action),
+carries the shared ask panel. PBIX-VISUALS.md page 1 marked REPRODUCED; the
+constraint-distribution gap closed. Remaining PBIX pages (4,5,6–9,12,13) are the next
+tranches. Model/mode: Opus 4.8 (1M context).
+
+**Earlier 2026-06-13:** **#92 merged** (M18 item 4 — AI at full power; post-merge
 main CI green). Then **PR #93 (ADR-0037) — M18 item 5**: the **forecast-drift animation**
 (`/static/drift.js`, a Bow-Wave-style Prev/Next/Auto-play stepper on the /forecast page,
 shown with ≥2 versions) plotting the three forecasts per version on a **LOCKED date axis**
@@ -261,7 +273,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**741 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**750 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -269,8 +281,8 @@ venv has been missing the web deps.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
 
-**START HERE: merge/verify PR #93** (M18 item 5 — ADR-0037: the forecast-drift
-animation on a locked date axis + the Bow Wave's locked count axis).
+**START HERE: merge/verify PR #94** (M18 item 6, PBIX page 1 — ADR-0038: the
+`/card/{name}` Schedule Card + the constraint-distribution / activity-makeup helpers).
 **Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
 is empty in a fresh container) and verify the #91 mandate: computed finish
 **2027-03-04** (was 8/5/2026), completed tasks visible on /path at their actual dates,
@@ -292,6 +304,11 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
    with no animated metric axis — both assessed, no change needed).
 6. **PBIX visual reproduction** — docs/PLAN/PBIX-VISUALS.md is the spec (14 pages,
    engine coverage map; DAX intake complete, RatioMeasure is a dangling binding).
+   **Page 1 (Metrics / Schedule Card) REPRODUCED** (PR #94/ADR-0038). NEXT tranches:
+   Cross File Comparison (pg 4), Float Analysis (pg 5), the Finishes month curves
+   (pg 6–7), WBS-grouped Completion + SPI/ES pivots (pg 8–9), Slippage curves (pg 12),
+   the Carnac forecast cards (pg 13). Remaining gaps: activity-type profile, WBS
+   pivots, start/finish curves, TotalFloat/FreeFloat sums, avg-tasks-per-month.
 7. **CPM path-evolution animation** (Bow-Wave-style): per version pair, highlight
    tasks entering/leaving the critical path, duration changes on it, and
    schedule-optics signals (remaining-duration cuts beyond days worked; logic changes
@@ -323,11 +340,12 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #93 (item 5 complete:
-> forecast-drift animation + locked axes; open at handoff), then the Duration Bomb
+> M18 backlog in its listed order — start by checking PR #94 (item 6 PBIX page 1
+> complete: the /card Schedule Card; open at handoff), then the Duration Bomb
 > re-verification (re-deposit needed: computed finish must read 3/4/2027, completed
-> tasks on /path, the new logic finding), then item 6 (PBIX visual reproduction —
-> docs/PLAN/PBIX-VISUALS.md). Stay on branch
+> tasks on /path, the new logic finding), then continue PBIX item 6 (next pages:
+> Cross File Comparison, Float Analysis, the month curves — docs/PLAN/PBIX-VISUALS.md).
+> Stay on branch
 > `claude/clever-carson-uovtkk` (recreate from
 > origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
 > origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
