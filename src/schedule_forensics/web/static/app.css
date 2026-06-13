@@ -85,3 +85,14 @@
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }
+
+/* M18: Schedule Card (PBIX page 1) — KPI stat cards, count/percent tables, 2-col layout */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; }
+.stat-card { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.stat-value { font-size: 20px; font-weight: 700; color: var(--ink); }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.card-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+.card-table { width: 100%; }
+.pct-cell { position: relative; min-width: 140px; }
+.pct-bar { display: inline-block; height: 10px; background: var(--accent); border-radius: 3px; vertical-align: middle; opacity: .55; }
+.pct-num { margin-left: 8px; font-size: 12px; color: var(--muted); }

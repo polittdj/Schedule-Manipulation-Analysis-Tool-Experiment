@@ -1530,3 +1530,26 @@ this file is the running history.
 
 ### Parity / tests
 - **741 passed, 3 skipped** (4 new); parity 10/10; ruff/format/mypy/bandit(unpiped) clean.
+
+## M18 item 6 (PBIX page 1) — 2026-06-13 (PR #94; Opus 4.8) — the Schedule Card
+
+- **#93 merged** (item 5); branch recreated from fresh main; post-merge main CI green.
+- **PR #94 (ADR-0038) — PBIX page 1 ("Metrics" / the schedule's ID card):**
+  - **Two new engine helpers** (`engine/metrics/schedule_card.py`; lightweight
+    dataclasses, deliberately NOT MetricResult so the dictionary-coverage test is
+    unaffected): `compute_activity_makeup` (milestone/normal/summary + complete/
+    in-progress/planned; summary count excludes the UID-0 project row) and
+    `compute_constraint_distribution` (count + % per ConstraintType, most-common first)
+    — the two documented gaps behind page 1.
+  - **`/card/{name}` page** (`_card_body`): four count/percent tables (makeup, status,
+    completion performance, constraint distribution; inline percent bars) + a KPI
+    stat-card row (earliest start, computed finish, data date, % complete, critical-
+    incomplete, to-go activities/milestones, avg days ahead/late, % elapsed since last
+    finish). Reuses the schedule's existing `_Analysis` (no CPM recompute); linked from
+    the dashboard ("Card" row action); carries the shared ask panel; air-gap scanned.
+  - PBIX-VISUALS.md page 1 marked REPRODUCED; constraint-distribution gap closed.
+  - Pure presentation + additive tested engine; parity untouched.
+- Item 3 (#91) Duration Bomb re-verification STILL OWED (file not in this container).
+
+### Parity / tests
+- **750 passed, 3 skipped** (9 new); parity 10/10; ruff/format/mypy/bandit(unpiped) clean.

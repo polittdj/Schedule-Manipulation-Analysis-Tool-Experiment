@@ -64,8 +64,10 @@ from schedule_forensics.engine.driving_slack import date_basis
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
+    compute_activity_makeup,
     compute_baseline_compliance,
     compute_completion_performance,
+    compute_constraint_distribution,
     compute_float_bands,
     compute_net_finish_impact,
     compute_schedule_quality,
@@ -473,6 +475,7 @@ def create_app(
             f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
             f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
             f'<td class=row-actions><a href="/analysis/{quote(name)}">Open report</a>'
+            f' &middot; <a href="/card/{quote(name)}">Card</a>'
             f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
             for name, sch in st.schedules.items()
         )
@@ -609,6 +612,24 @@ def create_app(
             bar + _analysis_body(name, sch, analysis, st.target_uid, narrative),
             ask_schedule=name,
         )
+
+    @app.get("/card/{name}", response_class=HTMLResponse)
+    def schedule_card(name: str) -> HTMLResponse:
+        """The deck's *Metrics* page (PBIX page 1): the schedule's ID card."""
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return _page(
+                st,
+                "Not found",
+                f"<div class=panel>No schedule named {_e(name)}.</div>",
+                status_code=404,
+            )
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError as exc:
+            return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
+        return _page(st, f"{name} — card", _card_body(name, sch, analysis), ask_schedule=name)
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -1521,6 +1542,120 @@ when the file carries none).</p>
 <tr><th>Work week</th><td>{_e(days)}</td></tr>
 <tr><th>Holidays</th><td>{_e(holidays)}</td></tr>
 </table></div>"""
+
+
+def _stat_cards(cards: list[tuple[str, str]]) -> str:
+    """A responsive grid of label/value stat cards (the deck's KPI-card row)."""
+    items = "".join(
+        f"<div class=stat-card><div class=stat-value>{_e(value)}</div>"
+        f"<div class=stat-label>{_e(label)}</div></div>"
+        for label, value in cards
+    )
+    return f"<div class=stat-grid>{items}</div>"
+
+
+def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]]) -> str:
+    """A count + percent table with an inline percent bar (deck pie/pivot, as a table)."""
+    body = "".join(
+        f"<tr><td>{_e(label)}</td><td>{count}</td>"
+        f'<td class=pct-cell><span class=pct-bar style="width:{min(pct, 100):.0f}%"></span>'
+        f"<span class=pct-num>{pct:.1f}%</span></td></tr>"
+        for label, count, pct in rows
+    )
+    return (
+        f"<table class=card-table><tr><th>{_e(headers[0])}</th><th>Count</th>"
+        f"<th>{_e(headers[1])}</th></tr>{body}</table>"
+    )
+
+
+def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
+    """The deck's *Metrics* page (PBIX page 1) — the schedule's ID card.
+
+    Reproduces the landing-page aggregates: activity makeup, status split, completion
+    performance, the primary-constraint distribution, and the KPI cards — all from the
+    engine outputs already computed for this schedule (no recomputation of the CPM)."""
+    makeup = compute_activity_makeup(sch)
+    constraints = compute_constraint_distribution(sch)
+    cpm, comp = analysis.cpm, analysis.completion
+    cal = sch.calendar
+
+    # makeup pie -> count/percent table
+    total = makeup.total or 1
+    makeup_tbl = _count_bar_table(
+        ("Task makeup", "% of activities"),
+        [
+            ("Normal", makeup.normal, 100.0 * makeup.normal / total),
+            ("Milestones", makeup.milestones, 100.0 * makeup.milestones / total),
+            ("Summaries", makeup.summaries, 100.0 * makeup.summaries / (total + makeup.summaries)),
+        ],
+    )
+    status_tbl = _count_bar_table(
+        ("Activity status", "% of activities"),
+        [
+            ("Complete", makeup.complete, 100.0 * makeup.complete / total),
+            ("In progress", makeup.in_progress, 100.0 * makeup.in_progress / total),
+            ("Planned", makeup.planned, 100.0 * makeup.planned / total),
+        ],
+    )
+    # completion-performance split (deck "Completion Performance" pie)
+    split = [
+        ("Completed ahead", comp["completed_ahead"]),
+        ("Completed on schedule", comp["completed_on_schedule"]),
+        ("Completed behind", comp["completed_behind"]),
+    ]
+    perf_tbl = _count_bar_table(
+        ("Completion performance", "% of measured completions"),
+        [(label, r.count, r.value) for label, r in split],
+    )
+    constraint_tbl = _count_bar_table(
+        ("Primary constraint", "% of activities"),
+        [(r.constraint_type, r.count, r.percent) for r in constraints],
+    )
+
+    # KPI cards (reuse the engine outputs the report already computed)
+    starts = [t.start for t in non_summary(sch) if t.start is not None]
+    earliest = min(starts).date().isoformat() if starts else "—"
+    latest_finish = (
+        offset_to_datetime(sch.project_start, cpm.project_finish, cal).date().isoformat()
+    )
+    critical = sum(
+        1
+        for t in non_summary(sch)
+        if t.percent_complete < 100.0
+        and (tm := cpm.timings.get(t.unique_id)) is not None
+        and tm.total_float <= 0
+    )
+    togo_normal = sum(
+        1 for t in non_summary(sch) if t.percent_complete < 100.0 and not t.is_milestone
+    )
+    togo_ms = sum(1 for t in non_summary(sch) if t.percent_complete < 100.0 and t.is_milestone)
+    ahead, late = comp["avg_days_ahead"], comp["avg_days_late"]
+    stale = comp["elapsed_since_last_finish"]
+    cards = _stat_cards(
+        [
+            ("Earliest start", earliest),
+            ("Computed finish", latest_finish),
+            ("Data date", sch.status_date.date().isoformat() if sch.status_date else "—"),
+            ("Activities complete", f"{100.0 * makeup.complete / total:.1f}%"),
+            ("Critical (incomplete)", str(critical)),
+            ("To-go activities", str(togo_normal)),
+            ("To-go milestones", str(togo_ms)),
+            ("Avg days ahead", f"{ahead.value:g}" if ahead.population else "—"),
+            ("Avg days late", f"{late.value:g}" if late.population else "—"),
+            ("% elapsed since last finish", f"{stale.value:g}%" if stale.population else "—"),
+        ]
+    )
+    return f"""
+<div class=panel><h2>Schedule card &mdash; {_e(sch.name)}</h2>
+<p class=muted>The schedule's ID card (the reference deck's <i>Metrics</i> page): activity
+makeup, status, completion performance, the primary-constraint distribution, and the
+headline KPI cards — every figure computed from this file and verifiable on the
+<a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
+{cards}</div>
+<div class="panel"><div class=card-cols>
+<div>{makeup_tbl}</div><div>{status_tbl}</div>
+<div>{perf_tbl}</div><div>{constraint_tbl}</div>
+</div></div>"""
 
 
 def _analysis_body(
