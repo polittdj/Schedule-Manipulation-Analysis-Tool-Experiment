@@ -24,7 +24,11 @@ from schedule_forensics.engine.metrics.evm import (
     compute_baseline_compliance,
     compute_evm_indices,
 )
-from schedule_forensics.engine.metrics.float_bands import compute_float_bands
+from schedule_forensics.engine.metrics.float_bands import (
+    FloatSums,
+    compute_float_bands,
+    compute_float_sums,
+)
 from schedule_forensics.engine.metrics.schedule_card import (
     ActivityMakeup,
     ConstraintCount,
@@ -38,6 +42,7 @@ __all__ = [
     "CheckStatus",
     "ConstraintCount",
     "Direction",
+    "FloatSums",
     "MetricResult",
     "compute_activity_makeup",
     "compute_baseline_compliance",
@@ -47,6 +52,7 @@ __all__ = [
     "compute_dcma14",
     "compute_evm_indices",
     "compute_float_bands",
+    "compute_float_sums",
     "compute_net_finish_impact",
     "compute_schedule_quality",
 ]

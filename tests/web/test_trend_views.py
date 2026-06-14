@@ -56,6 +56,50 @@ def test_api_trend_serves_chart_series(client: TestClient) -> None:
     assert data["versions"][1]["finish"] > data["versions"][0]["finish"]  # the slip is visible
 
 
+def test_api_trend_carries_cross_file_and_float_data(client: TestClient) -> None:
+    """PBIX p4+p5 — per-version makeup/indices/float fields (ADR-0039)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    data = client.get("/api/trend").json()
+    v2, v5 = data["versions"][0], data["versions"][1]
+
+    # PBIX p4 — activity makeup
+    assert "makeup" in v2 and "normal" in v2["makeup"] and "milestones" in v2["makeup"]
+    assert v5["makeup"]["normal"] == 126  # golden count
+
+    # PBIX p4 — status split (must sum to non-summary total)
+    sp = v5["status_split"]
+    assert sp["complete"] + sp["in_progress"] + sp["planned"] == v5["makeup"]["normal"]
+
+    # PBIX p4 — completion performance (ahead/on/behind)
+    cp = v5["completion_perf"]
+    assert "ahead" in cp and "on_schedule" in cp and "behind" in cp
+    assert cp["ahead"] + cp["on_schedule"] + cp["behind"] <= v5["completed"]
+
+    # PBIX p4 — indices: MEI/BEI/EPI/SFR are present (may be None if population=0)
+    idx = v5["indices"]
+    assert "mei" in idx and "bei" in idx and "epi" in idx and "sfr" in idx
+
+    # PBIX p5 — float sums: total >= free (free is the tighter constraint)
+    fs = v5["float_sums"]
+    assert "total_days" in fs and "free_days" in fs
+    assert fs["total_days"] >= fs["free_days"]
+
+    # PBIX p5 — float bands: all six keys present with count + pct
+    fb = v5["float_bands"]
+    for key in (
+        "float_total_0",
+        "float_total_lt5",
+        "float_total_lt10",
+        "float_free_0",
+        "float_free_lt5",
+        "float_free_lt10",
+    ):
+        assert key in fb and "count" in fb[key] and "pct" in fb[key]
+    # critical count from bands matches the trend headline (total-float-0 = critical)
+    assert fb["float_total_0"]["count"] == v5["critical"]
+
+
 def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> None:
     assert "Load at least one analyzable schedule" in client.get("/briefing").text
     _upload(client, "Project2")
