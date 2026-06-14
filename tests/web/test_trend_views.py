@@ -87,8 +87,14 @@ def test_api_trend_carries_cross_file_and_float_data(client: TestClient) -> None
 
     # PBIX p5 — float bands: all six keys present with count + pct
     fb = v5["float_bands"]
-    for key in ("float_total_0", "float_total_lt5", "float_total_lt10",
-                "float_free_0", "float_free_lt5", "float_free_lt10"):
+    for key in (
+        "float_total_0",
+        "float_total_lt5",
+        "float_total_lt10",
+        "float_free_0",
+        "float_free_lt5",
+        "float_free_lt10",
+    ):
         assert key in fb and "count" in fb[key] and "pct" in fb[key]
     # critical count from bands matches the trend headline (total-float-0 = critical)
     assert fb["float_total_0"]["count"] == v5["critical"]
