@@ -96,3 +96,10 @@
 .pct-cell { position: relative; min-width: 140px; }
 .pct-bar { display: inline-block; height: 10px; background: var(--accent); border-radius: 3px; vertical-align: middle; opacity: .55; }
 .pct-num { margin-left: 8px; font-size: 12px; color: var(--muted); }
+
+/* M18: PBIX p4+p5 cross-version section headings inside the trend-charts panel */
+h3.trend-section {
+  width: 100%; margin: 18px 0 4px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+}

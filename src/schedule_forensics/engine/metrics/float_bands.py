@@ -12,6 +12,8 @@ calendar (ADR-0027/0028). The DAX bodies in the reference deck are not extractab
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
@@ -25,6 +27,42 @@ from schedule_forensics.model.task import Task
 
 #: The deck's band edges, in working days (converted on the schedule's calendar).
 _BAND_DAYS = (0, 5, 10)
+
+
+@dataclass(frozen=True)
+class FloatSums:
+    """Sum of total and free float across incomplete activities, in working days.
+
+    The deck's Float Analysis page (PBIX p5) charts TotalFloatSum and FreeFloatSum
+    per version; a shrinking sum over successive snapshots is the early sign that the
+    schedule is consuming its scheduling cushion without recovering it.
+    """
+
+    total_days: float
+    free_days: float
+
+
+def compute_float_sums(schedule: Schedule, cpm_result: CPMResult | None = None) -> FloatSums:
+    """Sum of all total/free float (working days) across the incomplete population.
+
+    Negative float is included as-is (it drags the sum below what a healthy schedule
+    would show — the right forensic signal). Activities absent from the CPM result
+    (no timing) are excluded from the sum.
+    """
+    result = cpm_result if cpm_result is not None else compute_cpm(schedule)
+    incomplete = [t for t in non_summary(schedule) if is_incomplete(t)]
+    per_day = schedule.calendar.working_minutes_per_day
+    total_min = sum(
+        result.timings[t.unique_id].total_float for t in incomplete if t.unique_id in result.timings
+    )
+    free_min = sum(
+        result.timings[t.unique_id].free_float for t in incomplete if t.unique_id in result.timings
+    )
+    denom = per_day if per_day else 1
+    return FloatSums(
+        total_days=round(total_min / denom, 1),
+        free_days=round(free_min / denom, 1),
+    )
 
 
 def compute_float_bands(

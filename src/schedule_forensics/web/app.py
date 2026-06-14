@@ -69,6 +69,7 @@ from schedule_forensics.engine.metrics import (
     compute_completion_performance,
     compute_constraint_distribution,
     compute_float_bands,
+    compute_float_sums,
     compute_net_finish_impact,
     compute_schedule_quality,
 )
@@ -703,6 +704,25 @@ def create_app(
                 skipped.append(key)
         return schedules, cpms, skipped
 
+    def _solvable_versions_full() -> tuple[
+        list[Schedule], list[CPMResult], list[_Analysis], list[str]
+    ]:
+        """Like _solvable_versions() but also returns the cached _Analysis objects."""
+        st = session()
+        schedules: list[Schedule] = []
+        cpms: list[CPMResult] = []
+        analyses: list[_Analysis] = []
+        skipped: list[str] = []
+        for key, sch in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, sch)
+                schedules.append(sch)
+                cpms.append(a.cpm)
+                analyses.append(a)
+            except CPMError:
+                skipped.append(key)
+        return schedules, cpms, analyses, skipped
+
     def _skipped_notice(skipped: list[str]) -> str:
         if not skipped:
             return ""
@@ -835,11 +855,11 @@ def create_app(
     @app.get("/api/trend")
     def trend_json(target: str | None = Query(None)) -> JSONResponse:
         st = session()
-        schedules, cpms, _skipped = _solvable_versions()
+        schedules, cpms, analyses, _skipped = _solvable_versions_full()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
-        return JSONResponse(_trend_data(schedules, cpms, uid))
+        return JSONResponse(_trend_data(schedules, cpms, analyses, uid))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view() -> HTMLResponse:
@@ -2096,9 +2116,17 @@ data-target="{target if target is not None else ""}"></div></div>
 
 
 def _trend_data(
-    schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    analyses: list[_Analysis],
+    target: int | None = None,
 ) -> dict[str, object]:
-    """JSON for the trend charts: per-version headline numbers + quality-metric series."""
+    """JSON for the trend charts: per-version headline numbers + quality-metric series.
+
+    The ``analyses`` are pre-computed (cached) _Analysis objects parallel to schedules/cpms.
+    Extended in ADR-0039 to carry per-version cross-file comparison and float-analysis data
+    for the PBIX page 4+5 charts rendered by trend.js.
+    """
     points = trend_across_versions(schedules, cpms)
     focus: dict[str, object] | None = None
     if target is not None:
@@ -2121,9 +2149,20 @@ def _trend_data(
             "finishes": finishes,
             "percents": percents,
         }
-    return {
-        "target": focus,
-        "versions": [
+
+    version_rows: list[dict[str, object]] = []
+    for p, sch, cpm, an in zip(points, schedules, cpms, analyses, strict=True):
+        makeup = compute_activity_makeup(sch)
+        cp = an.completion
+        fb = an.float_bands
+        fs = compute_float_sums(sch, cpm)
+        # BEI lives in the DCMA14 check (metric_id="DCMA14")
+        bei_chk = next((c for c in an.audit.checks if c.metric_id == "DCMA14"), None)
+        bei: float | None = bei_chk.value if (bei_chk and bei_chk.population) else None
+        mei_r = cp["mei"]
+        epi_r = cp["epi"]
+        sfr_r = cp["start_finish_ratio"]
+        version_rows.append(
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
                 "status_date": p.status_date.date().isoformat() if p.status_date else None,
@@ -2131,9 +2170,42 @@ def _trend_data(
                 "completed": p.completed,
                 "in_progress": p.in_progress,
                 "critical": p.critical,
+                # PBIX p4 — Cross File Comparison
+                "makeup": {
+                    "milestones": makeup.milestones,
+                    "normal": makeup.normal,
+                    "summaries": makeup.summaries,
+                },
+                "status_split": {
+                    "complete": makeup.complete,
+                    "in_progress": makeup.in_progress,
+                    "planned": makeup.planned,
+                },
+                "completion_perf": {
+                    "ahead": cp["completed_ahead"].count,
+                    "on_schedule": cp["completed_on_schedule"].count,
+                    "behind": cp["completed_behind"].count,
+                },
+                "indices": {
+                    "mei": mei_r.value if mei_r.population else None,
+                    "bei": bei,
+                    "epi": epi_r.value if epi_r.population else None,
+                    "sfr": sfr_r.value if sfr_r.population else None,
+                },
+                # PBIX p5 — Float Analysis
+                "float_sums": {
+                    "total_days": fs.total_days,
+                    "free_days": fs.free_days,
+                },
+                "float_bands": {
+                    k: {"count": v.count, "pct": round(v.value, 1)} for k, v in fb.items()
+                },
             }
-            for p in points
-        ],
+        )
+
+    return {
+        "target": focus,
+        "versions": version_rows,
         "quality": {
             t.metric_id: {"name": t.name, "values": list(t.values)}
             for t in compute_quality_trend(schedules, cpms)

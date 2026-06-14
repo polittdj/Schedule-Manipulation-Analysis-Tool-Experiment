@@ -24,13 +24,15 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
    pending), MEI, SPI, Start-and-Finish Ratio (DAX pending).
 3. **Schedule Versus Activities** — line: activity count (Y2) vs schedule % complete
    (Y) over data-date year/month.
-4. **Cross File Comparison** — the multi-version page: stacked bars of activity status
-   and activity type by data date; line charts of **MEI**, **BEI**, **EPI** (DAX
-   pending) across versions; clustered columns "Completion Performance by Data Date"
-   (ahead/on/behind); line of Start-and-Finish Ratio across versions.
-5. **Float Analysis** — bar: TotalFloatSum + FreeFloatSum by version; pivot: the
-   0/<5/<10-day float-band counts AND percents (total + free) by version; two clustered
-   columns: "% Free Float by days" and "% Total Float by days" across versions.
+4. **Cross File Comparison** — **REPRODUCED** (ADR-0039): stacked bars of activity
+   status and activity type by data date; line charts of **MEI**, **BEI**, **EPI**
+   across versions; clustered columns "Completion Performance by Data Date"
+   (ahead/on/behind); line of Start-and-Finish Ratio across versions. Rendered in the
+   Trend page's "Trend charts" panel via `trend.js` from the extended `/api/trend`.
+5. **Float Analysis** — **REPRODUCED** (ADR-0039): grouped bar of TotalFloatSum +
+   FreeFloatSum by version; clustered columns "% Total/Free Float by Days" (0/<5/<10
+   bands) across versions. New `FloatSums` / `compute_float_sums()` engine helper;
+   float-band percents reuse `_Analysis.float_bands`. Same Trend page, second section.
 6. **Finishes** — line: actual finishes vs baseline finishes per calendar month.
 7. **DATA Date Finishes** — two lines, one series per version (data date): baseline
    finishes per month; actual finishes per month (the bow-wave's sibling).
@@ -54,12 +56,13 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
 
 Already computed: counts/splits (Metrics), completion performance + MEI + staleness,
 float bands (counts AND the percent variants), BEI, SPI/ES, CEI, forecast + drift,
-status profiles. **Gaps to build**: ~~constraint-distribution table~~ (built, ADR-0038), activity-type
-profile, WBS-grouped pivots (completion + SPI/ES by WBS), start/finish-curve slippage
-lines, cumulative actual curves, TotalFloatSum/FreeFloatSum, avg tasks per month,
-remaining-duration card. **DAX intake complete (ADR-0033)**: EPI and
-Start-to-Finish Ratio adopted verbatim from the operator's SemanticModel export;
-**RatioMeasure does not exist in the model** (dangling visual binding — nothing to
-build). Four deck measures were found defective during intake and documented, not
-adopted (deck CEI divides date-serial sums; "% Schedule Elapsed" reads the earliest
-baseline start; deck SPI inherits it; deck BEI has no data-date cutoff) — ADR-0033.
+status profiles. **Gaps to build**: ~~constraint-distribution table~~ (ADR-0038),
+~~activity-type profile~~ (ADR-0039), ~~TotalFloatSum/FreeFloatSum~~ (ADR-0039),
+WBS-grouped pivots (completion + SPI/ES by WBS), start/finish-curve slippage
+lines, cumulative actual curves, avg tasks per month, remaining-duration card.
+**DAX intake complete (ADR-0033)**: EPI and Start-to-Finish Ratio adopted verbatim
+from the operator's SemanticModel export; **RatioMeasure does not exist in the model**
+(dangling visual binding — nothing to build). Four deck measures were found defective
+during intake and documented, not adopted (deck CEI divides date-serial sums;
+"% Schedule Elapsed" reads the earliest baseline start; deck SPI inherits it; deck
+BEI has no data-date cutoff) — ADR-0033.
