@@ -134,9 +134,10 @@ def test_tp1_driving_tiers_floor_ragged_minutes_onto_ssi_day_axis() -> None:
     assert tiers[PathTier.SECONDARY] == 1
     assert tiers[PathTier.TERTIARY] == 2
     assert tiers[PathTier.BEYOND] == 2
-    # the completed design chain carries MINUTES of slack (ragged actual times) and
-    # still classifies DRIVING — pre-ADR-0032 tiering would have dropped all three:
-    for uid, minutes in ((11, 210), (12, 210), (13, 120)):
+    # the completed design chain carries sub-day MINUTES of slack (ragged actual times) and
+    # still classifies DRIVING — pre-ADR-0032 tiering would have dropped all three; the
+    # ADR-0045 span-snap (whole-day spans, no accumulation) leaves each its own sub-day phase:
+    for uid, minutes in ((11, 60), (12, 60), (13, 120)):
         assert results[uid].driving_slack_minutes == minutes
         assert results[uid].on_driving_path
         assert results[uid].tier is PathTier.DRIVING

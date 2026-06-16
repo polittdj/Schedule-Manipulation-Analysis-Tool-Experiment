@@ -136,8 +136,20 @@ def compute_driving_slack(
     """
     ancestors = ancestors_of(schedule, target_uid)
     trace = ancestors | {target_uid}
+    per_day = schedule.calendar.working_minutes_per_day
     early_start, early_finish = date_basis(schedule, cpm_result)
-    span = {uid: early_finish[uid] - early_start[uid] for uid in trace}
+    # SSI computes driving slack on a WHOLE-WORKING-DAY grid, where each activity occupies a
+    # whole number of working days. Real stored dates carry ragged times of day (activities
+    # finishing at noon, afternoon-shift starts), so an activity's working span comes out a
+    # few minutes off a whole day; left raw, that sub-day raggedness ACCUMULATES through the
+    # backward pass's span subtraction and can tip a long driving chain's whole-day slack
+    # across a boundary — a genuine 0-day SSI path then reads as 1-day secondary (the
+    # operator's Large Test File). Snapping the SPAN to the nearest whole working day stops
+    # the accumulation while leaving each activity's own early-finish phase intact, so its
+    # remaining sub-day slack still floors onto the right SSI day. Whole-day (curated golden)
+    # spans round to themselves, so parity is preserved; the Path page still DISPLAYS the true
+    # stored dates (date_basis is unchanged — only the span used in the slack pass is snapped).
+    span = {uid: round((early_finish[uid] - early_start[uid]) / per_day) * per_day for uid in trace}
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}
     for rel in schedule.relationships:
@@ -158,7 +170,6 @@ def compute_driving_slack(
         late_start[uid] = late_finish[uid] - span[uid]
 
     results: dict[int, DrivingSlackResult] = {}
-    per_day = schedule.calendar.working_minutes_per_day
     for uid in trace:
         slack = late_finish[uid] - early_finish[uid]
         results[uid] = DrivingSlackResult(

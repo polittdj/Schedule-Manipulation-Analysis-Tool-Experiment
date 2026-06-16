@@ -1,4 +1,17 @@
-# Handoff — 2026-06-16 (PRs #81–#99 MERGED; **M18 IN FLIGHT**; PR #100 OPEN — item 7)
+# Handoff — 2026-06-16 (PRs #81–#99 MERGED; PR #100 OPEN — item 7; **SSI driving-slack fix staged**)
+
+> **SSI DRIVING-SLACK PARITY FIX (ADR-0045) — DONE + VERIFIED, staged on the work branch.**
+> Operator compared the tool's Path Analysis vs SSI on `Large Test File.mpp` (USA OTB Master
+> IMS, 1723 acts, re-deposited in `00_REFERENCE_INTAKE/mpp/`): the tool's tiers were a
+> consistent **~+1 day** off SSI (SSI 0-day driving path read as secondary; SSI 9/13 read
+> 10/14). **Root cause:** ragged stored TIMES of day (afternoon-shift activities stored
+> 13:00→12:00 → 420-min "1-day" spans) made activity spans sub-day; the backward pass's span
+> subtraction ACCUMULATED that raggedness down a long chain and tipped whole-day slack over a
+> boundary. **Fix:** snap each activity's SPAN to the nearest whole working day in
+> `compute_driving_slack` (display dates unchanged). Verified: Large File now matches SSI
+> exactly (driving 0, near-path 9 and 12/13); **TP1 parity preserved (13/1/2/2)**; pytest -m
+> parity 10/10; full suite 813. NOTE: this is staged on the PR-100 branch (force-push blocked,
+> branch occupied) — ship as its own PR once #100 merges (recreate from main), or fold in.
 
 **This sitting (2026-06-16, cont. 4):** **#99 merged** (summary-logic fix, ADR-0043). Then
 **PR #100 (ADR-0044) — M18 item 7, Critical-Path Evolution animation**: a new
