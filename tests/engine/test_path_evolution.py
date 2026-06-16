@@ -4,6 +4,7 @@ golden pins (M18 item 7, ADR-0044)."""
 from __future__ import annotations
 
 import datetime as dt
+from itertools import pairwise
 
 import pytest
 
@@ -20,8 +21,7 @@ DAY = 480
 def _chain(uids_durs: list[tuple[int, int]]) -> Schedule:
     tasks = [Task(unique_id=u, name=f"T{u}", duration_minutes=d * DAY) for u, d in uids_durs]
     rels = [
-        Relationship(predecessor_id=a, successor_id=b)
-        for (a, _), (b, _) in zip(uids_durs, uids_durs[1:], strict=False)
+        Relationship(predecessor_id=a, successor_id=b) for (a, _), (b, _) in pairwise(uids_durs)
     ]
     return Schedule(name="s", project_start=MON, tasks=tuple(tasks), relationships=tuple(rels))
 
