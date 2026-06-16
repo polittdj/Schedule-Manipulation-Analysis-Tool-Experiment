@@ -2829,7 +2829,10 @@ visible.</p>
 <span id=evoLabel class=muted></span>
 <button id=nextEvo type=button>Next &#9654;</button>
 <button id=evoPlay type=button>&#9654; Auto-play</button>
+<label class=muted style="margin-left:1em"><input type=checkbox id=evoHideDone> hide completed</label>
 </div>
+<p class=muted style="margin:.2em 0">Each row carries its grid columns &mdash; <b>%&nbsp;complete</b>,
+<b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.</p>
 <div id=evoChart></div></div>
 <script src="/static/path_evolution.js"></script>"""
 
@@ -2852,6 +2855,26 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
         finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar).date()
         axis_dates.extend((start, finish))
         return start.isoformat(), finish.isoformat()
+
+    def is_complete_in(idx: int, uid: int) -> bool:
+        """Robust complete flag (ADR-0051: ≥100% OR an actual finish) for ``uid`` in version
+        ``idx`` — False when the activity is absent from that version."""
+        task = by_id[idx][uid] if 0 <= idx < len(by_id) and uid in by_id[idx] else None
+        return task is not None and (task.is_complete or task.actual_finish is not None)
+
+    def stats(idx: int, uid: int) -> dict[str, object]:
+        """Per-activity grid columns for the row: %complete, duration (working days), and the
+        robust complete flag. Empty when the activity is absent from version ``idx`` (e.g. a
+        removed activity shown at its prior position)."""
+        task = by_id[idx][uid] if 0 <= idx < len(by_id) and uid in by_id[idx] else None
+        if task is None:
+            return {"percent_complete": None, "duration": None, "complete": False}
+        per_day = schedules[idx].calendar.working_minutes_per_day or 1
+        return {
+            "percent_complete": round(task.percent_complete),
+            "duration": f"{task.duration_minutes / per_day:g}wd",
+            "complete": is_complete_in(idx, uid),
+        }
 
     snapshots: list[dict[str, object]] = []
     for i, s in enumerate(evolution.snapshots):
@@ -2876,12 +2899,18 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
                     "duration_changed": uid in dur_changed,
                     "reason": change.reason if change is not None else None,
                     "detail": change.detail if change is not None else None,
+                    **stats(i, uid),
                 }
             )
         critical_rows.sort(key=lambda r: (r["start"] is None, str(r["start"])))
         left_rows: list[dict[str, object]] = []
         for c in s.left_changes:
             start, finish = bar(i - 1, c.uid) if i > 0 else (None, None)
+            # left activities are drawn at their PRIOR-version position, so %complete/duration
+            # read from that version (i - 1); the complete flag is the CURRENT status, so an
+            # activity that left *because it completed* hides under the hide-completed toggle.
+            grid = stats(i - 1, c.uid)
+            grid["complete"] = is_complete_in(i, c.uid)
             left_rows.append(
                 {
                     "uid": c.uid,
@@ -2890,6 +2919,7 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
                     "finish": finish,
                     "reason": c.reason,
                     "detail": c.detail,
+                    **grid,
                 }
             )
         snapshots.append(
