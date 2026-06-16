@@ -76,6 +76,35 @@ def test_save_json_round_trips(client: TestClient) -> None:
     assert reopened.status_code == 200
 
 
+def test_dashboard_health_cards_wire_and_api(client: TestClient) -> None:
+    """The Dashboard's per-schedule health cards (status mix, critical %, finish vs baseline,
+    DCMA ribbon) load async from /api/dashboard and link into the report."""
+    assert client.get("/api/dashboard").json()["cards"] == []  # nothing loaded yet
+    client.post("/example")  # one schedule loaded
+    home = client.get("/").text
+    assert "Schedule health" in home
+    assert "id=dashboardHealth" in home and "/static/dashboard.js" in home
+    cards = client.get("/api/dashboard").json()["cards"]
+    assert len(cards) == 1
+    c = cards[0]
+    assert c["solvable"] is True
+    for key in (
+        "name",
+        "key",
+        "activities",
+        "status_mix",
+        "percent_complete",
+        "critical_count",
+        "critical_pct",
+        "cpm_finish",
+        "dcma",
+    ):
+        assert key in c, key
+    assert {"complete", "in_progress", "planned"} <= set(c["status_mix"])
+    assert c["dcma"] and all({"id", "name", "status"} <= set(d) for d in c["dcma"])
+    assert all(d["status"] in ("PASS", "FAIL", "NA") for d in c["dcma"])
+
+
 def test_download_missing_is_404(client: TestClient) -> None:
     assert client.get("/download/nope.json").status_code == 404
 
