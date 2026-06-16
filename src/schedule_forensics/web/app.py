@@ -74,6 +74,7 @@ from schedule_forensics.engine.metrics import (
     compute_schedule_quality,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import compute_quality_trend, order_versions
 from schedule_forensics.importers import (
@@ -101,6 +102,7 @@ from schedule_forensics.reports.tables import (
     findings_table,
     forecast_tables,
     metric_results_table,
+    month_curves_tables,
     schedule_summary_table,
     trend_tables,
 )
@@ -125,7 +127,7 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
-<a href="/cei">Bow Wave / CEI</a>
+<a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -490,6 +492,7 @@ def create_app(
                 + (
                     ' &middot; <a class=btn-link href="/trend">Trend across all versions &rarr;</a>'
                     ' &middot; <a class=btn-link href="/cei">Bow Wave / CEI &rarr;</a>'
+                    ' &middot; <a class=btn-link href="/curves">Finish &amp; slippage curves &rarr;</a>'
                     ' &middot; <a class=btn-link href="/compare">Compare the two most recent &rarr;</a>'
                     if len(st.schedules) >= 2
                     else ""
@@ -915,6 +918,37 @@ def create_app(
         sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
         return JSONResponse(_forecast_data(schedules, sets))
 
+    @app.get("/curves", response_class=HTMLResponse)
+    def curves_view() -> HTMLResponse:
+        st = session()
+        # the finish/slippage curves are stored-date views — they do not need the network
+        # to solve, so every loaded version contributes (unlike the CPM-gated pages)
+        versions = [s for _, s in st.ordered_versions()]
+        if not versions:
+            return _page(
+                st,
+                "Finish & Slippage",
+                "<div class=panel>Load at least one schedule to see the finish and slippage "
+                "curves.</div>",
+            )
+        try:
+            curves = compute_month_curves(versions)
+        except ValueError as exc:
+            return _page(st, "Finish & Slippage", f"<div class=panel>{_e(exc)}</div>")
+        return _page(st, "Finish & Slippage", _export_bar("curves") + _curves_body(curves))
+
+    @app.get("/api/curves")
+    def curves_json() -> JSONResponse:
+        st = session()
+        versions = [s for _, s in st.ordered_versions()]
+        if not versions:
+            return JSONResponse({"error": "need at least one schedule"}, status_code=400)
+        try:
+            curves = compute_month_curves(versions)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_curves_data(curves))
+
     # --- exports (M18): every view's tables, rendered locally as Excel or Word -------
 
     _EXPORT_MEDIA: dict[str, tuple[str, Callable[[TableSet], bytes]]] = {
@@ -1036,6 +1070,24 @@ def create_app(
         labels = [s.source_file or s.name for s in schedules]
         return _export_response(
             fmt, TableSet("Finish forecasts", forecast_tables(labels, sets)), "forecast"
+        )
+
+    @app.get("/export/{fmt}/curves")
+    def export_curves(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        versions = [s for _, s in st.ordered_versions()]
+        if not versions:
+            return JSONResponse({"error": "need at least one schedule"}, status_code=400)
+        try:
+            curves = compute_month_curves(versions)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return _export_response(
+            fmt,
+            TableSet("Finish & slippage curves", month_curves_tables(curves)),
+            "finish-slippage-curves",
         )
 
     @app.get("/export/{fmt}/compare")
@@ -1529,6 +1581,60 @@ def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[s
                 },
             }
             for sch, fs in zip(schedules, sets, strict=True)
+        ],
+    }
+
+
+def _curves_body(curves: MonthCurves) -> str:
+    """The Finish & Slippage page (PBIX pages 6, 7, 12): three monthly-curve charts.
+
+    Finishes (actual vs baseline, latest version), DATA Date Finishes (per-version
+    actual-finish curves overlaid — the bow wave's line sibling), and Slippage (the
+    per-version start and finish curves). All client-side SVG over /api/curves."""
+    n_versions = len(curves.versions)
+    latest = curves.versions[-1].label if curves.versions else ""
+    multi = (
+        ""
+        if n_versions >= 2
+        else "<p class=muted>Load more than one version (monthly snapshots, by data date) to "
+        "see the per-version curve overlays — with a single version the curves show that "
+        "version alone.</p>"
+    )
+    return f"""
+<div class=panel><h2>Finishes &mdash; actual vs baseline by month</h2>
+<p class=muted>For the latest version (<b>{_e(latest)}</b>): activities counted by the month
+they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished
+or are now scheduled to (blue). Where the blue curve sits to the right of the gold is slipped
+finish work, read month by month.</p>
+<div id=finishesChart></div></div>
+<div class=panel><h2>DATA Date Finishes &mdash; actual-finish curve per version</h2>
+<p class=muted>Each loaded version (oldest first by data date) plots its monthly actual/scheduled
+finish curve on one shared month axis. As later versions push their curves to the right, you
+see the bow wave of slipped finishes as a line family.</p>{multi}
+<div id=dataDateChart></div></div>
+<div class=panel><h2>Slippage &mdash; start &amp; finish curves per version</h2>
+<p class=muted>Per version: activities counted by their <b>start</b> month (solid) and their
+<b>finish</b> month (dashed). Start- and finish-curve drift across versions is the slippage
+signature &mdash; the whole profile sliding right.</p>
+<div id=slippageChart></div></div>
+<script src="/static/curves.js"></script>"""
+
+
+def _curves_data(curves: MonthCurves) -> dict[str, object]:
+    """JSON for the finish/slippage curves: shared month axis + per-version count series."""
+    return {
+        "months": list(curves.month_labels),
+        "versions": [
+            {
+                "label": v.label,
+                "status_date": v.status_date,
+                "status_index": v.status_index,
+                "baseline_finishes": list(v.baseline_finishes),
+                "actual_finishes": list(v.actual_finishes),
+                "baseline_starts": list(v.baseline_starts),
+                "actual_starts": list(v.actual_starts),
+            }
+            for v in curves.versions
         ],
     }
 

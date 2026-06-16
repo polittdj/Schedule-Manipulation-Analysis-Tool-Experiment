@@ -33,9 +33,10 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
    FreeFloatSum by version; clustered columns "% Total/Free Float by Days" (0/<5/<10
    bands) across versions. New `FloatSums` / `compute_float_sums()` engine helper;
    float-band percents reuse `_Analysis.float_bands`. Same Trend page, second section.
-6. **Finishes** — line: actual finishes vs baseline finishes per calendar month.
-7. **DATA Date Finishes** — two lines, one series per version (data date): baseline
-   finishes per month; actual finishes per month (the bow-wave's sibling).
+6. **Finishes** — **REPRODUCED** (ADR-0040): line of actual finishes vs baseline
+   finishes per calendar month (latest version), on the `/curves` page.
+7. **DATA Date Finishes** — **REPRODUCED** (ADR-0040): one actual-finish curve per
+   version (data date) on a shared month axis — the bow wave as a line family.
 8. **Completion Metrics** — pivot by WBS: activity counts/%, not-completed, completed,
    avg days ahead/late/variance, longer/shorter than planned, duration ratio min/avg/max.
 9. **SPI and Earned Schedule** — pivot + combo chart of SPI and ES **by WBS**.
@@ -43,8 +44,9 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
     over start year/month.
 11. **Actual Summary** — combo: actual starts + actual finishes per year (bars) with
     cumulative YOY lines.
-12. **Slippage** — two lines, series per data date: count of starts by start month;
-    count of finishes by finish month (start/finish-curve slippage across versions).
+12. **Slippage** — **REPRODUCED** (ADR-0040): per version, a start curve and a finish
+    curve on the shared month axis (`/curves` page) — the profile sliding right is the
+    slippage signature.
 13. **Carnac** (the forecast page) — cards: earliest start, latest finish, project
     duration, **Forecasted End Date**, avg tasks/month, remaining duration, SPI 2,
     Tasks Completion Forecast, Earned Schedule (ES), **Estimated End Date (ES — To-Go
@@ -58,8 +60,9 @@ Already computed: counts/splits (Metrics), completion performance + MEI + stalen
 float bands (counts AND the percent variants), BEI, SPI/ES, CEI, forecast + drift,
 status profiles. **Gaps to build**: ~~constraint-distribution table~~ (ADR-0038),
 ~~activity-type profile~~ (ADR-0039), ~~TotalFloatSum/FreeFloatSum~~ (ADR-0039),
-WBS-grouped pivots (completion + SPI/ES by WBS), start/finish-curve slippage
-lines, cumulative actual curves, avg tasks per month, remaining-duration card.
+~~start/finish-curve slippage lines~~ (ADR-0040, `engine/month_curves.py`),
+WBS-grouped pivots (completion + SPI/ES by WBS), cumulative actual curves, avg tasks
+per month, remaining-duration card.
 **DAX intake complete (ADR-0033)**: EPI and Start-to-Finish Ratio adopted verbatim
 from the operator's SemanticModel export; **RatioMeasure does not exist in the model**
 (dangling visual binding — nothing to build). Four deck measures were found defective

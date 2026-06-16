@@ -17,6 +17,7 @@ from schedule_forensics.engine.bow_wave import BowWave
 from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet
 from schedule_forensics.engine.metrics._common import MetricResult
+from schedule_forensics.engine.month_curves import MonthCurves
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import MetricTrend
 from schedule_forensics.model.schedule import Schedule
@@ -226,6 +227,36 @@ def bow_wave_tables(wave: BowWave) -> tuple[Table, ...]:
             )
         )
     return (cei, *profiles)
+
+
+def month_curves_tables(curves: MonthCurves) -> tuple[Table, ...]:
+    """Per-version monthly start/finish curves (the Finishes / Slippage chart data)."""
+    tables: list[Table] = []
+    for v in curves.versions:
+        tables.append(
+            Table(
+                f"Monthly start/finish curves - {v.label}",
+                (
+                    "Month",
+                    "Baseline finishes",
+                    "Actual finishes",
+                    "Baseline starts",
+                    "Actual starts",
+                ),
+                tuple(
+                    (month, bf, af, bs, as_)
+                    for month, bf, af, bs, as_ in zip(
+                        curves.month_labels,
+                        v.baseline_finishes,
+                        v.actual_finishes,
+                        v.baseline_starts,
+                        v.actual_starts,
+                        strict=True,
+                    )
+                ),
+            )
+        )
+    return tuple(tables)
 
 
 def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple[Table, ...]:

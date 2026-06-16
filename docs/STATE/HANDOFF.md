@@ -1,6 +1,22 @@
-# Handoff — 2026-06-13 (PRs #81–#93 MERGED; **M18 IN FLIGHT**; PR #94 OPEN — item 6 pg 1)
+# Handoff — 2026-06-16 (PRs #81–#95 MERGED; **M18 IN FLIGHT**; PR #96 OPEN — item 6 pgs 6/7/12)
 
-**This sitting (2026-06-13, cont.):** **#93 merged** (item 5 — forecast-drift animation +
+**This sitting (2026-06-16):** **#95 merged** (item 6 PBIX pages 4+5 — Cross File
+Comparison + Float Analysis charts on the Trend page, ADR-0039; post-merge main green).
+Then **PR #96 (ADR-0040) — M18 item 6, PBIX pages 6, 7, 12 (Finish & Slippage curves)**:
+a new **`/curves` page** with three dependency-free SVG line charts on one shared month
+axis — **Finishes** (latest version: actual vs baseline finishes/month), **DATA Date
+Finishes** (one actual-finish curve per version — the bow wave as a line family), and
+**Slippage** (per version, a start curve + a finish curve). New engine:
+`engine/month_axis.py` (the shared `month_index`/`month_label`/`bucket` primitives,
+extracted from bow_wave which now imports them) + `engine/month_curves.py`
+(`compute_month_curves` → `MonthCurves`/`VersionCurves`, lightweight dataclasses NOT
+MetricResult). Stored-date view (no CPM gate — every loaded version contributes, works
+single-version too). Nav link + dashboard multi-version row + xlsx/docx export
+(`month_curves_tables`). Air-gap extended over `/curves` + `curves.js`; engine cov 97%
+(new modules 100%); parity 10/10. PBIX-VISUALS pages 6/7/12 marked REPRODUCED.
+**Remaining PBIX pages: WBS pivots (8–9), Carnac cards (13).** Model/mode: Opus 4.8 (1M).
+
+**Prior sitting (2026-06-13, cont.):** **#93 merged** (item 5 — forecast-drift animation +
 locked axes; post-merge main CI green). Then **PR #94 (ADR-0038) — M18 item 6, PBIX
 page 1**: a new **`/card/{name}` Schedule Card** reproducing the deck's *Metrics* page —
 activity makeup, status split, completion-performance split, the **primary-constraint

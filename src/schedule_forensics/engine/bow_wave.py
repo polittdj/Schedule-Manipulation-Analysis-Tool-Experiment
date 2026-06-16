@@ -29,6 +29,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.month_axis import bucket as _bucket
+from schedule_forensics.engine.month_axis import month_index as _ym
+from schedule_forensics.engine.month_axis import month_label as _label
 from schedule_forensics.model.schedule import Schedule
 
 #: Month-axis bounds relative to the snapshots' status dates (the reference deck spans
@@ -39,18 +42,6 @@ _MONTHS_AFTER_LAST_STATUS = 12
 #: over the cap, the oldest months are shed first — the newest status month and its CEI
 #: period always stay on-axis.
 _MAX_MONTHS = 48
-
-_MONTH_ABBR = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-
-
-def _ym(d: dt.datetime) -> int:
-    """A date's month as a single orderable integer (year*12 + month-1)."""
-    return d.year * 12 + (d.month - 1)
-
-
-def _label(ym: int) -> str:
-    year, month = divmod(ym, 12)
-    return f"{_MONTH_ABBR[month]}-{year % 100:02d}"
 
 
 @dataclass(frozen=True)
@@ -75,15 +66,6 @@ class BowWave:
 
     month_labels: tuple[str, ...]
     snapshots: tuple[SnapshotProfile, ...]
-
-
-def _bucket(dates: list[dt.datetime], lo: int, n: int) -> tuple[int, ...]:
-    counts = [0] * n
-    for d in dates:
-        i = _ym(d) - lo
-        if 0 <= i < n:
-            counts[i] += 1
-    return tuple(counts)
 
 
 def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:

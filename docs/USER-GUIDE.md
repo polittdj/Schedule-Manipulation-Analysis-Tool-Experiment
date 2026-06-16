@@ -122,6 +122,17 @@ dashboard. Stop it with `Ctrl-C`.
    table compares, for each snapshot, what the *previous* snapshot planned to finish in the
    following month vs what this snapshot re-scheduled and what actually finished
    (CEI = completed-on-time ÷ previously planned; 1.00 = executed to plan — an unplanned finish in the month earns no credit).
+5a. **Finish & Slippage** (the **Finish &amp; Slippage** link, `/curves`) — the reference deck's
+   *Finishes* / *DATA Date Finishes* / *Slippage* pages as line charts on one shared month axis:
+   **Finishes** plots the latest version's activities counted by their **baseline** finish month
+   (gold) against their **actual / scheduled** finish month (blue) — the gap is the slip, read
+   month by month. **DATA Date Finishes** overlays one actual-finish curve per loaded version
+   (oldest first by data date) so the bow wave of slipped work shows as a line family pushing
+   right. **Slippage** draws, per version, a **start** curve (solid) and a **finish** curve
+   (dashed); the whole profile sliding right is the slippage signature. Counts come straight from
+   the files' stored dates (actual where present, else scheduled), so the page works on **every**
+   loaded version — even one whose network can't be solved — and with a single version (its curves
+   alone). ⬇ Excel / ⬇ Word export the per-version monthly counts.
 6. **Forecast** — three independent answers to *"when will it really end?"*: the schedule's own
    **CPM logic**, a **completion-rate extrapolation** (to-go activities at the historical
    completions-per-month pace), and the **earned-schedule IEAC(t)** estimate
@@ -185,6 +196,7 @@ files, parsed derivatives, and reports are git-ignored and never committed.
 Every analytical page carries **⬇ Excel / ⬇ Word** links (top right): the report page
 (all panels + the full activity grid), Path Analysis (the traced grid — links activate
 after you Trace), Trend, Bow Wave/CEI (the CEI table plus every snapshot's monthly
-data), Forecast, and Compare (the manipulation signals). Files are generated locally
-and download straight from your browser — nothing leaves the machine.
+data), Finish &amp; Slippage (the per-version monthly start/finish counts), Forecast, and
+Compare (the manipulation signals). Files are generated locally and download straight
+from your browser — nothing leaves the machine.
 
