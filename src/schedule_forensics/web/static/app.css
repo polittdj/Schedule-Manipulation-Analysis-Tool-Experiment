@@ -103,3 +103,8 @@ h3.trend-section {
   letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line);
   padding-bottom: 4px;
 }
+
+/* M18: PBIX p8+p9 WBS-pivot tables — compact, numeric-dense */
+table.wbs-table { font-size: 12px; }
+table.wbs-table th, table.wbs-table td { padding: 4px 8px; text-align: right; white-space: nowrap; }
+table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: left; }

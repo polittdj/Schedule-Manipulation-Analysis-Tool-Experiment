@@ -37,9 +37,11 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
    finishes per calendar month (latest version), on the `/curves` page.
 7. **DATA Date Finishes** — **REPRODUCED** (ADR-0040): one actual-finish curve per
    version (data date) on a shared month axis — the bow wave as a line family.
-8. **Completion Metrics** — pivot by WBS: activity counts/%, not-completed, completed,
-   avg days ahead/late/variance, longer/shorter than planned, duration ratio min/avg/max.
-9. **SPI and Earned Schedule** — pivot + combo chart of SPI and ES **by WBS**.
+8. **Completion Metrics** — **REPRODUCED** (ADR-0041): pivot by WBS (top-level segment)
+   on the `/wbs/{name}` page — activity counts/%, not-completed/completed, ahead/late/
+   variance, longer/shorter than planned, duration ratio min/avg/max.
+9. **SPI and Earned Schedule** — **REPRODUCED** (ADR-0041): SPI(t) + Earned-Schedule
+   combo chart and pivot **by WBS** (same `/wbs/{name}` page).
 10. **Complete-ToGo** — line: status counts by start-year; pivot: status × WBS × task
     over start year/month.
 11. **Actual Summary** — combo: actual starts + actual finishes per year (bars) with
@@ -61,8 +63,9 @@ float bands (counts AND the percent variants), BEI, SPI/ES, CEI, forecast + drif
 status profiles. **Gaps to build**: ~~constraint-distribution table~~ (ADR-0038),
 ~~activity-type profile~~ (ADR-0039), ~~TotalFloatSum/FreeFloatSum~~ (ADR-0039),
 ~~start/finish-curve slippage lines~~ (ADR-0040, `engine/month_curves.py`),
-WBS-grouped pivots (completion + SPI/ES by WBS), cumulative actual curves, avg tasks
-per month, remaining-duration card.
+~~WBS-grouped pivots (completion + SPI/ES by WBS)~~ (ADR-0041,
+`engine/metrics/wbs_breakdown.py`), cumulative actual curves, avg tasks per month,
+remaining-duration card.
 **DAX intake complete (ADR-0033)**: EPI and Start-to-Finish Ratio adopted verbatim
 from the operator's SemanticModel export; **RatioMeasure does not exist in the model**
 (dangling visual binding — nothing to build). Four deck measures were found defective

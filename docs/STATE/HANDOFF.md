@@ -1,6 +1,21 @@
-# Handoff — 2026-06-16 (PRs #81–#95 MERGED; **M18 IN FLIGHT**; PR #96 OPEN — item 6 pgs 6/7/12)
+# Handoff — 2026-06-16 (PRs #81–#96 MERGED; **M18 IN FLIGHT**; PR #97 OPEN — item 6 pgs 8/9)
 
-**This sitting (2026-06-16):** **#95 merged** (item 6 PBIX pages 4+5 — Cross File
+**This sitting (2026-06-16, cont.):** **#96 merged** (item 6 PBIX pages 6/7/12 —
+Finish & Slippage curves, ADR-0040; post-merge main green). Then **PR #97 (ADR-0041) —
+M18 item 6, PBIX pages 8 + 9 (WBS pivots)**: a new **`/wbs/{name}` page** with the
+**Completion Metrics by WBS** pivot (counts/%, ahead/on/behind + avg days, longer/shorter,
+duration ratio) and the **SPI(t) & Earned Schedule by WBS** combo chart + table. New engine
+`engine/metrics/wbs_breakdown.py` (`compute_wbs_breakdown` → `WBSGroup`, grouped by
+top-level WBS segment; lightweight dataclass NOT MetricResult). The count-based SPI(t)
+core was factored out of `evm.py` into a public `earned_schedule(schedule, tasks)`
+(reused by `_spi_t` and the per-WBS breakdown — one ES definition). Dashboard row "WBS"
+action, xlsx/docx export (`wbs_breakdown_tables`), shared ask panel. Air-gap extended over
+`/wbs/{name}` + `wbs.js`; engine cov 97% (new module 100%, evm 100%); parity 10/10; golden
+groups reconcile (126/27 in Project5). PBIX-VISUALS pages 8/9 marked REPRODUCED.
+**Remaining PBIX: Carnac forecast cards (13); pages 2/3/10/11 are restatements.**
+Model/mode: Opus 4.8 (1M).
+
+**Prior sitting (2026-06-16):** **#95 merged** (item 6 PBIX pages 4+5 — Cross File
 Comparison + Float Analysis charts on the Trend page, ADR-0039; post-merge main green).
 Then **PR #96 (ADR-0040) — M18 item 6, PBIX pages 6, 7, 12 (Finish & Slippage curves)**:
 a new **`/curves` page** with three dependency-free SVG line charts on one shared month

@@ -56,6 +56,16 @@ dashboard. Stop it with `Ctrl-C`.
    of **KPI cards** (earliest start, computed finish, data date, % complete, critical-incomplete
    count, to-go activities and milestones, avg days ahead/late, % elapsed since the last finish).
    Every figure is computed from the file and cross-checks against the full report.
+1b. **WBS breakdown** (the **WBS** link, `/wbs/<name>`) — the reference deck's *Completion
+   Metrics* and *SPI and Earned Schedule* pages as two pivots **by WBS** (grouped on the
+   top-level WBS segment). The completion table gives, per WBS group, the activity count and
+   % complete, the **ahead / on-schedule / behind** split with average calendar days, the
+   longer/shorter-than-planned counts, and the actual-vs-baseline **duration ratio**
+   (min/avg/max). Below it, **SPI(t) & Earned Schedule by WBS**: a combo chart of each
+   group's count-based **SPI(t)** (bars, red below the 1.0 on-plan line, green at/above) and
+   its **Earned Schedule** in working days (line), with a matching table. A group with no
+   completions or no baseline finishes reads "—", never a fabricated value. ⬇ Excel / ⬇ Word
+   export both pivots.
 2. **Analysis** (click a schedule):
    - **DCMA-14 audit** — each of the 14 checks with pass/fail vs threshold and a plain-language
      suggested improvement; failing checks list the offending activities.
@@ -196,7 +206,7 @@ files, parsed derivatives, and reports are git-ignored and never committed.
 Every analytical page carries **⬇ Excel / ⬇ Word** links (top right): the report page
 (all panels + the full activity grid), Path Analysis (the traced grid — links activate
 after you Trace), Trend, Bow Wave/CEI (the CEI table plus every snapshot's monthly
-data), Finish &amp; Slippage (the per-version monthly start/finish counts), Forecast, and
-Compare (the manipulation signals). Files are generated locally and download straight
-from your browser — nothing leaves the machine.
+data), Finish &amp; Slippage (the per-version monthly start/finish counts), the WBS
+breakdown (both pivots), Forecast, and Compare (the manipulation signals). Files are
+generated locally and download straight from your browser — nothing leaves the machine.
 
