@@ -2785,13 +2785,17 @@ def _evolution_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
     return """
 <div class=panel><h2>Critical-Path Evolution</h2>
 <p class=muted>Step through the versions (oldest first by data date) to watch the critical
-path change. Each version lists its critical activities &mdash; <b class=ev-entered>green</b>
-entered the path since the prior version, <b class=ev-stayed>grey</b> stayed, and a
-<span class=ev-badge>&#9650;dur</span> badge marks a duration change on the path; activities
-that <b class=ev-left>left</b> the path are listed below, struck through. The callout reports
-the finish movement and the schedule-optics signals &mdash; durations cut on the path and
-logic links removed &mdash; so a path shedding work while the finish holds steady (a slip
-being absorbed rather than recovered) is visible.</p>
+path change, drawn as a <b>Gantt</b> on a date axis held fixed across every version (so the
+path visibly extends as the finish slips). Bars are colored
+<b class=ev-entered>green</b> for activities that <b>entered</b> the path since the prior
+version, <b class=ev-stayed>grey</b> for those that <b>stayed</b>, with a &#9650; marking a
+duration change; activities that <b class=ev-left>left</b> the path appear below as dashed
+ghost bars at their prior position. Every entered/left activity carries a <b>reason chip</b>
+explaining <b>why</b> it moved &mdash; a new task, a duration change, a logic change, a
+constraint, a completion, or a slip elsewhere consuming its float (hover the chip for the
+detail). The callout reports the finish movement and the schedule-optics signals, so a path
+shedding work while the finish holds steady (a slip being absorbed rather than recovered) is
+visible.</p>
 <div class=viz-controls>
 <button id=prevEvo type=button>&#9664; Prev</button>
 <span id=evoLabel class=muted></span>
@@ -2803,17 +2807,63 @@ being absorbed rather than recovered) is visible.</p>
 
 
 def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
-    """JSON for the critical-path evolution stepper: per-version snapshots + task names."""
+    """JSON for the critical-path evolution Gantt stepper: per-version snapshots with each
+    critical activity's bar geometry (start/finish), the entered/left attribution (the reason
+    WHY each entered or left the path), and a date axis LOCKED across every version so bars
+    stay comparable frame to frame."""
     evolution = compute_path_evolution(schedules, cpms)
     by_id = [s.tasks_by_id for s in schedules]
+    axis_dates: list[dt.date] = []
+
+    def bar(idx: int, uid: int) -> tuple[str | None, str | None]:
+        timing = cpms[idx].timings.get(uid)
+        if timing is None:
+            return None, None
+        sch = schedules[idx]
+        start = offset_to_datetime(sch.project_start, timing.early_start, sch.calendar).date()
+        finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar).date()
+        axis_dates.extend((start, finish))
+        return start.isoformat(), finish.isoformat()
+
     snapshots: list[dict[str, object]] = []
     for i, s in enumerate(evolution.snapshots):
         names = {str(uid): by_id[i][uid].name for uid in s.critical if uid in by_id[i]}
-        # the names of activities that LEFT live in the PRIOR version's task map
         if i > 0:
             for uid in s.left:
                 if uid in by_id[i - 1]:
                     names[str(uid)] = by_id[i - 1][uid].name
+        entered_reason = {c.uid: c for c in s.entered_changes}
+        dur_changed = set(s.duration_changed)
+        critical_rows: list[dict[str, object]] = []
+        for uid in s.critical:
+            start, finish = bar(i, uid)
+            change = entered_reason.get(uid)
+            critical_rows.append(
+                {
+                    "uid": uid,
+                    "name": names.get(str(uid), f"UID {uid}"),
+                    "start": start,
+                    "finish": finish,
+                    "entered": uid in entered_reason,
+                    "duration_changed": uid in dur_changed,
+                    "reason": change.reason if change is not None else None,
+                    "detail": change.detail if change is not None else None,
+                }
+            )
+        critical_rows.sort(key=lambda r: (r["start"] is None, str(r["start"])))
+        left_rows: list[dict[str, object]] = []
+        for c in s.left_changes:
+            start, finish = bar(i - 1, c.uid) if i > 0 else (None, None)
+            left_rows.append(
+                {
+                    "uid": c.uid,
+                    "name": c.name,
+                    "start": start,
+                    "finish": finish,
+                    "reason": c.reason,
+                    "detail": c.detail,
+                }
+            )
         snapshots.append(
             {
                 "label": s.label,
@@ -2827,9 +2877,15 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
                 "shortened_on_path": list(s.shortened_on_path),
                 "removed_logic_count": s.removed_logic_count,
                 "names": names,
+                "critical_rows": critical_rows,
+                "left_rows": left_rows,
             }
         )
-    return {"snapshots": snapshots}
+    axis = {
+        "min": min(axis_dates).isoformat() if axis_dates else None,
+        "max": max(axis_dates).isoformat() if axis_dates else None,
+    }
+    return {"axis": axis, "snapshots": snapshots}
 
 
 def _cite_tag(citations: tuple[Citation, ...]) -> str:

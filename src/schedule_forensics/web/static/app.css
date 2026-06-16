@@ -122,6 +122,9 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+/* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
+.evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
+.legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }
 
 /* M18 item 8: Forecast methodology explainer (one card per method) + spread ruler */
 .forecast-method { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }

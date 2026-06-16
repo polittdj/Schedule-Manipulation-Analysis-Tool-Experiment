@@ -57,6 +57,31 @@ def test_api_evolution_serves_per_version_snapshots(client: TestClient) -> None:
     assert all(str(u) in second["names"] for u in second["left"])
 
 
+def test_api_evolution_carries_gantt_geometry_and_reasons(client: TestClient) -> None:
+    """M18 follow-up: the evolution data carries per-activity Gantt bars + the entered/left
+    attribution (the reason WHY each entered or left the path) + a locked date axis."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    data = client.get("/api/evolution").json()
+    assert data["axis"]["min"] and data["axis"]["max"]  # the locked Gantt axis
+    second = data["snapshots"][1]
+    assert len(second["critical_rows"]) == 37  # one Gantt bar per critical activity
+    row = second["critical_rows"][0]
+    assert row["start"] and row["finish"] and "entered" in row and "uid" in row
+    # the six that LEFT the path each carry a reason and their prior-version bar geometry
+    assert len(second["left_rows"]) == 6
+    assert {r["reason"] for r in second["left_rows"]} <= {"completed", "gained_float"}
+    assert all(r["start"] and r["finish"] for r in second["left_rows"])
+
+
+def test_evolution_page_describes_gantt_and_reasons(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+    assert "Gantt" in page and "reason chip" in page
+    assert "id=evoChart" in page and "/static/path_evolution.js" in page
+
+
 def test_evolution_export_xlsx_and_docx(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

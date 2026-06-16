@@ -362,7 +362,8 @@ def carnac_table(summary: CarnacSummary) -> Table:
 
 
 def path_evolution_tables(evolution: PathEvolution) -> tuple[Table, ...]:
-    """Per-version critical-path evolution: size, finish move, entered/left, optics."""
+    """Per-version critical-path evolution: size, finish move, entered/left, optics, plus a
+    per-activity table attributing WHY each activity entered or left the path."""
     rows: tuple[tuple[Cell, ...], ...] = tuple(
         (
             s.label,
@@ -378,24 +379,34 @@ def path_evolution_tables(evolution: PathEvolution) -> tuple[Table, ...]:
         )
         for s in evolution.snapshots
     )
-    return (
-        Table(
-            "Critical-path evolution",
-            (
-                "Version",
-                "Data date",
-                "Project finish",
-                "Finish move (days)",
-                "Critical count",
-                "Entered path",
-                "Left path",
-                "Duration changed on path",
-                "Shortened on path",
-                "Logic links removed",
-            ),
-            rows,
+    summary = Table(
+        "Critical-path evolution",
+        (
+            "Version",
+            "Data date",
+            "Project finish",
+            "Finish move (days)",
+            "Critical count",
+            "Entered path",
+            "Left path",
+            "Duration changed on path",
+            "Shortened on path",
+            "Logic links removed",
         ),
+        rows,
     )
+    change_rows: list[tuple[Cell, ...]] = []
+    for s in evolution.snapshots:
+        for c in s.entered_changes:
+            change_rows.append((s.label, "entered", c.uid, c.name, c.reason, c.detail))
+        for c in s.left_changes:
+            change_rows.append((s.label, "left", c.uid, c.name, c.reason, c.detail))
+    changes = Table(
+        "Critical-path changes (with reasons)",
+        ("Version", "Direction", "UID", "Activity", "Reason", "Detail"),
+        tuple(change_rows),
+    )
+    return (summary, changes)
 
 
 def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple[Table, ...]:
