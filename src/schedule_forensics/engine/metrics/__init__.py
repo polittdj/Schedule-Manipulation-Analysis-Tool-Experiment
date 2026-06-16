@@ -36,6 +36,10 @@ from schedule_forensics.engine.metrics.schedule_card import (
     compute_constraint_distribution,
 )
 from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
+from schedule_forensics.engine.metrics.wbs_breakdown import (
+    WBSGroup,
+    compute_wbs_breakdown,
+)
 
 __all__ = [
     "ActivityMakeup",
@@ -44,6 +48,7 @@ __all__ = [
     "Direction",
     "FloatSums",
     "MetricResult",
+    "WBSGroup",
     "compute_activity_makeup",
     "compute_baseline_compliance",
     "compute_change_metrics",
@@ -55,4 +60,5 @@ __all__ = [
     "compute_float_sums",
     "compute_net_finish_impact",
     "compute_schedule_quality",
+    "compute_wbs_breakdown",
 ]

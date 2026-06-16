@@ -17,6 +17,7 @@ from schedule_forensics.engine.bow_wave import BowWave
 from schedule_forensics.engine.dcma_audit import ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet
 from schedule_forensics.engine.metrics._common import MetricResult
+from schedule_forensics.engine.metrics.wbs_breakdown import WBSGroup
 from schedule_forensics.engine.month_curves import MonthCurves
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import MetricTrend
@@ -257,6 +258,67 @@ def month_curves_tables(curves: MonthCurves) -> tuple[Table, ...]:
             )
         )
     return tuple(tables)
+
+
+def wbs_breakdown_tables(groups: Sequence[WBSGroup]) -> tuple[Table, ...]:
+    """Two WBS pivots: completion-by-WBS and SPI(t)/Earned-Schedule-by-WBS."""
+    completion = Table(
+        "Completion metrics by WBS",
+        (
+            "WBS",
+            "Total",
+            "Completed",
+            "To go",
+            "% complete",
+            "Ahead",
+            "On schedule",
+            "Behind",
+            "Avg days ahead",
+            "Avg days late",
+            "Avg variance",
+            "Longer",
+            "Shorter",
+            "Dur ratio min",
+            "Dur ratio avg",
+            "Dur ratio max",
+        ),
+        tuple(
+            (
+                g.wbs,
+                g.total,
+                g.completed,
+                g.not_completed,
+                g.percent_complete,
+                g.completed_ahead,
+                g.completed_on_schedule,
+                g.completed_behind,
+                g.avg_days_ahead,
+                g.avg_days_late,
+                g.avg_completion_variance,
+                g.longer_than_planned,
+                g.shorter_than_planned,
+                g.duration_ratio_min,
+                g.duration_ratio_avg,
+                g.duration_ratio_max,
+            )
+            for g in groups
+        ),
+    )
+    earned = Table(
+        "SPI(t) and Earned Schedule by WBS",
+        (
+            "WBS",
+            "SPI(t)",
+            "Earned schedule (working days)",
+            "Actual time (working days)",
+            "Completed",
+        ),
+        tuple(
+            (g.wbs, g.spi_t, g.earned_schedule_days, g.actual_time_days, g.completed)
+            for g in groups
+        ),
+    )
+    return (completion, earned)
 
 
 def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple[Table, ...]:

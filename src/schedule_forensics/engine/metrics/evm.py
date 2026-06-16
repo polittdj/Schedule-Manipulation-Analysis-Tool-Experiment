@@ -23,6 +23,8 @@ in :mod:`.change_metrics`, not here.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult
 from schedule_forensics.engine.metrics._common import (
@@ -249,6 +251,53 @@ def _index(metric_id: str, name: str, value: float | None, threshold: float) -> 
     )
 
 
+@dataclass(frozen=True)
+class EarnedSchedule:
+    """The numeric core of a count-based Earned-Schedule SPI(t) calculation.
+
+    ``es_minutes`` is the working-time offset of the EV-th planned (baseline) finish;
+    ``at_minutes`` is the working time from project start to the status date; ``ev`` is
+    the count of complete activities; ``planned_count`` the activities with a usable
+    baseline finish. SPI(t) = ES / AT (< 1 == behind schedule).
+    """
+
+    es_minutes: float
+    at_minutes: float
+    ev: int
+    planned_count: int
+
+    @property
+    def spi_t(self) -> float:
+        return self.es_minutes / self.at_minutes
+
+
+def earned_schedule(schedule: Schedule, tasks: Sequence[Task]) -> EarnedSchedule | None:
+    """Earned-Schedule inputs for ``tasks``, or ``None`` when undefined (never fabricated).
+
+    Shared by the schedule-level SPI(t) (:func:`compute_evm_indices`) and the per-WBS
+    Earned-Schedule breakdown (``metrics/wbs_breakdown.py``). ES is a step function over
+    the sorted baseline-finish offsets (count-based — no fractional earned schedule),
+    capped at the last planned finish. Undefined (returns ``None``) when there is no
+    positive status offset, no completions, or no planned baseline finishes.
+    """
+    status_off = to_offset(schedule, schedule.status_date)
+    if status_off is None or status_off <= 0:
+        return None
+    planned = sorted(
+        off
+        for t in tasks
+        if (off := to_offset(schedule, t.baseline_finish)) is not None and off >= 0
+    )
+    ev = sum(1 for t in tasks if t.percent_complete >= 100.0)
+    if ev <= 0 or not planned:
+        return None
+    # ES is the offset of the EV-th planned finish (1-indexed), capped at the last one.
+    es = float(planned[min(ev, len(planned)) - 1])
+    return EarnedSchedule(
+        es_minutes=es, at_minutes=float(status_off), ev=ev, planned_count=len(planned)
+    )
+
+
 def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
     """Count-based Earned-Schedule SPI(t) = Earned Schedule / Actual Time.
 
@@ -260,28 +309,17 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
     this index (informational; the golden schedules are not cost-loaded so the cost SPI is
     NA) — it is unit-tested on synthetic data.
     """
-    status_off = to_offset(schedule, schedule.status_date)
-    if status_off is None or status_off <= 0:
+    es = earned_schedule(schedule, tasks)
+    if es is None:
         return _na_index("spi_t", "SPI(t)")
-    planned = sorted(
-        off
-        for t in tasks
-        if (off := to_offset(schedule, t.baseline_finish)) is not None and off >= 0
-    )
-    ev = sum(1 for t in tasks if t.percent_complete >= 100.0)
-    if ev <= 0 or not planned:
-        return _na_index("spi_t", "SPI(t)")
-    # ES is the offset of the EV-th planned finish (1-indexed), capped at the last one.
-    es = float(planned[min(ev, len(planned)) - 1])
-    spi_t = es / status_off
     return MetricResult(
         "spi_t",
         "SPI(t)",
-        ev,
-        len(planned),
-        round(spi_t, 2),
+        es.ev,
+        es.planned_count,
+        round(es.spi_t, 2),
         "ratio",
-        evaluate(spi_t, 1.0, Direction.GE),
+        evaluate(es.spi_t, 1.0, Direction.GE),
         1.0,
         Direction.GE,
     )

@@ -64,6 +64,7 @@ from schedule_forensics.engine.driving_slack import date_basis
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
+    WBSGroup,
     compute_activity_makeup,
     compute_baseline_compliance,
     compute_completion_performance,
@@ -72,6 +73,7 @@ from schedule_forensics.engine.metrics import (
     compute_float_sums,
     compute_net_finish_impact,
     compute_schedule_quality,
+    compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
@@ -105,6 +107,7 @@ from schedule_forensics.reports.tables import (
     month_curves_tables,
     schedule_summary_table,
     trend_tables,
+    wbs_breakdown_tables,
 )
 from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web.help import METRIC_DICTIONARY
@@ -479,6 +482,7 @@ def create_app(
             f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
             f'<td class=row-actions><a href="/analysis/{quote(name)}">Open report</a>'
             f' &middot; <a href="/card/{quote(name)}">Card</a>'
+            f' &middot; <a href="/wbs/{quote(name)}">WBS</a>'
             f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
             for name, sch in st.schedules.items()
         )
@@ -634,6 +638,30 @@ def create_app(
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
         return _page(st, f"{name} — card", _card_body(name, sch, analysis), ask_schedule=name)
+
+    @app.get("/wbs/{name}", response_class=HTMLResponse)
+    def wbs_breakdown_view(name: str) -> HTMLResponse:
+        """The deck's *Completion Metrics* + *SPI and Earned Schedule* pages (PBIX 8, 9):
+        the completion family and Earned Schedule pivoted by WBS."""
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return _page(
+                st,
+                "Not found",
+                f"<div class=panel>No schedule named {_e(name)}.</div>",
+                status_code=404,
+            )
+        groups = compute_wbs_breakdown(sch)
+        return _page(st, f"{name} — WBS", _wbs_body(name, groups), ask_schedule=name)
+
+    @app.get("/api/wbs/{name}")
+    def wbs_json(name: str) -> JSONResponse:
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        return JSONResponse(_wbs_data(compute_wbs_breakdown(sch)))
 
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
@@ -1088,6 +1116,21 @@ def create_app(
             fmt,
             TableSet("Finish & slippage curves", month_curves_tables(curves)),
             "finish-slippage-curves",
+        )
+
+    @app.get("/export/{fmt}/wbs/{name}")
+    def export_wbs(fmt: str, name: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "not found"}, status_code=404)
+        groups = compute_wbs_breakdown(sch)
+        return _export_response(
+            fmt,
+            TableSet(f"WBS breakdown - {sch.name}", wbs_breakdown_tables(groups)),
+            f"{name}-wbs",
         )
 
     @app.get("/export/{fmt}/compare")
@@ -1782,6 +1825,80 @@ headline KPI cards — every figure computed from this file and verifiable on th
 <div>{makeup_tbl}</div><div>{status_tbl}</div>
 <div>{perf_tbl}</div><div>{constraint_tbl}</div>
 </div></div>"""
+
+
+def _num(value: float | None, *, suffix: str = "") -> str:
+    """Render an optional number for a table cell — em-dash when absent (never a fake 0)."""
+    return f"{value:g}{suffix}" if value is not None else "&mdash;"
+
+
+def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
+    """The deck's *Completion Metrics* (PBIX 8) + *SPI and Earned Schedule* (PBIX 9) pages.
+
+    Two WBS pivots over one version: a completion-by-WBS table (counts, %, ahead/on/behind,
+    duration ratio) and the SPI(t)/Earned-Schedule-by-WBS combo chart + table. Grouped by
+    the top-level WBS segment; every figure verifiable on the full report."""
+    if not groups:
+        return (
+            "<div class=panel><h2>WBS breakdown</h2><p class=muted>This schedule has no "
+            "schedulable activities to break down by WBS.</p></div>"
+        )
+    completion_rows = "".join(
+        f"<tr><th>{_e(g.wbs)}</th><td>{g.total}</td><td>{g.completed}</td>"
+        f"<td>{g.not_completed}</td><td>{g.percent_complete:g}%</td>"
+        f"<td>{g.completed_ahead}</td><td>{g.completed_on_schedule}</td><td>{g.completed_behind}</td>"
+        f"<td>{_num(g.avg_days_ahead)}</td><td>{_num(g.avg_days_late)}</td>"
+        f"<td>{_num(g.avg_completion_variance)}</td>"
+        f"<td>{g.longer_than_planned}</td><td>{g.shorter_than_planned}</td>"
+        f"<td>{_num(g.duration_ratio_min)}</td><td>{_num(g.duration_ratio_avg)}</td>"
+        f"<td>{_num(g.duration_ratio_max)}</td></tr>"
+        for g in groups
+    )
+    es_rows = "".join(
+        f"<tr><th>{_e(g.wbs)}</th><td>{_num(g.spi_t)}</td>"
+        f"<td>{_num(g.earned_schedule_days)}</td><td>{_num(g.actual_time_days)}</td>"
+        f"<td>{g.completed}/{g.total}</td></tr>"
+        for g in groups
+    )
+    return f"""
+<div class=panel><h2>Completion metrics by WBS &mdash; {len(groups)} groups</h2>
+<p class=muted>The reference deck's <i>Completion Metrics</i> pivot (PBIX page 8), grouped by
+the top-level WBS segment: counts and completion, the ahead / on-schedule / behind split with
+average calendar days, and the actual-vs-baseline duration ratio. Every figure is verifiable
+on the <a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
+<div style="overflow-x:auto"><table class=wbs-table>
+<tr><th>WBS</th><th>Total</th><th>Done</th><th>To go</th><th>% comp</th>
+<th>Ahead</th><th>On sched</th><th>Behind</th>
+<th>Avg ahead</th><th>Avg late</th><th>Avg var</th>
+<th>Longer</th><th>Shorter</th><th>Dur min</th><th>Dur avg</th><th>Dur max</th></tr>
+{completion_rows}</table></div></div>
+<div class=panel><h2>SPI(t) &amp; Earned Schedule by WBS</h2>
+<p class=muted>The deck's <i>SPI and Earned Schedule</i> pivot + combo (PBIX page 9). Per WBS
+group: the count-based <b>SPI(t)</b> (Earned Schedule &divide; Actual Time; &lt; 1 = behind),
+the <b>Earned Schedule</b> and <b>Actual Time</b> in working days. A group with no completions
+or no baseline finishes reads &mdash; (never a fabricated value).</p>
+<div id=wbsChart></div>
+<table class=wbs-table><tr><th>WBS</th><th>SPI(t)</th><th>Earned schedule (wd)</th>
+<th>Actual time (wd)</th><th>Completed</th></tr>{es_rows}</table></div>
+<script src="/static/wbs.js"></script>"""
+
+
+def _wbs_data(groups: tuple[WBSGroup, ...]) -> dict[str, object]:
+    """JSON for the SPI/Earned-Schedule combo chart: per-WBS SPI(t) + ES/AT days."""
+    return {
+        "groups": [
+            {
+                "wbs": g.wbs,
+                "total": g.total,
+                "completed": g.completed,
+                "percent_complete": g.percent_complete,
+                "spi_t": g.spi_t,
+                "earned_schedule_days": g.earned_schedule_days,
+                "actual_time_days": g.actual_time_days,
+            }
+            for g in groups
+        ],
+    }
 
 
 def _analysis_body(
