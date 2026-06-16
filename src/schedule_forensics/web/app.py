@@ -224,7 +224,8 @@ class SessionState:
     second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
 
     def ordered(self) -> list[Schedule]:
-        return list(self.schedules.values())
+        """Loaded schedules ordered by data date, oldest first (undated keep load order)."""
+        return order_versions(list(self.schedules.values()))
 
     def ordered_versions(self) -> list[tuple[str, Schedule]]:
         """(key, schedule) pairs ordered by data date, oldest first (undated keep load order)."""
@@ -493,7 +494,7 @@ def create_app(
             f' &middot; <a href="/card/{quote(name)}">Card</a>'
             f' &middot; <a href="/wbs/{quote(name)}">WBS</a>'
             f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
-            for name, sch in st.schedules.items()
+            for name, sch in st.ordered_versions()  # earliest -> latest data date
         )
         loaded = (
             "<div class=panel><h2>Schedule health</h2>"
@@ -2920,7 +2921,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
     exposure, computed finish vs baseline, and the DCMA-14 verdicts. Reuses the cached
     per-schedule analysis (one CPM each); an unschedulable file degrades to a flagged card."""
     cards: list[dict[str, object]] = []
-    for key, sch in st.schedules.items():
+    for key, sch in st.ordered_versions():  # earliest -> latest data date
         card: dict[str, object] = {
             "key": key,
             "name": sch.name,

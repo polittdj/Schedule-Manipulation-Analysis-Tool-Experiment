@@ -105,6 +105,36 @@ def test_dashboard_health_cards_wire_and_api(client: TestClient) -> None:
     assert all(d["status"] in ("PASS", "FAIL", "NA") for d in c["dcma"])
 
 
+GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+
+
+def _upload_golden(client: TestClient, name: str) -> None:
+    data = (GOLDEN / f"{name}.mspdi.xml").read_bytes()
+    assert (
+        client.post("/upload", files={"files": (f"{name}.mspdi.xml", data, "text/xml")}).status_code
+        == 200
+    )
+
+
+def test_schedules_listed_earliest_to_latest_data_date_everywhere(client: TestClient) -> None:
+    """Every tab/visual must list versions oldest data date first, regardless of upload order.
+    Project2's data date (May-26) precedes Project5's (Aug-26); uploading them in REVERSE must
+    still surface Project2 before Project5 in the home 'Loaded schedules' table and the
+    Dashboard health-card API."""
+    _upload_golden(client, "Project5")  # later data date, uploaded FIRST
+    _upload_golden(client, "Project2")  # earlier data date, uploaded SECOND
+
+    # home 'Loaded schedules' table (server-rendered) lists the earlier version first
+    home = client.get("/").text
+    assert home.index("Project2.mspdi.xml") < home.index("Project5.mspdi.xml")
+
+    # Dashboard health cards come back in ascending data-date order, not upload order
+    cards = client.get("/api/dashboard").json()["cards"]
+    dates = [c["data_date"] for c in cards]
+    assert dates == sorted(dates), dates
+    assert cards[0]["data_date"] < cards[1]["data_date"]
+
+
 def test_download_missing_is_404(client: TestClient) -> None:
     assert client.get("/download/nope.json").status_code == 404
 
