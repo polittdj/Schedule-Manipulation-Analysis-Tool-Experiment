@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import datetime as dt
 
-from schedule_forensics.engine.forecast import compute_finish_forecasts
+from schedule_forensics.engine.cpm import compute_cpm
+from schedule_forensics.engine.forecast import (
+    compute_carnac_summary,
+    compute_finish_forecasts,
+)
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -87,6 +91,55 @@ def test_missing_inputs_yield_no_date_never_a_fabrication() -> None:
     assert by_id["earned_schedule"].finish is None
     assert fs.spi_t is None and fs.rate_per_month is None
     assert fs.citation_uids  # the §6 anchor is always present
+
+
+def test_carnac_summary_reuses_forecast_and_cpm(golden_project5: Schedule) -> None:
+    # PBIX page 13 (ADR-0042): the Carnac cards must equal the forecast/CPM values exactly.
+    cpm = compute_cpm(golden_project5)
+    fs = compute_finish_forecasts(golden_project5, cpm)
+    c = compute_carnac_summary(golden_project5, cpm, fs)
+    by_id = {f.method_id: f for f in fs.forecasts}
+    assert c.latest_finish == by_id["cpm"].finish == dt.date(2027, 12, 7)
+    assert c.forecasted_end == by_id["rate"].finish == dt.date(2028, 6, 10)
+    assert c.estimated_end_es == by_id["earned_schedule"].finish == dt.date(2029, 2, 1)
+    assert c.spi_t == fs.spi_t == 0.47
+    assert c.avg_tasks_per_month == fs.rate_per_month == 4.62
+    assert c.to_go_count == fs.remaining_count == 99
+    # derived working-day spans (golden P5: 462 wd project span, ES 60 wd)
+    assert c.project_duration_days == 462.0
+    assert c.earned_schedule_days == 60.0
+    assert c.earliest_start == dt.date(2026, 3, 2)
+    # remaining duration is positive and no longer than the whole project
+    assert c.remaining_duration_days is not None
+    assert 0 < c.remaining_duration_days <= c.project_duration_days
+
+
+def test_carnac_summary_honest_absences_without_status_or_progress() -> None:
+    # no status date, no completions, no baselines: rate/ES/remaining are None, never faked
+    tasks = [
+        Task(unique_id=1, name="A", duration_minutes=DAY),
+        Task(unique_id=2, name="B", duration_minutes=DAY),
+    ]
+    sch = _chain(tasks)
+    cpm = compute_cpm(sch)
+    c = compute_carnac_summary(sch, cpm, compute_finish_forecasts(sch, cpm))
+    assert c.latest_finish is not None  # the CPM date always exists
+    assert c.forecasted_end is None and c.estimated_end_es is None
+    assert c.avg_tasks_per_month is None and c.spi_t is None
+    assert c.earned_schedule_days is None
+    assert c.remaining_duration_days is None  # no data date -> no to-go span
+    assert c.to_go_count == 2
+
+
+def test_carnac_summary_without_stored_starts_has_no_project_window() -> None:
+    # tasks carry no stored start -> earliest start / project duration are None (not faked);
+    # the CPM finish still exists (logic always yields a date)
+    tasks = [Task(unique_id=i, name=f"T{i}", duration_minutes=DAY, start=None) for i in (1, 2)]
+    sch = _chain(tasks)
+    cpm = compute_cpm(sch)
+    c = compute_carnac_summary(sch, cpm, compute_finish_forecasts(sch, cpm))
+    assert c.earliest_start is None and c.project_duration_days is None
+    assert c.latest_finish is not None
 
 
 def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> None:

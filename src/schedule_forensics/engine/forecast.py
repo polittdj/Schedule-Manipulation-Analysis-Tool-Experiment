@@ -25,6 +25,7 @@ from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import is_incomplete, non_summary, to_offset
+from schedule_forensics.engine.metrics.evm import earned_schedule
 from schedule_forensics.model.schedule import Schedule
 
 #: Average calendar days per month (365.25 / 12) — the rate method's month axis.
@@ -141,20 +142,80 @@ def compute_finish_forecasts(
     )
 
 
-def _earned_schedule(schedule: Schedule) -> tuple[float | None, float | None, float | None]:
-    """(SPI(t), ES, AT) on the working-minute axis — the same count-based Earned-Schedule
-    construction as the SPI(t) metric (``metrics.evm._spi_t``): ES is the offset of the
-    EV-th sorted baseline finish, AT the offset of the status date."""
+@dataclass(frozen=True)
+class CarnacSummary:
+    """The deck's *Carnac* forecast KPI cards for one version (PBIX page 13; ADR-0042).
+
+    Ten headline figures over the latest schedule, every one reused from the CPM and the
+    three-method :class:`ForecastSet` (no new forecasting math). A figure whose inputs are
+    missing reads ``None`` (the view shows "—") — never a fabricated value.
+    """
+
+    earliest_start: dt.date | None  # earliest activity start
+    latest_finish: dt.date  # the CPM computed finish
+    project_duration_days: float | None  # working days, earliest start -> CPM finish
+    forecasted_end: dt.date | None  # completion-rate extrapolation finish
+    estimated_end_es: dt.date | None  # earned-schedule IEAC(t) finish
+    avg_tasks_per_month: float | None  # historical completion rate
+    remaining_duration_days: float | None  # working days, data date -> CPM finish (to-go span)
+    spi_t: float | None  # count-based Earned-Schedule SPI(t) (the deck's "SPI 2")
+    earned_schedule_days: float | None  # Earned Schedule in working days
+    to_go_count: int  # activities still to complete (the deck's "Tasks Completion Forecast")
+
+
+def compute_carnac_summary(
+    schedule: Schedule, cpm: CPMResult, forecasts: ForecastSet
+) -> CarnacSummary:
+    """The Carnac KPI cards for one version, derived from the CPM + the forecast set.
+
+    Pulls the three method finishes from ``forecasts`` (CPM / rate / earned-schedule) and
+    computes the deck's remaining card values — earliest start, project + remaining
+    duration (working days), and Earned Schedule in working days — from the stored dates
+    and the same count-based Earned-Schedule construction as SPI(t). Nothing is recomputed
+    that the forecast set already holds."""
+    tasks = non_summary(schedule)
+    per_day = schedule.calendar.working_minutes_per_day or 1
+    cal, ps = schedule.calendar, schedule.project_start
+
+    by_method = {f.method_id: f.finish for f in forecasts.forecasts}
+    latest_finish = offset_to_datetime(ps, cpm.project_finish, cal).date()
+
+    start_offsets = [off for t in tasks if (off := to_offset(schedule, t.start)) is not None]
+    earliest_start: dt.date | None = None
+    project_duration_days: float | None = None
+    if start_offsets:
+        lo = min(start_offsets)
+        earliest_start = offset_to_datetime(ps, max(lo, 0), cal).date()
+        project_duration_days = round(max(0, cpm.project_finish - lo) / per_day, 1)
+
+    remaining_duration_days: float | None = None
     status_off = to_offset(schedule, schedule.status_date)
-    if status_off is None or status_off <= 0:
-        return None, None, None
-    planned = sorted(
-        off
-        for t in non_summary(schedule)
-        if (off := to_offset(schedule, t.baseline_finish)) is not None and off >= 0
+    if status_off is not None:
+        remaining_duration_days = round(max(0, cpm.project_finish - status_off) / per_day, 1)
+
+    es = earned_schedule(schedule, tasks)
+    earned_schedule_days = round(es.es_minutes / per_day, 1) if es is not None else None
+
+    return CarnacSummary(
+        earliest_start=earliest_start,
+        latest_finish=latest_finish,
+        project_duration_days=project_duration_days,
+        forecasted_end=by_method.get("rate"),
+        estimated_end_es=by_method.get("earned_schedule"),
+        avg_tasks_per_month=forecasts.rate_per_month,
+        remaining_duration_days=remaining_duration_days,
+        spi_t=forecasts.spi_t,
+        earned_schedule_days=earned_schedule_days,
+        to_go_count=forecasts.remaining_count,
     )
-    ev = sum(1 for t in non_summary(schedule) if t.percent_complete >= 100.0)
-    if ev <= 0 or not planned:
+
+
+def _earned_schedule(schedule: Schedule) -> tuple[float | None, float | None, float | None]:
+    """(SPI(t), ES, AT) on the working-minute axis — delegates to the canonical
+    count-based Earned-Schedule helper (``metrics.evm.earned_schedule``) so the forecast,
+    the SPI(t) metric, and the WBS breakdown share one definition. Exact floats; the
+    IEAC(t) caller divides by the precise ratio and only rounds SPI(t) for display."""
+    es = earned_schedule(schedule, non_summary(schedule))
+    if es is None:
         return None, None, None
-    es = float(planned[min(ev, len(planned)) - 1])
-    return es / status_off, es, float(status_off)  # exact — callers round for display only
+    return es.spi_t, es.es_minutes, es.at_minutes

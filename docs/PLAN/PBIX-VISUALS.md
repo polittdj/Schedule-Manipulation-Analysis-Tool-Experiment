@@ -49,10 +49,10 @@ the engine metrics that already exist (most do — M15/ADR-0030 adopted the meas
 12. **Slippage** — **REPRODUCED** (ADR-0040): per version, a start curve and a finish
     curve on the shared month axis (`/curves` page) — the profile sliding right is the
     slippage signature.
-13. **Carnac** (the forecast page) — cards: earliest start, latest finish, project
-    duration, **Forecasted End Date**, avg tasks/month, remaining duration, SPI 2,
-    Tasks Completion Forecast, Earned Schedule (ES), **Estimated End Date (ES — To-Go
-    Activities)**.
+13. **Carnac** (the forecast page) — **REPRODUCED** (ADR-0042): the forecast KPI card row
+    on `/forecast` — earliest start, latest finish, project duration, Forecasted End Date,
+    avg tasks/month, remaining duration, SPI(t) [deck "SPI 2"], to-go count [deck "Tasks
+    Completion Forecast"], Earned Schedule (ES), Estimated End Date (ES — to-go).
 14. **Carnac2** — pivot: Estimated End Date (ES) by data-date year/month (forecast
     drift — already shipped as /forecast's drift table).
 
@@ -64,8 +64,10 @@ status profiles. **Gaps to build**: ~~constraint-distribution table~~ (ADR-0038)
 ~~activity-type profile~~ (ADR-0039), ~~TotalFloatSum/FreeFloatSum~~ (ADR-0039),
 ~~start/finish-curve slippage lines~~ (ADR-0040, `engine/month_curves.py`),
 ~~WBS-grouped pivots (completion + SPI/ES by WBS)~~ (ADR-0041,
-`engine/metrics/wbs_breakdown.py`), cumulative actual curves, avg tasks per month,
-remaining-duration card.
+`engine/metrics/wbs_breakdown.py`), ~~avg tasks per month~~ + ~~remaining-duration
+card~~ (ADR-0042, `engine/forecast.py` `compute_carnac_summary`). Only cumulative
+actual-start/finish curves (pages 10/11) remain unbuilt — restatements of the month
+bucketing already shipped in ADR-0040.
 **DAX intake complete (ADR-0033)**: EPI and Start-to-Finish Ratio adopted verbatim
 from the operator's SemanticModel export; **RatioMeasure does not exist in the model**
 (dangling visual binding — nothing to build). Four deck measures were found defective

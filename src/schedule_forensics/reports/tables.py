@@ -10,12 +10,13 @@ are downloads to the operator's own machine).
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 
 from schedule_forensics.engine.bow_wave import BowWave
 from schedule_forensics.engine.dcma_audit import ScheduleAudit
-from schedule_forensics.engine.forecast import ForecastSet
+from schedule_forensics.engine.forecast import CarnacSummary, ForecastSet
 from schedule_forensics.engine.metrics._common import MetricResult
 from schedule_forensics.engine.metrics.wbs_breakdown import WBSGroup
 from schedule_forensics.engine.month_curves import MonthCurves
@@ -319,6 +320,27 @@ def wbs_breakdown_tables(groups: Sequence[WBSGroup]) -> tuple[Table, ...]:
         ),
     )
     return (completion, earned)
+
+
+def carnac_table(summary: CarnacSummary) -> Table:
+    """The deck's Carnac forecast KPI cards as a two-column table (label/value)."""
+
+    def d(value: dt.date | None) -> Cell:
+        return value.isoformat() if value is not None else None
+
+    rows: tuple[tuple[Cell, ...], ...] = (
+        ("Earliest start", d(summary.earliest_start)),
+        ("Latest finish (CPM)", d(summary.latest_finish)),
+        ("Project duration (working days)", summary.project_duration_days),
+        ("Forecasted end date (rate)", d(summary.forecasted_end)),
+        ("Estimated end date (ES, to-go)", d(summary.estimated_end_es)),
+        ("Avg tasks per month", summary.avg_tasks_per_month),
+        ("Remaining duration (working days)", summary.remaining_duration_days),
+        ("SPI(t)", summary.spi_t),
+        ("Earned schedule (working days)", summary.earned_schedule_days),
+        ("Tasks to complete (to-go)", summary.to_go_count),
+    )
+    return Table("Forecast summary (Carnac)", ("Card", "Value"), rows)
 
 
 def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple[Table, ...]:
