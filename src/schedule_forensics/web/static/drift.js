@@ -107,6 +107,27 @@
     });
 
     box.appendChild(svg);
+
+    var leg = document.createElement("div");
+    leg.className = "chart-legend";
+    methods.forEach(function (m) {
+      var cell = document.createElement("span");
+      cell.className = "chart-legend-item";
+      var sw = document.createElement("span");
+      sw.className = "chart-swatch";
+      sw.style.background = COLORS[m.id] || "var(--ink)";
+      var lab = document.createElement("span");
+      lab.textContent = m.name;
+      cell.appendChild(sw);
+      cell.appendChild(lab);
+      leg.appendChild(cell);
+    });
+    var refs = document.createElement("span");
+    refs.className = "chart-legend-item";
+    refs.style.color = "var(--muted)";
+    refs.textContent = "— gold dashed = baseline finish · grey dotted = data date";
+    leg.appendChild(refs);
+    box.appendChild(leg);
   }
 
   function step(delta) {

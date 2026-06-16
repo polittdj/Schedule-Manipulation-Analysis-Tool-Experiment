@@ -1673,6 +1673,17 @@ def _forecast_ruler(fc: ForecastSet) -> str:
                 'style="fill:var(--muted)" font-size="11">&#8212; (inputs missing)</text>'
             )
     parts.append("</svg>")
+    legend_items = "".join(
+        f"<span class=chart-legend-item><span class=chart-swatch "
+        f'style="background:{_FORECAST_METHOD_COLORS.get(mid, "var(--ink)")}"></span>'
+        f"{_e(name)}</span>"
+        for name, mid, _ in lanes
+    )
+    legend_items += (
+        '<span class=chart-legend-item style="color:var(--muted)">'
+        "&mdash; gold dashed = baseline finish &middot; grey dotted = data date</span>"
+    )
+    legend = f"<div class=chart-legend>{legend_items}</div>"
     spread = ""
     if len(method_dates) >= 2:
         lo_m, hi_m = min(method_dates), max(method_dates)
@@ -1681,7 +1692,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
             f"({lo_m.isoformat()} &rarr; {hi_m.isoformat()}). A wide fan means the plan, the "
             "throughput, and the earned-schedule performance disagree about the finish.</p>"
         )
-    return f"<div id=forecastRuler>{''.join(parts)}</div>{spread}"
+    return f"<div id=forecastRuler>{''.join(parts)}{legend}</div>{spread}"
 
 
 def _forecast_explainer(fc: ForecastSet) -> str:

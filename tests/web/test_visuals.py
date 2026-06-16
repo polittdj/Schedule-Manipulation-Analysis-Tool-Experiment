@@ -127,6 +127,22 @@ def test_driving_on_unschedulable_schedule_is_422_not_500(client: TestClient) ->
     assert r.status_code == 422  # the page-level routes already degraded; this one 500'd
 
 
+def test_charts_carry_legends_descriptions_and_thinned_labels(client: TestClient) -> None:
+    """Operator request: every chart has a legend + a description, and its x-axis labels are
+    thinned so they never overlap (readable on many-version workbooks)."""
+    trend = client.get("/static/trend.js").text
+    assert "chart-desc" in trend and "chart-legend" in trend  # caption + legend on every chart
+    assert "labelStep" in trend and "i % step" in trend  # x-labels thinned, not drawn every tick
+    drill = client.get("/static/trend_drill.js").text
+    assert "chart-desc" in drill and "chart-legend" in drill
+    assert "chart-legend" in client.get("/static/drift.js").text  # forecast-drift color key
+    css = client.get("/static/app.css").text
+    assert ".chart-desc" in css and ".chart-legend" in css and ".chart-swatch" in css
+    # the /forecast spread ruler (server-rendered SVG) carries its color-key legend inline
+    page = client.get("/forecast").text
+    assert "id=forecastRuler" in page and "chart-legend" in page
+
+
 def test_unknown_analysis_page_is_404(client: TestClient) -> None:
     r = client.get("/analysis/NoSuchSchedule")
     assert r.status_code == 404 and "No schedule named" in r.text
