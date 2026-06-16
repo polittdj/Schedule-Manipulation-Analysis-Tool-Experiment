@@ -941,7 +941,7 @@ def create_app(
         return JSONResponse(_cei_data(wave))
 
     @app.get("/evolution", response_class=HTMLResponse)
-    def evolution_view() -> HTMLResponse:
+    def evolution_view(target: str | None = Query(None)) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -952,18 +952,23 @@ def create_app(
                 + "<div class=panel>Load at least two analyzable versions to watch the "
                 "critical path evolve.</div>",
             )
+        uid = _parse_uid(target) if target is not None else st.target_uid
         return _page(
             st,
             "Critical-Path Evolution",
-            _export_bar("evolution") + _skipped_notice(skipped) + _evolution_body(schedules, cpms),
+            _export_bar("evolution")
+            + _skipped_notice(skipped)
+            + _evolution_body(schedules, cpms, uid),
         )
 
     @app.get("/api/evolution")
-    def evolution_json() -> JSONResponse:
+    def evolution_json(target: str | None = Query(None)) -> JSONResponse:
+        st = session()
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
-        return JSONResponse(_evolution_data(schedules, cpms))
+        uid = _parse_uid(target) if target is not None else st.target_uid
+        return JSONResponse(_evolution_data(schedules, cpms, uid))
 
     @app.get("/forecast", response_class=HTMLResponse)
     def forecast_view() -> HTMLResponse:
@@ -2807,10 +2812,22 @@ def _cei_data(wave: BowWave) -> dict[str, object]:
     }
 
 
-def _evolution_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+def _evolution_body(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None
+) -> str:
     """The Critical-Path Evolution view (M18 item 7): a Bow-Wave-style stepper over the
-    versions, showing the critical path and how it enters/leaves between versions."""
-    return """
+    versions, showing the critical path and how it enters/leaves between versions. ``target``
+    focuses a UniqueID (highlighted across every frame); zoom/pan controls scope the axis."""
+    focus_form = f"""
+<div class=panel><form method=get action=/evolution class=viz-controls>
+Focus a specific activity across every version &mdash; UniqueID:
+<input name=target type=number min=1 value="{target if target is not None else ""}"
+placeholder="UID"> <button type=submit>Focus</button>
+{'<a class=btn-link href="/evolution?target=">clear focus</a>' if target is not None else ""}
+</form></div>"""
+    return (
+        focus_form
+        + f"""
 <div class=panel><h2>Critical-Path Evolution</h2>
 <p class=muted>Step through the versions (oldest first by data date) to watch the critical
 path change, drawn as a <b>Gantt</b> on a date axis held fixed across every version (so the
@@ -2831,17 +2848,30 @@ visible.</p>
 <button id=evoPlay type=button>&#9654; Auto-play</button>
 <label class=muted style="margin-left:1em"><input type=checkbox id=evoHideDone> hide completed</label>
 </div>
+<div class=viz-controls>
+<span class=muted>Zoom the date axis:</span>
+<button id=evoZoomOut type=button title="zoom out">&minus;</button>
+<button id=evoZoomIn type=button title="zoom in">&plus;</button>
+<button id=evoPanL type=button title="pan earlier">&#9664;</button>
+<button id=evoPanR type=button title="pan later">&#9654;</button>
+<button id=evoZoomReset type=button>reset</button>
+</div>
 <p class=muted style="margin:.2em 0">Each row carries its grid columns &mdash; <b>%&nbsp;complete</b>,
-<b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.</p>
-<div id=evoChart></div></div>
+<b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.
+Use <b>Focus</b> above to highlight one activity across every version.</p>
+<div id=evoChart data-target="{target if target is not None else ""}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
+    )
 
 
-def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+def _evolution_data(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None
+) -> dict[str, object]:
     """JSON for the critical-path evolution Gantt stepper: per-version snapshots with each
     critical activity's bar geometry (start/finish), the entered/left attribution (the reason
     WHY each entered or left the path), and a date axis LOCKED across every version so bars
-    stay comparable frame to frame."""
+    stay comparable frame to frame. ``target`` (if set) is echoed so the view can highlight
+    that UniqueID's row in every frame."""
     evolution = compute_path_evolution(schedules, cpms)
     by_id = [s.tasks_by_id for s in schedules]
     axis_dates: list[dt.date] = []
@@ -2943,7 +2973,7 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
         "min": min(axis_dates).isoformat() if axis_dates else None,
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
-    return {"axis": axis, "snapshots": snapshots}
+    return {"axis": axis, "snapshots": snapshots, "target": target}
 
 
 def _dashboard_data(st: SessionState) -> dict[str, object]:

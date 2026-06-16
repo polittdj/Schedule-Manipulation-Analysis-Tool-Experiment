@@ -13,6 +13,11 @@
  * start and finish — with the activity name wrapped small (no longer truncated). A
  * "hide completed" toggle drops finished activities, using the robust complete flag
  * (≥100% OR an actual finish — ADR-0051), so a real .mpp/.xer reporting 99.x% still hides.
+ *
+ * Zoom/pan controls scope the locked date axis (the window stays inside the full axis so bars
+ * remain comparable across frames). A ?target=<uid> focus (data-target on #evoChart, echoed by
+ * /api/evolution) highlights that activity's row in every frame and notes whether it is on the
+ * current version's critical path.
  */
 "use strict";
 
@@ -36,7 +41,9 @@
     gained_float: { label: "gained float", color: "var(--muted)" },
   };
 
-  var data = null, index = 0, timer = null, lo = 0, hi = 1, hideDone = false;
+  // lo/hi are the VISIBLE date window (zoom/pan move them inside the full [fullLo, fullHi]).
+  var data = null, index = 0, timer = null, lo = 0, hi = 1, fullLo = 0, fullHi = 1;
+  var hideDone = false, focusUid = null;
 
   function svgEl(tag, attrs) {
     var n = document.createElementNS(NS, tag);
@@ -146,6 +153,13 @@
 
     rows.forEach(function (r, i) {
       var top = padT + i * rowH, cy = top + rowH / 2;
+      // highlight the focused activity's row across every frame
+      if (focusUid != null && r.uid === focusUid) {
+        svg.appendChild(svgEl("rect", {
+          x: COL.name - 2, y: top + 1, width: W - COL.name, height: rowH - 2,
+          rx: 3, fill: "var(--accent)", opacity: 0.14,
+        }));
+      }
       var labelColor = r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--ink)";
 
       // name wrapped to <=2 small lines, prefixed with the UID; struck through if it left
@@ -217,6 +231,12 @@
     box.innerHTML = "";
     box.appendChild(callout(snap));
     box.appendChild(legend());
+    if (focusUid != null) {
+      var onPath = snap.critical_rows.some(function (r) { return r.uid === focusUid; });
+      box.appendChild(el("p", onPath ? "ev-focus-on" : "muted",
+        onPath ? "Focus UID " + focusUid + " is on this version's critical path (highlighted)."
+               : "Focus UID " + focusUid + " is not on this version's critical path."));
+    }
     var crit = visible(currentRows(snap));
     var hidden = snap.critical_rows.length - crit.length;
     box.appendChild(el("h3", null, "Critical path — " + crit.length + " activities" +
@@ -233,6 +253,20 @@
     index = (index + delta + data.snapshots.length) % data.snapshots.length;
     render();
   }
+
+  // zoom/pan keep the visible window inside the locked full axis so bars stay comparable
+  function clampView() {
+    if (hi - lo >= fullHi - fullLo) { lo = fullLo; hi = fullHi; return; }
+    if (lo < fullLo) { hi += fullLo - lo; lo = fullLo; }
+    if (hi > fullHi) { lo -= hi - fullHi; hi = fullHi; }
+  }
+  function zoom(factor) {
+    var c = (lo + hi) / 2, span = (hi - lo) * factor;
+    if (span < 7 * DAY) span = 7 * DAY;  // floor: never zoom past a week-wide window
+    lo = c - span / 2; hi = c + span / 2; clampView(); render();
+  }
+  function pan(frac) { var d = (hi - lo) * frac; lo += d; hi += d; clampView(); render(); }
+  function resetZoom() { lo = fullLo; hi = fullHi; render(); }
   function stopAuto() {
     if (timer) { clearInterval(timer); timer = null; }
     document.getElementById("evoPlay").textContent = "▶ Auto-play";
@@ -243,20 +277,29 @@
     timer = setInterval(function () { step(1); }, 1800);
   }
 
-  fetch("/api/evolution")
+  var tgt = box.getAttribute("data-target");
+  fetch("/api/evolution" + (tgt ? "?target=" + encodeURIComponent(tgt) : ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (d) {
       data = d;
+      focusUid = (d.target == null) ? null : Number(d.target);
       if (d.axis && d.axis.min && d.axis.max) {
         lo = Date.parse(d.axis.min); hi = Date.parse(d.axis.max);
         if (!(hi > lo)) hi = lo + 30 * DAY;
         var pad = (hi - lo) * 0.04;
         lo -= pad; hi += pad;
       }
+      fullLo = lo; fullHi = hi;  // the locked full axis; zoom/pan move lo/hi within it
       render();
-      document.getElementById("prevEvo").addEventListener("click", function () { stopAuto(); step(-1); });
-      document.getElementById("nextEvo").addEventListener("click", function () { stopAuto(); step(1); });
-      document.getElementById("evoPlay").addEventListener("click", toggleAuto);
+      function on(id, fn) { var n = document.getElementById(id); if (n) n.addEventListener("click", fn); }
+      on("prevEvo", function () { stopAuto(); step(-1); });
+      on("nextEvo", function () { stopAuto(); step(1); });
+      on("evoPlay", toggleAuto);
+      on("evoZoomIn", function () { zoom(0.6); });
+      on("evoZoomOut", function () { zoom(1 / 0.6); });
+      on("evoPanL", function () { pan(-0.25); });
+      on("evoPanR", function () { pan(0.25); });
+      on("evoZoomReset", resetZoom);
       var hd = document.getElementById("evoHideDone");
       if (hd) hd.addEventListener("change", function () { hideDone = hd.checked; render(); });
     })
