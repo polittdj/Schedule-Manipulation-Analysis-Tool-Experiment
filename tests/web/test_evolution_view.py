@@ -82,6 +82,39 @@ def test_evolution_page_describes_gantt_and_reasons(client: TestClient) -> None:
     assert "id=evoChart" in page and "/static/path_evolution.js" in page
 
 
+def test_api_evolution_rows_carry_grid_columns(client: TestClient) -> None:
+    """Evolution enhancements: every Gantt row carries its grid columns — % complete,
+    duration (working days), and the robust complete flag (ADR-0051) — for both the
+    critical rows and the activities that left the path."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    second = client.get("/api/evolution").json()["snapshots"][1]
+
+    for r in second["critical_rows"]:
+        assert isinstance(r["percent_complete"], int) and 0 <= r["percent_complete"] <= 100
+        assert isinstance(r["duration"], str) and r["duration"].endswith("wd")
+        assert isinstance(r["complete"], bool)
+
+    # an activity that LEFT *because it completed* carries the current complete flag (True),
+    # even though its grid %/duration read from the prior position where it was still running
+    completed = [r for r in second["left_rows"] if r["reason"] == "completed"]
+    assert completed, "expected at least one activity that left the path by completing"
+    assert all(r["complete"] is True for r in completed)
+    assert all(isinstance(r["complete"], bool) for r in second["left_rows"])
+
+
+def test_evolution_page_has_hide_completed_toggle(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+    assert "id=evoHideDone" in page and "hide completed" in page
+    js = client.get("/static/path_evolution.js").text
+    # the grid columns, the small wrapped names, and the robust hide-completed filter
+    assert "wrapName" in js and "hideDone" in js
+    assert '"Start"' in js and '"Finish"' in js  # column headers
+    assert "r.complete" in js  # filter reads the robust complete flag
+
+
 def test_evolution_export_xlsx_and_docx(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")
