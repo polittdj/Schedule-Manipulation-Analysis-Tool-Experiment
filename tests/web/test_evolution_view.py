@@ -115,6 +115,33 @@ def test_evolution_page_has_hide_completed_toggle(client: TestClient) -> None:
     assert "r.complete" in js  # filter reads the robust complete flag
 
 
+def test_evolution_target_focus(client: TestClient) -> None:
+    """A ?target=<uid> focuses one activity across every frame: the page prefills the focus
+    form + sets data-target, and /api/evolution echoes the target so the JS can highlight it."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution?target=100").text
+    assert 'data-target="100"' in page  # the chart picks it up
+    assert 'value="100"' in page  # focus form prefilled
+    assert "clear focus" in page
+    assert client.get("/api/evolution?target=100").json()["target"] == 100
+    # no focus -> echoed as null, and the chart carries an empty data-target
+    assert client.get("/api/evolution").json()["target"] is None
+    assert 'data-target=""' in client.get("/evolution").text
+
+
+def test_evolution_has_zoom_controls_and_focus_js(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+    for cid in ("evoZoomIn", "evoZoomOut", "evoZoomReset", "evoPanL", "evoPanR"):
+        assert "id=" + cid in page, cid
+    js = client.get("/static/path_evolution.js").text
+    assert "function zoom(" in js and "function pan(" in js and "resetZoom" in js
+    assert "clampView" in js  # the window stays inside the locked full axis
+    assert "focusUid" in js and 'getAttribute("data-target")' in js  # focus highlight
+
+
 def test_evolution_export_xlsx_and_docx(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

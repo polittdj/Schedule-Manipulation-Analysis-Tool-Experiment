@@ -114,6 +114,7 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-finish { font-weight: 700; font-size: 15px; }
 .ev-signals { color: var(--muted); font-size: 13px; }
 .ev-signals.ev-flag { color: var(--bad); font-weight: 600; }
+.ev-focus-on { color: var(--accent); font-weight: 600; margin: 4px 0; }
 .ev-list { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .ev-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px;
   font-size: 12px; border: 1px solid var(--line); background: var(--field-bg); }
