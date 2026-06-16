@@ -103,6 +103,27 @@ def test_summary_only_schedule_yields_cited_findings_never_empty() -> None:
         assert finding.citations, finding.metric_id
 
 
+def test_logic_on_summary_tasks_is_flagged_and_cited() -> None:
+    # ADR-0043: a predecessor on a summary is honored (children pushed) AND flagged.
+    tasks = (
+        Task(unique_id=1, name="P", wbs="2.1", duration_minutes=5 * DAY),
+        Task(unique_id=10, name="Phase", wbs="1", is_summary=True, duration_minutes=0),
+        Task(unique_id=11, name="Child", wbs="1.1", duration_minutes=DAY),
+    )
+    rels = (Relationship(predecessor_id=1, successor_id=10),)  # logic on summary 10
+    findings = recommend(Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels))
+    flagged = [f for f in findings if f.metric_id == "logic_on_summary_tasks"]
+    assert len(flagged) == 1
+    assert "summary task" in flagged[0].title and flagged[0].severity == Severity.MEDIUM
+    assert [c.unique_id for c in flagged[0].citations] == [10]  # the offending summary, cited
+
+
+def test_no_summary_logic_no_flag(golden: Callable[[str], Schedule]) -> None:
+    # the curated goldens carry no logic on summaries -> the finding never fires
+    findings = recommend(golden("Project5"))
+    assert not any(f.metric_id == "logic_on_summary_tasks" for f in findings)
+
+
 def test_summary_target_uid_is_ignored_not_a_keyerror(
     golden: Callable[[str], Schedule],
 ) -> None:

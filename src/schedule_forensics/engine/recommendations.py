@@ -25,6 +25,7 @@ from schedule_forensics.engine.metrics import (
     compute_change_metrics,
     compute_net_finish_impact,
 )
+from schedule_forensics.engine.summary_logic import summaries_with_logic
 from schedule_forensics.model.schedule import Schedule
 
 #: DCMA checks whose failure is a high-severity schedule-integrity risk.
@@ -93,6 +94,7 @@ def recommend(
     findings: list[Finding] = []
     findings.extend(_dcma_findings(current, cpm_cur))
     findings.extend(_logic_support_findings(current, cpm_cur))
+    findings.extend(_summary_logic_findings(current))
     findings.extend(_compliance_findings(current, cpm_cur))
     if prior is not None:
         findings.extend(_change_findings(current, prior, cpm_cur, prior_cpm))
@@ -175,6 +177,39 @@ def _logic_support_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Find
             "logic (or confirm the manual dates are deliberate); dates that logic cannot "
             "reproduce cannot be trusted to move correctly when the plan changes.",
             citations=_cite(schedule, cpm_cur.date_driven),
+        )
+    ]
+
+
+def _summary_logic_findings(schedule: Schedule) -> list[Finding]:
+    """Logic attached to summary tasks (ADR-0043) — a scheduling best-practice violation.
+
+    The CPM honors this logic the way MS Project does (it is lowered onto the summary's
+    children, so the computed dates match the source file), but relationships belong on the
+    work, not the roll-up: logic on a summary hides the true driver, double-counts when the
+    summary also has child logic, and breaks when the summary's children change. Flagged and
+    cited so the analyst can move the logic down to the activities."""
+    flagged = summaries_with_logic(schedule)
+    if not flagged:
+        return []
+    n = len(flagged)
+    return [
+        Finding(
+            category=Category.CONCERN,
+            severity=Severity.MEDIUM,
+            metric_id="logic_on_summary_tasks",
+            title=f"{n} summary task{'s carry' if n != 1 else ' carries'} logic",
+            detail=(
+                "These summary (roll-up) tasks have predecessor or successor relationships. "
+                "MS Project applies that logic to the summary's children, so the tool "
+                "schedules the children to match the file — but logic on a summary is a "
+                "recognized anti-pattern (DCMA/PMI): it obscures the real driving activity "
+                "and misbehaves when the summary's contents change."
+            ),
+            course_of_action="Move the relationships off the summary onto the specific "
+            "activities that drive and are driven by the work; keep summaries as pure "
+            "roll-ups.",
+            citations=_cite(schedule, flagged),
         )
     ]
 

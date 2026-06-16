@@ -70,8 +70,8 @@ dashboard. Stop it with `Ctrl-C`.
    - **DCMA-14 audit** — each of the 14 checks with pass/fail vs threshold and a plain-language
      suggested improvement; failing checks list the offending activities.
    - **Risks, opportunities & concerns** — a severity-ordered finding set (DCMA failures, baseline
-     compliance, version-change signals, driving-path opportunity), **each cited (file + UID + task)**
-     with a course of action.
+     compliance, version-change signals, driving-path opportunity, **logic attached to summary
+     tasks**), **each cited (file + UID + task)** with a course of action.
    - **AI narrative** — a cited "story" of the schedule's health (CPM/manipulation trends, audit,
      recommendations). The model only rephrases the cited facts; it never invents a number.
    - **Interactive analysis** — charts (DCMA pass/fail, baseline compliance); an **MS-Project-style
