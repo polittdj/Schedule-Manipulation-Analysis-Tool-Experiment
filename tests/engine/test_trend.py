@@ -97,3 +97,34 @@ def test_varies_direction_when_first_equals_last_but_not_constant() -> None:
         lower_is_better=True,
     )
     assert t.direction == "varies"
+
+
+def test_offenders_by_version_parallels_values(golden_project2, golden_project5) -> None:
+    # M18 item 8: every metric carries the offending activities PER version (the drill-down)
+    trends = {t.metric_id: t for t in compute_quality_trend([golden_project2, golden_project5])}
+    crit = trends["critical"]
+    assert len(crit.offenders_by_version) == 2  # parallel to the two versions
+    assert len(crit.offenders_by_version[0]) == 41  # P2 critical count
+    assert len(crit.offenders_by_version[1]) == 37  # P5 critical count
+    # the worst-version convenience field is just one slice of the full series
+    assert crit.worst_offender_uids == crit.offenders_by_version[0]  # P2 is the worst (41)
+    # a neutral ratio has no specific offenders in any version
+    assert trends["logic_density"].offenders_by_version == ((), ())
+
+
+def test_trend_tables_carry_full_per_version_offender_series(
+    golden_project2, golden_project5
+) -> None:
+    from schedule_forensics.reports.tables import trend_tables
+
+    trends = compute_quality_trend([golden_project2, golden_project5])
+    tables = trend_tables(trends)
+    assert len(tables) == 3  # overview + worst + the new per-version offender series
+    series = tables[2]
+    assert series.title == "Quality offenders by version"
+    assert series.headers == ("Metric", "Version", "Offending activities", "Offender UIDs")
+    assert len(series.rows) == len(trends) * 2  # one row per (metric, version)
+    crit = {r[1]: r for r in series.rows if r[0] == "Critical"}
+    assert crit["Project2.mspdi.xml"][2] == 41 and crit["Project5.mspdi.xml"][2] == 37
+    # the UID list is the FULL set (uncapped) — 41 ids for P2, comma-joined
+    assert len(crit["Project2.mspdi.xml"][3].split(", ")) == 41

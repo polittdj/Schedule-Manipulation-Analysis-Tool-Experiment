@@ -45,6 +45,9 @@ class MetricTrend:
     lower_is_better: bool | None  # None = neutral metric (highest/lowest wording)
     worst_index: int | None = None  # index of the worst version (None: constant or neutral)
     worst_offender_uids: tuple[int, ...] = ()  # the worst version's offending activities
+    #: offending activity UIDs PER version (oldest → newest, parallel to ``values``) — the
+    #: per-metric drill-down (M18 item 8). Empty per version for neutral ratios (no offenders).
+    offenders_by_version: tuple[tuple[int, ...], ...] = ()
 
     @property
     def direction(self) -> str:
@@ -121,11 +124,12 @@ def compute_quality_trend(
         )
         worst_index: int | None = None
         worst_offenders: tuple[int, ...] = ()
+        offenders_by_version = tuple(r.offender_uids for r in results)
         if lower_is_better is not None and any(v != values[0] for v in values):
             worst_index = max(range(len(values)), key=lambda i: values[i])
             if not lower_is_better:
                 worst_index = min(range(len(values)), key=lambda i: values[i])
-            worst_offenders = results[worst_index].offender_uids
+            worst_offenders = offenders_by_version[worst_index]
         out.append(
             MetricTrend(
                 metric_id=metric_id,
@@ -135,6 +139,7 @@ def compute_quality_trend(
                 lower_is_better=lower_is_better,
                 worst_index=worst_index,
                 worst_offender_uids=worst_offenders,
+                offenders_by_version=offenders_by_version,
             )
         )
     return tuple(out)

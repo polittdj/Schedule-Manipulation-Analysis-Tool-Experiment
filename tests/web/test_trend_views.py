@@ -100,6 +100,39 @@ def test_api_trend_carries_cross_file_and_float_data(client: TestClient) -> None
     assert fb["float_total_0"]["count"] == v5["critical"]
 
 
+def test_api_trend_quality_carries_per_version_offenders(client: TestClient) -> None:
+    """M18 item 8 — each §A metric carries per-version offender activities (uid + name)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    data = client.get("/api/trend").json()
+    crit = data["quality"]["critical"]
+    assert crit["lower_is_better"] is True
+    assert crit["counts"] == [41, 37]  # full offender counts per version
+    assert len(crit["offenders"][0]) == 41 and len(crit["offenders"][1]) == 37
+    assert all("uid" in o and "name" in o for o in crit["offenders"][0])
+    # a neutral ratio has no offenders and is flagged so the drill-down can say so
+    ld = data["quality"]["logic_density"]
+    assert ld["lower_is_better"] is None
+    assert ld["offenders"] == [[], []]
+
+
+def test_trend_page_has_quality_drilldown_and_animation_panel(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/trend").text
+    assert "Quality drill-down" in page and "locked axis" in page
+    for ctl in (
+        "id=qualMetric",
+        "id=qualPrev",
+        "id=qualNext",
+        "id=qualPlay",
+        "id=qualBars",
+        "id=qualDrill",
+    ):
+        assert ctl in page, ctl
+    assert "/static/trend_drill.js" in page
+
+
 def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> None:
     assert "Load at least one analyzable schedule" in client.get("/briefing").text
     _upload(client, "Project2")

@@ -1595,6 +1595,165 @@ def _carnac_cards(summary: CarnacSummary) -> str:
     )
 
 
+#: lane color per forecast method (matches static/drift.js so the ruler and the animation
+#: read consistently): logic = accent, throughput = ok, performance = bad.
+_FORECAST_METHOD_COLORS = {
+    "cpm": "var(--accent)",
+    "rate": "var(--ok)",
+    "earned_schedule": "var(--bad)",
+}
+
+
+def _forecast_ruler(fc: ForecastSet) -> str:
+    """A static single-version SVG 'ruler' (M18 item 8): the data date, the baseline finish,
+    and the three method forecasts on one timeline so the spread between them is visible at a
+    glance. Inline SVG (no JS, no external fetch); the multi-version movement is the animated
+    drift stepper below. Methods with missing inputs render '— (inputs missing)'."""
+    lanes = [(f.name, f.method_id, f.finish) for f in fc.forecasts]
+    method_dates = [d for _, _, d in lanes if d is not None]
+    axis_dates = list(method_dates)
+    if fc.as_of is not None:
+        axis_dates.append(fc.as_of)
+    if fc.planned_finish is not None:
+        axis_dates.append(fc.planned_finish)
+    if not axis_dates:
+        return ""
+    lo, hi = min(axis_dates), max(axis_dates)
+    if lo == hi:
+        lo, hi = lo - dt.timedelta(days=15), hi + dt.timedelta(days=15)
+    span = (hi - lo).days or 1
+
+    w, pad_l, pad_r, pad_t, row_h = 940, 150, 130, 46, 40
+    height = pad_t + row_h * len(lanes) + 24
+    plot_w = w - pad_l - pad_r
+    bottom = pad_t + row_h * len(lanes)
+
+    def x(d: dt.date) -> float:
+        return pad_l + ((d - lo).days / span) * plot_w
+
+    parts = [
+        f'<svg viewBox="0 0 {w} {height}" width="100%" role="img" '
+        f'aria-label="Forecast finish dates on a shared timeline">'
+    ]
+    if fc.as_of is not None:
+        ax = x(fc.as_of)
+        parts.append(
+            f'<line x1="{ax:.1f}" y1="{pad_t - 12}" x2="{ax:.1f}" y2="{bottom}" '
+            'style="stroke:var(--muted)" stroke-width="1.5" stroke-dasharray="2 3"/>'
+            f'<text x="{ax:.1f}" y="{pad_t - 16}" text-anchor="middle" '
+            f'style="fill:var(--muted)" font-size="11">data date {fc.as_of.isoformat()}</text>'
+        )
+    if fc.planned_finish is not None:
+        px = x(fc.planned_finish)
+        parts.append(
+            f'<line x1="{px:.1f}" y1="{pad_t - 12}" x2="{px:.1f}" y2="{bottom}" '
+            'style="stroke:var(--warn)" stroke-width="2" stroke-dasharray="5 4"/>'
+            f'<text x="{px:.1f}" y="{pad_t - 30}" text-anchor="middle" '
+            f'style="fill:var(--warn)" font-size="11">baseline {fc.planned_finish.isoformat()}</text>'
+        )
+    for i, (name, mid, d) in enumerate(lanes):
+        cy = pad_t + row_h * i + row_h / 2
+        color = _FORECAST_METHOD_COLORS.get(mid, "var(--ink)")
+        parts.append(
+            f'<line x1="{pad_l}" y1="{cy:.1f}" x2="{w - pad_r}" y2="{cy:.1f}" '
+            'style="stroke:var(--line)" stroke-width="1"/>'
+            f'<text x="{pad_l - 10}" y="{cy + 4:.1f}" text-anchor="end" '
+            f'style="fill:var(--muted)" font-size="12">{_e(name)}</text>'
+        )
+        if d is not None:
+            cx = x(d)
+            parts.append(
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" style="fill:{color}"/>'
+                f'<text x="{cx:.1f}" y="{cy - 11:.1f}" text-anchor="middle" '
+                f'style="fill:var(--ink)" font-size="11">{d.isoformat()}</text>'
+            )
+        else:
+            parts.append(
+                f'<text x="{pad_l + 10}" y="{cy + 4:.1f}" '
+                'style="fill:var(--muted)" font-size="11">&#8212; (inputs missing)</text>'
+            )
+    parts.append("</svg>")
+    spread = ""
+    if len(method_dates) >= 2:
+        lo_m, hi_m = min(method_dates), max(method_dates)
+        spread = (
+            f"<p class=muted>The three methods span <b>{(hi_m - lo_m).days} days</b> "
+            f"({lo_m.isoformat()} &rarr; {hi_m.isoformat()}). A wide fan means the plan, the "
+            "throughput, and the earned-schedule performance disagree about the finish.</p>"
+        )
+    return f"<div id=forecastRuler>{''.join(parts)}</div>{spread}"
+
+
+def _forecast_explainer(fc: ForecastSet) -> str:
+    """Plain-English methodology for the three finish forecasts (M18 item 8): one card per
+    method (what it measures, the formula in words + symbols, when it is available, and this
+    version's value), plus the static ruler. Every value reuses the forecast set — nothing
+    is recomputed."""
+    by = {f.method_id: f for f in fc.forecasts}
+
+    def fin(mid: str) -> str:
+        f = by.get(mid)
+        return f.finish.isoformat() if (f is not None and f.finish is not None) else "&#8212;"
+
+    rate_txt = f"{fc.rate_per_month:g} / month" if fc.rate_per_month is not None else "n/a"
+    spi_txt = f"{fc.spi_t:g}" if fc.spi_t is not None else "n/a"
+    cards = [
+        (
+            "Schedule logic (CPM)",
+            "The date the plan claims",
+            "Runs the network's own forward and backward pass over every activity, its links, "
+            "durations and calendar, and reports the finish the logic computes. It reflects "
+            "what the schedule says &mdash; not how the work has actually been going.",
+            "Method: the critical-path method (the longest logic-driven chain to the end).",
+            "Always available once the network schedules &mdash; it never reads &#8212;.",
+            fin("cpm"),
+        ),
+        (
+            "Completion-rate extrapolation",
+            "The throughput answer",
+            "Counts the activities that have actually finished, divides by the months elapsed "
+            "since the project started to get a completion pace, then asks how long the "
+            "remaining activities take at that same pace.",
+            "Formula: rate = completed &divide; elapsed&nbsp;months, then "
+            "finish = data&nbsp;date + (to-go &divide; rate) months "
+            f"(here {fc.completed_count} done at {rate_txt}, {fc.remaining_count} to go).",
+            "Needs a status (data) date and at least one completed activity, else &#8212;.",
+            fin("rate"),
+        ),
+        (
+            "Earned-schedule IEAC(t)",
+            "The performance answer",
+            "Earned Schedule (ES) is how much planned <i>time</i> the completed work was worth "
+            "on the baseline; AT is the actual time elapsed; their ratio SPI(t) = ES &divide; AT "
+            "is the schedule efficiency. The estimate projects the remaining planned duration "
+            "at that observed efficiency.",
+            f"Formula: IEAC(t) = AT + (PD &minus; ES) &divide; SPI(t) (here SPI(t) = {spi_txt}).",
+            "Needs baselines, completed work, and SPI(t) &gt; 0, else &#8212;.",
+            fin("earned_schedule"),
+        ),
+    ]
+    card_html = "".join(
+        f"<div class=forecast-method><h3>{_e(title)}</h3>"
+        f"<p class=method-tag>{_e(tag)}</p>"
+        f"<p>{what}</p><p class=muted>{how}</p>"
+        f"<p class=muted><b>Availability:</b> {needs}</p>"
+        f"<p class=method-finish>This version: <b>{value}</b></p></div>"
+        for title, tag, what, how, needs, value in cards
+    )
+    return f"""
+<div class=panel><h2>How the three forecasts are computed</h2>
+<p class=muted>Each method answers "when will it really end?" from a different angle &mdash;
+the plan's own logic, the observed throughput, and the earned-schedule performance. When they
+agree you can trust the date; when they fan apart, the disagreement is itself a finding. Every
+figure here reuses the forecast above &mdash; nothing is recomputed.</p>
+<div class=card-cols>{card_html}</div>
+<h3>Forecast spread &mdash; latest version</h3>
+<p class=muted>The data date, the baseline finish, and the three method forecasts on one
+timeline. The multi-version movement is animated in the stepper below when two or more
+versions are loaded.</p>
+{_forecast_ruler(fc)}</div>"""
+
+
 def _forecast_body(
     schedules: list[Schedule], cpms: list[CPMResult], sets: list[ForecastSet]
 ) -> str:
@@ -1675,7 +1834,8 @@ logic (CPM), the observed completion throughput, and earned-schedule performance
 A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated date.</p>
 <table><tr><th>Method</th><th>Forecast finish</th><th>Basis</th></tr>{method_rows}</table>
 <h3>Inputs</h3><table>{inputs}</table>
-<p class=cite>Finish-controlling: {_e(cite)}</p></div>{drift}"""
+<p class=cite>Finish-controlling: {_e(cite)}</p></div>
+{_forecast_explainer(latest)}{drift}"""
 
 
 def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[str, object]:
@@ -2417,13 +2577,30 @@ placeholder="UID"> <button type=submit>Focus</button>
 {focus_form}{focus_panel}
 <div class=panel><h2>Trend charts</h2><div id=trendCharts class=charts
 data-target="{target if target is not None else ""}"></div></div>
+<div class=panel id=qualDrillPanel><h2>Quality drill-down &amp; animation</h2>
+<p class=muted>Step through the versions (oldest first) and watch the count of <b>offending
+activities</b> for each Acumen &sect;A quality metric move on a <b>locked axis</b> &mdash; bar
+heights stay comparable frame to frame, so a metric that worsens stands out. Pick a metric to
+list the exact activities behind its number in the current version (the drill-down).</p>
+<div class=viz-controls>
+<label>Metric <select id=qualMetric></select></label>
+<button id=qualPrev type=button>&#9664; Prev</button>
+<span id=qualLabel class=muted></span>
+<button id=qualNext type=button>Next &#9654;</button>
+<button id=qualPlay type=button>&#9654; Auto-play</button>
+</div>
+<div class=qual-drill-grid>
+<div id=qualBars class=qual-bars></div>
+<div id=qualDrill class=qual-offenders></div>
+</div></div>
 <div class=panel><h2>Schedule-quality trends</h2>
 <p class=muted>How each Acumen &sect;A quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
 <div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
 <table><tr><th>Step</th><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
 {"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table></div>
-<script src="/static/trend.js"></script>"""
+<script src="/static/trend.js"></script>
+<script src="/static/trend_drill.js"></script>"""
 
 
 def _trend_data(
@@ -2514,14 +2691,30 @@ def _trend_data(
             }
         )
 
-    return {
-        "target": focus,
-        "versions": version_rows,
-        "quality": {
-            t.metric_id: {"name": t.name, "values": list(t.values)}
-            for t in compute_quality_trend(schedules, cpms)
-        },
-    }
+    # Per-metric drill-down (M18 item 8): every §A quality metric carries, per version,
+    # the offending activities (UID + name) behind the trended number — the data the
+    # drill-down/animation panel steps through. Names resolve against each version's own
+    # task map (an activity can change name between versions). No cap (Law 1, local).
+    by_id_per_version = [s.tasks_by_id for s in schedules]
+    quality: dict[str, object] = {}
+    for t in compute_quality_trend(schedules, cpms):
+        offenders_per_version = [
+            [
+                {"uid": uid, "name": by_id_per_version[vi][uid].name}
+                for uid in offs
+                if uid in by_id_per_version[vi]
+            ]
+            for vi, offs in enumerate(t.offenders_by_version)
+        ]
+        quality[t.metric_id] = {
+            "name": t.name,
+            "values": list(t.values),
+            "lower_is_better": t.lower_is_better,
+            "worst_index": t.worst_index,
+            "counts": [len(offs) for offs in t.offenders_by_version],
+            "offenders": offenders_per_version,
+        }
+    return {"target": focus, "versions": version_rows, "quality": quality}
 
 
 def _cei_body(wave: BowWave) -> str:

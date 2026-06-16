@@ -122,3 +122,23 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+
+/* M18 item 8: Forecast methodology explainer (one card per method) + spread ruler */
+.forecast-method { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+.forecast-method h3 { margin: 0 0 2px; color: var(--accent); font-size: 14px; }
+.forecast-method .method-tag { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.forecast-method p { margin: 0 0 8px; font-size: 13px; }
+.forecast-method .method-finish { margin: 6px 0 0; font-size: 13px; }
+#forecastRuler { margin-top: 4px; overflow-x: auto; }
+
+/* M18 item 8: Trend quality drill-down + animation */
+.qual-drill-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .qual-drill-grid { grid-template-columns: 1fr; } }
+.qual-bars { min-width: 0; }
+.qual-offenders { background: var(--field-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.qual-offenders h3 { margin: 0 0 6px; color: var(--accent); font-size: 14px; }
+.qual-offenders .qual-meta { margin: 0 0 8px; font-size: 12px; }
+.qual-offender-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto; font-size: 12px; }
+.qual-offender-list li { padding: 2px 0; border-bottom: 1px solid var(--line); }
+.qual-bar { cursor: pointer; }
+.qual-mlabel { cursor: pointer; }
