@@ -122,6 +122,24 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+/* Dashboard health cards: per-schedule KPI + status-mix bar + DCMA ribbon, link to report */
+.dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; margin-top: 10px; }
+.dash-card { display: block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; color: var(--ink); text-decoration: none; transition: border-color .15s; }
+.dash-card:hover { border-color: var(--accent); }
+.dash-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.dash-name { font-size: 16px; font-weight: 700; color: var(--accent); }
+.dash-open { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dash-src { font-size: 12px; margin: 2px 0 8px; }
+.dash-card .stat-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); margin: 8px 0 6px; }
+.dash-card .stat-value { font-size: 16px; }
+.dash-bar { display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--bg); }
+.dash-seg { height: 100%; }
+.dcma-ribbon { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 2px; }
+.dcma-chip { font-size: 11px; padding: 2px 7px; border-radius: 10px; border: 1px solid var(--line); white-space: nowrap; }
+.dcma-chip.dcma-pass { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.dcma-chip.dcma-fail { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.dcma-chip.dcma-na { color: var(--muted); }
+
 /* Chart legibility (operator request): every chart carries a one-line description + a
    color-key legend; swatches reuse theme colors and recolor live with the theme. */
 .chart-desc { font-size: 12px; color: var(--muted); margin: 2px 0 4px; line-height: 1.35; }

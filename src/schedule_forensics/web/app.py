@@ -496,6 +496,12 @@ def create_app(
             for name, sch in st.schedules.items()
         )
         loaded = (
+            "<div class=panel><h2>Schedule health</h2>"
+            "<p class=muted>A health snapshot per loaded schedule &mdash; activity status mix, "
+            "critical-path exposure, computed finish vs. baseline, and the DCMA-14 checks at a "
+            "glance. Click any card to dive into its full report.</p>"
+            "<div id=dashboardHealth class=dash-cards></div></div>"
+            '<script src="/static/dashboard.js"></script>'
             "<div class=panel><h2>Loaded schedules</h2>"
             "<table><tr><th>Schedule</th><th>Activities</th><th>Source</th><th></th></tr>"
             f"{rows}</table>"
@@ -545,6 +551,10 @@ def create_app(
 {loaded}
 <script src="/static/home.js"></script>"""
         return _page(st, "Dashboard", body)
+
+    @app.get("/api/dashboard")
+    def dashboard_json() -> JSONResponse:
+        return JSONResponse(_dashboard_data(session()))
 
     @app.post("/example")
     def load_example() -> RedirectResponse:
@@ -2897,6 +2907,62 @@ def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[st
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
     return {"axis": axis, "snapshots": snapshots}
+
+
+def _dashboard_data(st: SessionState) -> dict[str, object]:
+    """Per-loaded-schedule health snapshot for the Dashboard cards: status mix, critical
+    exposure, computed finish vs baseline, and the DCMA-14 verdicts. Reuses the cached
+    per-schedule analysis (one CPM each); an unschedulable file degrades to a flagged card."""
+    cards: list[dict[str, object]] = []
+    for key, sch in st.schedules.items():
+        card: dict[str, object] = {
+            "key": key,
+            "name": sch.name,
+            "source_file": sch.source_file,
+            "activities": len(non_summary(sch)),
+            "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+        }
+        try:
+            an = st.analysis_for(key, sch)
+        except CPMError:
+            card["solvable"] = False
+            cards.append(card)
+            continue
+        makeup = compute_activity_makeup(sch)
+        total = makeup.complete + makeup.in_progress + makeup.planned
+        cpm_finish = offset_to_datetime(
+            sch.project_start, an.cpm.project_finish, sch.calendar
+        ).date()
+        baseline_dates = [
+            t.baseline_finish for t in non_summary(sch) if t.baseline_finish is not None
+        ]
+        baseline_finish = max(baseline_dates).date() if baseline_dates else None
+        fb0 = an.float_bands["float_total_0"]
+        card.update(
+            {
+                "solvable": True,
+                "status_mix": {
+                    "complete": makeup.complete,
+                    "in_progress": makeup.in_progress,
+                    "planned": makeup.planned,
+                },
+                "percent_complete": round(100 * makeup.complete / total, 1) if total else 0.0,
+                "critical_count": fb0.count,
+                "critical_pct": round(fb0.value, 1),
+                "cpm_finish": cpm_finish.isoformat(),
+                "baseline_finish": baseline_finish.isoformat() if baseline_finish else None,
+                # positive = computed finish later than baseline (a slip)
+                "finish_delta_days": (cpm_finish - baseline_finish).days
+                if baseline_finish
+                else None,
+                "dcma": [
+                    {"id": c.metric_id, "name": c.name, "status": str(c.status)}
+                    for c in an.audit.checks
+                ],
+            }
+        )
+        cards.append(card)
+    return {"cards": cards}
 
 
 def _cite_tag(citations: tuple[Citation, ...]) -> str:

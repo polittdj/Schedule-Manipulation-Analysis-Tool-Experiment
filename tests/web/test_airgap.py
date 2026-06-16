@@ -60,6 +60,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/static/app.css",
         "/static/base.css",
         "/static/home.js",
+        "/static/dashboard.js",
         "/static/heartbeat.js",
         "/static/trend.js",
         "/static/trend_drill.js",
