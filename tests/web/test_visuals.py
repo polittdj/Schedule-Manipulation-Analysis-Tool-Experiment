@@ -143,6 +143,49 @@ def test_charts_carry_legends_descriptions_and_thinned_labels(client: TestClient
     assert "id=forecastRuler" in page and "chart-legend" in page
 
 
+def test_hide_completed_uses_a_robust_complete_flag(client: TestClient) -> None:
+    """The grid/driving rows carry a robust `complete` flag and the hide-completed toggles
+    filter on it — fixing done-at-99% activities (actual finish, <100%) slipping past >=100."""
+    acts = client.get("/api/analysis/Project5").json()["activities"]
+    assert all("complete" in a for a in acts)
+    assert next(a for a in acts if a["percent_complete"] >= 100)["complete"] is True
+    dj = client.get("/api/driving/Project5?target=143").json()
+    assert all("complete" in r for r in dj["rows"])
+    path_js = client.get("/static/path.js").text
+    assert "r.complete" in path_js and "r.percent_complete >= 100" not in path_js
+    assert "!r.complete" in client.get("/static/app.js").text  # report trace filters on it
+
+
+def test_complete_flag_true_when_actual_finish_present_below_100() -> None:
+    import datetime as dt
+
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+    from schedule_forensics.web.app import _activity_rows
+
+    mon = dt.datetime(2025, 1, 6, 8, 0)
+    t1 = Task(
+        unique_id=1,
+        name="A",
+        duration_minutes=480,
+        percent_complete=99.0,  # real .mpp/.xer done activity reporting <100%...
+        actual_start=mon,
+        actual_finish=dt.datetime(2025, 1, 6, 17, 0),  # ...but it carries an actual finish
+    )
+    t2 = Task(unique_id=2, name="B", duration_minutes=480)
+    sch = Schedule(
+        name="s",
+        project_start=mon,
+        tasks=(t1, t2),
+        relationships=(Relationship(predecessor_id=1, successor_id=2),),
+    )
+    rows = {r["unique_id"]: r for r in _activity_rows(sch, compute_cpm(sch))}
+    assert rows[1]["complete"] is True  # actual finish present despite 99%
+    assert rows[2]["complete"] is False  # not started
+
+
 def test_unknown_analysis_page_is_404(client: TestClient) -> None:
     r = client.get("/analysis/NoSuchSchedule")
     assert r.status_code == 404 and "No schedule named" in r.text
