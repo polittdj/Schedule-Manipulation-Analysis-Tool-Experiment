@@ -31,6 +31,11 @@
       "baseline_finish_compliance_pct": 33,
       "forecast_to_be_started": 29, "started_on_time": 11, "started_late": 12, "not_started": 6,
       "baseline_start_compliance_pct": 41
+    },
+    "cei": {
+      "_note": "Single-schedule EVM CEI (engine/metrics/evm.py). Finish = completed_on_time / forecast_to_be_finished = 9/27; Start = started_on_time / forecast_to_be_started = 11/29. cei_start matches Acumen's 'Started On Time' % (38) exactly; the separate 'Baseline Start Compliance' headline (41) uses a different denominator (see _deltas.baseline_start_compliance).",
+      "cei_finish_value": 33.3, "cei_finish_count": 9, "cei_finish_population": 27,
+      "cei_start_value": 37.9, "cei_start_count": 11, "cei_start_population": 29
     }
   },
   "Project5": {
@@ -50,6 +55,11 @@
       "baseline_finish_compliance_pct": 20,
       "forecast_to_be_started": 48, "started_on_time": 11, "started_late": 18, "not_started": 19,
       "baseline_start_compliance_pct": 25
+    },
+    "cei": {
+      "_note": "Single-schedule EVM CEI. Finish = 9/46; Start = 11/48. cei_start matches Acumen's 'Started On Time' % (23); the 'Baseline Start Compliance' headline (25) uses the same different denominator as P2.",
+      "cei_finish_value": 19.6, "cei_finish_count": 9, "cei_finish_population": 46,
+      "cei_start_value": 22.9, "cei_start_count": 11, "cei_start_population": 48
     }
   },
   "change_P2_to_P5": {
@@ -58,6 +68,11 @@
     "finish_date_slips": 9, "start_date_slips": 10, "remaining_duration_increases": 8,
     "float_erosion": 6, "completed": 27, "in_progress": 2,
     "net_finish_impact_days": -99,
-    "_first_snapshot_P2": {"activities_added": 144, "completed": 20, "in_progress": 3, "net_finish_impact_days": 0}
+    "_first_snapshot_P2": {"activities_added": 144, "completed": 20, "in_progress": 3, "net_finish_impact_days": 0},
+    "bow_wave_cei": {
+      "_note": "Pairwise, forecast-anchored Bow-Wave CEI (engine/bow_wave.py, /cei view). P2 is the first snapshot (no prior → null). For the P5 snapshot, P2's status month is May-26 so the CEI period is Jun-26: P2 forecast 3 finishes into Jun-26, all 3 actually finished by end of Jun-26 → CEI 1.00. Distinct from the single-schedule EVM CEI above (re-verified ADR-0052).",
+      "Project2": {"cei": null},
+      "Project5": {"cei": 1.0, "period": "Jun-26", "planned": 3, "rescheduled": 3, "finished": 3}
+    }
   }
 }

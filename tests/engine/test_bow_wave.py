@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
+from pathlib import Path
 
 import pytest
 
@@ -11,6 +13,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
 DAY = 480
+GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 
 
 def _t(
@@ -211,3 +214,58 @@ def test_golden_pair_profiles_are_consistent(golden_project2, golden_project5) -
     assert len(wave.month_labels) == len(p2.baselined) == len(p5.scheduled)
     # the later snapshot's CEI compares against P2's plan for the month after P2's data date
     assert p5.cei_period is not None and p5.cei_planned is not None
+
+
+def test_golden_bow_wave_cei_pins_recorded_value(golden_project2, golden_project5) -> None:
+    """CEI re-verification (ADR-0052): pin the bow-wave CEI for the real P2->P5 golden pair
+    against the recorded golden — not just a non-null check. P2's data date is May-26, so the
+    CEI period is Jun-26: P2 forecast 3 finishes into Jun-26 and all 3 actually finished by
+    end of Jun-26 -> CEI 1.00 (the only fully-met month in the pair)."""
+    g = json.loads((GOLDEN / "project2_5" / "case.json").read_text())
+    bw = g["change_P2_to_P5"]["bow_wave_cei"]
+    wave = compute_bow_wave([golden_project2, golden_project5])
+    p2, p5 = wave.snapshots
+
+    assert p2.cei is bw["Project2"]["cei"]  # first snapshot: no prior -> null
+
+    gp5 = bw["Project5"]
+    assert p5.cei == gp5["cei"]
+    assert p5.cei_period == gp5["period"]
+    assert p5.cei_planned == gp5["planned"]
+    assert p5.cei_scheduled == gp5["rescheduled"]
+    assert p5.cei_finished == gp5["finished"]
+    # internal consistency: CEI is finished / planned exactly
+    assert p5.cei == pytest.approx(p5.cei_finished / p5.cei_planned)
+
+
+def test_cei_credits_early_planned_finish_not_unplanned_one() -> None:
+    """CEI re-verification (ADR-0052): lock the two subtle credit rules. The planned set is
+    the PRIOR snapshot's forecast for the period; credit needs an actual finish by the END of
+    that month. So (a) a planned activity finishing EARLY still earns credit, while (b) an
+    UNPLANNED activity finishing inside the month earns none (it was never in the denominator)."""
+    # April plans exactly 2 finishes for May (UIDs 1, 2). UID 3 is forecast for June.
+    april = _snap(
+        "April",
+        "2026-04-30T17:00",
+        [
+            _t(1, finish="2026-05-20T17:00", baseline="2026-05-20T17:00"),
+            _t(2, finish="2026-05-25T17:00", baseline="2026-05-25T17:00"),
+            _t(3, finish="2026-06-15T17:00", baseline="2026-06-15T17:00"),
+        ],
+    )
+    # May actuals: UID 1 finished EARLY (in April) -> still credit; UID 2 slipped to June
+    # -> no credit; UID 3 (never planned for May) finished in May -> earns NO credit.
+    may = _snap(
+        "May",
+        "2026-05-31T17:00",
+        [
+            _t(1, finish="2026-04-28T17:00", actual="2026-04-28T17:00", done=True),
+            _t(2, finish="2026-06-10T17:00", baseline="2026-05-25T17:00"),
+            _t(3, finish="2026-05-15T17:00", actual="2026-05-15T17:00", done=True),
+        ],
+    )
+    p5 = compute_bow_wave([april, may]).snapshots[1]
+    assert p5.cei_period == "May-26"
+    assert p5.cei_planned == 2  # April's plan for May = UIDs 1 and 2 only
+    assert p5.cei_finished == 1  # only UID 1 (early counts); UID 2 slipped, UID 3 not planned
+    assert p5.cei == pytest.approx(0.5, abs=0.01)
