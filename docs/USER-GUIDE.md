@@ -143,7 +143,12 @@ dashboard. Stop it with `Ctrl-C`.
    the files' stored dates (actual where present, else scheduled), so the page works on **every**
    loaded version — even one whose network can't be solved — and with a single version (its curves
    alone). ⬇ Excel / ⬇ Word export the per-version monthly counts.
-6. **Forecast** — three independent answers to *"when will it really end?"*: the schedule's own
+6. **Forecast** — opens with the reference deck's **Carnac** KPI card row (PBIX page 13):
+   earliest start, latest finish (CPM), project duration and remaining duration (working days),
+   the **Forecasted End Date** (completion-rate) and **Estimated End Date (ES — to-go)**, average
+   tasks/month, **SPI(t)**, Earned Schedule (working days), and the to-go activity count — each
+   card reused from the forecast below, "—" when an input is missing. Then three independent
+   answers to *"when will it really end?"*: the schedule's own
    **CPM logic**, a **completion-rate extrapolation** (to-go activities at the historical
    completions-per-month pace), and the **earned-schedule IEAC(t)** estimate
    (AT + (PD − ES) / SPI(t)). Each method shows the inputs it used; a method with missing inputs

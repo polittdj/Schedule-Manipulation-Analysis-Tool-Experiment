@@ -44,6 +44,36 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
     assert "Forecast drift" not in page  # a single version has no drift table
 
 
+def test_forecast_page_carries_carnac_cards(client: TestClient) -> None:
+    # PBIX page 13 (ADR-0042): the Carnac KPI card row on the forecast page
+    _upload(client, "Project5")
+    page = client.get("/forecast").text
+    assert "Forecast cards" in page and "Carnac" in page
+    for label in (
+        "Earliest start",
+        "Latest finish (CPM)",
+        "Project duration (wd)",
+        "Forecasted end (rate)",
+        "Estimated end (ES, to-go)",
+        "Avg tasks / month",
+        "Remaining duration (wd)",
+        "Earned schedule (wd)",
+        "Tasks to complete",
+    ):
+        assert label in page, label
+    # card values cross-check the methods (golden P5)
+    assert "2026-03-02" in page  # earliest start
+    assert "462" in page  # project duration (working days)
+    assert ">99<" in page  # to-go count card value
+
+
+def test_forecast_export_includes_carnac_summary(client: TestClient) -> None:
+    _upload(client, "Project5")
+    for fmt in ("xlsx", "docx"):
+        resp = client.get(f"/export/{fmt}/forecast")
+        assert resp.status_code == 200 and len(resp.content) > 0
+
+
 def test_forecast_drift_table_across_versions_and_api(client: TestClient) -> None:
     _upload(client, "Project5")  # newer data date, loaded first — ordering must hold
     _upload(client, "Project2")

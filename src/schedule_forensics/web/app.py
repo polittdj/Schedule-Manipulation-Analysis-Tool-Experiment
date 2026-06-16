@@ -61,7 +61,12 @@ from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.driving_slack import date_basis
-from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
+from schedule_forensics.engine.forecast import (
+    CarnacSummary,
+    ForecastSet,
+    compute_carnac_summary,
+    compute_finish_forecasts,
+)
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
     WBSGroup,
@@ -99,6 +104,7 @@ from schedule_forensics.reports.tables import (
     TableSet,
     activities_table,
     bow_wave_tables,
+    carnac_table,
     dcma_table,
     driving_table,
     findings_table,
@@ -935,7 +941,9 @@ def create_app(
         return _page(
             st,
             "Forecast",
-            _export_bar("forecast") + _skipped_notice(skipped) + _forecast_body(schedules, sets),
+            _export_bar("forecast")
+            + _skipped_notice(skipped)
+            + _forecast_body(schedules, cpms, sets),
         )
 
     @app.get("/api/forecast")
@@ -1096,8 +1104,11 @@ def create_app(
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
         sets = [compute_finish_forecasts(s, c) for s, c in zip(schedules, cpms, strict=True)]
         labels = [s.source_file or s.name for s in schedules]
+        carnac = compute_carnac_summary(schedules[-1], cpms[-1], sets[-1])
         return _export_response(
-            fmt, TableSet("Finish forecasts", forecast_tables(labels, sets)), "forecast"
+            fmt,
+            TableSet("Finish forecasts", (carnac_table(carnac), *forecast_tables(labels, sets))),
+            "forecast",
         )
 
     @app.get("/export/{fmt}/curves")
@@ -1516,10 +1527,38 @@ filter rows, and hide completed work.</p>
 <script src="/static/path.js"></script>"""
 
 
-def _forecast_body(schedules: list[Schedule], sets: list[ForecastSet]) -> str:
+def _carnac_cards(summary: CarnacSummary) -> str:
+    """The deck's Carnac KPI card row (PBIX page 13) over the latest version."""
+
+    def d(value: dt.date | None) -> str:
+        return value.isoformat() if value is not None else "—"
+
+    def n(value: float | None, *, suffix: str = "") -> str:
+        return f"{value:g}{suffix}" if value is not None else "—"
+
+    return _stat_cards(
+        [
+            ("Earliest start", d(summary.earliest_start)),
+            ("Latest finish (CPM)", d(summary.latest_finish)),
+            ("Project duration (wd)", n(summary.project_duration_days)),
+            ("Forecasted end (rate)", d(summary.forecasted_end)),
+            ("Estimated end (ES, to-go)", d(summary.estimated_end_es)),
+            ("Avg tasks / month", n(summary.avg_tasks_per_month)),
+            ("Remaining duration (wd)", n(summary.remaining_duration_days)),
+            ("SPI(t)", n(summary.spi_t)),
+            ("Earned schedule (wd)", n(summary.earned_schedule_days)),
+            ("Tasks to complete", str(summary.to_go_count)),
+        ]
+    )
+
+
+def _forecast_body(
+    schedules: list[Schedule], cpms: list[CPMResult], sets: list[ForecastSet]
+) -> str:
     """The three-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
-    performance, plus the per-version forecast drift."""
+    performance, the deck's Carnac KPI cards (PBIX p13, ADR-0042), plus per-version drift."""
     latest_sch, latest = schedules[-1], sets[-1]
+    carnac = compute_carnac_summary(latest_sch, cpms[-1], latest)
     by_id = latest_sch.tasks_by_id
     method_rows = "".join(
         f"<tr><th>{_e(f.name)}</th>"
@@ -1580,6 +1619,12 @@ progresses. Faint markers are the prior version's forecasts.</p>
 <th>Earned schedule</th></tr>{drift_rows}</table></div>
 <script src="/static/drift.js"></script>"""
     return f"""
+<div class=panel><h2>Forecast cards &mdash; {_e(latest_sch.name)}</h2>
+<p class=muted>The reference deck's <i>Carnac</i> forecast KPIs (PBIX page 13): the project
+window, the three forecast end dates, the completion rate, remaining and project duration,
+SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
+"&mdash;" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
+{_carnac_cards(carnac)}</div>
 <div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
 <p class=muted>Three independent answers to "when will it really end": the schedule's own
 logic (CPM), the observed completion throughput, and earned-schedule performance
