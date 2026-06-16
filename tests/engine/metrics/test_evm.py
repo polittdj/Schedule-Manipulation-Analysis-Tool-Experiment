@@ -190,6 +190,33 @@ def test_cei_equals_baseline_compliance(golden_project2: Schedule) -> None:
     assert e["cei_start"].value == c["baseline_start_compliance"].value
 
 
+@pytest.mark.parametrize("project", ["Project2", "Project5"])
+def test_cei_golden_values(project: str, golden: Callable[[str], Schedule]) -> None:
+    """CEI re-verification (ADR-0052): pin the single-schedule EVM CEI numerator/denominator
+    and the resulting percentage against the recorded golden, for both projects.
+
+    CEI (Finish) = completed_on_time / forecast_to_be_finished (= Baseline Finish Compliance,
+    exact vs Acumen). CEI (Start) = started_on_time / forecast_to_be_started — its value
+    equals Acumen's own "Started On Time" % exactly (38 / 23); the separately-reported
+    "Baseline Start Compliance" headline (41 / 25) is a different denominator (ADR-0013).
+    """
+    case = json.loads((GOLDEN / "project2_5" / "case.json").read_text())[project]
+    g = case["cei"]
+    e = compute_evm_indices(golden(project))
+
+    cf, cs = e["cei_finish"], e["cei_start"]
+    # numerator (count) and denominator (population) are the exact §C counts
+    assert (cf.count, cf.population) == (g["cei_finish_count"], g["cei_finish_population"])
+    assert (cs.count, cs.population) == (g["cei_start_count"], g["cei_start_population"])
+    # the percentages are pinned to one decimal (33.3/19.6 finish, 37.9/22.9 start)
+    assert cf.value == g["cei_finish_value"]
+    assert cs.value == g["cei_start_value"]
+    # CEI (Start)'s value rounds to Acumen's "Started On Time" % (the engine is right there);
+    # only the separate BSC headline carries the tracked +3pt denominator residual
+    acumen_started_on_time_pct = 38 if project == "Project2" else 23
+    assert round(cs.value) == acumen_started_on_time_pct
+
+
 def test_spi_t_behind_schedule_and_na() -> None:
     # behind: only the earliest-planned activity is complete at a late status date
     status = dt.datetime(2025, 3, 1, 17, 0)

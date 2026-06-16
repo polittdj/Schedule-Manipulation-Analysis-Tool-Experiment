@@ -334,16 +334,27 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "cei_finish": _doc(
         "cei_finish",
         "CEI (Finish)",
-        "Current Execution Index, finish side (= BFC).",
+        "Current Execution Index, finish side — single-schedule, baseline-anchored (= BFC).",
         "completed_on_time / forecast_to_be_finished",
-        _EVM,
+        "EVM performance indices (METRICS-CATALOG §3, ADR-0013; re-verified ADR-0052).",
     ),
     "cei_start": _doc(
         "cei_start",
         "CEI (Start)",
-        "Current Execution Index, start side (= BSC).",
+        "Current Execution Index, start side — single-schedule, baseline-anchored (= BSC).",
         "started_on_time / forecast_to_be_started",
-        _EVM,
+        "EVM performance indices (METRICS-CATALOG §3, ADR-0013; re-verified ADR-0052).",
+    ),
+    "cei_bow_wave": _doc(
+        "cei_bow_wave",
+        "CEI (Bow Wave)",
+        "Current Execution Index of the /cei view — pairwise and forecast-anchored. Of the "
+        "activities the prior snapshot's current schedule forecast to finish in the month "
+        "after its data date, the share that actually finished by the end of that month. A "
+        "distinct metric from the baseline-anchored CEI (Finish) above — they answer "
+        "different questions and must not be conflated.",
+        "finished_by_end_of_P / prior_forecast_for_P  (P = month after prior data date)",
+        "Bow-wave / Current Execution Index (engine/bow_wave.py, §6.D; re-verified ADR-0052).",
     ),
     "spi_t": _doc(
         "spi_t",

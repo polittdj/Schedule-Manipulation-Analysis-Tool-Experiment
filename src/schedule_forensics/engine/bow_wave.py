@@ -9,14 +9,20 @@ each calendar month carries three counts over the non-summary activities —
 
 Work that keeps sliding right shows as a swelling "bow wave" of scheduled bars just past
 each snapshot's status date. The **Current Execution Index (CEI)** quantifies it per
-snapshot pair: of the activities the *prior* snapshot planned to finish in the following
-month, how many of THOSE actually finished by the end of it (completed_on_time /
-forecast_to_be_finished — the metric dictionary's CEI (Finish) definition) —
+snapshot pair: of the activities the *prior* snapshot **forecast** (its current finish) to
+land in the following month, how many of THOSE actually finished by the end of it —
 
     CEI(k) = finished_by_end_of_P(planned set, snapshot k) / planned_for_P(snapshot k-1)
 
-where ``P`` is the calendar month after snapshot ``k-1``'s status date. The view also
-reports what snapshot ``k`` *re-scheduled* for ``P`` (the push-to-the-right evidence).
+where ``P`` is the calendar month after snapshot ``k-1``'s status date and the *planned set*
+is the activities the prior snapshot forecast to finish in ``P``. The view also reports what
+snapshot ``k`` *re-scheduled* for ``P`` (the push-to-the-right evidence).
+
+This **bow-wave CEI is forecast-anchored and pairwise** — distinct from the single-schedule
+EVM ``cei_finish`` (:mod:`.metrics.evm`), which is the *baseline*-anchored ratio of
+completed-on-time to baseline-due-by-status activities (= Baseline Finish Compliance). Both
+are "execution indices" but answer different questions (did this month's forecast hold? vs
+did the baseline hold?) and must not be conflated — see ADR-0052.
 
 Every count is computed from the loaded files on the spot — nothing is fabricated. All
 snapshots share one month axis so the per-snapshot charts animate cleanly.
@@ -131,11 +137,11 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
             period = prior_status + 1  # the month after the prior snapshot's data date
             if lo <= period <= hi:
                 i = period - lo
-                # CEI (Finish) = completed_on_time / forecast_to_be_finished (the metric
-                # dictionary's reconstructed deck definition): of the activities the
-                # PRIOR snapshot scheduled to finish in the period, count those whose
-                # actual finish lands by the END of that period — an unplanned finish in
-                # the month earns no credit, an early finish of a planned one does.
+                # Bow-wave CEI: of the activities the PRIOR snapshot *forecast* to finish
+                # in the period (its current finish lands in P), count those whose actual
+                # finish lands by the END of that period — an unplanned finish in the month
+                # earns no credit, an early finish of a planned one does. Forecast-anchored
+                # and pairwise; distinct from the baseline-anchored EVM cei_finish (ADR-0052).
                 planned_uids = {uid for uid, ym in sched_ym_by_uid[k - 1].items() if ym == period}
                 planned = len(planned_uids)
                 resched = s[i]
