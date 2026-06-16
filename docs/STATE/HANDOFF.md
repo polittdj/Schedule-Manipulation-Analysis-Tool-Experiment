@@ -1,4 +1,41 @@
-# Handoff — 2026-06-16 (PRs #81–#99 MERGED; **M18 IN FLIGHT**; PR #100 OPEN — item 7)
+# Handoff — 2026-06-16 (PRs #81–#100 MERGED; **PR #101 OPEN — SSI driving-slack fix**; M18 item 8 next)
+
+> ## START HERE (next session)
+> 1. **PR #101 (ADR-0045) — SSI driving-slack day-grid fix — is OPEN.** Check its CI
+>    (github MCP `pull_request_read` → `get_check_runs` on PR #101). If green, the operator
+>    merges it; then **recreate the work branch from fresh main** before new work:
+>    `git fetch origin main && git checkout -B claude/pensive-meitner-xrdvh7 origin/main`.
+>    If CI is red, fix it (run the **CI-exact** gate locally — see the PROCESS note below).
+> 2. **Then continue M18 item 8** (the only remaining backlog item): the **Forecast
+>    explainer** (plain-English methodology + visuals on `/forecast`) and the **Trend page
+>    expansion** (more room, per-metric drill-down to the offending activities per version,
+>    an animation, and Excel export of the series). See the backlog list lower in this file.
+> 3. **Re-deposit the reference `.mpp`s** — a fresh container has an empty
+>    `00_REFERENCE_INTAKE/mpp/`. The operator's CUI/non-CUI test files are NOT committed
+>    (git-ignored). If verifying SSI/Duration-Bomb behavior again, ask the operator to
+>    re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and `Project2_Duration_Bomb.mpp`.
+>
+> ## ⚠️ PROCESS — verify ruff/format with EXPLICIT exit codes
+> Twice this sitting a real `ruff check`/`ruff format --check` failure slipped to CI because
+> a `cmd && echo ok` chain swallowed the failure while test counts still printed. **Run the
+> CI-exact gate and read each exit code:** `ruff check .` ; `ruff format --check .` ; `mypy`
+> (BARE — that's what CI runs, src only; do NOT add `tests`, which has known mypy noise CI
+> never checks) ; `pytest --cov=schedule_forensics --cov-fail-under=70` ; `pytest -m parity`.
+
+> **SSI DRIVING-SLACK PARITY FIX (ADR-0045) — DONE + VERIFIED, shipped as PR #101.**
+> Operator compared the tool's Path Analysis vs SSI on `Large Test File.mpp` (USA OTB Master
+> IMS, 1723 acts): the tool's tiers were a consistent **~+1 day** off SSI (SSI 0-day driving
+> path read as secondary; SSI 9/13 read 10/14). **Root cause:** ragged stored TIMES of day
+> (afternoon-shift activities stored 13:00→12:00 → 420-min "1-day" spans) made activity spans
+> sub-day; the backward pass's span subtraction ACCUMULATED that raggedness down a long chain
+> and tipped whole-day slack over a boundary. **Fix:** snap each activity's SPAN to the
+> nearest whole working day in `compute_driving_slack` (display dates unchanged — `date_basis`
+> untouched). An earlier attempt that snapped the FINISH broke TP1 (sub-day DRIVING → full-day
+> SECONDARY); snapping only the span preserves TP1 exactly. Verified: Large File matches SSI
+> exactly (driving 0, near-path 9 and 12/13); **TP1 parity preserved (13/1/2/2)**; parity
+> 10/10; full suite 813. Regression: `tests/engine/test_driving_slack_daygrid.py` + the updated
+> TP1 battery pins (UID 11/12 now 60 min, not 210 — same DRIVING tier).
+
 
 **This sitting (2026-06-16, cont. 4):** **#99 merged** (summary-logic fix, ADR-0043). Then
 **PR #100 (ADR-0044) — M18 item 7, Critical-Path Evolution animation**: a new
