@@ -1553,3 +1553,33 @@ this file is the running history.
 
 ### Parity / tests
 - **750 passed, 3 skipped** (9 new); parity 10/10; ruff/format/mypy/bandit(unpiped) clean.
+
+## M18 item 8 (the last) — 2026-06-16 (PR #102; Opus 4.8) — Forecast explainer + Trend drill-down
+
+- **#101 merged** (SSI driving-slack day-grid fix, ADR-0045); branch recreated from fresh
+  main (the harness assigned `claude/hopeful-keller-u3ia8g` this session; the handoff's
+  `claude/pensive-meitner-xrdvh7` was #101's head, consumed by the squash-merge). The
+  preinstalled `.venv` was again missing the web/dev deps → `pip install -e '.[dev]'` first.
+- **PR #102 (ADR-0046) — M18 item 8, the LAST backlog item:**
+  - **Forecast explainer (`/forecast`):** a plain-English "How the three forecasts are
+    computed" panel (one card per method — what it measures, the formula in words + symbols,
+    when it's available vs "—", this version's value) + a static single-version inline-SVG
+    "spread ruler" (`id=forecastRuler`) placing the data date, baseline finish, and the three
+    method forecasts on one timeline (lane colors match `drift.js`), captioned with the
+    method day-spread. Server-side, no new JS; never collides with the animated drift stepper.
+  - **Trend expansion (`/trend`):** `MetricTrend.offenders_by_version` (offending activities
+    per metric PER version, parallel to `values`); `/api/trend` `quality` now carries
+    per-version `counts` + `offenders` (uid+name, resolved per version) + `lower_is_better` +
+    `worst_index`. New **"Quality drill-down & animation"** panel (`static/trend_drill.js`):
+    a Prev/Next/Auto-play version stepper over a LOCKED-axis bar chart of per-§A-metric
+    offender counts (global-max lock → frames comparable), with a metric selector / clickable
+    bars listing the exact offending activities for the current version (scrollable). Plus a
+    third export table **"Quality offenders by version"** (one row per metric × version, full
+    uncapped UID list). Operator's call: full everywhere (Law 1 — local only).
+  - Additive: forecasting math, CPM, and quality-metric definitions all unchanged.
+- M18 is COMPLETE (items 1–8). Remaining items are verification/real-data only (Duration
+  Bomb + Large File re-deposit; real-file feedback; deck measures pending a DAX export).
+
+### Parity / tests
+- **818 passed, 3 skipped** (5 new); parity 10/10; engine cov 97%; ruff/format/mypy/
+  bandit(unpiped) all clean with explicit exit code 0.

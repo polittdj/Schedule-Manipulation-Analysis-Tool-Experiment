@@ -67,6 +67,19 @@ def test_forecast_page_carries_carnac_cards(client: TestClient) -> None:
     assert ">99<" in page  # to-go count card value
 
 
+def test_forecast_page_explains_methodology_and_shows_spread_ruler(client: TestClient) -> None:
+    # M18 item 8 — the plain-English explainer + the static single-version spread ruler
+    _upload(client, "Project5")
+    page = client.get("/forecast").text
+    assert "How the three forecasts are computed" in page
+    assert "The throughput answer" in page and "The performance answer" in page
+    assert "rate = completed" in page  # the rate method explained in words
+    assert "IEAC(t) = AT" in page  # the earned-schedule formula
+    assert "id=forecastRuler" in page and "Forecast spread" in page  # the inline-SVG ruler
+    # the explainer/ruler ship even with a single version; the animated drift does NOT
+    assert "Forecast drift" not in page and "id=driftChart" not in page
+
+
 def test_forecast_export_includes_carnac_summary(client: TestClient) -> None:
     _upload(client, "Project5")
     for fmt in ("xlsx", "docx"):

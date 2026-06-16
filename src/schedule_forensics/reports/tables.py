@@ -181,7 +181,13 @@ def driving_table(rows: Iterable[Mapping[str, object]], target_uid: int) -> Tabl
 
 
 def trend_tables(trends: Sequence[MetricTrend]) -> tuple[Table, ...]:
-    """One overview table (metric x version) + a per-metric offender table."""
+    """Overview (metric x version) + worst-version + the full per-version offender series.
+
+    The third table is the M18 item-8 drill-down: one row per (metric, version) carrying
+    the count and the complete offender-activity UID list for that version (no cap — the
+    operator's machine, Law 1), so the offenders behind every trended number are auditable
+    in Excel/Word, not just on screen.
+    """
     if not trends:
         return ()
     labels = trends[0].labels
@@ -197,12 +203,23 @@ def trend_tables(trends: Sequence[MetricTrend]) -> tuple[Table, ...]:
             (
                 t.name,
                 t.labels[t.worst_index] if t.worst_index is not None else "n/a (flat)",
-                ", ".join(str(u) for u in t.worst_offender_uids[:12]),
+                ", ".join(str(u) for u in t.worst_offender_uids),
             )
             for t in trends
         ),
     )
-    return (overview, worst)
+    series_rows: list[tuple[Cell, ...]] = []
+    for t in trends:
+        for label, offenders in zip(t.labels, t.offenders_by_version, strict=False):
+            series_rows.append(
+                (t.name, label, len(offenders), ", ".join(str(u) for u in offenders))
+            )
+    offenders_series = Table(
+        "Quality offenders by version",
+        ("Metric", "Version", "Offending activities", "Offender UIDs"),
+        tuple(series_rows),
+    )
+    return (overview, worst, offenders_series)
 
 
 def bow_wave_tables(wave: BowWave) -> tuple[Table, ...]:
