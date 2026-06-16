@@ -1,19 +1,26 @@
-# Handoff — 2026-06-16 (PRs #81–#100 MERGED; **PR #101 OPEN — SSI driving-slack fix**; M18 item 8 next)
+# Handoff — 2026-06-16 (PRs #81–#101 MERGED; **PR #102 OPEN — M18 item 8**; **M18 COMPLETE**)
 
 > ## START HERE (next session)
-> 1. **PR #101 (ADR-0045) — SSI driving-slack day-grid fix — is OPEN.** Check its CI
->    (github MCP `pull_request_read` → `get_check_runs` on PR #101). If green, the operator
->    merges it; then **recreate the work branch from fresh main** before new work:
->    `git fetch origin main && git checkout -B claude/pensive-meitner-xrdvh7 origin/main`.
->    If CI is red, fix it (run the **CI-exact** gate locally — see the PROCESS note below).
-> 2. **Then continue M18 item 8** (the only remaining backlog item): the **Forecast
->    explainer** (plain-English methodology + visuals on `/forecast`) and the **Trend page
->    expansion** (more room, per-metric drill-down to the offending activities per version,
->    an animation, and Excel export of the series). See the backlog list lower in this file.
-> 3. **Re-deposit the reference `.mpp`s** — a fresh container has an empty
->    `00_REFERENCE_INTAKE/mpp/`. The operator's CUI/non-CUI test files are NOT committed
->    (git-ignored). If verifying SSI/Duration-Bomb behavior again, ask the operator to
->    re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and `Project2_Duration_Bomb.mpp`.
+> 1. **PR #102 (ADR-0046) — M18 item 8 (forecast explainer + Trend drill-down/animation +
+>    Excel series) — is OPEN** on branch `claude/hopeful-keller-u3ia8g`. Check its CI (github
+>    MCP `pull_request_read` → `get_check_runs` on PR #102). If green, the operator merges it;
+>    then **recreate the work branch from fresh main** before any new work:
+>    `git fetch origin main && git checkout -B <fresh-branch> origin/main`. If CI is red, fix it
+>    (run the **CI-exact** gate locally — see the PROCESS note below). **The preinstalled `.venv`
+>    was again missing the web/dev deps this sitting — run `pip install -e '.[dev]'` into `.venv`
+>    FIRST or the gate's mypy/pytest/parity/bandit all spuriously fail.**
+> 2. **M18 is COMPLETE — items 1–8 all shipped. No feature backlog remains.** The open
+>    follow-ups are VERIFICATION / real-data items, none blocking:
+>    - **Re-deposit the reference `.mpp`s** — a fresh container has an empty
+>      `00_REFERENCE_INTAKE/mpp/` (git-ignored; never travels between sessions). To re-verify,
+>      ask the operator to re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and
+>      `Project2_Duration_Bomb.mpp`, then confirm Duration Bomb finish **2027-02-24** (ADR-0043)
+>      and Large-File driving tiers matching SSI (ADR-0045).
+>    - **Real-file feedback** — watch how Path Analysis, ask-the-AI, float bands, `/forecast`
+>      (now with the explainer), and the new `/trend` drill-down read on real `.mpp`/`.xer`.
+>      Importer tolerance lives in `importers/_common.py`; ALWAYS re-run `pytest -m parity`.
+>    - **Deck measures awaiting a DAX export** (EPI / RatioMeasure / Start-and-Finish Ratio) —
+>      implement exactly when the operator provides the measure text; do not guess.
 >
 > ## ⚠️ PROCESS — verify ruff/format with EXPLICIT exit codes
 > Twice this sitting a real `ruff check`/`ruff format --check` failure slipped to CI because
@@ -36,6 +43,22 @@
 > 10/10; full suite 813. Regression: `tests/engine/test_driving_slack_daygrid.py` + the updated
 > TP1 battery pins (UID 11/12 now 60 min, not 210 — same DRIVING tier).
 
+
+**This sitting (2026-06-16, cont. 5):** **#101 merged** (SSI driving-slack day-grid fix,
+ADR-0045). Then **PR #102 (ADR-0046) — M18 item 8, the LAST backlog item**: the **Forecast
+explainer** on `/forecast` (a plain-English "How the three forecasts are computed" panel — one
+card per method with the formula in words + symbols + this version's value — plus a static
+single-version inline-SVG "spread ruler" placing the data date, baseline finish, and the three
+method dates on one timeline; server-side, no new JS) and the **Trend page expansion**:
+`MetricTrend.offenders_by_version` (the offending activities per metric PER version),
+`/api/trend` per-version counts + offenders (uid+name) + lower_is_better/worst_index, a new
+**"Quality drill-down & animation"** panel (`static/trend_drill.js`: a Prev/Next/Auto-play
+version stepper over a LOCKED-axis bar chart of per-metric offender counts, with a metric
+selector listing the exact offending activities for the current version), and a full
+per-version **"Quality offenders by version"** Excel/Word export table. Additive (forecasting
+math / CPM / quality definitions untouched) → parity **10/10**; full suite **818 passed**;
+engine cov 97%. Air-gap extended over `/forecast` + `trend_drill.js`. **M18 COMPLETE.**
+Model/mode: Opus 4.8 (1M).
 
 **This sitting (2026-06-16, cont. 4):** **#99 merged** (summary-logic fix, ADR-0043). Then
 **PR #100 (ADR-0044) — M18 item 7, Critical-Path Evolution animation**: a new
@@ -391,7 +414,7 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**750 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈97%; egress + air-gap green; bandit/pip-
+**818 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈96%; egress + air-gap green; bandit/pip-
 audit clean (3.11 + 3.13).** Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
@@ -431,9 +454,11 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
    stepper — per version the critical path with entered/left/stayed + duration-change
    badges, and a callout for finish movement + schedule-optics signals [durations cut on
    path, logic removed], flagging a path that sheds work while the finish holds steady).
-8. **Forecast explainer** (plain-English methodology + visuals) and **Trend page
-   expansion** (space, per-metric drill-down to offenders per version, animation,
-   Excel export of series).
+8. ~~Forecast explainer + Trend page expansion~~ (PR #102/ADR-0046: the `/forecast`
+   methodology explainer + static spread ruler; `MetricTrend.offenders_by_version` + the
+   `/trend` "Quality drill-down & animation" panel [locked-axis per-metric offender-count
+   stepper + per-version offender lists] + the full per-version Excel/Word offenders table).
+   **M18 COMPLETE — all eight items shipped.**
 
 1. **TP1-vs-SSI: CLOSED with full parity (2026-06-12).** All 18 traced tasks matched;
    live driving path UID-for-UID; non-zero slacks exact to SSI's display rounding;
