@@ -45,6 +45,53 @@ _STOPWORDS = frozenset(
     "that have has been being can could should would much many tell show give about than "
     "schedule project activity activities task tasks".split()
 )
+#: Vague/no-match question: lead with the frame fact + a few headline facts (NOT the whole
+#: sheet — padding the result back up to the cap made every answer look identical, the
+#: "same results no matter what you ask" defect).
+_OVERVIEW_FACTS = 4
+#: Forensic intent aliases: ``word-prefix → substrings to look for in the fact text``. The
+#: analyst's vocabulary that the engine's facts phrase differently — "late"/"slip"/"delay"
+#: live in the facts as "behind"/"variance"/"forecast", "risk" as "float"/"critical", etc.
+#: A question word starting with a key adds that key's substrings to the match set, so the
+#: question reaches the facts that actually carry the answer (matched case-insensitively).
+_INTENT_ALIAS: dict[str, tuple[str, ...]] = {
+    "late": ("behind", "variance", "forecast", "finish", "slip"),
+    "slip": ("behind", "variance", "forecast", "finish"),
+    "delay": ("behind", "variance", "forecast", "finish"),
+    "behind": ("behind", "variance"),
+    "earl": ("ahead", "forecast"),
+    "risk": ("float", "critical", "negative"),
+    "logic": ("logic", "lag", "lead", "constraint"),
+    "depend": ("logic", "lag", "lead"),
+    "link": ("logic", "lag", "lead"),
+    "constraint": ("constraint", "hard"),
+    "forecast": ("forecast", "finish"),
+    "finish": ("forecast", "finish"),
+    "complet": ("complete", "progress", "performance"),
+    "progress": ("complete", "progress", "performance"),
+    "critic": ("critical", "driving", "float"),
+    "driv": ("driving", "critical", "float"),
+    "float": ("float", "critical", "negative"),
+    "manipul": ("manipulation", "signal", "finding"),
+    "find": ("finding",),
+    "problem": ("finding", "fail"),
+    "issue": ("finding", "fail"),
+}
+
+
+def _stems(text: str) -> set[str]:
+    """Lower-cased content stems of ``text`` — plural/suffix-insensitive so "findings"
+    matches "Finding", "constraints" matches "Constraint", "forecasts" matches "forecast"."""
+    out: set[str] = set()
+    for word in _WORD_RE.findall(text.lower()):
+        if word in _STOPWORDS:
+            continue
+        for suffix in ("ing", "ied", "ies", "ed", "es", "s"):
+            if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+                word = word[: -len(suffix)]
+                break
+        out.add(word)
+    return out
 
 
 def build_fact_sheet(
@@ -186,16 +233,34 @@ def build_workbook_fact_sheet(
 def relevant_facts(
     facts: tuple[CitedStatement, ...], question: str, limit: int = _MAX_FACTS
 ) -> tuple[CitedStatement, ...]:
-    """The facts most related to the question (term overlap; the frame fact always leads)."""
-    terms = {w for w in _WORD_RE.findall(question.lower()) if w not in _STOPWORDS}
-    scored = sorted(
-        (fact for fact in facts[1:]),
-        key=lambda fact: -len(terms & set(_WORD_RE.findall(fact.text.lower()))),
-    )
-    keep = [facts[0]] if facts else []
-    keep += [f for f in scored if terms & set(_WORD_RE.findall(f.text.lower()))][: limit - 1]
-    if len(keep) < min(limit, len(facts)):  # vague question: pad with the leading facts
-        keep += [f for f in facts if f not in keep][: limit - len(keep)]
+    """The facts most related to the question — the frame fact always leads, then the facts
+    whose stems overlap the (alias-expanded) question, ranked by overlap.
+
+    Only genuinely matching facts follow the frame: a focused question yields a focused
+    selection that varies with what was asked. A vague question (no overlap at all) falls
+    back to a small headline overview rather than the whole sheet — padding every result
+    back up to the cap is what made the answers look identical regardless of the question.
+    """
+    if not facts:
+        return ()
+    qstems = _stems(question)
+    qwords = _WORD_RE.findall(question.lower())
+    alias_subs: set[str] = set()
+    for key, subs in _INTENT_ALIAS.items():
+        if any(word.startswith(key) for word in qwords):
+            alias_subs.update(subs)
+
+    def overlap(fact: CitedStatement) -> int:
+        text = fact.text.lower()
+        return len(qstems & _stems(fact.text)) + sum(sub in text for sub in alias_subs)
+
+    ranked = sorted(facts[1:], key=lambda f: -overlap(f))
+    matched = [f for f in ranked if overlap(f) > 0]
+    keep = [facts[0]]
+    if matched:
+        keep += matched[: limit - 1]
+    else:  # nothing matched: a bounded headline overview, never the whole sheet
+        keep += ranked[: min(limit - 1, _OVERVIEW_FACTS)]
     return tuple(keep)
 
 

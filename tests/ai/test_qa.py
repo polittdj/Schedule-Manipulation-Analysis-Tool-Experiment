@@ -70,6 +70,34 @@ def test_relevant_facts_match_question_terms(golden_project5: Schedule) -> None:
     assert 1 <= len(relevant_facts(facts, "??")) <= 12
 
 
+def test_relevant_facts_vary_by_question_not_one_size_fits_all(golden_project5: Schedule) -> None:
+    """Regression: the offline (Null-backend) answer must change with the question — the
+    old padding filled every result back up to the cap with the same leading facts, so the
+    panel 'gave the same results no matter what you asked'."""
+    facts = _facts(golden_project5)
+    constraints = relevant_facts(facts, "how many hard constraints are there?")
+    forecast = relevant_facts(facts, "what is the finish forecast?")
+    assert any("Hard Constraints" in f.text for f in constraints)
+    assert any("Finish forecast" in f.text for f in forecast)
+    cset, fset = {f.text for f in constraints}, {f.text for f in forecast}
+    assert cset != fset  # different questions -> different selections
+    assert cset & fset == {facts[0].text}  # they share only the always-leading frame fact
+    assert len(constraints) < len(facts)  # focused, not the padded full sheet
+
+
+def test_relevant_facts_resolve_plurals_and_intent_synonyms(golden_project5: Schedule) -> None:
+    """Stemming + forensic-intent aliases: a question reaches the facts that carry the
+    answer even when it phrases the idea differently than the engine's fact text."""
+    facts = _facts(golden_project5)
+    # "findings" (plural) reaches the Finding facts via stemming, not only DCMA rows
+    findings = relevant_facts(facts, "what problems or findings exist?")
+    assert any(f.text.startswith("Finding [") for f in findings[1:])
+    # analyst vocabulary: "slipping / late" reaches the behind/variance/forecast facts
+    slipping = relevant_facts(facts, "is the schedule slipping or running late?")
+    blob = " ".join(f.text.lower() for f in slipping[1:])
+    assert "forecast" in blob or "behind" in blob or "variance" in blob
+
+
 def test_null_backend_returns_facts_not_prose(golden_project5: Schedule) -> None:
     answer, used = answer_question(NullBackend(), _facts(golden_project5), "how many critical?")
     assert answer is None and used  # no model -> no generated prose, only cited facts
