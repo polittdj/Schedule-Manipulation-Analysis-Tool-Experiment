@@ -18,6 +18,10 @@
  * remain comparable across frames). A ?target=<uid> focus (data-target on #evoChart, echoed by
  * /api/evolution) highlights that activity's row in every frame and notes whether it is on the
  * current version's critical path.
+ *
+ * A "filter the path" selector switches between four scopes: the driving path to the focused
+ * UID (its predecessors, from the server's path_to_target), one chosen version's critical path
+ * tracked across every frame, an entered/left/stayed movement filter, and a name/UID search.
  */
 "use strict";
 
@@ -44,6 +48,9 @@
   // lo/hi are the VISIBLE date window (zoom/pan move them inside the full [fullLo, fullHi]).
   var data = null, index = 0, timer = null, lo = 0, hi = 1, fullLo = 0, fullHi = 1;
   var hideDone = false, focusUid = null;
+  // filter-by-path: switchable modes — none | driving | version | movement | search
+  var filterMode = "none", filterVersion = 0, searchText = "";
+  var moveSet = { entered: true, stayed: true, left: true };
 
   function svgEl(tag, attrs) {
     var n = document.createElementNS(NS, tag);
@@ -223,6 +230,43 @@
   }
   function visible(rows) { return hideDone ? rows.filter(function (r) { return !r.complete; }) : rows; }
 
+  function setOf(arr) { var o = {}; (arr || []).forEach(function (u) { o[u] = true; }); return o; }
+
+  // filter-by-path: scope the rows by the active mode (applied to both the critical rows and
+  // the "left the path" ghost rows)
+  function applyFilter(rows, snap) {
+    if (filterMode === "movement") return rows.filter(function (r) { return moveSet[r.kind]; });
+    if (filterMode === "search") {
+      var q = searchText.trim().toLowerCase();
+      if (!q) return rows;
+      return rows.filter(function (r) {
+        return String(r.uid).indexOf(q) >= 0 || String(r.name || "").toLowerCase().indexOf(q) >= 0;
+      });
+    }
+    if (filterMode === "driving") {
+      var dset = setOf(snap.path_to_target);
+      return rows.filter(function (r) { return dset[r.uid]; });
+    }
+    if (filterMode === "version") {
+      var vsnap = data.snapshots[filterVersion];
+      var cset = setOf(vsnap ? vsnap.critical : []);
+      return rows.filter(function (r) { return cset[r.uid]; });
+    }
+    return rows;  // "none"
+  }
+
+  function filterNote(snap) {
+    if (filterMode === "driving") {
+      return focusUid == null ? "Set a Focus UID above to use the driving-path filter."
+        : "Showing the chain that drives UID " + focusUid + " (its predecessors on the path).";
+    }
+    if (filterMode === "version") {
+      var v = data.snapshots[filterVersion];
+      return v ? "Showing version “" + v.label + "”'s critical path tracked across every frame." : "";
+    }
+    return "";
+  }
+
   function render() {
     var snap = data.snapshots[index];
     document.getElementById("evoLabel").textContent =
@@ -237,12 +281,15 @@
         onPath ? "Focus UID " + focusUid + " is on this version's critical path (highlighted)."
                : "Focus UID " + focusUid + " is not on this version's critical path."));
     }
-    var crit = visible(currentRows(snap));
-    var hidden = snap.critical_rows.length - crit.length;
-    box.appendChild(el("h3", null, "Critical path — " + crit.length + " activities" +
-      (hidden > 0 ? " (" + hidden + " completed hidden)" : "")));
+    var noteEl = document.getElementById("evoFilterNote");
+    if (noteEl) noteEl.textContent = filterNote(snap);
+
+    var crit = applyFilter(visible(currentRows(snap)), snap);
+    var total = snap.critical_rows.length;
+    box.appendChild(el("h3", null, "Critical path — " + crit.length +
+      (crit.length !== total ? " of " + total : "") + " activities"));
     box.appendChild(gantt(crit));
-    var leftV = visible(leftRows(snap));
+    var leftV = applyFilter(visible(leftRows(snap)), snap);
     if (leftV.length) {
       box.appendChild(el("h3", null, "Left the critical path (" + leftV.length + ") — where they were, and why"));
       box.appendChild(gantt(leftV));
@@ -302,6 +349,32 @@
       on("evoZoomReset", resetZoom);
       var hd = document.getElementById("evoHideDone");
       if (hd) hd.addEventListener("change", function () { hideDone = hd.checked; render(); });
+
+      // filter-by-path controls: a mode selector that toggles its sub-control
+      var verSel = document.getElementById("evoFilterVersion");
+      if (verSel) {
+        d.snapshots.forEach(function (s, i) {
+          var o = document.createElement("option");
+          o.value = i; o.textContent = s.label;
+          verSel.appendChild(o);
+        });
+        verSel.addEventListener("change", function () { filterVersion = Number(verSel.value); render(); });
+      }
+      var modeSel = document.getElementById("evoFilterMode");
+      var moveBox = document.getElementById("evoFilterMovement");
+      var textBox = document.getElementById("evoFilterText");
+      function showSub() {
+        if (verSel) verSel.style.display = filterMode === "version" ? "" : "none";
+        if (moveBox) moveBox.style.display = filterMode === "movement" ? "" : "none";
+        if (textBox) textBox.style.display = filterMode === "search" ? "" : "none";
+      }
+      if (modeSel) modeSel.addEventListener("change", function () {
+        filterMode = modeSel.value; showSub(); render();
+      });
+      Array.prototype.forEach.call(document.querySelectorAll(".evoMove"), function (cb) {
+        cb.addEventListener("change", function () { moveSet[cb.value] = cb.checked; render(); });
+      });
+      if (textBox) textBox.addEventListener("input", function () { searchText = textBox.value; render(); });
     })
     .catch(function () { box.textContent = "Failed to load the path-evolution data."; });
 })();

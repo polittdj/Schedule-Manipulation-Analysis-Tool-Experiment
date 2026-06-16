@@ -2856,6 +2856,24 @@ visible.</p>
 <button id=evoPanR type=button title="pan later">&#9654;</button>
 <button id=evoZoomReset type=button>reset</button>
 </div>
+<div class=viz-controls>
+<label>Filter the path:
+<select id=evoFilterMode>
+<option value=none selected>none &mdash; whole critical path</option>
+<option value=driving>driving path to the focused UID</option>
+<option value=version>track one version's path</option>
+<option value=movement>entered / left / stayed</option>
+<option value=search>name / UID search</option>
+</select></label>
+<select id=evoFilterVersion style="display:none"></select>
+<span id=evoFilterMovement style="display:none">
+<label><input type=checkbox class=evoMove value=entered checked> entered</label>
+<label><input type=checkbox class=evoMove value=stayed checked> stayed</label>
+<label><input type=checkbox class=evoMove value=left checked> left</label>
+</span>
+<input id=evoFilterText type=search placeholder="name or UID" style="display:none">
+<span id=evoFilterNote class=muted></span>
+</div>
 <p class=muted style="margin:.2em 0">Each row carries its grid columns &mdash; <b>%&nbsp;complete</b>,
 <b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.
 Use <b>Focus</b> above to highlight one activity across every version.</p>
@@ -2905,6 +2923,24 @@ def _evolution_data(
             "duration": f"{task.duration_minutes / per_day:g}wd",
             "complete": is_complete_in(idx, uid),
         }
+
+    def path_to_target(idx: int) -> list[int]:
+        """When a UID is focused, the activities that DRIVE it in version ``idx`` — the target
+        plus its transitive predecessors — so the "driving path to focus" filter can scope the
+        Gantt to just the chain feeding the focused activity. Empty when no target is set or it
+        is absent from this version."""
+        if target is None or not (0 <= idx < len(schedules)) or target not in by_id[idx]:
+            return []
+        preds_of: dict[int, list[int]] = {}
+        for r in schedules[idx].relationships:
+            preds_of.setdefault(r.successor_id, []).append(r.predecessor_id)
+        seen, stack = {target}, [target]
+        while stack:
+            for p in preds_of.get(stack.pop(), ()):
+                if p not in seen:
+                    seen.add(p)
+                    stack.append(p)
+        return sorted(seen)
 
     snapshots: list[dict[str, object]] = []
     for i, s in enumerate(evolution.snapshots):
@@ -2967,6 +3003,7 @@ def _evolution_data(
                 "names": names,
                 "critical_rows": critical_rows,
                 "left_rows": left_rows,
+                "path_to_target": path_to_target(i),
             }
         )
     axis = {
