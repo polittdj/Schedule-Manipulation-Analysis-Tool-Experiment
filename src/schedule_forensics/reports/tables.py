@@ -20,6 +20,7 @@ from schedule_forensics.engine.forecast import CarnacSummary, ForecastSet
 from schedule_forensics.engine.metrics._common import MetricResult
 from schedule_forensics.engine.metrics.wbs_breakdown import WBSGroup
 from schedule_forensics.engine.month_curves import MonthCurves
+from schedule_forensics.engine.path_evolution import PathEvolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import MetricTrend
 from schedule_forensics.model.schedule import Schedule
@@ -341,6 +342,43 @@ def carnac_table(summary: CarnacSummary) -> Table:
         ("Tasks to complete (to-go)", summary.to_go_count),
     )
     return Table("Forecast summary (Carnac)", ("Card", "Value"), rows)
+
+
+def path_evolution_tables(evolution: PathEvolution) -> tuple[Table, ...]:
+    """Per-version critical-path evolution: size, finish move, entered/left, optics."""
+    rows: tuple[tuple[Cell, ...], ...] = tuple(
+        (
+            s.label,
+            s.status_date,
+            s.project_finish,
+            s.finish_delta_days,
+            len(s.critical),
+            len(s.entered),
+            len(s.left),
+            len(s.duration_changed),
+            len(s.shortened_on_path),
+            s.removed_logic_count,
+        )
+        for s in evolution.snapshots
+    )
+    return (
+        Table(
+            "Critical-path evolution",
+            (
+                "Version",
+                "Data date",
+                "Project finish",
+                "Finish move (days)",
+                "Critical count",
+                "Entered path",
+                "Left path",
+                "Duration changed on path",
+                "Shortened on path",
+                "Logic links removed",
+            ),
+            rows,
+        ),
+    )
 
 
 def forecast_tables(labels: Sequence[str], sets: Sequence[ForecastSet]) -> tuple[Table, ...]:
