@@ -82,6 +82,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
+from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import compute_quality_trend, order_versions
 from schedule_forensics.importers import (
@@ -111,6 +112,7 @@ from schedule_forensics.reports.tables import (
     forecast_tables,
     metric_results_table,
     month_curves_tables,
+    path_evolution_tables,
     schedule_summary_table,
     trend_tables,
     wbs_breakdown_tables,
@@ -137,6 +139,7 @@ _LAYOUT = Template(
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
+<a href="/evolution">Critical-Path Evolution</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -503,6 +506,7 @@ def create_app(
                     ' &middot; <a class=btn-link href="/trend">Trend across all versions &rarr;</a>'
                     ' &middot; <a class=btn-link href="/cei">Bow Wave / CEI &rarr;</a>'
                     ' &middot; <a class=btn-link href="/curves">Finish &amp; slippage curves &rarr;</a>'
+                    ' &middot; <a class=btn-link href="/evolution">Critical-path evolution &rarr;</a>'
                     ' &middot; <a class=btn-link href="/compare">Compare the two most recent &rarr;</a>'
                     if len(st.schedules) >= 2
                     else ""
@@ -925,6 +929,31 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_cei_data(wave))
 
+    @app.get("/evolution", response_class=HTMLResponse)
+    def evolution_view() -> HTMLResponse:
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return _page(
+                st,
+                "Critical-Path Evolution",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least two analyzable versions to watch the "
+                "critical path evolve.</div>",
+            )
+        return _page(
+            st,
+            "Critical-Path Evolution",
+            _export_bar("evolution") + _skipped_notice(skipped) + _evolution_body(schedules, cpms),
+        )
+
+    @app.get("/api/evolution")
+    def evolution_json() -> JSONResponse:
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        return JSONResponse(_evolution_data(schedules, cpms))
+
     @app.get("/forecast", response_class=HTMLResponse)
     def forecast_view() -> HTMLResponse:
         st = session()
@@ -1093,6 +1122,20 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         return _export_response(
             fmt, TableSet("Bow Wave - CEI", bow_wave_tables(wave)), "bow-wave-cei"
+        )
+
+    @app.get("/export/{fmt}/evolution")
+    def export_evolution(fmt: str) -> Response:
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
+        ev = compute_path_evolution(schedules, cpms)
+        return _export_response(
+            fmt,
+            TableSet("Critical-path evolution", path_evolution_tables(ev)),
+            "critical-path-evolution",
         )
 
     @app.get("/export/{fmt}/forecast")
@@ -2541,6 +2584,59 @@ def _cei_data(wave: BowWave) -> dict[str, object]:
             for s in wave.snapshots
         ],
     }
+
+
+def _evolution_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+    """The Critical-Path Evolution view (M18 item 7): a Bow-Wave-style stepper over the
+    versions, showing the critical path and how it enters/leaves between versions."""
+    return """
+<div class=panel><h2>Critical-Path Evolution</h2>
+<p class=muted>Step through the versions (oldest first by data date) to watch the critical
+path change. Each version lists its critical activities &mdash; <b class=ev-entered>green</b>
+entered the path since the prior version, <b class=ev-stayed>grey</b> stayed, and a
+<span class=ev-badge>&#9650;dur</span> badge marks a duration change on the path; activities
+that <b class=ev-left>left</b> the path are listed below, struck through. The callout reports
+the finish movement and the schedule-optics signals &mdash; durations cut on the path and
+logic links removed &mdash; so a path shedding work while the finish holds steady (a slip
+being absorbed rather than recovered) is visible.</p>
+<div class=viz-controls>
+<button id=prevEvo type=button>&#9664; Prev</button>
+<span id=evoLabel class=muted></span>
+<button id=nextEvo type=button>Next &#9654;</button>
+<button id=evoPlay type=button>&#9654; Auto-play</button>
+</div>
+<div id=evoChart></div></div>
+<script src="/static/path_evolution.js"></script>"""
+
+
+def _evolution_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+    """JSON for the critical-path evolution stepper: per-version snapshots + task names."""
+    evolution = compute_path_evolution(schedules, cpms)
+    by_id = [s.tasks_by_id for s in schedules]
+    snapshots: list[dict[str, object]] = []
+    for i, s in enumerate(evolution.snapshots):
+        names = {str(uid): by_id[i][uid].name for uid in s.critical if uid in by_id[i]}
+        # the names of activities that LEFT live in the PRIOR version's task map
+        if i > 0:
+            for uid in s.left:
+                if uid in by_id[i - 1]:
+                    names[str(uid)] = by_id[i - 1][uid].name
+        snapshots.append(
+            {
+                "label": s.label,
+                "status_date": s.status_date,
+                "project_finish": s.project_finish,
+                "finish_delta_days": s.finish_delta_days,
+                "critical": list(s.critical),
+                "entered": list(s.entered),
+                "left": list(s.left),
+                "duration_changed": list(s.duration_changed),
+                "shortened_on_path": list(s.shortened_on_path),
+                "removed_logic_count": s.removed_logic_count,
+                "names": names,
+            }
+        )
+    return {"snapshots": snapshots}
 
 
 def _cite_tag(citations: tuple[Citation, ...]) -> str:

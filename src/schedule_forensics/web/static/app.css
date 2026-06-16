@@ -108,3 +108,17 @@ h3.trend-section {
 table.wbs-table { font-size: 12px; }
 table.wbs-table th, table.wbs-table td { padding: 4px 8px; text-align: right; white-space: nowrap; }
 table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: left; }
+
+/* M18 item 7: Critical-Path Evolution stepper */
+.ev-callout { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; margin: 6px 0 12px; }
+.ev-finish { font-weight: 700; font-size: 15px; }
+.ev-signals { color: var(--muted); font-size: 13px; }
+.ev-signals.ev-flag { color: var(--bad); font-weight: 600; }
+.ev-list { list-style: none; padding: 0; margin: 4px 0 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.ev-item { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 6px;
+  font-size: 12px; border: 1px solid var(--line); background: var(--field-bg); }
+.ev-item.ev-entered { border-color: var(--ok); }
+.ev-item.ev-left { opacity: .6; text-decoration: line-through; border-style: dashed; }
+.ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
+b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }

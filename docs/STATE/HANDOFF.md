@@ -1,6 +1,19 @@
-# Handoff — 2026-06-16 (PRs #81–#98 MERGED; **M18 IN FLIGHT**; PR #99 OPEN — summary-logic fix)
+# Handoff — 2026-06-16 (PRs #81–#99 MERGED; **M18 IN FLIGHT**; PR #100 OPEN — item 7)
 
-**This sitting (2026-06-16, cont. 3):** **#98 merged** (Carnac cards, ADR-0042). Then
+**This sitting (2026-06-16, cont. 4):** **#99 merged** (summary-logic fix, ADR-0043). Then
+**PR #100 (ADR-0044) — M18 item 7, Critical-Path Evolution animation**: a new
+**`/evolution` page** with a Bow-Wave-style Prev/Next/Auto-play stepper over the versions
+(`engine/path_evolution.py` `compute_path_evolution` → `PathEvolution`/`CriticalSnapshot`).
+Per version: the critical path with **entered** (green) / **stayed** (grey) / **▲dur** badge
+and **left** (struck) activities, plus a callout for the **finish movement** and
+**schedule-optics signals** (durations cut on the path + logic removed — reusing
+`detect_manipulation`), flagging a path that sheds work while the finish holds. Nav +
+dashboard links + xlsx/docx export (`path_evolution_tables`); air-gap extended. Verified on
+golden P2→P5 (critical 43→37, 6 left, finish +99d). Parity 10/10; full suite 810 passed;
+path_evolution 100% cov. **Remaining M18: item 8 (forecast explainer + Trend expansion).**
+Model/mode: Opus 4.8 (1M).
+
+**Prior this sitting (2026-06-16, cont. 3):** **#98 merged** (Carnac cards, ADR-0042). Then
 **PR #99 (ADR-0043) — logic on summary tasks**: the Duration-Bomb verification (below) was
 RESOLVED here. Root cause: the test file (an MS Project sample) attaches predecessor/
 successor logic to **summary** tasks (e.g. summary UID 151 on an FS chain with 40–60wd
@@ -377,10 +390,10 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
    (pg 6–7), WBS-grouped Completion + SPI/ES pivots (pg 8–9), Slippage curves (pg 12),
    the Carnac forecast cards (pg 13). Remaining gaps: activity-type profile, WBS
    pivots, start/finish curves, TotalFloat/FreeFloat sums, avg-tasks-per-month.
-7. **CPM path-evolution animation** (Bow-Wave-style): per version pair, highlight
-   tasks entering/leaving the critical path, duration changes on it, and
-   schedule-optics signals (remaining-duration cuts beyond days worked; logic changes
-   that absorbed a slip).
+7. ~~CPM path-evolution animation~~ (PR #100/ADR-0044: the `/evolution` Bow-Wave-style
+   stepper — per version the critical path with entered/left/stayed + duration-change
+   badges, and a callout for finish movement + schedule-optics signals [durations cut on
+   path, logic removed], flagging a path that sheds work while the finish holds steady).
 8. **Forecast explainer** (plain-English methodology + visuals) and **Trend page
    expansion** (space, per-metric drill-down to offenders per version, animation,
    Excel export of series).

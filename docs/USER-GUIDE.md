@@ -143,6 +143,15 @@ dashboard. Stop it with `Ctrl-C`.
    the files' stored dates (actual where present, else scheduled), so the page works on **every**
    loaded version — even one whose network can't be solved — and with a single version (its curves
    alone). ⬇ Excel / ⬇ Word export the per-version monthly counts.
+5b. **Critical-Path Evolution** (the **Critical-Path Evolution** link, `/evolution`; ≥2 versions)
+   — a **Prev/Next/Auto-play** stepper that walks the versions (oldest first by data date) and
+   shows the **critical path** for each: activities that **entered** the path since the prior
+   version are green, those that **stayed** are grey, a **▲dur** badge marks a duration change on
+   the path, and activities that **left** the path are listed struck through. Each frame's callout
+   reports the **finish movement** and the **schedule-optics signals** — durations cut on the path,
+   logic links removed — and flags the red-combination of a path *shedding* work while the finish
+   holds steady or improves (a slip being absorbed rather than recovered). ⬇ Excel / ⬇ Word export
+   the per-version evolution summary.
 6. **Forecast** — opens with the reference deck's **Carnac** KPI card row (PBIX page 13):
    earliest start, latest finish (CPM), project duration and remaining duration (working days),
    the **Forecasted End Date** (completion-rate) and **Estimated End Date (ES — to-go)**, average
@@ -212,6 +221,7 @@ Every analytical page carries **⬇ Excel / ⬇ Word** links (top right): the re
 (all panels + the full activity grid), Path Analysis (the traced grid — links activate
 after you Trace), Trend, Bow Wave/CEI (the CEI table plus every snapshot's monthly
 data), Finish &amp; Slippage (the per-version monthly start/finish counts), the WBS
-breakdown (both pivots), Forecast, and Compare (the manipulation signals). Files are
-generated locally and download straight from your browser — nothing leaves the machine.
+breakdown (both pivots), Critical-Path Evolution (the per-version evolution summary),
+Forecast, and Compare (the manipulation signals). Files are generated locally and
+download straight from your browser — nothing leaves the machine.
 
