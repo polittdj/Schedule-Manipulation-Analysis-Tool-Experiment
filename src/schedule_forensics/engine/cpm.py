@@ -44,6 +44,7 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from schedule_forensics.engine.summary_logic import lower_summary_relationships
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -410,9 +411,13 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
 
     task_ids = [t.unique_id for t in tasks]
     id_set = set(task_ids)
+    # Logic attached to a SUMMARY task is honored the way MS Project does it: lowered onto
+    # the summary's leaf descendants (ADR-0043). A no-op for schedules without summary
+    # logic, so the leaf-only network — and parity — is unchanged.
+    relationships = lower_summary_relationships(schedule)
     edges = [
         (r.predecessor_id, r.successor_id, r.type, r.lag_minutes)
-        for r in schedule.relationships
+        for r in relationships
         if r.predecessor_id in id_set and r.successor_id in id_set
     ]
     order = _topo_order(task_ids, [(pred, succ) for pred, succ, _rel, _lag in edges])

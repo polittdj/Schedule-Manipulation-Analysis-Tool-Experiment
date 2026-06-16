@@ -1,6 +1,22 @@
-# Handoff — 2026-06-16 (PRs #81–#97 MERGED; **M18 IN FLIGHT**; PR #98 OPEN — item 6 pg 13)
+# Handoff — 2026-06-16 (PRs #81–#98 MERGED; **M18 IN FLIGHT**; PR #99 OPEN — summary-logic fix)
 
-**This sitting (2026-06-16, cont. 2):** **#97 merged** (PBIX pages 8/9 WBS pivots,
+**This sitting (2026-06-16, cont. 3):** **#98 merged** (Carnac cards, ADR-0042). Then
+**PR #99 (ADR-0043) — logic on summary tasks**: the Duration-Bomb verification (below) was
+RESOLVED here. Root cause: the test file (an MS Project sample) attaches predecessor/
+successor logic to **summary** tasks (e.g. summary UID 151 on an FS chain with 40–60wd
+lags), which MS Project applies to the summary's children; our CPM dropped summary tasks
+from the network and so ignored it, packing children at the front (computed 2026-08 vs
+MSP's 2027-02). Fix (`engine/summary_logic.py`): `lower_summary_relationships` replaces each
+summary endpoint of a relationship with the summary's **leaf descendants** (cross-product,
+type+lag preserved; WBS segment-prefix hierarchy); `compute_cpm` now builds edges from the
+lowered relationships. No-op without summary logic, so the goldens (zero summary logic,
+pinned) are byte-identical → **parity 10/10**. Plus a new MEDIUM finding
+`logic_on_summary_tasks` (cited, in the metric dictionary) flagging the DCMA/PMI anti-pattern.
+**Verified: the Duration Bomb now computes 2027-02-24** (its stored "Wedding COMPLETE"
+date), UID 17 lands on its stored 2026-07-27, the finding cites all 18 summaries.
+Full suite 799 passed; engine cov (summary_logic 100%). Model/mode: Opus 4.8 (1M).
+
+**Prior this sitting (2026-06-16, cont. 2):** **#97 merged** (PBIX pages 8/9 WBS pivots,
 ADR-0041). Then **PR #98 (ADR-0042) — M18 item 6, PBIX page 13 (Carnac forecast cards)**:
 the deck's *Carnac* KPI card row on the existing `/forecast` page (no new route/JS) —
 earliest start, latest finish, project + remaining duration (wd), Forecasted End Date
@@ -13,23 +29,13 @@ Export gains a Carnac summary table. Parity 10/10; engine cov 97% (forecast 97%,
 uncovered lines). **PBIX reproduction spine COMPLETE: pages 1,4,5,6,7,8,9,12,13 done;
 pages 2/3/10/11 are restatements.** Model/mode: Opus 4.8 (1M).
 
-> **⚠️ DURATION-BOMB VERIFICATION (owed since #91) — RAN 2026-06-16, RESULT: MISMATCH.**
-> Operator re-deposited `00_REFERENCE_INTAKE/mpp/Project2_Duration_Bomb.mpp` (confirmed
-> non-CUI test file; container has Java 21 + MPXJ so it parses). It is the **"Formal
-> Wedding Planner", 71 activities, 0% complete, all ASAP/auto, 0 manual**. Our CPM computes
-> finish **2026-08-05**; the file's **stored/baseline dates run to 2027-02-24** ("Wedding
-> COMPLETE"). **61 of 71 tasks carry stored finishes later than their logic finish (up to
-> +238 d)**, but `CPMResult.date_driven` is **EMPTY** and the **"dates not supported by
-> logic" finding does NOT fire** — because the stored-date mandate (#91/ADR-0034) only
-> pins **manual** tasks or floors **logic-unbound** (no-predecessor) auto tasks, and these
-> are auto + logic-bound (ASAP, 135 rels incl. 15 lags up to 60 wd). So the Duration Bomb's
-> signature (stored dates months beyond what the logic supports) is currently **undetected**.
-> The handoff's expected profile (finish 2027-03-04, completed tasks on /path, the logic
-> finding) does NOT match this file (0 completions, 2026-08-05, no finding). **OPEN
-> QUESTION for the operator:** is this the intended verification file (vs a progressed
-> version), and should ADR-0034 be extended to FLAG logic-bound tasks whose stored dates
-> exceed the logic (and/or honor them so the finish reflects 2027)? Awaiting steer before
-> changing CPM/mandate behavior (architecturally significant).
+> **✅ DURATION-BOMB VERIFICATION (owed since #91) — RESOLVED 2026-06-16 (ADR-0043).**
+> The test file (`00_REFERENCE_INTAKE/mpp/Project2_Duration_Bomb.mpp`, non-CUI) is a
+> downloaded MS Project sample ("Formal Wedding Planner", 71 activities, 0% complete) that
+> attaches logic to **summary** tasks. Operator's call: calculate as MS Project does (lower
+> summary logic to children) AND flag it. Implemented in PR #99 (ADR-0043). The CPM now
+> computes **2027-02-24** (matching the file's stored dates; the earlier "2026-08-05" was
+> our CPM dropping summary logic), and `logic_on_summary_tasks` fires citing the 18 summaries.
 
 **Prior this sitting (2026-06-16, cont.):** **#96 merged** (item 6 PBIX pages 6/7/12 —
 Finish & Slippage curves, ADR-0040; post-merge main green). Then **PR #97 (ADR-0041) —

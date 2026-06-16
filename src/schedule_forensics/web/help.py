@@ -269,6 +269,17 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "count(unstarted tasks where honored stored start != pure logic early start)",
         "Stored-date CPM mandate (ADR-0034); MS Project manual-task semantics.",
     ),
+    "logic_on_summary_tasks": _doc(
+        "logic_on_summary_tasks",
+        "Logic on Summary Tasks",
+        "Summary (roll-up) tasks carrying predecessor or successor relationships. MS "
+        "Project applies that logic to the summary's children, so the tool lowers it onto "
+        "the leaf descendants and schedules the children to match the file — but logic on "
+        "a summary is a DCMA/PMI anti-pattern that hides the true driver and breaks when "
+        "the summary's contents change. Each offending summary is cited.",
+        "count(summary tasks that are a predecessor or successor in any relationship)",
+        "Summary-logic handling (ADR-0043); MS Project summary-scheduling semantics.",
+    ),
     "forecast_to_be_started": _doc(
         "forecast_to_be_started",
         "Forecast to be Started",
