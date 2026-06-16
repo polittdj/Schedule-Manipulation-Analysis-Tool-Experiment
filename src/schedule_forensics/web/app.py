@@ -2335,6 +2335,7 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "total_float_days": float(fr.total_float_days),
                 "free_float_days": float(fr.free_float_days),
                 "percent_complete": task.percent_complete,
+                "complete": task.is_complete or task.actual_finish is not None,
                 "is_critical": fr.is_critical,
                 "is_milestone": task.is_milestone,
                 "is_summary": False,
@@ -2358,6 +2359,7 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "total_float_days": None,
                 "free_float_days": None,
                 "percent_complete": task.percent_complete,
+                "complete": task.is_complete or task.actual_finish is not None,
                 "is_critical": False,
                 "is_milestone": task.is_milestone,
                 "is_summary": True,
@@ -2443,6 +2445,10 @@ def _driving_data(
                     float(round(timing.total_float / per_day, 1)) if timing else None
                 ),
                 "percent_complete": task.percent_complete,
+                # robust "complete" for the hide-completed toggles: a real .mpp/.xer may
+                # report a done activity at 99.x% while carrying an actual finish — treat
+                # an actual finish (or >=100%) as complete so the toggle never misses it.
+                "complete": task.is_complete or task.actual_finish is not None,
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
                 "resource_names": ", ".join(task.resource_names),

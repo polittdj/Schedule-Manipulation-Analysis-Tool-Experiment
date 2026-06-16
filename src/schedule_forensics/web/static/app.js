@@ -161,8 +161,9 @@
       const bar = el("div", { class: cls, style: "left:" + left + "%;width:" + width + "%" });
       bar.title = act.name + "  " + act.start + " → " + act.finish +
         (act.is_summary ? " (summary)" : "  " + (act.percent_complete || 0) + "%");
-      if (!act.is_summary && act.percent_complete > 0) {
-        bar.appendChild(el("div", { class: "g-done", style: "width:" + Math.min(100, act.percent_complete) + "%" }));
+      if (!act.is_summary && (act.complete || act.percent_complete > 0)) {
+        var pctDone = act.complete ? 100 : Math.min(100, act.percent_complete);
+        bar.appendChild(el("div", { class: "g-done", style: "width:" + pctDone + "%" }));
       }
       track.appendChild(bar);
     }
@@ -294,7 +295,7 @@
     const includeDone = !showDone || showDone.checked;
     // waterfall: earliest finish -> latest finish (the server pre-sorts; keep it stable here)
     const rows = driving.rows
-      .filter((r) => includeDone || (r.percent_complete || 0) < 100)
+      .filter((r) => includeDone || !r.complete)
       .slice()
       .sort((a, b) => (a.finish_ord ?? Infinity) - (b.finish_ord ?? Infinity));
     if (!rows.length) { box.appendChild(el("p", { class: "muted", text: "No activities to show (try enabling completed tasks)." })); return; }
@@ -302,7 +303,7 @@
     const lo = Math.min(...times), hi = Math.max(...times), span = Math.max(1, hi - lo);
     rows.forEach((r) => {
       const track = el("div", { class: "gantt-track" });
-      const done = (r.percent_complete || 0) >= 100;
+      const done = !!r.complete;
       if (r.is_milestone && r.start_ord != null) {
         // milestones render as diamonds at their date, tinted by tier
         const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + ((r.start_ord - lo) / span) * 100 + "%" });

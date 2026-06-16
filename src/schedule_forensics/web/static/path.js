@@ -64,7 +64,7 @@
     var tier = $("pathTier").value;
     var q = $("pathFilter").value.trim().toLowerCase();
     return data.rows.filter(function (r) {
-      if (hideDone && r.percent_complete >= 100) return false;
+      if (hideDone && r.complete) return false;
       if (tier && r.tier !== tier) return false;
       if (q && (r.name + " " + r.unique_id).toLowerCase().indexOf(q) < 0) return false;
       return true;
@@ -126,7 +126,7 @@
     table.appendChild(head);
 
     rows.forEach(function (r) {
-      var tr = el("tr", { class: r.percent_complete >= 100 ? "done" : "" });
+      var tr = el("tr", { class: r.complete ? "done" : "" });
       on.forEach(function (f) {
         var v = r[f.key];
         if (typeof v === "boolean") v = v ? "yes" : "—";
@@ -147,12 +147,12 @@
           var left = x(Date.parse(r.start));
           var w = Math.max(2, x(Date.parse(r.finish)) - left);
           var bar = el("div", {
-            class: "gantt-bar tier-" + r.tier + (r.percent_complete >= 100 ? " done" : ""),
+            class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : ""),
             style: "left:" + left + "px;width:" + w + "px",
             title: r.name + " — " + r.tier + ", slack " + r.driving_slack_days + "d, " +
               r.start + " → " + r.finish + ", " + r.percent_complete + "%",
           });
-          if (r.percent_complete > 0 && r.percent_complete < 100) {
+          if (!r.complete && r.percent_complete > 0 && r.percent_complete < 100) {
             bar.appendChild(el("div", { class: "g-done", style: "width:" + r.percent_complete + "%" }));
           }
           track.appendChild(bar);
