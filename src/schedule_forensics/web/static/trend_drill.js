@@ -97,6 +97,29 @@
       svg.appendChild(lab);
     });
     bars.appendChild(svg);
+
+    var cap = document.createElement("p");
+    cap.className = "chart-desc";
+    cap.textContent = "Number of offending activities for each Acumen §A quality metric in " +
+      "this version, on a y-axis locked across every version so the bars stay comparable as " +
+      "you step. The selected metric is highlighted; pick a metric or click its bar to list " +
+      "the offending activities below.";
+    bars.appendChild(cap);
+    var leg = document.createElement("div");
+    leg.className = "chart-legend";
+    [["selected metric", "var(--accent)"], ["other metrics", "var(--beyond)"]].forEach(function (it) {
+      var cell = document.createElement("span");
+      cell.className = "chart-legend-item";
+      var sw = document.createElement("span");
+      sw.className = "chart-swatch";
+      sw.style.background = it[1];
+      var lab = document.createElement("span");
+      lab.textContent = it[0];
+      cell.appendChild(sw);
+      cell.appendChild(lab);
+      leg.appendChild(cell);
+    });
+    bars.appendChild(leg);
   }
 
   function renderDrill() {

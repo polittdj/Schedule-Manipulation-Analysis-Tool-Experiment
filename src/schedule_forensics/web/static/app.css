@@ -122,6 +122,14 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+/* Chart legibility (operator request): every chart carries a one-line description + a
+   color-key legend; swatches reuse theme colors and recolor live with the theme. */
+.chart-desc { font-size: 12px; color: var(--muted); margin: 2px 0 4px; line-height: 1.35; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 2px; font-size: 11px; color: var(--muted); }
+.chart-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.chart-swatch { display: inline-block; width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
+.chart-swatch.dashed { background: none !important; border-top: 2px dashed var(--muted); height: 0; width: 14px; }
+
 /* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
 .evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
 .legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }

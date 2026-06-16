@@ -1,8 +1,8 @@
 /* Schedule Forensics — cross-version trend charts (PBIX pages 4 + 5).
  *
- * Dependency-free SVG charts (no CDN, no external fetch — air-gap posture).
- * Data comes from /api/trend: per-version headline numbers, the quality-metric
- * series (existing), and per-version cross-file + float-analysis data (ADR-0039).
+ * Dependency-free SVG charts (no CDN, no external fetch — air-gap posture). Data comes from
+ * /api/trend. Every chart carries a legend and a one-line description of what it conveys, and
+ * thins its x-axis labels so they never overlap (readable on 10+ version workbooks).
  */
 "use strict";
 
@@ -47,20 +47,55 @@
     return padL + (n <= 1 ? 0 : (i * (W - padL - padR)) / (n - 1));
   }
 
-  // One line chart: values per version; null = no data (never fabricated as 0).
-  function lineChart(title, labels, values, valueText, color) {
-    var W = 460, H = 210, padL = 14, padR = 14, padT = 26, padB = 54;
-    var known = values.filter(function (v) { return v != null; });
-    if (!known.length) return;
+  // one x-axis label every `step` so they never overlap (rotated -35° for legibility)
+  function labelStep(n) { return Math.max(1, Math.ceil(n / 14)); }
+
+  function chartWrap(title, desc) {
     var wrap = document.createElement("div");
     wrap.className = "chart";
     var h = document.createElement("h3");
     h.textContent = title;
     wrap.appendChild(h);
+    if (desc) {
+      var p = document.createElement("p");
+      p.className = "chart-desc";
+      p.textContent = desc;
+      wrap.appendChild(p);
+    }
+    return wrap;
+  }
+
+  // a small color-key legend row appended under the chart (rect/line swatch + label)
+  function legend(wrap, items) {
+    var row = document.createElement("div");
+    row.className = "chart-legend";
+    items.forEach(function (it) {
+      var sw = document.createElement("span");
+      sw.className = "chart-swatch";
+      sw.style.background = it.color;
+      if (it.dashed) sw.classList.add("dashed");
+      var lab = document.createElement("span");
+      lab.textContent = it.label;
+      var cell = document.createElement("span");
+      cell.className = "chart-legend-item";
+      cell.appendChild(sw);
+      cell.appendChild(lab);
+      row.appendChild(cell);
+    });
+    wrap.appendChild(row);
+  }
+
+  // One line chart: values per version; null = no data (never fabricated as 0).
+  function lineChart(title, labels, values, valueText, color, desc, seriesLabel) {
+    var W = 460, H = 210, padL = 14, padR = 14, padT = 26, padB = 54;
+    var known = values.filter(function (v) { return v != null; });
+    if (!known.length) return;
+    var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var lo = Math.min.apply(null, known), hi = Math.max.apply(null, known);
     if (lo === hi) { lo -= 1; hi += 1; }
     var n = values.length;
+    var step = labelStep(n);
     var x = function (i) { return xTick(i, n, W, padL, padR); };
     var y = function (v) { return padT + ((hi - v) * (H - padT - padB)) / (hi - lo); };
     var pts = [];
@@ -77,34 +112,34 @@
         val.textContent = valueText(v, i);
         svg.appendChild(val);
       }
-      var lab = svgEl("text", {
-        x: x(i), y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
-        transform: "rotate(-35 " + x(i) + " " + (H - padB + 14) + ")",
-      });
-      lab.textContent = labels[i];
-      svg.appendChild(lab);
+      if (i % step === 0) {
+        var lab = svgEl("text", {
+          x: x(i), y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
+          transform: "rotate(-35 " + x(i) + " " + (H - padB + 14) + ")",
+        });
+        lab.textContent = labels[i];
+        svg.appendChild(lab);
+      }
     });
     wrap.appendChild(svg);
+    legend(wrap, [{ color: color, label: seriesLabel || title.split(" (")[0] }]);
     box.appendChild(wrap);
   }
 
   // Multi-line chart: series is [{label, values, color}].
-  function multiLineChart(title, labels, series) {
+  function multiLineChart(title, labels, series, desc) {
     var W = 460, H = 210, padL = 14, padR = 14, padT = 26, padB = 54;
     var allVals = [];
     series.forEach(function (s) {
       s.values.forEach(function (v) { if (v != null) allVals.push(v); });
     });
     if (!allVals.length) return;
-    var wrap = document.createElement("div");
-    wrap.className = "chart";
-    var h = document.createElement("h3");
-    h.textContent = title;
-    wrap.appendChild(h);
+    var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var lo = Math.min.apply(null, allVals), hi = Math.max.apply(null, allVals);
     if (lo === hi) { lo -= 0.05; hi += 0.05; }
     var n = labels.length;
+    var step = labelStep(n);
     var x = function (i) { return xTick(i, n, W, padL, padR); };
     var y = function (v) { return padT + ((hi - v) * (H - padT - padB)) / (hi - lo); };
     series.forEach(function (s) {
@@ -126,8 +161,8 @@
         }
       });
     });
-    // axis labels (bottom)
     labels.forEach(function (l, i) {
+      if (i % step !== 0) return;
       var lab = svgEl("text", {
         x: x(i), y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
         transform: "rotate(-35 " + x(i) + " " + (H - padB + 14) + ")",
@@ -135,26 +170,13 @@
       lab.textContent = l;
       svg.appendChild(lab);
     });
-    // legend
-    var legY = padT - 2;
-    series.forEach(function (s, si) {
-      var legX = padL + si * 80;
-      svg.appendChild(svgEl("line", {
-        x1: legX, y1: legY, x2: legX + 14, y2: legY,
-        stroke: s.color, "stroke-width": 2.5,
-      }));
-      var lt = svgEl("text", {
-        x: legX + 17, y: legY + 4, fill: "var(--ink)", "font-size": 10,
-      });
-      lt.textContent = s.label;
-      svg.appendChild(lt);
-    });
     wrap.appendChild(svg);
+    legend(wrap, series.map(function (s) { return { color: s.color, label: s.label }; }));
     box.appendChild(wrap);
   }
 
   // Stacked bar chart: segments is [{key, label, color}]; data is array of objects.
-  function stackedBarChart(title, labels, data, segments) {
+  function stackedBarChart(title, labels, data, segments, desc) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
     var maxTotal = 0;
     data.forEach(function (d) {
@@ -163,17 +185,13 @@
       if (tot > maxTotal) maxTotal = tot;
     });
     if (!maxTotal) return;
-    var wrap = document.createElement("div");
-    wrap.className = "chart";
-    var h = document.createElement("h3");
-    h.textContent = title;
-    wrap.appendChild(h);
+    var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var n = data.length;
+    var step = labelStep(n);
     var bw = Math.max(8, (W - padL - padR) / (n * 1.6) | 0);
     var gap = (W - padL - padR - n * bw) / Math.max(n - 1, 1);
     var barH = H - padT - padB;
-    // y axis ticks
     [0, 0.25, 0.5, 0.75, 1].forEach(function (f) {
       var yv = padT + barH * (1 - f);
       svg.appendChild(svgEl("line", {
@@ -198,43 +216,32 @@
         }));
         yBase -= bH;
       });
-      var lab = svgEl("text", {
-        x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
-        transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
-      });
-      lab.textContent = labels[i];
-      svg.appendChild(lab);
-    });
-    // legend
-    var legY = padT - 2;
-    segments.forEach(function (s, si) {
-      var legX = padL + si * 80;
-      svg.appendChild(svgEl("rect", { x: legX, y: legY - 7, width: 12, height: 8, fill: s.color }));
-      var lt = svgEl("text", {
-        x: legX + 15, y: legY, fill: "var(--ink)", "font-size": 10,
-      });
-      lt.textContent = s.label;
-      svg.appendChild(lt);
+      if (i % step === 0) {
+        var lab = svgEl("text", {
+          x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
+          transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
+        });
+        lab.textContent = labels[i];
+        svg.appendChild(lab);
+      }
     });
     wrap.appendChild(svg);
+    legend(wrap, segments.map(function (s) { return { color: s.color, label: s.label }; }));
     box.appendChild(wrap);
   }
 
   // Grouped bar chart: groups is [{key, label, color}]; data is [{group values}] per version.
-  function groupedBarChart(title, labels, data, groups) {
+  function groupedBarChart(title, labels, data, groups, desc) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
     var maxVal = 0;
     data.forEach(function (d) {
       groups.forEach(function (g) { if ((d[g.key] || 0) > maxVal) maxVal = d[g.key] || 0; });
     });
     if (!maxVal) return;
-    var wrap = document.createElement("div");
-    wrap.className = "chart";
-    var h = document.createElement("h3");
-    h.textContent = title;
-    wrap.appendChild(h);
+    var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var n = data.length, ng = groups.length;
+    var step = labelStep(n);
     var totalBw = Math.max(8 * ng, ((W - padL - padR) / (n * 1.6)) | 0);
     var bw = totalBw / ng;
     var gap = (W - padL - padR - n * totalBw) / Math.max(n - 1, 1);
@@ -263,22 +270,17 @@
           }));
         }
       });
-      var lab = svgEl("text", {
-        x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
-        transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
-      });
-      lab.textContent = labels[i];
-      svg.appendChild(lab);
-    });
-    var legY = padT - 2;
-    groups.forEach(function (g, gi) {
-      var legX = padL + gi * 80;
-      svg.appendChild(svgEl("rect", { x: legX, y: legY - 7, width: 12, height: 8, fill: g.color }));
-      var lt = svgEl("text", { x: legX + 15, y: legY, fill: "var(--ink)", "font-size": 10 });
-      lt.textContent = g.label;
-      svg.appendChild(lt);
+      if (i % step === 0) {
+        var lab = svgEl("text", {
+          x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
+          transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
+        });
+        lab.textContent = labels[i];
+        svg.appendChild(lab);
+      }
     });
     wrap.appendChild(svg);
+    legend(wrap, groups.map(function (g) { return { color: g.color, label: g.label }; }));
     box.appendChild(wrap);
   }
 
@@ -307,7 +309,9 @@
           labels,
           fin.map(function (v) { return v == null ? null : v - fbase; }),
           function (v, i) { return data.target.finishes[i] || "n/a"; },
-          "var(--focus)"
+          "var(--focus)",
+          "The focus activity's computed finish across the versions, in days relative to the first version (0 = same as first; positive = later).",
+          "Focus finish (Δdays)"
         );
       }
 
@@ -320,18 +324,26 @@
         labels,
         finishDays.map(function (d) { return d - base; }),
         function (v, i) { return data.versions[i].finish; },
-        "var(--accent)"
+        "var(--accent)",
+        "How the computed project finish moves across versions, in days relative to the first version. A rising line is a slipping finish.",
+        "Project finish (Δdays)"
       );
       lineChart("Completed activities", labels,
         data.versions.map(function (v) { return v.completed; }),
-        function (v) { return String(v); }, "var(--ok)");
+        function (v) { return String(v); }, "var(--ok)",
+        "Count of activities reported 100% complete in each version (work delivered over time).",
+        "Completed");
       lineChart("Critical (incomplete) activities", labels,
         data.versions.map(function (v) { return v.critical; }),
-        function (v) { return String(v); }, "var(--bad)");
+        function (v) { return String(v); }, "var(--bad)",
+        "Count of incomplete activities on the critical path (total float ≤ 0) per version — the size of the at-risk path.",
+        "Critical");
       var ml = data.quality.missing_logic;
       if (ml) {
         lineChart("Missing logic (activities)", labels, ml.values,
-          function (v) { return String(v); }, "var(--warn)");
+          function (v) { return String(v); }, "var(--warn)",
+          "Activities missing a predecessor or successor link (DCMA open-ends) per version — lower is better.",
+          "Missing logic");
       }
 
       // ── PBIX p4 — Cross File Comparison ───────────────────────────────────────
@@ -339,7 +351,6 @@
       if (hasP4) {
         sectionHead("Cross File Comparison (PBIX page 4)");
 
-        // Activity Status by version: complete / in-progress / planned
         stackedBarChart(
           "Activity Status by Data Date",
           labels,
@@ -348,10 +359,10 @@
             { key: "complete",    label: "Complete",     color: "var(--ok)" },
             { key: "in_progress", label: "In Progress",  color: "var(--warn)" },
             { key: "planned",     label: "Planned",      color: "var(--accent)" },
-          ]
+          ],
+          "Each version's activities split into complete / in-progress / planned (stacked to the total) — the makeup shifting toward 'complete' is healthy progress."
         );
 
-        // Activity Type by version: milestones / normal / summaries
         stackedBarChart(
           "Activity Type by Data Date",
           labels,
@@ -360,10 +371,10 @@
             { key: "milestones", label: "Milestone",  color: "var(--focus)" },
             { key: "normal",     label: "Normal",     color: "var(--accent)" },
             { key: "summaries",  label: "Summary",    color: "var(--muted)" },
-          ]
+          ],
+          "The activity-type makeup (milestones / normal tasks / summaries) per version — a sudden change can signal a re-baseline or restructure."
         );
 
-        // Completion Performance (ahead/on-schedule/behind)
         stackedBarChart(
           "Completion Performance by Data Date",
           labels,
@@ -372,10 +383,10 @@
             { key: "ahead",       label: "Ahead",       color: "var(--ok)" },
             { key: "on_schedule", label: "On Schedule",  color: "var(--accent)" },
             { key: "behind",      label: "Behind",       color: "var(--bad)" },
-          ]
+          ],
+          "Of the completed activities, how many finished ahead / on / behind their baseline, per version — a growing 'behind' band is slippage being realized."
         );
 
-        // MEI / BEI / EPI multi-line
         var idxSeries = [
           { key: "mei", label: "MEI", color: "var(--ok)" },
           { key: "bei", label: "BEI", color: "var(--warn)" },
@@ -394,10 +405,10 @@
           };
         });
         if (idxSeries.length) {
-          multiLineChart("MEI / BEI / EPI across versions", labels, idxSeries);
+          multiLineChart("MEI / BEI / EPI across versions", labels, idxSeries,
+            "Schedule-health indices per version: MEI (milestone execution), BEI (baseline execution), EPI (execution performance). Near or above 1.0 is on-plan.");
         }
 
-        // Start-to-Finish Ratio
         var sfrVals = data.versions.map(function (v) {
           return v.indices ? v.indices.sfr : null;
         });
@@ -406,7 +417,9 @@
             "Start-to-Finish Ratio across versions",
             labels, sfrVals,
             function (v) { return v.toFixed(2); },
-            "var(--focus)"
+            "var(--focus)",
+            "The ratio of activity starts to finishes per version — a sustained imbalance flags work starting faster than it finishes.",
+            "Start/Finish ratio"
           );
         }
       }
@@ -416,7 +429,6 @@
       if (hasP5) {
         sectionHead("Float Analysis (PBIX page 5)");
 
-        // TotalFloatSum + FreeFloatSum grouped bar
         groupedBarChart(
           "Float Sums by Version (working days)",
           labels,
@@ -424,10 +436,10 @@
           [
             { key: "total_days", label: "Total Float", color: "var(--accent)" },
             { key: "free_days",  label: "Free Float",  color: "var(--ok)" },
-          ]
+          ],
+          "Total and free float summed across the schedule (working days) per version — shrinking float means a tightening, more fragile plan."
         );
 
-        // % Total Float by band (0, <5, <10) as grouped bar
         groupedBarChart(
           "% Total Float by Days (0 / <5 / <10)",
           labels,
@@ -443,10 +455,10 @@
             { key: "t0",  label: "0 days",  color: "var(--bad)" },
             { key: "t5",  label: "<5 days", color: "var(--warn)" },
             { key: "t10", label: "<10 days", color: "var(--accent)" },
-          ]
+          ],
+          "Share of incomplete activities with low total float (0 / under 5 / under 10 working days) per version — more low-float work is more critical/near-critical exposure."
         );
 
-        // % Free Float by band
         groupedBarChart(
           "% Free Float by Days (0 / <5 / <10)",
           labels,
@@ -462,7 +474,8 @@
             { key: "f0",  label: "0 days",  color: "var(--bad)" },
             { key: "f5",  label: "<5 days", color: "var(--warn)" },
             { key: "f10", label: "<10 days", color: "var(--accent)" },
-          ]
+          ],
+          "Share of incomplete activities with low free float per version — free float is the tighter constraint, so a rising 0-day band is immediate downstream pressure."
         );
       }
     })
