@@ -1,12 +1,12 @@
-# Handoff — 2026-06-17 (PRs #81–#124 MERGED; **one OPEN draft PR: #125 ADR-0067 — Fuse Ribbon metrics**; main is green at #124)
+# Handoff — 2026-06-17 (PRs #81–#125 MERGED; **`main` green & current at #125 (`6dd3e7e`) — NO open PR**; start the next item)
 
 > ## START HERE (next session) — audited 2026-06-17
-> **`main` is at #124 (`17bef50`), green.** This session shipped a long operator backlog (#116–
-> #124) and opened **#125 (ADR-0067, Fuse Ribbon metrics)** — check its CI (github MCP
-> `pull_request_read` → `get_check_runs` on #125); if green the operator merges it, then recreate
-> the work branch from fresh main. **Container setup FIRST:** `pip install -e '.[dev]'` into the
-> env, and drive the gate with **`python -m pytest`** (the PATH `pytest` is a separate uv tool
-> that can't see the editable install). Gate: `ruff check .` ; `ruff format --check .` ;
+> **`main` is at #125 (`6dd3e7e`), green; there is NO open PR.** This session shipped a long
+> operator backlog (#116–#125, ADRs 0059–0067). Recreate the work branch from fresh main, then
+> start the first REMAINING item below (the **bugs** first). **Container setup FIRST:**
+> `pip install -e '.[dev]'` into the env, and drive the gate with **`python -m pytest`** (the PATH
+> `pytest` is a separate uv tool that can't see the editable install). Gate: `ruff check .` ;
+> `ruff format --check .` ;
 > `python -m mypy` ; `python -m pytest --cov=schedule_forensics --cov-fail-under=70` ;
 > `coverage report --include='*/schedule_forensics/engine/*' --fail-under=85` ;
 > `python -m pytest -m parity` (10/10, non-negotiable) ; `bandit -q -r src`.
@@ -22,7 +22,7 @@
 >    bottom-right (no title overlap).
 > 8. ~~Fuse workbook validation~~ — **MERGED #123, ADR-0066** (`docs/FUSE-VALIDATION.md`): tool
 >    matches Fuse exactly on normal-completion (8/8) + TP4 v1–v4 finish; diffs documented.
-> 9. **Fuse Ribbon metrics — OPEN PR #125, ADR-0067.** `engine/metrics/ribbon.py` + `/ribbon`
+> 9. ~~Fuse Ribbon metrics~~ — **MERGED #125, ADR-0067.** `engine/metrics/ribbon.py` + `/ribbon`
 >    view, calibrated to Fuse: Logic Density™ (2L/N), Merge Hotspot (>2 preds), Missing Logic
 >    (all open-ends), Critical (incomplete on path), Hard/NegFloat/Lags/Leads (DCMA), Avg/Max float.
 >
@@ -634,11 +634,10 @@ The original backlog, for the record:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first — work the OPERATOR
-> BACKLOG in its listed order. `main` is green at **#124**; there is **one OPEN draft PR: #125
-> (ADR-0067, Fuse Ribbon metrics)** — check its CI (github MCP `pull_request_read` →
-> `get_check_runs` on #125); if green I'll merge it, then recreate the work branch from fresh
-> main (`git fetch origin main && git checkout -B <fresh-branch> origin/main`). Then tackle the
-> REMAINING items, **bugs first**: (A) the Path Analysis driving/secondary/tertiary-to-target
+> BACKLOG in its listed order. `main` is green & current at **#125** with **no open PR**.
+> Recreate the work branch from fresh main (`git fetch origin main && git checkout -B
+> <fresh-branch> origin/main`), then tackle the REMAINING items, **bugs first**: (A) the Path
+> Analysis driving/secondary/tertiary-to-target
 > chart is wrong (`path.js` + `/api/driving`) and the `/analysis` driving-path + project-schedule
 > Gantt scaling is wrong (it's %-squeezed with no adjustable scale — convert to the `/path`
 > px-per-day + scroll model); **I owe you a question — please attach a screenshot of the wrong
