@@ -85,6 +85,7 @@ from schedule_forensics.engine.month_curves import MonthCurves, compute_month_cu
 from schedule_forensics.engine.path_counterfactual import compute_path_counterfactual
 from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.recommendations import Finding
+from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.trend import compute_quality_trend, order_versions
 from schedule_forensics.importers import (
     MAX_FILES,
@@ -140,7 +141,7 @@ _LAYOUT = Template(
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
-<a href="/evolution">Critical-Path Evolution</a>
+<a href="/scurve">S-Curve</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -953,6 +954,33 @@ def create_app(
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_cei_data(wave))
+
+    @app.get("/scurve", response_class=HTMLResponse)
+    def scurve_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "S-Curve",
+                "<div class=panel>Load a schedule to see the cumulative progress S-curve "
+                "(load several versions to animate it over time).</div>",
+            )
+        try:
+            sc = compute_s_curve([s for _, s in st.ordered_versions()])
+        except ValueError as exc:
+            return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
+        return _page(st, "S-Curve", _scurve_body(sc))
+
+    @app.get("/api/scurve")
+    def scurve_json() -> JSONResponse:
+        st = session()
+        if not st.schedules:
+            return JSONResponse({"error": "no schedule loaded"}, status_code=400)
+        try:
+            sc = compute_s_curve([s for _, s in st.ordered_versions()])
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_scurve_data(sc))
 
     @app.get("/evolution", response_class=HTMLResponse)
     def evolution_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -2811,6 +2839,42 @@ how many of those planned activities actually finished by the end of it. CEI = c
 <table><tr><th>Snapshot</th><th>Period</th><th>Previously planned</th><th>Re-scheduled</th>
 <th>Actually finished</th><th>CEI</th></tr>{rows}</table></div>
 <script src="/static/cei.js"></script>"""
+
+
+def _scurve_body(sc: SCurve) -> str:
+    """The animated S-curve view: cumulative planned vs actual/forecast progress per version."""
+    return """
+<div class=panel><h2>S-Curve &mdash; cumulative progress</h2>
+<p class=muted>Each version's cumulative progress on a fixed 0&ndash;100% scale: <b>gold</b> =
+planned (share of activities the baseline had finishing by each month), <b>blue</b> =
+actual / forecast (share whose actual or scheduled finish lands by each month). The dashed
+line is that version's data date &mdash; actuals to its left, forecast to its right; the blue
+curve sitting below the gold at the data date is work behind plan. Step through the versions
+or press Auto-play to watch the actual curve climb (and lag) over time.</p>
+<div class=viz-controls>
+<button id=prevScurve type=button>&#9664; Prev</button>
+<span id=scurveLabel class=muted></span>
+<button id=nextScurve type=button>Next &#9654;</button>
+<button id=scurvePlay type=button>&#9654; Auto-play</button>
+</div>
+<div id=scurveChart class=chart-host></div></div>
+<script src="/static/scurve.js"></script>"""
+
+
+def _scurve_data(sc: SCurve) -> dict[str, object]:
+    return {
+        "months": list(sc.month_labels),
+        "versions": [
+            {
+                "label": v.label,
+                "status_index": v.status_index,
+                "activities": v.activities,
+                "planned": list(v.planned),
+                "actual": list(v.actual),
+            }
+            for v in sc.versions
+        ],
+    }
 
 
 def _cei_data(wave: BowWave) -> dict[str, object]:
