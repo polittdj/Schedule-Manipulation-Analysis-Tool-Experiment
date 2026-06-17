@@ -1,24 +1,30 @@
-# Handoff — 2026-06-16 (PRs #81–#101 MERGED; **PR #102 OPEN — M18 item 8**; **M18 COMPLETE**)
+# Handoff — 2026-06-17 (PRs #81–#113 MERGED; **`main` green & current at #113 — no open PR**; M18 COMPLETE + tab-visuals tranche shipped)
 
 > ## START HERE (next session)
-> 1. **PR #102 (ADR-0046) — M18 item 8 (forecast explainer + Trend drill-down/animation +
->    Excel series) — is OPEN** on branch `claude/hopeful-keller-u3ia8g`. Check its CI (github
->    MCP `pull_request_read` → `get_check_runs` on PR #102). If green, the operator merges it;
->    then **recreate the work branch from fresh main** before any new work:
->    `git fetch origin main && git checkout -B <fresh-branch> origin/main`. If CI is red, fix it
->    (run the **CI-exact** gate locally — see the PROCESS note below). **The preinstalled `.venv`
->    was again missing the web/dev deps this sitting — run `pip install -e '.[dev]'` into `.venv`
->    FIRST or the gate's mypy/pytest/parity/bandit all spuriously fail.**
-> 2. **M18 is COMPLETE — items 1–8 all shipped. No feature backlog remains.** The open
->    follow-ups are VERIFICATION / real-data items, none blocking:
->    - **Re-deposit the reference `.mpp`s** — a fresh container has an empty
->      `00_REFERENCE_INTAKE/mpp/` (git-ignored; never travels between sessions). To re-verify,
->      ask the operator to re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and
+> 1. **Nothing is pending — `main` is green at PR #113 (ADR-0057).** The previous handoff
+>    called PR #102 "OPEN"; it has since merged (as `f9b5b10`), and **PRs #103–#113 landed
+>    after it** (ADRs 0047–0057, the post-M18 "tab visuals" / operator-feedback tranche — see
+>    "What shipped — PRs #103–#113" below). Verified locally this sitting (2026-06-17):
+>    **849 passed, 3 skipped; parity 10/10; engine 97%; ruff/format/mypy/bandit clean.**
+>    Recreate the work branch from fresh main before any new work:
+>    `git fetch origin main && git checkout -B <fresh-branch> origin/main`.
+>    **Container gotchas:** the preinstalled `.venv` ships WITHOUT the web/dev deps — run
+>    `pip install -e '.[dev]'` FIRST or the gate's mypy/pytest/parity/bandit all spuriously
+>    fail. And the PATH `pytest` is a separate uv tool that cannot see the editable install —
+>    drive the gate with **`python -m pytest`**, not bare `pytest`.
+> 2. **M18 is COMPLETE (items 1–8) AND the operator's tab-visuals follow-ups (#103–#113) are
+>    done. No feature backlog remains.** The open follow-ups are VERIFICATION / real-data
+>    items, none blocking:
+>    - **Re-deposit the reference `.mpp`s** — a fresh container has no `00_REFERENCE_INTAKE/mpp/`
+>      directory at all (git-ignored; never travels between sessions). To re-verify, ask the
+>      operator to re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and
 >      `Project2_Duration_Bomb.mpp`, then confirm Duration Bomb finish **2027-02-24** (ADR-0043)
 >      and Large-File driving tiers matching SSI (ADR-0045).
->    - **Real-file feedback** — watch how Path Analysis, ask-the-AI, float bands, `/forecast`
->      (now with the explainer), and the new `/trend` drill-down read on real `.mpp`/`.xer`.
->      Importer tolerance lives in `importers/_common.py`; ALWAYS re-run `pytest -m parity`.
+>    - **Real-file feedback** — watch how Path Analysis, Critical-Path Evolution (now with grid
+>      columns / zoom / filter-by-path / specific reasons), ask-the-AI, float bands, `/forecast`
+>      (with the explainer), `/trend` drill-down, and the Dashboard health cards read on real
+>      `.mpp`/`.xer`. Importer tolerance lives in `importers/_common.py`; ALWAYS re-run
+>      `pytest -m parity`.
 >    - **Deck measures awaiting a DAX export** (EPI / RatioMeasure / Start-and-Finish Ratio) —
 >      implement exactly when the operator provides the measure text; do not guess.
 >
@@ -28,6 +34,45 @@
 > CI-exact gate and read each exit code:** `ruff check .` ; `ruff format --check .` ; `mypy`
 > (BARE — that's what CI runs, src only; do NOT add `tests`, which has known mypy noise CI
 > never checks) ; `pytest --cov=schedule_forensics --cov-fail-under=70` ; `pytest -m parity`.
+
+## What shipped — PRs #103–#113 (post-M18 "tab visuals" / operator feedback, 2026-06-16→17)
+All merged to `main`; `main` is green at #113. These are the operator's "tab visuals"
+follow-ups after M18 closed — the previous handoff stopped recording at #102, so this section
+restores the record. Newest first:
+- **#113 (ADR-0057)** — Critical-Path Evolution **reason specificity**: entered/left
+  attribution now NAMES the specific slip (which activity consumed the float), CITES the exact
+  predecessor/successor link(s) for `logic_added`/`logic_removed`, and shows the signed
+  duration delta + percent for `duration_up`/`duration_down`.
+- **#112 (ADR-0056)** — Evolution **filter-by-path**: a selector with four switchable modes
+  scoping which activities the Gantt shows; applied to both critical rows and the dashed
+  "left the path" ghost rows, composed after the hide-completed filter.
+- **#111 (ADR-0055)** — Evolution **axis zoom/pan + target-UID focus** (`/evolution?target=`,
+  mirrors `/trend?target=`; the session-wide target carries over across views).
+- **#110 (ADR-0054)** — Evolution **per-activity grid columns** (% complete / duration /
+  start / finish), smaller wrapped readable names, and the view's own **hide-completed** toggle.
+- **#109 (ADR-0053)** — **schedules listed earliest→latest data date in EVERY view**
+  (`SessionState.ordered_versions()` via `engine/trend.order_versions`; undated keep load order).
+- **#108 (ADR-0052)** — **CEI re-verification**: there are TWO distinct indices both named
+  "CEI" — EVM CEI (`engine/metrics/evm.py`) vs Bow-Wave CEI (`engine/bow_wave.py`, `/cei`).
+  Both re-derived from first principles against the golden Acumen exports and **pinned to exact
+  golden values** (replacing weak `is not None` assertions).
+- **#107 (ADR-0051)** — **hide-completed robust flag**: real `.mpp`/`.xer` exports report a
+  finished activity at 99.x% (MSP rounding / XER `CP_Units`) while carrying an actual finish, so
+  `percent>=100` left done tasks visible. The toggle now keys on a robust complete flag (goldens
+  are exactly 100.0, which masked the bug); behavior unified everywhere it appears.
+- **#106 (ADR-0050)** — **Dashboard health cards**: `/api/dashboard` (`_dashboard_data`) — one
+  health snapshot per loaded schedule (status mix, critical %, finish vs baseline, DCMA
+  pass/fail) that clicks through to the detailed report; reuses the cached `_Analysis` (no
+  CPM recompute).
+- **#105 (ADR-0049)** — **every chart carries a legend + description; labels de-overlapped**
+  (`trend.js` was the worst offender — no legend, no per-chart description, unthinned rotated
+  x-labels smearing on 10+ version workbooks).
+- **#104 (ADR-0048)** — Critical-Path **Evolution Gantt + entered/left attribution**: bars
+  instead of a flat list, strong visual emphasis on added/removed activities, and a per-activity
+  reason (logic change / new task / duration change / constraint).
+- **#103 (ADR-0047)** — **Ask-the-AI relevance fix**: `relevant_facts` no longer padded every
+  answer with the same leading facts, so the Null-backend answer is now question-specific
+  (air-gap unchanged — no LLM prose ever leaves the machine).
 
 > **SSI DRIVING-SLACK PARITY FIX (ADR-0045) — DONE + VERIFIED, shipped as PR #101.**
 > Operator compared the tool's Path Analysis vs SSI on `Large Test File.mpp` (USA OTB Master
@@ -192,9 +237,10 @@ the template tasks. Model/mode: Fable 5 (1M context).
 
 ## Repo / branch / PR mechanics (how this build runs)
 - Repo: `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment`. Everything ships to **`main`** via PRs.
-- Work branch is always **`claude/clever-carson-uovtkk`**, recreated from `origin/main` for each new PR
-  (the prior branch is deleted on squash-merge). To start fresh work:
-  `git fetch origin main && git checkout -B claude/clever-carson-uovtkk origin/main`.
+- The harness assigns a fresh work branch each session (this sitting:
+  `claude/inspiring-davinci-tez1dv`). Recreate it from `origin/main` for each new PR (the prior
+  branch is deleted on squash-merge). To start fresh work:
+  `git fetch origin main && git checkout -B <fresh-branch> origin/main`.
 - Commit identity must be `Claude <noreply@anthropic.com>` (a Stop hook checks this — if it flags
   unverified commits run `git config user.email noreply@anthropic.com && git config user.name Claude`
   then `git rebase --exec "git commit --amend --no-edit --reset-author" origin/main`). **Force-push is
@@ -414,21 +460,24 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**818 passed, 3 skipped; parity 10/10; engine ≈97%; overall ≈96%; egress + air-gap green; bandit/pip-
-audit clean (3.11 + 3.13).** Verify locally:
-`ruff check . && ruff format --check . && python -m mypy && pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && pytest -m parity && bandit -q -r src`.
-(In a fresh remote container run `pip install -e '.[dev]'` into `.venv` first — the preinstalled
-venv has been missing the web deps.)
+**849 passed, 3 skipped; parity 10/10; engine 97%; overall 96.2%; egress + air-gap green; bandit
+clean.** Re-verified locally 2026-06-17 at `main`==#113 (`6b374c9`); CI also runs pip-audit on
+3.11 + 3.13. Verify locally:
+`ruff check . && ruff format --check . && python -m mypy && python -m pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && python -m pytest -m parity && bandit -q -r src`.
+(In a fresh remote container run `pip install -e '.[dev]'` into `.venv` FIRST — the preinstalled
+venv ships without the web/dev deps. Use `python -m pytest`, not bare `pytest`: the PATH `pytest`
+is a separate uv tool that cannot see the editable install.)
 
-## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12)
+## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12) — **COMPLETE**
 
-**START HERE: merge/verify PR #94** (M18 item 6, PBIX page 1 — ADR-0038: the
-`/card/{name}` Schedule Card + the constraint-distribution / activity-makeup helpers).
-**Then ask the operator to re-deposit the Duration Bomb .mpp** (00_REFERENCE_INTAKE/
-is empty in a fresh container) and verify the #91 mandate: computed finish
-**2027-03-04** (was 8/5/2026), completed tasks visible on /path at their actual dates,
-the "dates not supported by logic" finding counting/citing the template tasks, and the
-hide-100% toggle acting on real rows. Continue the backlog in this order:
+**ALL EIGHT M18 ITEMS SHIPPED (see the strikethroughs below); the post-M18 tab-visuals
+follow-ups #103–#113 are also merged.** This section is retained as the work-order record.
+The only outstanding verification is real-data: re-deposit `Project2_Duration_Bomb.mpp` and
+confirm the ADR-0043 computed finish **2027-02-24** (the pre-ADR-0043 mandate below quoted
+2027-03-04 / 8-5-2026 — superseded once summary logic was lowered; see ADR-0043), completed
+tasks visible on /path at their actual dates, the "dates not supported by logic" finding
+citing the template tasks, and the hide-completed toggle (ADR-0051) acting on real rows.
+The original backlog, for the record:
 
 1. ~~Path Analysis completed tasks never show~~ (PR #91, merged; Duration Bomb
    re-verification owed, see above).
@@ -482,18 +531,18 @@ hide-100% toggle acting on real rows. Continue the backlog in this order:
 
 ## Resume command for a NEW session
 Paste this as the first message:
-> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first and work the
-> M18 backlog in its listed order — start by checking PR #94 (item 6 PBIX page 1
-> complete: the /card Schedule Card; open at handoff), then the Duration Bomb
-> re-verification (re-deposit needed: computed finish must read 3/4/2027, completed
-> tasks on /path, the new logic finding), then continue PBIX item 6 (next pages:
-> Cross File Comparison, Float Analysis, the month curves — docs/PLAN/PBIX-VISUALS.md).
-> Stay on branch
-> `claude/clever-carson-uovtkk` (recreate from
-> origin/main with `git fetch origin main && git checkout -B claude/clever-carson-uovtkk
-> origin/main` after EVERY merge). Run `pip install -e '.[dev]'` into `.venv` first if
-> tools are missing. Keep `pytest -m parity` at 10/10, run bandit UNPIPED, open draft
-> PRs (don't merge — I do that), and never let schedule data leave the machine.
-> The Duration Bomb .mpp and the SemanticModel zip live in 00_REFERENCE_INTAKE/ on the
-> machine that received them — ask me to re-deposit if a fresh container needs them.
-> Model: Opus 4.8 (1M context).
+> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first. `main` is green and
+> current at PR #113 (ADR-0057); M18 (items 1–8) and the operator's tab-visuals follow-ups
+> (#103–#113) are all merged, so there is **no open PR and no feature backlog** — the remaining
+> work is verification/real-data only. If the operator re-deposits the reference `.mpp`s
+> (`00_REFERENCE_INTAKE/` is empty in a fresh container — the `.mpp`s and the SemanticModel zip
+> live on the machine that received them; ask me to re-deposit), verify the Duration Bomb
+> computes **2027-02-24** (ADR-0043) and the Large File's driving tiers match SSI (ADR-0045);
+> otherwise watch how the live surfaces (Path Analysis, Critical-Path Evolution, ask-the-AI,
+> float bands, /forecast, /trend, Dashboard cards) read on real `.mpp`/`.xer`. Recreate the
+> harness-assigned work branch from fresh main (`git fetch origin main && git checkout -B
+> <fresh-branch> origin/main`) after EVERY merge. Run `pip install -e '.[dev]'` into `.venv`
+> first if tools are missing, and drive the gate with `python -m pytest` (the PATH `pytest` is a
+> separate uv tool that can't see the editable install). Keep `pytest -m parity` at 10/10, run
+> bandit UNPIPED, open draft PRs (don't merge — I do that), and never let schedule data leave
+> the machine. Model: Opus 4.8 (1M context).
