@@ -13,6 +13,7 @@ from schedule_forensics.engine.path_evolution import (
     _classify_entered,
     _classify_left,
     _links_touching,
+    _PairContext,
     compute_path_evolution,
 )
 from schedule_forensics.model.relationship import Relationship
@@ -98,6 +99,14 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     assert first.entered_changes == () and first.left_changes == ()
     assert {c.uid for c in second.left_changes} == set(second.left)
     assert {c.reason for c in second.left_changes} <= {"completed", "gained_float"}
+    # ADR-0057 — the detail (chip hover) is specific: completed cites progress %, and
+    # gained_float quantifies the float-relevant movement vs the project finish.
+    for c in second.left_changes:
+        assert c.detail
+        if c.reason == "completed":
+            assert "%" in c.detail
+        if c.reason == "gained_float":
+            assert "project finish moved" in c.detail
 
 
 def _sched(tasks: list[Task], rels: list[Relationship] | None = None) -> Schedule:
@@ -229,3 +238,115 @@ def test_left_attribution_reasons() -> None:
         )
         == "gained_float"
     )
+
+
+# --- ADR-0057: reason specificity (the chip-hover detail) ------------------------------------
+
+
+def _entered(uid: int, prior: Schedule, cur: Schedule, ctx: _PairContext | None = None):
+    return _classify_entered(uid, cur, prior, _links_touching(cur), _links_touching(prior), ctx)
+
+
+def _left(uid: int, prior: Schedule, cur: Schedule, ctx: _PairContext | None = None):
+    return _classify_left(uid, cur, prior, _links_touching(cur), _links_touching(prior), ctx)
+
+
+def test_duration_detail_is_quantified() -> None:
+    """duration_up / duration_down cite the signed working-day delta, from→to, and percent."""
+    up = _entered(
+        2,
+        _sched([Task(unique_id=2, name="B", duration_minutes=DAY)]),
+        _sched([Task(unique_id=2, name="B", duration_minutes=3 * DAY)]),
+    )
+    assert up.reason == "duration_up"
+    assert "+2wd" in up.detail and "1wd → 3wd" in up.detail and "+200%" in up.detail
+
+    down = _left(
+        1,
+        _sched([Task(unique_id=1, name="A", duration_minutes=4 * DAY)]),
+        _sched([Task(unique_id=1, name="A", duration_minutes=DAY)]),
+    )
+    assert down.reason == "duration_down"
+    assert "-3wd" in down.detail and "4wd → 1wd" in down.detail and "-75%" in down.detail
+
+
+def test_logic_added_detail_cites_the_predecessor_link() -> None:
+    d = Task(unique_id=4, name="Design", duration_minutes=DAY)
+    e = Task(unique_id=5, name="Build", duration_minutes=DAY)
+    pc = _entered(
+        5, _sched([d, e]), _sched([d, e], [Relationship(predecessor_id=4, successor_id=5)])
+    )
+    assert pc.reason == "logic_added"
+    # an inbound predecessor link, naming the other endpoint + UID + type
+    assert "←" in pc.detail and "Design" in pc.detail and "UID 4" in pc.detail and "FS" in pc.detail
+
+
+def test_logic_removed_detail_cites_the_link() -> None:
+    p = Task(unique_id=1, name="Procure", duration_minutes=DAY)
+    q = Task(unique_id=2, name="Install", duration_minutes=DAY)
+    pc = _left(2, _sched([p, q], [Relationship(predecessor_id=1, successor_id=2)]), _sched([p, q]))
+    assert pc.reason == "logic_removed"
+    assert "←" in pc.detail and "Procure" in pc.detail and "UID 1" in pc.detail
+
+
+def test_logic_detail_caps_at_three_links() -> None:
+    hub = Task(unique_id=10, name="Hub", duration_minutes=DAY)
+    preds = [Task(unique_id=u, name=f"P{u}", duration_minutes=DAY) for u in range(1, 6)]
+    rels = [Relationship(predecessor_id=u, successor_id=10) for u in range(1, 6)]
+    pc = _entered(10, _sched([hub, *preds]), _sched([hub, *preds], rels))
+    assert pc.reason == "logic_added"
+    assert pc.detail.startswith("5 logic links added:") and "(+2 more)" in pc.detail
+
+
+def test_slack_consumed_names_the_upstream_slip() -> None:
+    """The unchanged activity that became critical names the upstream predecessor that slipped."""
+    a = Task(unique_id=1, name="Pour Slab", duration_minutes=DAY)
+    b = Task(unique_id=2, name="Inspect", duration_minutes=DAY)
+    ctx = _PairContext(slip_days={1: 5, 2: 0}, cur_preds={2: (1,)}, finish_delta_days=5)
+    pc = _entered(2, _sched([a, b]), _sched([a, b]), ctx)
+    assert pc.reason == "slack_consumed"
+    assert "Pour Slab" in pc.detail and "UID 1" in pc.detail and "5d later" in pc.detail
+
+
+def test_slack_consumed_falls_back_to_the_largest_slip() -> None:
+    """With no slipping predecessor, name the largest slip anywhere (honestly 'elsewhere')."""
+    b = Task(unique_id=2, name="Inspect", duration_minutes=DAY)
+    x = Task(unique_id=9, name="Far Away", duration_minutes=DAY)
+    ctx = _PairContext(slip_days={2: 0, 9: 7}, cur_preds={}, finish_delta_days=7)
+    pc = _entered(2, _sched([b, x]), _sched([b, x]), ctx)
+    assert pc.reason == "slack_consumed"
+    assert "Far Away" in pc.detail and "+7d" in pc.detail
+
+
+def test_slack_consumed_stays_generic_without_context() -> None:
+    """No movement context (the direct-call path) keeps the honest generic phrasing."""
+    f = Task(unique_id=6, name="F", duration_minutes=DAY)
+    pc = _entered(6, _sched([f]), _sched([f]))
+    assert pc.reason == "slack_consumed" and "slip elsewhere" in pc.detail
+
+
+def test_gained_float_quantifies_the_movement() -> None:
+    a = Task(unique_id=1, name="A", duration_minutes=DAY)
+    ctx = _PairContext(slip_days={1: 3}, cur_preds={}, finish_delta_days=99)
+    pc = _left(1, _sched([a]), _sched([a]), ctx)
+    assert pc.reason == "gained_float"
+    assert "+3d" in pc.detail and "project finish moved +99d" in pc.detail
+
+
+def test_completed_detail_cites_progress_and_finish() -> None:
+    prior = _sched([Task(unique_id=1, name="A", duration_minutes=DAY)])
+    cur = _sched(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                percent_complete=100.0,
+                actual_start=MON,
+                actual_finish=MON,
+            )
+        ]
+    )
+    pc = _left(1, prior, cur)
+    assert pc.reason == "completed"
+    assert "100%" in pc.detail and "finished 2025-01-06" in pc.detail
