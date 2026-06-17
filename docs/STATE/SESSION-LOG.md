@@ -1583,3 +1583,57 @@ this file is the running history.
 ### Parity / tests
 - **818 passed, 3 skipped** (5 new); parity 10/10; engine cov 97%; ruff/format/mypy/
   bandit(unpiped) all clean with explicit exit code 0.
+
+## Post-M18 tab-visuals tranche (#103–#113) + state-doc reconciliation — 2026-06-17 (Opus 4.8)
+
+This entry restores the record: the previous SESSION-LOG / HANDOFF stopped at PR #102, but
+`main` advanced through **PR #113** while the durable state was never refreshed. A verification
+session caught the drift (a guard test now prevents a recurrence — see below), re-ran the full
+CI-exact gate against `main`==#113 (`6b374c9`), and brought HANDOFF.md current.
+
+### What had merged but was unrecorded — the operator's "tab visuals" follow-ups (newest first)
+- **#113 (ADR-0057)** — Critical-Path Evolution reason specificity: name the slip that consumed
+  the float, cite the exact predecessor/successor link(s) for logic added/removed, show the
+  signed duration delta + percent.
+- **#112 (ADR-0056)** — Evolution filter-by-path: a four-mode switchable selector scoping which
+  activities the Gantt shows (critical rows + "left the path" ghost rows).
+- **#111 (ADR-0055)** — Evolution axis zoom/pan + target-UID focus (`?target=`, session target
+  carries over).
+- **#110 (ADR-0054)** — Evolution per-activity grid columns (% / duration / start / finish),
+  wrapped readable names, view-local hide-completed.
+- **#109 (ADR-0053)** — schedules listed earliest→latest data date in EVERY view
+  (`SessionState.ordered_versions()`).
+- **#108 (ADR-0052)** — CEI re-verification: two distinct indices both named "CEI" (EVM CEI vs
+  Bow-Wave CEI) separated, re-derived, and pinned to exact golden values.
+- **#107 (ADR-0051)** — hide-completed robust flag (real exports finish at 99.x%; goldens at
+  exactly 100.0 masked the `>=100` bug); unified everywhere.
+- **#106 (ADR-0050)** — Dashboard per-schedule health cards (`/api/dashboard`) clicking through
+  to the report; reuses the cached `_Analysis`.
+- **#105 (ADR-0049)** — every chart carries a legend + description; de-overlapped labels
+  (`trend.js` was the worst offender).
+- **#104 (ADR-0048)** — Critical-Path Evolution Gantt + entered/left attribution (bars; per-
+  activity reason).
+- **#103 (ADR-0047)** — Ask-the-AI relevance fix: `relevant_facts` no longer pads every answer
+  with the same leading facts; air-gap unchanged.
+
+### Verification session (this sitting)
+- Installed `pip install -e '.[dev]'` (preinstalled `.venv` again shipped without web/dev deps).
+- Found the PATH `pytest` is a separate uv tool that cannot see the editable install → drove the
+  gate with `python -m pytest`. Recorded both gotchas in HANDOFF's START HERE.
+- Re-ran the full CI-exact gate on `main`==#113: ruff/format/mypy clean; **849 passed, 3 skipped**;
+  overall cov 96.2%; engine cov 97% (≥85); **parity 10/10**; bandit clean. All exit codes 0.
+- Spot-verified HANDOFF behavioral claims against code: the ADR-0045 SPAN-snap is present in
+  `engine/driving_slack.py`; the reference `.mpp`s are genuinely absent (`00_REFERENCE_INTAKE/`
+  has no `mpp/` dir) so Duration-Bomb / Large-File re-verification still needs an operator
+  re-deposit (unchanged).
+- **Root-cause fix for the drift:** added `tests/test_state_docs.py::test_handoff_references_latest_adr`,
+  which fails unless HANDOFF.md mentions the highest ADR on disk — pinning the durable state to
+  the decision record so a future session cannot silently fall behind again. Verified red against
+  the stale handoff (mentioned ADR-0046; disk had ADR-0057), then green after the refresh.
+- Rewrote HANDOFF's header, START HERE, branch mechanics, Green state, the M18 work-order
+  header, and the resume command to reflect `main`==#113; added a "What shipped — PRs #103–#113"
+  section. No source/engine behavior changed.
+
+### Parity / tests
+- **850 passed, 3 skipped** (1 new: the state-doc guard); parity 10/10; engine cov 97%;
+  ruff/format/mypy/bandit(unpiped) all clean with explicit exit code 0.
