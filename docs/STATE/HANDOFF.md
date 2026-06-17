@@ -1,27 +1,29 @@
-# Handoff — 2026-06-17 (PRs #81–#120 MERGED; **one OPEN draft PR: ADR-0064 — DCMA definitions on the Analysis page**; M18 + tab-visuals + loopback hardening + Ask-AI + chart full-screen/zoom + Target-UID + path counterfactual + Diagnostic-Brief-trends shipped)
+# Handoff — 2026-06-17 (PRs #81–#121 MERGED; **one OPEN draft PR: ADR-0065 — animated S-Curve**; M18 + tab-visuals + loopback hardening + Ask-AI + chart full-screen/zoom + Target-UID + path counterfactual + Brief-trends + DCMA-defs shipped)
 
 > **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
 > ordered a large set of UI/engine/AI improvements and chose the **start order**. Progress:
 > 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED (#116, ADR-0059).**
-> 2. ~~Chart legibility + zoom/fullscreen + legends on ALL charts~~ — **MERGED (#117, ADR-0060).**
+> 2. ~~Chart legibility + zoom/fullscreen + legends~~ — **MERGED (#117, ADR-0060).**
 > 3. ~~Target-UID drives every page~~ — **MERGED (#118, ADR-0061)** (still not target-aware,
 >    own later PRs: /forecast /curves /cei + /briefing + /dashboard).
-> 4. ~~Critical-path removal & "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)**
->    (`engine/path_counterfactual.py`; "What-if" panel on /evolution).
-> 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED (#120, ADR-0063)** (`ai/brief.py`
->    "Trends over time" + "Risks, opportunities, and recovery plan" sections).
-> 8. **DCMA 1–14 definitions on the Interactive Analysis page — THIS PR, ADR-0064.** The DCMA
->    table gains a "What it measures (how)" column from `web/help.py` METRIC_DICTIONARY +
->    a link to /help. (Did item 8 ahead of 6/7 — small + fully testable.)
+> 4. ~~Critical-path "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)** (/evolution What-if).
+> 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED (#120, ADR-0063)**.
+> 8. ~~DCMA 1–14 definitions on the Analysis page~~ — **MERGED (#121, ADR-0064)**.
+> 9. **Animated S-Curve — THIS PR, ADR-0065.** New `engine/s_curve.py` `compute_s_curve`
+>    (cumulative planned-baseline vs actual/forecast % over a shared month axis) + `/scurve`
+>    page + `static/scurve.js` (Prev/Next/Auto-play stepper, locked 0–100% axis, data-date
+>    marker, legend) + `.chart-host` (fullscreen/zoom) + nav link.
 > Remaining, each its own tested/parity-green draft PR:
 > 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide
 >    legend** (curves.js + /api/curves) + readable filenames.
 > 7. Bow-Wave (cei.js) running totals + target-UID highlight during animation.
-> 9. **NEW (operator, 2026-06-17): an ANIMATED S-Curve chart** of cumulative progress for the
->    schedules — planned/baseline vs actual cumulative % (or work) over time, animated (a
->    Bow-Wave-style stepper over versions, and/or the curve drawing over the timeline). Likely a
->    new `engine/s_curve.py` (cumulative buckets per version, reuse `engine/month_axis.py`) + a
->    `/scurve` page + `static/scurve.js` + `.chart-host` (so it gets fullscreen/zoom).
+> 10. **NEW (operator, 2026-06-17): on the page reached by clicking a project from the dashboard
+>    (Interactive Analysis /analysis), add a Primary/Secondary/Tertiary PATH filter + a
+>    hide-completed toggle + an adjustable time scale + full task names with text wrapping on the
+>    Gantt.** NOTE: /path already has driving tiers (DRIVING/SECONDARY/TERTIARY via
+>    `/api/driving` + `compute_driving_slack`), hide-100%, and a px/day-zoom Gantt — so plan is to
+>    bring those controls (and wrapped full names) to the /analysis Gantt (app.js). Confirm with
+>    operator if they actually meant the /path page. (Asked; awaiting confirmation — defaulting to /analysis.)
 > **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.** A full
 > read-only map of the chart/target/evolution/briefing/DCMA code is in this session's notes.
 
