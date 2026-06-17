@@ -144,6 +144,7 @@ b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-lef
 /* Chart legibility (operator request): every chart carries a one-line description + a
    color-key legend; swatches reuse theme colors and recolor live with the theme. */
 .chart-desc { font-size: 12px; color: var(--muted); margin: 2px 0 4px; line-height: 1.35; }
+.dcma-def { font-size: 12px; line-height: 1.35; max-width: 30em; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 2px; font-size: 11px; color: var(--muted); }
 .chart-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .chart-swatch { display: inline-block; width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }

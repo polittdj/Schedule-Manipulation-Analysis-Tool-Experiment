@@ -2190,6 +2190,18 @@ def _wbs_data(groups: tuple[WBSGroup, ...]) -> dict[str, object]:
     }
 
 
+def _dcma_definition_cell(metric_id: str) -> str:
+    """The 'what it measures (how)' cell for a DCMA row, from the in-tool metric dictionary —
+    plain-language definition + the formula/threshold, so each score is explained in place."""
+    doc = METRIC_DICTIONARY.get(metric_id)
+    if doc is None:
+        return "<td></td>"
+    return (
+        f"<td class=dcma-def>{_e(doc.definition)} "
+        f"<span class=muted>How: {_e(doc.formula)}</span></td>"
+    )
+
+
 def _analysis_body(
     key: str,
     sch: Schedule,
@@ -2201,6 +2213,7 @@ def _analysis_body(
     audit_rows = "".join(
         f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
         f"<td>{_e(round(c.value, 1))}{_e(c.unit)}</td>"
+        f"{_dcma_definition_cell(c.metric_id)}"
         f"<td class=muted>{_e(c.suggested_improvement)}</td></tr>"
         for c in audit.checks
     )
@@ -2237,8 +2250,11 @@ metadata)</span></h3>
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
-<p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A</p>
-<table><tr><th>Check</th><th>Status</th><th>Value</th><th>Suggested improvement</th></tr>{audit_rows}</table></div>
+<p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
+Each row defines the check and how it is measured; full formulas + citations are in the
+<a href="/help">Metric Dictionary</a>.</p>
+<table><tr><th>Check</th><th>Status</th><th>Value</th><th>What it measures (how)</th>
+<th>Suggested improvement</th></tr>{audit_rows}</table></div>
 <div class=panel><h2>Risks, opportunities &amp; concerns</h2>
 <table><tr><th>Severity</th><th>Type</th><th>Finding</th><th>Course of action</th><th>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
