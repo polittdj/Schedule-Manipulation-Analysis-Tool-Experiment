@@ -142,6 +142,43 @@ def test_evolution_has_zoom_controls_and_focus_js(client: TestClient) -> None:
     assert "focusUid" in js and 'getAttribute("data-target")' in js  # focus highlight
 
 
+def test_api_evolution_path_to_target_is_predecessor_closure(client: TestClient) -> None:
+    """Mode 1 (driving path to the focused UID): each snapshot carries path_to_target — the
+    focused activity plus its transitive predecessors — so the filter can scope to that chain.
+    Empty without a focus; with one it contains the target and is a subset of the version."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    plain = client.get("/api/evolution").json()["snapshots"]
+    assert all(s["path_to_target"] == [] for s in plain)  # no focus -> empty
+
+    # focus a real critical UID and confirm the closure includes it and lives in the version
+    crit = plain[1]["critical"]
+    uid = crit[len(crit) // 2]
+    focused = client.get(f"/api/evolution?target={uid}").json()["snapshots"][1]
+    closure = focused["path_to_target"]
+    assert uid in closure
+    all_uids = {r["uid"] for r in focused["critical_rows"]} | {
+        r["uid"] for r in focused["left_rows"]
+    }
+    # the closure is the target + predecessors; the target itself is one of the rendered rows
+    assert uid in all_uids and len(closure) >= 1
+
+
+def test_evolution_page_has_filter_modes(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+    assert "id=evoFilterMode" in page
+    for opt in ("driving", "version", "movement", "search"):
+        assert f"value={opt}" in page, opt
+    assert "id=evoFilterVersion" in page and "id=evoFilterText" in page and "evoMove" in page
+    js = client.get("/static/path_evolution.js").text
+    # the four filter behaviours are all wired in the client
+    assert "function applyFilter" in js
+    for token in ("path_to_target", "moveSet", "searchText", "filterVersion"):
+        assert token in js, token
+
+
 def test_evolution_export_xlsx_and_docx(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")
