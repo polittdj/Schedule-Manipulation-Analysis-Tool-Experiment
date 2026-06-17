@@ -1,4 +1,4 @@
-# Handoff — 2026-06-17 (PRs #81–#119 MERGED; **one OPEN draft PR: ADR-0063 — Diagnostic Brief trends/risks/recovery**; M18 + tab-visuals + loopback hardening + Ask-AI full-evidence + chart full-screen/zoom + Target-UID-everywhere + path counterfactual shipped)
+# Handoff — 2026-06-17 (PRs #81–#120 MERGED; **one OPEN draft PR: ADR-0064 — DCMA definitions on the Analysis page**; M18 + tab-visuals + loopback hardening + Ask-AI + chart full-screen/zoom + Target-UID + path counterfactual + Diagnostic-Brief-trends shipped)
 
 > **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
 > ordered a large set of UI/engine/AI improvements and chose the **start order**. Progress:
@@ -8,17 +8,20 @@
 >    own later PRs: /forecast /curves /cei + /briefing + /dashboard).
 > 4. ~~Critical-path removal & "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)**
 >    (`engine/path_counterfactual.py`; "What-if" panel on /evolution).
-> 5. **Diagnostic Brief trends/risks/recovery — THIS PR, ADR-0063.** `ai/brief.py` gains a
->    **"Trends over time"** section (finish/completion/critical-count/negative-float movement
->    across versions) + a **"Risks, opportunities, and recovery plan"** section (negative float,
->    high-float open-ends, ahead-of-baseline wins, wide forecast spread — each with a concrete
->    recovery lever). Deterministic + fully cited; page & Word export pick them up generically.
+> 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED (#120, ADR-0063)** (`ai/brief.py`
+>    "Trends over time" + "Risks, opportunities, and recovery plan" sections).
+> 8. **DCMA 1–14 definitions on the Interactive Analysis page — THIS PR, ADR-0064.** The DCMA
+>    table gains a "What it measures (how)" column from `web/help.py` METRIC_DICTIONARY +
+>    a link to /help. (Did item 8 ahead of 6/7 — small + fully testable.)
 > Remaining, each its own tested/parity-green draft PR:
 > 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide
 >    legend** (curves.js + /api/curves) + readable filenames.
 > 7. Bow-Wave (cei.js) running totals + target-UID highlight during animation.
-> 8. Surface the DCMA 1–14 definitions on the Interactive Analysis page (web/help.py
->    METRIC_DICTIONARY exists; /analysis DCMA table at app.py ~2227 — add inline defs/tooltips/links).
+> 9. **NEW (operator, 2026-06-17): an ANIMATED S-Curve chart** of cumulative progress for the
+>    schedules — planned/baseline vs actual cumulative % (or work) over time, animated (a
+>    Bow-Wave-style stepper over versions, and/or the curve drawing over the timeline). Likely a
+>    new `engine/s_curve.py` (cumulative buckets per version, reuse `engine/month_axis.py`) + a
+>    `/scurve` page + `static/scurve.js` + `.chart-host` (so it gets fullscreen/zoom).
 > **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.** A full
 > read-only map of the chart/target/evolution/briefing/DCMA code is in this session's notes.
 

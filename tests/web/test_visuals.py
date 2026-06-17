@@ -103,6 +103,18 @@ def test_analysis_page_wires_the_interactive_viz(client: TestClient) -> None:
     assert "id=gantt" in page and "id=grid" in page and "id=fieldToggles" in page
 
 
+def test_dcma_table_defines_each_check_inline(client: TestClient) -> None:
+    """Operator request: each DCMA 1-14 score on the Interactive Analysis page states what the
+    check is and how it is measured (sourced from the in-tool metric dictionary)."""
+    page = client.get("/analysis/Project5").text
+    assert "What it measures (how)" in page  # the new column
+    # DCMA-01 (Logic) definition + its "how" formula are surfaced in place
+    assert "missing a predecessor and/or successor" in page
+    assert "How:" in page and "incomplete" in page
+    # the panel points at the full Metric Dictionary for the formulas + citations
+    assert 'href="/help"' in page
+
+
 def test_driving_summary_target_returns_note_not_500(client: TestClient) -> None:
     # Project5 UID 0 is the project-summary row: not in the logic network. Tracing it
     # raised KeyError -> 500 (and the session-wide target auto-trace made that constant).
