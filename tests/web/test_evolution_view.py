@@ -41,6 +41,19 @@ def test_evolution_page_has_stepper_controls(client: TestClient) -> None:
     assert "id=evoChart" in page and "/static/path_evolution.js" in page
 
 
+def test_evolution_page_carries_the_counterfactual_panel(client: TestClient) -> None:
+    """The 'what-if' panel reverts the duration/logic/constraint changes that took non-completed
+    activities off the path and reports the finish impact (and explains 'gained float')."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+    assert "What-if: work removed from the critical path" in page
+    assert "gained float" in page.lower()  # the explanation the operator asked for
+    # the panel still renders with the session target UID set
+    client.post("/target", data={"uid": "143", "next_url": "/evolution"})
+    assert "What-if: work removed from the critical path" in client.get("/evolution").text
+
+
 def test_api_evolution_serves_per_version_snapshots(client: TestClient) -> None:
     _upload(client, "Project5")  # load order reversed on purpose
     _upload(client, "Project2")
