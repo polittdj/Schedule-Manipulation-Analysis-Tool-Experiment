@@ -74,6 +74,21 @@ def test_api_evolution_carries_gantt_geometry_and_reasons(client: TestClient) ->
     assert all(r["start"] and r["finish"] for r in second["left_rows"])
 
 
+def test_api_evolution_reason_detail_is_specific(client: TestClient) -> None:
+    """ADR-0057: the entered/left reason detail (the chip hover) is specific — completed cites
+    the progress %, and gained_float quantifies the movement vs the project finish."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    left = client.get("/api/evolution").json()["snapshots"][1]["left_rows"]
+    assert left
+    for r in left:
+        assert r["detail"]  # every left activity carries a hover detail
+        if r["reason"] == "completed":
+            assert "%" in r["detail"]
+        if r["reason"] == "gained_float":
+            assert "project finish moved" in r["detail"]
+
+
 def test_evolution_page_describes_gantt_and_reasons(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")
