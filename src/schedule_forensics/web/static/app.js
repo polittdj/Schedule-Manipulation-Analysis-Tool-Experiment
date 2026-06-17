@@ -187,24 +187,27 @@
     return cell;
   }
 
-  const filters = {}; // field key -> filter text (MS-Project-style per-column filter)
+  // field key -> selected-value Set (MS-Project-style checklist filter); absent/null = all
+  const filters = {};
 
   function rowMatches(act, fields) {
     return fields.every((f) => {
-      const needle = (filters[f.key] || "").trim();
-      if (!needle) return true;
-      const raw = act[f.key];
-      // numeric comparators: >5, <10, =3 (work on the raw value when it is a number)
-      const m = needle.match(/^(>=|<=|>|<|=)\s*(-?\d+(?:\.\d+)?)$/);
-      if (m && typeof raw === "number") {
-        const n = parseFloat(m[2]);
-        if (m[1] === ">") return raw > n;
-        if (m[1] === "<") return raw < n;
-        if (m[1] === ">=") return raw >= n;
-        if (m[1] === "<=") return raw <= n;
-        return raw === n;
-      }
-      return fmt(raw).toLowerCase().includes(needle.toLowerCase());
+      const sel = filters[f.key];
+      if (!sel) return true; // unfiltered (all values selected)
+      return sel.has(fmt(act[f.key])); // an empty Set hides every row
+    });
+  }
+
+  // distinct, sorted (numeric-aware) formatted values of a column — the checklist contents
+  function distinctValues(key) {
+    const seen = new Set();
+    activities.forEach((a) => seen.add(fmt(a[key])));
+    const iso = /^\d{4}-\d\d-\d\d/;
+    return Array.from(seen).sort((a, b) => {
+      if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0; // ISO dates sort lexically
+      const na = parseFloat(a), nb = parseFloat(b);
+      const bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
     });
   }
 
@@ -238,6 +241,7 @@
   }
 
   function renderGrid() {
+    if (window.SFChecklist) SFChecklist.close(); // rebuilding the row discards any open popup
     const grid = document.getElementById("grid");
     const fields = ALL_FIELDS.filter((f) => f.on);
     // the axis spans ALL activities so the scale stays stable as filters/columns change
@@ -269,15 +273,22 @@
       head.appendChild(th);
     }
     thead.appendChild(head);
-    // per-column filter row (type to filter; numbers also take >n, <n, >=n, <=n, =n)
+    // per-column filter row: MS-Project-style checklist dropdowns (select-all / clear / search
+    // the distinct values), replacing the old substring inputs
     const filterRow = el("tr", { class: "filter-row" });
     const tbody = el("tbody");
     fields.forEach((f) => {
       const td = el("td");
-      const input = el("input", { type: "text", placeholder: "filter…", value: filters[f.key] || "" });
-      input.addEventListener("input", () => { filters[f.key] = input.value; renderBody(tbody, fields, axis); });
-      input.addEventListener("click", (ev) => ev.stopPropagation());
-      td.appendChild(input);
+      if (window.SFChecklist) {
+        td.appendChild(SFChecklist.filter({
+          values: distinctValues(f.key),
+          selected: filters[f.key] || null,
+          label: "Filter",
+          title: "Filter " + f.label,
+          onChange: (selSet) => { filters[f.key] = selSet; renderBody(tbody, fields, axis); },
+        }));
+      }
+      td.addEventListener("click", (ev) => ev.stopPropagation());
       filterRow.appendChild(td);
     });
     if (axis) filterRow.appendChild(el("td", { class: "muted" }));
@@ -305,6 +316,7 @@
   }
 
   let lastDriving = null; // re-render the trace when "show completed" / tier / zoom changes
+  let ganttTierSel = null; // checklist selection of tiers to show in the trace (null = all)
 
   function renderGantt(driving) {
     lastDriving = driving;
@@ -321,12 +333,10 @@
     box.appendChild(legend);
     const showDone = document.getElementById("showDone");
     const includeDone = !showDone || showDone.checked;
-    const tierSel = document.getElementById("ganttTier");
-    const tier = tierSel ? tierSel.value : "";
     // waterfall: earliest finish -> latest finish (the server pre-sorts; keep it stable here)
     const rows = driving.rows
       .filter((r) => includeDone || !r.complete)
-      .filter((r) => !tier || r.tier === tier)
+      .filter((r) => !ganttTierSel || ganttTierSel.has(r.tier))
       .slice()
       .sort((a, b) => (a.finish_ord ?? Infinity) - (b.finish_ord ?? Infinity));
     if (!rows.length) {
@@ -406,8 +416,16 @@
   document.getElementById("ganttBtn").addEventListener("click", loadGantt);
   const showDone = document.getElementById("showDone");
   if (showDone) showDone.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
-  const ganttTier = document.getElementById("ganttTier");
-  if (ganttTier) ganttTier.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
+  const ganttTierMount = document.getElementById("ganttTier");
+  if (ganttTierMount && window.SFChecklist) {
+    ganttTierMount.appendChild(SFChecklist.filter({
+      values: ["DRIVING", "SECONDARY", "TERTIARY", "BEYOND"],
+      selected: null,
+      label: "Tier",
+      title: "Show driving-path tiers",
+      onChange: (s) => { ganttTierSel = s; if (lastDriving) renderGantt(lastDriving); },
+    }));
+  }
   // one page-level "pixels per day" zoom rescales BOTH the activity grid timeline and the trace
   const vizZoom = document.getElementById("vizZoom");
   if (vizZoom) vizZoom.addEventListener("input", () => {

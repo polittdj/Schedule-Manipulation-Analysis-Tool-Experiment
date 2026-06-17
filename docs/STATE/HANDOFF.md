@@ -1,12 +1,12 @@
-# Handoff — 2026-06-17 (PRs #81–#126 MERGED; **`main` green & current at #126 (`d468bf8`)**; last CODE PR #125/ADR-0067, #126 = docs reconcile; start the next item)
+# Handoff — 2026-06-17 (PRs #81–#128 MERGED; **`main` green & current at #128 (`3d30c0b`)**; last CODE PR #128/ADR-0068; ADR-0069 = OPEN draft for item B)
 
-> ## START HERE (next session) — re-audited 2026-06-17 (post-#126)
-> **`main` is at #126 (`d468bf8`), fully green.** The last CODE/feature PR was **#125** (Fuse
-> Ribbon, ADR-0067); **#126 was a docs-only HANDOFF reconcile** (no code). The highest ADR on disk
-> is **0067**. If you are reading this on a branch, the only thing that can be open is the docs-sync
-> PR carrying this very edit — it changes no code, so the green feature state is unchanged. This
-> session shipped a long operator backlog (#116–#125, ADRs 0059–0067). Recreate the work branch
-> from fresh main, then start the first REMAINING item below (the **bugs** first).
+> ## START HERE (next session) — re-audited 2026-06-17 (post-#128)
+> **`main` is at #128 (`3d30c0b`), green.** The operator backlog is being worked **bugs-first**:
+> **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
+> filters/full-wrapped-names (item C). The **OPEN draft PR on this branch carries ADR-0069**
+> (item B — MS-Project checklist filters). The highest ADR on disk is **0069**. Recreate the work
+> branch from fresh main, then continue the REMAINING items below (the remaining **bug** —
+> the `/path` driving-chart visual defect — needs the operator's screenshot; otherwise D/E/F).
 > **Container setup FIRST:**
 > `pip install -e '.[dev]'` into the env, and drive the gate with **`python -m pytest`** (the PATH
 > `pytest` is a separate uv tool that can't see the editable install). Gate: `ruff check .` ;
@@ -43,7 +43,10 @@
 >      `/analysis` Gantt to fix the `/path` half precisely. The `/analysis` half above was fixed
 >      against the known-good `/path` model without it; the `/path` defect needs the screenshot.
 > B. **MS-Project-style dropdown filters** (select-all / deselect-some checklists) replacing the
->    substring filter inputs on the grid + path tier filter.
+>    substring filter inputs on the grid + path tier filter. **✅ DONE (ADR-0069, OPEN draft PR):**
+>    reusable `static/checklist.js` (`window.SFChecklist`) — a search + Select-all/Clear checklist
+>    of a column's distinct values; applied to the `/analysis` grid per-column filters and both tier
+>    filters (`/path` `#pathTier`, `/analysis` trace `#ganttTier`, now multi-tier).
 > C. **Path filter on BOTH pages** (operator-confirmed): `/analysis` gets Primary/Secondary/Tertiary
 >    tier filter + hide-completed + adjustable time scale + full wrapped names; `/path` gets full
 >    wrapped task names (it already has tiers/hide/px-day-zoom). **✅ DONE (ADR-0068, same OPEN draft
@@ -58,7 +61,17 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0068 (OPEN draft, this branch) — /analysis Gantts go scalable + path filters.** The
+> **PR — ADR-0069 (OPEN draft, this branch) — MS-Project checklist filters (item B).** New
+> reusable `static/checklist.js` (`window.SFChecklist.filter`): a button + fixed-position popup
+> with a search box, **Select-all / Clear**, and a checklist of a column's distinct values;
+> `onChange` gets the selected `Set` (or `null` = all = unfiltered; empty Set hides every row).
+> Loaded once from the page-shell `<head>` (air-gap scan extended). Applied to the `/analysis`
+> grid per-column filters (`filters[key]` is now a `Set|null`; `rowMatches` is membership;
+> `distinctValues` is numeric/ISO-date-aware) **replacing the substring inputs**, and to both tier
+> filters (`/path` `#pathTier`, `/analysis` trace `#ganttTier`) which become **multi-tier**
+> checklist mounts. Pure presentation → parity 10/10. Built on `main`@#128.
+
+> **PR — ADR-0068 (MERGED as #128) — /analysis Gantts go scalable + path filters.** The
 > per-project `/analysis` driving-path trace (`#gantt`) and activity Gantt (`#grid` timeline) no
 > longer squeeze the whole span into a fixed-width column as a % of span — both now use the `/path`
 > px-per-day + horizontal-scroll model: a shared `buildAxis` in `static/app.js`, one page-level
