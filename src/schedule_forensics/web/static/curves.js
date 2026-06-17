@@ -30,10 +30,14 @@
     return node;
   }
 
-  // Strip a long common prefix from version labels so the legend stays readable.
+  // Legend labels for the versions. Prefer the DATA DATE (short, uniform, the order the
+  // versions are drawn in) so the per-version legend stays readable; fall back to the
+  // prefix-stripped filename only when a version has no data date.
   function shortLabels(versions) {
+    if (versions.some(function (v) { return v.status_date; })) {
+      return versions.map(function (v, i) { return v.status_date || "v" + (i + 1); });
+    }
     var labels = versions.map(function (v) { return v.label; });
-    function fallback(i) { return versions[i].status_date || "v" + (i + 1); }
     if (labels.length < 2) return labels.map(function (l) { return l.slice(0, 22); });
     var prefix = labels[0];
     labels.forEach(function (l) {
@@ -44,7 +48,7 @@
     var cut = prefix.length >= 6 ? prefix.length : 0;
     return labels.map(function (l, i) {
       var s = (cut ? l.slice(cut) : l).replace(/\.(mpp|xml|xer|json|mspdi)$/i, "");
-      if (!s) return fallback(i);
+      if (!s) return "v" + (i + 1);
       if (cut) s = "…" + s;
       return s.length > 22 ? s.slice(0, 21) + "…" : s;
     });

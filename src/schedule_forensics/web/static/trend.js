@@ -21,10 +21,15 @@
     return node;
   }
 
-  // Strip a long common prefix from version labels so axis text doesn't overlap.
+  // Axis labels for the versions. Prefer the DATA DATE (short, uniform, and the very order
+  // the versions are sorted by) so a 10+ version workbook never collapses into an unreadable
+  // smear of long filenames. Only when no version carries a data date do we fall back to the
+  // filenames, stripping the long common prefix so the remaining text doesn't overlap.
   function shortLabels(versions) {
+    if (versions.some(function (v) { return v.status_date; })) {
+      return versions.map(function (v, i) { return v.status_date || "v" + (i + 1); });
+    }
     var labels = versions.map(function (v) { return v.label; });
-    function fallback(i) { return versions[i].status_date || "v" + (i + 1); }
     if (labels.length < 2) return labels.map(function (l) { return l.slice(0, 16); });
     var prefix = labels[0];
     labels.forEach(function (l) {
@@ -35,7 +40,7 @@
     var cut = prefix.length >= 6 ? prefix.length : 0;
     return labels.map(function (l, i) {
       var s = (cut ? l.slice(cut) : l).replace(/\.(mpp|xml|xer|json|mspdi)$/i, "");
-      if (!s) return fallback(i);
+      if (!s) return "v" + (i + 1);
       if (cut) s = "…" + s;
       return s.length > 16 ? s.slice(0, 15) + "…" : s;
     });
@@ -318,11 +323,12 @@
       // ── PBIX p3 / existing: headline finish + quality ─────────────────────────
       sectionHead("Schedule progress");
       var finishDays = data.versions.map(function (v) { return Date.parse(v.finish) / 86400000; });
-      var base = finishDays[0];
+      var base = null;
+      finishDays.forEach(function (d) { if (base == null && !isNaN(d)) base = d; });
       lineChart(
         "Project finish (days vs first version)",
         labels,
-        finishDays.map(function (d) { return d - base; }),
+        finishDays.map(function (d) { return base == null || isNaN(d) ? null : d - base; }),
         function (v, i) { return data.versions[i].finish; },
         "var(--accent)",
         "How the computed project finish moves across versions, in days relative to the first version. A rising line is a slipping finish.",

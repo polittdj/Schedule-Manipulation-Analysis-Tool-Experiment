@@ -149,6 +149,22 @@ b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-lef
 .chart-swatch { display: inline-block; width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
 .chart-swatch.dashed { background: none !important; border-top: 2px dashed var(--muted); height: 0; width: 14px; }
 
+/* Chart frame (operator request): full-screen + zoom toolbar on every chart (chartframe.js).
+   The bar overlays the top-right corner of each .chart-host and fades in on hover/focus. */
+.cf-frame { position: relative; }
+.cf-bar { position: absolute; top: 2px; right: 6px; z-index: 4; display: flex; align-items: center;
+  gap: 4px; opacity: 0.45; transition: opacity .15s; }
+.cf-frame:hover .cf-bar, .cf-frame:focus-within .cf-bar { opacity: 1; }
+.cf-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; font-weight: 600; }
+.cf-btn:hover { border-color: var(--accent); color: var(--accent); }
+.cf-zoom { font-size: 11px; color: var(--muted); min-width: 36px; text-align: center; }
+.cf-scroll { overflow: auto; max-width: 100%; }
+.cf-frame:fullscreen { background: var(--bg); padding: 30px 18px 18px; overflow: auto; }
+.cf-frame:fullscreen .cf-scroll { height: 100%; }
+.cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+  padding: 34px 20px 20px; overflow: auto; }
+
 /* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
 .evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
 .legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }
