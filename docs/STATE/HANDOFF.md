@@ -1,35 +1,58 @@
-# Handoff — 2026-06-17 (PRs #81–#122 MERGED; **one OPEN draft PR: ADR-0066 — Fuse workbook validation**; M18 + tab-visuals + Ask-AI + chart fullscreen/zoom + Target-UID + path counterfactual + Brief-trends + DCMA-defs + S-Curve shipped)
+# Handoff — 2026-06-17 (PRs #81–#124 MERGED; **one OPEN draft PR: #125 ADR-0067 — Fuse Ribbon metrics**; main is green at #124)
 
-> **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** Progress:
-> 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED (#116, ADR-0059).**
-> 2. ~~Chart legibility + zoom/fullscreen + legends~~ — **MERGED (#117, ADR-0060).**
-> 3. ~~Target-UID drives every page~~ — **MERGED (#118, ADR-0061)**.
-> 4. ~~Critical-path "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)**.
-> 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED (#120, ADR-0063)**.
-> 8. ~~DCMA 1–14 definitions on the Analysis page~~ — **MERGED (#121, ADR-0064)**.
-> 9. ~~Animated S-Curve~~ — **MERGED (#122, ADR-0065)** (`engine/s_curve.py` + `/scurve`).
-> 11. **Fuse workbook validation — THIS PR, ADR-0066.** `docs/FUSE-VALIDATION.md` +
->    `tests/engine/test_fuse_reference.py`: tool matches Fuse exactly on normal-completion counts
->    (8/8 fixtures) and TP4 v1–v4 finish; differences are documented (TP2 calendar, v5
->    fixture/manifest, workbook Project2≠golden). NO CPM change (parity preserved). The Fuse
->    proprietary-metric + year-trend reference values are recorded as calibration targets.
-> Remaining, each its own tested/parity-green draft PR (operator wants ALL of these):
-> 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide legend**.
-> 7. Bow-Wave (cei.js) running totals + target-UID highlight during animation.
-> 10. Primary/Secondary/Tertiary PATH filter + hide-completed + adjustable time scale + full
->    wrapped task names — operator confirmed **BOTH** `/analysis` (add all) and `/path` (add
->    wrapped names; it already has tiers/hide/zoom).
-> 12. **Missing Fuse metrics** — Logic Density™, Float Ratio™, Insufficient Detail™, Merge
->    Hotspot, Number of Leads/Lags, Avg/Max Float — engine + a "Ribbon" view; CALIBRATE to the
->    per-project values in docs/FUSE-VALIDATION.md.
-> 13. **Year Trend/Phase view** — Fuse Ribbon Browser + per-year (2017–2028) trend analysis.
-> 14. **NEW operator bugs/asks (2026-06-17, latest):** (a) make the grid/path filters
->    **MS-Project-style dropdowns** (select-all / deselect-some checklists), not substring inputs;
->    (b) **scaling is wrong** on the Dashboard driving-path chart + the project-schedule charts —
->    investigate dashboard.js / the Gantt scale; (c) the **Path Analysis driving/secondary/tertiary
->    -to-target chart is WRONG** — investigate path.js + `/api/driving` rendering. (Likely folded
->    into the item-10 path work + a chart-scaling fix.)
-> **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.**
+> ## START HERE (next session) — audited 2026-06-17
+> **`main` is at #124 (`17bef50`), green.** This session shipped a long operator backlog (#116–
+> #124) and opened **#125 (ADR-0067, Fuse Ribbon metrics)** — check its CI (github MCP
+> `pull_request_read` → `get_check_runs` on #125); if green the operator merges it, then recreate
+> the work branch from fresh main. **Container setup FIRST:** `pip install -e '.[dev]'` into the
+> env, and drive the gate with **`python -m pytest`** (the PATH `pytest` is a separate uv tool
+> that can't see the editable install). Gate: `ruff check .` ; `ruff format --check .` ;
+> `python -m mypy` ; `python -m pytest --cov=schedule_forensics --cov-fail-under=70` ;
+> `coverage report --include='*/schedule_forensics/engine/*' --fail-under=85` ;
+> `python -m pytest -m parity` (10/10, non-negotiable) ; `bandit -q -r src`.
+
+> **OPERATOR BACKLOG (the big multi-part request + follow-ups). SHIPPED this session:**
+> 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED #116, ADR-0059** (full local evidence; air-gap kept).
+> 2. ~~Chart legibility + fullscreen/zoom + legends~~ — **MERGED #117, ADR-0060** (`chartframe.js`).
+> 3. ~~Target-UID drives every page~~ — **MERGED #118, ADR-0061** (`target.js`; /card + /wbs panel).
+> 4. ~~Critical-path "gained float" counterfactual~~ — **MERGED #119, ADR-0062** (/evolution What-if).
+> 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED #120, ADR-0063**.
+> 6. ~~DCMA 1–14 definitions on the Analysis page~~ — **MERGED #121, ADR-0064**.
+> 7. ~~Animated S-Curve~~ — **MERGED #122, ADR-0065** + **#124** moved its data-date callout
+>    bottom-right (no title overlap).
+> 8. ~~Fuse workbook validation~~ — **MERGED #123, ADR-0066** (`docs/FUSE-VALIDATION.md`): tool
+>    matches Fuse exactly on normal-completion (8/8) + TP4 v1–v4 finish; diffs documented.
+> 9. **Fuse Ribbon metrics — OPEN PR #125, ADR-0067.** `engine/metrics/ribbon.py` + `/ribbon`
+>    view, calibrated to Fuse: Logic Density™ (2L/N), Merge Hotspot (>2 preds), Missing Logic
+>    (all open-ends), Critical (incomplete on path), Hard/NegFloat/Lags/Leads (DCMA), Avg/Max float.
+>
+> **REMAINING — each its own tested, parity-green draft PR (operator wants ALL):**
+> A. **BUGS (do first — defects):**
+>    - **Path Analysis driving/secondary/tertiary-to-target chart is WRONG** (`path.js` + `/api/driving`).
+>    - **Scaling wrong** on the per-project (`/analysis`) **driving-path trace + project-schedule
+>      Gantt** — `app.js` positions bars as % of the whole span squeezed into a fixed-width column
+>      with NO adjustable scale/scroll; convert to the `/path` px-per-day + horizontal-scroll model.
+>    - **OPEN QUESTION for operator:** asked for a SCREENSHOT of the wrong `/path` chart + a
+>      `/analysis` Gantt to fix precisely (visual; can't verify rendering in-container). Not yet answered.
+> B. **MS-Project-style dropdown filters** (select-all / deselect-some checklists) replacing the
+>    substring filter inputs on the grid + path tier filter.
+> C. **Path filter on BOTH pages** (operator-confirmed): `/analysis` gets Primary/Secondary/Tertiary
+>    tier filter + hide-completed + adjustable time scale + full wrapped names; `/path` gets full
+>    wrapped task names (it already has tiers/hide/px-day-zoom). (Overlaps A + B.)
+> D. **Year Trend/Phase view** — Fuse Ribbon Browser + per-year (2017–2028) trend analysis
+>    (reference values in docs/FUSE-VALIDATION.md).
+> E. **Data-Date & Slippage redesign** — overlaid line families with a clickable show/hide legend (curves.js).
+> F. **Bow-Wave (cei.js)** running totals + target-UID highlight during animation.
+> G. **Deferred Fuse-proprietary metrics**: Insufficient Detail™, Float Ratio™ (+ EPI / RatioMeasure /
+>    Start-and-Finish-Ratio) — NO simple formula matched in calibration; implement only when the
+>    operator supplies the exact Fuse/DAX definition. Do NOT guess.
+> **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
+
+> **AUDIT NOTE (2026-06-17):** the operator's 4 Acumen Fuse exports (Schedule Quality docx +
+> Ribbon/Phase xlsx + DCMA Report) live ONLY in the ephemeral session uploads — their values are
+> captured durably in `docs/FUSE-VALIDATION.md`. The reference `.mpp`/`.pbix` are NOT in the
+> container (`00_REFERENCE_INTAKE/` empty) — re-deposit to validate Large File / Duration Bomb /
+> Project3/4 / Project5_TAMPERED, which the workbook covers but the repo fixtures don't.
 
 > **PR — ADR-0060 (chart full-screen / zoom / legible labels).** New `static/chartframe.js` +
 > `.cf-*` CSS: any `class=chart-host` container gets an overlay toolbar (⤢ full screen via the
@@ -536,20 +559,16 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**CI: 872 passed, 3 skipped; parity 10/10; engine 97%; overall ~96%; egress + air-gap green;
-bandit + pip-audit clean.** (Baseline `main`@#114 was **850/3**; this audit's open PR adds 22 guard
-tests in `tests/guards/test_endpoint_scheme.py` → **872/3** in CI. The 3 skips are the real-`.mpp`
-parity cases — no fixture travels into CI. **Locally with `Project2.mpp` deposited this session the
-count is 874 passed / 1 skipped**: the two native-parse cases ran and matched golden — 145 rows /
-144 activities / "Commercial Construction"; only the Project5 case skips.) **This session's open PR
-(ADR-0058)** hardens the local-AI egress guard to validate URL **scheme + host** (`is_local_http_endpoint`
-rejects `file://localhost`, `ftp://`, `gopher://`, remote `http(s)`) and refuse HTTP redirects
-(`_NoRedirect`), and fixes the `test_parse_real_mpp` skip guard to gate per-file. CI also runs
-pip-audit on 3.11 + 3.13. Verify locally:
+**Audited 2026-06-17 on the open PR #125 branch (fresh `main`@#124 + the Ribbon work):
+906 passed, 3 skipped; parity 10/10; engine cov 97%; overall ~96%; ruff/format/mypy/bandit clean
+(all exit 0).** The 3 skips are the real-`.mpp`/Java cases — no `.mpp` fixture travels into the
+container (`00_REFERENCE_INTAKE/` is git-ignored + empty). `main`@#124 alone is 894/3.
+CI also runs pip-audit on Python 3.11 + 3.13. Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && python -m pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && python -m pytest -m parity && bandit -q -r src`.
-(In a fresh remote container run `pip install -e '.[dev]'` into `.venv` FIRST — the preinstalled
-venv ships without the web/dev deps. Use `python -m pytest`, not bare `pytest`: the PATH `pytest`
-is a separate uv tool that cannot see the editable install.)
+(In a fresh remote container run `pip install -e '.[dev]'` FIRST — the preinstalled venv ships
+without the web/dev deps. Use `python -m pytest`, not bare `pytest`: the PATH `pytest` is a
+separate uv tool that cannot see the editable install. A doc-guard test
+`tests/test_state_docs.py` requires this HANDOFF to name the highest ADR on disk.)
 
 ## Next steps / open items — THE M18 WORK ORDER (operator, 2026-06-12) — **COMPLETE**
 
@@ -614,20 +633,21 @@ The original backlog, for the record:
 
 ## Resume command for a NEW session
 Paste this as the first message:
-> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first. There is **one OPEN
-> draft PR — ADR-0058** (loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity
-> confirmation), branched from `main`@#114, awaiting the operator's merge; once it merges,
-> recreate the work branch from fresh main before any new work. M18 (items 1–8) and the
-> tab-visuals follow-ups (#103–#113) are all merged, so the only remaining work is
-> verification/real-data. If the operator re-deposits the reference `.mpp`s
-> (`00_REFERENCE_INTAKE/` is empty in a fresh container — the `.mpp`s and the SemanticModel zip
-> live on the machine that received them; ask me to re-deposit), verify the Duration Bomb
-> computes **2027-02-24** (ADR-0043) and the Large File's driving tiers match SSI (ADR-0045);
-> otherwise watch how the live surfaces (Path Analysis, Critical-Path Evolution, ask-the-AI,
-> float bands, /forecast, /trend, Dashboard cards) read on real `.mpp`/`.xer`. Recreate the
-> harness-assigned work branch from fresh main (`git fetch origin main && git checkout -B
-> <fresh-branch> origin/main`) after EVERY merge. Run `pip install -e '.[dev]'` into `.venv`
-> first if tools are missing, and drive the gate with `python -m pytest` (the PATH `pytest` is a
-> separate uv tool that can't see the editable install). Keep `pytest -m parity` at 10/10, run
-> bandit UNPIPED, open draft PRs (don't merge — I do that), and never let schedule data leave
-> the machine. Model: Opus 4.8 (1M context).
+> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first — work the OPERATOR
+> BACKLOG in its listed order. `main` is green at **#124**; there is **one OPEN draft PR: #125
+> (ADR-0067, Fuse Ribbon metrics)** — check its CI (github MCP `pull_request_read` →
+> `get_check_runs` on #125); if green I'll merge it, then recreate the work branch from fresh
+> main (`git fetch origin main && git checkout -B <fresh-branch> origin/main`). Then tackle the
+> REMAINING items, **bugs first**: (A) the Path Analysis driving/secondary/tertiary-to-target
+> chart is wrong (`path.js` + `/api/driving`) and the `/analysis` driving-path + project-schedule
+> Gantt scaling is wrong (it's %-squeezed with no adjustable scale — convert to the `/path`
+> px-per-day + scroll model); **I owe you a question — please attach a screenshot of the wrong
+> `/path` chart and a `/analysis` Gantt so I fix them precisely.** Then (B) MS-Project-style
+> dropdown filters (select-all/deselect), (C) the path filter on BOTH `/analysis` and `/path`
+> with hide-completed + adjustable scale + full wrapped task names, (D) the Fuse year Trend/Phase
+> view, (E) Data-Date/Slippage redesign (overlaid lines + show/hide legend), (F) Bow-Wave totals
+> + target-UID highlight. Insufficient Detail™ / Float Ratio™ / EPI / RatioMeasure stay DEFERRED
+> until you supply the exact Fuse/DAX formula — don't guess. Setup: `pip install -e '.[dev]'`
+> first; drive the gate with `python -m pytest` (PATH `pytest` is a separate uv tool); keep
+> `pytest -m parity` 10/10; run bandit UNPIPED; open DRAFT PRs (don't merge — I do that); never
+> let schedule data leave the machine (loopback-only air-gap). Model: Opus 4.8 (1M context).
