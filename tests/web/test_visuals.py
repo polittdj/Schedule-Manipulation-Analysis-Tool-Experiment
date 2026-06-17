@@ -96,6 +96,33 @@ def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> N
     assert "td.name-cell" in client.get("/static/app.css").text
 
 
+def test_msproject_checklist_filters_replace_substring_and_tier_selects(client: TestClient) -> None:
+    """Item B: MS-Project-style dropdown checklist filters (select-all / clear / search the
+    distinct values) replace the grid's substring inputs and the single-tier <select>s."""
+    cl = client.get("/static/checklist.js")
+    assert cl.status_code == 200
+    assert "window.SFChecklist" in cl.text and "function filter" in cl.text
+    assert "sf-filter-search" in cl.text  # the in-dropdown search box
+    assert ">All<" in cl.text or "All" in cl.text  # select-all / clear links
+    # loaded once via the page shell so both the grid and the path tier reuse it
+    assert "/static/checklist.js" in client.get("/analysis/Project5").text
+    assert "/static/checklist.js" in client.get("/path").text
+
+    app_js = client.get("/static/app.js").text
+    assert "SFChecklist.filter" in app_js and "distinctValues" in app_js
+    assert 'placeholder: "filter' not in app_js  # the old substring filter input is gone
+    path_js = client.get("/static/path.js").text
+    assert "SFChecklist.filter" in path_js
+    assert '$("pathTier").value' not in path_js  # the old single-select tier read is gone
+
+    # the tier controls are now checklist mount points, not <select>s
+    analysis = client.get("/analysis/Project5").text
+    assert "id=ganttTier" in analysis and "<select id=ganttTier" not in analysis
+    path = client.get("/path").text
+    assert "id=pathTier" in path and "<select id=pathTier" not in path
+    assert ".sf-filter-pop" in client.get("/static/app.css").text
+
+
 def test_driving_rows_carry_completion_and_milestone_flags(client: TestClient) -> None:
     # the trace's "show completed" toggle and milestone diamonds need these per row
     dj = client.get("/api/driving/Project5?target=143").json()

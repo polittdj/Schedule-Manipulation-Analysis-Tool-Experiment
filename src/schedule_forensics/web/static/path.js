@@ -30,6 +30,7 @@
     { key: "resource_names", label: "Resources", on: false },
   ];
   var data = null; // last /api/driving payload
+  var pathTierSel = null; // checklist selection of tiers to show (null = all)
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -61,11 +62,10 @@
   function visibleRows() {
     if (!data) return [];
     var hideDone = $("pathHideDone").checked;
-    var tier = $("pathTier").value;
     var q = $("pathFilter").value.trim().toLowerCase();
     return data.rows.filter(function (r) {
       if (hideDone && r.complete) return false;
-      if (tier && r.tier !== tier) return false;
+      if (pathTierSel && !pathTierSel.has(r.tier)) return false; // empty Set hides every row
       if (q && (r.name + " " + r.unique_id).toLowerCase().indexOf(q) < 0) return false;
       return true;
     });
@@ -194,8 +194,19 @@
   }
 
   renderToggles();
+  // the MS-Project-style tier checklist (select-all / clear which of the four tiers show)
+  var pathTierMount = $("pathTier");
+  if (pathTierMount && window.SFChecklist) {
+    pathTierMount.appendChild(window.SFChecklist.filter({
+      values: ["DRIVING", "SECONDARY", "TERTIARY", "BEYOND"],
+      selected: null,
+      label: "Tier",
+      title: "Show driving-path tiers",
+      onChange: function (s) { pathTierSel = s; render(); },
+    }));
+  }
   $("pathRun").addEventListener("click", trace);
-  ["pathHideDone", "pathTier"].forEach(function (id) { $(id).addEventListener("change", render); });
+  $("pathHideDone").addEventListener("change", render);
   ["pathFilter", "pathZoom"].forEach(function (id) { $(id).addEventListener("input", render); });
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately
 })();

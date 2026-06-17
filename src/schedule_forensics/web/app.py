@@ -138,6 +138,7 @@ _LAYOUT = Template(
 <title>{{ title }} — Schedule Forensics</title>
 <link rel=icon href="/static/favicon.ico">
 <script src="/static/theme.js"></script>
+<script src="/static/checklist.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
@@ -1639,8 +1640,7 @@ filter rows, and hide completed work.</p>
 <label>Tertiary &le; <input id=pathTer type=number min=1 value=20 title="days of driving slack"> d</label>
 <button id=pathRun type=button>Trace</button>
 <label><input id=pathHideDone type=checkbox> hide 100% complete</label>
-<label>Tier <select id=pathTier><option value="">all</option><option>DRIVING</option>
-<option>SECONDARY</option><option>TERTIARY</option><option>BEYOND</option></select></label>
+<label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
 </div>
@@ -2289,8 +2289,7 @@ secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button>
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
-<label>Tier <select id=ganttTier><option value="">all</option><option>DRIVING</option>
-<option>SECONDARY</option><option>TERTIARY</option><option>BEYOND</option></select></label>
+<label>Tier <span id=ganttTier class=tier-filter></span></label>
 <label>Scale <input id=vizZoom type=range min=2 max=40 value=8 title="pixels per day — drag to zoom both timelines"></label></div>
 <div id=gantt></div>
 <h3>Activities &amp; Gantt <span class=muted>(add/remove columns; the right-hand timeline is

@@ -204,3 +204,23 @@ b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-lef
 .qual-offender-list li { padding: 2px 0; border-bottom: 1px solid var(--line); }
 .qual-bar { cursor: pointer; }
 .qual-mlabel { cursor: pointer; }
+
+/* MS-Project-style checklist filter dropdowns (checklist.js): a button + a fixed-position
+   popup with a search box, Select-all / Clear, and a checklist of the column's distinct
+   values. Replaces the old per-column substring inputs (grid) and tier <select>s. */
+.sf-filter, .tier-filter { position: relative; display: inline-block; }
+.sf-filter-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line); border-radius: 5px;
+  white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.sf-filter-btn:hover { border-color: var(--accent); }
+.sf-filter-btn.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.sf-filter-pop { position: fixed; z-index: 9999; min-width: 200px; max-width: 320px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.sf-filter-search { width: 100%; box-sizing: border-box; font-size: 12px; padding: 4px 6px; margin-bottom: 6px; }
+.sf-filter-head { display: flex; gap: 12px; margin-bottom: 4px; }
+.sf-link { background: none; border: none; padding: 0; cursor: pointer; color: var(--accent); font: inherit; font-size: 12px; }
+.sf-link:hover { text-decoration: underline; }
+.sf-filter-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.sf-filter-item { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; padding: 1px 2px; }
+.sf-filter-item:hover { background: var(--hover); }
