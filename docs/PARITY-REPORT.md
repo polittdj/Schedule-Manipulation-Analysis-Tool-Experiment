@@ -9,6 +9,20 @@ a dedicated CI step) over the golden fixtures in `tests/fixtures/golden/`.
 **Status: all reproduced figures are exact; the few residuals are documented with a single root cause
 and driven as close to zero as the static MSPDI allows.**
 
+## Native `.mpp` structural parse (Project2.mpp — verified 2026-06-17, local only)
+
+The metric tables below run on the committed **golden MSPDI** (`tests/fixtures/golden/`). Separately,
+this session confirmed the **raw native `.mpp` → MSPDI → model** read against the operator's
+re-deposited `Project2.mpp` (git-ignored CUI intake; **not committed**): MPXJ produced **145 rows** —
+the UID-0 project summary + **144 activities** (UID 2–145; UID 1 absent) — with project name
+**"Commercial Construction"**, matching the golden. `test_parse_real_mpp[Project2]`
+(`tests/importers/test_mpp_mpxj.py`) and `test_dispatch_native_mpp` (`tests/importers/test_loader.py`)
+pass with a JVM + the bundled `tools/mpxj/`. This validates the **structural** native-`.mpp` path
+(ADR-0058); the tables below remain the authority for **numeric** Acumen/SSI parity. Full numeric
+parity on a *raw* `.mpp` (as opposed to the distilled golden MSPDI) still awaits the Acumen Fuse
+v8.11.0 / SSI golden exports plus `Project5.mpp` (R-02 / R-03); `Project5.mpp` was not provided this
+session, so its case skips.
+
 ## SSI — driving slack (Project5, focus UID 143)
 
 | Check | Golden (SSI) | Computed | Status |

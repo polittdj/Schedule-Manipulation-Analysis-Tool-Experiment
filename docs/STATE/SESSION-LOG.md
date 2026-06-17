@@ -1637,3 +1637,57 @@ CI-exact gate against `main`==#113 (`6b374c9`), and brought HANDOFF.md current.
 ### Parity / tests
 - **850 passed, 3 skipped** (1 new: the state-doc guard); parity 10/10; engine cov 97%;
   ruff/format/mypy/bandit(unpiped) all clean with explicit exit code 0.
+
+## QC audit remediation — 2026-06-17 (ADR-0058; OPEN draft PR)
+External QC audit of the repo ("find every error, triple-check it's real, write a sandbox test for
+each fix, then implement"). Worked under four roles: QC auditor, forensic-scheduling SME, security
+reviewer, test engineer.
+
+### What the audit found CLEAN (verified, not assumed)
+- Ran every project QC gate: pytest, ruff, ruff-format, mypy --strict, bandit, pip-audit — all
+  green; parity 10/10.
+- Hand-verified + (where feasible) empirically attacked: CPM forward/backward bound math
+  (FS/SS/FF/SF duals, Kahn cycle-fail, constraint resolution); the MSPDI pre-parse XXE /
+  billion-laughs / UTF-16-DOCTYPE-smuggle defense (all rejected); the MPXJ `.mpp` subprocess
+  (list argv, shell=False, 300s timeout, temp cleanup); web upload path-/header-safety (in-memory
+  keys, `Path(name).name`, CR/LF strip); EVM zero-division guards (NA, not a fabricated 0).
+- The 3 skipped tests were legit (needed the real `.mpp` + a JVM), not hiding bugs. No invented
+  findings — the codebase was genuinely sound.
+
+### The one real defect (fixed) — ADR-0058
+- **Loopback AI guard checked host but not scheme.** `OllamaBackend(endpoint="file://localhost/…")`
+  constructed and the "loopback-only" opener read a local file off disk. Proven, then fixed with
+  `net_guard.is_local_http_endpoint` (scheme ∈ {http,https} AND loopback host) at all three call
+  sites (`ai/ollama.py`, `ai/openai_compat.py`, `web/app.py`); `is_loopback_host` kept for the
+  bind-host checks (`serve`, `launcher`). Severity: defense-in-depth (local file read, no egress;
+  needs operator misconfig) — stated honestly as such, not oversold.
+- **Bonus:** the shared opener now refuses HTTP redirects (`_NoRedirect.redirect_request → None`)
+  so a loopback 3xx can't bounce the CUI prompt to a remote host.
+- TDD: wrote `tests/guards/test_endpoint_scheme.py` (22 cases), confirmed RED against unfixed code,
+  then GREEN after the fix.
+
+### Native-`.mpp` parity confirmed (Project2.mpp, local only)
+- Operator re-deposited `Project2.mpp` into git-ignored `00_REFERENCE_INTAKE/mpp/` (double-ignored:
+  `*.mpp` + `00_REFERENCE_INTAKE/*`; `git check-ignore` confirms; **NOT committed**).
+- Native MPXJ read confirmed exact: **145 rows (UID-0 + 144 activities, UID 1 absent), name
+  "Commercial Construction"** — matches the committed golden MSPDI. The two real-`.mpp` tests now
+  PASS locally.
+- Fixed a latent skip-guard bug: `test_parse_real_mpp` (param Project2 + Project5) gated only on
+  Project2's presence, so Project5's case errored once Project2 was present. Now per-file: Project2
+  runs/passes, Project5 skips honestly (not provided). Full numeric Acumen/SSI parity on raw `.mpp`
+  still awaits the golden exports (R-02/R-03) — this confirms the structural `.mpp → MSPDI → model`
+  read only.
+
+### CUI note
+- Ran in an Anthropic cloud sandbox. `DEPOSIT-HERE.md` says schedule files are CUI by default and
+  must not be deposited in a cloud session unless the data owner confirms non-CUI/authorized; the
+  operator made that call by uploading `Project2.mpp` for the validation. Used locally only;
+  nothing derived from its contents was committed or pushed.
+
+### Parity / tests
+- **CI: 872 passed, 3 skipped** (+22 guard tests; the 3 skips are the real-`.mpp` cases, no fixture
+  in CI). **Locally with Project2.mpp: 874 passed, 1 skipped.** parity 10/10; engine 97%;
+  ruff/format/mypy --strict/bandit(unpiped)/pip-audit all clean, explicit exit code 0.
+- Files: `src/schedule_forensics/net_guard.py`, `ai/ollama.py`, `ai/openai_compat.py`,
+  `web/app.py`; `tests/guards/test_endpoint_scheme.py` (new), `tests/importers/test_mpp_mpxj.py`;
+  docs `adr/0058-*`, `STATE/HANDOFF.md`, `STATE/SESSION-LOG.md`, `risks.md`, `PARITY-REPORT.md`.

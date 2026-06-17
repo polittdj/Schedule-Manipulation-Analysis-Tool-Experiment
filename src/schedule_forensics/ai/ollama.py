@@ -16,9 +16,8 @@ import json
 import urllib.request
 from collections.abc import Callable
 from typing import Any
-from urllib.parse import urlparse
 
-from schedule_forensics.net_guard import CUIEgressError, is_loopback_host
+from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: Injectable opener: (url, data, timeout) -> decoded response body. Defaults to urllib.
 Opener = Callable[[str, bytes | None, float], str]
@@ -27,14 +26,42 @@ DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "llama3.1:8b"
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that refuses every redirect (fail closed, Law 1).
+
+    The loopback/scheme check runs once, against the initial endpoint. urllib would
+    otherwise transparently follow a 3xx ``Location`` from the local server — including one
+    pointing at a remote host — and re-send the (CUI) request body there. Returning ``None``
+    means "do not redirect", so urllib surfaces the 3xx as an error instead of silently
+    re-POSTing off the local machine.
+    """
+
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: object,
+        code: int,
+        msg: str,
+        headers: object,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        return None
+
+
+#: Opener that performs no redirects; the local-AI client uses it so a loopback endpoint
+#: cannot bounce the request (and its CUI payload) to another host via a 3xx response.
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirect())
+
+
 def _urllib_opener(url: str, data: bytes | None, timeout: float) -> str:
-    # nosec note: the URL is built from a loopback-validated endpoint (OllamaBackend.__init__
-    # rejects any non-127.0.0.1/localhost host), so this open can only ever reach the local
-    # machine — never a remote/file/custom scheme.
+    # nosec note: OllamaBackend.__init__ validates the endpoint with is_local_http_endpoint,
+    # so the URL is an http(s) loopback URL — never a remote/file/custom scheme; and the
+    # opener below refuses redirects, so a 3xx cannot bounce this request (or its CUI
+    # payload) off the local machine.
     method = "POST" if data is not None else "GET"
     request = urllib.request.Request(url, data=data, method=method)  # nosec B310
     request.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(request, timeout=timeout) as response:  # nosec B310
+    with _NO_REDIRECT_OPENER.open(request, timeout=timeout) as response:  # nosec B310
         body: bytes = response.read()
     return body.decode("utf-8")
 
@@ -54,11 +81,11 @@ class OllamaBackend:
         probe_timeout: float = 2.0,
         opener: Opener | None = None,
     ) -> None:
-        host = urlparse(endpoint).hostname or ""
-        if not is_loopback_host(host):
+        if not is_local_http_endpoint(endpoint):
             raise CUIEgressError(
-                f"OllamaBackend endpoint must be loopback (127.0.0.1/localhost), got {endpoint!r} "
-                "— refusing to point a CUI project at a remote model server (Law 1)."
+                f"OllamaBackend endpoint must be a loopback http(s) URL (e.g. "
+                f"http://127.0.0.1:11434), got {endpoint!r} — refusing to point a CUI "
+                "project at a remote or non-HTTP model server (Law 1)."
             )
         self.endpoint = endpoint.rstrip("/")
         self.model = model
