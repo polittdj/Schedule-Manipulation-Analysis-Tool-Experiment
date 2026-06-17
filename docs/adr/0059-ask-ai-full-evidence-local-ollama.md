@@ -1,6 +1,11 @@
-# ADR-0058 — Ask-the-AI: hand the local model the full cited picture (free analysis, still local)
+# ADR-0059 — Ask-the-AI: hand the local model the full cited picture (free analysis, still local)
 
 Date: 2026-06-17 · Status: accepted
+
+> Renumbered from a working ADR-0058 to **0059**: PR #115 (the third-audit loopback-scheme
+> remediation) took 0058 while this branch was open. That PR's loopback scheme/redirect
+> hardening of `OllamaBackend` / `net_guard` *strengthens* the air-gap guarantee this change
+> relies on (see ADR-0058) — no conflict, only reinforcement.
 
 ## Context
 

@@ -20,9 +20,9 @@ MPP_DIR = REPO / "00_REFERENCE_INTAKE" / "mpp"
 PROJECT2 = MPP_DIR / "Project2.mpp"
 PROJECT5 = MPP_DIR / "Project5.mpp"
 
-needs_real_mpp = pytest.mark.skipif(
-    not PROJECT2.is_file() or shutil.which("java") is None,
-    reason="real .mpp / Java runtime not available in this environment",
+needs_java = pytest.mark.skipif(
+    shutil.which("java") is None,
+    reason="Java runtime not available in this environment",
 )
 
 _MINIMAL_MSPDI = (
@@ -50,8 +50,28 @@ def _writer_run(mspdi_text: str):
 # --- real-file integration (skipped without the sample .mpp + a JVM) --------------
 
 
-@needs_real_mpp
-@pytest.mark.parametrize(("path", "name"), [(PROJECT2, "Project2.mpp"), (PROJECT5, "Project5.mpp")])
+@needs_java
+@pytest.mark.parametrize(
+    ("path", "name"),
+    [
+        pytest.param(
+            PROJECT2,
+            "Project2.mpp",
+            marks=pytest.mark.skipif(
+                not PROJECT2.is_file(),
+                reason="Project2.mpp not present (git-ignored CUI intake)",
+            ),
+        ),
+        pytest.param(
+            PROJECT5,
+            "Project5.mpp",
+            marks=pytest.mark.skipif(
+                not PROJECT5.is_file(),
+                reason="Project5.mpp not present (git-ignored CUI intake)",
+            ),
+        ),
+    ],
+)
 def test_parse_real_mpp(path: Path, name: str) -> None:
     s = parse_mpp(path)
     assert s.source_file == name

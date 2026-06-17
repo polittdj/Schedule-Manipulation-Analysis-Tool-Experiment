@@ -12,10 +12,9 @@ from __future__ import annotations
 
 import json
 from typing import Any
-from urllib.parse import urlparse
 
 from schedule_forensics.ai.ollama import Opener, _urllib_opener
-from schedule_forensics.net_guard import CUIEgressError, is_loopback_host
+from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: LM Studio's default server port; llamafile defaults to 8080 — both are settable.
 DEFAULT_ENDPOINT = "http://127.0.0.1:1234"
@@ -36,11 +35,11 @@ class OpenAICompatBackend:
         probe_timeout: float = 2.0,
         opener: Opener | None = None,
     ) -> None:
-        host = urlparse(endpoint).hostname or ""
-        if not is_loopback_host(host):
+        if not is_local_http_endpoint(endpoint):
             raise CUIEgressError(
-                f"OpenAICompatBackend endpoint must be loopback (127.0.0.1/localhost), got "
-                f"{endpoint!r} — refusing to point a CUI project at a remote model server (Law 1)."
+                f"OpenAICompatBackend endpoint must be a loopback http(s) URL (e.g. "
+                f"http://127.0.0.1:1234), got {endpoint!r} — refusing to point a CUI "
+                "project at a remote or non-HTTP model server (Law 1)."
             )
         self.endpoint = endpoint.rstrip("/")
         self.model = model
