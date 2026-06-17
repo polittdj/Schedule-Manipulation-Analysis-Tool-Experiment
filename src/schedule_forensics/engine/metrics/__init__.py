@@ -29,6 +29,7 @@ from schedule_forensics.engine.metrics.float_bands import (
     compute_float_bands,
     compute_float_sums,
 )
+from schedule_forensics.engine.metrics.ribbon import RibbonMetrics, compute_ribbon
 from schedule_forensics.engine.metrics.schedule_card import (
     ActivityMakeup,
     ConstraintCount,
@@ -48,6 +49,7 @@ __all__ = [
     "Direction",
     "FloatSums",
     "MetricResult",
+    "RibbonMetrics",
     "WBSGroup",
     "compute_activity_makeup",
     "compute_baseline_compliance",
@@ -59,6 +61,7 @@ __all__ = [
     "compute_float_bands",
     "compute_float_sums",
     "compute_net_finish_impact",
+    "compute_ribbon",
     "compute_schedule_quality",
     "compute_wbs_breakdown",
 ]

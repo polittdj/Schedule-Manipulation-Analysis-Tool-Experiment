@@ -77,6 +77,7 @@ from schedule_forensics.engine.metrics import (
     compute_float_bands,
     compute_float_sums,
     compute_net_finish_impact,
+    compute_ribbon,
     compute_schedule_quality,
     compute_wbs_breakdown,
 )
@@ -141,7 +142,7 @@ _LAYOUT = Template(
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
-<a href="/scurve">S-Curve</a><a href="/evolution">Critical-Path Evolution</a>
+<a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -981,6 +982,28 @@ def create_app(
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_scurve_data(sc))
+
+    @app.get("/ribbon", response_class=HTMLResponse)
+    def ribbon_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Schedule Quality Ribbon",
+                "<div class=panel>Load one or more schedules to see the Acumen-Fuse-style "
+                "schedule-quality ribbon.</div>",
+            )
+        rows: list[tuple[str, object]] = []
+        skipped: list[str] = []
+        for key, sch in st.ordered_versions():
+            try:
+                analysis = st.analysis_for(key, sch)
+            except CPMError:
+                skipped.append(key)
+                continue
+            rows.append((key, compute_ribbon(sch, analysis.cpm, analysis.audit)))
+        note = _skipped_notice(skipped) if skipped else ""
+        return _page(st, "Schedule Quality Ribbon", _ribbon_body(rows, note))
 
     @app.get("/evolution", response_class=HTMLResponse)
     def evolution_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -2859,6 +2882,39 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 </div>
 <div id=scurveChart class=chart-host></div></div>
 <script src="/static/scurve.js"></script>"""
+
+
+def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
+    """The Acumen-Fuse-style Schedule Quality Ribbon: one row per loaded schedule, one column
+    per ribbon metric — the metrics validated against the operator's Fuse workbook export."""
+    cols = [
+        ("Missing Logic", "missing_logic"),
+        ("Logic Density™", "logic_density"),
+        ("Critical", "critical"),
+        ("Hard Constraints", "hard_constraints"),
+        ("Negative Float", "negative_float"),
+        ("Number of Lags", "number_of_lags"),
+        ("Number of Leads", "number_of_leads"),
+        ("Merge Hotspot", "merge_hotspot"),
+        ("Avg Float (d)", "avg_float_days"),
+        ("Max Float (d)", "max_float_days"),
+    ]
+    head = "<th>Schedule</th>" + "".join(f"<th>{_e(label)}</th>" for label, _ in cols)
+    body = ""
+    for key, r in rows:
+        cells = "".join(f"<td>{_e(getattr(r, attr))}</td>" for _, attr in cols)
+        body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
+    return f"""{note}
+<div class=panel><h2>Schedule Quality Ribbon</h2>
+<p class=muted>The Acumen-Fuse "Ribbon Analysis" schedule-quality metrics, one row per loaded
+schedule. <b>Missing Logic</b> = activities missing a predecessor and/or successor;
+<b>Logic Density™</b> = logic links per activity (2&times;links &divide; activities);
+<b>Critical</b> = incomplete activities on the critical path; <b>Hard Constraints</b> /
+<b>Negative Float</b> / <b>Lags</b> / <b>Leads</b> are the DCMA counts; <b>Merge Hotspot</b> =
+activities with more than two predecessors. These are validated against the reference Fuse
+export (docs/FUSE-VALIDATION.md). <i>Insufficient Detail™ and Float Ratio™ are Fuse-proprietary
+formulas and are omitted pending their exact definition.</i></p>
+<table><tr>{head}</tr>{body}</table></div>"""
 
 
 def _scurve_data(sc: SCurve) -> dict[str, object]:
