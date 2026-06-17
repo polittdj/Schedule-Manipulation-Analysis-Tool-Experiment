@@ -52,10 +52,12 @@
     title.textContent = "Cumulative progress — " + v.label;
     svg.appendChild(title);
 
-    // the planned-vs-actual gap at the data date (the headline number)
+    // the planned-vs-actual gap at the data date (the headline number) — pinned to the
+    // bottom-right corner so it never overlaps the centered title (which carries the schedule
+    // name) or the bottom-left legend.
     if (v.status_index != null) {
       var gap = (v.planned[v.status_index] - v.actual[v.status_index]);
-      var note = svgEl("text", { x: W - padR, y: 22, "text-anchor": "end", "font-size": 14, "font-weight": 700,
+      var note = svgEl("text", { x: W - padR, y: H - 4, "text-anchor": "end", "font-size": 12, "font-weight": 700,
         fill: gap > 0 ? "var(--bad)" : "var(--ok)" });
       note.textContent = "At data date: " + v.actual[v.status_index].toFixed(0) + "% actual vs "
         + v.planned[v.status_index].toFixed(0) + "% planned (" + (gap > 0 ? "+" : "") + gap.toFixed(0) + " pts)";
