@@ -1,9 +1,31 @@
-# Handoff — 2026-06-17 (PRs #81–#114 MERGED; **one OPEN draft PR: ADR-0058 audit remediation** — loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmed; native-`.mpp` battery (14 files) VALIDATED — Duration Bomb 2027-02-24 ✓, TP/Project2/Large parity ✓, TP2 calendar round-trip caveat documented; M18 COMPLETE)
+# Handoff — 2026-06-17 (PRs #81–#115 MERGED; **one OPEN draft PR: ADR-0059 — Ask-the-AI full local evidence / release local Ollama**; M18 COMPLETE + tab-visuals tranche + 3rd-audit loopback hardening shipped)
+
+> **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
+> ordered a large set of UI/engine/AI improvements and chose the **start order**: (1) Ask-the-AI
+> + release local Ollama [THIS PR, ADR-0059]; then the rest as separate PRs — chart legibility
+> + zoom/fullscreen + legends on ALL charts; Target-UID actually driving every page;
+> critical-path removal & "gained float" counterfactual analysis; Diagnostic Brief trends/
+> risks/opportunities/recovery; Data-Date & Slippage redesign as **overlaid line families with
+> a clickable show/hide legend**; Bow-Wave running totals + target-UID highlight during
+> animation; surface the DCMA 1–14 definitions on the Interactive Analysis page. **Ollama
+> policy decided: free local analysis, KEEP the strict loopback-only air-gap (no data leaves
+> the machine).** Work each as its own tested, parity-green draft PR.
+
+> **PR — ADR-0059 (Ask-the-AI: full local evidence).** `ai/qa.py`: a live local model now
+> gets the WHOLE cited sheet (`model_evidence`, frame-first + relevance-ordered, cap 48) with a
+> senior-analyst prompt (answer + interpret + name risks + suggest recovery), while the analyst
+> is still SHOWN the question-relevant `relevant_facts` slice. Strict mode unchanged; air-gap
+> unchanged (`OllamaBackend` loopback-only — further scheme/redirect-hardened by ADR-0058/#115,
+> `route_backend` fail-closed). `build_fact_sheet` adds the finish-driving count; the ask panel
+> links to AI Settings to enable Ollama. Branched from `main`@#114, then merged up to #115
+> (ADR-0058); re-verified green after the merge.
 
 > ## START HERE (next session)
-> 1. **One OPEN draft PR awaiting your merge: ADR-0058 — this audit's remediation (loopback
->    AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmation), branched from
->    `main`@#114.** Earlier, the previous handoff
+> 1. **One OPEN draft PR awaiting your merge: ADR-0059 — Ask-the-AI full local evidence /
+>    release local Ollama (item 1 of the operator backlog above), branched from `main`@#114
+>    and merged up to #115.** The prior audit-remediation PR (ADR-0058 — loopback AI-endpoint
+>    scheme/redirect hardening + native-`.mpp` parity confirmation) has since MERGED as #115.
+>    Earlier, the previous handoff
 >    called PR #102 "OPEN"; it has since merged (as `f9b5b10`), and **PRs #103–#113 landed
 >    after it** (ADRs 0047–0057, the post-M18 "tab visuals" / operator-feedback tranche — see
 >    "What shipped — PRs #103–#113" below). Verified locally this sitting (2026-06-17):

@@ -46,11 +46,13 @@
               : "Model-generated strictly from the cited facts below — verify against them.",
           }));
         } else {
-          out.appendChild(el("p", {
-            class: "muted",
-            text: "No local model is active (or strict mode discarded its answer) — these are " +
-              "the engine's cited facts that match your question:",
-          }));
+          var note = el("p", { class: "muted" });
+          note.appendChild(document.createTextNode(
+            "No local model is active (or strict mode discarded its answer) — these are the " +
+            "engine's cited facts that match your question. For a full written analysis, "));
+          note.appendChild(el("a", { href: "/settings" }, [document.createTextNode("enable a local Ollama model in AI Settings")]));
+          note.appendChild(document.createTextNode("."));
+          out.appendChild(note);
         }
         if (res.j.second_answer) {
           out.appendChild(el("p", { class: "muted", text: "Second model (" + (res.j.second_model || "?") + "):" }));

@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from schedule_forensics.ai.citations import assert_all_cited
 from schedule_forensics.ai.null import NullBackend
-from schedule_forensics.ai.qa import answer_question, build_fact_sheet, relevant_facts
+from schedule_forensics.ai.qa import (
+    answer_question,
+    build_fact_sheet,
+    model_evidence,
+    relevant_facts,
+)
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.dcma_audit import audit_schedule
 from schedule_forensics.engine.forecast import compute_finish_forecasts
@@ -148,6 +153,47 @@ def test_interpretive_mode_keeps_derived_figures_but_still_grounds(
     # Null backend and failures stay fail-closed in interpretive mode too
     answer3, used3 = answer_question(NullBackend(), facts, "anything?", mode="interpretive")
     assert answer3 is None and used3
+
+
+def test_fact_sheet_reports_the_finish_driving_count(golden_project5: Schedule) -> None:
+    """The cited sheet now states how many activities drive the computed finish — the
+    'critical path' question has a fact to stand on."""
+    facts = _facts(golden_project5)
+    driving = [f for f in facts if f.text.startswith("Finish-driving activities:")]
+    assert len(driving) == 1
+    assert driving[0].citations  # §6 — cited to the finish-driving activities
+
+
+def test_model_evidence_is_the_full_picture_relevance_ordered(golden_project5: Schedule) -> None:
+    """A live model is handed the WHOLE cited sheet (frame first, then relevance-ordered),
+    not the trimmed slice the analyst is shown."""
+    facts = _facts(golden_project5)
+    ev = model_evidence(facts, "what is the finish forecast?")
+    assert ev[0] is facts[0]  # frame always leads
+    assert len(ev) == len(facts)  # the whole sheet (well under the model cap)
+    assert any("forecast" in f.text.lower() for f in ev[1:4])  # relevant facts float up
+
+
+def test_interpretive_feeds_the_model_more_than_it_shows_the_analyst(
+    golden_project5: Schedule,
+) -> None:
+    """Free-analysis fix: on a narrow question the analyst is shown only the matching facts,
+    but the model's prompt carries the full schedule picture so it can reason holistically."""
+    facts = _facts(golden_project5)
+    question = "how many hard constraints are there?"
+    shown = relevant_facts(facts, question)
+    model = _Model("Here is a thorough analysis.")
+    answer, used = answer_question(model, facts, question, mode="interpretive")
+    assert answer is not None
+    assert used == shown  # the analyst still sees the question-relevant selection
+    prompt = model.prompts[-1]
+    # the prompt holds more facts than are shown — e.g. forecast facts the question did not match
+    assert "Finish forecast" in prompt
+    assert not any("Finish forecast" in f.text for f in shown)
+    facts_block = prompt.split("FACTS:\n", 1)[1].split("\n\nQUESTION:", 1)[0]
+    n_prompt_facts = facts_block.count("\n- ") + 1  # the first fact has no leading newline
+    assert n_prompt_facts == len(model_evidence(facts, question))
+    assert n_prompt_facts > len(shown)  # full evidence > shown slice
 
 
 def test_figure_agreement_is_deterministic_and_names_the_disagreement() -> None:

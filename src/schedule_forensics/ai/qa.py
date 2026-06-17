@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from collections.abc import Callable
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _FIGURE_RE, CitedStatement
@@ -35,8 +36,13 @@ from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import order_versions
 from schedule_forensics.model.schedule import Schedule
 
-#: Most facts to feed the model / return for a question (keeps prompts small and local).
+#: Most facts to SHOW the analyst for a question (the question-relevant selection).
 _MAX_FACTS = 12
+#: Most facts to feed a live local model as EVIDENCE. The analyst is shown the relevant
+#: slice (`relevant_facts`), but a real model is given the whole cited picture so it can
+#: both answer the question and reason about the schedule as a whole — local, so a fuller
+#: prompt costs nothing externally. Comfortably exceeds a single schedule's fact count.
+_MODEL_MAX_FACTS = 48
 
 _WORD_RE = re.compile(r"[a-z0-9]{3,}")
 #: Question words that carry no selection signal.
@@ -106,11 +112,14 @@ def build_fact_sheet(
     """The cited facts a question may be answered from — engine-computed, never the model's."""
     label = schedule.source_file or schedule.name
     by_id = schedule.tasks_by_id
-    drivers = tuple(
-        Citation(label, uid, by_id[uid].name)
+    finish_driving = [
+        uid
         for uid, t in sorted(cpm.timings.items())
         if t.early_finish == cpm.project_finish and uid in by_id
-    ) or tuple(Citation(label, t.unique_id, t.name) for t in schedule.tasks[:3])
+    ]
+    drivers = tuple(Citation(label, uid, by_id[uid].name) for uid in finish_driving) or tuple(
+        Citation(label, t.unique_id, t.name) for t in schedule.tasks[:3]
+    )
 
     tasks = non_summary(schedule)
     data_date = schedule.status_date.date().isoformat() if schedule.status_date else "none recorded"
@@ -129,6 +138,15 @@ def build_fact_sheet(
             drivers,
         )
     ]
+    if finish_driving:
+        facts.append(
+            CitedStatement(
+                f"Finish-driving activities: {len(finish_driving)} of {len(tasks)} activities "
+                f"complete on the computed finish {cpm_finish.isoformat()} (zero float to the "
+                "project end).",
+                drivers,
+            )
+        )
     for f in forecast.forecasts:
         if f.finish is not None:
             facts.append(
@@ -230,6 +248,26 @@ def build_workbook_fact_sheet(
     return tuple(facts)
 
 
+def _question_overlap(question: str) -> Callable[[CitedStatement], int]:
+    """A scorer: how strongly a fact relates to the question (stem overlap + intent aliases).
+
+    Shared by :func:`relevant_facts` (what the analyst is shown) and :func:`model_evidence`
+    (relevance ordering of the full sheet for the model prompt) so the two never drift.
+    """
+    qstems = _stems(question)
+    qwords = _WORD_RE.findall(question.lower())
+    alias_subs: set[str] = set()
+    for key, subs in _INTENT_ALIAS.items():
+        if any(word.startswith(key) for word in qwords):
+            alias_subs.update(subs)
+
+    def overlap(fact: CitedStatement) -> int:
+        text = fact.text.lower()
+        return len(qstems & _stems(fact.text)) + sum(sub in text for sub in alias_subs)
+
+    return overlap
+
+
 def relevant_facts(
     facts: tuple[CitedStatement, ...], question: str, limit: int = _MAX_FACTS
 ) -> tuple[CitedStatement, ...]:
@@ -243,17 +281,7 @@ def relevant_facts(
     """
     if not facts:
         return ()
-    qstems = _stems(question)
-    qwords = _WORD_RE.findall(question.lower())
-    alias_subs: set[str] = set()
-    for key, subs in _INTENT_ALIAS.items():
-        if any(word.startswith(key) for word in qwords):
-            alias_subs.update(subs)
-
-    def overlap(fact: CitedStatement) -> int:
-        text = fact.text.lower()
-        return len(qstems & _stems(fact.text)) + sum(sub in text for sub in alias_subs)
-
+    overlap = _question_overlap(question)
     ranked = sorted(facts[1:], key=lambda f: -overlap(f))
     matched = [f for f in ranked if overlap(f) > 0]
     keep = [facts[0]]
@@ -262,6 +290,24 @@ def relevant_facts(
     else:  # nothing matched: a bounded headline overview, never the whole sheet
         keep += ranked[: min(limit - 1, _OVERVIEW_FACTS)]
     return tuple(keep)
+
+
+def model_evidence(
+    facts: tuple[CitedStatement, ...], question: str, limit: int = _MODEL_MAX_FACTS
+) -> tuple[CitedStatement, ...]:
+    """The evidence a LIVE local model is given: the whole cited picture, frame first, then
+    every other fact ordered by relevance to the question.
+
+    Distinct from :func:`relevant_facts` (which trims to what the analyst is *shown*): a real
+    model answers best with the complete computed context, so it can connect the question to
+    the wider schedule (drivers, float, forecasts, findings) instead of a narrow slice. Runs
+    locally, so a fuller prompt has no external cost.
+    """
+    if not facts:
+        return ()
+    overlap = _question_overlap(question)
+    ranked = sorted(facts[1:], key=lambda f: -overlap(f))
+    return tuple([facts[0], *ranked])[:limit]
 
 
 def figure_agreement(primary: str, second: str) -> str:
@@ -304,37 +350,50 @@ def answer_question(
     (differences, ratios, plain-language analysis) — the caller must show the cited
     facts alongside and the standing "AI can err" disclaimer.
     """
-    chosen = relevant_facts(facts, question)
+    shown = relevant_facts(facts, question)
     if backend.name == "null":
-        return None, chosen
+        return None, shown
     if mode == "interpretive":
+        # A live local model gets the WHOLE cited picture (free analysis, still grounded) —
+        # not just the slice shown to the analyst — so it can reason across the schedule.
+        evidence = model_evidence(facts, question)
         prompt = (
-            "You are a forensic schedule analyst. The cited facts below are your only "
-            "evidence. Answer the question in plain language: you may compute "
-            "differences, ratios, and interpretations FROM these facts and explain "
-            "their implications, but never contradict them or claim data they do not "
-            "contain — say so when the facts are silent. Be concise.\n\nFACTS:\n"
-            + "\n".join(f"- {f.text}" for f in chosen)
+            "You are a senior forensic schedule analyst. The cited facts below are computed "
+            "by the scheduling engine from the project and are your ONLY evidence. Give the "
+            "analyst the most useful, accurate analysis you can of their question:\n"
+            "- Answer the question directly and specifically first.\n"
+            "- You MAY compute differences, ratios, rates and trends FROM these facts and "
+            "explain what they imply for the schedule — what is driving the slip, where the "
+            "risk is, and how healthy the logic, float and progress are.\n"
+            "- Where the facts support it, name the risks and suggest concrete recovery "
+            "actions.\n"
+            "- Never state data the facts do not contain; if they are silent on something, "
+            "say so plainly.\n"
+            "Write in clear, well-structured plain English.\n\nFACTS:\n"
+            + "\n".join(f"- {f.text}" for f in evidence)
             + f"\n\nQUESTION: {question}\nANSWER:"
         )
     else:
+        # Strict mode stays narrow and exact: the model sees only the shown facts and any
+        # figure it emits that is not in them discards the whole answer.
+        evidence = shown
         prompt = (
             "You are a forensic schedule analyst. Answer the question using ONLY the facts "
             "below. Quote figures exactly as written; if the facts do not contain the answer, "
             "say that they do not.\n\nFACTS:\n"
-            + "\n".join(f"- {f.text}" for f in chosen)
+            + "\n".join(f"- {f.text}" for f in evidence)
             + f"\n\nQUESTION: {question}\nANSWER:"
         )
     try:
         text = backend.generate(prompt).strip()
     except Exception:
-        return None, chosen
+        return None, shown
     if not text:
-        return None, chosen
+        return None, shown
     if mode != "interpretive":
         allowed = set()
-        for f in chosen:
+        for f in evidence:
             allowed.update(_FIGURE_RE.findall(f.text))
         if set(_FIGURE_RE.findall(text)) - allowed:
-            return None, chosen  # the model introduced a number the engine never computed
-    return text, chosen
+            return None, shown  # the model introduced a number the engine never computed
+    return text, shown

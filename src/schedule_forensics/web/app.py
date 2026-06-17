@@ -384,9 +384,11 @@ def _ask_panel_html(state: SessionState, page_schedule: str | None = None) -> st
         options.append(f'<option value="{_e(k)}"{sel}>{_e(k)}</option>')
     return f"""
 <div class=panel id=askPanel><h2>Ask the AI</h2>
-<p class=muted><b>AI can err &mdash; verify against citations.</b> Answers are grounded in the
-engine's computed, cited facts, and the matching facts are always shown with the answer.
-With no local model active you get the facts themselves.</p>
+<p class=muted><b>AI can err &mdash; verify against citations.</b> Ask anything about the loaded
+data: with a local model active (Ollama) you get a full written analysis grounded in the
+engine's computed, cited facts &mdash; the matching facts are always shown alongside. With no
+local model active you get the cited facts themselves; <a href="/settings">enable Ollama in AI
+Settings</a> for interpretation.</p>
 <div class=viz-controls>
 <label>About <select id=askScope>{"".join(options)}</select></label>
 <input id=askInput type=text size=60 maxlength=500
