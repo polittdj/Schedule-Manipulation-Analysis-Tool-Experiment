@@ -84,6 +84,22 @@ def test_set_target_redirects_back_and_prefills_everywhere(client: TestClient) -
     assert "Focus activity UID 143" in page and "Computed finish moved" in page
 
 
+def test_target_form_returns_to_current_page_and_reaches_card_and_wbs(client: TestClient) -> None:
+    """The header Target-UID form shipped next_url hardcoded to '/', so setting a target always
+    bounced to the dashboard — looking like nothing changed. target.js now keeps you on the
+    current page, and the target is reflected on the card + WBS pages (they ignored it before)."""
+    _upload(client, "Project5")
+    tjs = client.get("/static/target.js")
+    assert tjs.status_code == 200
+    assert "next_url" in tjs.text and "location.pathname" in tjs.text  # rewrites to current page
+    assert 'src="/static/target.js"' in client.get("/").text  # loaded on every page (shell)
+    assert "name=next_url" in client.get("/analysis/Project5").text  # the field target.js drives
+    # with a target set, the card and WBS pages now show its focus panel
+    client.post("/target", data={"uid": "143", "next_url": "/"})
+    assert "Target activity" in client.get("/card/Project5").text
+    assert "Target activity" in client.get("/wbs/Project5").text
+
+
 def test_explicit_blank_target_overrides_the_session_target(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")
