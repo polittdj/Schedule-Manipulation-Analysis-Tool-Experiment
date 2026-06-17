@@ -1,31 +1,35 @@
-# Handoff — 2026-06-17 (PRs #81–#121 MERGED; **one OPEN draft PR: ADR-0065 — animated S-Curve**; M18 + tab-visuals + loopback hardening + Ask-AI + chart full-screen/zoom + Target-UID + path counterfactual + Brief-trends + DCMA-defs shipped)
+# Handoff — 2026-06-17 (PRs #81–#122 MERGED; **one OPEN draft PR: ADR-0066 — Fuse workbook validation**; M18 + tab-visuals + Ask-AI + chart fullscreen/zoom + Target-UID + path counterfactual + Brief-trends + DCMA-defs + S-Curve shipped)
 
-> **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
-> ordered a large set of UI/engine/AI improvements and chose the **start order**. Progress:
+> **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** Progress:
 > 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED (#116, ADR-0059).**
 > 2. ~~Chart legibility + zoom/fullscreen + legends~~ — **MERGED (#117, ADR-0060).**
-> 3. ~~Target-UID drives every page~~ — **MERGED (#118, ADR-0061)** (still not target-aware,
->    own later PRs: /forecast /curves /cei + /briefing + /dashboard).
-> 4. ~~Critical-path "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)** (/evolution What-if).
+> 3. ~~Target-UID drives every page~~ — **MERGED (#118, ADR-0061)**.
+> 4. ~~Critical-path "gained float" counterfactual~~ — **MERGED (#119, ADR-0062)**.
 > 5. ~~Diagnostic Brief trends/risks/recovery~~ — **MERGED (#120, ADR-0063)**.
 > 8. ~~DCMA 1–14 definitions on the Analysis page~~ — **MERGED (#121, ADR-0064)**.
-> 9. **Animated S-Curve — THIS PR, ADR-0065.** New `engine/s_curve.py` `compute_s_curve`
->    (cumulative planned-baseline vs actual/forecast % over a shared month axis) + `/scurve`
->    page + `static/scurve.js` (Prev/Next/Auto-play stepper, locked 0–100% axis, data-date
->    marker, legend) + `.chart-host` (fullscreen/zoom) + nav link.
-> Remaining, each its own tested/parity-green draft PR:
-> 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide
->    legend** (curves.js + /api/curves) + readable filenames.
+> 9. ~~Animated S-Curve~~ — **MERGED (#122, ADR-0065)** (`engine/s_curve.py` + `/scurve`).
+> 11. **Fuse workbook validation — THIS PR, ADR-0066.** `docs/FUSE-VALIDATION.md` +
+>    `tests/engine/test_fuse_reference.py`: tool matches Fuse exactly on normal-completion counts
+>    (8/8 fixtures) and TP4 v1–v4 finish; differences are documented (TP2 calendar, v5
+>    fixture/manifest, workbook Project2≠golden). NO CPM change (parity preserved). The Fuse
+>    proprietary-metric + year-trend reference values are recorded as calibration targets.
+> Remaining, each its own tested/parity-green draft PR (operator wants ALL of these):
+> 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide legend**.
 > 7. Bow-Wave (cei.js) running totals + target-UID highlight during animation.
-> 10. **NEW (operator, 2026-06-17): on the page reached by clicking a project from the dashboard
->    (Interactive Analysis /analysis), add a Primary/Secondary/Tertiary PATH filter + a
->    hide-completed toggle + an adjustable time scale + full task names with text wrapping on the
->    Gantt.** NOTE: /path already has driving tiers (DRIVING/SECONDARY/TERTIARY via
->    `/api/driving` + `compute_driving_slack`), hide-100%, and a px/day-zoom Gantt — so plan is to
->    bring those controls (and wrapped full names) to the /analysis Gantt (app.js). Confirm with
->    operator if they actually meant the /path page. (Asked; awaiting confirmation — defaulting to /analysis.)
-> **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.** A full
-> read-only map of the chart/target/evolution/briefing/DCMA code is in this session's notes.
+> 10. Primary/Secondary/Tertiary PATH filter + hide-completed + adjustable time scale + full
+>    wrapped task names — operator confirmed **BOTH** `/analysis` (add all) and `/path` (add
+>    wrapped names; it already has tiers/hide/zoom).
+> 12. **Missing Fuse metrics** — Logic Density™, Float Ratio™, Insufficient Detail™, Merge
+>    Hotspot, Number of Leads/Lags, Avg/Max Float — engine + a "Ribbon" view; CALIBRATE to the
+>    per-project values in docs/FUSE-VALIDATION.md.
+> 13. **Year Trend/Phase view** — Fuse Ribbon Browser + per-year (2017–2028) trend analysis.
+> 14. **NEW operator bugs/asks (2026-06-17, latest):** (a) make the grid/path filters
+>    **MS-Project-style dropdowns** (select-all / deselect-some checklists), not substring inputs;
+>    (b) **scaling is wrong** on the Dashboard driving-path chart + the project-schedule charts —
+>    investigate dashboard.js / the Gantt scale; (c) the **Path Analysis driving/secondary/tertiary
+>    -to-target chart is WRONG** — investigate path.js + `/api/driving` rendering. (Likely folded
+>    into the item-10 path work + a chart-scaling fix.)
+> **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.**
 
 > **PR — ADR-0060 (chart full-screen / zoom / legible labels).** New `static/chartframe.js` +
 > `.cf-*` CSS: any `class=chart-host` container gets an overlay toolbar (⤢ full screen via the
