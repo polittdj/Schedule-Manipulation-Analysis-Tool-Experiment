@@ -152,7 +152,8 @@ title="Focus every view on one activity (blank = clear)">
 <button type=submit class=linkbtn>Set</button></form>
 <button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
 </nav></header>
-<main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script></body></html>"""
+<main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
+<script src="/static/chartframe.js"></script></body></html>"""
 )
 
 
@@ -1845,7 +1846,7 @@ you the logic and the observed performance disagree.</p>
 <p class=muted>Each forecast marker sits on a <b>locked date axis</b> (held fixed across every
 version); step or play to watch the three forecasts drift toward later dates as the project
 progresses. Faint markers are the prior version's forecasts.</p>
-<div id=driftChart></div>
+<div id=driftChart class=chart-host></div>
 <table><tr><th>Version</th><th>Data date</th><th>CPM</th><th>Completion rate</th>
 <th>Earned schedule</th></tr>{drift_rows}</table></div>
 <script src="/static/drift.js"></script>"""
@@ -1926,17 +1927,17 @@ def _curves_body(curves: MonthCurves) -> str:
 they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished
 or are now scheduled to (blue). Where the blue curve sits to the right of the gold is slipped
 finish work, read month by month.</p>
-<div id=finishesChart></div></div>
+<div id=finishesChart class=chart-host></div></div>
 <div class=panel><h2>DATA Date Finishes &mdash; actual-finish curve per version</h2>
 <p class=muted>Each loaded version (oldest first by data date) plots its monthly actual/scheduled
 finish curve on one shared month axis. As later versions push their curves to the right, you
 see the bow wave of slipped finishes as a line family.</p>{multi}
-<div id=dataDateChart></div></div>
+<div id=dataDateChart class=chart-host></div></div>
 <div class=panel><h2>Slippage &mdash; start &amp; finish curves per version</h2>
 <p class=muted>Per version: activities counted by their <b>start</b> month (solid) and their
 <b>finish</b> month (dashed). Start- and finish-curve drift across versions is the slippage
 signature &mdash; the whole profile sliding right.</p>
-<div id=slippageChart></div></div>
+<div id=slippageChart class=chart-host></div></div>
 <script src="/static/curves.js"></script>"""
 
 
@@ -2154,7 +2155,7 @@ on the <a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
 group: the count-based <b>SPI(t)</b> (Earned Schedule &divide; Actual Time; &lt; 1 = behind),
 the <b>Earned Schedule</b> and <b>Actual Time</b> in working days. A group with no completions
 or no baseline finishes reads &mdash; (never a fabricated value).</p>
-<div id=wbsChart></div>
+<div id=wbsChart class=chart-host></div>
 <table class=wbs-table><tr><th>WBS</th><th>SPI(t)</th><th>Earned schedule (wd)</th>
 <th>Actual time (wd)</th><th>Completed</th></tr>{es_rows}</table></div>
 <script src="/static/wbs.js"></script>"""
@@ -2206,7 +2207,7 @@ def _analysis_body(
     viz = f"""{target_panel}
 <div class=panel><h2>Interactive analysis</h2>
 <div id=viz data-name="{_e(key)}">
-<div class=charts id=charts></div>
+<div class="charts chart-host" id=charts></div>
 <div class=viz-controls>Driving path to target UID:
 <input id=targetUid type=number min=1 placeholder="UID" value="{target if target is not None else ""}">
 secondary&le;<input id=secMax type=number value=10>d
@@ -2610,7 +2611,7 @@ placeholder="UID"> <button type=submit>Focus</button>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
 {focus_form}{focus_panel}
-<div class=panel><h2>Trend charts</h2><div id=trendCharts class=charts
+<div class=panel><h2>Trend charts</h2><div id=trendCharts class="charts chart-host"
 data-target="{target if target is not None else ""}"></div></div>
 <div class=panel id=qualDrillPanel><h2>Quality drill-down &amp; animation</h2>
 <p class=muted>Step through the versions (oldest first) and watch the count of <b>offending
@@ -2775,7 +2776,7 @@ Auto-play to watch the wave move.</p>
 <button id=nextSnap type=button>Next &#9654;</button>
 <button id=autoPlay type=button>&#9654; Auto-play</button>
 </div>
-<div id=ceiChart></div></div>
+<div id=ceiChart class=chart-host></div></div>
 <div class=panel><h2>CEI &mdash; Current Execution Index</h2>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
 finish in the following month, how many this snapshot re-scheduled for that month and how

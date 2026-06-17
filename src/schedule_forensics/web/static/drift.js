@@ -45,17 +45,26 @@
     title.textContent = "Finish forecasts — as of " + (v.as_of || v.label);
     svg.appendChild(title);
 
-    // year/quarter ticks along the locked date axis
-    var d = new Date(lo); d.setMonth(0, 1); d.setHours(0, 0, 0, 0);
+    // Adaptive date ticks along the locked axis: a year-only scale was empty/unreadable when
+    // every forecast sits inside a year or two. Pick year / quarter / month granularity by the
+    // span so a short window still shows a meaningful, readable scale (≈ a dozen ticks).
+    var MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var months = (hi - lo) / DAY / 30.44;
+    var stepMonths = months > 48 ? 12 : months > 16 ? 3 : months > 8 ? 2 : 1;
+    var d = new Date(lo); d.setDate(1); d.setHours(0, 0, 0, 0);
+    if (stepMonths === 12) d.setMonth(0);
+    else if (stepMonths === 3) d.setMonth(Math.floor(d.getMonth() / 3) * 3);
     while (d.getTime() <= hi) {
       var tx = x(d.getTime());
-      if (tx >= padL) {
+      if (tx >= padL && tx <= W - padR) {
         svg.appendChild(svgEl("line", { x1: tx, y1: padT, x2: tx, y2: H - padB, stroke: "var(--line)", "stroke-width": 1 }));
         var lab = svgEl("text", { x: tx + 2, y: H - padB + 14, fill: "var(--muted)", "font-size": 10 });
-        lab.textContent = d.getFullYear();
+        lab.textContent = stepMonths === 12
+          ? String(d.getFullYear())
+          : MON[d.getMonth()] + " " + ("" + d.getFullYear()).slice(2);
         svg.appendChild(lab);
       }
-      d.setFullYear(d.getFullYear() + 1);
+      d.setMonth(d.getMonth() + stepMonths);
     }
 
     // baseline planned finish — a fixed gold reference the forecasts drift past

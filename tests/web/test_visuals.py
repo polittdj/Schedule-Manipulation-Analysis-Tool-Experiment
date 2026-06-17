@@ -143,6 +143,40 @@ def test_charts_carry_legends_descriptions_and_thinned_labels(client: TestClient
     assert "id=forecastRuler" in page and "chart-legend" in page
 
 
+def test_chart_frame_fullscreen_zoom_and_readable_labels() -> None:
+    """Operator request: every chart can go full screen and zoom in/out, version labels do
+    not overlap (data-date-primary), and the forecast-drift date scale is meaningful."""
+    c = TestClient(create_app(SessionState()))
+    for fn in ("Project2.mspdi.xml", "Project5.mspdi.xml"):
+        c.post(
+            "/upload",
+            files={"files": (fn, (GOLDEN / "project2_5" / fn).read_bytes(), "text/xml")},
+        )
+
+    cf = c.get("/static/chartframe.js")
+    assert cf.status_code == 200
+    # the frame supplies full screen + zoom controls, and re-applies zoom across re-renders
+    assert "requestFullscreen" in cf.text and "cf-frame" in cf.text and "cf-bar" in cf.text
+    assert "chart-host" in cf.text and "MutationObserver" in cf.text
+
+    # loaded once via the page shell, so it reaches EVERY page/chart
+    assert "/static/chartframe.js" in c.get("/analysis/Project5").text
+
+    # every chart container is marked so the frame attaches
+    for path in ("/analysis/Project5", "/curves", "/wbs/Project5", "/forecast", "/trend", "/cei"):
+        assert "chart-host" in c.get(path).text, path
+
+    css = c.get("/static/app.css").text
+    assert ".cf-frame" in css and ".cf-bar" in css and ".cf-scroll" in css
+
+    # readable, non-overlapping labels: trend + curves prefer the data date over long filenames
+    marker = "versions.some(function (v) { return v.status_date; })"
+    assert marker in c.get("/static/trend.js").text
+    assert marker in c.get("/static/curves.js").text
+    # forecast-drift axis is adaptive (year / quarter / month), not the old year-only scale
+    assert "stepMonths" in c.get("/static/drift.js").text
+
+
 def test_hide_completed_uses_a_robust_complete_flag(client: TestClient) -> None:
     """The grid/driving rows carry a robust `complete` flag and the hide-completed toggles
     filter on it — fixing done-at-99% activities (actual finish, <100%) slipping past >=100."""

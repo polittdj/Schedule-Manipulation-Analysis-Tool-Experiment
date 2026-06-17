@@ -1,15 +1,34 @@
-# Handoff — 2026-06-17 (PRs #81–#115 MERGED; **one OPEN draft PR: ADR-0059 — Ask-the-AI full local evidence / release local Ollama**; M18 COMPLETE + tab-visuals tranche + 3rd-audit loopback hardening shipped)
+# Handoff — 2026-06-17 (PRs #81–#116 MERGED; **one OPEN draft PR: ADR-0060 — chart full-screen/zoom + legible labels**; M18 COMPLETE + tab-visuals + loopback hardening + Ask-AI full-evidence shipped)
 
 > **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
-> ordered a large set of UI/engine/AI improvements and chose the **start order**: (1) Ask-the-AI
-> + release local Ollama [THIS PR, ADR-0059]; then the rest as separate PRs — chart legibility
-> + zoom/fullscreen + legends on ALL charts; Target-UID actually driving every page;
-> critical-path removal & "gained float" counterfactual analysis; Diagnostic Brief trends/
-> risks/opportunities/recovery; Data-Date & Slippage redesign as **overlaid line families with
-> a clickable show/hide legend**; Bow-Wave running totals + target-UID highlight during
-> animation; surface the DCMA 1–14 definitions on the Interactive Analysis page. **Ollama
-> policy decided: free local analysis, KEEP the strict loopback-only air-gap (no data leaves
-> the machine).** Work each as its own tested, parity-green draft PR.
+> ordered a large set of UI/engine/AI improvements and chose the **start order**. Progress:
+> 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED (#116, ADR-0059).**
+> 2. **Chart legibility + zoom/fullscreen + legends on ALL charts — THIS PR, ADR-0060.**
+> Remaining, each its own tested/parity-green draft PR:
+> 3. Target-UID actually driving every page (today only /path, /trend, /evolution, /analysis,
+>    /compare honor it; /brief /briefing /curves /cei /forecast /wbs /card /dashboard ignore it).
+> 4. Critical-path removal & "gained float" counterfactual analysis (engine/path_evolution.py
+>    already has entered/left/stayed/duration_changed/shortened_on_path + reason codes incl.
+>    `gained_float`/`slack_consumed`; needs: exclude COMPLETED from "left", and a CPM-rerun
+>    counterfactual restoring removed tasks' duration/logic/constraints to measure target-UID impact).
+> 5. Diagnostic Brief trends/risks/opportunities/recovery (ai/briefing.py + ai/brief.py;
+>    deterministic CitedStatements — add a trends-over-time section + risk/recovery grouping of findings).
+> 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide
+>    legend** (curves.js + /api/curves) + readable filenames.
+> 7. Bow-Wave (cei.js) running totals + target-UID highlight during animation.
+> 8. Surface the DCMA 1–14 definitions on the Interactive Analysis page (web/help.py
+>    METRIC_DICTIONARY exists; /analysis DCMA table at app.py ~2227 — add inline defs/tooltips/links).
+> **Ollama policy decided: free local analysis, KEEP the strict loopback-only air-gap.** A full
+> read-only map of the chart/target/evolution/briefing/DCMA code is in this session's notes.
+
+> **PR — ADR-0060 (chart full-screen / zoom / legible labels).** New `static/chartframe.js` +
+> `.cf-*` CSS: any `class=chart-host` container gets an overlay toolbar (⤢ full screen via the
+> Fullscreen API w/ `.cf-max` fallback; − / ＋ / Reset zoom rescaling the SVG in a scroller).
+> Loaded once from the page shell; a MutationObserver re-applies zoom across stepper re-renders.
+> `chart-host` marks trend/finishes/data-date/slippage/CEI/WBS/drift/analysis containers (the
+> evolution Gantt keeps its own ADR-0055 zoom). `trend.js`+`curves.js` `shortLabels` now prefer
+> the **data date** (uniform, sorted, non-overlapping) over long filenames; `drift.js` axis ticks
+> are **adaptive** (year/quarter/month). Pure presentation → parity 10/10; full suite 876 passed.
 
 > **PR — ADR-0059 (Ask-the-AI: full local evidence).** `ai/qa.py`: a live local model now
 > gets the WHOLE cited sheet (`model_evidence`, frame-first + relevance-ordered, cap 48) with a
