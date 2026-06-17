@@ -33,16 +33,22 @@
 > **REMAINING — each its own tested, parity-green draft PR (operator wants ALL):**
 > A. **BUGS (do first — defects):**
 >    - **Path Analysis driving/secondary/tertiary-to-target chart is WRONG** (`path.js` + `/api/driving`).
+>      **STILL OPEN — needs the operator screenshot** (visual; can't verify rendering in-container).
 >    - **Scaling wrong** on the per-project (`/analysis`) **driving-path trace + project-schedule
->      Gantt** — `app.js` positions bars as % of the whole span squeezed into a fixed-width column
->      with NO adjustable scale/scroll; convert to the `/path` px-per-day + horizontal-scroll model.
->    - **OPEN QUESTION for operator:** asked for a SCREENSHOT of the wrong `/path` chart + a
->      `/analysis` Gantt to fix precisely (visual; can't verify rendering in-container). Not yet answered.
+>      Gantt** — `app.js` positioned bars as % of the whole span squeezed into a fixed-width column
+>      with NO adjustable scale/scroll. **✅ FIXED (ADR-0068, OPEN draft PR):** both `/analysis`
+>      Gantts now use the `/path` px-per-day + horizontal-scroll model (shared `buildAxis`, a
+>      `#vizZoom` scale slider, month ticks + data-date line in px, pixel-true header/body alignment).
+>    - **OPEN QUESTION for operator (still owed):** a SCREENSHOT of the wrong `/path` chart + a
+>      `/analysis` Gantt to fix the `/path` half precisely. The `/analysis` half above was fixed
+>      against the known-good `/path` model without it; the `/path` defect needs the screenshot.
 > B. **MS-Project-style dropdown filters** (select-all / deselect-some checklists) replacing the
 >    substring filter inputs on the grid + path tier filter.
 > C. **Path filter on BOTH pages** (operator-confirmed): `/analysis` gets Primary/Secondary/Tertiary
 >    tier filter + hide-completed + adjustable time scale + full wrapped names; `/path` gets full
->    wrapped task names (it already has tiers/hide/px-day-zoom). (Overlaps A + B.)
+>    wrapped task names (it already has tiers/hide/px-day-zoom). **✅ DONE (ADR-0068, same OPEN draft
+>    PR):** `/analysis` got the `#ganttTier` tier filter, the `#vizZoom` adjustable scale, and full
+>    wrapped names (grid + trace); `/path` Name column now wraps to full text. (Overlaps A + B.)
 > D. **Year Trend/Phase view** — Fuse Ribbon Browser + per-year (2017–2028) trend analysis
 >    (reference values in docs/FUSE-VALIDATION.md).
 > E. **Data-Date & Slippage redesign** — overlaid line families with a clickable show/hide legend (curves.js).
@@ -51,6 +57,20 @@
 >    Start-and-Finish-Ratio) — NO simple formula matched in calibration; implement only when the
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
+
+> **PR — ADR-0068 (OPEN draft, this branch) — /analysis Gantts go scalable + path filters.** The
+> per-project `/analysis` driving-path trace (`#gantt`) and activity Gantt (`#grid` timeline) no
+> longer squeeze the whole span into a fixed-width column as a % of span — both now use the `/path`
+> px-per-day + horizontal-scroll model: a shared `buildAxis` in `static/app.js`, one page-level
+> **Scale** slider (`#vizZoom`, 2–40 px/day), month ticks + the gold data-date line positioned in
+> pixels, and pixel-true header/body alignment (zeroed horizontal padding on `.g-head`/`.g-cell`).
+> The `/analysis` trace also gained a Primary/Secondary/Tertiary **tier filter** (`#ganttTier`),
+> keeps the show/hide-completed toggle, and shows **full wrapped task names** (no 22-char
+> truncation); the `/path` Name column wraps to full text too (`pv-name`). This closes item A's
+> `/analysis`-scaling half + all of item C. **Still owed:** the `/path` driving-chart *visual*
+> defect (item A's first half) — a follow-up commit on this same PR once the operator sends the
+> screenshot. Pure presentation → **parity 10/10**; full suite **908 passed**; engine cov 97%.
+> Air-gap unchanged (app.js stays dependency-free, same-origin).
 
 > **AUDIT NOTE (2026-06-17):** the operator's 4 Acumen Fuse exports (Schedule Quality docx +
 > Ribbon/Phase xlsx + DCMA Report) live ONLY in the ephemeral session uploads — their values are

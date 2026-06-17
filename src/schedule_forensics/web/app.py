@@ -2288,9 +2288,13 @@ def _analysis_body(
 secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button>
-<label><input id=showDone type=checkbox checked> show completed tasks</label></div>
+<label><input id=showDone type=checkbox checked> show completed tasks</label>
+<label>Tier <select id=ganttTier><option value="">all</option><option>DRIVING</option>
+<option>SECONDARY</option><option>TERTIARY</option><option>BEYOND</option></select></label>
+<label>Scale <input id=vizZoom type=range min=2 max=40 value=8 title="pixels per day — drag to zoom both timelines"></label></div>
 <div id=gantt></div>
-<h3>Activities &amp; Gantt <span class=muted>(add/remove columns; bars on the right — red = critical,
+<h3>Activities &amp; Gantt <span class=muted>(add/remove columns; the right-hand timeline is
+scalable — drag <b>Scale</b> to zoom (pixels/day) and scroll horizontally; red = critical,
 diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
 metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
