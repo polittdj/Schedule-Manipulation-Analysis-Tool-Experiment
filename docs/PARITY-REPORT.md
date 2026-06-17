@@ -23,6 +23,52 @@ parity on a *raw* `.mpp` (as opposed to the distilled golden MSPDI) still awaits
 v8.11.0 / SSI golden exports plus `Project5.mpp` (R-02 / R-03); `Project5.mpp` was not provided this
 session, so its case skips.
 
+## Native `.mpp` battery — 14 files vs committed MSPDI / pinned values (verified 2026-06-17, local only)
+
+The operator re-deposited all 14 reference `.mpp`s (non-CUI, attested; git-ignored, **not committed**).
+Each was checked against its committed MSPDI twin at the model level — since the committed fixtures
+already produce every pinned DCMA/float/driving/manipulation number (the `tests/test_projects/`
+battery), model-equivalence transitively carries those numbers to the `.mpp`.
+
+| File | Tasks | Links | Computed finish | vs committed MSPDI twin | Verdict |
+|---|---|---|---|---|---|
+| `Project2.mpp` | 145 | 176 | 2027-08-30 | full model match, zero field diffs | ✅ faithful |
+| `TP1_Library_Progressed` | 28 | 30 | 2026-09-16 | topology+links+finish match; `percent_complete`/few durations differ | ✅ (see progress note) |
+| `TP3_Outage_DCMA_Seeded` | 25 | 25 | 2026-06-25 | topology+links+finish match; `percent_complete`/few durations differ | ✅ (see progress note) |
+| `TP4_DataCenter_v1…v5` | 16 | 20 | v1–3 2026-06-05 · v4–5 2026-06-26 | topology+links+finish match; `percent_complete` differs | ✅ (see progress note) |
+| `TP2_Bridge_4x10_Calendar` | 20 | 21 | **2026-09-24** | UIDs+links match; **finish ≠ 2026-11-04** | ⚠️ calendar round-trip loss (below) |
+| `Project2_Duration_Bomb_` | 100 | 135 | **2027-02-24** | (no MSPDI twin) matches ADR-0043 stored finish | ✅ ADR-0043 confirmed |
+| `Large_Test_File` | 2126 (1723 acts) | 2702 | 2028-09-28 | (no MSPDI twin) 1723 acts = ADR-0045 | ✅ parse + SSI relative tiers |
+| `Project3.mpp` / `Project4.mpp` | series | — | — | intermediate Commercial-Construction versions; no golden twin | observational |
+
+**Manipulation (native `.mpp`):** TP4 **v3→v4** fires `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE`
+citing UID 19; **v2→v3** fires neither — exactly the pinned spec. `Project5_TAMPERED` vs the clean
+Project5 golden → `MANIP_DELETED_LOGIC` (UIDs 135/138), finish 2027-12-07 → 2028-01-25.
+
+**Progress note (TP1/TP3/TP4, benign):** the only diffs vs the MSPDI twin are `percent_complete` (and
+a few durations) on in-progress/summary tasks. MS Project recomputes progress and summary roll-ups when
+it imports the synthetic XML and saves the `.mpp`; both importers faithfully read their own file. The
+committed XML is canonical (the tool and MS Project read identical bytes from it).
+
+**Large File — SSI driving tiers (ADR-0045):** the documented chain's **relative** spacing reproduces
+SSI's **0 / 9 / 12 / 13** to the day. The **absolute** values are not reproducible from repo artifacts
+because **ADR-0045 did not record SSI's target/focus UID** — tracing to the global-finish milestone
+(UID 6077) leaves the chain at ~514 working days of float (6509's path to project end is not
+controlling), so SSI evidently targeted an earlier milestone. *Action: record SSI's focus UID next
+time the file is in hand.*
+
+**⚠️ TP2 calendar round-trip caveat (NOT a tool defect).** The `.mpp` finishes 2026-09-24 instead of
+2026-11-04 because the 4×10 Crew **project calendar lost its 4 holiday exceptions** on the MS Project
+save. Localized with the bundled MPXJ converter (`MpxjToMspdi`): the `.mpp` carries three calendars —
+**"4x10 Crew" (CalendarUID=1, the project default) has 0 exceptions**, while a stock US-federal holiday
+set sits on the non-default **"Standard" (UID 2)**. The 4×10 working time (600 min, Mon–Thu) survived;
+the holidays did not. The tool reads the **project** calendar correctly, so it reports the (now empty)
+holiday set faithfully — the loss is upstream in MS Project's XML→`.mpp` write. The committed XML (read
+identically by the tool → 4 holidays → 2026-11-04) is authoritative. No code change: "correcting" this
+would require inventing holidays absent from the file or adopting a different calendar's stock set. This
+is precisely the failure `docs/TEST-PROJECTS.md` anticipates ("if it shifts, the calendar didn't survive
+the trip").
+
 ## SSI — driving slack (Project5, focus UID 143)
 
 | Check | Golden (SSI) | Computed | Status |

@@ -1,4 +1,4 @@
-# Handoff — 2026-06-17 (PRs #81–#114 MERGED; **one OPEN draft PR: ADR-0058 audit remediation** — loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmed; M18 COMPLETE)
+# Handoff — 2026-06-17 (PRs #81–#114 MERGED; **one OPEN draft PR: ADR-0058 audit remediation** — loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmed; native-`.mpp` battery (14 files) VALIDATED — Duration Bomb 2027-02-24 ✓, TP/Project2/Large parity ✓, TP2 calendar round-trip caveat documented; M18 COMPLETE)
 
 > ## START HERE (next session)
 > 1. **One OPEN draft PR awaiting your merge: ADR-0058 — this audit's remediation (loopback
@@ -17,11 +17,34 @@
 > 2. **M18 is COMPLETE (items 1–8) AND the operator's tab-visuals follow-ups (#103–#113) are
 >    done. No feature backlog remains.** The open follow-ups are VERIFICATION / real-data
 >    items, none blocking:
->    - **Re-deposit the reference `.mpp`s** — a fresh container has no `00_REFERENCE_INTAKE/mpp/`
->      directory at all (git-ignored; never travels between sessions). To re-verify, ask the
->      operator to re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and
->      `Project2_Duration_Bomb.mpp`, then confirm Duration Bomb finish **2027-02-24** (ADR-0043)
->      and Large-File driving tiers matching SSI (ADR-0045).
+>    - **✅ Native-`.mpp` battery — VALIDATED this sitting (2026-06-17).** Operator re-deposited
+>      all 14 reference `.mpp`s (non-CUI test files, attested) into `00_REFERENCE_INTAKE/mpp/`
+>      (git-ignored, never committed). Each was checked against its committed MSPDI twin / pinned
+>      values (method: the MSPDI fixtures are verified ground truth, so model-equivalence ⇒ every
+>      downstream number holds). Results:
+>      - **Duration Bomb** computes finish **2027-02-24** → ADR-0043 owed item **CLOSED**.
+>      - **Project2** native parse is a **full model match** to the golden (145 tasks / 176 links /
+>        finish 2027-08-30, zero field diffs).
+>      - **TP4 v3→v4** fires `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE` citing UID 19;
+>        **v2→v3** fires neither — manipulation detection confirmed on native `.mpp` (matches pin).
+>      - **Project5_TAMPERED** → tool flags `MANIP_DELETED_LOGIC` (UIDs 135/138); finish slips
+>        2027-12-07 → 2028-01-25. Detector works.
+>      - **Large File** parses faithfully — **1723** non-summary activities (exact ADR-0045 match),
+>        2702 links. The documented driving chain's relative spacing reproduces SSI's **0/9/12/13**
+>        to the day. ⚠️ Absolute reproduction is blocked because **ADR-0045 never recorded SSI's
+>        target/focus UID** (doc gap — capture it next time the file is in hand).
+>      - **TP1 / TP3 / TP4(v1–v5)** native `.mpp` match their MSPDI twin on task topology, logic
+>        links, and computed finish; they differ only on `percent_complete` (+ a few durations) for
+>        in-progress/summary tasks — MS Project recomputes progress/roll-ups on XML→`.mpp` import.
+>      - ⚠️ **TP2 round-trip caveat (NOT a tool bug):** `.mpp` computed finish is **2026-09-24**, not
+>        2026-11-04, because MS Project dropped the **4×10 Crew project calendar's 4 holiday
+>        exceptions** on save (confirmed via MPXJ: project CalendarUID=1 has 0 exceptions; stock US
+>        holidays landed on the non-default "Standard" calendar UID 2). The tool reads the project
+>        calendar correctly; the canonical committed XML (4 holidays → 2026-11-04) is authoritative.
+>        Details in `docs/PARITY-REPORT.md` / `docs/risks.md` (R-04).
+>      - Minor, pre-existing & format-independent: TP4 **v4 and v5** both compute finish 2026-06-26
+>        from the `.mpp` **and** the committed MSPDI, while `TEST-PROJECTS.md` lists v5 as 7/17/26 —
+>        a fixture-vs-manifest question, not a native-`.mpp` issue. Flagged for separate review.
 >    - **Real-file feedback** — watch how Path Analysis, Critical-Path Evolution (now with grid
 >      columns / zoom / filter-by-path / specific reasons), ask-the-AI, float bands, `/forecast`
 >      (with the explainer), `/trend` drill-down, and the Dashboard health cards read on real

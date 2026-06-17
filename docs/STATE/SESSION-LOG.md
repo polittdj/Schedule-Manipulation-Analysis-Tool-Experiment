@@ -1691,3 +1691,43 @@ reviewer, test engineer.
 - Files: `src/schedule_forensics/net_guard.py`, `ai/ollama.py`, `ai/openai_compat.py`,
   `web/app.py`; `tests/guards/test_endpoint_scheme.py` (new), `tests/importers/test_mpp_mpxj.py`;
   docs `adr/0058-*`, `STATE/HANDOFF.md`, `STATE/SESSION-LOG.md`, `risks.md`, `PARITY-REPORT.md`.
+
+### Native-`.mpp` battery (14 files) — full validation, local only (cont. this session)
+- Operator re-deposited all 14 reference `.mpp`s (non-CUI, attested) into git-ignored
+  `00_REFERENCE_INTAKE/mpp/` (none committed; `git check-ignore` confirms every file). Method: the
+  committed MSPDI fixtures are verified ground truth (the battery test pins every DCMA/float/
+  driving/manip number to them), so each `.mpp` was checked against its MSPDI twin at the model
+  level — equivalence ⇒ all downstream numbers hold.
+- **Owed items CLOSED:**
+  - **Duration Bomb** (`Project2_Duration_Bomb_.mpp`, "Formal Wedding Planner", 100 tasks/135
+    links): computed finish **2027-02-24** — confirms ADR-0043 (owed since #91).
+  - **Large File** ("USA OTB Master IMS"): parses to **1723 non-summary activities** (exact
+    ADR-0045 count) / 2702 links / finish 2028-09-28. Driving-slack RELATIVE spacing on the
+    documented chain reproduces SSI's **0/9/12/13** to the day (re-based to the chain floor).
+    ⚠️ ABSOLUTE values unverifiable from repo artifacts — **ADR-0045 did not record SSI's
+    target/focus UID** (doc gap). Tracing to the global-finish milestone (UID 6077) puts the chain
+    at ~514 d of float because 6509's path to project end is not controlling; SSI clearly targeted
+    an earlier milestone.
+- **Manipulation (native `.mpp`):** TP4 **v3→v4** fires `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE`
+  citing UID 19 "Generator & switchgear procurement"; **v2→v3** fires neither — exactly the pinned
+  spec. `Project5_TAMPERED` vs the clean Project5 golden → `MANIP_DELETED_LOGIC` (UIDs 135/138);
+  finish slips 2027-12-07 → 2028-01-25.
+- **Fidelity vs committed MSPDI twin:** `Project2.mpp` = full model match (zero field diffs).
+  TP1/TP3/TP4(v1–v5) match on task topology, logic links, and computed finish; the only diffs are
+  `percent_complete` (+ a few durations) on in-progress/summary tasks — MS Project recomputes
+  progress and summary roll-ups on XML→`.mpp` import (both importers faithfully read their own
+  file; the committed XML is canonical).
+- ⚠️ **TP2 calendar round-trip caveat (NOT a tool defect):** `TP2_Bridge_4x10_Calendar.mpp` computes
+  finish **2026-09-24** vs the canonical 2026-11-04. Localized via the bundled MPXJ converter: the
+  project-default calendar **"4x10 Crew" (CalendarUID=1) has 0 exceptions** in the `.mpp` — MS
+  Project dropped its 4 authored holidays (2026-05-25/06-15/07-02/09-07) on save; a separate
+  stock-US-holiday set landed on the non-default "Standard" calendar (UID 2). The tool reads the
+  project calendar correctly (working time 600 min/Mon–Thu survived; holidays did not). The
+  committed XML (read identically by the tool → 4 holidays → 2026-11-04) is authoritative. Recorded
+  in `risks.md` (R-04) + `PARITY-REPORT.md`. No code change — "fixing" it would mean inventing
+  holidays absent from the file or adopting a different calendar's stock set.
+- Pre-existing, format-independent: TP4 v4 & v5 both compute 2026-06-26 from `.mpp` and committed
+  MSPDI alike, while `TEST-PROJECTS.md` lists v5 as 7/17/26 — a fixture-vs-manifest item, not
+  native-`.mpp` fidelity. Flagged for separate review.
+- No code change in this continuation — docs only (HANDOFF, this log, PARITY-REPORT, risks). Gates
+  re-confirmed green after the doc edits.
