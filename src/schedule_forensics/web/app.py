@@ -82,6 +82,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
+from schedule_forensics.engine.path_counterfactual import compute_path_counterfactual
 from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import compute_quality_trend, order_versions
@@ -2892,7 +2893,87 @@ visible.</p>
 Use <b>Focus</b> above to highlight one activity across every version.</p>
 <div id=evoChart data-target="{target if target is not None else ""}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
+        + _counterfactual_panel(schedules, cpms, target)
     )
+
+
+def _counterfactual_panel(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None
+) -> str:
+    """The 'what-if' panel for the latest version pair: revert the duration/logic/constraint
+    changes that took non-completed activities off the critical path, and report what the
+    finish (and the target UID) would have been — isolating slip removed by changes vs progress."""
+    if len(schedules) < 2:
+        return ""
+    pc = compute_path_counterfactual(
+        schedules[-2], schedules[-1], cpms[-2], cpms[-1], target_uid=target
+    )
+    intro = """
+<div class=panel><h2>What-if: work removed from the critical path</h2>
+<p class=muted>Between the latest two versions, some activities leave the critical (driving)
+path. A <b>completed</b> activity leaving is real progress (excluded here). An unchanged
+activity leaving <b>gained float</b> &mdash; a slip elsewhere made another chain longer, so this
+one is no longer on the longest path (nothing about it changed). But an activity that leaves
+because <b>its own remaining duration was cut, a logic link was removed, or a constraint was
+dropped</b> can make a slipping finish look recovered. Below, those specific changes (on
+non-completed activities) are reverted to their prior values and the schedule re-run &mdash; the
+gap is schedule time the <b>changes</b>, not progress, removed from the path.</p>"""
+    if pc is None:
+        return (
+            intro + "<p class=muted>No non-completed activity left the critical path between the "
+            "last two versions &mdash; nothing to revert.</p></div>"
+        )
+
+    def _delta(days: int) -> str:
+        if days > 0:
+            return f"<b class=fail>+{days} day(s) later</b>"
+        if days < 0:
+            return f"<b class=pass>{days} day(s) earlier</b>"
+        return "<b>no change</b>"
+
+    rows = "".join(
+        f"<tr><td>{r.uid}</td><td>{_e(r.name)}</td><td>{_e(r.reason)}</td>"
+        f"<td>{_e('; '.join(r.changes))}</td></tr>"
+        for r in pc.reverted
+    )
+    body = [intro]
+    if pc.reverted:
+        finish_line = (
+            f"Computed finish is <b>{_e(pc.actual_finish)}</b>; had these "
+            f"{len(pc.reverted)} change(s) not been made it would be "
+            f"<b>{_e(pc.counterfactual_finish)}</b> ({_delta(pc.finish_delta_days)})."
+        )
+        if pc.uncomputable:
+            finish_line = (
+                "Reverting these changes produced an unsolvable network (a logic cycle), so the "
+                "counterfactual finish cannot be computed; the changed activities are named below."
+            )
+        body.append(f"<p>{finish_line}</p>")
+        if pc.target_uid is not None and pc.target_delta_days is not None:
+            body.append(
+                f"<p>Target activity <b>UID {pc.target_uid}: {_e(pc.target_name or '')}</b> "
+                f"finishes <b>{_e(pc.target_actual_finish or '')}</b> now; without the changes "
+                f"it would finish <b>{_e(pc.target_counterfactual_finish or '')}</b> "
+                f"({_delta(pc.target_delta_days)}).</p>"
+            )
+        elif pc.target_uid is not None:
+            body.append(
+                f"<p class=muted>Target UID {pc.target_uid} is not in both the current and "
+                "counterfactual networks, so its individual impact is not shown.</p>"
+            )
+        body.append(
+            "<table><tr><th>UID</th><th>Activity</th><th>Why it left</th>"
+            f"<th>Change reverted</th></tr>{rows}</table>"
+        )
+    if pc.gained_float:
+        names = "; ".join(f"{g.name} (UID {g.uid})" for g in pc.gained_float)
+        body.append(
+            f"<p class=muted><b>Gained float (no change to revert):</b> {_e(names)} left the path "
+            "because a slip elsewhere lengthened another chain, freeing this one's float &mdash; "
+            "not because the activity itself was altered.</p>"
+        )
+    body.append("</div>")
+    return "".join(body)
 
 
 def _evolution_data(

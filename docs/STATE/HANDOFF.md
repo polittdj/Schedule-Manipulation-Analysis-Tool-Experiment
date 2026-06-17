@@ -1,20 +1,19 @@
-# Handoff — 2026-06-17 (PRs #81–#117 MERGED; **one OPEN draft PR: ADR-0061 — Target-UID stays on page + reaches Card/WBS**; M18 COMPLETE + tab-visuals + loopback hardening + Ask-AI full-evidence + chart full-screen/zoom shipped)
+# Handoff — 2026-06-17 (PRs #81–#118 MERGED; **one OPEN draft PR: ADR-0062 — critical-path "gained float" counterfactual**; M18 COMPLETE + tab-visuals + loopback hardening + Ask-AI full-evidence + chart full-screen/zoom + Target-UID-everywhere shipped)
 
 > **IN FLIGHT (2026-06-17): Operator backlog from the big multi-part request.** The operator
 > ordered a large set of UI/engine/AI improvements and chose the **start order**. Progress:
 > 1. ~~Ask-the-AI + release local Ollama~~ — **MERGED (#116, ADR-0059).**
 > 2. ~~Chart legibility + zoom/fullscreen + legends on ALL charts~~ — **MERGED (#117, ADR-0060).**
-> 3. **Target-UID drives every page — THIS PR, ADR-0061.** Root cause was the header form's
->    `next_url` hardcoded to "/", bouncing every Set to the dashboard so it "looked like nothing
->    changed"; `static/target.js` keeps you on the current page (so the 5 pages that already
->    honor target update immediately), and `_target_panel` now also renders on /card + /wbs.
->    STILL ignoring target (their own later PRs): /forecast /curves /cei (aggregate views) +
->    /brief /briefing + /dashboard.
+> 3. ~~Target-UID drives every page~~ — **MERGED (#118, ADR-0061)** (root cause: header form's
+>    `next_url` hardcoded to "/"; `static/target.js` keeps you on the page; `_target_panel` on
+>    /card + /wbs). Still not target-aware (own later PRs): /forecast /curves /cei + /brief
+>    /briefing + /dashboard.
+> 4. **Critical-path removal & "gained float" counterfactual — THIS PR, ADR-0062.** New
+>    `engine/path_counterfactual.py` `compute_path_counterfactual`: of the activities that LEFT
+>    the path, exclude completed; revert the duration/logic/constraint changes of the rest;
+>    re-run CPM; report project + target-UID finish actual-vs-counterfactual deltas. Unchanged
+>    leavers = "gained float" (explained). Server-rendered "What-if" panel on /evolution.
 > Remaining, each its own tested/parity-green draft PR:
-> 4. Critical-path removal & "gained float" counterfactual analysis (engine/path_evolution.py
->    already has entered/left/stayed/duration_changed/shortened_on_path + reason codes incl.
->    `gained_float`/`slack_consumed`; needs: exclude COMPLETED from "left", and a CPM-rerun
->    counterfactual restoring removed tasks' duration/logic/constraints to measure target-UID impact).
 > 5. Diagnostic Brief trends/risks/opportunities/recovery (ai/briefing.py + ai/brief.py;
 >    deterministic CitedStatements — add a trends-over-time section + risk/recovery grouping of findings).
 > 6. Data-Date & Slippage redesign as **overlaid line families with a clickable show/hide
