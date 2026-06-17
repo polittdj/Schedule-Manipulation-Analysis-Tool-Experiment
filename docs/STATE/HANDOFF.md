@@ -1,9 +1,13 @@
-# Handoff — 2026-06-17 (PRs #81–#125 MERGED; **`main` green & current at #125 (`6dd3e7e`) — NO open PR**; start the next item)
+# Handoff — 2026-06-17 (PRs #81–#126 MERGED; **`main` green & current at #126 (`d468bf8`)**; last CODE PR #125/ADR-0067, #126 = docs reconcile; start the next item)
 
-> ## START HERE (next session) — audited 2026-06-17
-> **`main` is at #125 (`6dd3e7e`), green; there is NO open PR.** This session shipped a long
-> operator backlog (#116–#125, ADRs 0059–0067). Recreate the work branch from fresh main, then
-> start the first REMAINING item below (the **bugs** first). **Container setup FIRST:**
+> ## START HERE (next session) — re-audited 2026-06-17 (post-#126)
+> **`main` is at #126 (`d468bf8`), fully green.** The last CODE/feature PR was **#125** (Fuse
+> Ribbon, ADR-0067); **#126 was a docs-only HANDOFF reconcile** (no code). The highest ADR on disk
+> is **0067**. If you are reading this on a branch, the only thing that can be open is the docs-sync
+> PR carrying this very edit — it changes no code, so the green feature state is unchanged. This
+> session shipped a long operator backlog (#116–#125, ADRs 0059–0067). Recreate the work branch
+> from fresh main, then start the first REMAINING item below (the **bugs** first).
+> **Container setup FIRST:**
 > `pip install -e '.[dev]'` into the env, and drive the gate with **`python -m pytest`** (the PATH
 > `pytest` is a separate uv tool that can't see the editable install). Gate: `ruff check .` ;
 > `ruff format --check .` ;
@@ -559,10 +563,11 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**Audited 2026-06-17 on the open PR #125 branch (fresh `main`@#124 + the Ribbon work):
-906 passed, 3 skipped; parity 10/10; engine cov 97%; overall ~96%; ruff/format/mypy/bandit clean
-(all exit 0).** The 3 skips are the real-`.mpp`/Java cases — no `.mpp` fixture travels into the
-container (`00_REFERENCE_INTAKE/` is git-ignored + empty). `main`@#124 alone is 894/3.
+**Re-audited 2026-06-17 on fresh `main`@#126 (`d468bf8`) from scratch — full CI-exact gate:
+906 passed, 3 skipped; parity 10/10; engine cov 97%; overall 95.21%; ruff/format/mypy/bandit all
+exit 0.** The doc-guard `tests/test_state_docs.py` passes (this HANDOFF names ADR-0067, the highest
+on disk); the air-gap/egress guards pass (36). The 3 skips are the real-`.mpp`/Java cases — no
+`.mpp` fixture travels into the container (`00_REFERENCE_INTAKE/` is git-ignored + empty).
 CI also runs pip-audit on Python 3.11 + 3.13. Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && python -m pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && python -m pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` FIRST — the preinstalled venv ships
@@ -634,7 +639,8 @@ The original backlog, for the record:
 ## Resume command for a NEW session
 Paste this as the first message:
 > Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first — work the OPERATOR
-> BACKLOG in its listed order. `main` is green & current at **#125** with **no open PR**.
+> BACKLOG in its listed order. `main` is green & current at **#126** (`d468bf8`); the last CODE PR
+> was #125 (Fuse Ribbon), #126 was a docs-only reconcile — there is no open code PR.
 > Recreate the work branch from fresh main (`git fetch origin main && git checkout -B
 > <fresh-branch> origin/main`), then tackle the REMAINING items, **bugs first**: (A) the Path
 > Analysis driving/secondary/tertiary-to-target

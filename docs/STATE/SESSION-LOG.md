@@ -1731,3 +1731,64 @@ reviewer, test engineer.
   native-`.mpp` fidelity. Flagged for separate review.
 - No code change in this continuation — docs only (HANDOFF, this log, PARITY-REPORT, risks). Gates
   re-confirmed green after the doc edits.
+
+## Operator-backlog tranche — 2026-06-17 (PRs #116–#126, ADRs 0059–0067)
+The big multi-part operator request (dashboard DCMA definitions, Diagnostic Brief, Ask-the-AI,
+critical-path counterfactual, charts, Fuse validation/metrics, S-Curve) shipped as a run of
+single-purpose draft PRs, each its own ADR, all merged by the operator. This entry restores the
+append-only record — the HANDOFF tracked them live but this log had stopped at the ADR-0058 entry.
+- **#116 / ADR-0059 — Ask-the-AI: full local evidence + release local Ollama.** `ai/qa.py`:
+  `model_evidence()` feeds a live local model the WHOLE cited sheet (frame-first, relevance-ordered,
+  cap 48) with a senior-analyst prompt (answer + interpret + name risks + suggest recovery); strict
+  mode unchanged. Output figure-gates removed for the LOCAL model, but the **loopback-only air-gap is
+  KEPT** (`OllamaBackend` 127.0.0.1 only; `route_backend` fail-closed). Policy: free local analysis,
+  no data leaves the machine.
+- **#117 / ADR-0060 — chart legibility + fullscreen/zoom + legends.** New `static/chartframe.js`:
+  any `.chart-host` gets an overlay toolbar (fullscreen via Fullscreen API w/ `.cf-max` fallback;
+  −/＋/Reset zoom in a scroller); a MutationObserver re-applies zoom across stepper re-renders.
+  `trend.js`/`curves.js` short labels prefer the data date over long filenames; `drift.js` ticks
+  adaptive (year/quarter/month). Pure presentation → parity 10/10.
+- **#118 / ADR-0061 — target-UID drives every page.** New `static/target.js` sets the target form's
+  `next_url` to the current page so the session-wide Target UID round-trips everywhere (+ /card,
+  /wbs panels).
+- **#119 / ADR-0062 — critical-path "gained float" counterfactual.** New
+  `engine/path_counterfactual.py` `compute_path_counterfactual()`: reverts duration/logic/constraint
+  changes on NON-completed activities that left the critical path, re-runs CPM, and reports the
+  counterfactual effect on the target UID's finish — the "how did this task gain float" explainer.
+  Surfaced on /evolution.
+- **#120 / ADR-0063 — Diagnostic Brief: trends + risks/recovery.** `ai/brief.py` `_trends_section()`
+  + `_risk_recovery_section()`: high-level trends-over-time summary plus risks/opportunities/recovery
+  plans in prose.
+- **#121 / ADR-0064 — DCMA 1–14 definitions inline on the Analysis page** (`_dcma_definition_cell`):
+  each check defined + how it is measured.
+- **#122 / ADR-0065 — animated S-Curve.** New `engine/s_curve.py` `compute_s_curve()` (cumulative
+  planned vs actual/forecast % over a shared month axis) + `static/scurve.js` Prev/Next/Auto-play
+  stepper. **#124** then moved the "At date …" data-date callout to bottom-right so it can't overlap
+  the schedule names/title.
+- **#123 / ADR-0066 — Fuse workbook validation.** `docs/FUSE-VALIDATION.md` + `tests/engine/
+  test_fuse_reference.py`: tool matches the operator's Acumen Fuse export exactly on
+  normal-completion (8/8) and on TP4 v1–v4 finish; documented diffs (TP2 calendar caveat, TP4 v5
+  fixture/manifest, workbook Project2 ≠ golden finish).
+- **#125 / ADR-0067 — Fuse "Ribbon" metrics + /ribbon view.** New `engine/metrics/ribbon.py`
+  `compute_ribbon(schedule, cpm, audit) -> RibbonMetrics` (TYPE_CHECKING-only imports to avoid a
+  metrics→dcma_audit→metrics cycle): Logic Density™ (round-half-up 2L/N via Decimal), Merge Hotspot
+  (>2 preds), Missing Logic (all open-ends), Critical (incomplete on path), Hard/NegFloat/Lags/Leads
+  (DCMA), Avg/Max float. New `/ribbon` project×metric matrix. Insufficient Detail™ + Float Ratio™
+  DEFERRED (no simple formula matched). Full suite 906 passed; engine cov 97%.
+- **#126 — docs-only HANDOFF reconcile** (`d468bf8`): updated the header to "#125 merged, no open
+  PR" after #125 landed. (Itself made the HANDOFF stale by one, since a reconcile PR can't reference
+  its own merge — hence the follow-up reconcile below.)
+
+## Full re-audit + state reconcile — 2026-06-17 (post-#126)
+Operator: "audit session and repo completely, assume nothing, check everything, update the handoff
+and provide a prompt to start a new session." Ran the full CI-exact gate from scratch on fresh
+`main`@#126 (`d468bf8`): **906 passed, 3 skipped; parity 10/10; engine cov 97%; overall 95.21%;
+ruff/format/mypy/bandit all exit 0**; doc-guard + air-gap guards (36) pass; highest ADR on disk
+0067 (referenced by HANDOFF). Found the HANDOFF stale by one (header/green-state/resume said
+"current at #125" while main was at #126) and this SESSION-LOG missing the whole #116–#126 tranche.
+Fixed both (docs only — no code change): HANDOFF now points at #126 and distinguishes the last CODE
+PR (#125) from the docs-sync reconciles so it stops going stale by one each cycle; this log restores
+the tranche above. Remaining operator backlog is unchanged (bugs first: A path/Gantt scaling — owe
+the operator a screenshot before changing; then B dropdown filters, C path filter on both pages,
+D Fuse year Trend/Phase view, E Data-Date/Slippage redesign, F Bow-Wave totals; G deferred
+Fuse-proprietary metrics). Model/mode: Opus 4.8 (1M).
