@@ -73,7 +73,9 @@ def build_brief(
     sections = [
         _summary_section(schedules, cpms),
         _finish_story_section(schedules, cpms),
+        _trends_section(schedules, cpms),
         _questions_section(schedules, cpms),
+        _risk_recovery_section(schedules, cpms),
         _how_to_verify_section(schedules),
     ]
     return DiagnosticBrief(
@@ -188,6 +190,186 @@ def _questions_section(schedules: list[Schedule], cpms: list[CPMResult]) -> Brie
             )
         )
     return BriefSection("Questions the data raises", tuple(paragraphs))
+
+
+def _incomplete_critical(schedule: Schedule, cpm: CPMResult) -> int:
+    """Count of incomplete activities on the critical path — the size of the at-risk path."""
+    by_id = schedule.tasks_by_id
+    return sum(1 for uid in cpm.critical_path if uid in by_id and not by_id[uid].is_complete)
+
+
+def _negative_float(schedule: Schedule, cpm: CPMResult) -> list[Task]:
+    """Incomplete activities behind their own logic (negative total float)."""
+    by_id = schedule.tasks_by_id
+    return [
+        by_id[uid]
+        for uid, timing in cpm.timings.items()
+        if timing.total_float < 0 and uid in by_id and not by_id[uid].is_complete
+    ]
+
+
+def _trends_section(schedules: list[Schedule], cpms: list[CPMResult]) -> BriefSection:
+    """A high-level read of what is moving from version to version (operator request)."""
+    latest, latest_cpm = schedules[-1], cpms[-1]
+    if len(schedules) < 2:
+        return BriefSection(
+            "Trends over time",
+            (
+                CitedStatement(
+                    "Only one schedule version is loaded, so there is no version-to-version "
+                    "trend yet. Load the earlier updates to see how the finish, the critical "
+                    "path, completion, and float have moved over time.",
+                    _drivers(latest, latest_cpm),
+                ),
+            ),
+        )
+    first, first_cpm = schedules[0], cpms[0]
+    f0, f1 = _finish_date(first, first_cpm), _finish_date(latest, latest_cpm)
+    moved = (f1 - f0).days
+    p0, p1 = _overall_percent(first), _overall_percent(latest)
+    c0, c1 = _incomplete_critical(first, first_cpm), _incomplete_critical(latest, latest_cpm)
+    n0, n1 = len(_negative_float(first, first_cpm)), len(_negative_float(latest, latest_cpm))
+
+    direction = "later" if moved > 0 else ("earlier" if moved < 0 else "unchanged")
+    paragraphs: list[CitedStatement] = [
+        CitedStatement(
+            f"Across the {len(schedules)} loaded versions, the computed finish moved "
+            f"{abs(moved)} calendar days {direction} (from {f0.isoformat()} to "
+            f"{f1.isoformat()}) while overall completion went from {p0:.0f}% to {p1:.0f}%. "
+            + (
+                "The finish slipping as work is reported done points to the remaining work, "
+                "not the completed work, controlling this schedule."
+                if moved > 0
+                else "The finish holding or pulling in as completion rises is the healthy pattern."
+            ),
+            _drivers(latest, latest_cpm),
+        )
+    ]
+    if c1 != c0:
+        grew = c1 > c0
+        paragraphs.append(
+            CitedStatement(
+                f"The critical path {'grew' if grew else 'shrank'} from {c0} to {c1} incomplete "
+                "driving activities. "
+                + (
+                    "A growing critical path means more of the remaining work now controls the "
+                    "finish — the plan is getting more fragile."
+                    if grew
+                    else "A shrinking critical path is either real recovery or work being taken "
+                    "off the path — the 'What-if' analysis on the Evolution page separates the two."
+                ),
+                _drivers(latest, latest_cpm),
+            )
+        )
+    if n0 or n1:
+        trend = (
+            "rising schedule pressure — work that cannot finish in time without a change"
+            if n1 > n0
+            else ("easing" if n1 < n0 else "holding steady")
+        )
+        paragraphs.append(
+            CitedStatement(
+                f"Activities behind their logic (negative total float) went from {n0} to {n1} "
+                f"— {trend}.",
+                _drivers(latest, latest_cpm),
+            )
+        )
+    return BriefSection("Trends over time", tuple(paragraphs))
+
+
+def _risk_recovery_section(schedules: list[Schedule], cpms: list[CPMResult]) -> BriefSection:
+    """Risks, opportunities, and concrete recovery suggestions (operator request). Every item
+    is engine-computed and cited; the recovery suggestions are standard schedule-recovery levers
+    tied to the specific activities the data flags."""
+    latest, cpm = schedules[-1], cpms[-1]
+    per_day = latest.calendar.working_minutes_per_day
+    tasks = non_summary(latest)
+    label = _label(latest)
+    paragraphs: list[CitedStatement] = []
+
+    neg = _negative_float(latest, cpm)
+    if neg:
+        worst = sorted(neg, key=lambda t: cpm.timings[t.unique_id].total_float)[:5]
+        behind = round(-cpm.timings[worst[0].unique_id].total_float / per_day)
+        paragraphs.append(
+            CitedStatement(
+                f"Risk — {len(neg)} incomplete activities are behind their own logic (negative "
+                f"total float); the worst, '{worst[0].name}', is about {behind} working days "
+                "behind. These cannot finish on time unless something changes. Recovery: "
+                "re-sequence or fast-track this chain, add resources, or renegotiate the imposed "
+                "date — then re-run to confirm the negative float clears.",
+                tuple(Citation(label, t.unique_id, t.name) for t in worst),
+            )
+        )
+
+    high = [
+        t
+        for t in tasks
+        if t.percent_complete < 100.0
+        and t.unique_id in cpm.timings
+        and cpm.timings[t.unique_id].total_float > HIGH_FLOAT_DAYS * per_day
+    ]
+    if high:
+        worst_high = sorted(high, key=lambda t: -cpm.timings[t.unique_id].total_float)[:5]
+        paragraphs.append(
+            CitedStatement(
+                f"Opportunity / risk — {len(high)} incomplete activities carry more than "
+                f"{HIGH_FLOAT_DAYS} working days of total float. As an opportunity that slack "
+                "can absorb re-sequencing to pull the critical path in; as a risk, float that "
+                "large usually means missing successor logic. Recovery: confirm each is properly "
+                "tied into the network, then use the genuine slack to support the driving path.",
+                tuple(Citation(label, t.unique_id, t.name) for t in worst_high),
+            )
+        )
+
+    ahead = [
+        t
+        for t in tasks
+        if t.percent_complete >= 100.0
+        and t.actual_finish is not None
+        and t.baseline_finish is not None
+        and t.actual_finish < t.baseline_finish
+    ]
+    if ahead:
+        paragraphs.append(
+            CitedStatement(
+                f"Opportunity — {len(ahead)} activities finished ahead of their baseline, which "
+                "earned schedule margin. Recovery: make sure that time saved is protected on the "
+                "driving path rather than quietly absorbed by downstream delay.",
+                tuple(Citation(label, t.unique_id, t.name) for t in ahead[:5]),
+            )
+        )
+
+    dated = [
+        (f.name, f.finish) for f in compute_finish_forecasts(latest, cpm).forecasts if f.finish
+    ]
+    if len(dated) >= 2:
+        lo = min(dated, key=lambda x: x[1])
+        hi = max(dated, key=lambda x: x[1])
+        spread = (hi[1] - lo[1]).days
+        if spread > FORECAST_SPREAD_DAYS:
+            paragraphs.append(
+                CitedStatement(
+                    f"Risk — the finish-forecast methods disagree by {spread} calendar days "
+                    f"({lo[0]} says {lo[1].isoformat()}, {hi[0]} says {hi[1].isoformat()}); that "
+                    "spread is unmanaged uncertainty. Recovery: reconcile the logic-based and "
+                    "pace-based forecasts — re-estimate the to-go durations or repair the network "
+                    "so they converge.",
+                    _drivers(latest, cpm),
+                )
+            )
+
+    if not paragraphs:
+        paragraphs.append(
+            CitedStatement(
+                "No negative float, no high-float open-ends, no behind-baseline completions, and "
+                "no wide forecast spread stand out in the newest version — the plan looks healthy "
+                "on these measures. Recovery focus: keep protecting the driving path and statusing "
+                "activities on time so the picture stays trustworthy.",
+                _drivers(latest, cpm),
+            )
+        )
+    return BriefSection("Risks, opportunities, and recovery plan", tuple(paragraphs))
 
 
 def _manipulation_questions(

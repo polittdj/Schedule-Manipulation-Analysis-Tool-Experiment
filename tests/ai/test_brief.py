@@ -49,6 +49,36 @@ def test_brief_tells_the_tp4_story(tp4_brief: DiagnosticBrief) -> None:
     assert "0.50" in text and "0.00" in text
 
 
+def test_brief_has_trends_and_risk_recovery_sections(tp4_brief: DiagnosticBrief) -> None:
+    """Operator request: in addition to the existing content, a high-level trends-over-time
+    summary plus risks, opportunities, and concrete recovery suggestions."""
+    headings = [s.heading for s in tp4_brief.sections]
+    assert "Trends over time" in headings
+    assert "Risks, opportunities, and recovery plan" in headings
+    trends = next(s for s in tp4_brief.sections if s.heading == "Trends over time")
+    assert trends.paragraphs and any("computed finish moved" in p.text for p in trends.paragraphs)
+    risk = next(
+        s for s in tp4_brief.sections if s.heading == "Risks, opportunities, and recovery plan"
+    )
+    assert risk.paragraphs
+    blob = " ".join(p.text for p in risk.paragraphs)
+    assert "Recovery:" in blob or "Recovery focus" in blob  # actionable recovery guidance
+    # the new sections obey §6 too (covered broadly elsewhere, pinned here for the new content)
+    for p in (*trends.paragraphs, *risk.paragraphs):
+        assert p.citations
+
+
+def test_single_version_brief_trends_note_is_cited() -> None:
+    schedule = _load("TP1_Library_Progressed.xml")
+    brief = build_brief([schedule], [compute_cpm(schedule)], today=TODAY)
+    trends = next(s for s in brief.sections if s.heading == "Trends over time")
+    assert (
+        trends.paragraphs
+        and "only one schedule version is loaded" in trends.paragraphs[0].text.lower()
+    )
+    assert trends.paragraphs[0].citations
+
+
 def test_brief_finish_table_covers_every_version(tp4_brief: DiagnosticBrief) -> None:
     story = next(s for s in tp4_brief.sections if s.heading == "The finish story")
     assert story.table is not None
