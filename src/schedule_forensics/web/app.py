@@ -153,7 +153,8 @@ title="Focus every view on one activity (blank = clear)">
 <button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
 </nav></header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
-<script src="/static/chartframe.js"></script></body></html>"""
+<script src="/static/chartframe.js"></script>
+<script src="/static/target.js"></script></body></html>"""
 )
 
 
@@ -661,7 +662,10 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc), ask_schedule=name)
-        return _page(st, f"{name} — card", _card_body(name, sch, analysis), ask_schedule=name)
+        focus = _target_panel(sch, analysis, st.target_uid) if st.target_uid is not None else ""
+        return _page(
+            st, f"{name} — card", focus + _card_body(name, sch, analysis), ask_schedule=name
+        )
 
     @app.get("/wbs/{name}", response_class=HTMLResponse)
     def wbs_breakdown_view(name: str) -> HTMLResponse:
@@ -677,7 +681,13 @@ def create_app(
                 status_code=404,
             )
         groups = compute_wbs_breakdown(sch)
-        return _page(st, f"{name} — WBS", _wbs_body(name, groups), ask_schedule=name)
+        focus = ""
+        if st.target_uid is not None:
+            try:
+                focus = _target_panel(sch, st.analysis_for(name, sch), st.target_uid)
+            except CPMError:
+                focus = ""  # unschedulable: skip the focus panel, still show the WBS pivot
+        return _page(st, f"{name} — WBS", focus + _wbs_body(name, groups), ask_schedule=name)
 
     @app.get("/api/wbs/{name}")
     def wbs_json(name: str) -> JSONResponse:
