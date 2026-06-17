@@ -21,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -98,7 +98,7 @@ from schedule_forensics.importers import (
     to_json_text,
 )
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.net_guard import is_loopback_host
+from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
 from schedule_forensics.reports.docx import Block, render_document, render_docx
 from schedule_forensics.reports.tables import (
     Table,
@@ -1314,7 +1314,7 @@ def create_app(
             second_backend = "none"
         # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
         # remote host from sitting in the config looking accepted
-        if not is_loopback_host(urlparse(openai_endpoint.strip()).hostname or ""):
+        if not is_local_http_endpoint(openai_endpoint.strip()):
             openai_endpoint = "http://127.0.0.1:1234"
         st.ai_config = AIConfig(
             classification=cls,

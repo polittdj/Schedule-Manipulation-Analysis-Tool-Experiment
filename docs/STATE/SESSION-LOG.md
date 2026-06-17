@@ -1637,3 +1637,97 @@ CI-exact gate against `main`==#113 (`6b374c9`), and brought HANDOFF.md current.
 ### Parity / tests
 - **850 passed, 3 skipped** (1 new: the state-doc guard); parity 10/10; engine cov 97%;
   ruff/format/mypy/bandit(unpiped) all clean with explicit exit code 0.
+
+## QC audit remediation — 2026-06-17 (ADR-0058; OPEN draft PR)
+External QC audit of the repo ("find every error, triple-check it's real, write a sandbox test for
+each fix, then implement"). Worked under four roles: QC auditor, forensic-scheduling SME, security
+reviewer, test engineer.
+
+### What the audit found CLEAN (verified, not assumed)
+- Ran every project QC gate: pytest, ruff, ruff-format, mypy --strict, bandit, pip-audit — all
+  green; parity 10/10.
+- Hand-verified + (where feasible) empirically attacked: CPM forward/backward bound math
+  (FS/SS/FF/SF duals, Kahn cycle-fail, constraint resolution); the MSPDI pre-parse XXE /
+  billion-laughs / UTF-16-DOCTYPE-smuggle defense (all rejected); the MPXJ `.mpp` subprocess
+  (list argv, shell=False, 300s timeout, temp cleanup); web upload path-/header-safety (in-memory
+  keys, `Path(name).name`, CR/LF strip); EVM zero-division guards (NA, not a fabricated 0).
+- The 3 skipped tests were legit (needed the real `.mpp` + a JVM), not hiding bugs. No invented
+  findings — the codebase was genuinely sound.
+
+### The one real defect (fixed) — ADR-0058
+- **Loopback AI guard checked host but not scheme.** `OllamaBackend(endpoint="file://localhost/…")`
+  constructed and the "loopback-only" opener read a local file off disk. Proven, then fixed with
+  `net_guard.is_local_http_endpoint` (scheme ∈ {http,https} AND loopback host) at all three call
+  sites (`ai/ollama.py`, `ai/openai_compat.py`, `web/app.py`); `is_loopback_host` kept for the
+  bind-host checks (`serve`, `launcher`). Severity: defense-in-depth (local file read, no egress;
+  needs operator misconfig) — stated honestly as such, not oversold.
+- **Bonus:** the shared opener now refuses HTTP redirects (`_NoRedirect.redirect_request → None`)
+  so a loopback 3xx can't bounce the CUI prompt to a remote host.
+- TDD: wrote `tests/guards/test_endpoint_scheme.py` (22 cases), confirmed RED against unfixed code,
+  then GREEN after the fix.
+
+### Native-`.mpp` parity confirmed (Project2.mpp, local only)
+- Operator re-deposited `Project2.mpp` into git-ignored `00_REFERENCE_INTAKE/mpp/` (double-ignored:
+  `*.mpp` + `00_REFERENCE_INTAKE/*`; `git check-ignore` confirms; **NOT committed**).
+- Native MPXJ read confirmed exact: **145 rows (UID-0 + 144 activities, UID 1 absent), name
+  "Commercial Construction"** — matches the committed golden MSPDI. The two real-`.mpp` tests now
+  PASS locally.
+- Fixed a latent skip-guard bug: `test_parse_real_mpp` (param Project2 + Project5) gated only on
+  Project2's presence, so Project5's case errored once Project2 was present. Now per-file: Project2
+  runs/passes, Project5 skips honestly (not provided). Full numeric Acumen/SSI parity on raw `.mpp`
+  still awaits the golden exports (R-02/R-03) — this confirms the structural `.mpp → MSPDI → model`
+  read only.
+
+### CUI note
+- Ran in an Anthropic cloud sandbox. `DEPOSIT-HERE.md` says schedule files are CUI by default and
+  must not be deposited in a cloud session unless the data owner confirms non-CUI/authorized; the
+  operator made that call by uploading `Project2.mpp` for the validation. Used locally only;
+  nothing derived from its contents was committed or pushed.
+
+### Parity / tests
+- **CI: 872 passed, 3 skipped** (+22 guard tests; the 3 skips are the real-`.mpp` cases, no fixture
+  in CI). **Locally with Project2.mpp: 874 passed, 1 skipped.** parity 10/10; engine 97%;
+  ruff/format/mypy --strict/bandit(unpiped)/pip-audit all clean, explicit exit code 0.
+- Files: `src/schedule_forensics/net_guard.py`, `ai/ollama.py`, `ai/openai_compat.py`,
+  `web/app.py`; `tests/guards/test_endpoint_scheme.py` (new), `tests/importers/test_mpp_mpxj.py`;
+  docs `adr/0058-*`, `STATE/HANDOFF.md`, `STATE/SESSION-LOG.md`, `risks.md`, `PARITY-REPORT.md`.
+
+### Native-`.mpp` battery (14 files) — full validation, local only (cont. this session)
+- Operator re-deposited all 14 reference `.mpp`s (non-CUI, attested) into git-ignored
+  `00_REFERENCE_INTAKE/mpp/` (none committed; `git check-ignore` confirms every file). Method: the
+  committed MSPDI fixtures are verified ground truth (the battery test pins every DCMA/float/
+  driving/manip number to them), so each `.mpp` was checked against its MSPDI twin at the model
+  level — equivalence ⇒ all downstream numbers hold.
+- **Owed items CLOSED:**
+  - **Duration Bomb** (`Project2_Duration_Bomb_.mpp`, "Formal Wedding Planner", 100 tasks/135
+    links): computed finish **2027-02-24** — confirms ADR-0043 (owed since #91).
+  - **Large File** ("USA OTB Master IMS"): parses to **1723 non-summary activities** (exact
+    ADR-0045 count) / 2702 links / finish 2028-09-28. Driving-slack RELATIVE spacing on the
+    documented chain reproduces SSI's **0/9/12/13** to the day (re-based to the chain floor).
+    ⚠️ ABSOLUTE values unverifiable from repo artifacts — **ADR-0045 did not record SSI's
+    target/focus UID** (doc gap). Tracing to the global-finish milestone (UID 6077) puts the chain
+    at ~514 d of float because 6509's path to project end is not controlling; SSI clearly targeted
+    an earlier milestone.
+- **Manipulation (native `.mpp`):** TP4 **v3→v4** fires `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE`
+  citing UID 19 "Generator & switchgear procurement"; **v2→v3** fires neither — exactly the pinned
+  spec. `Project5_TAMPERED` vs the clean Project5 golden → `MANIP_DELETED_LOGIC` (UIDs 135/138);
+  finish slips 2027-12-07 → 2028-01-25.
+- **Fidelity vs committed MSPDI twin:** `Project2.mpp` = full model match (zero field diffs).
+  TP1/TP3/TP4(v1–v5) match on task topology, logic links, and computed finish; the only diffs are
+  `percent_complete` (+ a few durations) on in-progress/summary tasks — MS Project recomputes
+  progress and summary roll-ups on XML→`.mpp` import (both importers faithfully read their own
+  file; the committed XML is canonical).
+- ⚠️ **TP2 calendar round-trip caveat (NOT a tool defect):** `TP2_Bridge_4x10_Calendar.mpp` computes
+  finish **2026-09-24** vs the canonical 2026-11-04. Localized via the bundled MPXJ converter: the
+  project-default calendar **"4x10 Crew" (CalendarUID=1) has 0 exceptions** in the `.mpp` — MS
+  Project dropped its 4 authored holidays (2026-05-25/06-15/07-02/09-07) on save; a separate
+  stock-US-holiday set landed on the non-default "Standard" calendar (UID 2). The tool reads the
+  project calendar correctly (working time 600 min/Mon–Thu survived; holidays did not). The
+  committed XML (read identically by the tool → 4 holidays → 2026-11-04) is authoritative. Recorded
+  in `risks.md` (R-04) + `PARITY-REPORT.md`. No code change — "fixing" it would mean inventing
+  holidays absent from the file or adopting a different calendar's stock set.
+- Pre-existing, format-independent: TP4 v4 & v5 both compute 2026-06-26 from `.mpp` and committed
+  MSPDI alike, while `TEST-PROJECTS.md` lists v5 as 7/17/26 — a fixture-vs-manifest item, not
+  native-`.mpp` fidelity. Flagged for separate review.
+- No code change in this continuation — docs only (HANDOFF, this log, PARITY-REPORT, risks). Gates
+  re-confirmed green after the doc edits.

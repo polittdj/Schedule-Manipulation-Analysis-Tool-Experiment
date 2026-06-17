@@ -1,7 +1,9 @@
-# Handoff — 2026-06-17 (PRs #81–#113 MERGED; **`main` green & current at #113 — no open PR**; M18 COMPLETE + tab-visuals tranche shipped)
+# Handoff — 2026-06-17 (PRs #81–#114 MERGED; **one OPEN draft PR: ADR-0058 audit remediation** — loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmed; native-`.mpp` battery (14 files) VALIDATED — Duration Bomb 2027-02-24 ✓, TP/Project2/Large parity ✓, TP2 calendar round-trip caveat documented; M18 COMPLETE)
 
 > ## START HERE (next session)
-> 1. **Nothing is pending — `main` is green at PR #113 (ADR-0057).** The previous handoff
+> 1. **One OPEN draft PR awaiting your merge: ADR-0058 — this audit's remediation (loopback
+>    AI-endpoint scheme/redirect hardening + native-`.mpp` parity confirmation), branched from
+>    `main`@#114.** Earlier, the previous handoff
 >    called PR #102 "OPEN"; it has since merged (as `f9b5b10`), and **PRs #103–#113 landed
 >    after it** (ADRs 0047–0057, the post-M18 "tab visuals" / operator-feedback tranche — see
 >    "What shipped — PRs #103–#113" below). Verified locally this sitting (2026-06-17):
@@ -15,11 +17,34 @@
 > 2. **M18 is COMPLETE (items 1–8) AND the operator's tab-visuals follow-ups (#103–#113) are
 >    done. No feature backlog remains.** The open follow-ups are VERIFICATION / real-data
 >    items, none blocking:
->    - **Re-deposit the reference `.mpp`s** — a fresh container has no `00_REFERENCE_INTAKE/mpp/`
->      directory at all (git-ignored; never travels between sessions). To re-verify, ask the
->      operator to re-deposit `Large_Test_File.mpp` (USA OTB Master IMS) and
->      `Project2_Duration_Bomb.mpp`, then confirm Duration Bomb finish **2027-02-24** (ADR-0043)
->      and Large-File driving tiers matching SSI (ADR-0045).
+>    - **✅ Native-`.mpp` battery — VALIDATED this sitting (2026-06-17).** Operator re-deposited
+>      all 14 reference `.mpp`s (non-CUI test files, attested) into `00_REFERENCE_INTAKE/mpp/`
+>      (git-ignored, never committed). Each was checked against its committed MSPDI twin / pinned
+>      values (method: the MSPDI fixtures are verified ground truth, so model-equivalence ⇒ every
+>      downstream number holds). Results:
+>      - **Duration Bomb** computes finish **2027-02-24** → ADR-0043 owed item **CLOSED**.
+>      - **Project2** native parse is a **full model match** to the golden (145 tasks / 176 links /
+>        finish 2027-08-30, zero field diffs).
+>      - **TP4 v3→v4** fires `MANIP_ACTUAL_ERASED` + `MANIP_BASELINE_CHANGE` citing UID 19;
+>        **v2→v3** fires neither — manipulation detection confirmed on native `.mpp` (matches pin).
+>      - **Project5_TAMPERED** → tool flags `MANIP_DELETED_LOGIC` (UIDs 135/138); finish slips
+>        2027-12-07 → 2028-01-25. Detector works.
+>      - **Large File** parses faithfully — **1723** non-summary activities (exact ADR-0045 match),
+>        2702 links. The documented driving chain's relative spacing reproduces SSI's **0/9/12/13**
+>        to the day. ⚠️ Absolute reproduction is blocked because **ADR-0045 never recorded SSI's
+>        target/focus UID** (doc gap — capture it next time the file is in hand).
+>      - **TP1 / TP3 / TP4(v1–v5)** native `.mpp` match their MSPDI twin on task topology, logic
+>        links, and computed finish; they differ only on `percent_complete` (+ a few durations) for
+>        in-progress/summary tasks — MS Project recomputes progress/roll-ups on XML→`.mpp` import.
+>      - ⚠️ **TP2 round-trip caveat (NOT a tool bug):** `.mpp` computed finish is **2026-09-24**, not
+>        2026-11-04, because MS Project dropped the **4×10 Crew project calendar's 4 holiday
+>        exceptions** on save (confirmed via MPXJ: project CalendarUID=1 has 0 exceptions; stock US
+>        holidays landed on the non-default "Standard" calendar UID 2). The tool reads the project
+>        calendar correctly; the canonical committed XML (4 holidays → 2026-11-04) is authoritative.
+>        Details in `docs/PARITY-REPORT.md` / `docs/risks.md` (R-04).
+>      - Minor, pre-existing & format-independent: TP4 **v4 and v5** both compute finish 2026-06-26
+>        from the `.mpp` **and** the committed MSPDI, while `TEST-PROJECTS.md` lists v5 as 7/17/26 —
+>        a fixture-vs-manifest question, not a native-`.mpp` issue. Flagged for separate review.
 >    - **Real-file feedback** — watch how Path Analysis, Critical-Path Evolution (now with grid
 >      columns / zoom / filter-by-path / specific reasons), ask-the-AI, float bands, `/forecast`
 >      (with the explainer), `/trend` drill-down, and the Dashboard health cards read on real
@@ -460,9 +485,16 @@ deepest-first + a battery-wide date/duration sanity guard.
   PowerShell logs/screenshots; red import notices name the file + reason (CUI-safe) — ask for that text.
 
 ## Green state
-**849 passed, 3 skipped; parity 10/10; engine 97%; overall 96.2%; egress + air-gap green; bandit
-clean.** Re-verified locally 2026-06-17 at `main`==#113 (`6b374c9`); CI also runs pip-audit on
-3.11 + 3.13. Verify locally:
+**CI: 872 passed, 3 skipped; parity 10/10; engine 97%; overall ~96%; egress + air-gap green;
+bandit + pip-audit clean.** (Baseline `main`@#114 was **850/3**; this audit's open PR adds 22 guard
+tests in `tests/guards/test_endpoint_scheme.py` → **872/3** in CI. The 3 skips are the real-`.mpp`
+parity cases — no fixture travels into CI. **Locally with `Project2.mpp` deposited this session the
+count is 874 passed / 1 skipped**: the two native-parse cases ran and matched golden — 145 rows /
+144 activities / "Commercial Construction"; only the Project5 case skips.) **This session's open PR
+(ADR-0058)** hardens the local-AI egress guard to validate URL **scheme + host** (`is_local_http_endpoint`
+rejects `file://localhost`, `ftp://`, `gopher://`, remote `http(s)`) and refuse HTTP redirects
+(`_NoRedirect`), and fixes the `test_parse_real_mpp` skip guard to gate per-file. CI also runs
+pip-audit on 3.11 + 3.13. Verify locally:
 `ruff check . && ruff format --check . && python -m mypy && python -m pytest --cov=schedule_forensics --cov-fail-under=70 && coverage report --include='*/schedule_forensics/engine/*' --fail-under=85 && python -m pytest -m parity && bandit -q -r src`.
 (In a fresh remote container run `pip install -e '.[dev]'` into `.venv` FIRST — the preinstalled
 venv ships without the web/dev deps. Use `python -m pytest`, not bare `pytest`: the PATH `pytest`
@@ -531,10 +563,12 @@ The original backlog, for the record:
 
 ## Resume command for a NEW session
 Paste this as the first message:
-> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first. `main` is green and
-> current at PR #113 (ADR-0057); M18 (items 1–8) and the operator's tab-visuals follow-ups
-> (#103–#113) are all merged, so there is **no open PR and no feature backlog** — the remaining
-> work is verification/real-data only. If the operator re-deposits the reference `.mpp`s
+> Resume the Schedule Forensics build. Read `docs/STATE/HANDOFF.md` first. There is **one OPEN
+> draft PR — ADR-0058** (loopback AI-endpoint scheme/redirect hardening + native-`.mpp` parity
+> confirmation), branched from `main`@#114, awaiting the operator's merge; once it merges,
+> recreate the work branch from fresh main before any new work. M18 (items 1–8) and the
+> tab-visuals follow-ups (#103–#113) are all merged, so the only remaining work is
+> verification/real-data. If the operator re-deposits the reference `.mpp`s
 > (`00_REFERENCE_INTAKE/` is empty in a fresh container — the `.mpp`s and the SemanticModel zip
 > live on the machine that received them; ask me to re-deposit), verify the Duration Bomb
 > computes **2027-02-24** (ADR-0043) and the Large File's driving tiers match SSI (ADR-0045);

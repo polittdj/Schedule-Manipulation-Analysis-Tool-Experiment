@@ -32,6 +32,7 @@ import importlib.metadata
 import importlib.util
 import re
 from ipaddress import ip_address
+from urllib.parse import urlparse
 
 #: Distribution name of this package (``importlib.metadata`` key).
 DIST_NAME = "schedule-forensics"
@@ -177,3 +178,22 @@ def is_loopback_host(host: str) -> bool:
         return ip_address(candidate).is_loopback
     except ValueError:
         return False
+
+
+#: URL schemes the local-AI client may use. A loopback *host* is necessary but not
+#: sufficient: ``file://localhost/etc/passwd`` and ``gopher://localhost`` both carry a
+#: loopback host yet are not HTTP. Pinning the scheme too closes that gap (Law 1).
+_LOCAL_HTTP_SCHEMES = frozenset({"http", "https"})
+
+
+def is_local_http_endpoint(endpoint: str) -> bool:
+    """Return ``True`` iff ``endpoint`` is an ``http(s)`` URL pointing at a loopback host.
+
+    The local-AI backends validate their endpoint with this, not :func:`is_loopback_host`
+    alone. A non-HTTP scheme with a loopback host (``file://localhost/...``,
+    ``ftp://127.0.0.1/...``) would otherwise pass the host check and let a crafted or
+    mistyped endpoint reach a local file or other URL handler. Both the scheme **and** the
+    host must be local-HTTP, or the endpoint is refused (fail closed).
+    """
+    parsed = urlparse(endpoint.strip())
+    return parsed.scheme in _LOCAL_HTTP_SCHEMES and is_loopback_host(parsed.hostname or "")
