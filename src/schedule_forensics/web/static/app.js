@@ -5,6 +5,11 @@
  * with add/remove fields and click-to-drill-into-metadata, and a Gantt that highlights the
  * driving / secondary / tertiary path tiers to a chosen target UID. All data comes from the
  * local /api endpoints; every drilled value carries its citation (file + UID + task name).
+ *
+ * Both Gantts (the always-on activity grid timeline and the driving-path trace) use the
+ * SAME scalable model as the /path workspace: a user-adjustable zoom in PIXELS PER DAY and
+ * horizontal scroll, instead of squeezing the whole span into a fixed-width column. Bars
+ * therefore keep a true, legible time scale on long programs and the operator can zoom in.
  */
 "use strict";
 
@@ -106,59 +111,70 @@
     return v == null ? "" : String(v);
   }
 
-  // ---- timeline helpers (the MS-Project-style Gantt column) ----
+  // ---- timeline helpers: a SCALABLE px-per-day axis (matches the /path workspace) ----
   const DAY_MS = 86400000;
 
-  function timeRange(rows) {
-    const dates = rows
-      .flatMap((r) => [r.start, r.finish])
-      .filter(Boolean)
-      .map((d) => Date.parse(d));
-    if (!dates.length) return null;
-    const lo = Math.min(...dates), hi = Math.max(...dates);
-    return { lo, span: Math.max(DAY_MS, hi - lo) };
+  function pxPerDay() {
+    const z = document.getElementById("vizZoom");
+    const v = z ? Number(z.value) : 8;
+    return v > 0 ? v : 8; // pixels per calendar day
   }
 
-  function pct(range, t) {
-    return Math.max(0, Math.min(100, ((t - range.lo) / range.span) * 100));
+  // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded two days
+  // each side and stretched to include an anchor date (the data date). Returns null when
+  // nothing is dated. `x(ms)` maps a millisecond timestamp to a pixel offset; `width` is the
+  // full px span the track/scale must occupy so the container scrolls instead of squeezing.
+  function buildAxis(items, anchorDate) {
+    const px = pxPerDay();
+    let t0 = null, t1 = null;
+    items.forEach((it) => {
+      if (it.start) { const s = Date.parse(it.start); if (!isNaN(s)) t0 = t0 === null ? s : Math.min(t0, s); }
+      if (it.finish) { const f = Date.parse(it.finish); if (!isNaN(f)) t1 = t1 === null ? f : Math.max(t1, f); }
+    });
+    const anchor = anchorDate || statusDate;
+    if (anchor) {
+      const a = Date.parse(anchor);
+      if (!isNaN(a) && t0 !== null && t1 !== null) { t0 = Math.min(t0, a); t1 = Math.max(t1, a); }
+    }
+    if (t0 === null || t1 === null) return null;
+    t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
+    const width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
+    return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
 
-  function monthTicks(range) {
-    // first-of-month markers across the range, for the timeline header
+  function monthTicks(axis) {
+    // first-of-month markers across the axis, in PIXELS (the scroll handles density)
     const ticks = [];
-    const d = new Date(range.lo);
+    const d = new Date(axis.t0);
     d.setUTCDate(1);
     for (;;) {
       d.setUTCMonth(d.getUTCMonth() + 1);
       const t = d.getTime();
-      if (t >= range.lo + range.span) break;
-      ticks.push({ left: pct(range, t), label: (d.getUTCMonth() + 1) + "/" + (d.getUTCFullYear() % 100) });
+      if (t > axis.t1) break;
+      const left = axis.x(t);
+      if (left >= 0) ticks.push({ left, label: (d.getUTCMonth() + 1) + "/" + (d.getUTCFullYear() % 100) });
     }
-    // thin out so labels never overlap (cap ~12 labels)
-    const step = Math.ceil(ticks.length / 12);
-    return ticks.filter((_, i) => i % step === 0);
+    return ticks;
   }
 
-  function timelineCell(act, range) {
+  function timelineCell(act, axis) {
     const cell = el("td", { class: "g-cell" });
-    const track = el("div", { class: "g-track" });
+    const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
     if (statusDate) {
       const sd = Date.parse(statusDate);
-      if (sd >= range.lo && sd <= range.lo + range.span) {
-        track.appendChild(el("div", { class: "g-status", style: "left:" + pct(range, sd) + "%" }));
-      }
+      if (!isNaN(sd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(sd) + "px" }));
     }
     const s = act.start ? Date.parse(act.start) : null;
     const f = act.finish ? Date.parse(act.finish) : null;
     if (act.is_milestone && s != null) {
-      const ms = el("div", { class: "g-ms", style: "left:" + pct(range, s) + "%" });
+      const ms = el("div", { class: "g-ms", style: "left:" + axis.x(s) + "px" });
       ms.title = act.name + " (milestone) " + act.start;
       track.appendChild(ms);
     } else if (s != null && f != null) {
-      const left = pct(range, s);
-      const width = Math.max(0.6, pct(range, f) - left);
+      const left = axis.x(s);
+      const width = Math.max(2, axis.x(f) - left);
       const cls = act.is_summary ? "g-bar g-sum" : act.is_critical ? "g-bar g-crit" : "g-bar";
-      const bar = el("div", { class: cls, style: "left:" + left + "%;width:" + width + "%" });
+      const bar = el("div", { class: cls, style: "left:" + left + "px;width:" + width + "px" });
       bar.title = act.name + "  " + act.start + " → " + act.finish +
         (act.is_summary ? " (summary)" : "  " + (act.percent_complete || 0) + "%");
       if (!act.is_summary && (act.complete || act.percent_complete > 0)) {
@@ -192,7 +208,7 @@
     });
   }
 
-  function renderBody(tbody, fields, range) {
+  function renderBody(tbody, fields, axis) {
     const rows = activities
       .filter((act) => rowMatches(act, fields))
       .sort((a, b) => {
@@ -205,8 +221,12 @@
       const tr = el("tr");
       if (act.is_critical) tr.className = "crit";
       if (act.is_summary) tr.className = (tr.className + " sum").trim();
-      fields.forEach((f) => tr.appendChild(el("td", { text: fmt(act[f.key]) })));
-      if (range) tr.appendChild(timelineCell(act, range));
+      fields.forEach((f) => {
+        const td = el("td", { text: fmt(act[f.key]) });
+        if (f.key === "name") td.className = "name-cell"; // full, wrapped task name
+        tr.appendChild(td);
+      });
+      if (axis) tr.appendChild(timelineCell(act, axis));
       tr.addEventListener("click", () => drill(act));
       tbody.appendChild(tr);
     });
@@ -220,7 +240,8 @@
   function renderGrid() {
     const grid = document.getElementById("grid");
     const fields = ALL_FIELDS.filter((f) => f.on);
-    const range = timeRange(activities);
+    // the axis spans ALL activities so the scale stays stable as filters/columns change
+    const axis = buildAxis(activities);
     const table = el("table", { class: "gantt-grid" });
     const thead = el("thead");
     const head = el("tr");
@@ -233,11 +254,18 @@
       });
       head.appendChild(th);
     });
-    if (range) {
-      const th = el("th", { class: "g-head", text: "Timeline" });
-      monthTicks(range).forEach((tick) => {
-        th.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "%", text: tick.label }));
+    if (axis) {
+      const th = el("th", { class: "g-head" });
+      const scale = el("div", { class: "g-scale", style: "width:" + axis.width + "px" });
+      monthTicks(axis).forEach((tick) => {
+        scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tick.left + "px" }));
+        scale.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "px", text: tick.label }));
       });
+      if (statusDate) {
+        const sd = Date.parse(statusDate);
+        if (!isNaN(sd)) scale.appendChild(el("div", { class: "pv-now", style: "left:" + axis.x(sd) + "px" }));
+      }
+      th.appendChild(scale);
       head.appendChild(th);
     }
     thead.appendChild(head);
@@ -247,16 +275,16 @@
     fields.forEach((f) => {
       const td = el("td");
       const input = el("input", { type: "text", placeholder: "filter…", value: filters[f.key] || "" });
-      input.addEventListener("input", () => { filters[f.key] = input.value; renderBody(tbody, fields, range); });
+      input.addEventListener("input", () => { filters[f.key] = input.value; renderBody(tbody, fields, axis); });
       input.addEventListener("click", (ev) => ev.stopPropagation());
       td.appendChild(input);
       filterRow.appendChild(td);
     });
-    if (range) filterRow.appendChild(el("td", { class: "muted" }));
+    if (axis) filterRow.appendChild(el("td", { class: "muted" }));
     thead.appendChild(filterRow);
     table.appendChild(thead);
     table.appendChild(tbody);
-    renderBody(tbody, fields, range);
+    renderBody(tbody, fields, axis);
     grid.innerHTML = "";
     grid.appendChild(table);
   }
@@ -276,7 +304,7 @@
     panel.appendChild(dl);
   }
 
-  let lastDriving = null; // re-render the trace when "show completed" toggles
+  let lastDriving = null; // re-render the trace when "show completed" / tier / zoom changes
 
   function renderGantt(driving) {
     lastDriving = driving;
@@ -293,33 +321,62 @@
     box.appendChild(legend);
     const showDone = document.getElementById("showDone");
     const includeDone = !showDone || showDone.checked;
+    const tierSel = document.getElementById("ganttTier");
+    const tier = tierSel ? tierSel.value : "";
     // waterfall: earliest finish -> latest finish (the server pre-sorts; keep it stable here)
     const rows = driving.rows
       .filter((r) => includeDone || !r.complete)
+      .filter((r) => !tier || r.tier === tier)
       .slice()
       .sort((a, b) => (a.finish_ord ?? Infinity) - (b.finish_ord ?? Infinity));
-    if (!rows.length) { box.appendChild(el("p", { class: "muted", text: "No activities to show (try enabling completed tasks)." })); return; }
-    const times = rows.flatMap((r) => [r.start_ord, r.finish_ord]).filter((x) => x != null);
-    const lo = Math.min(...times), hi = Math.max(...times), span = Math.max(1, hi - lo);
+    if (!rows.length) {
+      box.appendChild(el("p", { class: "muted", text: "No activities to show (adjust the tier filter or enable completed tasks)." }));
+      return;
+    }
+    const axis = buildAxis(rows, driving.data_date);
+    if (!axis) { box.appendChild(el("p", { class: "muted", text: "No dated activities to plot." })); return; }
+    const scroll = el("div", { class: "gantt-scroll" });
+    // header row: a name spacer + the px-wide month-tick scale carrying the data-date line
+    const headRow = el("div", { class: "gantt-row gantt-head" });
+    headRow.appendChild(el("span", { class: "gantt-name" }));
+    const scale = el("div", { class: "gantt-scale", style: "width:" + axis.width + "px" });
+    monthTicks(axis).forEach((tick) => {
+      scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tick.left + "px" }));
+      scale.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "px", text: tick.label }));
+    });
+    if (driving.data_date) {
+      const dd = Date.parse(driving.data_date);
+      if (!isNaN(dd)) scale.appendChild(el("div", { class: "pv-now", style: "left:" + axis.x(dd) + "px" }));
+    }
+    headRow.appendChild(scale);
+    scroll.appendChild(headRow);
     rows.forEach((r) => {
-      const track = el("div", { class: "gantt-track" });
       const done = !!r.complete;
-      if (r.is_milestone && r.start_ord != null) {
+      const track = el("div", { class: "gantt-track", style: "width:" + axis.width + "px" });
+      if (driving.data_date) {
+        const dd = Date.parse(driving.data_date);
+        if (!isNaN(dd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(dd) + "px" }));
+      }
+      const s = r.start ? Date.parse(r.start) : null;
+      const f = r.finish ? Date.parse(r.finish) : null;
+      if (r.is_milestone && s != null) {
         // milestones render as diamonds at their date, tinted by tier
-        const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + ((r.start_ord - lo) / span) * 100 + "%" });
+        const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + axis.x(s) + "px" });
         ms.title = r.name + " (milestone) — driving slack " + r.driving_slack_days + "d (" + r.tier + ")";
         track.appendChild(ms);
-      } else if (r.start_ord != null && r.finish_ord != null) {
-        const left = ((r.start_ord - lo) / span) * 100;
-        const width = Math.max(1, ((r.finish_ord - r.start_ord) / span) * 100);
-        const bar = el("div", { class: "gantt-bar tier-" + r.tier + (done ? " done" : ""), style: "left:" + left + "%;width:" + width + "%" });
+      } else if (s != null && f != null) {
+        const left = axis.x(s);
+        const width = Math.max(2, axis.x(f) - left);
+        const bar = el("div", { class: "gantt-bar tier-" + r.tier + (done ? " done" : ""), style: "left:" + left + "px;width:" + width + "px" });
         bar.title = r.name + " — driving slack " + r.driving_slack_days + "d (" + r.tier + ")" + (done ? " — complete" : "");
         track.appendChild(bar);
       }
-      box.appendChild(el("div", { class: "gantt-row" + (done ? " done" : "") }, [
-        el("span", { text: "UID " + r.unique_id + " " + r.name.slice(0, 22) }), track,
-      ]));
+      const row = el("div", { class: "gantt-row" + (done ? " done" : "") });
+      row.appendChild(el("span", { class: "gantt-name", text: "UID " + r.unique_id + " " + r.name }));
+      row.appendChild(track);
+      scroll.appendChild(row);
     });
+    box.appendChild(scroll);
   }
 
   function loadGantt() {
@@ -349,4 +406,12 @@
   document.getElementById("ganttBtn").addEventListener("click", loadGantt);
   const showDone = document.getElementById("showDone");
   if (showDone) showDone.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
+  const ganttTier = document.getElementById("ganttTier");
+  if (ganttTier) ganttTier.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
+  // one page-level "pixels per day" zoom rescales BOTH the activity grid timeline and the trace
+  const vizZoom = document.getElementById("vizZoom");
+  if (vizZoom) vizZoom.addEventListener("input", () => {
+    renderGrid();
+    if (lastDriving) renderGantt(lastDriving);
+  });
 })();

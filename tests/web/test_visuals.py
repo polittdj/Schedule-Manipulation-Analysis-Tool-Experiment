@@ -65,6 +65,37 @@ def test_app_js_renders_the_gantt_timeline(client: TestClient) -> None:
     assert ".g-bar" in css and ".g-status" in css
 
 
+def test_analysis_gantts_use_the_scalable_px_per_day_model(client: TestClient) -> None:
+    """Bug fix: the /analysis driving-path trace + activity Gantt no longer squeeze the whole
+    span into a fixed-width column (% of span). Both now use the /path px-per-day + horizontal
+    scroll model — a user-adjustable zoom (pixels/day) and a scroll container."""
+    js = client.get("/static/app.js").text
+    # the scalable axis helpers (mirrors path.js) replace the old %-of-span math
+    assert "pxPerDay" in js and "buildAxis" in js
+    assert "gantt-scroll" in js  # the trace rows share one horizontal scroller
+    # the squeeze is gone: no "% of span" positioning remains
+    assert "/ span) * 100" not in js
+    assert "pct(range" not in js and "function pct(" not in js
+    # the page exposes the adjustable scale + the tier filter the operator asked for
+    page = client.get("/analysis/Project5").text
+    assert "id=vizZoom" in page  # pixels-per-day zoom (adjustable time scale)
+    assert "id=ganttTier" in page  # Primary/Secondary/Tertiary tier filter on the trace
+    css = client.get("/static/app.css").text
+    assert ".gantt-scroll" in css and "#grid { overflow-x" in css  # horizontal scroll, both
+
+
+def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> None:
+    """Operator request (item C): the Name column wraps to its FULL text on /path and the
+    /analysis grid, instead of truncating (path.js sliced trace names to 22 chars before)."""
+    path_js = client.get("/static/path.js").text
+    assert "pv-name" in path_js  # the /path Name cell wraps
+    assert ".path-grid td.pv-name" in client.get("/static/app.css").text
+    app_js = client.get("/static/app.js").text
+    assert "name-cell" in app_js  # the /analysis grid Name cell wraps
+    assert ".slice(0, 22)" not in app_js  # the trace no longer truncates the task name
+    assert "td.name-cell" in client.get("/static/app.css").text
+
+
 def test_driving_rows_carry_completion_and_milestone_flags(client: TestClient) -> None:
     # the trace's "show completed" toggle and milestone diamonds need these per row
     dj = client.get("/api/driving/Project5?target=143").json()

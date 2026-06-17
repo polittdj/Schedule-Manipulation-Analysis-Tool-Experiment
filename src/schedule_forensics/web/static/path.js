@@ -130,7 +130,9 @@
       on.forEach(function (f) {
         var v = r[f.key];
         if (typeof v === "boolean") v = v ? "yes" : "—";
-        tr.appendChild(el("td", { text: v === null || v === undefined ? "—" : String(v) }));
+        var text = v === null || v === undefined ? "—" : String(v);
+        // the Name column wraps to its FULL text (no truncation); other columns stay nowrap
+        tr.appendChild(el("td", f.key === "name" ? { class: "pv-name", text: text } : { text: text }));
       });
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
