@@ -22,12 +22,28 @@ class MetricDoc:
     definition: str
     formula: str
     source: str  # citing reference / framework
+    importance: str = ""  # why the check matters (tooltip "Why it matters")
+    indicates: str = ""  # what a failing value tells the analyst (tooltip "Indicates")
     citation_basis: str = "Every value cites file + UniqueID + task name (§6)."
 
 
-def _doc(mid: str, name: str, definition: str, formula: str, source: str) -> MetricDoc:
+def _doc(
+    mid: str,
+    name: str,
+    definition: str,
+    formula: str,
+    source: str,
+    importance: str = "",
+    indicates: str = "",
+) -> MetricDoc:
     return MetricDoc(
-        metric_id=mid, name=name, definition=definition, formula=formula, source=source
+        metric_id=mid,
+        name=name,
+        definition=definition,
+        formula=formula,
+        source=source,
+        importance=importance,
+        indicates=indicates,
     )
 
 
@@ -53,6 +69,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Incomplete activities missing a predecessor and/or successor.",
         "count(incomplete without pred or succ) / incomplete <= 5%",
         _DCMA,
+        importance="Every activity must be tied into the network on both ends so a slip "
+        "anywhere flows through to the finish. Dangling tasks break that chain.",
+        indicates="Open ends mean the schedule cannot reliably predict the finish date; the "
+        "missing links must be added before the critical path can be trusted.",
     ),
     "DCMA02": _doc(
         "DCMA02",
@@ -60,6 +80,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Relationships with a negative lag (a lead).",
         "count(lag < 0) == 0",
         _DCMA,
+        importance="Leads (negative lag) let a successor start before its predecessor finishes, "
+        "compressing the plan in a way that hides true logic and can mask a slip.",
+        indicates="Any lead is a red flag: the overlap should be modelled with an explicit "
+        "SS/FF relationship and a positive lag so the logic is visible and statusable.",
     ),
     "DCMA03": _doc(
         "DCMA03",
@@ -67,6 +91,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Relationships with a positive lag into an incomplete successor.",
         "count(lag > 0) / links <= 5%",
         _DCMA,
+        importance="Lags bury real work (cure, delivery, review) inside a relationship where it "
+        "cannot be progressed, resourced, or seen — over-use distorts the critical path.",
+        indicates="Heavy lag use suggests work modelled as delay instead of activities; replace "
+        "each material lag with a real, statusable task.",
     ),
     "DCMA04_FS": _doc(
         "DCMA04_FS",
@@ -74,6 +102,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Share of relationships that are Finish-to-Start.",
         "count(FS) / links >= 90%",
         _DCMA,
+        importance="Finish-to-Start is the clearest, most defensible logic. A schedule built "
+        "mostly from FS links is easier to analyse and behaves predictably under change.",
+        indicates="A low FS share means heavy use of SS/FF/SF, which can overlap work "
+        "artificially and obscure the true driving path.",
     ),
     "DCMA04_SSFF": _doc(
         "DCMA04_SSFF",
@@ -81,6 +113,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Start-Start / Finish-Finish links into incomplete work.",
         "count(SS|FF into incomplete)",
         _DCMA,
+        importance="SS/FF links model genuine overlap, but each one should reflect real "
+        "concurrency rather than a workaround for missing detail.",
+        indicates="A high count warrants review — some SS/FF links are often standing in for "
+        "logic that should be broken into discrete FS-linked activities.",
     ),
     "DCMA04_SF": _doc(
         "DCMA04_SF",
@@ -88,6 +124,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Start-to-Finish relationships (discouraged).",
         "count(SF into incomplete)",
         _DCMA,
+        importance="Start-to-Finish logic is rarely correct and is almost never needed; it "
+        "inverts the normal flow of work and confuses analysis.",
+        indicates="Any SF relationship should be justified or removed — it usually signals a "
+        "modelling error rather than a real dependency.",
     ),
     "DCMA05": _doc(
         "DCMA05",
@@ -95,6 +135,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Activities with a hard/mandatory constraint (MSO/MFO/SNLT/FNLT).",
         "count(hard constraint) / activities <= 5%",
         _DCMA,
+        importance="Hard constraints override network logic, freezing dates so the schedule no "
+        "longer reacts to upstream slips. They mask true float and hide risk.",
+        indicates="Excess hard constraints mean the dates are imposed rather than logic-driven; "
+        "the plan may look on-track while the underlying network is already late.",
     ),
     "DCMA06": _doc(
         "DCMA06",
@@ -102,6 +146,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Incomplete activities with total float > 44 working days.",
         "count(total_float > 44d) / incomplete <= 5%",
         _DCMA,
+        importance="Very high float usually means an activity is not properly tied to its "
+        "successors, so it floats free of the network and understates risk.",
+        indicates="A cluster of high-float tasks points to missing successor logic — tie them "
+        "back in so their true float (and risk) is revealed.",
     ),
     "DCMA07": _doc(
         "DCMA07",
@@ -109,6 +157,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Incomplete activities with total float < 0.",
         "count(total_float < 0) == 0",
         _DCMA,
+        importance="Negative float means the plan is already behind a constraint or deadline — "
+        "work must be recovered for the schedule to be achievable.",
+        indicates="Any negative float flags a path that cannot meet its imposed finish; the "
+        "logic, durations, or the constraint driving it must be addressed.",
     ),
     "DCMA08": _doc(
         "DCMA08",
@@ -116,6 +168,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Incomplete activities with baseline duration > 44 working days.",
         "count(baseline_dur > 44d) / incomplete <= 5%",
         _DCMA,
+        importance="Long activities are hard to status accurately and hide progress and risk "
+        "inside a single bar; they should be decomposed into measurable detail.",
+        indicates="Many long-duration tasks reduce visibility — break them down so progress and "
+        "emerging slip can be seen and managed.",
     ),
     "DCMA09": _doc(
         "DCMA09",
@@ -123,6 +179,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Actuals after the status date, or an incomplete forecast in the past.",
         "count(invalid actual/forecast vs status) == 0",
         _DCMA,
+        importance="Actual dates in the future or forecast (incomplete) work in the past are "
+        "logically impossible and corrupt every downstream calculation.",
+        indicates="Invalid dates mean the schedule was not properly statused against the data "
+        "date; they must be corrected before any metric can be trusted.",
     ),
     "DCMA10": _doc(
         "DCMA10",
@@ -130,6 +190,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Incomplete, real-duration activities with no resource assigned.",
         "count(no resource) / incomplete-with-duration <= 5%",
         _DCMA,
+        importance="A resource-loaded schedule supports cost and earned-value analysis; "
+        "unresourced real-duration work cannot be costed or levelled.",
+        indicates="Gaps here mean the plan is not fully resource-loaded — confirm each open "
+        "activity is either resourced or genuinely level-of-effort.",
     ),
     "DCMA11": _doc(
         "DCMA11",
@@ -137,6 +201,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Baselined-due-by-status activities not finished on time.",
         "count(due not finished on time) / due <= 5%",
         _DCMA,
+        importance="Tasks baselined to finish by now that have not is the most direct measure "
+        "of slip against the plan of record.",
+        indicates="A high missed-activity rate shows the schedule is falling behind its "
+        "baseline; the work needs re-planning or recovery.",
     ),
     "DCMA12": _doc(
         "DCMA12",
@@ -144,6 +212,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "A delay on a critical activity must flow to the project finish.",
         "inject delay on critical task -> finish moves by the delay",
         _DCMA,
+        importance="A schedule must have a continuous, controlling critical path; if a delay on "
+        "a critical task does not move the finish, the network logic is broken.",
+        indicates="Failure means a broken or discontinuous critical path — open ends or "
+        "constraints are absorbing the delay instead of passing it to the finish.",
     ),
     "DCMA13": _doc(
         "DCMA13",
@@ -151,6 +223,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Critical Path Length Index.",
         "(crit path length + project total float) / crit path length >= 0.95",
         _DCMA,
+        importance="CPLI measures how realistic the finish is: 1.0 means the critical path just "
+        "fits, below ~0.95 means the path is already eroding into negative float.",
+        indicates="A CPLI below 0.95 shows the controlling path is behind; recover its negative "
+        "float to make the finish date credible.",
     ),
     "DCMA14": _doc(
         "DCMA14",
@@ -158,6 +234,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Baseline Execution Index.",
         "activities completed / activities baselined-to-complete-by-status >= 0.95",
         _DCMA,
+        importance="BEI tracks throughput against the baseline: are activities being completed "
+        "as fast as the plan said they would be?",
+        indicates="A BEI below 0.95 means the team is finishing work slower than baselined — an "
+        "early, leading indicator of overall slip.",
     ),
     # --- Acumen Schedule-Quality summary ---
     "missing_logic": _doc(

@@ -59,7 +59,7 @@ from schedule_forensics.engine import (
 )
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
-from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
+from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
 from schedule_forensics.engine.driving_slack import date_basis
 from schedule_forensics.engine.forecast import (
     CarnacSummary,
@@ -2366,6 +2366,53 @@ def _dcma_definition_cell(metric_id: str) -> str:
     )
 
 
+def _dcma_metric_cell(check: AuditCheck) -> str:
+    """The 'Check' cell: the metric name plus a hover/focus tooltip that explains the metric,
+    its pass/fail criteria, why it matters, and what a failing value indicates (operator request).
+
+    The tooltip is keyboard-operable (the trigger is focusable and labelled) and also carries a
+    plain-text ``title=`` so the same detail is available with no CSS/JS (air-gap, a11y)."""
+    doc = METRIC_DICTIONARY.get(check.metric_id)
+    name = check.name
+    if doc is None:
+        return f"<td>{_e(name)}</td>"
+    tip_id = f"dcma-tip-{_e(check.metric_id)}"
+    rich = [f"<b>{_e(doc.name)}</b>", f"<p>{_e(doc.definition)}</p>"]
+    rich.append(f"<p><b>Pass criteria:</b> <code>{_e(doc.formula)}</code></p>")
+    title = f"{doc.definition} — Pass criteria: {doc.formula}."
+    if doc.importance:
+        rich.append(f"<p><b>Why it matters:</b> {_e(doc.importance)}</p>")
+        title += f" Why it matters: {doc.importance}"
+    if doc.indicates:
+        rich.append(f"<p><b>Indicates:</b> {_e(doc.indicates)}</p>")
+        title += f" Indicates: {doc.indicates}"
+    return (
+        f"<td class=dcma-cell>"
+        f'<span class=dcma-metric tabindex=0 role=button aria-describedby="{tip_id}" '
+        f'title="{_e(title)}">{_e(name)} '
+        f"<span class=dcma-info aria-hidden=true>&#9432;</span></span>"
+        f'<div class=dcma-tip id="{tip_id}" role=tooltip>{"".join(rich)}</div></td>'
+    )
+
+
+def _dcma_count_cells(check: AuditCheck) -> str:
+    """The Count + '% of tasks' cells, matching how Acumen Fuse shows each metric — the raw
+    count over its population plus the percentage, instead of only a pass/fail colour.
+
+    Count-based checks show ``n of population`` and the metric's percentage; the CPLI / BEI
+    index checks show the index value (no count); the pass/fail critical-path test shows neither."""
+    dash = "<span class=muted>&mdash;</span>"
+    if check.unit == "ratio":  # CPLI / BEI — an index, not a count
+        return f"<td class=num>{dash}</td><td class=num>{round(check.value, 2)}</td>"
+    if check.population:
+        pct = check.value if check.unit == "%" else 100.0 * check.count / check.population
+        return (
+            f"<td class=num>{check.count} <span class=muted>of {check.population}</span></td>"
+            f"<td class=num>{pct:.1f}%</td>"
+        )
+    return f"<td class=num>{check.count}</td><td class=num>{dash}</td>"
+
+
 def _analysis_body(
     key: str,
     sch: Schedule,
@@ -2375,8 +2422,8 @@ def _analysis_body(
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
-        f'<tr><td>{_e(c.name)}</td><td class="{_status_class(c.status)}">{_e(c.status)}</td>'
-        f"<td>{_e(round(c.value, 1))}{_e(c.unit)}</td>"
+        f'<tr>{_dcma_metric_cell(c)}<td class="{_status_class(c.status)}">{_e(c.status)}</td>'
+        f"{_dcma_count_cells(c)}"
         f"{_dcma_definition_cell(c.metric_id)}"
         f"<td class=muted>{_e(c.suggested_improvement)}</td></tr>"
         for c in audit.checks
@@ -2418,9 +2465,12 @@ metadata)</span></h3>
 {_completion_panel(analysis)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
-Each row defines the check and how it is measured; full formulas + citations are in the
+Each row shows the <b>count</b> and the <b>percentage</b> of its population (as Acumen Fuse does),
+not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
+criteria, why it matters, and what it indicates; full formulas + citations are in the
 <a href="/help">Metric Dictionary</a>.</p>
-<table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Value</th><th scope=col>What it measures (how)</th>
+<table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
+<th scope=col>What it measures (how)</th>
 <th scope=col>Suggested improvement</th></tr>{audit_rows}</table></div>
 <div class=panel><h2>Risks, opportunities &amp; concerns</h2>
 <table><tr><th scope=col>Severity</th><th scope=col>Type</th><th scope=col>Finding</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>

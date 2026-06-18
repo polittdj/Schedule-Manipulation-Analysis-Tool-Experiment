@@ -1891,3 +1891,23 @@ accessible name, and `.sr-only` data-table fallback are unchanged. `test_curves_
 Parity 10/10; gate green. Remaining backlog: F (Bow-Wave totals + target highlight), D (Fuse year
 Trend/Phase — needs binning input), the `/path` screenshot bug, deferred Fuse metrics. Model/mode:
 Opus 4.8 (1M).
+
+**2026-06-18 (cont. 9) — DCMA-14 audit count+% display + per-check tooltips (ADR-0079 open).**
+Item E (ADR-0078) merged as #138; `main`@`6f7e7b3`. Operator (same project in Acumen Fuse vs the
+tool): the `/analysis` DCMA-14 table showed only a pass/fail colour + a bare "Value" — they want the
+**count** and **percentage** like Acumen, plus a hover tooltip giving the definition, pass/fail
+criteria, why it matters, and what it indicates. This PR ships the **display** half (parity-safe):
+the "Value" column becomes **Count** (`n of population`) + **% of tasks**, metric-aware by
+`MetricResult.unit` (count/percent show `value%`; CPLI/BEI show the index; the Critical-Path Test
+shows neither); each check name carries a keyboard-operable, labelled (`role=button`/`aria-describedby`)
+hover/focus **tooltip** built from the metric dictionary, with two new `MetricDoc` fields
+(`importance`, `indicates`) filled for all 14 checks + a plain-text `title=` fallback (a11y/air-gap,
+hidden in print). No engine change → **parity 10/10**; `docs/METRIC-DICTIONARY.md` unchanged (the
+generator reads only the old fields). `tests/web/test_visuals.py` pins the Count/% columns +
+`role=tooltip` + the three tooltip facets + that every DCMA doc has importance/indicates. Full gate
+green (939 passed). **Diagnosis recorded for the calculation half (next PR):** Acumen reads MS
+Project's stored progress-aware `Critical`/`TotalSlack`; the engine recomputes pure-logic CPM
+(ADR-0010) and diverges on the operator's progressed Large Test File (Critical 2 vs 33, NegFloat 0 vs
+31, Lags 5 vs 8, Leads 0 vs 1). Verified parity-safe on the goldens (stored `Critical=1`=41/37, stored
+`TotalSlack<0`=0/0 = the pinned values), so consuming stored values when present matches Acumen without
+moving the gate. CUI `.mpp`/`.xlsx` not committed. Model/mode: Opus 4.8 (1M).
