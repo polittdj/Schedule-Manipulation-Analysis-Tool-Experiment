@@ -125,10 +125,9 @@ def test_acumen_baseline_compliance(project: str) -> None:
     ):
         assert c[key].count == g[key], f"{project} {key}: {c[key].count} != {g[key]}"
     assert round(c["baseline_finish_compliance"].value) == g["baseline_finish_compliance_pct"]
-    # Documented residual (ADR-0013): engine 38/23 vs Acumen 41/25.
-    engine_bsc = 38 if project == "Project2" else 23
-    assert round(c["baseline_start_compliance"].value) == engine_bsc
-    assert round(c["baseline_start_compliance"].value) != g["baseline_start_compliance_pct"]
+    # Baseline Start Compliance is now EXACT (41 / 25) — the Half-Step-Delay definition (actual
+    # start <= baseline FINISH) resolves the former ADR-0013 residual (ADR-0083). Gate tightened.
+    assert round(c["baseline_start_compliance"].value) == g["baseline_start_compliance_pct"]
 
 
 # --------------------------------------------------------------------------------------

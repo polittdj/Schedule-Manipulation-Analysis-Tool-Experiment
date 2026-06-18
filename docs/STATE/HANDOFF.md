@@ -1,22 +1,31 @@
-# Handoff — 2026-06-18 (PRs #81–#141 MERGED; **`main` green & current at #141 (`61ddf10`)**; ADR-0082 = OPEN draft — Bow-Wave running totals + target highlight, item F)
+# Handoff — 2026-06-18 (PRs #81–#142 MERGED; **`main` green & current at #142 (`f640e84`)**; ADR-0083 = OPEN draft — baseline-compliance Acumen-exact audit fix)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#141)
-> **`main` is at #141 (`61ddf10`), green.** The operator's **DCMA-14 reconciliation is COMPLETE +
-> MERGED** (#139 display / ADR-0079, #140 float calc / ADR-0080, #141 Lags-Leads / ADR-0081). The
-> **OPEN draft on this branch is ADR-0082** — operator backlog **item F** on the `/cei` Bow-Wave view:
-> (1) a **Running totals** toggle that redraws the gold/blue/green series as cumulative finish curves on
-> a locked cumulative axis; (2) a **Target-UID highlight** — `compute_bow_wave(schedules, target_uid)`
-> now reports each snapshot's `target_scheduled_index` / `target_finished_index` (defaulted fields,
-> additive), and `cei.js` marks where the focused activity lands + slides per snapshot. `/cei` takes a
-> `target` query param that sets the session-wide target (ADR-0061). **No metric/CPM change → parity
-> 10/10.** Highest ADR on disk is **0082**.
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#142)
+> **`main` is at #142 (`f640e84`), green.** Item F (Bow-Wave totals + target highlight, ADR-0082)
+> **MERGED as #142**. **NEW operator mandate (in progress):** they supplied the authoritative Acumen
+> Fuse metric library **`NASA_Metrics_Complete.aft`** (759 distinct metrics / 6 sub-libraries) + Acumen's
+> real reports for the **Large Test File** (2,125 acts) and said: treat the library as the **Bible**,
+> audit every measure, fix divergences, and produce 4-per-page visual catalogs (desc + remarks).
+> **DONE:** all 6 visual catalogs generated + SENT to the operator (PDFs, NOT committed — NASA content
+> stays out of git). **Audit so far (tool vs Acumen's real Large-File report):** Schedule-Quality ribbon
+> **8/9 exact**; **baseline compliance now 10/10 exact** — the **OPEN draft on this branch is ADR-0083**:
+> `compute_baseline_compliance` rebuilt to the Bible (Normal-only population = exclude milestones; strict
+> `<` due; INT date comparisons; Not Completed = %<100; **BSC = Half-Step-Delay**, actual start ≤ baseline
+> FINISH). This **RESOLVES the ADR-0013 BSC residual** (goldens now exact 41/25) and matches the Large
+> File (BSC 22%, Forecast-Finish 1202, etc.). CEI(Start) stays = Started-On-Time % (distinct from BSC).
+> Parity **10/10** (goldens have 0 milestones → counts unchanged; gate TIGHTENED on BSC). Highest ADR
+> on disk is **0083**.
 >
-> **REMAINING operator backlog:** **D** (Fuse year Trend/Phase — parity-sensitive; period binning needs
-> the operator's confirmation — ASK before building) and the **`/path` chart visual bug** (needs the
-> operator's screenshot — can't verify rendering in-container). **DEFERRED:** Fuse **proprietary**
-> metrics (Float Ratio™, composite Score) — need exact DAX/formula (DON'T GUESS). **High Float
-> (DCMA-06)** stays the ADR-0012 documented residual. CUI: the Large Test File `.mpp` + Acumen `.xlsx`
-> exports must NOT be committed (derived values go in `docs/FUSE-VALIDATION.md` only).
+> **AUDIT — STILL OPEN (next):** **Insufficient Detail™** is a characterised proprietary-™ residual (tool
+> 41 vs Acumen 43 — Bible `OriginalDuration/ProjectDuration>0.1` matches 43 with *current* duration but
+> the operator's TP3 Fuse run of 8 needs *baseline*; contradictory, so NOT re-pinned — needs operator
+> guidance). Remaining metric families to audit vs the Bible + Large-File report: **BEI / HMI / CEI
+> bow-wave**, **critical-path**, **Advanced**, **Industry Standards**. Method: load `Large_Test_File.mpp`
+> (Java/MPXJ works in-container now), compare tool vs Acumen's `.xlsx` report values, fix parity-safely.
+> **Other backlog:** **D** (Fuse year Trend/Phase — ASK binning first), **`/path` chart bug** (needs
+> screenshot). **DEFERRED:** Float Ratio™, composite Score (no formula). **CUI:** the Large Test File
+> `.mpp` + Acumen `.xlsx` + the `.aft` must NOT be committed — only derived values in
+> `docs/FUSE-VALIDATION.md`. The catalog generator + parsed data live in `/tmp` (ephemeral).
 
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + ADR-0077).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts

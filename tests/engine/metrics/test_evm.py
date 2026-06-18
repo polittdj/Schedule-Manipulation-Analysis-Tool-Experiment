@@ -64,11 +64,9 @@ def test_golden_baseline_compliance_parity(project: str, golden: Callable[[str],
     # Baseline Finish Compliance is exact (33% / 20%)
     assert round(c["baseline_finish_compliance"].value) == g["baseline_finish_compliance_pct"]
 
-    # Baseline Start Compliance: documented residual (ADR-0013) — engine = started-on-time /
-    # forecast-to-be-started; golden uses a different denominator. Counts above are exact.
-    engine_bsc = round(c["baseline_start_compliance"].value)
-    assert engine_bsc == (38 if project == "Project2" else 23)
-    assert engine_bsc != g["baseline_start_compliance_pct"]  # the tracked delta
+    # Baseline Start Compliance now exact (41% / 25%) — the Half-Step-Delay definition compares the
+    # actual START to the baseline FINISH, resolving the former ADR-0013 residual (ADR-0083).
+    assert round(c["baseline_start_compliance"].value) == g["baseline_start_compliance_pct"]
 
 
 def test_baseline_compliance_no_status_date_is_na() -> None:
@@ -186,8 +184,12 @@ def test_evm_indices_cost_loaded() -> None:
 def test_cei_equals_baseline_compliance(golden_project2: Schedule) -> None:
     c = compute_baseline_compliance(golden_project2)
     e = compute_evm_indices(golden_project2)
+    # CEI (Finish) == Baseline Finish Compliance (both completed-on-time / forecast-to-be-finished).
     assert e["cei_finish"].value == c["baseline_finish_compliance"].value
-    assert e["cei_start"].value == c["baseline_start_compliance"].value
+    # CEI (Start) == "Started On Time" % (start <= baseline START), which is DISTINCT from Baseline
+    # Start Compliance (start <= baseline FINISH, the Half-Step-Delay definition) — ADR-0083.
+    assert e["cei_start"].value == c["started_on_time"].value
+    assert e["cei_start"].value != c["baseline_start_compliance"].value
 
 
 @pytest.mark.parametrize("project", ["Project2", "Project5"])

@@ -1972,3 +1972,25 @@ form; `/api/cei` carries target_uid + indices and clears on blank focus; `cei.js
 curves + target marker. Full gate green. Remaining backlog: **D** (Fuse year Trend/Phase — binning needs
 operator input, ASK first), **`/path` chart visual bug** (needs screenshot); deferred Fuse-proprietary
 Float Ratio™ + Score. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 13) — Acumen-Fuse-library audit: baseline compliance Acumen-exact (ADR-0083 open).**
+Item F (ADR-0082) merged as #142; `main`@`f640e84`. Operator supplied the authoritative Acumen Fuse
+metric library `NASA_Metrics_Complete.aft` (759 distinct metrics / 181 groups / 6 sub-libraries) +
+Acumen's real reports for the Large Test File (2,125 acts, Time Now 2/7/2025), directive: treat the
+library as the Bible, audit every measure, fix divergences, and build 4-per-page visual catalogs with
+description + remarks. **Visuals:** generated + SENT all 6 library catalogs as PDFs (WeasyPrint, 4 cards/
+page: name, type+DCMA badge, description, remarks, inclusions/filters, primary/secondary/tripwire
+formulas) — NOT committed (NASA content stays out of git). **Audit (tool vs Acumen's real Large-File
+report, loading the .mpp via MPXJ):** Schedule-Quality ribbon 8/9 exact (the DCMA work #139-141 holds
+up); **baseline compliance fixed to 10/10 exact (ADR-0083)** — rebuilt `compute_baseline_compliance` to
+the Bible: Normal-only population (exclude milestones — the ~131 overcount on the Large File), strict
+`<` due, INT date comparisons, Not Completed = %<100, and **BSC = Half-Step-Delay** (actual start ≤
+baseline FINISH, not baseline start). This **resolves the long-standing ADR-0013 BSC residual** (goldens
+now exact 41/25; gate tightened) and matches the Large File (BSC 22%, Forecast-Finish 1202, On-Time 116,
+Late 488, Not Completed 594, BFC 10%, Forecast-Start 1228, etc.). CEI(Start) kept = Started-On-Time %
+(distinct from BSC; the old `cei_start==BSC` test passed only because BSC was mis-computed). Parity-safe:
+goldens have 0 milestones so counts unchanged. Updated parity/EVM tests (BSC residual → exact), help.py
+BSC formula, regenerated METRIC-DICTIONARY.md, FUSE-VALIDATION.md, case.json cei notes. Parity 10/10;
+full gate green (946 passed). **Open:** Insufficient Detail™ residual (41 vs 43 — current-vs-baseline
+duration ambiguity between the Large File and TP3; not re-pinned); BEI/HMI/CEI-bow-wave, critical-path,
+Advanced, Industry-Standards families still to audit. Model/mode: Opus 4.8 (1M, Ultracode).
