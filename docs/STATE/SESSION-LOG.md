@@ -2051,3 +2051,18 @@ goldens Project5-vs-Project2 HMI(Tasks)=0.05 (18 misses). Full gate green (954);
 Formula-audit status: clean parity-safe FIXES (BEI, CPLI) done; HMI added; remaining candidates risk
 moving validated values without Acumen output — recommended operator export Acumen output for
 BEI/HMI/CEI/critical-path before more changes. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 18) — NEW feature set: custom-field MAPPING (ADR-0088 open, PR1 of a multi-part req).**
+HMI (ADR-0087) merged as #147. Operator gave a big multi-part request + new files (edited
+Large_Test_File2.mpp + Acumen Ribbon/DCMA/Quick-Add reports on it). Asks: map all custom fields for
+selection/display; driving path between two user-defined UIDs and how it changes over time; group/filter
+ALL metrics by a chosen field (e.g. CA-WBS) with up to 5 fields (standard+custom) at once. Confirmed the
+MPXJ->MSPDI conversion preserves ExtendedAttributes (project FieldID->FieldName/Alias defs + per-task
+values). Implemented the FOUNDATION: Task.custom_fields (tuple of (label,value); alias e.g. CA-WBS wins
+over field name Text20) + custom_field_map/custom_field helpers; Schedule.custom_field_labels (populated
+fields, declared order); MSPDI parser _parse_extended_attribute_defs + _task_custom_fields. Schema
+2.1.0->2.2.0 (freeze test + version updated). Real edited file: 2125 tasks, 69 populated custom fields,
+CA-WBS = 12 groups (4.1.4.1=880 tasks). 4 new importer tests. Full gate green (958); ruff/mypy clean.
+NEXT: (A) display column-picker, (B) group-by/filter engine (<=5 fields scope all metrics), (C) driving
+path between 2 UIDs over versions; plus value-validate against the new Ribbon reports. Model/mode: Opus
+4.8 (1M).

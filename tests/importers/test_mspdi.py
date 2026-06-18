@@ -759,3 +759,53 @@ def test_recurring_exception_is_skipped_not_expanded_into_weeks_of_holidays() ->
         dt.date(2025, 3, 5),
         dt.date(2025, 4, 7),
     )
+
+
+# --- custom / extended fields (ADR-0088) --------------------------------------------
+
+_EXT_MSPDI = """<?xml version="1.0" encoding="UTF-8"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <StartDate>2025-01-06T08:00:00</StartDate>
+  <ExtendedAttributes>
+    <ExtendedAttribute><FieldID>188744006</FieldID><FieldName>Text20</FieldName><Alias>CA-WBS</Alias></ExtendedAttribute>
+    <ExtendedAttribute><FieldID>188744007</FieldID><FieldName>Text21</FieldName><Alias>CAM</Alias></ExtendedAttribute>
+    <ExtendedAttribute><FieldID>188743731</FieldID><FieldName>Text1</FieldName></ExtendedAttribute>
+  </ExtendedAttributes>
+  <Tasks>
+    <Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration>
+      <ExtendedAttribute><FieldID>188744006</FieldID><Value>4.1.4.1</Value></ExtendedAttribute>
+      <ExtendedAttribute><FieldID>188744007</FieldID><Value>Chris</Value></ExtendedAttribute>
+    </Task>
+    <Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>
+      <ExtendedAttribute><FieldID>188744006</FieldID><Value>4.1.4.1</Value></ExtendedAttribute>
+      <ExtendedAttribute><FieldID>999999999</FieldID><Value>orphan</Value></ExtendedAttribute>
+    </Task>
+    <Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration>
+      <ExtendedAttribute><FieldID>188744006</FieldID><Value>4.1.5.2</Value></ExtendedAttribute>
+    </Task>
+  </Tasks>
+</Project>"""
+
+
+def test_custom_fields_are_mapped_by_alias() -> None:
+    s = parse_mspdi_text(_EXT_MSPDI)
+    by = {t.unique_id: t for t in s.tasks}
+    # values are keyed by the operator alias, not the raw field name
+    assert by[1].custom_field("CA-WBS") == "4.1.4.1"
+    assert by[1].custom_field("CAM") == "Chris"
+    assert by[1].custom_field_map == {"CA-WBS": "4.1.4.1", "CAM": "Chris"}
+    # a value whose FieldID has no project-level definition is dropped (cannot be labelled)
+    assert by[2].custom_field_map == {"CA-WBS": "4.1.4.1"}
+    assert by[3].custom_field("CA-WBS") == "4.1.5.2"
+
+
+def test_schedule_lists_only_populated_custom_fields_in_declared_order() -> None:
+    s = parse_mspdi_text(_EXT_MSPDI)
+    # Text1 is declared but never populated -> excluded; CA-WBS before CAM (declaration order)
+    assert s.custom_field_labels == ("CA-WBS", "CAM")
+
+
+def test_no_extended_attributes_leaves_custom_fields_empty() -> None:
+    s = parse_mspdi(FIXTURE)
+    assert s.custom_field_labels == ()
+    assert all(t.custom_fields == () for t in s.tasks)

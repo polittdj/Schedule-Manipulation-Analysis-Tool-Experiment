@@ -39,6 +39,9 @@ class Schedule(StrictFrozenModel):
     tasks: tuple[Task, ...]
     relationships: tuple[Relationship, ...] = ()
     resources: tuple[Resource, ...] = ()
+    #: Labels of the custom/extended fields defined in the source file (alias when set, else field
+    #: name), in file order — the selectable grouping/display fields the importer mapped (ADR-0088).
+    custom_field_labels: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _check_referential_integrity(self) -> Self:

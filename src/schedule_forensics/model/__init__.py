@@ -31,7 +31,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
-SCHEMA_VERSION = "2.1.0"
+SCHEMA_VERSION = "2.2.0"  # 2.2.0: Task.custom_fields + Schedule.custom_field_labels (ADR-0088)
 
 __all__ = [
     "SCHEMA_VERSION",

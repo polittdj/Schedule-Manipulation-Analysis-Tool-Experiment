@@ -103,6 +103,23 @@ class Task(StrictFrozenModel):
     resource_names: tuple[str, ...] = ()
     resource_ids: tuple[int, ...] = ()
 
+    # --- custom / extended fields (MSPDI ExtendedAttributes: Text/Number/Flag/Date/Outline codes).
+    # Stored as (label, value) pairs — label is the MS Project alias (e.g. "CA-WBS") when set, else
+    # the field name (e.g. "Text20"). A tuple keeps the model frozen + hashable (like resources).
+    custom_fields: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def custom_field_map(self) -> dict[str, str]:
+        """Label → value view of :attr:`custom_fields` (built on access; the model is frozen)."""
+        return dict(self.custom_fields)
+
+    def custom_field(self, label: str) -> str | None:
+        """The value of the custom field with this label (alias or field name), or ``None``."""
+        for key, value in self.custom_fields:
+            if key == label:
+                return value
+        return None
+
     @property
     def is_complete(self) -> bool:
         """DCMA convention: a task is complete at 100% (incomplete is strictly < 100)."""
