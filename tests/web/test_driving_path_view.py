@@ -30,8 +30,8 @@ def test_page_needs_a_schedule(client: TestClient) -> None:
 def test_page_renders_the_two_uid_form(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/driving-path").text
-    assert 'name=source' in page
-    assert 'name=target' in page
+    assert "name=source" in page
+    assert "name=target" in page
     assert "Enter a source and a target" in page  # no UIDs yet
 
 
@@ -60,4 +60,4 @@ def test_absent_uid_is_flagged(client: TestClient) -> None:
 
 def test_nav_links_to_driving_path(client: TestClient) -> None:
     _upload(client, "Project5")
-    assert '/driving-path' in client.get("/").text
+    assert "/driving-path" in client.get("/").text
