@@ -1,7 +1,16 @@
-# Handoff — 2026-06-18 (PRs #81–#129 MERGED; **`main` green & current at #129 (`8f65081`)**; ADR-0070 = OPEN draft — local-AI fix)
+# Handoff — 2026-06-18 (PRs #81–#130 MERGED; **`main` green & current at #130 (`fe2730a`)**; ADR-0071 = OPEN draft — Ollama lifecycle + model picker)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#129)
-> **`main` is at #129 (`8f65081`), green.** The operator backlog is being worked **bugs-first**:
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#130)
+> **`main` is at #130 (`fe2730a`), green.** ADR-0070 (#130) merged the local-AI proxy bypass +
+> diagnostics. The **OPEN draft on this branch is ADR-0071** — operator follow-ups: auto-start a
+> local Ollama with the desktop tool + stop it on exit (`ai/ollama_process.py`, wired in
+> `launcher.py`), bump the availability probe 2 s → 8 s (a corporate laptop's endpoint-security
+> delays the first local connection → "timed out"), and an install-aware **Model dropdown** on
+> `/settings` (the operator's configured `llama3.1:8b` wasn't installed; they have `llama3.2:latest`
+> / `schedule-analyst:latest` / `qwen2.5:7b-instruct`). The highest ADR on disk is **0071**.
+> **STASHED on this branch:** a partly-built a11y PR (A1 focus ring / A2 reduced-motion / A6 tokens /
+> A8 colour cues) from the external audit work order — `git stash list` (resume after the AI PR).
+> **`main` was at #129 (`8f65081`) before #130; both green.** The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
 > filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
 > filters). The **OPEN draft PR on this branch carries ADR-0070** — an out-of-band operator fix:
@@ -65,7 +74,18 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0070 (OPEN draft, this branch) — local AI works on a corporate laptop.** Operator
+> **PR — ADR-0071 (OPEN draft, this branch) — local AI that just works.** Two operator follow-ups
+> after ADR-0070: (1) **auto-manage Ollama** — `ai/ollama_process.py` `OllamaLauncher` starts a local
+> `ollama serve` on desktop launch (background thread, never blocks) and stops it on exit, but ONLY if
+> we started it (an already-running Ollama is left alone); wired into `launcher.main` (finally +
+> atexit). Loopback-only, never `ollama pull` (Law 1). (2) **probe 2 s → 8 s** so a corporate laptop's
+> slow first local connection ("timed out") still reads reachable. (3) **install-aware Model dropdown**
+> on `/settings` — when Ollama is reachable the Model field lists installed models (configured-but-
+> missing kept + flagged), because the operator's `llama3.1:8b` wasn't installed (they have
+> `llama3.2:latest` / `schedule-analyst:latest` / `qwen2.5:7b-instruct`). Parity 10/10; 922 passed.
+> NOTE the **stashed a11y WIP** on this branch (audit Group 1) — `git stash pop` after this PR.
+
+> **PR — ADR-0070 (MERGED as #130) — local AI works on a corporate laptop.** Operator
 > screenshot showed `/settings` reading **Active backend: null** with Ollama + `llama3.1:8b`
 > configured (model never activated → only deterministic facts, no interpretation). Root cause: the
 > local-AI HTTP client used urllib's default opener, whose **`ProxyHandler` reads the machine proxy**

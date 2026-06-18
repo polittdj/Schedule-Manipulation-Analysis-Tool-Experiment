@@ -10,6 +10,7 @@ without binding a real port.
 
 from __future__ import annotations
 
+import atexit
 import os
 import socket
 import sys
@@ -17,6 +18,7 @@ import threading
 import webbrowser
 from collections.abc import Callable
 
+from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.net_guard import is_loopback_host
 from schedule_forensics.web.app import create_app
 from schedule_forensics.web.app import serve as serve_app
@@ -61,13 +63,18 @@ def main(
     serve: Serve | None = None,
     browser: Browser | None = None,
     timer: type[threading.Timer] = threading.Timer,
+    manage_ollama: bool = True,
+    ollama: OllamaLauncher | None = None,
 ) -> None:
     """Start the local dashboard and open it in the browser.
 
     Refuses a non-loopback ``host`` (CUI: local-only). The app is built with
     ``auto_shutdown`` so that closing the browser stops the server (the tool turns itself
-    off). ``serve``/``browser``/``timer`` are injectable for testing; by default they are
-    :func:`schedule_forensics.web.app.serve` / ``webbrowser.open`` / ``threading.Timer``.
+    off). When ``manage_ollama`` is set (the desktop icon's default) a local ``ollama serve``
+    is started in the background so Ask-the-AI works without the operator starting it by hand,
+    and is stopped again on shutdown — but only if we were the one who started it (an Ollama the
+    operator already had running is left untouched). ``serve``/``browser``/``timer``/``ollama``
+    are injectable for testing.
     """
     _ensure_streams()  # pythonw (the desktop icon) launches with stdout/stderr = None
     if not is_loopback_host(host):
@@ -77,9 +84,21 @@ def main(
     chosen_port = port if port is not None else find_free_port(host)
     url = f"http://{host}:{chosen_port}"
     print(f"Schedule Forensics — serving the dashboard at {url}  (close the window to stop)")
+
+    manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None
+    if manager is not None:
+        # start Ollama off-thread so the server + browser are never blocked on it; stop it when
+        # the server returns (graceful shutdown) and via atexit as a backstop for a hard exit.
+        threading.Thread(target=manager.ensure_running, daemon=True).start()
+        atexit.register(manager.shutdown)
+
     if open_browser:
         timer(_BROWSER_DELAY, browser, args=(url,)).start()
-    serve_fn(create_app(auto_shutdown=True), host=host, port=chosen_port)
+    try:
+        serve_fn(create_app(auto_shutdown=True), host=host, port=chosen_port)
+    finally:
+        if manager is not None:
+            manager.shutdown()
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entrypoint

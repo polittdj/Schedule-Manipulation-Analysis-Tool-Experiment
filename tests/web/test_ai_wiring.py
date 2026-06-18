@@ -166,3 +166,37 @@ def test_settings_persist_loopback_ollama_endpoint_and_refuse_remote(client: Tes
     )
     page = client.get("/settings").text
     assert "evil.example.com" not in page and "127.0.0.1:11434" in page
+
+
+def test_settings_model_field_is_a_dropdown_of_installed_models(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    """When Ollama is reachable, the Model field becomes a dropdown of installed models so the
+    operator picks one (e.g. a purpose-built model) instead of matching a free-text string; the
+    configured-but-missing model is kept as a selected option, marked not installed."""
+
+    class _Reachable:
+        name = "ollama"
+        is_local = True
+
+        def is_available(self) -> bool:
+            return True
+
+        def unavailable_reason(self) -> None:
+            return None
+
+        def list_models(self) -> tuple[str, ...]:
+            return ("llama3.2:latest", "schedule-analyst:latest", "qwen2.5:7b-instruct")
+
+        def pull_model(self, model: str) -> None: ...
+
+        def generate(self, prompt: str) -> str:
+            return ""
+
+    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    page = client.get("/settings").text
+    assert "<select name=model>" in page
+    assert "schedule-analyst:latest" in page and "qwen2.5:7b-instruct" in page
+    # the default configured model isn't installed -> kept as an option, flagged, with a fix hint
+    assert "llama3.1:8b" in page and "not installed" in page
+    assert "pick an installed model from the Model dropdown" in page

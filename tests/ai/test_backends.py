@@ -224,3 +224,11 @@ def test_route_ollama_when_available_else_null() -> None:
         cfg, null_backend=NullBackend(), ollama_backend=OllamaBackend(opener=down)
     )
     assert be_down.name == "null" and banner.cloud_active is False  # falls closed to local
+
+
+def test_probe_timeout_default_is_generous_for_slow_first_contact() -> None:
+    # a corporate laptop's endpoint-security can delay the first local connection; the default
+    # availability-probe timeout must be generous enough that a reachable-but-slow server still
+    # reads as up (generate/pull keep the long timeout).
+    assert OllamaBackend()._probe_timeout >= 8.0
+    assert OpenAICompatBackend()._probe_timeout >= 8.0
