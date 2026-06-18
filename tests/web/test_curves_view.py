@@ -91,3 +91,15 @@ def test_dashboard_body_links_curves_only_with_two_versions(client: TestClient) 
     assert "Finish &amp; slippage curves" not in client.get("/").text
     _upload(client, "Project5")
     assert "Finish &amp; slippage curves" in client.get("/").text
+
+
+def test_curves_have_a_clickable_show_hide_legend(client: TestClient) -> None:
+    """Item E: the Data-Date / Slippage overlaid line families get a clickable, keyboard-operable
+    show/hide legend (real <button>s toggling each line) so the clutter can be decluttered."""
+    js = client.get("/static/curves.js").text
+    assert "buildLegend" in js and "curve-legend" in js
+    assert "aria-pressed" in js  # the toggle announces state and is keyboard-operable
+    assert "pl.style.display" in js  # toggling a line's visibility
+    assert "Show all" in js and "Hide all" in js  # bulk controls for many-version clutter
+    assert "var lx = padL" not in js  # the old static in-SVG legend is gone
+    assert ".curve-legend-item" in client.get("/static/app.css").text

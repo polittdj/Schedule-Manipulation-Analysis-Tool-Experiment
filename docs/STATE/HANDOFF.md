@@ -1,13 +1,12 @@
-# Handoff — 2026-06-18 (PRs #81–#136 MERGED; **`main` green & current at #136 (`4a298dd`)**; ADR-0077 = OPEN draft — audit close-out A9/A10/A11)
+# Handoff — 2026-06-18 (PRs #81–#137 MERGED; **`main` green & current at #137 (`fd30dc7`)**; ADR-0078 = OPEN draft — curves clickable legend, item E)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#136)
-> **`main` is at #136 (`4a298dd`), green.** Shipped this session: AI tranche (#130–#132), audit
-> **Group 1 a11y** (#133/ADR-0073), **A7 CSP** (#134/ADR-0074), **A3 chart names + curves data
-> tables** (#135/ADR-0075), **A4 scope + A5 print** (#136/ADR-0076). The **OPEN draft on this branch
-> is ADR-0077** — the audit close-out: **A9** responsive reflow (`@media max-width:760px` wraps the
-> nav + collapses the wide grids), **A10** theme `aria-pressed` + first-visit `prefers-color-scheme`,
-> **A11** a docs-drift test (latest ADR must appear in BOTH HANDOFF and SESSION-LOG). The highest ADR
-> on disk is **0077**. **The external audit A1–A11 is now FULLY addressed.**
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#137)
+> **`main` is at #137 (`fd30dc7`), green.** **The external 7-role audit A1–A11 is FULLY addressed**
+> (#133–#137 / ADR-0073–0077). The **OPEN draft on this branch is ADR-0078** — operator backlog
+> **item E**: the `/curves` Data-Date + Slippage charts now have a **clickable, keyboard-operable
+> show/hide legend** (`curves.js` `buildLegend`; real `<button>`s toggle each line's visibility,
+> Show-all/Hide-all for many-version clutter) replacing the static in-SVG legend. The highest ADR on
+> disk is **0078**.
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
 > (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).
@@ -78,7 +77,15 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0077 (OPEN draft, this branch) — audit close-out (A9 / A10 / A11).** A9: a
+> **PR — ADR-0078 (OPEN draft, this branch) — curves clickable show/hide legend (item E).** The
+> `/curves` Data-Date + Slippage charts overlay one line per version (50+ lines on a real program);
+> `curves.js` `buildLegend` replaces the static in-SVG legend with real `<button>` entries that toggle
+> each line (`polyline.style.display`, `aria-pressed`, struck `.off`) — keyboard-operable + focus-ring;
+> Show-all/Hide-all isolates one version from the clutter. Applied to all 3 curves charts; data-date
+> marker / locked axis / accessible name / `.sr-only` table unchanged. Parity 10/10. Built on
+> `main`@#137.
+
+> **PR — ADR-0077 (MERGED as #137) — audit close-out (A9 / A10 / A11).** A9: a
 > `@media (max-width:760px)` block wraps the header/nav and collapses the wide card grids to one
 > column (also satisfies 200%-zoom reflow). A10: `theme.js` sets `aria-pressed` on the toggle and a
 > first visit follows the OS `prefers-color-scheme` (saved choice still wins, no flash). A11:
