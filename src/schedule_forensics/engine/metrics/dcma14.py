@@ -245,7 +245,7 @@ def compute_dcma14(
     out["DCMA12"] = _critical_path_test(schedule, result)
 
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
-    out["DCMA13"] = _cpli(result)
+    out["DCMA13"] = _cpli(result, status_off)
 
     # DCMA-14 BEI — Baseline Execution Index, the Acumen Bible formula (ADR-0085):
     #   numerator   = complete activities with a baseline duration > 0 (the "Tasks" variant —
@@ -392,11 +392,16 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     )
 
 
-def _cpli(result: CPMResult) -> MetricResult:
-    """Critical Path Length Index = (critical-path length + project total float) ÷
-    critical-path length. With no imposed deadline the controlling path's float is 0,
-    so CPLI = 1; a negative project float (behind an imposed finish) drives it < 1."""
-    length = result.project_finish
+def _cpli(result: CPMResult, status_offset: int | None) -> MetricResult:
+    """Critical Path Length Index = (remaining critical-path length + project total float) ÷
+    remaining critical-path length. The denominator is the **remaining** length — from the
+    data date (status) to the project finish — matching the Bible's ``ProjectRemainingDuration``
+    and the DCMA standard (ADR-0086), not the full project span. With no imposed deadline the
+    controlling path's float is 0, so CPLI = 1; a negative project float (behind an imposed
+    finish) drives it < 1, and the remaining denominator makes that deviation correctly sharp."""
+    # remaining critical-path length: data date -> project finish (working minutes); falls back
+    # to the full network length when the schedule carries no status date.
+    length = result.project_finish - max(status_offset or 0, 0)
     if length <= 0:
         return MetricResult(
             "DCMA13", "CPLI", 0, 0, 0.0, "ratio", CheckStatus.NOT_APPLICABLE, 0.95, Direction.GE

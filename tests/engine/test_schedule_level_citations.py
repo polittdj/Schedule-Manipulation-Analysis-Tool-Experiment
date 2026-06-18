@@ -46,6 +46,25 @@ def test_failing_cpli_cites_the_most_negative_float_chain() -> None:
     assert d["DCMA13"].offender_uids == (1,)
 
 
+def test_cpli_denominator_is_the_remaining_critical_path_from_the_status_date() -> None:
+    # CPLI's denominator is the REMAINING critical-path length (data date -> finish), the Bible's
+    # ProjectRemainingDuration, not the full project span (ADR-0086). Same broken network, but a
+    # status date 5 working days in halves the denominator and sharpens the -1d-float deviation:
+    # (5 - 1) / 5 = 0.8, vs the full-span (10 - 1) / 10 = 0.9 when no data date is present.
+    base = _broken_cp_schedule(controlling_days=10)
+    assert compute_dcma14(base)["DCMA13"].value == 0.9  # no status date -> full-span fallback
+    dated = Schedule(
+        name=base.name,
+        source_file=base.source_file,
+        project_start=base.project_start,
+        tasks=base.tasks,
+        status_date=MON + dt.timedelta(days=7),  # 5 working days into the project
+    )
+    cpli = compute_dcma14(dated)["DCMA13"]
+    assert cpli.value == 0.8 and cpli.status is CheckStatus.FAIL
+    assert cpli.offender_uids == (1,)
+
+
 def test_findings_and_narrative_stay_cited_on_schedule_level_failures() -> None:
     # the exact crash path the operator hit: findings -> narrative citation gate
     sch = _broken_cp_schedule(controlling_days=10)  # fails BOTH DCMA12 and DCMA13
