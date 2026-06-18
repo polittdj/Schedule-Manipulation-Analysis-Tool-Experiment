@@ -54,6 +54,56 @@
     });
   }
 
+  // E: a clickable, keyboard-operable show/hide legend for the overlaid line families. Each entry
+  // is a real <button> (native keyboard + focus-ring), toggling its line's visibility; with many
+  // series a Show-all / Hide-all pair lets you isolate one version from the clutter.
+  function buildLegend(series, lines) {
+    var shown = series.map(function () { return true; });
+    var items = [];
+    function apply() {
+      lines.forEach(function (pl, i) {
+        pl.style.display = shown[i] ? "" : "none";
+        items[i].setAttribute("aria-pressed", shown[i] ? "true" : "false");
+        items[i].classList.toggle("off", !shown[i]);
+      });
+    }
+    var wrap = document.createElement("div");
+    wrap.className = "curve-legend";
+    series.forEach(function (s, i) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "curve-legend-item";
+      btn.title = "Show / hide " + s.label;
+      var sw = document.createElement("span");
+      sw.className = "curve-swatch";
+      sw.style.borderTopColor = s.color;
+      sw.style.borderTopStyle = s.dashed ? "dashed" : "solid";
+      btn.appendChild(sw);
+      btn.appendChild(document.createTextNode(s.label));
+      btn.addEventListener("click", function () { shown[i] = !shown[i]; apply(); });
+      items.push(btn);
+      wrap.appendChild(btn);
+    });
+    if (series.length > 2) {
+      var ctrl = document.createElement("span");
+      ctrl.className = "curve-legend-ctrl";
+      [["Show all", true], ["Hide all", false]].forEach(function (pair) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "sf-link";
+        b.textContent = pair[0];
+        b.addEventListener("click", function () {
+          for (var i = 0; i < shown.length; i++) shown[i] = pair[1];
+          apply();
+        });
+        ctrl.appendChild(b);
+      });
+      wrap.appendChild(ctrl);
+    }
+    apply();
+    return wrap;
+  }
+
   // One month-axis line chart. series = [{values, color, dashed, label}]. statusIndex
   // (optional) draws a dashed data-date marker. Renders into the given container element.
   function lineChart(box, months, series, statusIndex, name) {
@@ -106,32 +156,20 @@
       svg.appendChild(sl);
     }
 
-    // the lines
-    series.forEach(function (s) {
+    // the lines — keep a ref per series so the legend can show/hide each
+    var lines = series.map(function (s) {
       var pts = s.values.map(function (v, idx) { return x(idx) + "," + y(v); });
-      var attrs = {
-        points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2,
-      };
+      var attrs = { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2 };
       if (s.dashed) attrs["stroke-dasharray"] = "5 4";
-      svg.appendChild(svgEl("polyline", attrs));
-    });
-
-    // legend
-    var lx = padL, ly = H - 6;
-    series.forEach(function (s) {
-      var line = svgEl("line", {
-        x1: lx, y1: ly - 4, x2: lx + 16, y2: ly - 4, stroke: s.color, "stroke-width": 2,
-      });
-      if (s.dashed) line.setAttribute("stroke-dasharray", "5 4");
-      svg.appendChild(line);
-      var lt = svgEl("text", { x: lx + 20, y: ly, fill: "var(--muted)", "font-size": 11 });
-      lt.textContent = s.label;
-      svg.appendChild(lt);
-      lx += 20 + s.label.length * 6 + 22;
+      var pl = svgEl("polyline", attrs);
+      svg.appendChild(pl);
+      return pl;
     });
 
     if (window.SFA11y) SFA11y.label(svg, name || "Chart");
     box.appendChild(svg);
+    // E: the clickable, keyboard-operable show/hide legend (replaces the old static in-SVG one)
+    box.appendChild(buildLegend(series, lines));
     // A3: a visually-hidden data-table fallback so screen readers can read the numbers
     if (window.SFA11y) {
       var headers = ["Month"].concat(series.map(function (s) { return s.label; }));

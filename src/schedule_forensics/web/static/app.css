@@ -230,3 +230,13 @@ b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-lef
 .sf-filter-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .sf-filter-item { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; white-space: nowrap; padding: 1px 2px; }
 .sf-filter-item:hover { background: var(--hover); }
+
+/* E (operator): Finish & Slippage charts get a clickable, keyboard-operable show/hide legend so the
+   overlaid per-version line families can be decluttered (toggle one line, or Show all / Hide all). */
+.curve-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 8px 0 2px; align-items: center; }
+.curve-legend-item { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; padding: 3px 9px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--field-bg); color: var(--ink); cursor: pointer; }
+.curve-legend-item:hover { border-color: var(--accent); }
+.curve-legend-item.off { opacity: .5; text-decoration: line-through; }
+.curve-swatch { display: inline-block; width: 16px; height: 0; border-top-width: 3px; flex: 0 0 auto; }
+.curve-legend-ctrl { display: inline-flex; gap: 10px; margin-left: 6px; }

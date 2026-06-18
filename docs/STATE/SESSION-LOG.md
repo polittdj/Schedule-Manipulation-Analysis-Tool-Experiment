@@ -1879,3 +1879,15 @@ without a logged session. **The external 7-role audit A1–A11 is now FULLY addr
 A8, #134 A7, #135 A3, #136 A4/A5, this PR A9/A10/A11). Easy follow-up: `.sr-only` data tables for the
 non-curves charts (names done). Parity 10/10; gate green. Next: operator feature backlog E/F (D needs
 binning input), and the `/path` screenshot bug. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 8) — curves clickable show/hide legend, item E (ADR-0078 open).** Operator
+backlog E + their /curves screenshots: the Data-Date Finishes + Slippage charts overlay one line per
+version (50+ lines on a real program) with a static, non-interactive in-SVG legend. `curves.js`
+`buildLegend` replaces it with a clickable, keyboard-operable HTML legend — each series is a real
+`<button>` with a line-style swatch that toggles its line's visibility (`polyline.style.display`,
+`aria-pressed`, struck `.off`); >2 series get a Show-all / Hide-all pair to isolate one version from
+the clutter. Applied to all three curves charts; the dashed data-date marker, locked count axis,
+accessible name, and `.sr-only` data-table fallback are unchanged. `test_curves_view.py` pins it.
+Parity 10/10; gate green. Remaining backlog: F (Bow-Wave totals + target highlight), D (Fuse year
+Trend/Phase — needs binning input), the `/path` screenshot bug, deferred Fuse metrics. Model/mode:
+Opus 4.8 (1M).
