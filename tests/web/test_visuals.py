@@ -140,6 +140,38 @@ def test_grid_filters_and_trace_toggle_are_wired(client: TestClient) -> None:
     assert "showDone" in js and "lastDriving" in js  # completed-toggle re-renders the trace
 
 
+def test_dcma_audit_table_shows_count_percent_and_tooltip(client: TestClient) -> None:
+    """Operator request: the DCMA-14 audit must show each metric's COUNT and PERCENTAGE (as
+    Acumen Fuse does), not just a pass/fail colour, and a hover/focus tooltip must explain the
+    metric, its pass/fail criteria, why it matters, and what it indicates."""
+    page = client.get("/analysis/Project5").text
+    # count + percentage columns (replacing the bare "Value" column)
+    assert "<th scope=col>Count</th>" in page
+    assert "<th scope=col>% of tasks</th>" in page
+    assert "class=num" in page  # numeric count/percent cells
+    assert " of " in page and "%" in page  # "n of population" + a percentage
+    # the keyboard-operable, labelled tooltip per check
+    assert "dcma-metric" in page and "role=tooltip" in page and "aria-describedby" in page
+    # the four tooltip facets the operator asked for
+    assert "Pass criteria:" in page
+    assert "Why it matters:" in page
+    assert "Indicates:" in page
+    css = client.get("/static/app.css").text
+    assert ".dcma-tip" in css and "td.num" in css
+
+
+def test_dcma_metric_docs_carry_importance_and_indication() -> None:
+    """Every DCMA-14 check now documents why it matters and what a failing value indicates."""
+    from schedule_forensics.web.help import METRIC_DICTIONARY
+
+    dcma_ids = [m for m in METRIC_DICTIONARY if m.startswith("DCMA")]
+    assert len(dcma_ids) >= 14
+    for mid in dcma_ids:
+        doc = METRIC_DICTIONARY[mid]
+        assert doc.importance, f"{mid} missing importance"
+        assert doc.indicates, f"{mid} missing indication"
+
+
 def test_driving_endpoint_returns_tiers_and_gantt_ordinals(client: TestClient) -> None:
     dj = client.get("/api/driving/Project5?target=143&secondary=10&tertiary=20").json()
     assert dj["target_uid"] == 143 and dj["rows"]

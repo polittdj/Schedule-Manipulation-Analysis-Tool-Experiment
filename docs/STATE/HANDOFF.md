@@ -1,12 +1,26 @@
-# Handoff — 2026-06-18 (PRs #81–#137 MERGED; **`main` green & current at #137 (`fd30dc7`)**; ADR-0078 = OPEN draft — curves clickable legend, item E)
+# Handoff — 2026-06-18 (PRs #81–#138 MERGED; **`main` green & current at #138 (`6f7e7b3`)**; ADR-0079 = OPEN draft — DCMA-14 count+% display + tooltips)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#137)
-> **`main` is at #137 (`fd30dc7`), green.** **The external 7-role audit A1–A11 is FULLY addressed**
-> (#133–#137 / ADR-0073–0077). The **OPEN draft on this branch is ADR-0078** — operator backlog
-> **item E**: the `/curves` Data-Date + Slippage charts now have a **clickable, keyboard-operable
-> show/hide legend** (`curves.js` `buildLegend`; real `<button>`s toggle each line's visibility,
-> Show-all/Hide-all for many-version clutter) replacing the static in-SVG legend. The highest ADR on
-> disk is **0078**.
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#138)
+> **`main` is at #138 (`6f7e7b3`), green.** Item E (curves clickable legend, ADR-0078) **MERGED as
+> #138**. The **OPEN draft on this branch is ADR-0079** — the **display** half of the operator's
+> **DCMA-14** request: the `/analysis` audit table now shows each check's **Count** (`n of population`)
+> and **% of tasks** (metric-aware: CPLI/BEI show the index) instead of only a pass/fail colour, plus a
+> keyboard-operable **hover/focus tooltip** per check (definition + pass/fail criteria + why it matters
+> + what it indicates), built from the metric dictionary (new `MetricDoc.importance` / `.indicates`).
+> Pure presentation → **parity 10/10**. The highest ADR on disk is **0079**.
+>
+> **NEXT (operator's DCMA-14 request, calculation half):** reconcile the float-based metrics to Acumen
+> on progressed real files. **Root cause (diagnosed, decisive):** Acumen reads MS Project's **stored**
+> progress-aware `Critical` flag and `TotalSlack`; the engine recomputes pure-logic CPM float (ADR-0010)
+> and so diverges on a heavily-progressed file (operator's Large Test File: tool Critical **2** vs Acumen
+> **33**; Negative Float **0** vs **31**; Lags **5** vs **8**; Leads **0** vs **1**). **Parity-safe fix
+> (verified on the committed goldens):** stored `Critical=1` count = **41/37** and stored `TotalSlack<0`
+> count = **0/0** — *exactly* the pinned golden values — so consuming stored `Critical`/`TotalSlack` for
+> Critical & Negative-Float (and re-checking Lags/Leads detection incl. milestones) when the source file
+> provides them matches Acumen on real files **without moving the gate**. `mspdi.py` does NOT yet parse
+> `<TotalSlack>`/`<Critical>` (the gap to close) and `model/task.py` has no stored-float fields. CUI:
+> the Large Test File `.mpp` + Acumen `.xlsx` exports must NOT be committed; record only derived values
+> in `docs/FUSE-VALIDATION.md`.
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
 > (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).
