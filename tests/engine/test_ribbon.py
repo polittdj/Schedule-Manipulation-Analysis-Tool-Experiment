@@ -53,3 +53,36 @@ def test_ribbon_float_stats_are_present() -> None:
     cpm = compute_cpm(sch)
     r = compute_ribbon(sch, cpm, audit_schedule(sch, cpm))
     assert r.avg_float_days >= 0.0 and r.max_float_days >= r.avg_float_days
+
+
+def test_ribbon_lags_leads_count_completed_successors_unlike_dcma() -> None:
+    """ADR-0081: Fuse's Ribbon Lags/Leads count activities across ALL statuses (incl. complete),
+    so a lag/lead into a finished successor is counted — unlike the DCMA-14 checks, which restrict
+    to incomplete successors. This is the 5→8 / 0→1 divergence on the operator's progressed file."""
+    import datetime as dt
+
+    from schedule_forensics.engine.dcma_audit import audit_schedule as _audit
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    mon, day = dt.datetime(2025, 1, 6, 8, 0), 480
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=day, percent_complete=100.0),
+        Task(unique_id=2, name="B (done)", duration_minutes=day, percent_complete=100.0),
+        Task(unique_id=3, name="C", duration_minutes=day, percent_complete=100.0),
+        Task(unique_id=4, name="D (done)", duration_minutes=day, percent_complete=100.0),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2, lag_minutes=day),  # +lag into complete
+        Relationship(predecessor_id=3, successor_id=4, lag_minutes=-day),  # lead into complete
+    )
+    sch = Schedule(name="s", project_start=mon, tasks=tasks, relationships=rels)
+    cpm = compute_cpm(sch)
+    audit = _audit(sch, cpm)
+    r = compute_ribbon(sch, cpm, audit)
+    # the Ribbon counts both (all statuses)…
+    assert r.number_of_lags == 1 and r.number_of_leads == 1
+    # …while the DCMA-14 checks (incomplete-only) count neither
+    dcma = {c.metric_id: c.count for c in audit.checks}
+    assert dcma["DCMA03"] == 0 and dcma["DCMA02"] == 0

@@ -76,9 +76,13 @@ not engine regressions.
 
 ## Fuse reference — Program-Summary schedule-quality metrics (the "Ribbon" set)
 
-Several of these are Fuse **proprietary** metrics the tool does not yet compute (Logic Density™,
-Insufficient Detail™, Merge Hotspot, Number of Leads/Lags as Fuse counts them, Float Ratio™,
-Avg/Max Float). They are the target values for the follow-on "missing Fuse metrics" work.
+The tool now matches the Ribbon's float-based counts on a progressed file by reading MS Project's
+stored Critical / Total Slack (**Critical** and **Negative Float** — ADR-0080) and by counting
+**Number of Lags / Leads** as Fuse does — activities across all statuses, including lags/leads into
+*completed* successors (ADR-0081). On the Large Test File these move the tool to Critical 33, Negative
+Float 31, Lags 8, Leads 1, matching the reference. The still-uncomputed Fuse **proprietary** metrics
+(Float Ratio™ and the composite Score) remain the target values for the follow-on work; Insufficient
+Detail™, Merge Hotspot, and Logic Density™ were decoded earlier.
 
 | Project | Missing Logic | Logic Density™ | Critical | Hard Constr | Neg Float | Insuff Detail™ | #Lags | #Leads | Merge Hotspot |
 |---|---|---|---|---|---|---|---|---|---|
