@@ -88,6 +88,37 @@ def test_monthly_buckets_and_cei_pair() -> None:
     assert wave.month_labels[m.status_index] == "May-26"
 
 
+def test_target_uid_marks_scheduled_and_actual_finish_months() -> None:
+    """Item F: a focused target reports the month index of its scheduled and actual finish on
+    each snapshot's shared axis (so the chart can mark where it lands and slides). Additive —
+    no target leaves the indices None."""
+    april = _snap(
+        "April",
+        "2026-04-30T17:00",
+        [_t(1, finish="2026-05-10T17:00"), _t(2, finish="2026-05-20T17:00")],
+    )
+    may = _snap(
+        "May",
+        "2026-05-31T17:00",
+        [
+            _t(1, finish="2026-05-10T17:00", actual="2026-05-10T17:00", done=True),
+            _t(2, finish="2026-05-25T17:00", actual="2026-05-25T17:00", done=True),
+        ],
+    )
+    wave = compute_bow_wave([april, may], target_uid=2)
+    may_i = wave.month_labels.index("May-26")
+    a, m = wave.snapshots
+    assert a.target_scheduled_index == may_i  # April: UID 2 scheduled to finish in May
+    assert a.target_finished_index is None  # not finished yet in the April snapshot
+    assert m.target_scheduled_index == may_i and m.target_finished_index == may_i
+
+    # no target / an unknown target -> indices stay None (default, additive)
+    plain = compute_bow_wave([april, may]).snapshots[0]
+    assert plain.target_scheduled_index is None and plain.target_finished_index is None
+    miss = compute_bow_wave([april, may], target_uid=999).snapshots[0]
+    assert miss.target_scheduled_index is None and miss.target_finished_index is None
+
+
 def test_baselined_bucket_counts_baseline_finishes() -> None:
     snap = _snap(
         "S",

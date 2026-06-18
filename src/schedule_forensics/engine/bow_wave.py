@@ -64,6 +64,10 @@ class SnapshotProfile:
     cei_planned: int | None  # prior snapshot's plan for that month
     cei_scheduled: int | None  # this snapshot's (re-)schedule for that month
     cei_finished: int | None  # actually finished in that month per this snapshot
+    # item F: where a focused target activity lands on this snapshot's shared axis (None = no
+    # target, target absent this snapshot, or its finish is off-axis) — the chart marks the month.
+    target_scheduled_index: int | None = None  # month index of the target's current finish
+    target_finished_index: int | None = None  # month index of the target's actual finish
 
 
 @dataclass(frozen=True)
@@ -74,12 +78,17 @@ class BowWave:
     snapshots: tuple[SnapshotProfile, ...]
 
 
-def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
+def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = None) -> BowWave:
     """Monthly finish profiles + CEI for ``schedules`` (given oldest → newest).
 
     Requires at least one schedule. The month axis is shared across snapshots (clamped to
     the data span and to ±18/12 months around the status dates, max 48 buckets — when over
     the cap the oldest months are shed first, never the newest status month).
+
+    ``target_uid`` (item F) focuses one activity: each snapshot reports the month index of
+    that activity's current (scheduled) finish and actual finish on the shared axis, so the
+    chart can mark where the target lands and how it slides across snapshots. ``None`` (or an
+    off-axis / absent target) leaves the indices ``None`` — purely additive, no metric change.
     """
     if not schedules:
         raise ValueError("the bow-wave analysis needs at least one schedule version")
@@ -153,6 +162,16 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
                 cei_period = _label(period)
                 cei = round(done / planned, 2) if planned else None
         status = status_yms[k]
+        # item F: locate the focused target activity on this snapshot's axis (its scheduled and
+        # actual finish months), reusing the per-snapshot UID→month maps already built above.
+        tgt_sched = tgt_fin = None
+        if target_uid is not None:
+            sym = sched_ym_by_uid[k].get(target_uid)
+            if sym is not None and lo <= sym <= hi:
+                tgt_sched = sym - lo
+            fym = fin_ym_by_uid[k].get(target_uid)
+            if fym is not None and lo <= fym <= hi:
+                tgt_fin = fym - lo
         profiles.append(
             SnapshotProfile(
                 label=sch.source_file or sch.name,
@@ -165,6 +184,8 @@ def compute_bow_wave(schedules: Sequence[Schedule]) -> BowWave:
                 cei_planned=planned,
                 cei_scheduled=resched,
                 cei_finished=done,
+                target_scheduled_index=tgt_sched,
+                target_finished_index=tgt_fin,
             )
         )
     return BowWave(

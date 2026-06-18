@@ -1,28 +1,24 @@
-# Handoff — 2026-06-18 (PRs #81–#140 MERGED; **`main` green & current at #140 (`5f9b252`)**; ADR-0081 = OPEN draft — Ribbon Lags/Leads count all statuses)
+# Handoff — 2026-06-18 (PRs #81–#141 MERGED; **`main` green & current at #141 (`61ddf10`)**; ADR-0082 = OPEN draft — Bow-Wave running totals + target highlight, item F)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#140)
-> **`main` is at #140 (`5f9b252`), green.** The operator's **DCMA-14 reconciliation is COMPLETE** across
-> three merged PRs + this one: **#139/ADR-0079** display (count + % + tooltips); **#140/ADR-0080** the
-> float calc (Critical 2→33, Negative Float 0→31 via MS Project's stored `Critical`/`TotalSlack`). The
-> **OPEN draft on this branch is ADR-0081** — the last piece: the **Ribbon's Number of Lags (5→8) /
-> Leads (0→1)**. `compute_ribbon` was sourcing these from the DCMA-14 checks (DCMA03/DCMA02), which
-> restrict to *incomplete* successors; Acumen's Ribbon counts the activities across **all statuses**
-> (incl. lags/leads into completed successors). Fixed by counting them inline in `compute_ribbon` (no
-> completion filter) — the definition `schedule_quality` already uses. **DCMA02/DCMA03 (the DCMA-14
-> points) are UNCHANGED** (separate validated numbers). **Parity-safe & verified:** both definitions are
-> identical on every pinned Ribbon fixture (P2 lags 2, TP1 3, TP3 3/leads 1, TP4 0); they differ only on
-> Project5 (1→2), unpinned in the Ribbon test and where 2 is the correct Fuse value. Highest ADR on disk
-> is **0081**.
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#141)
+> **`main` is at #141 (`61ddf10`), green.** The operator's **DCMA-14 reconciliation is COMPLETE +
+> MERGED** (#139 display / ADR-0079, #140 float calc / ADR-0080, #141 Lags-Leads / ADR-0081). The
+> **OPEN draft on this branch is ADR-0082** — operator backlog **item F** on the `/cei` Bow-Wave view:
+> (1) a **Running totals** toggle that redraws the gold/blue/green series as cumulative finish curves on
+> a locked cumulative axis; (2) a **Target-UID highlight** — `compute_bow_wave(schedules, target_uid)`
+> now reports each snapshot's `target_scheduled_index` / `target_finished_index` (defaulted fields,
+> additive), and `cei.js` marks where the focused activity lands + slides per snapshot. `/cei` takes a
+> `target` query param that sets the session-wide target (ADR-0061). **No metric/CPM change → parity
+> 10/10.** Highest ADR on disk is **0082**.
 >
-> **With #139/#140 merged + this PR, the operator's float/logic Ribbon metrics ALL match Acumen on the
-> Large Test File** (Critical 33, Neg Float 31, Lags 8, Leads 1, Missing Logic 22, Logic Density 3.14,
-> Hard 1, Merge 156). **REMAINING DEFERRED:** Fuse **proprietary** metrics — Float Ratio™ + composite
-> Score — still need their exact DAX/definition (DON'T GUESS). **High Float (DCMA-06)** stays the
-> ADR-0012 documented residual. Other open operator backlog: **D** (Fuse year Trend/Phase — binning
-> needs operator input), **F** (Bow-Wave running totals + target highlight — designed), the **`/path`
-> chart visual bug** (needs the operator's screenshot). CUI: the Large Test File `.mpp` + Acumen `.xlsx`
+> **REMAINING operator backlog:** **D** (Fuse year Trend/Phase — parity-sensitive; period binning needs
+> the operator's confirmation — ASK before building) and the **`/path` chart visual bug** (needs the
+> operator's screenshot — can't verify rendering in-container). **DEFERRED:** Fuse **proprietary**
+> metrics (Float Ratio™, composite Score) — need exact DAX/formula (DON'T GUESS). **High Float
+> (DCMA-06)** stays the ADR-0012 documented residual. CUI: the Large Test File `.mpp` + Acumen `.xlsx`
 > exports must NOT be committed (derived values go in `docs/FUSE-VALIDATION.md` only).
-> **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
+
+> **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + ADR-0077).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
 > (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).
 > Operator feature backlog still open: **`/path` chart visual bug**

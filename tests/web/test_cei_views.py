@@ -78,6 +78,35 @@ def test_api_cei_carries_a_locked_y_axis_max(client: TestClient) -> None:
     assert data["max_count"] >= max(max(s["finished"]) for s in data["snapshots"])
 
 
+def test_cei_page_has_running_totals_toggle_and_target_focus(client: TestClient) -> None:
+    """Item F: the Bow-Wave view offers a 'Running totals' toggle and a Target-UID focus."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/cei").text
+    assert "id=ceiTotals" in page and "Running totals" in page
+    assert "name=target" in page and "Target UID" in page
+    js = client.get("/static/cei.js").text
+    assert "cumulative" in js and "ceiTotals" in js  # the running-totals curves + toggle
+    assert "targetMark" in js and "target_scheduled_index" in js  # the focus marker
+
+
+def test_api_cei_carries_target_focus_indices(client: TestClient) -> None:
+    """Focusing a target sets the session-wide UID and the /api/cei profiles carry where it
+    lands (its scheduled / actual finish month index) per snapshot; clearing removes it."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    # focusing UID 6 (an on-axis activity) from the view persists it; the API carries its indices
+    client.get("/cei?target=6")
+    data = client.get("/api/cei").json()
+    assert data["target_uid"] == 6
+    for s in data["snapshots"]:
+        assert "target_scheduled_index" in s and "target_finished_index" in s
+    assert any(s["target_scheduled_index"] is not None for s in data["snapshots"])
+    # clearing the focus drops the target back to none
+    client.get("/cei?target=")
+    assert client.get("/api/cei").json()["target_uid"] is None
+
+
 def test_cei_zero_is_styled_as_fail_not_pass() -> None:
     # CEI 0.00 (nothing the prior snapshot planned actually finished) is the WORST score —
     # it must render red/fail. A falsy-zero shortcut once made it green.
