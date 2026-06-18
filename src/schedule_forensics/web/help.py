@@ -59,6 +59,7 @@ _PBIX = (
     "Reference Power BI deck measure, reconstructed — the deck's DataModel DAX is "
     "XPress9-compressed and unreadable (M15, ADR-0030)."
 )
+_HMI = "NASA Acumen metric library ('Bible') — extracted formula, ADR-0087."
 
 
 METRIC_DICTIONARY: dict[str, MetricDoc] = {
@@ -653,6 +654,29 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Milestone Execution Index — BEI restricted to milestones.",
         "milestones finished by status / milestones baselined-to-finish by status",
         _PBIX,
+    ),
+    "hmi_tasks": _doc(
+        "hmi_tasks",
+        "HMI (Tasks)",
+        "Hit or Miss Index for tasks — period-over-period, not cumulative. A 'hit' is a task the "
+        "baseline placed to finish in the current status period that actually completed in it.",
+        "tasks baselined-due this period AND completed this period / tasks baselined-due in it",
+        _HMI,
+        importance="HMI measures whether the team is hitting the commitments it set for THIS "
+        "period — a sharper, time-boxed read than the cumulative BEI/MEI.",
+        indicates="A low HMI means activities baselined to finish this period are slipping out of "
+        "it; the misses are the activities that were due but did not complete.",
+    ),
+    "hmi_milestones": _doc(
+        "hmi_milestones",
+        "HMI (Milestones)",
+        "Hit or Miss Index for milestones — the milestone counterpart of HMI (Tasks): milestones "
+        "the baseline placed in the current status period that actually completed in it.",
+        "milestones baselined-due this period AND completed this period / milestones baselined-due "
+        "the period",
+        _HMI,
+        importance="Milestone hits/misses per period are the contract-level heartbeat of the IMS.",
+        indicates="A missed milestone baselined for this period is an immediate, citable slip.",
     ),
     "epi": _doc(
         "epi",

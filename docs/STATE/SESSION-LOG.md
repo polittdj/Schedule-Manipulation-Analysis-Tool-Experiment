@@ -2036,3 +2036,18 @@ full-span 0.9). help.py + METRIC-DICTIONARY.md updated. Full gate green (947). B
 so far are value-neutral on all Acumen-validated cases, adopted on Bible authority (no Acumen output for
 these families). Recommended to the operator: export Acumen output for BEI/HMI/CEI/critical-path for
 high-confidence value validation. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 17) — formula-audit #3: NEW metric HMI (Hit or Miss Index) (ADR-0087 open).**
+CPLI fix (ADR-0086) merged as #146. Investigated MEI vs HMI: they are DIFFERENT metrics (MEI =
+cumulative milestone-BEI, single snapshot; HMI = period-over-period, needs ProjectPreviousTimeNow), so
+no fix to MEI. Operator chose to implement HMI as a new metric. Added engine/metrics/hmi.py
+compute_hmi(current, previous_time_now) implementing the Bible HMI - Value Tasks/Milestones formula
+exactly (hits = baselined-due THIS period AND completed THIS period; tasks = Normal-only, milestones
+scored separately; an activity finished in an earlier period is not credited here). Added trend.py
+HMISeries + compute_hmi_trend (each version scored vs its predecessor's data date; first version None),
+wired into /api/trend indices + a new trend.js "Hit or Miss Index (HMI) across periods" chart, and two
+METRIC-DICTIONARY entries. Purely additive — no existing value/parity changes. 7 new tests; real
+goldens Project5-vs-Project2 HMI(Tasks)=0.05 (18 misses). Full gate green (954); ruff/format/mypy clean.
+Formula-audit status: clean parity-safe FIXES (BEI, CPLI) done; HMI added; remaining candidates risk
+moving validated values without Acumen output — recommended operator export Acumen output for
+BEI/HMI/CEI/critical-path before more changes. Model/mode: Opus 4.8 (1M).

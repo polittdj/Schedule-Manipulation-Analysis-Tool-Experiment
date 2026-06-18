@@ -29,6 +29,7 @@ from schedule_forensics.engine.metrics.float_bands import (
     compute_float_bands,
     compute_float_sums,
 )
+from schedule_forensics.engine.metrics.hmi import compute_hmi
 from schedule_forensics.engine.metrics.ribbon import RibbonMetrics, compute_ribbon
 from schedule_forensics.engine.metrics.schedule_card import (
     ActivityMakeup,
@@ -60,6 +61,7 @@ __all__ = [
     "compute_evm_indices",
     "compute_float_bands",
     "compute_float_sums",
+    "compute_hmi",
     "compute_net_finish_impact",
     "compute_ribbon",
     "compute_schedule_quality",
