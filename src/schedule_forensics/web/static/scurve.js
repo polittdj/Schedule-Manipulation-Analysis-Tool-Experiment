@@ -43,6 +43,7 @@
 
     var W = 980, H = 360, padL = 40, padR = 14, padT = 44, padB = 46;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, "S-curve — cumulative planned vs actual progress");
     var n = months.length;
     var x = function (i) { return padL + (n <= 1 ? 0 : (i * (W - padL - padR)) / (n - 1)); };
     // LOCKED 0-100% axis so every version's curves are directly comparable frame to frame.

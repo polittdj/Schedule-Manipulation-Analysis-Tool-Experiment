@@ -57,3 +57,28 @@ def test_critical_bars_carry_a_non_colour_cue(client: TestClient) -> None:
     css = client.get("/static/app.css").text
     assert "repeating-linear-gradient" in css
     assert ".g-bar.g-crit" in css and ".gantt-bar.tier-DRIVING" in css
+
+
+_CHART_JS = (
+    "cei.js",
+    "curves.js",
+    "drift.js",
+    "path_evolution.js",
+    "scurve.js",
+    "trend.js",
+    "trend_drill.js",
+    "wbs.js",
+)
+
+
+def test_charts_have_accessible_names_and_curves_have_data_tables(client: TestClient) -> None:
+    """A3 (WCAG 1.1.1 / 508): every chart SVG gets a real accessible NAME (no more nameless
+    role=img), and the curves page adds a visually-hidden data-table fallback so screen readers
+    can read the numbers."""
+    a11y = client.get("/static/a11y.js")
+    assert a11y.status_code == 200
+    assert "window.SFA11y" in a11y.text and "aria-label" in a11y.text and "sr-only" in a11y.text
+    assert "/static/a11y.js" in client.get("/curves").text  # shell-loaded, reaches every chart page
+    for name in _CHART_JS:
+        assert "SFA11y.label" in client.get(f"/static/{name}").text, name  # named SVG
+    assert "SFA11y.table" in client.get("/static/curves.js").text  # data-table fallback

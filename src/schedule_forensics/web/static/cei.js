@@ -37,6 +37,7 @@
 
     var W = 980, H = 360, padL = 34, padR = 12, padT = 44, padB = 42;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, "Bow wave — activity finishes by month (" + snap.label + ")");
     var n = months.length;
     var slot = (W - padL - padR) / n;
     var barW = Math.max(1.5, Math.min(7, slot / 4));

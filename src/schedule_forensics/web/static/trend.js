@@ -97,6 +97,7 @@
     if (!known.length) return;
     var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, title);
     var lo = Math.min.apply(null, known), hi = Math.max.apply(null, known);
     if (lo === hi) { lo -= 1; hi += 1; }
     var n = values.length;
@@ -141,6 +142,7 @@
     if (!allVals.length) return;
     var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, title);
     var lo = Math.min.apply(null, allVals), hi = Math.max.apply(null, allVals);
     if (lo === hi) { lo -= 0.05; hi += 0.05; }
     var n = labels.length;
@@ -192,6 +194,7 @@
     if (!maxTotal) return;
     var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, title);
     var n = data.length;
     var step = labelStep(n);
     var bw = Math.max(8, (W - padL - padR) / (n * 1.6) | 0);
@@ -245,6 +248,7 @@
     if (!maxVal) return;
     var wrap = chartWrap(title, desc);
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, title);
     var n = data.length, ng = groups.length;
     var step = labelStep(n);
     var totalBw = Math.max(8 * ng, ((W - padL - padR) / (n * 1.6)) | 0);

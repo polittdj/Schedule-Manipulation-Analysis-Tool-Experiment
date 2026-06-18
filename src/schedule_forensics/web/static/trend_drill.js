@@ -49,6 +49,7 @@
 
     var W = 940, H = 300, padL = 38, padR = 14, padT = 22, padB = 96;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, "Quality offenders by version");
     var plotH = H - padT - padB;
     var n = metrics.length;
     var slot = (W - padL - padR) / n;

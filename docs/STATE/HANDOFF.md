@@ -1,21 +1,20 @@
-# Handoff — 2026-06-18 (PRs #81–#133 MERGED; **`main` green & current at #133 (`8681624`)**; ADR-0074 = OPEN draft — CSP + security headers)
+# Handoff — 2026-06-18 (PRs #81–#134 MERGED; **`main` green & current at #134 (`e4c4a17`)**; ADR-0075 = OPEN draft — chart a11y names + data tables)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#133)
-> **`main` is at #133 (`8681624`), green.** AI tranche merged (#130–#132); audit **Group 1 a11y**
-> merged as **#133 (ADR-0073)** (focus ring / reduced-motion / theme tokens / colour cues). The
-> **OPEN draft on this branch is ADR-0074** — audit **A7**: a Content-Security-Policy +
-> `nosniff`/`Referrer-Policy`/`X-Frame-Options` on every response (added in the `create_app` http
-> middleware), enforcing the no-remote-asset air-gap in the browser at runtime. Permissive-inline CSP
-> (`'unsafe-inline'` for style/script — the Gantt px widths + 2 inline handlers) so zero breakage;
-> tightening to strict `script-src 'self'` is a tracked follow-up. The highest ADR on disk is **0074**.
-> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A3** chart
-> accessible names + `.sr-only` data-table fallbacks (11 charts — the biggest 508 win), **A4** table
-> `scope`, **A5** `@media print` stylesheet, **A9/A10** responsive nav + theme polish, **A11** a
-> HANDOFF-drift test (staleness half already fixed by #128–#133). Operator feature backlog still open:
-> **`/path` chart visual bug** (needs the operator's screenshot), **D** Fuse year Trend/Phase
-> (parity-sensitive — confirm against `docs/FUSE-VALIDATION.md`; binning is ambiguous — ask the
-> operator), **E** Data-Date/Slippage overlaid-line redesign w/ clickable legend, **F** Bow-Wave
-> running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#134)
+> **`main` is at #134 (`e4c4a17`), green.** Shipped this session: AI tranche (#130–#132), audit
+> **Group 1 a11y** (#133/ADR-0073), audit **A7 CSP + security headers** (#134/ADR-0074). The **OPEN
+> draft on this branch is ADR-0075** — audit **A3**: a shared `static/a11y.js` (`SFA11y.label` +
+> `SFA11y.table`) gives **every** chart an accessible name (no more nameless `role=img`) and adds the
+> `.sr-only` data-table fallback on the **curves** page as the reference pattern. The highest ADR on
+> disk is **0075**.
+> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A3-follow-up**
+> data-table fallbacks for the other charts (cei/scurve/drift/trend/trend_drill/wbs — names already
+> done; trivial with `SFA11y.table`), **A4** table `scope`, **A5** `@media print` stylesheet, **A9/A10**
+> responsive nav + theme `aria-pressed`/`prefers-color-scheme`, **A11** a HANDOFF-drift test (staleness
+> half already fixed by #128–#134). Operator feature backlog still open: **`/path` chart visual bug**
+> (needs the operator's screenshot), **D** Fuse year Trend/Phase (parity-sensitive; binning ambiguous
+> — ask the operator), **E** Data-Date/Slippage overlaid-line redesign w/ clickable legend, **F**
+> Bow-Wave running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
 > filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
 > filters). The **OPEN draft PR on this branch carries ADR-0070** — an out-of-band operator fix:
@@ -79,7 +78,15 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0074 (OPEN draft, this branch) — CSP + security headers (audit A7).** Every response
+> **PR — ADR-0075 (OPEN draft, this branch) — chart accessible names + data tables (audit A3).**
+> Shared `static/a11y.js` (`window.SFA11y`, shell-loaded): `label(svg, name)` gives every chart a
+> real accessible name (`<title>` + `aria-label`) — fixes the nameless `role=img` on all 11 charts
+> (trend ×4 by their title; curves ×3 via a name arg; cei/scurve/drift/path_evolution/trend_drill/wbs
+> static); `table(caption, headers, rows)` builds a `.sr-only` data-table fallback, implemented on the
+> curves page (Finishes / Data-date / Slippage). Parity 10/10; air-gap green. Built on `main`@#134.
+> Follow-up: `.sr-only` tables for the other charts (names already done).
+
+> **PR — ADR-0074 (MERGED as #134) — CSP + security headers (audit A7).** Every response
 > now carries a `Content-Security-Policy` (`default-src`/`connect-src`/`img-src` = `'self'`,
 > `frame-ancestors 'none'`, `object-src 'none'`) + `X-Content-Type-Options: nosniff`,
 > `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, set in the `create_app` http middleware via

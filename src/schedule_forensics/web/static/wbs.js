@@ -36,6 +36,7 @@
 
       var W = 980, H = 340, padL = 36, padR = 40, padT = 24, padB = 50;
       var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+      if (window.SFA11y) SFA11y.label(svg, "WBS breakdown — SPI(t) and earned schedule by WBS");
       var n = groups.length;
       var slot = (W - padL - padR) / n;
       var barW = Math.max(3, Math.min(26, slot * 0.5));

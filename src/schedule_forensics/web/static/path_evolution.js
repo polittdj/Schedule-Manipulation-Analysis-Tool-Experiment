@@ -130,6 +130,7 @@
     var W = 1180, rowH = 30, padT = 46, padB = 8, plotL = COL.plotL, plotR = W - 130;
     var H = padT + rows.length * rowH + padB;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, "Critical-path evolution — the critical path per version");
     var x = function (ms) { return plotL + ((ms - lo) / (hi - lo)) * (plotR - plotL); };
 
     function colText(xx, yy, s, opts) {
