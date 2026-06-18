@@ -1,23 +1,25 @@
-# Handoff — 2026-06-18 (PRs #81–#143 MERGED; **`main` green & current at #143 (`341a757`)**; ADR-0084 = OPEN draft — Insufficient Detail™ Bible formula)
+# Handoff — 2026-06-18 (PRs #81–#144 MERGED; **`main` green & current at #144 (`c41b122`)**; ADR-0085 = OPEN draft — BEI Bible "Tasks" formula, formula-audit)
 
-> ## START HERE (post-#143) — Acumen-library audit in progress
-> **`main` is at #143 (`341a757`), green.** Baseline-compliance Acumen-exact fix (ADR-0083) **MERGED as
-> #143**. **OPEN draft on this branch is ADR-0084** — Insufficient Detail™ now uses the library's Bible
-> formula (current Original duration in working days / project CALENDAR span > 10%), matching Acumen's
-> Large-File report **43 exact** (was 41). **Operator-approved re-pins** (they chose "adopt Bible"):
-> Project2 stays 1, **Project5 1→0**, **TP3 8→9** (offenders 13,14,23,24,25,26,27,29,31 — older captures
-> predate this library). Parity 10/10.
+> ## START HERE (post-#144) — Acumen-library audit
+> **`main` is at #144 (`c41b122`), green.** Insufficient Detail™ Bible formula (ADR-0084) **MERGED as
+> #144** — and the operator **re-ran TP3 under this library and confirmed 9**, validating it.
+> **VALUE-AUDIT COMPLETE:** every metric for which the operator supplied Acumen output now matches
+> exactly — **Schedule-Quality 9/9** + **Baseline Compliance 10/10** (ADR-0079/0080/0081/0083/0084).
+> Now on the **FORMULA-AUDIT** (operator's choice) for families with NO Acumen output. **OPEN draft is
+> ADR-0085** — first formula-audit fix: **BEI** aligned to the Bible "Tasks" formula (numerator =
+> complete tasks with `baseline_duration>0`; denominator = baselined-due tasks + tasks missing a
+> baseline). **Goldens validate it** (reproduces Acumen 0.74/0.59 exactly → parity 10/10); TP3 re-pinned
+> 0.62→0.54 (excludes a completed milestone — milestones score via MEI); Large File 646/1246=0.52.
 >
-> **AUDIT SCORECARD (tool vs Acumen's real Large-File reports):** Schedule-Quality ribbon **9/9 exact**
-> (ADR-0079/0080/0081/0084); Baseline Compliance **10/10 exact** (ADR-0083); Half-Step-Delay all-0 (single
-> snapshot). That is **every metric for which the operator supplied Acumen output**. **NEXT (operator
-> chose "formula-audit vs the Bible"):** for the families with NO Acumen output (BEI/HMI/CEI, critical-
-> path, Industry Standards), verify each *implemented* tool formula/inclusion against the `.aft` Bible
-> definition and fix mismatches. Method: extract the Bible metric (formula + PrimaryFilter inclusions)
-> from `NASA_Metrics_Complete.aft`, compare to the tool's engine code. **DEFERRED:** Float Ratio™ +
-> composite Score (no extractable formula). **Other backlog:** D (Fuse year Trend/Phase — ASK binning),
-> `/path` chart bug (needs screenshot). **CUI:** `.mpp`/`.xlsx`/`.aft` must NOT be committed; the 6 visual
-> catalogs were generated + sent to the operator (not in git). Catalog generator lives in `/tmp` (ephemeral).
+> **FORMULA-AUDIT METHOD + CAVEAT:** extract each Bible metric (`Formula` + `PrimaryFilter` inclusions)
+> from `NASA_Metrics_Complete.aft`, compare to the tool engine, fix mismatches. **But** these families
+> (HMI/CEI bow-wave, critical-path, Industry Standards) have NO Acumen output, so only formula STRUCTURE
+> is checkable, not values — adopt a change only if it's parity-safe on the goldens (which DO pin many of
+> these). NEXT candidates: CPLI (DCMA13), the other DCMA-14 checks' inclusions, HMI vs the tool's MEI.
+> **DEFERRED:** Float Ratio™ + composite Score (no extractable formula). **Other backlog:** D (Fuse year
+> Trend/Phase — ASK binning), `/path` chart bug (needs screenshot). **CUI:** `.mpp`/`.xlsx`/`.aft` not
+> committed; 6 visual catalogs were sent to the operator (not in git). Catalog generator in `/tmp`.
+
 
 
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + ADR-0077).** Only easy
