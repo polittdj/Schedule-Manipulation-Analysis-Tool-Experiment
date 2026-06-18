@@ -247,33 +247,26 @@ def compute_dcma14(
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
     out["DCMA13"] = _cpli(result, status_off)
 
-    # DCMA-14 BEI — Baseline Execution Index, the Acumen Bible formula (ADR-0085):
-    #   numerator   = complete activities with a baseline duration > 0 (the "Tasks" variant —
-    #                 milestones, baseline_duration == 0, are scored separately by MEI);
-    #   denominator = activities baselined to finish by the data date (baseline_duration > 0)
-    #                 PLUS activities that have a duration but are MISSING a baseline.
-    # Early completions count, so BEI can legitimately exceed 1.0. Validated == Acumen 0.74 / 0.59
-    # on the goldens; the baseline-duration filter + missing-baseline term align with the Bible.
-    bei_complete = sum(
-        1 for t in tasks if t.percent_complete >= 100.0 and (t.baseline_duration_minutes or 0) > 0
-    )
+    # DCMA-14 BEI — Acumen "BEI - Value Tasks" (ADR-0089, corrects ADR-0085):
+    #   countif(PercentComplete,"=100%") / SUM(IF(BaselineFinish<=ProjectTimeNow,1))
+    # over the Normal-activity filter (Normal=true, Milestone=false, Summary=false) — i.e.
+    #   numerator   = complete NORMAL tasks (non-summary, non-milestone);
+    #   denominator = NORMAL tasks baselined to finish by the data date.
+    # No baseline-duration filter and no missing-baseline term (ADR-0085 added both; Acumen's real
+    # Large-File ribbon disproved them). Validated vs Acumen: goldens 0.74 / 0.59 EXACT; Large-File
+    # denominator EXACT (1228), numerator within 2 of 632. ``tasks`` is already non-summary, so
+    # excluding milestones yields the Normal set. Early completions count (BEI can exceed 1.0).
+    bei_normal = [t for t in tasks if not t.is_milestone]
+    bei_complete = sum(1 for t in bei_normal if t.percent_complete >= 100.0)
     bei_due = [
         t
-        for t in tasks
+        for t in bei_normal
         if t.baseline_finish is not None
         and status_dt is not None
         and t.baseline_finish <= status_dt
-        and (t.baseline_duration_minutes or 0) > 0
     ]
-    bei_missing_baseline = sum(
-        1
-        for t in tasks
-        if (t.duration_minutes > 0 or (t.baseline_duration_minutes or 0) > 0)
-        and (t.baseline_start is None or t.baseline_finish is None)
-    )
-    bei_den = len(bei_due) + bei_missing_baseline
-    # the activities dragging BEI below 1.0 — baselined-due (with a baseline duration) but not
-    # actually finished (citable)
+    bei_den = len(bei_due)
+    # the activities dragging BEI below 1.0 — baselined-due Normal tasks not finished (citable)
     bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)
     if bei_den and status_dt is not None:
         bei = bei_complete / bei_den

@@ -198,9 +198,9 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     assert {c.unique_id for c in negative.citations} == {24, 28, 29}
     assert checks["High Duration"].count == 2  # 50-day and 60-day tasks
     assert checks["Invalid Dates"].count == 4  # 31 (actual after DD) + 3 stale forecasts
-    # BEI is the Bible "Tasks" variant (baseline duration > 0; ADR-0085): 7 completed tasks of 13
-    # baselined-due — one completed MILESTONE is excluded (milestones score via MEI).
-    assert checks["BEI"].value == 0.54
+    # BEI is Acumen "BEI - Value Tasks" (ADR-0089): complete NORMAL tasks / NORMAL baselined-due —
+    # 8 of 12 = 0.67 (milestones AND summaries excluded by type; no baseline-duration filter)
+    assert checks["BEI"].value == 0.67
     assert checks["Missed Activities"].count == 7
 
 

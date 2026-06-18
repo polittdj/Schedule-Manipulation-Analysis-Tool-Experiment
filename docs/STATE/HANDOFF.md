@@ -1,4 +1,4 @@
-# Handoff — 2026-06-18 (PRs #81–#147 MERGED; **`main` green & current at #147 (`26d1ab9`)**; ADR-0088 = OPEN draft — map MSPDI custom fields)
+# Handoff — 2026-06-18 (PRs #81–#148 MERGED; **`main` green & current at #148 (`d7f424a`)**; ADR-0089 = OPEN draft — BEI corrected & Acumen-validated, + custom fields shipped)
 
 > ## START HERE (post-#147) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set
 > **`main` is at #147 (`26d1ab9`), green.** Formula-audit done (BEI #145, CPLI #146, HMI #147). **NEW

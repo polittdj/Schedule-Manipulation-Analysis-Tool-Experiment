@@ -2066,3 +2066,17 @@ CA-WBS = 12 groups (4.1.4.1=880 tasks). 4 new importer tests. Full gate green (9
 NEXT: (A) display column-picker, (B) group-by/filter engine (<=5 fields scope all metrics), (C) driving
 path between 2 UIDs over versions; plus value-validate against the new Ribbon reports. Model/mode: Opus
 4.8 (1M).
+
+**2026-06-18 (cont. 19) — VALUE-VALIDATION vs operator's new Acumen reports: HMI EXACT; BEI corrected
+(ADR-0089, corrects 0085).** Custom-field mapping (ADR-0088) merged as #148. Extracted the Ribbon
+Analysis metrics from the edited DCMA/Quick-Add reports (2 versions of the Large File). KEY RESULTS:
+(1) HMI VALIDATED EXACTLY — Acumen v2 HMI(tasks)=0 of 24 due, milestone 0 of 1, v1=N/A; compute_hmi_trend
+reproduces it (24 misses, first version None). Confirms #147. (2) BEI was OFF (tool 0.52-0.53 vs Acumen
+0.51). Extracted the exact Bible formula "BEI - Value Tasks" = countif(PercentComplete,"=100%") /
+SUM(IF(BaselineFinish<=ProjectTimeNow,1)) over Normal filter (Normal=true, Milestone/Summary=false). So
+BEI = complete NORMAL tasks / NORMAL baselined-due — NO baseline_duration filter, NO missing-baseline
+term (ADR-0085 wrongly added both). Reimplemented in compute_dcma14: goldens EXACT (0.74/0.59), Large-File
+denominator EXACT (1228), numerator within 2 of 632 (1 LOE + 1 edge); TP3 re-pinned 0.54->0.67. Full gate
+green (958). NOTE: this is BEI done with HARD Acumen output, not Bible authority. The reports also carry
+CEI/FEI/BRI/TC-BEI/EVM values for future audits. STILL TODO (operator feature asks): group-by/filter
+(<=5 fields), driving path between 2 UIDs over time, display column-picker. Model/mode: Opus 4.8 (1M).
