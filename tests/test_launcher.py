@@ -96,3 +96,42 @@ def test_no_console_launch_survives_none_streams(monkeypatch: pytest.MonkeyPatch
     assert served == [("127.0.0.1", 8123)]
     assert sys.stdout is not None and sys.stdout.isatty() is False  # uvicorn's probe works
     assert sys.stderr is not None
+
+
+def test_main_manages_ollama_lifecycle() -> None:
+    """The desktop launch starts Ollama off-thread and stops it on shutdown (injected manager)."""
+    import threading
+
+    class _FakeManager:
+        def __init__(self) -> None:
+            self.started = threading.Event()
+            self.stopped = False
+
+        def ensure_running(self) -> str:
+            self.started.set()
+            return "started"
+
+        def shutdown(self) -> None:
+            self.stopped = True
+
+    mgr = _FakeManager()
+    launcher.main(
+        port=34567,
+        serve=lambda *a, **k: None,
+        browser=lambda url: True,
+        timer=_ImmediateTimer,
+        ollama=mgr,
+    )
+    assert mgr.started.wait(2.0)  # ensure_running() ran on the background thread
+    assert mgr.stopped is True  # shutdown() ran in the finally after serve returned
+
+
+def test_main_can_skip_ollama_management() -> None:
+    # manage_ollama=False builds no manager (and no real OllamaLauncher / subprocess)
+    launcher.main(
+        port=34568,
+        serve=lambda *a, **k: None,
+        browser=lambda url: True,
+        timer=_ImmediateTimer,
+        manage_ollama=False,
+    )

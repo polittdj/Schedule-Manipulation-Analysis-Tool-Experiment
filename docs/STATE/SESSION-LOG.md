@@ -1792,3 +1792,19 @@ the tranche above. Remaining operator backlog is unchanged (bugs first: A path/G
 the operator a screenshot before changing; then B dropdown filters, C path filter on both pages,
 D Fuse year Trend/Phase view, E Data-Date/Slippage redesign, F Bow-Wave totals; G deferred
 Fuse-proprietary metrics). Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont.) — local-AI operator fixes (#128/#129/#130 merged; ADR-0071 open).** This
+sitting shipped, bugs-first: **#128 (ADR-0068)** `/analysis` Gantt scaling → px-per-day + scroll
+(item A `/analysis` half) + path filters/full-wrapped-names (item C); **#129 (ADR-0069)** MS-Project
+checklist filters (item B); **#130 (ADR-0070)** the local AI wouldn't activate on the operator's
+corporate laptop — urllib's default opener routed the `127.0.0.1:11434` probe through the company
+proxy → bypass it (`ProxyHandler({})`), plus actionable settings diagnostics + editable Ollama
+endpoint. Then the operator reported it still failed ("timed out") and asked to auto-start/stop
+Ollama with the tool: **ADR-0071 (OPEN)** — `ai/ollama_process.py` `OllamaLauncher` starts a local
+`ollama serve` on launch (only if none is running; stops only what it started; loopback-only, never
+`ollama pull`), wired into `launcher.py`; probe timeout 2 s → 8 s for slow first-contact; and an
+install-aware Model dropdown on `/settings` (the configured `llama3.1:8b` wasn't installed — they
+have `llama3.2:latest`/`schedule-analyst:latest`/`qwen2.5:7b-instruct`). Parity 10/10; 922 passed.
+**Also received:** an external 7-role audit work order (A1–A11 a11y/print/CSP/docs) — verified valid
+on #130; a partly-built Group-1 a11y PR is **stashed** on the branch (resume after the AI PR). The
+`/path` chart visual bug still awaits the operator's screenshot. Model/mode: Opus 4.8 (1M).

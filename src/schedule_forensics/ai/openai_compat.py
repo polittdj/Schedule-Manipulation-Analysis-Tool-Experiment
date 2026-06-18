@@ -32,7 +32,7 @@ class OpenAICompatBackend:
         model: str = "",
         *,
         timeout: float = 120.0,
-        probe_timeout: float = 2.0,
+        probe_timeout: float = 8.0,
         opener: Opener | None = None,
     ) -> None:
         if not is_local_http_endpoint(endpoint):

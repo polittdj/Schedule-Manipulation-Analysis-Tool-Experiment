@@ -109,7 +109,7 @@ class OllamaBackend:
         model: str = DEFAULT_MODEL,
         *,
         timeout: float = 120.0,
-        probe_timeout: float = 2.0,
+        probe_timeout: float = 8.0,
         opener: Opener | None = None,
     ) -> None:
         if not is_local_http_endpoint(endpoint):
@@ -121,8 +121,11 @@ class OllamaBackend:
         self.endpoint = endpoint.rstrip("/")
         self.model = model
         self._timeout = timeout
-        # short timeout for the availability/model-list probes so a firewalled (DROP) port can't
-        # stall the settings page for the full generate timeout; generate/pull keep ``timeout``.
+        # A bounded probe timeout for availability/model-list checks (generate/pull keep the long
+        # ``timeout``). It is generous enough that a local server that is merely slow to answer the
+        # first request — common on a corporate laptop where endpoint-security software inspects
+        # each new local connection — still reads as reachable, while a truly dead/dropped port
+        # can't stall the settings page indefinitely.
         self._probe_timeout = probe_timeout
         self._open: Opener = opener or _urllib_opener
 

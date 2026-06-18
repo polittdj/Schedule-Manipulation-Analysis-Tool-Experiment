@@ -324,9 +324,12 @@ def _ai_status_note(cfg: AIConfig) -> str:
     if reason is not None:
         if is_ollama:
             hint = (
-                "Make sure the Ollama app is running (or run <code>ollama serve</code>) and that "
-                f"the port matches <code>{_e(endpoint)}</code>. On a work laptop the local model "
-                "still works — the tool talks to it directly and never via a proxy."
+                "The tool tries to start Ollama for you when it launches, so if this still shows "
+                "OFF it is probably still starting — <b>wait a few seconds and reload this page</b>. "
+                "If it never connects, Ollama may not be installed, or it is on a different port: "
+                f"start it manually (the Ollama app, or <code>ollama serve</code>) and confirm the "
+                f"port matches <code>{_e(endpoint)}</code>. On a work laptop the local model still "
+                "works — the tool talks to it directly and never via a proxy."
             )
         else:
             hint = (
@@ -344,9 +347,10 @@ def _ai_status_note(cfg: AIConfig) -> str:
             installed = ()
         if installed and not _model_installed(cfg.model, installed):
             return (
-                f'<div class="notice err">Ollama is reachable but the model '
-                f"<code>{_e(cfg.model)}</code> isn't installed — run "
-                f"<code>ollama pull {_e(cfg.model)}</code>. Installed: {_e(', '.join(installed))}.</div>"
+                f'<div class="notice err">Ollama is reachable but the selected model '
+                f"<code>{_e(cfg.model)}</code> isn't installed — <b>pick an installed model from "
+                f"the Model dropdown below</b> and Save (installed: {_e(', '.join(installed))}), or "
+                f"run <code>ollama pull {_e(cfg.model)}</code> to fetch it.</div>"
             )
     return (
         f'<div class="notice ok">Local AI is ON — {label} reachable at '
@@ -3468,6 +3472,27 @@ def _settings_body(state: SessionState) -> str:
     def sel(value: str, current: str) -> str:
         return " selected" if value == current else ""
 
+    # When a real local backend is active and reporting installed models, the Model field is a
+    # dropdown of those models (one click to pick, e.g., a purpose-built model) instead of a
+    # free-text box the operator must match exactly. The configured model is always kept as a
+    # (selected) option — marked if it isn't installed — so a save never silently loses it.
+    real_backend = backend.name in ("ollama", "openai-compat")
+    if real_backend and models:
+        option_models = list(models)
+        if cfg.model and not _model_installed(cfg.model, models):
+            option_models = [cfg.model, *option_models]
+        model_field = (
+            "<select name=model>"
+            + "".join(
+                f'<option value="{_e(m)}"{sel(m, cfg.model)}>{_e(m)}'
+                f"{'' if _model_installed(m, models) else ' — not installed'}</option>"
+                for m in option_models
+            )
+            + "</select>"
+        )
+    else:
+        model_field = f'<input name=model value="{_e(cfg.model)}">'
+
     return f"""
 <div class=panel><h2>Local AI</h2>
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
@@ -3486,7 +3511,7 @@ def _settings_body(state: SessionState) -> str:
 <option value=null{sel("null", cfg.backend)}>Null (offline, deterministic)</option>
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
-<p>Model: <input name=model value="{_e(cfg.model)}"></p>
+<p>Model: {model_field}</p>
 <p>Ollama endpoint (loopback only):
 <input name=endpoint size=28 value="{_e(cfg.endpoint)}"
  title="Ollama defaults to http://127.0.0.1:11434"></p>
