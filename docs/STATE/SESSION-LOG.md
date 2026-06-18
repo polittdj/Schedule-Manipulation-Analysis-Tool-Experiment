@@ -1953,3 +1953,22 @@ by the Ribbon (lags/leads == 1) while DCMA03/DCMA02 count neither. Updated the `
 all match Acumen on the Large Test File** (Critical 33, Neg Float 31, Lags 8, Leads 1, Missing Logic 22,
 Logic Density 3.14, Hard 1, Merge 156). Deferred: Fuse-proprietary Float Ratio™ + composite Score (need
 exact DAX). CUI `.mpp`/`.xlsx` not committed. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 12) — Bow-Wave running totals + target-UID highlight, item F (ADR-0082 open).**
+The DCMA-14 reconciliation is fully merged (#139/#140/#141); `main`@`61ddf10`. Picked up operator
+backlog item F on the `/cei` Bow-Wave view (operator chose it next). Two features: (1) a **Running
+totals** checkbox that redraws the gold/blue/green series as cumulative finish curves on a locked
+cumulative axis (the largest running total any series reaches in any snapshot, held through the
+animation); (2) a **Target-UID highlight** — `compute_bow_wave(schedules, target_uid=None)` now reports
+each snapshot's `target_scheduled_index` / `target_finished_index` (defaulted SnapshotProfile fields,
+reusing the per-snapshot UID→finish-month maps already built — no new computation), and `cei.js` marks
+where the focused activity is scheduled (blue) / actually finished (green) per snapshot so you watch it
+slide right. `/cei` takes a `target` query param that sets the session-wide target (ADR-0061), threaded
+into the view/API/export; `_cei_data` carries `target_uid` + the per-snapshot indices. Existing bars /
+Prev-Next / Auto-play / CEI callout / data-date marker / reduced-motion / SFA11y name unchanged.
+**Additive, no metric/CPM change → parity 10/10.** Tests: engine maps a target's scheduled/actual finish
+to the right month indices and leaves them None for no/unknown target; `/cei` exposes the toggle + focus
+form; `/api/cei` carries target_uid + indices and clears on blank focus; `cei.js` builds the cumulative
+curves + target marker. Full gate green. Remaining backlog: **D** (Fuse year Trend/Phase — binning needs
+operator input, ASK first), **`/path` chart visual bug** (needs screenshot); deferred Fuse-proprietary
+Float Ratio™ + Score. Model/mode: Opus 4.8 (1M).

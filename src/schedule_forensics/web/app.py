@@ -1036,8 +1036,12 @@ def create_app(
         return JSONResponse(_trend_data(schedules, cpms, analyses, uid))
 
     @app.get("/cei", response_class=HTMLResponse)
-    def cei_view() -> HTMLResponse:
+    def cei_view(target: str | None = Query(None)) -> HTMLResponse:
         st = session()
+        # focusing a target from this view sets the session-wide target (ADR-0061), so the
+        # /api/cei fetch that draws the chart sees the same activity; a blank clears it.
+        if target is not None:
+            st.target_uid = _parse_uid(target)
         if len(st.schedules) < 2:
             return _page(
                 st,
@@ -1046,10 +1050,10 @@ def create_app(
                 "bow-wave / CEI analysis.</div>",
             )
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "Bow Wave / CEI", _export_bar("cei") + _cei_body(wave))
+        return _page(st, "Bow Wave / CEI", _export_bar("cei") + _cei_body(wave, st.target_uid))
 
     @app.get("/api/cei")
     def cei_json() -> JSONResponse:
@@ -1057,10 +1061,10 @@ def create_app(
         if len(st.schedules) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return JSONResponse(_cei_data(wave))
+        return JSONResponse(_cei_data(wave, st.target_uid))
 
     @app.get("/scurve", response_class=HTMLResponse)
     def scurve_view() -> HTMLResponse:
@@ -1304,7 +1308,7 @@ def create_app(
         if len(st.schedules) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()])
+            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return _export_response(
@@ -2997,7 +3001,7 @@ def _trend_data(
     return {"target": focus, "versions": version_rows, "quality": quality}
 
 
-def _cei_body(wave: BowWave) -> str:
+def _cei_body(wave: BowWave, target_uid: int | None = None) -> str:
     """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table."""
     rows = "".join(
         f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
@@ -3013,12 +3017,18 @@ def _cei_body(wave: BowWave) -> str:
 <p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
 finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
 as a swelling wave of blue just past each data date. Step through the snapshots or press
-Auto-play to watch the wave move.</p>
+Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
+and focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot.</p>
+<form method=get action=/cei class=viz-controls>
+<label>Target UID <input name=target type=number min=1 value="{target_uid if target_uid is not None else ""}"
+placeholder="UID"></label> <button type=submit>Focus</button>
+{'<a class=btn-link href="/cei?target=">clear focus</a>' if target_uid is not None else ""}</form>
 <div class=viz-controls>
 <button id=prevSnap type=button>&#9664; Prev</button>
 <span id=snapLabel class=muted></span>
 <button id=nextSnap type=button>Next &#9654;</button>
 <button id=autoPlay type=button>&#9654; Auto-play</button>
+<label><input id=ceiTotals type=checkbox> Running totals (cumulative)</label>
 </div>
 <div id=ceiChart class=chart-host></div></div>
 <div class=panel><h2>CEI &mdash; Current Execution Index</h2>
@@ -3103,7 +3113,7 @@ def _scurve_data(sc: SCurve) -> dict[str, object]:
     }
 
 
-def _cei_data(wave: BowWave) -> dict[str, object]:
+def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]:
     # locked Y-axis (item 5): the chart's count scale is the max bar across EVERY snapshot,
     # held through the animation so the bars stay comparable frame-to-frame (a per-snapshot
     # max made each frame rescale, hiding the bow wave's growth).
@@ -3114,6 +3124,7 @@ def _cei_data(wave: BowWave) -> dict[str, object]:
     return {
         "months": list(wave.month_labels),
         "max_count": max_count,
+        "target_uid": target_uid,
         "snapshots": [
             {
                 "label": s.label,
@@ -3126,6 +3137,8 @@ def _cei_data(wave: BowWave) -> dict[str, object]:
                 "cei_planned": s.cei_planned,
                 "cei_scheduled": s.cei_scheduled,
                 "cei_finished": s.cei_finished,
+                "target_scheduled_index": s.target_scheduled_index,
+                "target_finished_index": s.target_finished_index,
             }
             for s in wave.snapshots
         ],
