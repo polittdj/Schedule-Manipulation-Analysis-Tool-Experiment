@@ -1,4 +1,4 @@
-# Handoff — 2026-06-18 (PRs #81–#148 MERGED; **`main` green & current at #148 (`d7f424a`)**; ADR-0089 = OPEN draft — BEI corrected & Acumen-validated, + custom fields shipped)
+# Handoff — 2026-06-18 (PRs #81–#149 MERGED; **`main` green & current at #149 (`1afc23b`)**; ADR-0090 = OPEN draft — grouping/filter engine; ADRs 88/89 merged)
 
 > ## START HERE (post-#147) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set
 > **`main` is at #147 (`26d1ab9`), green.** Formula-audit done (BEI #145, CPLI #146, HMI #147). **NEW

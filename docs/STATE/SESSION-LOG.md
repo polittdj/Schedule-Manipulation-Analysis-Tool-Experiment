@@ -2080,3 +2080,15 @@ denominator EXACT (1228), numerator within 2 of 632 (1 LOE + 1 edge); TP3 re-pin
 green (958). NOTE: this is BEI done with HARD Acumen output, not Bible authority. The reports also carry
 CEI/FEI/BRI/TC-BEI/EVM values for future audits. STILL TODO (operator feature asks): group-by/filter
 (<=5 fields), driving path between 2 UIDs over time, display column-picker. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 20) — group-by/filter ENGINE (ADR-0090 open).** BEI correction (ADR-0089) merged
+as #149. Operator chose "filter + breakdown" for grouping and "across loaded versions" for the driving
+path. Built engine/grouping.py: STANDARD_FIELDS (WBS, Activity Type, Constraint Type, Resource, Critical,
+% Complete) + mapped custom fields; available_fields, field_value (custom wins), task_matches (AND across
+<=5 criteria; Resource=carries; empty value=populated), select, filter_schedule (sub-schedule of matching
+tasks + internal relationships, project frame preserved so all existing metrics run on the subset
+unchanged), group_values (per-value UID groups; Resource expands). 7 tests. Demo on real file: filter
+CA-WBS=4.1.4.1 -> 880 tasks BEI 0.58; breakdown shows weak groups (4.1.5.1=0.38, 4.1.5.2=0.37 vs
+4.1.6.1=0.68). Full gate green (965). NEXT: UI to drive filter+breakdown; display column-picker; driving
+path between 2 UIDs across versions (engine/path_trace.py has ancestors_of/topo_order to build on).
+Model/mode: Opus 4.8 (1M).
