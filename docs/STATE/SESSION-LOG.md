@@ -2009,3 +2009,17 @@ Baseline Compliance 10/10 = every metric with Acumen output now matches exactly.
 "formula-audit vs the Bible" for the families WITHOUT Acumen output (BEI/HMI/CEI, critical-path,
 Industry Standards) — next: extract each Bible metric (formula + inclusions) and verify the tool's
 engine matches. Deferred: Float Ratio™, composite Score. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 15) — formula-audit: BEI aligned to the Bible "Tasks" formula (ADR-0085 open).**
+Insufficient Detail™ (ADR-0084) merged as #144; the operator re-ran TP3 under this library and confirmed
+9 (validating the formula). Value-audit is COMPLETE (Schedule-Quality 9/9 + Baseline Compliance 10/10 —
+everything with Acumen output matches). Started the operator-chosen FORMULA-audit for families without
+Acumen output. First fix: BEI in compute_dcma14 now matches the Bible exactly — numerator = complete
+tasks with baseline_duration>0 (the "Tasks" variant; milestones score via MEI), denominator =
+baselined-due tasks (baseline_duration>0) + tasks missing a baseline. The goldens VALIDATE the formula
+(reproduces Acumen's pinned 0.74/0.59 exactly → parity 10/10, value unchanged); TP3 re-pinned 0.62→0.54
+(one completed milestone now excluded); Large File 646/1246=0.52. Updated 2 synthetic DCMA-14 tests (give
+baselined tasks a real baseline), help.py + regenerated METRIC-DICTIONARY.md. Full gate green (946).
+Caveat recorded: these families have no Acumen output, so only formula structure is checkable — adopt a
+change only if parity-safe on the goldens (BEI was). Next: CPLI, other DCMA inclusions, HMI vs MEI.
+Model/mode: Opus 4.8 (1M).

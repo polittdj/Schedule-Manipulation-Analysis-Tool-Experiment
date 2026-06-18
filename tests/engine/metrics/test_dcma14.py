@@ -136,6 +136,7 @@ def test_invalid_dates_actual_after_status() -> None:
 def test_missed_and_bei_with_baseline() -> None:
     status = dt.datetime(2025, 1, 20, 17, 0)
     bf_due = dt.datetime(2025, 1, 8, 17, 0)  # baselined to finish before status
+    bs = dt.datetime(2025, 1, 6, 8, 0)  # a real baseline carries a start + duration (BEI: dur > 0)
     tasks = [
         # due, completed on time -> not missed, counts toward BEI numerator
         Task(
@@ -143,11 +144,20 @@ def test_missed_and_bei_with_baseline() -> None:
             name="ontime",
             duration_minutes=DAY,
             percent_complete=100.0,
+            baseline_start=bs,
+            baseline_duration_minutes=DAY,
             baseline_finish=bf_due,
             actual_finish=dt.datetime(2025, 1, 7, 17, 0),
         ),
         # due, not finished -> missed
-        Task(unique_id=2, name="late", duration_minutes=DAY, baseline_finish=bf_due),
+        Task(
+            unique_id=2,
+            name="late",
+            duration_minutes=DAY,
+            baseline_start=bs,
+            baseline_duration_minutes=DAY,
+            baseline_finish=bf_due,
+        ),
     ]
     d = compute_dcma14(_sched(tasks, status_date=status))
     assert d["DCMA11"].count == 1 and d["DCMA11"].population == 2  # one missed of two due
@@ -242,12 +252,16 @@ def test_bei_counts_early_completions_beyond_the_due_set() -> None:
             unique_id=1,
             name="due",
             duration_minutes=DAY,
+            baseline_start=MON,
+            baseline_duration_minutes=DAY,
             baseline_finish=MON + dt.timedelta(days=5),
         ),
         Task(
             unique_id=2,
             name="early",
             duration_minutes=DAY,
+            baseline_start=MON + dt.timedelta(days=29),
+            baseline_duration_minutes=DAY,
             baseline_finish=MON + dt.timedelta(days=30),
             actual_start=MON + dt.timedelta(days=3),
             actual_finish=MON + dt.timedelta(days=4),

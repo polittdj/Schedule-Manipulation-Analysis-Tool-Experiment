@@ -247,23 +247,41 @@ def compute_dcma14(
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
     out["DCMA13"] = _cpli(result)
 
-    # DCMA-14 BEI — ALL activities actually finished by the status date vs activities
-    # baselined to complete by then (the DCMA numerator is not restricted to the due set,
-    # so early completions count and BEI can legitimately exceed 1.0).
-    completed = sum(
+    # DCMA-14 BEI — Baseline Execution Index, the Acumen Bible formula (ADR-0085):
+    #   numerator   = complete activities with a baseline duration > 0 (the "Tasks" variant —
+    #                 milestones, baseline_duration == 0, are scored separately by MEI);
+    #   denominator = activities baselined to finish by the data date (baseline_duration > 0)
+    #                 PLUS activities that have a duration but are MISSING a baseline.
+    # Early completions count, so BEI can legitimately exceed 1.0. Validated == Acumen 0.74 / 0.59
+    # on the goldens; the baseline-duration filter + missing-baseline term align with the Bible.
+    bei_complete = sum(
+        1 for t in tasks if t.percent_complete >= 100.0 and (t.baseline_duration_minutes or 0) > 0
+    )
+    bei_due = [
+        t
+        for t in tasks
+        if t.baseline_finish is not None
+        and status_dt is not None
+        and t.baseline_finish <= status_dt
+        and (t.baseline_duration_minutes or 0) > 0
+    ]
+    bei_missing_baseline = sum(
         1
         for t in tasks
-        if t.actual_finish is not None and status_dt is not None and t.actual_finish <= status_dt
+        if (t.duration_minutes > 0 or (t.baseline_duration_minutes or 0) > 0)
+        and (t.baseline_start is None or t.baseline_finish is None)
     )
-    # the activities dragging BEI below 1.0 — baselined-due but not actually finished (citable)
-    bei_offenders = tuple(t.unique_id for t in due if t.actual_finish is None)
-    if due and status_dt is not None:
-        bei = completed / len(due)
+    bei_den = len(bei_due) + bei_missing_baseline
+    # the activities dragging BEI below 1.0 — baselined-due (with a baseline duration) but not
+    # actually finished (citable)
+    bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)
+    if bei_den and status_dt is not None:
+        bei = bei_complete / bei_den
         out["DCMA14"] = MetricResult(
             "DCMA14",
             "BEI",
-            completed,
-            len(due),
+            bei_complete,
+            bei_den,
             round(bei, 2),
             "ratio",
             evaluate(bei, 0.95, Direction.GE),
@@ -275,8 +293,8 @@ def compute_dcma14(
         out["DCMA14"] = MetricResult(
             "DCMA14",
             "BEI",
-            completed,
-            len(due),
+            bei_complete,
+            bei_den,
             0.0,
             "ratio",
             CheckStatus.NOT_APPLICABLE,

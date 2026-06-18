@@ -231,8 +231,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA14": _doc(
         "DCMA14",
         "BEI",
-        "Baseline Execution Index.",
-        "activities completed / activities baselined-to-complete-by-status >= 0.95",
+        "Baseline Execution Index (Tasks; milestones score via MEI).",
+        "complete tasks (bl dur > 0) / (baselined-due + tasks missing a baseline) >= 0.95",
         _DCMA,
         importance="BEI tracks throughput against the baseline: are activities being completed "
         "as fast as the plan said they would be?",
