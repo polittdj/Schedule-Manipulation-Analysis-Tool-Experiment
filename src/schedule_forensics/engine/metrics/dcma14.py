@@ -247,16 +247,28 @@ def compute_dcma14(
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
     out["DCMA13"] = _cpli(result, status_off)
 
-    # DCMA-14 BEI — Acumen "BEI - Value Tasks" (ADR-0089, corrects ADR-0085):
-    #   countif(PercentComplete,"=100%") / SUM(IF(BaselineFinish<=ProjectTimeNow,1))
-    # over the Normal-activity filter (Normal=true, Milestone=false, Summary=false) — i.e.
-    #   numerator   = complete NORMAL tasks (non-summary, non-milestone);
-    #   denominator = NORMAL tasks baselined to finish by the data date.
-    # No baseline-duration filter and no missing-baseline term (ADR-0085 added both; Acumen's real
-    # Large-File ribbon disproved them). Validated vs Acumen: goldens 0.74 / 0.59 EXACT; Large-File
-    # denominator EXACT (1228), numerator within 2 of 632. ``tasks`` is already non-summary, so
-    # excluding milestones yields the Normal set. Early completions count (BEI can exceed 1.0).
-    bei_normal = [t for t in tasks if not t.is_milestone]
+    # DCMA-14 BEI — see compute_bei (ADR-0089). Factored out so the grouping/breakdown UI can
+    # score BEI per group without a CPM re-solve (it is pure counts), one source of truth.
+    out["DCMA14"] = compute_bei(schedule)
+
+    return out
+
+
+def compute_bei(schedule: Schedule) -> MetricResult:
+    """DCMA-14 Baseline Execution Index — Acumen "BEI - Value Tasks" (ADR-0089, corrects ADR-0085):
+
+        countif(PercentComplete,"=100%") / SUM(IF(BaselineFinish<=ProjectTimeNow,1))
+
+    over the Normal-activity filter (Normal=true, Milestone=false, Summary=false) — i.e.
+    numerator = complete NORMAL tasks (non-summary, non-milestone); denominator = NORMAL tasks
+    baselined to finish by the data date. No baseline-duration filter and no missing-baseline term
+    (ADR-0085 added both; Acumen's real Large-File ribbon disproved them). Validated vs Acumen:
+    goldens 0.74 / 0.59 EXACT; Large-File denominator EXACT (1228), numerator within 2 of 632.
+    Early completions count (BEI can exceed 1.0). Pure counts — no CPM — so the grouping UI can
+    score it per group cheaply.
+    """
+    status_dt = schedule.status_date
+    bei_normal = [t for t in non_summary(schedule) if not t.is_milestone]
     bei_complete = sum(1 for t in bei_normal if t.percent_complete >= 100.0)
     bei_due = [
         t
@@ -270,7 +282,7 @@ def compute_dcma14(
     bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)
     if bei_den and status_dt is not None:
         bei = bei_complete / bei_den
-        out["DCMA14"] = MetricResult(
+        return MetricResult(
             "DCMA14",
             "BEI",
             bei_complete,
@@ -282,20 +294,17 @@ def compute_dcma14(
             Direction.GE,
             bei_offenders,
         )
-    else:
-        out["DCMA14"] = MetricResult(
-            "DCMA14",
-            "BEI",
-            bei_complete,
-            bei_den,
-            0.0,
-            "ratio",
-            CheckStatus.NOT_APPLICABLE,
-            0.95,
-            Direction.GE,
-        )
-
-    return out
+    return MetricResult(
+        "DCMA14",
+        "BEI",
+        bei_complete,
+        bei_den,
+        0.0,
+        "ratio",
+        CheckStatus.NOT_APPLICABLE,
+        0.95,
+        Direction.GE,
+    )
 
 
 def _r(

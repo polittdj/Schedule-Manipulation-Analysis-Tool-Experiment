@@ -150,6 +150,11 @@ b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-lef
 .dp-chip.ev-entered { border-color: var(--ok); }
 .dp-arrow { color: var(--muted); }
 .dp-note { color: var(--warn); font-weight: 600; }
+/* Groups & Filters: stacked filter rows + breakdown picker */
+.group-form fieldset { border: 1px solid var(--line); border-radius: 6px; margin: .5em 0; padding: .5em .7em; }
+.group-form legend { color: var(--muted); padding: 0 .4em; }
+.group-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+.group-row input { flex: 1; min-width: 12ch; }
 /* Dashboard health cards: per-schedule KPI + status-mix bar + DCMA ribbon, link to report */
 .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; margin-top: 10px; }
 .dash-card { display: block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; color: var(--ink); text-decoration: none; transition: border-color .15s; }

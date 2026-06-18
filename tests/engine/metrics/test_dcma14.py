@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from schedule_forensics.engine.metrics import CheckStatus, compute_dcma14
+from schedule_forensics.engine.metrics import CheckStatus, compute_bei, compute_dcma14
 from schedule_forensics.engine.metrics._common import forty_four_days_min
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
@@ -60,6 +60,15 @@ def test_golden_dcma14_parity(project: str, golden: Callable[[str], Schedule]) -
     # High Float: documented +1 residual vs Acumen (ADR-0012) — assert within 1, fails either way
     assert abs(d["DCMA06"].count - g["DCMA06"]) <= 1
     assert d["DCMA06"].status is CheckStatus.FAIL
+
+
+@pytest.mark.parametrize("project", ["Project2", "Project5"])
+def test_compute_bei_matches_dcma14_entry(project: str, golden: Callable[[str], Schedule]) -> None:
+    # compute_bei is the single source of truth — DCMA-14's entry must equal it exactly.
+    sch = golden(project)
+    standalone = compute_bei(sch)
+    from_dcma = compute_dcma14(sch)["DCMA14"]
+    assert standalone == from_dcma
 
 
 def test_leads_detected() -> None:

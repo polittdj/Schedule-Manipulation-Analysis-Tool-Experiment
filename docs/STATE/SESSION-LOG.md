@@ -2119,3 +2119,17 @@ Project5 golden: 35→143 = all 36 driving tasks, 38→143 trims to 35 (corridor
 data). Gate: ruff/mypy/bandit clean, full suite 984→ +tests green (engine test_driving_path,
 test_path_trace descendants, web test_driving_path_view). ADR-0091. NEXT: grouping/filter UI (wire
 engine/grouping.py). Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 23) — Groups & Filters UI (ADR-0092).** Wired the grouping/filter engine (ADR-0090)
+into a server-rendered `/groups` page (operator's 3rd ask, "filter + breakdown"). Controls: version
+picker + up to MAX_FIELDS (5) filter rows (field = value; blank value = "populated") + a "break down by"
+field; all state in the query string (no JS, shareable). Filter → `filter_schedule(sch, criteria)` →
+scorecard: population (N of M match), activity makeup stat-cards, and the FULL DCMA-14 table over the
+subset (every metric scoped, the engine's intended semantics; non-solvable scope degrades to a notice).
+Breakdown → `group_values(sub, field)` → per-value rows (count, %complete, BEI); filter+breakdown compose
+(breakdown runs over the filtered population). REFACTOR: extracted `metrics.compute_bei(schedule)` (pure
+counts, no CPM) from compute_dcma14 so the per-group BEI is cheap + single source of truth — DCMA14 entry
+now calls it; parity test pins them equal; golden BEI 0.74/0.59 unchanged. Nav link + CSS added. Gate:
+ruff/mypy/bandit clean, full suite 992 pass (new tests/web/test_groups_view.py, compute_bei parity in
+test_dcma14). ADR-0092. NEXT: custom-field display column-picker (last of the 3 asks). Model/mode: Opus
+4.8 (1M).

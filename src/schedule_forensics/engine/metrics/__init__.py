@@ -19,7 +19,7 @@ from schedule_forensics.engine.metrics.change_metrics import (
 from schedule_forensics.engine.metrics.completion_performance import (
     compute_completion_performance,
 )
-from schedule_forensics.engine.metrics.dcma14 import compute_dcma14
+from schedule_forensics.engine.metrics.dcma14 import compute_bei, compute_dcma14
 from schedule_forensics.engine.metrics.evm import (
     compute_baseline_compliance,
     compute_evm_indices,
@@ -54,6 +54,7 @@ __all__ = [
     "WBSGroup",
     "compute_activity_makeup",
     "compute_baseline_compliance",
+    "compute_bei",
     "compute_change_metrics",
     "compute_completion_performance",
     "compute_constraint_distribution",
