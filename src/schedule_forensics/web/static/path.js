@@ -48,13 +48,25 @@
     var box = $("pathFields");
     box.textContent = "Columns: ";
     FIELDS.forEach(function (f) {
-      var lab = el("label", { class: "field-toggle" });
+      var lab = el("label", { class: "field-toggle" + (f.custom ? " field-custom" : "") });
       var cb = el("input", { type: "checkbox" });
       cb.checked = f.on;
       cb.addEventListener("change", function () { f.on = cb.checked; render(); });
       lab.appendChild(cb);
       lab.appendChild(document.createTextNode(" " + f.label + "  "));
       box.appendChild(lab);
+    });
+  }
+
+  // The schedule's mapped custom fields (ADR-0088) become optional columns, off by default —
+  // discovered from the payload so any file's fields appear without hard-coding. State persists
+  // in FIELDS across reloads, so a chosen custom column stays on when the target/version changes.
+  function syncCustomColumns() {
+    var labels = (data && data.custom_field_labels) || [];
+    var have = {};
+    FIELDS.forEach(function (f) { if (f.custom) have[f.label] = true; });
+    labels.forEach(function (label) {
+      if (!have[label]) FIELDS.push({ key: "cf:" + label, label: label, on: false, custom: true });
     });
   }
 
@@ -128,7 +140,7 @@
     rows.forEach(function (r) {
       var tr = el("tr", { class: r.complete ? "done" : "" });
       on.forEach(function (f) {
-        var v = r[f.key];
+        var v = f.custom ? (r.custom && r.custom[f.label]) : r[f.key];
         if (typeof v === "boolean") v = v ? "yes" : "—";
         var text = v === null || v === undefined ? "—" : String(v);
         // the Name column wraps to its FULL text (no truncation); other columns stay nowrap
@@ -182,6 +194,8 @@
       .then(function (res) {
         if (!res.ok) { $("pathStatus").textContent = res.j.error || "Trace failed."; data = null; view.textContent = ""; return; }
         data = res.j;
+        syncCustomColumns();
+        renderToggles();
         var q = "/" + encodeURIComponent(sched) + "?target=" + encodeURIComponent(target) +
           "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
           "&tertiary=" + encodeURIComponent($("pathTer").value || "20");

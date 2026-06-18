@@ -84,6 +84,18 @@ def test_driving_api_carries_the_ssi_grid_fields(client: TestClient) -> None:
     assert "DRIVING" in tiers  # the critical path to the target is present
 
 
+def test_driving_api_exposes_custom_fields_for_optional_columns(client: TestClient) -> None:
+    # ADR-0093: the grid offers each mapped custom field (ADR-0088) as an optional column.
+    _upload(client, "Project5")
+    data = client.get("/api/driving/Project5?target=143").json()
+    # the schedule's declared custom fields drive the column toggles
+    assert data["custom_field_labels"] == ["Trace Log", "Driving Slack"]
+    # each row carries a label → value map of the custom fields populated on that task
+    row = data["rows"][0]
+    assert "custom" in row and isinstance(row["custom"], dict)
+    assert row["custom"].get("Trace Log") and row["custom"].get("Driving Slack")
+
+
 def test_driving_api_reports_logic_coverage_and_date_driven(client: TestClient) -> None:
     _upload(client, "Project5")
     data = client.get("/api/driving/Project5?target=143").json()
