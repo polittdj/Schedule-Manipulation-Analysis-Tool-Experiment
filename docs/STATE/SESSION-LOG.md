@@ -1911,3 +1911,26 @@ Project's stored progress-aware `Critical`/`TotalSlack`; the engine recomputes p
 31, Lags 5 vs 8, Leads 0 vs 1). Verified parity-safe on the goldens (stored `Critical=1`=41/37, stored
 `TotalSlack<0`=0/0 = the pinned values), so consuming stored values when present matches Acumen without
 moving the gate. CUI `.mpp`/`.xlsx` not committed. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 10) — DCMA float metrics consume MS Project stored Total Slack / Critical
+(ADR-0080 open).** The DCMA-14 display half (ADR-0079) merged as #139; `main`@`b703ba5`. This PR is
+the **calculation** half of the operator's DCMA request — making the float-based metrics match Acumen
+on their progressed Large Test File (tool Critical **2** vs Acumen **33**, Negative Float **0** vs
+**31**). Diagnosed root cause: Acumen reads MS Project's stored, progress-aware `Critical` flag and
+`TotalSlack`; the engine recomputes pure-logic CPM float (ADR-0010) and diverges on progressed files.
+Fix: new `Task.stored_total_float_minutes` / `.stored_is_critical`; the MSPDI importer reads
+`Task/TotalSlack` (MS Project stores slack in **tenths of a minute** — verified `stored÷10 ==`
+recomputed float on clean golden tasks — converted to whole minutes) and `Task/Critical`;
+`_common.effective_total_float` / `is_effective_critical` prefer the stored value when present, else
+the recomputed float (Critical also excludes completed work on fallback, ADR-0010 §3). Wired into
+`schedule_quality` (Critical, Negative Float), `dcma14` DCMA-07 (which feeds the Ribbon), and
+`ribbon` (Critical). **Parity-safe, verified:** the goldens carry stored values equal to the pinned
+41/37 critical & 0/0 negative (gate unmoved — they now reach those via the stored basis); the
+synthesized TP1–TP4 fixtures carry no stored values → recompute fallback, all pinned Ribbon values
+unchanged (incl. TP3 critical 5 / negative 3 / leads 1). New tests: effective-float helpers prefer
+stored over recomputed + exclude completed work; a stored negative slack flips Negative Float where
+the recompute would not; the importer reads TotalSlack (÷10) + Critical (absent → None). **DCMA-06
+High Float** intentionally left on recomputed float (separately pinned ADR-0012 residual). Parity
+10/10; full gate green. **Still open:** Number of Lags (5→8) / Leads (0→1) — a link-detection
+definitional fix (not stored-value), parity-sensitive, tracked next. CUI `.mpp`/`.xlsx` not committed.
+Model/mode: Opus 4.8 (1M).

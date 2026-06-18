@@ -176,6 +176,28 @@ def test_manual_flag_is_read() -> None:
     assert sch.tasks_by_id[3].is_manual is False  # absent element defaults to auto-scheduled
 
 
+def test_stored_total_slack_and_critical_are_read() -> None:
+    """MS Project's stored Total Slack (tenths of a minute → working minutes) and Critical flag
+    are captured so the DCMA float metrics can match Acumen on progressed files (ADR-0080).
+    Absent elements stay ``None`` so the metric falls back to the recomputed CPM float."""
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration>"
+        "<TotalSlack>4800</TotalSlack><Critical>1</Critical></Task>"  # 4800 tenths = 480 min = 1d
+        "<Task><UID>2</UID><Name>B</Name><Duration>PT8H0M0S</Duration>"
+        "<TotalSlack>-28800</TotalSlack><Critical>0</Critical></Task>"  # behind: -2880 min
+        "<Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration></Task>"  # no stored values
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].stored_total_float_minutes == 480
+    assert sch.tasks_by_id[1].stored_is_critical is True
+    assert sch.tasks_by_id[2].stored_total_float_minutes == -2880
+    assert sch.tasks_by_id[2].stored_is_critical is False
+    assert sch.tasks_by_id[3].stored_total_float_minutes is None
+    assert sch.tasks_by_id[3].stored_is_critical is None
+
+
 # --- loud-failure / edge cases ---------------------------------------------------
 
 

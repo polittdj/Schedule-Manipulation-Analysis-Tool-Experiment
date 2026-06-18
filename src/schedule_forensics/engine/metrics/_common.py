@@ -79,6 +79,31 @@ def is_incomplete(task: Task) -> bool:
     return task.percent_complete < 100.0
 
 
+def effective_total_float(task: Task, recomputed_minutes: float) -> float:
+    """The total float to score a task on, in working minutes.
+
+    Acumen Fuse reads MS Project's **stored, progress-aware** Total Slack; on a heavily
+    progressed schedule that diverges from the engine's recomputed pure-logic CPM float
+    (ADR-0010) — which is correct for forensic *path* analysis but makes the DCMA float-based
+    counts disagree with Acumen. So when the source file carried a stored Total Slack we score
+    on it (matching Acumen); otherwise we fall back to the recomputed float (ADR-0080)."""
+    if task.stored_total_float_minutes is not None:
+        return float(task.stored_total_float_minutes)
+    return recomputed_minutes
+
+
+def is_effective_critical(task: Task, recomputed_total_float: float) -> bool:
+    """Whether a task counts as *Critical* for the Acumen "Critical" metric.
+
+    Prefer MS Project's **stored** Critical flag — Acumen's "Critical" count is the number of
+    activities the source tool flagged critical (verified == the golden 41/37 and the operator's
+    progressed file). When the source carried no flag, fall back to pure-logic CPM critical,
+    excluding completed work (a finished activity is no forward schedule risk — ADR-0010 §3)."""
+    if task.stored_is_critical is not None:
+        return task.stored_is_critical
+    return recomputed_total_float <= 0 and is_incomplete(task)
+
+
 def percent(count: int, population: int) -> float:
     """``100 * count / population`` (0.0 when the population is empty)."""
     return 100.0 * count / population if population else 0.0

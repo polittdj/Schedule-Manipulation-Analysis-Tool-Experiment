@@ -74,6 +74,15 @@ class Task(StrictFrozenModel):
     percent_complete: float = Field(default=0.0, ge=0.0, le=100.0)
     physical_percent_complete: float | None = Field(default=None, ge=0.0, le=100.0)
 
+    # --- MS Project / source-tool STORED scheduling values (Acumen fidelity) ---
+    # Acumen Fuse (and MS Project's own views) report Total Slack and the Critical flag from the
+    # source tool's *stored, progress-aware* calculation. The engine recomputes pure-logic CPM
+    # float for independence (ADR-0010); these capture the source's own values so the DCMA
+    # float-based metrics can match Acumen on progressed real files. ``None`` = the source file
+    # did not carry the value (e.g. a non-MSPDI import) — the metric then uses recomputed float.
+    stored_total_float_minutes: int | None = None  # working minutes; < 0 = behind a constraint
+    stored_is_critical: bool | None = None
+
     # --- dates as recorded in the source (forecast / actual / baseline) ---
     start: dt.datetime | None = None  # current scheduled/forecast start
     finish: dt.datetime | None = None  # current scheduled/forecast finish

@@ -1,26 +1,26 @@
-# Handoff — 2026-06-18 (PRs #81–#138 MERGED; **`main` green & current at #138 (`6f7e7b3`)**; ADR-0079 = OPEN draft — DCMA-14 count+% display + tooltips)
+# Handoff — 2026-06-18 (PRs #81–#139 MERGED; **`main` green & current at #139 (`b703ba5`)**; ADR-0080 = OPEN draft — DCMA float metrics consume stored Total Slack / Critical)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#138)
-> **`main` is at #138 (`6f7e7b3`), green.** Item E (curves clickable legend, ADR-0078) **MERGED as
-> #138**. The **OPEN draft on this branch is ADR-0079** — the **display** half of the operator's
-> **DCMA-14** request: the `/analysis` audit table now shows each check's **Count** (`n of population`)
-> and **% of tasks** (metric-aware: CPLI/BEI show the index) instead of only a pass/fail colour, plus a
-> keyboard-operable **hover/focus tooltip** per check (definition + pass/fail criteria + why it matters
-> + what it indicates), built from the metric dictionary (new `MetricDoc.importance` / `.indicates`).
-> Pure presentation → **parity 10/10**. The highest ADR on disk is **0079**.
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#139)
+> **`main` is at #139 (`b703ba5`), green.** The DCMA-14 **display** half (count + % + tooltips,
+> ADR-0079) **MERGED as #139**. The **OPEN draft on this branch is ADR-0080** — the **calculation**
+> half: the float-based metrics now consume **MS Project's stored, progress-aware `Critical` flag and
+> `TotalSlack`** when the source file carries them (what Acumen reads), else the recomputed pure-logic
+> CPM float (ADR-0010). Fixed: **Critical 2→33** and **Negative Float 0→31** on the operator's
+> progressed file. Mechanism: new `Task.stored_total_float_minutes` / `.stored_is_critical`; the MSPDI
+> importer reads `TotalSlack` (tenths-of-a-minute → minutes) + `Critical`; `_common.effective_total_float`
+> / `is_effective_critical` are used by `schedule_quality` (Critical, Negative Float), `dcma14` DCMA-07,
+> and `ribbon` (Critical). **Parity-safe & verified:** the goldens carry stored values that equal the
+> pinned 41/37 critical & 0 negative; the synthesized TP1–TP4 fixtures carry no stored values → recompute
+> fallback, unchanged. The highest ADR on disk is **0080**.
 >
-> **NEXT (operator's DCMA-14 request, calculation half):** reconcile the float-based metrics to Acumen
-> on progressed real files. **Root cause (diagnosed, decisive):** Acumen reads MS Project's **stored**
-> progress-aware `Critical` flag and `TotalSlack`; the engine recomputes pure-logic CPM float (ADR-0010)
-> and so diverges on a heavily-progressed file (operator's Large Test File: tool Critical **2** vs Acumen
-> **33**; Negative Float **0** vs **31**; Lags **5** vs **8**; Leads **0** vs **1**). **Parity-safe fix
-> (verified on the committed goldens):** stored `Critical=1` count = **41/37** and stored `TotalSlack<0`
-> count = **0/0** — *exactly* the pinned golden values — so consuming stored `Critical`/`TotalSlack` for
-> Critical & Negative-Float (and re-checking Lags/Leads detection incl. milestones) when the source file
-> provides them matches Acumen on real files **without moving the gate**. `mspdi.py` does NOT yet parse
-> `<TotalSlack>`/`<Critical>` (the gap to close) and `model/task.py` has no stored-float fields. CUI:
-> the Large Test File `.mpp` + Acumen `.xlsx` exports must NOT be committed; record only derived values
-> in `docs/FUSE-VALIDATION.md`.
+> **NEXT (still open from the operator's DCMA-14 request):** **Number of Lags (5→8)** and **Number of
+> Leads (0→1)** still diverge — but these are **NOT** stored-value issues; they are link/lag *detection*
+> differences (Acumen counts activities incl. milestones + completed work; the tool restricts to
+> incomplete successors). That is a definitional change to link counting with its own parity exposure —
+> validate against the goldens' pinned Lag/Lead counts (P2/P5 lags 2/2, leads 0/0; TP3 lags 3, leads 1)
+> before changing. **High Float (DCMA-06)** stays the ADR-0012 documented residual. CUI: the Large Test
+> File `.mpp` + Acumen `.xlsx` exports must NOT be committed (record derived values in
+> `docs/FUSE-VALIDATION.md` only).
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
 > (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).
