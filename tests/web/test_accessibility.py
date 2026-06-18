@@ -82,3 +82,29 @@ def test_charts_have_accessible_names_and_curves_have_data_tables(client: TestCl
     for name in _CHART_JS:
         assert "SFA11y.label" in client.get(f"/static/{name}").text, name  # named SVG
     assert "SFA11y.table" in client.get("/static/curves.js").text  # data-table fallback
+
+
+def test_print_stylesheet_makes_briefings_print_ready(client: TestClient) -> None:
+    """A5: a @media print block hides the chrome (nav / toolbars / controls), forces light ink,
+    avoids splitting panels across pages, and prints the scrollers in full."""
+    css = client.get("/static/base.css").text
+    assert "@media print" in css
+    assert "#askPanel" in css  # the print block hides the ask panel (chrome)
+    assert "break-inside:avoid" in css and "background:#fff" in css
+    assert "overflow:visible" in css  # scrollers print in full
+
+
+def test_table_headers_carry_scope(client: TestClient) -> None:
+    """A4 (WCAG 1.3.1): server-rendered table column headers associate with their cells."""
+    from pathlib import Path
+
+    golden = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "golden"
+        / "project2_5"
+        / "Project5.mspdi.xml"
+    )
+    client.post("/upload", files={"files": ("Project5.mspdi.xml", golden.read_bytes(), "text/xml")})
+    assert "scope=col" in client.get("/analysis/Project5").text
+    assert "scope=col" in client.get("/help").text  # the metric dictionary table too

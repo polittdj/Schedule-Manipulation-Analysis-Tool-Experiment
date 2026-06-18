@@ -1,17 +1,16 @@
-# Handoff — 2026-06-18 (PRs #81–#134 MERGED; **`main` green & current at #134 (`e4c4a17`)**; ADR-0075 = OPEN draft — chart a11y names + data tables)
+# Handoff — 2026-06-18 (PRs #81–#135 MERGED; **`main` green & current at #135 (`593890d`)**; ADR-0076 = OPEN draft — table scope + print stylesheet)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#134)
-> **`main` is at #134 (`e4c4a17`), green.** Shipped this session: AI tranche (#130–#132), audit
-> **Group 1 a11y** (#133/ADR-0073), audit **A7 CSP + security headers** (#134/ADR-0074). The **OPEN
-> draft on this branch is ADR-0075** — audit **A3**: a shared `static/a11y.js` (`SFA11y.label` +
-> `SFA11y.table`) gives **every** chart an accessible name (no more nameless `role=img`) and adds the
-> `.sr-only` data-table fallback on the **curves** page as the reference pattern. The highest ADR on
-> disk is **0075**.
-> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A3-follow-up**
-> data-table fallbacks for the other charts (cei/scurve/drift/trend/trend_drill/wbs — names already
-> done; trivial with `SFA11y.table`), **A4** table `scope`, **A5** `@media print` stylesheet, **A9/A10**
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#135)
+> **`main` is at #135 (`593890d`), green.** Shipped this session: AI tranche (#130–#132), audit
+> **Group 1 a11y** (#133/ADR-0073), **A7 CSP** (#134/ADR-0074), **A3 chart names + curves data
+> tables** (#135/ADR-0075). The **OPEN draft on this branch is ADR-0076** — audit **A4** (`scope=col`
+> on every server-rendered `<th>`) + **A5** (`@media print` stylesheet in `base.css`: hides chrome,
+> forces light ink, avoids page breaks, prints scrollers in full). The highest ADR on disk is **0076**.
+> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A9/A10**
 > responsive nav + theme `aria-pressed`/`prefers-color-scheme`, **A11** a HANDOFF-drift test (staleness
-> half already fixed by #128–#134). Operator feature backlog still open: **`/path` chart visual bug**
+> half already fixed by #128–#135), and the **A3-follow-up** data-table fallbacks for the other charts
+> (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`). (A4 +
+> A5 are this ADR-0076 PR.) Operator feature backlog still open: **`/path` chart visual bug**
 > (needs the operator's screenshot), **D** Fuse year Trend/Phase (parity-sensitive; binning ambiguous
 > — ask the operator), **E** Data-Date/Slippage overlaid-line redesign w/ clickable legend, **F**
 > Bow-Wave running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
@@ -78,7 +77,13 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0075 (OPEN draft, this branch) — chart accessible names + data tables (audit A3).**
+> **PR — ADR-0076 (OPEN draft, this branch) — table scope + print stylesheet (audit A4 + A5).**
+> A4: mechanical `scope=col` on every server-rendered `<th>` (all 43 are column headers). A5: a
+> `@media print` block in `base.css` — hides chrome (`header`/`.cf-bar`/`.export-bar`/`.viz-controls`/
+> `#askPanel`), forces light ink on white, `break-inside:avoid` on panels/cards/tables, prints the
+> horizontal scrollers in full, `@page{margin:14mm}`. Parity 10/10. Built on `main`@#135.
+
+> **PR — ADR-0075 (MERGED as #135) — chart accessible names + data tables (audit A3).**
 > Shared `static/a11y.js` (`window.SFA11y`, shell-loaded): `label(svg, name)` gives every chart a
 > real accessible name (`<title>` + `aria-label`) — fixes the nameless `role=img` on all 11 charts
 > (trend ×4 by their title; curves ×3 via a name arg; cei/scurve/drift/path_evolution/trend_drill/wbs
