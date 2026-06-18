@@ -2023,3 +2023,16 @@ baselined tasks a real baseline), help.py + regenerated METRIC-DICTIONARY.md. Fu
 Caveat recorded: these families have no Acumen output, so only formula structure is checkable — adopt a
 change only if parity-safe on the goldens (BEI was). Next: CPLI, other DCMA inclusions, HMI vs MEI.
 Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 16) — formula-audit #2: CPLI uses remaining critical-path length (ADR-0086 open).**
+BEI fix (ADR-0085) merged as #145. Continued the formula-audit: the Bible's CPLI is
+(ProjectRemainingDuration + ProjectMinimumTotalFloat) / ProjectRemainingDuration, but compute_dcma14
+used result.project_finish (the FULL span from project_start) as the denominator. Fixed _cpli to use the
+REMAINING critical-path length (project_finish - status_offset), matching the Bible + DCMA standard;
+falls back to full span when no status date. Parity-safe: min total float = 0 on every supplied file
+(Project2/5, Large File) so CPLI = 1.0 either way; the fix is latent until a deadline-driven, in-progress
+schedule. Added a deterministic regression (status 5 wd into a 10-day broken network -> CPLI 0.8 vs
+full-span 0.9). help.py + METRIC-DICTIONARY.md updated. Full gate green (947). Both formula-audit fixes
+so far are value-neutral on all Acumen-validated cases, adopted on Bible authority (no Acumen output for
+these families). Recommended to the operator: export Acumen output for BEI/HMI/CEI/critical-path for
+high-confidence value validation. Model/mode: Opus 4.8 (1M).

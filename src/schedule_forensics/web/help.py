@@ -221,7 +221,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "DCMA13",
         "CPLI",
         "Critical Path Length Index.",
-        "(crit path length + project total float) / crit path length >= 0.95",
+        "(remaining crit-path length + project total float) / remaining crit-path length >= 0.95",
         _DCMA,
         importance="CPLI measures how realistic the finish is: 1.0 means the critical path just "
         "fits, below ~0.95 means the path is already eroding into negative float.",
