@@ -1,31 +1,24 @@
-# Handoff — 2026-06-18 (PRs #81–#142 MERGED; **`main` green & current at #142 (`f640e84`)**; ADR-0083 = OPEN draft — baseline-compliance Acumen-exact audit fix)
+# Handoff — 2026-06-18 (PRs #81–#143 MERGED; **`main` green & current at #143 (`341a757`)**; ADR-0084 = OPEN draft — Insufficient Detail™ Bible formula)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#142)
-> **`main` is at #142 (`f640e84`), green.** Item F (Bow-Wave totals + target highlight, ADR-0082)
-> **MERGED as #142**. **NEW operator mandate (in progress):** they supplied the authoritative Acumen
-> Fuse metric library **`NASA_Metrics_Complete.aft`** (759 distinct metrics / 6 sub-libraries) + Acumen's
-> real reports for the **Large Test File** (2,125 acts) and said: treat the library as the **Bible**,
-> audit every measure, fix divergences, and produce 4-per-page visual catalogs (desc + remarks).
-> **DONE:** all 6 visual catalogs generated + SENT to the operator (PDFs, NOT committed — NASA content
-> stays out of git). **Audit so far (tool vs Acumen's real Large-File report):** Schedule-Quality ribbon
-> **8/9 exact**; **baseline compliance now 10/10 exact** — the **OPEN draft on this branch is ADR-0083**:
-> `compute_baseline_compliance` rebuilt to the Bible (Normal-only population = exclude milestones; strict
-> `<` due; INT date comparisons; Not Completed = %<100; **BSC = Half-Step-Delay**, actual start ≤ baseline
-> FINISH). This **RESOLVES the ADR-0013 BSC residual** (goldens now exact 41/25) and matches the Large
-> File (BSC 22%, Forecast-Finish 1202, etc.). CEI(Start) stays = Started-On-Time % (distinct from BSC).
-> Parity **10/10** (goldens have 0 milestones → counts unchanged; gate TIGHTENED on BSC). Highest ADR
-> on disk is **0083**.
+> ## START HERE (post-#143) — Acumen-library audit in progress
+> **`main` is at #143 (`341a757`), green.** Baseline-compliance Acumen-exact fix (ADR-0083) **MERGED as
+> #143**. **OPEN draft on this branch is ADR-0084** — Insufficient Detail™ now uses the library's Bible
+> formula (current Original duration in working days / project CALENDAR span > 10%), matching Acumen's
+> Large-File report **43 exact** (was 41). **Operator-approved re-pins** (they chose "adopt Bible"):
+> Project2 stays 1, **Project5 1→0**, **TP3 8→9** (offenders 13,14,23,24,25,26,27,29,31 — older captures
+> predate this library). Parity 10/10.
 >
-> **AUDIT — STILL OPEN (next):** **Insufficient Detail™** is a characterised proprietary-™ residual (tool
-> 41 vs Acumen 43 — Bible `OriginalDuration/ProjectDuration>0.1` matches 43 with *current* duration but
-> the operator's TP3 Fuse run of 8 needs *baseline*; contradictory, so NOT re-pinned — needs operator
-> guidance). Remaining metric families to audit vs the Bible + Large-File report: **BEI / HMI / CEI
-> bow-wave**, **critical-path**, **Advanced**, **Industry Standards**. Method: load `Large_Test_File.mpp`
-> (Java/MPXJ works in-container now), compare tool vs Acumen's `.xlsx` report values, fix parity-safely.
-> **Other backlog:** **D** (Fuse year Trend/Phase — ASK binning first), **`/path` chart bug** (needs
-> screenshot). **DEFERRED:** Float Ratio™, composite Score (no formula). **CUI:** the Large Test File
-> `.mpp` + Acumen `.xlsx` + the `.aft` must NOT be committed — only derived values in
-> `docs/FUSE-VALIDATION.md`. The catalog generator + parsed data live in `/tmp` (ephemeral).
+> **AUDIT SCORECARD (tool vs Acumen's real Large-File reports):** Schedule-Quality ribbon **9/9 exact**
+> (ADR-0079/0080/0081/0084); Baseline Compliance **10/10 exact** (ADR-0083); Half-Step-Delay all-0 (single
+> snapshot). That is **every metric for which the operator supplied Acumen output**. **NEXT (operator
+> chose "formula-audit vs the Bible"):** for the families with NO Acumen output (BEI/HMI/CEI, critical-
+> path, Industry Standards), verify each *implemented* tool formula/inclusion against the `.aft` Bible
+> definition and fix mismatches. Method: extract the Bible metric (formula + PrimaryFilter inclusions)
+> from `NASA_Metrics_Complete.aft`, compare to the tool's engine code. **DEFERRED:** Float Ratio™ +
+> composite Score (no extractable formula). **Other backlog:** D (Fuse year Trend/Phase — ASK binning),
+> `/path` chart bug (needs screenshot). **CUI:** `.mpp`/`.xlsx`/`.aft` must NOT be committed; the 6 visual
+> catalogs were generated + sent to the operator (not in git). Catalog generator lives in `/tmp` (ephemeral).
+
 
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + ADR-0077).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts

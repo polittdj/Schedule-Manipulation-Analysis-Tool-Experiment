@@ -19,7 +19,7 @@ real output (the `.mpp`/`.xlsx` are CUI and are **not** committed; only these de
 | Family | Result vs Acumen |
 |---|---|
 | Schedule-Quality ribbon | **8 / 9 exact** — Missing Logic 22, Logic Density 3.14, Critical 33, Hard 1, Negative Float 31, Lags 8, Leads 1, Merge 156 (ADR-0079/0080/0081). |
-| Insufficient Detail™ | tool 41 vs Acumen **43** — characterised proprietary-™ residual (Bible `OriginalDuration/ProjectDuration>0.1` matches 43 only with *current* duration, while the operator's TP3 Fuse run of 8 needs *baseline*; held, not re-pinned). |
+| Insufficient Detail™ | **43 exact** (ADR-0084) — the library's Bible formula `OriginalDuration_workdays / (ProjectFinish − ProjectStart)_days > 0.1` (current duration / project calendar span). The operator **re-ran TP3 through this library and confirmed 9** (matching the formula); re-pinned TP3 8→9 and Project5 1→0 (the older 8/1 captures used an earlier library). |
 | Baseline compliance (10 metrics) | **10 / 10 exact** — Forecast-Finish 1202, On-Time 116, Late 488, Not Completed 594, BFC 10%; Forecast-Start 1228, On-Time 200, Late 515, Not Started 513, **BSC 22%** (ADR-0083: Normal-only population + Half-Step-Delay BSC). |
 
 ## Headline: the tool's structural facts match Fuse exactly

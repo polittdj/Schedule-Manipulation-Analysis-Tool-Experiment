@@ -1994,3 +1994,18 @@ BSC formula, regenerated METRIC-DICTIONARY.md, FUSE-VALIDATION.md, case.json cei
 full gate green (946 passed). **Open:** Insufficient Detail™ residual (41 vs 43 — current-vs-baseline
 duration ambiguity between the Large File and TP3; not re-pinned); BEI/HMI/CEI-bow-wave, critical-path,
 Advanced, Industry-Standards families still to audit. Model/mode: Opus 4.8 (1M, Ultracode).
+
+**2026-06-18 (cont. 14) — Insufficient Detail™ adopts the Bible formula (ADR-0084 open).** Baseline-
+compliance fix (ADR-0083) merged as #143; `main`@`341a757`. Operator (via AskUserQuestion) chose to
+adopt the authoritative library's Insufficient Detail™ formula to match Acumen's Large-File report:
+`SUM((OriginalDuration / (ProjectFinish-ProjectStart) > 0.1)*1)` = activity CURRENT (Original) duration
+in working days / project CALENDAR span (date subtraction) > 10%. `compute_schedule_quality` rewritten
+accordingly → Large File **43 exact** (was 41; Schedule Quality now 9/9). Operator-approved re-pins:
+Project2 stays 1, Project5 1→0, TP3 8→9 (offenders +UID 31; the TP3 2026-06-12 capture of 8 and the P5
+decode predate this library). Updated case.json, the TP3 battery test, the 2 synthetic unit tests (now
+test current-duration / calendar-span), help.py + regenerated METRIC-DICTIONARY.md, FUSE-VALIDATION.md.
+Parity 10/10; full gate green. **Audit scorecard vs Acumen's real reports:** Schedule-Quality 9/9 +
+Baseline Compliance 10/10 = every metric with Acumen output now matches exactly. Operator also chose
+"formula-audit vs the Bible" for the families WITHOUT Acumen output (BEI/HMI/CEI, critical-path,
+Industry Standards) — next: extract each Bible metric (formula + inclusions) and verify the tool's
+engine matches. Deferred: Float Ratio™, composite Score. Model/mode: Opus 4.8 (1M).

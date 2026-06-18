@@ -28,7 +28,7 @@ Every metric/measure the tool emits, with its formula and source. Each computed 
 | Critical | Incomplete activities on the critical path. | `count(total_float <= 0 and incomplete)` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
 | Hard Constraints | Activities with a hard/mandatory constraint. | `count(hard constraint) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
 | Negative Float | Incomplete activities with total float < 0. | `count(total_float < 0) / incomplete` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
-| Insufficient Detail | Activities with a baseline duration > 44 working days. | `count(baseline_dur > 44d) / activities <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
+| Insufficient Detail | Activities whose (current) duration exceeds 10% of the project's calendar span. | `count(OriginalDuration_workdays / (ProjectFinish - ProjectStart)_days > 0.1) <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
 | Number of Lags | Relationships carrying a positive lag. | `count(lag > 0) / activities <= 5%` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
 | Number of Leads | Relationships carrying a negative lag. | `count(lag < 0) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |
 | Merge Hotspot | Activities with 3 or more predecessors (a merge point). | `count(predecessors >= 3) / activities` | Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012). |

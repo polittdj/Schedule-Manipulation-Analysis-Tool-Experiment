@@ -123,24 +123,19 @@ def compute_schedule_quality(
         offender_uids=neg,
     )
 
-    # Insufficient Detail™ — activities whose baseline (planned) duration exceeds 10%
-    # of the total project working duration. Decoded empirically against the Fuse
-    # goldens (P2: 391 wd -> 39.1 -> exactly the one 60 wd baseline; P5: 462 -> 46.2 ->
-    # same task) and the operator's TP3 Fuse run (104 wd -> 10.4 -> the 8 tasks Fuse
-    # counted, on the BASELINE axis — a 5-day task whose actual span stretched to 47
-    # working days stays out). Both sides measured in working days.
+    # Insufficient Detail™ (Acumen Bible formula, ADR-0084):
+    #   SUM((OriginalDuration / (ProjectFinish - ProjectStart) > 0.1) * 1)
+    # the activity's CURRENT (Original) duration in working days over the project's CALENDAR span
+    # (ProjectFinish - ProjectStart in days — the date subtraction; Acumen does not convert the
+    # denominator to working time). Verified == Acumen's 43 on the Large Test File report. Current
+    # duration, not baseline; 0-duration milestones never qualify.
     per_day = schedule.calendar.working_minutes_per_day
-    project_wd = result.project_finish / per_day
+    finishes = [t.finish for t in tasks if t.finish is not None]
+    span_days = max((max(finishes) - schedule.project_start).days, 1) if finishes else 1
     insuff = tuple(
         t.unique_id
         for t in tasks
-        if (
-            t.baseline_duration_minutes
-            if t.baseline_duration_minutes is not None
-            else t.duration_minutes
-        )
-        / (1440 if t.duration_is_elapsed else per_day)
-        > project_wd * 0.10
+        if (t.duration_minutes / (1440 if t.duration_is_elapsed else per_day)) / span_days > 0.10
     )
     out["insufficient_detail"] = _pct_result(
         "insufficient_detail",

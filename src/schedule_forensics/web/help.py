@@ -278,8 +278,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "insufficient_detail": _doc(
         "insufficient_detail",
         "Insufficient Detail",
-        "Activities with a baseline duration > 44 working days.",
-        "count(baseline_dur > 44d) / activities <= 5%",
+        "Activities whose (current) duration exceeds 10% of the project's calendar span.",
+        "count(OriginalDuration_workdays / (ProjectFinish - ProjectStart)_days > 0.1) <= 5%",
         _SQ,
     ),
     "number_of_lags": _doc(
