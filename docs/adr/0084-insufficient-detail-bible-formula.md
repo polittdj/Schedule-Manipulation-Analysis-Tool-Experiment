@@ -18,11 +18,11 @@ working days** and **(ProjectFinish − ProjectStart) is the project's CALENDAR 
 subtraction — Acumen does not convert the denominator to working time). That mixed-unit ratio reproduces
 Acumen's **43** exactly.
 
-The wrinkle: the Bible (current-duration) formula reproduces the Large File's 43, but the operator's
-*earlier* TP3 Fuse capture (8, 2026-06-12) only matches with *baseline* duration — the two
-Acumen-verified inputs demand contradictory duration fields, so no single formula matches both. **The
-operator decided** to adopt the Bible formula matching the authoritative Large-File report (the report
-generated *from this library*), accepting that the older TP3/Project5 captures predate it.
+The wrinkle, now resolved: the Bible (current-duration) formula reproduces the Large File's 43, but the
+operator's *earlier* TP3 Fuse capture (8, 2026-06-12) matched only with *baseline* duration (current
+gives 9). To settle it, **the operator re-ran TP3 through *this* library in Acumen and got 9** — exactly
+the Bible formula's value. So there is no contradiction: the earlier 8 came from an older library, and
+under the authoritative library both the Large File (43) and TP3 (9) confirm the current-duration formula.
 
 ## Decision
 

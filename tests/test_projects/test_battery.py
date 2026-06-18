@@ -212,9 +212,10 @@ def test_tp3_schedule_quality_matches_the_operators_fuse_ribbon() -> None:
     assert sq["critical"].count == 5  # Fuse: 5 (42%)
     assert sq["hard_constraints"].count == 2
     assert sq["negative_float"].count == 3
-    # Insufficient Detail™: adopted the authoritative library's Bible formula (current Original
-    # duration / project CALENDAR span > 10%, ADR-0084), which matches Acumen's Large-File report
-    # (43). On TP3 that gives 9 — the operator's 2026-06-12 capture (8) predates this library.
+    # Insufficient Detail™: the authoritative library's Bible formula (current Original duration /
+    # project CALENDAR span > 10%, ADR-0084), which matches Acumen's Large-File report (43). The
+    # operator RE-RAN TP3 through this library in Acumen and confirmed 9 (the earlier 2026-06-12
+    # capture of 8 used an older library).
     assert sq["insufficient_detail"].count == 9
     assert sq["insufficient_detail"].offender_uids == (13, 14, 23, 24, 25, 26, 27, 29, 31)
     assert sq["number_of_lags"].count == 3  # Fuse: 3 (14%) — distinct activities
