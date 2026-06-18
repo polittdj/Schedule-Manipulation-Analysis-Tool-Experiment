@@ -1856,3 +1856,14 @@ read the numbers while the chart stays visual. `a11y.js` added to the air-gap sc
 10/10. Follow-up: `.sr-only` tables for the remaining charts (trivial with the helper; names already
 done). Remaining audit: A4 (table scope), A5 (print), A9/A10 (responsive+theme), A11 (drift test).
 Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 6) — table scope + print stylesheet (ADR-0076 open).** Audit A4 + A5. A4:
+mechanical `scope=col` on every server-rendered `<th>` in `web/app.py` (all 43 are column headers —
+the tables are column-oriented with `<td>` bodies — so a blanket `<th>`→`<th scope=col>` is correct;
+the JS grid + `SFA11y.table` already emit scope). A5: a `@media print` block in `base.css` makes the
+advertised "print-ready" briefings real — hides chrome (header nav, chart toolbars, export bars, viz
+controls, ask panel), forces light ink on white, `break-inside:avoid` on panels/cards/tables, prints
+the horizontal scrollers in full (`overflow:visible`), `@page{margin:14mm}`. `test_accessibility.py`
+pins both; the scope change broke no existing assertion (full web suite green). Parity 10/10.
+Remaining audit: A9/A10 (responsive+theme), A11 (HANDOFF-drift test), A3-follow-up tables. Model/mode:
+Opus 4.8 (1M).

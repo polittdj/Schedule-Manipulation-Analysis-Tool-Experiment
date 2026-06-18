@@ -617,7 +617,7 @@ def create_app(
             "<div id=dashboardHealth class=dash-cards></div></div>"
             '<script src="/static/dashboard.js"></script>'
             "<div class=panel><h2>Loaded schedules</h2>"
-            "<table><tr><th>Schedule</th><th>Activities</th><th>Source</th><th></th></tr>"
+            "<table><tr><th scope=col>Schedule</th><th scope=col>Activities</th><th scope=col>Source</th><th scope=col></th></tr>"
             f"{rows}</table>"
             + (
                 '<p style="margin-top:14px"><a class=btn-link href="/briefing">'
@@ -1522,7 +1522,7 @@ def create_app(
             "<p class=muted>Every metric the tool emits, with its formula and source. "
             "Each computed value also cites file + UniqueID + task name so you can verify it "
             "in the parent schedule.</p>"
-            f"<table><tr><th>Metric</th><th>Definition</th><th>Formula</th><th>Source</th></tr>{rows}</table></div>"
+            f"<table><tr><th scope=col>Metric</th><th scope=col>Definition</th><th scope=col>Formula</th><th scope=col>Source</th></tr>{rows}</table></div>"
         )
         return _page(st, "Metric Dictionary", body)
 
@@ -1634,7 +1634,7 @@ def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
         ).days
         cls = "fail" if days > 0 else "pass"
         variance = (
-            f"<tr><th>Finish vs baseline</th>"
+            f"<tr><th scope=col>Finish vs baseline</th>"
             f"<td><b class={cls}>{days:+d} calendar days</b></td></tr>"
         )
     flags = ", ".join(
@@ -1647,7 +1647,7 @@ def _target_panel(sch: Schedule, analysis: _Analysis, target: int) -> str:
         if on
     )
     cells = "".join(
-        f"<tr><th>{label}</th><td>{_e(value)}</td></tr>"
+        f"<tr><th scope=col>{label}</th><td>{_e(value)}</td></tr>"
         for label, value in (
             ("Start", row["start"] or "—"),
             ("Finish", row["finish"] or "—"),
@@ -1687,9 +1687,9 @@ def _float_bands_panel(analysis: _Analysis) -> str:
 of float (critical or negative), under 5, and under 10 working days &mdash; cumulative bands on
 this schedule's calendar. A swelling low-float band is the early warning that the schedule is
 losing its ability to absorb slips.</p>
-<table><tr><th></th><th>0 days</th><th>&lt; 5 days</th><th>&lt; 10 days</th></tr>
-<tr><th>Total float</th>{cell("float_total_0")}{cell("float_total_lt5")}{cell("float_total_lt10")}</tr>
-<tr><th>Free float</th>{cell("float_free_0")}{cell("float_free_lt5")}{cell("float_free_lt10")}</tr>
+<table><tr><th scope=col></th><th scope=col>0 days</th><th scope=col>&lt; 5 days</th><th scope=col>&lt; 10 days</th></tr>
+<tr><th scope=col>Total float</th>{cell("float_total_0")}{cell("float_total_lt5")}{cell("float_total_lt10")}</tr>
+<tr><th scope=col>Free float</th>{cell("float_free_0")}{cell("float_free_lt5")}{cell("float_free_lt10")}</tr>
 </table></div>"""
 
 
@@ -1706,7 +1706,7 @@ def _completion_panel(analysis: _Analysis) -> str:
         return f"{r.value:g}" if r.population else "&mdash;"
 
     rows = "".join(
-        f"<tr><th>{_e(label)}</th><td>{fmt(mid)}</td></tr>"
+        f"<tr><th scope=col>{_e(label)}</th><td>{fmt(mid)}</td></tr>"
         for mid, label in (
             ("completed_ahead", "Completed ahead of baseline"),
             ("completed_on_schedule", "Completed on schedule"),
@@ -1968,13 +1968,13 @@ def _forecast_body(
     carnac = compute_carnac_summary(latest_sch, cpms[-1], latest)
     by_id = latest_sch.tasks_by_id
     method_rows = "".join(
-        f"<tr><th>{_e(f.name)}</th>"
+        f"<tr><th scope=col>{_e(f.name)}</th>"
         f"<td><b>{f.finish.isoformat() if f.finish else '&mdash;'}</b></td>"
         f"<td class=muted>{_e(f.basis)}</td></tr>"
         for f in latest.forecasts
     )
     inputs = "".join(
-        f"<tr><th>{_e(label)}</th><td>{_e(value)}</td></tr>"
+        f"<tr><th scope=col>{_e(label)}</th><td>{_e(value)}</td></tr>"
         for label, value in (
             ("Data date", latest.as_of.isoformat() if latest.as_of else "none recorded"),
             ("Completed activities", latest.completed_count),
@@ -2022,8 +2022,8 @@ you the logic and the observed performance disagree.</p>
 version); step or play to watch the three forecasts drift toward later dates as the project
 progresses. Faint markers are the prior version's forecasts.</p>
 <div id=driftChart class=chart-host></div>
-<table><tr><th>Version</th><th>Data date</th><th>CPM</th><th>Completion rate</th>
-<th>Earned schedule</th></tr>{drift_rows}</table></div>
+<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>Completion rate</th>
+<th scope=col>Earned schedule</th></tr>{drift_rows}</table></div>
 <script src="/static/drift.js"></script>"""
     return f"""
 <div class=panel><h2>Forecast cards &mdash; {_e(latest_sch.name)}</h2>
@@ -2037,7 +2037,7 @@ SPI(t), Earned Schedule, and the to-go activity count. A card with missing input
 logic (CPM), the observed completion throughput, and earned-schedule performance
 (IEAC(t) = AT + (PD &minus; ES) / SPI(t)). Methods that disagree are themselves a finding.
 A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated date.</p>
-<table><tr><th>Method</th><th>Forecast finish</th><th>Basis</th></tr>{method_rows}</table>
+<table><tr><th scope=col>Method</th><th scope=col>Forecast finish</th><th scope=col>Basis</th></tr>{method_rows}</table>
 <h3>Inputs</h3><table>{inputs}</table>
 <p class=cite>Finish-controlling: {_e(cite)}</p></div>
 {_forecast_explainer(latest)}{drift}"""
@@ -2159,10 +2159,10 @@ def _calendar_panel(sch: Schedule) -> str:
 threshold — imported from the file's project calendar (the standard 8h/Mon-Fri default
 when the file carries none).</p>
 <table>
-<tr><th>Calendar</th><td>{_e(cal.name)}</td></tr>
-<tr><th>Working day</th><td>{_e(hours_text)}</td></tr>
-<tr><th>Work week</th><td>{_e(days)}</td></tr>
-<tr><th>Holidays</th><td>{_e(holidays)}</td></tr>
+<tr><th scope=col>Calendar</th><td>{_e(cal.name)}</td></tr>
+<tr><th scope=col>Working day</th><td>{_e(hours_text)}</td></tr>
+<tr><th scope=col>Work week</th><td>{_e(days)}</td></tr>
+<tr><th scope=col>Holidays</th><td>{_e(holidays)}</td></tr>
 </table></div>"""
 
 
@@ -2185,8 +2185,8 @@ def _count_bar_table(headers: tuple[str, str], rows: list[tuple[str, int, float]
         for label, count, pct in rows
     )
     return (
-        f"<table class=card-table><tr><th>{_e(headers[0])}</th><th>Count</th>"
-        f"<th>{_e(headers[1])}</th></tr>{body}</table>"
+        f"<table class=card-table><tr><th scope=col>{_e(headers[0])}</th><th scope=col>Count</th>"
+        f"<th scope=col>{_e(headers[1])}</th></tr>{body}</table>"
     )
 
 
@@ -2297,7 +2297,7 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
             "schedulable activities to break down by WBS.</p></div>"
         )
     completion_rows = "".join(
-        f"<tr><th>{_e(g.wbs)}</th><td>{g.total}</td><td>{g.completed}</td>"
+        f"<tr><th scope=col>{_e(g.wbs)}</th><td>{g.total}</td><td>{g.completed}</td>"
         f"<td>{g.not_completed}</td><td>{g.percent_complete:g}%</td>"
         f"<td>{g.completed_ahead}</td><td>{g.completed_on_schedule}</td><td>{g.completed_behind}</td>"
         f"<td>{_num(g.avg_days_ahead)}</td><td>{_num(g.avg_days_late)}</td>"
@@ -2308,7 +2308,7 @@ def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
         for g in groups
     )
     es_rows = "".join(
-        f"<tr><th>{_e(g.wbs)}</th><td>{_num(g.spi_t)}</td>"
+        f"<tr><th scope=col>{_e(g.wbs)}</th><td>{_num(g.spi_t)}</td>"
         f"<td>{_num(g.earned_schedule_days)}</td><td>{_num(g.actual_time_days)}</td>"
         f"<td>{g.completed}/{g.total}</td></tr>"
         for g in groups
@@ -2320,10 +2320,10 @@ the top-level WBS segment: counts and completion, the ahead / on-schedule / behi
 average calendar days, and the actual-vs-baseline duration ratio. Every figure is verifiable
 on the <a href="/analysis/{quote(key, safe="")}">full report</a>.</p>
 <div style="overflow-x:auto"><table class=wbs-table>
-<tr><th>WBS</th><th>Total</th><th>Done</th><th>To go</th><th>% comp</th>
-<th>Ahead</th><th>On sched</th><th>Behind</th>
-<th>Avg ahead</th><th>Avg late</th><th>Avg var</th>
-<th>Longer</th><th>Shorter</th><th>Dur min</th><th>Dur avg</th><th>Dur max</th></tr>
+<tr><th scope=col>WBS</th><th scope=col>Total</th><th scope=col>Done</th><th scope=col>To go</th><th scope=col>% comp</th>
+<th scope=col>Ahead</th><th scope=col>On sched</th><th scope=col>Behind</th>
+<th scope=col>Avg ahead</th><th scope=col>Avg late</th><th scope=col>Avg var</th>
+<th scope=col>Longer</th><th scope=col>Shorter</th><th scope=col>Dur min</th><th scope=col>Dur avg</th><th scope=col>Dur max</th></tr>
 {completion_rows}</table></div></div>
 <div class=panel><h2>SPI(t) &amp; Earned Schedule by WBS</h2>
 <p class=muted>The deck's <i>SPI and Earned Schedule</i> pivot + combo (PBIX page 9). Per WBS
@@ -2331,8 +2331,8 @@ group: the count-based <b>SPI(t)</b> (Earned Schedule &divide; Actual Time; &lt;
 the <b>Earned Schedule</b> and <b>Actual Time</b> in working days. A group with no completions
 or no baseline finishes reads &mdash; (never a fabricated value).</p>
 <div id=wbsChart class=chart-host></div>
-<table class=wbs-table><tr><th>WBS</th><th>SPI(t)</th><th>Earned schedule (wd)</th>
-<th>Actual time (wd)</th><th>Completed</th></tr>{es_rows}</table></div>
+<table class=wbs-table><tr><th scope=col>WBS</th><th scope=col>SPI(t)</th><th scope=col>Earned schedule (wd)</th>
+<th scope=col>Actual time (wd)</th><th scope=col>Completed</th></tr>{es_rows}</table></div>
 <script src="/static/wbs.js"></script>"""
 
 
@@ -2420,10 +2420,10 @@ metadata)</span></h3>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
 Each row defines the check and how it is measured; full formulas + citations are in the
 <a href="/help">Metric Dictionary</a>.</p>
-<table><tr><th>Check</th><th>Status</th><th>Value</th><th>What it measures (how)</th>
-<th>Suggested improvement</th></tr>{audit_rows}</table></div>
+<table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Value</th><th scope=col>What it measures (how)</th>
+<th scope=col>Suggested improvement</th></tr>{audit_rows}</table></div>
 <div class=panel><h2>Risks, opportunities &amp; concerns</h2>
-<table><tr><th>Severity</th><th>Type</th><th>Finding</th><th>Course of action</th><th>Citations</th></tr>
+<table><tr><th scope=col>Severity</th><th scope=col>Type</th><th scope=col>Finding</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
 <div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
 
@@ -2441,7 +2441,7 @@ def _brief_body(brief: DiagnosticBrief) -> str:
         for stmt in section.paragraphs:
             parts.append(f"<p>{_e(stmt.rendered())}</p>")
         if section.table is not None:
-            head = "".join(f"<th>{_e(str(h))}</th>" for h in section.table.headers)
+            head = "".join(f"<th scope=col>{_e(str(h))}</th>" for h in section.table.headers)
             rows = "".join(
                 "<tr>"
                 + "".join(f"<td>{_e('' if c is None else str(c))}</td>" for c in row)
@@ -2712,10 +2712,10 @@ def _compare_body(
     return f"""
 <div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
 <p class=muted>Versions are ordered by data date (oldest first); the trend reads prior &rarr; current.</p>
-<table><tr><th>Version</th><th>Project finish</th><th>Completed</th><th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table>
+<table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col>Completed</th><th scope=col>In&nbsp;progress</th><th scope=col>Critical</th></tr>{trend_rows}</table>
 {impact_html}</div>
 <div class=panel><h2>Manipulation-trend signals</h2>
-<table><tr><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
+<table><tr><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
 {manip_rows or "<tr><td colspan=3 class=muted>No manipulation signals detected (honest progress).</td></tr>"}</table></div>"""
 
 
@@ -2759,7 +2759,7 @@ def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) 
 <div class=panel><h2>{title}</h2>{note}
 <p class=muted>The focus activity's computed finish and progress across the versions
 (its movement is charted below).</p>
-<table><tr><th>Version</th><th>Computed finish</th><th>% complete</th></tr>{rows}</table>
+<table><tr><th scope=col>Version</th><th scope=col>Computed finish</th><th scope=col>% complete</th></tr>{rows}</table>
 {movement}</div>"""
 
 
@@ -2800,8 +2800,8 @@ placeholder="UID"> <button type=submit>Focus</button>
 </form></div>"""
     return f"""
 <div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
-<table><tr><th>Version</th><th>Data date</th><th>Project finish</th><th>Completed</th>
-<th>In&nbsp;progress</th><th>Critical</th></tr>{trend_rows}</table>
+<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>Project finish</th><th scope=col>Completed</th>
+<th scope=col>In&nbsp;progress</th><th scope=col>Critical</th></tr>{trend_rows}</table>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
 {focus_form}{focus_panel}
@@ -2827,7 +2827,7 @@ list the exact activities behind its number in the current version (the drill-do
 <p class=muted>How each Acumen &sect;A quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
 <div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
-<table><tr><th>Step</th><th>Severity</th><th>Signal</th><th>Course of action</th></tr>
+<table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
 {"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table></div>
 <script src="/static/trend.js"></script>
 <script src="/static/trend_drill.js"></script>"""
@@ -2975,8 +2975,8 @@ Auto-play to watch the wave move.</p>
 <p class=muted>For each snapshot: of the activities the <i>previous</i> snapshot planned to
 finish in the following month, how many this snapshot re-scheduled for that month and how
 how many of those planned activities actually finished by the end of it. CEI = completed-on-time &divide; previously planned (1.00 = executed to plan; an unplanned finish in the month earns no credit).</p>
-<table><tr><th>Snapshot</th><th>Period</th><th>Previously planned</th><th>Re-scheduled</th>
-<th>Actually finished</th><th>CEI</th></tr>{rows}</table></div>
+<table><tr><th scope=col>Snapshot</th><th scope=col>Period</th><th scope=col>Previously planned</th><th scope=col>Re-scheduled</th>
+<th scope=col>Actually finished</th><th scope=col>CEI</th></tr>{rows}</table></div>
 <script src="/static/cei.js"></script>"""
 
 
@@ -3015,7 +3015,9 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
         ("Avg Float (d)", "avg_float_days"),
         ("Max Float (d)", "max_float_days"),
     ]
-    head = "<th>Schedule</th>" + "".join(f"<th>{_e(label)}</th>" for label, _ in cols)
+    head = "<th scope=col>Schedule</th>" + "".join(
+        f"<th scope=col>{_e(label)}</th>" for label, _ in cols
+    )
     body = ""
     for key, r in rows:
         cells = "".join(f"<td>{_e(getattr(r, attr))}</td>" for _, attr in cols)
@@ -3214,8 +3216,8 @@ gap is schedule time the <b>changes</b>, not progress, removed from the path.</p
                 "counterfactual networks, so its individual impact is not shown.</p>"
             )
         body.append(
-            "<table><tr><th>UID</th><th>Activity</th><th>Why it left</th>"
-            f"<th>Change reverted</th></tr>{rows}</table>"
+            "<table><tr><th scope=col>UID</th><th scope=col>Activity</th><th scope=col>Why it left</th>"
+            f"<th scope=col>Change reverted</th></tr>{rows}</table>"
         )
     if pc.gained_float:
         names = "; ".join(f"{g.name} (UID {g.uid})" for g in pc.gained_float)
@@ -3428,7 +3430,11 @@ def _briefing_table_html(section: BriefingSection) -> str:
         return ""
     head = ""
     if table.headers:
-        head = "<tr>" + "".join(f"<th>{_e(h)}</th>" for h in table.headers) + "<th></th></tr>"
+        head = (
+            "<tr>"
+            + "".join(f"<th scope=col>{_e(h)}</th>" for h in table.headers)
+            + "<th scope=col></th></tr>"
+        )
     body = "".join(
         "<tr>"
         + "".join(f"<td>{_e(cell)}</td>" for cell in row)

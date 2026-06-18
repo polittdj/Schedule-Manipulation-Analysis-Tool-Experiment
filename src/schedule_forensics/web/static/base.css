@@ -73,3 +73,18 @@ cursor:pointer;text-decoration:underline}
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
     transition-duration:.001ms!important;scroll-behavior:auto!important}}
+
+/* A5: print-ready output (the Diagnostic Brief / Executive Briefing advertise this). Hide the
+   chrome (nav, chart toolbars, export bars, interactive controls), force light ink on white,
+   keep panels/cards from splitting across pages, and let the scrollers print in full. */
+@media print{
+  header,.cf-bar,.export-bar,.viz-controls,#pathControls,#pathExport,#askPanel{display:none!important}
+  body{background:#fff;color:#000}
+  a{color:#000;text-decoration:none}
+  main{padding:0}
+  .panel,.stat-card,.dash-card,.forecast-method,.brief-cards .panel,.qual-offenders,.chart,
+  table,tr{break-inside:avoid}
+  .panel{border:1px solid #bbb;box-shadow:none}
+  .cf-scroll,.gantt-scroll,#grid,.path-view,.evo-gantt,#forecastRuler{overflow:visible!important}
+  @page{margin:14mm}
+}
