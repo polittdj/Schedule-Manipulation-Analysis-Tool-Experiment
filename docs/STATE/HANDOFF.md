@@ -1,21 +1,21 @@
-# Handoff — 2026-06-18 (PRs #81–#131 MERGED; **`main` green & current at #131 (`6e3c87a`)**; ADR-0072 = OPEN draft — configurable generation timeout)
+# Handoff — 2026-06-18 (PRs #81–#132 MERGED; **`main` green & current at #132 (`af97221`)**; ADR-0073 = OPEN draft — a11y foundations)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#131)
-> **`main` is at #131 (`6e3c87a`), green.** AI work merged: ADR-0070 (#130) proxy bypass +
-> diagnostics; ADR-0071 (#131) auto-start/stop Ollama (`ai/ollama_process.py` + `launcher.py`),
-> probe 2 s → 8 s, install-aware Model dropdown. The **OPEN draft on this branch is ADR-0072** —
-> operator wants to run a big/slow llama3.1 ("even if it takes longer"): `AIConfig.gen_timeout`
-> (default 300 s, clamped 30 s..1 h) wired into every local backend + a `/settings` field, so a
-> large model finishes instead of being cut off at 120 s. Installing the model is a manual
-> `ollama pull` on the operator's machine (air-gapped tool never fetches) — detailed instructions
-> were given in chat. The highest ADR on disk is **0072**.
-> **STASHED on this branch:** a partly-built a11y PR (audit Group 1 — A1 focus ring / A2
-> reduced-motion / A6 tokens / A8 colour cues; base.css/app.css/cei.js done, 4 JS files + tests
-> remain) — `git stash list` (resume after this PR).
-> **External audit work order (7 roles, A1–A11) received + verified VALID on #130** — accessibility
-> (focus, reduced-motion, chart names+data-table, table scope), print stylesheet, CSP+nosniff,
-> colour cues, responsive, and a HANDOFF-drift test. Group 1 a11y is the stashed WIP; B/D/E/F backlog
-> + the `/path` screenshot bug + deferred Fuse metrics remain. The operator backlog is being worked **bugs-first**:
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#132)
+> **`main` is at #132 (`af97221`), green.** AI tranche all merged: ADR-0070 (#130) proxy bypass +
+> diagnostics; ADR-0071 (#131) auto-start/stop Ollama + probe 8 s + Model dropdown; ADR-0072 (#132)
+> configurable `gen_timeout` for big/slow models. The **OPEN draft on this branch is ADR-0073** —
+> the external audit's **Group 1 accessibility foundations**: A1 visible `:focus-visible` ring
+> (the orphaned `--focus` token), A2 `prefers-reduced-motion` (CSS block + all 5 auto-play steppers),
+> A6 define `--border`/`--grid-line` in both themes, A8 non-colour hatch on critical/driving bars
+> (+ `.sr-only` groundwork). The highest ADR on disk is **0073**.
+> **External audit work order (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs:
+> **A3** chart accessible names + `.sr-only` data-table fallbacks (11 charts), **A4** table `scope`,
+> **A5** `@media print` stylesheet, **A7** CSP + `nosniff` (ship inline-allowing CSP first), **A9/A10**
+> responsive nav + theme `aria-pressed`/`prefers-color-scheme`, **A11** add a HANDOFF-drift test (the
+> staleness half is already fixed by #128–#132). Operator backlog still open: **`/path` chart visual
+> bug** (needs the operator's screenshot), **D** Fuse year Trend/Phase (parity-sensitive — confirm
+> against `docs/FUSE-VALIDATION.md`), **E** Data-Date/Slippage overlaid-line redesign, **F** Bow-Wave
+> running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
 > filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
 > filters). The **OPEN draft PR on this branch carries ADR-0070** — an out-of-band operator fix:
@@ -79,7 +79,15 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0072 (OPEN draft, this branch) — configurable generation timeout for big models.**
+> **PR — ADR-0073 (OPEN draft, this branch) — accessibility foundations (audit Group 1).** Pure
+> presentation: (A1) a theme-aware `:focus-visible` outline ring using the orphaned `--focus` token;
+> (A2) a `prefers-reduced-motion` CSS block + a guard in all 5 auto-play `toggleAuto()` handlers
+> (under reduce-motion, Auto-play advances one frame instead of timer-flipping; Prev/Next unaffected);
+> (A6) define `--border`/`--grid-line` in both theme blocks (were used with hardcoded fallbacks);
+> (A8) a diagonal `repeating-linear-gradient` hatch on critical/driving Gantt bars (non-colour cue);
+> plus the `.sr-only` helper as A3 groundwork. Parity 10/10; air-gap green. Built on `main`@#132.
+
+> **PR — ADR-0072 (MERGED as #132) — configurable generation timeout for big models.**
 > Operator wants the most powerful llama3.1 "even if it takes my machine longer". Each generation was
 > capped at 120 s, so a large model (e.g. `llama3.1:70b` on CPU) got cut off → deterministic
 > fallback. Added `AIConfig.gen_timeout` (default 300 s, clamped 30 s..1 h) wired into every local

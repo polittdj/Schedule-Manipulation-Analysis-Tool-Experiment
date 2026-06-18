@@ -131,6 +131,10 @@
 
   function toggleAuto() {
     if (timer) { stopAuto(); return; }
+    // A2: honor prefers-reduced-motion — advance one frame, don't auto-flip on a timer
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      step(1); return;
+    }
     document.getElementById("autoPlay").textContent = "⏸ Stop";
     timer = setInterval(function () { step(1); }, 1600);
   }

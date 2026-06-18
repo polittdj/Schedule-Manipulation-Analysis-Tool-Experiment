@@ -1819,3 +1819,15 @@ availability probe (8 s, ADR-0070/0071) is untouched. Installing the model itsel
 detailed 13-yo-friendly install instructions were given in chat (70b needs ~48 GB RAM; 8b is the
 practical laptop max; 405b is server-only). Parity 10/10; gate green. The audit Group-1 a11y PR
 stays stashed on the branch (resume next). Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 3) — accessibility Group 1 (ADR-0073 open).** First PR from the external 7-role
+audit work order (verified valid on #130). Pure presentation, dependency-free, air-gap green:
+A1 visible `:focus-visible` ring (the `--focus` token was defined but unused); A2
+`prefers-reduced-motion` — a CSS neutralizer block + a guard in all 5 auto-play steppers (cei,
+drift, path_evolution, scurve, trend_drill) so Auto-play advances one frame instead of timer-flipping
+under reduce-motion (Prev/Next unaffected); A6 define `--border`/`--grid-line` in both theme blocks
+(were used with hardcoded fallbacks that didn't adapt to light mode); A8 a diagonal hatch on
+critical/driving Gantt bars (non-colour cue, palette unchanged); plus `.sr-only` groundwork for the
+A3 chart data-table fallback. `tests/web/test_accessibility.py` pins each. Parity 10/10. Remaining
+audit PRs: A3 chart names+sr-only tables, A4 table scope, A5 print stylesheet, A7 CSP+nosniff,
+A9/A10 responsive+theme polish, A11 HANDOFF-drift test. Model/mode: Opus 4.8 (1M).

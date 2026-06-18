@@ -68,6 +68,12 @@
 .gantt-bar.tier-SECONDARY { background: var(--warn); }
 .gantt-bar.tier-TERTIARY { background: var(--accent); }
 .gantt-bar.tier-BEYOND { background: var(--beyond); }
+/* A8 (WCAG 1.4.1): non-color cue — the critical (/analysis grid) and driving-path bars also
+   carry a diagonal hatch, so criticality is distinguishable without relying on hue alone
+   (colour-vision-deficiency safe). The palette is unchanged; only a pattern is layered on top. */
+.g-bar.g-crit, .gantt-bar.tier-DRIVING {
+  background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0, 0, 0, .32) 3px 6px);
+}
 .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin: 8px 0; flex-wrap: wrap; }
 .legend span::before { content: "\25A0 "; }
 .legend .tier-DRIVING { color: var(--bad); } .legend .tier-SECONDARY { color: var(--warn); }
