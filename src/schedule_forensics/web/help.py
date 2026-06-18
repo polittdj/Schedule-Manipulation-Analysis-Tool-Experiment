@@ -391,8 +391,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "baseline_start_compliance": _doc(
         "baseline_start_compliance",
         "Baseline Start Compliance",
-        "Share of start-due activities started on time (BSC).",
-        "started_on_time / forecast_to_be_started",
+        "Share of start-due activities that started before their baseline FINISH (Acumen's "
+        "Half-Step-Delay definition — distinct from Started On Time, which uses baseline start).",
+        "count(actual start <= baseline finish) / forecast_to_be_started",
         _C,
     ),
     # --- EVM indices ---
@@ -421,7 +422,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "cei_start": _doc(
         "cei_start",
         "CEI (Start)",
-        "Current Execution Index, start side — single-schedule, baseline-anchored (= BSC).",
+        "Current Execution Index, start side — single-schedule, baseline-anchored (= Started On "
+        "Time %, distinct from Baseline Start Compliance's Half-Step-Delay numerator).",
         "started_on_time / forecast_to_be_started",
         "EVM performance indices (METRICS-CATALOG §3, ADR-0013; re-verified ADR-0052).",
     ),

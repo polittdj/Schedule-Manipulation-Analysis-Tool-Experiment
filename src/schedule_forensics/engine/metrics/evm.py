@@ -63,7 +63,10 @@ def compute_baseline_compliance(
     are the activities the **baseline** placed on/before the status date (the validated
     Acumen formula uses the baseline, not the live forecast — `PARITY-TARGETS.md §C`).
     """
-    tasks = non_summary(schedule)
+    # Acumen measures baseline compliance over NORMAL activities only — milestones are excluded
+    # (Bible inclusions: Milestone=false) — with strict "due" (baseline < now) and INT (date-only)
+    # comparisons, validated against Acumen's report on the Large Test File (ADR-0083).
+    tasks = [t for t in non_summary(schedule) if not t.is_milestone]
     n = len(tasks)
     status = schedule.status_date
     out: dict[str, MetricResult] = {}
@@ -85,28 +88,26 @@ def compute_baseline_compliance(
             out[mid] = MetricResult(mid, nm, 0, n, 0.0, "%", CheckStatus.NOT_APPLICABLE)
         return out
 
-    def due(baseline: dt.datetime | None) -> bool:
-        return baseline is not None and baseline <= status
+    def before(when: dt.datetime | None) -> bool:
+        return when is not None and when < status
 
-    # ---- finish side ----
-    fin_due = [t for t in tasks if due(t.baseline_finish)]
+    # ---- finish side (Finish basis; INT date comparisons per the Bible formulas) ----
+    fin_due = [t for t in tasks if before(t.baseline_finish)]
+    # "Finish < now" — the activity has actually finished by the data date.
+    finished = [t for t in fin_due if t.actual_finish is not None and t.actual_finish < status]
     on_time = [
         t
-        for t in fin_due
-        if t.percent_complete >= 100.0
-        and t.actual_finish is not None
+        for t in finished
+        if t.actual_finish is not None
         and t.baseline_finish is not None
-        and t.actual_finish <= t.baseline_finish
+        and t.actual_finish.date() <= t.baseline_finish.date()
     ]
     late = [
         t
-        for t in fin_due
-        if t.percent_complete >= 100.0
-        and not (
-            t.actual_finish is not None
-            and t.baseline_finish is not None
-            and t.actual_finish <= t.baseline_finish
-        )
+        for t in finished
+        if t.actual_finish is not None
+        and t.baseline_finish is not None
+        and t.actual_finish.date() > t.baseline_finish.date()
     ]
     not_completed = [t for t in fin_due if t.percent_complete < 100.0]
     n_fin = len(fin_due)
@@ -124,23 +125,36 @@ def compute_baseline_compliance(
     )
 
     # ---- start side ----
-    start_due = [t for t in tasks if due(t.baseline_start)]
+    start_due = [t for t in tasks if before(t.baseline_start)]
+    started = [t for t in start_due if t.actual_start is not None and t.actual_start < status]
     s_on_time = [
         t
-        for t in start_due
+        for t in started
         if t.actual_start is not None
         and t.baseline_start is not None
-        and t.actual_start <= t.baseline_start
+        and t.actual_start.date() <= t.baseline_start.date()
     ]
     s_late = [
         t
-        for t in start_due
+        for t in started
         if t.actual_start is not None
         and t.baseline_start is not None
-        and t.actual_start > t.baseline_start
+        and t.actual_start.date() > t.baseline_start.date()
     ]
     not_started = [t for t in start_due if t.actual_start is None]
     n_start = len(start_due)
+    # Baseline Start Compliance — Acumen's Half-Step-Delay definition compares the actual START to
+    # the baseline FINISH (not baseline start): the activity started before the baseline said it
+    # would finish. This is asymmetric with Baseline Finish Compliance and is why a naive
+    # start≤baseline-start ratio under-reports (the ADR-0013 residual). Validated 41/25 on the
+    # goldens (== Acumen, residual resolved) and 22% on the Large Test File (ADR-0083).
+    bsc_compliant = [
+        t
+        for t in started
+        if t.actual_start is not None
+        and t.baseline_finish is not None
+        and t.actual_start.date() <= t.baseline_finish.date()
+    ]
 
     out["forecast_to_be_started"] = _ratio_result(
         "forecast_to_be_started", "Forecast to be Started", n_start, n
@@ -151,7 +165,7 @@ def compute_baseline_compliance(
     out["started_late"] = _offender_ratio("started_late", "Started Late", s_late, n_start)
     out["not_started"] = _offender_ratio("not_started", "Not Started", not_started, n_start)
     out["baseline_start_compliance"] = _ratio_result(
-        "baseline_start_compliance", "Baseline Start Compliance", len(s_on_time), n_start
+        "baseline_start_compliance", "Baseline Start Compliance", len(bsc_compliant), n_start
     )
     return out
 
@@ -212,6 +226,9 @@ def compute_evm_indices(
         compliance["completed_on_time"].count,
         compliance["forecast_to_be_finished"].count,
     )
+    # CEI (Start) == Acumen's "Started On Time" % (actual start <= baseline START / forecast). This
+    # is DISTINCT from Baseline Start Compliance, whose Half-Step-Delay numerator compares the start
+    # to the baseline FINISH (ADR-0083) — so cei_start (38/23) and BSC (41/25) legitimately differ.
     out["cei_start"] = _ratio_result(
         "cei_start",
         "CEI (Start)",

@@ -10,6 +10,18 @@ container, so they are recorded for the operator to reconcile locally.
 
 The automated check lives in `tests/engine/test_fuse_reference.py`.
 
+## Large Test File — direct validation against Acumen's own reports (2026-06-18)
+
+The operator provided the **Large Test File** `.mpp` (2,125 activities, Time Now 2/7/2025) **with
+Acumen's actual DCMA / Schedule-Quality / Detailed reports**, so the tool was audited against Acumen's
+real output (the `.mpp`/`.xlsx` are CUI and are **not** committed; only these derived counts are):
+
+| Family | Result vs Acumen |
+|---|---|
+| Schedule-Quality ribbon | **8 / 9 exact** — Missing Logic 22, Logic Density 3.14, Critical 33, Hard 1, Negative Float 31, Lags 8, Leads 1, Merge 156 (ADR-0079/0080/0081). |
+| Insufficient Detail™ | tool 41 vs Acumen **43** — characterised proprietary-™ residual (Bible `OriginalDuration/ProjectDuration>0.1` matches 43 only with *current* duration, while the operator's TP3 Fuse run of 8 needs *baseline*; held, not re-pinned). |
+| Baseline compliance (10 metrics) | **10 / 10 exact** — Forecast-Finish 1202, On-Time 116, Late 488, Not Completed 594, BFC 10%; Forecast-Start 1228, On-Time 200, Late 515, Not Started 513, **BSC 22%** (ADR-0083: Normal-only population + Half-Step-Delay BSC). |
+
 ## Headline: the tool's structural facts match Fuse exactly
 
 Counting **normal (non-milestone) completed activities**, the tool matches Fuse on every
