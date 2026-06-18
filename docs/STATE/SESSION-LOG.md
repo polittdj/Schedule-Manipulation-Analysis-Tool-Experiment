@@ -1867,3 +1867,15 @@ the horizontal scrollers in full (`overflow:visible`), `@page{margin:14mm}`. `te
 pins both; the scope change broke no existing assertion (full web suite green). Parity 10/10.
 Remaining audit: A9/A10 (responsive+theme), A11 (HANDOFF-drift test), A3-follow-up tables. Model/mode:
 Opus 4.8 (1M).
+
+**2026-06-18 (cont. 7) — external audit close-out A9/A10/A11 (ADR-0077 open).** A9 (WCAG 1.4.10):
+a `@media (max-width:760px)` block in `base.css` wraps the header/nav (flex-wrap) and collapses the
+wide card grids (.dash-cards/.brief-cards/.card-cols/.qual-drill-grid) to a single column, so 200%
+zoom / narrow widths don't need horizontal page scroll. A10: `theme.js` sets `aria-pressed` on the
+toggle and a first visit follows the OS `prefers-color-scheme` (a saved choice still wins, still
+pre-paint). A11: `tests/test_state_docs.py` now requires the latest ADR token in BOTH HANDOFF and the
+append-only SESSION-LOG (anchored on the local ADR files — no network), catching an ADR that ships
+without a logged session. **The external 7-role audit A1–A11 is now FULLY addressed** (#133 A1/A2/A6/
+A8, #134 A7, #135 A3, #136 A4/A5, this PR A9/A10/A11). Easy follow-up: `.sr-only` data tables for the
+non-curves charts (names done). Parity 10/10; gate green. Next: operator feature backlog E/F (D needs
+binning input), and the `/path` screenshot bug. Model/mode: Opus 4.8 (1M).

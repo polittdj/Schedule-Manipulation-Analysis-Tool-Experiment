@@ -11,14 +11,22 @@
   var KEY = "sf-theme";
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* storage may be unavailable */ }
-  if (saved === "light") document.documentElement.setAttribute("data-theme", "light");
+  // A10: a saved choice always wins; on a FIRST visit (no saved preference) follow the OS color
+  // scheme instead of hardcoding dark, so the tool respects prefers-color-scheme.
+  var prefersLight =
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+  if (saved === "light" || (!saved && prefersLight)) {
+    document.documentElement.setAttribute("data-theme", "light");
+  }
 
   function mode() {
     return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
   }
 
   function label(btn) {
-    btn.textContent = mode() === "light" ? "☾ Dark mode" : "☀ Light mode";
+    var light = mode() === "light";
+    btn.textContent = light ? "☾ Dark mode" : "☀ Light mode";
+    btn.setAttribute("aria-pressed", light ? "true" : "false"); // A10: announce toggle state
   }
 
   document.addEventListener("DOMContentLoaded", function () {
