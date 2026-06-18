@@ -87,6 +87,20 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
     assert not offenders, f"air-gap violated — external references served: {offenders}"
 
 
+def test_security_headers_enforce_the_airgap_in_the_browser(client: TestClient) -> None:
+    """A7: a Content-Security-Policy enforces the no-remote-asset air-gap in EVERY browser at
+    runtime (not just the scan above), plus nosniff / no-referrer / frame-deny hardening."""
+    for path in ("/", "/analysis/Project5", "/settings", "/static/app.js", "/static/base.css"):
+        r = client.get(path)
+        csp = r.headers.get("Content-Security-Policy", "")
+        # the air-gap-critical directives: nothing loads or connects off-origin
+        assert "default-src 'self'" in csp, path
+        assert "connect-src 'self'" in csp and "frame-ancestors 'none'" in csp, path
+        assert r.headers.get("X-Content-Type-Options") == "nosniff", path
+        assert r.headers.get("X-Frame-Options") == "DENY", path
+        assert r.headers.get("Referrer-Policy") == "no-referrer", path
+
+
 def test_assets_are_local_relative(client: TestClient) -> None:
     page = client.get("/analysis/Project5").text
     # the only script/style references are same-origin /static paths

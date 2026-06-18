@@ -518,6 +518,28 @@ def _e(text: object) -> str:
     return html.escape(str(text))
 
 
+#: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
+#: just in the test: ``default-src``/``connect-src``/``img-src`` are ``'self'`` so the page can
+#: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``'unsafe-inline'``
+#: is allowed for style + script because the UI legitimately uses inline ``style=`` (the Gantt's
+#: px widths) and two inline handlers (Quit / wipe-confirm); that permits INLINE code but still
+#: forbids any REMOTE script/style, so the no-remote-asset guarantee holds. Tightening to a strict
+#: ``script-src 'self'`` (after moving the two handlers to addEventListener) is a tracked follow-up.
+_CSP = (
+    "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+    "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
+    "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+)
+#: Security headers added to every response (CSP enforces the air-gap; nosniff/Referrer/Frame
+#: are free hardening for the CUI threat model — the operator analyzes opposing-party files).
+_SECURITY_HEADERS: dict[str, str] = {
+    "Content-Security-Policy": _CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+}
+
+
 def create_app(
     state: SessionState | None = None,
     *,
@@ -550,6 +572,8 @@ def create_app(
         app.state.active_requests += 1
         try:
             response: Response = await call_next(request)
+            for key, value in _SECURITY_HEADERS.items():
+                response.headers.setdefault(key, value)  # CSP/nosniff on every response (Law 1)
             return response
         finally:
             app.state.active_requests -= 1
