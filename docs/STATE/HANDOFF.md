@@ -1,16 +1,21 @@
-# Handoff — 2026-06-18 (PRs #81–#130 MERGED; **`main` green & current at #130 (`fe2730a`)**; ADR-0071 = OPEN draft — Ollama lifecycle + model picker)
+# Handoff — 2026-06-18 (PRs #81–#131 MERGED; **`main` green & current at #131 (`6e3c87a`)**; ADR-0072 = OPEN draft — configurable generation timeout)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#130)
-> **`main` is at #130 (`fe2730a`), green.** ADR-0070 (#130) merged the local-AI proxy bypass +
-> diagnostics. The **OPEN draft on this branch is ADR-0071** — operator follow-ups: auto-start a
-> local Ollama with the desktop tool + stop it on exit (`ai/ollama_process.py`, wired in
-> `launcher.py`), bump the availability probe 2 s → 8 s (a corporate laptop's endpoint-security
-> delays the first local connection → "timed out"), and an install-aware **Model dropdown** on
-> `/settings` (the operator's configured `llama3.1:8b` wasn't installed; they have `llama3.2:latest`
-> / `schedule-analyst:latest` / `qwen2.5:7b-instruct`). The highest ADR on disk is **0071**.
-> **STASHED on this branch:** a partly-built a11y PR (A1 focus ring / A2 reduced-motion / A6 tokens /
-> A8 colour cues) from the external audit work order — `git stash list` (resume after the AI PR).
-> **`main` was at #129 (`8f65081`) before #130; both green.** The operator backlog is being worked **bugs-first**:
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#131)
+> **`main` is at #131 (`6e3c87a`), green.** AI work merged: ADR-0070 (#130) proxy bypass +
+> diagnostics; ADR-0071 (#131) auto-start/stop Ollama (`ai/ollama_process.py` + `launcher.py`),
+> probe 2 s → 8 s, install-aware Model dropdown. The **OPEN draft on this branch is ADR-0072** —
+> operator wants to run a big/slow llama3.1 ("even if it takes longer"): `AIConfig.gen_timeout`
+> (default 300 s, clamped 30 s..1 h) wired into every local backend + a `/settings` field, so a
+> large model finishes instead of being cut off at 120 s. Installing the model is a manual
+> `ollama pull` on the operator's machine (air-gapped tool never fetches) — detailed instructions
+> were given in chat. The highest ADR on disk is **0072**.
+> **STASHED on this branch:** a partly-built a11y PR (audit Group 1 — A1 focus ring / A2
+> reduced-motion / A6 tokens / A8 colour cues; base.css/app.css/cei.js done, 4 JS files + tests
+> remain) — `git stash list` (resume after this PR).
+> **External audit work order (7 roles, A1–A11) received + verified VALID on #130** — accessibility
+> (focus, reduced-motion, chart names+data-table, table scope), print stylesheet, CSP+nosniff,
+> colour cues, responsive, and a HANDOFF-drift test. Group 1 a11y is the stashed WIP; B/D/E/F backlog
+> + the `/path` screenshot bug + deferred Fuse metrics remain. The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
 > filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
 > filters). The **OPEN draft PR on this branch carries ADR-0070** — an out-of-band operator fix:
@@ -74,7 +79,16 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0071 (OPEN draft, this branch) — local AI that just works.** Two operator follow-ups
+> **PR — ADR-0072 (OPEN draft, this branch) — configurable generation timeout for big models.**
+> Operator wants the most powerful llama3.1 "even if it takes my machine longer". Each generation was
+> capped at 120 s, so a large model (e.g. `llama3.1:70b` on CPU) got cut off → deterministic
+> fallback. Added `AIConfig.gen_timeout` (default 300 s, clamped 30 s..1 h) wired into every local
+> backend + a `/settings` "Generation timeout" field; the short availability probe (8 s) is
+> untouched. Installing the model is a manual `ollama pull` on the operator's box (the air-gapped
+> tool never fetches over the network — instructions given in chat). Parity 10/10. Built on
+> `main`@#131. (Stashed a11y WIP still on this branch — pop after.)
+
+> **PR — ADR-0071 (MERGED as #131) — local AI that just works.** Two operator follow-ups
 > after ADR-0070: (1) **auto-manage Ollama** — `ai/ollama_process.py` `OllamaLauncher` starts a local
 > `ollama serve` on desktop launch (background thread, never blocks) and stops it on exit, but ONLY if
 > we started it (an already-running Ollama is left alone); wired into `launcher.main` (finally +

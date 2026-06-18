@@ -200,3 +200,23 @@ def test_settings_model_field_is_a_dropdown_of_installed_models(
     # the default configured model isn't installed -> kept as an option, flagged, with a fix hint
     assert "llama3.1:8b" in page and "not installed" in page
     assert "pick an installed model from the Model dropdown" in page
+
+
+def test_generation_timeout_is_configurable_and_wires_into_the_backend() -> None:
+    """A big, slow local model (e.g. llama3.1:70b) must be allowed to finish — the configured
+    generation timeout flows through to the backend's generate budget."""
+    from schedule_forensics.ai.backend import AIConfig
+
+    backend = app_module._ollama_or_none(AIConfig(backend="ollama", gen_timeout=900.0))
+    assert backend is not None and backend._timeout == 900.0
+
+
+def test_settings_persist_and_clamp_the_generation_timeout(client: TestClient) -> None:
+    client.post("/settings", data={"backend": "ollama", "model": "x", "gen_timeout": "1200"})
+    page = client.get("/settings").text
+    assert "name=gen_timeout" in page and 'value="1200"' in page
+    # absurd values clamp into the 30s..3600s window (a wedged model can't hang forever)
+    client.post("/settings", data={"backend": "ollama", "model": "x", "gen_timeout": "999999"})
+    assert 'value="3600"' in client.get("/settings").text
+    client.post("/settings", data={"backend": "ollama", "model": "x", "gen_timeout": "1"})
+    assert 'value="30"' in client.get("/settings").text

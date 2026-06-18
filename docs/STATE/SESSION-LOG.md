@@ -1808,3 +1808,14 @@ have `llama3.2:latest`/`schedule-analyst:latest`/`qwen2.5:7b-instruct`). Parity 
 **Also received:** an external 7-role audit work order (A1–A11 a11y/print/CSP/docs) — verified valid
 on #130; a partly-built Group-1 a11y PR is **stashed** on the branch (resume after the AI PR). The
 `/path` chart visual bug still awaits the operator's screenshot. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 2) — big-model generation timeout (ADR-0072 open).** Operator wants to run the
+most powerful llama3.1 "even if it takes my machine longer". Each generation was capped at the
+backend's 120 s default, so a large slow model (e.g. `llama3.1:70b` on CPU) would be cut off and
+fall back to deterministic facts. Added `AIConfig.gen_timeout` (default 300 s, clamped 30 s..1 h),
+wired into every local-backend construction + a `/settings` "Generation timeout" field; the short
+availability probe (8 s, ADR-0070/0071) is untouched. Installing the model itself is a manual
+`ollama pull` on the operator's machine — the air-gapped tool never fetches over the network, so
+detailed 13-yo-friendly install instructions were given in chat (70b needs ~48 GB RAM; 8b is the
+practical laptop max; 405b is server-only). Parity 10/10; gate green. The audit Group-1 a11y PR
+stays stashed on the branch (resume next). Model/mode: Opus 4.8 (1M).

@@ -273,7 +273,9 @@ def _ollama_or_none(config: AIConfig) -> OllamaBackend | None:
     if config.backend != "ollama":
         return None
     try:
-        return OllamaBackend(endpoint=config.endpoint, model=config.model)
+        return OllamaBackend(
+            endpoint=config.endpoint, model=config.model, timeout=config.gen_timeout
+        )
     except Exception:
         return None
 
@@ -283,7 +285,9 @@ def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
         return None
     try:
         # construction enforces loopback (CUIEgressError on a remote host — Law 1)
-        return OpenAICompatBackend(endpoint=config.openai_endpoint, model=config.model)
+        return OpenAICompatBackend(
+            endpoint=config.openai_endpoint, model=config.model, timeout=config.gen_timeout
+        )
     except Exception:
         return None
 
@@ -375,9 +379,15 @@ def _second_backend(state: SessionState) -> AIBackend | None:
     backend: AIBackend | None = None
     try:
         if cfg.second_backend == "ollama":
-            backend = OllamaBackend(endpoint=cfg.endpoint, model=cfg.second_model or cfg.model)
+            backend = OllamaBackend(
+                endpoint=cfg.endpoint,
+                model=cfg.second_model or cfg.model,
+                timeout=cfg.gen_timeout,
+            )
         else:
-            backend = OpenAICompatBackend(endpoint=cfg.openai_endpoint, model=cfg.second_model)
+            backend = OpenAICompatBackend(
+                endpoint=cfg.openai_endpoint, model=cfg.second_model, timeout=cfg.gen_timeout
+            )
     except Exception:
         backend = None
     if backend is not None and not backend.is_available():
@@ -1439,6 +1449,7 @@ def create_app(
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
         second_model: str = Form(""),
+        gen_timeout: float = Form(300.0),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -1449,6 +1460,9 @@ def create_app(
             qa_mode = "interpretive"
         if second_backend not in ("none", "ollama", "openai"):
             second_backend = "none"
+        # generation timeout: clamp to a sane window (30s … 1h) so a big slow model can finish
+        # but a wedged one can't hang a request forever
+        gen_timeout = min(3600.0, max(30.0, gen_timeout))
         # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
         # remote host from sitting in the config looking accepted
         if not is_local_http_endpoint(endpoint.strip()):
@@ -1464,6 +1478,7 @@ def create_app(
             openai_endpoint=openai_endpoint.strip(),
             second_backend=second_backend,
             second_model=second_model.strip(),
+            gen_timeout=gen_timeout,
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
@@ -3512,6 +3527,9 @@ def _settings_body(state: SessionState) -> str:
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
 <p>Model: {model_field}</p>
+<p>Generation timeout (seconds):
+<input name=gen_timeout type=number min=30 max=3600 step=10 value="{_e(int(cfg.gen_timeout))}"
+ title="How long a single answer may take. Raise it for a big, slow model (e.g. llama3.1:70b) so it can finish."></p>
 <p>Ollama endpoint (loopback only):
 <input name=endpoint size=28 value="{_e(cfg.endpoint)}"
  title="Ollama defaults to http://127.0.0.1:11434"></p>
