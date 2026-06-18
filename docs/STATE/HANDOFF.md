@@ -1,26 +1,27 @@
-# Handoff — 2026-06-18 (PRs #81–#139 MERGED; **`main` green & current at #139 (`b703ba5`)**; ADR-0080 = OPEN draft — DCMA float metrics consume stored Total Slack / Critical)
+# Handoff — 2026-06-18 (PRs #81–#140 MERGED; **`main` green & current at #140 (`5f9b252`)**; ADR-0081 = OPEN draft — Ribbon Lags/Leads count all statuses)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#139)
-> **`main` is at #139 (`b703ba5`), green.** The DCMA-14 **display** half (count + % + tooltips,
-> ADR-0079) **MERGED as #139**. The **OPEN draft on this branch is ADR-0080** — the **calculation**
-> half: the float-based metrics now consume **MS Project's stored, progress-aware `Critical` flag and
-> `TotalSlack`** when the source file carries them (what Acumen reads), else the recomputed pure-logic
-> CPM float (ADR-0010). Fixed: **Critical 2→33** and **Negative Float 0→31** on the operator's
-> progressed file. Mechanism: new `Task.stored_total_float_minutes` / `.stored_is_critical`; the MSPDI
-> importer reads `TotalSlack` (tenths-of-a-minute → minutes) + `Critical`; `_common.effective_total_float`
-> / `is_effective_critical` are used by `schedule_quality` (Critical, Negative Float), `dcma14` DCMA-07,
-> and `ribbon` (Critical). **Parity-safe & verified:** the goldens carry stored values that equal the
-> pinned 41/37 critical & 0 negative; the synthesized TP1–TP4 fixtures carry no stored values → recompute
-> fallback, unchanged. The highest ADR on disk is **0080**.
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#140)
+> **`main` is at #140 (`5f9b252`), green.** The operator's **DCMA-14 reconciliation is COMPLETE** across
+> three merged PRs + this one: **#139/ADR-0079** display (count + % + tooltips); **#140/ADR-0080** the
+> float calc (Critical 2→33, Negative Float 0→31 via MS Project's stored `Critical`/`TotalSlack`). The
+> **OPEN draft on this branch is ADR-0081** — the last piece: the **Ribbon's Number of Lags (5→8) /
+> Leads (0→1)**. `compute_ribbon` was sourcing these from the DCMA-14 checks (DCMA03/DCMA02), which
+> restrict to *incomplete* successors; Acumen's Ribbon counts the activities across **all statuses**
+> (incl. lags/leads into completed successors). Fixed by counting them inline in `compute_ribbon` (no
+> completion filter) — the definition `schedule_quality` already uses. **DCMA02/DCMA03 (the DCMA-14
+> points) are UNCHANGED** (separate validated numbers). **Parity-safe & verified:** both definitions are
+> identical on every pinned Ribbon fixture (P2 lags 2, TP1 3, TP3 3/leads 1, TP4 0); they differ only on
+> Project5 (1→2), unpinned in the Ribbon test and where 2 is the correct Fuse value. Highest ADR on disk
+> is **0081**.
 >
-> **NEXT (still open from the operator's DCMA-14 request):** **Number of Lags (5→8)** and **Number of
-> Leads (0→1)** still diverge — but these are **NOT** stored-value issues; they are link/lag *detection*
-> differences (Acumen counts activities incl. milestones + completed work; the tool restricts to
-> incomplete successors). That is a definitional change to link counting with its own parity exposure —
-> validate against the goldens' pinned Lag/Lead counts (P2/P5 lags 2/2, leads 0/0; TP3 lags 3, leads 1)
-> before changing. **High Float (DCMA-06)** stays the ADR-0012 documented residual. CUI: the Large Test
-> File `.mpp` + Acumen `.xlsx` exports must NOT be committed (record derived values in
-> `docs/FUSE-VALIDATION.md` only).
+> **With #139/#140 merged + this PR, the operator's float/logic Ribbon metrics ALL match Acumen on the
+> Large Test File** (Critical 33, Neg Float 31, Lags 8, Leads 1, Missing Logic 22, Logic Density 3.14,
+> Hard 1, Merge 156). **REMAINING DEFERRED:** Fuse **proprietary** metrics — Float Ratio™ + composite
+> Score — still need their exact DAX/definition (DON'T GUESS). **High Float (DCMA-06)** stays the
+> ADR-0012 documented residual. Other open operator backlog: **D** (Fuse year Trend/Phase — binning
+> needs operator input), **F** (Bow-Wave running totals + target highlight — designed), the **`/path`
+> chart visual bug** (needs the operator's screenshot). CUI: the Large Test File `.mpp` + Acumen `.xlsx`
+> exports must NOT be committed (derived values go in `docs/FUSE-VALIDATION.md` only).
 > **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
 > follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
 > (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).

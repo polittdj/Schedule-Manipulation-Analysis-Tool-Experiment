@@ -3077,9 +3077,11 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
 <p class=muted>The Acumen-Fuse "Ribbon Analysis" schedule-quality metrics, one row per loaded
 schedule. <b>Missing Logic</b> = activities missing a predecessor and/or successor;
 <b>Logic Density™</b> = logic links per activity (2&times;links &divide; activities);
-<b>Critical</b> = incomplete activities on the critical path; <b>Hard Constraints</b> /
-<b>Negative Float</b> / <b>Lags</b> / <b>Leads</b> are the DCMA counts; <b>Merge Hotspot</b> =
-activities with more than two predecessors. These are validated against the reference Fuse
+<b>Critical</b> = activities the source tool flags critical (its stored Critical / Total Slack);
+<b>Lags</b> / <b>Leads</b> = activities whose predecessors carry a positive / negative offset,
+across all statuses (planned, in-progress, or complete &mdash; as Fuse counts them, unlike the
+incomplete-only DCMA-14 checks); <b>Hard Constraints</b> / <b>Negative Float</b> are the DCMA
+counts; <b>Merge Hotspot</b> = activities with more than two predecessors. These are validated against the reference Fuse
 export (docs/FUSE-VALIDATION.md). <i>Insufficient Detail™ and Float Ratio™ are Fuse-proprietary
 formulas and are omitted pending their exact definition.</i></p>
 <table><tr>{head}</tr>{body}</table></div>"""

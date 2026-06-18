@@ -79,12 +79,23 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
     has_succ: set[int] = set()
     pred_count: dict[int, int] = {}
     links_among_ns = 0
+    # Fuse's Ribbon "Number of Lags / Leads" counts the *activities* whose predecessors carry a
+    # positive (lag) / negative (lead) offset, across ALL statuses — "planned, in-progress, OR
+    # complete" (the Fuse metric guide). This differs from the DCMA-14 Lags/Leads checks, which
+    # restrict to *incomplete* successors; on a progressed file the lags into already-finished
+    # work are real and Fuse counts them, so the Ribbon must not inherit the DCMA filter (ADR-0081).
+    lag_successors: set[int] = set()
+    lead_successors: set[int] = set()
     for r in schedule.relationships:
         if r.predecessor_id in ns_ids and r.successor_id in ns_ids:
             links_among_ns += 1
             has_pred.add(r.successor_id)
             has_succ.add(r.predecessor_id)
             pred_count[r.successor_id] = pred_count.get(r.successor_id, 0) + 1
+            if r.lag_minutes > 0:
+                lag_successors.add(r.successor_id)
+            elif r.lag_minutes < 0:
+                lead_successors.add(r.successor_id)
 
     missing_logic = sum(
         1 for t in tasks if t.unique_id not in has_pred or t.unique_id not in has_succ
@@ -117,8 +128,8 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         critical=critical,
         hard_constraints=_audit_count(audit, "DCMA05"),
         negative_float=_audit_count(audit, "DCMA07"),
-        number_of_lags=_audit_count(audit, "DCMA03"),
-        number_of_leads=_audit_count(audit, "DCMA02"),
+        number_of_lags=len(lag_successors),
+        number_of_leads=len(lead_successors),
         merge_hotspot=merge_hotspot,
         avg_float_days=avg_float,
         max_float_days=max_float,

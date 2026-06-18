@@ -1934,3 +1934,22 @@ High Float** intentionally left on recomputed float (separately pinned ADR-0012 
 10/10; full gate green. **Still open:** Number of Lags (5→8) / Leads (0→1) — a link-detection
 definitional fix (not stored-value), parity-sensitive, tracked next. CUI `.mpp`/`.xlsx` not committed.
 Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 11) — Ribbon Number of Lags/Leads count all statuses (ADR-0081 open).** The DCMA
+calc half (ADR-0080) merged as #140; `main`@`5f9b252`. Final piece of the operator's DCMA reconciliation:
+the Ribbon's **Number of Lags (5→8)** and **Number of Leads (0→1)** on their progressed Large Test File.
+Root cause: `compute_ribbon` sourced these from the DCMA-14 checks (`DCMA03`/`DCMA02`), which restrict to
+*incomplete* successors; Acumen's Ribbon counts the activities across **all statuses** ("planned,
+in-progress, or complete"), so lags/leads into already-finished successors were being dropped. Fix: count
+distinct non-summary successor activities with a positive/negative-lag predecessor inline in
+`compute_ribbon`, no completion filter (the definition `schedule_quality` already uses). **DCMA02/DCMA03
+left unchanged** — they keep the incomplete-only DCMA-14 definition (Acumen's own DCMA-14 report and its
+Ribbon legitimately differ, e.g. P5 Ribbon lags 2 vs DCMA-14 lags 1). Verified parity-safe: the two
+definitions are identical on every pinned Ribbon fixture (P2 lags 2, TP1 3, TP3 3/leads 1, TP4 0); they
+differ only on Project5 (1→2), unpinned in the Ribbon test, where 2 is the correct Fuse value
+(schedule_quality already pins P5=2). New test: a lag + lead into a 100%-complete successor are counted
+by the Ribbon (lags/leads == 1) while DCMA03/DCMA02 count neither. Updated the `/ribbon` view note +
+`docs/FUSE-VALIDATION.md`. Parity 10/10; full gate green. **The operator's float/logic Ribbon metrics now
+all match Acumen on the Large Test File** (Critical 33, Neg Float 31, Lags 8, Leads 1, Missing Logic 22,
+Logic Density 3.14, Hard 1, Merge 156). Deferred: Fuse-proprietary Float Ratio™ + composite Score (need
+exact DAX). CUI `.mpp`/`.xlsx` not committed. Model/mode: Opus 4.8 (1M).
