@@ -71,13 +71,21 @@ from schedule_forensics.engine.forecast import (
     compute_carnac_summary,
     compute_finish_forecasts,
 )
+from schedule_forensics.engine.grouping import (
+    MAX_FIELDS,
+    available_fields,
+    filter_schedule,
+    group_values,
+)
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
     WBSGroup,
     compute_activity_makeup,
     compute_baseline_compliance,
+    compute_bei,
     compute_completion_performance,
     compute_constraint_distribution,
+    compute_dcma14,
     compute_float_bands,
     compute_float_sums,
     compute_net_finish_impact,
@@ -153,7 +161,7 @@ _LAYOUT = Template(
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
-<a href="/driving-path">Driving Path</a>
+<a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -1173,6 +1181,32 @@ def create_app(
             st,
             "Driving Path",
             _skipped_notice(skipped) + _driving_path_body(schedules, cpms, src, tgt),
+        )
+
+    @app.get("/groups", response_class=HTMLResponse)
+    def groups_view(request: Request) -> HTMLResponse:
+        st = session()
+        versions = st.ordered_versions()
+        if not versions:
+            return _page(
+                st,
+                "Groups & Filters",
+                "<div class=panel>Load a schedule to scope the metrics by a field value.</div>",
+            )
+        qp = request.query_params
+        version_key = qp.get("version") or versions[-1][0]
+        sch = dict(versions).get(version_key, versions[-1][1])
+        # filter criteria: parallel field/value rows; keep only the rows with a chosen field.
+        fields = qp.getlist("field")
+        values = qp.getlist("value")
+        criteria = [(f, values[i] if i < len(values) else "") for i, f in enumerate(fields) if f][
+            :MAX_FIELDS
+        ]
+        breakdown = qp.get("breakdown") or ""
+        return _page(
+            st,
+            "Groups & Filters",
+            _groups_body(versions, version_key, sch, criteria, breakdown),
         )
 
     @app.get("/forecast", response_class=HTMLResponse)
@@ -3264,6 +3298,169 @@ version to see the corridor shift.</p></div>"""
         )
 
     return form + header + "".join(rows)
+
+
+def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
+    """A compact check/value/status table from a DCMA-14 result dict (over any (sub)schedule)."""
+    rows = []
+    for m in results.values():
+        if m.unit == "ratio":  # CPLI / BEI — an index
+            valcell = f"{round(m.value, 2)}"
+        elif m.population:
+            pct = m.value if m.unit == "%" else 100.0 * m.count / m.population
+            valcell = f"{m.count} <span class=muted>of {m.population}</span> ({pct:.1f}%)"
+        else:
+            valcell = str(m.count)
+        rows.append(
+            f"<tr><td>{_e(m.name)}</td><td class=num>{valcell}</td>"
+            f'<td class="{_status_class(m.status)}">{_e(m.status)}</td></tr>'
+        )
+    return (
+        "<table class=card-table><tr><th scope=col>Check</th><th scope=col>Value</th>"
+        f"<th scope=col>Status</th></tr>{''.join(rows)}</table>"
+    )
+
+
+def _groups_field_options(sch: Schedule, selected: str) -> str:
+    """``<option>`` list of selectable fields (standard then custom) with one pre-selected."""
+    opts = ['<option value="">(field…)</option>']
+    for f in available_fields(sch):
+        sel = " selected" if f == selected else ""
+        opts.append(f'<option value="{_e(f)}"{sel}>{_e(f)}</option>')
+    return "".join(opts)
+
+
+def _groups_form(
+    versions: list[tuple[str, Schedule]],
+    version_key: str,
+    sch: Schedule,
+    criteria: list[tuple[str, str]],
+    breakdown: str,
+) -> str:
+    """The scope controls: version picker, up to MAX_FIELDS filter rows, and a breakdown field."""
+    vsel = ""
+    if len(versions) > 1:
+        vopts = "".join(
+            f'<option value="{_e(k)}"{" selected" if k == version_key else ""}>'
+            f"{_e(s.source_file or s.name)}</option>"
+            for k, s in versions
+        )
+        vsel = f"<label>Version: <select name=version>{vopts}</select></label> "
+    # MAX_FIELDS filter rows, pre-filled from the active criteria.
+    rows = []
+    for i in range(MAX_FIELDS):
+        f, v = criteria[i] if i < len(criteria) else ("", "")
+        rows.append(
+            f"<div class=group-row><select name=field>{_groups_field_options(sch, f)}</select>"
+            f' = <input name=value value="{_e(v)}" placeholder="value (blank = field populated)"></div>'
+        )
+    bsel = f"<select name=breakdown>{_groups_field_options(sch, breakdown)}</select>"
+    return f"""
+<div class=panel><form method=get action=/groups class=group-form>
+{vsel}
+<fieldset><legend>Filter &mdash; scope every metric to tasks matching ALL rows (up to {MAX_FIELDS})</legend>
+{"".join(rows)}</fieldset>
+<label>Break down by: {bsel}</label>
+<div class=viz-controls><button type=submit>Apply</button>
+<a class=btn-link href="/groups">clear</a></div>
+</form>
+<p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>) and a
+value to scope <b>every</b> metric to just those activities; combine up to {MAX_FIELDS} fields (logical
+AND). <b>Break down by</b> a field to score each of its values separately (one BEI per group). Filter
+and breakdown compose &mdash; the breakdown runs over the filtered population.</p></div>"""
+
+
+def _groups_breakdown_table(sub: Schedule, field: str) -> str:
+    """One row per distinct value of ``field`` in ``sub`` — population, % complete, and BEI."""
+    groups = group_values(sub, field)
+    if not groups:
+        return (
+            f"<div class=panel><h3>Breakdown by {_e(field)}</h3>"
+            f"<p class=muted>No activities in scope carry a value for this field.</p></div>"
+        )
+    limit = 200
+    shown = list(groups.items())[:limit]
+    rows = []
+    for value, uids in shown:
+        group = filter_schedule(sub, [(field, value)])
+        tasks = non_summary(group)
+        total = len(tasks) or 1
+        complete = sum(1 for t in tasks if t.percent_complete >= 100.0)
+        bei = compute_bei(group)
+        bei_cell = f"{round(bei.value, 2)}" if bei.population else "<span class=muted>—</span>"
+        rows.append(
+            f"<tr><td>{_e(value)}</td><td class=num>{len(uids)}</td>"
+            f"<td class=num>{100.0 * complete / total:.0f}%</td>"
+            f"<td class=num>{bei_cell} <span class=muted>({bei.count}/{bei.population})</span></td></tr>"
+        )
+    more = (
+        f"<p class=muted>Showing the first {limit} of {len(groups)} values.</p>"
+        if len(groups) > limit
+        else ""
+    )
+    return (
+        f"<div class=panel><h3>Breakdown by {_e(field)} &mdash; {len(groups)} value(s)</h3>"
+        "<table class=card-table><tr><th scope=col>Value</th><th scope=col>Activities</th>"
+        "<th scope=col>% complete</th><th scope=col>BEI</th></tr>"
+        f"{''.join(rows)}</table>{more}</div>"
+    )
+
+
+def _groups_body(
+    versions: list[tuple[str, Schedule]],
+    version_key: str,
+    sch: Schedule,
+    criteria: list[tuple[str, str]],
+    breakdown: str,
+) -> str:
+    """The Groups & Filters view: scope every metric to a field-value selection, and/or break a
+    field into its values (ADR-0090). Server-rendered over the chosen loaded version."""
+    form = _groups_form(versions, version_key, sch, criteria, breakdown)
+    sub = filter_schedule(sch, criteria) if criteria else sch
+    matched, total = len(non_summary(sub)), len(non_summary(sch))
+
+    if criteria:
+        chips = " ".join(
+            f'<span class="dp-chip">{_e(f)} = {_e(v) if v else "(populated)"}</span>'
+            for f, v in criteria
+        )
+        summary = (
+            f"<div class=panel><h2>Scope</h2><p>{chips}</p>"
+            f"<p class=muted><b>{matched}</b> of {total} activities match (logical AND).</p></div>"
+        )
+    else:
+        summary = (
+            f"<div class=panel><h2>Scope</h2><p class=muted>No filter &mdash; all {total} "
+            "activities. Choose a field and value above to scope the metrics.</p></div>"
+        )
+
+    if not non_summary(sub):
+        scorecard = "<div class=panel><p class=muted>No activities match this filter.</p></div>"
+    else:
+        makeup = compute_activity_makeup(sub)
+        cards = _stat_cards(
+            [
+                ("Activities", str(makeup.total)),
+                ("Normal", str(makeup.normal)),
+                ("Milestones", str(makeup.milestones)),
+                ("Complete", str(makeup.complete)),
+                ("In progress", str(makeup.in_progress)),
+                ("Planned", str(makeup.planned)),
+            ]
+        )
+        try:
+            dcma = compute_dcma14(sub)
+            table = _metric_scorecard_table(dcma)
+        except CPMError as exc:
+            table = f'<p class="notice err">Network for this scope cannot be solved: {_e(exc)}</p>'
+        scorecard = f"<div class=panel><h2>Metric scorecard for this scope</h2>{cards}{table}</div>"
+
+    breakdown_html = (
+        _groups_breakdown_table(sub, breakdown)
+        if breakdown and breakdown in available_fields(sch)
+        else ""
+    )
+    return form + summary + scorecard + breakdown_html
 
 
 def _evolution_body(
