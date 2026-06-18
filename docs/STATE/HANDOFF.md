@@ -1,22 +1,26 @@
-# Handoff — 2026-06-18 (PRs #81–#146 MERGED; **`main` green & current at #146 (`38393e3`)**; ADR-0087 = OPEN draft — HMI new period metric, formula-audit)
+# Handoff — 2026-06-18 (PRs #81–#147 MERGED; **`main` green & current at #147 (`26d1ab9`)**; ADR-0088 = OPEN draft — map MSPDI custom fields)
 
-> ## START HERE (post-#146) — Acumen-library FORMULA-AUDIT
-> **`main` is at #146 (`38393e3`), green.** **VALUE-AUDIT COMPLETE** (Schedule-Quality 9/9 + Baseline
-> Compliance 10/10; ADR-0079/0080/0081/0083/0084). On the **FORMULA-AUDIT** for families with NO Acumen
-> output. Merged: **BEI** → Bible "Tasks" formula (ADR-0085, #145); **CPLI** → remaining critical-path
-> length (ADR-0086, #146). **OPEN draft is ADR-0087** — **NEW metric HMI (Hit or Miss Index)**, the
-> operator's pick after I found MEI≠HMI (MEI is cumulative milestone-BEI; HMI is period-over-period, needs
-> `ProjectPreviousTimeNow`). New `engine/metrics/hmi.py` `compute_hmi(current, previous_time_now)` (Bible
-> `HMI - Value Tasks`/`Milestones` formula exactly: hits=baselined-due-this-period AND completed-this-
-> period; tasks=Normal-only, milestones separate), `trend.py` `compute_hmi_trend` (each version vs
-> predecessor's data date, first=None), surfaced in `/api/trend` + a trend.js chart. Purely additive,
-> parity untouched. Real goldens: Project5-vs-Project2 HMI(Tasks)=0.05 (18 misses). 7 new tests.
+> ## START HERE (post-#147) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set
+> **`main` is at #147 (`26d1ab9`), green.** Formula-audit done (BEI #145, CPLI #146, HMI #147). **NEW
+> operator request (big, multi-part) + NEW files** (`Large_Test_File2.mpp` = edited version, Acumen
+> Ribbon/DCMA/Quick-Add reports on it — value-validation data I'd asked for). Asks: (1) **map all custom
+> fields** so user can select/display them; (2) **driving path between two user-defined UIDs**, and how it
+> **changes over time**; (3) **group/filter ALL metrics by a chosen field** (e.g. CA-WBS = a value), with
+> **up to 5 fields** (standard + custom) at once.
 >
-> **FORMULA-AUDIT STATUS:** the two clean parity-safe FIXES are done (BEI, CPLI). HMI was a missing
-> metric, now added. **REMAINING candidates all RISK moving validated values w/o Acumen output:** other
-> DCMA-14 inclusions (Missed/Invalid-Dates filters), CP Test (DCMA12) `ProjectCriticalPathTest`, CEI/bow-
-> wave. Bible "adjusted"/Start-based HMI variants could also follow. **Highest-confidence path: ask
-> operator for Acumen OUTPUT for BEI/HMI/CEI/critical-path on the Large File** before changing more.
+> **OPEN draft = ADR-0088 (PR in flight): custom-field MAPPING done** (the foundation). `Task.custom_fields`
+> (tuple of (label,value); label=alias e.g. `CA-WBS` else field name `Text20`) + helpers; `Schedule.
+> custom_field_labels` (populated fields, declared order); MSPDI parser reads `<ExtendedAttributes>` defs +
+> per-task values. Schema 2.1.0→2.2.0. Real file: 2125 tasks, **69 populated custom fields**, CA-WBS = 12
+> groups. Tests added. **NEXT (build on this):** (A) column-picker to DISPLAY selected custom fields in the
+> activity table; (B) **group-by/filter engine** — a field-selection (≤5 standard+custom) that scopes every
+> metric to matching tasks (operator: "choose CA-WBS → only tasks with a value the user defines"); (C)
+> **driving-path between 2 UIDs + over versions** (CPM path trace, animated like the trend views).
+>
+> **VALIDATION DATA (unused yet):** the edited reports are 2-version workbooks (orig + `Large-Test-File2`)
+> w/ Ribbon View/Analysis (metric values → can finally value-validate BEI/HMI/CEI/critical-path) + per-
+> activity detail sheets + Phase Analysis. `/tmp/ltf2.xml` = converted MSPDI of the edited file (ephemeral).
+> Convert via `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <mpp> <out.xml>`.
 > **DEFERRED:** Float Ratio™ + composite Score (no extractable formula). **Other backlog:** D (Fuse year
 > Trend/Phase — ASK binning), `/path` chart bug (needs screenshot). **CUI:** `.mpp`/`.xlsx`/`.aft` not
 > committed; 6 visual catalogs were sent to the operator (not in git). Catalog generator in `/tmp`.

@@ -145,6 +145,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     resources = _parse_resources(root)
     resource_name_by_uid = {res.unique_id: res.name for res in resources}
     assigned_uids_by_task, assigned_names_by_task = _parse_assignments(root, resource_name_by_uid)
+    ext_defs = _parse_extended_attribute_defs(root)
 
     tasks: list[Task] = []
     raw_links: list[tuple[int, ET.Element]] = []
@@ -152,9 +153,16 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     for task_el in [] if tasks_el is None else tasks_el.findall("Task"):
         if _text(task_el, "IsNull") == "1":
             continue  # an explicitly null placeholder row (not a real activity)
-        task = _parse_task(task_el, assigned_uids_by_task, assigned_names_by_task)
+        task = _parse_task(task_el, assigned_uids_by_task, assigned_names_by_task, ext_defs)
         tasks.append(task)
         raw_links.extend((task.unique_id, el) for el in task_el.findall("PredecessorLink"))
+
+    # the selectable custom fields: those actually populated on ≥1 task, in project-declared order
+    # (so the picker shows only fields with data, not every empty Text/Number slot the file holds).
+    populated = {label for t in tasks for label, _ in t.custom_fields}
+    custom_field_labels = tuple(
+        dict.fromkeys(label for label in ext_defs.values() if label in populated)
+    )
 
     # links resolve after all tasks parse: a percent lag is a share of the PREDECESSOR's
     # duration, and predecessors can appear later in the file than their successors
@@ -178,6 +186,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
+            custom_field_labels=custom_field_labels,
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"MSPDI does not form a valid schedule: {exc}") from exc
@@ -385,10 +394,48 @@ def _exception_range(
 # --- task ------------------------------------------------------------------------
 
 
+def _parse_extended_attribute_defs(root: ET.Element) -> dict[str, str]:
+    """Map each custom field's ``FieldID`` → display label (``Alias`` when set, else ``FieldName``).
+
+    MSPDI declares custom/extended fields once at the project level (``<ExtendedAttributes>``); each
+    task then carries values keyed by ``FieldID``. The label is what the user picks fields by, so an
+    operator-given alias (e.g. ``CA-WBS``) wins over the raw field name (``Text20``)."""
+    defs: dict[str, str] = {}
+    container = root.find("ExtendedAttributes")
+    for ea in [] if container is None else container.findall("ExtendedAttribute"):
+        field_id = _text(ea, "FieldID")
+        if field_id is None:
+            continue
+        defs[field_id] = _text(ea, "Alias") or _text(ea, "FieldName") or field_id
+    return defs
+
+
+def _task_custom_fields(
+    task_el: ET.Element, ext_defs: dict[str, str]
+) -> tuple[tuple[str, str], ...]:
+    """The task's populated custom fields as ``(label, value)`` pairs (file order, dedup by label).
+
+    A value whose ``FieldID`` has no project-level definition is skipped — it cannot be labelled."""
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for ea in task_el.findall("ExtendedAttribute"):
+        field_id = _text(ea, "FieldID")
+        value = _text(ea, "Value")
+        if field_id is None or value is None:
+            continue
+        label = ext_defs.get(field_id)
+        if label is None or label in seen:
+            continue
+        seen.add(label)
+        out.append((label, value))
+    return tuple(out)
+
+
 def _parse_task(
     task_el: ET.Element,
     assigned_uids_by_task: dict[int, tuple[int, ...]],
     assigned_names_by_task: dict[int, tuple[str, ...]],
+    ext_defs: dict[str, str],
 ) -> Task:
     uid = _int(task_el, "UID")
     if uid is None:
@@ -444,6 +491,7 @@ def _parse_task(
             resource_ids=assigned_uids_by_task.get(uid, ()),
             stored_total_float_minutes=_stored_slack_minutes(task_el),
             stored_is_critical=_bool_or_none(task_el, "Critical"),
+            custom_fields=_task_custom_fields(task_el, ext_defs),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc
