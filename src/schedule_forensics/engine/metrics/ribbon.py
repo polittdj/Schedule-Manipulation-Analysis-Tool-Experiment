@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
-from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.metrics._common import is_effective_critical, non_summary
 
 if TYPE_CHECKING:  # type-only — avoids a metrics -> dcma_audit -> metrics import cycle
     from schedule_forensics.engine.cpm import CPMResult
@@ -90,10 +90,15 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         1 for t in tasks if t.unique_id not in has_pred or t.unique_id not in has_succ
     )
     logic_density = _round_half_up(2 * links_among_ns / n) if n else 0.0
+    # Acumen's "Critical" reads the source tool's STORED Critical flag when present (matching it
+    # on progressed files); else pure-logic CPM critical, both excluding completed work (ADR-0080).
     critical = sum(
         1
-        for uid in cpm.critical_path
-        if uid in schedule.tasks_by_id and schedule.tasks_by_id[uid].percent_complete < 100.0
+        for t in tasks
+        if t.percent_complete < 100.0
+        and is_effective_critical(
+            t, cpm.timings[t.unique_id].total_float if t.unique_id in cpm.timings else 0
+        )
     )
     merge_hotspot = sum(1 for c in pred_count.values() if c > _MERGE_HOTSPOT_MIN_PREDS)
 

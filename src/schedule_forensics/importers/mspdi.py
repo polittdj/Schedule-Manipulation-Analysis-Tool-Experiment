@@ -222,6 +222,23 @@ def _bool(parent: ET.Element, tag: str, *, default: bool) -> bool:
     return raw.strip().lower() in {"1", "true"}
 
 
+def _bool_or_none(parent: ET.Element, tag: str) -> bool | None:
+    """MSPDI boolean that distinguishes *absent* (``None``) from ``0``/``1`` — so a metric
+    can tell "the source tool did not provide this" from "the source says false"."""
+    raw = _text(parent, tag)
+    if raw is None:
+        return None
+    return raw.strip().lower() in {"1", "true"}
+
+
+def _stored_slack_minutes(task_el: ET.Element) -> int | None:
+    """MSPDI ``Task/TotalSlack`` → working minutes (``None`` if absent). MS Project stores slack
+    fields in **tenths of a minute** (verified against the goldens — stored ÷ 10 == recomputed
+    CPM float on clean tasks); the engine's float axis is whole minutes (480/day)."""
+    raw = _int(task_el, "TotalSlack")
+    return None if raw is None else round(raw / 10)
+
+
 # --- calendar ---------------------------------------------------------------------
 
 #: Defensive cap when expanding one exception date range into holidays — real holiday
@@ -425,6 +442,8 @@ def _parse_task(
             budgeted_cost=bl_cost,
             resource_names=assigned_names_by_task.get(uid, ()),
             resource_ids=assigned_uids_by_task.get(uid, ()),
+            stored_total_float_minutes=_stored_slack_minutes(task_el),
+            stored_is_critical=_bool_or_none(task_el, "Critical"),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc

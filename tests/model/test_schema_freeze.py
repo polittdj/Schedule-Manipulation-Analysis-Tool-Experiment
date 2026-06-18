@@ -37,6 +37,8 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "deadline",
         "percent_complete",
         "physical_percent_complete",
+        "stored_total_float_minutes",
+        "stored_is_critical",
         "start",
         "finish",
         "actual_start",

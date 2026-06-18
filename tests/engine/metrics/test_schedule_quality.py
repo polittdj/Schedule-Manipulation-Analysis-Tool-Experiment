@@ -55,6 +55,60 @@ def test_merge_hotspot_threshold_is_three_predecessors() -> None:
     assert q["merge_hotspot"].offender_uids == (5,)
 
 
+def test_effective_float_helpers_prefer_stored_msproject_values() -> None:
+    """ADR-0080: when the source file carries MS Project's stored Total Slack / Critical flag,
+    the float-based metrics score on those (what Acumen reads); otherwise the recomputed CPM
+    float, with completed work excluded from Critical."""
+    from schedule_forensics.engine.metrics._common import (
+        effective_total_float,
+        is_effective_critical,
+    )
+
+    base = Task(unique_id=1, name="x", duration_minutes=DAY, percent_complete=50.0)
+    behind = base.model_copy(
+        update={"stored_total_float_minutes": -480, "stored_is_critical": True}
+    )
+    assert effective_total_float(behind, 999) == -480.0  # stored wins over recomputed
+    assert is_effective_critical(behind, 999) is True
+    ahead = base.model_copy(update={"stored_total_float_minutes": 480, "stored_is_critical": False})
+    assert effective_total_float(ahead, -999) == 480.0
+    assert is_effective_critical(ahead, -999) is False  # stored False wins over recomputed crit
+    # absent → fall back to recomputed float; Critical also excludes completed work
+    assert effective_total_float(base, -240) == -240.0
+    assert is_effective_critical(base, 0) is True
+    done = Task(unique_id=2, name="y", duration_minutes=DAY, percent_complete=100.0)
+    assert is_effective_critical(done, -5) is False
+
+
+def test_negative_float_and_critical_use_stored_slack_when_present() -> None:
+    """The operator's bug: on a progressed file the engine's recomputed float was non-negative
+    (0 negative float) while MS Project / Acumen stored negative Total Slack. With the stored
+    value present, Negative Float and Critical now match the source tool (ADR-0080)."""
+    t1 = Task(unique_id=1, name="A", duration_minutes=DAY, percent_complete=50.0)
+    # clean chain → recomputed float is 0 for task 2; the source stored it behind a constraint
+    t2_stored = Task(
+        unique_id=2,
+        name="B",
+        duration_minutes=DAY,
+        percent_complete=50.0,
+        stored_total_float_minutes=-2400,
+        stored_is_critical=True,
+    )
+    rels = (Relationship(predecessor_id=1, successor_id=2),)
+    q = compute_schedule_quality(
+        Schedule(name="s", project_start=MON, tasks=(t1, t2_stored), relationships=rels)
+    )
+    assert q["negative_float"].count == 1 and q["negative_float"].offender_uids == (2,)
+    assert 2 in q["critical"].offender_uids
+
+    # control: identical schedule without stored values → recomputed float, no negative float
+    t2_plain = Task(unique_id=2, name="B", duration_minutes=DAY, percent_complete=50.0)
+    q2 = compute_schedule_quality(
+        Schedule(name="s", project_start=MON, tasks=(t1, t2_plain), relationships=rels)
+    )
+    assert q2["negative_float"].count == 0
+
+
 def test_logic_density_is_two_links_per_activity() -> None:
     tasks = [Task(unique_id=i, name=f"T{i}", duration_minutes=DAY) for i in (1, 2)]
     rels = [Relationship(predecessor_id=1, successor_id=2)]

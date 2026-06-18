@@ -24,7 +24,9 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
+    effective_total_float,
     evaluate,
+    is_effective_critical,
     is_incomplete,
     non_summary,
     percent,
@@ -81,7 +83,9 @@ def compute_schedule_quality(
         CheckStatus.NOT_APPLICABLE,
     )
 
-    crit = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) <= 0)
+    crit = tuple(
+        t.unique_id for t in incomplete if is_effective_critical(t, tf.get(t.unique_id, 0))
+    )
     out["critical"] = MetricResult(
         "critical",
         "Critical",
@@ -105,7 +109,9 @@ def compute_schedule_quality(
         offender_uids=hard,
     )
 
-    neg = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) < 0)
+    neg = tuple(
+        t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
+    )
     out["negative_float"] = MetricResult(
         "negative_float",
         "Negative Float",

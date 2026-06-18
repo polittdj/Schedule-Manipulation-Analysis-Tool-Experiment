@@ -23,6 +23,7 @@ from schedule_forensics.engine.metrics._common import (
     CheckStatus,
     Direction,
     MetricResult,
+    effective_total_float,
     evaluate,
     forty_four_days_min,
     is_incomplete,
@@ -152,8 +153,13 @@ def compute_dcma14(
         "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
     )
 
-    # DCMA-07 Negative float — incomplete activities with total float < 0.
-    neg = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) < 0)
+    # DCMA-07 Negative float — incomplete activities with total float < 0. Scored on the source
+    # tool's STORED Total Slack when present (Acumen fidelity on progressed files), else the
+    # recomputed CPM float (ADR-0080). High Float (DCMA06) stays on recomputed float — it is a
+    # separately pinned documented residual (ADR-0012), not part of this reconciliation.
+    neg = tuple(
+        t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
+    )
     out["DCMA07"] = _r("DCMA07", "Negative Float", len(neg), n_inc, "%", 0.0, Direction.EQ, neg)
 
     # DCMA-08 High duration — incomplete activities with baseline duration > 44 days.
