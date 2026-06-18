@@ -39,6 +39,7 @@
 
     var W = 980, H = 80 + methods.length * 64, padL = 12, padR = 14, padT = 44, padB = 36;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, "Forecast drift — the three forecasts across versions");
     var x = function (ms) { return padL + ((ms - lo) / (hi - lo)) * (W - padL - padR); };
 
     var title = svgEl("text", { x: W / 2, y: 20, "text-anchor": "middle", fill: "var(--ink)", "font-size": 16, "font-weight": 600 });

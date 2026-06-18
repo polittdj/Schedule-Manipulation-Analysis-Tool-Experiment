@@ -139,6 +139,7 @@ _LAYOUT = Template(
 <link rel=icon href="/static/favicon.ico">
 <script src="/static/theme.js"></script>
 <script src="/static/checklist.js"></script>
+<script src="/static/a11y.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>

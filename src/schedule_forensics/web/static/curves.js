@@ -56,7 +56,7 @@
 
   // One month-axis line chart. series = [{values, color, dashed, label}]. statusIndex
   // (optional) draws a dashed data-date marker. Renders into the given container element.
-  function lineChart(box, months, series, statusIndex) {
+  function lineChart(box, months, series, statusIndex, name) {
     if (!box) return;
     box.innerHTML = "";
     var W = 980, H = 320, padL = 36, padR = 14, padT = 24, padB = 46;
@@ -130,7 +130,16 @@
       lx += 20 + s.label.length * 6 + 22;
     });
 
+    if (window.SFA11y) SFA11y.label(svg, name || "Chart");
     box.appendChild(svg);
+    // A3: a visually-hidden data-table fallback so screen readers can read the numbers
+    if (window.SFA11y) {
+      var headers = ["Month"].concat(series.map(function (s) { return s.label; }));
+      var trows = months.map(function (m, i) {
+        return [m].concat(series.map(function (s) { return s.values[i]; }));
+      });
+      box.appendChild(SFA11y.table((name || "Chart") + " — data", headers, trows));
+    }
   }
 
   fetch("/api/curves")
@@ -149,7 +158,8 @@
           { values: latest.baseline_finishes, color: GOLD, label: "Baseline finishes" },
           { values: latest.actual_finishes, color: BLUE, label: "Actual / scheduled finishes" },
         ],
-        latest.status_index
+        latest.status_index,
+        "Finishes — actual vs baseline finishes by month"
       );
 
       // ── DATA Date Finishes: one actual-finish curve per version ─────────────────
@@ -159,7 +169,8 @@
         versions.map(function (v, i) {
           return { values: v.actual_finishes, color: PALETTE[i % PALETTE.length], label: labels[i] };
         }),
-        null
+        null,
+        "Data-date finishes — actual-finish curve per version"
       );
 
       // ── Slippage: per version, start (solid) + finish (dashed) curves ───────────
@@ -169,7 +180,10 @@
         slipSeries.push({ values: v.actual_starts, color: col, label: labels[i] + " starts" });
         slipSeries.push({ values: v.actual_finishes, color: col, dashed: true, label: labels[i] + " finishes" });
       });
-      lineChart(document.getElementById("slippageChart"), months, slipSeries, null);
+      lineChart(
+        document.getElementById("slippageChart"), months, slipSeries, null,
+        "Slippage — start and finish curves per version"
+      );
     })
     .catch(function () {
       ["finishesChart", "dataDateChart", "slippageChart"].forEach(function (id) {

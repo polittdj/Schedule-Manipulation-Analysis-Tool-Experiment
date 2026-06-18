@@ -1844,3 +1844,15 @@ wipe-confirm) keep working while remote scripts/styles stay forbidden; tightenin
 `test_airgap.py` gains a header-presence case and still passes. Parity 10/10; gate green. Remaining
 audit: A3 (chart names+sr-only tables — biggest 508 win), A4 (table scope), A5 (print), A9/A10
 (responsive+theme), A11 (HANDOFF-drift test). Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 5) — chart accessibility A3 (ADR-0075 open).** Shared `static/a11y.js`
+(`window.SFA11y`, shell-loaded): `label(svg, name)` gives every one of the 11 SVG charts a real
+accessible name (`<title>` first child + `aria-label`) — fixes the nameless `role=img` (which a
+screen reader announces as a bare "graphic", worse than no role): trend ×4 by their existing title,
+curves ×3 via a new name arg, and cei/scurve/drift/path_evolution/trend_drill/wbs by concise static
+names. `table(caption, headers, rows)` builds a `.sr-only` data-table fallback, implemented as the
+reference pattern on the curves page (Finishes / Data-date / Slippage) so a screen-reader user can
+read the numbers while the chart stays visual. `a11y.js` added to the air-gap scan (green). Parity
+10/10. Follow-up: `.sr-only` tables for the remaining charts (trivial with the helper; names already
+done). Remaining audit: A4 (table scope), A5 (print), A9/A10 (responsive+theme), A11 (drift test).
+Model/mode: Opus 4.8 (1M).
