@@ -1,32 +1,32 @@
-# Handoff — 2026-06-18 (PRs #81–#150 MERGED; **`main` green & current at #150 (`731a432`)**; NO open PR — clean stopping point mid feature-set)
+# Handoff — 2026-06-18 (PRs #81–#150 MERGED; **`main` green at #150 (`731a432`)**; OPEN draft PR = ADR-0091 driving-path-between-2-UIDs)
 
-> ## START HERE (post-#150) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set (3 of ~6 done)
-> **`main` is at #150 (`731a432`), green, no open PR.** Working a BIG multi-part operator request +
-> NEW files (see `NEXT-SESSION-PROMPT.md` for the kickoff + file list). The 3 asks: (1) **map all custom
-> fields** so the user can select/display them; (2) **driving path between two user-defined UIDs**, and how
-> it **changes over time**; (3) **group/filter ALL metrics by a chosen field** (CA-WBS = a value), **up to
-> 5 fields** (standard + custom) at once — operator chose **filter + breakdown**.
+> ## START HERE (post-#150) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set (4 of ~6 done)
+> **`main` is at #150 (`731a432`), green.** OPEN draft PR (branch `claude/driving-path-2uids`) =
+> **driving path between 2 UIDs, across versions (ADR-0091)** — engine + server-rendered page, full gate
+> green, 1000+ tests pass. Working a BIG multi-part operator request + NEW files (see
+> `NEXT-SESSION-PROMPT.md` for the kickoff + file list). The 3 asks: (1) **map all custom fields**;
+> (2) **driving path between two user-defined UIDs** + over time ← **just built**; (3) **group/filter ALL
+> metrics by a chosen field** (CA-WBS = a value), **up to 5 fields** — operator chose **filter + breakdown**.
 >
-> **SHIPPED THIS SESSION (all merged, all green):**
-> - #145 BEI→Bible (ADR-0085) — **later CORRECTED by #149**; #146 CPLI→remaining CP length (ADR-0086);
->   #147 **HMI** new period metric (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI
->   corrected & Acumen-validated** (ADR-0089); #150 **grouping/filter ENGINE** (ADR-0090).
+> **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, later CORRECTED by #149); #146 CPLI→remaining
+> CP length (ADR-0086); #147 **HMI** new period metric (ADR-0087); #148 **custom-field mapping** (ADR-0088);
+> #149 **BEI corrected & Acumen-validated** (ADR-0089); #150 **grouping/filter ENGINE** (ADR-0090).
+> **OPEN draft:** **driving-path-between-2-UIDs (ADR-0091)** — `engine/driving_path.py`
+> (`driving_path_between`, `compute_driving_path_evolution`) on `path_trace.descendants_of` (new) +
+> `compute_driving_slack`; `/driving-path` page (two UID inputs, per-version corridor chips + entered/left
+> diff). Defined "drives" on SSI's whole-day axis (`on_driving_path`); parallel equal legs all included.
+> Deferred within it: the animated date-axis Gantt (matching `/evolution`).
 > - **VALUE-VALIDATION vs the operator's new Acumen ribbon reports (2 versions of the Large File):**
 >   **HMI is EXACT** (Acumen v2 = 0 of 24 due tasks, milestone 0 of 1, v1 N/A — `compute_hmi_trend`
 >   reproduces it). **BEI was WRONG** → fixed to Acumen "BEI - Value Tasks" = complete NORMAL tasks /
 >   NORMAL baselined-due (no baseline-dur filter, no missing-baseline term); goldens EXACT 0.74/0.59,
 >   Large-File denominator EXACT 1228, numerator within 2 of 632.
 >
-> **NEXT — operator chose to build "DRIVING PATH between 2 UIDs, ACROSS LOADED VERSIONS" FIRST.** Was just
-> starting it when told to stop. Engine to build: `engine/driving_path.py` — trace the controlling logic
-> chain from UID A→B per version + per-version diff for the animation. **Build on:** `engine/path_trace.py`
-> (`ancestors_of(schedule, uid)` = transitive predecessors; `topo_order`), `engine/driving_slack.py`
-> (`compute_driving_slack`, `on_driving_path` classification, `date_basis`), CPM `TaskTiming`
-> (early/late start/finish, total/free_float) + `critical_path`. Then a `/driving-path` page (two UID
-> inputs) showing the chain per version (animate/diff like Trend/HMI/S-curve). **THEN:** grouping/filter
-> **UI** (wire `engine/grouping.py` — `available_fields`/`field_value`/`filter_schedule`/`group_values` —
-> into the dashboard: ≤5-field picker scopes all metrics + per-group scorecard, e.g. BEI per CA-WBS) and a
-> **display column-picker** for custom fields.
+> **NEXT (after ADR-0091 merges):** grouping/filter **UI** — wire `engine/grouping.py`
+> (`available_fields`/`field_value`/`filter_schedule`/`group_values`) into the dashboard: ≤5-field picker
+> scopes all metrics + per-group scorecard (e.g. BEI per CA-WBS). **THEN:** **display column-picker** for
+> custom fields; then keep value-validating CEI / critical-path against the Ribbon Analysis sheet; optional
+> animated Gantt for the driving-path corridor.
 >
 > **MODEL/ENGINE recap:** custom fields = `Task.custom_fields` (tuple of (label,value); alias e.g. `CA-WBS`
 > wins over `Text20`) + helpers `custom_field(label)`/`custom_field_map`; `Schedule.custom_field_labels`

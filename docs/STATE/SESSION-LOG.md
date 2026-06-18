@@ -2104,3 +2104,18 @@ Acumen 1228). NEXT (operator's pick): build the DRIVING PATH between 2 UIDs ACRO
 grouping/filter UI (wire engine/grouping.py) + custom-field display column-picker. MORE Acumen output to
 validate (CEI/FEI/BRI/TC-BEI/EVM) in the edited DCMA report's Ribbon Analysis sheet. Kickoff prompt +
 file list in docs/STATE/NEXT-SESSION-PROMPT.md. No open PR; main green at #150. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 22) — Driving path between 2 UIDs, across versions (ADR-0091).** Resumed after the
+handoff; built the operator's chosen-next feature. NEW `engine/driving_path.py`: `driving_path_between(
+schedule, A, B)` = the controlling corridor from source A to target B — B's driving path (driving_slack
+< 1 working day, the SSI on_driving_path axis) ∩ descendants(A) ∪ {A}, topo-ordered A→…→B; flags
+connected-but-not-driving (reports A's slack) and absent/summary endpoints (total, never raises).
+`compute_driving_path_evolution(schedules, cpms, A, B)` mirrors path_evolution: per-version snapshots
+oldest→newest with entered/left/stayed diff, length delta, and a plain-English change_note ("A now
+drives B", "driving path broke", route lost, endpoint appeared/removed). Added `path_trace.descendants_of`
+(mirror of ancestors_of). Server-rendered `/driving-path` page (two UID inputs → per-version corridor as
+UID-name chips, entered coloured, left listed) + nav link + CSS + Metric-Dictionary entry. Verified on
+Project5 golden: 35→143 = all 36 driving tasks, 38→143 trims to 35 (corridor trimming works on real
+data). Gate: ruff/mypy/bandit clean, full suite 984→ +tests green (engine test_driving_path,
+test_path_trace descendants, web test_driving_path_view). ADR-0091. NEXT: grouping/filter UI (wire
+engine/grouping.py). Model/mode: Opus 4.8 (1M).

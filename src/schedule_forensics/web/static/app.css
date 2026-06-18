@@ -144,6 +144,12 @@ table.wbs-table th:first-child, table.wbs-table td:first-child { text-align: lef
 .ev-uid { color: var(--muted); font-variant-numeric: tabular-nums; }
 .ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }
 b.ev-entered { color: var(--ok); } b.ev-stayed { color: var(--muted); } b.ev-left { color: var(--bad); }
+/* Driving Path: the corridor rendered as a chain of UID-name chips */
+.dp-chip { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 12px;
+  border: 1px solid var(--line); background: var(--field-bg); }
+.dp-chip.ev-entered { border-color: var(--ok); }
+.dp-arrow { color: var(--muted); }
+.dp-note { color: var(--warn); font-weight: 600; }
 /* Dashboard health cards: per-schedule KPI + status-mix bar + DCMA ribbon, link to report */
 .dash-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; margin-top: 10px; }
 .dash-card { display: block; background: var(--field-bg); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; color: var(--ink); text-decoration: none; transition: border-color .15s; }
