@@ -108,3 +108,18 @@ def test_table_headers_carry_scope(client: TestClient) -> None:
     client.post("/upload", files={"files": ("Project5.mspdi.xml", golden.read_bytes(), "text/xml")})
     assert "scope=col" in client.get("/analysis/Project5").text
     assert "scope=col" in client.get("/help").text  # the metric dictionary table too
+
+
+def test_theme_toggle_announces_state_and_respects_os_theme(client: TestClient) -> None:
+    """A10: the theme toggle sets aria-pressed, and a first visit follows the OS color scheme."""
+    js = client.get("/static/theme.js").text
+    assert "aria-pressed" in js
+    assert "prefers-color-scheme" in js and "matchMedia" in js
+
+
+def test_layout_reflows_on_narrow_viewports(client: TestClient) -> None:
+    """A9 (WCAG 1.4.10): a responsive breakpoint wraps the nav and collapses the wide card grids
+    to a single column, so 200%-zoom / narrow widths don't need horizontal page scroll."""
+    css = client.get("/static/base.css").text
+    assert "@media (max-width:760px)" in css
+    assert "flex-wrap:wrap" in css and "grid-template-columns:1fr" in css

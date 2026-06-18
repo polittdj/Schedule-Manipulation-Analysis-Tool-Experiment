@@ -1,16 +1,17 @@
-# Handoff — 2026-06-18 (PRs #81–#135 MERGED; **`main` green & current at #135 (`593890d`)**; ADR-0076 = OPEN draft — table scope + print stylesheet)
+# Handoff — 2026-06-18 (PRs #81–#136 MERGED; **`main` green & current at #136 (`4a298dd`)**; ADR-0077 = OPEN draft — audit close-out A9/A10/A11)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#135)
-> **`main` is at #135 (`593890d`), green.** Shipped this session: AI tranche (#130–#132), audit
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#136)
+> **`main` is at #136 (`4a298dd`), green.** Shipped this session: AI tranche (#130–#132), audit
 > **Group 1 a11y** (#133/ADR-0073), **A7 CSP** (#134/ADR-0074), **A3 chart names + curves data
-> tables** (#135/ADR-0075). The **OPEN draft on this branch is ADR-0076** — audit **A4** (`scope=col`
-> on every server-rendered `<th>`) + **A5** (`@media print` stylesheet in `base.css`: hides chrome,
-> forces light ink, avoids page breaks, prints scrollers in full). The highest ADR on disk is **0076**.
-> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A9/A10**
-> responsive nav + theme `aria-pressed`/`prefers-color-scheme`, **A11** a HANDOFF-drift test (staleness
-> half already fixed by #128–#135), and the **A3-follow-up** data-table fallbacks for the other charts
-> (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`). (A4 +
-> A5 are this ADR-0076 PR.) Operator feature backlog still open: **`/path` chart visual bug**
+> tables** (#135/ADR-0075), **A4 scope + A5 print** (#136/ADR-0076). The **OPEN draft on this branch
+> is ADR-0077** — the audit close-out: **A9** responsive reflow (`@media max-width:760px` wraps the
+> nav + collapses the wide grids), **A10** theme `aria-pressed` + first-visit `prefers-color-scheme`,
+> **A11** a docs-drift test (latest ADR must appear in BOTH HANDOFF and SESSION-LOG). The highest ADR
+> on disk is **0077**. **The external audit A1–A11 is now FULLY addressed.**
+> **External audit (7 roles, A1–A11) FULLY ADDRESSED (#133–#136 + this ADR-0077 PR).** Only easy
+> follow-up left: **A3-follow-up** `.sr-only` data tables for the non-curves charts
+> (cei/scurve/drift/trend/trend_drill/wbs — names already done; trivial with `SFA11y.table`).
+> Operator feature backlog still open: **`/path` chart visual bug**
 > (needs the operator's screenshot), **D** Fuse year Trend/Phase (parity-sensitive; binning ambiguous
 > — ask the operator), **E** Data-Date/Slippage overlaid-line redesign w/ clickable legend, **F**
 > Bow-Wave running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
@@ -77,7 +78,14 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0076 (OPEN draft, this branch) — table scope + print stylesheet (audit A4 + A5).**
+> **PR — ADR-0077 (OPEN draft, this branch) — audit close-out (A9 / A10 / A11).** A9: a
+> `@media (max-width:760px)` block wraps the header/nav and collapses the wide card grids to one
+> column (also satisfies 200%-zoom reflow). A10: `theme.js` sets `aria-pressed` on the toggle and a
+> first visit follows the OS `prefers-color-scheme` (saved choice still wins, no flash). A11:
+> `test_state_docs.py` now requires the latest ADR in BOTH HANDOFF and SESSION-LOG (anchored on local
+> ADR files). **External audit A1–A11 fully addressed.** Parity 10/10. Built on `main`@#136.
+
+> **PR — ADR-0076 (MERGED as #136) — table scope + print stylesheet (audit A4 + A5).**
 > A4: mechanical `scope=col` on every server-rendered `<th>` (all 43 are column headers). A5: a
 > `@media print` block in `base.css` — hides chrome (`header`/`.cf-bar`/`.export-bar`/`.viz-controls`/
 > `#askPanel`), forces light ink on white, `break-inside:avoid` on panels/cards/tables, prints the

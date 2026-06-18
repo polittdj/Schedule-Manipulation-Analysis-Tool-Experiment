@@ -88,3 +88,13 @@ cursor:pointer;text-decoration:underline}
   .cf-scroll,.gantt-scroll,#grid,.path-view,.evo-gantt,#forecastRuler{overflow:visible!important}
   @page{margin:14mm}
 }
+
+/* A9 (WCAG 1.4.10 reflow): at ~200% zoom / narrow widths the header (13 nav links + forms) and the
+   wide card grids must wrap to a single column with no horizontal page scroll. */
+@media (max-width:760px){
+  header{flex-wrap:wrap;gap:8px 16px}
+  header nav{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
+  header nav a{margin-right:0}
+  main{padding:16px 14px}
+  .dash-cards,.brief-cards,.card-cols,.qual-drill-grid{grid-template-columns:1fr}
+}
