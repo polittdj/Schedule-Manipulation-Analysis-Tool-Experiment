@@ -60,6 +60,11 @@ class AIConfig:
     #: figure-agreement note. Cloud can never be a second model.
     second_backend: str = "none"  # "none" | "ollama" | "openai"
     second_model: str = ""
+    #: Seconds a single model generation may run before giving up. Generous by default and
+    #: operator-adjustable so a big, slow local model (e.g. llama3.1:70b on a laptop) can finish
+    #: a full answer instead of being cut off — "even if it takes my machine longer" (the
+    #: availability *probe* stays short; this bounds only the actual generate/pull work).
+    gen_timeout: float = 300.0
 
 
 @dataclass(frozen=True)
