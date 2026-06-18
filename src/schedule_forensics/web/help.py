@@ -528,6 +528,14 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "anchored backward pass to the focus task; days of slack to the focus",
         _SSI,
     ),
+    "driving_path": _doc(
+        "driving_path",
+        "Driving Path (between two UIDs)",
+        "The chain of activities controlling target B's date that lie on a logic route from "
+        "source A — the work that, if it slips, moves B. Traced across every loaded version.",
+        "driving path to B (driving_slack < 1 working day) ∩ descendants(A), ordered A → … → B",
+        _SSI,
+    ),
     # --- M15: reference-deck measure families (ADR-0030) ---
     "float_total_0": _doc(
         "float_total_0",

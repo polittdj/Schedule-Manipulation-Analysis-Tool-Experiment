@@ -6,7 +6,7 @@ import datetime as dt
 
 import pytest
 
-from schedule_forensics.engine.path_trace import ancestors_of, topo_order
+from schedule_forensics.engine.path_trace import ancestors_of, descendants_of, topo_order
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -59,6 +59,29 @@ def test_ancestors_target_is_summary_raises() -> None:
     s = _sched([1, 2], [(1, 2)], summaries=(2,))
     with pytest.raises(KeyError):
         ancestors_of(s, 2)
+
+
+def test_descendants_transitive_and_excludes_source() -> None:
+    # 1 -> 2 -> 4 ; 3 -> 4 ; 5 isolated. Descendants of 1 = {2, 4} (4 reached via 2).
+    s = _sched([1, 2, 3, 4, 5], [(1, 2), (2, 4), (3, 4)])
+    assert descendants_of(s, 1) == frozenset({2, 4})
+    assert descendants_of(s, 4) == frozenset()  # 4 is a sink
+
+
+def test_descendants_diamond_dedups_shared_successor() -> None:
+    s = _sched([1, 2, 3, 4], [(1, 2), (1, 3), (2, 4), (3, 4)])
+    assert descendants_of(s, 1) == frozenset({2, 3, 4})
+
+
+def test_descendants_ignores_links_touching_summary() -> None:
+    s = _sched([1, 2, 3], [(1, 2), (1, 3)], summaries=(3,))
+    assert descendants_of(s, 1) == frozenset({2})
+
+
+def test_descendants_unknown_source_raises() -> None:
+    s = _sched([1, 2], [(1, 2)])
+    with pytest.raises(KeyError):
+        descendants_of(s, 999)
 
 
 def test_topo_order_deterministic() -> None:

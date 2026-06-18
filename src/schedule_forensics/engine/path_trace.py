@@ -44,6 +44,31 @@ def ancestors_of(schedule: Schedule, target_uid: int) -> frozenset[int]:
     return frozenset(seen)
 
 
+def descendants_of(schedule: Schedule, source_uid: int) -> frozenset[int]:
+    """Every scheduled task with a directed logic path **from** ``source_uid``.
+
+    These are the activities ``source_uid`` can drive (its successors, transitively) — the
+    mirror of :func:`ancestors_of`. The source itself is **excluded**. Raises ``KeyError``
+    if ``source_uid`` is not a scheduled (non-summary) task.
+    """
+    scheduled = _scheduled_ids(schedule)
+    if source_uid not in scheduled:
+        raise KeyError(source_uid)
+    outgoing: dict[int, list[int]] = {uid: [] for uid in scheduled}
+    for rel in schedule.relationships:
+        if rel.predecessor_id in scheduled and rel.successor_id in scheduled:
+            outgoing[rel.predecessor_id].append(rel.successor_id)
+    seen: set[int] = set()
+    stack = [source_uid]
+    while stack:
+        node = stack.pop()
+        for succ in outgoing[node]:
+            if succ not in seen:
+                seen.add(succ)
+                stack.append(succ)
+    return frozenset(seen)
+
+
 def topo_order(schedule: Schedule, uids: Iterable[int]) -> tuple[int, ...]:
     """Topological order of the sub-network induced by ``uids`` (predecessor before
     successor), ties broken by ascending UniqueID for determinism. Raises

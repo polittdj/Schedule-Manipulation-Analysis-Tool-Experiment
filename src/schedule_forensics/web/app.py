@@ -60,6 +60,10 @@ from schedule_forensics.engine import (
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
+from schedule_forensics.engine.driving_path import (
+    DrivingPathSnapshot,
+    compute_driving_path_evolution,
+)
 from schedule_forensics.engine.driving_slack import date_basis
 from schedule_forensics.engine.forecast import (
     CarnacSummary,
@@ -149,6 +153,7 @@ _LAYOUT = Template(
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
+<a href="/driving-path">Driving Path</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
@@ -1148,6 +1153,27 @@ def create_app(
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
         return JSONResponse(_evolution_data(schedules, cpms, uid))
+
+    @app.get("/driving-path", response_class=HTMLResponse)
+    def driving_path_view(
+        source: str | None = Query(None), target: str | None = Query(None)
+    ) -> HTMLResponse:
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if not schedules:
+            return _page(
+                st,
+                "Driving Path",
+                "<div class=panel>Load a schedule to trace the driving path between two "
+                "activities.</div>",
+            )
+        src = _parse_uid(source)
+        tgt = _parse_uid(target)
+        return _page(
+            st,
+            "Driving Path",
+            _skipped_notice(skipped) + _driving_path_body(schedules, cpms, src, tgt),
+        )
 
     @app.get("/forecast", response_class=HTMLResponse)
     def forecast_view() -> HTMLResponse:
@@ -3153,6 +3179,91 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
             for s in wave.snapshots
         ],
     }
+
+
+def _task_name_across(schedules: list[Schedule], uid: int) -> str | None:
+    """The activity's name from the newest version that has it (None if no version does)."""
+    for sch in reversed(schedules):
+        task = sch.tasks_by_id.get(uid)
+        if task is not None:
+            return task.name
+    return None
+
+
+def _corridor_chips(snap: DrivingPathSnapshot) -> str:
+    """The corridor as an ordered chain of UID — name chips; entered chips flag the new ones."""
+    if not snap.between.path:
+        return f"<span class=muted>{_e(snap.status)}</span>"
+    entered = set(snap.entered)
+    chips: list[str] = []
+    for uid, name in zip(snap.between.path, snap.names, strict=True):
+        cls = "ev-entered" if uid in entered else "ev-stayed"
+        chips.append(f'<span class="dp-chip {cls}">{uid} &mdash; {_e(name)}</span>')
+    return " <span class=dp-arrow>&rarr;</span> ".join(chips)
+
+
+def _driving_path_body(
+    schedules: list[Schedule], cpms: list[CPMResult], source: int | None, target: int | None
+) -> str:
+    """Server-rendered Driving Path view: the controlling logic corridor between two chosen
+    UniqueIDs, and how it changes across every loaded version (oldest first by data date)."""
+    form = f"""
+<div class=panel><form method=get action=/driving-path class=viz-controls>
+<label>From (source UniqueID): <input name=source type=number min=1
+value="{source if source is not None else ""}" placeholder="UID A"></label>
+<label>To (target UniqueID): <input name=target type=number min=1
+value="{target if target is not None else ""}" placeholder="UID B"></label>
+<button type=submit>Trace</button></form>
+<p class=muted style="margin:.4em 0 0">The <b>driving path</b> from A to B is the chain of
+activities controlling B's date that lie on a logic route from A &mdash; the work that, if it
+slips, moves B. If A reaches B only through activities with float, the two are <b>connected</b>
+but A does not <b>drive</b> B (the slack is reported instead). Trace it across every loaded
+version to see the corridor shift.</p></div>"""
+
+    if source is None or target is None:
+        return form + (
+            "<div class=panel><p class=muted>Enter a source and a target UniqueID above to "
+            "trace the driving path between them.</p></div>"
+        )
+
+    a_name = _task_name_across(schedules, source)
+    b_name = _task_name_across(schedules, target)
+    if a_name is None or b_name is None:
+        missing = source if a_name is None else target
+        return form + (
+            f'<div class="notice err">UniqueID {missing} is not present in any loaded '
+            f"version.</div>"
+        )
+
+    evo = compute_driving_path_evolution(schedules, cpms, source, target)
+    header = (
+        f"<div class=panel><h2>Driving path: {source} &mdash; {_e(a_name)} "
+        f"&rarr; {target} &mdash; {_e(b_name)}</h2>"
+        f"<p class=muted>{len(evo.snapshots)} version(s), oldest first.</p></div>"
+    )
+
+    rows: list[str] = []
+    for snap in evo.snapshots:
+        when = f" &middot; data date {snap.status_date}" if snap.status_date else ""
+        note = f' <span class="dp-note">{_e(snap.change_note)}</span>' if snap.change_note else ""
+        delta = ""
+        if snap.length_delta:
+            sign = "+" if snap.length_delta > 0 else ""
+            delta = f" <span class=muted>(corridor length {sign}{snap.length_delta})</span>"
+        left = ""
+        if snap.left:
+            names = ", ".join(
+                f"{uid} {_e(_task_name_across(schedules, uid) or '')}".strip() for uid in snap.left
+            )
+            left = f"<div class=muted>Left the corridor: <span class=ev-left>{names}</span></div>"
+        rows.append(
+            f"<div class=panel><h3>{_e(snap.label)}{when}</h3>"
+            f"<p>{_corridor_chips(snap)}</p>"
+            f"<p class=muted>{_e(snap.status)}{note}{delta}</p>"
+            f"{left}</div>"
+        )
+
+    return form + header + "".join(rows)
 
 
 def _evolution_body(
