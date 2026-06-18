@@ -1,29 +1,50 @@
-# Handoff — 2026-06-18 (PRs #81–#149 MERGED; **`main` green & current at #149 (`1afc23b`)**; ADR-0090 = OPEN draft — grouping/filter engine; ADRs 88/89 merged)
+# Handoff — 2026-06-18 (PRs #81–#150 MERGED; **`main` green & current at #150 (`731a432`)**; NO open PR — clean stopping point mid feature-set)
 
-> ## START HERE (post-#147) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set
-> **`main` is at #147 (`26d1ab9`), green.** Formula-audit done (BEI #145, CPLI #146, HMI #147). **NEW
-> operator request (big, multi-part) + NEW files** (`Large_Test_File2.mpp` = edited version, Acumen
-> Ribbon/DCMA/Quick-Add reports on it — value-validation data I'd asked for). Asks: (1) **map all custom
-> fields** so user can select/display them; (2) **driving path between two user-defined UIDs**, and how it
-> **changes over time**; (3) **group/filter ALL metrics by a chosen field** (e.g. CA-WBS = a value), with
-> **up to 5 fields** (standard + custom) at once.
+> ## START HERE (post-#150) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set (3 of ~6 done)
+> **`main` is at #150 (`731a432`), green, no open PR.** Working a BIG multi-part operator request +
+> NEW files (see `NEXT-SESSION-PROMPT.md` for the kickoff + file list). The 3 asks: (1) **map all custom
+> fields** so the user can select/display them; (2) **driving path between two user-defined UIDs**, and how
+> it **changes over time**; (3) **group/filter ALL metrics by a chosen field** (CA-WBS = a value), **up to
+> 5 fields** (standard + custom) at once — operator chose **filter + breakdown**.
 >
-> **OPEN draft = ADR-0088 (PR in flight): custom-field MAPPING done** (the foundation). `Task.custom_fields`
-> (tuple of (label,value); label=alias e.g. `CA-WBS` else field name `Text20`) + helpers; `Schedule.
-> custom_field_labels` (populated fields, declared order); MSPDI parser reads `<ExtendedAttributes>` defs +
-> per-task values. Schema 2.1.0→2.2.0. Real file: 2125 tasks, **69 populated custom fields**, CA-WBS = 12
-> groups. Tests added. **NEXT (build on this):** (A) column-picker to DISPLAY selected custom fields in the
-> activity table; (B) **group-by/filter engine** — a field-selection (≤5 standard+custom) that scopes every
-> metric to matching tasks (operator: "choose CA-WBS → only tasks with a value the user defines"); (C)
-> **driving-path between 2 UIDs + over versions** (CPM path trace, animated like the trend views).
+> **SHIPPED THIS SESSION (all merged, all green):**
+> - #145 BEI→Bible (ADR-0085) — **later CORRECTED by #149**; #146 CPLI→remaining CP length (ADR-0086);
+>   #147 **HMI** new period metric (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI
+>   corrected & Acumen-validated** (ADR-0089); #150 **grouping/filter ENGINE** (ADR-0090).
+> - **VALUE-VALIDATION vs the operator's new Acumen ribbon reports (2 versions of the Large File):**
+>   **HMI is EXACT** (Acumen v2 = 0 of 24 due tasks, milestone 0 of 1, v1 N/A — `compute_hmi_trend`
+>   reproduces it). **BEI was WRONG** → fixed to Acumen "BEI - Value Tasks" = complete NORMAL tasks /
+>   NORMAL baselined-due (no baseline-dur filter, no missing-baseline term); goldens EXACT 0.74/0.59,
+>   Large-File denominator EXACT 1228, numerator within 2 of 632.
 >
-> **VALIDATION DATA (unused yet):** the edited reports are 2-version workbooks (orig + `Large-Test-File2`)
-> w/ Ribbon View/Analysis (metric values → can finally value-validate BEI/HMI/CEI/critical-path) + per-
-> activity detail sheets + Phase Analysis. `/tmp/ltf2.xml` = converted MSPDI of the edited file (ephemeral).
-> Convert via `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <mpp> <out.xml>`.
-> **DEFERRED:** Float Ratio™ + composite Score (no extractable formula). **Other backlog:** D (Fuse year
-> Trend/Phase — ASK binning), `/path` chart bug (needs screenshot). **CUI:** `.mpp`/`.xlsx`/`.aft` not
-> committed; 6 visual catalogs were sent to the operator (not in git). Catalog generator in `/tmp`.
+> **NEXT — operator chose to build "DRIVING PATH between 2 UIDs, ACROSS LOADED VERSIONS" FIRST.** Was just
+> starting it when told to stop. Engine to build: `engine/driving_path.py` — trace the controlling logic
+> chain from UID A→B per version + per-version diff for the animation. **Build on:** `engine/path_trace.py`
+> (`ancestors_of(schedule, uid)` = transitive predecessors; `topo_order`), `engine/driving_slack.py`
+> (`compute_driving_slack`, `on_driving_path` classification, `date_basis`), CPM `TaskTiming`
+> (early/late start/finish, total/free_float) + `critical_path`. Then a `/driving-path` page (two UID
+> inputs) showing the chain per version (animate/diff like Trend/HMI/S-curve). **THEN:** grouping/filter
+> **UI** (wire `engine/grouping.py` — `available_fields`/`field_value`/`filter_schedule`/`group_values` —
+> into the dashboard: ≤5-field picker scopes all metrics + per-group scorecard, e.g. BEI per CA-WBS) and a
+> **display column-picker** for custom fields.
+>
+> **MODEL/ENGINE recap:** custom fields = `Task.custom_fields` (tuple of (label,value); alias e.g. `CA-WBS`
+> wins over `Text20`) + helpers `custom_field(label)`/`custom_field_map`; `Schedule.custom_field_labels`
+> (populated, declared order). Schema **2.2.0**. Grouping = `engine/grouping.py` (`MAX_FIELDS=5`;
+> `filter_schedule` = sub-schedule of matching tasks + internal rels so all metrics run unchanged;
+> `group_values` = per-value UID groups; STANDARD_FIELDS = WBS/Activity Type/Constraint Type/Resource/
+> Critical/% Complete).
+>
+> **MORE ACUMEN OUTPUT to validate against (in the edited DCMA report's `Ribbon Analysis` sheet, by
+> absolute column index — header row 9, v1 row 10, v2 row 11):** CEI, FEI, BRI, TC-BEI, EVM (PV/EV/AC/
+> SPI/CPI/EAC/VAC/BAC), Phase Analysis, Started/Completed-Delayed buckets. Use these to value-validate
+> CEI/critical-path next.
+>
+> **OPS:** convert mpp→MSPDI via `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <mpp> <out.xml>`
+> (Java 21 ok; 9MB file ~30s). **CUI:** `.mpp`/`.xlsx`/`.aft` must NOT be committed (pre-commit guard).
+> Uploaded files live in `/root/.claude/uploads/385dc707-.../` THIS session — a NEW session likely won't
+> have them, so the kickoff prompt asks the operator to re-attach. **DEFERRED:** Float Ratio™ + composite
+> Score (no extractable formula); D (Fuse year Trend/Phase — ASK binning); `/path` chart bug (needs shot).
 
 
 

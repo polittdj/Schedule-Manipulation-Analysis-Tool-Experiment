@@ -2092,3 +2092,15 @@ CA-WBS=4.1.4.1 -> 880 tasks BEI 0.58; breakdown shows weak groups (4.1.5.1=0.38,
 4.1.6.1=0.68). Full gate green (965). NEXT: UI to drive filter+breakdown; display column-picker; driving
 path between 2 UIDs across versions (engine/path_trace.py has ancestors_of/topo_order to build on).
 Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 21) — STOP + handoff for next session.** Grouping engine (ADR-0090) merged as #150
+(squash, green). Operator asked to stop and write a handoff + kickoff prompt. SESSION SUMMARY: shipped
+6 PRs — #145 BEI→Bible (later corrected), #146 CPLI→remaining CP length, #147 HMI new period metric,
+#148 custom-field mapping, #149 BEI corrected & Acumen-validated, #150 grouping/filter engine. KEY: the
+operator's new Acumen ribbon reports (2 versions of the Large File) let me value-validate at last — HMI
+EXACT (v2 0 of 24 due), BEI corrected to "complete Normal / Normal baselined-due" (denominator exact vs
+Acumen 1228). NEXT (operator's pick): build the DRIVING PATH between 2 UIDs ACROSS LOADED VERSIONS
+(engine/driving_path.py on path_trace.py + driving_slack.py + CPM; then a /driving-path page). THEN:
+grouping/filter UI (wire engine/grouping.py) + custom-field display column-picker. MORE Acumen output to
+validate (CEI/FEI/BRI/TC-BEI/EVM) in the edited DCMA report's Ribbon Analysis sheet. Kickoff prompt +
+file list in docs/STATE/NEXT-SESSION-PROMPT.md. No open PR; main green at #150. Model/mode: Opus 4.8 (1M).
