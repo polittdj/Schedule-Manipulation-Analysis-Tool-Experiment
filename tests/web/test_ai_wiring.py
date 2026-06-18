@@ -142,3 +142,27 @@ def test_wipe_clears_polished_narratives(
     assert state.polished
     client.post("/session/wipe")
     assert not state.polished
+
+
+def test_settings_show_ollama_endpoint_field_and_offline_diagnostic(client: TestClient) -> None:
+    """Operator AI fix: the Ollama endpoint is editable, and when no local server is reachable
+    the page explains WHY the AI is off (actionable), instead of a silent 'Active backend: null'."""
+    page = client.get("/settings").text
+    assert "name=endpoint" in page and "127.0.0.1:11434" in page  # editable Ollama endpoint
+    # no Ollama in the test container -> a concrete, actionable diagnostic
+    assert "Local AI is OFF" in page and "could not reach Ollama" in page
+
+
+def test_settings_persist_loopback_ollama_endpoint_and_refuse_remote(client: TestClient) -> None:
+    client.post(
+        "/settings",
+        data={"backend": "ollama", "model": "llama3.1:8b", "endpoint": "http://127.0.0.1:11500"},
+    )
+    assert "127.0.0.1:11500" in client.get("/settings").text  # custom loopback port persisted
+    # a remote endpoint is refused (Law 1), falling back to the loopback default
+    client.post(
+        "/settings",
+        data={"backend": "ollama", "model": "x", "endpoint": "http://evil.example.com:11434"},
+    )
+    page = client.get("/settings").text
+    assert "evil.example.com" not in page and "127.0.0.1:11434" in page

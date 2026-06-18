@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from schedule_forensics.ai.ollama import Opener, _urllib_opener
+from schedule_forensics.ai.ollama import Opener, _urllib_opener, probe_error_text
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: LM Studio's default server port; llamafile defaults to 8080 — both are settable.
@@ -59,11 +59,15 @@ class OpenAICompatBackend:
         return json.loads(self._open(f"{self.endpoint}{path}", data, self._timeout))
 
     def is_available(self) -> bool:
+        return self.unavailable_reason() is None
+
+    def unavailable_reason(self) -> str | None:
+        """``None`` when the server answers, else a short human reason (settings diagnostics)."""
         try:
             self._get("/v1/models", timeout=self._probe_timeout)
-        except Exception:
-            return False
-        return True
+        except Exception as exc:  # any failure means "not reachable" — report why
+            return probe_error_text(exc)
+        return None
 
     def list_models(self) -> tuple[str, ...]:
         """Model ids the server has loaded (``GET /v1/models``)."""

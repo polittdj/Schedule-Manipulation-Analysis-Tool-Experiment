@@ -1,12 +1,16 @@
-# Handoff — 2026-06-17 (PRs #81–#128 MERGED; **`main` green & current at #128 (`3d30c0b`)**; last CODE PR #128/ADR-0068; ADR-0069 = OPEN draft for item B)
+# Handoff — 2026-06-18 (PRs #81–#129 MERGED; **`main` green & current at #129 (`8f65081`)**; ADR-0070 = OPEN draft — local-AI fix)
 
-> ## START HERE (next session) — re-audited 2026-06-17 (post-#128)
-> **`main` is at #128 (`3d30c0b`), green.** The operator backlog is being worked **bugs-first**:
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#129)
+> **`main` is at #129 (`8f65081`), green.** The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
-> filters/full-wrapped-names (item C). The **OPEN draft PR on this branch carries ADR-0069**
-> (item B — MS-Project checklist filters). The highest ADR on disk is **0069**. Recreate the work
-> branch from fresh main, then continue the REMAINING items below (the remaining **bug** —
-> the `/path` driving-chart visual defect — needs the operator's screenshot; otherwise D/E/F).
+> filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
+> filters). The **OPEN draft PR on this branch carries ADR-0070** — an out-of-band operator fix:
+> **the local AI (Ollama) wouldn't activate on the operator's corporate laptop** (system proxy
+> intercepted the loopback probe) → bypass the proxy + actionable settings diagnostics + editable
+> Ollama endpoint. The highest ADR on disk is **0070**. Recreate the work branch from fresh main,
+> then continue the REMAINING items (the remaining **bug** — the `/path` driving-chart visual defect
+> — needs the operator's screenshot; otherwise the Fuse year Trend/Phase view D, Data-Date/Slippage
+> E, Bow-Wave F).
 > **Container setup FIRST:**
 > `pip install -e '.[dev]'` into the env, and drive the gate with **`python -m pytest`** (the PATH
 > `pytest` is a separate uv tool that can't see the editable install). Gate: `ruff check .` ;
@@ -61,7 +65,19 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0069 (OPEN draft, this branch) — MS-Project checklist filters (item B).** New
+> **PR — ADR-0070 (OPEN draft, this branch) — local AI works on a corporate laptop.** Operator
+> screenshot showed `/settings` reading **Active backend: null** with Ollama + `llama3.1:8b`
+> configured (model never activated → only deterministic facts, no interpretation). Root cause: the
+> local-AI HTTP client used urllib's default opener, whose **`ProxyHandler` reads the machine proxy**
+> — on a managed Windows laptop that routes even `127.0.0.1:11434` through the corporate proxy, which
+> refuses it (and would be a Law-1 egress risk). Fix in `ai/ollama.py` `_make_opener()`:
+> `build_opener(ProxyHandler({}), _NoRedirect())` → **direct, no-proxy** loopback connection (covers
+> the OpenAI-compatible backend too). Plus: actionable `/settings` diagnostics (`unavailable_reason()`
+> → *connection refused / timed out / model not pulled* with a fix hint) and an **editable Ollama
+> endpoint** field. The interpretive full-evidence prompt (`ai/qa.py`) was already correct — the only
+> blocker was connecting. Parity 10/10; 913 passed. **Operator: `git pull` + relaunch to get it.**
+
+> **PR — ADR-0069 (MERGED as #129) — MS-Project checklist filters (item B).** New
 > reusable `static/checklist.js` (`window.SFChecklist.filter`): a button + fixed-position popup
 > with a search box, **Select-all / Clear**, and a checklist of a column's distinct values;
 > `onChange` gets the selected `Set` (or `null` = all = unfiltered; empty Set hides every row).

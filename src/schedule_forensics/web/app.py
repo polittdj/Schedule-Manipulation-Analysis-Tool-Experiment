@@ -288,6 +288,72 @@ def _openai_or_none(config: AIConfig) -> OpenAICompatBackend | None:
         return None
 
 
+def _model_installed(model: str, installed: tuple[str, ...]) -> bool:
+    """Tolerant match of a configured model name against an Ollama install list.
+
+    Ollama tags models ``name:tag`` (``llama3.1:8b``); a config of ``llama3.1`` should match
+    ``llama3.1:8b`` (and vice-versa) so the diagnostic doesn't cry "not installed" over a tag.
+    """
+    m = model.strip().lower()
+    if not m:
+        return True
+    base = m.split(":")[0]
+    return any(n.strip().lower() == m or n.strip().lower().split(":")[0] == base for n in installed)
+
+
+def _ai_status_note(cfg: AIConfig) -> str:
+    """An actionable settings line when a configured LOCAL backend isn't actually serving.
+
+    Turns the silent 'Active backend: null' into a concrete reason + fix (the operator could
+    not see why the AI was off): server down / wrong port / model not pulled. Empty for the
+    Null backend (no server expected) and for cloud (handled by the banner)."""
+    if cfg.backend not in ("ollama", "openai"):
+        return ""
+    probe = _ollama_or_none(cfg) if cfg.backend == "ollama" else _openai_or_none(cfg)
+    if probe is None:  # construction refused a non-loopback endpoint — field validation handles it
+        return ""
+    is_ollama = cfg.backend == "ollama"
+    label = "Ollama" if is_ollama else "the OpenAI-compatible server"
+    endpoint = cfg.endpoint if is_ollama else cfg.openai_endpoint
+    # unavailable_reason() is on the concrete local backends (not the AIBackend protocol); fall
+    # back to is_available() for any other backend object (e.g. a test/cloud stand-in).
+    reason_fn = getattr(probe, "unavailable_reason", None)
+    reason = (
+        reason_fn() if callable(reason_fn) else (None if probe.is_available() else "not reachable")
+    )
+    if reason is not None:
+        if is_ollama:
+            hint = (
+                "Make sure the Ollama app is running (or run <code>ollama serve</code>) and that "
+                f"the port matches <code>{_e(endpoint)}</code>. On a work laptop the local model "
+                "still works — the tool talks to it directly and never via a proxy."
+            )
+        else:
+            hint = (
+                "Start your local server (LM Studio / llamafile / vLLM), load a model, and confirm "
+                f"the port matches <code>{_e(endpoint)}</code>."
+            )
+        return (
+            f'<div class="notice err">Local AI is OFF — could not reach {label} at '
+            f"<code>{_e(endpoint)}</code>: {_e(reason)}. {hint}</div>"
+        )
+    if is_ollama and cfg.model:  # reachable — is the chosen model actually pulled?
+        try:
+            installed = probe.list_models()
+        except Exception:  # diagnostics only, never sink the page
+            installed = ()
+        if installed and not _model_installed(cfg.model, installed):
+            return (
+                f'<div class="notice err">Ollama is reachable but the model '
+                f"<code>{_e(cfg.model)}</code> isn't installed — run "
+                f"<code>ollama pull {_e(cfg.model)}</code>. Installed: {_e(', '.join(installed))}.</div>"
+            )
+    return (
+        f'<div class="notice ok">Local AI is ON — {label} reachable at '
+        f"<code>{_e(endpoint)}</code>; answers are interpreted by the local model.</div>"
+    )
+
+
 def _second_backend(state: SessionState) -> AIBackend | None:
     """The configured cross-check model, probed + cached like the primary (or ``None``).
 
@@ -1365,6 +1431,7 @@ def create_app(
         backend: str = Form("ollama"),
         model: str = Form("llama3.1:8b"),
         qa_mode: str = Form("interpretive"),
+        endpoint: str = Form("http://127.0.0.1:11434"),
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
         second_model: str = Form(""),
@@ -1380,13 +1447,15 @@ def create_app(
             second_backend = "none"
         # the backend constructor enforces loopback too (Law 1) — this just keeps a typo'd
         # remote host from sitting in the config looking accepted
+        if not is_local_http_endpoint(endpoint.strip()):
+            endpoint = "http://127.0.0.1:11434"
         if not is_local_http_endpoint(openai_endpoint.strip()):
             openai_endpoint = "http://127.0.0.1:1234"
         st.ai_config = AIConfig(
             classification=cls,
             backend=backend,
             model=model,
-            endpoint=st.ai_config.endpoint,
+            endpoint=endpoint.strip(),
             qa_mode=qa_mode,
             openai_endpoint=openai_endpoint.strip(),
             second_backend=second_backend,
@@ -3394,6 +3463,7 @@ def _settings_body(state: SessionState) -> str:
         if second is not None
         else ("off" if cfg.second_backend == "none" else "configured but not reachable")
     )
+    status_note = _ai_status_note(cfg)
 
     def sel(value: str, current: str) -> str:
         return " selected" if value == current else ""
@@ -3402,6 +3472,7 @@ def _settings_body(state: SessionState) -> str:
 <div class=panel><h2>Local AI</h2>
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
 &middot; cross-check model: <b>{second_status}</b></p>
+{status_note}
 <form action="/settings" method=post>
 <p>Classification:
 <select name=classification>
@@ -3416,6 +3487,9 @@ def _settings_body(state: SessionState) -> str:
 <option value=cloud{sel("cloud", cfg.backend)}>Cloud (UNCLASSIFIED only)</option>
 </select></p>
 <p>Model: <input name=model value="{_e(cfg.model)}"></p>
+<p>Ollama endpoint (loopback only):
+<input name=endpoint size=28 value="{_e(cfg.endpoint)}"
+ title="Ollama defaults to http://127.0.0.1:11434"></p>
 <p>OpenAI-compatible endpoint (loopback only):
 <input name=openai_endpoint size=28 value="{_e(cfg.openai_endpoint)}"
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
