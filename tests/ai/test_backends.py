@@ -70,6 +70,45 @@ def test_ollama_unavailable_when_opener_errors() -> None:
     assert OllamaBackend(opener=boom).is_available() is False
 
 
+def test_local_ai_opener_never_routes_through_a_system_proxy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The corporate-laptop bug: the loopback AI client must NOT send 127.0.0.1 traffic through a
+    # system/corporate proxy — that makes the local model read as "down" (and could egress CUI).
+    import urllib.request
+
+    from schedule_forensics.ai import ollama
+
+    for var in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+        monkeypatch.setenv(var, "http://proxy.corp.example:8080")
+
+    def proxied(opener: urllib.request.OpenerDirector) -> bool:
+        return any(
+            getattr(h, "proxies", {})
+            for h in opener.handlers
+            if isinstance(h, urllib.request.ProxyHandler)
+        )
+
+    # a DEFAULT opener built under this env WOULD route through the corporate proxy ...
+    assert proxied(urllib.request.build_opener())
+    # ... but the local-AI opener, built the module's way, carries NO proxy → direct loopback call
+    assert not proxied(ollama._make_opener())
+
+
+def test_ollama_unavailable_reason_is_actionable() -> None:
+    # the settings page turns a silent "null" into a concrete reason the operator can act on
+    def refused(url: str, data: bytes | None, timeout: float) -> str:
+        raise OSError("Connection refused")
+
+    reason = OllamaBackend(opener=refused).unavailable_reason()
+    assert reason is not None and "refused" in reason.lower()
+
+    def up(url: str, data: bytes | None, timeout: float) -> str:
+        return json.dumps({"models": []})
+
+    assert OllamaBackend(opener=up).unavailable_reason() is None  # reachable -> no reason
+
+
 def test_ollama_probes_use_a_short_timeout_but_generate_uses_the_long_one() -> None:
     # W6: the settings page probes (is_available / list_models) must not hang for the full
     # generate timeout when the port is firewalled; generate/pull keep the long timeout.

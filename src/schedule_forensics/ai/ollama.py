@@ -13,6 +13,7 @@ live server; a real Ollama on ``127.0.0.1:11434`` is only needed for an integrat
 from __future__ import annotations
 
 import json
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from typing import Any
@@ -48,9 +49,39 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-#: Opener that performs no redirects; the local-AI client uses it so a loopback endpoint
-#: cannot bounce the request (and its CUI payload) to another host via a 3xx response.
-_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoRedirect())
+def _make_opener() -> urllib.request.OpenerDirector:
+    """An opener that performs no redirects AND never consults a system/corporate proxy.
+
+    The local-AI client only ever talks to a loopback endpoint (enforced by
+    ``is_local_http_endpoint``), so a proxy must NOT be in the path: urllib's default opener
+    reads the machine's proxy settings, and on a corporate Windows laptop it would route even a
+    ``http://127.0.0.1:11434`` request through the company proxy — which refuses it (so the local
+    model reads as "down / not reachable"), or, worse for Law 1, could forward the request body
+    off-machine. Passing an **empty** ``ProxyHandler`` makes ``build_opener`` skip its default
+    (system-proxy-reading) one, forcing a DIRECT connection; ``_NoRedirect`` then refuses any 3xx
+    bounce.
+    """
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+
+
+#: The shared loopback-only, no-proxy, no-redirect opener for the local-AI backends.
+_NO_REDIRECT_OPENER = _make_opener()
+
+
+def probe_error_text(exc: BaseException) -> str:
+    """A short, human-readable reason for a failed local-server probe (settings diagnostics)."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"server returned HTTP {exc.code}"
+    reason = getattr(exc, "reason", exc)
+    text = str(reason).strip()
+    low = text.lower()
+    if "refused" in low:
+        return "connection refused — the model server isn't listening on this address"
+    if "timed out" in low or "timeout" in low:
+        return "timed out — the server didn't respond (wrong port, or still starting?)"
+    if any(s in low for s in ("getaddrinfo", "name or service", "nodename", "no address")):
+        return "host could not be resolved"
+    return text or exc.__class__.__name__
 
 
 def _urllib_opener(url: str, data: bytes | None, timeout: float) -> str:
@@ -107,11 +138,15 @@ class OllamaBackend:
         return json.loads(self._open(f"{self.endpoint}{path}", data, self._timeout))
 
     def is_available(self) -> bool:
+        return self.unavailable_reason() is None
+
+    def unavailable_reason(self) -> str | None:
+        """``None`` when the server answers, else a short human reason (settings diagnostics)."""
         try:
             self._get("/api/tags", timeout=self._probe_timeout)
-        except Exception:
-            return False
-        return True
+        except Exception as exc:  # any failure means "not reachable" — report why
+            return probe_error_text(exc)
+        return None
 
     def list_models(self) -> tuple[str, ...]:
         """Names of the models installed in the local Ollama (``GET /api/tags``)."""
