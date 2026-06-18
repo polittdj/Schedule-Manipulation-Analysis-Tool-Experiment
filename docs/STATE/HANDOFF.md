@@ -1,20 +1,20 @@
-# Handoff — 2026-06-18 (PRs #81–#132 MERGED; **`main` green & current at #132 (`af97221`)**; ADR-0073 = OPEN draft — a11y foundations)
+# Handoff — 2026-06-18 (PRs #81–#133 MERGED; **`main` green & current at #133 (`8681624`)**; ADR-0074 = OPEN draft — CSP + security headers)
 
-> ## START HERE (next session) — re-audited 2026-06-18 (post-#132)
-> **`main` is at #132 (`af97221`), green.** AI tranche all merged: ADR-0070 (#130) proxy bypass +
-> diagnostics; ADR-0071 (#131) auto-start/stop Ollama + probe 8 s + Model dropdown; ADR-0072 (#132)
-> configurable `gen_timeout` for big/slow models. The **OPEN draft on this branch is ADR-0073** —
-> the external audit's **Group 1 accessibility foundations**: A1 visible `:focus-visible` ring
-> (the orphaned `--focus` token), A2 `prefers-reduced-motion` (CSS block + all 5 auto-play steppers),
-> A6 define `--border`/`--grid-line` in both themes, A8 non-colour hatch on critical/driving bars
-> (+ `.sr-only` groundwork). The highest ADR on disk is **0073**.
-> **External audit work order (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs:
-> **A3** chart accessible names + `.sr-only` data-table fallbacks (11 charts), **A4** table `scope`,
-> **A5** `@media print` stylesheet, **A7** CSP + `nosniff` (ship inline-allowing CSP first), **A9/A10**
-> responsive nav + theme `aria-pressed`/`prefers-color-scheme`, **A11** add a HANDOFF-drift test (the
-> staleness half is already fixed by #128–#132). Operator backlog still open: **`/path` chart visual
-> bug** (needs the operator's screenshot), **D** Fuse year Trend/Phase (parity-sensitive — confirm
-> against `docs/FUSE-VALIDATION.md`), **E** Data-Date/Slippage overlaid-line redesign, **F** Bow-Wave
+> ## START HERE (next session) — re-audited 2026-06-18 (post-#133)
+> **`main` is at #133 (`8681624`), green.** AI tranche merged (#130–#132); audit **Group 1 a11y**
+> merged as **#133 (ADR-0073)** (focus ring / reduced-motion / theme tokens / colour cues). The
+> **OPEN draft on this branch is ADR-0074** — audit **A7**: a Content-Security-Policy +
+> `nosniff`/`Referrer-Policy`/`X-Frame-Options` on every response (added in the `create_app` http
+> middleware), enforcing the no-remote-asset air-gap in the browser at runtime. Permissive-inline CSP
+> (`'unsafe-inline'` for style/script — the Gantt px widths + 2 inline handlers) so zero breakage;
+> tightening to strict `script-src 'self'` is a tracked follow-up. The highest ADR on disk is **0074**.
+> **External audit (7 roles, A1–A11) verified VALID on #130.** REMAINING audit PRs: **A3** chart
+> accessible names + `.sr-only` data-table fallbacks (11 charts — the biggest 508 win), **A4** table
+> `scope`, **A5** `@media print` stylesheet, **A9/A10** responsive nav + theme polish, **A11** a
+> HANDOFF-drift test (staleness half already fixed by #128–#133). Operator feature backlog still open:
+> **`/path` chart visual bug** (needs the operator's screenshot), **D** Fuse year Trend/Phase
+> (parity-sensitive — confirm against `docs/FUSE-VALIDATION.md`; binning is ambiguous — ask the
+> operator), **E** Data-Date/Slippage overlaid-line redesign w/ clickable legend, **F** Bow-Wave
 > running totals + target highlight; **G** Fuse-proprietary metrics stay DEFERRED (no DAX). The operator backlog is being worked **bugs-first**:
 > **#128 (ADR-0068) MERGED** the `/analysis` Gantt scaling fix (item A's `/analysis` half) + path
 > filters/full-wrapped-names (item C); **#129 (ADR-0069) MERGED** item B (MS-Project checklist
@@ -79,7 +79,17 @@
 >    operator supplies the exact Fuse/DAX definition. Do NOT guess.
 > **Ollama policy: free LOCAL analysis, KEEP the strict loopback-only air-gap (no data leaves the machine).**
 
-> **PR — ADR-0073 (OPEN draft, this branch) — accessibility foundations (audit Group 1).** Pure
+> **PR — ADR-0074 (OPEN draft, this branch) — CSP + security headers (audit A7).** Every response
+> now carries a `Content-Security-Policy` (`default-src`/`connect-src`/`img-src` = `'self'`,
+> `frame-ancestors 'none'`, `object-src 'none'`) + `X-Content-Type-Options: nosniff`,
+> `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, set in the `create_app` http middleware via
+> `setdefault`. Enforces the no-remote-asset air-gap in the browser at runtime. Permissive-inline
+> (`'unsafe-inline'` style+script) so the inline Gantt px-widths + the 2 inline handlers (Quit /
+> wipe-confirm) keep working — but remote scripts/styles are still forbidden. Air-gap scan still
+> green + a new header test. Parity 10/10. Built on `main`@#133. Follow-up: tighten to strict
+> `script-src 'self'` after moving the 2 inline handlers to addEventListener.
+
+> **PR — ADR-0073 (MERGED as #133) — accessibility foundations (audit Group 1).** Pure
 > presentation: (A1) a theme-aware `:focus-visible` outline ring using the orphaned `--focus` token;
 > (A2) a `prefers-reduced-motion` CSS block + a guard in all 5 auto-play `toggleAuto()` handlers
 > (under reduce-motion, Auto-play advances one frame instead of timer-flipping; Prev/Next unaffected);

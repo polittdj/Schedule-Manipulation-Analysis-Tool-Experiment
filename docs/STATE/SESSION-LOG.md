@@ -1831,3 +1831,16 @@ critical/driving Gantt bars (non-colour cue, palette unchanged); plus `.sr-only`
 A3 chart data-table fallback. `tests/web/test_accessibility.py` pins each. Parity 10/10. Remaining
 audit PRs: A3 chart names+sr-only tables, A4 table scope, A5 print stylesheet, A7 CSP+nosniff,
 A9/A10 responsive+theme polish, A11 HANDOFF-drift test. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 4) — CSP + security headers (ADR-0074 open).** Audit A7. Every response now
+carries a Content-Security-Policy (`default-src`/`connect-src`/`img-src` = `'self'`,
+`frame-ancestors 'none'`, `object-src 'none'`, `form-action 'self'`) plus `X-Content-Type-Options:
+nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY`, added in the `create_app` http
+middleware (`setdefault`, so a route's own header is never clobbered). This enforces the
+no-remote-asset air-gap in EVERY browser at runtime, not just the scan. Permissive-inline
+(`'unsafe-inline'` style+script) so the inline Gantt px-widths and the two inline handlers (Quit /
+wipe-confirm) keep working while remote scripts/styles stay forbidden; tightening to strict
+`script-src 'self'` (after moving the 2 handlers to addEventListener) is a tracked follow-up.
+`test_airgap.py` gains a header-presence case and still passes. Parity 10/10; gate green. Remaining
+audit: A3 (chart names+sr-only tables — biggest 508 win), A4 (table scope), A5 (print), A9/A10
+(responsive+theme), A11 (HANDOFF-drift test). Model/mode: Opus 4.8 (1M).
