@@ -419,6 +419,27 @@
             "Schedule-health indices per version: MEI (milestone execution), BEI (baseline execution), EPI (execution performance). Near or above 1.0 is on-plan.");
         }
 
+        var hmiSeries = [
+          { key: "hmi_tasks", label: "HMI (Tasks)", color: "var(--accent)" },
+          { key: "hmi_milestones", label: "HMI (Milestones)", color: "var(--ok)" },
+        ].filter(function (s) {
+          return data.versions.some(function (v) {
+            return v.indices && v.indices[s.key] != null;
+          });
+        }).map(function (s) {
+          return {
+            label: s.label,
+            color: s.color,
+            values: data.versions.map(function (v) {
+              return v.indices ? v.indices[s.key] : null;
+            }),
+          };
+        });
+        if (hmiSeries.length) {
+          multiLineChart("Hit or Miss Index (HMI) across periods", labels, hmiSeries,
+            "Period-over-period baseline execution: of the activities the baseline placed to finish in each status period, the share that actually completed in it. The first version has no prior period. 1.0 = every commitment for that period was met.");
+        }
+
         var sfrVals = data.versions.map(function (v) {
           return v.indices ? v.indices.sfr : null;
         });

@@ -87,7 +87,11 @@ from schedule_forensics.engine.path_counterfactual import compute_path_counterfa
 from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
-from schedule_forensics.engine.trend import compute_quality_trend, order_versions
+from schedule_forensics.engine.trend import (
+    compute_hmi_trend,
+    compute_quality_trend,
+    order_versions,
+)
 from schedule_forensics.importers import (
     MAX_FILES,
     ImporterError,
@@ -2922,8 +2926,11 @@ def _trend_data(
             "percents": percents,
         }
 
+    # HMI is period-over-period (each version scored against the previous version's data date),
+    # so it is computed once across the ordered series and indexed per version (first = None).
+    hmi_series = compute_hmi_trend(schedules)
     version_rows: list[dict[str, object]] = []
-    for p, sch, cpm, an in zip(points, schedules, cpms, analyses, strict=True):
+    for i, (p, sch, cpm, an) in enumerate(zip(points, schedules, cpms, analyses, strict=True)):
         makeup = compute_activity_makeup(sch)
         cp = an.completion
         fb = an.float_bands
@@ -2963,6 +2970,9 @@ def _trend_data(
                     "bei": bei,
                     "epi": epi_r.value if epi_r.population else None,
                     "sfr": sfr_r.value if sfr_r.population else None,
+                    # HMI (period-over-period): None on the first version (no predecessor)
+                    "hmi_tasks": hmi_series.task_values[i],
+                    "hmi_milestones": hmi_series.milestone_values[i],
                 },
                 # PBIX p5 — Float Analysis
                 "float_sums": {

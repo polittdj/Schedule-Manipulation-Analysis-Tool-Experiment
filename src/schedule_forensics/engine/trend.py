@@ -17,7 +17,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult
-from schedule_forensics.engine.metrics import compute_schedule_quality
+from schedule_forensics.engine.metrics import compute_hmi, compute_schedule_quality
 from schedule_forensics.model.schedule import Schedule
 
 #: §A metrics in briefing order; (metric_id, lower_is_better) — None = neutral (highest/lowest).
@@ -81,6 +81,53 @@ class MetricTrend:
             f"{self.labels[best_i]} ({self._fmt(self.values[best_i])}) and the worst version "
             f"being {self.labels[worst_i]} ({self._fmt(self.values[worst_i])})."
         )
+
+
+@dataclass(frozen=True)
+class HMISeries:
+    """Hit or Miss Index across consecutive version pairs (oldest → newest).
+
+    Each version is scored against the period since its **predecessor's** data date
+    (``ProjectPreviousTimeNow``); the first version has no predecessor, so its entries are ``None``.
+    Values are the period HMI (hits ÷ baselined-due-this-period); ``None`` also marks a version with
+    no due activities in the period. Offenders are the misses per version (parallel to the values).
+    """
+
+    labels: tuple[str, ...]
+    task_values: tuple[float | None, ...]
+    milestone_values: tuple[float | None, ...]
+    task_offenders: tuple[tuple[int, ...], ...]
+    milestone_offenders: tuple[tuple[int, ...], ...]
+
+
+def compute_hmi_trend(schedules: Sequence[Schedule]) -> HMISeries:
+    """HMI per version, each scored over the period since the previous version's data date.
+
+    ``schedules`` must be ordered oldest → newest (use :func:`order_versions`). Needs at least two
+    versions — HMI is inherently period-over-period.
+    """
+    if len(schedules) < 2:
+        raise ValueError("an HMI trend needs at least two schedule versions")
+    labels = tuple(_label(s) for s in schedules)
+    task_vals: list[float | None] = []
+    ms_vals: list[float | None] = []
+    task_off: list[tuple[int, ...]] = []
+    ms_off: list[tuple[int, ...]] = []
+    for i, sch in enumerate(schedules):
+        prev_now = schedules[i - 1].status_date if i > 0 else None
+        hmi = compute_hmi(sch, prev_now)
+        task, milestone = hmi["hmi_tasks"], hmi["hmi_milestones"]
+        task_vals.append(task.value if task.population else None)
+        ms_vals.append(milestone.value if milestone.population else None)
+        task_off.append(task.offender_uids)
+        ms_off.append(milestone.offender_uids)
+    return HMISeries(
+        labels=labels,
+        task_values=tuple(task_vals),
+        milestone_values=tuple(ms_vals),
+        task_offenders=tuple(task_off),
+        milestone_offenders=tuple(ms_off),
+    )
 
 
 def order_versions(schedules: Sequence[Schedule]) -> list[Schedule]:
