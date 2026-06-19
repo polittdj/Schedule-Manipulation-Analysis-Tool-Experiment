@@ -2147,3 +2147,14 @@ clean, web+schema suites green (new test in tests/web/test_path_view.py asserts 
 Deferred: custom cols in the path export (driving_table fixed columns); custom cols in other tables.
 ADR-0093 — **all 3 operator asks now complete.** NEXT backlog: CEI/critical-path value-validation vs the
 Ribbon Analysis sheet + polish. Model/mode: Opus 4.8 (1M).
+
+**2026-06-18 (cont. 25) — /groups value autocomplete (ADR-0094).** Polish on the grouping UI (built on
+merged #153, independent of in-flight #154). New `GET /api/group-values?version&field` → a field's
+distinct values (`group_values(sch, field).keys()`, capped 500; standard + custom fields; unknown/blank
+→ []). `_groups_form`: each value input bound to a per-row `<datalist>` (gf-dl-N, gf-value), field
+selects tagged gf-field, form carries data-version; mounts `static/groups.js` which fills datalists on
+field-select change (and on load for query-string-preselected fields) + refreshes on version change.
+Progressive enhancement — the form still works JS-off; fails open. Numbered ADR-0094 because ADR-0093
+(custom-field display columns) is in flight on PR #154. Gate: ruff/mypy/bandit clean, node --check
+groups.js OK, web tests green (new endpoint + mount tests in tests/web/test_groups_view.py). NEXT: value-
+validation vs Ribbon sheet (needs CUI files) / export custom cols / driving-path Gantt. Model: Opus 4.8.

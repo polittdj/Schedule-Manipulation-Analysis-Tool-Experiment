@@ -37,6 +37,29 @@ def test_renders_form_scorecard_and_nav(client: TestClient) -> None:
     assert "/groups" in client.get("/").text  # nav link
 
 
+def test_form_mounts_value_autocomplete(client: TestClient) -> None:
+    _upload(client, "Project5")
+    page = client.get("/groups").text
+    # each value input is backed by a datalist the autocomplete script fills, keyed to the version
+    assert "gf-value" in page and "gf-dl-0" in page
+    assert 'data-version="' in page
+    assert "/static/groups.js" in page
+
+
+def test_group_values_endpoint_lists_distinct_values(client: TestClient) -> None:
+    _upload(client, "Project5")
+    # a standard field
+    assert client.get("/api/group-values?field=Activity Type").json()["values"] == [
+        "Normal",
+        "Summary",
+    ]
+    # a mapped custom field (ADR-0088) is autocompletable too
+    assert client.get("/api/group-values?field=Trace Log").json()["values"] == ["Path 01"]
+    # an unknown/blank field yields nothing rather than erroring
+    assert client.get("/api/group-values?field=Nope").json()["values"] == []
+    assert client.get("/api/group-values").json()["values"] == []
+
+
 def test_filter_scopes_the_population(client: TestClient) -> None:
     _upload(client, "Project5")
     # Project5 has 126 Normal non-summary activities and no milestones.
