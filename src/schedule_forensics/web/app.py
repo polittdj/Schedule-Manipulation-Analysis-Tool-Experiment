@@ -1198,12 +1198,21 @@ def create_app(
         qp = request.query_params
         version_key = qp.get("version") or versions[-1][0]
         sch = dict(versions).get(version_key, versions[-1][1])
-        # filter criteria: parallel field/value rows; keep only the rows with a chosen field.
+        # filter criteria, one per field row. Each row's selected values arrive as repeated
+        # value{i} params (the MS-Project-style multi-select); a legacy single `value` list
+        # (one per field, exact match) is still honoured. Empty = "field populated".
         fields = qp.getlist("field")
-        values = qp.getlist("value")
-        criteria = [(f, values[i] if i < len(values) else "") for i, f in enumerate(fields) if f][
-            :MAX_FIELDS
-        ]
+        legacy = qp.getlist("value")
+        criteria: list[tuple[str, str | list[str]]] = []
+        for i, f in enumerate(fields):
+            if not f:
+                continue
+            vals = qp.getlist(f"value{i}")
+            if vals:
+                criteria.append((f, vals))
+            else:
+                criteria.append((f, legacy[i] if i < len(legacy) else ""))
+        criteria = criteria[:MAX_FIELDS]
         breakdown = qp.get("breakdown") or ""
         return _page(
             st,
@@ -3463,11 +3472,18 @@ def _groups_field_options(sch: Schedule, selected: str) -> str:
     return "".join(opts)
 
 
+def _criterion_value_list(value: str | list[str]) -> list[str]:
+    """A criterion's selected values as a list ([] = no value restriction / field populated)."""
+    if isinstance(value, str):
+        return [value] if value else []
+    return [v for v in value if v]
+
+
 def _groups_form(
     versions: list[tuple[str, Schedule]],
     version_key: str,
     sch: Schedule,
-    criteria: list[tuple[str, str]],
+    criteria: list[tuple[str, str | list[str]]],
     breakdown: str,
 ) -> str:
     """The scope controls: version picker, up to MAX_FIELDS filter rows, and a breakdown field."""
@@ -3479,17 +3495,19 @@ def _groups_form(
             for k, s in versions
         )
         vsel = f"<label>Version: <select name=version>{vopts}</select></label> "
-    # MAX_FIELDS filter rows, pre-filled from the active criteria. Each value input is backed by a
-    # per-row <datalist> the autocomplete script (groups.js) fills with that field's actual values.
+    # MAX_FIELDS filter rows. groups.js mounts an MS-Project-style value checklist (SFChecklist)
+    # per row from the field's actual values; the chosen values are submitted as hidden value{i}
+    # inputs (rendered here too, so the current selection round-trips and works without JS).
     rows = []
     for i in range(MAX_FIELDS):
         f, v = criteria[i] if i < len(criteria) else ("", "")
+        selected = _criterion_value_list(v)
+        hidden = "".join(f'<input type=hidden name="value{i}" value="{_e(x)}">' for x in selected)
+        data_sel = _e(json.dumps(selected))
         rows.append(
-            f"<div class=group-row><select name=field class=gf-field>"
-            f"{_groups_field_options(sch, f)}</select>"
-            f' = <input name=value class=gf-value list="gf-dl-{i}" value="{_e(v)}"'
-            ' placeholder="value (blank = field populated)">'
-            f'<datalist id="gf-dl-{i}"></datalist></div>'
+            f'<div class=group-row data-row="{i}" data-selected="{data_sel}">'
+            f"<select name=field class=gf-field>{_groups_field_options(sch, f)}</select> "
+            f"<span class=gf-values></span><span class=gf-hidden>{hidden}</span></div>"
         )
     bsel = f"<select name=breakdown>{_groups_field_options(sch, breakdown)}</select>"
     return f"""
@@ -3501,11 +3519,11 @@ def _groups_form(
 <div class=viz-controls><button type=submit>Apply</button>
 <a class=btn-link href="/groups">clear</a></div>
 </form>
-<p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>) and a
-value to scope <b>every</b> metric to just those activities; combine up to {MAX_FIELDS} fields (logical
-AND). <b>Break down by</b> a field to score each of its values separately (one BEI per group). Filter
-and breakdown compose &mdash; the breakdown runs over the filtered population. Start typing a value to
-pick from the field's actual values.</p></div>
+<p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>), then
+choose its <b>values</b> from the dropdown (checkboxes with <b>All / None</b> and a search, like MS
+Project) &mdash; scoping <b>every</b> metric to matching activities. Within a field the chosen values
+are OR'd; combine up to {MAX_FIELDS} fields (AND). <b>Break down by</b> a field to score each of its
+values separately (one BEI per group). Filter and breakdown compose.</p></div>
 <script src="/static/groups.js"></script>"""
 
 
@@ -3549,7 +3567,7 @@ def _groups_body(
     versions: list[tuple[str, Schedule]],
     version_key: str,
     sch: Schedule,
-    criteria: list[tuple[str, str]],
+    criteria: list[tuple[str, str | list[str]]],
     breakdown: str,
 ) -> str:
     """The Groups & Filters view: scope every metric to a field-value selection, and/or break a
@@ -3559,10 +3577,17 @@ def _groups_body(
     matched, total = len(non_summary(sub)), len(non_summary(sch))
 
     if criteria:
-        chips = " ".join(
-            f'<span class="dp-chip">{_e(f)} = {_e(v) if v else "(populated)"}</span>'
-            for f, v in criteria
-        )
+
+        def _chip(field: str, value: str | list[str]) -> str:
+            vals = _criterion_value_list(value)
+            shown = (
+                "(populated)"
+                if not vals
+                else _e(", ".join(vals[:4]) + (f" +{len(vals) - 4}" if len(vals) > 4 else ""))
+            )
+            return f'<span class="dp-chip">{_e(field)} = {shown}</span>'
+
+        chips = " ".join(_chip(f, v) for f, v in criteria)
         summary = (
             f"<div class=panel><h2>Scope</h2><p>{chips}</p>"
             f"<p class=muted><b>{matched}</b> of {total} activities match (logical AND).</p></div>"

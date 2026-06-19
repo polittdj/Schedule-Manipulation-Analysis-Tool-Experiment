@@ -31,19 +31,32 @@ def test_page_needs_a_schedule(client: TestClient) -> None:
 def test_renders_form_scorecard_and_nav(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/groups").text
-    assert "name=field" in page and "name=value" in page and "name=breakdown" in page
+    assert "name=field" in page and "name=breakdown" in page
     assert "Metric scorecard for this scope" in page
     assert "BEI" in page  # the DCMA scorecard renders
     assert "/groups" in client.get("/").text  # nav link
 
 
-def test_form_mounts_value_autocomplete(client: TestClient) -> None:
+def test_form_mounts_value_checklist(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/groups").text
-    # each value input is backed by a datalist the autocomplete script fills, keyed to the version
-    assert "gf-value" in page and "gf-dl-0" in page
+    # each filter row carries a checklist mount + hidden-inputs box + its saved selection
+    assert "gf-values" in page and "gf-hidden" in page
+    assert "data-row=" in page and "data-selected=" in page
     assert 'data-version="' in page
-    assert "/static/groups.js" in page
+    assert "/static/groups.js" in page  # mounts the SFChecklist value picker
+
+
+def test_multi_value_filter_ors_within_a_field(client: TestClient) -> None:
+    _upload(client, "Project5")
+    # % Complete has multiple non-summary buckets; selecting two of them ORs within the field
+    one = client.get("/groups?field=% Complete&value0=Complete").text
+    both = client.get("/groups?field=% Complete&value0=Complete&value0=In Progress").text
+    n_one = int(re.search(r"<b>(\d+)</b> of", one).group(1))
+    n_both = int(re.search(r"<b>(\d+)</b> of", both).group(1))
+    assert n_both >= n_one  # adding a value can only widen the OR
+    # the chip shows the multiple chosen values
+    assert "Complete, In Progress" in both or "In Progress, Complete" in both
 
 
 def test_group_values_endpoint_lists_distinct_values(client: TestClient) -> None:

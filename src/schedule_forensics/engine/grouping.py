@@ -24,8 +24,17 @@ from schedule_forensics.model.task import Task
 #: The most fields the operator may combine at once (a filter or a stack of breakdowns).
 MAX_FIELDS = 5
 
-#: A grouping/filter criterion: a field label and the required value ("" = "field is populated").
-Criterion = tuple[str, str]
+#: A grouping/filter criterion: a field label and the required value(s). The value may be a single
+#: string (exact match), a sequence of strings (match ANY — the MS-Project-style multi-select), or
+#: empty ("" / empty sequence = "field is populated").
+Criterion = tuple[str, "str | Sequence[str]"]
+
+
+def _allowed_values(value: str | Sequence[str]) -> list[str]:
+    """Normalise a criterion value to the list of accepted strings ([] = 'any populated value')."""
+    if isinstance(value, str):
+        return [value] if value else []
+    return [v for v in value if v]
 
 
 def _activity_type(t: Task) -> str:
@@ -69,22 +78,25 @@ def field_value(schedule: Schedule, task: Task, field: str) -> str | None:
 
 
 def task_matches(schedule: Schedule, task: Task, criteria: Sequence[Criterion]) -> bool:
-    """True when the task satisfies EVERY criterion (logical AND).
+    """True when the task satisfies EVERY criterion (logical AND across fields).
 
-    A non-empty ``value`` requires an exact match (``Resource`` matches when the task carries it);
-    an empty ``value`` requires only that the field is populated on the task.
+    Within a field the value(s) are OR'd: a non-empty value/sequence requires the task's value to be
+    one of them (``Resource`` matches when the task carries any of them); an empty value requires
+    only that the field is populated on the task.
     """
     for field, value in criteria:
+        allowed = _allowed_values(value)
         if field == "Resource":
-            if value:
-                if value not in task.resource_names:
+            names = task.resource_names
+            if allowed:
+                if not any(v in names for v in allowed):
                     return False
-            elif not task.resource_names:
+            elif not names:
                 return False
             continue
         actual = field_value(schedule, task, field)
-        if value:
-            if actual != value:
+        if allowed:
+            if actual not in allowed:
                 return False
         elif not actual:
             return False

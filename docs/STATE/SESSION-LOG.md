@@ -2190,3 +2190,18 @@ the upload batch, the loader, and the UI "up to N at once" text + the loaded-ver
 the boundary test (test_loader assert) and comment; the upload-cap message + multi-version views read the
 constant symbolically. Gate green; 100-file load test runs in <2s. No ADR (config cap, like the prior
 10→20). Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 29) — /groups value dropdown, MS-Project-style multi-select (ADR-0097).** Operator:
+on the filters page, pick the field then choose values from a dropdown of all the schedule's values with
+a select-all (instead of typing). Reused the app's existing SFChecklist widget (checkboxes + All/None +
+search — same one the analysis grid & path tiers use). Engine: `grouping.Criterion` widened
+`(field, str)` → `(field, str | Sequence[str])`; `task_matches` ORs the value(s) within a field (Resource
+matches any), still AND across fields; single string = 1-element case (backward compat), empty = populated.
+Web: each filter row = field select + checklist mount + hidden-inputs box; groups.js fetches values
+(/api/group-values) → mounts SFChecklist → writes hidden value{i} inputs the GET form submits; route
+reads per-row value{i} (legacy single `value` still honoured); server-renders hidden inputs so selection
+round-trips + works no-JS. Select-all = all values (field populated); subset filters to it. Tests: engine
+multi-value OR (test_grouping) + web checklist mount/multi-value (test_groups_view). node --check OK,
+gate green. ADR-0097. ALSO this session: investigated the re-attached Acumen files — all single-period so
+CEI=N/A everywhere; need the operator's 2-period comparison run for CEI validation (BEI re-confirmed 0.51
+exact; FEI 2.78/2.89 + BRI 0.51 present, could be added). Model: Opus 4.8 (1M).
