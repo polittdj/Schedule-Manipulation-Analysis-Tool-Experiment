@@ -2183,3 +2183,10 @@ goldens (35→143, 2 versions, 36-activity corridor, dated). node --check OK. Ga
 web tests green (2 new in tests/web/test_driving_path_view.py). Merged main (#156) into branch cleanly.
 ADR-0096. **Backlog now all-but-done:** only CEI value-validation (needs CUI files re-attached) + Float
 Ratio (no formula) remain — both externally gated. Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 28) — Raise the file batch cap 20 → 100.** Operator: "increase the amount of files I
+can drag and drop at one time to 100." `importers/loader.MAX_FILES` 20→100 (the single source — bounds
+the upload batch, the loader, and the UI "up to N at once" text + the loaded-version session). Updated
+the boundary test (test_loader assert) and comment; the upload-cap message + multi-version views read the
+constant symbolically. Gate green; 100-file load test runs in <2s. No ADR (config cap, like the prior
+10→20). Model: Opus 4.8 (1M).
