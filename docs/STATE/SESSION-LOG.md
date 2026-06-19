@@ -2250,3 +2250,32 @@ ratio, hand-verified synthetic unit tests (num/den independently). Surfaced per 
 MEI/BEI/EPI chart; FEI Starts/Finish own chart) + indices + metric-dictionary. Gate green, 1020 tests.
 ADR-0100. NEXT (B): CEI variants Starts(0.10)/Critical(0/3)/adjusted(0.22) — all pre-verified EXACT, just
 need wiring. Then (C) i18n ES expansion + FR/DE. Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 33) — CEI variant cuts (Starts/Critical/adjusted), validated (ADR-0101).** Extended
+`engine/metrics/cei.compute_cei` (from Bible formulas, validated on /tmp/cei_v{1,2}.xml): cei_task_starts
+= count(current ActualStart>0)/count(prior Start in (prev,now]) = 12/117 = **0.10 EXACT**; cei_critical =
+CEI finish on the current-critical population (stored_is_critical) = **0/3 EXACT**; cei_tasks_adjusted =
+same denom as CEI but numerator counts complete tasks with prior Finish>prev (in-window OR future, credits
+early completions) = 28/129 = **0.22 EXACT**. Originals (24/129, 1/6) untouched. CEISeries +
+compute_cei_trend carry the 3 variant series; surfaced on /trend CEI chart (5 lines) + per-version indices
+(cei_starts/cei_critical/cei_adjusted) + metric-dictionary. Synthetic unit tests check num/den/offenders
+independently. Merged main (#162 FEI+BRI) into branch, resolved app.py/help.py/dict conflicts (kept both
+metric sets). Gate green. ADR-0101. **All Acumen metrics now validated.** REMAINING open option: (C) i18n
+ES expansion + FR/DE. BLOCKED: Float Ratio (no formula). Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 34) — i18n French + German, aligned multi-language catalog (ADR-0102).** Operator:
+complete ALL open options. With every Acumen metric merged (CEI/FEI/BRI + CEI variants), the last
+buildable option was broadening language coverage. Restructured `web/i18n.py` from per-language dicts to a
+single `_TERMS: english → {lang: translation}` table and **derive** the per-language `CATALOG` from it, so
+every non-English language is guaranteed to cover one shared key set (catalogs can't silently drift as
+terms are added). Added **French (`fr`)** + **German (`de`)** beside Spanish and expanded the shared term
+set to ~90 core terms (nav, page titles, buttons, frequent labels, metric/status vocabulary, the common
+empty-state prompts); `LANGUAGES` now lists 4 endonyms and the nav `<select>` renders them automatically.
+Everything else from ADR-0099 is unchanged: `<html lang>` + embedded catalog drive `static/translate.js`,
+which applies catalog hits instantly and routes the misses (imported names, AI prose) to `/api/translate`;
+English stays the source language so any uncatalogued term shows in English. Tests (tests/web/test_i18n.py):
+es/fr/de catalogs aligned to one key set (>80 terms each), fr/de translate correctly, source-fallback for
+unknown terms in every language; existing /language + /api/translate plumbing tests unchanged. Gate green,
+node --check OK. Merged main (#163 CEI variants) into branch, resolved HANDOFF header. ADR-0102. **With
+this, the operator's full backlog of open options is complete.** ONLY remaining item: Float Ratio™ —
+BLOCKED, no published formula (unbuildable). Model: Opus 4.8 (1M).

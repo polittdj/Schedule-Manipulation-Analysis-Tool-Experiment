@@ -715,6 +715,43 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         indicates="A forecast-due milestone that did not complete by the data date is a citable "
         "slip against the team's own latest plan (validated vs Acumen: 1/6 = 0.17).",
     ),
+    "cei_task_starts": _doc(
+        "cei_task_starts",
+        "CEI (Task Starts)",
+        "CEI start cut — of the activities the prior schedule forecast to START in the period, the "
+        "share that actually started by the data date.",
+        "count(ActualStart > 0) / count(prior Start in (prev data date, data date])",
+        _HMI,
+        importance="The start-side companion to CEI — are the activities the team planned to kick "
+        "off this period actually starting?",
+        indicates="A low value means planned starts are slipping (validated vs Acumen: 12/117 = "
+        "0.10).",
+    ),
+    "cei_critical": _doc(
+        "cei_critical",
+        "Critical CEI",
+        "CEI restricted to the critical-path activities — of the CRITICAL activities the prior "
+        "schedule forecast to finish this period, the share that actually completed.",
+        "CEI (Tasks), population filtered to current critical-path activities",
+        _HMI,
+        importance="Execution on the critical path is what moves the finish; this isolates CEI to "
+        "the activities that matter most.",
+        indicates="A low Critical CEI means the driving work is not being executed to plan "
+        "(validated vs Acumen: 0/3).",
+    ),
+    "cei_tasks_adjusted": _doc(
+        "cei_tasks_adjusted",
+        "CEI (adjusted)",
+        "CEI finish cut that credits early completions — same denominator as CEI (Tasks), but the "
+        "numerator also counts activities the prior schedule forecast to finish later but done "
+        "ahead of plan.",
+        "count(complete AND prior Finish > prev data date) / count(prior Finish in (prev, now])",
+        _HMI,
+        importance="Rewards finishing ahead of the committed forecast, not just on time — a fuller "
+        "picture of execution than the plain CEI.",
+        indicates="Higher than the plain CEI when work is being pulled forward (validated vs "
+        "Acumen: 28/129 = 0.22).",
+    ),
     "fei_starts": _doc(
         "fei_starts",
         "FEI (Starts)",
