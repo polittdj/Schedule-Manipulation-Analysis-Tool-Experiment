@@ -1209,6 +1209,21 @@ def create_app(
             _groups_body(versions, version_key, sch, criteria, breakdown),
         )
 
+    @app.get("/api/group-values")
+    def group_values_json(
+        version: str | None = Query(None), field: str = Query("")
+    ) -> JSONResponse:
+        """Distinct values of ``field`` in the chosen version — the /groups value autocomplete."""
+        st = session()
+        versions = st.ordered_versions()
+        if not versions:
+            return JSONResponse({"values": []})
+        sch = dict(versions).get(version or "", versions[-1][1])
+        if not field or field not in available_fields(sch):
+            return JSONResponse({"values": []})
+        values = list(group_values(sch, field).keys())
+        return JSONResponse({"values": values[:500]})  # cap for a sane datalist
+
     @app.get("/forecast", response_class=HTMLResponse)
     def forecast_view() -> HTMLResponse:
         st = session()
@@ -3346,17 +3361,21 @@ def _groups_form(
             for k, s in versions
         )
         vsel = f"<label>Version: <select name=version>{vopts}</select></label> "
-    # MAX_FIELDS filter rows, pre-filled from the active criteria.
+    # MAX_FIELDS filter rows, pre-filled from the active criteria. Each value input is backed by a
+    # per-row <datalist> the autocomplete script (groups.js) fills with that field's actual values.
     rows = []
     for i in range(MAX_FIELDS):
         f, v = criteria[i] if i < len(criteria) else ("", "")
         rows.append(
-            f"<div class=group-row><select name=field>{_groups_field_options(sch, f)}</select>"
-            f' = <input name=value value="{_e(v)}" placeholder="value (blank = field populated)"></div>'
+            f"<div class=group-row><select name=field class=gf-field>"
+            f"{_groups_field_options(sch, f)}</select>"
+            f' = <input name=value class=gf-value list="gf-dl-{i}" value="{_e(v)}"'
+            ' placeholder="value (blank = field populated)">'
+            f'<datalist id="gf-dl-{i}"></datalist></div>'
         )
     bsel = f"<select name=breakdown>{_groups_field_options(sch, breakdown)}</select>"
     return f"""
-<div class=panel><form method=get action=/groups class=group-form>
+<div class=panel><form method=get action=/groups class=group-form data-version="{_e(version_key)}">
 {vsel}
 <fieldset><legend>Filter &mdash; scope every metric to tasks matching ALL rows (up to {MAX_FIELDS})</legend>
 {"".join(rows)}</fieldset>
@@ -3367,7 +3386,9 @@ def _groups_form(
 <p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>) and a
 value to scope <b>every</b> metric to just those activities; combine up to {MAX_FIELDS} fields (logical
 AND). <b>Break down by</b> a field to score each of its values separately (one BEI per group). Filter
-and breakdown compose &mdash; the breakdown runs over the filtered population.</p></div>"""
+and breakdown compose &mdash; the breakdown runs over the filtered population. Start typing a value to
+pick from the field's actual values.</p></div>
+<script src="/static/groups.js"></script>"""
 
 
 def _groups_breakdown_table(sub: Schedule, field: str) -> str:

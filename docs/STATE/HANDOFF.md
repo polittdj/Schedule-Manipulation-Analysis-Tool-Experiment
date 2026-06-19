@@ -1,4 +1,17 @@
-# Handoff — 2026-06-18 (PRs #81–#152 MERGED; **`main` green at #152 (`401c1d2`)**; OPEN draft PR = ADR-0092 grouping/filter UI)
+# Handoff — 2026-06-18 (PRs #81–#153 MERGED; **`main` green at #153 (`94a4088`)**; 2 OPEN PRs: ADR-0093 custom-field display columns (#154) + ADR-0094 /groups value autocomplete)
+
+> ## POST-#153 — all 3 operator asks DONE; two polish PRs open
+> **`main` at #153 (`94a4088`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
+> **driving path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153).
+> **OPEN PR #154 (ADR-0093):** show mapped custom fields as optional Path-grid columns (`_driving_data`
+> rows carry `custom`, payload carries `custom_field_labels`; `path.js syncCustomColumns`). **OPEN PR
+> (this branch, ADR-0094):** `/groups` value **autocomplete** — `GET /api/group-values?version&field`
+> returns a field's distinct values (`group_values().keys()`); `static/groups.js` fills a per-row
+> `<datalist>` (progressive enhancement, form works JS-off). NOTE: #154 also edits this HANDOFF (its copy
+> references ADR-0093 as latest) — expect a trivial merge with this file. **NEXT backlog (no longer core
+> asks):** CEI/critical-path value-validation vs the Ribbon Analysis sheet (needs the CUI Acumen files
+> re-attached); custom cols in the path export; animated driving-path Gantt.
+
 
 > ## START HERE (post-#152) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set (5 of ~6 done)
 > **`main` is at #152 (`401c1d2`), green.** OPEN draft PR (branch `claude/grouping-filter-ui`) =
