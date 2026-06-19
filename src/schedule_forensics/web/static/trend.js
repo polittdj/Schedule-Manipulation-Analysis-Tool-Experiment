@@ -401,6 +401,7 @@
           { key: "mei", label: "MEI", color: "var(--ok)" },
           { key: "bei", label: "BEI", color: "var(--warn)" },
           { key: "epi", label: "EPI", color: "var(--accent)" },
+          { key: "bri", label: "BRI", color: "var(--bad)" },
         ].filter(function (s) {
           return data.versions.some(function (v) {
             return v.indices && v.indices[s.key] != null;
@@ -415,8 +416,29 @@
           };
         });
         if (idxSeries.length) {
-          multiLineChart("MEI / BEI / EPI across versions", labels, idxSeries,
-            "Schedule-health indices per version: MEI (milestone execution), BEI (baseline execution), EPI (execution performance). Near or above 1.0 is on-plan.");
+          multiLineChart("MEI / BEI / EPI / BRI across versions", labels, idxSeries,
+            "Schedule-health indices per version: MEI (milestone execution), BEI (baseline execution), EPI (execution performance), BRI (baseline realism — of what was baselined-due, how much actually finished). Near or above 1.0 is on-plan.");
+        }
+
+        var feiSeries = [
+          { key: "fei_starts", label: "FEI (Starts)", color: "var(--accent)" },
+          { key: "fei_finish", label: "FEI (Finish)", color: "var(--warn)" },
+        ].filter(function (s) {
+          return data.versions.some(function (v) {
+            return v.indices && v.indices[s.key] != null;
+          });
+        }).map(function (s) {
+          return {
+            label: s.label,
+            color: s.color,
+            values: data.versions.map(function (v) {
+              return v.indices ? v.indices[s.key] : null;
+            }),
+          };
+        });
+        if (feiSeries.length) {
+          multiLineChart("Forecast Execution Index (FEI) across versions", labels, feiSeries,
+            "Forecast (to-go) execution vs the baseline for the REMAINING work: count of activities still forecast to start/finish ahead, over the count the baseline placed there. Above 1.0 means more work is forecast in the remaining window than baselined — a to-go bow wave.");
         }
 
         var hmiSeries = [

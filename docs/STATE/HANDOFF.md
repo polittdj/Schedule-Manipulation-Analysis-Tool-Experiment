@@ -1,4 +1,23 @@
-# Handoff — 2026-06-19 (PRs #81–#160 MERGED; **`main` green at #160**; OPEN PR = ADR-0099 EN/ES display language)
+# Handoff — 2026-06-19 (PRs #81–#161 MERGED; **`main` green at #161**; OPEN PR = ADR-0100 FEI+BRI; working through ALL open options)
+
+> ## START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
+> **`main` at #161, green** (EN/ES language merged, ADR-0099). Working the remaining options as a series:
+> **(A) FEI+BRI ← OPEN PR (ADR-0100, this branch); (B) CEI variants (Starts/Critical/adjusted) — NEXT;
+> (C) i18n: expand ES catalog + add FR/DE.** All metric definitions PULLED FROM THE BIBLE (.aft) and
+> validated against the operator's two-period Acumen comparison. Float Ratio™ stays blocked (no formula).
+> - **FEI/BRI (ADR-0100, OPEN):** `engine/metrics/fei_bri.py`, single-snapshot over Normal value tasks,
+>   `now`=status date. FEI starts=count(Start≥now)/count(BaselineStart≥now); FEI finish=count(Finish≥now &
+>   not-finished-early)/count(BaselineFinish≥now); BRI=count(BaselineFinish≤now & finished≤now)/
+>   count(BaselineFinish≤now). Surfaced on /trend (BRI in MEI/BEI/EPI chart; FEI own chart) + indices +
+>   dict. **VALIDATED: BRI 0.51 & den 1228 EXACT; FEI start-num 828 EXACT, finish-den 316 EXACT; ratios
+>   2.80/2.92 vs Acumen 2.78/2.89 = few-task mpxj-conversion residual (same as BEI).**
+> - **CEI variants verified ready to build (B):** CEI Starts=count(current ActualStart>0)/count(prior.start
+>   in (s1,s2]) = **0.10 EXACT**; adjusted=count(complete & prior.finish>s1)/denom = **0.22 EXACT**;
+>   Critical=same but population filtered to current `stored_is_critical` = **0/3 EXACT**. Bible formulas
+>   confirmed (PreviousFinish/PreviousStart, ProjectPreviousTimeNow). Extend `engine/metrics/cei.py`.
+> - **OPS:** `/tmp/cei_v1.xml`,`/cei_v2.xml` = mpxj converts of v1/v2 (validation basis; ephemeral).
+>   Convert: `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <mpp> <out.xml>`. Bible (.aft) is
+>   XML; parse `<Metric>` Name/Formula. CUI files in `/root/.claude/uploads/385dc707-.../` (don't commit).
 
 > ## START HERE (post-#160) — EN/ES language toggle in flight; CEI validated & merged
 > **`main` at #160, green.** #160 merged **CEI Acumen parity** (ADR-0098, exact 24/129=0.19, 1/6=0.17, on
