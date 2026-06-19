@@ -1,6 +1,17 @@
-# Handoff — 2026-06-19 (PRs #81–#161 MERGED; **`main` green at #161**; OPEN PR = ADR-0100 FEI+BRI; working through ALL open options)
+# Handoff — 2026-06-19 (PRs #81–#162 MERGED; **`main` green at #162** (FEI+BRI, ADR-0100); OPEN PR = ADR-0101 CEI variants; finishing ALL open options)
 
-> ## START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
+> ## STATUS (post-#162) — metric validation almost done; only i18n expansion + Float Ratio remain
+> **#162 merged FEI+BRI (ADR-0100).** OPEN PR (this branch, ADR-0101): **CEI variants** —
+> `engine/metrics/cei.compute_cei` extended with `cei_task_starts` (count(ActualStart>0)/count(prior
+> Start in window) = **0.10 EXACT**), `cei_critical` (CEI on current-critical population = **0/3 EXACT**),
+> `cei_tasks_adjusted` (numerator credits early/future completions = **28/129 = 0.22 EXACT**). Surfaced on
+> /trend CEI chart + indices + dict; CEISeries/compute_cei_trend carry the variant series. All validated
+> bit-for-bit vs Acumen + synthetic unit tests. **REMAINING open options: (C) i18n — expand ES catalog +
+> add FR/DE** (web/i18n._ES catalog, add CATALOG["fr"]/["de"]). **BLOCKED:** Float Ratio™ (no formula).
+> - ALL Acumen metrics now validated: HMI exact, BEI 0.51 exact, CEI 0.19/0.17 + variants exact, FEI
+>   (828/316/1228 components exact; ratios within mpxj conversion tolerance), BRI 0.51 exact.
+
+> ## (prior) START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
 > **`main` at #161, green** (EN/ES language merged, ADR-0099). Working the remaining options as a series:
 > **(A) FEI+BRI ← OPEN PR (ADR-0100, this branch); (B) CEI variants (Starts/Critical/adjusted) — NEXT;
 > (C) i18n: expand ES catalog + add FR/DE.** All metric definitions PULLED FROM THE BIBLE (.aft) and

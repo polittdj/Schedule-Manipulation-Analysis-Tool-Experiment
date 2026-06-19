@@ -2250,3 +2250,15 @@ ratio, hand-verified synthetic unit tests (num/den independently). Surfaced per 
 MEI/BEI/EPI chart; FEI Starts/Finish own chart) + indices + metric-dictionary. Gate green, 1020 tests.
 ADR-0100. NEXT (B): CEI variants Starts(0.10)/Critical(0/3)/adjusted(0.22) — all pre-verified EXACT, just
 need wiring. Then (C) i18n ES expansion + FR/DE. Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 33) — CEI variant cuts (Starts/Critical/adjusted), validated (ADR-0101).** Extended
+`engine/metrics/cei.compute_cei` (from Bible formulas, validated on /tmp/cei_v{1,2}.xml): cei_task_starts
+= count(current ActualStart>0)/count(prior Start in (prev,now]) = 12/117 = **0.10 EXACT**; cei_critical =
+CEI finish on the current-critical population (stored_is_critical) = **0/3 EXACT**; cei_tasks_adjusted =
+same denom as CEI but numerator counts complete tasks with prior Finish>prev (in-window OR future, credits
+early completions) = 28/129 = **0.22 EXACT**. Originals (24/129, 1/6) untouched. CEISeries +
+compute_cei_trend carry the 3 variant series; surfaced on /trend CEI chart (5 lines) + per-version indices
+(cei_starts/cei_critical/cei_adjusted) + metric-dictionary. Synthetic unit tests check num/den/offenders
+independently. Merged main (#162 FEI+BRI) into branch, resolved app.py/help.py/dict conflicts (kept both
+metric sets). Gate green. ADR-0101. **All Acumen metrics now validated.** REMAINING open option: (C) i18n
+ES expansion + FR/DE. BLOCKED: Float Ratio (no formula). Model: Opus 4.8 (1M).
