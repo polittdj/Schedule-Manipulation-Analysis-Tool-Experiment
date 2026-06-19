@@ -1,12 +1,17 @@
-# Handoff — 2026-06-18 (PRs #81–#154 MERGED; **`main` green at #154 (`c454c30`)**; OPEN PR = ADR-0094 /groups value autocomplete)
+# Handoff — 2026-06-19 (PRs #81–#155 MERGED; **`main` green at #155 (`f021805`)**; OPEN PR = ADR-0095 path-export custom columns)
 
-> ## START HERE (post-#154) — all 3 operator asks DONE; polish PRs in flight
-> **`main` at #154 (`c454c30`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
+> ## START HERE (post-#155) — all 3 operator asks DONE; clearing the polish backlog
+> **`main` at #155 (`f021805`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
 > **driving path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153),
-> and **custom-field display columns** (#154 — the Path grid offers each mapped custom field as an optional
-> column). **OPEN PR (this branch, ADR-0094):** `/groups` value **autocomplete** — `GET
-> /api/group-values?version&field` returns a field's distinct values (`group_values().keys()`);
-> `static/groups.js` fills a per-row `<datalist>` (progressive enhancement, form works JS-off).
+> **custom-field display columns** (#154), and `/groups` value **autocomplete** (#155). Operator then said
+> "complete all remaining backlog tasks" — working through them. **OPEN PR (this branch, ADR-0095):**
+> custom-field columns in the **path export** — `driving_table(rows, target, custom_labels)` appends a
+> column per label from each row's `custom` map; `export_path` takes `&cols=` (intersected w/ the file's
+> own `custom_field_labels`); `path.js updateExportLinks()` syncs `&cols=` to the toggled-on custom
+> columns. **STILL TODO this directive:** (next, separate PR) **animated date-axis Gantt for the
+> driving-path corridor** (`/driving-path` is server-rendered chips today). **BLOCKED (can't do here):**
+> CEI/critical-path value-validation vs the Acumen Ribbon sheet — **needs the CUI Acumen files
+> re-attached** (uploads don't persist across sessions); Float Ratio™/Score — **no extractable formula**.
 >
 > **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, CORRECTED by #149); #146 CPLI (ADR-0086);
 > #147 **HMI** (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI corrected & Acumen-validated**

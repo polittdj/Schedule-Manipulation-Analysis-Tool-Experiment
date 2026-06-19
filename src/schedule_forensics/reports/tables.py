@@ -168,13 +168,23 @@ _DRIVING_COLUMNS: tuple[tuple[str, str], ...] = (
 )
 
 
-def driving_table(rows: Iterable[Mapping[str, object]], target_uid: int) -> Table:
-    out = tuple(tuple(_cell(r.get(key)) for key, _ in _DRIVING_COLUMNS) for r in rows)
-    return Table(
-        f"Path analysis to UID {target_uid}",
-        tuple(label for _, label in _DRIVING_COLUMNS),
-        out,
-    )
+def driving_table(
+    rows: Iterable[Mapping[str, object]],
+    target_uid: int,
+    custom_labels: Sequence[str] = (),
+) -> Table:
+    """Path-analysis rows as a Table. ``custom_labels`` appends one column per mapped custom
+    field (ADR-0093), read from each row's ``custom`` map — so the export mirrors the grid's
+    chosen custom columns (ADR-0095)."""
+    body: list[tuple[Cell, ...]] = []
+    for r in rows:
+        cells = [_cell(r.get(key)) for key, _ in _DRIVING_COLUMNS]
+        custom = r.get("custom")
+        custom_map = custom if isinstance(custom, Mapping) else {}
+        cells.extend(_cell(custom_map.get(label)) for label in custom_labels)
+        body.append(tuple(cells))
+    headers = tuple(label for _, label in _DRIVING_COLUMNS) + tuple(custom_labels)
+    return Table(f"Path analysis to UID {target_uid}", headers, tuple(body))
 
 
 # --- multi-version views ---------------------------------------------------------------

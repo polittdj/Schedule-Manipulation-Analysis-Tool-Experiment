@@ -2158,3 +2158,15 @@ Progressive enhancement — the form still works JS-off; fails open. Numbered AD
 (custom-field display columns) is in flight on PR #154. Gate: ruff/mypy/bandit clean, node --check
 groups.js OK, web tests green (new endpoint + mount tests in tests/web/test_groups_view.py). NEXT: value-
 validation vs Ribbon sheet (needs CUI files) / export custom cols / driving-path Gantt. Model: Opus 4.8.
+
+**2026-06-19 (cont. 26) — Path-export custom columns (ADR-0095).** Backlog item (operator: "complete all
+remaining backlog tasks"). The path xlsx/docx export now mirrors the grid's chosen custom columns
+(ADR-0093 deferral). `reports.tables.driving_table` gained `custom_labels=()` → one column per label from
+each row's `custom` map (missing → empty cell; no labels → byte-identical to before). `export_path` takes
+`&cols=<labels>` intersected with the schedule's own `custom_field_labels` (unknown dropped, order kept,
+deduped — server-side validation). `path.js`: extracted `updateExportLinks()` which appends `&cols=` with
+the toggled-ON custom columns, recomputed on load + on every column-toggle change. Gate: ruff/mypy/bandit
+clean, node --check path.js OK, tests green (driving_table unit test in tests/reports/test_exports.py +
+xlsx-header read in tests/web/test_export_endpoints.py via openpyxl). ADR-0095. NEXT backlog: animated
+driving-path Gantt (doable); BLOCKED: CEI value-validation (needs CUI files), Float Ratio (no formula).
+Model: Opus 4.8 (1M).
