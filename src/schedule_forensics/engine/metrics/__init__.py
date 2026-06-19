@@ -25,6 +25,7 @@ from schedule_forensics.engine.metrics.evm import (
     compute_baseline_compliance,
     compute_evm_indices,
 )
+from schedule_forensics.engine.metrics.fei_bri import compute_bri, compute_fei
 from schedule_forensics.engine.metrics.float_bands import (
     FloatSums,
     compute_float_bands,
@@ -56,12 +57,14 @@ __all__ = [
     "compute_activity_makeup",
     "compute_baseline_compliance",
     "compute_bei",
+    "compute_bri",
     "compute_cei",
     "compute_change_metrics",
     "compute_completion_performance",
     "compute_constraint_distribution",
     "compute_dcma14",
     "compute_evm_indices",
+    "compute_fei",
     "compute_float_bands",
     "compute_float_sums",
     "compute_hmi",

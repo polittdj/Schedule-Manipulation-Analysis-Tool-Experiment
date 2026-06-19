@@ -85,9 +85,11 @@ from schedule_forensics.engine.metrics import (
     compute_activity_makeup,
     compute_baseline_compliance,
     compute_bei,
+    compute_bri,
     compute_completion_performance,
     compute_constraint_distribution,
     compute_dcma14,
+    compute_fei,
     compute_float_bands,
     compute_float_sums,
     compute_net_finish_impact,
@@ -3141,6 +3143,9 @@ def _trend_data(
         mei_r = cp["mei"]
         epi_r = cp["epi"]
         sfr_r = cp["start_finish_ratio"]
+        # FEI (to-go forecast execution) + BRI (baseline realism) — single-snapshot (ADR-0100)
+        fei = compute_fei(sch)
+        bri_r = compute_bri(sch)
         version_rows.append(
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
@@ -3175,6 +3180,10 @@ def _trend_data(
                     "hmi_milestones": hmi_series.milestone_values[i],
                     "cei_tasks": cei_series.task_values[i],
                     "cei_milestones": cei_series.milestone_values[i],
+                    # FEI / BRI (single-snapshot, baseline-anchored)
+                    "fei_starts": fei["fei_starts"].value if fei["fei_starts"].population else None,
+                    "fei_finish": fei["fei_finish"].value if fei["fei_finish"].population else None,
+                    "bri": bri_r.value if bri_r.population else None,
                 },
                 # PBIX p5 — Float Analysis
                 "float_sums": {

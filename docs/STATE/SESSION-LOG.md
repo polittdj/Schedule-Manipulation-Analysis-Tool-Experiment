@@ -2236,3 +2236,17 @@ covers server-rendered + dynamic + AI output. Tests (tests/web/test_i18n.py): ca
 persist+referer+offsite-reject+unknown-lang, page selector/lang-attr/catalog-embed, /api/translate
 catalog-hit+source-fallback+en/bad-input empty, _ai_translate parser (fake backend) + Null returns {}.
 node --check OK, gate green, 1015 tests. To widen ES: add to web/i18n._ES. ADR-0099. Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 32) — FEI + BRI metrics, Bible formulas validated (ADR-0100).** Operator: complete
+ALL open options, verified multiple ways. Pulled FEI/BRI formulas from the Bible (.aft `<Metric>` Name/
+Formula). `engine/metrics/fei_bri.py`, single-snapshot over Normal value tasks (now=status date): FEI
+starts=count(Start≥now)/count(BaselineStart≥now); FEI finish=count(Finish≥now & (ActualFinish≥now or not
+finished))/count(BaselineFinish≥now); BRI cumulative=count(BaselineFinish≤now & ActualFinish≤now)/
+count(BaselineFinish≤now), offenders=baselined-due-not-finished. VALIDATED vs Acumen Large Test File v2
+(2025-03-10): BRI 0.51 EXACT (den 1228 EXACT = BEI population); FEI start numerator 828 EXACT, finish den
+316 EXACT; ratios 2.80/2.92 vs Acumen 2.78/2.89 = few-task residual from the mpxj .mpp→MSPDI conversion
+(NOT the formula — same tolerance BEI documented). Verified 4 ways: Bible formula, exact component counts,
+ratio, hand-verified synthetic unit tests (num/den independently). Surfaced per version on /trend (BRI in
+MEI/BEI/EPI chart; FEI Starts/Finish own chart) + indices + metric-dictionary. Gate green, 1020 tests.
+ADR-0100. NEXT (B): CEI variants Starts(0.10)/Critical(0/3)/adjusted(0.22) — all pre-verified EXACT, just
+need wiring. Then (C) i18n ES expansion + FR/DE. Model: Opus 4.8 (1M).

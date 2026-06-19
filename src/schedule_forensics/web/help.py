@@ -715,6 +715,42 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         indicates="A forecast-due milestone that did not complete by the data date is a citable "
         "slip against the team's own latest plan (validated vs Acumen: 1/6 = 0.17).",
     ),
+    "fei_starts": _doc(
+        "fei_starts",
+        "FEI (Starts)",
+        "Forecast Execution Index, start cut — forward-looking (to-go). Of the remaining work, the "
+        "count of activities still forecast to START in the remaining window over the count the "
+        "baseline placed there.",
+        "count(Start >= now) / count(BaselineStart >= now), over Normal value tasks",
+        _HMI,
+        importance="FEI reads the to-go plan vs the baseline; above 1.0 means more remaining work "
+        "is forecast than baselined — a to-go bow wave being pushed into the future.",
+        indicates="A rising FEI is work piling into the remaining window (validated vs Acumen on "
+        "the Large Test File: ~2.78; start numerator EXACT).",
+    ),
+    "fei_finish": _doc(
+        "fei_finish",
+        "FEI (Finish)",
+        "Forecast Execution Index, finish cut — the remaining activities still forecast to FINISH "
+        "in the to-go window over the count the baseline placed there.",
+        "count(Finish >= now AND not finished early) / count(BaselineFinish >= now), value tasks",
+        _HMI,
+        importance="The finish-side companion to FEI (Starts) — to-go finish load vs baseline.",
+        indicates="Above 1.0 = more finishes forecast in the remaining window than baselined "
+        "(validated vs Acumen: ~2.89).",
+    ),
+    "bri_cumulative": _doc(
+        "bri_cumulative",
+        "BRI",
+        "Baseline Realism Index (cumulative) — of the activities the baseline placed to finish by "
+        "now, how many actually finished by now. Backward-looking realism of the baseline.",
+        "count(BaselineFinish <= now AND actually finished <= now) / count(BaselineFinish <= now)",
+        _HMI,
+        importance="BRI asks whether the baseline was realistic / the team is executing the plan; "
+        "the baselined-due activities that did not finish are the misses.",
+        indicates="A low BRI means the baseline placed work to finish by now that did not — slip "
+        "against the plan (validated EXACT vs Acumen: 0.51, denominator 1228 EXACT).",
+    ),
     "epi": _doc(
         "epi",
         "EPI",
