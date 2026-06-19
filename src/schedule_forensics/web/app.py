@@ -22,7 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -140,6 +140,7 @@ from schedule_forensics.reports.tables import (
     wbs_breakdown_tables,
 )
 from schedule_forensics.reports.xlsx import render_xlsx
+from schedule_forensics.web import i18n
 from schedule_forensics.web.help import METRIC_DICTIONARY
 
 logger = logging.getLogger("schedule_forensics.web")
@@ -152,13 +153,15 @@ _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 _ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
 
 _LAYOUT = Template(
-    """<!doctype html><html lang=en><head><meta charset=utf-8>
+    """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>{{ title }} — Schedule Forensics</title>
 <link rel=icon href="/static/favicon.ico">
+<script>window.SF_LANG={{ lang_json }};window.SF_I18N={{ catalog_json }};</script>
 <script src="/static/theme.js"></script>
 <script src="/static/checklist.js"></script>
 <script src="/static/a11y.js"></script>
+<script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
@@ -176,6 +179,11 @@ title="Focus every view on one activity (blank = clear)">
 <label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
 <button type=submit class=linkbtn>Set</button></form>
 <button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
+<form action="/language" method=post class="navform langform"
+title="Display language for the UI and AI results">
+<label>Language: <select name=lang data-no-i18n
+onchange="this.form.submit()">{{ lang_options }}</select></label>
+</form>
 </nav></header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
@@ -241,6 +249,12 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
+    # UI/AI display language (ADR-0099): "en" (source) or "es". Drives the layout's lang attribute
+    # and the client translation pass; AI fallback translations are memoised in ``translations``.
+    language: str = "en"
+    # AI-fallback translation cache: (lang, source text) -> translated, so a string is translated
+    # at most once per session (the catalog covers fixed terms; this covers dynamic content).
+    translations: dict[tuple[str, str], str] = field(default_factory=dict)
     # the routed AI backend, cached briefly (config, probed-at, backend) so report renders
     # don't re-probe a down Ollama every time; reset on a settings change / TTL lapse.
     backend_cache: tuple[AIConfig, float, AIBackend] | None = None
@@ -443,6 +457,54 @@ def _active_backend(state: SessionState) -> AIBackend:
     return backend
 
 
+def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, str]:
+    """Translate ``texts`` with the configured model; return only the ones it produced.
+
+    Numbered, tab-delimited round-trip so partial/garbled output degrades gracefully (the caller
+    keeps the source text for anything not returned). The Null backend (no model) returns nothing —
+    the catalog already covers the fixed UI, and dynamic content stays in the source language."""
+    if backend.name == "null" or not texts:
+        return {}
+    target = i18n.LANGUAGES.get(lang, lang)
+    prompt = (
+        f"Translate each numbered line into {target}. These are short UI labels and "
+        "schedule-activity names from a project-management tool. Output ONLY the translations, one "
+        "per line, each prefixed with its number and a tab, in the same order. Keep numbers, dates, "
+        "codes and IDs unchanged.\n\n" + "\n".join(f"{i}\t{t}" for i, t in enumerate(texts))
+    )
+    try:
+        raw = backend.generate(prompt)
+    except Exception:
+        return {}
+    out: dict[str, str] = {}
+    for line in raw.splitlines():
+        num, sep, es = line.partition("\t")
+        if sep and num.strip().isdigit() and int(num.strip()) < len(texts) and es.strip():
+            out[texts[int(num.strip())]] = es.strip()
+    return out
+
+
+def _translate_batch(texts: list[str], lang: str, state: SessionState) -> dict[str, str]:
+    """Translations for ``texts``: catalog → session cache → AI model. Source text for the rest."""
+    cat = i18n.catalog_for(lang)
+    out: dict[str, str] = {}
+    need: list[str] = []
+    for raw in texts:
+        key = raw.strip()
+        if not key:
+            continue
+        if key in cat:
+            out[raw] = cat[key]
+        elif (lang, key) in state.translations:
+            out[raw] = state.translations[(lang, key)]
+        elif raw not in need:
+            need.append(raw)
+    for raw, translated in _ai_translate(need, lang, _active_backend(state)).items():
+        state.translations[(lang, raw.strip())] = translated
+        out[raw] = translated
+    return out
+
+
 def _polished_narrative(
     state: SessionState, key: str, sch: Schedule, analysis: _Analysis
 ) -> Narrative:
@@ -513,12 +575,22 @@ def _page(
     status_code: int = 200,
     ask_schedule: str | None = None,
 ) -> HTMLResponse:
+    lang = i18n.normalize(state.language)
+    lang_options = "".join(
+        f'<option value="{code}"{" selected" if code == lang else ""}>{_e(name)}</option>'
+        for code, name in i18n.LANGUAGES.items()
+    )
     return HTMLResponse(
         _LAYOUT.render(
             title=title,
             banner=_banner_html(state),
             body=body + _ask_panel_html(state, ask_schedule),
             target=state.target_uid if state.target_uid is not None else "",
+            lang=lang,
+            lang_json=json.dumps(lang),
+            # the catalog is only shipped to the client when not English (no payload for en)
+            catalog_json=json.dumps(i18n.catalog_for(lang)),
+            lang_options=lang_options,
         ),
         status_code=status_code,
     )
@@ -1636,6 +1708,33 @@ def create_app(
         # local redirect only: a path on this app, never a scheme/host ("//host" included)
         dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
+
+    @app.post("/language")
+    def set_language(request: Request, lang: str = Form("en")) -> RedirectResponse:
+        """Set the UI/AI display language (ADR-0099); returns to the page the user was on."""
+        session().language = i18n.normalize(lang)
+        # return to the referring page, reduced to a local path (host stripped, no open redirect)
+        path = urlparse(request.headers.get("referer") or "/").path or "/"
+        dest = path if path.startswith("/") and not path.startswith("//") else "/"
+        return RedirectResponse(url=dest, status_code=303)
+
+    @app.post("/api/translate")
+    async def translate_api(request: Request) -> JSONResponse:
+        """Translate a batch of strings for the client (catalog → session cache → AI model).
+
+        Covers what the catalog does not (imported names, AI prose). Falls back to the source text
+        when no model is reachable, so the page is never broken — only less fully translated."""
+        st = session()
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"translations": {}})
+        lang = i18n.normalize(body.get("lang"))
+        texts = body.get("texts")
+        if lang == i18n.DEFAULT_LANGUAGE or not isinstance(texts, list):
+            return JSONResponse({"translations": {}})
+        wanted = [str(t) for t in texts][:400]
+        return JSONResponse({"translations": _translate_batch(wanted, lang, st)})
 
     @app.post("/session/wipe")
     def wipe() -> RedirectResponse:

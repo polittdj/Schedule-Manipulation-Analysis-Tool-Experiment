@@ -1,4 +1,22 @@
-# Handoff — 2026-06-19 (PRs #81–#159 MERGED; **`main` green at #159**; OPEN PR = ADR-0098 CEI Acumen parity)
+# Handoff — 2026-06-19 (PRs #81–#160 MERGED; **`main` green at #160**; OPEN PR = ADR-0099 EN/ES display language)
+
+> ## START HERE (post-#160) — EN/ES language toggle in flight; CEI validated & merged
+> **`main` at #160, green.** #160 merged **CEI Acumen parity** (ADR-0098, exact 24/129=0.19, 1/6=0.17, on
+> /trend beside HMI). **OPEN PR (this branch, ADR-0099): English/Spanish display language for the WHOLE
+> UI + all AI results** (operator chose "everything in one pass" + translate imported content too).
+> Design = two-layer: `web/i18n.py` hand-built EN→ES **catalog** (nav/titles/buttons/metric names/
+> statuses — offline, authoritative) + **AI fallback** `POST /api/translate` (catalog→session cache→local
+> model) for dynamic content (task/WBS/resource names, computed/AI prose). `SessionState.language` + nav
+> selector (`POST /language`, returns via Referer); `<html lang>` + embedded catalog; `static/translate.js`
+> walks DOM text nodes (skips scripts/inputs/[data-no-i18n]/numbers), applies catalog instantly, batches
+> misses to /api/translate, MutationObserver covers AJAX grids/charts/AI answers; applied-output guard
+> prevents re-translation loops. No model (Null backend) → keeps source text (never broken). Tests cover
+> catalog + plumbing + the AI round-trip parser (live model path runs on the operator's machine). To
+> WIDEN ES coverage: add entries to `web/i18n._ES`. Gate green, 1015 tests.
+> - **CEI follow-on still offered:** add `compute_fei`/`compute_bri` (single-period, present in the
+>   operator's files: FEI 2.78/2.89, BRI 0.51); CEI Starts/Critical/adjusted variants deferred. CEI
+>   converts: /tmp/cei_v1.xml,/cei_v2.xml (ephemeral). **BLOCKED:** Float Ratio™ (no formula).
+
 
 > ## START HERE (post-#159) — CEI VALIDATED & implemented; only Float Ratio remains (no formula)
 > **`main` at #159, green.** Shipped/merged this stretch: …#156 path-export custom cols (ADR-0095), #157
