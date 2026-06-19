@@ -3180,6 +3180,9 @@ def _trend_data(
                     "hmi_milestones": hmi_series.milestone_values[i],
                     "cei_tasks": cei_series.task_values[i],
                     "cei_milestones": cei_series.milestone_values[i],
+                    "cei_starts": cei_series.start_values[i],
+                    "cei_critical": cei_series.critical_values[i],
+                    "cei_adjusted": cei_series.adjusted_values[i],
                     # FEI / BRI (single-snapshot, baseline-anchored)
                     "fei_starts": fei["fei_starts"].value if fei["fei_starts"].population else None,
                     "fei_finish": fei["fei_finish"].value if fei["fei_finish"].population else None,

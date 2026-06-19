@@ -126,3 +126,91 @@ def test_cei_trend_needs_two_versions() -> None:
 
     with pytest.raises(ValueError, match="at least two"):
         compute_cei_trend([_sched([_t(1, finish=IN, actual=None)], S1)])
+
+
+# --- variant cuts (Starts / Critical / adjusted), ADR-0101 -----------------------------------
+
+
+def _full(
+    uid: int,
+    *,
+    start: dt.datetime | None = None,
+    finish: dt.datetime | None = None,
+    astart: dt.datetime | None = None,
+    afinish: dt.datetime | None = None,
+    critical: bool = False,
+) -> Task:
+    return Task(
+        unique_id=uid,
+        name=f"T{uid}",
+        duration_minutes=480,
+        start=start,
+        finish=finish,
+        actual_start=astart,
+        actual_finish=afinish,
+        stored_is_critical=critical,
+        percent_complete=100.0 if afinish is not None else 0.0,
+    )
+
+
+def test_cei_task_starts_cut() -> None:
+    # prior forecast tasks 1,2,3 to START in the period; current: 1 & 2 started, 3 not.
+    prior = _sched(
+        [_full(1, start=IN), _full(2, start=IN), _full(3, start=IN), _full(4, start=AFTER)], S1
+    )
+    current = _sched(
+        [
+            _full(1, start=IN, astart=IN),
+            _full(2, start=IN, astart=IN),
+            _full(3, start=AFTER),
+            _full(4, start=AFTER),
+        ],
+        S2,
+    )
+    s = compute_cei(prior, current)["cei_task_starts"]
+    assert s.count == 2 and s.population == 3 and s.value == round(2 / 3, 2)
+    assert s.offender_uids == (3,)  # forecast to start, did not
+
+
+def test_cei_critical_cut_uses_current_criticality() -> None:
+    # 3 prior-forecast-due tasks; only 1 & 3 are critical in the CURRENT schedule.
+    prior = _sched([_full(1, finish=IN), _full(2, finish=IN), _full(3, finish=IN)], S1)
+    current = _sched(
+        [
+            _full(1, finish=IN, afinish=IN, critical=True),  # critical + complete -> hit
+            _full(2, finish=AFTER, critical=False),  # not critical -> excluded
+            _full(3, finish=AFTER, critical=True),  # critical, not complete -> miss
+        ],
+        S2,
+    )
+    c = compute_cei(prior, current)["cei_critical"]
+    assert c.count == 1 and c.population == 2 and c.value == 0.5  # 1 of 2 critical due finished
+    assert c.offender_uids == (3,)
+
+
+def test_cei_adjusted_credits_early_completions() -> None:
+    # denom = prior-forecast-due in window (1,2); task 3 forecast in the FUTURE but done early.
+    prior = _sched([_full(1, finish=IN), _full(2, finish=IN), _full(3, finish=AFTER)], S1)
+    current = _sched(
+        [
+            _full(1, finish=IN, afinish=IN),  # in-window complete
+            _full(2, finish=AFTER),  # in-window, not complete
+            _full(3, finish=AFTER, afinish=IN),  # FUTURE-forecast but completed early -> credit
+        ],
+        S2,
+    )
+    out = compute_cei(prior, current)
+    plain = out["cei_tasks"]
+    adj = out["cei_tasks_adjusted"]
+    assert (plain.count, plain.population) == (1, 2)  # plain: 1 of 2 in-window
+    # adjusted: numerator adds the early future completion (3) -> 2 of 2
+    assert (adj.count, adj.population) == (2, 2) and adj.value == 1.0
+
+
+def test_cei_trend_carries_variant_series() -> None:
+    v1 = _sched([_full(1, start=IN, finish=IN)], S1)
+    v2 = _sched([_full(1, start=IN, finish=IN, astart=IN, afinish=IN, critical=True)], S2)
+    series = compute_cei_trend([v1, v2])
+    assert series.start_values[0] is None and series.start_values[1] == 1.0
+    assert series.critical_values[1] == 1.0
+    assert series.adjusted_values[1] == 1.0

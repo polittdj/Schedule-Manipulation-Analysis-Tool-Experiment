@@ -44,12 +44,104 @@ def compute_cei(prior: Schedule, current: Schedule) -> dict[str, MetricResult]:
     prior_activities = non_summary(prior)
     normal = [t for t in prior_activities if not t.is_milestone]
     milestones = [t for t in prior_activities if t.is_milestone]
+    # the critical cut filters the Normal population to activities the CURRENT schedule marks
+    # critical (Acumen reads the MS-Project Critical flag); identity is by UniqueID.
+    critical = [
+        t
+        for t in normal
+        if (cur := current_by.get(t.unique_id)) is not None and cur.stored_is_critical
+    ]
     return {
         "cei_tasks": _cei("cei_tasks", "CEI (Tasks)", normal, current_by, prev_now, now),
         "cei_milestones": _cei(
             "cei_milestones", "CEI (Milestones)", milestones, current_by, prev_now, now
         ),
+        # variants, all validated EXACT vs Acumen (ADR-0101):
+        "cei_task_starts": _cei_starts(
+            "cei_task_starts", "CEI (Task Starts)", normal, current_by, prev_now, now
+        ),
+        "cei_critical": _cei("cei_critical", "Critical CEI", critical, current_by, prev_now, now),
+        "cei_tasks_adjusted": _cei_adjusted(
+            "cei_tasks_adjusted", "CEI (Tasks, adjusted)", normal, current_by, prev_now, now
+        ),
     }
+
+
+def _started(task: Task | None) -> bool:
+    """The current-schedule activity has actually started (carries an actual start)."""
+    return task is not None and task.actual_start is not None
+
+
+def _is_complete(task: Task | None) -> bool:
+    """The current-schedule activity is 100% complete (Acumen's CEI numerator predicate)."""
+    return task is not None and task.percent_complete >= 100.0
+
+
+def _cei_starts(
+    metric_id: str,
+    name: str,
+    prior_population: list[Task],
+    current_by: dict[int, Task],
+    prev_now: dt.datetime | None,
+    now: dt.datetime | None,
+) -> MetricResult:
+    """CEI start cut: of the activities the prior schedule forecast to START this period, how many
+    have actually started. ``count(ActualStart>0) / count(PreviousStart in (prev_now, now])``."""
+    na = MetricResult(metric_id, name, 0, 0, 0.0, "ratio", CheckStatus.NOT_APPLICABLE)
+    if prev_now is None or now is None or now <= prev_now:
+        return na
+    forecast = [t for t in prior_population if t.start is not None and prev_now < t.start <= now]
+    if not forecast:
+        return na
+    started = sum(1 for t in forecast if _started(current_by.get(t.unique_id)))
+    misses = tuple(
+        sorted(t.unique_id for t in forecast if not _started(current_by.get(t.unique_id)))
+    )
+    return MetricResult(
+        metric_id,
+        name,
+        started,
+        len(forecast),
+        round(started / len(forecast), 2),
+        "ratio",
+        CheckStatus.NOT_APPLICABLE,
+        offender_uids=misses,
+    )
+
+
+def _cei_adjusted(
+    metric_id: str,
+    name: str,
+    prior_population: list[Task],
+    current_by: dict[int, Task],
+    prev_now: dt.datetime | None,
+    now: dt.datetime | None,
+) -> MetricResult:
+    """CEI finish cut with early-completion credit: the denominator is the in-period forecast set,
+    but the numerator counts EVERY now-complete activity the prior schedule forecast to finish from
+    ``prev_now`` onward (in-window OR future) — so finishing ahead of the forecast is rewarded."""
+    na = MetricResult(metric_id, name, 0, 0, 0.0, "ratio", CheckStatus.NOT_APPLICABLE)
+    if prev_now is None or now is None or now <= prev_now:
+        return na
+    denom = [t for t in prior_population if t.finish is not None and prev_now < t.finish <= now]
+    if not denom:
+        return na
+    done = sum(
+        1
+        for t in prior_population
+        if t.finish is not None
+        and t.finish > prev_now
+        and _is_complete(current_by.get(t.unique_id))
+    )
+    return MetricResult(
+        metric_id,
+        name,
+        done,
+        len(denom),
+        round(done / len(denom), 2),
+        "ratio",
+        CheckStatus.NOT_APPLICABLE,
+    )
 
 
 def _completed_by(task: Task | None, when: dt.datetime) -> bool:
