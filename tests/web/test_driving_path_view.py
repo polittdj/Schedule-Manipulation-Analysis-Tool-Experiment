@@ -61,3 +61,30 @@ def test_absent_uid_is_flagged(client: TestClient) -> None:
 def test_nav_links_to_driving_path(client: TestClient) -> None:
     _upload(client, "Project5")
     assert "/driving-path" in client.get("/").text
+
+
+def test_corridor_gantt_embeds_per_version_data(client: TestClient) -> None:
+    # ADR-0096: two versions -> an animated corridor Gantt with embedded per-version data
+    import json
+    import re
+
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/driving-path?source=35&target=143").text
+    assert "id=dpChart" in page and "/static/driving_path.js" in page
+    m = re.search(r'<script type="application/json" id=dpData>(.*?)</script>', page, re.S)
+    assert m is not None
+    data = json.loads(m.group(1))
+    assert data["source_uid"] == 35 and data["target_uid"] == 143
+    assert len(data["versions"]) == 2
+    # the newest version's corridor carries dated activities flagged for entry vs the prior
+    acts = data["versions"][-1]["activities"]
+    assert acts and all({"uid", "name", "start", "finish", "entered"} <= set(a) for a in acts)
+
+
+def test_corridor_gantt_absent_for_single_version(client: TestClient) -> None:
+    # one version -> nothing to animate; the chart is suppressed (chips still render)
+    _upload(client, "Project5")
+    page = client.get("/driving-path?source=35&target=143").text
+    assert "id=dpChart" not in page
+    assert "Driving path:" in page  # the textual corridor view is still there

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import datetime as dt
 import html
+import json
 import logging
 import tempfile
 import threading
@@ -61,6 +62,7 @@ from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
 from schedule_forensics.engine.driving_path import (
+    DrivingPathEvolution,
     DrivingPathSnapshot,
     compute_driving_path_evolution,
 )
@@ -3263,6 +3265,84 @@ def _corridor_chips(snap: DrivingPathSnapshot) -> str:
     return " <span class=dp-arrow>&rarr;</span> ".join(chips)
 
 
+def _task_iso_dates(
+    sch: Schedule,
+    basis_start: dict[int, int],
+    basis_finish: dict[int, int],
+    uid: int,
+) -> tuple[str | None, str | None]:
+    """A task's (start, finish) as ISO dates — the same stored-or-CPM basis the Path page uses
+    (stored dates render verbatim; otherwise the date_basis offsets convert on the calendar)."""
+    task = sch.tasks_by_id.get(uid)
+    if task is None:
+        return None, None
+    if task.start is not None and task.finish is not None:
+        return task.start.date().isoformat(), task.finish.date().isoformat()
+    cal = sch.calendar
+    s, f = basis_start.get(uid), basis_finish.get(uid)
+    si = (
+        offset_to_datetime(sch.project_start, max(s, 0), cal).date().isoformat()
+        if s is not None
+        else None
+    )
+    fi = (
+        offset_to_datetime(sch.project_start, max(f, 0), cal).date().isoformat()
+        if f is not None
+        else None
+    )
+    return si, fi
+
+
+def _driving_path_gantt(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    evo: DrivingPathEvolution,
+    a_name: str,
+    b_name: str,
+) -> dict[str, object]:
+    """Per-version corridor activities with dates — the payload the animated Gantt steps through.
+
+    Each version carries the corridor's activities (ordered, with start/finish + an ``entered``
+    flag vs the prior version) so the JS can draw the bars on a date axis held fixed across every
+    version, the corridor visibly shifting as the schedule slips."""
+    version_data: list[dict[str, object]] = []
+    for sch, cpm, snap in zip(schedules, cpms, evo.snapshots, strict=True):
+        basis_start, basis_finish = date_basis(sch, cpm)
+        by_id = sch.tasks_by_id
+        entered = set(snap.entered)
+        acts: list[dict[str, object]] = []
+        for uid, name in zip(snap.between.path, snap.names, strict=True):
+            start, finish = _task_iso_dates(sch, basis_start, basis_finish, uid)
+            task = by_id.get(uid)
+            acts.append(
+                {
+                    "uid": uid,
+                    "name": name,
+                    "start": start,
+                    "finish": finish,
+                    "is_milestone": task.is_milestone if task is not None else False,
+                    "entered": uid in entered,
+                }
+            )
+        version_data.append(
+            {
+                "label": snap.label,
+                "data_date": snap.status_date,
+                "status": snap.status,
+                "change_note": snap.change_note,
+                "drives": snap.between.drives,
+                "activities": acts,
+            }
+        )
+    return {
+        "source_uid": evo.source_uid,
+        "target_uid": evo.target_uid,
+        "source_name": a_name,
+        "target_name": b_name,
+        "versions": version_data,
+    }
+
+
 def _driving_path_body(
     schedules: list[Schedule], cpms: list[CPMResult], source: int | None, target: int | None
 ) -> str:
@@ -3303,6 +3383,32 @@ version to see the corridor shift.</p></div>"""
         f"<p class=muted>{len(evo.snapshots)} version(s), oldest first.</p></div>"
     )
 
+    # animated date-axis Gantt of the corridor over the versions (ADR-0096); only when at least
+    # one version actually has a corridor to draw (and there's more than one version to step).
+    gantt = _driving_path_gantt(schedules, cpms, evo, a_name, b_name)
+    versions = cast("list[dict[str, object]]", gantt["versions"])
+    has_corridor = any(v["activities"] for v in versions)
+    gantt_html = ""
+    if has_corridor and len(schedules) > 1:
+        blob = json.dumps(gantt).replace("</", "<\\/")  # safe to embed in a <script> tag
+        gantt_html = f"""
+<div class=panel><h2>Corridor over time</h2>
+<p class=muted>The driving corridor drawn on a date axis held fixed across every version, so it
+visibly shifts as the schedule slips. Step or play through the versions; activities that
+<b class=ev-entered>entered</b> the corridor since the prior version are outlined.</p>
+<div class=viz-controls>
+<button id=dpPrev type=button>&#9664; Prev</button>
+<span id=dpLabel class=muted></span>
+<button id=dpNext type=button>Next &#9654;</button>
+<button id=dpPlay type=button>&#9654; Auto-play</button>
+<span class=muted style="margin-left:1em">Zoom:</span>
+<button id=dpZoomOut type=button title="zoom out">&minus;</button>
+<button id=dpZoomIn type=button title="zoom in">&plus;</button>
+</div>
+<div id=dpChart class=path-view></div></div>
+<script type="application/json" id=dpData>{blob}</script>
+<script src="/static/driving_path.js"></script>"""
+
     rows: list[str] = []
     for snap in evo.snapshots:
         when = f" &middot; data date {snap.status_date}" if snap.status_date else ""
@@ -3324,7 +3430,7 @@ version to see the corridor shift.</p></div>"""
             f"{left}</div>"
         )
 
-    return form + header + "".join(rows)
+    return form + header + gantt_html + "".join(rows)
 
 
 def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
