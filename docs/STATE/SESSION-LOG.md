@@ -2220,3 +2220,19 @@ HMI in trend.js) + per-version indices.cei_tasks/cei_milestones; metric-dictiona
 /cei (bow_wave) is a different monthly-forward CEI (0.01) — left as-is; this is the DCMA by-status-dates
 CEI. Gate: ruff/mypy/bandit clean, node --check OK. ADR-0098. STILL ADDABLE from same files: FEI
 (2.78/2.89), BRI (0.51), single-period. BLOCKED: Float Ratio (no formula). Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 31) — EN/ES display language for the whole UI + AI results (ADR-0099).** Operator:
+let the user pick the language for all displayed data + all AI results, EN+ES to start; chose "everything
+in one pass" + translate imported content (task/WBS/resource names) too. Two-layer design: `web/i18n.py`
+hand-built EN→ES catalog (nav/titles/buttons/metric names/statuses — offline, authoritative; English is
+the source so misses fall back to the original) + AI fallback `POST /api/translate` (catalog→per-session
+cache→configured local model; numbered tab-delimited round-trip, degrades gracefully; Null backend → {} →
+client keeps source). `SessionState.language` (default en) + nav `<select>` (POST /language, returns via
+Referer with host stripped → no open redirect). Layout: `<html lang>`, embeds catalog JSON + window.SF_LANG
+when es, loads static/translate.js which walks DOM text nodes (skips scripts/inputs/[data-no-i18n]/pure
+number-date-code text), applies catalog instantly, batches misses to /api/translate; MutationObserver
+re-translates AJAX grids/charts/AI answers; applied-output guard stops re-translation loops. One mechanism
+covers server-rendered + dynamic + AI output. Tests (tests/web/test_i18n.py): catalog+fallback, /language
+persist+referer+offsite-reject+unknown-lang, page selector/lang-attr/catalog-embed, /api/translate
+catalog-hit+source-fallback+en/bad-input empty, _ai_translate parser (fake backend) + Null returns {}.
+node --check OK, gate green, 1015 tests. To widen ES: add to web/i18n._ES. ADR-0099. Model: Opus 4.8 (1M).

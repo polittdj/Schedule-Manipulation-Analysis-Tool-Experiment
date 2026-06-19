@@ -1,0 +1,105 @@
+"""Language (EN/ES) selection — the i18n catalog, the /language switch, and /api/translate."""
+
+from __future__ import annotations
+
+import pytest
+from fastapi.testclient import TestClient
+
+from schedule_forensics.web import i18n
+from schedule_forensics.web.app import SessionState, _ai_translate, create_app
+
+
+def test_catalog_translate_and_fallback() -> None:
+    assert i18n.translate("Dashboard", "es") == "Panel"
+    assert i18n.translate("Trend", "es") == "Tendencia"
+    # English (source) is a no-op; an uncatalogued term falls back to itself
+    assert i18n.translate("Dashboard", "en") == "Dashboard"
+    assert i18n.translate("Totally Unmapped Task", "es") == "Totally Unmapped Task"
+    assert i18n.normalize("zz") == "en" and i18n.normalize("es") == "es"
+    assert set(i18n.LANGUAGES) == {"en", "es"}
+
+
+@pytest.fixture
+def state() -> SessionState:
+    return SessionState()
+
+
+@pytest.fixture
+def client(state: SessionState) -> TestClient:
+    return TestClient(create_app(state))
+
+
+def test_default_page_is_english_with_a_selector(client: TestClient) -> None:
+    page = client.get("/").text
+    assert '<html lang="en"' in page
+    assert "/language" in page and "name=lang" in page  # the selector
+    assert "/static/translate.js" in page
+    assert "Español" in page  # the endonym option is shown
+
+
+def test_language_switch_persists_and_returns_to_referer(
+    client: TestClient, state: SessionState
+) -> None:
+    r = client.post(
+        "/language",
+        data={"lang": "es"},
+        headers={"referer": "http://testserver/trend"},
+        follow_redirects=False,
+    )
+    assert r.status_code == 303 and r.headers["location"] == "/trend"
+    assert state.language == "es"
+    page = client.get("/").text
+    assert '<html lang="es"' in page
+    assert '"Panel"' in page  # the catalog is embedded for the client when not English
+
+
+def test_language_switch_rejects_offsite_referer(client: TestClient) -> None:
+    r = client.post(
+        "/language",
+        data={"lang": "es"},
+        headers={"referer": "https://evil.example.com/x"},
+        follow_redirects=False,
+    )
+    # only the path is honoured (host stripped) — no open redirect
+    assert r.headers["location"] == "/x"
+
+
+def test_unknown_language_falls_back_to_english(client: TestClient, state: SessionState) -> None:
+    client.post("/language", data={"lang": "zz"}, follow_redirects=False)
+    assert state.language == "en"
+
+
+def test_translate_api_catalog_hit_and_source_fallback(client: TestClient) -> None:
+    # no model in tests -> catalog terms translate, dynamic text falls back (absent from the map)
+    out = client.post(
+        "/api/translate", json={"lang": "es", "texts": ["Dashboard", "Pour concrete slab 12"]}
+    ).json()["translations"]
+    assert out["Dashboard"] == "Panel"
+    assert "Pour concrete slab 12" not in out  # no model -> client keeps the source text
+    # English / bad input -> nothing to translate
+    assert client.post("/api/translate", json={"lang": "en", "texts": ["x"]}).json() == {
+        "translations": {}
+    }
+    assert client.post("/api/translate", json={"lang": "es", "texts": "nope"}).json() == {
+        "translations": {}
+    }
+
+
+class _FakeBackend:
+    name = "fake"
+
+    def generate(self, prompt: str) -> str:  # numbered, tab-delimited round-trip
+        # echo a deterministic translation for each numbered input line
+        lines = [ln for ln in prompt.splitlines() if "\t" in ln and ln[0].isdigit()]
+        return "\n".join(f"{ln.split(chr(9))[0]}\t<es>{ln.split(chr(9), 1)[1]}" for ln in lines)
+
+
+def test_ai_translate_parses_numbered_output() -> None:
+    out = _ai_translate(["Alpha", "Beta"], "es", _FakeBackend())  # type: ignore[arg-type]
+    assert out == {"Alpha": "<es>Alpha", "Beta": "<es>Beta"}
+
+
+def test_ai_translate_null_backend_returns_nothing() -> None:
+    from schedule_forensics.ai.null import NullBackend
+
+    assert _ai_translate(["Alpha"], "es", NullBackend()) == {}
