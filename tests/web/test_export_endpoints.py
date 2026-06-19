@@ -51,20 +51,26 @@ def test_path_export_carries_the_trace_and_rejects_bad_targets(client: TestClien
     assert client.get("/export/xlsx/path/Project5", params={"target": 999999}).status_code == 422
 
 
+def _xlsx_text(content: bytes) -> str:
+    """All worksheet XML of an xlsx (strings are written inline), for header/value asserts."""
+    zf = zipfile.ZipFile(io.BytesIO(content))
+    return "".join(zf.read(n).decode() for n in zf.namelist() if n.startswith("xl/worksheets/"))
+
+
 def test_path_export_includes_selected_custom_columns(client: TestClient) -> None:
     # ADR-0095: the export mirrors the grid's chosen custom columns via &cols=
-    import openpyxl
-
     _upload(client, "Project5")  # carries custom fields 'Trace Log' + 'Driving Slack'
     r = client.get(
         "/export/xlsx/path/Project5",
         params={"target": 143, "cols": "Trace Log,Nope"},  # unknown col silently dropped
     )
     assert r.status_code == 200
-    wb = openpyxl.load_workbook(io.BytesIO(r.content))
-    headers = [c.value for c in next(wb[wb.sheetnames[0]].iter_rows(max_row=1))]
-    assert "Trace Log" in headers  # the requested custom column is present
-    assert "Nope" not in headers  # the unknown field was ignored, not added
+    text = _xlsx_text(r.content)
+    assert "Trace Log" in text  # the requested custom column header is present
+    assert "Nope" not in text  # the unknown field was ignored, not added
+    # without &cols the export is unchanged (no custom column leaks in)
+    plain = _xlsx_text(client.get("/export/xlsx/path/Project5", params={"target": 143}).content)
+    assert "Trace Log" not in plain
 
 
 def test_multi_version_exports(client: TestClient) -> None:
