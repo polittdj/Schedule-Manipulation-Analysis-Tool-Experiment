@@ -149,6 +149,11 @@ class CEISeries:
     milestone_values: tuple[float | None, ...]
     task_offenders: tuple[tuple[int, ...], ...]
     milestone_offenders: tuple[tuple[int, ...], ...]
+    # variant cuts (ADR-0101), parallel to the versions: task starts, the critical-path subset, and
+    # the early-completion-credited "adjusted" task finish. None on the first version / when empty.
+    start_values: tuple[float | None, ...] = ()
+    critical_values: tuple[float | None, ...] = ()
+    adjusted_values: tuple[float | None, ...] = ()
 
 
 def compute_cei_trend(schedules: Sequence[Schedule]) -> CEISeries:
@@ -164,17 +169,27 @@ def compute_cei_trend(schedules: Sequence[Schedule]) -> CEISeries:
     ms_vals: list[float | None] = []
     task_off: list[tuple[int, ...]] = []
     ms_off: list[tuple[int, ...]] = []
+    start_vals: list[float | None] = []
+    crit_vals: list[float | None] = []
+    adj_vals: list[float | None] = []
+
+    def _v(result: object) -> float | None:
+        return result.value if result.population else None  # type: ignore[attr-defined]
+
     for i, sch in enumerate(schedules):
         if i == 0:
-            task_vals.append(None)
-            ms_vals.append(None)
+            for lst in (task_vals, ms_vals, start_vals, crit_vals, adj_vals):
+                lst.append(None)
             task_off.append(())
             ms_off.append(())
             continue
         cei = compute_cei(schedules[i - 1], sch)
         task, milestone = cei["cei_tasks"], cei["cei_milestones"]
-        task_vals.append(task.value if task.population else None)
-        ms_vals.append(milestone.value if milestone.population else None)
+        task_vals.append(_v(task))
+        ms_vals.append(_v(milestone))
+        start_vals.append(_v(cei["cei_task_starts"]))
+        crit_vals.append(_v(cei["cei_critical"]))
+        adj_vals.append(_v(cei["cei_tasks_adjusted"]))
         task_off.append(task.offender_uids)
         ms_off.append(milestone.offender_uids)
     return CEISeries(
@@ -183,6 +198,9 @@ def compute_cei_trend(schedules: Sequence[Schedule]) -> CEISeries:
         milestone_values=tuple(ms_vals),
         task_offenders=tuple(task_off),
         milestone_offenders=tuple(ms_off),
+        start_values=tuple(start_vals),
+        critical_values=tuple(crit_vals),
+        adjusted_values=tuple(adj_vals),
     )
 
 

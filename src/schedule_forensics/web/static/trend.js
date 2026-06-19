@@ -443,6 +443,9 @@
         var ceiSeries = [
           { key: "cei_tasks", label: "CEI (Tasks)", color: "var(--accent)" },
           { key: "cei_milestones", label: "CEI (Milestones)", color: "var(--ok)" },
+          { key: "cei_starts", label: "CEI (Starts)", color: "var(--warn)" },
+          { key: "cei_critical", label: "Critical CEI", color: "var(--bad)" },
+          { key: "cei_adjusted", label: "CEI (adjusted)", color: "var(--muted)" },
         ].filter(function (s) {
           return data.versions.some(function (v) {
             return v.indices && v.indices[s.key] != null;

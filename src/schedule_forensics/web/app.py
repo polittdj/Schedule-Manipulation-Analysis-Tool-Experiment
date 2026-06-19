@@ -3175,6 +3175,9 @@ def _trend_data(
                     "hmi_milestones": hmi_series.milestone_values[i],
                     "cei_tasks": cei_series.task_values[i],
                     "cei_milestones": cei_series.milestone_values[i],
+                    "cei_starts": cei_series.start_values[i],
+                    "cei_critical": cei_series.critical_values[i],
+                    "cei_adjusted": cei_series.adjusted_values[i],
                 },
                 # PBIX p5 — Float Analysis
                 "float_sums": {
