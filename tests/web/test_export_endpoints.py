@@ -51,6 +51,22 @@ def test_path_export_carries_the_trace_and_rejects_bad_targets(client: TestClien
     assert client.get("/export/xlsx/path/Project5", params={"target": 999999}).status_code == 422
 
 
+def test_path_export_includes_selected_custom_columns(client: TestClient) -> None:
+    # ADR-0095: the export mirrors the grid's chosen custom columns via &cols=
+    import openpyxl
+
+    _upload(client, "Project5")  # carries custom fields 'Trace Log' + 'Driving Slack'
+    r = client.get(
+        "/export/xlsx/path/Project5",
+        params={"target": 143, "cols": "Trace Log,Nope"},  # unknown col silently dropped
+    )
+    assert r.status_code == 200
+    wb = openpyxl.load_workbook(io.BytesIO(r.content))
+    headers = [c.value for c in next(wb[wb.sheetnames[0]].iter_rows(max_row=1))]
+    assert "Trace Log" in headers  # the requested custom column is present
+    assert "Nope" not in headers  # the unknown field was ignored, not added
+
+
 def test_multi_version_exports(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

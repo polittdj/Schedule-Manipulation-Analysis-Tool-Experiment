@@ -1346,6 +1346,7 @@ def create_app(
         target: int = Query(...),
         secondary: int = Query(10),
         tertiary: int = Query(20),
+        cols: str = Query(""),
     ) -> Response:
         if (bad := _bad_format(fmt)) is not None:
             return bad
@@ -1361,9 +1362,15 @@ def create_app(
         rows = data.get("rows") or []
         if not rows:
             return JSONResponse({"error": str(data.get("note", "no path"))}, status_code=422)
+        # selected custom-field columns to mirror the grid (ADR-0095): only the schedule's own
+        # mapped fields, in the order requested, deduped.
+        valid = set(sch.custom_field_labels)
+        custom_labels = list(
+            dict.fromkeys(c for c in (s.strip() for s in cols.split(",")) if c in valid)
+        )
         tableset = TableSet(
             f"Path analysis - {sch.name}",
-            (driving_table(rows, target),),  # type: ignore[arg-type]
+            (driving_table(rows, target, custom_labels),),  # type: ignore[arg-type]
         )
         return _export_response(fmt, tableset, f"{name}-path-uid{target}")
 

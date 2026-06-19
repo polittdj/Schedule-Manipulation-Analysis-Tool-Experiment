@@ -13,7 +13,7 @@ from schedule_forensics.reports.docx import (
     render_document,
     render_docx,
 )
-from schedule_forensics.reports.tables import Table, TableSet
+from schedule_forensics.reports.tables import Table, TableSet, driving_table
 from schedule_forensics.reports.xlsx import render_xlsx
 
 TS = TableSet(
@@ -28,6 +28,19 @@ TS = TableSet(
 
 def _zip_names(blob: bytes) -> list[str]:
     return zipfile.ZipFile(io.BytesIO(blob)).namelist()
+
+
+def test_driving_table_appends_selected_custom_columns() -> None:
+    rows = [
+        {"unique_id": 1, "name": "A", "custom": {"CA-WBS": "X1", "CAM": "Bob"}},
+        {"unique_id": 2, "name": "B", "custom": {"CA-WBS": "X2"}},  # no CAM
+    ]
+    # no custom labels -> the fixed column set is unchanged
+    assert len(driving_table(rows, 143).headers) == 12
+    t = driving_table(rows, 143, ["CA-WBS", "CAM"])
+    assert t.headers[-2:] == ("CA-WBS", "CAM")
+    assert t.rows[0][-2:] == ("X1", "Bob")
+    assert t.rows[1][-2:] == ("X2", None)  # missing custom value -> None cell
 
 
 def test_xlsx_has_the_minimum_valid_parts_and_one_sheet_per_table() -> None:
