@@ -686,6 +686,35 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         importance="Milestone hits/misses per period are the contract-level heartbeat of the IMS.",
         indicates="A missed milestone baselined for this period is an immediate, citable slip.",
     ),
+    "cei_tasks": _doc(
+        "cei_tasks",
+        "CEI (Tasks)",
+        "Current Execution Index for tasks — period-over-period, forecast-anchored. Of the tasks "
+        "the PRIOR schedule forecast to finish in the current status period, the share that "
+        "actually completed by the data date. Needs two versions (N/A for a single schedule).",
+        "tasks the prior schedule forecast to finish this period AND now complete / "
+        "tasks the prior schedule forecast to finish this period",
+        _HMI,
+        importance="CEI reads whether the team executes the plan it most recently COMMITTED to "
+        "(its own forecast) — the forecast-anchored sibling of the baseline-anchored HMI.",
+        indicates="A low CEI means the latest forecast is not being met; the misses are the "
+        "forecast-due activities that did not complete by the data date. Validated EXACT vs Acumen "
+        "(Large Test File v1→v2: 24/129 = 0.19).",
+    ),
+    "cei_milestones": _doc(
+        "cei_milestones",
+        "CEI (Milestones)",
+        "Current Execution Index for milestones — the milestone counterpart of CEI (Tasks): "
+        "milestones the prior schedule forecast to finish this period that completed by the data "
+        "date.",
+        "milestones the prior schedule forecast to finish this period AND now complete / "
+        "milestones the prior schedule forecast to finish this period",
+        _HMI,
+        importance="Forecast milestone execution per period — whether committed milestone dates "
+        "hold.",
+        indicates="A forecast-due milestone that did not complete by the data date is a citable "
+        "slip against the team's own latest plan (validated vs Acumen: 1/6 = 0.17).",
+    ),
     "epi": _doc(
         "epi",
         "EPI",

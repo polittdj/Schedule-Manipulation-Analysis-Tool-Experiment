@@ -1,23 +1,25 @@
-# Handoff — 2026-06-19 (PRs #81–#157 MERGED; **`main` green at #157**; OPEN PRs: #158 file-cap→100, ADR-0097 /groups value dropdown)
+# Handoff — 2026-06-19 (PRs #81–#159 MERGED; **`main` green at #159**; OPEN PR = ADR-0098 CEI Acumen parity)
 
-> ## START HERE (post-#157) — all 3 operator asks DONE + backlog cleared; new operator requests in flight
-> **`main` at #157, green.** Shipped/merged: custom-field **mapping** (#148), **driving path** 2-UIDs
-> (#152), grouping/filter **engine + UI** (#150, #153), **custom-field display columns** (#154), `/groups`
-> **autocomplete** (#155), **path-export custom columns** (#156, ADR-0095), **driving-path corridor
-> animation** (#157, ADR-0096). **OPEN PRs:** **#158** raise drag-drop file cap 20→**100** (`loader.MAX_FILES`);
-> **this branch, ADR-0097** — MS-Project-style **value dropdown** on /groups: reuses the `SFChecklist`
-> widget (checkboxes + All/None + search) for the filter values; `grouping.Criterion` widened to
-> `(field, str | Sequence[str])` so `task_matches` ORs multiple values within a field (AND across fields);
-> `groups.js` mounts the checklist + writes hidden `value{i}` inputs; route reads per-row `value{i}` (legacy
-> single `value` still honoured). Backward-compatible.
-> - **CEI VALUE-VALIDATION — operator re-attached the Acumen files; they're single-period so CEI = N/A
->   everywhere (confirmed in all 4 reports). NEED: operator to run the TWO-period comparison (Large_Test_File
->   v1 + Large_Test_File2 v2) in Acumen and provide the CEI output.** I have both `.mpp`s to compute my side.
->   Re-confirmed BEI Value Tasks = 0.51 (632/1228) EXACT. FEI (2.78/2.89) + BRI (0.51) are single-period &
->   present — could ADD `compute_fei`/`compute_bri` and validate from these files (not yet in the engine).
-> **BLOCKED — need inputs:** (1) CEI validation — needs the **two-period Acumen comparison run** (above);
-> (2) **Float Ratio™ / composite Score** — **no extractable formula** (Acumen never published it). These are the only
-> open items and both are externally gated.
+> ## START HERE (post-#159) — CEI VALIDATED & implemented; only Float Ratio remains (no formula)
+> **`main` at #159, green.** Shipped/merged this stretch: …#156 path-export custom cols (ADR-0095), #157
+> driving-path corridor animation (ADR-0096), **#158 file cap →100**, **#159 MS-Project value dropdown on
+> /groups (ADR-0097)**. **OPEN PR (this branch, ADR-0098): CEI Acumen parity — VALIDATED EXACT.** Operator
+> ran the **two-period Acumen comparison** (Large_Test_File v1 2025-02-07 → v2 2025-03-10); I reverse-
+> engineered the CEI definition and built `engine/metrics/cei.compute_cei(prior, current)` (the
+> **forecast-anchored** sibling of HMI): denom = activities the PRIOR schedule forecast to finish in
+> `(prev_now, now]` & incomplete at prev_now; numerator = of those, actually complete by now; Tasks &
+> Milestones separate; N/A single/non-advancing period. **Reproduces Acumen EXACTLY: CEI Value Tasks
+> 24/129 = 0.19, Milestones 1/6 = 0.17.** `trend.compute_cei_trend` indexes per version; surfaced on
+> `/trend` (chart beside HMI) + `indices.cei_tasks/cei_milestones`; metric-dictionary entries added. Unit
+> tests on synthetic 2-period fixtures (real `.mpp`s are CUI — convert via
+> `java -cp tools/mpxj/classes:tools/mpxj/lib/* MpxjToMspdi <mpp> <out.xml>`; /tmp/cei_v1.xml,/cei_v2.xml
+> are the ephemeral converts I validated against). Note: the tool's pre-existing `/cei` (bow_wave) is a
+> DIFFERENT monthly-forward CEI (gave 0.01) — left as-is; this is the DCMA by-status-dates CEI.
+> - **STILL AVAILABLE to add from the SAME files (single-period, present, not yet built):** FEI Value
+>   Tasks = 2.78/2.89, BRI Cumulative = 0.51 — could add `compute_fei`/`compute_bri` & validate. BEI
+>   re-confirmed 0.51 (632/1228) EXACT. CEI "Starts" (~0.10), Critical, and "adjusted" variants deferred.
+> **BLOCKED — no path:** **Float Ratio™ / composite Score** — **no extractable formula** (Acumen never
+> published it). The only remaining externally-gated item.
 >
 > **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, CORRECTED by #149); #146 CPLI (ADR-0086);
 > #147 **HMI** (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI corrected & Acumen-validated**
