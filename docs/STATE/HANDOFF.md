@@ -1,17 +1,21 @@
-# Handoff — 2026-06-19 (PRs #81–#163 MERGED; **`main` green at #163** (CEI variants, ADR-0101); OPEN PR = ADR-0102 i18n FR/DE — LAST buildable open option)
+# Handoff — 2026-06-19 (PRs #81–#164 MERGED; **`main` green at #164** (i18n FR/DE, ADR-0102); OPEN PR = ADR-0103 Float Ratio™ — the LAST metric, no longer blocked)
 
-> ## STATUS (post-#163) — open options DONE; only Float Ratio (no formula) remains
-> Completing the operator's "complete ALL open options, validated multiple ways." **All metric work is
-> merged: #160 CEI (ADR-0098), #162 FEI+BRI (ADR-0100), #163 CEI variants (ADR-0101 — Starts 0.10 /
-> Critical 0-3 / adjusted 0.22, all EXACT).** OPEN PR (this branch, **ADR-0102 i18n FR/DE**): restructured
-> `web/i18n._TERMS` to one `english → {lang: translation}` table (the per-language `CATALOG` is derived, so
-> the catalogs stay aligned), added **French + German** beside Spanish, expanded to ~90 shared core terms;
-> `LANGUAGES` now lists 4 endonyms; the nav selector + `static/translate.js` mechanism are unchanged. Test
-> pins es/fr/de aligned to one key set + fr/de translate. **ALL Acumen metric validations done**
-> (HMI/BEI/CEI+variants/FEI/BRI). **ONLY remaining open item: Float Ratio™ — BLOCKED, no published formula
-> (unbuildable).** Once this i18n PR merges, the operator's full backlog is complete.
-> - ALL Acumen metrics validated: HMI exact, BEI 0.51 exact, CEI 0.19/0.17 + variants (0.10/0-3/0.22)
->   exact, FEI (828/316/1228 components exact; ratios within mpxj conversion tolerance), BRI 0.51 exact.
+> ## STATUS (post-#164) — Float Ratio™ BUILT; the backlog has no blocked items left
+> The operator asked to figure out Float Ratio and build a formula that works **period to period** — the
+> one metric long marked "blocked, no formula." It was never unbuildable: the Bible (`.aft`) carries an
+> explicit `<Metric Name="Float Ratio™">` with `<Formula>AVERAGE(TotalFloat / RemainingDuration)</Formula>`
+> over Normal planned/in-progress activities. OPEN PR (this branch, **ADR-0103**): new
+> `engine/metrics/float_ratio.compute_float_ratio` returns both Bible forms — `float_ratio` (mean of
+> per-activity ratios, threshold-bearing, cites <0.1 offenders) and `float_ratio_aggregate` (ratio of
+> means). `trend.compute_float_ratio_trend` scores each version and carries the period-over-period
+> **delta**; surfaced on /trend ("Float Ratio™ across periods" chart) + per-version indices + metric
+> dictionary + i18n term. Validated: formula verbatim from Bible; hand-computed unit tests (both forms,
+> population, fallback, division guard, negative float, delta); **real-schedule denominator cross-check —
+> the population's avg remaining duration = 18.4 wd ≈ Acumen's reported Avg. Remaining Duration ~18**
+> (Acumen never exports Float Ratio itself, so this is the external anchor).
+> - ALL Acumen metrics now built + validated: HMI exact, BEI 0.51 exact, CEI 0.19/0.17 + variants
+>   (0.10/0-3/0.22) exact, FEI (components exact; ratios within mpxj tolerance), BRI 0.51 exact, Float
+>   Ratio™ (Bible formula; denominator cross-checked vs Acumen). **No blocked items remain.**
 
 > ## (prior) START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
 > **`main` at #161, green** (EN/ES language merged, ADR-0099). Working the remaining options as a series:

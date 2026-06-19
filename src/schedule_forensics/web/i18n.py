@@ -158,6 +158,11 @@ _TERMS: dict[str, dict[str, str]] = {
     "Check": {"es": "Comprobación", "fr": "Contrôle", "de": "Prüfung"},
     "Total float": {"es": "Holgura total", "fr": "Marge totale", "de": "Gesamtpuffer"},
     "Free float": {"es": "Holgura libre", "fr": "Marge libre", "de": "Freier Puffer"},
+    "Float Ratio": {
+        "es": "Ratio de holgura",
+        "fr": "Ratio de marge",
+        "de": "Puffer-Verhältnis",
+    },
     "Project finish": {"es": "Fin del proyecto", "fr": "Fin du projet", "de": "Projektende"},
     "Computed finish": {"es": "Fin calculado", "fr": "Fin calculée", "de": "Berechnetes Ende"},
     "Earliest start": {

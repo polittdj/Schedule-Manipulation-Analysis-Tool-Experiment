@@ -788,6 +788,35 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         indicates="A low BRI means the baseline placed work to finish by now that did not — slip "
         "against the plan (validated EXACT vs Acumen: 0.51, denominator 1228 EXACT).",
     ),
+    "float_ratio": _doc(
+        "float_ratio",
+        "Float Ratio™",
+        "Average, across the live activities, of each activity's total float divided by its "
+        "remaining duration — how much breathing room the remaining work has relative to how much "
+        "work is left. Over Normal planned/in-progress activities (completed work excluded). The "
+        "cited offenders are the very-tight activities (per-activity ratio < 0.1).",
+        "AVERAGE(TotalFloat / RemainingDuration), Normal planned/in-progress activities",
+        _HMI,
+        importance="Float Ratio reads how much slack the schedule carries per day of remaining "
+        "work; bands (Bible): <0.1 very tight, 0.1-0.3 tight, 0.3-0.6 healthy, >0.6 generous.",
+        indicates="A very low ratio is a schedule running out of room (delay risk); an excessively "
+        "high ratio flags poor logic — missing links / out-of-sequence work inflating float. "
+        "Validated on the Large Test File: the population's average remaining duration (18.4 "
+        "working days) matches Acumen's reported Avg. Remaining Duration (~18).",
+    ),
+    "float_ratio_aggregate": _doc(
+        "float_ratio_aggregate",
+        "Float Ratio (aggregate)",
+        "The ratio-of-means companion to Float Ratio™: total float over total remaining duration "
+        "across the same population. More robust than the mean-of-ratios to activities with a tiny "
+        "remaining duration (which can otherwise dominate the average).",
+        "AVERAGE(TotalFloat) / AVERAGE(RemainingDuration), Normal planned/in-progress activities",
+        _HMI,
+        importance="Reported alongside the canonical Float Ratio so a few near-zero-remaining "
+        "activities can't skew the period-to-period read.",
+        indicates="Tracks the canonical Float Ratio; a divergence between the two means a handful "
+        "of almost-finished activities carry outsized float.",
+    ),
     "epi": _doc(
         "epi",
         "EPI",

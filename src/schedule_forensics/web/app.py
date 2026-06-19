@@ -105,6 +105,7 @@ from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
+    compute_float_ratio_trend,
     compute_hmi_trend,
     compute_quality_trend,
     order_versions,
@@ -3131,6 +3132,9 @@ def _trend_data(
     # None). HMI is baseline-anchored; CEI is forecast-anchored (prior forecast vs current actuals).
     hmi_series = compute_hmi_trend(schedules)
     cei_series = compute_cei_trend(schedules)
+    # Float Ratio is single-snapshot; the trend scores each version and carries the period-over-period
+    # delta (this minus prior) so the chart reads as a period-to-period series (ADR-0103).
+    float_ratio_series = compute_float_ratio_trend(schedules, cpms)
     version_rows: list[dict[str, object]] = []
     for i, (p, sch, cpm, an) in enumerate(zip(points, schedules, cpms, analyses, strict=True)):
         makeup = compute_activity_makeup(sch)
@@ -3187,6 +3191,10 @@ def _trend_data(
                     "fei_starts": fei["fei_starts"].value if fei["fei_starts"].population else None,
                     "fei_finish": fei["fei_finish"].value if fei["fei_finish"].population else None,
                     "bri": bri_r.value if bri_r.population else None,
+                    # Float Ratio (single-snapshot; the delta is period-over-period)
+                    "float_ratio": float_ratio_series.values[i],
+                    "float_ratio_aggregate": float_ratio_series.aggregate_values[i],
+                    "float_ratio_delta": float_ratio_series.deltas[i],
                 },
                 # PBIX p5 — Float Analysis
                 "float_sums": {
