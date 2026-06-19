@@ -26,9 +26,9 @@ from schedule_forensics.importers.mspdi import parse_mspdi
 from schedule_forensics.importers.xer import parse_xer
 from schedule_forensics.model import Schedule
 
-#: Hard cap — at most this many schedules may be loaded in one batch (§6.B required 10;
-#: raised to 20 at the operator's request).
-MAX_FILES = 20
+#: Hard cap — at most this many schedules may be loaded in one batch (§6.B required 10; raised
+#: to 20, then to 100 at the operator's request — drag-and-drop up to 100 files at once).
+MAX_FILES = 100
 
 #: Extension (lower-cased) → importer. ``.xml`` is treated as MSPDI (Primavera uses
 #: ``.xer``; ``.pmxml`` P6 XML is a later importer); ``.json`` is the tool's own format.
