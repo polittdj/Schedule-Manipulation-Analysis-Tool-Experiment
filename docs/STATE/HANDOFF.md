@@ -1,45 +1,31 @@
-# Handoff — 2026-06-18 (PRs #81–#153 MERGED; **`main` green at #153 (`94a4088`)**; 2 OPEN PRs: ADR-0093 custom-field display columns (#154) + ADR-0094 /groups value autocomplete)
+# Handoff — 2026-06-18 (PRs #81–#154 MERGED; **`main` green at #154 (`c454c30`)**; OPEN PR = ADR-0094 /groups value autocomplete)
 
-> ## POST-#153 — all 3 operator asks DONE; two polish PRs open
-> **`main` at #153 (`94a4088`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
-> **driving path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153).
-> **OPEN PR #154 (ADR-0093):** show mapped custom fields as optional Path-grid columns (`_driving_data`
-> rows carry `custom`, payload carries `custom_field_labels`; `path.js syncCustomColumns`). **OPEN PR
-> (this branch, ADR-0094):** `/groups` value **autocomplete** — `GET /api/group-values?version&field`
-> returns a field's distinct values (`group_values().keys()`); `static/groups.js` fills a per-row
-> `<datalist>` (progressive enhancement, form works JS-off). NOTE: #154 also edits this HANDOFF (its copy
-> references ADR-0093 as latest) — expect a trivial merge with this file. **NEXT backlog (no longer core
-> asks):** CEI/critical-path value-validation vs the Ribbon Analysis sheet (needs the CUI Acumen files
-> re-attached); custom cols in the path export; animated driving-path Gantt.
-
-
-> ## START HERE (post-#152) — CUSTOM-FIELD / GROUPING / DRIVING-PATH feature set (5 of ~6 done)
-> **`main` is at #152 (`401c1d2`), green.** OPEN draft PR (branch `claude/grouping-filter-ui`) =
-> **Groups & Filters UI (ADR-0092)** — server-rendered `/groups` page wiring the grouping engine, full
-> gate green (992 tests). The operator's 3 asks: (1) **map all custom fields** ✓; (2) **driving path
-> between two user-defined UIDs** + over time ✓ (#152); (3) **group/filter ALL metrics by a chosen field**
-> (CA-WBS = a value), **up to 5 fields** — operator chose **filter + breakdown** ← **just built (UI)**.
+> ## START HERE (post-#154) — all 3 operator asks DONE; polish PRs in flight
+> **`main` at #154 (`c454c30`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
+> **driving path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153),
+> and **custom-field display columns** (#154 — the Path grid offers each mapped custom field as an optional
+> column). **OPEN PR (this branch, ADR-0094):** `/groups` value **autocomplete** — `GET
+> /api/group-values?version&field` returns a field's distinct values (`group_values().keys()`);
+> `static/groups.js` fills a per-row `<datalist>` (progressive enhancement, form works JS-off).
 >
-> **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, later CORRECTED by #149); #146 CPLI→remaining
-> CP length (ADR-0086); #147 **HMI** (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI
-> corrected & Acumen-validated** (ADR-0089); #150 **grouping/filter ENGINE** (ADR-0090); #152 **driving
-> path between 2 UIDs across versions** (ADR-0091 — `engine/driving_path.py`, `/driving-path` page).
-> **OPEN draft:** **Groups & Filters UI (ADR-0092)** — `/groups` page: version picker + ≤5 filter rows
-> (`field = value`) → scorecard (population, makeup, full DCMA-14) over `filter_schedule(sch, criteria)`;
-> "break down by" a field → per-value rows (count, %complete, **BEI**); filter+breakdown compose. Extracted
-> `metrics.compute_bei(schedule)` (pure counts, no CPM) from `compute_dcma14` so the breakdown is cheap +
-> one source of truth (golden BEI 0.74/0.59 unchanged, parity test added). All state in the query string
-> (no JS). Deferred: JS value-autocomplete; multi-metric breakdown (BEI-only today).
+> **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, CORRECTED by #149); #146 CPLI (ADR-0086);
+> #147 **HMI** (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI corrected & Acumen-validated**
+> (ADR-0089); #150 **grouping ENGINE** (ADR-0090); #152 **driving path 2-UIDs** (ADR-0091); #153 **Groups &
+> Filters UI** (ADR-0092 — `/groups`: ≤5 filter rows → DCMA-14 scorecard over `filter_schedule`; breakdown
+> per value w/ **BEI**; extracted `metrics.compute_bei`, no-CPM, single source of truth); #154 **custom-field
+> display columns** (ADR-0093 — `_driving_data` rows carry `custom`, payload carries `custom_field_labels`,
+> `path.js syncCustomColumns` adds a toggle per field).
 > - **VALUE-VALIDATION vs the operator's new Acumen ribbon reports (2 versions of the Large File):**
 >   **HMI is EXACT** (Acumen v2 = 0 of 24 due tasks, milestone 0 of 1, v1 N/A — `compute_hmi_trend`
 >   reproduces it). **BEI was WRONG** → fixed to Acumen "BEI - Value Tasks" = complete NORMAL tasks /
 >   NORMAL baselined-due (no baseline-dur filter, no missing-baseline term); goldens EXACT 0.74/0.59,
 >   Large-File denominator EXACT 1228, numerator within 2 of 632.
 >
-> **NEXT (after ADR-0092 merges):** **display column-picker** for custom fields in the activity table (the
-> last of the 3 asks — show selected custom fields per row); then keep value-validating CEI / critical-path
-> against the Ribbon Analysis sheet (CEI/FEI/BRI/TC-BEI/EVM by absolute column index); optional polish
-> (animated Gantt for the driving-path corridor; JS autocomplete on /groups).
+> **NEXT (after ADR-0094 merges) — the 3 asks are complete; remaining backlog is value-validation + polish:**
+> keep value-validating CEI / critical-path against the Ribbon Analysis sheet (CEI/FEI/BRI/TC-BEI/EVM by
+> absolute column index — header row 9, v1 row 10, v2 row 11; NEEDS the CUI Acumen files re-attached);
+> optional polish (custom cols in path export; animated Gantt for the driving-path corridor; Float
+> Ratio™/Score still DEFERRED — no extractable formula).
 >
 > **MODEL/ENGINE recap:** custom fields = `Task.custom_fields` (tuple of (label,value); alias e.g. `CA-WBS`
 > wins over `Text20`) + helpers `custom_field(label)`/`custom_field_map`; `Schedule.custom_field_labels`

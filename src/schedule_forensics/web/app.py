@@ -2788,6 +2788,9 @@ def _driving_data(
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
                 "resource_names": ", ".join(task.resource_names),
+                # mapped custom fields populated on this task (label → value); the grid offers
+                # each as an optional column (ADR-0088 mapping → ADR-0093 display)
+                "custom": dict(task.custom_field_map),
             }
         )
     # waterfall order: earliest finish first, so the chain cascades to the target's finish
@@ -2806,6 +2809,8 @@ def _driving_data(
         "target_name": by_id[target].name,
         "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
         "coverage": coverage,
+        # the schedule's mapped custom fields (declared order) → optional grid columns
+        "custom_field_labels": list(sch.custom_field_labels),
         "rows": rows,
     }
 

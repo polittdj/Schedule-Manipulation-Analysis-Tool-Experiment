@@ -91,6 +91,8 @@
 .pv-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); z-index: 2; }
 .path-grid tr.done td { color: var(--muted); }
 .field-toggle { margin-right: 6px; font-size: 12px; }
+/* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
+.field-toggle.field-custom { color: var(--accent, #6ea8fe); }
 .ask-answer { white-space: pre-wrap; }
 #askOut ul { font-size: 13px; }
 

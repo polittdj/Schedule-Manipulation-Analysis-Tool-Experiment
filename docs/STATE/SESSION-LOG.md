@@ -2134,6 +2134,20 @@ ruff/mypy/bandit clean, full suite 992 pass (new tests/web/test_groups_view.py, 
 test_dcma14). ADR-0092. NEXT: custom-field display column-picker (last of the 3 asks). Model/mode: Opus
 4.8 (1M).
 
+**2026-06-18 (cont. 24) — Custom-field display columns (ADR-0093).** Last of the operator's 3 asks. The
+Path Analysis grid (the app's activity table, already a column-picker via static/path.js) now offers each
+mapped custom field (ADR-0088) as an OPTIONAL column. `_driving_data` rows gained `custom` =
+dict(task.custom_field_map) (label→value, only populated) and the `/api/driving` payload gained
+`custom_field_labels` (declared order) so the grid discovers columns from data — no hard-coding. path.js:
+`syncCustomColumns()` appends one toggle per label (key `cf:<label>`, OFF by default, `.field-custom`
+styling), cell renderer reads `r.custom[label]`; toggle state persists in module-level FIELDS across
+target/version changes. Verified on Project5 golden (it carries custom fields 'Trace Log' + 'Driving
+Slack'; payload exposes them, all 107 rows carry values). node --check path.js OK. Gate: ruff/mypy/bandit
+clean, web+schema suites green (new test in tests/web/test_path_view.py asserts the payload contract).
+Deferred: custom cols in the path export (driving_table fixed columns); custom cols in other tables.
+ADR-0093 — **all 3 operator asks now complete.** NEXT backlog: CEI/critical-path value-validation vs the
+Ribbon Analysis sheet + polish. Model/mode: Opus 4.8 (1M).
+
 **2026-06-18 (cont. 25) — /groups value autocomplete (ADR-0094).** Polish on the grouping UI (built on
 merged #153, independent of in-flight #154). New `GET /api/group-values?version&field` → a field's
 distinct values (`group_values(sch, field).keys()`, capped 500; standard + custom fields; unknown/blank
