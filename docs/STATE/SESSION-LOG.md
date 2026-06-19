@@ -2279,3 +2279,28 @@ unknown terms in every language; existing /language + /api/translate plumbing te
 node --check OK. Merged main (#163 CEI variants) into branch, resolved HANDOFF header. ADR-0102. **With
 this, the operator's full backlog of open options is complete.** ONLY remaining item: Float Ratio™ —
 BLOCKED, no published formula (unbuildable). Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 35) — Float Ratio™, period to period — the last "blocked" metric, built (ADR-0103).**
+Operator: figure out how to calculate Float Ratio and create a formula that works period to period. It
+was long carried as "blocked, no extractable formula" — wrong: re-reading the Bible (`.aft`) shows an
+explicit `<Metric Name="Float Ratio™">` with `<Formula>AVERAGE(TotalFloat / RemainingDuration)</Formula>`,
+Remarks "normal activities that are planned or in-progress", PrimaryFilter Normal + Planned/In-Progress,
+NOT Complete/Milestone/Summary/Hammock; the library also carries the ratio-of-means form
+AVERAGE(TotalFloat)/AVERAGE(RemainingDuration). New `engine/metrics/float_ratio.compute_float_ratio(sched,
+cpm=None)` returns BOTH: `float_ratio` (mean of per-activity ratios, threshold-bearing, offenders = the
+<0.1 very-tight activities) and `float_ratio_aggregate` (ratio of means, robust to tiny-remaining-duration
+outliers). Total float = stored progress-aware value where present (effective_total_float, ADR-0080) else
+recomputed CPM float; remaining = stored else duration×(100−%)/100; both → working days on the schedule
+calendar before dividing (elapsed-safe); rem≤0 skipped (division guard). Informational (IncludeInDCMA
+false → status NA); bands <0.1/0.1-0.3/0.3-0.6/>0.6 live in the dictionary. PERIOD TO PERIOD:
+`trend.compute_float_ratio_trend` scores each version on its own and carries the delta (this−prior, first
+None) + aggregate + population; /trend renders "Float Ratio™ across periods" (mean + aggregate lines) +
+indices float_ratio/float_ratio_aggregate/float_ratio_delta + help dict + i18n term. VALIDATED 4 ways:
+(1) formula verbatim from the Bible; (2) hand-computed unit tests (both forms, population filter,
+remaining fallback, division guard, negative float → −1.0, period delta); (3) real Large Test File
+(cei_v1/v2 converts) runs clean period-to-period; (4) denominator cross-check — population avg remaining
+duration 18.4 wd ≈ Acumen reported Avg. Remaining Duration ~18 (Acumen never exports Float Ratio itself,
+so this is the external anchor). On that deliberately loose schedule the ratio is high = the correct
+forensic signal (High Float 44d ≈ 70% of activities → excessive float/missing logic, the Bible's >0.6
+"check for poor logic" band). Gate green, node --check OK. ADR-0103. **No blocked metrics remain — the
+operator's full backlog is complete.** Model: Opus 4.8 (1M).

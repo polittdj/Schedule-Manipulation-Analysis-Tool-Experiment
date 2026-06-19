@@ -486,6 +486,27 @@
             "Period-over-period forecast execution: of the activities the PRIOR schedule forecast to finish in each status period, the share that actually completed by the data date. The first version has no prior period. 1.0 = the team executed everything it last committed to.");
         }
 
+        var floatRatioSeries = [
+          { key: "float_ratio", label: "Float Ratio", color: "var(--accent)" },
+          { key: "float_ratio_aggregate", label: "Float Ratio (aggregate)", color: "var(--muted)" },
+        ].filter(function (s) {
+          return data.versions.some(function (v) {
+            return v.indices && v.indices[s.key] != null;
+          });
+        }).map(function (s) {
+          return {
+            label: s.label,
+            color: s.color,
+            values: data.versions.map(function (v) {
+              return v.indices ? v.indices[s.key] : null;
+            }),
+          };
+        });
+        if (floatRatioSeries.length) {
+          multiLineChart("Float Ratio™ across periods", labels, floatRatioSeries,
+            "Average activity total float divided by remaining duration (Acumen 'Float Ratio™'), over the normal planned/in-progress activities, scored per version so it reads period to period. Higher = more float per day of remaining work. Bands: <0.1 very tight, 0.1–0.3 tight, 0.3–0.6 healthy, >0.6 generous (check for missing logic). A falling ratio means the schedule is losing room; the solid line is the mean-of-ratios, the muted line the more outlier-robust ratio-of-means.");
+        }
+
         var sfrVals = data.versions.map(function (v) {
           return v.indices ? v.indices.sfr : null;
         });

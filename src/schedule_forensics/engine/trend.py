@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from schedule_forensics.engine.cpm import CPMResult
 from schedule_forensics.engine.metrics import (
     compute_cei,
+    compute_float_ratio,
     compute_hmi,
     compute_schedule_quality,
 )
@@ -201,6 +202,65 @@ def compute_cei_trend(schedules: Sequence[Schedule]) -> CEISeries:
         start_values=tuple(start_vals),
         critical_values=tuple(crit_vals),
         adjusted_values=tuple(adj_vals),
+    )
+
+
+@dataclass(frozen=True)
+class FloatRatioSeries:
+    """Float Ratio™ across the version series (oldest → newest) — the period-to-period view.
+
+    Unlike HMI/CEI (which are inherently period-*pair* metrics), Float Ratio is a single-snapshot
+    measure, so each version is scored on its own and the **delta** is the period-over-period
+    change (``this - prior``). ``values`` is the canonical mean-of-ratios per version;
+    ``aggregate_values`` the ratio-of-means; ``deltas`` the change from the previous version
+    (``None`` on the first version and wherever either period lacks data); ``populations`` the
+    activity count averaged per version.
+    """
+
+    labels: tuple[str, ...]
+    values: tuple[float | None, ...]
+    aggregate_values: tuple[float | None, ...]
+    deltas: tuple[float | None, ...]
+    populations: tuple[int, ...]
+    offenders_by_version: tuple[tuple[int, ...], ...] = ()
+
+
+def compute_float_ratio_trend(
+    schedules: Sequence[Schedule],
+    cpms: Sequence[CPMResult] | None = None,
+) -> FloatRatioSeries:
+    """Float Ratio™ per version with the period-over-period delta (given oldest → newest).
+
+    ``cpms`` (parallel to ``schedules``) avoids re-solving networks the caller already has. A single
+    version yields one value with a ``None`` delta (no prior period); raises on an empty series.
+    """
+    if not schedules:
+        raise ValueError("a float-ratio trend needs at least one schedule version")
+    if cpms is not None and len(cpms) != len(schedules):
+        raise ValueError("cpms must parallel schedules")
+    labels = tuple(_label(s) for s in schedules)
+    values: list[float | None] = []
+    aggregates: list[float | None] = []
+    populations: list[int] = []
+    offenders: list[tuple[int, ...]] = []
+    for i, sch in enumerate(schedules):
+        results = compute_float_ratio(sch, cpms[i] if cpms is not None else None)
+        primary, aggregate = results["float_ratio"], results["float_ratio_aggregate"]
+        values.append(primary.value if primary.population else None)
+        aggregates.append(aggregate.value if aggregate.population else None)
+        populations.append(primary.population)
+        offenders.append(primary.offender_uids)
+    deltas: list[float | None] = [None]
+    for i in range(1, len(values)):
+        prev, cur = values[i - 1], values[i]
+        deltas.append(round(cur - prev, 2) if (prev is not None and cur is not None) else None)
+    return FloatRatioSeries(
+        labels=labels,
+        values=tuple(values),
+        aggregate_values=tuple(aggregates),
+        deltas=tuple(deltas),
+        populations=tuple(populations),
+        offenders_by_version=tuple(offenders),
     )
 
 

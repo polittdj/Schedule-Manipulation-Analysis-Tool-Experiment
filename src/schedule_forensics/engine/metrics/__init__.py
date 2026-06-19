@@ -31,6 +31,7 @@ from schedule_forensics.engine.metrics.float_bands import (
     compute_float_bands,
     compute_float_sums,
 )
+from schedule_forensics.engine.metrics.float_ratio import compute_float_ratio
 from schedule_forensics.engine.metrics.hmi import compute_hmi
 from schedule_forensics.engine.metrics.ribbon import RibbonMetrics, compute_ribbon
 from schedule_forensics.engine.metrics.schedule_card import (
@@ -66,6 +67,7 @@ __all__ = [
     "compute_evm_indices",
     "compute_fei",
     "compute_float_bands",
+    "compute_float_ratio",
     "compute_float_sums",
     "compute_hmi",
     "compute_net_finish_impact",
