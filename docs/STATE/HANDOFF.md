@@ -1,19 +1,22 @@
-# Handoff — 2026-06-19 (PRs #81–#156 MERGED; **`main` green at #156**; OPEN PR = ADR-0096 driving-path corridor animation — LAST buildable backlog item)
+# Handoff — 2026-06-19 (PRs #81–#157 MERGED; **`main` green at #157**; OPEN PRs: #158 file-cap→100, ADR-0097 /groups value dropdown)
 
-> ## START HERE (post-#156) — all 3 operator asks DONE; backlog all but cleared
-> **`main` at #156, green.** All three asks shipped/merged: custom-field **mapping** (#148), **driving
-> path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153),
-> **custom-field display columns** (#154), `/groups` value **autocomplete** (#155), and **custom columns
-> in the path export** (#156, ADR-0095). Operator said "complete all remaining backlog tasks." **OPEN PR
-> (this branch, ADR-0096):** **animated date-axis Gantt for the driving-path corridor** — `/driving-path`
-> now embeds per-version corridor data (`_driving_path_gantt`: each activity's dates via `date_basis`, +
-> `entered`/milestone flags) as JSON; `static/driving_path.js` draws a scalable Gantt on an axis fixed
-> across all versions with a prev/next/**auto-play** stepper + zoom (entered activities outlined). Chips
-> remain as the no-JS fallback. Shown only with >1 version + a corridor.
-> **BLOCKED — cannot complete here, need inputs:** (1) CEI / critical-path **value-validation** vs the
-> Acumen Ribbon Analysis sheet — **needs the CUI Acumen files re-attached** (uploads don't persist across
-> sessions; the .mpp/.xlsx/.aft are git-ignored CUI); (2) **Float Ratio™ / composite Score** — **no
-> extractable formula** (Acumen never published it; can't reverse it from the data). These are the only
+> ## START HERE (post-#157) — all 3 operator asks DONE + backlog cleared; new operator requests in flight
+> **`main` at #157, green.** Shipped/merged: custom-field **mapping** (#148), **driving path** 2-UIDs
+> (#152), grouping/filter **engine + UI** (#150, #153), **custom-field display columns** (#154), `/groups`
+> **autocomplete** (#155), **path-export custom columns** (#156, ADR-0095), **driving-path corridor
+> animation** (#157, ADR-0096). **OPEN PRs:** **#158** raise drag-drop file cap 20→**100** (`loader.MAX_FILES`);
+> **this branch, ADR-0097** — MS-Project-style **value dropdown** on /groups: reuses the `SFChecklist`
+> widget (checkboxes + All/None + search) for the filter values; `grouping.Criterion` widened to
+> `(field, str | Sequence[str])` so `task_matches` ORs multiple values within a field (AND across fields);
+> `groups.js` mounts the checklist + writes hidden `value{i}` inputs; route reads per-row `value{i}` (legacy
+> single `value` still honoured). Backward-compatible.
+> - **CEI VALUE-VALIDATION — operator re-attached the Acumen files; they're single-period so CEI = N/A
+>   everywhere (confirmed in all 4 reports). NEED: operator to run the TWO-period comparison (Large_Test_File
+>   v1 + Large_Test_File2 v2) in Acumen and provide the CEI output.** I have both `.mpp`s to compute my side.
+>   Re-confirmed BEI Value Tasks = 0.51 (632/1228) EXACT. FEI (2.78/2.89) + BRI (0.51) are single-period &
+>   present — could ADD `compute_fei`/`compute_bri` and validate from these files (not yet in the engine).
+> **BLOCKED — need inputs:** (1) CEI validation — needs the **two-period Acumen comparison run** (above);
+> (2) **Float Ratio™ / composite Score** — **no extractable formula** (Acumen never published it). These are the only
 > open items and both are externally gated.
 >
 > **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, CORRECTED by #149); #146 CPLI (ADR-0086);

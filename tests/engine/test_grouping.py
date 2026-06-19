@@ -89,6 +89,23 @@ def test_task_matches_is_an_AND_across_criteria() -> None:
     assert not task_matches(s, by[3], [("CAM", "")])
 
 
+def test_task_matches_multi_value_ORs_within_a_field() -> None:
+    s = _grouped()
+    by = {t.unique_id: t for t in s.tasks}
+    # a list value matches when the task's value is ANY of them (MS-Project multi-select)
+    assert select(s, [("CA-WBS", ["4.1.4.1", "4.1.5.2"])]) == (1, 2, 3)
+    assert select(s, [("CA-WBS", ["4.1.5.2"])]) == (3,)
+    # a single-element list equals the legacy single-string criterion
+    assert select(s, [("CA-WBS", ["4.1.4.1"])]) == select(s, [("CA-WBS", "4.1.4.1")])
+    # an empty list, like "", means "field populated"
+    assert select(s, [("CAM", [])]) == select(s, [("CAM", "")]) == (1, 2)
+    # Resource (multi-valued) matches when the task carries ANY of the chosen resources
+    assert task_matches(s, by[1], [("Resource", ["QA", "Eng"])])
+    assert not task_matches(s, by[4], [("Resource", ["QA", "Eng"])])
+    # cross-field still ANDs
+    assert select(s, [("CA-WBS", ["4.1.4.1", "4.1.5.2"]), ("CAM", ["Dana"])]) == (2,)
+
+
 def test_select_returns_matching_uids_and_caps_field_count() -> None:
     s = _grouped()
     assert select(s, [("CA-WBS", "4.1.4.1")]) == (1, 2)
