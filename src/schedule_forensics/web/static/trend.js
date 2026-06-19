@@ -440,6 +440,27 @@
             "Period-over-period baseline execution: of the activities the baseline placed to finish in each status period, the share that actually completed in it. The first version has no prior period. 1.0 = every commitment for that period was met.");
         }
 
+        var ceiSeries = [
+          { key: "cei_tasks", label: "CEI (Tasks)", color: "var(--accent)" },
+          { key: "cei_milestones", label: "CEI (Milestones)", color: "var(--ok)" },
+        ].filter(function (s) {
+          return data.versions.some(function (v) {
+            return v.indices && v.indices[s.key] != null;
+          });
+        }).map(function (s) {
+          return {
+            label: s.label,
+            color: s.color,
+            values: data.versions.map(function (v) {
+              return v.indices ? v.indices[s.key] : null;
+            }),
+          };
+        });
+        if (ceiSeries.length) {
+          multiLineChart("Current Execution Index (CEI) across periods", labels, ceiSeries,
+            "Period-over-period forecast execution: of the activities the PRIOR schedule forecast to finish in each status period, the share that actually completed by the data date. The first version has no prior period. 1.0 = the team executed everything it last committed to.");
+        }
+
         var sfrVals = data.versions.map(function (v) {
           return v.indices ? v.indices.sfr : null;
         });

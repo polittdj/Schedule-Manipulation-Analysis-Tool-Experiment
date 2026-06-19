@@ -12,6 +12,7 @@ from schedule_forensics.engine.metrics._common import (
     Direction,
     MetricResult,
 )
+from schedule_forensics.engine.metrics.cei import compute_cei
 from schedule_forensics.engine.metrics.change_metrics import (
     compute_change_metrics,
     compute_net_finish_impact,
@@ -55,6 +56,7 @@ __all__ = [
     "compute_activity_makeup",
     "compute_baseline_compliance",
     "compute_bei",
+    "compute_cei",
     "compute_change_metrics",
     "compute_completion_performance",
     "compute_constraint_distribution",

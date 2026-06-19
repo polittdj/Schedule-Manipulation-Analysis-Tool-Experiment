@@ -2205,3 +2205,18 @@ multi-value OR (test_grouping) + web checklist mount/multi-value (test_groups_vi
 gate green. ADR-0097. ALSO this session: investigated the re-attached Acumen files — all single-period so
 CEI=N/A everywhere; need the operator's 2-period comparison run for CEI validation (BEI re-confirmed 0.51
 exact; FEI 2.78/2.89 + BRI 0.51 present, could be added). Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 30) — CEI Acumen parity: VALIDATED EXACT + implemented (ADR-0098).** Operator ran the
+two-period Acumen comparison (Large_Test_File v1 2025-02-07 → v2 2025-03-10). Reverse-engineered the CEI
+definition from the Metric History report and built `engine/metrics/cei.compute_cei(prior, current)` — the
+forecast-anchored sibling of HMI: denom = activities the PRIOR schedule forecast to finish in
+(prev_now, now] AND incomplete at prev_now (prior.finish in window); numerator = of those, actually
+complete by now in the current schedule (actual_finish<=now); Tasks (Normal) & Milestones scored
+separately; N/A for single/non-advancing period (matches Acumen). REPRODUCES ACUMEN EXACTLY on the real
+files: CEI Value Tasks 24/129=0.19, Value Milestones 1/6=0.17 (verified via /tmp/cei_v{1,2}.xml converts).
+Added `trend.compute_cei_trend` (per-version, first=None) + CEISeries; surfaced on /trend (chart beside
+HMI in trend.js) + per-version indices.cei_tasks/cei_milestones; metric-dictionary cei_tasks/cei_milestones
++ regenerated docs. Unit tests on synthetic 2-period fixtures (real mpps are CUI). NOTE: the pre-existing
+/cei (bow_wave) is a different monthly-forward CEI (0.01) — left as-is; this is the DCMA by-status-dates
+CEI. Gate: ruff/mypy/bandit clean, node --check OK. ADR-0098. STILL ADDABLE from same files: FEI
+(2.78/2.89), BRI (0.51), single-period. BLOCKED: Float Ratio (no formula). Model: Opus 4.8 (1M).
