@@ -85,7 +85,7 @@ def test_too_many_files_raises() -> None:
 
 
 def test_max_files_boundary_ok() -> None:
-    assert MAX_FILES == 20  # §6.B required 10; the operator raised the cap to 20
+    assert MAX_FILES == 100  # §6.B required 10; raised to 20, then to 100 at the operator's request
     schedules = load_schedules([MSPDI] * MAX_FILES)
     assert len(schedules) == MAX_FILES
 
