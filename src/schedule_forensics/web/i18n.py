@@ -107,7 +107,7 @@ _ES: dict[str, str] = {
     "Corridor over time": "Corredor a lo largo del tiempo",
     "no logic route A → B": "sin ruta lógica A → B",
     # — statuses / verdicts —
-    "PASS": "APROBADO",
+    "PASS": "APROBADO",  # nosec B105  # a verdict label, not a secret
     "FAIL": "FALLA",
     "NA": "N/D",
     "Yes": "Sí",
