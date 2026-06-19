@@ -16,7 +16,23 @@ def test_catalog_translate_and_fallback() -> None:
     assert i18n.translate("Dashboard", "en") == "Dashboard"
     assert i18n.translate("Totally Unmapped Task", "es") == "Totally Unmapped Task"
     assert i18n.normalize("zz") == "en" and i18n.normalize("es") == "es"
-    assert set(i18n.LANGUAGES) == {"en", "es"}
+    assert set(i18n.LANGUAGES) == {"en", "es", "fr", "de"}
+
+
+def test_french_and_german_catalogs() -> None:
+    assert i18n.translate("Dashboard", "fr") == "Tableau de bord"
+    assert i18n.translate("Dashboard", "de") == "Übersicht"
+    assert i18n.translate("Critical", "fr") == "Critique"
+    assert i18n.translate("Critical", "de") == "Kritisch"
+    # an unknown term still falls back to the source in every language
+    assert i18n.translate("Nope", "fr") == "Nope" and i18n.translate("Nope", "de") == "Nope"
+
+
+def test_all_catalogs_cover_the_same_term_set() -> None:
+    # the _TERMS table keeps every non-English language aligned to one key set
+    keysets = {lang: set(i18n.catalog_for(lang)) for lang in ("es", "fr", "de")}
+    assert keysets["es"] == keysets["fr"] == keysets["de"]
+    assert len(keysets["es"]) > 80  # comprehensive core UI coverage
 
 
 @pytest.fixture

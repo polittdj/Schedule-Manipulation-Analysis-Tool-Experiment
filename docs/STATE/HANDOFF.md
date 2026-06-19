@@ -1,15 +1,17 @@
-# Handoff — 2026-06-19 (PRs #81–#162 MERGED; **`main` green at #162** (FEI+BRI, ADR-0100); OPEN PR = ADR-0101 CEI variants; finishing ALL open options)
+# Handoff — 2026-06-19 (PRs #81–#163 MERGED; **`main` green at #163** (CEI variants, ADR-0101); OPEN PR = ADR-0102 i18n FR/DE — LAST buildable open option)
 
-> ## STATUS (post-#162) — metric validation almost done; only i18n expansion + Float Ratio remain
-> **#162 merged FEI+BRI (ADR-0100).** OPEN PR (this branch, ADR-0101): **CEI variants** —
-> `engine/metrics/cei.compute_cei` extended with `cei_task_starts` (count(ActualStart>0)/count(prior
-> Start in window) = **0.10 EXACT**), `cei_critical` (CEI on current-critical population = **0/3 EXACT**),
-> `cei_tasks_adjusted` (numerator credits early/future completions = **28/129 = 0.22 EXACT**). Surfaced on
-> /trend CEI chart + indices + dict; CEISeries/compute_cei_trend carry the variant series. All validated
-> bit-for-bit vs Acumen + synthetic unit tests. **REMAINING open options: (C) i18n — expand ES catalog +
-> add FR/DE** (web/i18n._ES catalog, add CATALOG["fr"]/["de"]). **BLOCKED:** Float Ratio™ (no formula).
-> - ALL Acumen metrics now validated: HMI exact, BEI 0.51 exact, CEI 0.19/0.17 + variants exact, FEI
->   (828/316/1228 components exact; ratios within mpxj conversion tolerance), BRI 0.51 exact.
+> ## STATUS (post-#163) — open options DONE; only Float Ratio (no formula) remains
+> Completing the operator's "complete ALL open options, validated multiple ways." **All metric work is
+> merged: #160 CEI (ADR-0098), #162 FEI+BRI (ADR-0100), #163 CEI variants (ADR-0101 — Starts 0.10 /
+> Critical 0-3 / adjusted 0.22, all EXACT).** OPEN PR (this branch, **ADR-0102 i18n FR/DE**): restructured
+> `web/i18n._TERMS` to one `english → {lang: translation}` table (the per-language `CATALOG` is derived, so
+> the catalogs stay aligned), added **French + German** beside Spanish, expanded to ~90 shared core terms;
+> `LANGUAGES` now lists 4 endonyms; the nav selector + `static/translate.js` mechanism are unchanged. Test
+> pins es/fr/de aligned to one key set + fr/de translate. **ALL Acumen metric validations done**
+> (HMI/BEI/CEI+variants/FEI/BRI). **ONLY remaining open item: Float Ratio™ — BLOCKED, no published formula
+> (unbuildable).** Once this i18n PR merges, the operator's full backlog is complete.
+> - ALL Acumen metrics validated: HMI exact, BEI 0.51 exact, CEI 0.19/0.17 + variants (0.10/0-3/0.22)
+>   exact, FEI (828/316/1228 components exact; ratios within mpxj conversion tolerance), BRI 0.51 exact.
 
 > ## (prior) START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
 > **`main` at #161, green** (EN/ES language merged, ADR-0099). Working the remaining options as a series:
