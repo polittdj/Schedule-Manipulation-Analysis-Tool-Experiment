@@ -51,11 +51,31 @@
       var lab = el("label", { class: "field-toggle" + (f.custom ? " field-custom" : "") });
       var cb = el("input", { type: "checkbox" });
       cb.checked = f.on;
-      cb.addEventListener("change", function () { f.on = cb.checked; render(); });
+      cb.addEventListener("change", function () {
+        f.on = cb.checked;
+        updateExportLinks(); // a toggled-on custom column is added to the export too
+        render();
+      });
       lab.appendChild(cb);
       lab.appendChild(document.createTextNode(" " + f.label + "  "));
       box.appendChild(lab);
     });
+  }
+
+  // Keep the export links in sync with the chosen custom columns (ADR-0095): the path export
+  // mirrors whichever custom fields are toggled on in the grid, via the &cols= query param.
+  function updateExportLinks() {
+    if (!data) return;
+    var onCustom = FIELDS.filter(function (f) { return f.custom && f.on; })
+      .map(function (f) { return f.label; });
+    var q = "/" + encodeURIComponent($("pathSchedule").value) +
+      "?target=" + encodeURIComponent($("pathTarget").value) +
+      "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
+      "&tertiary=" + encodeURIComponent($("pathTer").value || "20") +
+      (onCustom.length ? "&cols=" + encodeURIComponent(onCustom.join(",")) : "");
+    $("pathXlsx").href = "/export/xlsx/path" + q;
+    $("pathDocx").href = "/export/docx/path" + q;
+    $("pathExport").style.display = "";
   }
 
   // The schedule's mapped custom fields (ADR-0088) become optional columns, off by default —
@@ -196,12 +216,7 @@
         data = res.j;
         syncCustomColumns();
         renderToggles();
-        var q = "/" + encodeURIComponent(sched) + "?target=" + encodeURIComponent(target) +
-          "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
-          "&tertiary=" + encodeURIComponent($("pathTer").value || "20");
-        $("pathXlsx").href = "/export/xlsx/path" + q;
-        $("pathDocx").href = "/export/docx/path" + q;
-        $("pathExport").style.display = "";
+        updateExportLinks();
         render();
       })
       .catch(function () { $("pathStatus").textContent = "Trace failed."; });
