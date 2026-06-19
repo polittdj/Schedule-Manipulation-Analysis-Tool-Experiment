@@ -1,4 +1,14 @@
-# Handoff — 2026-06-19 (PRs #81–#161 MERGED; **`main` green at #161**; OPEN PR = ADR-0100 FEI+BRI; working through ALL open options)
+# Handoff — 2026-06-19 (PRs #81–#162 MERGED; **`main` green at #162**; OPEN PRs: #163 CEI variants (ADR-0101) + ADR-0102 i18n FR/DE — finishing ALL open options)
+
+> ## STATUS (post-#162) — open options essentially DONE; only Float Ratio (no formula) remains
+> Completing the operator's "complete ALL open options, validated multiple ways." Merged: #162 FEI+BRI
+> (ADR-0100). **OPEN: #163 CEI variants (ADR-0101 — Starts 0.10/Critical 0/3/adjusted 0.22, all EXACT);
+> this branch ADR-0102 i18n FR/DE.** ADR-0102: restructured `web/i18n._TERMS` to one `english →
+> {lang: translation}` table (catalogs derived, stay aligned), added **French + German** beside Spanish,
+> expanded to ~90 shared terms; `LANGUAGES` now 4; selector + translate.js mechanism unchanged. Test pins
+> es/fr/de aligned + fr/de translate. **ALL Acumen metric validations done** (HMI/BEI/CEI+variants/FEI/BRI).
+> **ONLY remaining open item: Float Ratio™ — BLOCKED, no published formula (unbuildable).** Once #163 +
+> this merge, the operator's full backlog is complete.
 
 > ## START HERE (post-#161) — operator: "complete ALL open options, validated multiple ways"
 > **`main` at #161, green** (EN/ES language merged, ADR-0099). Working the remaining options as a series:
