@@ -1,17 +1,20 @@
-# Handoff — 2026-06-19 (PRs #81–#155 MERGED; **`main` green at #155 (`f021805`)**; OPEN PR = ADR-0095 path-export custom columns)
+# Handoff — 2026-06-19 (PRs #81–#156 MERGED; **`main` green at #156**; OPEN PR = ADR-0096 driving-path corridor animation — LAST buildable backlog item)
 
-> ## START HERE (post-#155) — all 3 operator asks DONE; clearing the polish backlog
-> **`main` at #155 (`f021805`), green.** All three asks shipped/merged: custom-field **mapping** (#148),
-> **driving path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153),
-> **custom-field display columns** (#154), and `/groups` value **autocomplete** (#155). Operator then said
-> "complete all remaining backlog tasks" — working through them. **OPEN PR (this branch, ADR-0095):**
-> custom-field columns in the **path export** — `driving_table(rows, target, custom_labels)` appends a
-> column per label from each row's `custom` map; `export_path` takes `&cols=` (intersected w/ the file's
-> own `custom_field_labels`); `path.js updateExportLinks()` syncs `&cols=` to the toggled-on custom
-> columns. **STILL TODO this directive:** (next, separate PR) **animated date-axis Gantt for the
-> driving-path corridor** (`/driving-path` is server-rendered chips today). **BLOCKED (can't do here):**
-> CEI/critical-path value-validation vs the Acumen Ribbon sheet — **needs the CUI Acumen files
-> re-attached** (uploads don't persist across sessions); Float Ratio™/Score — **no extractable formula**.
+> ## START HERE (post-#156) — all 3 operator asks DONE; backlog all but cleared
+> **`main` at #156, green.** All three asks shipped/merged: custom-field **mapping** (#148), **driving
+> path** between 2 UIDs across versions (#152), grouping/filter **engine + UI** (#150, #153),
+> **custom-field display columns** (#154), `/groups` value **autocomplete** (#155), and **custom columns
+> in the path export** (#156, ADR-0095). Operator said "complete all remaining backlog tasks." **OPEN PR
+> (this branch, ADR-0096):** **animated date-axis Gantt for the driving-path corridor** — `/driving-path`
+> now embeds per-version corridor data (`_driving_path_gantt`: each activity's dates via `date_basis`, +
+> `entered`/milestone flags) as JSON; `static/driving_path.js` draws a scalable Gantt on an axis fixed
+> across all versions with a prev/next/**auto-play** stepper + zoom (entered activities outlined). Chips
+> remain as the no-JS fallback. Shown only with >1 version + a corridor.
+> **BLOCKED — cannot complete here, need inputs:** (1) CEI / critical-path **value-validation** vs the
+> Acumen Ribbon Analysis sheet — **needs the CUI Acumen files re-attached** (uploads don't persist across
+> sessions; the .mpp/.xlsx/.aft are git-ignored CUI); (2) **Float Ratio™ / composite Score** — **no
+> extractable formula** (Acumen never published it; can't reverse it from the data). These are the only
+> open items and both are externally gated.
 >
 > **SHIPPED (merged, all green):** #145 BEI→Bible (ADR-0085, CORRECTED by #149); #146 CPLI (ADR-0086);
 > #147 **HMI** (ADR-0087); #148 **custom-field mapping** (ADR-0088); #149 **BEI corrected & Acumen-validated**

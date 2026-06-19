@@ -2170,3 +2170,16 @@ clean, node --check path.js OK, tests green (driving_table unit test in tests/re
 xlsx-header read in tests/web/test_export_endpoints.py via openpyxl). ADR-0095. NEXT backlog: animated
 driving-path Gantt (doable); BLOCKED: CEI value-validation (needs CUI files), Float Ratio (no formula).
 Model: Opus 4.8 (1M).
+
+**2026-06-19 (cont. 27) — Driving-path corridor animation (ADR-0096).** Last buildable backlog item.
+`/driving-path` now shows an animated date-axis Gantt of the corridor over the versions, alongside the
+existing chips (no-JS fallback). Server: `_driving_path_gantt(schedules, cpms, evo, a, b)` enriches each
+DrivingPathSnapshot with the corridor activities' dates (`date_basis` — stored dates else CPM, same basis
+as the Path grid) + entered/milestone flags; embedded as `<script type=application/json id=dpData>` (</
+escaped). JS `static/driving_path.js`: draws name col + px/day timeline (month ticks, data-date line) on a
+range computed across ALL versions (axis fixed so the corridor shifts), prev/next/auto-play stepper + zoom;
+entered activities outlined (.dp-entered). Gated on >1 version + a corridor. Verified on Project2+Project5
+goldens (35→143, 2 versions, 36-activity corridor, dated). node --check OK. Gate: ruff/mypy/bandit clean,
+web tests green (2 new in tests/web/test_driving_path_view.py). Merged main (#156) into branch cleanly.
+ADR-0096. **Backlog now all-but-done:** only CEI value-validation (needs CUI files re-attached) + Float
+Ratio (no formula) remain — both externally gated. Model: Opus 4.8 (1M).
