@@ -273,3 +273,32 @@ def test_datetime_to_offset_nonworking_day_has_no_intraday() -> None:
     saturday = dt.datetime(2025, 1, 11, 12, 0)  # Sat — not a working day
     # whole working days Mon..Fri = 5, no intraday term added for the weekend target
     assert datetime_to_offset(MON, saturday, CAL) == 5 * DAY
+
+
+# --- duration_overrides (the SRA hook — additive, byte-identical when None) --------
+
+
+def test_duration_overrides_none_is_identical_to_no_arg() -> None:
+    # The ADR-0106 hook must be byte-identical to today's call when not supplied.
+    s = _sched(
+        [_task(1, 1), _task(2, 2), _task(3, 4), _task(4, 1)],
+        [_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4)],
+    )
+    plain = compute_cpm(s)
+    explicit_none = compute_cpm(s, duration_overrides=None)
+    assert explicit_none == plain
+    # an empty override map is also a no-op (no UID matched)
+    empty = compute_cpm(s, duration_overrides={})
+    assert empty == plain
+
+
+def test_duration_override_changes_finish_as_expected() -> None:
+    # Linear chain 2d -> 3d -> 1d == 6d. Stretch the middle task to 5d -> finish 8d.
+    s = _sched([_task(1, 2), _task(2, 3), _task(3, 1)], [_rel(1, 2), _rel(2, 3)])
+    assert compute_cpm(s).project_finish == 6 * DAY
+    stretched = compute_cpm(s, duration_overrides={2: 5 * DAY})
+    assert stretched.project_finish == 8 * DAY
+    assert stretched.timing(3).early_finish == 8 * DAY
+    # only the overridden UID changes; untouched tasks use their own duration
+    shrunk = compute_cpm(s, duration_overrides={1: 0})
+    assert shrunk.project_finish == 4 * DAY
