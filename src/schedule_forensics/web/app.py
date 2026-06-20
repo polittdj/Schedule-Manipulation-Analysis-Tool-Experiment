@@ -101,6 +101,7 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.year_phases import (
     YEAR_BASES,
     YearPhaseRow,
@@ -2802,6 +2803,35 @@ def _curves_data(curves: MonthCurves) -> dict[str, object]:
 _WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
+def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
+    """Extra structural health checks (handbook Fig. 6-9) as a stoplight list — green when clear,
+    else the count + the first offending UIDs, with a plain-English reason for each."""
+    checks = compute_health_checks(sch, cpm).checks
+    cards = []
+    for c in checks:
+        ok = c.count == 0
+        badge_cls = "rk-min" if ok else "rk-high"
+        badge = "✓ clear" if ok else str(c.count)
+        offs = ""
+        if c.offenders:
+            shown = ", ".join(f"UID {u}" for u in c.offenders[:8])
+            more = f" +{c.count - 8} more" if c.count > 8 else ""
+            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+        cards.append(
+            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
+            f"<b>{_e(c.label)}</b></div><p>{_e(c.description)}</p>{offs}</div>"
+        )
+    return (
+        "<div class=panel><h2>Structural health checks</h2>"
+        "<p class=muted>Deterministic schedule-construction checks from the NASA Schedule "
+        "Management Handbook (Fig. 6-9), beyond DCMA-14 &mdash; green = clear, otherwise the count "
+        "and the first offending activities (the activity grid above is the full record).</p>"
+        + "".join(cards)
+        + "</div>"
+    )
+
+
 def _scatter_panel(key: str) -> str:
     """An activity scatter (total float x duration) on the analysis page — a new visual type from
     the handbook/decks. Pure presentation over the activity rows the grid already serves."""
@@ -3142,6 +3172,7 @@ metadata)</span></h3>
 {_calendar_panel(sch)}
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
+{_health_checks_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
 Each row shows the <b>count</b> and the <b>percentage</b> of its population (as Acumen Fuse does),
