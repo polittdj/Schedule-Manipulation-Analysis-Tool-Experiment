@@ -1,11 +1,13 @@
 /* Schedule Forensics — Schedule Risk Analysis (SRA) Monte-Carlo results.
  *
- * Dependency-free SVG (no CDN — air-gap posture; same-origin /api/sra only). Three charts:
+ * Dependency-free SVG (no CDN — air-gap posture; same-origin /api/sra only). Four charts:
  *   • #sraCdf  — the finish-date confidence S-curve (cumulative probability vs date) with
  *                P10/P50/P80/P90 markers and the deterministic CPM finish annotated with the
  *                percentile it sits at.
  *   • #sraHist — the finish-date histogram (count per date bin).
  *   • #sraSens — a duration-sensitivity tornado (top activities by |Spearman|) + a table.
+ *   • #sraRisk — the discrete risk-driver tornado (mean finish slip per registered risk) + a
+ *                table; empty until risks are registered (POST /sra/risk-event).
  *
  * The simulation is run ONLY here (on load and on the Run button), never on page render, so the
  * page opens instantly; a slow run shows a status line, not a frozen page. Every figure is read
@@ -274,6 +276,90 @@
     box.appendChild(tbl);
   }
 
+  // ── #sraRisk: the discrete risk-driver tornado + table ────────────────────────────────
+  function renderRiskDrivers(data) {
+    var box = document.getElementById("sraRisk");
+    if (!box) return;
+    box.innerHTML = "";
+    var rows = data.risk_drivers || [];
+    if (!rows.length) {
+      box.textContent = "No discrete risks registered — add a risk above to see its contribution.";
+      return;
+    }
+
+    var W = 980, padL = 220, padR = 70, rowH = 24, padT = 10;
+    var H = padT * 2 + rows.length * rowH;
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    var maxAbs = 0;
+    rows.forEach(function (r) { if (Math.abs(r.delta_days) > maxAbs) maxAbs = Math.abs(r.delta_days); });
+    if (maxAbs <= 0) maxAbs = 1;
+    var mid = padL + (W - padL - padR) / 2;
+    var halfW = (W - padL - padR) / 2;
+
+    svg.appendChild(svgEl("line", {
+      x1: mid, y1: padT, x2: mid, y2: H - padT, stroke: "var(--line)", "stroke-width": 1,
+    }));
+
+    rows.forEach(function (r, i) {
+      var cy = padT + i * rowH + rowH / 2;
+      var w = (Math.abs(r.delta_days) / maxAbs) * halfW;
+      // a positive delta is a finish SLIP (later = bad → red/gold); negative is a pull-in (green)
+      var slip = r.delta_days >= 0;
+      var bx = slip ? mid : mid - w;
+      svg.appendChild(svgEl("rect", {
+        x: bx, y: cy - rowH * 0.3, width: Math.max(w, 0.5), height: rowH * 0.6,
+        fill: slip ? BAD : GREEN,
+      }));
+      var label = "" + r.name;
+      if (label.length > 36) label = label.slice(0, 35) + "…";
+      var lab = svgEl("text", {
+        x: padL - 8, y: cy + 4, "text-anchor": "end", fill: "var(--ink)", "font-size": 11,
+      });
+      lab.textContent = label;
+      svg.appendChild(lab);
+      var val = svgEl("text", {
+        x: slip ? bx + w + 4 : bx - 4, y: cy + 4,
+        "text-anchor": slip ? "start" : "end", fill: "var(--muted)", "font-size": 10,
+      });
+      val.textContent = (r.delta_days > 0 ? "+" : "") + r.delta_days + "d";
+      svg.appendChild(val);
+    });
+
+    if (window.SFA11y) SFA11y.label(svg, "Discrete risk-driver tornado (mean finish slip per risk)");
+    box.appendChild(svg);
+
+    // companion table: ID, Risk, Probability, Occurrence (observed), Mean slip (days)
+    var tbl = document.createElement("table");
+    var thead = document.createElement("thead");
+    var htr = document.createElement("tr");
+    ["ID", "Risk", "Probability", "Occurrence", "Mean slip (days)"].forEach(function (h) {
+      var th = document.createElement("th");
+      th.setAttribute("scope", "col");
+      th.textContent = h;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    tbl.appendChild(thead);
+    var tbody = document.createElement("tbody");
+    rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      var occPct = r.iterations ? Math.round((r.hits / r.iterations) * 1000) / 10 : 0;
+      var cells = [
+        r.id, r.name, Math.round(r.probability * 1000) / 10 + "%",
+        r.hits + " / " + r.iterations + " (" + occPct + "%)",
+        (r.delta_days > 0 ? "+" : "") + r.delta_days,
+      ];
+      cells.forEach(function (c) {
+        var td = document.createElement("td");
+        td.textContent = c;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody);
+    box.appendChild(tbl);
+  }
+
   function setStatus(text) {
     var el = document.getElementById("sraStatus");
     if (el) el.textContent = text;
@@ -296,9 +382,13 @@
         renderCdf(data);
         renderHist(data);
         renderSens(data);
+        renderRiskDrivers(data);
         var p = {};
         (data.percentiles || []).forEach(function (x) { p[x.label] = shortDate(x.date); });
         var msg = data.iterations + " iterations · P50 " + (p.P50 || "?") + " · P80 " + (p.P80 || "?");
+        if (data.risk_drivers && data.risk_drivers.length) {
+          msg += " · " + data.risk_drivers.length + " discrete risk(s)";
+        }
         if (data.auto_used) {
           msg += " · auto defaults used (screening placeholder, not SME-validated)";
         }

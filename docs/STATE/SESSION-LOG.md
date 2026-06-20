@@ -2451,3 +2451,23 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   the SRA `_to_float`/`_clamp_float` parse-helper tests left over from #186.
 - **Coverage note:** overall drifted to ~99.66% (this session's defensive web/error branches); CI gate
   (overall ≥70 / engine ≥85) green; restoration to the 99.9 intent is a queued QC pass.
+
+---
+
+## 2026-06-20 (cont.) — SRA discrete-risk register UI (ADR-0106 follow-on)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **SRA discrete-risk engine (#189, MERGED):** `RiskEvent` / `RiskDriver`, `compute_sra(…, risks=())`,
+  `SRAResult.risk_drivers` — probability (Bernoulli) × 3-point triangular multiplicative impact on the
+  affected activities' sampled durations; one risk mapped to several activities gives the shared-driver
+  emergent correlation. Risk RNG draws are taken *after* every duration draw so `risks=()` is byte-identical
+  to omitting the parameter.
+- **Risk-register UI (OPEN PR, this entry):** `SessionState.sra_risks` (+ `sra_risk_seq` for stable ids);
+  `POST /sra/risk-event` adds (name, probability %, 3-point impact %, affected UIDs — validated against the
+  latest solvable schedule, dangling/summary uids dropped, impacts ordered, probability clamped 0–1),
+  removes one (`remove=id`), or clears all (`clear=1`). `/api/sra` passes `risks=tuple(st.sra_risks)`;
+  `_sra_data` emits a `risk_drivers` array. `_sra_body` gains a "Risk register" panel (form + table +
+  Remove/Clear); `sra.js` gains a fourth chart `#sraRisk` — the risk-driver tornado (mean finish slip per
+  risk, red=slip / green=pull-in) + companion table, empty until risks exist. Wipe clears the register.
+  Tests: `tests/web/test_sra_risks.py` (13). Gate green; full suite 1368 passed / 3 env-skips.
+- **No new ADR** — this is the discrete-risk tranche under the existing ADR-0106 staged plan.
