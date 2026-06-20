@@ -174,7 +174,7 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
+<nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
@@ -1014,6 +1014,17 @@ def create_app(
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_driving_data(sch, cpm, target, secondary, tertiary))
+
+    @app.get("/mission", response_class=HTMLResponse)
+    def mission_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Mission Control",
+                "<div class=panel>Load a schedule to populate the visual wall.</div>",
+            )
+        return _page(st, "Mission Control", _mission_body(st.target_uid))
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -2069,6 +2080,91 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
 <script src="/static/path.js"></script>"""
+
+
+def _mission_body(target_uid: int | None) -> str:
+    """Mission Control — every visual on one wall at small scale: expand any tile (⤢), reveal its
+    underlying data table (▦ Data), and Play-all to step every animated chart in lockstep. Each
+    tile hosts the SAME chart scripts/endpoints the dedicated pages use, so the session-wide
+    Target UID and Groups & Filters scope every tile automatically."""
+    target = target_uid if target_uid is not None else ""
+
+    def tile(
+        title: str, full_url: str, inner: str, *, controls: str = "", wide: bool = False
+    ) -> str:
+        cls = "tile panel" + (" tile-wide" if wide else "")
+        return f"""<section class="{cls}">
+<div class=tile-head><h3>{title}</h3>
+<span class=tile-actions><button type=button class=tile-data aria-pressed=false>&#9638; Data</button>
+<a href="{full_url}" class=btn-link>Open &#8599;</a></span></div>
+{controls}
+<div class=chart-host>{inner}</div></section>"""
+
+    def steps(prev: str, play: str, nxt: str) -> str:
+        return (
+            f"<div class=mini-steps><button type=button id={prev}>&#8249;</button>"
+            f"<button type=button id={play}>&#9654;</button>"
+            f"<button type=button id={nxt}>&#8250;</button></div>"
+        )
+
+    tiles = "".join(
+        [
+            tile(
+                "S-Curve",
+                "/scurve",
+                "<div id=scurveLabel class=muted></div><div id=scurveChart></div>",
+                controls=steps("prevScurve", "scurvePlay", "nextScurve"),
+            ),
+            tile(
+                "Bow Wave / CEI",
+                "/cei",
+                "<div id=snapLabel class=muted></div><div id=ceiChart></div>",
+                controls=steps("prevSnap", "autoPlay", "nextSnap"),
+            ),
+            tile(
+                "Forecast Drift",
+                "/forecast",
+                "<div id=driftLabel class=muted></div><div id=driftChart></div>",
+                controls=steps("prevDrift", "driftPlay", "nextDrift"),
+            ),
+            tile(
+                "Quality Offenders",
+                "/trend",
+                "<div id=qualLabel class=muted></div>"
+                "<div class=qual-drill-grid><div id=qualBars></div><div id=qualDrill></div></div>"
+                "<label class=muted>Metric <select id=qualMetric></select></label>",
+                controls=steps("qualPrev", "qualPlay", "qualNext"),
+            ),
+            tile("Finishes", "/curves", "<div id=finishesChart></div>"),
+            tile("Data-date Finishes", "/curves", "<div id=dataDateChart></div>"),
+            tile("Slippage", "/curves", "<div id=slippageChart></div>"),
+            tile(
+                "Quality Trend",
+                "/trend",
+                f'<div id=trendCharts data-target="{target}"></div>',
+                wide=True,
+            ),
+        ]
+    )
+    return f"""
+<div class=panel><h2>Mission Control &mdash; every visual on one wall</h2>
+<p class=muted>Each chart at a glance. <b>Expand</b> any tile with its &#9099; button, reveal the
+underlying numbers with <b>&#9638; Data</b>, and use <b>Play all</b> to step every animated chart
+in lockstep. The session <b>Target UID</b> and <b>Groups &amp; Filters</b> apply to every tile.</p>
+<div class=viz-controls>
+<button id=missionPlay type=button>&#9654; Play all</button>
+<button id=missionStep type=button>&#9197; Step all</button>
+</div></div>
+<div id=missionGrid class=mosaic>
+{tiles}
+</div>
+<script src="/static/scurve.js"></script>
+<script src="/static/cei.js"></script>
+<script src="/static/drift.js"></script>
+<script src="/static/trend_drill.js"></script>
+<script src="/static/curves.js"></script>
+<script src="/static/trend.js"></script>
+<script src="/static/mission.js"></script>"""
 
 
 def _carnac_cards(summary: CarnacSummary) -> str:

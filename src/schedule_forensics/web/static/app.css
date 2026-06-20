@@ -228,6 +228,28 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .path-explainer p { margin: 6px 0 0; max-width: 60em; }
 .pv-drives { white-space: normal; font-size: 12px; color: var(--muted); min-width: 9em; }
 
+/* Mission Control — the tiled visual wall (mission.js). Small-scale charts in a responsive grid;
+   expand via chartframe's ⤢, reveal underlying numbers with the per-tile Data toggle. */
+.mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+.tile { margin: 0; }
+.tile-wide { grid-column: 1 / -1; }
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
+.tile-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.tile-actions { display: flex; gap: 12px; align-items: center; }
+.tile-data { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
+  padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tile-data:hover { color: var(--ink); border-color: var(--accent); }
+.mini-steps { display: flex; gap: 4px; margin: 0 0 6px; }
+.mini-steps button { background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* the per-tile Data toggle un-hides this chart's .sr-only data table in place */
+.tile.show-data .sr-only { position: static !important; width: auto !important; height: auto !important;
+  clip: auto !important; white-space: normal !important; margin: 8px 0 0 !important; overflow: auto !important;
+  max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.tile.show-data .sr-only caption { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.tile.show-data .sr-only th, .tile.show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
+@media (max-width:760px){ .mosaic { grid-template-columns: 1fr; } }
+
 /* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
 .evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
 .legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }
