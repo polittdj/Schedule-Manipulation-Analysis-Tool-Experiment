@@ -65,6 +65,7 @@ _CHART_JS = (
     "drift.js",
     "path_evolution.js",
     "scurve.js",
+    "sra.js",
     "trend.js",
     "trend_drill.js",
     "wbs.js",
