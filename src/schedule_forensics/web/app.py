@@ -1833,8 +1833,11 @@ def create_app(
             prior_cpm=prior_cpm,
             target_uid=st.target_uid,
         )
-        narrative = _polished_narrative(st, key, current, cur_an)
-        body = _skipped_notice(skipped) + _risks_body(current, findings, narrative)
+        # Render the deterministic narrative immediately so the page never blocks on the model; the
+        # local-AI polish (when a model is active) is fetched asynchronously by ai_polish.js via
+        # /api/ai/narrative and swapped in. The old synchronous per-statement generate on page load
+        # made this page hang (effectively "won't open") on big workbooks with a slow local model.
+        body = _skipped_notice(skipped) + _risks_body(current, findings, cur_an.narrative, key)
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
 
     @app.get("/export/{fmt}/brief")
@@ -1876,16 +1879,61 @@ def create_app(
                 _skipped_notice(skipped)
                 + "<div class=panel>Load at least one analyzable schedule to build the briefing.</div>",
             )
-        # the session-selected backend may polish the briefing prose (citations + figures
-        # re-verified by reattach inside build_briefing); a generation failure degrades to
-        # the deterministic briefing instead of a 500
-        try:
-            briefing = build_briefing(schedules, cpms=cpms, backend=_active_backend(st))
-        except Exception:
-            logger.warning("AI briefing generation failed; serving the deterministic briefing")
-            briefing = build_briefing(schedules, cpms=cpms)
-        body = _skipped_notice(skipped) + _briefing_body(briefing)
+        # Render the DETERMINISTIC briefing immediately so the page opens instantly. The
+        # synchronous per-section AI polish on page load made this page hang (effectively "won't
+        # open") on big workbooks with a slow local model. ai_polish.js fetches /api/ai/briefing in
+        # the background and swaps in the local-AI-polished version when a model is active.
+        briefing = build_briefing(schedules, cpms=cpms)
+        body = (
+            _skipped_notice(skipped)
+            + '<div id=briefingBody data-ai-endpoint="/api/ai/briefing">'
+            + _briefing_body(briefing)
+            + '</div><script src="/static/ai_polish.js"></script>'
+        )
         return _page(st, "Executive Briefing", body)
+
+    @app.get("/api/ai/narrative")
+    def api_ai_narrative(key: str = "") -> JSONResponse:
+        """Local-AI-polished Risks narrative for one schedule (fetched off the page-load path).
+
+        Runs the (possibly slow) model here instead of during the page render, wrapping the whole
+        AI path so it can never hang or 500 the page: ``{"polished": false}`` when no model is
+        active or anything fails (the client keeps the engine read), else the polished list HTML."""
+        st = session()
+        raw = st.schedules.get(key)
+        if raw is None:
+            return JSONResponse({"polished": False})
+        try:
+            analysis = st.analysis_for(key, raw)
+            narrative = _polished_narrative(st, key, st.scope(raw), analysis)
+            polished = narrative is not analysis.narrative  # a real backend produced new prose
+            html = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
+        except Exception:
+            logger.warning("AI narrative endpoint failed; client keeps the deterministic read")
+            return JSONResponse({"polished": False})
+        return JSONResponse({"polished": polished, "html": html})
+
+    @app.get("/api/ai/briefing")
+    def api_ai_briefing() -> JSONResponse:
+        """Local-AI-polished Executive Briefing (fetched off the page-load path).
+
+        Same contract as :func:`api_ai_narrative`: never blocks or 500s the page —
+        ``{"polished": false}`` when no model is active or generation fails, else the polished
+        briefing body HTML for the client to swap in."""
+        st = session()
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"polished": False})
+        backend = _active_backend(st)
+        if backend.name == "null":
+            return JSONResponse({"polished": False})
+        try:
+            briefing = build_briefing(schedules, cpms=cpms, backend=backend)
+            html = _briefing_body(briefing)
+        except Exception:
+            logger.warning("AI briefing endpoint failed; client keeps the deterministic briefing")
+            return JSONResponse({"polished": False})
+        return JSONResponse({"polished": True, "html": html})
 
     @app.get("/settings", response_class=HTMLResponse)
     def settings() -> HTMLResponse:
@@ -3216,7 +3264,9 @@ def _risks_section(title: str, lead: str, items: list[Finding], empty: str) -> s
     )
 
 
-def _risks_body(sch: Schedule, findings: tuple[Finding, ...], narrative: Narrative) -> str:
+def _risks_body(
+    sch: Schedule, findings: tuple[Finding, ...], narrative: Narrative, ai_key: str = ""
+) -> str:
     """The Risks, Issues & Opportunities page: a high-level read first, then the cited detail.
 
     Grounded entirely in the engine's :func:`recommend` findings (RISK / CONCERN / OPPORTUNITY,
@@ -3265,10 +3315,11 @@ def _risks_body(sch: Schedule, findings: tuple[Finding, ...], narrative: Narrati
 supporting detail for every item &mdash; with its citation and a recommended action &mdash;
 follows in the sections beneath.</p>
 <h3>AI read</h3>
-<ul class=story>{story}</ul>
+<ul class=story id=riskStory data-ai-endpoint="/api/ai/narrative?key={_e(quote(ai_key))}">{story}</ul>
 <p class=muted><b>AI can err &mdash; verify against the citations on each finding.</b> Enable a
 local model in <a href="/settings">AI Settings</a> for a richer interpretation; the findings
-themselves are engine-computed and cited.</p></div>"""
+themselves are engine-computed and cited.</p></div>
+<script src="/static/ai_polish.js"></script>"""
 
     return (
         summary

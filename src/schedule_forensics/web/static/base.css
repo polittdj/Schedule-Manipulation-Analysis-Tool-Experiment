@@ -170,3 +170,7 @@ header label{color:rgba(255,255,255,.9)}
 .rk-bar{height:100%;border-radius:6px}
 .rk-row-sub{font-size:12px;color:var(--muted);margin-top:2px}
 @media (max-width:760px){.rk-row{grid-template-columns:1fr}}
+
+/* progressive local-AI polish (Risks / Executive Briefing) — a quiet status line above the
+   content that gets upgraded in the background; never blocks the page */
+.ai-polish-status{font-size:12px;color:var(--accent);font-style:italic;margin:0 0 6px}
