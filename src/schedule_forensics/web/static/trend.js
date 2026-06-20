@@ -108,6 +108,7 @@
     values.forEach(function (v, i) { if (v != null) pts.push(x(i) + "," + y(v)); });
     svg.appendChild(svgEl("polyline", {
       points: pts.join(" "), fill: "none", stroke: color, "stroke-width": 2.5,
+      "class": "sf-curve-line", pathLength: "1",
     }));
     values.forEach(function (v, i) {
       if (v != null) {
@@ -164,6 +165,7 @@
       if (pts.length) {
         svg.appendChild(svgEl("polyline", {
           points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2.5,
+          "class": "sf-curve-line", pathLength: "1",
         }));
       }
       s.values.forEach(function (v, i) {

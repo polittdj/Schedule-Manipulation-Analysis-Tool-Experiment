@@ -89,6 +89,18 @@ def test_mission_tiles_enlarge_and_shrink(client: TestClient) -> None:
     assert "tile-expanded" in js and "Shrink" in js
 
 
+def test_mission_overview_lines_animate_in_lockstep(client: TestClient) -> None:
+    # the overview line charts mark their solid lines as drawable…
+    for js in ("curves.js", "trend.js"):
+        text = client.get(f"/static/{js}").text
+        assert "sf-curve-line" in text and 'pathLength: "1"' in text, js
+    # …and Play-all re-draws them each beat
+    mjs = client.get("/static/mission.js").text
+    assert "replayDraw" in mjs and "sf-draw" in mjs
+    css = client.get("/static/app.css").text
+    assert "@keyframes sf-draw" in css
+
+
 def test_scurve_surfaces_the_data_date_during_animation(client: TestClient) -> None:
     data = client.get("/api/scurve").json()
     assert data["versions"], "expected at least one S-curve version"

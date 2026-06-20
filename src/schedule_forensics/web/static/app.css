@@ -240,6 +240,13 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .mosaic .tile.tile-wide .chart-host { height: 460px; }
 .mosaic .tile.tile-expanded { grid-column: 1 / -1; }
 .mosaic .tile.tile-expanded .chart-host { height: 74vh; }
+/* the overview line charts "progress" in lockstep with the steppers: Play-all toggles .sf-draw on
+   their host, re-drawing each solid line left-to-right (pathLength=1 normalizes any line length) */
+.mosaic .chart-host.sf-draw .sf-curve-line { stroke-dasharray: 1; animation: sf-draw 1.3s ease-out forwards; }
+@keyframes sf-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .mosaic .chart-host.sf-draw .sf-curve-line { animation: none; stroke-dasharray: none; }
+}
 .tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
 .tile-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
 .tile-actions { display: flex; gap: 10px; align-items: center; }
