@@ -2294,7 +2294,10 @@ def _mission_body(target_uid: int | None) -> str:
         cls = "tile panel" + (" tile-wide" if wide else "")
         return f"""<section class="{cls}">
 <div class=tile-head><h3>{title}</h3>
-<span class=tile-actions><button type=button class=tile-data aria-pressed=false>&#9638; Data</button>
+<span class=tile-actions>\
+<button type=button class=tile-expand aria-pressed=false title="Enlarge / shrink this tile">\
+&#11122; Enlarge</button>\
+<button type=button class=tile-data aria-pressed=false>&#9638; Data</button>
 <a href="{full_url}" class=btn-link>Open &#8599;</a></span></div>
 {controls}
 <div class=chart-host>{inner}</div></section>"""
@@ -2338,6 +2341,13 @@ def _mission_body(target_uid: int | None) -> str:
             tile("Data-date Finishes", "/curves", "<div id=dataDateChart></div>"),
             tile("Slippage", "/curves", "<div id=slippageChart></div>"),
             tile(
+                "Critical-Path Evolution",
+                "/evolution",
+                f'<div id=evoLabel class=muted></div><div id=evoChart data-target="{target}"></div>',
+                controls=steps("prevEvo", "evoPlay", "nextEvo"),
+                wide=True,
+            ),
+            tile(
                 "Quality Trend",
                 "/trend",
                 f'<div id=trendCharts data-target="{target}"></div>',
@@ -2347,9 +2357,11 @@ def _mission_body(target_uid: int | None) -> str:
     )
     return f"""
 <div class=panel><h2>Mission Control &mdash; every visual on one wall</h2>
-<p class=muted>Each chart at a glance. <b>Expand</b> any tile with its &#9099; button, reveal the
-underlying numbers with <b>&#9638; Data</b>, and use <b>Play all</b> to step every animated chart
-in lockstep. The session <b>Target UID</b> and <b>Groups &amp; Filters</b> apply to every tile.</p>
+<p class=muted>Every visual on one wall, each the same size. <b>&#11122; Enlarge</b> any tile to the
+full width (and back), reveal the underlying numbers with <b>&#9638; Data</b>, and use
+<b>Play all</b> to step every animated chart &mdash; S-Curve, Bow Wave, Forecast Drift, Quality
+Offenders, and Critical-Path Evolution &mdash; in lockstep. The session <b>Target UID</b> and
+<b>Groups &amp; Filters</b> apply to every tile.</p>
 <div class=viz-controls>
 <button id=missionPlay type=button>&#9654; Play all</button>
 <button id=missionStep type=button>&#9197; Step all</button>
@@ -2363,6 +2375,7 @@ in lockstep. The session <b>Target UID</b> and <b>Groups &amp; Filters</b> apply
 <script src="/static/trend_drill.js"></script>
 <script src="/static/curves.js"></script>
 <script src="/static/trend.js"></script>
+<script src="/static/path_evolution.js"></script>
 <script src="/static/mission.js"></script>"""
 
 
@@ -4187,6 +4200,7 @@ def _scurve_data(sc: SCurve) -> dict[str, object]:
             {
                 "label": v.label,
                 "status_index": v.status_index,
+                "status_date": v.status_date,
                 "activities": v.activities,
                 "planned": list(v.planned),
                 "actual": list(v.actual),

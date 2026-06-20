@@ -13,7 +13,7 @@
 
   // each animated tile's "Next" control — the master timer clicks them together so every
   // visual advances at the same rate (true lockstep, no per-chart timer drift)
-  var NEXT_IDS = ["nextScurve", "nextSnap", "nextDrift", "qualNext"];
+  var NEXT_IDS = ["nextScurve", "nextSnap", "nextDrift", "qualNext", "nextEvo"];
   var timer = null;
 
   function stepAll() {
@@ -51,14 +51,28 @@
   var step = document.getElementById("missionStep");
   if (step) step.addEventListener("click", stepAll);
 
-  // per-tile data toggle: reveal/hide the chart's visually-hidden .sr-only data table
+  // per-tile controls (event-delegated): the Data toggle reveals the chart's hidden .sr-only data
+  // table; the Enlarge toggle grows the tile to the full wall width (and back) so the user can
+  // size any visual as they please without leaving the wall.
   grid.addEventListener("click", function (e) {
-    var btn = e.target && e.target.closest ? e.target.closest(".tile-data") : null;
-    if (!btn) return;
-    var tile = btn.closest(".tile");
-    if (!tile) return;
-    var on = tile.classList.toggle("show-data");
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-    btn.textContent = on ? "▦ Hide data" : "▦ Data";
+    var t = e.target;
+    var dataBtn = t && t.closest ? t.closest(".tile-data") : null;
+    if (dataBtn) {
+      var dtile = dataBtn.closest(".tile");
+      if (!dtile) return;
+      var on = dtile.classList.toggle("show-data");
+      dataBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      dataBtn.textContent = on ? "▦ Hide data" : "▦ Data";
+      return;
+    }
+    var bigBtn = t && t.closest ? t.closest(".tile-expand") : null;
+    if (bigBtn) {
+      var btile = bigBtn.closest(".tile");
+      if (!btile) return;
+      var big = btile.classList.toggle("tile-expanded");
+      bigBtn.setAttribute("aria-pressed", big ? "true" : "false");
+      bigBtn.textContent = big ? "⛶ Shrink" : "⛶ Enlarge";
+      if (big) btile.scrollIntoView({ block: "nearest" });
+    }
   });
 })();

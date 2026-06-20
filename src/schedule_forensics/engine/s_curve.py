@@ -37,6 +37,7 @@ class SCurveVersion:
 
     label: str
     status_index: int | None  # index of the data-date month on the shared axis (None = off-axis)
+    status_date: str | None  # the exact data date (ISO) — shown even when it falls off the axis
     activities: int  # the non-summary activity count this version is normalized against
     planned: tuple[float, ...]  # cumulative % with a baseline finish on/before each month
     actual: tuple[float, ...]  # cumulative % with an actual/forecast finish on/before each month
@@ -98,6 +99,7 @@ def compute_s_curve(schedules: Sequence[Schedule]) -> SCurve:
             SCurveVersion(
                 label=sch.source_file or sch.name,
                 status_index=(status - lo) if status is not None and lo <= status <= hi else None,
+                status_date=sch.status_date.date().isoformat() if sch.status_date else None,
                 activities=total,
                 planned=_cumulative_pct(baseline, lo, n, total),
                 actual=_cumulative_pct(current, lo, n, total),
