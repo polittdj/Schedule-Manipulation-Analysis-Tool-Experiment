@@ -12,8 +12,11 @@ import datetime as dt
 from decimal import Decimal
 
 from schedule_forensics.engine.cpm import CPMResult, TaskTiming, compute_cpm
+from schedule_forensics.engine.dcma_audit import AuditCheck, ScheduleAudit
 from schedule_forensics.engine.driving_slack import DrivingSlackResult, PathTier
+from schedule_forensics.engine.metrics import CheckStatus
 from schedule_forensics.engine.recommendations import (
+    _dcma_findings,
     _driving_path_findings,
     _finish_driver_citations,
     recommend,
@@ -116,6 +119,52 @@ def test_dcma_finding_with_no_offenders_borrows_the_finish_driver_fallback() -> 
     # the finding exists, is a high-severity concern, and is CITED despite zero native offenders
     assert bei.citations  # §6: never uncited — the fallback supplied a citation
     assert all(c.source_file == "s.mpp" for c in bei.citations)
+
+
+# --- recommendations.py:133->135 — a SECOND uncited failed check reuses the cached fallback ------
+
+
+def test_second_uncited_dcma_check_reuses_cached_finish_driver_fallback(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """When two failed DCMA checks both lack offenders, the finish-driver fallback is computed
+    once (first check) and reused for the second — exercising the branch where ``fallback`` is
+    already set (recommendations.py 133->135). Both findings stay cited (§6)."""
+    sch = _sched([Task(unique_id=7, name="finisher", duration_minutes=DAY)])
+    cpm = compute_cpm(sch)
+
+    def _no_offender_check(metric_id: str, name: str) -> AuditCheck:
+        return AuditCheck(
+            metric_id=metric_id,
+            name=name,
+            status=CheckStatus.FAIL,
+            count=1,
+            population=1,
+            value=100.0,
+            unit="%",
+            threshold=0.0,
+            suggested_improvement="fix it",
+            citations=(),  # no per-activity offenders → must borrow the fallback
+        )
+
+    audit = ScheduleAudit(
+        source_file="s.mpp",
+        schedule_name="s",
+        checks=(
+            _no_offender_check("DCMA09", "Invalid Dates"),
+            _no_offender_check("DCMA14", "BEI"),  # the SECOND uncited failure reuses the fallback
+        ),
+        passed=0,
+        failed=2,
+        not_applicable=0,
+    )
+    monkeypatch.setattr(
+        "schedule_forensics.engine.recommendations.audit_schedule", lambda *_a, **_k: audit
+    )
+    findings = _dcma_findings(sch, cpm)
+    assert len(findings) == 2
+    # both findings are cited, and the second one reuses the SAME fallback citation object set.
+    assert findings[0].citations and findings[1].citations
+    assert findings[0].citations == findings[1].citations  # the cached fallback, reused
+    assert {c.unique_id for c in findings[1].citations} == {7}  # the finish driver
 
 
 # --- recommendations.py:337 — driving-path finding returns [] when nothing is on the path --------

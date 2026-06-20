@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 
+from schedule_forensics.engine.cpm import CPMResult, TaskTiming
 from schedule_forensics.engine.metrics import compute_float_bands, compute_float_sums
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
@@ -58,6 +59,40 @@ def test_completed_work_is_excluded_from_the_population() -> None:
     fb = compute_float_bands(Schedule(name="s", project_start=MON, tasks=tuple(tasks)))
     assert fb["float_total_0"].population == 1
     assert fb["float_total_0"].offender_uids == (2,)
+
+
+def test_incomplete_activity_absent_from_cpm_timings_is_skipped() -> None:
+    """An incomplete activity that has no entry in the supplied CPM result (``timing is None``)
+    contributes no float band membership — it is silently skipped (float_bands.py branch 87->85).
+    The population still counts it, but it never appears as an offender."""
+    tasks = [
+        Task(unique_id=1, name="has-timing", duration_minutes=480),
+        Task(unique_id=2, name="no-timing", duration_minutes=480),
+    ]
+    sch = Schedule(name="s", project_start=MON, tasks=tuple(tasks))
+    # a hand-built CPM result that OMITS UID 2 — only UID 1 has a timing.
+    cpm = CPMResult(
+        timings={
+            1: TaskTiming(
+                unique_id=1,
+                early_start=0,
+                early_finish=480,
+                late_start=0,
+                late_finish=480,
+                total_float=0,
+                free_float=0,
+                is_critical=True,
+            )
+        },
+        project_finish=480,
+        critical_path=(1,),
+    )
+    fb = compute_float_bands(sch, cpm)
+    # both incomplete activities are in the population...
+    assert fb["float_total_0"].population == 2
+    # ...but only UID 1 (which has a timing, TF 0) is a 0-float offender; UID 2 is skipped.
+    assert fb["float_total_0"].offender_uids == (1,)
+    assert 2 not in fb["float_total_lt10"].offender_uids
 
 
 def test_float_sums_basic() -> None:

@@ -2363,3 +2363,24 @@ coverage gate (≥99) and engine gate (≥85) pass; parity 10/10; air-gap/egress
 deterministic on repeat. The handful of residual lines are genuinely-defensive/dead branches (e.g.
 trend:312 unreachable for the current metric set; a few one-branch partials). No new ADR (tests + a small
 testability refactor + gate bump). Model: Opus 4.8 (1M).
+
+**2026-06-20 (cont. 39) — Coverage raised to 99.9% (actual 99.97%), gate locked at fail_under=99.9.**
+Operator: improve coverage to 99.9%. Started from `main`@#171 (99.05%). A sub-agent cleared the small
+engine/AI branch misses (briefing 99/142/155, bow_wave, forecast 87→98, float_bands, path_counterfactual,
+path_evolution, recommendations, trend:312, net_guard — 10 of 11; only `forecast.py:90→98` left, confirmed
+dead defensive code: `months_to_go` cannot be None once both reachability guards pass). I took the rest of
+`web/app.py` in one new file (`tests/web/test_coverage_app_extra.py`, 26 tests): the `_ai_status_note`
+probe-None / reachable-openai / list_models-raises arms; `_second_backend` cache-hit + openai
+construction/except; `_ai_translate` unparseable-line skip + `_translate_batch` blank/dedupe; `_forecast_ruler`
+no-dates, `_wbs_body` empty, `_dcma_metric_cell` blank importance/indicates, `_counterfactual_panel` <2,
+`_render_counterfactual` no-target, `_briefing_body` prose fallback, `_compare_body` earlier-finish,
+`_settings_body` list_models-raise + installed-model dropdown, `_trigger_shutdown`/`_watchdog` (no-callback,
+already-shutting, in-flight-requests); plus route guards for `/export/.../path` (bad-fmt/404/CPMError), the
+ask endpoints (CPMError + no-analyzable-versions + agreement-skip), `/api/translate` bad-JSON, `/groups`
+empty-field-row + unsolvable-scope preview; and `_evolution_data` / `_driving_path_body` absent-from-version
+& "left the corridor" branches (controlled fake snapshots), and the `_driving_data` "dates not supported by
+logic" note (a logic-unbound task floored above its CPM ES). Only `app.py:2944` (`day(None)`, reachable only
+when a traced activity has neither a stored date nor a CPM timing) left uncovered — pathological. Bumped
+`[tool.coverage.report] fail_under` 99 → 99.9. Full gate green: ruff/format/mypy(strict)/bandit/node clean;
+**1213 passed, 3 skipped**; overall **99.97%** (gate ≥99.9 exit 0) and engine gate (≥85) pass; coverage
+deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 4.8 (1M).
