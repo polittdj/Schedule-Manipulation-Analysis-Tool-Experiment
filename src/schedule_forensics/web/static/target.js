@@ -10,13 +10,15 @@
 "use strict";
 
 (function () {
-  var form = document.querySelector("form.targetform");
-  if (!form) return;
-  var hidden = form.querySelector("input[name=next_url]");
-  if (!hidden) return;
+  var forms = document.querySelectorAll("form.targetform");
+  if (!forms.length) return;
   function here() {
     return location.pathname + location.search;
   }
-  hidden.value = here();
-  form.addEventListener("submit", function () { hidden.value = here(); });
+  forms.forEach(function (form) {
+    var hidden = form.querySelector("input[name=next_url]");
+    if (!hidden) return;
+    hidden.value = here();
+    form.addEventListener("submit", function () { hidden.value = here(); });
+  });
 })();

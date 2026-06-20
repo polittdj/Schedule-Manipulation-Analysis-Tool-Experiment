@@ -44,6 +44,25 @@ def ancestors_of(schedule: Schedule, target_uid: int) -> frozenset[int]:
     return frozenset(seen)
 
 
+def subschedule_to_target(schedule: Schedule, target_uid: int) -> Schedule:
+    """``schedule`` restricted to ``target_uid`` and every activity that drives it.
+
+    The kept population is :func:`ancestors_of` (the target's transitive predecessors) plus
+    the target itself; relationships are kept only among the kept tasks, and the project frame
+    (name, dates, status date, calendar, custom-field labels) is preserved — so every existing
+    engine analysis runs over the sub-network unchanged, treating the target as the schedule's
+    endpoint. Mirrors :func:`schedule_forensics.engine.grouping.filter_schedule`. Raises
+    ``KeyError`` if ``target_uid`` is not a scheduled (non-summary) task.
+    """
+    kept = set(ancestors_of(schedule, target_uid))
+    kept.add(target_uid)
+    tasks = tuple(t for t in schedule.tasks if t.unique_id in kept)
+    rels = tuple(
+        r for r in schedule.relationships if r.predecessor_id in kept and r.successor_id in kept
+    )
+    return schedule.model_copy(update={"tasks": tasks, "relationships": rels})
+
+
 def descendants_of(schedule: Schedule, source_uid: int) -> frozenset[int]:
     """Every scheduled task with a directed logic path **from** ``source_uid``.
 

@@ -6,7 +6,12 @@ import datetime as dt
 
 import pytest
 
-from schedule_forensics.engine.path_trace import ancestors_of, descendants_of, topo_order
+from schedule_forensics.engine.path_trace import (
+    ancestors_of,
+    descendants_of,
+    subschedule_to_target,
+    topo_order,
+)
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -98,3 +103,30 @@ def test_topo_order_cycle_raises() -> None:
     s = _sched([1, 2], [(1, 2), (2, 1)])
     with pytest.raises(ValueError, match="cycle"):
         topo_order(s, {1, 2})
+
+
+def test_subschedule_to_target_keeps_target_and_its_drivers() -> None:
+    # 1 -> 2 -> 4 ; 3 -> 4 ; 4 -> 6 (successor) ; 5 isolated. Endpoint 4 keeps {1,2,3,4}.
+    s = _sched([1, 2, 3, 4, 5, 6], [(1, 2), (2, 4), (3, 4), (4, 6)])
+    sub = subschedule_to_target(s, 4)
+    assert {t.unique_id for t in sub.tasks} == {1, 2, 3, 4}  # drivers + target; no successor/orphan
+    # only relationships among the kept set survive (the 4->6 successor edge is dropped)
+    assert {(r.predecessor_id, r.successor_id) for r in sub.relationships} == {
+        (1, 2),
+        (2, 4),
+        (3, 4),
+    }
+    assert sub.name == s.name and sub.project_start == s.project_start  # frame preserved
+
+
+def test_subschedule_to_target_isolated_target_is_just_itself() -> None:
+    s = _sched([1, 2, 3], [(1, 2)])
+    sub = subschedule_to_target(s, 3)
+    assert {t.unique_id for t in sub.tasks} == {3}
+    assert sub.relationships == ()
+
+
+def test_subschedule_to_target_unknown_target_raises() -> None:
+    s = _sched([1, 2], [(1, 2)])
+    with pytest.raises(KeyError):
+        subschedule_to_target(s, 999)
