@@ -1,4 +1,28 @@
-# Handoff — 2026-06-20 (PRs #81–#183 MERGED; **`main` green**; OPEN PR = SRA / Monte-Carlo foundation, ADR-0106)
+# Handoff — 2026-06-20 (PRs #81–#186 MERGED; **`main` green**; OPEN PR = schedule margin, ADR-0107)
+
+> ## STATUS (current) — Schedule-margin metrics (ADR-0107); SRA fully shipped (engine+results+manual, ADR-0106)
+> Operator gave the margin convention: **a schedule-margin task = any non-summary activity with "margin"
+> in its name** (case-insensitive). **ADR-0107 (OPEN PR):** `engine/metrics/margin.py` `compute_margin`
+> (lightweight dataclasses, parity-isolated) = total margin (working days) + **effective margin** (how far
+> the finish pulls in if all margin is zeroed — reuses the ADR-0106 `compute_cpm(duration_overrides=…)`
+> counterfactual, so no divergence from the deterministic numbers) + per-task on-critical; surfaced as a
+> "Schedule margin" panel on /analysis (graceful "none found" when a schedule has no margin tasks). Margin
+> **burndown across versions** is the next tranche. This PR also folds in the SRA parse-helper tests
+> (cover `_to_float`/`_clamp_float`) left over from #186.
+> - **SRA / Monte-Carlo COMPLETE & merged (ADR-0106):** #184 engine (`engine/sra.py`, seeded, reuses
+>   `compute_cpm` via `duration_overrides`, validated == compute_cpm), #185 results page (/sra — confidence
+>   S-curve + P10/50/80/90 + deterministic-vs-percentile gap, histogram, Spearman tornado/SSI, criticality),
+>   #186 manual inputs (global Quick-Risk % + per-activity 3-point overrides; auto path = screening default,
+>   labeled not-SME-validated). JCL deferred (needs cost). Next SRA: discrete-risk drivers + correlation.
+> - **Also shipped this session (merged):** #177 Risks/Briefing "won't open" fix (async AI polish); #178/#180
+>   Mission Control (evolution tile, lockstep play-all, uniform tiles + enlarge/shrink, S-Curve date); #179
+>   Year-Phases animated; #181 handbook-extension plan; #182 scatter plot; #183 structural health checks.
+> - **Remaining roadmap:** margin burndown; SRA discrete risks/correlation → cost/JCL; deterministic handbook
+>   tranches (SVt + BEI/CEI/HMI panel, TFCI forecast, float-erosion-by-WBS, stoplight, nav reorg); restore
+>   coverage to the 99.9 intent (drifted to ~99.66% via this session's defensive web branches; CI gate 70/85
+>   is green). Full catalogue: `docs/HANDBOOK-EXTENSION-PLAN.md`.
+
+> ## STATUS (post-#184) — Schedule Risk Analysis (Monte-Carlo) chartered & designed (ADR-0106)
 
 > ## STATUS (current) — Schedule Risk Analysis (Monte-Carlo) chartered & designed (ADR-0106); engine building
 > Operator chartered an SRA / Monte-Carlo module with BOTH a manual-input path and an AUTO "industry best
