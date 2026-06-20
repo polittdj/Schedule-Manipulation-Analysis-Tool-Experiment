@@ -136,6 +136,10 @@ def _workbook_section(
         f"{_day(finishes[latest_i].date())}."
     )
     citations = _finish_drivers(schedules[latest_i], cpms[latest_i])
+    if not citations:
+        # an empty scope (e.g. a session filter that matched nothing) has no finish drivers —
+        # anchor on the files themselves so the lede is never uncited (§6 contract).
+        citations = tuple(Citation(s.source_file, 0, _label(s)) for s in schedules)
     return BriefingSection("Workbook Summary", (CitedStatement(text, citations),), kind="lede")
 
 
@@ -312,13 +316,24 @@ def build_briefing(
         cpm_list = [by_id[id(s)] for s in ordered]
     report_day = today if today is not None else dt.date.today()
 
-    sections = [_workbook_section(ordered, cpm_list, report_day)]
-    if len(ordered) >= 2:
-        sections.append(_trend_section(ordered, cpm_list))
-    for schedule, cpm in zip(ordered, cpm_list, strict=True):
-        sections.append(_project_section(schedule, cpm))
-    for schedule, cpm in zip(ordered, cpm_list, strict=True):
-        sections.append(_quality_section(schedule, cpm))
+    # An empty scope (a session filter that matched nothing, or summary-only files) has no
+    # schedulable activities, so the per-metric trend/quality sentences would be uncitable. Emit a
+    # single cited lede anchored on the files instead of degenerate, uncited sections (§6 contract).
+    if not any(any(not t.is_summary for t in s.tasks) for s in ordered):
+        cite = tuple(Citation(s.source_file, 0, _label(s)) for s in ordered)
+        text = (
+            f"No schedulable activities are in scope across the {len(ordered)} loaded version(s) "
+            "— a filter or selection matched nothing, so there is nothing to brief."
+        )
+        sections = [BriefingSection("Workbook Summary", (CitedStatement(text, cite),), kind="lede")]
+    else:
+        sections = [_workbook_section(ordered, cpm_list, report_day)]
+        if len(ordered) >= 2:
+            sections.append(_trend_section(ordered, cpm_list))
+        for schedule, cpm in zip(ordered, cpm_list, strict=True):
+            sections.append(_project_section(schedule, cpm))
+        for schedule, cpm in zip(ordered, cpm_list, strict=True):
+            sections.append(_quality_section(schedule, cpm))
 
     be: AIBackend = backend if backend is not None else NullBackend()
     polished_sections: list[BriefingSection] = []

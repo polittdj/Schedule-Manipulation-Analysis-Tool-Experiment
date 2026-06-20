@@ -107,3 +107,25 @@ def test_value_autocomplete_unions_across_all_loaded_files(client: TestClient) -
     # values are aggregated across every loaded file (the filter spans them all)
     values = client.get("/api/group-values?field=Activity Type").json()["values"]
     assert "Normal" in values and "Summary" in values
+
+
+def test_empty_match_filter_does_not_500_any_page(client: TestClient) -> None:
+    """A filter that matches NOTHING (Project5 has no milestones) must degrade gracefully on every
+    page, not 500 — regression for the session-wide scope emptying a schedule (ADR-0104)."""
+    _upload(client, "Project5")
+    _upload(client, "Project2")
+    assert client.get("/groups?apply=1&field=Activity Type&value0=Milestone").status_code == 200
+    for path in (
+        "/",
+        "/analysis/Project5",
+        "/api/dashboard",
+        "/brief",
+        "/briefing",
+        "/trend",
+        "/card/Project5",
+        "/forecast",
+        "/compare",
+    ):
+        assert client.get(path).status_code == 200, path
+    # the analysis page tells the user the scope is empty rather than fabricating a report
+    assert "matched nothing" in client.get("/analysis/Project5").text

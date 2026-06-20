@@ -44,12 +44,19 @@ def _clean_bill(schedule: Schedule, cpm: CPMResult) -> CitedStatement:
             "well-formed. The cited activities control the project finish.",
             citations=drivers,
         )
+    rows = tuple(Citation(schedule.source_file, t.unique_id, t.name) for t in schedule.tasks[:3])
+    if rows:
+        return CitedStatement(
+            text="No DCMA, compliance, or manipulation findings were raised. No schedulable "
+            "activities were found (summary rows only) — the cited rows are the file's contents.",
+            citations=rows,
+        )
+    # an empty scope (e.g. a session filter that matched nothing) has no rows to cite — anchor on
+    # the file itself so the statement is never uncited (§6: a statement can never be uncited).
     return CitedStatement(
-        text="No DCMA, compliance, or manipulation findings were raised. No schedulable "
-        "activities were found (summary rows only) — the cited rows are the file's contents.",
-        citations=tuple(
-            Citation(schedule.source_file, t.unique_id, t.name) for t in schedule.tasks[:3]
-        ),
+        text="No DCMA, compliance, or manipulation findings were raised. No activities are in "
+        "scope (a filter or selection matched nothing) — the citation is the file itself.",
+        citations=(Citation(schedule.source_file, 0, schedule.name),),
     )
 
 
