@@ -281,11 +281,11 @@
 
   function run() {
     var itersEl = document.getElementById("sraIters");
-    var highEl = document.getElementById("sraHigh");
     var iters = itersEl ? itersEl.value : "1000";
-    var high = highEl ? highEl.value : "1.1";
+    // The risk inputs (global triangular + per-activity overrides) live on the session and are set
+    // via POST /sra/risk (which reloads this page); the run only needs the iteration count.
     setStatus("Running the simulation… (this can take a moment on a large schedule)");
-    fetch("/api/sra?iterations=" + encodeURIComponent(iters) + "&auto_high=" + encodeURIComponent(high))
+    fetch("/api/sra?iterations=" + encodeURIComponent(iters))
       .then(function (r) {
         return r.json().then(function (d) {
           if (!r.ok) throw new Error(d && d.error ? d.error : "request failed (" + r.status + ")");

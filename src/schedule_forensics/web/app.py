@@ -122,7 +122,7 @@ from schedule_forensics.engine.recommendations import (
     Severity,
 )
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
-from schedule_forensics.engine.sra import SRAConfig, SRAResult, compute_sra
+from schedule_forensics.engine.sra import ActivityRisk, SRAConfig, SRAResult, compute_sra
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
     compute_float_ratio_trend,
@@ -298,6 +298,14 @@ class SessionState:
     # schedule keeps one identity across a request and the analysis cache below still hits. Cleared
     # whenever the filter changes (set_filter) or the session is wiped.
     _scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
+    # SRA manual inputs (ADR-0106, manual path). The global triangular multipliers applied to every
+    # activity's REMAINING duration when no per-activity override is set (defaults = the industry
+    # "Quick Risk" screening values, Deltek Acumen "Realistic" 90/100/110).
+    sra_low: float = 0.9
+    sra_ml: float = 1.0
+    sra_high: float = 1.10
+    # per-activity 3-point overrides: uid -> (optimistic, most_likely, pessimistic) WORKING MINUTES.
+    sra_overrides: dict[int, tuple[int, int, int]] = field(default_factory=dict)
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -774,6 +782,24 @@ def _parse_uid(value: str | None) -> int | None:
         return None
     uid = int(text)
     return uid if uid > 0 else None
+
+
+def _to_float(value: str | None, default: float) -> float:
+    """A float from form/query text — blank or non-numeric falls back to ``default``."""
+    if value is None:
+        return default
+    try:
+        return float(value.strip())
+    except ValueError:
+        return default
+
+
+def _clamp_float(
+    value: str | None, lo: float, hi: float, default: float, *, scale: float = 1.0
+) -> float:
+    """Parse ``value`` times ``scale``, clamp to ``[lo, hi]``; non-numeric keeps ``default``."""
+    parsed = _to_float(value, default / scale if scale else default)
+    return max(lo, min(hi, parsed * scale))
 
 
 def _e(text: object) -> str:
@@ -1904,30 +1930,87 @@ def create_app(
         # Render the controls + empty chart hosts IMMEDIATELY — the simulation (1000x CPM) is run
         # only when sra.js fetches /api/sra, never on page load (a synchronous run here would hang
         # the page on a large schedule, the prior Risks/Briefing bug).
-        return _page(st, "Risk Analysis (SRA)", _sra_body())
+        return _page(st, "Risk Analysis (SRA)", _sra_body(st))
+
+    @app.post("/sra/risk")
+    def sra_risk(
+        low: str = Form(""),
+        ml: str = Form(""),
+        high: str = Form(""),
+        uid: str = Form(""),
+        opt_days: str = Form(""),
+        ml_days: str = Form(""),
+        pess_days: str = Form(""),
+        remove: str = Form(""),
+        clear: str = Form(""),
+    ) -> RedirectResponse:
+        """Persist the analyst's SRA risk inputs on the session, then redirect back to /sra.
+
+        Handles three independent operations (any combination per request): the global triangular
+        percentages (entered as 90/100/110 → stored as fractions, clamped + ordered), a per-activity
+        3-point override (days → working minutes via the schedule calendar; ignored for an unknown /
+        summary uid), and override removal (``remove`` a single uid / ``clear`` all)."""
+        st = session()
+        # global low/ml/high (percent inputs → fractions); only update on a non-blank value
+        lo, mid, hi = st.sra_low, st.sra_ml, st.sra_high
+        if low.strip():
+            lo = _clamp_float(low, 0.05, 1.0, lo, scale=0.01)
+        if ml.strip():
+            mid = _clamp_float(ml, 0.5, 1.5, mid, scale=0.01)
+        if high.strip():
+            hi = _clamp_float(high, 1.0, 3.0, hi, scale=0.01)
+        # coerce to low <= ml <= high (the triangular a <= m <= b)
+        mid = max(lo, mid)
+        hi = max(mid, hi)
+        st.sra_low, st.sra_ml, st.sra_high = lo, mid, hi
+        # per-activity override removal / clear
+        if clear.strip():
+            st.sra_overrides.clear()
+        rm = _parse_uid(remove)
+        if rm is not None:
+            st.sra_overrides.pop(rm, None)
+        # per-activity 3-point override (days → working minutes), only for a real non-summary task
+        add_uid = _parse_uid(uid)
+        if add_uid is not None and (opt_days.strip() or ml_days.strip() or pess_days.strip()):
+            chosen = _latest_solvable(st)
+            if chosen is not None:
+                _, sch, _cpm = chosen
+                task = sch.tasks_by_id.get(add_uid)
+                if task is not None and not task.is_summary:
+                    per_day = sch.calendar.working_minutes_per_day or 1
+                    o = max(0, round(_to_float(opt_days, 0.0) * per_day))
+                    m = max(0, round(_to_float(ml_days, 0.0) * per_day))
+                    p = max(0, round(_to_float(pess_days, 0.0) * per_day))
+                    m = max(o, m)  # keep opt <= ml <= pess
+                    p = max(m, p)
+                    st.sra_overrides[add_uid] = (o, m, p)
+        return RedirectResponse(url="/sra", status_code=303)
 
     @app.get("/api/sra")
-    def sra_json(iterations: int = Query(1000), auto_high: float = Query(1.10)) -> JSONResponse:
+    def sra_json(iterations: int = Query(1000)) -> JSONResponse:
         st = session()
-        # latest analyzable version, scoped to the session filter (same pattern as /risks).
-        chosen: tuple[Schedule, CPMResult] | None = None
-        for key, raw in st.ordered_versions():
-            try:
-                analysis = st.analysis_for(key, raw)
-            except CPMError:
-                continue
-            chosen = (st.scope(raw), analysis.cpm)
+        chosen = _latest_solvable(st)
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
-        sch, cpm = chosen
+        _key, sch, cpm = chosen
         iters = max(100, min(10000, iterations))
-        high = max(1.0, min(1.5, auto_high))
+        config = SRAConfig(
+            iterations=iters,
+            auto_low=st.sra_low,
+            auto_most_likely=st.sra_ml,
+            auto_high=st.sra_high,
+        )
+        overrides = {
+            u: ActivityRisk(u, o, m, p)
+            for u, (o, m, p) in st.sra_overrides.items()
+            if u in sch.tasks_by_id
+        }
         # never 500 on the simulation — surface the engine message as a 422 instead
         try:
-            result = compute_sra(sch, cpm, config=SRAConfig(iterations=iters, auto_high=high))
+            result = compute_sra(sch, cpm, config=config, overrides=overrides)
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return JSONResponse(_sra_data(sch, result))
+        return JSONResponse(_sra_data(st, sch, result))
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
@@ -2140,6 +2223,11 @@ def create_app(
         st.set_filter(())  # drop the session-wide group/filter and its scope cache
         st.flash = None
         st.target_uid = None
+        # reset the SRA manual inputs back to the screening defaults
+        st.sra_low = 0.9
+        st.sra_ml = 1.0
+        st.sra_high = 1.10
+        st.sra_overrides.clear()
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -4322,22 +4410,93 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
     }
 
 
-def _sra_body() -> str:
-    """The Schedule Risk Analysis (SRA) results page: controls + (initially empty) chart hosts.
+def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
+    """The newest analyzable version (key, scoped schedule, cpm), scoped to the session filter.
 
-    The simulation is intentionally NOT run here — ``sra.js`` fetches ``/api/sra`` with the
-    selected controls and renders the confidence S-curve, finish-date histogram, and the
-    sensitivity tornado. Running 1000x CPM during the page render would hang on a large
+    The same selection ``/api/sra`` and ``POST /sra/risk`` share: iterate the loaded versions
+    oldest-first, keep the last one whose CPM solves, and return its scoped schedule + CPM. Returns
+    ``None`` when nothing loaded version is analyzable (the caller surfaces the empty state)."""
+    chosen: tuple[str, Schedule, CPMResult] | None = None
+    for key, raw in st.ordered_versions():
+        try:
+            analysis = st.analysis_for(key, raw)
+        except CPMError:
+            continue
+        chosen = (key, st.scope(raw), analysis.cpm)
+    return chosen
+
+
+def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
+    """The current per-activity overrides as a table (UID, opt/ml/pess in days) + Remove buttons."""
+    if not st.sra_overrides:
+        return "<p class=muted>No per-activity overrides &mdash; every activity uses the global triangular above.</p>"
+    per_day = sch.calendar.working_minutes_per_day if sch is not None else 0
+    names = sch.tasks_by_id if sch is not None else {}
+
+    def _days(minutes: int) -> str:
+        return f"{minutes / per_day:g}" if per_day else str(minutes)
+
+    rows = []
+    for uid in sorted(st.sra_overrides):
+        opt, ml, pess = st.sra_overrides[uid]
+        name = _e(names[uid].name) if uid in names else ""
+        rows.append(
+            f"<tr><td>{uid}</td><td>{name}</td><td>{_days(opt)}</td><td>{_days(ml)}</td>"
+            f"<td>{_days(pess)}</td><td>"
+            f'<form action="/sra/risk" method=post class=navform style="display:inline">'
+            f'<input type=hidden name=remove value="{uid}">'
+            "<button type=submit class=linkbtn>Remove</button></form></td></tr>"
+        )
+    return (
+        "<table><thead><tr><th scope=col>UID</th><th scope=col>Activity</th>"
+        "<th scope=col>Optimistic (d)</th><th scope=col>Most-likely (d)</th>"
+        "<th scope=col>Pessimistic (d)</th><th scope=col></th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+        + '<form action="/sra/risk" method=post class=navform style="margin-top:8px">'
+        + '<input type=hidden name=clear value="1">'
+        + "<button type=submit>Clear all overrides</button></form>"
+    )
+
+
+def _sra_body(st: SessionState) -> str:
+    """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
+
+    The simulation is intentionally NOT run here — ``sra.js`` fetches ``/api/sra`` (which now reads
+    the session's manual risk inputs) and renders the confidence S-curve, finish-date histogram,
+    and the sensitivity tornado. Running 1000x CPM during the page render would hang on a large
     schedule, so the page opens instantly and the run happens off the page-load path.
     """
     iter_opts = "".join(
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
         for n in (500, 1000, 2000, 5000)
     )
-    high_opts = "".join(
-        f'<option value="{h}"{" selected" if h == "1.1" else ""}>{int(float(h) * 100)}%</option>'
-        for h in ("1.1", "1.15", "1.2", "1.25")
+    sch = _latest_solvable(st)
+    scoped = sch[1] if sch is not None else None
+    low_pct = f"{st.sra_low * 100:g}"
+    ml_pct = f"{st.sra_ml * 100:g}"
+    high_pct = f"{st.sra_high * 100:g}"
+    on_defaults = (
+        st.sra_low == 0.9 and st.sra_ml == 1.0 and st.sra_high == 1.10 and not st.sra_overrides
     )
+    if on_defaults:
+        disclaimer = (
+            '<div class="notice warn" role=note><b>Auto defaults &mdash; screening placeholder, '
+            "not SME-validated.</b> With no analyst-supplied risk ranges this run applies an "
+            "industry-default <b>triangular</b> distribution to each activity's <i>remaining</i> "
+            "duration (Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; Deltek Acumen "
+            '"Realistic"). It is a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE '
+            "prefer elicited ranges) and is overridable per-activity. A duration-only run is a "
+            "<i>schedule</i> confidence level &mdash; JCL (cost-loaded) is out of scope until cost "
+            "inputs exist (ADR-0106).</div>"
+        )
+    else:
+        disclaimer = (
+            '<div class="notice ok" role=note>Using your analyst-supplied uncertainty (global '
+            f"low/ml/high = {low_pct}/{ml_pct}/{high_pct}%, {len(st.sra_overrides)} per-activity "
+            "overrides). A duration-only run is a <i>schedule</i> confidence level &mdash; JCL "
+            "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
+        )
     return f"""
 <div class=panel><h2>Schedule Risk Analysis (SRA) &mdash; Monte-Carlo</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
@@ -4345,19 +4504,32 @@ distribution and recomputes the network finish through the trusted CPM solver, b
 finish-date confidence curve. The deterministic CPM finish is marked against the distribution
 so you can read how much contingency it implies (the deterministic date typically sits well
 below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
-<div class="notice warn" role=note><b>Auto defaults &mdash; screening placeholder, not
-SME-validated.</b> With no analyst-supplied risk ranges this run applies an industry-default
-<b>triangular</b> distribution to each activity's <i>remaining</i> duration
-(Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; Deltek Acumen "Realistic"). It is
-a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE prefer elicited ranges) and is
-overridable per-activity. A duration-only run is a <i>schedule</i> confidence level &mdash; JCL
-(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>
+{disclaimer}
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
-<label>Auto Max (% of remaining) <select id=sraHigh>{high_opts}</select></label>
 <button id=sraRun type=button>Run simulation</button>
 </div>
 <p id=sraStatus class=muted></p></div>
+<div class=panel><h2>Risk inputs</h2>
+<p class=muted>These uncertainty ranges feed the next simulation run. The <b>global</b> triangular
+applies to every activity's <i>remaining</i> duration (the standard "Quick Risk" screening
+approach); completed work is fixed at its actuals (no uncertainty). Per-activity 3-point overrides
+take precedence over the global for the activities you elicit.</p>
+<form action="/sra/risk" method=post class=viz-controls>
+<label>Low % <input type=number id=sraLow name=low min=5 max=100 step=any value="{low_pct}"></label>
+<label>Most-likely % <input type=number id=sraMl name=ml min=50 max=150 step=any value="{ml_pct}"></label>
+<label>High % <input type=number id=sraHigh name=high min=100 max=300 step=any value="{high_pct}"></label>
+<button type=submit>Save global risk</button>
+</form>
+<h3>Per-activity override (3-point, days)</h3>
+<form action="/sra/risk" method=post class=viz-controls>
+<label>UID <input type=number name=uid min=1 step=1></label>
+<label>Optimistic (d) <input type=number name=opt_days min=0 step=any></label>
+<label>Most-likely (d) <input type=number name=ml_days min=0 step=any></label>
+<label>Pessimistic (d) <input type=number name=pess_days min=0 step=any></label>
+<button type=submit>Add override</button>
+</form>
+{_sra_overrides_table(st, scoped)}</div>
 <div class=panel><h2>Finish-date confidence (S-curve)</h2>
 <p class=muted>Cumulative probability of finishing on or before each date, with P10/P50/P80/P90
 markers and the deterministic CPM finish annotated with the percentile it sits at.</p>
@@ -4371,7 +4543,7 @@ correlation), with each activity's Criticality Index and Schedule Sensitivity In
 <script src="/static/sra.js"></script>"""
 
 
-def _sra_data(sch: Schedule, result: SRAResult) -> dict[str, object]:
+def _sra_data(st: SessionState, sch: Schedule, result: SRAResult) -> dict[str, object]:
     """The SRA results payload for ``sra.js`` — offsets resolved to ISO dates on the calendar."""
     cal = sch.calendar
     ps = sch.project_start
@@ -4395,6 +4567,12 @@ def _sra_data(sch: Schedule, result: SRAResult) -> dict[str, object]:
     return {
         "iterations": result.iterations,
         "auto_used": result.auto_used,
+        "manual": {
+            "low": st.sra_low,
+            "ml": st.sra_ml,
+            "high": st.sra_high,
+            "overrides": len(st.sra_overrides),
+        },
         "deterministic": {
             "date": _iso(result.deterministic_finish),
             "percentile": round(result.deterministic_percentile * 100, 1),
