@@ -9,7 +9,16 @@ from __future__ import annotations
 import datetime as dt
 from collections.abc import Callable
 
-from schedule_forensics.engine.recommendations import Category, Severity, recommend
+from schedule_forensics.engine.recommendations import (
+    Category,
+    Finding,
+    Likelihood,
+    Severity,
+    impact_rank,
+    likelihood_rank,
+    recommend,
+    severity_rank,
+)
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -131,3 +140,144 @@ def test_summary_target_uid_is_ignored_not_a_keyerror(
     # the logic network — recommend() must skip the trace, not raise KeyError
     findings = recommend(golden("Project2"), target_uid=0)
     assert not any(f.metric_id == "driving_path" for f in findings)
+
+
+# --- quantified risk scoring (5x5 Likelihood x Impact matrix) ---
+
+
+def test_likelihood_rank_orders_certain_high_to_rare_low() -> None:
+    assert likelihood_rank(Likelihood.CERTAIN) == 5
+    assert likelihood_rank(Likelihood.LIKELY) == 4
+    assert likelihood_rank(Likelihood.POSSIBLE) == 3
+    assert likelihood_rank(Likelihood.UNLIKELY) == 2
+    assert likelihood_rank(Likelihood.RARE) == 1
+
+
+def test_severity_rank_orders_high_to_info() -> None:
+    assert severity_rank(Severity.HIGH) == 4
+    assert severity_rank(Severity.MEDIUM) == 3
+    assert severity_rank(Severity.LOW) == 2
+    assert severity_rank(Severity.INFO) == 1
+
+
+def test_impact_rank_bands_on_quantified_exposure() -> None:
+    assert impact_rank(60.0, Severity.INFO) == 5  # >=60 catastrophic, ignores severity
+    assert impact_rank(100.0, Severity.INFO) == 5
+    assert impact_rank(20.0, Severity.INFO) == 4  # >=20 major
+    assert impact_rank(59.9, Severity.INFO) == 4
+    assert impact_rank(5.0, Severity.INFO) == 3  # >=5 moderate
+    assert impact_rank(19.9, Severity.INFO) == 3
+    assert impact_rank(0.1, Severity.INFO) == 2  # 0 < days < 5 minor
+    assert impact_rank(4.9, Severity.INFO) == 2
+
+
+def test_impact_rank_falls_back_to_severity_when_unquantified() -> None:
+    for days in (None, 0.0, -3.0):
+        assert impact_rank(days, Severity.HIGH) == 4
+        assert impact_rank(days, Severity.MEDIUM) == 3
+        assert impact_rank(days, Severity.LOW) == 2
+        assert impact_rank(days, Severity.INFO) == 1
+
+
+def _finding(severity: Severity, **kw: object) -> Finding:
+    return Finding(
+        category=Category.RISK,
+        severity=severity,
+        metric_id="x",
+        title="t",
+        detail="d",
+        course_of_action="c",
+        citations=(),
+        **kw,  # type: ignore[arg-type]
+    )
+
+
+def test_finding_risk_score_is_impact_times_likelihood() -> None:
+    # quantified exposure -> impact band 4 (>=20), likelihood CERTAIN -> 5 => 20
+    f = _finding(Severity.MEDIUM, impact_days=25.0, likelihood=Likelihood.CERTAIN)
+    assert f.impact_score == 4 and f.likelihood_score == 5 and f.risk_score == 20
+    # unquantified -> severity fallback impact 3 (MEDIUM), likelihood POSSIBLE -> 3 => 9
+    g = _finding(Severity.MEDIUM, likelihood=Likelihood.POSSIBLE)
+    assert g.impact_score == 3 and g.likelihood_score == 3 and g.risk_score == 9
+    # extremes stay inside the 1..25 box
+    lo = _finding(Severity.INFO, likelihood=Likelihood.RARE)
+    hi = _finding(Severity.HIGH, impact_days=99.0, likelihood=Likelihood.CERTAIN)
+    assert lo.risk_score == 1 and hi.risk_score == 25
+
+
+def test_recommend_attaches_negative_float_exposure_as_certain_risk() -> None:
+    # B (10d) must finish by a deadline 5 working days after start -> negative float on the
+    # baselined-due, not-completed activity => quantified exposure, likelihood CERTAIN.
+    status = dt.datetime(2025, 1, 20, 17, 0)
+    deadline = dt.datetime(2025, 1, 13, 17, 0)  # 5 working days after MON
+    tasks = (
+        Task(
+            unique_id=1,
+            name="B",
+            duration_minutes=10 * DAY,
+            deadline=deadline,
+            baseline_finish=deadline,
+        ),
+    )
+    s = Schedule(name="s", project_start=MON, status_date=status, tasks=tasks)
+    findings = recommend(s)
+    nc = next(f for f in findings if f.metric_id == "not_completed")
+    assert nc.float_days is not None and nc.float_days < 0  # negative total float (behind)
+    assert nc.impact_days is not None and nc.impact_days > 0  # exposure = days behind
+    assert nc.impact_days == round(-nc.float_days, 1)
+    assert nc.likelihood is Likelihood.CERTAIN and nc.likelihood_score == 5
+    assert nc.driving_float_days is None  # no target_uid set
+
+
+def test_recommend_positive_float_finding_has_zero_impact_and_severity_likelihood() -> None:
+    # logic on a summary -> a MEDIUM concern citing the summary; the summary's children carry
+    # positive total float => impact_days 0.0 (not behind) and a severity-based likelihood.
+    tasks = (
+        Task(unique_id=1, name="P", wbs="2.1", duration_minutes=5 * DAY),
+        Task(unique_id=10, name="Phase", wbs="1", is_summary=True, duration_minutes=0),
+        Task(unique_id=11, name="Child", wbs="1.1", duration_minutes=DAY),
+    )
+    rels = (Relationship(predecessor_id=1, successor_id=10),)
+    findings = recommend(Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels))
+    flagged = next(f for f in findings if f.metric_id == "logic_on_summary_tasks")
+    # the cited summary (UID 10) has no leaf timing of its own; only-positive-float findings
+    # never read as exposure -> impact_days is 0.0 (if a cited timing exists) or None.
+    assert flagged.impact_days in (0.0, None)
+    assert flagged.likelihood is not Likelihood.CERTAIN  # severity fallback, not realized
+    assert flagged.likelihood is Likelihood.POSSIBLE  # MEDIUM -> POSSIBLE
+
+
+def test_recommend_positive_float_activity_yields_zero_impact() -> None:
+    # a finding whose cited activity has strictly positive float => float_days>0, impact 0.0.
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=2 * DAY),
+        Task(unique_id=2, name="long", duration_minutes=10 * DAY),
+        Task(unique_id=3, name="focus", duration_minutes=DAY),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=3),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    s = Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels)
+    opp = next(f for f in recommend(s, target_uid=3) if f.metric_id == "driving_path")
+    assert opp.float_days is not None  # at least one cited activity has a timing
+    assert opp.impact_days == 0.0  # on-driving-path activities are at/above float, not behind
+
+
+def test_recommend_driving_float_populated_only_with_target() -> None:
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=2 * DAY),
+        Task(unique_id=2, name="B", duration_minutes=3 * DAY),
+        Task(unique_id=3, name="focus", duration_minutes=DAY),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=3),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    s = Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels)
+
+    with_target = next(f for f in recommend(s, target_uid=3) if f.metric_id == "driving_path")
+    assert with_target.driving_float_days is not None  # the cited chain is traced to the focus
+
+    # with no target_uid, no finding may carry a driving slack
+    assert all(f.driving_float_days is None for f in recommend(s))

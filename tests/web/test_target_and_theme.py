@@ -127,6 +127,37 @@ def test_target_absent_from_a_version_degrades_gently(client: TestClient) -> Non
     assert "does not contain UniqueID 999999" in page
 
 
+def test_target_endpoint_truncates_the_analyzed_population() -> None:
+    """Setting a Target UID makes it the analysis ENDPOINT: every metric/visual is restricted to
+    that activity + its drivers (work beyond it is omitted), and a banner says so on every page."""
+    st = SessionState()
+    c = TestClient(create_app(st))
+    data = (GOLDEN / "project2_5" / "Project2.mspdi.xml").read_bytes()
+    c.post("/upload", files={"files": ("Project2.mspdi.xml", data, "text/xml")})
+    raw = next(iter(st.schedules.values()))
+    full = sum(1 for t in raw.tasks if not t.is_summary)
+
+    c.post("/target", data={"uid": "143", "next_url": "/"})
+    scoped = st.scope(raw)
+    kept = sum(1 for t in scoped.tasks if not t.is_summary)
+    assert 1 <= kept < full  # truncated to UID 143 + its drivers
+    assert any(t.unique_id == 143 for t in scoped.tasks)  # the target itself is retained
+    page = c.get("/analysis/Project2").text
+    assert "Analysis endpoint: UID 143" in page and "omitted" in page  # banner on the page
+
+    # clearing the target restores the full population and drops the banner everywhere
+    c.post("/target", data={"uid": "", "next_url": "/"})
+    assert sum(1 for t in st.scope(raw).tasks if not t.is_summary) == full
+    assert "Analysis endpoint:" not in c.get("/analysis/Project2").text
+
+
+def test_endpoint_banner_warns_when_target_missing(client: TestClient) -> None:
+    _upload(client, "Project2")
+    client.post("/target", data={"uid": "999999", "next_url": "/"})
+    page = client.get("/analysis/Project2").text
+    assert "Endpoint UID 999999 not found" in page  # nothing truncated; the UID is flagged
+
+
 def test_target_redirect_never_leaves_the_app(client: TestClient) -> None:
     for evil in ("//evil.example", "http://evil.example/x", "javascript:alert(1)"):
         r = client.post("/target", data={"uid": "1", "next_url": evil}, follow_redirects=False)

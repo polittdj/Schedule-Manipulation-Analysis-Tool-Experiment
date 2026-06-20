@@ -112,6 +112,7 @@ from schedule_forensics.engine.path_counterfactual import (
     compute_path_counterfactual,
 )
 from schedule_forensics.engine.path_evolution import compute_path_evolution
+from schedule_forensics.engine.path_trace import subschedule_to_target
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
     Category,
@@ -296,25 +297,45 @@ class SessionState:
     _scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
 
     def scope(self, sch: Schedule) -> Schedule:
-        """``sch`` reduced to the active filter — the single point every page funnels through.
+        """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
+        point every page funnels through.
 
-        Returns ``sch`` unchanged when no filter is set. Otherwise returns the filtered sub-schedule,
-        memoised by the original's identity so repeated calls in one request share one object (keeping
-        the per-key analysis cache valid). The memo is reset on :meth:`set_filter` / wipe.
-        """
-        if not self.active_filter:
+        Returns ``sch`` unchanged when neither a filter nor a target endpoint is set. Otherwise
+        applies the session filter, then (when a Target UID is set) restricts the result to that
+        activity plus everything that drives it (:func:`subschedule_to_target`), so every metric and
+        visual treats the target as the schedule's endpoint and omits work beyond it. A version that
+        does not contain the target keeps its (filtered) full population. The result is memoised by
+        the original's identity so repeated calls in one request share one object (keeping the
+        per-key analysis cache valid); the memo resets on :meth:`set_filter` / :meth:`set_target` /
+        wipe."""
+        if not self.active_filter and self.target_uid is None:
             return sch
         cached = self._scoped.get(id(sch))
         if cached is not None and cached[0] is sch:
             return cached[1]
-        filtered = filter_schedule(sch, self.active_filter)
-        self._scoped[id(sch)] = (sch, filtered)
-        return filtered
+        scoped = filter_schedule(sch, self.active_filter) if self.active_filter else sch
+        if self.target_uid is not None and any(
+            t.unique_id == self.target_uid and not t.is_summary for t in scoped.tasks
+        ):
+            # target present in this (filtered) version → truncate to it + its drivers; a version
+            # that doesn't contain the target keeps its full (filtered) population.
+            scoped = subschedule_to_target(scoped, self.target_uid)
+        self._scoped[id(sch)] = (sch, scoped)
+        return scoped
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide filter and invalidate the scope/analysis
         caches so every page recomputes against the new scope."""
         self.active_filter = tuple(criteria)
+        self._scoped.clear()
+        self.analyses.clear()
+        self.polished.clear()
+
+    def set_target(self, uid: int | None) -> None:
+        """Set (or clear) the session-wide Target UID *endpoint* and invalidate the scope/analysis
+        caches so every metric, audit, and visual recomputes against the target's driving
+        sub-network (or the full schedule again when cleared)."""
+        self.target_uid = uid
         self._scoped.clear()
         self.analyses.clear()
         self.polished.clear()
@@ -374,6 +395,48 @@ def _filter_banner(state: SessionState) -> str:
         f"<b>Filter active</b> &mdash; every metric on every page (all files) is scoped to: "
         f'{chips}. <a href="/groups">manage</a> &middot; '
         '<a href="/groups?clear=1">clear filter</a></div>'
+    )
+
+
+def _endpoint_clear_form(label: str) -> str:
+    """An inline form that clears the Target-UID endpoint, returning to the current page (the
+    shared ``targetform`` class lets target.js rewrite next_url to the current location)."""
+    return (
+        '<form action="/target" method=post class="targetform endpoint-clear">'
+        '<input type=hidden name=uid value=""><input type=hidden name=next_url value="/">'
+        f"<button type=submit class=linkbtn>{_e(label)}</button></form>"
+    )
+
+
+def _endpoint_banner(state: SessionState) -> str:
+    """A page-top notice, shown on EVERY page while a Target UID endpoint is active, so the operator
+    always knows every metric/visual is limited to that activity and the work that drives it — with
+    the count of omitted activities and a one-click clear (forensic transparency)."""
+    uid = state.target_uid
+    if uid is None:
+        return ""
+    found = False
+    kept = total = 0
+    for s in state.schedules.values():
+        if any(t.unique_id == uid and not t.is_summary for t in s.tasks):
+            found = True
+        scoped = state.scope(s)
+        total += sum(1 for t in s.tasks if not t.is_summary)
+        kept += sum(1 for t in scoped.tasks if not t.is_summary)
+    if not found:
+        return (
+            '<div class="panel endpoint-active" style="border-left:4px solid var(--bad)">'
+            f"<b>Endpoint UID {uid} not found</b> &mdash; no loaded version contains that activity, "
+            f"so nothing is being truncated. Check the UID. {_endpoint_clear_form('clear endpoint')}"
+            "</div>"
+        )
+    omitted = total - kept
+    return (
+        '<div class="panel endpoint-active" style="border-left:4px solid var(--warn)">'
+        f"<b>Analysis endpoint: UID {uid}</b> &mdash; every metric and visual on every page is "
+        f"limited to UID {uid} and the activities that drive it "
+        f"({kept} of {total} activities shown; {omitted} omitted). "
+        f"{_endpoint_clear_form('clear endpoint')}</div>"
     )
 
 
@@ -680,7 +743,12 @@ def _page(
         _LAYOUT.render(
             title=title,
             banner=_banner_html(state),
-            body=_filter_banner(state) + body + _ask_panel_html(state, ask_schedule),
+            body=(
+                _filter_banner(state)
+                + _endpoint_banner(state)
+                + body
+                + _ask_panel_html(state, ask_schedule)
+            ),
             target=state.target_uid if state.target_uid is not None else "",
             lang=lang,
             lang_json=json.dumps(lang),
@@ -1888,9 +1956,13 @@ def create_app(
 
     @app.post("/target")
     def set_target(uid: str = Form(""), next_url: str = Form("/")) -> RedirectResponse:
-        """Set (or clear, with a blank/invalid uid) the session-wide target activity."""
+        """Set (or clear, with a blank/invalid uid) the session-wide target activity.
+
+        The target now also acts as the analysis ENDPOINT (every metric/visual is restricted to it
+        and its drivers), so this funnels through :meth:`SessionState.set_target` to invalidate the
+        scope/analysis caches — otherwise stale full-population results would survive the change."""
         st = session()
-        st.target_uid = _parse_uid(uid)
+        st.set_target(_parse_uid(uid))
         # local redirect only: a path on this app, never a scheme/host ("//host" included)
         dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
@@ -2985,8 +3057,48 @@ def _brief_body(brief: DiagnosticBrief) -> str:
     return "".join(parts)
 
 
+_IMPACT_LABELS = {5: "Severe", 4: "Major", 3: "Moderate", 2: "Minor", 1: "Negligible"}
+_LIKELIHOOD_LABELS = {5: "Certain", 4: "Likely", 3: "Possible", 2: "Unlikely", 1: "Rare"}
+
+
+def _risk_band(score: int) -> tuple[str, str]:
+    """(css class, label) for a 1..25 risk score — the conventional 5x5 risk heat bands."""
+    if score >= 20:
+        return "rk-extreme", "Extreme"
+    if score >= 12:
+        return "rk-high", "High"
+    if score >= 6:
+        return "rk-mod", "Moderate"
+    if score >= 3:
+        return "rk-low", "Low"
+    return "rk-min", "Minimal"
+
+
+def _wd(value: float) -> str:
+    """A working-days figure for a quantified field (callers guard against None)."""
+    return f"{value:.1f} wd"
+
+
+def _finding_quant(f: Finding) -> str:
+    """The quantified read for one finding: likelihood/impact/score, plus float, driving float to
+    the target (when set), and the working-day schedule exposure if it is realised."""
+    bits = [
+        f"Likelihood: <b>{_LIKELIHOOD_LABELS[f.likelihood_score]}</b>",
+        f"Impact: <b>{_IMPACT_LABELS[f.impact_score]}</b>",
+        f"Risk score: <b>{f.risk_score}</b>/25",
+    ]
+    if f.float_days is not None:
+        bits.append(f"Total float: <b>{_e(_wd(f.float_days))}</b>")
+    if f.driving_float_days is not None:
+        bits.append(f"Driving float to target: <b>{_e(_wd(f.driving_float_days))}</b>")
+    if f.impact_days is not None and f.impact_days > 0:
+        bits.append(f"Schedule exposure: <b>{_e(_wd(f.impact_days))}</b>")
+    return '<p class="finding-quant">' + " &middot; ".join(bits) + "</p>"
+
+
 def _finding_card(f: Finding) -> str:
-    """One risk/issue/opportunity card: severity badge, detail, recommended action, citations."""
+    """One risk/issue/opportunity card: severity + risk-score badge, quantified read, detail,
+    recommended action, citations."""
     cites = "; ".join(_e(str(c)) for c in f.citations[:3])
     more = f" +{len(f.citations) - 3} more" if len(f.citations) > 3 else ""
     action = (
@@ -2994,11 +3106,106 @@ def _finding_card(f: Finding) -> str:
         if f.course_of_action
         else ""
     )
-    return f"""<div class="finding sev-{_e(f.severity)}">
+    band, _label = _risk_band(f.risk_score)
+    return f"""<div class="finding sev-{_e(f.severity)}" data-score="{f.risk_score}"\
+ data-impact="{f.impact_score}" data-likelihood="{f.likelihood_score}">
 <div class=finding-head><span class="sev-badge sev-{_e(f.severity)}">{_e(f.severity)}</span>
+<span class="rk-score {band}" title="Risk score = likelihood x impact">{f.risk_score}</span>
 <b>{_e(f.title)}</b> <span class=muted>[{_e(f.metric_id)}]</span></div>
-<p>{_e(f.detail)}</p>{action}
+<p>{_e(f.detail)}</p>{_finding_quant(f)}{action}
 <p class=cite>Cited: {cites}{_e(more)}</p></div>"""
+
+
+def _risk_matrix(items: list[Finding]) -> str:
+    """A 5x5 Likelihood (columns) by Impact (rows) heat-map of the risks + issues, each placed by
+    its quantified scores; cells carry the conventional risk colour and the count landing there."""
+    if not items:
+        return ""
+    counts: dict[tuple[int, int], int] = {}
+    for f in items:
+        counts[(f.impact_score, f.likelihood_score)] = (
+            counts.get((f.impact_score, f.likelihood_score), 0) + 1
+        )
+    head = "".join(
+        f"<th scope=col class=rk-axis>{_LIKELIHOOD_LABELS[lr]}<span class=muted> ({lr})</span></th>"
+        for lr in range(1, 6)
+    )
+    body_rows = []
+    for ir in range(5, 0, -1):
+        cells = []
+        for lr in range(1, 6):
+            score = ir * lr
+            band, _lab = _risk_band(score)
+            n = counts.get((ir, lr), 0)
+            n_html = f"<span class=rk-cell-n>{n}</span>" if n else ""
+            tip = f"Impact {ir} x Likelihood {lr} = {score}" + (f" — {n} item(s)" if n else "")
+            cells.append(
+                f'<td class="rk-cell {band}{" rk-hit" if n else ""}" title="{tip}">'
+                f"{n_html}<span class=rk-cell-s>{score}</span></td>"
+            )
+        body_rows.append(
+            f"<tr><th scope=row class=rk-axis>{_IMPACT_LABELS[ir]}"
+            f"<span class=muted> ({ir})</span></th>{''.join(cells)}</tr>"
+        )
+    legend = " ".join(
+        f'<span class="rk-key {b}">{lab}</span>'
+        for b, lab in (
+            ("rk-min", "Minimal"),
+            ("rk-low", "Low"),
+            ("rk-mod", "Moderate"),
+            ("rk-high", "High"),
+            ("rk-extreme", "Extreme"),
+        )
+    )
+    return (
+        "<div class=panel><h2>Risk matrix &mdash; likelihood &times; impact</h2>"
+        "<p class=muted>Each risk and issue placed by its quantified likelihood of occurrence and "
+        "severity of schedule impact; cell colour is the conventional 5&times;5 risk heat "
+        "(score = likelihood &times; impact, 1&ndash;25). The number in a cell is how many items "
+        "fall there.</p>"
+        '<table class="risk-matrix"><caption class=sr-only>Risk matrix: impact in rows (5 severe '
+        "to 1 negligible) by likelihood in columns (1 rare to 5 certain); each cell shows its score "
+        "and the count of items.</caption>"
+        "<tr><th scope=col class=rk-corner>Impact &darr; / Likelihood &rarr;</th>"
+        f"{head}</tr>{''.join(body_rows)}</table>"
+        f"<p class=rk-legend>{legend}</p></div>"
+    )
+
+
+def _risk_ranking(items: list[Finding]) -> str:
+    """The risks + issues ranked by score (highest first) as labelled bars, each annotated with the
+    quantified float, driving float to the target, and working-day exposure."""
+    if not items:
+        return ""
+    ranked = sorted(items, key=lambda f: (-f.risk_score, SEVERITY_ORDER[f.severity], f.metric_id))
+    rows = []
+    for f in ranked:
+        band, band_label = _risk_band(f.risk_score)
+        width = max(4, round(f.risk_score / 25 * 100))
+        quant = []
+        if f.float_days is not None:
+            quant.append(f"float {_wd(f.float_days)}")
+        if f.driving_float_days is not None:
+            quant.append(f"driving float {_wd(f.driving_float_days)}")
+        if f.impact_days is not None and f.impact_days > 0:
+            quant.append(f"exposure {_wd(f.impact_days)}")
+        quant_txt = (" &middot; " + " &middot; ".join(_e(q) for q in quant)) if quant else ""
+        rows.append(
+            f"<li class=rk-row><div class=rk-bar-track>"
+            f'<div class="rk-bar {band}" style="width:{width}%"></div></div>'
+            f'<div class=rk-row-meta><span class="rk-score {band}">{f.risk_score}</span> '
+            f"<b>{_e(f.title)}</b> <span class=muted>[{_e(f.metric_id)}]</span>"
+            f"<div class=rk-row-sub>{_LIKELIHOOD_LABELS[f.likelihood_score]} likelihood &middot; "
+            f"{_IMPACT_LABELS[f.impact_score]} impact ({_e(band_label)}){quant_txt}</div>"
+            f"</div></li>"
+        )
+    return (
+        "<div class=panel><h2>Risk ranking &mdash; highest score first</h2>"
+        "<p class=muted>Risks and issues ordered by score, with the quantified slack (total float, "
+        "and driving float to the target when one is set) and the working-day schedule exposure if "
+        "the item is realised.</p>"
+        f"<ol class=rk-ranking>{''.join(rows)}</ol></div>"
+    )
 
 
 def _risks_section(title: str, lead: str, items: list[Finding], empty: str) -> str:
@@ -3020,6 +3227,13 @@ def _risks_body(sch: Schedule, findings: tuple[Finding, ...], narrative: Narrati
     opps = [f for f in findings if f.category == Category.OPPORTUNITY]
     high = sum(1 for f in findings if f.severity == Severity.HIGH)
     story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
+
+    def _by_score(items: list[Finding]) -> list[Finding]:
+        return sorted(items, key=lambda f: (-f.risk_score, SEVERITY_ORDER[f.severity], f.metric_id))
+
+    threats = risks + issues
+    matrix = _risk_matrix(threats)
+    ranking = _risk_ranking(threats)
 
     # prioritized, de-duplicated recovery actions across risks + issues (most severe first)
     seen: set[str] = set()
@@ -3058,23 +3272,25 @@ themselves are engine-computed and cited.</p></div>"""
 
     return (
         summary
+        + matrix
+        + ranking
         + recovery
         + _risks_section(
             "Risks",
-            "Future-facing threats to the plan, most severe first.",
-            risks,
+            "Future-facing threats to the plan, highest risk score first.",
+            _by_score(risks),
             "No forward-looking risks identified in this version.",
         )
         + _risks_section(
             "Issues (current concerns)",
             "Quality / integrity problems present right now, including manipulation signals.",
-            issues,
+            _by_score(issues),
             "No current concerns identified in this version.",
         )
         + _risks_section(
             "Opportunities",
             "Levers to recover or improve the schedule.",
-            opps,
+            _by_score(opps),
             "No specific opportunities surfaced from the current signals.",
         )
     )

@@ -14,7 +14,7 @@ already-cited findings — it never invents facts).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
@@ -27,9 +27,15 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.summary_logic import summaries_with_logic
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.units import MINUTES_PER_DAY
 
 #: DCMA checks whose failure is a high-severity schedule-integrity risk.
 _HIGH_SEVERITY_DCMA = frozenset({"DCMA07", "DCMA11", "DCMA12", "DCMA13", "DCMA14"})
+
+#: Working minutes in one standard 8-hour working day (480) — the canonical duration axis
+#: (matches :data:`schedule_forensics.model.units.MINUTES_PER_DAY`). Used to convert the
+#: engine's working-minute floats into the working-day exposure the risk matrix bands on.
+_MIN_PER_DAY = MINUTES_PER_DAY
 
 
 class Category(StrEnum):
@@ -51,9 +57,59 @@ class Severity(StrEnum):
 SEVERITY_ORDER = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2, Severity.INFO: 3}
 
 
+class Likelihood(StrEnum):
+    """How likely a finding's threat is to occur — the matrix's Likelihood axis."""
+
+    CERTAIN = "CERTAIN"  # already realized (e.g. cited activity is behind / negative float)
+    LIKELY = "LIKELY"
+    POSSIBLE = "POSSIBLE"
+    UNLIKELY = "UNLIKELY"
+    RARE = "RARE"
+
+
+def likelihood_rank(value: Likelihood) -> int:
+    """The 1..5 ordinal of a likelihood (CERTAIN=5 … RARE=1) — the matrix's row index."""
+    return {
+        Likelihood.CERTAIN: 5,
+        Likelihood.LIKELY: 4,
+        Likelihood.POSSIBLE: 3,
+        Likelihood.UNLIKELY: 2,
+        Likelihood.RARE: 1,
+    }[value]
+
+
+def severity_rank(value: Severity) -> int:
+    """The 1..4 ordinal of a severity (HIGH=4 … INFO=1) — the qualitative impact fallback."""
+    return {Severity.HIGH: 4, Severity.MEDIUM: 3, Severity.LOW: 2, Severity.INFO: 1}[value]
+
+
+def impact_rank(impact_days: float | None, severity: Severity) -> int:
+    """The 1..5 Impact-axis band for a finding.
+
+    Quantified path: a positive ``impact_days`` (working-day schedule exposure) bands the
+    impact — ``>=60`` is catastrophic (5), ``>=20`` major (4), ``>=5`` moderate (3), and any
+    smaller positive exposure is minor (2). With no quantified exposure (``None`` or ``<=0``)
+    it falls back to the qualitative severity: HIGH->4, MEDIUM->3, LOW->2, INFO->1.
+    """
+    if impact_days is not None and impact_days > 0:
+        if impact_days >= 60:
+            return 5
+        if impact_days >= 20:
+            return 4
+        if impact_days >= 5:
+            return 3
+        return 2
+    return severity_rank(severity)
+
+
 @dataclass(frozen=True)
 class Finding:
-    """One cited recommendation: category + severity + course of action + provenance."""
+    """One cited recommendation: category + severity + course of action + provenance.
+
+    The quantified-risk fields (``likelihood`` … ``driving_float_days``) are appended by the
+    :func:`recommend` quantification pass from the CPM citations, so the finding can drop onto
+    a 5x5 (Likelihood x Impact) risk matrix with a testimony-defensible, deterministic score.
+    """
 
     category: Category
     severity: Severity
@@ -62,6 +118,25 @@ class Finding:
     detail: str
     course_of_action: str
     citations: tuple[Citation, ...]
+    likelihood: Likelihood = Likelihood.POSSIBLE
+    impact_days: float | None = None  # schedule exposure in working days (None = not quantified)
+    float_days: float | None = None  # tightest total float among cited activities (working days)
+    driving_float_days: float | None = None  # tightest driving slack to the target among cited
+
+    @property
+    def likelihood_score(self) -> int:
+        """The Likelihood-axis ordinal (1..5) — the matrix row index."""
+        return likelihood_rank(self.likelihood)
+
+    @property
+    def impact_score(self) -> int:
+        """The Impact-axis ordinal (1..5) — banded on quantified exposure, else severity."""
+        return impact_rank(self.impact_days, self.severity)
+
+    @property
+    def risk_score(self) -> int:
+        """The 5x5 matrix cell value (1..25): impact x likelihood."""
+        return self.impact_score * self.likelihood_score
 
 
 def _cite(schedule: Schedule, uids: tuple[int, ...]) -> tuple[Citation, ...]:
@@ -102,7 +177,66 @@ def recommend(
         findings.extend(_driving_path_findings(current, target_uid))
 
     findings.sort(key=lambda f: (SEVERITY_ORDER[f.severity], f.metric_id))
-    return tuple(findings)
+    return _quantify(tuple(findings), current, cpm_cur, target_uid)
+
+
+def _quantify(
+    findings: tuple[Finding, ...],
+    schedule: Schedule,
+    cpm: CPMResult,
+    target_uid: int | None,
+) -> tuple[Finding, ...]:
+    """Attach the deterministic risk-matrix fields to each finding from its CPM citations.
+
+    For every finding it takes the cited activities that have a CPM timing and derives:
+    the tightest total float (``float_days``), the resulting schedule exposure
+    (``impact_days`` = the magnitude of any negative float — days already behind), the
+    tightest driving slack to ``target_uid`` (``driving_float_days``, only when a target is
+    set), and the matrix ``likelihood`` (CERTAIN when there is real exposure, else a
+    severity fallback). Findings whose citations have no CPM timing keep the None defaults
+    and the severity-based likelihood.
+    """
+    from schedule_forensics.engine.driving_slack import (  # local: avoid import cycle
+        DrivingSlackResult,
+        compute_driving_slack,
+    )
+
+    tf_days: dict[int, float] = {
+        uid: round(t.total_float / _MIN_PER_DAY, 1) for uid, t in cpm.timings.items()
+    }
+    ds: dict[int, DrivingSlackResult] = {}
+    if target_uid is not None:
+        try:
+            ds = compute_driving_slack(schedule, target_uid=target_uid)
+        except (KeyError, ValueError):
+            ds = {}
+
+    out: list[Finding] = []
+    for finding in findings:
+        cited = [c.unique_id for c in finding.citations if c.unique_id in cpm.timings]
+        float_days = min(tf_days[u] for u in cited) if cited else None
+        impact_days = round(max(0.0, -float_days), 1) if float_days is not None else None
+        ds_cited = [float(ds[u].driving_slack_days) for u in cited if u in ds]
+        driving_float_days = min(ds_cited) if ds and ds_cited else None
+        if impact_days is not None and impact_days > 0:
+            likelihood = Likelihood.CERTAIN
+        else:
+            likelihood = {
+                Severity.HIGH: Likelihood.LIKELY,
+                Severity.MEDIUM: Likelihood.POSSIBLE,
+                Severity.LOW: Likelihood.UNLIKELY,
+                Severity.INFO: Likelihood.RARE,
+            }[finding.severity]
+        out.append(
+            replace(
+                finding,
+                likelihood=likelihood,
+                impact_days=impact_days,
+                float_days=float_days,
+                driving_float_days=driving_float_days,
+            )
+        )
+    return tuple(out)
 
 
 def _finish_driver_citations(schedule: Schedule, cpm: CPMResult) -> tuple[Citation, ...]:
