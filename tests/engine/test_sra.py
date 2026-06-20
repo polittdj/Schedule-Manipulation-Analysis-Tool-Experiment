@@ -21,6 +21,7 @@ import pytest
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.sra import (
     ActivityRisk,
+    RiskEvent,
     SRAConfig,
     _percentile,
     _sample_triangular,
@@ -294,6 +295,163 @@ def test_zero_iterations_rejected() -> None:
 
 
 # --- the statistics primitives ----------------------------------------------------
+
+
+# --- discrete risk drivers (GAO/AACE/Hulett risk-driver method) -------------------
+
+
+def _balanced_two_path() -> Schedule:
+    # Two parallel ~equal paths: 1 -> 2(5d) -> 4 and 1 -> 3(5d) -> 4.
+    return _sched(
+        [_task(1, 1), _task(2, 5), _task(3, 5), _task(4, 1)],
+        [_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4)],
+    )
+
+
+def test_no_risks_byte_identical_to_omitted_param() -> None:
+    """``risks=()`` makes no extra rng draws -> a result identical to omitting the param,
+    and identical p50/p90 to a pre-risk baseline computed inline."""
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=300, seed=99)
+    baseline = compute_sra(s, cpm, config=cfg)  # the pre-risk path (no `risks` kwarg)
+    with_empty = compute_sra(s, cpm, config=cfg, risks=())
+    assert with_empty == baseline
+    assert with_empty.risk_drivers == ()
+    # the duration draw sequence is untouched -> identical percentiles
+    assert (with_empty.p50, with_empty.p90) == (baseline.p50, baseline.p90)
+
+
+def test_certain_risk_doubles_activity_and_pushes_finish_later() -> None:
+    """A certain (p=1) x2 multiplicative risk on the single critical activity roughly
+    doubles its contribution -> p50 strictly later than the no-risk run; hits == iters."""
+    s = _two_path_network()  # uid 2 is the 10-day critical-chain activity
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=300, seed=7)
+    base = compute_sra(s, cpm, config=cfg)
+    risk = RiskEvent(
+        id="R1",
+        name="double the long leg",
+        probability=1.0,
+        impact_low=2.0,
+        impact_ml=2.0,
+        impact_high=2.0,
+        affected=(2,),
+    )
+    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    assert r.p50 > base.p50
+    assert len(r.risk_drivers) == 1
+    assert r.risk_drivers[0].id == "R1"
+    assert r.risk_drivers[0].hits == cfg.iterations
+
+
+def test_zero_probability_risk_has_no_effect() -> None:
+    """A p=0 risk never fires: finishes identical to the no-risk run; hits 0; delta 0.0."""
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=300, seed=3)
+    base = compute_sra(s, cpm, config=cfg)
+    risk = RiskEvent(
+        id="R0",
+        name="never",
+        probability=0.0,
+        impact_low=2.0,
+        impact_ml=3.0,
+        impact_high=5.0,
+        affected=(2,),
+    )
+    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    # the risk draws an occurrence (always False) but never an impact -> finishes unchanged
+    assert (r.p10, r.p50, r.p80, r.p90) == (base.p10, base.p50, base.p80, base.p90)
+    assert r.cdf == base.cdf
+    driver = r.risk_drivers[0]
+    assert driver.hits == 0
+    assert driver.mean_delta_days == 0.0
+
+
+def test_partial_probability_risk_positive_delta() -> None:
+    """A 0.5-probability overrun risk on a critical activity -> occurred iterations finish
+    later (mean_delta_days > 0) and 0 < hits < iterations."""
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=500, seed=11)
+    risk = RiskEvent(
+        id="R5",
+        name="maybe overrun",
+        probability=0.5,
+        impact_low=1.5,
+        impact_ml=2.0,
+        impact_high=2.5,
+        affected=(2,),
+    )
+    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    driver = r.risk_drivers[0]
+    assert 0 < driver.hits < cfg.iterations
+    assert driver.mean_delta_days > 0
+
+
+def test_shared_risk_correlates_two_parallel_activities() -> None:
+    """A single risk mapped to TWO parallel activities moves them together when it fires
+    (shared-driver correlation): the driver delta is positive and, on the iterations it
+    fires, both legs grow by the same factor so they stay co-critical."""
+    s = _balanced_two_path()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=500, seed=21)
+    risk = RiskEvent(
+        id="RS",
+        name="shared driver on both legs",
+        probability=0.5,
+        impact_low=1.3,
+        impact_ml=1.6,
+        impact_high=2.0,
+        affected=(2, 3),
+    )
+    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    # the shared driver lengthens the project on the iterations it fires
+    assert r.risk_drivers[0].mean_delta_days > 0
+    # both co-mapped parallel legs are critical a large fraction of the time (they move
+    # together under the shared driver rather than one path dominating)
+    risk_ci = {a.unique_id: a.criticality_index for a in r.activities}
+    assert risk_ci[2] > 0.4
+    assert risk_ci[3] > 0.4
+
+
+def test_risk_dangling_uids_ignored_no_extra_draws() -> None:
+    """A risk whose `affected` UIDs are all absent is inert -> result identical to no-risk
+    (it gets no rng draws and produces no RiskDriver)."""
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=200, seed=5)
+    base = compute_sra(s, cpm, config=cfg)
+    risk = RiskEvent(
+        id="GHOST",
+        name="missing targets",
+        probability=1.0,
+        impact_low=2.0,
+        impact_ml=2.0,
+        impact_high=2.0,
+        affected=(9999,),
+    )
+    r = compute_sra(s, cpm, config=cfg, risks=[risk])
+    assert r == base  # no draws consumed, no driver emitted
+
+
+def test_risks_deterministic_same_seed() -> None:
+    """Same seed + same risks -> identical result."""
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(iterations=300, seed=77)
+    risks = [
+        RiskEvent("A", "a", 0.4, 1.1, 1.3, 1.6, (2,)),
+        RiskEvent("B", "b", 0.7, 1.0, 1.2, 1.5, (2, 3)),
+    ]
+    a = compute_sra(s, cpm, config=cfg, risks=risks)
+    b = compute_sra(s, cpm, config=cfg, risks=risks)
+    assert a == b
+    assert len(a.risk_drivers) == 2
+    # sorted by abs(mean_delta_days) desc then id
+    deltas = [abs(d.mean_delta_days) for d in a.risk_drivers]
+    assert deltas == sorted(deltas, reverse=True)
 
 
 def test_spearman_perfect_and_ties() -> None:
