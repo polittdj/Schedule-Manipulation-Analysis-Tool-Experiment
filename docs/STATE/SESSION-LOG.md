@@ -2304,3 +2304,23 @@ so this is the external anchor). On that deliberately loose schedule the ratio i
 forensic signal (High Float 44d ≈ 70% of activities → excessive float/missing logic, the Bible's >0.6
 "check for poor logic" band). Gate green, node --check OK. ADR-0103. **No blocked metrics remain — the
 operator's full backlog is complete.** Model: Opus 4.8 (1M).
+
+**2026-06-20 (cont. 36) — Groups & Filters apply session-wide: every metric, every page, every file
+(ADR-0104).** Operator: a filter picked on the Groups tab must scope every metric on every page, across
+ALL loaded project files (before: `/groups`-only, one version, URL-scoped, no session state). Promoted
+the filter to session state: `SessionState.active_filter` + `scope(sch)` (filters via filter_schedule,
+memoised by original identity so a scoped schedule keeps one identity per request → the per-key analysis
+cache stays valid) + `set_filter()` (sets/clears, invalidates scope/analysis/polished caches). Two
+funnels reach the whole app: `analysis_for(key, sch)` scopes INTERNALLY (single-schedule report pages
+unchanged) and `ordered()` returns the scoped date-ordered list that the direct multi-version views
+(bow-wave/CEI, S-curve, month curves) + `_solvable_versions` iterate (its schedules paired with the
+scoped CPMs); `ordered_versions()` stays RAW (the filter UI needs the full field/value set, and
+analysis_for re-scopes). Dashboard cards scope too; wipe clears the filter. `/groups` redesigned:
+**Apply to all pages** sets the session scope, **clear filter** drops it, a bare row selection still
+PREVIEWS without persisting; field options + value autocomplete unioned across all files
+(grouping.available_fields_union / distinct_values), a per-file reach table, and a preview scorecard on
+one file. A page-top **"Filter active"** banner (manage/clear) shows on every page via `_page` whenever
+a filter is set. Tests (tests/web/test_global_filter.py): session-level cross-file scoping + identity
+stability + cache invalidation; web apply→visible-everywhere, clear, URL-preview-doesn't-persist,
+union autocomplete; existing test_groups_view updated for the new preview heading. Gate green, node
+--check OK. ADR-0104. Model: Opus 4.8 (1M).

@@ -18,7 +18,7 @@ import logging
 import tempfile
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import cast
@@ -75,7 +75,10 @@ from schedule_forensics.engine.forecast import (
 )
 from schedule_forensics.engine.grouping import (
     MAX_FIELDS,
+    Criterion,
     available_fields,
+    available_fields_union,
+    distinct_values,
     filter_schedule,
     group_values,
 )
@@ -266,23 +269,62 @@ class SessionState:
     polished: dict[str, tuple[Schedule, str, Narrative]] = field(default_factory=dict)
     # the cross-check second model, cached like backend_cache (None = off/unreachable).
     second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
+    # session-wide group/filter (ADR-0104): when set, EVERY metric on EVERY page — and every loaded
+    # file — is scoped to the tasks matching ALL criteria. Empty tuple = no filter (full schedules).
+    active_filter: tuple[Criterion, ...] = ()
+    # identity-stable cache of filtered schedules, id(original) -> (original, filtered), so a scoped
+    # schedule keeps one identity across a request and the analysis cache below still hits. Cleared
+    # whenever the filter changes (set_filter) or the session is wiped.
+    _scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
+
+    def scope(self, sch: Schedule) -> Schedule:
+        """``sch`` reduced to the active filter — the single point every page funnels through.
+
+        Returns ``sch`` unchanged when no filter is set. Otherwise returns the filtered sub-schedule,
+        memoised by the original's identity so repeated calls in one request share one object (keeping
+        the per-key analysis cache valid). The memo is reset on :meth:`set_filter` / wipe.
+        """
+        if not self.active_filter:
+            return sch
+        cached = self._scoped.get(id(sch))
+        if cached is not None and cached[0] is sch:
+            return cached[1]
+        filtered = filter_schedule(sch, self.active_filter)
+        self._scoped[id(sch)] = (sch, filtered)
+        return filtered
+
+    def set_filter(self, criteria: Sequence[Criterion]) -> None:
+        """Set (or clear, with ``()``) the session-wide filter and invalidate the scope/analysis
+        caches so every page recomputes against the new scope."""
+        self.active_filter = tuple(criteria)
+        self._scoped.clear()
+        self.analyses.clear()
+        self.polished.clear()
 
     def ordered(self) -> list[Schedule]:
-        """Loaded schedules ordered by data date, oldest first (undated keep load order)."""
-        return order_versions(list(self.schedules.values()))
+        """Loaded schedules **scoped to the active filter**, ordered by data date (oldest first).
+
+        This is what the multi-version views that call engine functions directly (bow-wave, S-curve,
+        month curves) iterate, so the filter reaches them too. Views that go through
+        :meth:`analysis_for` pass the raw schedule from :meth:`ordered_versions` (it scopes)."""
+        return [self.scope(s) for s in order_versions(list(self.schedules.values()))]
 
     def ordered_versions(self) -> list[tuple[str, Schedule]]:
-        """(key, schedule) pairs ordered by data date, oldest first (undated keep load order)."""
+        """(key, UNSCOPED schedule) pairs, oldest first. Callers either hand the schedule to
+        :meth:`analysis_for` (which scopes it) or, for the filter UI, need the full field/value set —
+        so this stays raw. Use :meth:`ordered` / :meth:`scope` when you need the filtered tasks."""
         by_obj = {id(s): k for k, s in self.schedules.items()}
         return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
 
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
-        """The cached analysis for ``key``, recomputing only if the schedule object changed."""
+        """The cached analysis for ``key`` over the active scope; recomputes when the schedule object
+        or the filter changes (both reflected in the scoped object's identity)."""
+        scoped = self.scope(sch)
         cached = self.analyses.get(key)
-        if cached is not None and cached[0] is sch:
+        if cached is not None and cached[0] is scoped:
             return cached[1]
-        analysis = _compute_analysis(sch)
-        self.analyses[key] = (sch, analysis)
+        analysis = _compute_analysis(scoped)
+        self.analyses[key] = (scoped, analysis)
         return analysis
 
 
@@ -292,6 +334,29 @@ def _banner_html(state: SessionState) -> str:
     banner = banner_for(state.ai_config)
     css = "cloud" if banner.cloud_active else "local"
     return f'<div class="banner {css}">{html.escape(banner.text)}</div>'
+
+
+def _filter_banner(state: SessionState) -> str:
+    """A page-top notice, shown on EVERY page while a session-wide group/filter is active, so the
+    operator always knows the metrics are scoped — with one-click manage/clear (ADR-0104)."""
+    if not state.active_filter:
+        return ""
+    parts = []
+    for fld, value in state.active_filter:
+        vals = _criterion_value_list(value)
+        shown = (
+            "(populated)"
+            if not vals
+            else _e(", ".join(vals[:3]) + (f" +{len(vals) - 3}" if len(vals) > 3 else ""))
+        )
+        parts.append(f"{_e(fld)} = {shown}")
+    chips = " &middot; ".join(parts)
+    return (
+        '<div class="panel filter-active" style="border-left:4px solid var(--accent)">'
+        f"<b>Filter active</b> &mdash; every metric on every page (all files) is scoped to: "
+        f'{chips}. <a href="/groups">manage</a> &middot; '
+        '<a href="/groups?clear=1">clear filter</a></div>'
+    )
 
 
 def _flash_html(flash: _Flash | None) -> str:
@@ -587,7 +652,7 @@ def _page(
         _LAYOUT.render(
             title=title,
             banner=_banner_html(state),
-            body=body + _ask_panel_html(state, ask_schedule),
+            body=_filter_banner(state) + body + _ask_panel_html(state, ask_schedule),
             target=state.target_uid if state.target_uid is not None else "",
             lang=lang,
             lang_json=json.dumps(lang),
@@ -968,7 +1033,9 @@ def create_app(
         for key, sch in st.ordered_versions():
             try:
                 cpms.append(st.analysis_for(key, sch).cpm)
-                schedules.append(sch)
+                schedules.append(
+                    st.scope(sch)
+                )  # the CPM is for the scoped schedule; keep them paired
             except CPMError:
                 skipped.append(key)
         return schedules, cpms, skipped
@@ -985,7 +1052,7 @@ def create_app(
         for key, sch in st.ordered_versions():
             try:
                 a = st.analysis_for(key, sch)
-                schedules.append(sch)
+                schedules.append(st.scope(sch))  # paired with a.cpm (both over the active scope)
                 cpms.append(a.cpm)
                 analyses.append(a)
             except CPMError:
@@ -1145,7 +1212,7 @@ def create_app(
                 "bow-wave / CEI analysis.</div>",
             )
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
+            wave = compute_bow_wave(st.ordered(), st.target_uid)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
         return _page(st, "Bow Wave / CEI", _export_bar("cei") + _cei_body(wave, st.target_uid))
@@ -1156,7 +1223,7 @@ def create_app(
         if len(st.schedules) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
+            wave = compute_bow_wave(st.ordered(), st.target_uid)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_cei_data(wave, st.target_uid))
@@ -1172,7 +1239,7 @@ def create_app(
                 "(load several versions to animate it over time).</div>",
             )
         try:
-            sc = compute_s_curve([s for _, s in st.ordered_versions()])
+            sc = compute_s_curve(st.ordered())
         except ValueError as exc:
             return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
         return _page(st, "S-Curve", _scurve_body(sc))
@@ -1183,7 +1250,7 @@ def create_app(
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
         try:
-            sc = compute_s_curve([s for _, s in st.ordered_versions()])
+            sc = compute_s_curve(st.ordered())
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_scurve_data(sc))
@@ -1274,41 +1341,47 @@ def create_app(
         qp = request.query_params
         version_key = qp.get("version") or versions[-1][0]
         sch = dict(versions).get(version_key, versions[-1][1])
-        # filter criteria, one per field row. Each row's selected values arrive as repeated
-        # value{i} params (the MS-Project-style multi-select); a legacy single `value` list
-        # (one per field, exact match) is still honoured. Empty = "field populated".
+        breakdown = qp.get("breakdown") or ""
+        # Parse any submitted filter rows. Each row's selected values arrive as repeated value{i}
+        # params (the MS-Project-style multi-select); a legacy single `value` list (one per field,
+        # exact match) is still honoured. Empty values = "field is populated".
         fields = qp.getlist("field")
         legacy = qp.getlist("value")
-        criteria: list[tuple[str, str | list[str]]] = []
+        param_criteria: list[Criterion] = []
         for i, f in enumerate(fields):
             if not f:
                 continue
             vals = qp.getlist(f"value{i}")
-            if vals:
-                criteria.append((f, vals))
-            else:
-                criteria.append((f, legacy[i] if i < len(legacy) else ""))
-        criteria = criteria[:MAX_FIELDS]
-        breakdown = qp.get("breakdown") or ""
+            param_criteria.append((f, vals if vals else (legacy[i] if i < len(legacy) else "")))
+        param_criteria = param_criteria[:MAX_FIELDS]
+        # Apply / clear MUTATE the session-wide filter (ADR-0104) so it scopes every page and every
+        # loaded file; without them a row selection just PREVIEWS here without persisting.
+        if "clear" in qp:
+            st.set_filter(())
+        elif "apply" in qp:
+            st.set_filter(param_criteria)
+        # the page shows the URL preview when rows are present, else the live session filter
+        criteria: list[Criterion] = param_criteria if fields else list(st.active_filter)
+        applied = bool(st.active_filter) and criteria == list(st.active_filter)
         return _page(
             st,
             "Groups & Filters",
-            _groups_body(versions, version_key, sch, criteria, breakdown),
+            _groups_body(versions, version_key, sch, criteria, breakdown, applied),
         )
 
     @app.get("/api/group-values")
     def group_values_json(
         version: str | None = Query(None), field: str = Query("")
     ) -> JSONResponse:
-        """Distinct values of ``field`` in the chosen version — the /groups value autocomplete."""
+        """Distinct values of ``field`` across ALL loaded files — the /groups value autocomplete.
+
+        Aggregated over every version (not just one) because the filter applies to all files, so a
+        value present in any version must be offerable. ``version`` is accepted for compatibility."""
         st = session()
-        versions = st.ordered_versions()
-        if not versions:
+        schedules = [s for _, s in st.ordered_versions()]
+        if not schedules or not field:
             return JSONResponse({"values": []})
-        sch = dict(versions).get(version or "", versions[-1][1])
-        if not field or field not in available_fields(sch):
-            return JSONResponse({"values": []})
-        values = list(group_values(sch, field).keys())
+        values = distinct_values(schedules, field)
         return JSONResponse({"values": values[:500]})  # cap for a sane datalist
 
     @app.get("/forecast", response_class=HTMLResponse)
@@ -1345,7 +1418,7 @@ def create_app(
         st = session()
         # the finish/slippage curves are stored-date views — they do not need the network
         # to solve, so every loaded version contributes (unlike the CPM-gated pages)
-        versions = [s for _, s in st.ordered_versions()]
+        versions = st.ordered()
         if not versions:
             return _page(
                 st,
@@ -1362,7 +1435,7 @@ def create_app(
     @app.get("/api/curves")
     def curves_json() -> JSONResponse:
         st = session()
-        versions = [s for _, s in st.ordered_versions()]
+        versions = st.ordered()
         if not versions:
             return JSONResponse({"error": "need at least one schedule"}, status_code=400)
         try:
@@ -1481,7 +1554,7 @@ def create_app(
         if len(st.schedules) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
-            wave = compute_bow_wave([s for _, s in st.ordered_versions()], st.target_uid)
+            wave = compute_bow_wave(st.ordered(), st.target_uid)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return _export_response(
@@ -1523,7 +1596,7 @@ def create_app(
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        versions = [s for _, s in st.ordered_versions()]
+        versions = st.ordered()
         if not versions:
             return JSONResponse({"error": "need at least one schedule"}, status_code=400)
         try:
@@ -1745,6 +1818,7 @@ def create_app(
         st.schedules.clear()
         st.analyses.clear()
         st.polished.clear()
+        st.set_filter(())  # drop the session-wide group/filter and its scope cache
         st.flash = None
         st.target_uid = None
         logger.info("session wiped")
@@ -3587,16 +3661,16 @@ def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
     )
 
 
-def _groups_field_options(sch: Schedule, selected: str) -> str:
-    """``<option>`` list of selectable fields (standard then custom) with one pre-selected."""
+def _groups_field_options(fields: Sequence[str], selected: str) -> str:
+    """``<option>`` list of the given selectable fields with one pre-selected."""
     opts = ['<option value="">(field…)</option>']
-    for f in available_fields(sch):
+    for f in fields:
         sel = " selected" if f == selected else ""
         opts.append(f'<option value="{_e(f)}"{sel}>{_e(f)}</option>')
     return "".join(opts)
 
 
-def _criterion_value_list(value: str | list[str]) -> list[str]:
+def _criterion_value_list(value: str | Sequence[str]) -> list[str]:
     """A criterion's selected values as a list ([] = no value restriction / field populated)."""
     if isinstance(value, str):
         return [value] if value else []
@@ -3607,10 +3681,12 @@ def _groups_form(
     versions: list[tuple[str, Schedule]],
     version_key: str,
     sch: Schedule,
-    criteria: list[tuple[str, str | list[str]]],
+    criteria: list[Criterion],
     breakdown: str,
 ) -> str:
-    """The scope controls: version picker, up to MAX_FIELDS filter rows, and a breakdown field."""
+    """The scope controls: filter rows (applied session-wide to every file), a preview-version
+    picker, and a breakdown field. Field options are the union across all loaded files."""
+    fields = available_fields_union([s for _, s in versions])
     vsel = ""
     if len(versions) > 1:
         vopts = "".join(
@@ -3618,7 +3694,7 @@ def _groups_form(
             f"{_e(s.source_file or s.name)}</option>"
             for k, s in versions
         )
-        vsel = f"<label>Version: <select name=version>{vopts}</select></label> "
+        vsel = f"<label>Preview file: <select name=version>{vopts}</select></label> "
     # MAX_FIELDS filter rows. groups.js mounts an MS-Project-style value checklist (SFChecklist)
     # per row from the field's actual values; the chosen values are submitted as hidden value{i}
     # inputs (rendered here too, so the current selection round-trips and works without JS).
@@ -3630,24 +3706,26 @@ def _groups_form(
         data_sel = _e(json.dumps(selected))
         rows.append(
             f'<div class=group-row data-row="{i}" data-selected="{data_sel}">'
-            f"<select name=field class=gf-field>{_groups_field_options(sch, f)}</select> "
+            f"<select name=field class=gf-field>{_groups_field_options(fields, f)}</select> "
             f"<span class=gf-values></span><span class=gf-hidden>{hidden}</span></div>"
         )
-    bsel = f"<select name=breakdown>{_groups_field_options(sch, breakdown)}</select>"
+    bsel = f"<select name=breakdown>{_groups_field_options(fields, breakdown)}</select>"
     return f"""
 <div class=panel><form method=get action=/groups class=group-form data-version="{_e(version_key)}">
 {vsel}
-<fieldset><legend>Filter &mdash; scope every metric to tasks matching ALL rows (up to {MAX_FIELDS})</legend>
+<fieldset><legend>Filter &mdash; scope every metric on every page, across all loaded files, to tasks
+matching ALL rows (up to {MAX_FIELDS})</legend>
 {"".join(rows)}</fieldset>
 <label>Break down by: {bsel}</label>
-<div class=viz-controls><button type=submit>Apply</button>
-<a class=btn-link href="/groups">clear</a></div>
+<div class=viz-controls><button type=submit name=apply value=1>Apply to all pages</button>
+<a class=btn-link href="/groups?clear=1">clear filter</a></div>
 </form>
 <p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>), then
 choose its <b>values</b> from the dropdown (checkboxes with <b>All / None</b> and a search, like MS
-Project) &mdash; scoping <b>every</b> metric to matching activities. Within a field the chosen values
-are OR'd; combine up to {MAX_FIELDS} fields (AND). <b>Break down by</b> a field to score each of its
-values separately (one BEI per group). Filter and breakdown compose.</p></div>
+Project). <b>Apply</b> makes it the session-wide scope &mdash; <b>every</b> metric on <b>every</b> page,
+for <b>every</b> loaded file, then runs over the matching activities until you clear it. Within a field
+the chosen values are OR'd; combine up to {MAX_FIELDS} fields (AND). <b>Break down by</b> a field to
+score each of its values separately (one BEI per group) on the preview file below.</p></div>
 <script src="/static/groups.js"></script>"""
 
 
@@ -3687,22 +3765,48 @@ def _groups_breakdown_table(sub: Schedule, field: str) -> str:
     )
 
 
+def _groups_per_file_table(versions: list[tuple[str, Schedule]], criteria: list[Criterion]) -> str:
+    """One row per loaded file: how many of its activities the active filter matches (ADR-0104)."""
+    rows = []
+    grand_m = grand_t = 0
+    for _key, s in versions:
+        sub = filter_schedule(s, criteria)
+        matched, total = len(non_summary(sub)), len(non_summary(s))
+        grand_m += matched
+        grand_t += total
+        pct = f"{100.0 * matched / total:.0f}%" if total else "&mdash;"
+        rows.append(
+            f"<tr><td>{_e(s.source_file or s.name)}</td><td class=num>{matched}</td>"
+            f"<td class=num>{total}</td><td class=num>{pct}</td></tr>"
+        )
+    tpct = f"{100.0 * grand_m / grand_t:.0f}%" if grand_t else "&mdash;"
+    return (
+        f"<h3>Per file &mdash; {len(versions)} loaded</h3>"
+        "<table class=card-table><tr><th scope=col>File</th><th scope=col>Matched</th>"
+        "<th scope=col>Activities</th><th scope=col>%</th></tr>"
+        f"{''.join(rows)}"
+        f"<tr><td><b>All files</b></td><td class=num><b>{grand_m}</b></td>"
+        f"<td class=num><b>{grand_t}</b></td><td class=num><b>{tpct}</b></td></tr></table>"
+    )
+
+
 def _groups_body(
     versions: list[tuple[str, Schedule]],
     version_key: str,
     sch: Schedule,
-    criteria: list[tuple[str, str | list[str]]],
+    criteria: list[Criterion],
     breakdown: str,
+    applied: bool = False,
 ) -> str:
-    """The Groups & Filters view: scope every metric to a field-value selection, and/or break a
-    field into its values (ADR-0090). Server-rendered over the chosen loaded version."""
+    """The Groups & Filters view: build a filter that scopes EVERY metric on EVERY page across ALL
+    loaded files (ADR-0104), see its reach per file, and preview the scorecard/breakdown on one
+    file. ``applied`` marks whether ``criteria`` is the live session scope (vs a URL preview)."""
     form = _groups_form(versions, version_key, sch, criteria, breakdown)
     sub = filter_schedule(sch, criteria) if criteria else sch
-    matched, total = len(non_summary(sub)), len(non_summary(sch))
 
     if criteria:
 
-        def _chip(field: str, value: str | list[str]) -> str:
+        def _chip(field: str, value: str | Sequence[str]) -> str:
             vals = _criterion_value_list(value)
             shown = (
                 "(populated)"
@@ -3712,14 +3816,24 @@ def _groups_body(
             return f'<span class="dp-chip">{_e(field)} = {shown}</span>'
 
         chips = " ".join(_chip(f, v) for f, v in criteria)
+        matched, total = len(non_summary(sub)), len(non_summary(sch))
+        live = (
+            "This filter is the session-wide scope &mdash; applied to "
+            if applied
+            else "Not applied yet &mdash; <b>Apply to all pages</b> to scope "
+        )
         summary = (
-            f"<div class=panel><h2>Scope</h2><p>{chips}</p>"
-            f"<p class=muted><b>{matched}</b> of {total} activities match (logical AND).</p></div>"
+            f"<div class=panel><h2>Active scope</h2><p>{chips}</p>"
+            f"<p class=muted>{live}<b>every metric on every page</b>, for all loaded files "
+            "(logical AND across rows; values OR'd within a row).</p>"
+            f"<p class=muted><b>{matched}</b> of {total} activities match in the preview file.</p>"
+            f"{_groups_per_file_table(versions, criteria)}</div>"
         )
     else:
         summary = (
-            f"<div class=panel><h2>Scope</h2><p class=muted>No filter &mdash; all {total} "
-            "activities. Choose a field and value above to scope the metrics.</p></div>"
+            f"<div class=panel><h2>Active scope</h2><p class=muted>No filter &mdash; every page uses "
+            f"the full schedules ({len(non_summary(sch))} activities in the preview file). Build a "
+            "filter above and <b>Apply to all pages</b> to scope the whole tool.</p></div>"
         )
 
     if not non_summary(sub):
@@ -3741,7 +3855,12 @@ def _groups_body(
             table = _metric_scorecard_table(dcma)
         except CPMError as exc:
             table = f'<p class="notice err">Network for this scope cannot be solved: {_e(exc)}</p>'
-        scorecard = f"<div class=panel><h2>Metric scorecard for this scope</h2>{cards}{table}</div>"
+        preview_name = _e(sch.source_file or sch.name)
+        scorecard = (
+            f"<div class=panel><h2>Preview &mdash; metric scorecard for {preview_name}</h2>"
+            f"<p class=muted>The same scope drives this file's full report and every other page.</p>"
+            f"{cards}{table}</div>"
+        )
 
     breakdown_html = (
         _groups_breakdown_table(sub, breakdown)
@@ -4038,11 +4157,12 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
     per-schedule analysis (one CPM each); an unschedulable file degrades to a flagged card."""
     cards: list[dict[str, object]] = []
     for key, sch in st.ordered_versions():  # earliest -> latest data date
+        scoped = st.scope(sch)  # the active filter applies to the dashboard cards too
         card: dict[str, object] = {
             "key": key,
             "name": sch.name,
             "source_file": sch.source_file,
-            "activities": len(non_summary(sch)),
+            "activities": len(non_summary(scoped)),
             "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
         }
         try:
@@ -4051,13 +4171,13 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             card["solvable"] = False
             cards.append(card)
             continue
-        makeup = compute_activity_makeup(sch)
+        makeup = compute_activity_makeup(scoped)
         total = makeup.complete + makeup.in_progress + makeup.planned
         cpm_finish = offset_to_datetime(
-            sch.project_start, an.cpm.project_finish, sch.calendar
+            scoped.project_start, an.cpm.project_finish, scoped.calendar
         ).date()
         baseline_dates = [
-            t.baseline_finish for t in non_summary(sch) if t.baseline_finish is not None
+            t.baseline_finish for t in non_summary(scoped) if t.baseline_finish is not None
         ]
         baseline_finish = max(baseline_dates).date() if baseline_dates else None
         fb0 = an.float_bands["float_total_0"]
