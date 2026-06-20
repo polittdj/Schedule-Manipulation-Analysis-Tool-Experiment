@@ -28,6 +28,7 @@
     { key: "percent_complete", label: "%", on: true },
     { key: "date_driven", label: "Date-driven", on: false },
     { key: "resource_names", label: "Resources", on: false },
+    { key: "drives", label: "Drives →", on: false },
   ];
   var data = null; // last /api/driving payload
   var pathTierSel = null; // checklist selection of tiers to show (null = all)
@@ -160,6 +161,16 @@
     rows.forEach(function (r) {
       var tr = el("tr", { class: r.complete ? "done" : "" });
       on.forEach(function (f) {
+        if (f.key === "drives") {
+          var links = (r.drives || []).map(function (lk) {
+            var lag = lk.lag_days
+              ? (lk.lag_days > 0 ? " +" + lk.lag_days + "d" : " " + lk.lag_days + "d")
+              : "";
+            return lk.uid + " (" + lk.type + lag + ")" + (lk.on_path ? "*" : "");
+          });
+          tr.appendChild(el("td", { class: "pv-drives", text: links.length ? links.join(", ") : "—" }));
+          return;
+        }
         var v = f.custom ? (r.custom && r.custom[f.label]) : r[f.key];
         if (typeof v === "boolean") v = v ? "yes" : "—";
         var text = v === null || v === undefined ? "—" : String(v);

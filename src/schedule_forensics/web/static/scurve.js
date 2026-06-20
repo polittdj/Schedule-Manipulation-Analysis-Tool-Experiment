@@ -124,6 +124,7 @@
   }
 
   function step(delta) {
+    if (!data) return;
     index = (index + delta + data.versions.length) % data.versions.length;
     render();
   }
@@ -132,6 +133,7 @@
     document.getElementById("scurvePlay").textContent = "▶ Auto-play";
   }
   function toggleAuto() {
+    if (!data) return;
     if (timer) { stopAuto(); return; }
     // A2: honor prefers-reduced-motion — advance one frame, don't auto-flip on a timer
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -141,15 +143,97 @@
     timer = setInterval(function () { step(1); }, 1600);
   }
 
-  fetch("/api/scurve")
-    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (d) {
-      if (!d.versions || !d.versions.length) { box.textContent = "No progress data to plot."; return; }
-      data = d;
-      render();
-      document.getElementById("prevScurve").addEventListener("click", function () { stopAuto(); step(-1); });
-      document.getElementById("nextScurve").addEventListener("click", function () { stopAuto(); step(1); });
-      document.getElementById("scurvePlay").addEventListener("click", toggleAuto);
-    })
-    .catch(function () { box.textContent = "Failed to load the S-curve data."; });
+  // ── per-chart filter: scope THIS S-curve by up to 5 (field, value) conditions over the parent
+  // file's fields, independent of the page-wide Groups & Filters. Same-field rows OR; AND across
+  // fields (engine filter_schedule semantics). Field values are embedded by the server. ──
+  var FIELDS = window.SF_SCURVE_FIELDS || {};
+  var MAX_ROWS = 5;
+
+  function makeOption(value, text) {
+    var o = document.createElement("option");
+    o.value = value;
+    o.textContent = text;
+    return o;
+  }
+  function collectFilter() {
+    var pairs = [];
+    var rows = document.querySelectorAll("#scurveFilter .scf-row");
+    for (var i = 0; i < rows.length; i++) {
+      var f = rows[i].querySelector(".scf-field").value;
+      var v = rows[i].querySelector(".scf-value").value;
+      if (f && v) pairs.push([f, v]);
+    }
+    return pairs.slice(0, MAX_ROWS);
+  }
+  function buildURL() {
+    var q = collectFilter().map(function (p) {
+      return "cf=" + encodeURIComponent(p[0]) + "&cv=" + encodeURIComponent(p[1]);
+    }).join("&");
+    return "/api/scurve" + (q ? "?" + q : "");
+  }
+  function load() {
+    stopAuto();
+    fetch(buildURL())
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (d) {
+        var lbl = document.getElementById("scurveLabel");
+        if (!d.versions || !d.versions.length) {
+          data = null;
+          box.textContent = "No progress data to plot (no activities match the filter).";
+          if (lbl) lbl.textContent = "";
+          return;
+        }
+        data = d;
+        index = 0;
+        render();
+      })
+      .catch(function () { box.textContent = "Failed to load the S-curve data."; });
+  }
+  function buildFilterUI() {
+    var host = document.getElementById("scurveFilter");
+    if (!host) return;
+    var names = Object.keys(FIELDS).sort();
+    if (!names.length) { var bar = document.getElementById("scurveFilterBar"); if (bar) bar.style.display = "none"; return; }
+    for (var i = 0; i < MAX_ROWS; i++) {
+      var row = document.createElement("span");
+      row.className = "scf-row";
+      var fsel = document.createElement("select");
+      fsel.className = "scf-field";
+      fsel.appendChild(makeOption("", "— field —"));
+      names.forEach(function (f) { fsel.appendChild(makeOption(f, f)); });
+      var vsel = document.createElement("select");
+      vsel.className = "scf-value";
+      vsel.appendChild(makeOption("", "— any —"));
+      (function (fs, vs) {
+        fs.addEventListener("change", function () {
+          vs.innerHTML = "";
+          vs.appendChild(makeOption("", "— any —"));
+          (FIELDS[fs.value] || []).forEach(function (val) { vs.appendChild(makeOption(val, val)); });
+          load();
+        });
+        vs.addEventListener("change", load);
+      })(fsel, vsel);
+      row.appendChild(fsel);
+      row.appendChild(vsel);
+      host.appendChild(row);
+    }
+    var clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "scf-clear";
+    clear.textContent = "Clear";
+    clear.addEventListener("click", function () {
+      var fs = document.querySelectorAll("#scurveFilter .scf-field");
+      for (var i = 0; i < fs.length; i++) fs[i].value = "";
+      var vs = document.querySelectorAll("#scurveFilter .scf-value");
+      for (var j = 0; j < vs.length; j++) { vs[j].innerHTML = ""; vs[j].appendChild(makeOption("", "— any —")); }
+      load();
+    });
+    host.appendChild(clear);
+  }
+
+  document.getElementById("prevScurve").addEventListener("click", function () { stopAuto(); step(-1); });
+  document.getElementById("nextScurve").addEventListener("click", function () { stopAuto(); step(1); });
+  document.getElementById("scurvePlay").addEventListener("click", toggleAuto);
+  buildFilterUI();
+  load();
 })();

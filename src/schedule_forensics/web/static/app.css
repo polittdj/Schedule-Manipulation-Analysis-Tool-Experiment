@@ -222,6 +222,53 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
   padding: 34px 20px 20px; overflow: auto; }
 
+/* Path-analysis: the target-relative-scoping explainer + the "Drives →" link-detail column. */
+.path-explainer { margin: 2px 0 12px; }
+.path-explainer summary { cursor: pointer; color: var(--accent); font-size: 13px; font-weight: 600; }
+.path-explainer p { margin: 6px 0 0; max-width: 60em; }
+.pv-drives { white-space: normal; font-size: 12px; color: var(--muted); min-width: 9em; }
+
+/* Mission Control — the tiled visual wall (mission.js). Small-scale charts in a responsive grid;
+   expand via chartframe's ⤢, reveal underlying numbers with the per-tile Data toggle. */
+.mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
+.tile { margin: 0; }
+.tile-wide { grid-column: 1 / -1; }
+.tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
+.tile-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.tile-actions { display: flex; gap: 12px; align-items: center; }
+.tile-data { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
+  padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tile-data:hover { color: var(--ink); border-color: var(--accent); }
+.mini-steps { display: flex; gap: 4px; margin: 0 0 6px; }
+.mini-steps button { background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }
+/* the per-tile Data toggle un-hides this chart's .sr-only data table in place */
+.tile.show-data .sr-only { position: static !important; width: auto !important; height: auto !important;
+  clip: auto !important; white-space: normal !important; margin: 8px 0 0 !important; overflow: auto !important;
+  max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.tile.show-data .sr-only caption { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.tile.show-data .sr-only th, .tile.show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
+@media (max-width:760px){ .mosaic { grid-template-columns: 1fr; } }
+
+/* Risks, Issues & Opportunities page — cited finding cards + the prioritized recovery plan. */
+.finding { border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 8px;
+  padding: 10px 14px; margin: 0 0 10px; background: var(--field-bg); }
+.finding.sev-HIGH { border-left-color: var(--bad); }
+.finding.sev-MEDIUM { border-left-color: var(--warn); }
+.finding.sev-LOW, .finding.sev-INFO { border-left-color: var(--muted); }
+.finding-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 4px; }
+.sev-badge { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+  border: 1px solid currentColor; }
+.finding p { margin: 4px 0; }
+.finding-action { color: var(--ink); }
+.recovery-list li, .story li { margin: 5px 0; }
+
+/* S-Curve per-chart filter (scurve.js): up to 5 (field, value) rows + a clear button. */
+#scurveFilter { display: inline-flex; flex-wrap: wrap; gap: 6px 10px; }
+.scf-row { display: inline-flex; gap: 4px; }
+#scurveFilter select { font-size: 12px; padding: 4px 6px; }
+.scf-clear { font-size: 12px; padding: 4px 10px; }
+
 /* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
 .evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
 .legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }

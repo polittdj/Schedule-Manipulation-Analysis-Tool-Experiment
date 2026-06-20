@@ -101,13 +101,23 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics.year_phases import (
+    YEAR_BASES,
+    YearPhases,
+    compute_year_phases,
+)
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
     compute_path_counterfactual,
 )
 from schedule_forensics.engine.path_evolution import compute_path_evolution
-from schedule_forensics.engine.recommendations import Finding
+from schedule_forensics.engine.recommendations import (
+    SEVERITY_ORDER,
+    Category,
+    Finding,
+    Severity,
+)
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
@@ -172,10 +182,11 @@ _LAYOUT = Template(
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
+<div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
+<nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/risks">Risks &amp; Opportunities</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
-<a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
+<a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
@@ -193,10 +204,14 @@ title="Display language for the UI and AI results">
 <label>Language: <select name=lang data-no-i18n
 onchange="this.form.submit()">{{ lang_options }}</select></label>
 </form>
-</nav></header>
+</nav>
+<span class="nasa-logo" data-no-i18n><img src="/static/nasa-meatball.svg" alt="NASA insignia" width="46" height="46"></span>
+</header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
-<script src="/static/target.js"></script></body></html>"""
+<script src="/static/target.js"></script>
+<div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
+</body></html>"""
 )
 
 
@@ -651,6 +666,16 @@ def _page(
         f'<option value="{code}"{" selected" if code == lang else ""}>{_e(name)}</option>'
         for code, name in i18n.LANGUAGES.items()
     )
+    # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
+    # only the operator-asserted UNCLASSIFIED mode drops the CUI controls marking. Kept out of the
+    # i18n pass (data-no-i18n) so the control marking stays in its required standard wording.
+    classified = state.ai_config.classification is Classification.CLASSIFIED
+    cui_class = "cui" if classified else "unclassified"
+    cui_text = (
+        "Controlled Unclassified Information • CUI"
+        if classified
+        else "Unclassified • no CUI controls asserted"
+    )
     return HTMLResponse(
         _LAYOUT.render(
             title=title,
@@ -662,6 +687,8 @@ def _page(
             # the catalog is only shipped to the client when not English (no payload for en)
             catalog_json=json.dumps(i18n.catalog_for(lang)),
             lang_options=lang_options,
+            cui_class=cui_class,
+            cui_text=cui_text,
         ),
         status_code=status_code,
     )
@@ -702,6 +729,11 @@ _SECURITY_HEADERS: dict[str, str] = {
     "Referrer-Policy": "no-referrer",
     "X-Frame-Options": "DENY",
 }
+
+#: Shared FastAPI default for optional repeated-string query params (e.g. the S-curve per-chart
+#: filter's cf/cv). A module-level singleton avoids a call-in-default (ruff B008); the list factory
+#: gives each request its own fresh empty list.
+_LIST_QUERY = Query(default_factory=list)
 
 
 def create_app(
@@ -998,6 +1030,31 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_driving_data(sch, cpm, target, secondary, tertiary))
 
+    @app.get("/phases", response_class=HTMLResponse)
+    def phases_view(name: str = Query(""), basis: str = Query("finish")) -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Year Phases",
+                "<div class=panel>Load a schedule to see the per-year phase view.</div>",
+            )
+        keys = [k for k, _ in st.ordered_versions()]
+        current = name if name in st.schedules else keys[-1]
+        yp = compute_year_phases(st.scope(st.schedules[current]), basis)
+        return _page(st, "Year Phases", _phases_body(keys, current, yp), ask_schedule=current)
+
+    @app.get("/mission", response_class=HTMLResponse)
+    def mission_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Mission Control",
+                "<div class=panel>Load a schedule to populate the visual wall.</div>",
+            )
+        return _page(st, "Mission Control", _mission_body(st.target_uid))
+
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
         st = session()
@@ -1245,15 +1302,25 @@ def create_app(
             sc = compute_s_curve(st.ordered())
         except ValueError as exc:
             return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "S-Curve", _scurve_body(sc))
+        return _page(st, "S-Curve", _scurve_body(sc, _scurve_filter_fields(st.ordered())))
 
     @app.get("/api/scurve")
-    def scurve_json() -> JSONResponse:
+    def scurve_json(cf: list[str] = _LIST_QUERY, cv: list[str] = _LIST_QUERY) -> JSONResponse:
         st = session()
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
+        versions = st.ordered()
+        # per-chart filter (independent of the page-wide Groups & Filters): up to MAX_FIELDS
+        # (field, value) conditions over the parent file's fields, applied on top of the scope.
+        criteria = _pair_criteria(cf, cv, versions)
+        if criteria:
+            versions = [
+                v for v in (filter_schedule(s, criteria) for s in versions) if non_summary(v)
+            ]
+        if not versions:
+            return JSONResponse({"months": [], "versions": []})
         try:
-            sc = compute_s_curve(st.ordered())
+            sc = compute_s_curve(versions)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_scurve_data(sc))
@@ -1662,6 +1729,46 @@ def create_app(
             _export_bar("brief") + _skipped_notice(skipped) + _brief_body(brief),
         )
 
+    @app.get("/risks", response_class=HTMLResponse)
+    def risks_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Risks & Opportunities",
+                "<div class=panel>Load a schedule to see risks, issues &amp; opportunities.</div>",
+            )
+        # latest analyzable version (with the one before it for change findings), scoped to the
+        # session filter; keep the key so the narrative cache + ask scope stay consistent.
+        solv: list[tuple[str, Schedule, _Analysis]] = []
+        skipped: list[str] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                skipped.append(key)
+                continue
+            solv.append((key, st.scope(raw), a))
+        if not solv:
+            return _page(
+                st,
+                "Risks & Opportunities",
+                _skipped_notice(skipped) + "<div class=panel>No analyzable version loaded.</div>",
+            )
+        key, current, cur_an = solv[-1]
+        prior = solv[-2][1] if len(solv) >= 2 else None
+        prior_cpm = solv[-2][2].cpm if len(solv) >= 2 else None
+        findings = recommend(
+            current,
+            prior,
+            current_cpm=cur_an.cpm,
+            prior_cpm=prior_cpm,
+            target_uid=st.target_uid,
+        )
+        narrative = _polished_narrative(st, key, current, cur_an)
+        body = _skipped_notice(skipped) + _risks_body(current, findings, narrative)
+        return _page(st, "Risks & Opportunities", body, ask_schedule=key)
+
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
         if (bad := _bad_format(fmt)) is not None:
@@ -2027,6 +2134,15 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
 secondary/tertiary tiers within your day-bands trace back from it, SSI-style — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
 filter rows, and hide completed work.</p>
+<details class=path-explainer><summary>Why an activity can show 0&#8209;day driving slack here but not on another view</summary>
+<p class=muted>This trace is <b>relative to the target UniqueID</b> you choose. An activity has
+<b>0 days of driving slack</b> when a slip in it would push <i>this target's</i> finish, so it sits
+on the driving path <b>to that target</b>. The same activity may legitimately not appear on a view
+scoped to a <b>different</b> target, on the project&#8209;finish critical path (the DCMA
+&ldquo;Critical Path Test&rdquo;), or when completed work is hidden &mdash; driving slack to a
+target and the project's critical path answer different questions. Turn on the <b>Drives &#8594;</b>
+column to see each activity's logic successors inside this trace (e.g. UID 8022 &#8594; UID 152);
+a <b>*</b> marks the successor that keeps the chain on the driving path.</p></details>
 <div class=viz-controls id=pathControls>
 <label>Schedule <select id=pathSchedule>{options}</select></label>
 <label>Target UID <input id=pathTarget type=number min=1 value="{target_uid if target_uid is not None else ""}" placeholder="UID"></label>
@@ -2043,6 +2159,91 @@ filter rows, and hide completed work.</p>
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
 <script src="/static/path.js"></script>"""
+
+
+def _mission_body(target_uid: int | None) -> str:
+    """Mission Control — every visual on one wall at small scale: expand any tile (⤢), reveal its
+    underlying data table (▦ Data), and Play-all to step every animated chart in lockstep. Each
+    tile hosts the SAME chart scripts/endpoints the dedicated pages use, so the session-wide
+    Target UID and Groups & Filters scope every tile automatically."""
+    target = target_uid if target_uid is not None else ""
+
+    def tile(
+        title: str, full_url: str, inner: str, *, controls: str = "", wide: bool = False
+    ) -> str:
+        cls = "tile panel" + (" tile-wide" if wide else "")
+        return f"""<section class="{cls}">
+<div class=tile-head><h3>{title}</h3>
+<span class=tile-actions><button type=button class=tile-data aria-pressed=false>&#9638; Data</button>
+<a href="{full_url}" class=btn-link>Open &#8599;</a></span></div>
+{controls}
+<div class=chart-host>{inner}</div></section>"""
+
+    def steps(prev: str, play: str, nxt: str) -> str:
+        return (
+            f"<div class=mini-steps><button type=button id={prev}>&#8249;</button>"
+            f"<button type=button id={play}>&#9654;</button>"
+            f"<button type=button id={nxt}>&#8250;</button></div>"
+        )
+
+    tiles = "".join(
+        [
+            tile(
+                "S-Curve",
+                "/scurve",
+                "<div id=scurveLabel class=muted></div><div id=scurveChart></div>",
+                controls=steps("prevScurve", "scurvePlay", "nextScurve"),
+            ),
+            tile(
+                "Bow Wave / CEI",
+                "/cei",
+                "<div id=snapLabel class=muted></div><div id=ceiChart></div>",
+                controls=steps("prevSnap", "autoPlay", "nextSnap"),
+            ),
+            tile(
+                "Forecast Drift",
+                "/forecast",
+                "<div id=driftLabel class=muted></div><div id=driftChart></div>",
+                controls=steps("prevDrift", "driftPlay", "nextDrift"),
+            ),
+            tile(
+                "Quality Offenders",
+                "/trend",
+                "<div id=qualLabel class=muted></div>"
+                "<div class=qual-drill-grid><div id=qualBars></div><div id=qualDrill></div></div>"
+                "<label class=muted>Metric <select id=qualMetric></select></label>",
+                controls=steps("qualPrev", "qualPlay", "qualNext"),
+            ),
+            tile("Finishes", "/curves", "<div id=finishesChart></div>"),
+            tile("Data-date Finishes", "/curves", "<div id=dataDateChart></div>"),
+            tile("Slippage", "/curves", "<div id=slippageChart></div>"),
+            tile(
+                "Quality Trend",
+                "/trend",
+                f'<div id=trendCharts data-target="{target}"></div>',
+                wide=True,
+            ),
+        ]
+    )
+    return f"""
+<div class=panel><h2>Mission Control &mdash; every visual on one wall</h2>
+<p class=muted>Each chart at a glance. <b>Expand</b> any tile with its &#9099; button, reveal the
+underlying numbers with <b>&#9638; Data</b>, and use <b>Play all</b> to step every animated chart
+in lockstep. The session <b>Target UID</b> and <b>Groups &amp; Filters</b> apply to every tile.</p>
+<div class=viz-controls>
+<button id=missionPlay type=button>&#9654; Play all</button>
+<button id=missionStep type=button>&#9197; Step all</button>
+</div></div>
+<div id=missionGrid class=mosaic>
+{tiles}
+</div>
+<script src="/static/scurve.js"></script>
+<script src="/static/cei.js"></script>
+<script src="/static/drift.js"></script>
+<script src="/static/trend_drill.js"></script>
+<script src="/static/curves.js"></script>
+<script src="/static/trend.js"></script>
+<script src="/static/mission.js"></script>"""
 
 
 def _carnac_cards(summary: CarnacSummary) -> str:
@@ -2784,6 +2985,202 @@ def _brief_body(brief: DiagnosticBrief) -> str:
     return "".join(parts)
 
 
+def _finding_card(f: Finding) -> str:
+    """One risk/issue/opportunity card: severity badge, detail, recommended action, citations."""
+    cites = "; ".join(_e(str(c)) for c in f.citations[:3])
+    more = f" +{len(f.citations) - 3} more" if len(f.citations) > 3 else ""
+    action = (
+        f"<p class=finding-action><b>Recommended action:</b> {_e(f.course_of_action)}</p>"
+        if f.course_of_action
+        else ""
+    )
+    return f"""<div class="finding sev-{_e(f.severity)}">
+<div class=finding-head><span class="sev-badge sev-{_e(f.severity)}">{_e(f.severity)}</span>
+<b>{_e(f.title)}</b> <span class=muted>[{_e(f.metric_id)}]</span></div>
+<p>{_e(f.detail)}</p>{action}
+<p class=cite>Cited: {cites}{_e(more)}</p></div>"""
+
+
+def _risks_section(title: str, lead: str, items: list[Finding], empty: str) -> str:
+    body = "".join(_finding_card(f) for f in items) if items else f"<p class=muted>{empty}</p>"
+    return (
+        f"<div class=panel><h2>{title} <span class=muted>({len(items)})</span></h2>"
+        f"<p class=muted>{lead}</p>{body}</div>"
+    )
+
+
+def _risks_body(sch: Schedule, findings: tuple[Finding, ...], narrative: Narrative) -> str:
+    """The Risks, Issues & Opportunities page: a high-level read first, then the cited detail.
+
+    Grounded entirely in the engine's :func:`recommend` findings (RISK / CONCERN / OPPORTUNITY,
+    each with a course of action and citations) plus the local-AI-polished narrative — high level
+    first (executive read + a prioritized recovery plan), supporting detail beneath."""
+    risks = [f for f in findings if f.category == Category.RISK]
+    issues = [f for f in findings if f.category == Category.CONCERN]
+    opps = [f for f in findings if f.category == Category.OPPORTUNITY]
+    high = sum(1 for f in findings if f.severity == Severity.HIGH)
+    story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
+
+    # prioritized, de-duplicated recovery actions across risks + issues (most severe first)
+    seen: set[str] = set()
+    actions: list[Finding] = []
+    for f in sorted(risks + issues, key=lambda x: (SEVERITY_ORDER[x.severity], x.metric_id)):
+        if f.course_of_action and f.course_of_action not in seen:
+            seen.add(f.course_of_action)
+            actions.append(f)
+    recovery = ""
+    if actions:
+        action_items = "".join(
+            f"<li><b>{_e(a.course_of_action)}</b> "
+            f"<span class=muted>&mdash; {_e(a.title)} ({_e(a.severity)})</span></li>"
+            for a in actions
+        )
+        recovery = (
+            "<div class=panel><h2>Recovery plan &mdash; prioritized actions</h2>"
+            "<p class=muted>The highest-leverage actions to recover the plan, most severe first, "
+            "each tied to the finding that motivates it.</p>"
+            f"<ol class=recovery-list>{action_items}</ol></div>"
+        )
+
+    high_note = f" &mdash; {high} flagged HIGH severity" if high else ""
+    summary = f"""
+<div class=panel><h2>Risks, Issues &amp; Opportunities &mdash; {_e(sch.name)}</h2>
+<p>At a glance: <b class=fail>{len(risks)} risk(s)</b>,
+<b class=sev-MEDIUM>{len(issues)} issue(s)</b>, and
+<b class=pass>{len(opps)} opportunity(ies)</b>{high_note}. The plain-English read is below; the
+supporting detail for every item &mdash; with its citation and a recommended action &mdash;
+follows in the sections beneath.</p>
+<h3>AI read</h3>
+<ul class=story>{story}</ul>
+<p class=muted><b>AI can err &mdash; verify against the citations on each finding.</b> Enable a
+local model in <a href="/settings">AI Settings</a> for a richer interpretation; the findings
+themselves are engine-computed and cited.</p></div>"""
+
+    return (
+        summary
+        + recovery
+        + _risks_section(
+            "Risks",
+            "Future-facing threats to the plan, most severe first.",
+            risks,
+            "No forward-looking risks identified in this version.",
+        )
+        + _risks_section(
+            "Issues (current concerns)",
+            "Quality / integrity problems present right now, including manipulation signals.",
+            issues,
+            "No current concerns identified in this version.",
+        )
+        + _risks_section(
+            "Opportunities",
+            "Levers to recover or improve the schedule.",
+            opps,
+            "No specific opportunities surfaced from the current signals.",
+        )
+    )
+
+
+def _phases_chart(yp: YearPhases) -> str:
+    """An inline stacked-bar SVG of activities per year (complete / in-progress / planned)."""
+    rows = yp.rows
+    if not rows:
+        return "<p class=muted>No activities to bin on this basis.</p>"
+    w, pad_l, pad_r, pad_t, pad_b = 900, 40, 14, 20, 44
+    n = len(rows)
+    top = max((r.total for r in rows), default=1) or 1
+    slot = (w - pad_l - pad_r) / n
+    bw = min(46.0, slot * 0.6)
+    plot_h = 300 - pad_t - pad_b
+
+    def y(v: float) -> float:
+        return pad_t + (1 - v / top) * plot_h
+
+    parts = [
+        f'<svg viewBox="0 0 {w} 300" width="100%" role="img" '
+        'aria-label="Activities per year by phase">'
+    ]
+    for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
+        gy = y(top * frac)
+        parts.append(
+            f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{w - pad_r}" y2="{gy:.1f}" '
+            'style="stroke:var(--line)" stroke-width="1"/>'
+            f'<text x="{pad_l - 6}" y="{gy + 4:.1f}" text-anchor="end" '
+            f'style="fill:var(--muted)" font-size="10">{round(top * frac)}</text>'
+        )
+    for i, r in enumerate(rows):
+        cx = pad_l + slot * i + slot / 2
+        x0 = cx - bw / 2
+        ybase = y(0)
+        for val, color in (
+            (r.planned, "var(--accent)"),
+            (r.in_progress, "var(--warn)"),
+            (r.complete, "var(--ok)"),
+        ):
+            if val <= 0:
+                continue
+            h = (val / top) * plot_h
+            parts.append(
+                f'<rect x="{x0:.1f}" y="{ybase - h:.1f}" width="{bw:.1f}" height="{h:.1f}" '
+                f'style="fill:{color}"/>'
+            )
+            ybase -= h
+        parts.append(
+            f'<text x="{cx:.1f}" y="{y(0) + 15:.1f}" text-anchor="middle" '
+            f'style="fill:var(--muted)" font-size="10">{r.year}</text>'
+            f'<text x="{cx:.1f}" y="{y(r.total) - 4:.1f}" text-anchor="middle" '
+            f'style="fill:var(--ink)" font-size="10">{r.total}</text>'
+        )
+    parts.append("</svg>")
+    legend = (
+        "<div class=chart-legend>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--ok)">'
+        "</span>Complete</span>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--warn)">'
+        "</span>In progress</span>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--accent)">'
+        "</span>Planned</span></div>"
+    )
+    return f"<div class=chart-host>{''.join(parts)}</div>{legend}"
+
+
+def _phases_body(keys: list[str], current: str, yp: YearPhases) -> str:
+    """Year Trend / Phase view: pick a schedule + a binning basis, see work spread across years."""
+    sched_opts = "".join(
+        f'<option value="{_e(k)}"{" selected" if k == current else ""}>{_e(k)}</option>'
+        for k in keys
+    )
+    basis_opts = "".join(
+        f'<option value="{b}"{" selected" if b == yp.basis else ""}>{_e(label)}</option>'
+        for b, label in YEAR_BASES.items()
+    )
+    table_rows = "".join(
+        f"<tr><td>{r.year}</td><td>{r.total}</td><td>{r.complete}</td>"
+        f"<td>{r.in_progress}</td><td>{r.planned}</td><td>{r.milestones}</td></tr>"
+        for r in yp.rows
+    )
+    undated = (
+        f" &middot; {yp.undated} activit{'y' if yp.undated == 1 else 'ies'} have no "
+        f"{_e(YEAR_BASES[yp.basis]).lower()} date (not binned)"
+        if yp.undated
+        else ""
+    )
+    return f"""
+<div class=panel><h2>Year Trend / Phase &mdash; activities per calendar year</h2>
+<p class=muted>How the work spreads across the program's years, split into complete / in-progress /
+planned. <b>Bin by</b> lets you key each year on a different date &mdash; the right basis is a
+judgement call, so choose the one your analysis needs.</p>
+<form method=get action="/phases" class=viz-controls>
+<label>Schedule <select name=name onchange="this.form.submit()">{sched_opts}</select></label>
+<label>Bin by <select name=basis onchange="this.form.submit()">{basis_opts}</select></label>
+<noscript><button type=submit>Update</button></noscript>
+</form>
+<p class=muted>Binned by <b>{_e(YEAR_BASES[yp.basis])}</b>{undated}.</p>
+{_phases_chart(yp)}
+<table><tr><th scope=col>Year</th><th scope=col>Activities</th><th scope=col>Complete</th>
+<th scope=col>In progress</th><th scope=col>Planned</th><th scope=col>Milestones</th></tr>
+{table_rows}</table></div>"""
+
+
 def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
     """The per-view 'download as Excel / Word' links (local files only — Law 1)."""
     a = f' id="{xlsx_id}"' if xlsx_id else ""
@@ -2944,6 +3341,22 @@ def _driving_data(
             return None
         return offset_to_datetime(sch.project_start, max(ordinal, 0), cal).date().isoformat()
 
+    # Driving links: each traced activity's immediate logic successors that are themselves on the
+    # trace to the target — the "what is this linked to on the way to the target" detail (e.g.
+    # UID 8022 → UID 152). on_path marks the successor that keeps the chain on the 0-slack path.
+    trace_ids = set(results)
+    drives: dict[int, list[dict[str, object]]] = {uid: [] for uid in trace_ids}
+    for rel in sch.relationships:
+        if rel.predecessor_id in trace_ids and rel.successor_id in trace_ids:
+            drives[rel.predecessor_id].append(
+                {
+                    "uid": rel.successor_id,
+                    "type": rel.type.value,
+                    "lag_days": round(rel.lag_minutes / per_day, 1) if per_day else 0.0,
+                    "on_path": results[rel.successor_id].on_driving_path,
+                }
+            )
+
     rows = []
     for uid in sorted(results):
         timing = cpm.timings.get(uid)
@@ -2986,6 +3399,9 @@ def _driving_data(
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
                 "resource_names": ", ".join(task.resource_names),
+                # immediate logic successors within this trace (uid, type, lag, on_path) — the
+                # "linked to UID X" detail surfaced by the Drives → column
+                "drives": drives[uid],
                 # mapped custom fields populated on this task (label → value); the grid offers
                 # each as an optional column (ADR-0088 mapping → ADR-0093 display)
                 "custom": dict(task.custom_field_map),
@@ -3349,9 +3765,96 @@ how many of those planned activities actually finished by the end of it. CEI = c
 <script src="/static/cei.js"></script>"""
 
 
-def _scurve_body(sc: SCurve) -> str:
-    """The animated S-curve view: cumulative planned vs actual/forecast progress per version."""
-    return """
+def _scurve_filter_fields(versions: list[Schedule]) -> dict[str, list[str]]:
+    """The parent file(s)' filterable fields → their distinct values, for the S-curve's own
+    up-to-5-field filter. Capped so the embedded payload stays small on large schedules."""
+    out: dict[str, list[str]] = {}
+    for fld in available_fields_union(versions):
+        values = distinct_values(versions, fld)
+        if 0 < len(values) <= 1000:
+            out[fld] = values[:300]
+    return out
+
+
+def _pair_criteria(cf: list[str], cv: list[str], versions: list[Schedule]) -> list[Criterion]:
+    """Zip the cf/cv query lists into validated (field, value) criteria (<= MAX_FIELDS)."""
+    fields = set(available_fields_union(versions))
+    out: list[Criterion] = []
+    for fld, value in zip(cf, cv, strict=False):
+        if fld in fields and value:
+            out.append((fld, value))
+        if len(out) >= MAX_FIELDS:
+            break
+    return out
+
+
+def _scurve_interpretation(sc: SCurve) -> str:
+    """A grounded, always-present plain-English read of the S-curve: plan-vs-actual at the data
+    date and how that gap is trending across versions — what the trend says about execution."""
+    versions = sc.versions
+    if not versions:
+        return ""
+    latest = versions[-1]
+    si = latest.status_index
+    if si is None or si >= len(latest.planned):
+        read = (
+            "This version has no data date, so plan-vs-actual can't be read at a status point; "
+            "the curves show how the planned and scheduled finishes are distributed over time."
+        )
+    else:
+        actual, planned = latest.actual[si], latest.planned[si]
+        gap = planned - actual
+        if gap > 2:
+            verdict = f"running <b>{gap:.0f} points behind plan</b> at the data date"
+            health = (
+                "Execution is lagging the baseline — less work has completed than was promised "
+                "by now, so the forecast finish is at risk unless the team recovers."
+            )
+        elif gap < -2:
+            verdict = f"running <b>{-gap:.0f} points ahead of plan</b> at the data date"
+            health = "Execution is ahead of the baseline — work is completing faster than planned."
+        else:
+            verdict = "tracking <b>on plan</b> at the data date"
+            health = "Execution is essentially on the baseline at the status date."
+        read = (
+            f"As of the latest data date, <b>{actual:.0f}%</b> of the work has finished versus "
+            f"<b>{planned:.0f}%</b> planned — {verdict}. {health}"
+        )
+    gaps = [
+        v.planned[v.status_index] - v.actual[v.status_index]
+        for v in versions
+        if v.status_index is not None and v.status_index < len(v.planned)
+    ]
+    trend = ""
+    if len(gaps) >= 2:
+        delta = gaps[-1] - gaps[0]
+        if delta > 1:
+            trend = (
+                f" Across the loaded versions the gap has <b>widened by {delta:.0f} points</b> — "
+                "the schedule is falling further behind."
+            )
+        elif delta < -1:
+            trend = (
+                f" Across the loaded versions the gap has <b>narrowed by {-delta:.0f} points</b> — "
+                "the team is recovering."
+            )
+        else:
+            trend = " The plan-vs-actual gap has held roughly steady across the loaded versions."
+    return (
+        "<div class=panel><h2>AI interpretation</h2>"
+        f"<p>{read}{trend}</p>"
+        "<p class=muted><b>Auto-generated</b> from the S-curve's computed values &mdash; verify "
+        'against the chart. Enable a local model in <a href="/settings">AI Settings</a> for a '
+        "fuller, model-written read.</p></div>"
+    )
+
+
+def _scurve_body(sc: SCurve, fields: dict[str, list[str]]) -> str:
+    """The animated S-curve view: cumulative planned vs actual/forecast progress per version,
+    with a per-chart up-to-5-field filter over the parent file's fields."""
+    # escape "<" so a field value can never break out of the inline <script> embed
+    fields_json = json.dumps(fields).replace("<", "\\u003c")
+    return f"""
 <div class=panel><h2>S-Curve &mdash; cumulative progress</h2>
 <p class=muted>Each version's cumulative progress on a fixed 0&ndash;100% scale: <b>gold</b> =
 planned (share of activities the baseline had finishing by each month), <b>blue</b> =
@@ -3359,6 +3862,8 @@ actual / forecast (share whose actual or scheduled finish lands by each month). 
 line is that version's data date &mdash; actuals to its left, forecast to its right; the blue
 curve sitting below the gold at the data date is work behind plan. Step through the versions
 or press Auto-play to watch the actual curve climb (and lag) over time.</p>
+<div class=viz-controls id=scurveFilterBar><span class=muted>Filter this chart by up to
+{MAX_FIELDS} field(s) of the parent file:</span> <span id=scurveFilter></span></div>
 <div class=viz-controls>
 <button id=prevScurve type=button>&#9664; Prev</button>
 <span id=scurveLabel class=muted></span>
@@ -3366,6 +3871,8 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <button id=scurvePlay type=button>&#9654; Auto-play</button>
 </div>
 <div id=scurveChart class=chart-host></div></div>
+{_scurve_interpretation(sc)}
+<script>window.SF_SCURVE_FIELDS = {fields_json};</script>
 <script src="/static/scurve.js"></script>"""
 
 

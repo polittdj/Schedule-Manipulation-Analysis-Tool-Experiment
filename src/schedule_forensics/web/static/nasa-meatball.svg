@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="NASA insignia">
+<title>NASA insignia</title>
+<defs><clipPath id="nasa-c"><circle cx="100" cy="100" r="99"/></clipPath></defs>
+<circle cx="100" cy="100" r="99" fill="#0b3d91"/>
+<g clip-path="url(#nasa-c)">
+  <g fill="#ffffff">
+    <circle cx="44" cy="56" r="1.7"/><circle cx="60" cy="42" r="1.2"/>
+    <circle cx="78" cy="50" r="1.4"/><circle cx="36" cy="76" r="1.2"/>
+    <circle cx="54" cy="66" r="1.3"/><circle cx="68" cy="58" r="1"/>
+    <circle cx="46" cy="90" r="1.2"/><circle cx="30" cy="62" r="1"/>
+  </g>
+  <path d="M26 126 Q92 82 178 64 Q150 92 96 108 Q62 118 46 140 Z" fill="#fc3d21"/>
+  <ellipse cx="100" cy="100" rx="94" ry="30" fill="none" stroke="#ffffff" stroke-width="3"
+           transform="rotate(-28 100 100)"/>
+</g>
+<text x="100" y="120" text-anchor="middle" font-family="Helvetica Neue,Arial,sans-serif"
+      font-size="50" font-weight="800" fill="#ffffff" letter-spacing="-1.5">NASA</text>
+</svg>
