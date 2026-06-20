@@ -2471,3 +2471,25 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   risk, red=slip / green=pull-in) + companion table, empty until risks exist. Wipe clears the register.
   Tests: `tests/web/test_sra_risks.py` (13). Gate green; full suite 1368 passed / 3 env-skips.
 - **No new ADR** — this is the discrete-risk tranche under the existing ADR-0106 staged plan.
+
+---
+
+## 2026-06-20 (cont.) — Logic-integrity checks (handbook plan D3)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Logic-integrity (OPEN PR, plan D3):** `engine/metrics/logic_integrity.py`
+  `compute_logic_integrity(schedule)` — parity-isolated `LogicCheck` dataclasses (out of the Fuse
+  ribbon and DCMA audit, like `health_extra`; needs no CPM). Two checks:
+  **out-of-sequence** (an FS successor that recorded progress before its predecessor finished:
+  `succ.actual_start < pred.actual_finish`, or pred has no recorded finish while succ already
+  started) and **redundant logic** (a direct `A→C` made superfluous by a longer `A→…→C` path —
+  iterative reverse-topological transitive closure so a long chain can't overflow the stack;
+  reported *not evaluated* on a cyclic or oversize network). Circular logic intentionally dropped:
+  CPM refuses a cyclic network (`CPMError`), so the panel (renders only after CPM solves) would
+  always read zero.
+- **Web:** `_logic_checks_panel(sch)` on /analysis next to the structural health checks — a stoplight
+  list (green when clear, else the count + first offending `pred→succ` links + plain-English reason;
+  an "n/a" card when a check was skipped).
+- **Tests:** `tests/engine/test_logic_integrity.py` (13, incl. a 1500-deep chain proving the
+  closure is iterative) + `tests/web/test_logic_checks.py` (2). Full gate green; suite 1383 passed /
+  3 env-skips. Plan D3 marked done. **No new ADR.**
