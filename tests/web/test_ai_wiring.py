@@ -118,19 +118,25 @@ def test_generation_failure_degrades_to_the_deterministic_narrative(
     assert "AI narrative" in resp.text
 
 
-def test_briefing_uses_the_selected_backend_and_degrades_on_failure(
+def test_briefing_polish_is_async_off_the_page_load_and_degrades_on_failure(
     monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
 ) -> None:
+    """The briefing page renders the deterministic briefing immediately (never blocks on the
+    model); the local-AI polish is fetched off the page-load path via /api/ai/briefing, which
+    degrades to {polished:false} on a dying model instead of 500-ing or hanging the page."""
     _wire(monkeypatch, _PolishBackend())
     _load_example(client, state)
-    assert "POLISHED" in client.get("/briefing").text
+    page = client.get("/briefing").text
+    assert "Diagnostic Executive Briefing" in page  # deterministic briefing present on load…
+    assert "data-ai-endpoint" in page and "POLISHED" not in page  # …polish is deferred, not inline
+    assert "POLISHED" in client.get("/api/ai/briefing").json()["html"]  # the endpoint does it
+    # a dying model degrades the endpoint to {polished:false} (never a 500), page stays usable
     _wire(monkeypatch, _BoomBackend())
     client.post(  # reset the routed-backend cache so the dying backend is picked up
         "/settings", data={"classification": "CLASSIFIED", "backend": "ollama", "model": "x"}
     )
-    page = client.get("/briefing")
-    assert page.status_code == 200
-    assert "Diagnostic Executive Briefing" in page.text and "POLISHED" not in page.text
+    resp = client.get("/api/ai/briefing")
+    assert resp.status_code == 200 and resp.json() == {"polished": False}
 
 
 def test_wipe_clears_polished_narratives(
