@@ -2409,3 +2409,27 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Tests:** new `subschedule_to_target` unit tests; web tests for endpoint truncation (population
   narrows, banner present/cleared, missing-UID warning) and the 5×5 matrix/ranking/quantified cards;
   recommendations scoring tests (ranks, bands, `risk_score`, `_quantify`). Full gate green; parity 10/10.
+
+---
+
+## 2026-06-20 (cont.) — operator request tranche: bug fix + animations + handbook build + SRA charter
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Bug fixed (#177):** Risks & Executive Briefing "won't open" — they ran the local model synchronously
+  on page load (one generation per statement/section), so a big workbook + slow model hung the page;
+  `reattach` outside the try/except could 500 Risks. Now both render deterministically and fetch the AI
+  polish async via `/api/ai/narrative` + `/api/ai/briefing` (try/except → `{polished:false}`); `ai_polish.js`
+  swaps it in. Reproduced 16.8s→0.01s.
+- **Mission Control / animations (#178, #180):** Critical-Path-Evolution tile + lockstep Play-all (incl. the
+  overview line charts drawing in via `sf-curve-line`/`pathLength=1`), uniform tile size + per-tile
+  enlarge/shrink, S-Curve shows the exact data date each frame (`SCurveVersion.status_date`). **#179**
+  Year-Phases replaced with an animated cross-version stepper (`/api/phases` + `phases.js`).
+- **Handbook/deck build:** **#181** committed `docs/HANDBOOK-EXTENSION-PLAN.md` (a source-verified catalogue
+  from the NASA handbook + assessment decks). **#182** scatter plot (float vs duration) on /analysis.
+  **#183** structural health checks beyond DCMA-14 (`engine/metrics/health_extra.py`, parity-safe lightweight
+  dataclasses) — critical merge/diverge hotspots, LOE-on-critical, milestone-with-duration, zero-duration,
+  hidden-duration, missing-WBS, missing-baseline — as a stoplight panel on /analysis.
+- **SRA charter (ADR-0106, OPEN PR):** Monte-Carlo module designed from primary sources with both a
+  manual-input and an auto "industry best practice" path; engine `engine/sra.py` parity-isolated and
+  validated against `compute_cpm`. See ADR-0106 + the STATUS block in HANDOFF for the full design. Staged
+  build: engine first, then results visuals, then manual-input UI, then discrete risks / cost-loaded JCL.

@@ -1,6 +1,25 @@
-# Handoff — 2026-06-20 (PRs #81–#175 MERGED; **`main` green**; OPEN PR = target-endpoint + 5×5 risk matrix, ADR-0105)
+# Handoff — 2026-06-20 (PRs #81–#183 MERGED; **`main` green**; OPEN PR = SRA / Monte-Carlo foundation, ADR-0106)
 
-> ## STATUS (current) — Target UID = analysis ENDPOINT (whole tool) + quantified 5×5 risk matrix (ADR-0105)
+> ## STATUS (current) — Schedule Risk Analysis (Monte-Carlo) chartered & designed (ADR-0106); engine building
+> Operator chartered an SRA / Monte-Carlo module with BOTH a manual-input path and an AUTO "industry best
+> practice" path. **ADR-0106** captures the source-cited design: triangular default on REMAINING duration,
+> auto-default Min 90% / ML 100% / Max 110% (Deltek "Realistic", right-skewed; labeled a screening
+> placeholder, not SME-validated, overridable); discrete risks = Bernoulli×triangular multiplicative
+> (none auto unless a register is supplied); correlation never zero-without-warning (shared-driver emergent
+> or ~0.3 default); 1000 iters (→10000), seeded `random.Random(base+i)`; outputs = finish CDF + P10/50/80/90,
+> deterministic-vs-probabilistic gap, Criticality Index (% iters on the critical path, TF≤0), Spearman
+> tornado, SSI = (σ_act×CI)/σ_proj; JCL deferred (needs cost — duration-only = SCL). Engine `engine/sra.py`
+> is parity-isolated and validated against `compute_cpm` (deterministic most-likely run == compute_cpm
+> finish). Staged: (1) engine+auto+outputs (this PR), (2) results page + animated visuals, (3) manual-input
+> model fields + UI, (4) discrete risks/correlation, then cost-loading for true JCL. Verified sources:
+> GAO-16-89G, NASA SP-2010-3403 / NPR 7120.5F / CEH App. J, AACE 57R-09, Vanhoucke/PMBOK, Deltek/Primavera/
+> Safran. Full deck/handbook plan in `docs/HANDBOOK-EXTENSION-PLAN.md`.
+> - **Shipped earlier this session (all merged):** #177 Risks/Briefing "won't open" fix (async AI polish);
+>   #178/#180 Mission Control (evolution tile, lockstep play-all incl. overview lines, uniform tiles +
+>   enlarge/shrink, S-Curve data date); #179 Year-Phases animated; #181 handbook-extension plan; #182
+>   scatter plot; #183 structural health checks (handbook Fig. 6-9).
+
+> ## STATUS (post-#176) — Target UID = analysis ENDPOINT (whole tool) + quantified 5×5 risk matrix (ADR-0105)
 > Operator: (1) entering a UID in the top ribbon must apply to EVERY page with all metrics/visuals
 > recomputed using the target as the endpoint — activities that don't drive it omitted; (2) the Risks page
 > needs a quantified 5×5 (likelihood × impact) matrix + ranking. **OPEN PR (this branch, ADR-0105).**
