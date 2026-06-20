@@ -172,6 +172,7 @@ _LAYOUT = Template(
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
+<div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
@@ -193,10 +194,14 @@ title="Display language for the UI and AI results">
 <label>Language: <select name=lang data-no-i18n
 onchange="this.form.submit()">{{ lang_options }}</select></label>
 </form>
-</nav></header>
+</nav>
+<span class="nasa-logo" data-no-i18n><img src="/static/nasa-meatball.svg" alt="NASA insignia" width="46" height="46"></span>
+</header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
-<script src="/static/target.js"></script></body></html>"""
+<script src="/static/target.js"></script>
+<div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
+</body></html>"""
 )
 
 
@@ -651,6 +656,16 @@ def _page(
         f'<option value="{code}"{" selected" if code == lang else ""}>{_e(name)}</option>'
         for code, name in i18n.LANGUAGES.items()
     )
+    # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
+    # only the operator-asserted UNCLASSIFIED mode drops the CUI controls marking. Kept out of the
+    # i18n pass (data-no-i18n) so the control marking stays in its required standard wording.
+    classified = state.ai_config.classification is Classification.CLASSIFIED
+    cui_class = "cui" if classified else "unclassified"
+    cui_text = (
+        "Controlled Unclassified Information • CUI"
+        if classified
+        else "Unclassified • no CUI controls asserted"
+    )
     return HTMLResponse(
         _LAYOUT.render(
             title=title,
@@ -662,6 +677,8 @@ def _page(
             # the catalog is only shipped to the client when not English (no payload for en)
             catalog_json=json.dumps(i18n.catalog_for(lang)),
             lang_options=lang_options,
+            cui_class=cui_class,
+            cui_text=cui_text,
         ),
         status_code=status_code,
     )

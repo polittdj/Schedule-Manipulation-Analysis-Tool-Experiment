@@ -98,3 +98,36 @@ cursor:pointer;text-decoration:underline}
   main{padding:16px 14px}
   .dash-cards,.brief-cards,.card-cols,.qual-drill-grid{grid-template-columns:1fr}
 }
+
+/* ── NASA theme chrome — professional command-banner header + slowly rotating meatball insignia,
+   CUI page-marking bars (NASA marking standard), and a light dotted reading grid behind charts.
+   Every asset is vendored/local (air-gap). The rotation auto-stops under prefers-reduced-motion
+   via the global media block above (animation-duration is forced to ~0). */
+:root{--nasa-blue:#0b3d91;--nasa-blue-2:#0a2d6e;--nasa-red:#fc3d21;--grid-dot:rgba(140,160,190,.16)}
+html[data-theme=light]{--grid-dot:rgba(60,84,120,.14)}
+
+header{background:linear-gradient(95deg,var(--nasa-blue) 0%,var(--nasa-blue-2) 70%,#081f4d 100%);
+  border-bottom:2px solid var(--nasa-red)}
+header h1{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+header nav a{color:rgba(255,255,255,.82)}
+header nav a:hover{color:#fff}
+header nav .navform button,header nav #themeToggle{color:rgba(255,255,255,.82)}
+header nav .navform button:hover,header nav #themeToggle:hover{color:#fff}
+header nav .linkbtn{color:#fff}
+header label{color:rgba(255,255,255,.9)}
+
+.nasa-logo{margin-left:auto;display:flex;align-items:center;flex:0 0 auto}
+.nasa-logo img{width:46px;height:46px;display:block;border-radius:50%;
+  box-shadow:0 0 0 2px rgba(255,255,255,.28),0 2px 6px rgba(0,0,0,.4);
+  animation:nasa-spin 16s linear infinite}
+@keyframes nasa-spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+.cui-banner{text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;padding:3px 10px;background:#1b1b1b;color:#fff}
+.cui-banner.cui{background:#5a0d12;color:#ffd9d9}
+.cui-banner.unclassified{background:#0d2818;color:#9fe0b4}
+.cui-banner.bottom{border-top:1px solid rgba(255,255,255,.12)}
+
+/* light dotted reading grid behind every chart (chart-host wrappers + the trend per-chart cells) */
+.chart-host,.chart{background-image:radial-gradient(var(--grid-dot) 1.2px,transparent 1.3px);
+  background-size:22px 22px;background-position:6px 6px}
