@@ -107,7 +107,12 @@ from schedule_forensics.engine.path_counterfactual import (
     compute_path_counterfactual,
 )
 from schedule_forensics.engine.path_evolution import compute_path_evolution
-from schedule_forensics.engine.recommendations import Finding
+from schedule_forensics.engine.recommendations import (
+    SEVERITY_ORDER,
+    Category,
+    Finding,
+    Severity,
+)
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
@@ -174,7 +179,7 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
+<nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/risks">Risks &amp; Opportunities</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
@@ -1690,6 +1695,46 @@ def create_app(
             _export_bar("brief") + _skipped_notice(skipped) + _brief_body(brief),
         )
 
+    @app.get("/risks", response_class=HTMLResponse)
+    def risks_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Risks & Opportunities",
+                "<div class=panel>Load a schedule to see risks, issues &amp; opportunities.</div>",
+            )
+        # latest analyzable version (with the one before it for change findings), scoped to the
+        # session filter; keep the key so the narrative cache + ask scope stay consistent.
+        solv: list[tuple[str, Schedule, _Analysis]] = []
+        skipped: list[str] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                skipped.append(key)
+                continue
+            solv.append((key, st.scope(raw), a))
+        if not solv:
+            return _page(
+                st,
+                "Risks & Opportunities",
+                _skipped_notice(skipped) + "<div class=panel>No analyzable version loaded.</div>",
+            )
+        key, current, cur_an = solv[-1]
+        prior = solv[-2][1] if len(solv) >= 2 else None
+        prior_cpm = solv[-2][2].cpm if len(solv) >= 2 else None
+        findings = recommend(
+            current,
+            prior,
+            current_cpm=cur_an.cpm,
+            prior_cpm=prior_cpm,
+            target_uid=st.target_uid,
+        )
+        narrative = _polished_narrative(st, key, current, cur_an)
+        body = _skipped_notice(skipped) + _risks_body(current, findings, narrative)
+        return _page(st, "Risks & Opportunities", body, ask_schedule=key)
+
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
         if (bad := _bad_format(fmt)) is not None:
@@ -2904,6 +2949,101 @@ def _brief_body(brief: DiagnosticBrief) -> str:
             parts.append(f"<table><tr>{head}</tr>{rows}</table>")
         parts.append("</div>")
     return "".join(parts)
+
+
+def _finding_card(f: Finding) -> str:
+    """One risk/issue/opportunity card: severity badge, detail, recommended action, citations."""
+    cites = "; ".join(_e(str(c)) for c in f.citations[:3])
+    more = f" +{len(f.citations) - 3} more" if len(f.citations) > 3 else ""
+    action = (
+        f"<p class=finding-action><b>Recommended action:</b> {_e(f.course_of_action)}</p>"
+        if f.course_of_action
+        else ""
+    )
+    return f"""<div class="finding sev-{_e(f.severity)}">
+<div class=finding-head><span class="sev-badge sev-{_e(f.severity)}">{_e(f.severity)}</span>
+<b>{_e(f.title)}</b> <span class=muted>[{_e(f.metric_id)}]</span></div>
+<p>{_e(f.detail)}</p>{action}
+<p class=cite>Cited: {cites}{_e(more)}</p></div>"""
+
+
+def _risks_section(title: str, lead: str, items: list[Finding], empty: str) -> str:
+    body = "".join(_finding_card(f) for f in items) if items else f"<p class=muted>{empty}</p>"
+    return (
+        f"<div class=panel><h2>{title} <span class=muted>({len(items)})</span></h2>"
+        f"<p class=muted>{lead}</p>{body}</div>"
+    )
+
+
+def _risks_body(sch: Schedule, findings: tuple[Finding, ...], narrative: Narrative) -> str:
+    """The Risks, Issues & Opportunities page: a high-level read first, then the cited detail.
+
+    Grounded entirely in the engine's :func:`recommend` findings (RISK / CONCERN / OPPORTUNITY,
+    each with a course of action and citations) plus the local-AI-polished narrative — high level
+    first (executive read + a prioritized recovery plan), supporting detail beneath."""
+    risks = [f for f in findings if f.category == Category.RISK]
+    issues = [f for f in findings if f.category == Category.CONCERN]
+    opps = [f for f in findings if f.category == Category.OPPORTUNITY]
+    high = sum(1 for f in findings if f.severity == Severity.HIGH)
+    story = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
+
+    # prioritized, de-duplicated recovery actions across risks + issues (most severe first)
+    seen: set[str] = set()
+    actions: list[Finding] = []
+    for f in sorted(risks + issues, key=lambda x: (SEVERITY_ORDER[x.severity], x.metric_id)):
+        if f.course_of_action and f.course_of_action not in seen:
+            seen.add(f.course_of_action)
+            actions.append(f)
+    recovery = ""
+    if actions:
+        action_items = "".join(
+            f"<li><b>{_e(a.course_of_action)}</b> "
+            f"<span class=muted>&mdash; {_e(a.title)} ({_e(a.severity)})</span></li>"
+            for a in actions
+        )
+        recovery = (
+            "<div class=panel><h2>Recovery plan &mdash; prioritized actions</h2>"
+            "<p class=muted>The highest-leverage actions to recover the plan, most severe first, "
+            "each tied to the finding that motivates it.</p>"
+            f"<ol class=recovery-list>{action_items}</ol></div>"
+        )
+
+    high_note = f" &mdash; {high} flagged HIGH severity" if high else ""
+    summary = f"""
+<div class=panel><h2>Risks, Issues &amp; Opportunities &mdash; {_e(sch.name)}</h2>
+<p>At a glance: <b class=fail>{len(risks)} risk(s)</b>,
+<b class=sev-MEDIUM>{len(issues)} issue(s)</b>, and
+<b class=pass>{len(opps)} opportunity(ies)</b>{high_note}. The plain-English read is below; the
+supporting detail for every item &mdash; with its citation and a recommended action &mdash;
+follows in the sections beneath.</p>
+<h3>AI read</h3>
+<ul class=story>{story}</ul>
+<p class=muted><b>AI can err &mdash; verify against the citations on each finding.</b> Enable a
+local model in <a href="/settings">AI Settings</a> for a richer interpretation; the findings
+themselves are engine-computed and cited.</p></div>"""
+
+    return (
+        summary
+        + recovery
+        + _risks_section(
+            "Risks",
+            "Future-facing threats to the plan, most severe first.",
+            risks,
+            "No forward-looking risks identified in this version.",
+        )
+        + _risks_section(
+            "Issues (current concerns)",
+            "Quality / integrity problems present right now, including manipulation signals.",
+            issues,
+            "No current concerns identified in this version.",
+        )
+        + _risks_section(
+            "Opportunities",
+            "Levers to recover or improve the schedule.",
+            opps,
+            "No specific opportunities surfaced from the current signals.",
+        )
+    )
 
 
 def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
