@@ -69,6 +69,18 @@ def available_fields(schedule: Schedule) -> tuple[str, ...]:
     return (*STANDARD_FIELDS.keys(), *schedule.custom_field_labels)
 
 
+def available_fields_union(schedules: Sequence[Schedule]) -> tuple[str, ...]:
+    """Selectable fields across several schedules: the standard fields, then every custom field that
+    appears on any of them (first-seen order). Used when a filter applies to all loaded files at
+    once, so a custom field present in only some versions is still offered."""
+    custom: list[str] = []
+    for schedule in schedules:
+        for label in schedule.custom_field_labels:
+            if label not in custom:
+                custom.append(label)
+    return (*STANDARD_FIELDS.keys(), *custom)
+
+
 def field_value(schedule: Schedule, task: Task, field: str) -> str | None:
     """The task's ``field`` value — a custom field wins, else a standard field, else ``None``."""
     if field in schedule.custom_field_labels:
@@ -143,3 +155,15 @@ def group_values(schedule: Schedule, field: str) -> dict[str, tuple[int, ...]]:
         for value in values:
             groups.setdefault(value, []).append(t.unique_id)
     return {k: tuple(groups[k]) for k in sorted(groups)}
+
+
+def distinct_values(schedules: Sequence[Schedule], field: str) -> list[str]:
+    """Every distinct populated value of ``field`` across ``schedules`` (sorted, de-duplicated).
+
+    Powers the filter value picker when a filter spans all loaded files: a value present in any
+    version is offered, even if the previewed version doesn't carry it."""
+    seen: set[str] = set()
+    for schedule in schedules:
+        if field in available_fields(schedule):
+            seen.update(group_values(schedule, field))
+    return sorted(seen)

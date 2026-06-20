@@ -32,7 +32,7 @@ def test_renders_form_scorecard_and_nav(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/groups").text
     assert "name=field" in page and "name=breakdown" in page
-    assert "Metric scorecard for this scope" in page
+    assert "metric scorecard for" in page  # the preview scorecard heading
     assert "BEI" in page  # the DCMA scorecard renders
     assert "/groups" in client.get("/").text  # nav link
 

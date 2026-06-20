@@ -1,6 +1,21 @@
-# Handoff — 2026-06-19 (PRs #81–#164 MERGED; **`main` green at #164** (i18n FR/DE, ADR-0102); OPEN PR = ADR-0103 Float Ratio™ — the LAST metric, no longer blocked)
+# Handoff — 2026-06-20 (PRs #81–#167 MERGED; **`main` green at #167** (Float Ratio #165, qc-checker agent #166/#167); OPEN PR = ADR-0104 session-wide Groups & Filters)
 
-> ## STATUS (post-#164) — Float Ratio™ BUILT; the backlog has no blocked items left
+> ## STATUS (post-#167) — Groups & Filters now scope the WHOLE tool (every page, every file)
+> Operator: a filter chosen on the Groups tab must apply to every metric on every page, across all
+> loaded project files (it was `/groups`-only + one version before). OPEN PR (this branch, **ADR-0104**):
+> `SessionState.active_filter` + `scope()`/`set_filter()` (identity-stable scope cache, invalidated on
+> change); `analysis_for` scopes internally (single-page views unchanged) and `ordered()` returns the
+> scoped list the direct multi-version views (bow-wave/CEI, S-curve, curves) + `_solvable_versions`
+> iterate; `ordered_versions()` stays raw for the filter UI. `/groups` gains **Apply to all pages** /
+> **clear filter** (a bare row selection still previews without persisting), union field/value pickers
+> across all files (`available_fields_union`/`distinct_values`), a per-file reach table, and a page-top
+> **"Filter active"** banner on every page. Wipe clears it. Tests: session-level cross-file scoping +
+> cache invalidation, and web apply/clear/preview/per-file/union behaviour. Gate green.
+> - Earlier (now merged): Float Ratio™ #165 (ADR-0103); qc-checker subagent #166 + throttled
+>   SessionStart QC trigger #167 (registering the hook in `.claude/settings.json` is left to the human —
+>   the assistant is barred from editing its own startup config).
+
+> ## (prior) STATUS (post-#164) — Float Ratio™ BUILT; the backlog has no blocked items left
 > The operator asked to figure out Float Ratio and build a formula that works **period to period** — the
 > one metric long marked "blocked, no formula." It was never unbuildable: the Bible (`.aft`) carries an
 > explicit `<Metric Name="Float Ratio™">` with `<Formula>AVERAGE(TotalFloat / RemainingDuration)</Formula>`
