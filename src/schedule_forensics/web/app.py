@@ -2044,6 +2044,15 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
 secondary/tertiary tiers within your day-bands trace back from it, SSI-style — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
 filter rows, and hide completed work.</p>
+<details class=path-explainer><summary>Why an activity can show 0&#8209;day driving slack here but not on another view</summary>
+<p class=muted>This trace is <b>relative to the target UniqueID</b> you choose. An activity has
+<b>0 days of driving slack</b> when a slip in it would push <i>this target's</i> finish, so it sits
+on the driving path <b>to that target</b>. The same activity may legitimately not appear on a view
+scoped to a <b>different</b> target, on the project&#8209;finish critical path (the DCMA
+&ldquo;Critical Path Test&rdquo;), or when completed work is hidden &mdash; driving slack to a
+target and the project's critical path answer different questions. Turn on the <b>Drives &#8594;</b>
+column to see each activity's logic successors inside this trace (e.g. UID 8022 &#8594; UID 152);
+a <b>*</b> marks the successor that keeps the chain on the driving path.</p></details>
 <div class=viz-controls id=pathControls>
 <label>Schedule <select id=pathSchedule>{options}</select></label>
 <label>Target UID <input id=pathTarget type=number min=1 value="{target_uid if target_uid is not None else ""}" placeholder="UID"></label>
@@ -2961,6 +2970,22 @@ def _driving_data(
             return None
         return offset_to_datetime(sch.project_start, max(ordinal, 0), cal).date().isoformat()
 
+    # Driving links: each traced activity's immediate logic successors that are themselves on the
+    # trace to the target — the "what is this linked to on the way to the target" detail (e.g.
+    # UID 8022 → UID 152). on_path marks the successor that keeps the chain on the 0-slack path.
+    trace_ids = set(results)
+    drives: dict[int, list[dict[str, object]]] = {uid: [] for uid in trace_ids}
+    for rel in sch.relationships:
+        if rel.predecessor_id in trace_ids and rel.successor_id in trace_ids:
+            drives[rel.predecessor_id].append(
+                {
+                    "uid": rel.successor_id,
+                    "type": rel.type.value,
+                    "lag_days": round(rel.lag_minutes / per_day, 1) if per_day else 0.0,
+                    "on_path": results[rel.successor_id].on_driving_path,
+                }
+            )
+
     rows = []
     for uid in sorted(results):
         timing = cpm.timings.get(uid)
@@ -3003,6 +3028,9 @@ def _driving_data(
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
                 "resource_names": ", ".join(task.resource_names),
+                # immediate logic successors within this trace (uid, type, lag, on_path) — the
+                # "linked to UID X" detail surfaced by the Drives → column
+                "drives": drives[uid],
                 # mapped custom fields populated on this task (label → value); the grid offers
                 # each as an optional column (ADR-0088 mapping → ADR-0093 display)
                 "custom": dict(task.custom_field_map),
