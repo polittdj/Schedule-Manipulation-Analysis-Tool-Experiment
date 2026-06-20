@@ -12,7 +12,9 @@ import datetime as dt
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.metrics.margin import (
     MARGIN_KEYWORD,
+    MarginPoint,
     compute_margin,
+    compute_margin_trend,
     is_margin_task,
 )
 from schedule_forensics.model.relationship import Relationship
@@ -123,3 +125,43 @@ def test_no_margin_schedule_is_all_zeros() -> None:
     assert m.effective_margin_days == 0.0
     assert m.on_critical_count == 0
     assert m.tasks == ()
+
+
+def test_margin_trend_packs_a_point_per_version_in_order() -> None:
+    # v1: A(1d) -> MARGIN(3d) -> B(1d) — 3 days of margin, all on the driving chain.
+    v1_tasks = (
+        Task(unique_id=1, name="A", duration_minutes=DAY),
+        Task(unique_id=2, name="Schedule MARGIN", duration_minutes=3 * DAY),
+        Task(unique_id=3, name="B", duration_minutes=DAY),
+    )
+    serial = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    v1 = _sched(v1_tasks, serial)
+    # v2: the margin has been spent down to 1 day (the burndown the chart shows).
+    v2_tasks = (
+        Task(unique_id=1, name="A", duration_minutes=DAY),
+        Task(unique_id=2, name="Schedule MARGIN", duration_minutes=DAY),
+        Task(unique_id=3, name="B", duration_minutes=DAY),
+    )
+    v2 = _sched(v2_tasks, serial)
+
+    points = compute_margin_trend(
+        (
+            ("v1.xml", "2025-01-31", v1, compute_cpm(v1)),
+            ("v2.xml", "2025-02-28", v2, compute_cpm(v2)),
+        )
+    )
+    assert len(points) == 2
+    assert all(isinstance(p, MarginPoint) for p in points)
+    # order preserved (oldest first), labels + data dates carried through
+    assert [p.label for p in points] == ["v1.xml", "v2.xml"]
+    assert [p.status_date for p in points] == ["2025-01-31", "2025-02-28"]
+    # the buffer eroded from 3 wd to 1 wd; both total and effective track it (margin drives finish)
+    assert (points[0].total_margin_days, points[0].effective_margin_days) == (3.0, 3.0)
+    assert (points[1].total_margin_days, points[1].effective_margin_days) == (1.0, 1.0)
+
+
+def test_margin_trend_empty_input_is_empty() -> None:
+    assert compute_margin_trend(()) == ()

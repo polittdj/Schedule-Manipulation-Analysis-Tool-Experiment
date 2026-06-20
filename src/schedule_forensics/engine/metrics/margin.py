@@ -20,6 +20,7 @@ the metric-dictionary coverage test, like :mod:`.health_extra`.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
@@ -104,3 +105,41 @@ def compute_margin(schedule: Schedule, cpm: CPMResult) -> MarginAnalysis:
         on_critical_count=on_critical_count,
         tasks=tuple(tasks),
     )
+
+
+@dataclass(frozen=True)
+class MarginPoint:
+    """One version's schedule-margin headline figures, for the cross-version burndown.
+
+    ``label`` identifies the submission (caller-supplied, e.g. the source filename); ``status_date``
+    is its data date as an ISO string (or ``None``). ``total_margin_days`` and
+    ``effective_margin_days`` are :class:`MarginAnalysis`'s totals for that version (working days).
+    """
+
+    label: str
+    status_date: str | None
+    total_margin_days: float
+    effective_margin_days: float
+
+
+def compute_margin_trend(
+    versions: Sequence[tuple[str, str | None, Schedule, CPMResult]],
+) -> tuple[MarginPoint, ...]:
+    """Pack a schedule-margin burndown across versions, in the order the caller supplies.
+
+    Each element is ``(label, status_date, schedule, cpm)``; :func:`compute_margin` runs per version
+    and the totals are packed into a :class:`MarginPoint`. The order is preserved exactly (the
+    caller orders — typically oldest -> newest by data date), so margin erosion reads left to right.
+    """
+    points: list[MarginPoint] = []
+    for label, status_date, schedule, cpm in versions:
+        m = compute_margin(schedule, cpm)
+        points.append(
+            MarginPoint(
+                label=label,
+                status_date=status_date,
+                total_margin_days=m.total_margin_days,
+                effective_margin_days=m.effective_margin_days,
+            )
+        )
+    return tuple(points)

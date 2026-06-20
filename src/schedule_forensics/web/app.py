@@ -102,7 +102,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
-from schedule_forensics.engine.metrics.margin import compute_margin
+from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
 from schedule_forensics.engine.metrics.year_phases import (
     YEAR_BASES,
     YearPhaseRow,
@@ -1402,6 +1402,40 @@ def create_app(
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
         return JSONResponse(_trend_data(schedules, cpms, analyses, uid))
+
+    @app.get("/api/margin")
+    def margin_json() -> JSONResponse:
+        """Schedule-margin burndown across versions: total vs effective buffer per submission.
+
+        Iterates the loaded versions (oldest -> newest by data date), skipping any whose network
+        cannot be solved, and reports each version's total and effective margin (working days) over
+        the active scope. ``{"versions": []}`` when nothing analyzable is loaded.
+        """
+        st = session()
+        rows: list[tuple[str, str | None, Schedule, CPMResult]] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                continue
+            status = raw.status_date.date().isoformat() if raw.status_date else None
+            rows.append((raw.source_file or raw.name, status, st.scope(raw), a.cpm))
+        if not rows:
+            return JSONResponse({"versions": []})
+        points = compute_margin_trend(rows)
+        return JSONResponse(
+            {
+                "versions": [
+                    {
+                        "label": p.label,
+                        "status_date": p.status_date,
+                        "total": p.total_margin_days,
+                        "effective": p.effective_margin_days,
+                    }
+                    for p in points
+                ]
+            }
+        )
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -4079,8 +4113,14 @@ list the exact activities behind its number in the current version (the drill-do
 <div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
 <table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
 {"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table></div>
+<div class=panel><h2>Schedule margin burndown</h2>
+<p class=muted>Tracks <b>total</b> vs <b>effective</b> margin &mdash; the buffer protecting the project
+finish &mdash; across submissions, so margin erosion (a buffer being spent or quietly removed) is
+visible at a glance.</p>
+<div class="chart-host" id=marginBurndown></div></div>
 <script src="/static/trend.js"></script>
-<script src="/static/trend_drill.js"></script>"""
+<script src="/static/trend_drill.js"></script>
+<script src="/static/margin.js"></script>"""
 
 
 def _trend_data(
