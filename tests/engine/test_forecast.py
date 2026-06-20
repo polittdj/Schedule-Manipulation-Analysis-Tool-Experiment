@@ -78,6 +78,22 @@ def test_rate_forecast_matches_first_principles() -> None:
     assert by_id["rate"].finish == expected  # completed and to-go are equal -> ~59 more days
 
 
+def test_rate_forecast_absent_when_no_time_has_elapsed_since_start() -> None:
+    """If the status date is the project start day, zero months have elapsed
+    (``elapsed_months <= 0``) so a completion rate cannot be derived — the rate forecast yields
+    no date and the default basis (forecast.py branch 87->98). Completed work exists, so this is
+    the elapsed-time guard, not the no-completions guard."""
+    tasks = [_task(i, baseline_day=i, done=(i <= 2)) for i in (1, 2, 3, 4)]
+    # status on the very first project day -> status.date() == project_start.date() -> elapsed 0.
+    sch = _chain(tasks).model_copy(update={"status_date": MON})
+    fs = compute_finish_forecasts(sch)
+    by_id = {f.method_id: f for f in fs.forecasts}
+    assert by_id["rate"].finish is None  # no elapsed time → no rate forecast
+    assert fs.rate_per_month is None
+    assert fs.completed_count == 2  # there ARE completions; only elapsed time is missing
+    assert "needs a status date and at least one completed activity" in by_id["rate"].basis
+
+
 def test_missing_inputs_yield_no_date_never_a_fabrication() -> None:
     # no status date, no baselines, nothing complete: only the CPM answer exists
     tasks = [

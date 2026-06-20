@@ -111,9 +111,9 @@ source = ["schedule_forensics"]
 
 [tool.coverage.report]
 show_missing = true
-# Coverage gates (§7): overall >=99% (this `fail_under`); engine >=85% is enforced
+# Coverage gates (§7): overall >=99.9% (this `fail_under`); engine >=85% is enforced
 # as a separate CI step (`coverage report --include='*/engine/*' --fail-under=85`).
-fail_under = 99
+fail_under = 99.9
 precision = 2
 
 # --- bandit: security ----------------------------------------------------------

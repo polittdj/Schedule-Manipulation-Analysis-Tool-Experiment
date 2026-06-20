@@ -88,6 +88,29 @@ def test_monthly_buckets_and_cei_pair() -> None:
     assert wave.month_labels[m.status_index] == "May-26"
 
 
+def test_axis_without_any_status_date_spans_the_raw_data_months() -> None:
+    """When no loaded version carries a status date, ``statuses`` is empty so the axis is NOT
+    clamped to a status window — it spans the raw data months as-is (bow_wave.py branch 120->123).
+    The snapshot's status marker is therefore off-axis (None)."""
+    no_status = Schedule(
+        name="no-status",
+        source_file="no-status.mpp",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        status_date=None,  # no data date at all
+        tasks=(
+            _t(1, finish="2026-03-10T17:00"),
+            _t(2, finish="2026-05-20T17:00"),
+        ),
+    )
+    wave = compute_bow_wave([no_status])
+    # the axis covers exactly the data span (Mar..May 2026), unclamped by any status window.
+    assert wave.month_labels[0] == "Mar-26"
+    assert wave.month_labels[-1] == "May-26"
+    (snap,) = wave.snapshots
+    assert snap.status_index is None  # no status date → no marker on the axis
+    assert snap.cei is None  # single snapshot, nothing to compare
+
+
 def test_target_uid_marks_scheduled_and_actual_finish_months() -> None:
     """Item F: a focused target reports the month index of its scheduled and actual finish on
     each snapshot's shared axis (so the chart can mark where it lands and slides). Additive —

@@ -111,3 +111,19 @@ def test_left_gained_float_detail_with_only_own_movement() -> None:
     assert pc.reason == "gained_float"
     assert pc.detail == "Unchanged here — off the longest path now (its forecast finish moved +4d)."
     assert "project finish" not in pc.detail  # the finish-delta clause is intentionally absent
+
+
+# --- _classify_left: gained-float detail stays generic when own move is unknown (306->310) ----
+
+
+def test_left_gained_float_detail_generic_when_own_movement_absent() -> None:
+    """With a context but no recorded own slip for the activity (``own is None``), neither
+    detailed clause applies and the note stays the generic gained-float phrasing
+    (path_evolution.py branch 306->310)."""
+    a = Task(unique_id=1, name="A", duration_minutes=DAY)
+    # the activity (UID 1) is NOT in slip_days, so own is None even though a ctx exists.
+    ctx = _PairContext(slip_days={2: 3}, cur_preds={}, finish_delta_days=None)
+    sch = _sched([a])
+    pc = _classify_left(1, sch, sch, _links_touching(sch), _links_touching(sch), ctx)
+    assert pc.reason == "gained_float"
+    assert pc.detail == "Gained float — no longer on the longest path."

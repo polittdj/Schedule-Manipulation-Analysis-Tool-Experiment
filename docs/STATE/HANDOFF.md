@@ -1,6 +1,20 @@
-# Handoff — 2026-06-20 (PRs #81–#167 MERGED; **`main` green at #167** (Float Ratio #165, qc-checker agent #166/#167); OPEN PR = ADR-0104 session-wide Groups & Filters)
+# Handoff — 2026-06-20 (PRs #81–#171 MERGED; **`main` green**; OPEN PR = coverage→99.9% / fail_under=99.9)
 
-> ## STATUS (post-#167) — Groups & Filters now scope the WHOLE tool (every page, every file)
+> ## STATUS (current) — test coverage raised to 99.9% (actual 99.97%); gate locked at fail_under=99.9
+> Operator: improve coverage to 99.9%. From `main`@#171 (99.05%) a sub-agent cleared the engine/AI branch
+> misses while the remaining `web/app.py` branches were covered in one new file
+> (`tests/web/test_coverage_app_extra.py`, 26 tests): AI-status/second-backend/translate helpers, the
+> forecast-ruler / WBS / DCMA-tooltip / counterfactual / briefing / settings / watchdog render helpers, the
+> export-path / ask / translate / groups route guards, and the path-evolution & driving-corridor
+> absent-from-version / "left the corridor" branches. `[tool.coverage.report] fail_under` 99 → 99.9. Full
+> gate green: ruff/format/mypy(strict)/bandit/node clean; **1213 passed, 3 skipped**; overall **99.97%**
+> (≥99.9 exit 0), engine ≥85 exit 0; deterministic across two runs. Two residual lines are genuinely
+> dead/defensive (`forecast.py:90→98` — `months_to_go` can't be None once reached; `app.py:2944` —
+> `day(None)` reachable only with neither a stored date nor a CPM timing). No new ADR (tests + gate bump).
+> Earlier merged this day: coverage→99% + 20× QC (#171); session-wide Groups & Filters ADR-0104 (#168);
+> CLAUDE.md onboarding (#169); empty-scope briefing/narrative 500 fix (#170).
+
+> ## (prior) STATUS (post-#167) — Groups & Filters now scope the WHOLE tool (every page, every file)
 > Operator: a filter chosen on the Groups tab must apply to every metric on every page, across all
 > loaded project files (it was `/groups`-only + one version before). OPEN PR (this branch, **ADR-0104**):
 > `SessionState.active_filter` + `scope()`/`set_filter()` (identity-stable scope cache, invalidated on

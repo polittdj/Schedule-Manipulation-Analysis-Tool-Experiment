@@ -64,6 +64,46 @@ def test_constraint_change_reverted_and_duration_raise_keeps_constraint_reason()
     assert any("duration raised" in ch for ch in rev.changes)  # raise verb, not "cut"
 
 
+def test_duration_cut_plus_constraint_change_keeps_duration_cut_reason() -> None:
+    """A leaver whose duration was CUT *and* whose constraint changed keeps reason
+    ``duration_cut`` — the constraint arm does not overwrite it because ``reason`` is already
+    set (path_counterfactual.py branch 141->143). Both changes are still recorded."""
+
+    def mk(name: str, a_min: int, a_con: ConstraintType, b_min: int) -> Schedule:
+        a = Task(
+            unique_id=1,
+            name="A",
+            duration_minutes=a_min,
+            constraint_type=a_con,
+            constraint_date=START if a_con is not ConstraintType.ASAP else None,
+        )
+        b = Task(unique_id=2, name="B", duration_minutes=b_min)
+        c = Task(unique_id=3, name="C", duration_minutes=2 * DAY)
+        return Schedule(
+            name=name,
+            source_file=f"{name}.xml",
+            project_start=START,
+            tasks=(a, b, c),
+            relationships=(
+                Relationship(predecessor_id=1, successor_id=3),
+                Relationship(predecessor_id=2, successor_id=3),
+            ),
+        )
+
+    prior = mk("v1", 11 * DAY, ConstraintType.SNLT, 5 * DAY)  # A drives C
+    # A is CUT (11d -> 3d) and its constraint dropped → A leaves the path; B(14) now drives.
+    current = mk("v2", 3 * DAY, ConstraintType.ASAP, 14 * DAY)
+    pc = compute_path_counterfactual(
+        prior, current, compute_cpm(prior), compute_cpm(current), target_uid=3
+    )
+    assert pc is not None
+    assert [r.uid for r in pc.reverted] == [1]
+    rev = pc.reverted[0]
+    assert rev.reason == "duration_cut"  # the cut reason wins; constraint arm does NOT overwrite
+    assert any("duration cut" in ch for ch in rev.changes)
+    assert any(ch == "constraint ASAP→SNLT restored" for ch in rev.changes)  # still recorded
+
+
 def test_added_only_logic_change_is_dropped_and_reason_stays_changed() -> None:
     """A leaver that only had a link ADDED (none removed) has that link dropped in the revert;
     with no removed link the reason stays the generic ``changed`` (path_counterfactual.py 150,

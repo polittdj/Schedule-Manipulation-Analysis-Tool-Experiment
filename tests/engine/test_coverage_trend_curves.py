@@ -12,12 +12,14 @@ import datetime as dt
 
 import pytest
 
+from schedule_forensics.engine import trend as trend_mod
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.s_curve import compute_s_curve
 from schedule_forensics.engine.trend import (
     compute_float_ratio_trend,
     compute_quality_trend,
 )
+from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -93,6 +95,34 @@ def test_quality_trend_raises_when_cpms_do_not_parallel_schedules() -> None:
     cpm = compute_cpm(a)
     with pytest.raises(ValueError, match="cpms must parallel schedules"):
         compute_quality_trend([a, b], cpms=[cpm])  # 2 schedules, 1 cpm
+
+
+# --- trend.py:312 — a higher-is-better metric picks the LOWEST version as worst -----------------
+
+
+def test_quality_trend_higher_is_better_metric_picks_lowest_as_worst(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """Every production `_TREND_METRICS` entry is lower-is-better or neutral, so the
+    ``not lower_is_better`` arm (trend.py 311-312, where the worst version is the MIN value) is
+    never reached normally. Patch one metric to higher-is-better to exercise it: with critical
+    counts (1, 2) the worst version is the one with the FEWEST (index 0)."""
+    monkeypatch.setattr(trend_mod, "_TREND_METRICS", (("critical", False),))
+    a = _sched("a", [Task(unique_id=1, name="T", duration_minutes=DAY)])  # 1 critical activity
+    # version b chains two activities → 2 critical activities
+    b = Schedule(
+        name="b",
+        source_file="b.mpp",
+        project_start=MON,
+        tasks=(
+            Task(unique_id=1, name="T1", duration_minutes=DAY),
+            Task(unique_id=2, name="T2", duration_minutes=DAY),
+        ),
+        relationships=(Relationship(predecessor_id=1, successor_id=2),),
+    )
+    (crit,) = compute_quality_trend([a, b])
+    assert crit.values == (1.0, 2.0)
+    assert crit.lower_is_better is False
+    assert crit.worst_index == 0  # higher-is-better → the LOWEST (version a) is worst
+    assert crit.worst_offender_uids == (1,)  # version a's single critical activity
 
 
 # --- s_curve.py:60 — a version with zero non-summary activities reads all-zero curves ------------

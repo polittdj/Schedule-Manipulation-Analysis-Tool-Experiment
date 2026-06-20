@@ -55,6 +55,19 @@ def test_runtime_requirement_names_parses_base_deps(
     assert net_guard.forbidden_runtime_dependencies() == {"requests"}
 
 
+def test_runtime_requirement_names_skips_a_blank_requirement_spec(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A requirement whose name portion is blank (strips to "") yields no regex match and is
+    # silently skipped (net_guard.py branch 119->114) — a real dep on the same list is still kept.
+    monkeypatch.setattr(
+        net_guard.importlib.metadata,
+        "requires",
+        lambda _dist: ["   ", "pydantic>=2.0"],  # blank spec → no match → skipped
+    )
+    assert net_guard.runtime_requirement_names() == {"pydantic"}
+
+
 def test_runtime_requirement_names_handles_no_metadata(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
