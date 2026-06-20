@@ -76,3 +76,10 @@ def test_scurve_filter_with_no_match_returns_empty(
     field, _ = _field_value(golden_project5)
     d = client.get("/api/scurve", params={"cf": field, "cv": "__nonexistent_value__"}).json()
     assert d["versions"] == []
+
+
+def test_scurve_has_auto_ai_interpretation(client: TestClient) -> None:
+    """A grounded, always-present interpretation of the trend renders without asking."""
+    page = client.get("/scurve").text
+    assert "<h2>AI interpretation</h2>" in page
+    assert "Auto-generated" in page

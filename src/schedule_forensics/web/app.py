@@ -3788,6 +3788,67 @@ def _pair_criteria(cf: list[str], cv: list[str], versions: list[Schedule]) -> li
     return out
 
 
+def _scurve_interpretation(sc: SCurve) -> str:
+    """A grounded, always-present plain-English read of the S-curve: plan-vs-actual at the data
+    date and how that gap is trending across versions — what the trend says about execution."""
+    versions = sc.versions
+    if not versions:
+        return ""
+    latest = versions[-1]
+    si = latest.status_index
+    if si is None or si >= len(latest.planned):
+        read = (
+            "This version has no data date, so plan-vs-actual can't be read at a status point; "
+            "the curves show how the planned and scheduled finishes are distributed over time."
+        )
+    else:
+        actual, planned = latest.actual[si], latest.planned[si]
+        gap = planned - actual
+        if gap > 2:
+            verdict = f"running <b>{gap:.0f} points behind plan</b> at the data date"
+            health = (
+                "Execution is lagging the baseline — less work has completed than was promised "
+                "by now, so the forecast finish is at risk unless the team recovers."
+            )
+        elif gap < -2:
+            verdict = f"running <b>{-gap:.0f} points ahead of plan</b> at the data date"
+            health = "Execution is ahead of the baseline — work is completing faster than planned."
+        else:
+            verdict = "tracking <b>on plan</b> at the data date"
+            health = "Execution is essentially on the baseline at the status date."
+        read = (
+            f"As of the latest data date, <b>{actual:.0f}%</b> of the work has finished versus "
+            f"<b>{planned:.0f}%</b> planned — {verdict}. {health}"
+        )
+    gaps = [
+        v.planned[v.status_index] - v.actual[v.status_index]
+        for v in versions
+        if v.status_index is not None and v.status_index < len(v.planned)
+    ]
+    trend = ""
+    if len(gaps) >= 2:
+        delta = gaps[-1] - gaps[0]
+        if delta > 1:
+            trend = (
+                f" Across the loaded versions the gap has <b>widened by {delta:.0f} points</b> — "
+                "the schedule is falling further behind."
+            )
+        elif delta < -1:
+            trend = (
+                f" Across the loaded versions the gap has <b>narrowed by {-delta:.0f} points</b> — "
+                "the team is recovering."
+            )
+        else:
+            trend = " The plan-vs-actual gap has held roughly steady across the loaded versions."
+    return (
+        "<div class=panel><h2>AI interpretation</h2>"
+        f"<p>{read}{trend}</p>"
+        "<p class=muted><b>Auto-generated</b> from the S-curve's computed values &mdash; verify "
+        'against the chart. Enable a local model in <a href="/settings">AI Settings</a> for a '
+        "fuller, model-written read.</p></div>"
+    )
+
+
 def _scurve_body(sc: SCurve, fields: dict[str, list[str]]) -> str:
     """The animated S-curve view: cumulative planned vs actual/forecast progress per version,
     with a per-chart up-to-5-field filter over the parent file's fields."""
@@ -3810,6 +3871,7 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <button id=scurvePlay type=button>&#9654; Auto-play</button>
 </div>
 <div id=scurveChart class=chart-host></div></div>
+{_scurve_interpretation(sc)}
 <script>window.SF_SCURVE_FIELDS = {fields_json};</script>
 <script src="/static/scurve.js"></script>"""
 
