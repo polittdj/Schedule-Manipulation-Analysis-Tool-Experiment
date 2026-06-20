@@ -159,8 +159,9 @@
     // the lines — keep a ref per series so the legend can show/hide each
     var lines = series.map(function (s) {
       var pts = s.values.map(function (v, idx) { return x(idx) + "," + y(v); });
-      var attrs = { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2 };
+      var attrs = { points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2, pathLength: "1" };
       if (s.dashed) attrs["stroke-dasharray"] = "5 4";
+      else attrs["class"] = "sf-curve-line";  // solid lines can draw-in on the Mission Control wall
       var pl = svgEl("polyline", attrs);
       svg.appendChild(pl);
       return pl;

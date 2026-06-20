@@ -14,13 +14,28 @@
   // each animated tile's "Next" control — the master timer clicks them together so every
   // visual advances at the same rate (true lockstep, no per-chart timer drift)
   var NEXT_IDS = ["nextScurve", "nextSnap", "nextDrift", "qualNext", "nextEvo"];
+  // the overview line charts have no frames to step; instead their solid lines re-draw left-to-right
+  // on each beat so they "progress" in lockstep with the steppers (curves + the trend lines)
+  var DRAW_IDS = ["finishesChart", "dataDateChart", "slippageChart", "trendCharts"];
   var timer = null;
+
+  function replayDraw() {
+    DRAW_IDS.forEach(function (id) {
+      var node = document.getElementById(id);
+      var host = node && node.closest ? node.closest(".chart-host") : null;
+      if (!host) return;
+      host.classList.remove("sf-draw");
+      void host.offsetWidth;  // force reflow so the CSS draw animation restarts from the start
+      host.classList.add("sf-draw");
+    });
+  }
 
   function stepAll() {
     NEXT_IDS.forEach(function (id) {
       var b = document.getElementById(id);
       if (b) b.click();
     });
+    replayDraw();
   }
   function setLabel(text) {
     var pa = document.getElementById("missionPlay");
