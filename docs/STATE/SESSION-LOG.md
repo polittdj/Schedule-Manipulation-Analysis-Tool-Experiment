@@ -2433,3 +2433,21 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   manual-input and an auto "industry best practice" path; engine `engine/sra.py` parity-isolated and
   validated against `compute_cpm`. See ADR-0106 + the STATUS block in HANDOFF for the full design. Staged
   build: engine first, then results visuals, then manual-input UI, then discrete risks / cost-loaded JCL.
+
+---
+
+## 2026-06-20 (cont.) — SRA shipped end-to-end + schedule margin (ADR-0107)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **SRA / Monte-Carlo COMPLETE (ADR-0106):** #184 engine (`engine/sra.py`), #185 results page (`/sra` —
+  confidence S-curve + P10/50/80/90 + deterministic-vs-percentile gap, histogram, Spearman tornado/SSI,
+  criticality index), #186 manual inputs (global Quick-Risk % + per-activity 3-point overrides; auto path =
+  industry screening default, labeled not-SME-validated; `compute_cpm` gained an additive `duration_overrides`
+  hook the engine reuses so it never diverges from the deterministic solver). JCL deferred (needs cost).
+- **Schedule margin (ADR-0107, OPEN PR):** operator convention — a margin task = non-summary activity with
+  "margin" in its name. `engine/metrics/margin.py compute_margin` = total margin (wd) + effective margin
+  (finish pull-in if margin zeroed, via the `duration_overrides` counterfactual) + per-task on-critical;
+  "Schedule margin" panel on /analysis. Burndown across versions is the next tranche. This PR also folds in
+  the SRA `_to_float`/`_clamp_float` parse-helper tests left over from #186.
+- **Coverage note:** overall drifted to ~99.66% (this session's defensive web/error branches); CI gate
+  (overall ≥70 / engine ≥85) green; restoration to the 99.9 intent is a queued QC pass.

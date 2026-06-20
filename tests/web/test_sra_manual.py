@@ -12,7 +12,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from schedule_forensics.web.app import SessionState, _latest_solvable, create_app
+from schedule_forensics.web.app import (
+    SessionState,
+    _clamp_float,
+    _latest_solvable,
+    _to_float,
+    create_app,
+)
 
 GOLDEN = (
     Path(__file__).resolve().parents[1]
@@ -201,3 +207,24 @@ def test_no_auto_high_query_param_needed(client: TestClient) -> None:
     data = client.get("/api/sra?iterations=200").json()
     assert data["iterations"] == 200
     assert "manual" in data
+
+
+# ── numeric-parse helpers (defensive fallbacks) ───────────────────────────────────────
+
+
+def test_to_float_fallbacks() -> None:
+    assert _to_float(None, 1.0) == 1.0  # None -> default
+    assert _to_float("not-a-number", 2.0) == 2.0  # non-numeric -> default
+    assert _to_float(" 3.5 ", 0.0) == 3.5  # parsed (whitespace stripped)
+
+
+def test_clamp_float_non_numeric_keeps_default() -> None:
+    # a non-numeric value keeps the (already-scaled) default, then re-clamps it
+    assert _clamp_float("abc", 0.05, 1.0, 0.9, scale=0.01) == pytest.approx(0.9)
+
+
+def test_global_risk_ignores_non_numeric_input(client: TestClient, state: SessionState) -> None:
+    # garbage in the percent fields leaves the current session values untouched
+    client.post("/sra/risk", data={"low": "80"})  # set a known low first
+    client.post("/sra/risk", data={"low": "xyz", "ml": "", "high": "??"})
+    assert state.sra_low == pytest.approx(0.80)

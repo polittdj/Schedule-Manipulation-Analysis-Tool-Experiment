@@ -102,6 +102,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
+from schedule_forensics.engine.metrics.margin import compute_margin
 from schedule_forensics.engine.metrics.year_phases import (
     YEAR_BASES,
     YearPhaseRow,
@@ -2959,6 +2960,54 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+def _margin_panel(sch: Schedule, cpm: CPMResult) -> str:
+    """Schedule-margin panel: total vs effective buffer, criticality, and the margin activities.
+
+    Margin tasks are identified by the operator convention (name contains "margin"). "Effective
+    margin" is how far the finish would pull in if all margin were removed — the buffer actually
+    protecting the finish; margin sitting on a path with slack protects nothing."""
+    m = compute_margin(sch, cpm)
+    if m.count == 0:
+        return (
+            "<div class=panel><h2>Schedule margin</h2>"
+            "<p class=muted>No schedule-margin tasks found (none named &lsquo;margin&rsquo;). "
+            "Margin activities are identified by the operator convention: a non-summary activity "
+            "whose name contains the word &ldquo;margin&rdquo; (case-insensitive).</p></div>"
+        )
+    crit_note = (
+        f" &middot; {m.on_critical_count} on the critical path"
+        if m.on_critical_count
+        else " &middot; none on the critical path"
+    )
+    cards = _stat_cards(
+        [
+            ("Total margin", f"{m.total_margin_days:g} wd"),
+            ("Effective margin", f"{m.effective_margin_days:g} wd"),
+            ("Margin activities", f"{m.count}{crit_note}"),
+        ]
+    )
+    rows = "".join(
+        f"<tr><td>{t.unique_id}</td><td>{_e(t.name)}</td><td>{t.duration_days:g}</td>"
+        f'<td class="rk-score {"rk-high" if t.on_critical else "rk-min"}">'
+        f"{'Yes' if t.on_critical else 'No'}</td></tr>"
+        for t in m.tasks
+    )
+    return (
+        "<div class=panel><h2>Schedule margin</h2>"
+        "<p class=muted>Explicit buffer activities that protect the project finish "
+        "(NASA Schedule Management Handbook). <b>Total margin</b> is the sum of the margin "
+        "activities' durations; <b>effective margin</b> is how far the finish would pull in if "
+        "all margin were removed &mdash; the buffer actually protecting the finish (margin sitting "
+        "on a path with slack protects nothing and counts toward total but not effective).</p>"
+        f"{cards}"
+        "<table><tr><th scope=col>UID</th><th scope=col>Name</th>"
+        "<th scope=col>Days</th><th scope=col>On critical path?</th></tr>"
+        f"{rows}</table>"
+        "<p class=muted>Margin tasks are identified by the operator convention: a non-summary "
+        "activity whose name contains the word &ldquo;margin&rdquo; (case-insensitive).</p></div>"
+    )
+
+
 def _scatter_panel(key: str) -> str:
     """An activity scatter (total float x duration) on the analysis page — a new visual type from
     the handbook/decks. Pure presentation over the activity rows the grid already serves."""
@@ -3300,6 +3349,7 @@ metadata)</span></h3>
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
 {_health_checks_panel(sch, analysis.cpm)}
+{_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
 Each row shows the <b>count</b> and the <b>percentage</b> of its population (as Acumen Fuse does),
