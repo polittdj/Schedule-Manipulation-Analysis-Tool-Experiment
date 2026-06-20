@@ -121,6 +121,20 @@
       leg.appendChild(cell);
     });
     bars.appendChild(leg);
+
+    // A3 (WCAG 1.1.1): a visually-hidden data table of every metric's offender count for this
+    // version, so a screen reader can read the bar values (the visible drill list below already
+    // names the offending activities for the selected metric).
+    if (window.SFA11y) {
+      bars.appendChild(SFA11y.table(
+        "Quality offenders by metric — " + shortLabel(v, current),
+        ["Quality metric", "Offending activities"],
+        metrics.map(function (m) {
+          var q = data.quality[m];
+          return [q.name, (q.counts && q.counts[current]) || 0];
+        })
+      ));
+    }
   }
 
   function renderDrill() {

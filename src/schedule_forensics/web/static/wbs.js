@@ -120,6 +120,22 @@
       });
 
       box.appendChild(svg);
+
+      // A3 (WCAG 1.1.1): a visually-hidden data table of the per-WBS values, so a screen reader
+      // can read the SPI(t) and earned-schedule numbers the combo chart draws.
+      if (window.SFA11y) {
+        box.appendChild(SFA11y.table(
+          "SPI(t) and earned schedule by WBS",
+          ["WBS", "SPI(t)", "Earned schedule (working days)"],
+          groups.map(function (g) {
+            return [
+              g.wbs,
+              g.spi_t == null ? "" : g.spi_t.toFixed(2),
+              g.earned_schedule_days == null ? "" : Math.round(g.earned_schedule_days),
+            ];
+          })
+        ));
+      }
     })
     .catch(function () { box.textContent = "Failed to load the WBS data."; });
 })();
