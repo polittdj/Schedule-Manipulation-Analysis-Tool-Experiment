@@ -233,12 +233,19 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .mosaic { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 16px; }
 .tile { margin: 0; }
 .tile-wide { grid-column: 1 / -1; }
+/* uniform tile size: every chart sits in a fixed-height host so the wall is even (taller content
+   scrolls in place); wide tiles (Gantts / trends) get a taller host. The per-tile Enlarge button
+   grows a tile to the full wall width + a tall host, and shrinks it back. */
+.mosaic .tile .chart-host { height: 340px; overflow: auto; }
+.mosaic .tile.tile-wide .chart-host { height: 460px; }
+.mosaic .tile.tile-expanded { grid-column: 1 / -1; }
+.mosaic .tile.tile-expanded .chart-host { height: 74vh; }
 .tile-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
 .tile-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
-.tile-actions { display: flex; gap: 12px; align-items: center; }
-.tile-data { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 6px;
-  padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
-.tile-data:hover { color: var(--ink); border-color: var(--accent); }
+.tile-actions { display: flex; gap: 10px; align-items: center; }
+.tile-data, .tile-expand { background: none; border: 1px solid var(--line); color: var(--muted);
+  border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tile-data:hover, .tile-expand:hover { color: var(--ink); border-color: var(--accent); }
 .mini-steps { display: flex; gap: 4px; margin: 0 0 6px; }
 .mini-steps button { background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
   border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer; }

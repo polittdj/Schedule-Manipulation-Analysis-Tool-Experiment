@@ -38,6 +38,7 @@
     var months = data.months;
     document.getElementById("scurveLabel").textContent =
       (index + 1) + " / " + data.versions.length + " — " + v.label +
+      (v.status_date ? " — data date " + v.status_date : "") +
       " (" + v.activities + " activities)";
     box.innerHTML = "";
 
@@ -90,7 +91,7 @@
       var sx = x(v.status_index);
       svg.appendChild(svgEl("line", { x1: sx, y1: padT, x2: sx, y2: y(0), stroke: "var(--muted)", "stroke-width": 1.5, "stroke-dasharray": "2 3" }));
       var sl = svgEl("text", { x: sx, y: padT - 4, "text-anchor": "middle", fill: "var(--muted)", "font-size": 10 });
-      sl.textContent = "data date";
+      sl.textContent = v.status_date ? "data date " + v.status_date : "data date";
       svg.appendChild(sl);
     }
 
