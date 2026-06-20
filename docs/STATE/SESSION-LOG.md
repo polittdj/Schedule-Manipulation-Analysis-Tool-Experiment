@@ -2344,3 +2344,22 @@ sweep under empty / Normal / %Complete filters = 0 500s incl xlsx exports. Regre
 (tests/ai/test_narrative + test_briefing empty/summary-only cited; tests/web/test_global_filter empty-
 match no-500 + "matched nothing" message). Gate green: 1039 passed, 3 skipped, engine cov 96%. No new
 ADR (bugfix on ADR-0104). Model: Opus 4.8 (1M).
+
+**2026-06-20 (cont. 38) — Coverage raised to 99% + 20x QC, gate locked at fail_under=99.** Operator:
+get coverage to 99% and don't stop until you do, plus a 20x QC. Drove overall coverage from 95% →
+**99.05%** (precise; engine 96%). Parallelised the bulk with three sub-agents writing branch/edge tests
+for disjoint module groups (engine metrics/trend/s_curve/grouping/manipulation/recommendations; engine
+cpm/driving_path/path_evolution/path_counterfactual; importers + ai/brief + ai/qa + ai/ollama + reports
++ logging), then took web/app.py myself: extracted `_render_counterfactual(pc)` from `_counterfactual_panel`
+(compute/render split) to unit-test the what-if panel's every result shape; added empty-session + single-
+version route guards, bad-export-format rejection per kind, a cyclic-schedule unschedulable sweep, a
+sparse no-dates schedule sweep (date-fallback + ValueError export paths), AI-status-note branches via fake
+backends, translate-helper success/failure, and direct unit tests of `_task_iso_dates` / `_dcma_metric_cell`
+/ `_dcma_definition_cell` / `_groups_breakdown_table` / `_briefing_table_html`; plus a full ollama_process
+launcher suite (injected finder/prober/spawn, socket probe, spawn/terminate incl. the SIGTERM-ignore→kill
+race) and the briefing `_verdict` NA arm. Bumped `[tool.coverage.report] fail_under` 70 → 99 (precision 2)
+to lock it. 20x QC all green: ruff/format/mypy/bandit/node clean; **1176 passed, 3 skipped**; overall
+coverage gate (≥99) and engine gate (≥85) pass; parity 10/10; air-gap/egress/CUI guards 47; engine suite
+deterministic on repeat. The handful of residual lines are genuinely-defensive/dead branches (e.g.
+trend:312 unreachable for the current metric set; a few one-branch partials). No new ADR (tests + a small
+testability refactor + gate bump). Model: Opus 4.8 (1M).

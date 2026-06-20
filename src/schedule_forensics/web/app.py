@@ -102,7 +102,10 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
-from schedule_forensics.engine.path_counterfactual import compute_path_counterfactual
+from schedule_forensics.engine.path_counterfactual import (
+    PathCounterfactual,
+    compute_path_counterfactual,
+)
 from schedule_forensics.engine.path_evolution import compute_path_evolution
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
@@ -3952,6 +3955,11 @@ def _counterfactual_panel(
     pc = compute_path_counterfactual(
         schedules[-2], schedules[-1], cpms[-2], cpms[-1], target_uid=target
     )
+    return _render_counterfactual(pc)
+
+
+def _render_counterfactual(pc: PathCounterfactual | None) -> str:
+    """Render the counterfactual panel from a computed result (split out for direct testing)."""
     intro = """
 <div class=panel><h2>What-if: work removed from the critical path</h2>
 <p class=muted>Between the latest two versions, some activities leave the critical (driving)
