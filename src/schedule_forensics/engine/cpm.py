@@ -396,7 +396,12 @@ def _stored_date_bounds(
     return pin, floor
 
 
-def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None) -> CPMResult:
+def compute_cpm(
+    schedule: Schedule,
+    *,
+    required_finish_offset: int | None = None,
+    duration_overrides: Mapping[int, int] | None = None,
+) -> CPMResult:
     """Run the forward and backward passes and return per-task timings.
 
     ``required_finish_offset`` (working minutes from ``project_start``) imposes a
@@ -404,9 +409,23 @@ def compute_cpm(schedule: Schedule, *, required_finish_offset: int | None = None
     early finish, the driving chain shows negative total float (used by the M6
     driving-slack analysis). Raises :class:`CPMError` on a logic cycle or a refused /
     malformed constraint.
+
+    ``duration_overrides`` (UniqueID → working-minute duration) substitutes the working
+    duration of the listed tasks for this pass only — the **sole** hook the Monte-Carlo
+    SRA engine (:mod:`schedule_forensics.engine.sra`) uses to recompute the network under
+    sampled durations, so the simulation can never diverge from this trusted solver
+    (Law 2). Everything else — calendars, lags, constraints, progress/remaining handling,
+    summary logic — is unchanged. When ``None`` (the default) the result is byte-identical
+    to the no-argument call.
     """
     tasks = _scheduled_tasks(schedule)
-    duration: dict[int, int] = {t.unique_id: t.duration_minutes for t in tasks}
+
+    def _effective_duration(task: Task) -> int:
+        if duration_overrides is not None:
+            return duration_overrides.get(task.unique_id, task.duration_minutes)
+        return task.duration_minutes
+
+    duration: dict[int, int] = {t.unique_id: _effective_duration(t) for t in tasks}
     es_floor, es_pin, lf_cap = _constraint_bounds(schedule, tasks, duration)
 
     task_ids = [t.unique_id for t in tasks]
