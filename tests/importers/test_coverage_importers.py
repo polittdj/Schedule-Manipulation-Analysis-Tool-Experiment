@@ -24,6 +24,31 @@ from schedule_forensics.importers import mspdi as mspdi_mod
 from schedule_forensics.importers import xer as xer_mod
 from schedule_forensics.model.relationship import Relationship
 
+
+def _clndr_data(days: dict[int, list[tuple[str, str]]], exceptions: list[tuple[int, str]]) -> str:
+    """Build a P6 ``clndr_data`` blob: days = {1..7: [(from, to), ...]},
+    exceptions = [(excel_serial, "" | "HH:MM-HH:MM"), ...] ("" = full day off). Inlined here (not
+    imported from another test module) so it resolves without the ``tests`` package on sys.path."""
+    day_nodes = []
+    for day in range(1, 8):
+        spans = days.get(day, [])
+        inner = "".join(f"(0||{i}(s|{s}|f|{f})())" for i, (s, f) in enumerate(spans))
+        day_nodes.append(f"(0||{day}()({inner}))" if inner else f"(0||{day}())")
+    exc_nodes = []
+    for i, (serial, hours) in enumerate(exceptions):
+        if hours:
+            start, finish = hours.split("-")
+            exc_nodes.append(f"(0||{i}(d|{serial})((0||0(s|{start}|f|{finish})())))")
+        else:
+            exc_nodes.append(f"(0||{i}(d|{serial})())")
+    return (
+        "(0||CalendarData()("
+        f"(0||DaysOfWeek()({''.join(day_nodes)}))"
+        f"(0||Exceptions()({''.join(exc_nodes)}))"
+        "))"
+    )
+
+
 # --- JSON importer: friendly-parse fallback to strict pydantic + the loud failure --------
 
 _NS = 'xmlns="http://schemas.microsoft.com/project"'
@@ -329,8 +354,6 @@ def test_xer_calendar_with_weekdays_but_no_dominant_minutes_degrades_safely(
     # rather than crashing. The condition is documented unreachable on real data, so the
     # dominant-minutes helper is forced to None to exercise the guard.
     five_eights = {d: [("08:00", "12:00"), ("13:00", "17:00")] for d in (2, 3, 4, 5, 6)}
-    from tests.importers.test_xer import _clndr_data
-
     monkeypatch.setattr(xer_mod, "dominant_day_minutes", lambda _totals: None)
     text = _xer(
         [
@@ -360,8 +383,6 @@ def test_xer_calendar_exception_with_invalid_excel_serial_yields_no_holiday() ->
     # an Exceptions node carrying a serial that excel_serial_to_date() cannot resolve adds no
     # holiday (the 562->555 loop-back where `day is None`), while the day grid still parses.
     five_eights = {d: [("08:00", "12:00"), ("13:00", "17:00")] for d in (2, 3, 4, 5, 6)}
-    from tests.importers.test_xer import _clndr_data  # reuse the proven blob builder
-
     # serial 0 is before P6's 1900 epoch floor -> excel_serial_to_date returns None
     data = _clndr_data(five_eights, [(0, "")])
     text = _xer(
