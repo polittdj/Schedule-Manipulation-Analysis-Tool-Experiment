@@ -2493,3 +2493,23 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Tests:** `tests/engine/test_logic_integrity.py` (13, incl. a 1500-deep chain proving the
   closure is iterative) + `tests/web/test_logic_checks.py` (2). Full gate green; suite 1383 passed /
   3 env-skips. Plan D3 marked done. **No new ADR.**
+
+---
+
+## 2026-06-20 (cont.) — Schedule variance in time (SVt = ES − AT) — handbook plan D4 (partial)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **SVt metric (OPEN PR, plan D4 partial):** `evm.compute_schedule_variance(schedule, tasks)` —
+  parity-isolated `ScheduleVariance` / `ActivityVariance` dataclasses (NOT `MetricResult`; out of
+  the Fuse ribbon and the metric-dictionary coverage test). Project **SVt = ES − AT** in working
+  days, reusing the canonical `earned_schedule` so it can never diverge from SPI(t) (`>= 0` ahead/
+  favorable, `< 0` behind), with its ES/AT components; plus per-activity finish variance
+  (actual − baseline finish on the calendar, working days; positive = late).
+- **Web:** `_schedule_variance_panel(sch)` on /analysis next to the logic-integrity checks —
+  favorable/unfavorable SVt read, ES/AT/completed/mean cards, largest-finish-variance table; a
+  graceful "not computable" note when there is no status date / completions / baselines.
+- **Tests:** `tests/engine/test_schedule_variance.py` (6, incl. SVt == earned-schedule components,
+  late/early per-activity variance, exclusion of activities missing a finish, sort+cap) +
+  `tests/web/test_schedule_variance_panel.py` (3). Full gate green; suite 1392 passed / 3 env-skips.
+- **D4 follow-ons (not yet built):** combined BEI/CEI/HMI panel (Fig 7-21); cross-version SV/SVt
+  trend with favorable/unfavorable bands (Figs 7-12/7-13). **No new ADR.**

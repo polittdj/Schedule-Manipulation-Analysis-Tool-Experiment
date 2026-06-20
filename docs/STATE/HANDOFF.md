@@ -1,6 +1,23 @@
-# Handoff — 2026-06-20 (PRs #81–#190 MERGED; **`main` green**; OPEN PR = logic-integrity checks, plan D3)
+# Handoff — 2026-06-20 (PRs #81–#191 MERGED; **`main` green**; OPEN PR = schedule-variance SVt, plan D4)
 
-> ## STATUS (current) — Logic-integrity checks (out-of-sequence + redundant logic) — handbook plan D3
+> ## STATUS (current) — Schedule variance in time (SVt = ES − AT) — handbook plan D4 (partial)
+> Next deterministic handbook tranche (the SVt half of plan D4). **OPEN PR (this branch):**
+> `evm.compute_schedule_variance(schedule, tasks)` — parity-isolated `ScheduleVariance` /
+> `ActivityVariance` dataclasses (NOT `MetricResult`; out of the Fuse ribbon and metric-dictionary
+> test, like `health_extra`/`logic_integrity`/`margin`). Project **SVt = ES − AT** in working days
+> (reuses the canonical `earned_schedule`, so it can never diverge from SPI(t); `>= 0` ahead/
+> favorable, `< 0` behind) with its ES/AT components, plus per-activity finish variance
+> (actual − baseline finish on the calendar, working days; positive = late). Surfaced as a
+> "Schedule variance (time)" panel on /analysis (favorable/unfavorable read, components,
+> largest-finish-variance table; graceful "not computable" when no status date / completions /
+> baselines). Tests: `tests/engine/test_schedule_variance.py` (6) + `tests/web/
+> test_schedule_variance_panel.py` (3). Gate green: ruff/format/mypy(strict)/bandit/node clean; full
+> suite **1392 passed / 3 env-skips**; coverage 70/85 satisfied. Plan D4 marked partial. No new ADR.
+> - **D4 follow-ons:** combined BEI/CEI/HMI panel (Fig 7-21); cross-version SV/SVt trend with
+>   favorable/unfavorable bands (Figs 7-12/7-13). Then D5 TFCI forecast; D7 float-erosion-by-WBS; D8
+>   stoplight rendering; D9 handbook nav reorg. SRA cost/JCL still blocked on cost inputs.
+
+> ## STATUS (prev) — Logic-integrity checks (out-of-sequence + redundant logic) — handbook plan D3
 > Next deterministic handbook tranche after the SRA epic. **OPEN PR (this branch):**
 > `engine/metrics/logic_integrity.py` `compute_logic_integrity(schedule)` (parity-isolated
 > `LogicCheck` dataclasses, like `health_extra` — out of the Fuse ribbon and DCMA audit; no CPM

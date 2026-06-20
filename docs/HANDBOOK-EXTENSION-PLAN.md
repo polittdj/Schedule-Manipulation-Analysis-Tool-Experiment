@@ -131,6 +131,13 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    which renders only after CPM solves — would always read zero. Surfaced as a "Logic integrity"
    stoplight panel on /analysis next to the structural health checks.
 4. **Schedule Variance (days) + project SVt** + **combined BEI/CEI/HMI** and **SV/SVt** trend panels.
+   ◑ **PARTIAL** — the **SVt metric** shipped: `evm.compute_schedule_variance(schedule, tasks)`
+   (parity-isolated `ScheduleVariance` dataclasses) = project **SVt = ES − AT** in working days
+   (reuses the canonical `earned_schedule`, so it can't diverge from SPI(t)) + per-activity finish
+   variance (actual − baseline). Surfaced as a "Schedule variance (time)" panel on /analysis
+   (favorable/unfavorable, ES/AT components, largest finish variances). **Remaining (follow-ons):**
+   the **combined BEI/CEI/HMI** panel (Fig 7-21) and the **cross-version SV/SVt trend** with
+   favorable/unfavorable bands (Figs 7-12/7-13) on the trend surface.
 5. **TFCI / Predicted CPTF / TFCI forecast-finish** — 4th method in `engine/forecast.py`.
 6. **Scatter + histogram** generic chart components (reused across views).
 7. **Float Erosion by WBS** table + trend.
