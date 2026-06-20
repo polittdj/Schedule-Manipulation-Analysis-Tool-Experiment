@@ -2802,6 +2802,20 @@ def _curves_data(curves: MonthCurves) -> dict[str, object]:
 _WEEKDAY_NAMES = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 
+def _scatter_panel(key: str) -> str:
+    """An activity scatter (total float x duration) on the analysis page — a new visual type from
+    the handbook/decks. Pure presentation over the activity rows the grid already serves."""
+    return (
+        "<div class=panel><h2>Activity scatter &mdash; float vs duration</h2>"
+        "<p class=muted>One dot per activity: <b>total float</b> (x) against <b>duration</b> (y), "
+        "red = critical, diamonds = milestones. Long-duration, low-float activities sit at the "
+        "lower-left &mdash; the schedule's pressure points a count metric never reveals. The full "
+        "activity grid above is the accessible data table.</p>"
+        f'<div class=chart-host id=scatterChart data-name="{_e(key)}"></div></div>'
+        '<script src="/static/scatter.js"></script>'
+    )
+
+
 def _calendar_panel(sch: Schedule) -> str:
     """The working calendar the analysis runs on — imported from the file (ADR-0028).
 
@@ -3124,6 +3138,7 @@ metadata)</span></h3>
 </div></div>
 <script src="/static/app.js"></script>"""
     return f"""{viz}
+{_scatter_panel(key)}
 {_calendar_panel(sch)}
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
