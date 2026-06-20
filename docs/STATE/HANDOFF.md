@@ -1,6 +1,26 @@
-# Handoff — 2026-06-20 (PRs #81–#189 MERGED; **`main` green**; OPEN PR = SRA risk-register UI, ADR-0106)
+# Handoff — 2026-06-20 (PRs #81–#190 MERGED; **`main` green**; OPEN PR = logic-integrity checks, plan D3)
 
-> ## STATUS (current) — SRA discrete-risk **register UI** on /sra (ADR-0106 follow-on; engine #189 merged)
+> ## STATUS (current) — Logic-integrity checks (out-of-sequence + redundant logic) — handbook plan D3
+> Next deterministic handbook tranche after the SRA epic. **OPEN PR (this branch):**
+> `engine/metrics/logic_integrity.py` `compute_logic_integrity(schedule)` (parity-isolated
+> `LogicCheck` dataclasses, like `health_extra` — out of the Fuse ribbon and DCMA audit; no CPM
+> needed). Two checks: **out-of-sequence** (an FS successor that recorded progress before its
+> predecessor finished — `succ.actual_start < pred.actual_finish`, or pred has no recorded finish
+> while succ already started; the classic status-override signature) and **redundant logic** (a
+> direct `A→C` a longer `A→…→C` path already implies — iterative reverse-topological transitive
+> closure so a long chain can't overflow the stack; reported *not evaluated* on a cyclic or oversize
+> network). *Circular logic was intentionally dropped:* CPM refuses a cyclic network, so the panel —
+> which renders only after CPM solves — would always read zero. Surfaced as a "Logic integrity"
+> stoplight panel on /analysis beside the structural health checks (offenders written
+> `pred→succ` by UniqueID). Tests: `tests/engine/test_logic_integrity.py` (13, incl. a 1500-deep
+> chain proving no recursion overflow) + `tests/web/test_logic_checks.py` (2). Gate green:
+> ruff/format/mypy(strict)/bandit/node clean; full suite **1383 passed / 3 env-skips**; coverage
+> 70/85 satisfied. Plan D3 marked done in `docs/HANDBOOK-EXTENSION-PLAN.md`. No new ADR.
+> - **Next deterministic tranches (plan D):** D4 SVt + combined BEI/CEI/HMI + SV/SVt panels; D5 TFCI
+>   forecast; D7 float-erosion-by-WBS; D8 stoplight rendering; D9 handbook nav reorg. SRA cost/JCL
+>   (A3 tail) still blocked on cost inputs.
+
+> ## STATUS (prev) — SRA discrete-risk **register UI** on /sra (ADR-0106 follow-on; engine #189 merged)
 > The discrete risk-driver engine landed in #189 (`RiskEvent`, `RiskDriver`, `compute_sra(…, risks=())`,
 > `SRAResult.risk_drivers` — probability × triangular multiplicative impact, shared-driver emergent
 > correlation). **OPEN PR (this branch):** the analyst-facing register on **/sra**. `SessionState.sra_risks`

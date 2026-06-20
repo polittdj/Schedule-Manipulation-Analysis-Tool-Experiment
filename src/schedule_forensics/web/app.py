@@ -102,6 +102,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
+from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
 from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
 from schedule_forensics.engine.metrics.year_phases import (
     YEAR_BASES,
@@ -3081,6 +3082,43 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+def _logic_checks_panel(sch: Schedule) -> str:
+    """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
+    green when clear, else the count + the first offending links, with a plain-English reason."""
+    checks = compute_logic_integrity(sch).checks
+    cards = []
+    for c in checks:
+        if not c.evaluated:
+            cards.append(
+                '<div class="finding sev-INFO">'
+                '<div class=finding-head><span class="rk-score rk-min">n/a</span> '
+                f"<b>{_e(c.label)}</b></div><p>{_e(c.description)}</p></div>"
+            )
+            continue
+        ok = c.count == 0
+        badge_cls = "rk-min" if ok else "rk-high"
+        badge = "✓ clear" if ok else str(c.count)
+        offs = ""
+        if c.offenders:
+            shown = ", ".join(c.offenders[:8])
+            more = f" +{c.count - 8} more" if c.count > 8 else ""
+            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+        pop = f"<span class=muted> of {c.population} link(s)</span>" if c.population else ""
+        cards.append(
+            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
+            f"<b>{_e(c.label)}</b>{pop}</div><p>{_e(c.description)}</p>{offs}</div>"
+        )
+    return (
+        "<div class=panel><h2>Logic integrity</h2>"
+        "<p class=muted>Forensic logic-construction checks from the NASA Schedule Management "
+        "Handbook (Fig. 6-9), beyond DCMA-14 &mdash; <b>out-of-sequence</b> progress (work recorded "
+        "in an order the logic forbids) and <b>redundant logic</b> (a direct link a longer path "
+        "already implies). Green = clear, otherwise the count and the first offending links "
+        "(written predecessor&rarr;successor by UniqueID).</p>" + "".join(cards) + "</div>"
+    )
+
+
 def _margin_panel(sch: Schedule, cpm: CPMResult) -> str:
     """Schedule-margin panel: total vs effective buffer, criticality, and the margin activities.
 
@@ -3470,6 +3508,7 @@ metadata)</span></h3>
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
 {_health_checks_panel(sch, analysis.cpm)}
+{_logic_checks_panel(sch)}
 {_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.

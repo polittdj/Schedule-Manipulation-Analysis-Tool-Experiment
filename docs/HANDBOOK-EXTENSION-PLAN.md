@@ -123,6 +123,13 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
 1. **This plan doc** + add handbook §7.3.3 citations to `help.py` for the metrics already present.
 2. **Cheap new health checks** (A1, all ✅) — `engine/metrics/health_extra.py` + ribbon + dictionary + tests.
 3. **Logic-integrity** checks (out-of-sequence / redundant / circular) — `engine/metrics/logic_integrity.py`.
+   ✅ **DONE** — `compute_logic_integrity(schedule)` (parity-isolated `LogicCheck` dataclasses):
+   **out-of-sequence** (FS successor that recorded progress before its predecessor finished) and
+   **redundant logic** (a direct A→C a longer A→…→C path already implies; iterative reverse-topo
+   transitive closure, skipped & flagged on a cyclic or oversize network). *Circular logic was
+   dropped from this tranche on purpose:* CPM refuses a cyclic network (`CPMError`), so the panel —
+   which renders only after CPM solves — would always read zero. Surfaced as a "Logic integrity"
+   stoplight panel on /analysis next to the structural health checks.
 4. **Schedule Variance (days) + project SVt** + **combined BEI/CEI/HMI** and **SV/SVt** trend panels.
 5. **TFCI / Predicted CPTF / TFCI forecast-finish** — 4th method in `engine/forecast.py`.
 6. **Scatter + histogram** generic chart components (reused across views).
