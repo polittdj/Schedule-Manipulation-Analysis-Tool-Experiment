@@ -101,6 +101,7 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics.evm import compute_schedule_variance
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
 from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
@@ -3082,6 +3083,66 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+def _schedule_variance_panel(sch: Schedule) -> str:
+    """Schedule variance in TIME (handbook §7.3.3.1): project SVt = ES - AT (working days), plus the
+    per-activity finish slip (actual - baseline). Favorable when ahead of plan (SVt >= 0)."""
+    sv = compute_schedule_variance(sch, non_summary(sch))
+    if sv.svt_days is None and sv.completed == 0:
+        return (
+            "<div class=panel><h2>Schedule variance (time)</h2>"
+            "<p class=muted>Not computable yet &mdash; SVt needs a status (data) date, at least one "
+            "completed activity, and baseline finishes; per-activity variance needs both an actual "
+            "and a baseline finish. This schedule does not yet carry them.</p></div>"
+        )
+    if sv.svt_days is None:
+        svt_val = "n/a"
+    else:
+        favorable = sv.svt_days >= 0
+        sign = "+" if sv.svt_days > 0 else ""
+        # SVt > 0 = ES ahead of AT = ahead of plan (favorable); < 0 = behind (unfavorable)
+        svt_val = f"{sign}{sv.svt_days:g} wd ({'ahead' if favorable else 'behind'})"
+    cards = _stat_cards(
+        [
+            ("Schedule variance (SVt = ES - AT)", svt_val),
+            ("Earned Schedule (ES)", "n/a" if sv.es_days is None else f"{sv.es_days:g} wd"),
+            ("Actual Time (AT)", "n/a" if sv.at_days is None else f"{sv.at_days:g} wd"),
+            ("Completed activities measured", str(sv.completed)),
+            (
+                "Mean activity finish variance",
+                "n/a"
+                if sv.mean_activity_variance_days is None
+                else f"{sv.mean_activity_variance_days:+g} wd",
+            ),
+        ]
+    )
+    table = ""
+    if sv.worst:
+        names = sch.tasks_by_id
+        rows = "".join(
+            f"<tr><td>{v.unique_id}</td>"
+            f"<td>{_e(names[v.unique_id].name) if v.unique_id in names else ''}</td>"
+            f'<td class="rk-score {"rk-high" if v.variance_days > 0 else "rk-min"}">'
+            f"{v.variance_days:+g}</td></tr>"
+            for v in sv.worst
+        )
+        table = (
+            "<h3>Largest finish variances (actual &minus; baseline)</h3>"
+            "<table><tr><th scope=col>UID</th><th scope=col>Activity</th>"
+            "<th scope=col>Variance (wd)</th></tr>"
+            f"{rows}</table>"
+        )
+    return (
+        "<div class=panel><h2>Schedule variance (time)</h2>"
+        "<p class=muted>The NASA Schedule Management Handbook (&sect;7.3.3.1) time view of progress. "
+        "<b>SVt = ES &minus; AT</b> (Earned Schedule minus Actual Time): positive is "
+        "<b>ahead</b> of plan (favorable), negative is <b>behind</b> (unfavorable) &mdash; the "
+        "count-based Earned-Schedule companion to SPI(t). Per-activity finish variance is each "
+        "completed activity's actual finish minus its baseline finish, in working days (positive = "
+        "late).</p>"
+        f"{cards}{table}</div>"
+    )
+
+
 def _logic_checks_panel(sch: Schedule) -> str:
     """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
     green when clear, else the count + the first offending links, with a plain-English reason."""
@@ -3509,6 +3570,7 @@ metadata)</span></h3>
 {_completion_panel(analysis)}
 {_health_checks_panel(sch, analysis.cpm)}
 {_logic_checks_panel(sch)}
+{_schedule_variance_panel(sch)}
 {_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.

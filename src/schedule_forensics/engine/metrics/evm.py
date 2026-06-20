@@ -340,3 +340,78 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         1.0,
         Direction.GE,
     )
+
+
+# --------------------------------------------------------------------------------------
+# Schedule variance in TIME (handbook §7.3.3.1 — SVt; Figs 7-12/7-13) — parity-isolated.
+# Lightweight dataclasses (NOT MetricResult), kept out of the metric-dictionary coverage
+# test and the Fuse ribbon, exactly like health_extra / logic_integrity / margin.
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ActivityVariance:
+    """One completed activity's schedule variance in working days (actual - baseline finish)."""
+
+    unique_id: int
+    variance_days: float  # positive == finished LATER than the baseline (unfavorable)
+
+
+@dataclass(frozen=True)
+class ScheduleVariance:
+    """Schedule variance in **time** (working days) — the handbook §7.3.3.1 view.
+
+    ``svt_days`` is the project-level Earned-Schedule time variance ``(ES - AT)`` in working
+    days (``>= 0`` ahead of plan / favorable, ``< 0`` behind / unfavorable); ``None`` when ES is
+    undefined (no status date, no completions, or no baseline finishes). ``es_days`` / ``at_days``
+    are its components. The per-activity block is the count of completed activities carrying both
+    an actual and a baseline finish, their mean finish variance, and the latest finishers.
+    """
+
+    svt_days: float | None
+    es_days: float | None
+    at_days: float | None
+    completed: int
+    mean_activity_variance_days: float | None
+    worst: tuple[ActivityVariance, ...]
+
+
+def compute_schedule_variance(
+    schedule: Schedule, tasks: Sequence[Task], *, worst_cap: int = 15
+) -> ScheduleVariance:
+    """Schedule variance in time for ``tasks`` (project SVt = ES - AT; per-activity finish slip).
+
+    SVt reuses the canonical :func:`earned_schedule` (so it can never diverge from SPI(t)).
+    Per-activity variance is the working-time difference between an activity's actual and baseline
+    finish on the schedule calendar, in working days; positive means it finished later than planned.
+    Both are parity-isolated (returned as plain dataclasses, never a ``MetricResult``).
+    """
+    wmpd = schedule.calendar.working_minutes_per_day or 480
+    es = earned_schedule(schedule, tasks)
+    if es is None:
+        svt_days = es_days = at_days = None
+    else:
+        svt_days = round((es.es_minutes - es.at_minutes) / wmpd, 1)
+        es_days = round(es.es_minutes / wmpd, 1)
+        at_days = round(es.at_minutes / wmpd, 1)
+
+    variances: list[ActivityVariance] = []
+    for t in tasks:
+        actual = to_offset(schedule, t.actual_finish)
+        baseline = to_offset(schedule, t.baseline_finish)
+        if actual is None or baseline is None:
+            continue
+        var_days = round((actual - baseline) / wmpd, 1)
+        variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=var_days))
+    completed = len(variances)
+    mean_var = round(sum(v.variance_days for v in variances) / completed, 1) if completed else None
+    # the latest finishers first (largest positive variance), capped for the UI
+    worst = tuple(sorted(variances, key=lambda v: v.variance_days, reverse=True)[:worst_cap])
+    return ScheduleVariance(
+        svt_days=svt_days,
+        es_days=es_days,
+        at_days=at_days,
+        completed=completed,
+        mean_activity_variance_days=mean_var,
+        worst=worst,
+    )
