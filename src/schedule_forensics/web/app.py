@@ -122,6 +122,7 @@ from schedule_forensics.engine.recommendations import (
     Severity,
 )
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
+from schedule_forensics.engine.sra import SRAConfig, SRAResult, compute_sra
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
     compute_float_ratio_trend,
@@ -191,7 +192,7 @@ _LAYOUT = Template(
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
 <a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
-<a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
+<a href="/forecast">Forecast</a><a href="/sra">Risk Analysis</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
@@ -1889,6 +1890,44 @@ def create_app(
         # made this page hang (effectively "won't open") on big workbooks with a slow local model.
         body = _skipped_notice(skipped) + _risks_body(current, findings, cur_an.narrative, key)
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
+
+    @app.get("/sra", response_class=HTMLResponse)
+    def sra_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Risk Analysis (SRA)",
+                "<div class=panel>Load a schedule to run the Schedule Risk Analysis "
+                "(Monte-Carlo).</div>",
+            )
+        # Render the controls + empty chart hosts IMMEDIATELY — the simulation (1000x CPM) is run
+        # only when sra.js fetches /api/sra, never on page load (a synchronous run here would hang
+        # the page on a large schedule, the prior Risks/Briefing bug).
+        return _page(st, "Risk Analysis (SRA)", _sra_body())
+
+    @app.get("/api/sra")
+    def sra_json(iterations: int = Query(1000), auto_high: float = Query(1.10)) -> JSONResponse:
+        st = session()
+        # latest analyzable version, scoped to the session filter (same pattern as /risks).
+        chosen: tuple[Schedule, CPMResult] | None = None
+        for key, raw in st.ordered_versions():
+            try:
+                analysis = st.analysis_for(key, raw)
+            except CPMError:
+                continue
+            chosen = (st.scope(raw), analysis.cpm)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        sch, cpm = chosen
+        iters = max(100, min(10000, iterations))
+        high = max(1.0, min(1.5, auto_high))
+        # never 500 on the simulation — surface the engine message as a 422 instead
+        try:
+            result = compute_sra(sch, cpm, config=SRAConfig(iterations=iters, auto_high=high))
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_sra_data(sch, result))
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
@@ -4280,6 +4319,97 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
             }
             for s in wave.snapshots
         ],
+    }
+
+
+def _sra_body() -> str:
+    """The Schedule Risk Analysis (SRA) results page: controls + (initially empty) chart hosts.
+
+    The simulation is intentionally NOT run here — ``sra.js`` fetches ``/api/sra`` with the
+    selected controls and renders the confidence S-curve, finish-date histogram, and the
+    sensitivity tornado. Running 1000x CPM during the page render would hang on a large
+    schedule, so the page opens instantly and the run happens off the page-load path.
+    """
+    iter_opts = "".join(
+        f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
+        for n in (500, 1000, 2000, 5000)
+    )
+    high_opts = "".join(
+        f'<option value="{h}"{" selected" if h == "1.1" else ""}>{int(float(h) * 100)}%</option>'
+        for h in ("1.1", "1.15", "1.2", "1.25")
+    )
+    return f"""
+<div class=panel><h2>Schedule Risk Analysis (SRA) &mdash; Monte-Carlo</h2>
+<p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
+distribution and recomputes the network finish through the trusted CPM solver, building a
+finish-date confidence curve. The deterministic CPM finish is marked against the distribution
+so you can read how much contingency it implies (the deterministic date typically sits well
+below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
+<div class="notice warn" role=note><b>Auto defaults &mdash; screening placeholder, not
+SME-validated.</b> With no analyst-supplied risk ranges this run applies an industry-default
+<b>triangular</b> distribution to each activity's <i>remaining</i> duration
+(Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; Deltek Acumen "Realistic"). It is
+a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE prefer elicited ranges) and is
+overridable per-activity. A duration-only run is a <i>schedule</i> confidence level &mdash; JCL
+(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>
+<div class=viz-controls>
+<label>Iterations <select id=sraIters>{iter_opts}</select></label>
+<label>Auto Max (% of remaining) <select id=sraHigh>{high_opts}</select></label>
+<button id=sraRun type=button>Run simulation</button>
+</div>
+<p id=sraStatus class=muted></p></div>
+<div class=panel><h2>Finish-date confidence (S-curve)</h2>
+<p class=muted>Cumulative probability of finishing on or before each date, with P10/P50/P80/P90
+markers and the deterministic CPM finish annotated with the percentile it sits at.</p>
+<div id=sraCdf class=chart-host></div></div>
+<div class=panel><h2>Finish-date distribution</h2>
+<div id=sraHist class=chart-host></div></div>
+<div class=panel><h2>Duration sensitivity (tornado)</h2>
+<p class=muted>The activities whose duration most drives the project finish (Spearman rank
+correlation), with each activity's Criticality Index and Schedule Sensitivity Index.</p>
+<div id=sraSens class=chart-host></div></div>
+<script src="/static/sra.js"></script>"""
+
+
+def _sra_data(sch: Schedule, result: SRAResult) -> dict[str, object]:
+    """The SRA results payload for ``sra.js`` — offsets resolved to ISO dates on the calendar."""
+    cal = sch.calendar
+    ps = sch.project_start
+
+    def _iso(offset: int) -> str:
+        return offset_to_datetime(ps, max(offset, 0), cal).isoformat()
+
+    names = sch.tasks_by_id
+    # tornado: the most influential activities by |duration sensitivity| (top 20)
+    top = sorted(result.activities, key=lambda a: abs(a.duration_sensitivity), reverse=True)[:20]
+    sensitivity = [
+        {
+            "uid": a.unique_id,
+            "name": names[a.unique_id].name if a.unique_id in names else "",
+            "ci": round(a.criticality_index, 4),
+            "sens": round(a.duration_sensitivity, 4),
+            "ssi": round(a.ssi, 4),
+        }
+        for a in top
+    ]
+    return {
+        "iterations": result.iterations,
+        "auto_used": result.auto_used,
+        "deterministic": {
+            "date": _iso(result.deterministic_finish),
+            "percentile": round(result.deterministic_percentile * 100, 1),
+        },
+        "percentiles": [
+            {"label": "P10", "date": result.p10_date},
+            {"label": "P50", "date": result.p50_date},
+            {"label": "P80", "date": result.p80_date},
+            {"label": "P90", "date": result.p90_date},
+        ],
+        "mean": _iso(round(result.mean)),
+        "cdf": [[_iso(offset), prob] for offset, prob in result.cdf],
+        "histogram": [[_iso(lo), _iso(hi), count] for lo, hi, count in result.histogram],
+        "sensitivity": sensitivity,
+        "constraints_flagged": len(result.constraints_flagged),
     }
 
 

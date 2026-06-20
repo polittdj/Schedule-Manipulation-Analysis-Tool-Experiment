@@ -54,6 +54,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/forecast",
         "/curves",
         "/scurve",
+        "/sra",
         "/ribbon",
         "/briefing",
         "/settings",
@@ -79,6 +80,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/static/chartframe.js",
         "/static/target.js",
         "/static/scurve.js",
+        "/static/sra.js",
     ]
     offenders: dict[str, list[str]] = {}
     for path in pages:
