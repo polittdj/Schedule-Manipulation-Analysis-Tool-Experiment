@@ -95,6 +95,46 @@ class ActivitySensitivity:
 
 
 @dataclass(frozen=True)
+class RiskEvent:
+    """A discrete risk driver (GAO/AACE/Hulett risk-driver method).
+
+    A risk has a ``probability`` of occurring (0..1); when it occurs it applies a 3-point
+    *multiplicative* triangular impact (``impact_low`` / ``impact_ml`` / ``impact_high`` —
+    duration multipliers, e.g. ``1.0`` / ``1.1`` / ``1.3``) to the sampled duration of
+    every activity it is mapped to (``affected``, by ``unique_id``). A single risk mapped
+    to several activities correlates them automatically — the *shared-driver* correlation
+    of the method, requiring no coefficient. Hulett: "If the probability is less than 100%
+    it will occur in that percentage of iterations… the multiplicative factor selected
+    multiplies the duration of all the activities to which the risk is assigned."
+    """
+
+    id: str
+    name: str
+    probability: float  # 0..1; values outside the range are clamped at use
+    impact_low: float  # duration multiplier, optimistic (>= 0)
+    impact_ml: float  # duration multiplier, most-likely (>= 0)
+    impact_high: float  # duration multiplier, pessimistic (>= 0)
+    affected: tuple[int, ...]  # unique_ids the multiplicative impact lands on
+
+
+@dataclass(frozen=True)
+class RiskDriver:
+    """Per-risk simulation outputs — the risk-driver "tornado" contribution.
+
+    ``hits`` is the count of iterations the risk occurred; ``mean_delta_days`` is the mean
+    finish (in working days) over the iterations it occurred minus the mean over those it
+    did not — its empirical schedule contribution. ``0.0`` when there is no contrast (it
+    never occurred, always occurred, or both groups share the same mean finish).
+    """
+
+    id: str
+    name: str
+    probability: float
+    hits: int
+    mean_delta_days: float
+
+
+@dataclass(frozen=True)
 class SRAResult:
     """The full Monte-Carlo result (parity-isolated — never the deterministic numbers)."""
 
@@ -122,6 +162,8 @@ class SRAResult:
     activities: tuple[ActivitySensitivity, ...]
     # UIDs of activities carrying a hard constraint — they cap the distribution (warn)
     constraints_flagged: tuple[int, ...] = field(default=())
+    # discrete risk drivers, sorted by abs(mean_delta_days) desc then id (empty if no risks)
+    risk_drivers: tuple[RiskDriver, ...] = field(default=())
 
 
 # --------------------------------------------------------------------------------------
@@ -265,6 +307,7 @@ def compute_sra(
     *,
     config: SRAConfig = _DEFAULT_CONFIG,
     overrides: Mapping[int, ActivityRisk] | None = None,
+    risks: Sequence[RiskEvent] = (),
 ) -> SRAResult:
     """Run the seeded Monte-Carlo SRA and return the :class:`SRAResult`.
 
@@ -275,6 +318,14 @@ def compute_sra(
     ``random.Random(config.seed + i)`` (draws ordered by ``unique_id``) and recomputes the
     finish via ``compute_cpm(schedule, duration_overrides=...)`` — the same trusted solver,
     so the simulation cannot diverge from the gate-locked engine (Law 2).
+
+    ``risks`` adds discrete :class:`RiskEvent` drivers (GAO/AACE/Hulett method). Their RNG
+    draws are taken *after* every per-activity duration draw of the iteration, so the
+    duration draw sequence is unchanged — ``risks=()`` yields a byte-identical result to
+    omitting the parameter (no extra draws are made). For each risk, in the given order, an
+    occurrence is drawn (Bernoulli on the clamped probability); when it occurs a triangular
+    impact factor multiplies the sampled duration of each affected activity (compounding if
+    several risks hit one activity), correlating co-mapped activities automatically.
     """
     if config.iterations < 1:
         raise ValueError("SRAConfig.iterations must be >= 1")
@@ -288,9 +339,14 @@ def compute_sra(
         auto_used = auto_used or was_auto
 
     uids = [t.unique_id for t in tasks]
+    uid_set = set(uids)
+    # only risks touching a present activity get RNG draws (an empty/dangling risk is inert)
+    active_risks = [r for r in risks if any(uid in uid_set for uid in r.affected)]
     sampled_durations: dict[int, list[int]] = {uid: [] for uid in uids}
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
     finishes: list[int] = []
+    # per-active-risk occurrence flag for each iteration (parallel to ``finishes``)
+    risk_occurred: list[list[bool]] = [[] for _ in active_risks]
 
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
@@ -301,6 +357,21 @@ def compute_sra(
             minutes = max(minutes, 0)
             overrides_i[uid] = minutes
             sampled_durations[uid].append(minutes)
+        # discrete risk drivers — drawn AFTER all duration draws so risks=() is unchanged
+        for ridx, risk in enumerate(active_risks):
+            prob = min(max(risk.probability, 0.0), 1.0)
+            occurred = rng.random() < prob
+            risk_occurred[ridx].append(occurred)
+            if occurred:
+                factor = _sample_triangular(
+                    rng.random(),
+                    max(risk.impact_low, 0.0),
+                    max(risk.impact_ml, 0.0),
+                    max(risk.impact_high, 0.0),
+                )
+                for uid in risk.affected:
+                    if uid in overrides_i:
+                        overrides_i[uid] = max(0, round(overrides_i[uid] * factor))
         result = compute_cpm(schedule, duration_overrides=overrides_i)
         finishes.append(result.project_finish)
         for uid in uids:
@@ -316,7 +387,46 @@ def compute_sra(
         sampled_durations,
         critical_counts,
         finishes,
+        active_risks,
+        risk_occurred,
     )
+
+
+def _risk_drivers(
+    schedule: Schedule,
+    risks: Sequence[RiskEvent],
+    risk_occurred: Sequence[Sequence[bool]],
+    finishes: Sequence[int],
+) -> tuple[RiskDriver, ...]:
+    """Per-risk :class:`RiskDriver` contributions, sorted by abs(delta) desc then id.
+
+    ``mean_delta_days`` = (mean finish over the iterations the risk occurred minus the mean
+    finish over those it did not) / working-minutes-per-day, rounded to 1dp; ``0.0`` when
+    there is no contrast (never occurred, always occurred, or equal-mean groups).
+    """
+    if not risks:
+        return ()
+    wmpd = schedule.calendar.working_minutes_per_day or 480
+    drivers: list[RiskDriver] = []
+    for risk, occ in zip(risks, risk_occurred, strict=True):
+        on = [float(f) for f, o in zip(finishes, occ, strict=True) if o]
+        off = [float(f) for f, o in zip(finishes, occ, strict=True) if not o]
+        hits = len(on)
+        if on and off:
+            delta = round((statistics.fmean(on) - statistics.fmean(off)) / wmpd, 1)
+        else:
+            delta = 0.0
+        drivers.append(
+            RiskDriver(
+                id=risk.id,
+                name=risk.name,
+                probability=risk.probability,
+                hits=hits,
+                mean_delta_days=delta,
+            )
+        )
+    drivers.sort(key=lambda d: (-abs(d.mean_delta_days), d.id))
+    return tuple(drivers)
 
 
 def _build_result(
@@ -328,6 +438,8 @@ def _build_result(
     sampled_durations: Mapping[int, list[int]],
     critical_counts: Mapping[int, int],
     finishes: Sequence[int],
+    risks: Sequence[RiskEvent] = (),
+    risk_occurred: Sequence[Sequence[bool]] = (),
 ) -> SRAResult:
     """Assemble the :class:`SRAResult` from the collected iteration series."""
     n = len(finishes)
@@ -367,6 +479,7 @@ def _build_result(
     cdf = _build_cdf(sorted_finishes, n)
     histogram = _build_histogram(sorted_finishes)
     constraints = tuple(t.unique_id for t in tasks if t.has_hard_constraint)
+    risk_drivers = _risk_drivers(schedule, risks, risk_occurred, finishes)
 
     cal = schedule.calendar
     ps = schedule.project_start
@@ -394,6 +507,7 @@ def _build_result(
         histogram=histogram,
         activities=tuple(activities),
         constraints_flagged=constraints,
+        risk_drivers=risk_drivers,
     )
 
 
