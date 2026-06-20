@@ -2513,3 +2513,20 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   `tests/web/test_schedule_variance_panel.py` (3). Full gate green; suite 1392 passed / 3 env-skips.
 - **D4 follow-ons (not yet built):** combined BEI/CEI/HMI panel (Fig 7-21); cross-version SV/SVt
   trend with favorable/unfavorable bands (Figs 7-12/7-13). **No new ADR.**
+
+---
+
+## 2026-06-20 (cont.) — Combined BEI/CEI/HMI execution panel (handbook Fig 7-21) — plan D4 follow-on
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Combined execution panel (OPEN PR, plan D4 follow-on):** a single overlaid trend chart of the
+  three headline execution indices — BEI (cumulative baseline execution), CEI (this-period forecast
+  execution), HMI (this-period baseline execution) — the handbook's "are we executing the plan?"
+  panel (Fig 7-21). Pure presentation in `static/trend.js` (`execSeries` → `multiLineChart`, placed
+  before the per-family index charts); the `/api/trend` payload already carried `bei` / `cei_tasks`
+  / `hmi_tasks` per version, so no engine or route change.
+- **Test:** `test_trend_js_has_combined_execution_index_chart` in `tests/web/test_trend_views.py`.
+  Full gate green; suite 1393 passed / 3 env-skips. Plan D4 combined-panel marked done.
+- **D4 remaining:** cross-version SV/SVt trend with favorable/unfavorable bands (Figs 7-12/7-13).
+- **NOTE:** the GitHub MCP server disconnected mid-session; the branch is pushed but the draft PR may
+  need to be opened once MCP reconnects. **No new ADR.**

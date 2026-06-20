@@ -133,6 +133,20 @@ def test_trend_page_has_quality_drilldown_and_animation_panel(client: TestClient
     assert "/static/trend_drill.js" in page
 
 
+def test_trend_js_has_combined_execution_index_chart(client: TestClient) -> None:
+    """Handbook Fig. 7-21: the BEI/CEI/HMI execution indices are overlaid on one combined chart
+    (the data — bei / cei_tasks / hmi_tasks — is already in the /api/trend payload per version)."""
+    js = client.get("/static/trend.js").text
+    assert "are we executing the plan?" in js
+    for key in ("bei", "cei_tasks", "hmi_tasks"):
+        assert key in js, key
+    # the combined chart reads the same per-version indices the payload already serves
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    indices = client.get("/api/trend").json()["versions"][1]["indices"]
+    assert "bei" in indices and "cei_tasks" in indices and "hmi_tasks" in indices
+
+
 def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> None:
     assert "Load at least one analyzable schedule" in client.get("/briefing").text
     _upload(client, "Project2")

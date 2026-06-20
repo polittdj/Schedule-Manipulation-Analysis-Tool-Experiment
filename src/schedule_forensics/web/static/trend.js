@@ -437,6 +437,31 @@
           "Of the completed activities, how many finished ahead / on / behind their baseline, per version — a growing 'behind' band is slippage being realized."
         );
 
+        // Handbook Fig. 7-21 "are we executing the plan?" — the three headline execution indices
+        // (BEI cumulative, CEI this-period forecast, HMI this-period baseline) overlaid on ONE
+        // axis for an at-a-glance read, before the per-family index charts below.
+        var execSeries = [
+          { key: "bei", label: "BEI", color: "var(--warn)" },
+          { key: "cei_tasks", label: "CEI", color: "var(--accent)" },
+          { key: "hmi_tasks", label: "HMI", color: "var(--ok)" },
+        ].filter(function (s) {
+          return data.versions.some(function (v) {
+            return v.indices && v.indices[s.key] != null;
+          });
+        }).map(function (s) {
+          return {
+            label: s.label,
+            color: s.color,
+            values: data.versions.map(function (v) {
+              return v.indices ? v.indices[s.key] : null;
+            }),
+          };
+        });
+        if (execSeries.length) {
+          multiLineChart("Execution indices — BEI / CEI / HMI (are we executing the plan?)", labels, execSeries,
+            "The handbook's combined execution panel (Fig. 7-21): BEI (cumulative baseline execution), CEI (this period's forecast execution), and HMI (this period's baseline execution) on one axis. At or above 1.0 is on-plan; all three falling together is systemic slippage, while BEI healthy but CEI/HMI sagging is recent erosion the cumulative index has not caught up to yet.");
+        }
+
         var idxSeries = [
           { key: "mei", label: "MEI", color: "var(--ok)" },
           { key: "bei", label: "BEI", color: "var(--warn)" },
