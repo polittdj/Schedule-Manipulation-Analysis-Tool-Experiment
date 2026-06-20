@@ -71,17 +71,25 @@ _CHART_JS = (
 )
 
 
-def test_charts_have_accessible_names_and_curves_have_data_tables(client: TestClient) -> None:
+#: The data-series charts that ALSO carry a visually-hidden .sr-only data-table fallback, so a
+#: screen reader can read the numbers (not just the chart's accessible name). Every chart in
+#: _CHART_JS except the path-evolution Gantt — a timeline backed by its own visible per-activity
+#: grid rather than a numeric series.
+_DATA_TABLE_JS = tuple(n for n in _CHART_JS if n != "path_evolution.js")
+
+
+def test_charts_have_accessible_names_and_data_tables(client: TestClient) -> None:
     """A3 (WCAG 1.1.1 / 508): every chart SVG gets a real accessible NAME (no more nameless
-    role=img), and the curves page adds a visually-hidden data-table fallback so screen readers
-    can read the numbers."""
+    role=img), and every data-series chart adds a visually-hidden data-table fallback so screen
+    readers can read the numbers the chart draws (the path-evolution Gantt is name-only)."""
     a11y = client.get("/static/a11y.js")
     assert a11y.status_code == 200
     assert "window.SFA11y" in a11y.text and "aria-label" in a11y.text and "sr-only" in a11y.text
     assert "/static/a11y.js" in client.get("/curves").text  # shell-loaded, reaches every chart page
     for name in _CHART_JS:
         assert "SFA11y.label" in client.get(f"/static/{name}").text, name  # named SVG
-    assert "SFA11y.table" in client.get("/static/curves.js").text  # data-table fallback
+    for name in _DATA_TABLE_JS:
+        assert "SFA11y.table" in client.get(f"/static/{name}").text, name  # data-table fallback
 
 
 def test_print_stylesheet_makes_briefings_print_ready(client: TestClient) -> None:

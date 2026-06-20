@@ -138,6 +138,21 @@
     refs.textContent = "— gold dashed = baseline finish · grey dotted = data date";
     leg.appendChild(refs);
     box.appendChild(leg);
+
+    // A3 (WCAG 1.1.1): a visually-hidden data table of this version's forecast dates (plus the
+    // baseline finish and data date the chart marks), so a screen reader can read the numbers.
+    if (window.SFA11y) {
+      var rows = methods.map(function (m) {
+        return [m.name, v.forecasts[m.id] || "— (inputs missing)"];
+      });
+      if (v.planned_finish) rows.push(["Baseline finish", v.planned_finish]);
+      if (v.as_of) rows.push(["Data date", v.as_of]);
+      box.appendChild(SFA11y.table(
+        "Finish forecasts — as of " + (v.as_of || v.label),
+        ["Item", "Date"],
+        rows
+      ));
+    }
   }
 
   function step(delta) {

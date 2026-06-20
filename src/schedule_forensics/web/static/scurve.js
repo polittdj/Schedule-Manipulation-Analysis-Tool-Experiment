@@ -109,6 +109,18 @@
     });
 
     box.appendChild(svg);
+
+    // A3 (WCAG 1.1.1): a visually-hidden data table of this version's curve values, so a
+    // screen reader can read the planned-vs-actual numbers the curves draw (chart stays visual).
+    if (window.SFA11y) {
+      box.appendChild(SFA11y.table(
+        "Cumulative progress — " + v.label + " (planned vs actual percent by month)",
+        ["Month", "Planned %", "Actual %"],
+        months.map(function (m, i) {
+          return [m, Math.round(v.planned[i]) + "%", Math.round(v.actual[i]) + "%"];
+        })
+      ));
+    }
   }
 
   function step(delta) {

@@ -161,6 +161,19 @@
     });
 
     box.appendChild(svg);
+
+    // A3 (WCAG 1.1.1): a visually-hidden data table of this snapshot's monthly finish counts,
+    // so a screen reader can read the bow-wave numbers the bars/curves draw.
+    if (window.SFA11y) {
+      box.appendChild(SFA11y.table(
+        "Activity finishes by month — as of " + snap.label +
+          (snap.cei != null ? " (CEI " + snap.cei.toFixed(2) + ")" : ""),
+        ["Month", "Baselined to finish", "Scheduled to finish", "Finished"],
+        months.map(function (m, i) {
+          return [m, snap.baselined[i], snap.scheduled[i], snap.finished[i]];
+        })
+      ));
+    }
   }
 
   function step(delta) {
