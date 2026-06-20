@@ -263,6 +263,12 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .finding-action { color: var(--ink); }
 .recovery-list li, .story li { margin: 5px 0; }
 
+/* S-Curve per-chart filter (scurve.js): up to 5 (field, value) rows + a clear button. */
+#scurveFilter { display: inline-flex; flex-wrap: wrap; gap: 6px 10px; }
+.scf-row { display: inline-flex; gap: 4px; }
+#scurveFilter select { font-size: 12px; padding: 4px 6px; }
+.scf-clear { font-size: 12px; padding: 4px 10px; }
+
 /* M18 item 7 follow-up: critical-path evolution Gantt + reason chips */
 .evo-gantt { margin: 4px 0 14px; overflow-x: auto; }
 .legend .ev-entered { color: var(--ok); } .legend .ev-stayed { color: var(--muted); } .legend .ev-left { color: var(--bad); }

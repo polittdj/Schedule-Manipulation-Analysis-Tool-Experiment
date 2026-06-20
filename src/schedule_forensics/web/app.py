@@ -730,6 +730,11 @@ _SECURITY_HEADERS: dict[str, str] = {
     "X-Frame-Options": "DENY",
 }
 
+#: Shared FastAPI default for optional repeated-string query params (e.g. the S-curve per-chart
+#: filter's cf/cv). A module-level singleton avoids a call-in-default (ruff B008); the list factory
+#: gives each request its own fresh empty list.
+_LIST_QUERY = Query(default_factory=list)
+
 
 def create_app(
     state: SessionState | None = None,
@@ -1297,15 +1302,25 @@ def create_app(
             sc = compute_s_curve(st.ordered())
         except ValueError as exc:
             return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "S-Curve", _scurve_body(sc))
+        return _page(st, "S-Curve", _scurve_body(sc, _scurve_filter_fields(st.ordered())))
 
     @app.get("/api/scurve")
-    def scurve_json() -> JSONResponse:
+    def scurve_json(cf: list[str] = _LIST_QUERY, cv: list[str] = _LIST_QUERY) -> JSONResponse:
         st = session()
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
+        versions = st.ordered()
+        # per-chart filter (independent of the page-wide Groups & Filters): up to MAX_FIELDS
+        # (field, value) conditions over the parent file's fields, applied on top of the scope.
+        criteria = _pair_criteria(cf, cv, versions)
+        if criteria:
+            versions = [
+                v for v in (filter_schedule(s, criteria) for s in versions) if non_summary(v)
+            ]
+        if not versions:
+            return JSONResponse({"months": [], "versions": []})
         try:
-            sc = compute_s_curve(st.ordered())
+            sc = compute_s_curve(versions)
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_scurve_data(sc))
@@ -3750,9 +3765,35 @@ how many of those planned activities actually finished by the end of it. CEI = c
 <script src="/static/cei.js"></script>"""
 
 
-def _scurve_body(sc: SCurve) -> str:
-    """The animated S-curve view: cumulative planned vs actual/forecast progress per version."""
-    return """
+def _scurve_filter_fields(versions: list[Schedule]) -> dict[str, list[str]]:
+    """The parent file(s)' filterable fields → their distinct values, for the S-curve's own
+    up-to-5-field filter. Capped so the embedded payload stays small on large schedules."""
+    out: dict[str, list[str]] = {}
+    for fld in available_fields_union(versions):
+        values = distinct_values(versions, fld)
+        if 0 < len(values) <= 1000:
+            out[fld] = values[:300]
+    return out
+
+
+def _pair_criteria(cf: list[str], cv: list[str], versions: list[Schedule]) -> list[Criterion]:
+    """Zip the cf/cv query lists into validated (field, value) criteria (<= MAX_FIELDS)."""
+    fields = set(available_fields_union(versions))
+    out: list[Criterion] = []
+    for fld, value in zip(cf, cv, strict=False):
+        if fld in fields and value:
+            out.append((fld, value))
+        if len(out) >= MAX_FIELDS:
+            break
+    return out
+
+
+def _scurve_body(sc: SCurve, fields: dict[str, list[str]]) -> str:
+    """The animated S-curve view: cumulative planned vs actual/forecast progress per version,
+    with a per-chart up-to-5-field filter over the parent file's fields."""
+    # escape "<" so a field value can never break out of the inline <script> embed
+    fields_json = json.dumps(fields).replace("<", "\\u003c")
+    return f"""
 <div class=panel><h2>S-Curve &mdash; cumulative progress</h2>
 <p class=muted>Each version's cumulative progress on a fixed 0&ndash;100% scale: <b>gold</b> =
 planned (share of activities the baseline had finishing by each month), <b>blue</b> =
@@ -3760,6 +3801,8 @@ actual / forecast (share whose actual or scheduled finish lands by each month). 
 line is that version's data date &mdash; actuals to its left, forecast to its right; the blue
 curve sitting below the gold at the data date is work behind plan. Step through the versions
 or press Auto-play to watch the actual curve climb (and lag) over time.</p>
+<div class=viz-controls id=scurveFilterBar><span class=muted>Filter this chart by up to
+{MAX_FIELDS} field(s) of the parent file:</span> <span id=scurveFilter></span></div>
 <div class=viz-controls>
 <button id=prevScurve type=button>&#9664; Prev</button>
 <span id=scurveLabel class=muted></span>
@@ -3767,6 +3810,7 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <button id=scurvePlay type=button>&#9654; Auto-play</button>
 </div>
 <div id=scurveChart class=chart-host></div></div>
+<script>window.SF_SCURVE_FIELDS = {fields_json};</script>
 <script src="/static/scurve.js"></script>"""
 
 
