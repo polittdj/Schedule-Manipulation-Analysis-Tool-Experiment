@@ -162,3 +162,25 @@ def test_briefing_handles_undated_schedule() -> None:
     )
     b = build_briefing([sch], today=TODAY)
     assert "not statused" in b.sections[1].statements[0].text
+
+
+def test_briefing_on_empty_scope_is_cited_and_says_nothing_to_brief() -> None:
+    """An empty scope (a filter that matched nothing / summary-only files) must yield a single
+    cited lede, not crash on uncitable trend/quality sentences (regression for the filter)."""
+    start = dt.datetime(2025, 1, 6, 8, 0)
+    empty = Schedule(
+        name="empty", source_file="empty.xml", project_start=start, tasks=(), relationships=()
+    )
+    summary_only = Schedule(
+        name="sumonly",
+        source_file="sumonly.xml",
+        project_start=start,
+        tasks=(Task(unique_id=1, name="WBS", duration_minutes=4800, is_summary=True),),
+        relationships=(),
+    )
+    for sch in (empty, summary_only):
+        b = build_briefing([sch], today=TODAY)
+        assert b.sections and all(s.statements for s in b.sections)
+        for section in b.sections:
+            assert_all_cited(section.statements)
+        assert "nothing to brief" in b.sections[0].statements[0].text

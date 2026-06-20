@@ -97,3 +97,17 @@ def test_clean_schedule_gets_cited_clean_bill() -> None:
     assert len(narrative.statements) >= 1
     assert_all_cited(narrative.statements)  # even the clean-bill statement cites the finish driver
     assert "well-formed" in narrative.to_text()
+
+
+def test_narrative_on_empty_scope_is_cited() -> None:
+    """A session filter that matches nothing yields a task-less schedule; the clean-bill statement
+    must still carry a citation (anchored on the file), never raise UncitedStatementError."""
+    from schedule_forensics.engine.cpm import compute_cpm
+
+    empty = Schedule(
+        name="empty", source_file="empty.xml", project_start=MON, tasks=(), relationships=()
+    )
+    nar = build_narrative(empty, current_cpm=compute_cpm(empty))
+    assert nar.statements
+    assert_all_cited(nar.statements)  # regression: every statement cited even with zero rows
+    assert any("matched nothing" in s.text or "in scope" in s.text for s in nar.statements)

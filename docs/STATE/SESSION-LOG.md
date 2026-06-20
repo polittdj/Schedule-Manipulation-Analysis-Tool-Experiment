@@ -2324,3 +2324,23 @@ a filter is set. Tests (tests/web/test_global_filter.py): session-level cross-fi
 stability + cache invalidation; web apply→visible-everywhere, clear, URL-preview-doesn't-persist,
 union autocomplete; existing test_groups_view updated for the new preview heading. Gate green, node
 --check OK. ADR-0104. Model: Opus 4.8 (1M).
+
+**2026-06-20 (cont. 37) — Deep QC sweep (10x): found + fixed an empty-scope 500 in the briefing/
+narrative (ADR-0104 follow-up).** Operator: do a QC check 10x more thorough, skip nothing, assume
+nothing. Ran far beyond the standard gate: ruff/format/mypy(src)/bandit/node all clean; coverage 95%
+overall / 96% engine (gates 70/85); PARITY gate 10/10 (Acumen Fuse v8.11.0 / SSI golden acceptance);
+pip-audit (CVEs in env packages pyjwt/urllib3/setuptools/wheel — NOT in the tool's dep closure; runtime
+is std-lib-only I/O, no banned client imported in src); air-gap/egress/CUI guard tests (40) pass; live
+app smoke = 43 routes, 0 server errors, every HTML page carries the CSP header, zero remote-asset refs;
+exports produce real xlsx/docx; METRIC-DICTIONARY in sync; ADR-0104 in both state docs; engine suite
+deterministic on repeat; only the 3 expected skips (golden .mpp CUI-absent / Java). **Found a REAL bug
+the smoke surfaced:** a session filter (ADR-0104) that matches ZERO tasks empties a schedule, and 15
+pages 500'd — `narrative._clean_bill` cited `tasks[:3]` (empty) and `briefing._workbook_section`/
+`_trend_section` emitted uncitable statements → UncitedStatementError. Fixed: `_clean_bill` anchors an
+empty scope on the file (UID 0) so the clean-bill is always cited; `build_briefing` short-circuits an
+empty/summary-only scope to one cited "nothing to brief" lede instead of degenerate uncited trend/quality
+sections; `_workbook_section` falls back to file citations (defense-in-depth). Re-verified: full route
+sweep under empty / Normal / %Complete filters = 0 500s incl xlsx exports. Regression tests added
+(tests/ai/test_narrative + test_briefing empty/summary-only cited; tests/web/test_global_filter empty-
+match no-500 + "matched nothing" message). Gate green: 1039 passed, 3 skipped, engine cov 96%. No new
+ADR (bugfix on ADR-0104). Model: Opus 4.8 (1M).
