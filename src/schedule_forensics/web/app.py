@@ -101,6 +101,11 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics.year_phases import (
+    YEAR_BASES,
+    YearPhases,
+    compute_year_phases,
+)
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
@@ -181,7 +186,7 @@ _LAYOUT = Template(
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/risks">Risks &amp; Opportunities</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
 <a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
-<a href="/scurve">S-Curve</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
+<a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
 <a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
 <a href="/forecast">Forecast</a><a href="/briefing">Executive Briefing</a>
 <a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
@@ -1019,6 +1024,20 @@ def create_app(
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_driving_data(sch, cpm, target, secondary, tertiary))
+
+    @app.get("/phases", response_class=HTMLResponse)
+    def phases_view(name: str = Query(""), basis: str = Query("finish")) -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Year Phases",
+                "<div class=panel>Load a schedule to see the per-year phase view.</div>",
+            )
+        keys = [k for k, _ in st.ordered_versions()]
+        current = name if name in st.schedules else keys[-1]
+        yp = compute_year_phases(st.scope(st.schedules[current]), basis)
+        return _page(st, "Year Phases", _phases_body(keys, current, yp), ask_schedule=current)
 
     @app.get("/mission", response_class=HTMLResponse)
     def mission_view() -> HTMLResponse:
@@ -3044,6 +3063,107 @@ themselves are engine-computed and cited.</p></div>"""
             "No specific opportunities surfaced from the current signals.",
         )
     )
+
+
+def _phases_chart(yp: YearPhases) -> str:
+    """An inline stacked-bar SVG of activities per year (complete / in-progress / planned)."""
+    rows = yp.rows
+    if not rows:
+        return "<p class=muted>No activities to bin on this basis.</p>"
+    w, pad_l, pad_r, pad_t, pad_b = 900, 40, 14, 20, 44
+    n = len(rows)
+    top = max((r.total for r in rows), default=1) or 1
+    slot = (w - pad_l - pad_r) / n
+    bw = min(46.0, slot * 0.6)
+    plot_h = 300 - pad_t - pad_b
+
+    def y(v: float) -> float:
+        return pad_t + (1 - v / top) * plot_h
+
+    parts = [
+        f'<svg viewBox="0 0 {w} 300" width="100%" role="img" '
+        'aria-label="Activities per year by phase">'
+    ]
+    for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
+        gy = y(top * frac)
+        parts.append(
+            f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{w - pad_r}" y2="{gy:.1f}" '
+            'style="stroke:var(--line)" stroke-width="1"/>'
+            f'<text x="{pad_l - 6}" y="{gy + 4:.1f}" text-anchor="end" '
+            f'style="fill:var(--muted)" font-size="10">{round(top * frac)}</text>'
+        )
+    for i, r in enumerate(rows):
+        cx = pad_l + slot * i + slot / 2
+        x0 = cx - bw / 2
+        ybase = y(0)
+        for val, color in (
+            (r.planned, "var(--accent)"),
+            (r.in_progress, "var(--warn)"),
+            (r.complete, "var(--ok)"),
+        ):
+            if val <= 0:
+                continue
+            h = (val / top) * plot_h
+            parts.append(
+                f'<rect x="{x0:.1f}" y="{ybase - h:.1f}" width="{bw:.1f}" height="{h:.1f}" '
+                f'style="fill:{color}"/>'
+            )
+            ybase -= h
+        parts.append(
+            f'<text x="{cx:.1f}" y="{y(0) + 15:.1f}" text-anchor="middle" '
+            f'style="fill:var(--muted)" font-size="10">{r.year}</text>'
+            f'<text x="{cx:.1f}" y="{y(r.total) - 4:.1f}" text-anchor="middle" '
+            f'style="fill:var(--ink)" font-size="10">{r.total}</text>'
+        )
+    parts.append("</svg>")
+    legend = (
+        "<div class=chart-legend>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--ok)">'
+        "</span>Complete</span>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--warn)">'
+        "</span>In progress</span>"
+        '<span class=chart-legend-item><span class=chart-swatch style="background:var(--accent)">'
+        "</span>Planned</span></div>"
+    )
+    return f"<div class=chart-host>{''.join(parts)}</div>{legend}"
+
+
+def _phases_body(keys: list[str], current: str, yp: YearPhases) -> str:
+    """Year Trend / Phase view: pick a schedule + a binning basis, see work spread across years."""
+    sched_opts = "".join(
+        f'<option value="{_e(k)}"{" selected" if k == current else ""}>{_e(k)}</option>'
+        for k in keys
+    )
+    basis_opts = "".join(
+        f'<option value="{b}"{" selected" if b == yp.basis else ""}>{_e(label)}</option>'
+        for b, label in YEAR_BASES.items()
+    )
+    table_rows = "".join(
+        f"<tr><td>{r.year}</td><td>{r.total}</td><td>{r.complete}</td>"
+        f"<td>{r.in_progress}</td><td>{r.planned}</td><td>{r.milestones}</td></tr>"
+        for r in yp.rows
+    )
+    undated = (
+        f" &middot; {yp.undated} activit{'y' if yp.undated == 1 else 'ies'} have no "
+        f"{_e(YEAR_BASES[yp.basis]).lower()} date (not binned)"
+        if yp.undated
+        else ""
+    )
+    return f"""
+<div class=panel><h2>Year Trend / Phase &mdash; activities per calendar year</h2>
+<p class=muted>How the work spreads across the program's years, split into complete / in-progress /
+planned. <b>Bin by</b> lets you key each year on a different date &mdash; the right basis is a
+judgement call, so choose the one your analysis needs.</p>
+<form method=get action="/phases" class=viz-controls>
+<label>Schedule <select name=name onchange="this.form.submit()">{sched_opts}</select></label>
+<label>Bin by <select name=basis onchange="this.form.submit()">{basis_opts}</select></label>
+<noscript><button type=submit>Update</button></noscript>
+</form>
+<p class=muted>Binned by <b>{_e(YEAR_BASES[yp.basis])}</b>{undated}.</p>
+{_phases_chart(yp)}
+<table><tr><th scope=col>Year</th><th scope=col>Activities</th><th scope=col>Complete</th>
+<th scope=col>In progress</th><th scope=col>Planned</th><th scope=col>Milestones</th></tr>
+{table_rows}</table></div>"""
 
 
 def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
