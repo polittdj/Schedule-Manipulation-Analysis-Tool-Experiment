@@ -2384,3 +2384,28 @@ when a traced activity has neither a stored date nor a CPM timing) left uncovere
 `[tool.coverage.report] fail_under` 99 → 99.9. Full gate green: ruff/format/mypy(strict)/bandit/node clean;
 **1213 passed, 3 skipped**; overall **99.97%** (gate ≥99.9 exit 0) and engine gate (≥85) pass; coverage
 deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 4.8 (1M).
+
+---
+
+## 2026-06-20 — Target UID = analysis endpoint + quantified 5×5 risk matrix (ADR-0105)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- Shipped earlier this session (all merged, `main` green): a11y screen-reader data tables for the
+  remaining charts + the plain-language "connect a bigger local AI model" guide (#173); the NASA-theme
+  UI overhaul — rotating insignia, CUI markings, Mission Control, per-visual filters, critical-path
+  detail, Risks page, Year-Phases (#174); insignia spin moved to the vertical axis (#175).
+- **ADR-0105 (OPEN PR, this branch):** the Target UID is now the session-wide analysis **endpoint**.
+  Operator-chosen rule = **target + its drivers**: `path_trace.subschedule_to_target(sch, uid)` keeps
+  `ancestors_of(uid) ∪ {uid}` with relationships among them (frame preserved, like `filter_schedule`).
+  Folded into the single `SessionState.scope()` chokepoint so `analysis_for()` + `ordered()` carry it
+  to every metric/visual on every page and every loaded version; `set_target()` invalidates the
+  scope/analysis/narrative caches; a "Analysis endpoint: UID X (N omitted)" banner shows on every page
+  (warns when the UID is absent). Default (no target) = no-op → **parity locked**.
+- **Risk quantification:** `recommendations.Likelihood` + a deterministic, CPM-cited `_quantify` pass
+  attaches `float_days` / `impact_days` (exposure = max(0, −float)) / `driving_float_days` (only when a
+  target is set) / `likelihood`, with `impact_score`·`likelihood_score` → `risk_score` (1–25). `/risks`
+  renders a server-rendered **5×5 likelihood × impact heat-map** (accessible table), a score-ranked
+  list, and per-finding quantified reads; the local-AI narrative rides on top (figures stay engine-cited).
+- **Tests:** new `subschedule_to_target` unit tests; web tests for endpoint truncation (population
+  narrows, banner present/cleared, missing-UID warning) and the 5×5 matrix/ranking/quantified cards;
+  recommendations scoring tests (ranks, bands, `risk_score`, `_quantify`). Full gate green; parity 10/10.

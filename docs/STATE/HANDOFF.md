@@ -1,4 +1,20 @@
-# Handoff — 2026-06-20 (PRs #81–#171 MERGED; **`main` green**; OPEN PR = coverage→99.9% / fail_under=99.9)
+# Handoff — 2026-06-20 (PRs #81–#175 MERGED; **`main` green**; OPEN PR = target-endpoint + 5×5 risk matrix, ADR-0105)
+
+> ## STATUS (current) — Target UID = analysis ENDPOINT (whole tool) + quantified 5×5 risk matrix (ADR-0105)
+> Operator: (1) entering a UID in the top ribbon must apply to EVERY page with all metrics/visuals
+> recomputed using the target as the endpoint — activities that don't drive it omitted; (2) the Risks page
+> needs a quantified 5×5 (likelihood × impact) matrix + ranking. **OPEN PR (this branch, ADR-0105).**
+> Endpoint rule chosen by the operator = **"target + its drivers"** (`path_trace.subschedule_to_target` =
+> `ancestors_of(target) ∪ {target}`, frame preserved like `filter_schedule`), folded into the **one scope
+> chokepoint** `SessionState.scope()` (so `analysis_for()` + `ordered()` carry it to every page/version);
+> `set_target()` invalidates caches; a page-top **"Analysis endpoint: UID X (N omitted)"** banner everywhere;
+> default (no target) is a no-op so **parity stays locked**. Risk scoring: `recommendations.Likelihood` +
+> deterministic CPM-cited `_quantify` (float_days / impact_days exposure / driving_float_days when targeted /
+> likelihood / impact_score·likelihood_score → risk_score 1–25); `/risks` renders a server-rendered 5×5
+> heat-map (accessible table) + score-ranked list + per-finding quantified reads, AI narrative on top. Gate
+> green: ruff/format/mypy(strict)/bandit/node clean; full suite passing (incl. new path_trace / target-endpoint
+> / risk-matrix tests); parity 10/10. Earlier this day merged: a11y data tables + AI-model guide (#173),
+> NASA-theme overhaul (#174), insignia vertical-axis spin (#175).
 
 > ## STATUS (current) — test coverage raised to 99.9% (actual 99.97%); gate locked at fail_under=99.9
 > Operator: improve coverage to 99.9%. From `main`@#171 (99.05%) a sub-agent cleared the engine/AI branch
