@@ -1,6 +1,21 @@
-# Handoff — 2026-06-20 (PRs #81–#186 MERGED; **`main` green**; OPEN PR = schedule margin, ADR-0107)
+# Handoff — 2026-06-20 (PRs #81–#189 MERGED; **`main` green**; OPEN PR = SRA risk-register UI, ADR-0106)
 
-> ## STATUS (current) — Schedule-margin metrics (ADR-0107); SRA fully shipped (engine+results+manual, ADR-0106)
+> ## STATUS (current) — SRA discrete-risk **register UI** on /sra (ADR-0106 follow-on; engine #189 merged)
+> The discrete risk-driver engine landed in #189 (`RiskEvent`, `RiskDriver`, `compute_sra(…, risks=())`,
+> `SRAResult.risk_drivers` — probability × triangular multiplicative impact, shared-driver emergent
+> correlation). **OPEN PR (this branch):** the analyst-facing register on **/sra**. `SessionState.sra_risks`
+> (+ `sra_risk_seq` for stable ids) holds the register; **`POST /sra/risk-event`** adds (name, probability %,
+> 3-point impact %, affected UIDs — validated against the latest solvable schedule, dangling/summary uids
+> dropped, ordered lo≤ml≤hi, prob clamped 0–1), removes one (`remove=id`), or clears all (`clear=1`);
+> `/api/sra` now passes `risks=tuple(st.sra_risks)` to `compute_sra` and `_sra_data` emits a `risk_drivers`
+> array (id/name/probability/hits/iterations/delta_days). UI: a "Risk register" panel (input form + register
+> table + Remove/Clear) and a **risk-driver tornado** (`#sraRisk` in `sra.js`, mean finish slip per risk,
+> red=slip/green=pull-in, +table) that is empty until a risk is registered. Wipe clears the register. New
+> tests `tests/web/test_sra_risks.py` (13). Gate green: ruff/format/mypy(strict)/bandit/node clean; full
+> suite 1368 passed / 3 env-skips; coverage gate 70/85 green.
+> - **Next SRA:** cost-loading for true JCL (needs cost inputs). Then deterministic handbook tranches.
+
+> ## STATUS (prev) — Schedule-margin metrics (ADR-0107); SRA fully shipped (engine+results+manual, ADR-0106)
 > Operator gave the margin convention: **a schedule-margin task = any non-summary activity with "margin"
 > in its name** (case-insensitive). **ADR-0107 (OPEN PR):** `engine/metrics/margin.py` `compute_margin`
 > (lightweight dataclasses, parity-isolated) = total margin (working days) + **effective margin** (how far

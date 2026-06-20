@@ -123,7 +123,13 @@ from schedule_forensics.engine.recommendations import (
     Severity,
 )
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
-from schedule_forensics.engine.sra import ActivityRisk, SRAConfig, SRAResult, compute_sra
+from schedule_forensics.engine.sra import (
+    ActivityRisk,
+    RiskEvent,
+    SRAConfig,
+    SRAResult,
+    compute_sra,
+)
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
     compute_float_ratio_trend,
@@ -307,6 +313,11 @@ class SessionState:
     sra_high: float = 1.10
     # per-activity 3-point overrides: uid -> (optimistic, most_likely, pessimistic) WORKING MINUTES.
     sra_overrides: dict[int, tuple[int, int, int]] = field(default_factory=dict)
+    # discrete risk register (ADR-0106 risk-driver method): probability x triangular impact
+    # multiplier on the affected activities' sampled durations. Set via POST /sra/risk-event.
+    sra_risks: list[RiskEvent] = field(default_factory=list)
+    # monotonic id counter so each registered risk keeps a stable, unique id across removals.
+    sra_risk_seq: int = 0
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -783,6 +794,21 @@ def _parse_uid(value: str | None) -> int | None:
         return None
     uid = int(text)
     return uid if uid > 0 else None
+
+
+def _parse_uid_list(value: str | None) -> list[int]:
+    """UniqueIDs from a free-text list (comma / space / semicolon separated), order-preserving.
+
+    Each token is parsed with :func:`_parse_uid` rules (positive integers only); blanks and
+    non-numeric tokens are dropped, and duplicates are removed keeping first appearance."""
+    if not value:
+        return []
+    out: list[int] = []
+    for token in value.replace(";", " ").replace(",", " ").split():
+        uid = _parse_uid(token)
+        if uid is not None and uid not in out:
+            out.append(uid)
+    return out
 
 
 def _to_float(value: str | None, default: float) -> float:
@@ -2021,6 +2047,63 @@ def create_app(
                     st.sra_overrides[add_uid] = (o, m, p)
         return RedirectResponse(url="/sra", status_code=303)
 
+    @app.post("/sra/risk-event")
+    def sra_risk_event(
+        name: str = Form(""),
+        prob: str = Form(""),
+        imp_low: str = Form(""),
+        imp_ml: str = Form(""),
+        imp_high: str = Form(""),
+        affected: str = Form(""),
+        remove: str = Form(""),
+        clear: str = Form(""),
+    ) -> RedirectResponse:
+        """Maintain the discrete-risk register (ADR-0106 risk-driver method), then redirect to /sra.
+
+        A risk = a name, a probability (% it occurs), a 3-point *multiplicative* impact on the
+        sampled duration of the activities it is mapped to (entered as percentages, e.g. 100/120/150),
+        and an ``affected`` UID list. ``clear`` empties the register; ``remove`` drops one risk by id.
+        Affected UIDs are validated against the latest solvable schedule — unknown / summary uids are
+        dropped, and a risk that maps to no real activity is ignored (it could never fire)."""
+        st = session()
+        if clear.strip():
+            st.sra_risks.clear()
+        rid = remove.strip()
+        if rid:
+            st.sra_risks = [r for r in st.sra_risks if r.id != rid]
+        label = name.strip()
+        uids = _parse_uid_list(affected)
+        if label and uids:
+            chosen = _latest_solvable(st)
+            valid: list[int] = []
+            if chosen is not None:
+                _, sch, _cpm = chosen
+                for u in uids:
+                    task = sch.tasks_by_id.get(u)
+                    if task is not None and not task.is_summary and u not in valid:
+                        valid.append(u)
+            if valid:
+                # percentages -> fractions; probability clamped to [0,1]; impacts ordered & >= 0
+                p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
+                lo = max(0.0, _to_float(imp_low, 100.0) * 0.01)
+                mid = max(0.0, _to_float(imp_ml, 100.0) * 0.01)
+                hi = max(0.0, _to_float(imp_high, 100.0) * 0.01)
+                mid = max(lo, mid)  # keep impact_low <= impact_ml <= impact_high
+                hi = max(mid, hi)
+                st.sra_risk_seq += 1
+                st.sra_risks.append(
+                    RiskEvent(
+                        id=f"R{st.sra_risk_seq}",
+                        name=label,
+                        probability=p,
+                        impact_low=lo,
+                        impact_ml=mid,
+                        impact_high=hi,
+                        affected=tuple(valid),
+                    )
+                )
+        return RedirectResponse(url="/sra", status_code=303)
+
     @app.get("/api/sra")
     def sra_json(iterations: int = Query(1000)) -> JSONResponse:
         st = session()
@@ -2042,7 +2125,9 @@ def create_app(
         }
         # never 500 on the simulation — surface the engine message as a 422 instead
         try:
-            result = compute_sra(sch, cpm, config=config, overrides=overrides)
+            result = compute_sra(
+                sch, cpm, config=config, overrides=overrides, risks=tuple(st.sra_risks)
+            )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_sra_data(st, sch, result))
@@ -2263,6 +2348,8 @@ def create_app(
         st.sra_ml = 1.0
         st.sra_high = 1.10
         st.sra_overrides.clear()
+        st.sra_risks.clear()
+        st.sra_risk_seq = 0
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -4549,6 +4636,45 @@ def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
     )
 
 
+def _sra_risk_table(st: SessionState, sch: Schedule | None) -> str:
+    """The discrete-risk register as a table (name, probability, impact, affected) + Remove buttons."""
+    if not st.sra_risks:
+        return (
+            "<p class=muted>No discrete risks registered &mdash; the run uses duration uncertainty "
+            "only. Add a risk above to model a probabilistic event (e.g. a 40%-likely permit delay "
+            "that stretches its activities 1.2&ndash;1.6&times;).</p>"
+        )
+    names = sch.tasks_by_id if sch is not None else {}
+
+    def _affected(uids: tuple[int, ...]) -> str:
+        chips = []
+        for u in uids:
+            nm = _e(names[u].name) if u in names else "?"
+            chips.append(f"{u} &mdash; {nm}")
+        return "; ".join(chips)
+
+    rows = []
+    for r in st.sra_risks:
+        impact = f"{r.impact_low * 100:g}/{r.impact_ml * 100:g}/{r.impact_high * 100:g}%"
+        rows.append(
+            f"<tr><td>{_e(r.id)}</td><td>{_e(r.name)}</td><td>{r.probability * 100:g}%</td>"
+            f"<td>{impact}</td><td>{_affected(r.affected)}</td><td>"
+            f'<form action="/sra/risk-event" method=post class=navform style="display:inline">'
+            f'<input type=hidden name=remove value="{_e(r.id)}">'
+            "<button type=submit class=linkbtn>Remove</button></form></td></tr>"
+        )
+    return (
+        "<table><thead><tr><th scope=col>ID</th><th scope=col>Risk</th>"
+        "<th scope=col>Probability</th><th scope=col>Impact (lo/ml/hi)</th>"
+        "<th scope=col>Affected activities</th><th scope=col></th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table>"
+        + '<form action="/sra/risk-event" method=post class=navform style="margin-top:8px">'
+        + '<input type=hidden name=clear value="1">'
+        + "<button type=submit>Clear all risks</button></form>"
+    )
+
+
 def _sra_body(st: SessionState) -> str:
     """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
 
@@ -4620,6 +4746,29 @@ take precedence over the global for the activities you elicit.</p>
 <button type=submit>Add override</button>
 </form>
 {_sra_overrides_table(st, scoped)}</div>
+<div class=panel><h2>Risk register (discrete risk drivers)</h2>
+<p class=muted>Discrete, probabilistic events (the GAO/AACE/Hulett <b>risk-driver</b> method). Each risk
+has a <b>probability</b> of occurring; when it occurs it multiplies the sampled duration of the
+activities it is mapped to by a 3-point <b>impact</b> factor (entered as percentages &mdash; e.g.
+100/120/150 means no change to +50%). One risk mapped to several activities correlates them
+automatically (the shared-driver correlation, no coefficient needed). Risks combine with the
+duration uncertainty above; the resulting "Risk drivers" tornado ranks each by the schedule slip it
+causes.</p>
+<form action="/sra/risk-event" method=post class=viz-controls>
+<label>Risk name <input type=text name=name maxlength=80 placeholder="e.g. Permit delay"></label>
+<label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="40"></label>
+<label>Impact low % <input type=number name=imp_low min=0 step=any placeholder="100"></label>
+<label>Impact ml % <input type=number name=imp_ml min=0 step=any placeholder="120"></label>
+<label>Impact high % <input type=number name=imp_high min=0 step=any placeholder="150"></label>
+<label>Affected UIDs <input type=text name=affected placeholder="101, 102 205"></label>
+<button type=submit>Add risk</button>
+</form>
+{_sra_risk_table(st, scoped)}
+<h3>Risk drivers (tornado)</h3>
+<p class=muted>The mean project-finish slip each risk contributes &mdash; the difference between the
+mean finish over the iterations the risk fired and the iterations it did not (working days), with
+its observed occurrence rate. Empty until a risk is registered.</p>
+<div id=sraRisk class=chart-host></div></div>
 <div class=panel><h2>Finish-date confidence (S-curve)</h2>
 <p class=muted>Cumulative probability of finishing on or before each date, with P10/P50/P80/P90
 markers and the deterministic CPM finish annotated with the percentile it sits at.</p>
@@ -4678,6 +4827,17 @@ def _sra_data(st: SessionState, sch: Schedule, result: SRAResult) -> dict[str, o
         "histogram": [[_iso(lo), _iso(hi), count] for lo, hi, count in result.histogram],
         "sensitivity": sensitivity,
         "constraints_flagged": len(result.constraints_flagged),
+        "risk_drivers": [
+            {
+                "id": d.id,
+                "name": d.name,
+                "probability": round(d.probability, 4),
+                "hits": d.hits,
+                "iterations": result.iterations,
+                "delta_days": d.mean_delta_days,
+            }
+            for d in result.risk_drivers
+        ],
     }
 
 
