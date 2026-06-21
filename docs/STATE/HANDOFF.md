@@ -1,6 +1,27 @@
-# Handoff — 2026-06-21 (PRs #81–#202 MERGED; **`main` green**; OPEN PR = EVM Acumen goldens, ADR-0108)
+# Handoff — 2026-06-21 (PRs #81–#203 MERGED; **`main` green**; OPEN PR = Acumen audit: High Float + stale-golden, ADR-0109)
 
-> ## STATUS (current) — EVM cost-loaded Acumen goldens + progress-scheduler gap (ADR-0108)
+> ## STATUS (current) — Acumen full-audit campaign: DCMA-06 High Float fix + stale Project5 golden (ADR-0109)
+> Operator delivered the **authoritative reference bundle** (source `.mpp` for Project2/3/4/5_TAMPERED,
+> Duration-Bomb, EVM1/2, the `TP1..TP4` suite + Acumen DCMA/Metric-History/Detailed exports for
+> P2-P5, Large-Project2, Workbook1/Large-Test-File). Mandate: validate **every** metric against Acumen
+> (and SSI) on `.mpp`, fix **all** fidelity gaps, then do progress-scheduler (#1) + cost ES (#2).
+> - **Done (OPEN PR this branch):** audited Project2/Project5 against `P2-P5 - Metric History`. On the
+>   **authoritative** files the engine matches Acumen on Missing Logic (4/5), Hard Constraints (0/1),
+>   Critical (41/4), Zero-Float (41/4), BEI (0.74/0.59), Negative Float, High Duration, Invalid Dates.
+>   **One gap fixed:** DCMA-06 High Float now scores on stored Total Slack → exact **44/44** (closes
+>   ADR-0012 residual; Project2 parity assertion tightened to exact). **ADR-0109.**
+> - **KEY FINDING — the committed `Project5.mspdi.xml` golden is STALE** (4 stored-critical in the
+>   current `Project5_TAMPERED.mpp` vs 37 in the golden). The engine is correct; the golden is old.
+>   **Next: refresh the P2/P5 goldens to the authoritative `.mpp` and re-pin parity against the current
+>   Acumen exports** (large re-baseline — ripples through trend/manipulation/web tests). This also
+>   unblocks the progress-scheduler (#1, ADR-0108): prior attempts couldn't be validated because the
+>   stale P5 golden matched no Acumen reference; it now can.
+> - **Audit still open:** Large-Project2 + Workbook1 Acumen exports; `TP*` suite (schedules only, no
+>   Acumen export yet — ask operator if needed); SSI parity; cost/value-based Earned Schedule (SPI(t)).
+> - Authoritative files held read-only under git-ignored `00_REFERENCE_INTAKE/audit/`. Gate green:
+>   full suite passes; **parity 10/10**.
+
+> ## STATUS (prev) — EVM cost-loaded Acumen goldens + progress-scheduler gap (ADR-0108)
 > Operator supplied two **cost-loaded** test schedules (EVM1/EVM2 — test files, NOT CUI) + the Acumen
 > Fuse export. Validated the tool against Acumen's Metric History: the **majority of metrics match**
 > (Critical 10/8, hard/neg/high float 0, all-FS, BEI 0/0.25, DCMA-01 logic 2/1, EVM1 finish 09-12),

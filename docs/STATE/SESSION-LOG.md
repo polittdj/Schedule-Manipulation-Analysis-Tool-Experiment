@@ -2727,3 +2727,26 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   MSP per-task Start/Finish (Forensic report) across ahead/on-track/behind, ideally with the
   Project2/5 Acumen exports to re-validate parity; then cost/value-based Earned Schedule.
 - Gate green: full suite 1436 passed / 3 env-skips; **parity 10/10**. **ADR-0108.**
+
+---
+
+## 2026-06-21 — Acumen full-audit campaign, part 1: High Float fix + stale Project5 golden (ADR-0109)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Operator inputs:** authoritative reference bundle — source `.mpp` (Project2/3/4/5_TAMPERED,
+  Project2 Duration-Bomb, EVM1/2, `TP1_Library`/`TP2_Bridge_4x10`/`TP3_Outage_DCMA_Seeded`/
+  `TP4_DataCenter_v1..v5`) + Acumen exports (P2-P5, Large-Project2, Workbook1/Large-Test-File).
+  Test files, NOT CUI. Mandate: validate every metric vs Acumen+SSI on `.mpp`, fix all gaps, then #1/#2.
+- **Audit (P2/P5):** converted the source `.mpp` fresh (MPXJ) and diffed against `P2-P5 - Metric
+  History`. On the authoritative files the engine matches Acumen across the audited ribbon
+  (Missing Logic 4/5, Hard Constraints 0/1, Critical 41/4, Zero-Float 41/4, BEI 0.74/0.59, Negative
+  Float, High Duration, Invalid Dates). **One gap: DCMA-06 High Float** (recomputed float, residual
+  ADR-0012) → switched to `effective_total_float` (stored Total Slack) → exact **44/44**. Project2
+  parity assertion tightened to exact; Project5 stays a +1 residual pending the golden refresh.
+- **KEY FINDING:** committed `Project5.mspdi.xml` is **stale** — current `Project5_TAMPERED.mpp` has
+  4 stored-critical (= Acumen), golden has 37. Engine correct; golden old. **Next:** refresh P2/P5
+  goldens to authoritative `.mpp` + re-pin parity against current Acumen (large re-baseline); this
+  also unblocks the progress-scheduler (#1) which prior attempts couldn't validate against the stale P5.
+- **Still open:** Large-Project2 + Workbook1 audits, `TP*` suite (no Acumen export yet), SSI parity,
+  cost-based Earned Schedule.
+- Gate green: full suite passes; **parity 10/10**. **ADR-0109.**
