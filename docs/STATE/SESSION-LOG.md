@@ -2549,3 +2549,27 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   schedule variance / SVt (D4) · #193 combined BEI/CEI/HMI panel (D4) · this PR = SV/SVt trend (D4).
 - **Next:** D5 TFCI forecast (4th method in `engine/forecast.py`); D7 float-erosion-by-WBS; D8
   stoplight rendering; D9 handbook nav reorg. **No new ADR.**
+
+---
+
+## 2026-06-21 — Float erosion by WBS (Figs 7-34/7-35) — plan D7; D5/TFCI deferred
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **D5/TFCI deferred:** the TFCI index is computable, but the forecast-finish reconstruction
+  (`Baseline Finish + Predicted CPTF`, `Predicted CPTF = Planned Duration × (TFCI − 1)`) has an
+  ambiguous sign convention for the resulting date that cannot be validated against an Acumen/handbook
+  reference export in the air-gapped dev environment. Shipping an unvalidated forecast date would
+  violate Law 2 (a fast wrong number is worthless in testimony), so it waits for a reference export to
+  confirm the sign (like the BSC residual). Pivoted to D7.
+- **Float erosion by WBS (OPEN PR, plan D7):** `engine/metrics/float_erosion.py`
+  `compute_float_erosion(schedule, cpm)` — parity-isolated `WBSFloat` / `FloatErosion` dataclasses.
+  Per-top-level-WBS minimum & average total float (working days, progress-aware via
+  `effective_total_float` — stored Total Slack preferred for Acumen parity), critical-activity count,
+  and a stoplight on the group's minimum float (red < 0 / amber 0–10 wd / green > 10 wd).
+- **Web:** `_float_erosion_panel(sch, cpm)` on /analysis next to the schedule-variance panel —
+  project-min / groups / eroded-count cards + a per-WBS table with the stoplight badge (mapped to the
+  shared rk-min/rk-mod/rk-extreme classes).
+- **Tests:** `tests/engine/test_float_erosion.py` (7) + `tests/web/test_float_erosion_panel.py` (2).
+  Full gate green; suite 1403 passed / 3 env-skips.
+- **Next:** D8 stoplight rendering; D9 handbook nav reorg; float-erosion cross-version trend (D7
+  follow-on). **No new ADR.**

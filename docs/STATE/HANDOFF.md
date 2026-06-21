@@ -1,6 +1,24 @@
-# Handoff — 2026-06-21 (PRs #81–#193 MERGED; **`main` green**; OPEN PR = SV/SVt trend, plan D4 COMPLETE)
+# Handoff — 2026-06-21 (PRs #81–#194 MERGED; **`main` green**; OPEN PR = float-erosion-by-WBS, plan D7)
 
-> ## STATUS (current) — Cross-version SV/SVt trend (Figs 7-12/7-13) — **plan D4 COMPLETE**
+> ## STATUS (current) — Float erosion by WBS (Figs 7-34/7-35) — plan D7; D5/TFCI deferred
+> After D4 completed (#194 merged), D5 (TFCI forecast) was **deferred**: its forecast-finish
+> reconstruction has an ambiguous sign convention that can't be validated against a reference export
+> in the air-gapped env — shipping an unvalidated forecast date would violate Law 2. Picked up **D7
+> instead. OPEN PR (this branch):** `engine/metrics/float_erosion.py`
+> `compute_float_erosion(schedule, cpm)` — parity-isolated `WBSFloat` / `FloatErosion` dataclasses
+> (out of the Fuse ribbon and the metric-dictionary test, like `health_extra`/`logic_integrity`/
+> `margin`/`evm.ScheduleVariance`). Per-top-level-WBS minimum & average **total float** (working
+> days, progress-aware via `effective_total_float` — stored Total Slack preferred for Acumen parity),
+> critical-activity count, and a stoplight on the group's minimum float (red < 0 / amber 0–10 wd /
+> green > 10 wd). Surfaced as a "Float erosion by WBS" panel on /analysis (project-min/groups/eroded
+> cards + per-WBS table). Tests: `tests/engine/test_float_erosion.py` (7) + `tests/web/
+> test_float_erosion_panel.py` (2). Gate green: ruff/format/mypy(strict)/bandit/node clean; full
+> suite **1403 passed / 3 env-skips**; coverage 70/85 satisfied. **No new ADR.**
+> - **Next:** D8 stoplight rendering of existing metrics; D9 handbook nav reorg; float-erosion
+>   cross-version trend (D7 follow-on). D5/TFCI awaits a reference export to validate the sign. SRA
+>   cost/JCL still blocked on cost inputs.
+
+> ## STATUS (prev) — Cross-version SV/SVt trend (Figs 7-12/7-13) — **plan D4 COMPLETE**
 > The last D4 item, after the SVt metric (#192) and combined BEI/CEI/HMI panel (#193, both merged).
 > **OPEN PR (this branch):** a zero-baselined SVt trend across versions. `trend.js` gains
 > `varianceTrendChart(title, labels, values, desc, unit)` — a signed chart with a dashed zero line,
