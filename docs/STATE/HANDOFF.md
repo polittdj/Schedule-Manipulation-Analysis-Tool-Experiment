@@ -1,6 +1,24 @@
-# Handoff — 2026-06-21 (PRs #81–#197 MERGED; **`main` green**; OPEN PR = Reliability-Dimension tags, plan D9 DONE)
+# Handoff — 2026-06-21 (PRs #81–#198 MERGED; **`main` green**; OPEN PR = constraint-health checks, plan D10)
 
-> ## STATUS (current) — Reliability-Dimension tags (plan D9 complete) — handbook framework overlay
+> ## STATUS (current) — Constraint-health checks (unsatisfied constraint + deadline neg-float) — plan D10
+> The first slice of D10, after D9 completed (#198 merged). **OPEN PR (this branch):**
+> `engine/metrics/constraint_health.py` `compute_constraint_health(schedule, cpm)` — parity-isolated
+> `ConstraintCheck` / `ConstraintHealth` dataclasses (out of the Fuse ribbon and the metric-dictionary
+> test, like `health_extra`/`logic_integrity`/`float_erosion`/`evm.ScheduleVariance`). Two checks, both
+> comparing the trusted CPM early dates to the activity's own imposed date (exactly verifiable):
+> **Unsatisfied date constraints** (hard SNLT/MSO vs early start, FNLT/MFO vs early finish — MSO/MFO are
+> solver-pinned so a conflicting must-date surfaces as negative float, DCMA-07) and **Deadlines breached**
+> (early finish > a set deadline = artificial negative float). Surfaced as a "Constraint health"
+> stoplight panel on /analysis (next to Logic integrity). Tests:
+> `tests/engine/test_constraint_health.py` (8) + `tests/web/test_constraint_health_panel.py` (2). Gate
+> green: ruff/format/mypy(strict)/bandit/node clean; full suite **1417 passed / 3 env-skips**; coverage
+> 70/85 satisfied. **No new ADR.**
+> - **D10 remaining:** Inconsistent Vertical Integration (hierarchy rollup); Estimated-Duration importer
+>   field (model/importer change). Other follow-ons: stoplight on the other panels, float-erosion
+>   cross-version trend. **Deferred/blocked:** D5/TFCI (reference export to validate the forecast-date
+>   sign), SRA cost/JCL (cost inputs). With this, the handbook D-list is D1-D4, D6-D9 done + D10 partial.
+
+> ## STATUS (prev) — Reliability-Dimension tags (plan D9 complete) — handbook framework overlay
 > The nav regroup merged (#197); this finishes D9. **OPEN PR (this branch):**
 > `help.reliability_dimension(metric_id)` tags every documented metric with the NASA handbook
 > reliability dimension it most informs — **Comprehensiveness / Construction / Realism /

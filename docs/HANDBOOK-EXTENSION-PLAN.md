@@ -179,6 +179,15 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    **Dimension** column on `/help` and in the generated `METRIC-DICTIONARY.md`. An organizational
    lens (presentation only — engages no parity number).
 10. **Unsatisfied-constraint / deadline neg-float**, then **Inconsistent Vertical Integration**, then **Estimated-Duration** importer field.
+    ◑ **PARTIAL — constraint/deadline checks done.** `engine/metrics/constraint_health.py`
+    `compute_constraint_health(schedule, cpm)` (parity-isolated `ConstraintCheck` / `ConstraintHealth`
+    dataclasses): **Unsatisfied date constraints** (a hard SNLT/FNLT/MSO/MFO whose own date the CPM
+    early date runs past — SNLT/MSO on early start, FNLT/MFO on early finish; MSO/MFO are solver-pinned
+    so they surface as negative float, DCMA-07) and **Deadlines breached** (early finish > a set
+    deadline = artificial negative float). Both compare the trusted CPM early dates to the activity's
+    own date, so a violation is exactly verifiable. Surfaced as a "Constraint health" stoplight panel
+    on /analysis. **Remaining:** Inconsistent Vertical Integration (hierarchy); Estimated-Duration
+    importer field (model/importer change).
 
 **Deferred epics (need a decision / new inputs):** SRA/Monte-Carlo (A3) — needs a simulation
 engine + uncertainty inputs; Schedule Margin (A4) — needs a margin-task identity.
