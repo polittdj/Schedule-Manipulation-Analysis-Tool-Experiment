@@ -107,6 +107,7 @@ from schedule_forensics.engine.metrics.float_erosion import compute_float_erosio
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
 from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
+from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
 from schedule_forensics.engine.metrics.year_phases import (
     YEAR_BASES,
     YearPhaseRow,
@@ -3250,6 +3251,38 @@ def _constraint_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+def _vertical_integration_panel(sch: Schedule) -> str:
+    """Vertical-integration check (handbook Fig. 6-9): summaries whose stored span does not envelope
+    the work beneath them — a stoplight finding card, green when clear else the offending summaries."""
+    vi = compute_vertical_integration(sch)
+    ok = vi.count == 0
+    badge_cls = "rk-min" if ok else "rk-high"
+    badge = "✓ clear" if ok else str(vi.count)
+    offs = ""
+    if vi.offenders:
+        shown = ", ".join(f"UID {u}" for u in vi.offenders[:8])
+        more = f" +{vi.count - 8} more" if vi.count > 8 else ""
+        offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+    pop = f"<span class=muted> of {vi.population} summary group(s)</span>" if vi.population else ""
+    note = (
+        ""
+        if vi.population
+        else "<p class=muted>No summaries with a WBS code, stored dates, and dated descendants "
+        "to evaluate.</p>"
+    )
+    return (
+        "<div class=panel><h2>Vertical integration</h2>"
+        "<p class=muted>Whether each summary (rollup) bar envelopes the detail activities beneath it "
+        "(by WBS nesting), using the schedule's stored dates &mdash; the handbook's vertical-"
+        "traceability check. A parent that starts after its earliest child or finishes before its "
+        "latest is an inconsistent rollup.</p>"
+        f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+        f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
+        f"<b>Inconsistent vertical integration</b>{pop}</div>"
+        f"<p>{_e(vi.description)}</p>{offs}</div>{note}</div>"
+    )
+
+
 def _logic_checks_panel(sch: Schedule) -> str:
     """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
     green when clear, else the count + the first offending links, with a plain-English reason."""
@@ -3678,6 +3711,7 @@ metadata)</span></h3>
 {_health_checks_panel(sch, analysis.cpm)}
 {_logic_checks_panel(sch)}
 {_constraint_checks_panel(sch, analysis.cpm)}
+{_vertical_integration_panel(sch)}
 {_schedule_variance_panel(sch)}
 {_float_erosion_panel(sch, analysis.cpm)}
 {_margin_panel(sch, analysis.cpm)}
