@@ -1,6 +1,21 @@
-# Handoff — 2026-06-20 (PRs #81–#191 MERGED; **`main` green**; OPEN PR = schedule-variance SVt, plan D4)
+# Handoff — 2026-06-20 (PRs #81–#192 MERGED; **`main` green**; OPEN PR = combined BEI/CEI/HMI panel, plan D4)
 
-> ## STATUS (current) — Schedule variance in time (SVt = ES − AT) — handbook plan D4 (partial)
+> ## STATUS (current) — Combined BEI/CEI/HMI execution panel (handbook Fig 7-21) — plan D4 follow-on
+> The next D4 follow-on after the SVt metric (#192, merged). **OPEN PR (this branch):** a single
+> overlaid trend chart of the three headline execution indices — **BEI** (cumulative baseline
+> execution), **CEI** (this-period forecast execution), **HMI** (this-period baseline execution) —
+> the handbook's combined "are we executing the plan?" panel (Fig 7-21). Pure presentation in
+> `static/trend.js` (`execSeries` → `multiLineChart`, placed before the existing per-family index
+> charts); the `/api/trend` payload already carried `bei` / `cei_tasks` / `hmi_tasks` per version, so
+> no engine/route change. Test: `test_trend_js_has_combined_execution_index_chart` in
+> `tests/web/test_trend_views.py`. Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite
+> **1393 passed / 3 env-skips**; coverage 70/85 satisfied. **No new ADR.**
+> - **D4 remaining:** the cross-version **SV/SVt trend** with favorable/unfavorable bands (Figs
+>   7-12/7-13). Then D5 TFCI forecast; D7 float-erosion-by-WBS; D8 stoplight rendering; D9 nav reorg.
+> - **NOTE:** the GitHub MCP server disconnected mid-session — this PR may need to be opened once it
+>   reconnects (branch is pushed). SRA cost/JCL still blocked on cost inputs.
+
+> ## STATUS (prev) — Schedule variance in time (SVt = ES − AT) — handbook plan D4 (partial)
 > Next deterministic handbook tranche (the SVt half of plan D4). **OPEN PR (this branch):**
 > `evm.compute_schedule_variance(schedule, tasks)` — parity-isolated `ScheduleVariance` /
 > `ActivityVariance` dataclasses (NOT `MetricResult`; out of the Fuse ribbon and metric-dictionary

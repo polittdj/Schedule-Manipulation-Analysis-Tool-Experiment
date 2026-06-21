@@ -135,8 +135,11 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    (parity-isolated `ScheduleVariance` dataclasses) = project **SVt = ES − AT** in working days
    (reuses the canonical `earned_schedule`, so it can't diverge from SPI(t)) + per-activity finish
    variance (actual − baseline). Surfaced as a "Schedule variance (time)" panel on /analysis
-   (favorable/unfavorable, ES/AT components, largest finish variances). **Remaining (follow-ons):**
-   the **combined BEI/CEI/HMI** panel (Fig 7-21) and the **cross-version SV/SVt trend** with
+   (favorable/unfavorable, ES/AT components, largest finish variances). The **combined BEI/CEI/HMI**
+   panel (Fig 7-21) also shipped: a single overlaid trend chart of the three headline execution
+   indices (BEI cumulative, CEI this-period forecast, HMI this-period baseline) in `trend.js`, on
+   top of the existing per-family index charts (the payload already carried `bei`/`cei_tasks`/
+   `hmi_tasks` per version). **Remaining (follow-on):** the **cross-version SV/SVt trend** with
    favorable/unfavorable bands (Figs 7-12/7-13) on the trend surface.
 5. **TFCI / Predicted CPTF / TFCI forecast-finish** — 4th method in `engine/forecast.py`.
 6. **Scatter + histogram** generic chart components (reused across views).
