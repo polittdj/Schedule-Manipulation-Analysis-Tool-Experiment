@@ -102,6 +102,7 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.metrics.evm import compute_schedule_variance
+from schedule_forensics.engine.metrics.float_erosion import compute_float_erosion
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
 from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
@@ -3143,6 +3144,51 @@ def _schedule_variance_panel(sch: Schedule) -> str:
     )
 
 
+#: float-erosion stoplight → the shared 5-level risk badge classes (green / amber / red)
+_EROSION_BADGE = {"green": "rk-min", "yellow": "rk-mod", "red": "rk-extreme"}
+
+
+def _float_erosion_panel(sch: Schedule, cpm: CPMResult) -> str:
+    """Float erosion by WBS (handbook Figs 7-34/7-35): per-top-level-WBS minimum / average total
+    float, critical count, and a stoplight on the group's minimum float — where buffer is thinning."""
+    fe = compute_float_erosion(sch, cpm)
+    if not fe.groups:
+        return (
+            "<div class=panel><h2>Float erosion by WBS</h2>"
+            "<p class=muted>No schedulable activities to group.</p></div>"
+        )
+    thr = f"{fe.low_float_threshold_days:g}"
+    rows = []
+    for g in fe.groups:
+        badge = _EROSION_BADGE.get(g.status, "rk-min")
+        rows.append(
+            f"<tr><td>{_e(g.wbs)}</td><td>{g.count}</td>"
+            f'<td class="rk-score {badge}">{g.min_float_days:g}</td>'
+            f"<td>{g.avg_float_days:g}</td><td>{g.critical_count}</td></tr>"
+        )
+    proj_min = "n/a" if fe.min_float_days is None else f"{fe.min_float_days:g} wd"
+    cards = _stat_cards(
+        [
+            ("Lowest total float (any WBS)", proj_min),
+            ("WBS groups", str(len(fe.groups))),
+            ("Eroded groups (min float < 0)", str(sum(1 for g in fe.groups if g.status == "red"))),
+        ]
+    )
+    return (
+        "<div class=panel><h2>Float erosion by WBS</h2>"
+        "<p class=muted>Total float grouped by top-level WBS (NASA Schedule Management Handbook) "
+        "&mdash; where buffer is thinning before the project-level margin is hit. The stoplight is on "
+        f"each group's <b>minimum</b> total float: <b>red</b> below 0 (eroded / behind a constraint), "
+        f"<b>amber</b> 0&ndash;{thr} working days (thin buffer), <b>green</b> above {thr}. Float is "
+        "read progress-aware (the source tool's stored Total Slack when present).</p>"
+        f"{cards}"
+        "<table><tr><th scope=col>WBS</th><th scope=col>Activities</th>"
+        "<th scope=col>Min float (wd)</th><th scope=col>Avg float (wd)</th>"
+        "<th scope=col>Critical</th></tr>"
+        f"{''.join(rows)}</table></div>"
+    )
+
+
 def _logic_checks_panel(sch: Schedule) -> str:
     """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
     green when clear, else the count + the first offending links, with a plain-English reason."""
@@ -3571,6 +3617,7 @@ metadata)</span></h3>
 {_health_checks_panel(sch, analysis.cpm)}
 {_logic_checks_panel(sch)}
 {_schedule_variance_panel(sch)}
+{_float_erosion_panel(sch, analysis.cpm)}
 {_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.

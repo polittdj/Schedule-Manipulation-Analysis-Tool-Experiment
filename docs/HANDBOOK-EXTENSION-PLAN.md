@@ -144,8 +144,23 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    shaded favorable (≥0, ahead) / unfavorable (<0, behind) bands; `_trend_data` now emits
    `svt_days` per version. **D4 complete.**
 5. **TFCI / Predicted CPTF / TFCI forecast-finish** — 4th method in `engine/forecast.py`.
+   ⏸ **DEFERRED (needs reference validation).** The index `TFCI = (Actual Duration + CP Total Float)
+   / Actual Duration` is computable, but the forecast-finish reconstruction (`Baseline Finish +
+   Predicted CPTF`, `Predicted CPTF = Planned Duration × (TFCI − 1)`) has an ambiguous **sign
+   convention** for the resulting date that can't be validated against an Acumen/handbook export in
+   the air-gapped dev environment. Shipping an unvalidated forecast *date* would violate Law 2 (a
+   fast wrong number is worthless in testimony). Defer until the formula's sign is confirmed against
+   an operator reference export (like the BSC residual was) — then ship as a documented reconstruction
+   alongside the existing CPM / rate / IEAC(t) methods.
 6. **Scatter + histogram** generic chart components (reused across views).
 7. **Float Erosion by WBS** table + trend.
+   ✅ **DONE (current snapshot).** `engine/metrics/float_erosion.py`
+   `compute_float_erosion(schedule, cpm)` (parity-isolated `WBSFloat` / `FloatErosion` dataclasses):
+   per-top-level-WBS minimum & average **total float** (working days, progress-aware via
+   `effective_total_float`), critical-activity count, and a stoplight on the group's minimum float
+   (red < 0 / amber 0–10 wd / green > 10 wd). Surfaced as a "Float erosion by WBS" panel on
+   /analysis. **Remaining (follow-on):** the cross-version current-vs-prior float-erosion comparison
+   (Figs 7-34/7-35 trend).
 8. **Stoplight/tripwire** rendering of existing metrics (presentation; thresholds already present).
 9. **Handbook-framed nav reorganization** + Reliability-Dimension tags (after the metrics exist).
 10. **Unsatisfied-constraint / deadline neg-float**, then **Inconsistent Vertical Integration**, then **Estimated-Duration** importer field.
