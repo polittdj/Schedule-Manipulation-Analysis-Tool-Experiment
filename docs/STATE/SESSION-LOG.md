@@ -2700,3 +2700,30 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Handbook extension plan COMPLETE:** D1-D4, D6-D10 shipped (scatter + histogram both done).
   Remaining small follow-ons: stoplight on the other panels, float-erosion cross-version trend.
   Deferred (operator inputs): D5/TFCI (reference export), SRA cost/JCL (cost). **No new ADR.**
+
+---
+
+## 2026-06-21 — EVM cost-loaded Acumen goldens + progress-scheduler gap (ADR-0108)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Operator inputs:** two cost-loaded test schedules `EVM1`/`EVM2` (two status dates of one project)
+  + the Acumen Fuse export (Metric History / Forensic / Quick-Add / Detailed). **Test files, NOT
+  CUI** (operator-confirmed) → committable. `.mpp` → MSPDI via vendored MPXJ; reference held read-only
+  under git-ignored `00_REFERENCE_INTAKE/evm/`.
+- **Parity scorecard (full diagnosis):** the tool **matches Acumen** on Critical (10/8), hard/neg/high
+  float (0), all-FS logic, BEI (0/0.25), DCMA-01 Missing Logic (2/1), EVM1 finish (09-12), and **this
+  session's new checks** (Estimated Duration, Unsatisfied Constraints, Missing WBS — all 0/0). Gaps:
+  (1) **EVM2 finish 10-01 vs Acumen 10-04 → Net Finish Impact −19 vs −22** — CPM doesn't reschedule an
+  in-progress task's remaining duration from the data date; (2) `missing_logic` quality metric counts a
+  completed task (2 vs 1) while **DCMA-01 already matches**; (3) **SPI(t) 0.27 (count-based) vs Acumen
+  0.56 (cost/value-based)**; (4) SPI(t) EVM1 N/A vs 0, BFC EVM1 (the §C/ADR-0013 residual). Acumen's
+  14 activities = 11 tasks+milestones + 3 summaries (matches the tool's 11 non-summary).
+- **Decision (ADR-0108):** committed `EVM1/EVM2` MSPDI goldens (`tests/fixtures/golden/evm/`) +
+  `tests/engine/test_evm_acumen_reference.py` (pins the matches, documents the residuals). **Did NOT
+  force the data-date CPM fix:** two localized attempts regressed the previously-correct EVM1 finish
+  AND broke Project2/5 parity (MSP reschedules remaining only when *behind* — an ahead/behind call not
+  safely reverse-engineerable from two points; Law 2). Reverted; engine at validated baseline.
+- **Next (needs a dedicated effort):** a faithful in-progress progress-scheduler validated against
+  MSP per-task Start/Finish (Forensic report) across ahead/on-track/behind, ideally with the
+  Project2/5 Acumen exports to re-validate parity; then cost/value-based Earned Schedule.
+- Gate green: full suite 1436 passed / 3 env-skips; **parity 10/10**. **ADR-0108.**
