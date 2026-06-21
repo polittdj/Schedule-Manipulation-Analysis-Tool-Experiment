@@ -153,6 +153,10 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    an operator reference export (like the BSC residual was) — then ship as a documented reconstruction
    alongside the existing CPM / rate / IEAC(t) methods.
 6. **Scatter + histogram** generic chart components (reused across views).
+   ✅ **DONE.** Scatter (`static/scatter.js`, float×duration) shipped earlier; the **total-float
+   distribution histogram** (`static/histogram.js`, DCMA-aligned float bands) now ships too —
+   `_float_histogram_panel(key)` on /analysis, binning the same `/api/analysis` activity rows
+   client-side (no engine numbers; air-gap kept; sr-only data table for a11y).
 7. **Float Erosion by WBS** table + trend.
    ✅ **DONE (current snapshot).** `engine/metrics/float_erosion.py`
    `compute_float_erosion(schedule, cpm)` (parity-isolated `WBSFloat` / `FloatErosion` dataclasses):
@@ -195,10 +199,10 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
     (model) read from the MSPDI `<Estimated>` flag (importer), surfaced as an "Estimated (placeholder)
     durations" structural health check in `health_extra`. **D10 complete.**
 
-**Handbook D-list complete:** D1–D4, D6–D10 shipped (D6 scatter; histogram component is the only D6
-sub-item not yet built). D5 (TFCI) deferred pending a reference export to validate the forecast-date
-sign. Smaller follow-ons remain: stoplight on the other panels, float-erosion cross-version trend,
-histogram chart component.
+**Handbook D-list complete:** D1–D4, D6–D10 shipped (including the D6 scatter **and** total-float
+histogram). D5 (TFCI) deferred pending a reference export to validate the forecast-date sign; SRA
+cost/JCL pending cost inputs. Small follow-ons remain: stoplight rendering on the other panels and
+the float-erosion cross-version trend.
 
 **Deferred epics (need a decision / new inputs):** SRA/Monte-Carlo (A3) — needs a simulation
 engine + uncertainty inputs; Schedule Margin (A4) — needs a margin-task identity.

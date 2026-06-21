@@ -3382,6 +3382,20 @@ def _scatter_panel(key: str) -> str:
     )
 
 
+def _float_histogram_panel(key: str) -> str:
+    """An activity total-float distribution histogram on the analysis page (handbook §6.3.2.5.2.2).
+    Pure presentation over the activity rows the grid already serves (binned client-side)."""
+    return (
+        "<div class=panel><h2>Total-float distribution</h2>"
+        "<p class=muted>Activities binned by <b>total float</b> (working days), in DCMA-aligned "
+        "bands. Mass at <b>0 / &lt; 0</b> is the critical-and-behind core; a spike in the "
+        "<b>&gt; 44 d</b> band is float padding or missing successor logic (DCMA-06). The full "
+        "activity grid above is the accessible data table.</p>"
+        f'<div class=chart-host id=floatHist data-name="{_e(key)}"></div></div>'
+        '<script src="/static/histogram.js"></script>'
+    )
+
+
 def _calendar_panel(sch: Schedule) -> str:
     """The working calendar the analysis runs on — imported from the file (ADR-0028).
 
@@ -3705,6 +3719,7 @@ metadata)</span></h3>
 <script src="/static/app.js"></script>"""
     return f"""{viz}
 {_scatter_panel(key)}
+{_float_histogram_panel(key)}
 {_calendar_panel(sch)}
 {_float_bands_panel(analysis)}
 {_completion_panel(analysis)}
