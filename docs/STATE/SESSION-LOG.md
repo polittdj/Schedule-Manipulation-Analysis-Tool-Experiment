@@ -2590,3 +2590,22 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Next:** D9 handbook-framed nav reorganization (last big plan item); follow-ons — extend the board
   to the other panels, float-erosion cross-version trend, D5/TFCI (needs reference validation). **No
   new ADR.**
+
+---
+
+## 2026-06-21 — Handbook-framed nav regrouping (plan D9, partial)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Nav regrouping (OPEN PR, plan D9 partial):** the top nav is regrouped into the handbook's
+  sub-functions (plan section C) as labeled clusters — Overview / Assessment / Control / Risks /
+  Reporting / Setup — each a `<span class=nav-group>` with a `<span class=nav-grp-label>`. Every
+  existing route, href, and link label is preserved byte-for-byte (anchors untouched), so no
+  bookmarks break and all nav-dependent tests stay green. CSS `.nav-group` / `.nav-grp-label` added
+  to `base.css`.
+- **Test:** `test_nav_is_grouped_by_handbook_function` (`tests/web/test_app.py`). Full gate green;
+  suite 1405 passed / 3 env-skips.
+- **Session arc (all merged to main):** #190 SRA risk-register · #191 logic-integrity (D3) · #192
+  SVt metric (D4) · #193 combined BEI/CEI/HMI (D4) · #194 SV/SVt trend (D4 ✅) · #195
+  float-erosion-by-WBS (D7) · #196 DCMA-14 stoplight (D8) · this PR = nav regroup (D9 partial).
+- **D9 remaining:** per-metric Reliability-Dimension tags in `help.py`. Deferred: D5/TFCI (reference
+  validation), float-erosion trend, stoplight on other panels, D10, SRA cost/JCL. **No new ADR.**

@@ -1,6 +1,21 @@
-# Handoff — 2026-06-21 (PRs #81–#195 MERGED; **`main` green**; OPEN PR = DCMA-14 stoplight, plan D8)
+# Handoff — 2026-06-21 (PRs #81–#196 MERGED; **`main` green**; OPEN PR = handbook nav regroup, plan D9)
 
-> ## STATUS (current) — DCMA-14 stoplight / tripwire board (Figs 7-10..7-38) — plan D8
+> ## STATUS (current) — Handbook-framed nav regrouping (plan D9, partial) — Reliability tags remain
+> The nav slice of D9 (the last big plan item). **OPEN PR (this branch):** the top nav is regrouped
+> into the handbook's sub-functions (section C) as labeled clusters — **Overview / Assessment /
+> Control / Risks / Reporting / Setup** — each a `<span class=nav-group>` with a
+> `<span class=nav-grp-label>`. **Every existing route, href, and link label is preserved** (anchors
+> unchanged → all nav-dependent tests stay green; no broken bookmarks). CSS `.nav-group` /
+> `.nav-grp-label` in `base.css`. Test: `test_nav_is_grouped_by_handbook_function`
+> (`tests/web/test_app.py`). Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite
+> **1405 passed / 3 env-skips**; coverage 70/85 satisfied. **No new ADR.**
+> - **D9 remaining (follow-on):** per-metric **Reliability-Dimension** tags in `help.py`
+>   (Comprehensiveness / Construction / Realism / Affordability). After that the handbook-plan D-list
+>   is essentially complete except deferred items: D5/TFCI (needs reference export to validate the
+>   forecast-date sign), float-erosion cross-version trend, stoplight on the other panels, D10
+>   (unsatisfied-constraint / vertical-integration / estimated-duration importer field), SRA cost/JCL.
+
+> ## STATUS (prev) — DCMA-14 stoplight / tripwire board (Figs 7-10..7-38) — plan D8
 > After D7 merged (#195). **OPEN PR (this branch):** `_stoplight_board(audit.checks)` renders the
 > DCMA-14 checks as a strip of green-PASS / red-FAIL / grey-N/A chips (value+unit, threshold in the
 > tooltip) above the detailed audit table on /analysis — the handbook's canonical at-a-glance
