@@ -176,6 +176,20 @@ def test_manual_flag_is_read() -> None:
     assert sch.tasks_by_id[3].is_manual is False  # absent element defaults to auto-scheduled
 
 
+def test_estimated_duration_flag_is_read() -> None:
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Estimated>1</Estimated><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Estimated>0</Estimated><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].is_estimated_duration is True
+    assert sch.tasks_by_id[2].is_estimated_duration is False
+    assert sch.tasks_by_id[3].is_estimated_duration is False  # absent element defaults to firm
+
+
 def test_stored_total_slack_and_critical_are_read() -> None:
     """MS Project's stored Total Slack (tenths of a minute → working minutes) and Critical flag
     are captured so the DCMA float metrics can match Acumen on progressed files (ADR-0080).

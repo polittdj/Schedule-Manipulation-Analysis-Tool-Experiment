@@ -69,6 +69,31 @@ def test_critical_merge_hotspot() -> None:
     )
 
 
+def test_estimated_duration_flags_placeholders_excluding_milestones() -> None:
+    tasks = (
+        Task(
+            unique_id=1,
+            name="est",
+            duration_minutes=480,
+            wbs="A",
+            baseline_finish=MON,
+            is_estimated_duration=True,
+        ),
+        Task(  # an estimated milestone is excluded (a zero-duration event, not a placeholder)
+            unique_id=2,
+            name="est-ms",
+            duration_minutes=0,
+            is_milestone=True,
+            wbs="A",
+            baseline_finish=MON,
+            is_estimated_duration=True,
+        ),
+        Task(unique_id=3, name="firm", duration_minutes=480, wbs="A", baseline_finish=MON),
+    )
+    counts = _counts(Schedule(name="s", project_start=MON, tasks=tasks, relationships=()))
+    assert counts["estimated_duration"] == 1  # UID 1 only
+
+
 def test_clean_schedule_has_zero_offenders() -> None:
     tasks = (
         Task(unique_id=1, name="a", duration_minutes=480, wbs="A", baseline_finish=MON),
@@ -76,5 +101,11 @@ def test_clean_schedule_has_zero_offenders() -> None:
     )
     rels = (Relationship(predecessor_id=1, successor_id=2),)
     counts = _counts(Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels))
-    for key in ("milestone_with_duration", "zero_duration_task", "missing_wbs", "hidden_duration"):
+    for key in (
+        "milestone_with_duration",
+        "zero_duration_task",
+        "missing_wbs",
+        "hidden_duration",
+        "estimated_duration",
+    ):
         assert counts[key] == 0, key

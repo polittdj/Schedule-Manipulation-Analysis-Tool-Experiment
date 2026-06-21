@@ -1,6 +1,20 @@
-# Handoff — 2026-06-21 (PRs #81–#199 MERGED; **`main` green**; OPEN PR = vertical-integration, plan D10)
+# Handoff — 2026-06-21 (PRs #81–#200 MERGED; **`main` green**; OPEN PR = estimated-duration, plan D10 DONE)
 
-> ## STATUS (current) — Inconsistent-vertical-integration check — plan D10 (constraint checks merged #199)
+> ## STATUS (current) — Estimated-Duration importer field (plan D10 COMPLETE)
+> The final D10 item, after vertical-integration merged (#200). **OPEN PR (this branch):** a model +
+> importer + check change — `Task.is_estimated_duration` (model field) read from the MSPDI
+> `<Estimated>` element (`mspdi._parse_task`), surfaced as an "Estimated (placeholder) durations"
+> structural health check in `health_extra` (non-summary, non-milestone activities still flagged
+> Estimated = a not-yet-firmed placeholder). The schema-freeze guard (`test_schema_freeze`) was
+> updated for the new field. Tests: `test_health_extra.py` (+2) + `test_mspdi.py` (+1). Gate green:
+> ruff/format/mypy(strict)/bandit/node clean; full suite **1428 passed / 3 env-skips**; coverage
+> 70/85 satisfied. **No new ADR.**
+> - **Handbook D-list COMPLETE:** D1–D4, D6–D10 shipped. **Deferred:** D5/TFCI (needs a reference
+>   export to validate the forecast-date sign), SRA cost/JCL (needs cost inputs). **Smaller
+>   follow-ons:** histogram chart component (D6 sub-item), stoplight on the other panels, float-erosion
+>   cross-version trend. Good point to ask the operator for the next priority.
+
+> ## STATUS (prev) — Inconsistent-vertical-integration check — plan D10 (constraint checks merged #199)
 > After the constraint/deadline checks merged (#199), this is the next D10 slice. **OPEN PR (this
 > branch):** `engine/metrics/vertical_integration.py` `compute_vertical_integration(schedule)` —
 > parity-isolated `VerticalIntegration` dataclass (out of the Fuse ribbon and the metric-dictionary

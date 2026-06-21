@@ -179,7 +179,7 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    **Dimension** column on `/help` and in the generated `METRIC-DICTIONARY.md`. An organizational
    lens (presentation only — engages no parity number).
 10. **Unsatisfied-constraint / deadline neg-float**, then **Inconsistent Vertical Integration**, then **Estimated-Duration** importer field.
-    ◑ **PARTIAL — constraint/deadline checks done.** `engine/metrics/constraint_health.py`
+    ✅ **DONE.** `engine/metrics/constraint_health.py`
     `compute_constraint_health(schedule, cpm)` (parity-isolated `ConstraintCheck` / `ConstraintHealth`
     dataclasses): **Unsatisfied date constraints** (a hard SNLT/FNLT/MSO/MFO whose own date the CPM
     early date runs past — SNLT/MSO on early start, FNLT/MFO on early finish; MSO/MFO are solver-pinned
@@ -191,8 +191,14 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
     summaries whose **stored** date span does not envelope their WBS descendants (parent starts after
     its earliest child or finishes before its latest; WBS-prefix nesting; stored dates only — exactly
     verifiable against the file; not-evaluable summaries skipped). Surfaced as a "Vertical integration"
-    panel on /analysis. **Remaining:** Estimated-Duration importer field (model/importer change — MS
-    Project's "Estimated" duration flag → a placeholder-duration health check).
+    panel on /analysis. **Estimated-Duration importer field** also done: `Task.is_estimated_duration`
+    (model) read from the MSPDI `<Estimated>` flag (importer), surfaced as an "Estimated (placeholder)
+    durations" structural health check in `health_extra`. **D10 complete.**
+
+**Handbook D-list complete:** D1–D4, D6–D10 shipped (D6 scatter; histogram component is the only D6
+sub-item not yet built). D5 (TFCI) deferred pending a reference export to validate the forecast-date
+sign. Smaller follow-ons remain: stoplight on the other panels, float-erosion cross-version trend,
+histogram chart component.
 
 **Deferred epics (need a decision / new inputs):** SRA/Monte-Carlo (A3) — needs a simulation
 engine + uncertainty inputs; Schedule Margin (A4) — needs a margin-task identity.

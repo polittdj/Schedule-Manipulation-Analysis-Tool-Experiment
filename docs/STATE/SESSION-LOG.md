@@ -2668,3 +2668,20 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Handbook D-list:** D1-D4, D6-D9 done; D10 nearly done — only the Estimated-Duration importer field
   remains (model + MSPDI importer change). Deferred: D5/TFCI (reference validation), SRA cost/JCL.
   **No new ADR.**
+
+---
+
+## 2026-06-21 — Estimated-Duration importer field (plan D10 COMPLETE)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Estimated-Duration field (OPEN PR, finishes D10):** `Task.is_estimated_duration` (model) read from
+  the MSPDI `<Estimated>` element (`mspdi._parse_task`, `_bool(..., default=False)`), surfaced as an
+  "Estimated (placeholder) durations" structural health check in `health_extra` (non-summary,
+  non-milestone activities still flagged Estimated = a not-yet-firmed placeholder duration). The
+  schema-freeze guard was updated for the new field.
+- **Tests:** `tests/engine/metrics/test_health_extra.py` (+2: estimated flagged excl. milestones; in
+  the clean-schedule zero set) + `tests/importers/test_mspdi.py` (+1: `<Estimated>` 1/0/absent). Full
+  gate green; suite 1428 passed / 3 env-skips.
+- **Handbook D-list COMPLETE:** D1-D4, D6-D10 shipped. Deferred: D5/TFCI (reference export to validate
+  the forecast-date sign), SRA cost/JCL (cost inputs). Follow-ons: histogram chart component, stoplight
+  on the other panels, float-erosion cross-version trend. **No new ADR.**
