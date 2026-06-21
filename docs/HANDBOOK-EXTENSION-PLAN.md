@@ -162,6 +162,12 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    /analysis. **Remaining (follow-on):** the cross-version current-vs-prior float-erosion comparison
    (Figs 7-34/7-35 trend).
 8. **Stoplight/tripwire** rendering of existing metrics (presentation; thresholds already present).
+   ✅ **DONE.** `_stoplight_board(audit.checks)` in `app.py` renders the DCMA-14 checks as a strip of
+   green-PASS / red-FAIL / grey-N/A chips (value + unit, threshold in the tooltip) above the detailed
+   audit table on /analysis — the handbook's canonical at-a-glance presentation (Figs 7-10..7-38),
+   pure presentation over the existing `AuditCheck.status` (no new thresholds/numbers). CSS:
+   `.stoplight-board` / `.sl-chip` / `.sl-pass|fail|na` in `base.css`. **Follow-on:** extend the
+   board to the other panels' stoplights (health/logic/float-erosion already carry their own).
 9. **Handbook-framed nav reorganization** + Reliability-Dimension tags (after the metrics exist).
 10. **Unsatisfied-constraint / deadline neg-float**, then **Inconsistent Vertical Integration**, then **Estimated-Duration** importer field.
 

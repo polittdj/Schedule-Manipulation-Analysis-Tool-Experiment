@@ -2412,6 +2412,30 @@ def _status_class(status: object) -> str:
     return {"PASS": "pass", "FAIL": "fail"}.get(str(status), "na")  # nosec B105
 
 
+def _stoplight_board(checks: tuple[AuditCheck, ...]) -> str:
+    """The handbook's canonical at-a-glance metric stoplight (Figs 7-10..7-38): one chip per DCMA-14
+    check, green PASS / red FAIL / grey N/A, with the value + threshold. Pure presentation over the
+    existing ``AuditCheck.status`` — adds no new threshold or number."""
+    if not checks:
+        return ""
+    chips = []
+    for c in checks:
+        cls = _status_class(c.status)
+        thr = "" if c.threshold is None else f" (≤ {c.threshold:g}{_e(c.unit)})"
+        title = f"{c.name}: {c.value:g}{c.unit} vs threshold{thr or ' n/a'} — {c.status}"
+        chips.append(
+            f'<span class="sl-chip sl-{cls}" title="{_e(title)}">'
+            f"<span class=sl-name>{_e(c.name)}</span> "
+            f"<b>{c.value:g}{_e(c.unit)}</b></span>"
+        )
+    legend = (
+        '<div class=sl-legend><span class="sl-key sl-pass">pass</span>'
+        '<span class="sl-key sl-fail">fail</span>'
+        '<span class="sl-key sl-na">n/a</span></div>'
+    )
+    return f'<div class=stoplight-board role=list aria-label="DCMA-14 stoplight">{"".join(chips)}</div>{legend}'
+
+
 def _unschedulable_panel(sch: Schedule, exc: CPMError) -> str:
     """A readable notice when the network itself cannot be scheduled (e.g. a logic cycle).
 
@@ -3625,6 +3649,7 @@ Each row shows the <b>count</b> and the <b>percentage</b> of its population (as 
 not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
 criteria, why it matters, and what it indicates; full formulas + citations are in the
 <a href="/help">Metric Dictionary</a>.</p>
+{_stoplight_board(audit.checks)}
 <table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
 <th scope=col>What it measures (how)</th>
 <th scope=col>Suggested improvement</th></tr>{audit_rows}</table></div>

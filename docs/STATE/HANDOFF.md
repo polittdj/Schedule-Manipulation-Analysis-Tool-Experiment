@@ -1,6 +1,19 @@
-# Handoff — 2026-06-21 (PRs #81–#194 MERGED; **`main` green**; OPEN PR = float-erosion-by-WBS, plan D7)
+# Handoff — 2026-06-21 (PRs #81–#195 MERGED; **`main` green**; OPEN PR = DCMA-14 stoplight, plan D8)
 
-> ## STATUS (current) — Float erosion by WBS (Figs 7-34/7-35) — plan D7; D5/TFCI deferred
+> ## STATUS (current) — DCMA-14 stoplight / tripwire board (Figs 7-10..7-38) — plan D8
+> After D7 merged (#195). **OPEN PR (this branch):** `_stoplight_board(audit.checks)` renders the
+> DCMA-14 checks as a strip of green-PASS / red-FAIL / grey-N/A chips (value+unit, threshold in the
+> tooltip) above the detailed audit table on /analysis — the handbook's canonical at-a-glance
+> presentation. Pure presentation over the existing `AuditCheck.status` (no new thresholds/numbers).
+> CSS `.stoplight-board` / `.sl-chip` / `.sl-pass|fail|na` in `base.css`. Test:
+> `test_analysis_shows_dcma_stoplight_board` (`tests/web/test_app.py`). Gate green:
+> ruff/format/mypy(strict)/bandit/node clean; full suite **1404 passed / 3 env-skips**; coverage
+> 70/85 satisfied. **No new ADR.**
+> - **Next:** D9 handbook-framed nav reorganization (the last big plan item); follow-ons — extend the
+>   stoplight board to the other panels, float-erosion cross-version trend, and (when a reference
+>   export exists to validate the sign) D5/TFCI. SRA cost/JCL still blocked on cost inputs.
+
+> ## STATUS (prev) — Float erosion by WBS (Figs 7-34/7-35) — plan D7; D5/TFCI deferred
 > After D4 completed (#194 merged), D5 (TFCI forecast) was **deferred**: its forecast-finish
 > reconstruction has an ambiguous sign convention that can't be validated against a reference export
 > in the air-gapped env — shipping an unvalidated forecast date would violate Law 2. Picked up **D7

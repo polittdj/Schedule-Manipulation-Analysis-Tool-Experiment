@@ -48,6 +48,18 @@ def test_upload_analyze_and_api(client: TestClient) -> None:
     assert client.get("/api/analysis/missing").status_code == 404
 
 
+def test_analysis_shows_dcma_stoplight_board(client: TestClient) -> None:
+    """D8: the handbook stoplight/tripwire chips (green pass / red fail / grey n/a) render over the
+    existing DCMA-14 results — at least one fail chip on the golden (DCMA11 fails) + the legend."""
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert "stoplight-board" in page
+    assert "sl-fail" in page  # the golden has failing checks (e.g. DCMA11)
+    assert "class=sl-legend" in page or "sl-legend" in page
+    css = client.get("/static/base.css").text
+    assert ".stoplight-board" in css and ".sl-fail" in css and ".sl-pass" in css
+
+
 def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

@@ -2573,3 +2573,20 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   Full gate green; suite 1403 passed / 3 env-skips.
 - **Next:** D8 stoplight rendering; D9 handbook nav reorg; float-erosion cross-version trend (D7
   follow-on). **No new ADR.**
+
+---
+
+## 2026-06-21 — DCMA-14 stoplight / tripwire board (Figs 7-10..7-38) — plan D8
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Stoplight board (OPEN PR, plan D8):** `_stoplight_board(audit.checks)` in `app.py` renders the
+  DCMA-14 checks as a chip strip — green PASS / red FAIL / grey N/A, each chip showing the metric
+  name + value+unit with the threshold in the tooltip — above the detailed audit table on /analysis.
+  The handbook's canonical at-a-glance presentation; pure presentation over the existing
+  `AuditCheck.status` (no new thresholds or numbers invented). CSS `.stoplight-board` / `.sl-chip` /
+  `.sl-pass|fail|na` added to `base.css`.
+- **Test:** `test_analysis_shows_dcma_stoplight_board` (`tests/web/test_app.py`). Full gate green;
+  suite 1404 passed / 3 env-skips.
+- **Next:** D9 handbook-framed nav reorganization (last big plan item); follow-ons — extend the board
+  to the other panels, float-erosion cross-version trend, D5/TFCI (needs reference validation). **No
+  new ADR.**
