@@ -131,7 +131,7 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    which renders only after CPM solves — would always read zero. Surfaced as a "Logic integrity"
    stoplight panel on /analysis next to the structural health checks.
 4. **Schedule Variance (days) + project SVt** + **combined BEI/CEI/HMI** and **SV/SVt** trend panels.
-   ◑ **PARTIAL** — the **SVt metric** shipped: `evm.compute_schedule_variance(schedule, tasks)`
+   ✅ **DONE** — the **SVt metric** shipped: `evm.compute_schedule_variance(schedule, tasks)`
    (parity-isolated `ScheduleVariance` dataclasses) = project **SVt = ES − AT** in working days
    (reuses the canonical `earned_schedule`, so it can't diverge from SPI(t)) + per-activity finish
    variance (actual − baseline). Surfaced as a "Schedule variance (time)" panel on /analysis
@@ -139,8 +139,10 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    panel (Fig 7-21) also shipped: a single overlaid trend chart of the three headline execution
    indices (BEI cumulative, CEI this-period forecast, HMI this-period baseline) in `trend.js`, on
    top of the existing per-family index charts (the payload already carried `bei`/`cei_tasks`/
-   `hmi_tasks` per version). **Remaining (follow-on):** the **cross-version SV/SVt trend** with
-   favorable/unfavorable bands (Figs 7-12/7-13) on the trend surface.
+   `hmi_tasks` per version). Finally the **cross-version SV/SVt trend** (Figs 7-12/7-13) shipped: a
+   zero-baselined `varianceTrendChart` in `trend.js` plotting per-version SVt (working days) with
+   shaded favorable (≥0, ahead) / unfavorable (<0, behind) bands; `_trend_data` now emits
+   `svt_days` per version. **D4 complete.**
 5. **TFCI / Predicted CPTF / TFCI forecast-finish** — 4th method in `engine/forecast.py`.
 6. **Scatter + histogram** generic chart components (reused across views).
 7. **Float Erosion by WBS** table + trend.

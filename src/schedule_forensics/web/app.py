@@ -4369,6 +4369,8 @@ def _trend_data(
         # FEI (to-go forecast execution) + BRI (baseline realism) — single-snapshot (ADR-0100)
         fei = compute_fei(sch)
         bri_r = compute_bri(sch)
+        # SVt (Earned-Schedule time variance, working days) per version — the SV/SVt trend (D4)
+        svt = compute_schedule_variance(sch, non_summary(sch)).svt_days
         version_rows.append(
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
@@ -4377,6 +4379,8 @@ def _trend_data(
                 "completed": p.completed,
                 "in_progress": p.in_progress,
                 "critical": p.critical,
+                # SVt (Earned-Schedule time variance, working days; None when undefined) — SV/SVt trend
+                "svt_days": svt,
                 # PBIX p4 — Cross File Comparison
                 "makeup": {
                     "milestones": makeup.milestones,
