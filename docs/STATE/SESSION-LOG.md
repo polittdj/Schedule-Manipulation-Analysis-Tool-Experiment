@@ -2685,3 +2685,18 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Handbook D-list COMPLETE:** D1-D4, D6-D10 shipped. Deferred: D5/TFCI (reference export to validate
   the forecast-date sign), SRA cost/JCL (cost inputs). Follow-ons: histogram chart component, stoplight
   on the other panels, float-erosion cross-version trend. **No new ADR.**
+
+---
+
+## 2026-06-21 — Total-float distribution histogram (handbook §6.3.2.5.2.2; last D6 sub-item)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Histogram (OPEN PR):** `static/histogram.js` + `_float_histogram_panel(key)` on /analysis — bins
+  each non-summary activity's `total_float_days` into DCMA-aligned bands (< 0 / 0 / 1-5 / 6-10 /
+  11-20 / 21-44 / > 44), reusing the same `/api/analysis/<name>` activity rows the scatter uses
+  (client-side binning; no engine numbers; air-gap kept; sr-only data table via SFA11y). Mass at
+  0/<0 = critical-and-behind core; a > 44 d spike = float padding / missing successor logic (DCMA-06).
+- **Tests:** `tests/web/test_histogram.py` (2). Full gate green; suite 1430 passed / 3 env-skips.
+- **Handbook extension plan COMPLETE:** D1-D4, D6-D10 shipped (scatter + histogram both done).
+  Remaining small follow-ons: stoplight on the other panels, float-erosion cross-version trend.
+  Deferred (operator inputs): D5/TFCI (reference export), SRA cost/JCL (cost). **No new ADR.**

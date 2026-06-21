@@ -1,6 +1,21 @@
-# Handoff — 2026-06-21 (PRs #81–#200 MERGED; **`main` green**; OPEN PR = estimated-duration, plan D10 DONE)
+# Handoff — 2026-06-21 (PRs #81–#201 MERGED; **`main` green**; OPEN PR = total-float histogram, D6)
 
-> ## STATUS (current) — Estimated-Duration importer field (plan D10 COMPLETE)
+> ## STATUS (current) — Total-float distribution histogram (handbook §6.3.2.5.2.2; last D6 sub-item)
+> The handbook D-list is fully merged (D1-D4, D6-D10 via #190-#201). This adds the remaining D6
+> chart-component sub-item. **OPEN PR (this branch):** `static/histogram.js` + `_float_histogram_panel`
+> on /analysis — bins each non-summary activity's `total_float_days` into DCMA-aligned bands
+> (`< 0` / `0` / `1-5` / `6-10` / `11-20` / `21-44` / `> 44`), reusing the same `/api/analysis/<name>`
+> activity rows the scatter uses (client-side binning; no engine numbers; air-gap kept; sr-only data
+> table). Mass at 0/<0 = critical-and-behind core; a `> 44 d` spike = float padding / missing
+> successor logic (DCMA-06). Tests: `tests/web/test_histogram.py` (2). Gate green:
+> ruff/format/mypy(strict)/bandit/node clean; full suite **1430 passed / 3 env-skips**; coverage
+> 70/85 satisfied. **No new ADR.**
+> - **Remaining (small follow-ons):** stoplight rendering on the other panels; float-erosion
+>   cross-version trend. **Deferred/blocked (need operator inputs):** D5/TFCI (a reference Acumen/
+>   handbook export to validate the forecast-date sign), SRA cost-loaded JCL (cost data). The core
+>   handbook extension plan is complete — a good point to ask the operator for the next priority.
+
+> ## STATUS (prev) — Estimated-Duration importer field (plan D10 COMPLETE)
 > The final D10 item, after vertical-integration merged (#200). **OPEN PR (this branch):** a model +
 > importer + check change — `Task.is_estimated_duration` (model field) read from the MSPDI
 > `<Estimated>` element (`mspdi._parse_task`), surfaced as an "Estimated (placeholder) durations"
