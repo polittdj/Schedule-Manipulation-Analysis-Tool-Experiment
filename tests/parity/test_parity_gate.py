@@ -99,10 +99,17 @@ def test_acumen_dcma14(project: str) -> None:
     assert d["DCMA12"].status is CheckStatus.PASS
     assert d["DCMA13"].value == g["DCMA13"]  # CPLI 1.0
     assert d["DCMA14"].value == g["DCMA14"]  # BEI 0.74 / 0.59
-    # Documented residual (ADR-0012): engine 43/40 vs Acumen 44/41 (+1); check still FAILs.
-    engine_hf = 43 if project == "Project2" else 40
-    assert d["DCMA06"].count == engine_hf
-    assert g["DCMA06"] - engine_hf == 1
+    # DCMA-06 High Float now scores on stored Total Slack (ADR-0109), closing the recomputed-float
+    # residual: Project2 (golden == the authoritative Acumen export) is EXACT at 44. Project5's
+    # committed golden is a STALE capture (the current Project5_TAMPERED.mpp has 4 stored-critical,
+    # not 37 — see HANDOFF); its High Float stays a +1 residual (40 vs golden 41) until the golden
+    # is refreshed to the authoritative file.
+    if project == "Project2":
+        assert d["DCMA06"].count == g["DCMA06"]  # 44 — exact vs Acumen
+    else:
+        engine_hf = 40
+        assert d["DCMA06"].count == engine_hf
+        assert g["DCMA06"] - engine_hf == 1
     assert d["DCMA06"].status is CheckStatus.FAIL
 
 

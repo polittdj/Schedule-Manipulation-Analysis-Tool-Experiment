@@ -148,15 +148,22 @@ def compute_dcma14(
     # DCMA-06 High float — incomplete activities with total float > 44 working days
     # (the day threshold converts on this schedule's own calendar).
     forty_four = forty_four_days_min(schedule)
-    high_float = tuple(t.unique_id for t in incomplete if tf.get(t.unique_id, 0) > forty_four)
+    # High Float — incomplete activities with total float > 44 working days. Scored on the source
+    # tool's STORED Total Slack when present (matches Acumen on progressed files — verified 44/44 on
+    # the authoritative Project2/Project5 exports, closing the former recomputed-float residual,
+    # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080).
+    high_float = tuple(
+        t.unique_id
+        for t in incomplete
+        if effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
+    )
     out["DCMA06"] = _r(
         "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
     )
 
     # DCMA-07 Negative float — incomplete activities with total float < 0. Scored on the source
     # tool's STORED Total Slack when present (Acumen fidelity on progressed files), else the
-    # recomputed CPM float (ADR-0080). High Float (DCMA06) stays on recomputed float — it is a
-    # separately pinned documented residual (ADR-0012), not part of this reconciliation.
+    # recomputed CPM float (ADR-0080).
     neg = tuple(
         t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
     )
