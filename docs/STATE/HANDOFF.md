@@ -1,6 +1,27 @@
-# Handoff — 2026-06-21 (PRs #81–#201 MERGED; **`main` green**; OPEN PR = total-float histogram, D6)
+# Handoff — 2026-06-21 (PRs #81–#202 MERGED; **`main` green**; OPEN PR = EVM Acumen goldens, ADR-0108)
 
-> ## STATUS (current) — Total-float distribution histogram (handbook §6.3.2.5.2.2; last D6 sub-item)
+> ## STATUS (current) — EVM cost-loaded Acumen goldens + progress-scheduler gap (ADR-0108)
+> Operator supplied two **cost-loaded** test schedules (EVM1/EVM2 — test files, NOT CUI) + the Acumen
+> Fuse export. Validated the tool against Acumen's Metric History: the **majority of metrics match**
+> (Critical 10/8, hard/neg/high float 0, all-FS, BEI 0/0.25, DCMA-01 logic 2/1, EVM1 finish 09-12),
+> **including this session's new checks** (Estimated Duration, Unsatisfied Constraints, Missing WBS —
+> all 0/0). **OPEN PR (this branch):** committed `EVM1/EVM2` as MSPDI golden fixtures
+> (`tests/fixtures/golden/evm/`) + `tests/engine/test_evm_acumen_reference.py` (pins the matches,
+> documents the residuals). **ADR-0108.**
+> - **The one real fidelity gap (documented residual, NOT fixed):** EVM2 finish 10-01 vs Acumen
+>   10-04 → Net Finish Impact −19 vs −22, because the CPM schedules an in-progress task at
+>   `start + full duration` instead of rescheduling its **remaining** from the **data date** (MS
+>   Project progress override). **Two localized fix attempts regressed EVM1 AND broke Project2/5
+>   parity** — MSP reschedules only when *behind*, an ahead/behind call I can't reverse-engineer
+>   safely from two points (Law 2). Reverted; engine at validated baseline. A correct fix needs a
+>   faithful progress-scheduler validated against MSP per-task Start/Finish (in the Forensic report) —
+>   a dedicated effort, ideally with the Project2/5 Acumen exports to re-validate parity.
+> - **Related follow-on:** cost/value-based Earned Schedule (Acumen SPI(t) 0.56 vs tool count-based
+>   0.27); the `missing_logic` quality metric counts completed tasks (DCMA-01 already matches Acumen).
+> - Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1436 passed / 3 env-skips**;
+>   **parity 10/10** (engine untouched). Reference files read-only under git-ignored `00_REFERENCE_INTAKE/evm/`.
+
+> ## STATUS (prev) — Total-float distribution histogram (handbook §6.3.2.5.2.2; last D6 sub-item)
 > The handbook D-list is fully merged (D1-D4, D6-D10 via #190-#201). This adds the remaining D6
 > chart-component sub-item. **OPEN PR (this branch):** `static/histogram.js` + `_float_histogram_panel`
 > on /analysis — bins each non-summary activity's `total_float_days` into DCMA-aligned bands
