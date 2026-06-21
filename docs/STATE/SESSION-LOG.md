@@ -2609,3 +2609,23 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   float-erosion-by-WBS (D7) · #196 DCMA-14 stoplight (D8) · this PR = nav regroup (D9 partial).
 - **D9 remaining:** per-metric Reliability-Dimension tags in `help.py`. Deferred: D5/TFCI (reference
   validation), float-erosion trend, stoplight on other panels, D10, SRA cost/JCL. **No new ADR.**
+
+---
+
+## 2026-06-21 — Reliability-Dimension tags (plan D9 complete)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Reliability-Dimension tags (OPEN PR, finishes D9):** `help.reliability_dimension(metric_id)` tags
+  every documented metric with the NASA handbook reliability dimension it most informs —
+  Comprehensiveness / Construction / Realism / Affordability — via one auditable family-level mapping
+  (cost EVM → Affordability; resource/census/network-completeness → Comprehensiveness; logic/
+  constraint/float quality → Construction; the execution-performance remainder → Realism). Surfaced
+  as a **Dimension** column on `/help` and in the regenerated `docs/METRIC-DICTIONARY.md`.
+  Presentation-only organizational lens — engages no parity number.
+- **Tests:** `test_reliability_dimension_tags_every_documented_metric` +
+  `test_reliability_dimension_family_assignments` (`tests/web/test_help.py`). Full gate green; suite
+  1407 passed / 3 env-skips. **Plan D9 DONE.**
+- **Handbook D-list:** D1-D4, D6-D9 shipped. Remaining: D10 (unsatisfied-constraint / vertical-
+  integration / estimated-duration importer field); follow-ons (stoplight on other panels,
+  float-erosion cross-version trend). Deferred: D5/TFCI (reference validation), SRA cost/JCL. **No
+  new ADR.**

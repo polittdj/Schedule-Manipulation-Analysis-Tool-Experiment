@@ -13,7 +13,13 @@ from schedule_forensics.engine.metrics import (
     compute_schedule_quality,
 )
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.web.help import METRIC_DICTIONARY, documented_metric_ids, metric_doc
+from schedule_forensics.web.help import (
+    METRIC_DICTIONARY,
+    RELIABILITY_DIMENSIONS,
+    documented_metric_ids,
+    metric_doc,
+    reliability_dimension,
+)
 
 
 def _emitted_metric_ids(p2: Schedule, p5: Schedule) -> set[str]:
@@ -50,3 +56,21 @@ def test_each_doc_has_definition_formula_and_source() -> None:
 def test_metric_doc_lookup() -> None:
     assert metric_doc("DCMA14") is not None and metric_doc("DCMA14").name == "BEI"
     assert metric_doc("nope") is None
+
+
+def test_reliability_dimension_tags_every_documented_metric() -> None:
+    """D9: every documented metric carries one of the four handbook reliability dimensions."""
+    for mid in documented_metric_ids():
+        assert reliability_dimension(mid) in RELIABILITY_DIMENSIONS, mid
+
+
+def test_reliability_dimension_family_assignments() -> None:
+    """Representative family-level assignments (the documented organizing lens)."""
+    assert reliability_dimension("cpi") == "Affordability"  # cost EVM
+    assert reliability_dimension("spi") == "Affordability"
+    assert reliability_dimension("DCMA10") == "Comprehensiveness"  # resource loading
+    assert reliability_dimension("missing_logic") == "Comprehensiveness"
+    assert reliability_dimension("DCMA05") == "Construction"  # hard constraints
+    assert reliability_dimension("float_total_0") == "Construction"
+    assert reliability_dimension("DCMA14") == "Realism"  # BEI — execution performance
+    assert reliability_dimension("spi_t") == "Realism"

@@ -169,13 +169,15 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
    `.stoplight-board` / `.sl-chip` / `.sl-pass|fail|na` in `base.css`. **Follow-on:** extend the
    board to the other panels' stoplights (health/logic/float-erosion already carry their own).
 9. **Handbook-framed nav reorganization** + Reliability-Dimension tags (after the metrics exist).
-   ◑ **PARTIAL — nav regrouping done.** The top nav is regrouped into the handbook's sub-functions
-   (section C) as labeled clusters — **Overview / Assessment / Control / Risks / Reporting / Setup** —
-   each a `<span class=nav-group>` with a `<span class=nav-grp-label>`; **every existing route, href,
-   and link label is preserved** (no broken bookmarks, all nav-dependent tests stay green). CSS
-   `.nav-group` / `.nav-grp-label` in `base.css`. **Remaining (follow-on):** the per-metric
-   **Reliability-Dimension** tags in `help.py` (Comprehensiveness / Construction / Realism /
-   Affordability) so the UI can present the four-dimension framework.
+   ✅ **DONE.** (a) The top nav is regrouped into the handbook's sub-functions (section C) as labeled
+   clusters — **Overview / Assessment / Control / Risks / Reporting / Setup** — each a
+   `<span class=nav-group>` with a `<span class=nav-grp-label>`; every existing route, href, and link
+   label is preserved (no broken bookmarks, all nav-dependent tests stay green). CSS `.nav-group` /
+   `.nav-grp-label` in `base.css`. (b) **Reliability-Dimension tags:** `help.reliability_dimension(id)`
+   tags every documented metric with the handbook dimension it most informs (Comprehensiveness /
+   Construction / Realism / Affordability) via one auditable family-level mapping; surfaced as a
+   **Dimension** column on `/help` and in the generated `METRIC-DICTIONARY.md`. An organizational
+   lens (presentation only — engages no parity number).
 10. **Unsatisfied-constraint / deadline neg-float**, then **Inconsistent Vertical Integration**, then **Estimated-Duration** importer field.
 
 **Deferred epics (need a decision / new inputs):** SRA/Monte-Carlo (A3) — needs a simulation
