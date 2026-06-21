@@ -60,6 +60,40 @@ def test_analysis_shows_dcma_stoplight_board(client: TestClient) -> None:
     assert ".stoplight-board" in css and ".sl-fail" in css and ".sl-pass" in css
 
 
+def test_nav_is_grouped_by_handbook_function(client: TestClient) -> None:
+    """D9: the nav is regrouped into the handbook's sub-functions (plan section C) as labeled
+    clusters, with every existing route/link preserved (no broken bookmarks)."""
+    page = client.get("/").text
+    assert "nav-group" in page and "nav-grp-label" in page
+    for label in ("Overview", "Assessment", "Control", "Risks", "Reporting", "Setup"):
+        assert f">{label}</span>" in page, label
+    # every original destination is still reachable from the nav (anchors unchanged)
+    for href in (
+        "/",
+        "/mission",
+        "/ribbon",
+        "/path",
+        "/driving-path",
+        "/evolution",
+        "/trend",
+        "/cei",
+        "/curves",
+        "/scurve",
+        "/phases",
+        "/forecast",
+        "/risks",
+        "/sra",
+        "/brief",
+        "/briefing",
+        "/help",
+        "/groups",
+        "/settings",
+    ):
+        assert f'href="{href}"' in page, href
+    css = client.get("/static/base.css").text
+    assert ".nav-group" in css and ".nav-grp-label" in css
+
+
 def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

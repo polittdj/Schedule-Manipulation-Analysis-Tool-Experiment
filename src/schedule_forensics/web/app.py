@@ -198,12 +198,13 @@ _LAYOUT = Template(
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
-<nav><a href="/">Dashboard</a><a href="/mission">Mission Control</a><a href="/brief">Diagnostic Brief</a><a href="/risks">Risks &amp; Opportunities</a><a href="/path">Path Analysis</a><a href="/trend">Trend</a>
-<a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a>
-<a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/ribbon">Quality Ribbon</a><a href="/evolution">Critical-Path Evolution</a>
-<a href="/driving-path">Driving Path</a><a href="/groups">Groups &amp; Filters</a>
-<a href="/forecast">Forecast</a><a href="/sra">Risk Analysis</a><a href="/briefing">Executive Briefing</a>
-<a href="/settings">AI Settings</a><a href="/help">Metric Dictionary</a>
+<nav>
+<span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
+<span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a></span>
+<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a></span>
+<span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a></span>
+<span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
+<span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>
