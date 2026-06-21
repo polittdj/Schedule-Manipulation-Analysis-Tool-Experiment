@@ -25,6 +25,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "wbs",
         "duration_minutes",
         "duration_is_elapsed",
+        "is_estimated_duration",
         "remaining_duration_minutes",
         "baseline_duration_minutes",
         "is_milestone",

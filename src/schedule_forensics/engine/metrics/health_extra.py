@@ -121,6 +121,14 @@ def compute_health_checks(schedule: Schedule, cpm: CPMResult) -> HealthChecks:
             "relationship, where it escapes status and risk — model it as an activity instead.",
         ),
         (
+            "estimated_duration",
+            "Estimated (placeholder) durations",
+            lambda t: t.is_estimated_duration and not t.is_milestone,
+            "Activities whose duration is still flagged 'Estimated' in MS Project are placeholders "
+            "the planner has not firmed up — an under-developed estimate that should be replaced "
+            "with a basis-backed duration before the schedule is relied upon.",
+        ),
+        (
             "missing_wbs",
             "Missing WBS",
             lambda t: not (t.wbs or "").strip(),

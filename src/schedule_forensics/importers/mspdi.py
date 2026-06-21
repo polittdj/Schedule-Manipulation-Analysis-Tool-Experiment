@@ -464,6 +464,7 @@ def _parse_task(
             wbs=_text(task_el, "WBS"),
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
             duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
+            is_estimated_duration=_bool(task_el, "Estimated", default=False),
             remaining_duration_minutes=_optional_minutes(task_el, "RemainingDuration"),
             baseline_duration_minutes=bl_duration,
             is_milestone=_bool(task_el, "Milestone", default=False),

@@ -54,6 +54,9 @@ class Task(StrictFrozenModel):
     duration_is_elapsed: bool = False
     remaining_duration_minutes: int | None = Field(default=None, ge=0)
     baseline_duration_minutes: int | None = Field(default=None, ge=0)
+    #: MS Project "Estimated" duration flag (MSPDI ``<Estimated>``): the duration is a placeholder
+    #: the planner has not yet firmed up — a not-fully-developed estimate, flagged by the handbook.
+    is_estimated_duration: bool = False
 
     # --- classification ---
     is_milestone: bool = False
