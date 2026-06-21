@@ -1,6 +1,23 @@
-# Handoff — 2026-06-21 (PRs #81–#196 MERGED; **`main` green**; OPEN PR = handbook nav regroup, plan D9)
+# Handoff — 2026-06-21 (PRs #81–#197 MERGED; **`main` green**; OPEN PR = Reliability-Dimension tags, plan D9 DONE)
 
-> ## STATUS (current) — Handbook-framed nav regrouping (plan D9, partial) — Reliability tags remain
+> ## STATUS (current) — Reliability-Dimension tags (plan D9 complete) — handbook framework overlay
+> The nav regroup merged (#197); this finishes D9. **OPEN PR (this branch):**
+> `help.reliability_dimension(metric_id)` tags every documented metric with the NASA handbook
+> reliability dimension it most informs — **Comprehensiveness / Construction / Realism /
+> Affordability** — via one auditable family-level mapping (cost EVM → Affordability; resource/
+> census/network-completeness → Comprehensiveness; logic/constraint/float quality → Construction;
+> everything else, the execution-performance bucket → Realism). Surfaced as a **Dimension** column on
+> `/help` and in the regenerated `docs/METRIC-DICTIONARY.md`. Presentation-only organizational lens —
+> engages no parity number. Tests: `test_reliability_dimension_tags_every_documented_metric` +
+> `test_reliability_dimension_family_assignments` (`tests/web/test_help.py`). Gate green:
+> ruff/format/mypy(strict)/bandit/node clean; full suite **1407 passed / 3 env-skips**; coverage
+> 70/85 satisfied. **No new ADR. Plan D9 DONE.**
+> - **Handbook D-list status:** D1-D4, D6-D9 shipped. **Remaining:** D10 (unsatisfied-constraint /
+>   deadline-neg-float check → vertical-integration → estimated-duration importer field); smaller
+>   follow-ons (stoplight on the other panels, float-erosion cross-version trend). **Deferred/blocked:**
+>   D5/TFCI (needs reference export to validate the forecast-date sign), SRA cost/JCL (needs cost).
+
+> ## STATUS (prev) — Handbook-framed nav regrouping (plan D9, partial) — Reliability tags remain
 > The nav slice of D9 (the last big plan item). **OPEN PR (this branch):** the top nav is regrouped
 > into the handbook's sub-functions (section C) as labeled clusters — **Overview / Assessment /
 > Control / Risks / Reporting / Setup** — each a `<span class=nav-group>` with a

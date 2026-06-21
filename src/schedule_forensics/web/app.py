@@ -174,7 +174,7 @@ from schedule_forensics.reports.tables import (
 )
 from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web import i18n
-from schedule_forensics.web.help import METRIC_DICTIONARY
+from schedule_forensics.web.help import METRIC_DICTIONARY, reliability_dimension
 
 logger = logging.getLogger("schedule_forensics.web")
 
@@ -2285,7 +2285,8 @@ def create_app(
     def help_page() -> HTMLResponse:
         st = session()
         rows = "".join(
-            f"<tr><td>{_e(d.name)}</td><td>{_e(d.definition)}</td>"
+            f"<tr><td>{_e(d.name)}</td><td class=muted>{_e(reliability_dimension(d.metric_id))}</td>"
+            f"<td>{_e(d.definition)}</td>"
             f"<td><code>{_e(d.formula)}</code></td><td class=muted>{_e(d.source)}</td></tr>"
             for d in METRIC_DICTIONARY.values()
         )
@@ -2293,8 +2294,13 @@ def create_app(
             "<div class=panel><h2>Metric dictionary</h2>"
             "<p class=muted>Every metric the tool emits, with its formula and source. "
             "Each computed value also cites file + UniqueID + task name so you can verify it "
-            "in the parent schedule.</p>"
-            f"<table><tr><th scope=col>Metric</th><th scope=col>Definition</th><th scope=col>Formula</th><th scope=col>Source</th></tr>{rows}</table></div>"
+            "in the parent schedule. The <b>Dimension</b> column tags each metric with the NASA "
+            "Schedule Management Handbook reliability dimension it most informs (Comprehensiveness "
+            "/ Construction / Realism / Affordability) &mdash; an organizational lens, not a "
+            "computed figure.</p>"
+            f"<table><tr><th scope=col>Metric</th><th scope=col>Dimension</th>"
+            f"<th scope=col>Definition</th><th scope=col>Formula</th>"
+            f"<th scope=col>Source</th></tr>{rows}</table></div>"
         )
         return _page(st, "Metric Dictionary", body)
 

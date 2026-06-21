@@ -873,6 +873,79 @@ def documented_metric_ids() -> frozenset[str]:
     return frozenset(METRIC_DICTIONARY)
 
 
+# --------------------------------------------------------------------------------------
+# Reliability-Dimension framework (NASA Schedule Management Handbook §6, plan section C).
+# Each metric is tagged with the schedule-reliability dimension it most informs, so the
+# dictionary can present the handbook's four-dimension organizing lens. This is an
+# ORGANIZATIONAL label over the existing metrics — presentation only; it changes no computed
+# figure (so it does not engage the parity law). The mapping is family-level with the rationale
+# below; an unmapped id falls through to "Realism" (the execution-performance bucket).
+# --------------------------------------------------------------------------------------
+
+RELIABILITY_DIMENSIONS = ("Comprehensiveness", "Construction", "Realism", "Affordability")
+
+#: cost-based EVM indices — the only cost-feasibility (affordability) measures the tool carries
+_DIM_AFFORDABILITY = frozenset({"spi", "cpi", "tcpi"})
+#: "is everything captured and tied in?" — network/logic completeness, resource loading, census
+_DIM_COMPREHENSIVENESS = frozenset(
+    {"DCMA01", "DCMA10", "missing_logic", "SN01", "SN02", "SN18", "SN19"}
+)
+#: "is the network built per scheduling best practice?" — logic quality, constraints, float health
+_DIM_CONSTRUCTION = frozenset(
+    {
+        "DCMA02",
+        "DCMA03",
+        "DCMA04_FS",
+        "DCMA04_SSFF",
+        "DCMA04_SF",
+        "DCMA05",
+        "DCMA06",
+        "DCMA07",
+        "DCMA08",
+        "DCMA09",
+        "DCMA12",
+        "logic_density",
+        "critical",
+        "hard_constraints",
+        "negative_float",
+        "insufficient_detail",
+        "number_of_lags",
+        "number_of_leads",
+        "merge_hotspot",
+        "logic_unsupported_dates",
+        "logic_on_summary_tasks",
+        "SN03",
+        "SN04",
+        "driving_slack",
+        "driving_path",
+        "float_total_0",
+        "float_total_lt5",
+        "float_total_lt10",
+        "float_free_0",
+        "float_free_lt5",
+        "float_free_lt10",
+        "float_ratio",
+        "float_ratio_aggregate",
+    }
+)
+
+
+def reliability_dimension(metric_id: str) -> str:
+    """The NASA reliability dimension a metric most informs (organizational tag, not a figure).
+
+    Affordability = cost EVM; Comprehensiveness = network/resource/census completeness; Construction
+    = network-build quality (logic, constraints, float); everything else (execution performance,
+    variance, forecasts, slips) is Realism — "is the plan achievable and matching reality?"
+    """
+    if metric_id in _DIM_AFFORDABILITY:
+        return "Affordability"
+    if metric_id in _DIM_COMPREHENSIVENESS:
+        return "Comprehensiveness"
+    if metric_id in _DIM_CONSTRUCTION:
+        return "Construction"
+    return "Realism"
+
+
 def render_dictionary_markdown() -> str:
     """Render the metric dictionary as a Markdown table — the source of `docs/METRIC-DICTIONARY.md`.
 
@@ -888,11 +961,14 @@ def render_dictionary_markdown() -> str:
         "",
         "Every metric/measure the tool emits, with its formula and source. Each computed "
         "value also cites **file + UniqueID + task name** so it can be verified in the parent "
-        "schedule (§6).",
+        "schedule (§6). The **Dimension** column tags each metric with the NASA Schedule "
+        "Management Handbook reliability dimension it most informs (Comprehensiveness / "
+        "Construction / Realism / Affordability) — an organizational lens, not a computed figure.",
         "",
-        "| Metric | Definition | Formula | Source |",
-        "|--------|------------|---------|--------|",
+        "| Metric | Dimension | Definition | Formula | Source |",
+        "|--------|-----------|------------|---------|--------|",
     ]
     for doc in METRIC_DICTIONARY.values():
-        lines.append(f"| {doc.name} | {doc.definition} | `{doc.formula}` | {doc.source} |")
+        dim = reliability_dimension(doc.metric_id)
+        lines.append(f"| {doc.name} | {dim} | {doc.definition} | `{doc.formula}` | {doc.source} |")
     return "\n".join(lines) + "\n"
