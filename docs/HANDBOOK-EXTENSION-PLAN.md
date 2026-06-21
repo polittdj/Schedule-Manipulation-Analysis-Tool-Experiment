@@ -186,8 +186,13 @@ Tag each metric in `help.py` with its Reliability Dimension so the UI can presen
     so they surface as negative float, DCMA-07) and **Deadlines breached** (early finish > a set
     deadline = artificial negative float). Both compare the trusted CPM early dates to the activity's
     own date, so a violation is exactly verifiable. Surfaced as a "Constraint health" stoplight panel
-    on /analysis. **Remaining:** Inconsistent Vertical Integration (hierarchy); Estimated-Duration
-    importer field (model/importer change).
+    on /analysis. **Inconsistent Vertical Integration** also done: `engine/metrics/
+    vertical_integration.py` `compute_vertical_integration(schedule)` (parity-isolated) flags
+    summaries whose **stored** date span does not envelope their WBS descendants (parent starts after
+    its earliest child or finishes before its latest; WBS-prefix nesting; stored dates only — exactly
+    verifiable against the file; not-evaluable summaries skipped). Surfaced as a "Vertical integration"
+    panel on /analysis. **Remaining:** Estimated-Duration importer field (model/importer change — MS
+    Project's "Estimated" duration flag → a placeholder-duration health check).
 
 **Deferred epics (need a decision / new inputs):** SRA/Monte-Carlo (A3) — needs a simulation
 engine + uncertainty inputs; Schedule Margin (A4) — needs a margin-task identity.

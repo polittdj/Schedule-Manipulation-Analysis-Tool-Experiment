@@ -2649,3 +2649,22 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Handbook D-list:** D1-D4, D6-D9 done; D10 partial (constraint/deadline checks). Remaining D10:
   Inconsistent Vertical Integration, Estimated-Duration importer field. Deferred: D5/TFCI (reference
   validation), SRA cost/JCL. **No new ADR.**
+
+---
+
+## 2026-06-21 — Inconsistent-vertical-integration check (plan D10, second slice)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Vertical integration (OPEN PR, plan D10):** `engine/metrics/vertical_integration.py`
+  `compute_vertical_integration(schedule)` — parity-isolated `VerticalIntegration` dataclass. Flags
+  summaries whose **stored** date span does not envelope their WBS descendants (parent starts after
+  its earliest child, or finishes before its latest), hierarchy from WBS-prefix nesting, stored dates
+  only — exactly verifiable against the file, no CPM. Not-evaluable summaries (no WBS / no stored
+  dates / no dated descendants) are skipped.
+- **Web:** `_vertical_integration_panel(sch)` on /analysis next to Constraint health (stoplight
+  finding card: count + offending summary UIDs + reason; a "nothing to evaluate" note when empty).
+- **Tests:** `tests/engine/test_vertical_integration.py` (7) +
+  `tests/web/test_vertical_integration_panel.py` (2). Full gate green; suite 1426 passed / 3 env-skips.
+- **Handbook D-list:** D1-D4, D6-D9 done; D10 nearly done — only the Estimated-Duration importer field
+  remains (model + MSPDI importer change). Deferred: D5/TFCI (reference validation), SRA cost/JCL.
+  **No new ADR.**

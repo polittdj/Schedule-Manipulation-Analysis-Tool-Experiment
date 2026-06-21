@@ -1,6 +1,24 @@
-# Handoff — 2026-06-21 (PRs #81–#198 MERGED; **`main` green**; OPEN PR = constraint-health checks, plan D10)
+# Handoff — 2026-06-21 (PRs #81–#199 MERGED; **`main` green**; OPEN PR = vertical-integration, plan D10)
 
-> ## STATUS (current) — Constraint-health checks (unsatisfied constraint + deadline neg-float) — plan D10
+> ## STATUS (current) — Inconsistent-vertical-integration check — plan D10 (constraint checks merged #199)
+> After the constraint/deadline checks merged (#199), this is the next D10 slice. **OPEN PR (this
+> branch):** `engine/metrics/vertical_integration.py` `compute_vertical_integration(schedule)` —
+> parity-isolated `VerticalIntegration` dataclass (out of the Fuse ribbon and the metric-dictionary
+> test). Flags **summaries whose stored date span does not envelope their WBS descendants** (parent
+> starts after its earliest child, or finishes before its latest), deriving hierarchy from WBS-prefix
+> nesting and comparing **stored** dates only — exactly verifiable against the file, no CPM. Summaries
+> with no WBS code / no stored dates / no dated descendants are *not evaluable* and skipped. Surfaced
+> as a "Vertical integration" panel on /analysis (next to Constraint health). Tests:
+> `tests/engine/test_vertical_integration.py` (7) + `tests/web/test_vertical_integration_panel.py` (2).
+> Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1426 passed / 3 env-skips**;
+> coverage 70/85 satisfied. **No new ADR.**
+> - **D10 remaining:** only the **Estimated-Duration importer field** (MS Project "Estimated" duration
+>   flag → model field + MSPDI importer support + a placeholder-duration health check). Other
+>   follow-ons: stoplight on the other panels, float-erosion cross-version trend. **Deferred/blocked:**
+>   D5/TFCI (reference export to validate the forecast-date sign), SRA cost/JCL (cost inputs).
+>   Handbook D-list now: D1-D4, D6-D9 done; D10 nearly done (only the importer field left).
+
+> ## STATUS (prev) — Constraint-health checks (unsatisfied constraint + deadline neg-float) — plan D10
 > The first slice of D10, after D9 completed (#198 merged). **OPEN PR (this branch):**
 > `engine/metrics/constraint_health.py` `compute_constraint_health(schedule, cpm)` — parity-isolated
 > `ConstraintCheck` / `ConstraintHealth` dataclasses (out of the Fuse ribbon and the metric-dictionary
