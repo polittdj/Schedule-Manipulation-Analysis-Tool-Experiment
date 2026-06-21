@@ -2529,4 +2529,23 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   Full gate green; suite 1393 passed / 3 env-skips. Plan D4 combined-panel marked done.
 - **D4 remaining:** cross-version SV/SVt trend with favorable/unfavorable bands (Figs 7-12/7-13).
 - **NOTE:** the GitHub MCP server disconnected mid-session; the branch is pushed but the draft PR may
-  need to be opened once MCP reconnects. **No new ADR.**
+  need to be opened once MCP reconnects. **No new ADR.** (Resolved next session: MCP reconnected, the
+  combined-panel PR opened as #193 and merged.)
+
+---
+
+## 2026-06-21 — Cross-version SV/SVt trend (Figs 7-12/7-13) — plan D4 COMPLETE
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **SV/SVt trend (OPEN PR, last D4 item):** `trend.js` gains `varianceTrendChart(title, labels,
+  values, desc, unit)` — a signed, zero-baselined chart with a dashed zero line, faint favorable
+  (≥0, ahead) / unfavorable (<0, behind) bands, sign-colored markers + labels, y-axis hi/0/lo ticks,
+  a legend, and an sr-only data table. `_trend_data` now emits `svt_days` per version (from the
+  merged `compute_schedule_variance`); the render overlays the SVt trend after the combined
+  execution chart.
+- **Test:** `test_trend_carries_svt_and_js_has_variance_trend` (`tests/web/test_trend_views.py`).
+  Full gate green; suite 1394 passed / 3 env-skips. **Plan D4 COMPLETE.**
+- **Session arc (all merged to main):** #190 SRA risk-register UI · #191 logic-integrity (D3) · #192
+  schedule variance / SVt (D4) · #193 combined BEI/CEI/HMI panel (D4) · this PR = SV/SVt trend (D4).
+- **Next:** D5 TFCI forecast (4th method in `engine/forecast.py`); D7 float-erosion-by-WBS; D8
+  stoplight rendering; D9 handbook nav reorg. **No new ADR.**

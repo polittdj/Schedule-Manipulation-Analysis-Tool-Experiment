@@ -1,6 +1,20 @@
-# Handoff — 2026-06-20 (PRs #81–#192 MERGED; **`main` green**; OPEN PR = combined BEI/CEI/HMI panel, plan D4)
+# Handoff — 2026-06-21 (PRs #81–#193 MERGED; **`main` green**; OPEN PR = SV/SVt trend, plan D4 COMPLETE)
 
-> ## STATUS (current) — Combined BEI/CEI/HMI execution panel (handbook Fig 7-21) — plan D4 follow-on
+> ## STATUS (current) — Cross-version SV/SVt trend (Figs 7-12/7-13) — **plan D4 COMPLETE**
+> The last D4 item, after the SVt metric (#192) and combined BEI/CEI/HMI panel (#193, both merged).
+> **OPEN PR (this branch):** a zero-baselined SVt trend across versions. `trend.js` gains
+> `varianceTrendChart(title, labels, values, desc, unit)` — a signed chart with a dashed zero line,
+> faint favorable (≥0, ahead) / unfavorable (<0, behind) bands, sign-colored markers/labels, y-axis
+> hi/0/lo ticks, legend, and an sr-only data table. `_trend_data` now emits `svt_days` per version
+> (from the merged `compute_schedule_variance`), and the render overlays the SVt trend after the
+> combined execution chart. Test: `test_trend_carries_svt_and_js_has_variance_trend`
+> (`tests/web/test_trend_views.py`). Gate green: ruff/format/mypy(strict)/bandit/node clean; full
+> suite **1394 passed / 3 env-skips**; coverage 70/85 satisfied. **No new ADR. Plan D4 done.**
+> - **Next:** D5 TFCI / Predicted CPTF / TFCI forecast-finish (4th method in `engine/forecast.py`);
+>   then D7 float-erosion-by-WBS; D8 stoplight rendering; D9 handbook nav reorg. SRA cost/JCL still
+>   blocked on cost inputs.
+
+> ## STATUS (prev) — Combined BEI/CEI/HMI execution panel (handbook Fig 7-21) — plan D4 follow-on
 > The next D4 follow-on after the SVt metric (#192, merged). **OPEN PR (this branch):** a single
 > overlaid trend chart of the three headline execution indices — **BEI** (cumulative baseline
 > execution), **CEI** (this-period forecast execution), **HMI** (this-period baseline execution) —

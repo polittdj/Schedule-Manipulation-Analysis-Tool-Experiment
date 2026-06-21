@@ -147,6 +147,20 @@ def test_trend_js_has_combined_execution_index_chart(client: TestClient) -> None
     assert "bei" in indices and "cei_tasks" in indices and "hmi_tasks" in indices
 
 
+def test_trend_carries_svt_and_js_has_variance_trend(client: TestClient) -> None:
+    """Handbook Figs 7-12/7-13: a zero-baselined SVt (ES - AT, working days) trend across versions.
+    The /api/trend payload carries per-version svt_days; trend.js renders the variance chart."""
+    js = client.get("/static/trend.js").text
+    assert "varianceTrendChart" in js
+    assert "Schedule variance (SVt) across versions" in js
+    assert "Ahead (favorable)" in js and "Behind (unfavorable)" in js
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    versions = client.get("/api/trend").json()["versions"]
+    for v in versions:
+        assert "svt_days" in v  # present (may be None when ES is undefined for that version)
+
+
 def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> None:
     assert "Load at least one analyzable schedule" in client.get("/briefing").text
     _upload(client, "Project2")

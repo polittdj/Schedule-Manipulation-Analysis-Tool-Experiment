@@ -204,6 +204,95 @@
     box.appendChild(wrap);
   }
 
+  // Signed variance trend (handbook Figs 7-12/7-13): one value per version on a zero-baselined
+  // axis with a shaded favorable (>= 0, ahead) band above and unfavorable (< 0, behind) band
+  // below; markers/labels colored by sign. Used for SVt (working days). `unit` suffixes the labels.
+  function varianceTrendChart(title, labels, values, desc, unit) {
+    var W = 460, H = 210, padL = 30, padR = 14, padT = 26, padB = 54;
+    var present = values.filter(function (v) { return v != null; });
+    if (!present.length) return;
+    var suffix = unit ? (" " + unit) : "";
+    var wrap = chartWrap(title, desc);
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    if (window.SFA11y) SFA11y.label(svg, title);
+    // always include zero so the favorable/unfavorable split is meaningful
+    var lo = Math.min(0, Math.min.apply(null, present));
+    var hi = Math.max(0, Math.max.apply(null, present));
+    if (lo === hi) { lo -= 1; hi += 1; }
+    var n = labels.length;
+    var step = labelStep(n);
+    var x = function (i) { return xTick(i, n, W, padL, padR); };
+    var y = function (v) { return padT + ((hi - v) * (H - padT - padB)) / (hi - lo); };
+    var zeroY = y(0);
+    var right = W - padR;
+    // favorable band (above zero) and unfavorable band (below zero), faint tints
+    svg.appendChild(svgEl("rect", {
+      x: padL, y: padT, width: right - padL, height: Math.max(0, zeroY - padT),
+      fill: "var(--ok)", opacity: 0.08,
+    }));
+    svg.appendChild(svgEl("rect", {
+      x: padL, y: zeroY, width: right - padL, height: Math.max(0, H - padB - zeroY),
+      fill: "var(--bad)", opacity: 0.08,
+    }));
+    // zero baseline
+    svg.appendChild(svgEl("line", {
+      x1: padL, y1: zeroY, x2: right, y2: zeroY, stroke: "var(--ink)", "stroke-width": 1,
+      "stroke-dasharray": "4 3",
+    }));
+    // y labels: hi / 0 / lo
+    [hi, 0, lo].forEach(function (v) {
+      var lab = svgEl("text", {
+        x: padL - 4, y: y(v) + 3, "text-anchor": "end", fill: "var(--muted)", "font-size": 9,
+      });
+      lab.textContent = (v > 0 ? "+" : "") + Math.round(v);
+      svg.appendChild(lab);
+    });
+    // the SVt line
+    var pts = [];
+    values.forEach(function (v, i) { if (v != null) pts.push(x(i) + "," + y(v)); });
+    if (pts.length > 1) {
+      svg.appendChild(svgEl("polyline", {
+        points: pts.join(" "), fill: "none", stroke: "var(--accent)", "stroke-width": 2.5,
+        "class": "sf-curve-line", pathLength: "1",
+      }));
+    }
+    // markers + value labels, green when ahead (>= 0) / red when behind (< 0)
+    values.forEach(function (v, i) {
+      if (v == null) return;
+      var color = v >= 0 ? "var(--ok)" : "var(--bad)";
+      svg.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: color }));
+      var val = svgEl("text", {
+        x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+      });
+      val.textContent = (v > 0 ? "+" : "") + v + suffix;
+      svg.appendChild(val);
+    });
+    labels.forEach(function (l, i) {
+      if (i % step !== 0) return;
+      var lab = svgEl("text", {
+        x: x(i), y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
+        transform: "rotate(-35 " + x(i) + " " + (H - padB + 14) + ")",
+      });
+      lab.textContent = l;
+      svg.appendChild(lab);
+    });
+    wrap.appendChild(svg);
+    legend(wrap, [
+      { color: "var(--ok)", label: "Ahead (favorable)" },
+      { color: "var(--bad)", label: "Behind (unfavorable)" },
+    ]);
+    if (window.SFA11y) {
+      wrap.appendChild(SFA11y.table(
+        title + " — data",
+        ["Version", "SVt" + (unit ? (" (" + unit + ")") : "")],
+        labels.map(function (l, i) {
+          return [l, values[i] == null ? "" : ((values[i] > 0 ? "+" : "") + values[i])];
+        })
+      ));
+    }
+    box.appendChild(wrap);
+  }
+
   // Stacked bar chart: segments is [{key, label, color}]; data is array of objects.
   function stackedBarChart(title, labels, data, segments, desc) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
@@ -460,6 +549,17 @@
         if (execSeries.length) {
           multiLineChart("Execution indices — BEI / CEI / HMI (are we executing the plan?)", labels, execSeries,
             "The handbook's combined execution panel (Fig. 7-21): BEI (cumulative baseline execution), CEI (this period's forecast execution), and HMI (this period's baseline execution) on one axis. At or above 1.0 is on-plan; all three falling together is systemic slippage, while BEI healthy but CEI/HMI sagging is recent erosion the cumulative index has not caught up to yet.");
+        }
+
+        // Handbook Figs 7-12/7-13: the SVt (Earned-Schedule time variance) trend, zero-baselined
+        // with favorable/unfavorable bands, so accumulating slip across submissions reads at a glance.
+        var svtValues = data.versions.map(function (v) {
+          return v.svt_days == null ? null : v.svt_days;
+        });
+        if (svtValues.some(function (v) { return v != null; })) {
+          varianceTrendChart("Schedule variance (SVt) across versions", labels, svtValues,
+            "SVt = ES − AT in working days per version (the count-based Earned-Schedule time variance). Above the zero line is ahead of plan (favorable); below is behind (unfavorable). A line trending downward across submissions is accumulating schedule slip.",
+            "wd");
         }
 
         var idxSeries = [
