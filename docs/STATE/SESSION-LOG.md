@@ -2629,3 +2629,23 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   integration / estimated-duration importer field); follow-ons (stoplight on other panels,
   float-erosion cross-version trend). Deferred: D5/TFCI (reference validation), SRA cost/JCL. **No
   new ADR.**
+
+---
+
+## 2026-06-21 — Constraint-health checks (plan D10, first slice)
+
+- **Branch:** `claude/affectionate-mendel-t319hp`   **Model/mode:** Opus 4.8.
+- **Constraint health (OPEN PR, plan D10 partial):** `engine/metrics/constraint_health.py`
+  `compute_constraint_health(schedule, cpm)` — parity-isolated `ConstraintCheck` / `ConstraintHealth`
+  dataclasses. Two checks, both comparing the trusted CPM early dates to each activity's own imposed
+  date (exactly verifiable, no new schedule math): **Unsatisfied date constraints** (hard SNLT/MSO vs
+  early start, FNLT/MFO vs early finish; MSO/MFO are solver-pinned so a conflicting must-date instead
+  surfaces as negative float, DCMA-07) and **Deadlines breached** (early finish > a set deadline =
+  artificial negative float). CPM constraint model verified by experiment before coding.
+- **Web:** `_constraint_checks_panel(sch, cpm)` on /analysis next to Logic integrity — stoplight
+  finding cards (count + first offending UIDs + reason).
+- **Tests:** `tests/engine/test_constraint_health.py` (8) + `tests/web/test_constraint_health_panel.py`
+  (2). Full gate green; suite 1417 passed / 3 env-skips.
+- **Handbook D-list:** D1-D4, D6-D9 done; D10 partial (constraint/deadline checks). Remaining D10:
+  Inconsistent Vertical Integration, Estimated-Duration importer field. Deferred: D5/TFCI (reference
+  validation), SRA cost/JCL. **No new ADR.**

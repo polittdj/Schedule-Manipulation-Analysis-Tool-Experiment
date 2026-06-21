@@ -101,6 +101,7 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics.constraint_health import compute_constraint_health
 from schedule_forensics.engine.metrics.evm import compute_schedule_variance
 from schedule_forensics.engine.metrics.float_erosion import compute_float_erosion
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
@@ -3220,6 +3221,35 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+def _constraint_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
+    """Constraint-health checks (handbook Fig. 6-9): unsatisfied hard date constraints and breached
+    deadlines, as a stoplight list — green when clear, else the count + the first offending UIDs."""
+    checks = compute_constraint_health(sch, cpm).checks
+    cards = []
+    for c in checks:
+        ok = c.count == 0
+        badge_cls = "rk-min" if ok else "rk-high"
+        badge = "✓ clear" if ok else str(c.count)
+        offs = ""
+        if c.offenders:
+            shown = ", ".join(f"UID {u}" for u in c.offenders[:8])
+            more = f" +{c.count - 8} more" if c.count > 8 else ""
+            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+        pop = f"<span class=muted> of {c.population}</span>" if c.population else ""
+        cards.append(
+            f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
+            f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
+            f"<b>{_e(c.label)}</b>{pop}</div><p>{_e(c.description)}</p>{offs}</div>"
+        )
+    return (
+        "<div class=panel><h2>Constraint health</h2>"
+        "<p class=muted>How imposed dates fare against the network logic (NASA Schedule Management "
+        "Handbook, Fig. 6-9): a <b>hard constraint</b> the CPM date runs past cannot be honored, and "
+        "a <b>deadline</b> the logic finish overruns is artificial negative float. Green = clear, "
+        "otherwise the count and the first offending activities.</p>" + "".join(cards) + "</div>"
+    )
+
+
 def _logic_checks_panel(sch: Schedule) -> str:
     """Logic-integrity checks (out-of-sequence progress, redundant logic) as a stoplight list —
     green when clear, else the count + the first offending links, with a plain-English reason."""
@@ -3647,6 +3677,7 @@ metadata)</span></h3>
 {_completion_panel(analysis)}
 {_health_checks_panel(sch, analysis.cpm)}
 {_logic_checks_panel(sch)}
+{_constraint_checks_panel(sch, analysis.cpm)}
 {_schedule_variance_panel(sch)}
 {_float_erosion_panel(sch, analysis.cpm)}
 {_margin_panel(sch, analysis.cpm)}
