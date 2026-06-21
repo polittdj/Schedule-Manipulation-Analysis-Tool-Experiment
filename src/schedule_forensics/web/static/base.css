@@ -150,6 +150,17 @@ header label{color:rgba(255,255,255,.9)}
 .finding-quant{margin:.3em 0;font-size:13px;color:var(--muted)}
 .finding-quant b{color:var(--ink)}
 
+/* handbook stoplight / tripwire chips — one per metric, coloured by pass/fail/na (Figs 7-10..7-38) */
+.stoplight-board{display:flex;flex-wrap:wrap;gap:6px;margin:.4em 0}
+.sl-chip{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;border-radius:12px;
+  font-size:12px;line-height:1.4;border:1px solid transparent}
+.sl-chip .sl-name{font-weight:600}
+.sl-pass{background:#2e7d32;color:#fff}
+.sl-fail{background:#c62828;color:#fff}
+.sl-na{background:var(--panel);color:var(--muted);border-color:var(--border)}
+.sl-legend{display:flex;gap:8px;flex-wrap:wrap;margin:.3em 0 .2em}
+.sl-key{padding:1px 9px;border-radius:10px;font-size:11px;font-weight:600}
+
 .risk-matrix{border-collapse:separate;border-spacing:3px;width:auto;margin:.4em 0}
 .risk-matrix .rk-corner{font-size:11px;color:var(--muted);text-align:left;font-weight:600;
   white-space:nowrap;padding:4px 6px}
