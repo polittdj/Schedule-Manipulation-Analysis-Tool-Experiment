@@ -55,6 +55,40 @@ def test_ribbon_float_stats_are_present() -> None:
     assert r.avg_float_days >= 0.0 and r.max_float_days >= r.avg_float_days
 
 
+def test_ribbon_float_uses_stored_total_slack_not_recomputed_cpm() -> None:
+    """Regression: Avg/Max Float (d) must score on the source tool's stored, progress-aware Total
+    Slack (Acumen's basis, ADR-0080) — the SAME float the Critical count already uses — not the raw
+    recomputed pure-logic CPM float. Operator: "Max Float (d) does not look like it is calculating
+    correctly." Build a fully-critical chain (recomputed float 0 everywhere) where one task carries
+    a stored Total Slack; that stored slack must surface (the raw float would report 0)."""
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    mon, day = dt.datetime(2025, 1, 6, 8, 0), 480
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=day, percent_complete=0.0),
+        Task(
+            unique_id=2,
+            name="B",
+            duration_minutes=day,
+            percent_complete=0.0,
+            stored_total_float_minutes=20 * day,  # 20 working days of stored Total Slack
+        ),
+        Task(unique_id=3, name="C", duration_minutes=day, percent_complete=0.0),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    sch = Schedule(name="s", project_start=mon, tasks=tasks, relationships=rels)
+    cpm = compute_cpm(sch)
+    r = compute_ribbon(sch, cpm, audit_schedule(sch, cpm))
+    assert r.max_float_days == 20.0  # B's stored 20d slack; raw recomputed float here would be 0
+
+
 def test_ribbon_lags_leads_count_completed_successors_unlike_dcma() -> None:
     """ADR-0081: Fuse's Ribbon Lags/Leads count activities across ALL statuses (incl. complete),
     so a lag/lead into a finished successor is counted — unlike the DCMA-14 checks, which restrict

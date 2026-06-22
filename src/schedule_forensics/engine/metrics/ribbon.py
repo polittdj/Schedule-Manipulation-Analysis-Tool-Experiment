@@ -29,7 +29,11 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING
 
-from schedule_forensics.engine.metrics._common import is_effective_critical, non_summary
+from schedule_forensics.engine.metrics._common import (
+    effective_total_float,
+    is_effective_critical,
+    non_summary,
+)
 
 if TYPE_CHECKING:  # type-only — avoids a metrics -> dcma_audit -> metrics import cycle
     from schedule_forensics.engine.cpm import CPMResult
@@ -113,9 +117,13 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
     )
     merge_hotspot = sum(1 for c in pred_count.values() if c > _MERGE_HOTSPOT_MIN_PREDS)
 
+    # Avg/Max Float must score on the SAME float the Critical count and Acumen use: the source
+    # tool's stored, progress-aware Total Slack when the file carries it (else recomputed CPM
+    # float). Using the raw recomputed float here made Max Float (d) diverge from Acumen on
+    # progressed files and blow up on open-ended activities (ADR-0010/0080).
     per_day = schedule.calendar.working_minutes_per_day or 1
     floats = [
-        cpm.timings[t.unique_id].total_float / per_day
+        effective_total_float(t, cpm.timings[t.unique_id].total_float) / per_day
         for t in tasks
         if t.percent_complete < 100.0 and t.unique_id in cpm.timings
     ]

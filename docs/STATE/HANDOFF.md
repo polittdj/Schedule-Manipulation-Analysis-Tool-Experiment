@@ -1,24 +1,24 @@
-# Handoff — 2026-06-22 (PRs #81–#212 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#213 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — operator-feedback batch in flight; S-curve fixes first (filter root-cause bug)
+> ## STATUS (current) — operator-feedback round; #213 merged, Max Float (d) fix in flight
 >
-> **`main` is green (#210–#212 merged):** 10-item UI/UX batch (ADR-0113) + per-point hover call-outs
-> across the S-curve and the curves trio (Finishes/Data-date/Slippage).
+> **`main` is green (#210–#213 merged):** 10-item UI/UX batch (ADR-0113) + per-point hover call-outs
+> + S-curve operator fixes (#213: filter cf/cv root-cause bug, first-letter month tier, file selector).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** S-curve operator-feedback
-> fixes — (1) **filter root-cause bug FIXED**: `cf`/`cv` shared ONE FastAPI `Query` instance, so `cv`
-> silently read `cf`'s value (`(field, field)` → matched nothing → the chart *collapsed* on any
-> filter like CAM); now two separate `_CF_QUERY`/`_CV_QUERY` instances → filtering recomputes.
-> Regression test in `tests/web/test_scurve_filter.py` (the old test was too weak — it accepted the
-> empty result). (2) **first-letter month tier** (`JFMAMJJASOND`). (3) **file/version selector**
-> (`#scurveVersion`: "All files (chronological)" vs pin one file). No ADR.
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** **Max Float (d) fix.**
+> `ribbon.py` computed Critical with the progress-aware `is_effective_critical` (stored Total Slack)
+> but Avg/Max Float from the RAW recomputed CPM float — inconsistent, and it inflated Max Float on
+> progressed files / open-ended activities (operator: "does not look like it is calculating
+> correctly"). Now Avg/Max Float score on `effective_total_float` (stored Total Slack when the file
+> carries it — Acumen's basis, ADR-0010/0080), consistent with Critical. On golden Project5 this moves
+> Max Float **306d → 275d**, Avg **87d → 71d** (95/99 incomplete carry stored slack). No in-repo
+> Acumen value to pin (FUSE-VALIDATION.md lists Avg/Max Float as still-to-calibrate, CUI) — **operator
+> should confirm 275d against their Acumen workbook**. Synthetic regression test in `test_ribbon.py`.
 >
 > ### Operator-feedback items STILL TODO (this round) — separate follow-up PRs
-> - **Schedule Quality ribbon: Max Float (d) looks miscalculated** — investigate `schedule_quality`
->   metric / day conversion. (NOT yet done.)
 > - **SRA:** add a "running…" progress indicator on Run (status text exists but is too quiet);
 >   add **Beta-PERT** distribution option (engine is triangular-only); file selector already exists
->   (appears when >1 schedule). 
+>   (appears when >1 schedule).
 > - **AI driving-path "skills":** make Ollama reliable on "driving path to UID X" / "count of driving
 >   predecessors at 0 slack" by INJECTING the engine's deterministic per-UID driving-path facts
 >   (`engine/driving_slack.py`, `driving_path_between`) into the Ask-the-AI fact sheet + a reference
