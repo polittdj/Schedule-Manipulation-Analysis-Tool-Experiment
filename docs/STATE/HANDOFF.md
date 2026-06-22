@@ -1,6 +1,39 @@
-# Handoff — 2026-06-22 (PRs #81–#205 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#206 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
+> ## STATUS (current) — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
+>
+> **OPEN PR (branch `claude/cei-hmi-cross-version`, fresh from main after #206 merged):** build-order
+> **step 2 — cross-version validation**. Step 1 (`.aft` audit, ADR-0110, #206) is **merged to main**.
+>
+> ### What shipped (step 2)
+> `tests/engine/test_chain_acumen_reference.py` — loads the P2→P3→P4→P5 source `.mpp` (fresh MPXJ
+> convert) and asserts the tool reproduces Acumen's `2345 - Metric History Report` per-version values
+> across the chain. **All exact**, incl. **Project3 / Project4 for the first time**:
+> BEI 0.74/0.67/0.58/0.59, BEI-complete 20/24/25/27, Critical=Zero-Float 41/40/37/4, High-Float-44d
+> 44/42/41/44, Hard-Constraints 0/0/0/1, Negative-Float 0/0/0/0, Missing-Logic(incomplete) 4/4/4/5,
+> status serials exact. P5 High Float = exact **44** on the authoritative file (confirms ADR-0109/#204).
+> Skips when intake/JVM absent (CI), runs on operator machine; NOT parity-marked (all-exact reference).
+> **ADR-0111.**
+>
+> ### CEI/HMI cross-version is input-blocked (NOT a tool gap)
+> Acumen reports **`Critical CEI` = N/A** for every snapshot of the 2345 / TP / TP4 chains (no
+> consecutive-period `Previous*` linkage), and the Metric-History template has **no HMI rows**. The
+> only non-N/A CEI reference (`L12` = Large-Test-File v1→v2, Critical CEI 0.19) has **no source `.mpp`
+> on disk this session**. → A CEI/HMI cross-version reference test awaits the Large-Test-File `.mpp`.
+>
+> ### Remaining build order
+> 3. **Refresh stale Project5 golden** (NEXT) — `Project5_TAMPERED.mpp` + P2-P5 Acumen exports on
+>    disk; the fresh convert already reproduces Acumen exactly (44 High Float, 4 critical). Re-pin the
+>    ~37 golden-dependent tests; tighten DCMA-06 Project5 to exact (ADR-0109 anticipated it).
+> 4. **Progress-scheduler (#1, ADR-0108)** — validate vs `evm_hist2/EVM1 Forensic Analysis Report.xlsx`
+>    per-task Start/Finish; do step 3 first (ADR-0109).
+> 5. **Value-based Earned Schedule (#2)** — but ADR-0110 found Acumen's SPI(t) is a per-activity
+>    duration-ratio average (not value-ES); reproduce *that* formula. `EVM3- Detailed Metric Report` on disk.
+> 6. **SSI parity** — no SSI export on disk yet.
+> 7. **Still missing:** Large-Test-File `.mpp` (for CEI/HMI cross-version), any SSI export, Large
+>    Project2 source `.mpp` (have its Acumen reports only).
+
+> ## STATUS (prev) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
 >
 > **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`):** build-order **step 1 — the `.aft`
 > formula audit** (read-only, NO engine changes). The operator re-attached the corpus + the metric

@@ -2782,3 +2782,29 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   (#1); step 5 value-based Earned Schedule (#2, now better understood per drift #3).
 - Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1441 passed / 3 env-skips**;
   **parity 10/10**; drift guard green. **ADR-0110.**
+
+---
+
+## 2026-06-22 — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
+
+- **Branch:** `claude/cei-hmi-cross-version` (fresh from main after #206 merged). **Model/mode:** Opus 4.8.
+- **Step 1 merged:** the `.aft` audit (ADR-0110, PR #206) is on `main` (`dbb25f7`).
+- **Step 2 — cross-version validation.** Inventoried the re-attached corpus: the `2345 - Metric
+  History Report` scores the manipulation series as 4 consecutive snapshots (Project2 2026-05-24 →
+  Project3 06-30 → Project4 07-29 → Project5_TAMPERED 08-27), and all four source `.mpp` are on disk.
+  New `tests/engine/test_chain_acumen_reference.py` loads them (fresh MPXJ convert) and asserts the
+  tool reproduces Acumen's per-version values **exactly across the chain** — Project3/Project4
+  validated for the first time: BEI 0.74/0.67/0.58/0.59, BEI-complete 20/24/25/27, Critical=Zero-Float
+  41/40/37/4, High-Float-44d 44/42/41/44, Hard-Constraints 0/0/0/1, Negative-Float 0/0/0/0,
+  Missing-Logic(incomplete=DCMA01) 4/4/4/5, status serials exact. P5 High Float = exact **44** on the
+  authoritative file (confirms ADR-0109/#204). Skips when intake/JVM absent (CI); no committed goldens
+  (MPXJ output non-deterministic + large; decoupled from the step-3 golden refresh). NOT parity-marked.
+- **CEI/HMI cross-version is input-blocked, not a tool gap:** Acumen reports `Critical CEI` = N/A for
+  every snapshot of the 2345/TP/TP4 chains (no consecutive `Previous*` linkage), and the Metric-History
+  template carries no HMI rows. The only non-N/A CEI reference (`L12` = Large-Test-File v1→v2, 0.19)
+  has no source `.mpp` on disk this session → a CEI/HMI reference test awaits that file.
+- **Next:** step 3 refresh the stale Project5 golden (re-pin ~37 tests; tighten DCMA-06 to exact);
+  then step 4 progress-scheduler (#1), step 5 value-based ES (#2, reframed by the ADR-0110 SPI(t) find).
+- Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1444 passed / 3 env-skips**
+  (the 3 chain tests run here with the intake present; they skip on CI); **parity 10/10**; drift guard
+  green. **ADR-0111.**
