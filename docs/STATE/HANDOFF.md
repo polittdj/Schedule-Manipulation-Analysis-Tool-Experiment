@@ -27,6 +27,14 @@
 >   `SessionState.sra_file`). One resolver `_sra_selected(st)` (operator pick → else latest-solvable)
 >   is shared by the page, the override POST, and `/api/sra`, so all three target the same schedule;
 >   single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4). No ADR.
+> - **Critical-Path Evolution pan arrows (bug fix):** the ◀/▶ pan arrows were silent no-ops at the
+>   default (fully zoomed-out) view because `clampView` reset any pan to the full axis. `pan()` now,
+>   when fully zoomed out, jumps to the half of the axis the arrow points at (then subsequent clicks
+>   slide). JS-only (`path_evolution.js`), `node --check` clean.
+> - **Whole-page rescale (operator order):** a header `#uiScale` selector (90–175%) drives
+>   `document.documentElement.style.zoom` via `theme.js` (applied in `<head>` before paint, persisted
+>   in `localStorage` `sf-scale`). CSS `zoom` scales text + the px layout together (a root font-size
+>   would miss the px rules). Tests: `tests/web/test_ui_scale.py` (2). No ADR.
 >
 > ### SSI UID_145 intake arrived (git-ignored) — NOT Step 5, NOT a trivial re-pin
 > The session upload was an **SSI Analysis (UID_145) Directional Path Analysis** bundle for the current

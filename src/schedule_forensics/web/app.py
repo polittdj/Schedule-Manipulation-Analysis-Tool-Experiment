@@ -216,6 +216,11 @@ title="Focus every view on one activity (blank = clear)">
 <label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
 <button type=submit class=linkbtn>Set</button></form>
 <button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
+<label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size
+<select id=uiScale data-no-i18n>
+<option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option>
+<option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option>
+</select></label>
 <form action="/language" method=post class="navform langform"
 title="Display language for the UI and AI results">
 <label>Language: <select name=lang data-no-i18n

@@ -2869,6 +2869,13 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
     as `SessionState.sra_file`); a shared `_sra_selected(st)` resolver (operator pick → else
     latest-solvable) drives the page, the override POST and `/api/sra` so all target the same file.
     Single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4).
+  - **Critical-Path Evolution pan arrows (bug fix):** the ◀/▶ arrows were dead at the default
+    fully-zoomed-out view (`clampView` reset any pan to the full axis). `pan()` now jumps to the
+    half of the axis the arrow points at when fully zoomed out, then slides on subsequent clicks.
+    JS-only (`path_evolution.js`).
+  - **Whole-page rescale:** header `#uiScale` selector (90–175%) → `documentElement.style.zoom` via
+    `theme.js` (applied in `<head>`, persisted `localStorage` `sf-scale`); CSS `zoom` scales text +
+    the px layout together. Tests: `tests/web/test_ui_scale.py` (2).
 - **Not started (operator must steer):** re-attach EVM3 → Step 5; the large UI request list (chart
   time-scale tiers + scaling + hover call-outs + totals/counts on all visuals; SRA file-selection;
   Exec-Summary/S-Curve scaling under many files; remove the ambiguous "Quality Trend" visual;

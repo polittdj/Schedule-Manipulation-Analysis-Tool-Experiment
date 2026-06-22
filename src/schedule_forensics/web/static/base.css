@@ -27,6 +27,8 @@ header nav .navform button:hover{color:var(--ink)}
 header nav .targetform{white-space:nowrap}
 header nav .targetform input[type=number]{width:74px;padding:3px 7px;font-size:13px}
 header nav #themeToggle{background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;padding:0}
+header nav .ui-scale-ctl{font-size:13px;color:var(--muted);white-space:nowrap}
+header nav .ui-scale-ctl select{font-size:13px;margin-left:4px}
 header nav #themeToggle:hover{color:var(--ink)}
 main{margin:0 auto;padding:24px 28px}.panel{background:var(--panel);border:1px solid var(--line);
 border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
