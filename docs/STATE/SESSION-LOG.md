@@ -2896,3 +2896,18 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   first since many asks depend on it. SSI parity (#6) via the new UID_145 export; progress-scheduler
   (#1, ADR-0108, deferred).
 - **ADR-0113.**
+
+## 2026-06-22 — Chart framework cont'd: S-curve per-point hover call-outs (#210 merged)
+
+- **#210 merged** to `main` (`6eef558`) — the 10-item UI/UX batch (ADR-0113). Branch
+  `claude/clever-hawking-06zdpz` reset fresh onto the merged `main` for the continuation.
+- **Per-point hover call-outs on the S-curve.** The S-curve curves are polylines (no per-point
+  shapes), so the shared chartframe call-out didn't cover them. Added a transparent per-month
+  hit-strip over the plot, each carrying a `<title>` of that month's planned/actual % (and a data-date
+  note), read by the shared tooltip — hovering any month column now shows its values. Additive;
+  coordinate clamping reasoned + consistent with the node-verified tier-edge math. JS-only
+  (`scurve.js`). Tests: `tests/web/test_chart_callouts.py`. No ADR.
+- **Remaining chart-framework:** propagate tier axis + per-point call-outs to curves/evolution/SRA
+  histogram; day tier; totals/counts toggle; improve zoom. (Operator to eyeball `/scurve` tiers —
+  no headless browser in the session.) Other threads unchanged: Step 5 (EVM3), SSI #6 (UID_145),
+  multi-select finishes, show-completed, Driving-Path overhaul, Acumen-style Exec Briefing.
