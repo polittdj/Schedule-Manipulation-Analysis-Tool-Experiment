@@ -48,6 +48,7 @@
     var counts = BUCKETS.map(function () { return 0; });
     floats.forEach(function (v) { counts[bucketOf(v)] += 1; });
     var top = Math.max.apply(null, counts) || 1;
+    var total = floats.length;
 
     var n = BUCKETS.length;
     var W = 940, H = 360, padL = 44, padR = 16, padT = 18, padB = 54;
@@ -76,9 +77,16 @@
       var c = counts[i];
       var col = b.crit ? "var(--bad)" : (b.high ? "var(--warn)" : "var(--accent)");
       if (c > 0) {
-        svg.appendChild(svgEl("rect", {
+        var pct = total ? Math.round((c / total) * 100) : 0;
+        var bar = svgEl("rect", {
           x: xc(i) - barW / 2, y: y(c), width: barW, height: y(0) - y(c), fill: col,
-        }));
+        });
+        var bt = svgEl("title", {});
+        bt.textContent =
+          b.label + " working days: " + c + (c === 1 ? " activity" : " activities") +
+          " (" + pct + "% of " + total + ")";
+        bar.appendChild(bt);  // shared chartframe call-out reads this on hover
+        svg.appendChild(bar);
         var cn = svgEl("text", {
           x: xc(i), y: y(c) - 5, "text-anchor": "middle", fill: "var(--ink)", "font-size": 11,
         });

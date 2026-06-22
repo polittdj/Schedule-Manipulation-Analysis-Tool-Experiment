@@ -2876,6 +2876,12 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   - **Whole-page rescale:** header `#uiScale` selector (90–175%) → `documentElement.style.zoom` via
     `theme.js` (applied in `<head>`, persisted `localStorage` `sf-scale`); CSS `zoom` scales text +
     the px layout together. Tests: `tests/web/test_ui_scale.py` (2).
+  - **Chart framework slice 1 (operator picked this as the next focus):** shared hover call-outs in
+    `chartframe.js` — one styled `.cf-tip` tooltip shows an instant call-out for any chart shape with
+    a direct `<title>` child or `data-callout` attr, upgrading every title-bearing chart at once;
+    broadened the float histogram to emit per-bar call-outs. Tests: `tests/web/test_chart_callouts.py`
+    (3). Remaining slices: time-scale tiers (Y/Q/M/D, 3-tier axis), totals/counts toggle, broaden
+    titles to the title-less charts, improve zoom.
 - **Not started (operator must steer):** re-attach EVM3 → Step 5; the large UI request list (chart
   time-scale tiers + scaling + hover call-outs + totals/counts on all visuals; SRA file-selection;
   Exec-Summary/S-Curve scaling under many files; remove the ambiguous "Quality Trend" visual;

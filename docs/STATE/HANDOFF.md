@@ -35,6 +35,15 @@
 >   `document.documentElement.style.zoom` via `theme.js` (applied in `<head>` before paint, persisted
 >   in `localStorage` `sf-scale`). CSS `zoom` scales text + the px layout together (a root font-size
 >   would miss the px rules). Tests: `tests/web/test_ui_scale.py` (2). No ADR.
+> - **Chart framework — slice 1 (operator's chosen next focus): shared hover call-outs.**
+>   `chartframe.js` (already frames every `.chart-host` with zoom + full-screen) now adds ONE styled
+>   tooltip that shows an instant call-out for any chart shape carrying a direct `<title>` child or a
+>   `data-callout` attr — instantly upgrading every title-bearing chart (scatter, trend, scurve, cei,
+>   path_evolution) and giving a hook for richer text. Broadened the float histogram (was title-less)
+>   to emit per-bar call-outs (count + % of population). `.cf-tip` CSS. Tests:
+>   `tests/web/test_chart_callouts.py` (3). **Remaining chart-framework slices (NOT done):**
+>   time-scale tiers (year/quarter/month/day, 3-tier stacked axis); totals/counts toggle; broaden
+>   `<title>`/`data-callout` to the remaining title-less charts (sra, curves, …); improve the zoom.
 >
 > ### SSI UID_145 intake arrived (git-ignored) — NOT Step 5, NOT a trivial re-pin
 > The session upload was an **SSI Analysis (UID_145) Directional Path Analysis** bundle for the current
