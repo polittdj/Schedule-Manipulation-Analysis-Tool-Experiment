@@ -868,10 +868,12 @@ _SECURITY_HEADERS: dict[str, str] = {
     "X-Frame-Options": "DENY",
 }
 
-#: Shared FastAPI default for optional repeated-string query params (e.g. the S-curve per-chart
-#: filter's cf/cv). A module-level singleton avoids a call-in-default (ruff B008); the list factory
-#: gives each request its own fresh empty list.
-_LIST_QUERY = Query(default_factory=list)
+#: FastAPI defaults for the optional repeated-string query params (the S-curve per-chart filter's
+#: cf/cv). Each param needs its OWN ``Query`` instance: FastAPI binds the field's query key from the
+#: FieldInfo, so sharing one instance across two params silently aliases the second to the first's
+#: key (cv would read cf's values). Module-level singletons still dodge a call-in-default (ruff B008).
+_CF_QUERY = Query(default_factory=list)
+_CV_QUERY = Query(default_factory=list)
 
 
 def create_app(
@@ -1525,7 +1527,7 @@ def create_app(
         return _page(st, "S-Curve", _scurve_body(sc, _scurve_filter_fields(st.ordered())))
 
     @app.get("/api/scurve")
-    def scurve_json(cf: list[str] = _LIST_QUERY, cv: list[str] = _LIST_QUERY) -> JSONResponse:
+    def scurve_json(cf: list[str] = _CF_QUERY, cv: list[str] = _CV_QUERY) -> JSONResponse:
         st = session()
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
@@ -4766,6 +4768,9 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <div class=viz-controls id=scurveFilterBar><span class=muted>Filter this chart by up to
 {MAX_FIELDS} field(s) of the parent file:</span> <span id=scurveFilter></span></div>
 <div class=viz-controls>
+<label id=scurveVersionWrap style="display:none">File <select id=scurveVersion data-no-i18n>
+<option value=all>All files (chronological)</option>
+</select></label>
 <button id=prevScurve type=button>&#9664; Prev</button>
 <span id=scurveLabel class=muted></span>
 <button id=nextScurve type=button>Next &#9654;</button>

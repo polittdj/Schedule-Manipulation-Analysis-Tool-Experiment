@@ -62,6 +62,35 @@ def test_scurve_filter_narrows_population(client: TestClient, golden_project5: S
     assert 0 <= filt_total <= base_total
 
 
+def test_scurve_filter_recomputes_to_the_matching_population(
+    client: TestClient, golden_project5: Schedule
+) -> None:
+    """Regression (cf/cv aliasing): cf and cv must be parsed as INDEPENDENT query params. A prior
+    bug shared one FastAPI ``Query`` instance across both, so cv silently read cf's value — every
+    real filter became the nonsense criterion ``(field, field)``, matched nothing, and the chart
+    collapsed to empty instead of recomputing. The filtered population must equal the engine's own
+    ``filter_schedule`` selection (and be non-empty for a genuine value)."""
+    from schedule_forensics.engine.grouping import filter_schedule
+    from schedule_forensics.web.app import non_summary
+
+    # pick a real (field, value) whose matching subset actually carries finish dates to plot
+    field = value = None
+    for f in available_fields_union([golden_project5]):
+        for v in distinct_values([golden_project5], f):
+            tasks = non_summary(filter_schedule(golden_project5, [(f, v)]))
+            if tasks and any(t.finish or t.baseline_finish for t in tasks):
+                field, value = f, v
+                break
+        if field is not None:
+            break
+    assert field is not None
+    expected = len(non_summary(filter_schedule(golden_project5, [(field, value)])))
+    assert expected > 0
+    d = client.get("/api/scurve", params={"cf": field, "cv": value}).json()
+    assert d["versions"], "a genuine filter value must recompute, not collapse the chart"
+    assert sum(v["activities"] for v in d["versions"]) == expected
+
+
 def test_scurve_unknown_field_is_ignored(client: TestClient) -> None:
     base = client.get("/api/scurve").json()
     same = client.get("/api/scurve", params={"cf": "__nope__", "cv": "x"}).json()

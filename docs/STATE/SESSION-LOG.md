@@ -2924,3 +2924,21 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   tier layout (no headless browser in-session); then totals/counts toggle, improve zoom. Other
   threads unchanged (Step 5/EVM3, SSI #6/UID_145, multi-select finishes, show-completed, Driving-Path
   overhaul, Acumen-style Exec Briefing).
+
+## 2026-06-22 — Operator-feedback round: S-curve fixes (filter root-cause bug)
+
+- **#212 merged** to `main`. New branch fresh on `main` for the operator-feedback round.
+- **S-curve per-chart filter root-cause bug FIXED.** `scurve_json` declared `cf`/`cv` both defaulting
+  to the SAME module-level `Query` instance (`_LIST_QUERY`); FastAPI binds the query key off the
+  FieldInfo, so the second param (`cv`) aliased to the first's key and silently read `cf`'s value.
+  Every real filter became `(field, field)` → matched nothing → the chart collapsed (operator: "when
+  you filter for anything such as CAM the visual disappears rather than recalculating"). Split into
+  `_CF_QUERY`/`_CV_QUERY`. The existing `test_scurve_filter_narrows_population` was too weak (accepted
+  the empty result, `0 <= 0 <= base`); added `test_scurve_filter_recomputes_to_the_matching_population`
+  pinning the API population to the engine's `filter_schedule` selection.
+- **S-curve first-letter month tier** (`JFMAMJJASOND`, minW lowered to 9) per operator.
+- **S-curve file/version selector** (`#scurveVersion`): "All files (chronological)" runs every version
+  via Auto-play; picking a file pins to it. Shown only when >1 version loaded.
+- **Still TODO this round (follow-up PRs):** Max Float (d) miscalc on the Schedule Quality ribbon;
+  SRA running-indicator + Beta-PERT distribution; AI driving-path fact injection ("skills") so Ollama
+  stops guessing driving path / zero-slack-driver counts.

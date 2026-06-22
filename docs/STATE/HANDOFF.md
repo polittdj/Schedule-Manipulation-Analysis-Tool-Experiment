@@ -1,11 +1,28 @@
-# Handoff — 2026-06-22 (PRs #81–#211 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#212 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #210 + #211 MERGED; chart framework continuing (curves per-point call-outs)
+> ## STATUS (current) — operator-feedback batch in flight; S-curve fixes first (filter root-cause bug)
 >
-> **`main` is green at `61906b6` (#211 merged).** On `main`: the 10-item UI/UX batch (ADR-0113, #210)
-> + per-point hover call-outs on the S-curve (#211). Chart hover call-outs now cover the S-curve, the
-> float histogram, the SRA finish-histogram & sensitivity tornado, plus every title-bearing chart
-> (scatter/trend/scurve/cei/evolution); the stacked Year/Quarter/Month S-curve time axis is live too.
+> **`main` is green (#210–#212 merged):** 10-item UI/UX batch (ADR-0113) + per-point hover call-outs
+> across the S-curve and the curves trio (Finishes/Data-date/Slippage).
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** S-curve operator-feedback
+> fixes — (1) **filter root-cause bug FIXED**: `cf`/`cv` shared ONE FastAPI `Query` instance, so `cv`
+> silently read `cf`'s value (`(field, field)` → matched nothing → the chart *collapsed* on any
+> filter like CAM); now two separate `_CF_QUERY`/`_CV_QUERY` instances → filtering recomputes.
+> Regression test in `tests/web/test_scurve_filter.py` (the old test was too weak — it accepted the
+> empty result). (2) **first-letter month tier** (`JFMAMJJASOND`). (3) **file/version selector**
+> (`#scurveVersion`: "All files (chronological)" vs pin one file). No ADR.
+>
+> ### Operator-feedback items STILL TODO (this round) — separate follow-up PRs
+> - **Schedule Quality ribbon: Max Float (d) looks miscalculated** — investigate `schedule_quality`
+>   metric / day conversion. (NOT yet done.)
+> - **SRA:** add a "running…" progress indicator on Run (status text exists but is too quiet);
+>   add **Beta-PERT** distribution option (engine is triangular-only); file selector already exists
+>   (appears when >1 schedule). 
+> - **AI driving-path "skills":** make Ollama reliable on "driving path to UID X" / "count of driving
+>   predecessors at 0 slack" by INJECTING the engine's deterministic per-UID driving-path facts
+>   (`engine/driving_slack.py`, `driving_path_between`) into the Ask-the-AI fact sheet + a reference
+>   doc — don't let the 8B model do graph traversal. (Architecture scoped via Explore agent.)
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
 > continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:
