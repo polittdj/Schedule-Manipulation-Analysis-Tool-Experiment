@@ -1,24 +1,21 @@
-# Handoff — 2026-06-22 (PRs #81–#213 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#214 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — operator-feedback round; #213 merged, Max Float (d) fix in flight
+> ## STATUS (current) — operator-feedback round; #213+#214 merged, SRA features in flight
 >
-> **`main` is green (#210–#213 merged):** 10-item UI/UX batch (ADR-0113) + per-point hover call-outs
-> + S-curve operator fixes (#213: filter cf/cv root-cause bug, first-letter month tier, file selector).
+> **`main` is green (#210–#214 merged):** 10-item UI/UX batch + hover call-outs + S-curve operator
+> fixes (#213) + Max Float (d) → stored Total Slack (#214; **operator to confirm 275d vs Acumen**).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** **Max Float (d) fix.**
-> `ribbon.py` computed Critical with the progress-aware `is_effective_critical` (stored Total Slack)
-> but Avg/Max Float from the RAW recomputed CPM float — inconsistent, and it inflated Max Float on
-> progressed files / open-ended activities (operator: "does not look like it is calculating
-> correctly"). Now Avg/Max Float score on `effective_total_float` (stored Total Slack when the file
-> carries it — Acumen's basis, ADR-0010/0080), consistent with Critical. On golden Project5 this moves
-> Max Float **306d → 275d**, Avg **87d → 71d** (95/99 incomplete carry stored slack). No in-repo
-> Acumen value to pin (FUSE-VALIDATION.md lists Avg/Max Float as still-to-calibrate, CUI) — **operator
-> should confirm 275d against their Acumen workbook**. Synthetic regression test in `test_ribbon.py`.
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** **SRA upgrades.**
+> (1) **Running indicator** — `sra.js setBusy` disables Run and animates a braille spinner +
+> elapsed-seconds while the (synchronous) simulation computes, so it never looks stuck (pure JS,
+> CSP-safe; `aria-live` status). (2) **Beta-PERT distribution** — new `#sraDistribution` toggle
+> (Triangular default / Beta-PERT); engine `_sample_beta_pert` (Vose PERT, lambda=4, via
+> `rng.betavariate`) dispatched by `SRAConfig.distribution`, plumbed through `/api/sra?distribution=`.
+> Triangular path is byte-for-byte unchanged (determinism preserved); PERT has its own Law-2
+> point-mass equivalence test. Tests in `test_sra.py` / `test_sra_view.py`. File selector already
+> existed (shown when >1 schedule). No ADR.
 >
-> ### Operator-feedback items STILL TODO (this round) — separate follow-up PRs
-> - **SRA:** add a "running…" progress indicator on Run (status text exists but is too quiet);
->   add **Beta-PERT** distribution option (engine is triangular-only); file selector already exists
->   (appears when >1 schedule).
+> ### Operator-feedback items STILL TODO (this round) — last one
 > - **AI driving-path "skills":** make Ollama reliable on "driving path to UID X" / "count of driving
 >   predecessors at 0 slack" by INJECTING the engine's deterministic per-UID driving-path facts
 >   (`engine/driving_slack.py`, `driving_path_between`) into the Ask-the-AI fact sheet + a reference

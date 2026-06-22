@@ -2125,18 +2125,22 @@ def create_app(
         return RedirectResponse(url="/sra", status_code=303)
 
     @app.get("/api/sra")
-    def sra_json(iterations: int = Query(1000)) -> JSONResponse:
+    def sra_json(
+        iterations: int = Query(1000), distribution: str = Query("triangular")
+    ) -> JSONResponse:
         st = session()
         chosen = _sra_selected(st)
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, cpm = chosen
         iters = max(100, min(10000, iterations))
+        dist = "pert" if distribution == "pert" else "triangular"
         config = SRAConfig(
             iterations=iters,
             auto_low=st.sra_low,
             auto_most_likely=st.sra_ml,
             auto_high=st.sra_high,
+            distribution=dist,
         )
         overrides = {
             u: ActivityRisk(u, o, m, p)
@@ -5041,9 +5045,13 @@ below P50). Per-activity criticality and duration sensitivity drive the tornado.
 {"(latest solvable version)" if st.sra_file is None else ""}</p>
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
+<label>Distribution <select id=sraDistribution data-no-i18n>
+<option value=triangular selected>Triangular</option>
+<option value=pert>Beta-PERT</option>
+</select></label>
 <button id=sraRun type=button>Run simulation</button>
 </div>
-<p id=sraStatus class=muted></p></div>
+<p id=sraStatus class=muted aria-live=polite></p></div>
 <div class=panel><h2>Risk inputs</h2>
 <p class=muted>These uncertainty ranges feed the next simulation run. The <b>global</b> triangular
 applies to every activity's <i>remaining</i> duration (the standard "Quick Risk" screening

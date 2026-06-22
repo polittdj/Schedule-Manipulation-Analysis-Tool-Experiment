@@ -63,6 +63,8 @@ class SRAConfig:
     auto_low: float = 0.9
     auto_most_likely: float = 1.0
     auto_high: float = 1.10
+    #: Duration distribution: ``"triangular"`` (default, inverse-CDF) or ``"pert"`` (Beta-PERT).
+    distribution: str = "triangular"
 
 
 #: The default run config — a module-level singleton so it can be a keyword default
@@ -261,6 +263,34 @@ def _sample_triangular(u: float, low: float, mode: float, high: float) -> float:
     return high - math.sqrt((1.0 - u) * span * (high - mode))
 
 
+def _sample_beta_pert(rng: random.Random, low: float, mode: float, high: float) -> float:
+    """A Beta-PERT sample in working minutes (Vose / @RISK PERT, shape lambda = 4).
+
+    PERT fits a Beta to the 3-point estimate — ``alpha = 1 + 4(mode-low)/(high-low)``,
+    ``beta = 1 + 4(high-mode)/(high-low)`` — scaled onto ``[low, high]``. Versus the triangular
+    it concentrates mass near the mode and has lighter tails (the standard, less-pessimistic
+    alternative the operator's SSI/Acumen tools offer). Degenerate (``low == high``) returns the
+    point mass. Uses ``rng.betavariate`` directly (Beta has no elementary inverse CDF), so it draws
+    its own RNG stream — reproducible for a fixed seed within the PERT choice.
+    """
+    span = high - low
+    if span <= 0.0:
+        return low
+    alpha = 1.0 + 4.0 * (mode - low) / span
+    beta = 1.0 + 4.0 * (high - mode) / span
+    return low + rng.betavariate(alpha, beta) * span
+
+
+def _sample_duration(
+    rng: random.Random, config: SRAConfig, low: float, mode: float, high: float
+) -> float:
+    """Draw one 3-point sample under the configured distribution. The triangular path is byte-for-
+    byte the prior behaviour (one ``rng.random()`` inverse-CDF draw); ``"pert"`` uses Beta-PERT."""
+    if config.distribution == "pert":
+        return _sample_beta_pert(rng, low, mode, high)
+    return _sample_triangular(rng.random(), low, mode, high)
+
+
 def _is_completed(task: Task) -> bool:
     """A completed activity carries no schedule uncertainty (use actuals — ADR-0106)."""
     return task.percent_complete >= 100.0 or task.actual_finish is not None
@@ -353,7 +383,7 @@ def compute_sra(
         overrides_i: dict[int, int] = {}
         for uid in uids:  # ascending unique_id order for reproducibility
             low, mode, high = three_point[uid]
-            minutes = round(_sample_triangular(rng.random(), low, mode, high))
+            minutes = round(_sample_duration(rng, config, low, mode, high))
             minutes = max(minutes, 0)
             overrides_i[uid] = minutes
             sampled_durations[uid].append(minutes)
@@ -363,8 +393,9 @@ def compute_sra(
             occurred = rng.random() < prob
             risk_occurred[ridx].append(occurred)
             if occurred:
-                factor = _sample_triangular(
-                    rng.random(),
+                factor = _sample_duration(
+                    rng,
+                    config,
                     max(risk.impact_low, 0.0),
                     max(risk.impact_ml, 0.0),
                     max(risk.impact_high, 0.0),

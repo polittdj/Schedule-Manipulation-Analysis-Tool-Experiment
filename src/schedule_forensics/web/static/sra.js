@@ -377,13 +377,40 @@
     if (el) el.textContent = text;
   }
 
+  // ── running indicator: the simulation is a single synchronous request, so reassure the operator
+  // it's working (and not stuck) — disable Run, and animate a spinner + elapsed-seconds while it
+  // computes. Pure JS (no CSS animation) so it stays inside the strict air-gap CSP. ──
+  var SPIN = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
+  var busyTimer = null;
+  function setBusy(on, label) {
+    var b = document.getElementById("sraRun");
+    if (b) {
+      b.disabled = on;
+      b.textContent = on ? "Running…" : "Run simulation";
+    }
+    if (busyTimer) { clearInterval(busyTimer); busyTimer = null; }
+    if (!on) return;
+    var t0 = Date.now(), i = 0;
+    var tick = function () {
+      var s = Math.round((Date.now() - t0) / 1000);
+      setStatus(SPIN.charAt(i % SPIN.length) + " Running " + label + "… (" + s + "s elapsed)");
+      i += 1;
+    };
+    tick();
+    busyTimer = setInterval(tick, 120);
+  }
+
   function run() {
     var itersEl = document.getElementById("sraIters");
     var iters = itersEl ? itersEl.value : "1000";
+    var distEl = document.getElementById("sraDistribution");
+    var dist = distEl ? distEl.value : "triangular";
+    var distName = dist === "pert" ? "Beta-PERT" : "Triangular";
     // The risk inputs (global triangular + per-activity overrides) live on the session and are set
-    // via POST /sra/risk (which reloads this page); the run only needs the iteration count.
-    setStatus("Running the simulation… (this can take a moment on a large schedule)");
-    fetch("/api/sra?iterations=" + encodeURIComponent(iters))
+    // via POST /sra/risk (which reloads this page); the run needs the iteration count + distribution.
+    setBusy(true, iters + " iterations · " + distName);
+    fetch("/api/sra?iterations=" + encodeURIComponent(iters) +
+          "&distribution=" + encodeURIComponent(dist))
       .then(function (r) {
         return r.json().then(function (d) {
           if (!r.ok) throw new Error(d && d.error ? d.error : "request failed (" + r.status + ")");
@@ -391,13 +418,15 @@
         });
       })
       .then(function (data) {
+        setBusy(false);
         renderCdf(data);
         renderHist(data);
         renderSens(data);
         renderRiskDrivers(data);
         var p = {};
         (data.percentiles || []).forEach(function (x) { p[x.label] = shortDate(x.date); });
-        var msg = data.iterations + " iterations · P50 " + (p.P50 || "?") + " · P80 " + (p.P80 || "?");
+        var msg = data.iterations + " iterations · " + distName +
+          " · P50 " + (p.P50 || "?") + " · P80 " + (p.P80 || "?");
         if (data.risk_drivers && data.risk_drivers.length) {
           msg += " · " + data.risk_drivers.length + " discrete risk(s)";
         }
@@ -411,6 +440,7 @@
         setStatus(msg);
       })
       .catch(function (err) {
+        setBusy(false);
         setStatus("Could not run the simulation: " + (err && err.message ? err.message : err));
       });
   }

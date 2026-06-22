@@ -24,6 +24,7 @@ from schedule_forensics.engine.sra import (
     RiskEvent,
     SRAConfig,
     _percentile,
+    _sample_beta_pert,
     _sample_triangular,
     _spearman,
     compute_sra,
@@ -93,6 +94,45 @@ def test_duration_overrides_at_most_likely_equals_plain_cpm() -> None:
     assert overridden.critical_path == plain.critical_path
     for uid in (1, 2, 3):
         assert overridden.timings[uid] == plain.timings[uid]
+
+
+# --- Beta-PERT distribution (operator: SSI/Acumen "Use Beta-PERT Distribution") ----
+
+
+def test_pert_equivalence_at_point_mass() -> None:
+    """Law 2 holds for Beta-PERT too: collapse every range to its mode (auto 1.0/1.0/1.0) so
+    every PERT draw is the point mass, and the simulated finish == the deterministic compute_cpm."""
+    s = _linear_chain()
+    cpm = compute_cpm(s)
+    cfg = SRAConfig(
+        iterations=200, auto_low=1.0, auto_most_likely=1.0, auto_high=1.0, distribution="pert"
+    )
+    r = compute_sra(s, cpm, config=cfg)
+    assert r.p10 == r.p50 == r.p80 == r.p90 == cpm.project_finish
+
+
+def test_pert_sampler_in_range_mean_and_degenerate() -> None:
+    """Beta-PERT (lambda=4) stays in [low, high], its mean ~ (low + 4*mode + high)/6, and a
+    zero-span range returns the point mass."""
+    import random
+
+    rng = random.Random(7)
+    lo, mode, hi = 100.0, 300.0, 1000.0
+    xs = [_sample_beta_pert(rng, lo, mode, hi) for _ in range(4000)]
+    assert all(lo <= x <= hi for x in xs)
+    assert abs(statistics.fmean(xs) - (lo + 4 * mode + hi) / 6) < 20.0
+    assert _sample_beta_pert(rng, 500.0, 500.0, 500.0) == 500.0
+
+
+def test_pert_run_deterministic_and_differs_from_triangular() -> None:
+    s = _two_path_network()
+    cpm = compute_cpm(s)
+    a = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="pert"))
+    b = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="pert"))
+    assert a == b  # reproducible for a fixed seed
+    assert a.p10 <= a.p50 <= a.p80 <= a.p90  # monotone percentiles
+    tri = compute_sra(s, cpm, config=SRAConfig(iterations=400, distribution="triangular"))
+    assert (a.p10, a.p90) != (tri.p10, tri.p90)  # different shape -> different spread
 
 
 # --- determinism ------------------------------------------------------------------
