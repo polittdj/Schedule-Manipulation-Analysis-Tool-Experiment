@@ -1,6 +1,51 @@
-# Handoff — 2026-06-21 (PRs #81–#204 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#205 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign: audit results & next steps (post #203/#204)
+> ## STATUS (current) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
+>
+> **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`):** build-order **step 1 — the `.aft`
+> formula audit** (read-only, NO engine changes). The operator re-attached the corpus + the metric
+> library `NASA Metrics_Complete_20260423.aft` (759 metrics); unpacked into git-ignored
+> `00_REFERENCE_INTAKE/audit/` (nothing tracked). All uploads are confirmed **test files, NOT CUI**.
+>
+> ### What shipped
+> `tests/engine/test_aft_formula_audit.py` — a curated correspondence table (one row per the **93**
+> documented `help.py` metrics) pinning the matching NASA metric Name + **verbatim** `<Formula>`, a
+> verdict, and a note. 5 tests; the formula-pinning test **skips when the `.aft` is absent** (CUI →
+> CI skips, operator machine runs it). Ran green locally with the Bible on disk → every pinned NASA
+> formula is verbatim-correct. **ADR-0110.** Verdict tally: **34 match / 3 variant / 4 drift / 52
+> not-in-bible.**
+>
+> ### The 4 definitional drifts (documented, NOT fixed — feed the backlog)
+> 1. **DCMA-05 Hard Constraints** — engine counts `{MSO,MFO,SNLT,FNLT}`; NASA's headline `Hard
+>    Constraints` excludes SNLT/FNLT (NASA's FC-IMS variant includes them — tool follows the DCMA/
+>    FC-IMS convention). Latent: no parity impact unless a schedule carries SNLT/FNLT. Same for the
+>    schedule-quality `hard_constraints` twin.
+> 2. **DCMA-08 High Duration** — engine keys on **baseline** duration > 44d; NASA on current
+>    `OriginalDuration` > 44d **and** `ActivityType=Normal`.
+> 3. **SPI(t)** — biggest find. Tool = Earned Schedule / Actual Time; Acumen's `.aft` SPI(t) is a
+>    **per-activity duration-ratio average** — a different metric of the same name. Explains the EVM2
+>    residual (0.27 vs 0.56) and reframes the value-based Earned-Schedule work (#2): it is not purely
+>    count-vs-value ES, it is a different formula.
+>
+> ### Remaining build order (unchanged; steps 1 now done)
+> 2. **CEI/HMI cross-version** vs `cei/CEI - Metric History Report.xlsx` (LTF→LTF2). **BLOCKED on
+>    inputs:** the CEI Metric-History report **and the Large Test File `.mpp`/converts are NOT in this
+>    session's uploads** — ask the operator to re-attach the CEI bundle (the kickoff's
+>    `CEI__Metric_History_Report.zip`). The `.aft` Bible itself arrived via a separate upload.
+> 3. **Refresh stale Project5 golden** (`Project5_TAMPERED.mpp` + P2-P5 Acumen exports ARE on disk →
+>    actionable now). 37-test re-baseline; tighten DCMA-06 Project5 to exact (ADR-0109 anticipated it).
+> 4. **Progress-scheduler (#1, ADR-0108)** — needs step 3 first (per ADR-0109); validate vs
+>    `evm_hist2/EVM1 Forensic Analysis Report.xlsx` per-task Start/Finish.
+> 5. **Value-based Earned Schedule (#2)** — `EVM3- Detailed Metric Report.xlsx` on disk; but see drift
+>    #3 — Acumen's SPI(t) is a duration-ratio average, so reproduce *that* formula, not just value-ES.
+> 6. **SSI parity** — still no SSI export on disk.
+>
+> ### Inputs status this session
+> ON DISK (git-ignored `00_REFERENCE_INTAKE/audit/`): the `.aft` Bible (`cei/`), `test_files.zip`
+> corpus, `evm_hist2/` (EVM1 Forensic + reports), `largeP2/`, `2345_bundle/`. **MISSING:** the CEI
+> Metric-History report + Large Test File (`.mpp`/converts) needed for step 2; any SSI export.
+
+> ## STATUS (prev) — Acumen full-audit campaign: audit results & next steps (post #203/#204)
 >
 > **Both prior PRs merged** (`056020d` #203 EVM goldens + ADR-0108; `8949a34` #204 High Float + ADR-0109).
 > `main` is at `8949a34`. The validation campaign is **mid-stream**, not finished.

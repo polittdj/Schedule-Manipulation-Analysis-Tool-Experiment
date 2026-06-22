@@ -2750,3 +2750,35 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Still open:** Large-Project2 + Workbook1 audits, `TP*` suite (no Acumen export yet), SSI parity,
   cost-based Earned Schedule.
 - Gate green: full suite passes; **parity 10/10**. **ADR-0109.**
+
+---
+
+## 2026-06-22 — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
+
+- **Branch:** `claude/gracious-faraday-i3u2mw`   **Model/mode:** Opus 4.8 + Ultracode.
+- **Operator inputs (re-attached this session, all confirmed test files / NOT CUI):** the metric
+  library `NASA Metrics_Complete_20260423.aft` (759 named metrics) + the corpus
+  (`test_files.zip` = Project2/3/4/5_TAMPERED, EVM1/EVM2, `TP*`, P2-P5 / EVM / 2345 / L12 Acumen
+  reports), `EVM_Metric_History_Report.zip`, `2345.zip`, `Large_Project2_Acumen__DCMA_Report1.zip`.
+  Unpacked into git-ignored `00_REFERENCE_INTAKE/audit/`; `git status` confirms nothing tracked.
+- **Step 1 of the build order — the `.aft` formula audit (read-only; NO engine changes).** New
+  `tests/engine/test_aft_formula_audit.py`: a curated correspondence table (one row per the 93
+  documented `help.py` metrics) pinning the matching NASA metric Name + **verbatim** `<Formula>`,
+  with a verdict (`match`/`variant`/`drift`/`not_in_bible`) and a note. Five tests; the formula-pinning
+  one **skips when the `.aft` is absent** (CUI, never committed — CI skips, operator machine runs it).
+  All 5 passed locally with the Bible on disk → every pinned NASA formula is verbatim-correct.
+- **Result:** 34 `match`, 3 `variant`, 4 `drift`, 52 `not_in_bible`. The Half-Step-Delay/compliance
+  family, EVM indices, the Bible-sourced HMI/CEI/FEI/BRI/Float-Ratio family, Logic Density, Merge
+  Hotspot, Insufficient Detail, Missing Logic, CPLI, BEI, duration ratios, Net Finish Impact — all
+  confirmed exact vs NASA.
+- **4 definitional drifts (documented, NOT fixed — feed the backlog):** (1) DCMA-05 Hard Constraints —
+  engine counts `{MSO,MFO,SNLT,FNLT}`, NASA's headline metric excludes SNLT/FNLT (tool follows the
+  DCMA/FC-IMS convention; latent). (2) DCMA-08 High Duration — engine on baseline duration, NASA on
+  current `OriginalDuration` + Normal filter. (3) **SPI(t)** — tool = ES/AT; Acumen's `.aft` SPI(t) is a
+  per-activity duration-ratio average → explains the EVM2 0.27-vs-0.56 residual and reframes the
+  Earned-Schedule work (#2). (4) the `hard_constraints` schedule-quality twin of (1).
+- **Next (build order):** step 2 CEI/HMI cross-version (needs `CEI - Metric History Report.xlsx` +
+  Large-Test-File — not yet on disk); step 3 refresh stale Project5 golden; step 4 progress-scheduler
+  (#1); step 5 value-based Earned Schedule (#2, now better understood per drift #3).
+- Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1441 passed / 3 env-skips**;
+  **parity 10/10**; drift guard green. **ADR-0110.**
