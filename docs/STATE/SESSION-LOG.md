@@ -2865,6 +2865,10 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
     (`ollama pull llama3.1:8b` + memory tiers) on the settings page; `docs/CONNECT-A-BIGGER-AI-MODEL.md`
     deepened (cross-check second-model walk-through + timeout note). New `tests/web/test_ai_wiring.py`
     cases; two existing model-field assertions updated for the new `id=primaryModel` markup.
+  - **SRA file selection:** `/sra` gained a `name=file` selector (`GET /sra?file=<key>`, persisted
+    as `SessionState.sra_file`); a shared `_sra_selected(st)` resolver (operator pick → else
+    latest-solvable) drives the page, the override POST and `/api/sra` so all target the same file.
+    Single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4).
 - **Not started (operator must steer):** re-attach EVM3 → Step 5; the large UI request list (chart
   time-scale tiers + scaling + hover call-outs + totals/counts on all visuals; SRA file-selection;
   Exec-Summary/S-Curve scaling under many files; remove the ambiguous "Quality Trend" visual;

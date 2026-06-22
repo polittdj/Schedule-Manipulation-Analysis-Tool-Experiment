@@ -324,6 +324,9 @@ class SessionState:
     sra_risks: list[RiskEvent] = field(default_factory=list)
     # monotonic id counter so each registered risk keeps a stable, unique id across removals.
     sra_risk_seq: int = 0
+    # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
+    # solvable version (the historical default). Set via GET /sra?file=<key>.
+    sra_file: str | None = None
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -1985,8 +1988,12 @@ def create_app(
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
 
     @app.get("/sra", response_class=HTMLResponse)
-    def sra_view() -> HTMLResponse:
+    def sra_view(file: str = Query("")) -> HTMLResponse:
         st = session()
+        # operator picks which loaded file the SRA runs against; persist it so the simulation API
+        # and the server-rendered override/risk tables all target the same schedule.
+        if file.strip() and file.strip() in st.schedules:
+            st.sra_file = file.strip()
         if not st.schedules:
             return _page(
                 st,
@@ -2039,7 +2046,7 @@ def create_app(
         # per-activity 3-point override (days → working minutes), only for a real non-summary task
         add_uid = _parse_uid(uid)
         if add_uid is not None and (opt_days.strip() or ml_days.strip() or pess_days.strip()):
-            chosen = _latest_solvable(st)
+            chosen = _sra_selected(st)
             if chosen is not None:
                 _, sch, _cpm = chosen
                 task = sch.tasks_by_id.get(add_uid)
@@ -2113,7 +2120,7 @@ def create_app(
     @app.get("/api/sra")
     def sra_json(iterations: int = Query(1000)) -> JSONResponse:
         st = session()
-        chosen = _latest_solvable(st)
+        chosen = _sra_selected(st)
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, cpm = chosen
@@ -4867,6 +4874,22 @@ def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None
     return chosen
 
 
+def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
+    """The schedule the SRA runs against — the operator's pick (``st.sra_file``) when it names a
+    loaded, solvable version, otherwise the latest-solvable default. One resolver shared by the
+    page, the simulation API, and the override POST so all three always agree on the file."""
+    key = st.sra_file
+    if key is not None and key in st.schedules:
+        raw = st.schedules[key]
+        try:
+            analysis = st.analysis_for(key, raw)
+        except CPMError:
+            pass  # the chosen file no longer solves (e.g. filtered to nothing) -> fall back
+        else:
+            return (key, st.scope(raw), analysis.cpm)
+    return _latest_solvable(st)
+
+
 def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
     """The current per-activity overrides as a table (UID, opt/ml/pess in days) + Remove buttons."""
     if not st.sra_overrides:
@@ -4951,8 +4974,21 @@ def _sra_body(st: SessionState) -> str:
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
         for n in (500, 1000, 2000, 5000)
     )
-    sch = _latest_solvable(st)
+    sch = _sra_selected(st)
     scoped = sch[1] if sch is not None else None
+    selected_key = sch[0] if sch is not None else None
+    file_opts = "".join(
+        f'<option value="{_e(key)}"{" selected" if key == selected_key else ""}>{_e(key)}</option>'
+        for key, _raw in st.ordered_versions()
+    )
+    file_selector = (
+        '<form method=get action="/sra" class=viz-controls style="margin-bottom:8px">'
+        "<label>Run SRA against file "
+        f"<select name=file>{file_opts}</select></label>"
+        "<button type=submit>Run on this file</button></form>"
+        if len(st.schedules) > 1
+        else ""
+    )
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"
@@ -4985,6 +5021,9 @@ finish-date confidence curve. The deterministic CPM finish is marked against the
 so you can read how much contingency it implies (the deterministic date typically sits well
 below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
 {disclaimer}
+{file_selector}
+<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b>
+{"(latest solvable version)" if st.sra_file is None else ""}</p>
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
 <button id=sraRun type=button>Run simulation</button>

@@ -22,6 +22,11 @@
 >   on the settings page; `docs/CONNECT-A-BIGGER-AI-MODEL.md` deepened (cross-check + timeout note).
 > - Tests added in `tests/web/test_ai_wiring.py`; two existing assertions updated for the new
 >   `id=primaryModel` markup (`test_ai_wiring.py`, `test_coverage_app_extra.py`).
+> - **SRA file selection (operator order):** `/sra` now lets the operator choose which loaded file
+>   the Monte-Carlo runs against (a `name=file` selector → `GET /sra?file=<key>`, persisted as
+>   `SessionState.sra_file`). One resolver `_sra_selected(st)` (operator pick → else latest-solvable)
+>   is shared by the page, the override POST, and `/api/sra`, so all three target the same schedule;
+>   single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4). No ADR.
 >
 > ### SSI UID_145 intake arrived (git-ignored) — NOT Step 5, NOT a trivial re-pin
 > The session upload was an **SSI Analysis (UID_145) Directional Path Analysis** bundle for the current
