@@ -1,27 +1,84 @@
-# Handoff — 2026-06-21 (PRs #81–#203 MERGED; **`main` green**; OPEN PR = Acumen audit: High Float + stale-golden, ADR-0109)
+# Handoff — 2026-06-21 (PRs #81–#204 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign: DCMA-06 High Float fix + stale Project5 golden (ADR-0109)
-> Operator delivered the **authoritative reference bundle** (source `.mpp` for Project2/3/4/5_TAMPERED,
-> Duration-Bomb, EVM1/2, the `TP1..TP4` suite + Acumen DCMA/Metric-History/Detailed exports for
-> P2-P5, Large-Project2, Workbook1/Large-Test-File). Mandate: validate **every** metric against Acumen
-> (and SSI) on `.mpp`, fix **all** fidelity gaps, then do progress-scheduler (#1) + cost ES (#2).
-> - **Done (OPEN PR this branch):** audited Project2/Project5 against `P2-P5 - Metric History`. On the
->   **authoritative** files the engine matches Acumen on Missing Logic (4/5), Hard Constraints (0/1),
->   Critical (41/4), Zero-Float (41/4), BEI (0.74/0.59), Negative Float, High Duration, Invalid Dates.
->   **One gap fixed:** DCMA-06 High Float now scores on stored Total Slack → exact **44/44** (closes
->   ADR-0012 residual; Project2 parity assertion tightened to exact). **ADR-0109.**
-> - **KEY FINDING — the committed `Project5.mspdi.xml` golden is STALE** (4 stored-critical in the
->   current `Project5_TAMPERED.mpp` vs 37 in the golden). The engine is correct; the golden is old.
->   **Next: refresh the P2/P5 goldens to the authoritative `.mpp` and re-pin parity against the current
->   Acumen exports** (large re-baseline — ripples through trend/manipulation/web tests). This also
->   unblocks the progress-scheduler (#1, ADR-0108): prior attempts couldn't be validated because the
->   stale P5 golden matched no Acumen reference; it now can.
-> - **Audit still open:** Large-Project2 + Workbook1 Acumen exports; `TP*` suite (schedules only, no
->   Acumen export yet — ask operator if needed); SSI parity; cost/value-based Earned Schedule (SPI(t)).
-> - Authoritative files held read-only under git-ignored `00_REFERENCE_INTAKE/audit/`. Gate green:
->   full suite passes; **parity 10/10**.
+> ## STATUS (current) — Acumen full-audit campaign: audit results & next steps (post #203/#204)
+>
+> **Both prior PRs merged** (`056020d` #203 EVM goldens + ADR-0108; `8949a34` #204 High Float + ADR-0109).
+> `main` is at `8949a34`. The validation campaign is **mid-stream**, not finished.
+>
+> ### Operator mandate (verbatim)
+> Validate **every** metric the tool produces against **Acumen Fuse v8.11.0** and **SSI** on `.mpp`
+> inputs. Fix **all** fidelity gaps. Then do progress-scheduler (#1, ADR-0108) + cost/value-based
+> Earned Schedule (#2). "Assume nothing."
+>
+> ### What this session validated (all on the authoritative `.mpp` the operator supplied)
+> - **Project2 / Project5_TAMPERED** vs `P2-P5 - Metric History` — engine matches Acumen on Missing
+>   Logic (4/5), Hard Constraints (0/1), Critical (41/4), Zero-Float (41/4), BEI (0.74/0.59), Negative
+>   Float, High Duration, Invalid Dates. **DCMA-06 High Float fix shipped (#204)** → exact 44/44.
+> - **EVM1 / EVM2** vs `EVM- Metric History Report` (PR #203 already covers it). Residuals = #1, #2.
+> - **Large Test File (1723 non-summary activities)** vs `Large Test File - Metric History` —
+>   **matches Acumen on every metric checked** (Missing Logic 22, Logic Density™ 3.14, Critical 33,
+>   Hard Constraints 1, Negative Float 31, Insufficient Detail™ 43, Number of Lags 8, Leads 1).
+> - **`.aft` Bible look-up settled an apparent inconsistency:** NASA's verbatim Missing Logic formula
+>   is `SUM(((NoPreds & Start>=_PeriodStart) | (NoSucs & Finish<=_PeriodFinish))*1)` — period-windowed,
+>   so "full-project" when run normally (LTF=22) and "to-go" when run from status (EVM2=1). The tool
+>   already produces both: `schedule_quality.missing_logic` (full) and `DCMA01` (incomplete-only).
+>
+> ### KEY FINDING (still pending action)
+> Committed **`tests/fixtures/golden/project2_5/Project5.mspdi.xml` is STALE** — the current
+> `Project5_TAMPERED.mpp` has **4** stored-critical activities (= Acumen); the golden has **37**. A
+> blast-radius measurement was run (golden swapped in → suite run → reverted): **37 tests fail.**
+> Refreshing requires re-pinning trend / manipulation / web / parity values against the current
+> Acumen exports (a deliberate re-baseline). Until refreshed, Project5's High Float stays a +1
+> residual (engine 40 vs stale golden 41) and the parity gate documents why (ADR-0109).
+>
+> ### Reference corpus on disk — **DO NOT LOSE; all git-ignored**
+> Read-only under `00_REFERENCE_INTAKE/audit/`:
+> - `p2p5/` — `Project2.mpp`, `Project5_TAMPERED.mpp`, + Acumen DCMA / Metric-History / Detailed /
+>   Quick-Add. Already audited.
+> - `cei/` (**this session's biggest delivery**) — `Large Test File.mpp` / `Large Test File2.mpp`,
+>   `Project2/3/4/5_TAMPERED.mpp`, `Project2(Duration Bomb).mpp`, EVM1/2 `.mpp`, the `TP*` suite
+>   (`TP1..TP4_DataCenter_v1..v5`), `CEI - Metric History Report.xlsx` (cross-version LTF↔LTF2),
+>   `Workbook1 - DCMA Report.xlsx`, **and `NASA Metrics_Complete_20260423.aft` — the Bible (763
+>   metrics, verbatim formulas).**
+> - `evm_hist2/` — `EVM- Metric History Report.xlsx`, `EVM1 Forensic Analysis Report.xlsx` (carries
+>   Acumen's **per-task** Start/Finish/Early-Start/Early-Finish — the ground truth the
+>   progress-scheduler #1 needs to model & validate against), Quick-Add, Detailed.
+> - `largeP2/` — Acumen reports for "Large Project2" (source `.mpp` NOT supplied — can't validate yet).
+> - `tp1/` — duplicate of the source `.mpp` set (overlaps `cei/`).
+> - Fresh MPXJ-converted MSPDI XML co-located: `Project2_fresh.xml`, `Project5_fresh.xml`,
+>   `LargeTestFile.xml` (the converter command is in CLAUDE.md).
+>
+> ### Confirmed-missing inputs (not blocking, but extend coverage)
+> 1. Source `.mpp` for **Large Project2** (have its Acumen reports but no schedule).
+> 2. Acumen reports for **Project3, Project4, Project2(Duration Bomb)** and the **TP1..TP4** suite —
+>    the operator offered to generate them; preferred runs (decided this session):
+>    - **Project2→3→4→5** as one workbook with each version a snapshot → Metric History Report
+>      (unlocks CEI/HMI/BEI/FEI on the manipulation series).
+>    - **TP4_DataCenter v1→v5** same treatment.
+>    - **TP1/TP2/TP3** as separate-project runs (DCMA + Detailed each).
+> 3. **Any SSI export** — the operator mandate names "SSI and Acumen Fuse"; only Acumen is on disk.
+>
+> ### Remaining work in priority order (this session's recommendation)
+> 1. **`.aft` formula audit** (safest, highest value): for each of the tool's ~90 metrics in
+>    `web/help.py`, parse the matching `<Metric>` from `NASA Metrics_Complete_20260423.aft` and assert
+>    the tool's formula matches NASA's. Surfaces any hidden definitional drift before any engine
+>    change. **No engine changes; tests only.**
+> 2. **CEI/HMI cross-version validation** against `cei/CEI - Metric History Report.xlsx`
+>    (Large Test File → Large Test File2 — the first cross-version reference on hand).
+> 3. **Refresh the stale Project5 golden** — re-pin the 37 failing tests against the current Acumen
+>    values; this is a re-baseline PR with `[golden refresh]` in the title, requires care.
+> 4. **Progress-scheduler (#1, ADR-0108)** — now buildable. Validate against `EVM1 Forensic Analysis
+>    Report.xlsx` per-task Start/Finish and the refreshed P5 golden (so prior failed-attempt symptoms
+>    on P5 can be re-judged against a real reference).
+> 5. **Cost/value-based Earned Schedule (#2)** — closes the SPI(t) residual on EVM2 (0.27→0.56).
+> 6. **SSI parity** once any SSI export arrives.
+>
+> ### Gate green at end of this session
+> Branch `claude/affectionate-mendel-t319hp` cleaned up after merges; `main` HEAD = `8949a34`. Full
+> suite 1436 passed / 3 env-skips, **parity 10/10**, drift guard green. No staged or untracked
+> changes outside the git-ignored intake.
 
-> ## STATUS (prev) — EVM cost-loaded Acumen goldens + progress-scheduler gap (ADR-0108)
+> ## STATUS (prev) — Acumen full-audit campaign: DCMA-06 High Float fix + stale Project5 golden (ADR-0109)
 > Operator supplied two **cost-loaded** test schedules (EVM1/EVM2 — test files, NOT CUI) + the Acumen
 > Fuse export. Validated the tool against Acumen's Metric History: the **majority of metrics match**
 > (Critical 10/8, hard/neg/high float 0, all-FS, BEI 0/0.25, DCMA-01 logic 2/1, EVM1 finish 09-12),
