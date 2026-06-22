@@ -31,9 +31,12 @@ def _chain(durations: dict[int, int], **task_kw: object) -> Schedule:
 def test_golden_p2_to_p5_has_no_false_positive_manipulation(
     golden_project2: Schedule, golden_project5: Schedule
 ) -> None:
-    # Honest progress: baselines unchanged, no deleted tasks/logic, no edited actuals, no
-    # shortened durations on incomplete work -> the detector must stay silent (no false flags).
-    assert detect_manipulation(golden_project5, golden_project2) == ()
+    # The authoritative Project5 (ADR-0112) has 2 removed logic links vs Project2
+    # (106→135 and 113→138), so the detector correctly raises one MANIP_DELETED_LOGIC finding.
+    # Baselines unchanged, no deleted tasks, no edited actuals, no shortened durations.
+    findings = detect_manipulation(golden_project5, golden_project2)
+    assert len(findings) == 1
+    assert findings[0].metric_id == "MANIP_DELETED_LOGIC"
 
 
 def test_detect_deleted_task_on_critical_path() -> None:
@@ -175,7 +178,7 @@ def test_trend_across_versions_orders_and_counts(
     assert len(trend) == 2
     assert trend[0].version_index == 0 and trend[1].version_index == 1
     assert trend[0].completed == 20 and trend[1].completed == 27  # progress between snapshots
-    assert trend[0].critical == 41 and trend[1].critical == 37
+    assert trend[0].critical == 41 and trend[1].critical == 4
     assert trend[1].project_finish > trend[0].project_finish  # the finish slipped later
 
 

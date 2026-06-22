@@ -1,6 +1,37 @@
-# Handoff — 2026-06-22 (PRs #81–#206 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#207 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
+> ## STATUS (current) — Acumen full-audit campaign, part 4: refresh stale Project5 golden (ADR-0112)
+>
+> **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`, fresh from main after #207 merged):**
+> build-order **step 3 — refresh the stale Project5 golden**. Steps 1 (`.aft` audit, ADR-0110, #206)
+> and 2 (P2→P5 chain reference, ADR-0111, #207) are **merged to main**.
+>
+> ### What shipped (step 3)
+> Replaced `tests/fixtures/golden/project2_5/Project5.mspdi.xml` with the MSPDI convert of the
+> **authoritative** `Project5_TAMPERED.mpp` (all four intake copies are byte-identical; 4 stored-critical,
+> not the stale 37 — same 379-UID structure). Re-pinned `case.json` + the golden-dependent tests:
+> - **Parity gate tightened & exact** on every Acumen-anchored figure — `DCMA06` P5 now **44** (the +1
+>   residual is closed for both projects), `DCMA01`=5, `DCMA05`=1, `DCMA14`=0.59/27, `critical`=4,
+>   `hard_constraints`=1. §C baseline-compliance / CEI / bow-wave were unchanged by the refresh.
+> - **§A `missing_logic`** recorded all-scoped (7); Acumen's incomplete-scoped Missing Logic = `DCMA01`
+>   = 5 (chain-test exact). **§E change metrics** pinned to engine pure-logic CPM on the authoritative
+>   file (date subset Acumen-equivalent; float/critical subset awaits an Acumen §E PP&Change export).
+> - **Derived/tool goldens** (float-bands, diff, forecast, manipulation, trend, recommendations,
+>   path-evolution, schedule-card, web/AI views) re-pinned to engine output on the authoritative file.
+> - **SSI driving-slack** (`ssi_uid143`, `test_ssi_driving_slack_exact` + `test_golden_ssi_driving_slack_parity`)
+>   marked **xfail** — its golden was SSI-validated on the prior 37-critical file and there is no SSI
+>   export for the authoritative file; left untouched for a trivial re-pin when an export lands. **ADR-0112.**
+>
+> ### Remaining build order
+> 4. **Progress-scheduler (#1, ADR-0108)** — validate vs `evm_hist2/EVM1 Forensic Analysis Report.xlsx`
+>    per-task Start/Finish (step 3 now done, unblocking this per ADR-0109).
+> 5. **Value-based Earned Schedule (#2)** — ADR-0110 found Acumen's SPI(t) is a per-activity
+>    duration-ratio average (not value-ES); reproduce *that* formula. `EVM3- Detailed Metric Report` on disk.
+> 6. **SSI parity** — needs an SSI export for the current Project5 (also lifts the step-3 xfail).
+> 7. **Still missing inputs:** SSI driving-slack export (current Project5), Acumen §E PP&Change export
+>    (current P5-vs-P2), Large-Test-File `.mpp` (CEI/HMI cross-version), Large Project2 source `.mpp`.
+
+> ## STATUS (prev) — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
 >
 > **OPEN PR (branch `claude/cei-hmi-cross-version`, fresh from main after #206 merged):** build-order
 > **step 2 — cross-version validation**. Step 1 (`.aft` audit, ADR-0110, #206) is **merged to main**.
@@ -33,7 +64,7 @@
 > 7. **Still missing:** Large-Test-File `.mpp` (for CEI/HMI cross-version), any SSI export, Large
 >    Project2 source `.mpp` (have its Acumen reports only).
 
-> ## STATUS (prev) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
+> ## STATUS (prev-2) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
 >
 > **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`):** build-order **step 1 — the `.aft`
 > formula audit** (read-only, NO engine changes). The operator re-attached the corpus + the metric

@@ -100,9 +100,10 @@ def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: Test
     page = client.get("/compare")
     assert page.status_code == 200
     assert "Project finish" in page.text  # the CPM/progress trend table
-    assert "honest progress" in page.text  # no manipulation flagged on the clean P2->P5
+    assert "2 logic links removed since the prior version" in page.text  # the authoritative
+    # TAMPERED file deletes 2 links (106->135, 113->138; ADR-0112) — correctly flagged
     assert "Net Finish Impact" in page.text  # the headline number is on the page
-    assert "-99 calendar days" in page.text  # golden P2->P5 slip (validated parity target)
+    assert "-148 calendar days" in page.text  # golden P2->P5 slip (validated parity target)
 
 
 def test_compare_orders_versions_by_data_date_not_load_order(client: TestClient) -> None:
@@ -112,8 +113,10 @@ def test_compare_orders_versions_by_data_date_not_load_order(client: TestClient)
     _upload(client, "Project2")  # older status date, loaded second
     page = client.get("/compare").text
     assert "Project2.mspdi.xml &rarr; Project5.mspdi.xml" in page  # chronological, not load order
-    assert "-99 calendar days" in page  # impact computed in the correct direction
-    assert "honest progress" in page  # still no false manipulation flags
+    assert "-148 calendar days" in page  # impact computed in the correct direction
+    assert (
+        "2 logic links removed since the prior version" in page
+    )  # signal surfaces either load order
 
 
 def test_settings_banner_classified_then_unclassified(client: TestClient) -> None:

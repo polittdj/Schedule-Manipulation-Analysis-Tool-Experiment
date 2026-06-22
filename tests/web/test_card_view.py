@@ -54,7 +54,7 @@ def test_card_shows_golden_counts_and_constraint_split(client: TestClient) -> No
     assert "<td>In progress</td><td>2</td>" in page
     assert "<td>Planned</td><td>97</td>" in page
     # the constraint distribution: 121 ASAP, 5 SNET
-    assert "<td>ASAP</td><td>121</td>" in page
+    assert "<td>ASAP</td><td>120</td>" in page
     assert "<td>SNET</td><td>5</td>" in page
 
 

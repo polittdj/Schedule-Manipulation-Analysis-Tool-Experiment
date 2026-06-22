@@ -38,11 +38,13 @@ def test_trend_view_orders_by_data_date_and_shows_quality_trends(client: TestCli
     page = client.get("/trend").text
     assert "2 versions, oldest first" in page
     assert page.index("Project2.mspdi.xml") < page.index("Project5.mspdi.xml")
-    assert "Net Finish Impact across the series" in page and "-99 calendar days" in page
-    assert "Critical: decreases over time" in page  # quality-trend sentence (41 -> 37)
-    assert "Hard Constraints: remains constant over time." in page
+    assert "Net Finish Impact across the series" in page and "-148 calendar days" in page
+    assert "Critical: decreases over time" in page  # quality-trend sentence (41 -> 4)
+    assert "Hard Constraints: increases over time" in page
     assert "id=trendCharts" in page and "/static/trend.js" in page
-    assert "honest progress" in page  # clean golden pair -> no manipulation signals
+    assert (
+        "2 logic links removed since the prior version" in page
+    )  # TAMPERED file deletes 2 links (ADR-0112)
 
 
 def test_api_trend_serves_chart_series(client: TestClient) -> None:
@@ -51,8 +53,8 @@ def test_api_trend_serves_chart_series(client: TestClient) -> None:
     data = client.get("/api/trend").json()
     assert [v["label"] for v in data["versions"]] == ["Project2.mspdi.xml", "Project5.mspdi.xml"]
     assert data["versions"][0]["completed"] == 20 and data["versions"][1]["completed"] == 27
-    assert data["versions"][0]["critical"] == 41 and data["versions"][1]["critical"] == 37
-    assert data["quality"]["missing_logic"]["values"] == [6.0, 6.0]
+    assert data["versions"][0]["critical"] == 41 and data["versions"][1]["critical"] == 4
+    assert data["quality"]["missing_logic"]["values"] == [6.0, 7.0]
     assert data["versions"][1]["finish"] > data["versions"][0]["finish"]  # the slip is visible
 
 
@@ -107,8 +109,8 @@ def test_api_trend_quality_carries_per_version_offenders(client: TestClient) -> 
     data = client.get("/api/trend").json()
     crit = data["quality"]["critical"]
     assert crit["lower_is_better"] is True
-    assert crit["counts"] == [41, 37]  # full offender counts per version
-    assert len(crit["offenders"][0]) == 41 and len(crit["offenders"][1]) == 37
+    assert crit["counts"] == [41, 4]  # full offender counts per version
+    assert len(crit["offenders"][0]) == 41 and len(crit["offenders"][1]) == 4
     assert all("uid" in o and "name" in o for o in crit["offenders"][0])
     # a neutral ratio has no offenders and is flagged so the drill-down can say so
     ld = data["quality"]["logic_density"]

@@ -42,24 +42,18 @@ def test_golden_change_parity_p2_to_p5(
 
     # exact (float-independent forensic counts)
     assert ch["activities_added"].count == g["activities_added"]  # 0 — identical UID set
-    assert ch["new_critical"].count == g["new_critical"]  # 0
+    assert ch["new_critical"].count == g["new_critical"]  # 1
     assert ch["finish_date_slips"].count == g["finish_date_slips"]  # 9
     assert ch["completed"].count == g["completed"]  # 27
     assert ch["in_progress"].count == g["in_progress"]  # 2
-    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -99
+    assert compute_net_finish_impact(p5, p2).value == g["net_finish_impact_days"]  # -148
 
-    # documented residuals (ADR-0013) — engine value locked; golden differs (tracked to M9)
-    assert ch["no_longer_critical"].count == 0  # golden 1
-    assert ch["start_date_slips"].count == 9  # golden 10
-    assert ch["remaining_duration_increases"].count == 7  # golden 8
-    assert ch["float_erosion"].count == 4  # golden 6
-    for key, golden in (
-        ("no_longer_critical", g["no_longer_critical"]),
-        ("start_date_slips", g["start_date_slips"]),
-        ("remaining_duration_increases", g["remaining_duration_increases"]),
-        ("float_erosion", g["float_erosion"]),
-    ):
-        assert ch[key].count != golden  # the tracked delta is real, not accidental parity
+    # float/critical-dependent subset now pinned to the engine's pure-logic CPM output
+    # on the authoritative Project5 (ADR-0112); case.json g[...] values match the engine.
+    assert ch["no_longer_critical"].count == g["no_longer_critical"]  # 34
+    assert ch["start_date_slips"].count == g["start_date_slips"]  # 9
+    assert ch["remaining_duration_increases"].count == g["remaining_duration_increases"]  # 9
+    assert ch["float_erosion"].count == g["float_erosion"]  # 1
 
 
 def test_golden_first_snapshot_p2_has_no_prior(golden_project2: Schedule) -> None:

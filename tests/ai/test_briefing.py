@@ -71,7 +71,14 @@ def test_briefing_trend_section_uses_metric_sentences(golden_project2, golden_pr
     texts = [s.text for s in trend.statements]
     assert any(t.startswith("Missing Logic:") for t in texts)
     assert any("Critical: decreases over time" in t for t in texts)
-    assert any(t == "Hard Constraints: remains constant over time." for t in texts)
+    assert any(
+        t
+        == (
+            "Hard Constraints: increases over time with the best version being"
+            " Project2.mspdi.xml (0) and the worst version being Project5.mspdi.xml (1)."
+        )
+        for t in texts
+    )
 
 
 def test_briefing_quality_section_has_verdicts(golden_project2, golden_project5) -> None:

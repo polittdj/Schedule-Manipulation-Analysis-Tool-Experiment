@@ -41,18 +41,21 @@ def _version(name: str, status_day: int | None, n_open_ended: int) -> Schedule:
 
 def test_golden_quality_trend_p2_to_p5(golden_project2, golden_project5) -> None:
     trends = {t.metric_id: t for t in compute_quality_trend([golden_project2, golden_project5])}
-    # validated golden values: Missing Logic 6 -> 6, Logic Density 2.79 -> 2.83, Critical 41 -> 37
-    assert trends["missing_logic"].values == (6.0, 6.0)
-    assert trends["missing_logic"].direction == "remains constant"
-    assert trends["logic_density"].values == (2.79, 2.83)
+    # validated golden values: Missing Logic 6 -> 7, Logic Density 2.79 -> 2.81, Critical 41 -> 4
+    assert trends["missing_logic"].values == (6.0, 7.0)
+    assert trends["missing_logic"].direction == "increases"
+    assert trends["logic_density"].values == (2.79, 2.81)
     assert trends["logic_density"].direction == "increases"
-    assert trends["critical"].values == (41.0, 37.0)
+    assert trends["critical"].values == (41.0, 4.0)
     assert trends["critical"].direction == "decreases"
     # briefing phrasing: best/worst named with values
     s = trends["critical"].sentence()
-    assert "decreases over time" in s and "Project5.mspdi.xml (37)" in s
+    assert "decreases over time" in s and "Project5.mspdi.xml (4)" in s
     assert "worst version being Project2.mspdi.xml (41)" in s
-    assert trends["hard_constraints"].sentence() == "Hard Constraints: remains constant over time."
+    assert trends["hard_constraints"].sentence() == (
+        "Hard Constraints: increases over time with the best version being"
+        " Project2.mspdi.xml (0) and the worst version being Project5.mspdi.xml (1)."
+    )
 
 
 def test_neutral_metric_uses_highest_lowest_wording(golden_project2, golden_project5) -> None:
@@ -105,7 +108,7 @@ def test_offenders_by_version_parallels_values(golden_project2, golden_project5)
     crit = trends["critical"]
     assert len(crit.offenders_by_version) == 2  # parallel to the two versions
     assert len(crit.offenders_by_version[0]) == 41  # P2 critical count
-    assert len(crit.offenders_by_version[1]) == 37  # P5 critical count
+    assert len(crit.offenders_by_version[1]) == 4  # P5 critical count (authoritative file ADR-0112)
     # the worst-version convenience field is just one slice of the full series
     assert crit.worst_offender_uids == crit.offenders_by_version[0]  # P2 is the worst (41)
     # a neutral ratio has no specific offenders in any version
@@ -125,6 +128,6 @@ def test_trend_tables_carry_full_per_version_offender_series(
     assert series.headers == ("Metric", "Version", "Offending activities", "Offender UIDs")
     assert len(series.rows) == len(trends) * 2  # one row per (metric, version)
     crit = {r[1]: r for r in series.rows if r[0] == "Critical"}
-    assert crit["Project2.mspdi.xml"][2] == 41 and crit["Project5.mspdi.xml"][2] == 37
+    assert crit["Project2.mspdi.xml"][2] == 41 and crit["Project5.mspdi.xml"][2] == 4
     # the UID list is the FULL set (uncapped) — 41 ids for P2, comma-joined
     assert len(crit["Project2.mspdi.xml"][3].split(", ")) == 41

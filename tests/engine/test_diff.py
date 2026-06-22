@@ -26,7 +26,7 @@ def test_golden_diff_p2_to_p5(golden_project2: Schedule, golden_project5: Schedu
     assert (
         len(d.changed_tasks) == 106
     )  # forecast dates / progress shifted as the data date advanced
-    assert len(d.added_links) == 2 and d.removed_links == ()
+    assert len(d.added_links) == 3 and len(d.removed_links) == 2
     # the focus activity moved its forecast finish but its baseline did not (honest progress)
     td = d.task_diff(143)
     assert td is not None and td.changed("finish") is not None

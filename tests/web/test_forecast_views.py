@@ -36,7 +36,7 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
     assert "Finish forecast" in page
     for method in ("Schedule logic (CPM)", "Completion-rate extrapolation", "Earned-schedule"):
         assert method in page
-    assert "2027-12-07" in page  # CPM
+    assert "2028-01-25" in page  # CPM
     assert "2028-06-10" in page  # rate
     assert "2029-02-01" in page  # earned schedule (exact-ratio IEAC)
     assert "SPI(t)" in page and "0.47" in page
@@ -63,7 +63,7 @@ def test_forecast_page_carries_carnac_cards(client: TestClient) -> None:
         assert label in page, label
     # card values cross-check the methods (golden P5)
     assert "2026-03-02" in page  # earliest start
-    assert "462" in page  # project duration (working days)
+    assert "497" in page  # project duration (working days)
     assert ">99<" in page  # to-go count card value
 
 
@@ -139,11 +139,11 @@ def test_report_page_shows_float_bands_and_completion_panels(client: TestClient)
     _upload(client, "Project5")
     page = client.get("/analysis/Project5").text
     assert "Float analysis &mdash; low-float bands" in page or "low-float bands" in page
-    assert "37 <span class=muted>(37.4%)</span>" in page  # total float 0 days
+    assert "4 <span class=muted>(4%)</span>" in page  # total float 0 days
     assert "Completion performance" in page
     assert "18 of 27 (66.7%)" in page  # completed behind baseline
     data = client.get("/api/analysis/Project5").json()
-    assert data["float_bands"]["float_total_0"]["count"] == 37
-    assert data["float_bands"]["float_free_lt10"]["count"] == 75
+    assert data["float_bands"]["float_total_0"]["count"] == 4
+    assert data["float_bands"]["float_free_lt10"]["count"] == 73
     assert data["completion"]["avg_days_late"]["value"] == 39.2
     assert data["completion"]["mei"]["population"] == 0  # NA on the goldens — honest

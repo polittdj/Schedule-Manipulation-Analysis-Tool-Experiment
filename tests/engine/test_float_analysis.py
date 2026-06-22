@@ -97,7 +97,7 @@ def test_float_days_convert_on_the_schedules_calendar() -> None:
     ("name", "critical_raw", "critical_incomplete", "finish_days"),
     [
         ("Project2", 43, 41, Decimal("391")),
-        ("Project5", 37, 37, Decimal("462")),
+        ("Project5", 4, 4, Decimal("497.00")),
     ],
 )
 def test_golden_critical_parity(

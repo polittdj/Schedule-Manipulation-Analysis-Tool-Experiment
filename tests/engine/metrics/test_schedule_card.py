@@ -55,8 +55,12 @@ def test_activity_makeup_counts_milestones_and_status_splits() -> None:
 
 def test_constraint_distribution_on_golden_project5(golden_project5: Schedule) -> None:
     rows = compute_constraint_distribution(golden_project5)
-    assert [(r.constraint_type, r.count) for r in rows] == [("ASAP", 121), ("SNET", 5)]
-    assert round(rows[0].percent, 1) == 96.0 and round(rows[1].percent, 1) == 4.0
+    assert [(r.constraint_type, r.count) for r in rows] == [
+        ("ASAP", 120),
+        ("SNET", 5),
+        ("MSO", 1),
+    ]
+    assert round(rows[0].percent, 1) == 95.2 and round(rows[1].percent, 1) == 4.0
     assert sum(r.count for r in rows) == 126  # every non-summary activity is classified
 
 

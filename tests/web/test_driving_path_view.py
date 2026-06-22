@@ -37,11 +37,11 @@ def test_page_renders_the_two_uid_form(client: TestClient) -> None:
 
 def test_traces_the_driving_corridor_between_two_uids(client: TestClient) -> None:
     _upload(client, "Project5")
-    page = client.get("/driving-path?source=35&target=143").text
-    # the corridor header names both endpoints and the corridor renders 35 → … → 143
+    page = client.get("/driving-path?source=131&target=143").text
+    # the corridor header names both endpoints and the corridor renders 131 → … → 143
     assert "Driving path:" in page
     assert "dp-chip" in page
-    assert "driving path of 36 activities" in page
+    assert "driving path of 3 activities" in page
 
 
 def test_reports_connection_without_driving(client: TestClient) -> None:
@@ -70,12 +70,12 @@ def test_corridor_gantt_embeds_per_version_data(client: TestClient) -> None:
 
     _upload(client, "Project2")
     _upload(client, "Project5")
-    page = client.get("/driving-path?source=35&target=143").text
+    page = client.get("/driving-path?source=131&target=143").text
     assert "id=dpChart" in page and "/static/driving_path.js" in page
     m = re.search(r'<script type="application/json" id=dpData>(.*?)</script>', page, re.S)
     assert m is not None
     data = json.loads(m.group(1))
-    assert data["source_uid"] == 35 and data["target_uid"] == 143
+    assert data["source_uid"] == 131 and data["target_uid"] == 143
     assert len(data["versions"]) == 2
     # the newest version's corridor carries dated activities flagged for entry vs the prior
     acts = data["versions"][-1]["activities"]
@@ -85,6 +85,6 @@ def test_corridor_gantt_embeds_per_version_data(client: TestClient) -> None:
 def test_corridor_gantt_absent_for_single_version(client: TestClient) -> None:
     # one version -> nothing to animate; the chart is suppressed (chips still render)
     _upload(client, "Project5")
-    page = client.get("/driving-path?source=35&target=143").text
+    page = client.get("/driving-path?source=131&target=143").text
     assert "id=dpChart" not in page
     assert "Driving path:" in page  # the textual corridor view is still there
