@@ -32,3 +32,12 @@ def test_histogram_bars_carry_a_callout_title() -> None:
     # previously title-less; bars now emit a <title> so the shared call-out covers them
     assert 'svgEl("title"' in js
     assert "% of " in js  # count + share-of-population call-out text
+
+
+def test_sra_charts_carry_callout_titles() -> None:
+    js = (STATIC / "sra.js").read_text(encoding="utf-8")
+    # SRA was title-less; the finish histogram bars and the sensitivity tornado bars now emit
+    # <title> call-outs (operator named the SRA page specifically)
+    assert js.count('svgEl("title"') >= 2
+    assert "simulated finishes" in js  # histogram bar call-out
+    assert "Sensitivity " in js and "Criticality " in js  # tornado bar call-out

@@ -168,9 +168,14 @@
     for (var i = 0; i < n; i++) {
       var b = hist[i];
       if (b[2] > 0) {
-        svg.appendChild(svgEl("rect", {
+        var hbar = svgEl("rect", {
           x: xc(i) - barW / 2, y: y(b[2]), width: barW, height: y(0) - y(b[2]), fill: GREEN,
-        }));
+        });
+        var htt = svgEl("title", {});
+        htt.textContent =
+          shortDate(b[0]) + " – " + shortDate(b[1]) + ": " + b[2] + " simulated finishes";
+        hbar.appendChild(htt);  // shared chartframe call-out
+        svg.appendChild(hbar);
       }
       if (i % step === 0 || i === n - 1) {
         var ml = svgEl("text", {
@@ -221,10 +226,17 @@
       var w = (Math.abs(r.sens) / maxAbs) * halfW;
       var positive = r.sens >= 0;
       var bx = positive ? mid : mid - w;
-      svg.appendChild(svgEl("rect", {
+      var sbar = svgEl("rect", {
         x: bx, y: cy - rowH * 0.32, width: Math.max(w, 0.5), height: rowH * 0.64,
         fill: positive ? GOLD : BLUE,
-      }));
+      });
+      var stt = svgEl("title", {});
+      stt.textContent =
+        "UID " + r.uid + (r.name ? " — " + r.name : "") +
+        "\nSensitivity " + r.sens.toFixed(3) +
+        " · Criticality " + (Math.round(r.ci * 1000) / 10) + "% · SSI " + r.ssi.toFixed(3);
+      sbar.appendChild(stt);  // shared chartframe call-out
+      svg.appendChild(sbar);
       // activity label (UID + truncated name) on the left
       var name = r.name ? (" " + r.name) : "";
       var label = "UID " + r.uid + name;
