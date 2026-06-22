@@ -57,6 +57,26 @@ def test_sra_page_renders_containers_and_disclaimer_without_running(client: Test
     assert "screening placeholder" in page
 
 
+def test_sra_page_offers_distribution_choice_and_running_indicator(client: TestClient) -> None:
+    """Operator: a Triangular/Beta-PERT choice + an indicator so Run doesn't look stuck."""
+    page = client.get("/sra").text
+    assert "id=sraDistribution" in page
+    assert ">Triangular<" in page and ">Beta-PERT<" in page
+    js = client.get("/static/sra.js").text
+    assert "setBusy" in js  # disables Run + animates a spinner/elapsed while computing
+    assert "distribution=" in js  # the choice is passed through to /api/sra
+
+
+def test_api_sra_beta_pert_runs(client: TestClient) -> None:
+    """The Beta-PERT distribution path produces a valid result (differs from triangular default)."""
+    tri = client.get("/api/sra?iterations=300&distribution=triangular").json()
+    prt = client.get("/api/sra?iterations=300&distribution=pert").json()
+    assert [p["label"] for p in prt["percentiles"]] == ["P10", "P50", "P80", "P90"]
+    assert all(p["date"] for p in prt["percentiles"])
+    # same network + seed, different shape -> the finish distribution differs
+    assert [p["date"] for p in prt["percentiles"]] != [p["date"] for p in tri["percentiles"]]
+
+
 def test_api_sra_runs_and_returns_distribution(client: TestClient) -> None:
     data = client.get("/api/sra?iterations=200").json()
     assert data["iterations"] == 200

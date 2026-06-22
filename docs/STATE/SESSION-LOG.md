@@ -2957,3 +2957,19 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   Avg/Max Float as to-calibrate) — operator to confirm 275d. Synthetic regression test added
   (`test_ribbon_float_uses_stored_total_slack_not_recomputed_cpm`).
 - **Still TODO this round:** SRA running-indicator + Beta-PERT; AI driving-path fact injection.
+
+## 2026-06-22 — Operator-feedback round: SRA running indicator + Beta-PERT (#214 merged)
+
+- **#214 merged** (`72dc30d`). New branch fresh on it.
+- **SRA running indicator** (`sra.js`): `setBusy` disables the Run button and animates a braille
+  spinner + elapsed-seconds while the single synchronous `/api/sra` request computes — operator
+  wanted reassurance it isn't stuck. Pure JS (no CSS animation → strict-CSP safe); status is
+  `aria-live=polite`.
+- **SRA Beta-PERT distribution**: `#sraDistribution` toggle (Triangular default / Beta-PERT). Engine
+  gains `_sample_beta_pert` (Vose/@RISK PERT, lambda=4, via `rng.betavariate`) and `_sample_duration`
+  dispatch on `SRAConfig.distribution`; plumbed through `/api/sra?distribution=`. The triangular path
+  is byte-for-byte unchanged (existing determinism/equivalence tests untouched); added a PERT
+  point-mass Law-2 equivalence test + sampler range/mean test + a triangular-vs-PERT differ test.
+- File selector confirmed already present (appears when >1 schedule loaded).
+- **Last item this round:** AI driving-path fact injection ("skills") so Ollama stops guessing
+  driving path / zero-slack-driver counts.
