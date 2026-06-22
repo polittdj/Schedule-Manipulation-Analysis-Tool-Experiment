@@ -1449,8 +1449,11 @@ def create_app(
         facts = driving_path_summary(sch, cpm, uid)
         if not facts:
             return JSONResponse(
-                {"uid": uid, "answer": f"UID {uid} is not a scheduled activity in this file.",
-                 "facts": []}
+                {
+                    "uid": uid,
+                    "answer": f"UID {uid} is not a scheduled activity in this file.",
+                    "facts": [],
+                }
             )
         return JSONResponse(
             {
