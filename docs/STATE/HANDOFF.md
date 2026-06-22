@@ -1,21 +1,23 @@
-# Handoff — 2026-06-22 (PRs #81–#210 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#211 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #210 MERGED; chart framework continuing (S-curve per-point hover call-outs)
+> ## STATUS (current) — #210 + #211 MERGED; chart framework continuing (curves per-point call-outs)
 >
-> **`main` is green at `6eef558` (#210 merged).** The 10-item UI/UX batch (ADR-0113) is on `main`:
-> CUI export marking, AI-settings (900 s timeout / cross-check auto-populate / in-app model guide),
-> SRA file selector, Critical-Path-Evolution pan-arrow fix, whole-page rescale, chart hover call-outs,
-> and the stacked Year/Quarter/Month S-curve time axis.
+> **`main` is green at `61906b6` (#211 merged).** On `main`: the 10-item UI/UX batch (ADR-0113, #210)
+> + per-point hover call-outs on the S-curve (#211). Chart hover call-outs now cover the S-curve, the
+> float histogram, the SRA finish-histogram & sensitivity tornado, plus every title-bearing chart
+> (scatter/trend/scurve/cei/evolution); the stacked Year/Quarter/Month S-curve time axis is live too.
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `6eef558`):** chart-framework
-> continuation — **per-point hover call-outs on the S-curve curves** (transparent per-month hit-strips
-> over the plot, each a `<title>` of that month's planned/actual %, read by the shared chartframe
-> tooltip; the S-curve is a line chart with no per-point shapes, so the strips give it real hover
-> data). Tests in `tests/web/test_chart_callouts.py`. No ADR (additive chart slice).
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
+> continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:
+> Finishes / Data-date finishes / Slippage). Same transparent per-month hit-strip pattern; each
+> `<title>` lists every series' value at the hovered month. Tests in `tests/web/test_chart_callouts.py`.
+> No ADR (additive chart slice).
 >
 > ### Chart-framework remaining (after operator eyeballs `/scurve` — no headless browser here)
-> - Propagate the **tier axis + per-point call-outs** to the other time charts (curves, evolution,
->   SRA histogram); add a **day** tier for daily-data charts; **totals/counts** toggle; improve zoom.
+> - **Per-point call-outs** still to add: evolution, SRA histogram already done; remaining line/area
+>   charts (trend, cei, margin, drift, phases) as needed.
+> - **Tier axis** (Year/Quarter/Month + a **day** tier) to propagate to curves/evolution — HOLD until
+>   the operator confirms the S-curve tier layout looks right. Then: **totals/counts** toggle; improve zoom.
 >
 > ### Other open threads (each a fresh branch from `main`)
 > - **Step 5 (value-ES):** still blocked — re-attach `EVM3- Detailed Metric Report.xlsx`.

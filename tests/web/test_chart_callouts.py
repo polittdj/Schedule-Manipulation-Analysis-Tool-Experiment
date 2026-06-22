@@ -68,3 +68,11 @@ def test_scurve_curves_have_per_point_hover_callouts() -> None:
     js = (STATIC / "scurve.js").read_text(encoding="utf-8")
     assert 'fill: "transparent"' in js  # the per-month hit-strip
     assert "planned " in js and "actual " in js  # the call-out text
+
+
+def test_curves_line_charts_have_per_point_hover_callouts() -> None:
+    """The Finishes / Data-date / Slippage line charts get the same per-month hit-strip call-outs,
+    listing every series' value at the hovered month."""
+    js = (STATIC / "curves.js").read_text(encoding="utf-8")
+    assert 'fill: "transparent"' in js
+    assert "s.values[hi]" in js  # per-series value in the call-out

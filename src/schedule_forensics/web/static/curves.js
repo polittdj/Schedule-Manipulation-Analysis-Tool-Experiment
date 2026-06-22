@@ -167,6 +167,28 @@
       return pl;
     });
 
+    // per-point hover call-outs: a transparent per-month hit-strip over the plot, each a <title>
+    // listing every series' value at that month (read by the shared chartframe tooltip). The
+    // lines are polylines with no per-point shapes, so the strips give the chart real hover data.
+    var slot = (n <= 1) ? (W - padL - padR) : (W - padL - padR) / (n - 1);
+    for (var hi = 0; hi < n; hi++) {
+      var hx = (n <= 1) ? padL : x(hi) - slot / 2;
+      var hw = (n <= 1) ? (W - padL - padR) : slot;
+      if (hx < padL) { hw -= padL - hx; hx = padL; }
+      if (hx + hw > W - padR) hw = (W - padR) - hx;
+      var strip = svgEl("rect", {
+        x: hx, y: padT, width: Math.max(hw, 1), height: (H - padB) - padT, fill: "transparent",
+      });
+      var rows = [months[hi]];
+      series.forEach(function (s) {
+        rows.push(s.label + ": " + Math.round(s.values[hi] * 100) / 100);
+      });
+      var ttl = svgEl("title", {});
+      ttl.textContent = rows.join("\n");
+      strip.appendChild(ttl);
+      svg.appendChild(strip);
+    }
+
     if (window.SFA11y) SFA11y.label(svg, name || "Chart");
     box.appendChild(svg);
     // E: the clickable, keyboard-operable show/hide legend (replaces the old static in-SVG one)

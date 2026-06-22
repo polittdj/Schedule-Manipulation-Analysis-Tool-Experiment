@@ -2911,3 +2911,16 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   histogram; day tier; totals/counts toggle; improve zoom. (Operator to eyeball `/scurve` tiers —
   no headless browser in the session.) Other threads unchanged: Step 5 (EVM3), SSI #6 (UID_145),
   multi-select finishes, show-completed, Driving-Path overhaul, Acumen-style Exec Briefing.
+
+## 2026-06-22 — Chart framework cont'd: curves line-chart per-point call-outs (#211 merged)
+
+- **#211 merged** to `main` (`61906b6`). Branch reset fresh onto it.
+- **Per-point hover call-outs on the curves line charts** (`curves.js` `lineChart` — Finishes /
+  Data-date finishes / Slippage). Same transparent per-month hit-strip pattern as the S-curve; each
+  `<title>` lists every series' value at the hovered month, read by the shared chartframe tooltip.
+  Additive, JS-only. Tests: `tests/web/test_chart_callouts.py`. No ADR.
+- **Remaining chart-framework:** per-point call-outs on the other line/area charts as needed; HOLD
+  tier-axis propagation (Year/Quarter/Month + a day tier) until the operator confirms the S-curve
+  tier layout (no headless browser in-session); then totals/counts toggle, improve zoom. Other
+  threads unchanged (Step 5/EVM3, SSI #6/UID_145, multi-select finishes, show-completed, Driving-Path
+  overhaul, Acumen-style Exec Briefing).
