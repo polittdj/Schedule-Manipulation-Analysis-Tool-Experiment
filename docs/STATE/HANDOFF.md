@@ -1,10 +1,40 @@
-# Handoff — 2026-06-22 (PRs #81–#207 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#208 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign, part 4: refresh stale Project5 golden (ADR-0112)
+> ## STATUS (current) — Acumen full-audit campaign: Steps 1–3 MERGED; NEXT = Step 5 (value-based ES)
 >
-> **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`, fresh from main after #207 merged):**
-> build-order **step 3 — refresh the stale Project5 golden**. Steps 1 (`.aft` audit, ADR-0110, #206)
-> and 2 (P2→P5 chain reference, ADR-0111, #207) are **merged to main**.
+> **`main` is green and current.** Build-order **steps 1–3 are merged**: step 1 `.aft` audit
+> (ADR-0110, #206), step 2 P2→P5 chain cross-version reference (ADR-0111, #207), step 3 Project5 golden
+> refresh (ADR-0112, #208). The parity backbone now runs against the **authoritative** Project5 file —
+> exact on every Acumen-anchored figure; the tool correctly surfaces the deleted-logic tampering; SSI
+> is xfail'd pending an export. Nothing is in flight; the next session starts a fresh branch.
+>
+> ### NEXT — Step 5: value-based Earned Schedule (#2), reframed by ADR-0110
+> Per the operator's directive (do steps 3 **and** 5; step 4 deferred), step 5 is next. ADR-0110's
+> `.aft` audit found Acumen's **`SPI(t)` is NOT count-vs-value ES** — it is a **per-activity
+> duration-ratio average** (a different formula of the same name), which explains the EVM2 residual
+> (engine 0.27 vs Acumen 0.56). The task is to **reproduce that formula**, not generic value-ES.
+> - **Source on disk:** `00_REFERENCE_INTAKE/audit/.../EVM3- Detailed Metric Report.xlsx` (per-activity
+>   SPI(t) reference) — git-ignored CUI intake; confirm it is present before starting.
+> - **Plan:** (1) parse EVM3 to lock the exact per-activity duration-ratio SPI(t) definition + the
+>   aggregate; (2) implement in `engine/metrics/evm.py` alongside the existing Earned-Schedule SPI(t)
+>   (do NOT break the current `cei_*` / EVM parity); (3) add a parity/reference test (model on
+>   `tests/engine/test_evm_acumen_reference.py`, skip-when-CUI-absent); (4) ADR-0113 + refresh
+>   HANDOFF/SESSION-LOG + regen `METRIC-DICTIONARY.md` if `help.py` changes; (5) full gate + draft PR.
+> - **Branch fresh from `main`** (squash-merges make stacked branches conflict — CLAUDE.md workflow).
+>
+> ### Backlog (actionable / input-blocked)
+> 4. **Progress-scheduler (#1, ADR-0108)** — deferred per operator; validate vs
+>    `evm_hist2/EVM1 Forensic Analysis Report.xlsx` per-task Start/Finish (unblocked now step 3 is done).
+> 6. **SSI parity** — needs an SSI driving-slack export for the current Project5 (also lifts the step-3
+>    `ssi_uid143` xfail; golden left intact for a trivial re-pin).
+> 7. **Confirmed-missing inputs:** SSI export (current Project5), Acumen **§E PP&Change** export
+>    (current P5-vs-P2 — to cross-validate the float/critical change subset), Large-Test-File `.mpp`
+>    (CEI/HMI cross-version, ADR-0111), Large Project2 source `.mpp`.
+
+> ## STATUS (prev) — Acumen full-audit campaign, part 4: refresh stale Project5 golden (ADR-0112, MERGED #208)
+>
+> Build-order **step 3 — refresh the stale Project5 golden** — MERGED to `main` as #208. Steps 1
+> (`.aft` audit, ADR-0110, #206) and 2 (P2→P5 chain reference, ADR-0111, #207) merged before it.
 >
 > ### What shipped (step 3)
 > Replaced `tests/fixtures/golden/project2_5/Project5.mspdi.xml` with the MSPDI convert of the
@@ -31,7 +61,7 @@
 > 7. **Still missing inputs:** SSI driving-slack export (current Project5), Acumen §E PP&Change export
 >    (current P5-vs-P2), Large-Test-File `.mpp` (CEI/HMI cross-version), Large Project2 source `.mpp`.
 
-> ## STATUS (prev) — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
+> ## STATUS (prev-2) — Acumen full-audit campaign, part 3: P2→P5 cross-version reference (ADR-0111)
 >
 > **OPEN PR (branch `claude/cei-hmi-cross-version`, fresh from main after #206 merged):** build-order
 > **step 2 — cross-version validation**. Step 1 (`.aft` audit, ADR-0110, #206) is **merged to main**.
@@ -64,7 +94,7 @@
 > 7. **Still missing:** Large-Test-File `.mpp` (for CEI/HMI cross-version), any SSI export, Large
 >    Project2 source `.mpp` (have its Acumen reports only).
 
-> ## STATUS (prev-2) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
+> ## STATUS (prev-3) — Acumen full-audit campaign, part 2: `.aft` Bible formula audit (ADR-0110)
 >
 > **OPEN draft PR (branch `claude/gracious-faraday-i3u2mw`):** build-order **step 1 — the `.aft`
 > formula audit** (read-only, NO engine changes). The operator re-attached the corpus + the metric
