@@ -2880,8 +2880,13 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
     `chartframe.js` — one styled `.cf-tip` tooltip shows an instant call-out for any chart shape with
     a direct `<title>` child or `data-callout` attr, upgrading every title-bearing chart at once;
     broadened the float histogram to emit per-bar call-outs. Tests: `tests/web/test_chart_callouts.py`
-    (3). Remaining slices: time-scale tiers (Y/Q/M/D, 3-tier axis), totals/counts toggle, broaden
-    titles to the title-less charts, improve zoom.
+    (3); also extended call-outs to the SRA finish histogram + sensitivity tornado.
+  - **Chart framework slice 2 — stacked time-scale tiers (S-curve):** `scurve.js` renders the time
+    axis as a stacked Year/Quarter/Month header (parsing `Mon-YY` labels) with a `#scurveGran`
+    selector (Months/Quarters/Years). Additive in the empty top area; guarded flat-month fallback.
+    Coordinate math node-verified (no headless browser → visual eyeball recommended). Remaining:
+    wire tiers into curves/evolution/SRA-histogram, a day tier, totals/counts toggle, per-point
+    curve call-outs, improve zoom.
 - **Not started (operator must steer):** re-attach EVM3 → Step 5; the large UI request list (chart
   time-scale tiers + scaling + hover call-outs + totals/counts on all visuals; SRA file-selection;
   Exec-Summary/S-Curve scaling under many files; remove the ambiguous "Quality Trend" visual;

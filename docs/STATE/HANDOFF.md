@@ -41,9 +41,17 @@
 >   `data-callout` attr — instantly upgrading every title-bearing chart (scatter, trend, scurve, cei,
 >   path_evolution) and giving a hook for richer text. Broadened the float histogram (was title-less)
 >   to emit per-bar call-outs (count + % of population). `.cf-tip` CSS. Tests:
->   `tests/web/test_chart_callouts.py` (3). **Remaining chart-framework slices (NOT done):**
->   time-scale tiers (year/quarter/month/day, 3-tier stacked axis); totals/counts toggle; broaden
->   `<title>`/`data-callout` to the remaining title-less charts (sra, curves, …); improve the zoom.
+>   `tests/web/test_chart_callouts.py`. Extended call-outs to the **SRA** finish histogram +
+>   sensitivity tornado (operator named SRA).
+> - **Chart framework — slice 2: stacked time-scale tiers (S-curve).** `scurve.js` now renders the
+>   time axis as a stacked **Year / Quarter / Month** header (parsing the deck's `Mon-YY` labels),
+>   with a `#scurveGran` granularity selector (Months = all 3 tiers / Quarters / Years). Additive in
+>   the previously-empty top area (curves/legend/data-date marker untouched), guarded fallback to a
+>   flat month tier on non-standard labels. Coordinate math node-verified (no headless browser
+>   available, so **a visual eyeball is recommended**). Tests in `tests/web/test_chart_callouts.py`.
+>   **Remaining chart-framework slices (NOT done):** wire the tier axis into the other time charts
+>   (curves, evolution, SRA histogram); a day tier for daily-data charts; totals/counts toggle;
+>   per-point curve call-outs; improve the zoom.
 >
 > ### SSI UID_145 intake arrived (git-ignored) — NOT Step 5, NOT a trivial re-pin
 > The session upload was an **SSI Analysis (UID_145) Directional Path Analysis** bundle for the current

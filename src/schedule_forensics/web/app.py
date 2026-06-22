@@ -4770,6 +4770,11 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <span id=scurveLabel class=muted></span>
 <button id=nextScurve type=button>Next &#9654;</button>
 <button id=scurvePlay type=button>&#9654; Auto-play</button>
+<label>Time scale <select id=scurveGran data-no-i18n>
+<option value=month selected>Months (year / quarter / month)</option>
+<option value=quarter>Quarters (year / quarter)</option>
+<option value=year>Years</option>
+</select></label>
 </div>
 <div id=scurveChart class=chart-host></div></div>
 {_scurve_interpretation(sc)}
