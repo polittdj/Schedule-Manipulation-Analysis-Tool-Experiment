@@ -25,6 +25,44 @@
   }
 
   var data = null, index = 0, timer = null;
+  var gran = "month";  // time-scale granularity: "year" | "quarter" | "month"
+
+  // ── multi-tier time axis ────────────────────────────────────────────────────────────────────
+  // The month labels are the deck's "Mon-YY" form (e.g. "Mar-27"); parse them so the axis can be
+  // drawn as up to three STACKED tiers — Year on top, then Quarter, then Month — like a Gantt
+  // timeline header. The granularity selector chooses how many tiers show. Parsing is guarded: any
+  // label that doesn't match falls the chart back to a single flat month tier (no crash).
+  var MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  function parseMonth(label) {
+    var m = /^([A-Za-z]{3})-(\d{2})$/.exec(String(label));
+    if (!m || MONTHS[m[1]] == null) return null;
+    return { y: 2000 + parseInt(m[2], 10), m: MONTHS[m[1]] };
+  }
+  // Group consecutive months sharing a tier key into runs {start,end,label}.
+  function tierRuns(months, keyOf, labelOf) {
+    var out = [], cur = null;
+    for (var i = 0; i < months.length; i++) {
+      var pm = parseMonth(months[i]);
+      var k = pm ? keyOf(pm) : "?" + i;
+      if (cur && cur.key === k) { cur.end = i; }
+      else { cur = { key: k, start: i, end: i, label: pm ? labelOf(pm) : months[i] }; out.push(cur); }
+    }
+    return out;
+  }
+  function yearRuns(months) {
+    return tierRuns(months, function (p) { return p.y; }, function (p) { return String(p.y); });
+  }
+  function quarterRuns(months) {
+    return tierRuns(months,
+      function (p) { return p.y + "Q" + (Math.floor(p.m / 3) + 1); },
+      function (p) { return "Q" + (Math.floor(p.m / 3) + 1) + " '" + String(p.y % 100); });
+  }
+  function monthRuns(months) {
+    return tierRuns(months, function (p) { return p.y + "-" + p.m; },
+      function (p) { return ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][p.m]; });
+  }
 
   function curve(svg, series, color, x, y, dashed) {
     var pts = series.map(function (v, i) { return x(i) + "," + y(v); });
@@ -42,17 +80,59 @@
       " (" + v.activities + " activities)";
     box.innerHTML = "";
 
-    var W = 980, H = 360, padL = 40, padR = 14, padT = 44, padB = 46;
+    var W = 980, H = 360, padL = 40, padR = 14, padB = 46;
+    var n = months.length;
+    // stacked time tiers (top -> bottom): Year always; + Quarter / Month per the granularity pick.
+    var TIER_TOP = 26, TIER_H = 16;
+    var tiers;
+    if (parseMonth(months[0])) {
+      tiers = [{ runs: yearRuns(months), minW: 30 }];
+      if (gran === "month" || gran === "quarter") tiers.push({ runs: quarterRuns(months), minW: 34 });
+      if (gran === "month") tiers.push({ runs: monthRuns(months), minW: 22 });
+    } else {
+      tiers = [{ runs: months.map(function (lbl, i) {
+        return { start: i, end: i, label: lbl };
+      }), minW: 22 }];  // non-standard labels -> one flat month tier
+    }
+    var padT = TIER_TOP + tiers.length * TIER_H + 10;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     if (window.SFA11y) SFA11y.label(svg, "S-curve — cumulative planned vs actual progress");
-    var n = months.length;
     var x = function (i) { return padL + (n <= 1 ? 0 : (i * (W - padL - padR)) / (n - 1)); };
+    var slot = (n <= 1) ? (W - padL - padR) : (W - padL - padR) / (n - 1);
     // LOCKED 0-100% axis so every version's curves are directly comparable frame to frame.
     var y = function (pct) { return padT + (1 - pct / 100) * (H - padT - padB); };
+
+    function tierEdges(s, e) {
+      var left = (n <= 1) ? padL : x(s) - slot / 2;
+      var right = (n <= 1) ? (W - padR) : x(e) + slot / 2;
+      return [Math.max(padL, left), Math.min(W - padR, right)];
+    }
+    function drawTiers() {
+      tiers.forEach(function (tier, r) {
+        var rowTop = TIER_TOP + r * TIER_H;
+        tier.runs.forEach(function (run) {
+          var ed = tierEdges(run.start, run.end);
+          svg.appendChild(svgEl("line", { x1: ed[0], y1: rowTop, x2: ed[0], y2: rowTop + TIER_H,
+            stroke: "var(--line)", "stroke-width": 1 }));
+          if (ed[1] - ed[0] >= tier.minW) {
+            var t = svgEl("text", { x: (ed[0] + ed[1]) / 2, y: rowTop + TIER_H - 4,
+              "text-anchor": "middle", fill: "var(--muted)", "font-size": 10 });
+            t.textContent = run.label;
+            svg.appendChild(t);
+          }
+        });
+        svg.appendChild(svgEl("line", { x1: padL, y1: rowTop + TIER_H, x2: W - padR,
+          y2: rowTop + TIER_H, stroke: "var(--line)", "stroke-width": 1 }));
+      });
+      svg.appendChild(svgEl("line", { x1: W - padR, y1: TIER_TOP, x2: W - padR,
+        y2: TIER_TOP + tiers.length * TIER_H, stroke: "var(--line)", "stroke-width": 1 }));
+    }
 
     var title = svgEl("text", { x: W / 2, y: 20, "text-anchor": "middle", fill: "var(--ink)", "font-size": 16, "font-weight": 600 });
     title.textContent = "Cumulative progress — " + v.label;
     svg.appendChild(title);
+
+    drawTiers();  // stacked Year / Quarter / Month time-scale header
 
     // the planned-vs-actual gap at the data date (the headline number) — pinned to the
     // bottom-right corner so it never overlaps the centered title (which carries the schedule
@@ -75,16 +155,7 @@
       svg.appendChild(lab);
     });
 
-    // month labels, thinned to avoid overlap, rotated for legibility
-    var step = Math.max(1, Math.ceil(n / 16));
-    for (var i = 0; i < n; i++) {
-      if (i % step === 0) {
-        var ml = svgEl("text", { x: x(i), y: H - padB + 16, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
-          transform: "rotate(-35 " + x(i) + " " + (H - padB + 16) + ")" });
-        ml.textContent = months[i];
-        svg.appendChild(ml);
-      }
-    }
+    // (month/quarter/year scale is the stacked tier header drawn above the plot)
 
     // dashed data-date marker
     if (v.status_index != null) {
@@ -235,6 +306,10 @@
   document.getElementById("prevScurve").addEventListener("click", function () { stopAuto(); step(-1); });
   document.getElementById("nextScurve").addEventListener("click", function () { stopAuto(); step(1); });
   document.getElementById("scurvePlay").addEventListener("click", toggleAuto);
+  var granSel = document.getElementById("scurveGran");
+  if (granSel) {
+    granSel.addEventListener("change", function () { gran = granSel.value; if (data) render(); });
+  }
   buildFilterUI();
   load();
 })();

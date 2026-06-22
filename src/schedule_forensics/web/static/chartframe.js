@@ -17,6 +17,57 @@
   var ZOOM_MIN = 0.5;
   var ZOOM_MAX = 6;
 
+  // ── shared hover call-out ───────────────────────────────────────────────────────────────────
+  // One styled tooltip, reused by every framed chart. Hovering any SVG shape that carries a direct
+  // <title> child (the existing native-tooltip text used across the charts) — or an explicit
+  // data-callout attribute for richer text — shows an instant, styled call-out at the cursor. This
+  // upgrades EVERY chart's hover to a real call-out without touching each chart, and gives new
+  // charts a hook (data-callout=…) for multi-line detail.
+  var tip = null;
+  function ensureTip() {
+    if (tip) return tip;
+    tip = document.createElement("div");
+    tip.className = "cf-tip";
+    tip.setAttribute("data-no-i18n", "");
+    tip.setAttribute("role", "tooltip");
+    tip.style.display = "none";
+    document.body.appendChild(tip);
+    return tip;
+  }
+  function calloutText(node, host) {
+    while (node && node !== host) {
+      if (node.getAttribute) {
+        var dc = node.getAttribute("data-callout");
+        if (dc) return dc;
+        var kids = node.childNodes;
+        for (var j = 0; j < kids.length; j++) {
+          var k = kids[j];
+          if (k.nodeName && k.nodeName.toLowerCase() === "title" && k.textContent) {
+            return k.textContent;
+          }
+        }
+      }
+      node = node.parentNode;
+    }
+    return null;
+  }
+  function wireCallouts(host) {
+    host.addEventListener("mousemove", function (e) {
+      var txt = calloutText(e.target, host);
+      var t = ensureTip();
+      if (!txt) { t.style.display = "none"; return; }
+      t.textContent = txt;
+      t.style.display = "block";
+      var pad = 14, r = t.getBoundingClientRect();
+      var x = e.clientX + pad, y = e.clientY + pad;
+      if (x + r.width > window.innerWidth) x = e.clientX - pad - r.width;
+      if (y + r.height > window.innerHeight) y = e.clientY - pad - r.height;
+      t.style.left = Math.max(0, x) + "px";
+      t.style.top = Math.max(0, y) + "px";
+    });
+    host.addEventListener("mouseleave", function () { if (tip) tip.style.display = "none"; });
+  }
+
   function requestFs(el) {
     var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
     return fn ? fn.call(el) : null;
@@ -94,6 +145,7 @@
     var obs = new MutationObserver(function () { applyZoom(); });
     obs.observe(host, { childList: true, subtree: true });
 
+    wireCallouts(host);  // styled hover call-outs for every chart in this frame
     applyZoom();
   }
 

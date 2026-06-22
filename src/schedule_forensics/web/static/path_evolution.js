@@ -313,7 +313,18 @@
     if (span < 7 * DAY) span = 7 * DAY;  // floor: never zoom past a week-wide window
     lo = c - span / 2; hi = c + span / 2; clampView(); render();
   }
-  function pan(frac) { var d = (hi - lo) * frac; lo += d; hi += d; clampView(); render(); }
+  function pan(frac) {
+    // When fully zoomed out the window already spans the whole axis, so a plain pan is clamped
+    // straight back (the arrows looked dead). Make the first click responsive: jump to the half of
+    // the axis the arrow points at; subsequent clicks then slide the window by `frac`.
+    if (hi - lo >= fullHi - fullLo) {
+      var span = (fullHi - fullLo) / 2;
+      if (frac < 0) { lo = fullLo; hi = fullLo + span; }  // ◀ earlier half
+      else { lo = fullHi - span; hi = fullHi; }           // ▶ later half
+      clampView(); render(); return;
+    }
+    var d = (hi - lo) * frac; lo += d; hi += d; clampView(); render();
+  }
   function resetZoom() { lo = fullLo; hi = fullHi; render(); }
   function stopAuto() {
     if (timer) { clearInterval(timer); timer = null; }

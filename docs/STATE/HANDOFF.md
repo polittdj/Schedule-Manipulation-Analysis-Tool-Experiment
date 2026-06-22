@@ -1,6 +1,80 @@
 # Handoff — 2026-06-22 (PRs #81–#208 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Acumen full-audit campaign: Steps 1–3 MERGED; NEXT = Step 5 (value-based ES)
+> ## STATUS (current) — Step 5 BLOCKED (EVM3 absent); shipped CUI export marking + AI-settings UX (ADR-0113)
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, at `main` HEAD `cf480ed` incl. #209).**
+> Build-order **Step 5 (value-based / per-activity SPI(t)) could not start: its required reference,
+> `00_REFERENCE_INTAKE/audit/.../EVM3- Detailed Metric Report.xlsx`, is NOT on disk.** Per the operator's
+> own gate ("if absent, STOP … do not fabricate") Step 5 is **paused, input-blocked** — to resume,
+> re-attach EVM3 into the git-ignored intake. Reproducing the per-activity duration-ratio SPI(t) without
+> it would mean inventing reference numbers (Law 2 violation in a testimony context).
+>
+> ### What shipped this session (parity-isolated; no engine/metric number touched) — ADR-0113
+> - **CUI marking on every Excel + Word export (Law 1).** `reports/xlsx.py` stamps a CUI print
+>   header+footer on every worksheet (after `<sheetData>`, grid untouched); `reports/docx.py` adds
+>   `word/header1.xml`+`footer1.xml` referenced from `<w:sectPr>` so every page of every `.docx` —
+>   incl. the narrative Diagnostic Brief (same `render_document` chokepoint) — is CUI-marked top+bottom.
+>   Both stay byte-deterministic. New tests in `tests/reports/test_exports.py`.
+> - **AI-settings UX:** generation-timeout **default 300→900 s** (`AIConfig` + `/settings`; 30–3600 clamp
+>   unchanged); **cross-check second-model id auto-populates** on enable via vendored loopback-only
+>   `static/settings.js` (never clobbers typed input; fields gained ids `primaryModel`/`secondBackend`/
+>   `secondModel`); an in-app `<details>` **local-model setup guide** (`ollama pull llama3.1:8b` + tiers)
+>   on the settings page; `docs/CONNECT-A-BIGGER-AI-MODEL.md` deepened (cross-check + timeout note).
+> - Tests added in `tests/web/test_ai_wiring.py`; two existing assertions updated for the new
+>   `id=primaryModel` markup (`test_ai_wiring.py`, `test_coverage_app_extra.py`).
+> - **SRA file selection (operator order):** `/sra` now lets the operator choose which loaded file
+>   the Monte-Carlo runs against (a `name=file` selector → `GET /sra?file=<key>`, persisted as
+>   `SessionState.sra_file`). One resolver `_sra_selected(st)` (operator pick → else latest-solvable)
+>   is shared by the page, the override POST, and `/api/sra`, so all three target the same schedule;
+>   single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4). No ADR.
+> - **Critical-Path Evolution pan arrows (bug fix):** the ◀/▶ pan arrows were silent no-ops at the
+>   default (fully zoomed-out) view because `clampView` reset any pan to the full axis. `pan()` now,
+>   when fully zoomed out, jumps to the half of the axis the arrow points at (then subsequent clicks
+>   slide). JS-only (`path_evolution.js`), `node --check` clean.
+> - **Whole-page rescale (operator order):** a header `#uiScale` selector (90–175%) drives
+>   `document.documentElement.style.zoom` via `theme.js` (applied in `<head>` before paint, persisted
+>   in `localStorage` `sf-scale`). CSS `zoom` scales text + the px layout together (a root font-size
+>   would miss the px rules). Tests: `tests/web/test_ui_scale.py` (2). No ADR.
+> - **Chart framework — slice 1 (operator's chosen next focus): shared hover call-outs.**
+>   `chartframe.js` (already frames every `.chart-host` with zoom + full-screen) now adds ONE styled
+>   tooltip that shows an instant call-out for any chart shape carrying a direct `<title>` child or a
+>   `data-callout` attr — instantly upgrading every title-bearing chart (scatter, trend, scurve, cei,
+>   path_evolution) and giving a hook for richer text. Broadened the float histogram (was title-less)
+>   to emit per-bar call-outs (count + % of population). `.cf-tip` CSS. Tests:
+>   `tests/web/test_chart_callouts.py`. Extended call-outs to the **SRA** finish histogram +
+>   sensitivity tornado (operator named SRA).
+> - **Chart framework — slice 2: stacked time-scale tiers (S-curve).** `scurve.js` now renders the
+>   time axis as a stacked **Year / Quarter / Month** header (parsing the deck's `Mon-YY` labels),
+>   with a `#scurveGran` granularity selector (Months = all 3 tiers / Quarters / Years). Additive in
+>   the previously-empty top area (curves/legend/data-date marker untouched), guarded fallback to a
+>   flat month tier on non-standard labels. Coordinate math node-verified (no headless browser
+>   available, so **a visual eyeball is recommended**). Tests in `tests/web/test_chart_callouts.py`.
+>   **Remaining chart-framework slices (NOT done):** wire the tier axis into the other time charts
+>   (curves, evolution, SRA histogram); a day tier for daily-data charts; totals/counts toggle;
+>   per-point curve call-outs; improve the zoom.
+>
+> ### SSI UID_145 intake arrived (git-ignored) — NOT Step 5, NOT a trivial re-pin
+> The session upload was an **SSI Analysis (UID_145) Directional Path Analysis** bundle for the current
+> `Project5_TAMPERED`/`Project2` (two `.mpp` + SSI `Driving Slack`/`Drag`/`Trace Log` workbooks + `.docx`),
+> now under `00_REFERENCE_INTAKE/audit/ssi_uid145/`. It is the SSI driving-slack input (backlog #6) but
+> for **focus UID 145**, whereas the repo's xfail golden is **`ssi_uid143`** — so it needs its own
+> validation pass and does **not** auto-lift the `ssi_uid143` xfail.
+>
+> ### NEXT (operator must steer / re-attach)
+> - **Re-attach `EVM3- Detailed Metric Report.xlsx`** → resume Step 5 (per-activity SPI(t), ADR-0110).
+> - **Large operator UI list** (separate multi-PR efforts, not yet started): SRA file-selection;
+>   Exec-Summary/S-Curve scaling under many files; remove the "Quality Trend" visual (DISAMBIGUATE which
+>   — /trend has a "Quality drill-down & animation" panel AND a "Schedule-quality trends" panel);
+>   multi-select on Finishes/Data-date finishes; **chart time-scale tiers (years/quarters/months/days,
+>   3-tier stacked axis) + a scaling control + hover call-outs + totals/counts on ALL visuals**;
+>   page-wide text-size/zoom + condensed spacing; Critical-Path-Evolution zoom-arrow fix + "show
+>   completed"; **Driving-Path: per-schedule selection + animation, three columns
+>   (critical/secondary/tertiary) with an operator threshold, driving-slack-degradation trend**;
+>   **Executive Briefing reformatted like Acumen Fuse**. Recommend sequencing the chart-framework
+>   (time-scale/scaling/hover/totals) first since many asks depend on it.
+> - SSI parity (#6) using the new UID_145 export; progress-scheduler (#1, ADR-0108, deferred).
+
+> ## STATUS (prev) — Acumen full-audit campaign: Steps 1–3 MERGED; NEXT = Step 5 (value-based ES)
 >
 > **`main` is green and current.** Build-order **steps 1–3 are merged**: step 1 `.aft` audit
 > (ADR-0110, #206), step 2 P2→P5 chain cross-version reference (ADR-0111, #207), step 3 Project5 golden

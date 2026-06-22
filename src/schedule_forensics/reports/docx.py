@@ -33,6 +33,10 @@ _CONTENT_TYPES = (
     '<Default Extension="xml" ContentType="application/xml"/>'
     '<Override PartName="/word/document.xml" ContentType="application/'
     'vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+    '<Override PartName="/word/header1.xml" ContentType="application/'
+    'vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>'
+    '<Override PartName="/word/footer1.xml" ContentType="application/'
+    'vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>'
     "</Types>"
 )
 
@@ -45,6 +49,33 @@ _ROOT_RELS = (
 )
 
 _W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+#: CUI marking applied to every page of every Word export (Law 1 — every exported artifact
+#: carries its handling caveat). A header (top of page) + footer (bottom of page) part, each
+#: referenced from ``<w:sectPr>``, so the banner repeats on every printed page regardless of
+#: how the body flows. Separate parts (not body paragraphs) → the document body and the tests
+#: that read it are untouched.
+_CUI_BANNER = "CONTROLLED UNCLASSIFIED INFORMATION (CUI)"
+
+#: Relationships for the header/footer parts referenced from the document body's sectPr.
+_DOCUMENT_RELS = (
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+    f'<Relationship Id="rId1" Type="{_R}/header" Target="header1.xml"/>'
+    f'<Relationship Id="rId2" Type="{_R}/footer" Target="footer1.xml"/>'
+    "</Relationships>"
+)
+
+
+def _cui_part(tag: str) -> str:
+    """A header (``hdr``) or footer (``ftr``) part holding the centered, bold CUI banner."""
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+        f'<w:{tag} xmlns:w="{_W}"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+        f'<w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">{_esc(_CUI_BANNER)}</w:t>'
+        f"</w:r></w:p></w:{tag}>"
+    )
 
 
 @dataclass(frozen=True)
@@ -82,8 +113,10 @@ def render_document(blocks: Sequence[Block]) -> bytes:
     body = "".join(_block_xml(b) for b in blocks)
     document = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-        f'<w:document xmlns:w="{_W}"><w:body>{body}'
-        '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>'
+        f'<w:document xmlns:w="{_W}" xmlns:r="{_R}"><w:body>{body}'
+        '<w:sectPr><w:headerReference w:type="default" r:id="rId1"/>'
+        '<w:footerReference w:type="default" r:id="rId2"/>'
+        '<w:pgSz w:w="12240" w:h="15840"/>'
         '<w:pgMar w:top="1080" w:right="1080" w:bottom="1080" w:left="1080"/></w:sectPr>'
         "</w:body></w:document>"
     )
@@ -92,7 +125,10 @@ def render_document(blocks: Sequence[Block]) -> bytes:
         for name, content in (
             ("[Content_Types].xml", _CONTENT_TYPES),
             ("_rels/.rels", _ROOT_RELS),
+            ("word/_rels/document.xml.rels", _DOCUMENT_RELS),
             ("word/document.xml", document),
+            ("word/header1.xml", _cui_part("hdr")),
+            ("word/footer1.xml", _cui_part("ftr")),
         ):
             info = zipfile.ZipInfo(name, date_time=_ZIP_EPOCH)
             info.compress_type = zipfile.ZIP_DEFLATED

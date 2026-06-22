@@ -61,6 +61,17 @@ _STYLES = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <cellXfs count="2"><xf fontId="0"/><xf fontId="1" applyFont="1"/></cellXfs>
 </styleSheet>"""
 
+#: CUI banner/footer marking stamped on every printed page of every sheet (Law 1 — every
+#: exported artifact carries its handling caveat). ``&amp;C`` (XML-escaped ``&C``) centers the
+#: text; Excel un-escapes and interprets the header/footer codes. Placed after ``<sheetData>``,
+#: which is where the OOXML worksheet schema expects ``headerFooter`` — so the cell grid (and the
+#: tests that read it) is untouched.
+_CUI_BANNER = "CONTROLLED UNCLASSIFIED INFORMATION (CUI)"
+_CUI_HEADER_FOOTER = (
+    f"<headerFooter><oddHeader>&amp;C{_CUI_BANNER}</oddHeader>"
+    f"<oddFooter>&amp;C{_CUI_BANNER}</oddFooter></headerFooter>"
+)
+
 
 def render_xlsx(tableset: TableSet) -> bytes:
     """Serialize a :class:`TableSet` as a deterministic .xlsx workbook (bytes)."""
@@ -132,7 +143,8 @@ def _sheet_xml(table: Table) -> str:
     return (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-        f"<cols>{cols}</cols><sheetData>{''.join(rows)}</sheetData></worksheet>"
+        f"<cols>{cols}</cols><sheetData>{''.join(rows)}</sheetData>"
+        f"{_CUI_HEADER_FOOTER}</worksheet>"
     )
 
 

@@ -221,6 +221,12 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .cf-frame:fullscreen .cf-scroll { height: 100%; }
 .cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
   padding: 34px 20px 20px; overflow: auto; }
+/* Shared hover call-out (chartframe.js) — styled, instant tooltip following the cursor on any
+   chart point that carries a <title> child or a data-callout attribute. */
+.cf-tip { position: fixed; z-index: 10000; pointer-events: none; max-width: 300px;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 6px;
+  padding: 6px 9px; font-size: 12px; line-height: 1.4; white-space: pre-line;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.45); }
 
 /* Path-analysis: the target-relative-scoping explainer + the "Drives →" link-detail column. */
 .path-explainer { margin: 2px 0 12px; }

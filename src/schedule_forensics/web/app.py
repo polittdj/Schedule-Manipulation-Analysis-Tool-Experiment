@@ -216,6 +216,11 @@ title="Focus every view on one activity (blank = clear)">
 <label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
 <button type=submit class=linkbtn>Set</button></form>
 <button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
+<label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size
+<select id=uiScale data-no-i18n>
+<option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option>
+<option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option>
+</select></label>
 <form action="/language" method=post class="navform langform"
 title="Display language for the UI and AI results">
 <label>Language: <select name=lang data-no-i18n
@@ -324,6 +329,9 @@ class SessionState:
     sra_risks: list[RiskEvent] = field(default_factory=list)
     # monotonic id counter so each registered risk keeps a stable, unique id across removals.
     sra_risk_seq: int = 0
+    # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
+    # solvable version (the historical default). Set via GET /sra?file=<key>.
+    sra_file: str | None = None
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -1985,8 +1993,12 @@ def create_app(
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
 
     @app.get("/sra", response_class=HTMLResponse)
-    def sra_view() -> HTMLResponse:
+    def sra_view(file: str = Query("")) -> HTMLResponse:
         st = session()
+        # operator picks which loaded file the SRA runs against; persist it so the simulation API
+        # and the server-rendered override/risk tables all target the same schedule.
+        if file.strip() and file.strip() in st.schedules:
+            st.sra_file = file.strip()
         if not st.schedules:
             return _page(
                 st,
@@ -2039,7 +2051,7 @@ def create_app(
         # per-activity 3-point override (days → working minutes), only for a real non-summary task
         add_uid = _parse_uid(uid)
         if add_uid is not None and (opt_days.strip() or ml_days.strip() or pess_days.strip()):
-            chosen = _latest_solvable(st)
+            chosen = _sra_selected(st)
             if chosen is not None:
                 _, sch, _cpm = chosen
                 task = sch.tasks_by_id.get(add_uid)
@@ -2113,7 +2125,7 @@ def create_app(
     @app.get("/api/sra")
     def sra_json(iterations: int = Query(1000)) -> JSONResponse:
         st = session()
-        chosen = _latest_solvable(st)
+        chosen = _sra_selected(st)
         if chosen is None:
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, cpm = chosen
@@ -2248,7 +2260,7 @@ def create_app(
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
         second_model: str = Form(""),
-        gen_timeout: float = Form(300.0),
+        gen_timeout: float = Form(900.0),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -4758,6 +4770,11 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <span id=scurveLabel class=muted></span>
 <button id=nextScurve type=button>Next &#9654;</button>
 <button id=scurvePlay type=button>&#9654; Auto-play</button>
+<label>Time scale <select id=scurveGran data-no-i18n>
+<option value=month selected>Months (year / quarter / month)</option>
+<option value=quarter>Quarters (year / quarter)</option>
+<option value=year>Years</option>
+</select></label>
 </div>
 <div id=scurveChart class=chart-host></div></div>
 {_scurve_interpretation(sc)}
@@ -4867,6 +4884,22 @@ def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None
     return chosen
 
 
+def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
+    """The schedule the SRA runs against — the operator's pick (``st.sra_file``) when it names a
+    loaded, solvable version, otherwise the latest-solvable default. One resolver shared by the
+    page, the simulation API, and the override POST so all three always agree on the file."""
+    key = st.sra_file
+    if key is not None and key in st.schedules:
+        raw = st.schedules[key]
+        try:
+            analysis = st.analysis_for(key, raw)
+        except CPMError:
+            pass  # the chosen file no longer solves (e.g. filtered to nothing) -> fall back
+        else:
+            return (key, st.scope(raw), analysis.cpm)
+    return _latest_solvable(st)
+
+
 def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
     """The current per-activity overrides as a table (UID, opt/ml/pess in days) + Remove buttons."""
     if not st.sra_overrides:
@@ -4951,8 +4984,21 @@ def _sra_body(st: SessionState) -> str:
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
         for n in (500, 1000, 2000, 5000)
     )
-    sch = _latest_solvable(st)
+    sch = _sra_selected(st)
     scoped = sch[1] if sch is not None else None
+    selected_key = sch[0] if sch is not None else None
+    file_opts = "".join(
+        f'<option value="{_e(key)}"{" selected" if key == selected_key else ""}>{_e(key)}</option>'
+        for key, _raw in st.ordered_versions()
+    )
+    file_selector = (
+        '<form method=get action="/sra" class=viz-controls style="margin-bottom:8px">'
+        "<label>Run SRA against file "
+        f"<select name=file>{file_opts}</select></label>"
+        "<button type=submit>Run on this file</button></form>"
+        if len(st.schedules) > 1
+        else ""
+    )
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"
@@ -4985,6 +5031,9 @@ finish-date confidence curve. The deterministic CPM finish is marked against the
 so you can read how much contingency it implies (the deterministic date typically sits well
 below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
 {disclaimer}
+{file_selector}
+<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b>
+{"(latest solvable version)" if st.sra_file is None else ""}</p>
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
 <button id=sraRun type=button>Run simulation</button>
@@ -5978,7 +6027,7 @@ def _settings_body(state: SessionState) -> str:
         if cfg.model and not _model_installed(cfg.model, models):
             option_models = [cfg.model, *option_models]
         model_field = (
-            "<select name=model>"
+            "<select name=model id=primaryModel>"
             + "".join(
                 f'<option value="{_e(m)}"{sel(m, cfg.model)}>{_e(m)}'
                 f"{'' if _model_installed(m, models) else ' — not installed'}</option>"
@@ -5987,7 +6036,7 @@ def _settings_body(state: SessionState) -> str:
             + "</select>"
         )
     else:
-        model_field = f'<input name=model value="{_e(cfg.model)}">'
+        model_field = f'<input name=model id=primaryModel value="{_e(cfg.model)}">'
 
     return f"""
 <div class=panel><h2>Local AI</h2>
@@ -6025,20 +6074,46 @@ and derive figures grounded in the cited facts (the "AI can err" disclaimer ride
 engine never computed is discarded wholesale</option>
 </select></p>
 <p>Cross-check second model:
-<select name=second_backend>
+<select name=second_backend id=secondBackend>
 <option value=none{sel("none", cfg.second_backend)}>Off</option>
 <option value=ollama{sel("ollama", cfg.second_backend)}>Ollama (local)</option>
 <option value=openai{sel("openai", cfg.second_backend)}>OpenAI-compatible (local)</option>
 </select>
- model id: <input name=second_model size=20 value="{_e(cfg.second_model)}"
- title="blank = the server's default/loaded model"></p>
+ model id: <input name=second_model id=secondModel size=20 value="{_e(cfg.second_model)}"
+ title="Turning the cross-check on auto-fills this with the primary model id; edit it to use a
+different second model (e.g. qwen2.5:14b). Blank = the server's default/loaded model."></p>
 <input type=submit value="Save"></form>
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
 Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
 With a cross-check model on, both local models answer every question independently and the engine
 compares their figures deterministically — agreement is corroboration, the citations stay the
-ground truth.</p></div>"""
+ground truth.</p>
+<details class=setup-guide><summary>How to download &amp; set up a local model (Llama&nbsp;3.1:8b and others)</summary>
+<ol>
+<li><b>Install Ollama</b> (one time). In your browser, go to <code>ollama.com/download</code> and run
+the installer — Windows, macOS, or Linux. This is the only step that uses the internet.</li>
+<li><b>Download the standard model.</b> Open a terminal / command prompt and run:
+<br><code>ollama pull llama3.1:8b</code></li>
+<li><b>Pick a model that fits your computer's memory (RAM):</b>
+<ul>
+<li>8&nbsp;GB &rarr; <code>ollama pull llama3.2:3b</code> (small, quick)</li>
+<li>16&nbsp;GB &rarr; <code>ollama pull llama3.1:8b</code> (the tool's standard — balanced)</li>
+<li>16&ndash;32&nbsp;GB &rarr; <code>ollama pull qwen2.5:14b</code> (noticeably smarter)</li>
+<li>32&nbsp;GB+ &rarr; <code>ollama pull qwen2.5:32b</code> &middot; 64&nbsp;GB+ &rarr;
+<code>ollama pull llama3.1:70b</code> (most powerful, slowest)</li>
+</ul></li>
+<li><b>Point the tool at it.</b> Set <i>Backend</i> = <i>Ollama (local)</i> above, choose the model
+in <i>Model</i>, and click <b>Save</b>. The tool talks to Ollama only on
+<code>127.0.0.1</code> — nothing leaves the machine.</li>
+<li><b>(Optional) cross-check second model.</b> Pull a second model
+(e.g. <code>ollama pull qwen2.5:14b</code>), set <i>Cross-check second model</i> to
+<i>Ollama (local)</i> — the model id auto-fills with the primary; change it to the second model
+so both answer every question and the engine compares their figures.</li>
+<li><b>If a big model runs slowly,</b> raise <i>Generation timeout</i> above (it defaults to
+900&nbsp;seconds). The full walk-through lives in <code>docs/CONNECT-A-BIGGER-AI-MODEL.md</code>.</li>
+</ol></details></div>
+<script src="/static/settings.js"></script>"""
 
 
 def _trigger_shutdown(app: FastAPI) -> None:

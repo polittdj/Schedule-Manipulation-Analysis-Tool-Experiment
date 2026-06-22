@@ -2835,3 +2835,64 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   reframed by the ADR-0110 SPI(t) find). Confirmed-missing inputs: SSI export (current Project5),
   Acumen §E PP&Change (current P5-vs-P2), Large-Test-File `.mpp` (CEI/HMI), Large Project2 `.mpp`.
 - **ADR-0112.**
+
+## 2026-06-22 — Step 5 BLOCKED (EVM3 absent); CUI export marking + AI-settings UX (ADR-0113)
+
+- **Branch:** `claude/clever-hawking-06zdpz` (at `main` HEAD `cf480ed`, incl. the #209 handoff merge).
+- **Step 5 could not start.** Its required reference `EVM3- Detailed Metric Report.xlsx` (the
+  per-activity duration-ratio SPI(t) export, ADR-0110) is **not on disk**. Per the operator's gate
+  ("if absent, STOP … do not fabricate"), Step 5 is **paused, input-blocked** — reproducing the
+  per-activity SPI(t) without the reference would mean inventing numbers (Law 2). To resume: re-attach
+  EVM3 into the git-ignored intake.
+- **Session upload was the SSI input, not EVM3.** An **SSI Analysis (UID_145) Directional Path
+  Analysis** bundle (two `.mpp` versions + SSI `Driving Slack`/`Drag`/`Trace Log` workbooks + `.docx`)
+  for the current `Project5_TAMPERED`/`Project2`, now git-ignored under
+  `00_REFERENCE_INTAKE/audit/ssi_uid145/`. It advances the SSI backlog (#6) but is **focus UID 145**
+  vs the repo's xfail golden **`ssi_uid143`**, so it needs its own validation pass and does not
+  auto-lift the xfail.
+- **Pivoted to unblocked, operator-requested UI/compliance work (parity-isolated, no engine number
+  touched):**
+  - **CUI marking on every Excel + Word export (Law 1).** `reports/xlsx.py` → CUI print
+    header+footer on every worksheet (after `<sheetData>`; cell grid + tests untouched).
+    `reports/docx.py` → `word/header1.xml`+`footer1.xml` (content-type overrides + a
+    `word/_rels/document.xml.rels`) referenced from `<w:sectPr>`, marking **every page** of every
+    `.docx`, incl. the narrative Diagnostic Brief (same `render_document` chokepoint). Both stay
+    byte-deterministic. New `tests/reports/test_exports.py` cases.
+  - **AI-settings UX:** generation-timeout **default 300→900 s** (`AIConfig.gen_timeout` + `/settings`
+    form; 30–3600 clamp unchanged); **cross-check second-model id auto-populates** on enable
+    (vendored loopback-only `static/settings.js`, never clobbers typed input; fields gained ids
+    `primaryModel`/`secondBackend`/`secondModel`); an in-app `<details>` **local-model setup guide**
+    (`ollama pull llama3.1:8b` + memory tiers) on the settings page; `docs/CONNECT-A-BIGGER-AI-MODEL.md`
+    deepened (cross-check second-model walk-through + timeout note). New `tests/web/test_ai_wiring.py`
+    cases; two existing model-field assertions updated for the new `id=primaryModel` markup.
+  - **SRA file selection:** `/sra` gained a `name=file` selector (`GET /sra?file=<key>`, persisted
+    as `SessionState.sra_file`); a shared `_sra_selected(st)` resolver (operator pick → else
+    latest-solvable) drives the page, the override POST and `/api/sra` so all target the same file.
+    Single-file sessions show no selector. Tests: `tests/web/test_sra_file_select.py` (4).
+  - **Critical-Path Evolution pan arrows (bug fix):** the ◀/▶ arrows were dead at the default
+    fully-zoomed-out view (`clampView` reset any pan to the full axis). `pan()` now jumps to the
+    half of the axis the arrow points at when fully zoomed out, then slides on subsequent clicks.
+    JS-only (`path_evolution.js`).
+  - **Whole-page rescale:** header `#uiScale` selector (90–175%) → `documentElement.style.zoom` via
+    `theme.js` (applied in `<head>`, persisted `localStorage` `sf-scale`); CSS `zoom` scales text +
+    the px layout together. Tests: `tests/web/test_ui_scale.py` (2).
+  - **Chart framework slice 1 (operator picked this as the next focus):** shared hover call-outs in
+    `chartframe.js` — one styled `.cf-tip` tooltip shows an instant call-out for any chart shape with
+    a direct `<title>` child or `data-callout` attr, upgrading every title-bearing chart at once;
+    broadened the float histogram to emit per-bar call-outs. Tests: `tests/web/test_chart_callouts.py`
+    (3); also extended call-outs to the SRA finish histogram + sensitivity tornado.
+  - **Chart framework slice 2 — stacked time-scale tiers (S-curve):** `scurve.js` renders the time
+    axis as a stacked Year/Quarter/Month header (parsing `Mon-YY` labels) with a `#scurveGran`
+    selector (Months/Quarters/Years). Additive in the empty top area; guarded flat-month fallback.
+    Coordinate math node-verified (no headless browser → visual eyeball recommended). Remaining:
+    wire tiers into curves/evolution/SRA-histogram, a day tier, totals/counts toggle, per-point
+    curve call-outs, improve zoom.
+- **Not started (operator must steer):** re-attach EVM3 → Step 5; the large UI request list (chart
+  time-scale tiers + scaling + hover call-outs + totals/counts on all visuals; SRA file-selection;
+  Exec-Summary/S-Curve scaling under many files; remove the ambiguous "Quality Trend" visual;
+  multi-select finishes; page-wide text-size/zoom; Critical-Path-Evolution zoom-arrow fix + show
+  completed; Driving-Path three-column critical/secondary/tertiary + animation + driving-slack
+  degradation trend; Acumen-style Executive Briefing) — each its own PR; recommend the chart-framework
+  first since many asks depend on it. SSI parity (#6) via the new UID_145 export; progress-scheduler
+  (#1, ADR-0108, deferred).
+- **ADR-0113.**

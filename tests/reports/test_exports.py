@@ -100,3 +100,47 @@ def test_docx_blocks_render_paragraph_leads_and_italics() -> None:
     doc = zipfile.ZipFile(io.BytesIO(blob)).read("word/document.xml").decode()
     assert "FINDING:" in doc and "<w:i/>" in doc
     assert doc.count("<w:tc>") == 4  # 2 header + 2 body cells (padded)
+
+
+_CUI = "CONTROLLED UNCLASSIFIED INFORMATION (CUI)"
+
+
+def test_xlsx_marks_every_sheet_cui() -> None:
+    """Law 1: every exported spreadsheet page carries the CUI banner/footer marking."""
+    zf = zipfile.ZipFile(io.BytesIO(render_xlsx(TS)))
+    sheets = [n for n in zf.namelist() if n.startswith("xl/worksheets/")]
+    assert sheets  # sanity
+    for name in sheets:
+        sheet = zf.read(name).decode()
+        # marking lives in headerFooter (after sheetData) so the cell grid is untouched
+        assert "<headerFooter>" in sheet
+        assert sheet.count(_CUI) == 2  # oddHeader + oddFooter
+    # the CUI marking must not have displaced any data row
+    root = ET.fromstring(zf.read("xl/worksheets/sheet2.xml").decode())
+    ns = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    assert len(root.findall(".//s:row", ns)) == 4  # header + 3 data rows, unchanged
+
+
+def test_docx_marks_every_page_cui() -> None:
+    """Law 1: every Word export carries a CUI header + footer on every page."""
+    zf = zipfile.ZipFile(io.BytesIO(render_docx(TS)))
+    names = zf.namelist()
+    assert "word/header1.xml" in names and "word/footer1.xml" in names
+    assert _CUI in zf.read("word/header1.xml").decode()
+    assert _CUI in zf.read("word/footer1.xml").decode()
+    # referenced from the section so the banner repeats on every page, and the relationships resolve
+    document = zf.read("word/document.xml").decode()
+    assert "<w:headerReference " in document and "<w:footerReference " in document
+    rels = zf.read("word/_rels/document.xml.rels").decode()
+    assert 'Target="header1.xml"' in rels and 'Target="footer1.xml"' in rels
+    # content types declare the new parts (Word rejects the file otherwise)
+    ctypes = zf.read("[Content_Types].xml").decode()
+    assert "/word/header1.xml" in ctypes and "/word/footer1.xml" in ctypes
+
+
+def test_render_document_marks_cui_on_the_narrative_brief() -> None:
+    """The Diagnostic Brief flows through render_document — it must be CUI-marked too."""
+    blob = render_document((Heading("Diagnostic Brief", level=0), Paragraph("Body.")))
+    zf = zipfile.ZipFile(io.BytesIO(blob))
+    assert _CUI in zf.read("word/header1.xml").decode()
+    assert _CUI in zf.read("word/footer1.xml").decode()

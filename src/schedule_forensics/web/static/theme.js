@@ -19,6 +19,15 @@
     document.documentElement.setAttribute("data-theme", "light");
   }
 
+  // Page scale (operator: "rescale the whole page"). Applied in <head> before first paint so a
+  // saved zoom doesn't reflow-flash. CSS `zoom` scales text AND layout together — the layout is
+  // px-based, so this is the reliable whole-page rescale (a root font-size would miss the px rules).
+  var SCALE_KEY = "sf-scale";
+  try {
+    var savedScale = localStorage.getItem(SCALE_KEY);
+    if (savedScale) document.documentElement.style.zoom = savedScale;
+  } catch (e) { /* storage may be unavailable */ }
+
   function mode() {
     return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
   }
@@ -40,6 +49,18 @@
         label(btn);
       });
     }
+    // page-scale selector: reflect the saved zoom, apply + persist on change
+    var scaleSel = document.getElementById("uiScale");
+    if (scaleSel) {
+      var cur = "1";
+      try { cur = localStorage.getItem(SCALE_KEY) || "1"; } catch (e) { /* default 100% */ }
+      scaleSel.value = cur;
+      scaleSel.addEventListener("change", function () {
+        document.documentElement.style.zoom = scaleSel.value;
+        try { localStorage.setItem(SCALE_KEY, scaleSel.value); } catch (e) { /* in-page only */ }
+      });
+    }
+
     // the target form returns to the page it was submitted from
     var back = document.querySelector(".targetform input[name=next_url]");
     if (back) back.value = location.pathname + location.search;
