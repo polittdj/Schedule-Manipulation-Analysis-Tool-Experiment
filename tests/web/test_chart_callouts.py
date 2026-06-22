@@ -60,3 +60,11 @@ def test_scurve_page_offers_the_time_scale_selector() -> None:
     page = client.get("/scurve").text
     assert "id=scurveGran" in page
     assert "Months (year / quarter / month)" in page
+
+
+def test_scurve_curves_have_per_point_hover_callouts() -> None:
+    """The S-curve is a line chart (no per-point shapes), so per-month transparent hit-strips give
+    it hover call-outs of planned/actual values via the shared chartframe tooltip."""
+    js = (STATIC / "scurve.js").read_text(encoding="utf-8")
+    assert 'fill: "transparent"' in js  # the per-month hit-strip
+    assert "planned " in js and "actual " in js  # the call-out text

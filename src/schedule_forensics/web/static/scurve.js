@@ -169,6 +169,24 @@
     curve(svg, v.planned, GOLD, x, y, false);
     curve(svg, v.actual, BLUE, x, y, false);
 
+    // per-point hover call-outs: a transparent hit-strip per month over the plot so hovering
+    // anywhere in a month's column shows that month's planned/actual values (shared chartframe tip)
+    for (var hi = 0; hi < n; hi++) {
+      var hx = (n <= 1) ? padL : x(hi) - slot / 2;
+      var hw = (n <= 1) ? (W - padL - padR) : slot;
+      if (hx < padL) { hw -= padL - hx; hx = padL; }
+      if (hx + hw > W - padR) hw = (W - padR) - hx;
+      var strip = svgEl("rect", {
+        x: hx, y: padT, width: Math.max(hw, 1), height: (H - padB) - padT, fill: "transparent",
+      });
+      var stt = svgEl("title", {});
+      stt.textContent =
+        months[hi] + " — planned " + Math.round(v.planned[hi]) + "%, actual " +
+        Math.round(v.actual[hi]) + "%" + (hi === v.status_index ? " · data date" : "");
+      strip.appendChild(stt);
+      svg.appendChild(strip);
+    }
+
     // legend
     var legend = [["Planned (baseline)", GOLD], ["Actual / forecast", BLUE]];
     var lx = padL;

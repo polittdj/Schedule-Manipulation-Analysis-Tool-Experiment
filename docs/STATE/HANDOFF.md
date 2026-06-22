@@ -1,6 +1,31 @@
-# Handoff — 2026-06-22 (PRs #81–#208 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#210 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — Step 5 BLOCKED (EVM3 absent); shipped CUI export marking + AI-settings UX (ADR-0113)
+> ## STATUS (current) — #210 MERGED; chart framework continuing (S-curve per-point hover call-outs)
+>
+> **`main` is green at `6eef558` (#210 merged).** The 10-item UI/UX batch (ADR-0113) is on `main`:
+> CUI export marking, AI-settings (900 s timeout / cross-check auto-populate / in-app model guide),
+> SRA file selector, Critical-Path-Evolution pan-arrow fix, whole-page rescale, chart hover call-outs,
+> and the stacked Year/Quarter/Month S-curve time axis.
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `6eef558`):** chart-framework
+> continuation — **per-point hover call-outs on the S-curve curves** (transparent per-month hit-strips
+> over the plot, each a `<title>` of that month's planned/actual %, read by the shared chartframe
+> tooltip; the S-curve is a line chart with no per-point shapes, so the strips give it real hover
+> data). Tests in `tests/web/test_chart_callouts.py`. No ADR (additive chart slice).
+>
+> ### Chart-framework remaining (after operator eyeballs `/scurve` — no headless browser here)
+> - Propagate the **tier axis + per-point call-outs** to the other time charts (curves, evolution,
+>   SRA histogram); add a **day** tier for daily-data charts; **totals/counts** toggle; improve zoom.
+>
+> ### Other open threads (each a fresh branch from `main`)
+> - **Step 5 (value-ES):** still blocked — re-attach `EVM3- Detailed Metric Report.xlsx`.
+> - **SSI parity (#6):** the new **UID_145** export is git-ignored on disk; needs its own validation
+>   pass (UID 145 vs the golden's UID 143; does not auto-lift the `ssi_uid143` xfail).
+> - Multi-select on Finishes/Data-date finishes; show-completed + hide-completed; Driving-Path
+>   three-column (critical/secondary/tertiary) + animation + driving-slack-degradation trend;
+>   Acumen-style Executive Briefing; condensed spacing.
+
+> ## STATUS (prev) — Step 5 BLOCKED (EVM3 absent); shipped CUI export marking + AI-settings UX (ADR-0113)
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, at `main` HEAD `cf480ed` incl. #209).**
 > Build-order **Step 5 (value-based / per-activity SPI(t)) could not start: its required reference,
