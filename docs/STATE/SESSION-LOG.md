@@ -2942,3 +2942,18 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Still TODO this round (follow-up PRs):** Max Float (d) miscalc on the Schedule Quality ribbon;
   SRA running-indicator + Beta-PERT distribution; AI driving-path fact injection ("skills") so Ollama
   stops guessing driving path / zero-slack-driver counts.
+
+## 2026-06-22 — Operator-feedback round: Max Float (d) ribbon fix (#213 merged)
+
+- **#213 merged** to `main` (`2f7c779`). New branch fresh on it. (Note: #213 had hit a squash-merge
+  STACKING conflict — branch was based on pre-#212 main; rebuilt by reset-to-main + cherry-pick of
+  only the S-curve commit. Lesson reinforced: always re-verify `origin/main` HEAD before branching.)
+- **Max Float (d) miscalculation FIXED** (`engine/metrics/ribbon.py`). Critical used the progress-aware
+  `is_effective_critical` (stored Total Slack) but Avg/Max Float used the RAW recomputed CPM float —
+  inconsistent, and it overstated Max Float on progressed files / open-ended activities. Now Avg/Max
+  Float score on `effective_total_float` (stored Total Slack when present — Acumen's basis,
+  ADR-0010/0080), matching Critical. Golden Project5: Max Float 306d→275d, Avg 87d→71d (95/99
+  incomplete carry stored slack). No in-repo Acumen reference to pin (CUI; FUSE-VALIDATION lists
+  Avg/Max Float as to-calibrate) — operator to confirm 275d. Synthetic regression test added
+  (`test_ribbon_float_uses_stored_total_slack_not_recomputed_cpm`).
+- **Still TODO this round:** SRA running-indicator + Beta-PERT; AI driving-path fact injection.
