@@ -201,7 +201,7 @@ def test_settings_model_field_is_a_dropdown_of_installed_models(
 
     monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
     page = client.get("/settings").text
-    assert "<select name=model>" in page
+    assert "<select name=model id=primaryModel>" in page
     assert "schedule-analyst:latest" in page and "qwen2.5:7b-instruct" in page
     # the default configured model isn't installed -> kept as an option, flagged, with a fix hint
     assert "llama3.1:8b" in page and "not installed" in page
@@ -226,3 +226,31 @@ def test_settings_persist_and_clamp_the_generation_timeout(client: TestClient) -
     assert 'value="3600"' in client.get("/settings").text
     client.post("/settings", data={"backend": "ollama", "model": "x", "gen_timeout": "1"})
     assert 'value="30"' in client.get("/settings").text
+
+
+def test_generation_timeout_defaults_to_900_seconds() -> None:
+    """Operator order: the out-of-the-box generation timeout is 900s (15 min) so a big local
+    model finishes by default. Both the config default and the /settings form share it."""
+    from schedule_forensics.ai.backend import AIConfig
+
+    assert AIConfig().gen_timeout == 900.0
+
+
+def test_fresh_settings_page_shows_the_900s_default(client: TestClient) -> None:
+    assert "name=gen_timeout" in client.get("/settings").text
+    assert 'value="900"' in client.get("/settings").text
+
+
+def test_settings_page_wires_cross_check_model_autopopulate(client: TestClient) -> None:
+    """Selecting a cross-check second backend should auto-fill the model id (operator order).
+    The page must carry the field hooks and the local script that does it."""
+    page = client.get("/settings").text
+    assert "id=primaryModel" in page
+    assert "id=secondBackend" in page and "id=secondModel" in page
+    assert "/static/settings.js" in page
+
+
+def test_settings_page_carries_the_local_model_setup_guide(client: TestClient) -> None:
+    page = client.get("/settings").text
+    assert "ollama pull llama3.1:8b" in page
+    assert "How to download" in page

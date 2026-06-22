@@ -2248,7 +2248,7 @@ def create_app(
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
         second_model: str = Form(""),
-        gen_timeout: float = Form(300.0),
+        gen_timeout: float = Form(900.0),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -5978,7 +5978,7 @@ def _settings_body(state: SessionState) -> str:
         if cfg.model and not _model_installed(cfg.model, models):
             option_models = [cfg.model, *option_models]
         model_field = (
-            "<select name=model>"
+            "<select name=model id=primaryModel>"
             + "".join(
                 f'<option value="{_e(m)}"{sel(m, cfg.model)}>{_e(m)}'
                 f"{'' if _model_installed(m, models) else ' — not installed'}</option>"
@@ -5987,7 +5987,7 @@ def _settings_body(state: SessionState) -> str:
             + "</select>"
         )
     else:
-        model_field = f'<input name=model value="{_e(cfg.model)}">'
+        model_field = f'<input name=model id=primaryModel value="{_e(cfg.model)}">'
 
     return f"""
 <div class=panel><h2>Local AI</h2>
@@ -6025,20 +6025,46 @@ and derive figures grounded in the cited facts (the "AI can err" disclaimer ride
 engine never computed is discarded wholesale</option>
 </select></p>
 <p>Cross-check second model:
-<select name=second_backend>
+<select name=second_backend id=secondBackend>
 <option value=none{sel("none", cfg.second_backend)}>Off</option>
 <option value=ollama{sel("ollama", cfg.second_backend)}>Ollama (local)</option>
 <option value=openai{sel("openai", cfg.second_backend)}>OpenAI-compatible (local)</option>
 </select>
- model id: <input name=second_model size=20 value="{_e(cfg.second_model)}"
- title="blank = the server's default/loaded model"></p>
+ model id: <input name=second_model id=secondModel size=20 value="{_e(cfg.second_model)}"
+ title="Turning the cross-check on auto-fills this with the primary model id; edit it to use a
+different second model (e.g. qwen2.5:14b). Blank = the server's default/loaded model."></p>
 <input type=submit value="Save"></form>
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
 Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
 With a cross-check model on, both local models answer every question independently and the engine
 compares their figures deterministically — agreement is corroboration, the citations stay the
-ground truth.</p></div>"""
+ground truth.</p>
+<details class=setup-guide><summary>How to download &amp; set up a local model (Llama&nbsp;3.1:8b and others)</summary>
+<ol>
+<li><b>Install Ollama</b> (one time). In your browser, go to <code>ollama.com/download</code> and run
+the installer — Windows, macOS, or Linux. This is the only step that uses the internet.</li>
+<li><b>Download the standard model.</b> Open a terminal / command prompt and run:
+<br><code>ollama pull llama3.1:8b</code></li>
+<li><b>Pick a model that fits your computer's memory (RAM):</b>
+<ul>
+<li>8&nbsp;GB &rarr; <code>ollama pull llama3.2:3b</code> (small, quick)</li>
+<li>16&nbsp;GB &rarr; <code>ollama pull llama3.1:8b</code> (the tool's standard — balanced)</li>
+<li>16&ndash;32&nbsp;GB &rarr; <code>ollama pull qwen2.5:14b</code> (noticeably smarter)</li>
+<li>32&nbsp;GB+ &rarr; <code>ollama pull qwen2.5:32b</code> &middot; 64&nbsp;GB+ &rarr;
+<code>ollama pull llama3.1:70b</code> (most powerful, slowest)</li>
+</ul></li>
+<li><b>Point the tool at it.</b> Set <i>Backend</i> = <i>Ollama (local)</i> above, choose the model
+in <i>Model</i>, and click <b>Save</b>. The tool talks to Ollama only on
+<code>127.0.0.1</code> — nothing leaves the machine.</li>
+<li><b>(Optional) cross-check second model.</b> Pull a second model
+(e.g. <code>ollama pull qwen2.5:14b</code>), set <i>Cross-check second model</i> to
+<i>Ollama (local)</i> — the model id auto-fills with the primary; change it to the second model
+so both answer every question and the engine compares their figures.</li>
+<li><b>If a big model runs slowly,</b> raise <i>Generation timeout</i> above (it defaults to
+900&nbsp;seconds). The full walk-through lives in <code>docs/CONNECT-A-BIGGER-AI-MODEL.md</code>.</li>
+</ol></details></div>
+<script src="/static/settings.js"></script>"""
 
 
 def _trigger_shutdown(app: FastAPI) -> None:

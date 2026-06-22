@@ -165,6 +165,29 @@ smarter brain is connected and working. The tool's written explanations will now
 
 ---
 
+## (Optional) Add a second "cross-check" brain
+
+The tool can ask **two** brains the same question and compare their numbers for you — a
+second opinion. If they agree, that's corroboration; the cited facts are always the ground
+truth either way. To set this up:
+
+1. Download a **second, different** brain (so it's a genuine second opinion), for example:
+
+   ```
+   ollama pull qwen2.5:14b
+   ```
+
+2. In the tool, go to **AI Settings**. Find **"Cross-check second model"** and set it to
+   **Ollama (local)**.
+3. The **model id** box next to it **fills in automatically** with your main brain's name the
+   moment you turn the cross-check on. Change it to the **second** brain you just downloaded
+   (e.g. `qwen2.5:14b`) so the two are actually different. Leave it blank to use the server's
+   default model.
+4. Click **Save**. Both brains now answer every question, and the tool tells you whether they
+   agree.
+
+---
+
 ## The short version (once you've done it once)
 
 1. Open the typing window (Terminal).
@@ -174,3 +197,7 @@ smarter brain is connected and working. The tool's written explanations will now
 4. Look for the green **"Local AI is ON"**. Done.
 
 Your schedule stays private the entire time — only the brain download uses the internet.
+
+> **The default generation timeout is 900 seconds (15 minutes)** so even a big, slow brain can
+> finish a full answer. If you use a very large model (like `llama3.1:70b`) on a modest computer
+> and answers still get cut off, raise **Generation timeout** on the AI Settings page.

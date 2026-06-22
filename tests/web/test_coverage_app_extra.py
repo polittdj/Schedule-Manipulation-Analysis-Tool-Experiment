@@ -334,7 +334,7 @@ def test_settings_body_dropdown_with_installed_model(monkeypatch) -> None:
     fake = _FakeBackend("ollama", ("m1",))
     monkeypatch.setattr(appmod, "route_backend", lambda *a, **k: (fake, None))
     out = _settings_body(st)
-    assert "<select name=model>" in out and "not installed" not in out
+    assert "<select name=model id=primaryModel>" in out and "not installed" not in out
 
 
 # --- shutdown + watchdog -------------------------------------------------------------------------
