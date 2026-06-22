@@ -59,9 +59,10 @@
       function (p) { return "Q" + (Math.floor(p.m / 3) + 1) + " '" + String(p.y % 100); });
   }
   function monthRuns(months) {
+    // first letter of each month in the lowest tier (J F M A M J J A S O N D) — the year/quarter
+    // tiers above carry the full context, so single letters keep the densest tier legible.
     return tierRuns(months, function (p) { return p.y + "-" + p.m; },
-      function (p) { return ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][p.m]; });
+      function (p) { return "JFMAMJJASOND".charAt(p.m); });
   }
 
   function curve(svg, series, color, x, y, dashed) {
@@ -88,7 +89,7 @@
     if (parseMonth(months[0])) {
       tiers = [{ runs: yearRuns(months), minW: 30 }];
       if (gran === "month" || gran === "quarter") tiers.push({ runs: quarterRuns(months), minW: 34 });
-      if (gran === "month") tiers.push({ runs: monthRuns(months), minW: 22 });
+      if (gran === "month") tiers.push({ runs: monthRuns(months), minW: 9 });
     } else {
       tiers = [{ runs: months.map(function (lbl, i) {
         return { start: i, end: i, label: lbl };
@@ -211,6 +212,7 @@
         })
       ));
     }
+    syncVersionSelect();
   }
 
   function step(delta) {
@@ -221,16 +223,39 @@
   function stopAuto() {
     if (timer) { clearInterval(timer); timer = null; }
     document.getElementById("scurvePlay").textContent = "▶ Auto-play";
+    syncVersionSelect();
   }
-  function toggleAuto() {
-    if (!data) return;
-    if (timer) { stopAuto(); return; }
+  function startAuto() {
+    if (!data || timer) return;
     // A2: honor prefers-reduced-motion — advance one frame, don't auto-flip on a timer
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       step(1); return;
     }
     document.getElementById("scurvePlay").textContent = "⏸ Stop";
     timer = setInterval(function () { step(1); }, 1600);
+    syncVersionSelect();
+  }
+  function toggleAuto() {
+    if (!data) return;
+    if (timer) { stopAuto(); return; }
+    startAuto();
+  }
+
+  // ── file/version selector: "All files (chronological)" runs every version in order (Auto-play);
+  // picking a single file pins the S-curve to just that one. Shown only when >1 version loaded. ──
+  function buildVersionSelect() {
+    var wrap = document.getElementById("scurveVersionWrap");
+    var sel = document.getElementById("scurveVersion");
+    if (!wrap || !sel || !data) return;
+    sel.innerHTML = "";
+    sel.appendChild(makeOption("all", "All files (chronological)"));
+    data.versions.forEach(function (v, i) { sel.appendChild(makeOption(String(i), v.label)); });
+    wrap.style.display = data.versions.length > 1 ? "" : "none";
+    syncVersionSelect();
+  }
+  function syncVersionSelect() {
+    var sel = document.getElementById("scurveVersion");
+    if (sel && data) sel.value = timer ? "all" : String(index);
   }
 
   // ── per-chart filter: scope THIS S-curve by up to 5 (field, value) conditions over the parent
@@ -275,6 +300,7 @@
         }
         data = d;
         index = 0;
+        buildVersionSelect();
         render();
       })
       .catch(function () { box.textContent = "Failed to load the S-curve data."; });
@@ -327,6 +353,14 @@
   var granSel = document.getElementById("scurveGran");
   if (granSel) {
     granSel.addEventListener("change", function () { gran = granSel.value; if (data) render(); });
+  }
+  var verSel = document.getElementById("scurveVersion");
+  if (verSel) {
+    verSel.addEventListener("change", function () {
+      if (!data) return;
+      if (verSel.value === "all") { stopAuto(); index = 0; render(); startAuto(); }
+      else { stopAuto(); index = parseInt(verSel.value, 10) || 0; render(); }
+    });
   }
   buildFilterUI();
   load();

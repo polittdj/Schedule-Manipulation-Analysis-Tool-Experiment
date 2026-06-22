@@ -50,6 +50,26 @@ def test_scurve_has_stacked_time_scale_tiers() -> None:
     assert "drawTiers" in js and "parseMonth" in js
 
 
+def test_scurve_month_tier_uses_first_letters() -> None:
+    """Operator: the lowest tier should show the first letter of each month (J F M A M J ...)."""
+    js = (STATIC / "scurve.js").read_text(encoding="utf-8")
+    assert "JFMAMJJASOND" in js
+
+
+def test_scurve_page_offers_a_file_version_selector() -> None:
+    from fastapi.testclient import TestClient
+
+    from schedule_forensics.web.app import SessionState, create_app
+
+    client = TestClient(create_app(SessionState()))
+    client.post("/example")
+    page = client.get("/scurve").text
+    assert "id=scurveVersion" in page
+    assert "All files (chronological)" in page
+    js = (STATIC / "scurve.js").read_text(encoding="utf-8")
+    assert "buildVersionSelect" in js and "startAuto" in js
+
+
 def test_scurve_page_offers_the_time_scale_selector() -> None:
     from fastapi.testclient import TestClient
 
