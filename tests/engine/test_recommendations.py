@@ -34,14 +34,14 @@ def test_golden_recommendations_p5_vs_p2(golden: Callable[[str], Schedule]) -> N
     # version-pair forensic signals are present and cited
     assert "HSD10" in by_id  # net finish impact slip
     assert by_id["HSD10"].category is Category.CONCERN and by_id["HSD10"].severity is Severity.HIGH
-    assert "99" in by_id["HSD10"].title  # -99 day slip surfaced
+    assert "148" in by_id["HSD10"].title  # -148 day slip surfaced (authoritative file ADR-0112)
     assert by_id["HSD10"].citations  # cites the finish-controlling activity
     assert by_id["SN05"].category is Category.RISK  # finish slips
     assert by_id["not_completed"].severity is Severity.HIGH
 
     # driving-path opportunity to the focus UID
     assert by_id["driving_path"].category is Category.OPPORTUNITY
-    assert len(by_id["driving_path"].citations) == 36
+    assert len(by_id["driving_path"].citations) == 3
 
     # EVERY finding is cited (file + UID + task) — §6.E
     assert findings and all(f.citations for f in findings)

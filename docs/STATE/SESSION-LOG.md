@@ -2808,3 +2808,30 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - Gate green: ruff/format/mypy(strict)/bandit/node clean; full suite **1444 passed / 3 env-skips**
   (the 3 chain tests run here with the intake present; they skip on CI); **parity 10/10**; drift guard
   green. **ADR-0111.**
+
+## 2026-06-22 — Acumen full-audit campaign, part 4: refresh stale Project5 golden (ADR-0112)
+
+- **Branch:** `claude/gracious-faraday-i3u2mw` (fresh from main after #207 merged). **Steps 1 & 2
+  merged** (ADR-0110/#206, ADR-0111/#207). This session = build-order **step 3**.
+- **Refreshed the golden.** Replaced `tests/fixtures/golden/project2_5/Project5.mspdi.xml` with the
+  MSPDI convert of the authoritative `Project5_TAMPERED.mpp` (all 4 intake copies byte-identical,
+  `md5 470fb216…`; 4 stored-critical vs the stale 37; same 379-UID structure). The stale capture was
+  flagged in ADR-0109 and confirmed exact vs Acumen by the ADR-0111 chain test.
+- **Re-pinned `case.json` + the parity gate, now exact** on every Acumen-anchored figure: `DCMA06` P5
+  **44** (the +1 residual closed for both projects), `DCMA01`=5, `DCMA05`=1, `DCMA14`=0.59/27,
+  schedule-quality `critical`=4, `hard_constraints`=1. §C baseline-compliance, single-schedule CEI and
+  the pairwise bow-wave CEI were unchanged by the refresh and stay exact. §A `missing_logic` recorded
+  all-scoped (7); Acumen's incomplete-scoped Missing Logic = `DCMA01` = 5. §E change metrics pinned to
+  engine pure-logic CPM on the authoritative file (date subset Acumen-equivalent; float/critical
+  subset awaits an Acumen §E PP&Change export). All documented in `case.json._deltas`.
+- **Re-pinned the derived/tool goldens** (float-bands, diff, forecast, manipulation, trend,
+  recommendations, path-evolution, schedule-card, and the web/AI views) to engine output on the
+  authoritative file — tool-truth regression locks.
+- **SSI driving slack:** `ssi_uid143` was SSI-validated on the prior 37-critical file; no SSI export
+  for the authoritative file is in the intake, so `test_ssi_driving_slack_exact` and
+  `test_golden_ssi_driving_slack_parity` are **xfail** (non-strict), golden left untouched for a
+  trivial re-pin when an export lands.
+- **Next:** step 4 progress-scheduler (#1, ADR-0108, now unblocked); step 5 value-based ES (#2,
+  reframed by the ADR-0110 SPI(t) find). Confirmed-missing inputs: SSI export (current Project5),
+  Acumen §E PP&Change (current P5-vs-P2), Large-Test-File `.mpp` (CEI/HMI), Large Project2 `.mpp`.
+- **ADR-0112.**

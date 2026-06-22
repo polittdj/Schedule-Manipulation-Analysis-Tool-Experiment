@@ -147,6 +147,6 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     assert p2["float_total_lt10"].count == 46
     assert p2["float_free_0"].count == 71
     p5 = compute_float_bands(golden_project5)
-    assert (p5["float_total_0"].count, p5["float_total_0"].population) == (37, 99)
-    assert p5["float_total_lt10"].count == 42
-    assert p5["float_free_lt10"].count == 75
+    assert (p5["float_total_0"].count, p5["float_total_0"].population) == (4, 99)
+    assert p5["float_total_lt10"].count == 5
+    assert p5["float_free_lt10"].count == 73

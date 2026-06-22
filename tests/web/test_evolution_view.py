@@ -62,9 +62,9 @@ def test_api_evolution_serves_per_version_snapshots(client: TestClient) -> None:
     assert [s["label"] for s in snaps] == ["Project2.mspdi.xml", "Project5.mspdi.xml"]
     first, second = snaps
     assert first["finish_delta_days"] is None  # no prior version
-    assert len(first["critical"]) == 43 and len(second["critical"]) == 37
-    assert second["finish_delta_days"] == 99  # the known P2->P5 slip
-    assert len(second["left"]) == 6 and second["entered"] == []
+    assert len(first["critical"]) == 43 and len(second["critical"]) == 4
+    assert second["finish_delta_days"] == 148  # the known P2->P5 slip
+    assert len(second["left"]) == 40 and second["entered"] == [131]
     # critical UIDs carry display names; the "left" ones resolve from the prior version
     assert all(str(u) in second["names"] for u in second["critical"])
     assert all(str(u) in second["names"] for u in second["left"])
@@ -78,12 +78,16 @@ def test_api_evolution_carries_gantt_geometry_and_reasons(client: TestClient) ->
     data = client.get("/api/evolution").json()
     assert data["axis"]["min"] and data["axis"]["max"]  # the locked Gantt axis
     second = data["snapshots"][1]
-    assert len(second["critical_rows"]) == 37  # one Gantt bar per critical activity
+    assert len(second["critical_rows"]) == 4  # one Gantt bar per critical activity
     row = second["critical_rows"][0]
     assert row["start"] and row["finish"] and "entered" in row and "uid" in row
     # the six that LEFT the path each carry a reason and their prior-version bar geometry
-    assert len(second["left_rows"]) == 6
-    assert {r["reason"] for r in second["left_rows"]} <= {"completed", "gained_float"}
+    assert len(second["left_rows"]) == 40
+    assert {r["reason"] for r in second["left_rows"]} <= {
+        "completed",
+        "gained_float",
+        "logic_removed",
+    }
     assert all(r["start"] and r["finish"] for r in second["left_rows"])
 
 

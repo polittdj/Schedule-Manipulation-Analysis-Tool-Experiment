@@ -178,8 +178,9 @@ def test_driving_endpoint_returns_tiers_and_gantt_ordinals(client: TestClient) -
     tiers = {r["tier"]: 0 for r in dj["rows"]}
     for r in dj["rows"]:
         tiers[r["tier"]] += 1
-    # matches the SSI-parity driving-path tiering (M6): 36 driving, 12 secondary, 12 tertiary
-    assert tiers["DRIVING"] == 36 and tiers["SECONDARY"] == 12 and tiers["TERTIARY"] == 12
+    # driving-path tiering on the authoritative file (ADR-0112): 3 driving, 0 secondary, 8 tertiary
+    # (the corridor collapsed vs the prior 37-critical golden)
+    assert tiers["DRIVING"] == 3 and tiers.get("SECONDARY", 0) == 0 and tiers["TERTIARY"] == 8
     # Gantt needs an ordinal time axis per row
     assert all("start_ord" in r and "finish_ord" in r for r in dj["rows"])
     assert client.get("/api/driving/Project5?target=999999").json()["rows"] == []

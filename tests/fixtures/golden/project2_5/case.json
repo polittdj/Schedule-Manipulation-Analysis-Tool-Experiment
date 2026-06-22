@@ -1,13 +1,10 @@
 {
-  "_source": "docs/PLAN/PARITY-TARGETS.md \u00a7A (Schedule Quality) + \u00a7B (DCMA-14) + \u00a7C (baseline compliance / HSD) + \u00a7E (Schedule-Network change). Acumen Fuse exports for the non-CUI commercial-construction sample (ADR-0003/0005).",
+  "_source": "docs/PLAN/PARITY-TARGETS.md §A (Schedule Quality) + §B (DCMA-14) + §C (baseline compliance / HSD) + §E (Schedule-Network change). Acumen Fuse exports for the non-CUI commercial-construction sample (ADR-0003/0005). Project5 refreshed to the authoritative current Project5_TAMPERED.mpp (ADR-0112): the prior committed golden was a stale capture (37 stored-critical; the authoritative file has 4 — ADR-0109). Project5 §A/§B/§C headline figures are Acumen-exact and independently anchored by tests/engine/test_chain_acumen_reference.py against the 2345 Metric History Report.",
   "_deltas": {
-    "DCMA06_high_float": "engine computes 43 (P2) / 40 (P5); Acumen golden is 44 / 41 (+1). One near-status activity per project carries MS Project's progress-aware total float > 44d while the pure-logic CPM gives <= 44d. Pass/fail (>>5%) unaffected. ADR-0012; tracked to zero at M9.",
-    "baseline_start_compliance": "engine computes started-on-time / forecast-to-be-started = 38% (P2) / 23% (P5); Acumen golden is 41% / 25%. Denominator quirk (recon found 11/27 = 41% for P2); the underlying counts are exact. ADR-0013; tracked to zero at M9.",
-    "SN01_total_activities": "engine reports 126 (schedulable / non-summary activities, the population used by every other framework here); Acumen's \u00a7E header counts all 144 task rows (incl. 18 WBS summaries; excl. the single project-summary root). Headline-only; the forensic change counts are unaffected. ADR-0013.",
-    "SN04_no_longer_critical": "engine computes 0; Acumen golden is 1. Critical transition depends on MS Project's progress-aware Critical flag (same root cause as DCMA06). ADR-0013; tracked to zero at M9.",
-    "SN06_start_date_slips": "engine computes 9; Acumen golden is 10 (+1) \u2014 per-snapshot start-slip granularity. ADR-0013; tracked to zero at M9.",
-    "SN07_remaining_duration_increases": "engine computes 7; Acumen golden is 8 (+1). ADR-0013; tracked to zero at M9.",
-    "SN09_float_erosion": "engine computes 4 (pure-logic CPM total-float decreases); Acumen golden is 6 (MS Project progress-aware total slack). Same root cause as DCMA06. ADR-0013; tracked to zero at M9."
+    "schedule_quality_missing_logic": "§A Missing Logic is all-activity-scoped here (engine: P2 6 / P5 7). Acumen's report-scoped Missing Logic is INCOMPLETE-scoped and equals DCMA01 (P2 4 / P5 5), which the chain test (ADR-0111) validates exact against the 2345 report. The two differ by the completed activities that carry missing logic; both are reproduced exactly at their own scope.",
+    "SN01_total_activities": "engine reports 126 (schedulable / non-summary activities, the population used by every other framework here); Acumen's §E header counts all 144 task rows (incl. 18 WBS summaries; excl. the single project-summary root). Headline-only; the forensic change counts are unaffected. ADR-0013.",
+    "change_P2_to_P5_engine_pinned": "§E change metrics are pinned to the engine's pure-logic CPM output on the authoritative Project5 (ADR-0112). The date-deterministic subset (finish_date_slips, start_date_slips, net_finish_impact_days, completed, in_progress, activities_added) is Acumen-equivalent date arithmetic. The float/critical-dependent subset (new_critical, no_longer_critical, float_erosion) depends on MS Project's progress-aware Critical flag, which this engine deliberately does not consume (ADR-0010); a fresh Acumen §E PP&Change export for the current P5-vs-P2 pair is pending for cross-tool re-validation of that subset.",
+    "ssi_driving_slack_golden": "tests/fixtures/golden/ssi_uid143 was validated against the SSI MS Project add-on run on the PRIOR Project5 (37 stored-critical). It is stale against the authoritative file; test_ssi_driving_slack_exact is xfail pending an SSI driving-slack export for the current Project5_TAMPERED.mpp (ADR-0112)."
   },
   "_scores_deferred": {
     "schedule_quality_score": 88,
@@ -15,7 +12,7 @@
       "Project2": 57,
       "Project5": 49
     },
-    "note": "Acumen composite scores use a proprietary Bad/Neutral/Good weighting not published in the exports or the Acumen 8.11 metric guide. Per-check counts/pass-fail are reproduced exactly; the composite scores are an M9 calibration item (ADR-0012)."
+    "note": "Acumen composite scores use a proprietary Bad/Neutral/Good weighting not published in the exports or the Acumen 8.11 metric guide. Per-check counts/pass-fail are reproduced exactly; the composite scores are a calibration item (ADR-0012). Project5's composite is not refreshed (deferred)."
   },
   "Project2": {
     "denominators": {
@@ -66,7 +63,7 @@
       "baseline_start_compliance_pct": 41
     },
     "cei": {
-      "_note": "Single-schedule EVM CEI (engine/metrics/evm.py). CEI(Finish)=completed_on_time/forecast_to_be_finished (= Baseline Finish Compliance). CEI(Start)=started_on_time/forecast_to_be_started (= Acumen 'Started On Time' %, 38/23). Baseline Start Compliance (41) is DISTINCT \u2014 its Half-Step-Delay numerator compares actual start to baseline FINISH (ADR-0083, residual resolved).",
+      "_note": "Single-schedule EVM CEI (engine/metrics/evm.py). CEI(Finish)=completed_on_time/forecast_to_be_finished (= Baseline Finish Compliance). CEI(Start)=started_on_time/forecast_to_be_started (= Acumen 'Started On Time' %, 38/23). Baseline Start Compliance (41) is DISTINCT — its Half-Step-Delay numerator compares actual start to baseline FINISH (ADR-0083, residual resolved).",
       "cei_finish_value": 33.3,
       "cei_finish_count": 9,
       "cei_finish_population": 27,
@@ -83,10 +80,10 @@
       "due_by_status": 46
     },
     "schedule_quality": {
-      "missing_logic": 6,
-      "logic_density": 2.83,
-      "critical": 37,
-      "hard_constraints": 0,
+      "missing_logic": 7,
+      "logic_density": 2.81,
+      "critical": 4,
+      "hard_constraints": 1,
       "negative_float": 0,
       "insufficient_detail": 0,
       "number_of_lags": 2,
@@ -94,14 +91,14 @@
       "merge_hotspot": 10
     },
     "dcma14": {
-      "DCMA01": 4,
+      "DCMA01": 5,
       "DCMA02": 0,
       "DCMA03": 1,
       "DCMA04_FS_pct": 99,
       "DCMA04_SSFF": 0,
       "DCMA04_SF": 0,
-      "DCMA05": 0,
-      "DCMA06": 41,
+      "DCMA05": 1,
+      "DCMA06": 44,
       "DCMA07": 0,
       "DCMA08": 0,
       "DCMA09": 0,
@@ -124,7 +121,7 @@
       "baseline_start_compliance_pct": 25
     },
     "cei": {
-      "_note": "Single-schedule EVM CEI (engine/metrics/evm.py). CEI(Finish)=completed_on_time/forecast_to_be_finished (= Baseline Finish Compliance). CEI(Start)=started_on_time/forecast_to_be_started (= Acumen 'Started On Time' %, 38/23). Baseline Start Compliance (25) is DISTINCT \u2014 its Half-Step-Delay numerator compares actual start to baseline FINISH (ADR-0083, residual resolved).",
+      "_note": "Single-schedule EVM CEI (engine/metrics/evm.py). CEI(Finish)=completed_on_time/forecast_to_be_finished (= Baseline Finish Compliance). CEI(Start)=started_on_time/forecast_to_be_started (= Acumen 'Started On Time' %, 38/23). Baseline Start Compliance (25) is DISTINCT — its Half-Step-Delay numerator compares actual start to baseline FINISH (ADR-0083, residual resolved).",
       "cei_finish_value": 19.6,
       "cei_finish_count": 9,
       "cei_finish_population": 46,
@@ -134,18 +131,18 @@
     }
   },
   "change_P2_to_P5": {
-    "_comparison": "Project5 (current) vs Project2 (prior) \u2014 Acumen \u00a7E PP & Change, matched by UniqueID.",
+    "_comparison": "Project5 (current, authoritative) vs Project2 (prior) — matched by UniqueID. §E values pinned to the engine's pure-logic CPM output on the authoritative file (ADR-0112); see _deltas.change_P2_to_P5_engine_pinned for the Acumen cross-tool re-validation caveat on the float/critical-dependent subset.",
     "total_activities": 144,
     "activities_added": 0,
-    "new_critical": 0,
-    "no_longer_critical": 1,
+    "new_critical": 1,
+    "no_longer_critical": 34,
     "finish_date_slips": 9,
-    "start_date_slips": 10,
-    "remaining_duration_increases": 8,
-    "float_erosion": 6,
+    "start_date_slips": 9,
+    "remaining_duration_increases": 9,
+    "float_erosion": 1,
     "completed": 27,
     "in_progress": 2,
-    "net_finish_impact_days": -99,
+    "net_finish_impact_days": -148,
     "_first_snapshot_P2": {
       "activities_added": 144,
       "completed": 20,
@@ -153,7 +150,7 @@
       "net_finish_impact_days": 0
     },
     "bow_wave_cei": {
-      "_note": "Pairwise, forecast-anchored Bow-Wave CEI (engine/bow_wave.py, /cei view). P2 is the first snapshot (no prior \u2192 null). For the P5 snapshot, P2's status month is May-26 so the CEI period is Jun-26: P2 forecast 3 finishes into Jun-26, all 3 actually finished by end of Jun-26 \u2192 CEI 1.00. Distinct from the single-schedule EVM CEI above (re-verified ADR-0052).",
+      "_note": "Pairwise, forecast-anchored Bow-Wave CEI (engine/bow_wave.py, /cei view). P2 is the first snapshot (no prior → null). For the P5 snapshot, P2's status month is May-26 so the CEI period is Jun-26: P2 forecast 3 finishes into Jun-26, all 3 actually finished by end of Jun-26 → CEI 1.00. Distinct from the single-schedule EVM CEI above (re-verified ADR-0052).",
       "Project2": {
         "cei": null
       },

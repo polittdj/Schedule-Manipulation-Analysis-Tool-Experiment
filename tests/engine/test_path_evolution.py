@@ -89,16 +89,16 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     ev = _ev([golden_project2, golden_project5])
     first, second = ev.snapshots
     assert first.finish_delta_days is None
-    assert len(first.critical) == 43 and len(second.critical) == 37
-    # P2 -> P5 slips 99 calendar days (the known Net Finish Impact)
-    assert second.finish_delta_days == 99
-    assert len(second.left) == 6 and len(second.stayed) == 37 and second.entered == ()
-    # clean golden pair: no shortened-on-path, no removed logic
-    assert second.shortened_on_path == () and second.removed_logic_count == 0
-    # M18 follow-up: every 'left' activity is attributed a reason (no entered on this pair)
+    assert len(first.critical) == 43 and len(second.critical) == 4
+    # P2 -> P5 slips 148 calendar days (the Net Finish Impact on the authoritative file ADR-0112)
+    assert second.finish_delta_days == 148
+    assert len(second.left) == 40 and len(second.stayed) == 3 and second.entered == (131,)
+    # the authoritative P5 has 2 removed logic links and 1 new constraint-driven path entry
+    assert second.shortened_on_path == () and second.removed_logic_count == 2
+    # M18 follow-up: every 'left' activity is attributed a reason
     assert first.entered_changes == () and first.left_changes == ()
     assert {c.uid for c in second.left_changes} == set(second.left)
-    assert {c.reason for c in second.left_changes} <= {"completed", "gained_float"}
+    assert {c.reason for c in second.left_changes} <= {"completed", "gained_float", "logic_removed"}
     # ADR-0057 — the detail (chip hover) is specific: completed cites progress %, and
     # gained_float quantifies the float-relevant movement vs the project finish.
     for c in second.left_changes:

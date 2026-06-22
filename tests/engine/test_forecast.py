@@ -115,14 +115,14 @@ def test_carnac_summary_reuses_forecast_and_cpm(golden_project5: Schedule) -> No
     fs = compute_finish_forecasts(golden_project5, cpm)
     c = compute_carnac_summary(golden_project5, cpm, fs)
     by_id = {f.method_id: f for f in fs.forecasts}
-    assert c.latest_finish == by_id["cpm"].finish == dt.date(2027, 12, 7)
+    assert c.latest_finish == by_id["cpm"].finish == dt.date(2028, 1, 25)
     assert c.forecasted_end == by_id["rate"].finish == dt.date(2028, 6, 10)
     assert c.estimated_end_es == by_id["earned_schedule"].finish == dt.date(2029, 2, 1)
     assert c.spi_t == fs.spi_t == 0.47
     assert c.avg_tasks_per_month == fs.rate_per_month == 4.62
     assert c.to_go_count == fs.remaining_count == 99
-    # derived working-day spans (golden P5: 462 wd project span, ES 60 wd)
-    assert c.project_duration_days == 462.0
+    # derived working-day spans (golden P5: 497 wd project span, ES 60 wd)
+    assert c.project_duration_days == 497.0
     assert c.earned_schedule_days == 60.0
     assert c.earliest_start == dt.date(2026, 3, 2)
     # remaining duration is positive and no longer than the whole project
@@ -167,7 +167,7 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     assert p2.spi_t == 0.45 and p2.rate_per_month == 7.33
     p5 = compute_finish_forecasts(golden_project5)
     by_id5 = {f.method_id: f for f in p5.forecasts}
-    assert by_id5["cpm"].finish == dt.date(2027, 12, 7)
+    assert by_id5["cpm"].finish == dt.date(2028, 1, 25)
     assert by_id5["rate"].finish == dt.date(2028, 6, 10)
     # exact-ratio IEAC(t): dividing by the 2-decimal SPI(t) (0.47 vs 0.4651) read 9 days early
     assert by_id5["earned_schedule"].finish == dt.date(2029, 2, 1)
