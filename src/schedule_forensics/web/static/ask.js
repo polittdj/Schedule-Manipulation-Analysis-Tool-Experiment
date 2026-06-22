@@ -21,6 +21,42 @@
     return node;
   }
 
+  function renderFacts(out, facts) {
+    var ul = el("ul");
+    (facts || []).forEach(function (f) {
+      var cite = (f.citations || []).map(function (c) {
+        return c.task + " (UID " + c.uid + ")";
+      }).join("; ");
+      ul.appendChild(el("li", { text: f.text + (cite ? "  [" + cite + "]" : "") }));
+    });
+    out.appendChild(ul);
+  }
+
+  // One-click DETERMINISTIC driving path to a UID — straight from the engine, no model involved
+  // (the operator hit the model getting this wrong; this path can't).
+  function drivingPath() {
+    var out = document.getElementById("askOut");
+    var uidEl = document.getElementById("drivePathUid");
+    var uid = uidEl ? uidEl.value.trim() : "";
+    if (!uid) return;
+    var scopeEl = document.getElementById("askScope");
+    var scope = scopeEl ? scopeEl.value : "";
+    out.textContent = "Computing the driving path…";
+    fetch("/api/driving-path?uid=" + encodeURIComponent(uid) +
+          "&scope=" + encodeURIComponent(scope))
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        out.textContent = "";
+        if (!res.ok) { out.textContent = res.j.error || "Could not compute."; return; }
+        out.appendChild(el("p", { class: "ask-answer", text: res.j.answer }));
+        out.appendChild(el("p", {
+          class: "muted", text: "Engine result — exact, computed directly (no AI).",
+        }));
+        renderFacts(out, res.j.facts);
+      })
+      .catch(function () { out.textContent = "Could not compute the driving path."; });
+  }
+
   function ask() {
     var out = document.getElementById("askOut");
     var input = document.getElementById("askInput");
@@ -64,12 +100,7 @@
             text: res.j.agreement,
           }));
         }
-        var ul = el("ul");
-        (res.j.facts || []).forEach(function (f) {
-          var cite = (f.citations || []).map(function (c) { return c.task + " (UID " + c.uid + ")"; }).join("; ");
-          ul.appendChild(el("li", { text: f.text + (cite ? "  [" + cite + "]" : "") }));
-        });
-        out.appendChild(ul);
+        renderFacts(out, res.j.facts);
       })
       .catch(function () { out.textContent = "Could not answer."; });
   }
@@ -77,5 +108,11 @@
   btn.addEventListener("click", ask);
   document.getElementById("askInput").addEventListener("keydown", function (e) {
     if (e.key === "Enter") ask();
+  });
+  var dpBtn = document.getElementById("drivePathBtn");
+  if (dpBtn) dpBtn.addEventListener("click", drivingPath);
+  var dpUid = document.getElementById("drivePathUid");
+  if (dpUid) dpUid.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") drivingPath();
   });
 })();

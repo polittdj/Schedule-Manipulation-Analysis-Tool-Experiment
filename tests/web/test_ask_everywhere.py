@@ -108,6 +108,47 @@ def test_workbook_ask_without_schedules_is_404(client: TestClient) -> None:
     assert client.post("/api/ask", data={"question": "anything?"}).status_code == 404
 
 
+# --- driving-path "skill": the engine answers, the model only narrates ----------------
+
+
+def test_ask_panel_carries_the_driving_path_button(client: TestClient) -> None:
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    assert "id=drivePathBtn" in page and "id=drivePathUid" in page
+
+
+def _last_uid() -> int:
+    from schedule_forensics.engine.metrics._common import non_summary
+    from schedule_forensics.importers.mspdi import parse_mspdi
+
+    return non_summary(parse_mspdi(GOLDEN / "Project5.mspdi.xml"))[-1].unique_id
+
+
+def test_driving_path_endpoint_is_deterministic_and_cited(client: TestClient) -> None:
+    """One-click engine answer (no AI): a real focus UID yields a count + cited drivers."""
+    _upload(client, "Project5")
+    body = client.get(f"/api/driving-path?uid={_last_uid()}").json()
+    assert "driving slack" in body["answer"]
+    assert body["facts"] and body["facts"][0]["citations"]
+
+
+def test_driving_path_endpoint_unknown_uid_is_handled(client: TestClient) -> None:
+    _upload(client, "Project5")
+    body = client.get("/api/driving-path?uid=99999999").json()
+    assert "not a scheduled activity" in body["answer"]
+    assert body["facts"] == []
+
+
+def test_driving_question_injects_engine_facts_into_ask(client: TestClient) -> None:
+    _upload(client, "Project5")
+    body = client.post(
+        "/api/ask",
+        data={"question": f"what is the driving path to UID {_last_uid()} at 0 slack?"},
+    ).json()
+    text = " ".join(f["text"] for f in body["facts"])
+    assert "driving slack" in text  # the engine's per-UID driving-path fact was injected
+
+
 def test_interpretive_mode_keeps_a_derived_figure_strict_discards_it(
     monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
 ) -> None:

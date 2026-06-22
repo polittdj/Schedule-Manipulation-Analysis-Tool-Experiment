@@ -2973,3 +2973,20 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - File selector confirmed already present (appears when >1 schedule loaded).
 - **Last item this round:** AI driving-path fact injection ("skills") so Ollama stops guessing
   driving path / zero-slack-driver counts.
+
+## 2026-06-22 — Operator-feedback round: AI driving-path "skill" + no-AI endpoint (#215 merged; ADR-0114)
+
+- **#215 merged** (`aaba4a2`). New branch fresh on it.
+- **AI driving-path reliability (ADR-0114).** Operator: the model "keeps messing up" driving-path /
+  zero-slack-driver questions. Fix: don't let the 8B model traverse — inject the engine's exact,
+  SSI-parity answer. New `ai/driving_facts.py`: `driving_path_summary(schedule, cpm, uid)` (cited
+  driving-path + near-driving facts for one focus UID) and `driving_path_facts(schedule, cpm,
+  question)` (keyword-named UID + driving intent). Appended to the Ask-the-AI fact sheet in all three
+  ask paths; the model narrates, and the citation figure-gate discards any invented number.
+- **One-click no-AI answer:** `GET /api/driving-path?uid=&scope=` returns the same deterministic
+  summary; a "Show driving path (exact, no AI)" control (`drivePathUid`/`drivePathBtn`) added to the
+  Ask panel, wired in `ask.js`. UID parsing is keyword-anchored so "0 days"/"300 iterations" are
+  never mistaken for a focus UID. Reference concepts already in `web/help.py` (driving_slack/path).
+- Tests: `tests/ai/test_driving_facts.py` (counts only zero-slack drivers, intent/UID gating),
+  `tests/web/test_ask_everywhere.py` (button present, endpoint deterministic+cited, ask injection).
+- **Operator-feedback round COMPLETE** after this PR merges (all 4 items: S-curve, Max Float, SRA, AI).
