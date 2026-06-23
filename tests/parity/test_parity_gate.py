@@ -199,3 +199,27 @@ def test_ssi_driving_slack_exact() -> None:
     assert focus.driving_slack_minutes == 0 and focus.on_driving_path
     assert len(driving_path(schedule, results)) == 36  # the driving chain to UID 143
     assert sum(1 for r in results.values() if r.tier is PathTier.DRIVING) == 36
+
+
+def test_ssi_driving_slack_uid145_exact() -> None:
+    """SSI driving slack on the authoritative Project5, focus UID 145 (ADR-0115).
+
+    Re-pins SSI parity after ADR-0112 made ``ssi_uid143`` stale: the SSI Directional Path Tool
+    'Get all dependencies' export for focus UID 145 (108 UniqueIDs) is reproduced exactly.
+    """
+    case = json.loads((GOLDEN / "ssi_uid145" / "case.json").read_text())
+    schedule = _schedule("Project5")
+    results = compute_driving_slack(schedule, target_uid=case["focus_task_uid"])
+    expected = {int(uid): days for uid, days in case["driving_slack_days_by_uid"].items()}
+    assert set(results) == set(expected)  # exact set, no extras
+    assert {uid: int(r.driving_slack_days) for uid, r in results.items()} == expected
+    assert all(r.driving_slack_minutes % DAY == 0 for r in results.values())  # whole days
+    focus = results[case["focus_task_uid"]]
+    assert focus.driving_slack_minutes == 0 and focus.on_driving_path
+    assert driving_path(schedule, results) == tuple(case["driving_path_uids"])  # 144 -> 145
+    bands = case["tier_counts_default_bands"]
+    tiers = {t: sum(1 for r in results.values() if r.tier is t) for t in PathTier}
+    assert tiers[PathTier.DRIVING] == bands["DRIVING"]  # 2 (144, 145)
+    assert tiers[PathTier.SECONDARY] == bands["SECONDARY"]  # 3 (the 1-day near path)
+    assert tiers[PathTier.TERTIARY] == bands["TERTIARY"]  # 8 (the 20-day near path)
+    assert tiers[PathTier.BEYOND] == bands["BEYOND"]  # 95

@@ -1,6 +1,47 @@
-# Handoff — 2026-06-23 (PRs #81–#224 MERGED; **`main` green**; session-close audit + handoff refresh)
+# Handoff — 2026-06-23 (SSI driving-slack parity re-pinned on the authoritative Project5, focus UID 145)
 
-> ## STATUS (current) — #224 merged; **full from-scratch audit done**; no work in flight
+> ## STATUS (current) — SSI driving-slack re-pinned (focus UID 145, ADR-0115); branch `claude/clever-volta-wbnx0i`
+>
+> **What shipped this session (branch `claude/clever-volta-wbnx0i`, draft PR):**
+> - **SSI driving-slack parity is LIVE again on the authoritative Project5** — ADR-0115. The operator
+>   provided the SSI **Directional Path Tool** export for focus **UID 145** ("Issue final request for
+>   payment") on `Project5_TAMPERED.mpp` (uploaded this session, read locally, **never committed** —
+>   Law 1). The engine reproduced the *Get all dependencies* export **bit-for-bit on the first run**:
+>   **108/108 UniqueIDs**, every whole-day driving-slack value exact, driving path = {144, 145}, focus
+>   at 0 d, tiers DRIVING=2 / SECONDARY=3 / TERTIARY=8 / BEYOND=95 (default 10/20-day bands).
+> - **New golden** `tests/fixtures/golden/ssi_uid145/case.json` (108 UIDs; non-CUI Project5 sample,
+>   ADR-0003/0005) + **two parity tests**: `test_ssi_driving_slack_uid145_exact` (parity gate) and
+>   `test_golden_ssi_driving_slack_uid145_parity` (engine). No engine code changed — this certifies
+>   existing behaviour and closes the SSI gap ADR-0112 opened.
+> - **The two `ssi_uid143` `xfail`s stay documented-stale** (`test_parity_gate.py`,
+>   `test_driving_slack.py`): this export is focus **145**, and a directional analysis is anchored at
+>   its focus, so it does **not** yield the focus-143 map. Lifting them needs an SSI **focus-143**
+>   export on the authoritative file — not fabricated (Law 2). The UID-145 match does prove the
+>   *engine* is correct on the authoritative file, so `ssi_uid143` staleness is purely file-version.
+> - **Highest ADR = 0115** (drift guard: referenced in this HANDOFF and SESSION-LOG).
+>
+> ### Environment note (important for the next session)
+> This is a **cloud/web** session: the git-ignored CUI intake (`00_REFERENCE_INTAKE/`) is **empty on a
+> fresh container** — it is **not** cloned. The prior #224/#225 handoff block below claims the SSI
+> UID_145 export was "present in the intake"; that was true on the operator's local machine, not here.
+> The operator **uploaded** the `.mpp`/`.xlsx` into this session; they were read locally and the
+> derived non-CUI golden committed. Per `00_REFERENCE_INTAKE/DEPOSIT-HERE.md`, **do not deposit CUI in
+> a cloud session** — for CUI-dependent work run locally, or have the operator upload (non-CUI samples
+> only) as happened here.
+>
+> ### Open threads (still need the operator's input/files)
+> 1. **Confirm Max Float 275 d vs Acumen** — engine reports Max Float 275.0 d / Avg 71.0 / Critical 4
+>    on golden Project5 via `effective_total_float` (ADR-0010/0080). Needs the operator's **Acumen
+>    stored value** to certify parity. ASK if not provided.
+> 2. **Executive Briefing → full Acumen format** — `ai/briefing.py` opens with a "Key Assessment"
+>    verdict (first pass). Matching Acumen's full briefing (sections / ordering / scoring) needs the
+>    operator's **reference briefing document**. ASK.
+> 3. **SSI focus-143 re-pin** — would lift the two `ssi_uid143` xfails; needs an SSI focus-143 export
+>    on the authoritative file (trivial golden re-pin once it lands — same pattern as ADR-0115).
+> 4. **Step 5 (value-based / per-activity SPI(t))** — BLOCKED: needs EVM3 "Detailed Metric Report.xlsx".
+> 5. **Metric-formula audits** — BLOCKED: need the NASA Acumen metric-library `.aft` ("the Bible").
+>
+> ## STATUS (prev) — #224 merged; **full from-scratch audit done**; no work in flight
 >
 > **Verified this session (assumed nothing, re-checked from the repo, 2026-06-23):**
 > - **`origin/main` HEAD = `99f3fea` (#224).** Every PR #213–#224 is squash-merged onto `main`; the
