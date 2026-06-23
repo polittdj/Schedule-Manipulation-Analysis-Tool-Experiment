@@ -3030,3 +3030,15 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   `tests/web/test_evolution_view.py`. No ADR (extends ADR-0011/0044). Visual eyeball recommended.
 - **Next parked threads:** Driving-Path page 3-col tier view; tier-axis on curves; multi-select +
   show/hide-completed on Finishes; Acumen Exec Briefing.
+
+## 2026-06-22 — Driving-Path page: 3-column driving-slack tier panel (#218 merged)
+
+- **#218 merged** (`ffab738`, Evolution path-tier selector). New branch fresh on it.
+- **Driving-Path 3-column tier panel** (`_driving_tiers_panel`). On `/driving-path?target=<uid>`,
+  shows the activities driving the target in the latest version, bucketed by driving-slack tier
+  (ADR-0011): critical/driving (0d) / secondary (≤10d) / tertiary (≤20d), each column a table of
+  UID / activity / slack-days (sorted by slack). Reuses `compute_driving_slack`; renders alongside
+  the A→B corridor (or alone when only a target is given), and even when the source is invalid (so
+  the tier view isn't lost). Tests: `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
+- **Next parked threads:** animation + slack-degradation trend on the Driving-Path page; tier-axis on
+  the curves charts; multi-select + show/hide-completed on Finishes; Acumen Exec Briefing.
