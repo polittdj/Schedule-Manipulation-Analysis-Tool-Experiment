@@ -3160,3 +3160,35 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Still needs operator input/files:** confirm Max Float 275 d vs Acumen (Acumen stored value);
   Exec-Briefing full Acumen format (reference doc); Step 5 (EVM3 absent); metric-formula audits
   (NASA `.aft` absent).
+
+## 2026-06-23b — SSI driving-slack on progressed/leveled files: ROOT-CAUSED to resource leveling (no engine change) — ADR-0115 (no new ADR)
+
+- **Branch:** `claude/clever-volta-wbnx0i`. **Model/mode:** Opus 4.8. Doc-only; no code/engine change.
+- **Driver:** the operator's large **progressed** schedule (`Large_Test_File.mpp`, focus **UID 152**)
+  where the engine's driving slack did not match the SSI Directional Path export. **`Large_Test_File`
+  is REAL CUI** (NASA/spaceflight content) — uploaded, read locally, **never committed**; all analysis
+  in the **ephemeral scratchpad**. No figures from it are in the repo.
+- **Reverse-engineered SSI via 3 controlled synthetic tests** (a 4-task FS chain the operator built;
+  not CUI): **clean → SSI == MS Project exactly** (durations preserved; **−1-minute boundary
+  convention** 07:59/16:59); **on-track progress → identical** (remaining work not moved);
+  **behind + reschedule-uncompleted-work split → SSI matched MS Project's split exactly**. Conclusion:
+  **SSI reports MS Project's live scheduled dates; it invents nothing.**
+- **Root cause of the big-file gap = RESOURCE LEVELING.** Saved `.mpp` is un-leveled (`LevelingDelay`=0);
+  SSI runs on the leveled schedule (critical chain ~7 working days later). Re-leveling **by week**
+  reproduced SSI's critical path **exactly** and **745/783** overall; un-leveled stored dates reproduce
+  only **90/783**. MS Project's leveler **crashes day-by-day** on an unresolvable `MATL` overallocation;
+  by-week is stable.
+- **Engine is already correct (no change):** `engine/driving_slack.py` uses stored progress-aware
+  `start`/`finish` (ADR-0011). Seeded with SSI's own (leveled) dates, the scratchpad harness reproduces
+  **775/783 floored (748/783 fractional)**; the 8 residuals are **cal-68 federal-holiday-table edge
+  cases** (file's cal-68 lacks 2026 holidays). Day-conversion best vs **project calendar** (cal 3 → 775
+  vs per-task 741). MPXJ reads the leveled `Start`/`Finish` from a **leveled-and-saved** `.mpp`, so the
+  tool matches SSI **iff** given the leveled file — we do not re-implement MS Project leveling.
+- **Ruled OUT:** duration re-derivation, intra-day lunch model, Work÷units, baseline durations, the
+  "DurationSolverUpgraded" ribbon button (operator: unrelated to SSI), on-track progress, the split
+  mechanism, stale-schedule/F9.
+- **NEXT:** operator to send a **leveled-and-saved** `.mpp` (level **by week** → Save) → verify the
+  **repo** engine `compute_driving_slack(target_uid=152)` reproduces SSI (~775→100%); resolve the
+  workflow question (are real files saved leveled?); close the 8 cal-68 holiday cases; then consider
+  **ADR-0116** + a non-CUI leveled golden. Re-verified the committed clean-case (UID-145) parity still
+  green: **2 passed**.

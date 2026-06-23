@@ -1,6 +1,80 @@
-# Handoff — 2026-06-23 (SSI driving-slack parity re-pinned on the authoritative Project5, focus UID 145)
+# Handoff — 2026-06-23b (SSI driving-slack on progressed/leveled files — ROOT-CAUSED to resource leveling; engine already correct)
 
-> ## STATUS (current) — SSI driving-slack re-pinned (focus UID 145, ADR-0115); branch `claude/clever-volta-wbnx0i`
+> ## STATUS (current) — SSI driving-slack on PROGRESSED/LEVELED files: root-caused (resource leveling); NO engine change needed; awaiting a leveled-saved `.mpp` — branch `claude/clever-volta-wbnx0i`
+>
+> **This session reverse-engineered, from the data, how SSI's Directional Path Tool schedules — driven
+> by a large *progressed* operator schedule (focus UID 152) where the engine's driving slack did not
+> match the SSI export. Everything below was re-verified by re-running it this session ("assume nothing,
+> verify everything").**
+>
+> ### CUI posture (READ FIRST)
+> The driving file this session, `Large_Test_File.mpp`, is **REAL CUI** (NASA / spaceflight-hardware
+> content) — NOT a non-CUI sample like Project5. It and its SSI `.xlsx` exports were **uploaded, read
+> locally, and never committed** (Law 1). ALL analysis ran in the **ephemeral scratchpad**; no schedule
+> dates/names/derived figures from this file are in the repo or in this handoff. Uploads + scratchpad do
+> **not** survive container recycling — the next session must have the operator **re-upload**. The
+> committed Project5 **UID-145** parity (ADR-0115 — the *clean*-schedule case) is separate, non-CUI, and
+> still green (re-ran this session: **2 passed**).
+>
+> ### The finding (verified): SSI reports MS Project's LIVE scheduled dates — the gap is RESOURCE LEVELING
+> Three controlled tests on a **synthetic** 4-task FS chain the operator built (Task1 5d → Task2 10d →
+> Task3 3d → Task4 milestone; not CUI) proved SSI invents nothing:
+> - **Clean:** SSI == MS Project exactly — durations preserved, dates to the minute. SSI uses a
+>   **−1-minute boundary convention** (a day shows 07:59→16:59, not 08:00→17:00).
+> - **On-track progress** (Task1 100%, Task2 50%, status 7/6): byte-identical to clean — MS Project
+>   leaves remaining work in place, so nothing moved.
+> - **Behind + reschedule-uncompleted-work split** (Task2 30%, "reschedule uncompleted work to start
+>   after the status date"): SSI matched MS Project's *split* schedule exactly (Task2 → 7/15, Task3
+>   7/16→7/20, Task4 7/20).
+>
+> On the large progressed file, SSI's dates differ from the saved `.mpp`'s stored dates because the
+> **saved file is un-leveled** (all `LevelingDelay` = 0) while **SSI runs on the leveled schedule** (the
+> critical chain is pushed ~7 working days later). Re-leveling the file (by week) reproduced SSI's result
+> on the **entire critical path exactly** and **745/783** overall; the un-leveled stored dates reproduce
+> only **90/783**. MS Project's leveler is unreliable here — **day-by-day CRASHES** on an unresolvable
+> `MATL` overallocation; **by-week works**.
+>
+> ### Why NO engine change is needed
+> `engine/driving_slack.py` already uses each task's **stored scheduled (progress-aware) `start`/`finish`**
+> and runs a focus-anchored working-time backward pass (ADR-0011). Seeded with SSI's own (leveled) dates,
+> the scratchpad harness reproduces SSI's driving slack at **775/783 floored (748/783 fractional)**; the
+> **8 residuals are cal-68 federal-holiday-table edge cases** (±1 day — the file's cal-68 lacks 2026
+> holidays). Day-conversion matches SSI best against the **project calendar** (cal 3 → 775) vs per-task
+> (741). So the tool already computes SSI's numbers **iff** given the leveled schedule — and MPXJ reads
+> the leveled `Start`/`Finish` straight out of a **leveled-and-saved** `.mpp`. We do **not** re-implement
+> MS Project leveling (setting-dependent + crashes); we consume its saved result.
+>
+> ### Ruled OUT this session (do NOT re-explore)
+> SSI re-deriving durations (it preserves them); intra-day lunch model; Work÷units; baseline durations;
+> the **"DurationSolverUpgraded"** ribbon button (operator confirmed: unrelated to SSI); on-track
+> progress; the split/reschedule mechanism itself; stale-schedule / F9 (it is leveling, not staleness).
+>
+> ### NEXT (needs the operator + a verification pass)
+> 1. **Operator:** re-level the big file **BY WEEK** (stable; day-by-day crashes) → **Save** → send the
+>    **`.mpp` file** (not an export). Then **verify end-to-end**: MPXJ-convert it, confirm stored
+>    `Start`/`Finish` now equal SSI's dates, and run the **repo** engine
+>    `compute_driving_slack(schedule, target_uid=152)` (NOT just the scratchpad harness) to confirm it
+>    reproduces the SSI export (~775→100%). This is the missing proof that the **shipped** engine — not
+>    just the prototype — matches SSI on a leveled file.
+> 2. **Workflow decision (sets the product default):** when the operator runs SSI on a real project, is
+>    that file already **leveled-and-saved** at that moment? **Yes** → the tool works on real `.mpp`
+>    files as-is. **Saved un-leveled** → either document a "save after leveling" prep step, or have the
+>    tool **ingest the SSI export's leveled dates** as the schedule source (still exact parity).
+> 3. **Close the 8 cal-68 holiday edge cases** — confirm SSI's day-conversion uses the project calendar
+>    uniformly (evidence: 775 vs 741) and finalize; the file's cal-68 lacks 2026 federal holidays.
+> 4. **Then** decide repo follow-through: a leveled `ssi_uid152` golden can only come from a **non-CUI**
+>    file (Large_Test_File is CUI → cannot be committed); record **ADR-0116** once the leveled `.mpp`
+>    confirms the repo engine matches.
+>
+> ### Scratchpad harness (EPHEMERAL — recreate if needed; the durable record is the logic above)
+> `calmod.py` (MSPDI calendar engine + parse), `validate.py` (driving slack from `.mpp` stored dates →
+> 90/783), `validate_ssidates_cal3.py` (driving slack from SSI's own dates → 775/783). Big file converted
+> via the CLAUDE.md MPXJ command. None committed (research tooling that reads CUI).
+>
+> **Highest ADR = 0115** (no new ADR this session — no engine/code change; finding is provisional pending
+> the leveled `.mpp`). Drift guard: ADR-0115 referenced here and in SESSION-LOG.
+
+> ## STATUS (prev) — SSI driving-slack re-pinned (focus UID 145, ADR-0115); branch `claude/clever-volta-wbnx0i`
 >
 > **What shipped this session (branch `claude/clever-volta-wbnx0i`, draft PR):**
 > - **SSI driving-slack parity is LIVE again on the authoritative Project5** — ADR-0115. The operator
