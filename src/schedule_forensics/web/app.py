@@ -1788,15 +1788,21 @@ def create_app(
         return _page(st, "Finish & Slippage", _export_bar("curves") + _curves_body(curves))
 
     @app.get("/api/curves")
-    def curves_json() -> JSONResponse:
+    def curves_json(hide_complete: bool = Query(False)) -> JSONResponse:
         st = session()
         versions = st.ordered()
         if not versions:
             return JSONResponse({"error": "need at least one schedule"}, status_code=400)
+        if hide_complete:
+            # drop 100%-complete activities so the curves show only the remaining/forecast work
+            crit: list[Criterion] = [("% Complete", ["In Progress", "Not Started"])]
+            versions = [v for v in (filter_schedule(s, crit) for s in versions) if non_summary(v)]
+            if not versions:
+                return JSONResponse({"months": [], "versions": []})
         try:
             curves = compute_month_curves(versions)
-        except ValueError as exc:
-            return JSONResponse({"error": str(exc)}, status_code=422)
+        except ValueError:
+            return JSONResponse({"months": [], "versions": []})
         return JSONResponse(_curves_data(curves))
 
     # --- exports (M18): every view's tables, rendered locally as Excel or Word -------
@@ -3128,6 +3134,8 @@ def _curves_body(curves: MonthCurves) -> str:
         "version alone.</p>"
     )
     return f"""
+<div class=viz-controls><label><input type=checkbox id=curvesHideDone> hide 100% complete</label>
+<span class=muted>&mdash; show only the remaining / forecast work on every curve below.</span></div>
 <div class=panel><h2>Finishes &mdash; actual vs baseline by month</h2>
 <p class=muted>For the latest version (<b>{_e(latest)}</b>): activities counted by the month
 they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished

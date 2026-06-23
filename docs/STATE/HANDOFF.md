@@ -1,6 +1,24 @@
-# Handoff — 2026-06-22 (PRs #81–#219 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#220 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#219 merged; Driving-Path slack-degradation TREND in flight
+> ## STATUS (current) — #213–#220 merged; Finishes hide-completed toggle in flight
+>
+> **`main` is green (#210–#220 merged):** S-curve/MaxFloat/SRA/AI-driving/i18n+PT + Evolution
+> path-tier (#218) + Driving-Path 3-col tier panel (#219) + slack-degradation trend (#220).
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Finishes hide-completed.**
+> Operator wanted show/hide completed on the Finishes views. `/api/curves?hide_complete=1` drops
+> 100%-complete activities (filter on the "% Complete" field) and recomputes the curves; a
+> `#curvesHideDone` checkbox on `/curves` re-fetches all three charts (Finishes/Data-date/Slippage).
+> curves.js refactored to `load()`/`render()`. (Per-series multi-select already exists via the
+> legend; field-level "select multiples" is available via the session-wide /groups filter.) Tests in
+> `tests/web/test_curves_view.py`. No ADR.
+>
+> ### Parked threads (operator: "we are going to do them all") — still TODO
+> Tier-axis propagation to the curves charts (stacked Y/Q/M like the S-curve); Acumen-style Executive
+> Briefing (the big one — needs the Acumen format reference); condensed spacing; Step 5 (EVM3 absent);
+> SSI #6 (UID_145).
+
+> ## STATUS (prev) — #213–#219 merged; Driving-Path slack-degradation TREND in flight
 >
 > **`main` is green (#210–#219 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
 > **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215) + AI driving-path "skill" (#216,

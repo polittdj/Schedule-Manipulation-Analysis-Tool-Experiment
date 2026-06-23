@@ -41,6 +41,19 @@ def test_curves_page_renders_three_charts_for_one_version(client: TestClient) ->
     assert "Load more than one version" in page
 
 
+def test_curves_hide_completed_toggle_and_recompute(client: TestClient) -> None:
+    """Operator: show/hide completed work on the Finishes views."""
+    _upload(client, "Project5")
+    assert "id=curvesHideDone" in client.get("/curves").text  # the toggle is on the page
+    js = client.get("/static/curves.js").text
+    assert "hide_complete=1" in js and "curvesHideDone" in js  # wired to re-fetch
+    base = client.get("/api/curves").json()
+    hidden = client.get("/api/curves?hide_complete=1").json()
+    # dropping the 100%-complete activities changes the plotted population (here, the month span)
+    assert base["months"] and hidden["months"]
+    assert hidden["months"] != base["months"]
+
+
 def test_curves_page_drops_the_single_version_hint_with_two(client: TestClient) -> None:
     _upload(client, "Project5")
     _upload(client, "Project2")
