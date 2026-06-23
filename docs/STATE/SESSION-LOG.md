@@ -2990,3 +2990,25 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - Tests: `tests/ai/test_driving_facts.py` (counts only zero-slack drivers, intent/UID gating),
   `tests/web/test_ask_everywhere.py` (button present, endpoint deterministic+cited, ask injection).
 - **Operator-feedback round COMPLETE** after this PR merges (all 4 items: S-curve, Max Float, SRA, AI).
+
+## 2026-06-22 — i18n fix (switch-back + coverage) + Portuguese (#216 merged)
+
+- **#216 merged** (`c5f15e7`) — operator review round (S-curve, Max Float, SRA, AI driving-path) all
+  on `main`. New branch fresh on it.
+- **Language selection fixes + Portuguese.** Operator: switching "doesn't convert everything" and
+  "won't switch back once changed." Confirmed server-side flow is correct (POST /language → 303 →
+  reload English; client translates; selected option + embedded catalog all correct for es/fr/de/pt).
+  The gaps were client-side:
+  - `translate.js` **rewritten non-destructive**: each text node/attribute stores its ORIGINAL
+    English (`__sfSrc`/`__sfAttr`) and is always translated FROM source → no double-translation, no
+    observer loop, and any switch sequence (incl. back to English / between two non-English on a
+    restored page) re-renders correctly. Re-runs on `pageshow` for bfcache restores.
+  - Coverage extended to user-facing **attributes** (placeholder/title/aria-label/alt) and
+    **`<option>` labels**, catalog-only so imported data values are untouched.
+  - **Catalog expanded 80→117 terms** (all nav links + group labels + page titles + controls), so the
+    chrome fully translates without a model.
+  - **Portuguese** added: `LANGUAGES["pt"]` + `pt` on every `_TERMS` entry; flows through
+    `normalize`/`catalog_for`/`translate`/`/api/translate`. CLAUDE.md updated to EN/ES/FR/DE/PT.
+  - Tests: `tests/web/test_i18n.py` (pt catalog, all-catalog alignment incl. pt, switch-back loop,
+    translate.js non-destructive+attribute presence, /api/translate pt). No ADR (extends ADR-0099/0102).
+- **Next:** Driving-Path UI overhaul — 3-column critical/secondary/tertiary tier view (data layer first).

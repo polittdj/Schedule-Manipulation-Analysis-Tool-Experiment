@@ -1,24 +1,27 @@
-# Handoff — 2026-06-22 (PRs #81–#215 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#216 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — operator-feedback round; #213–#215 merged, AI driving-path "skill" in flight
+> ## STATUS (current) — operator review round DONE (#213–#216 merged); i18n fix + Portuguese in flight
 >
-> **`main` is green (#210–#215 merged):** 10-item UI/UX batch + hover call-outs + S-curve operator
-> fixes (#213) + Max Float (d) → stored Total Slack (#214; **operator to confirm 275d vs Acumen**) +
-> SRA running indicator & Beta-PERT (#215).
+> **`main` is green (#210–#216 merged):** 10-item UI/UX batch + hover call-outs + S-curve fixes
+> (#213) + Max Float→stored slack (#214; **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215)
+> + AI driving-path "skill" (#216, ADR-0114).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): AI driving-path "skill"
-> (ADR-0114).** The last operator item. Don't let the 8B model traverse the graph — **inject the
-> engine's exact answer**: `ai/driving_facts.py` (`driving_path_summary` / `driving_path_facts`)
-> appends cited driving-path + near-driving facts for any keyword-named UID + driving intent to the
-> Ask-the-AI fact sheet (model narrates; citation gate blocks invented figures). PLUS a one-click,
-> **no-AI** path: `GET /api/driving-path?uid=&scope=` + a "Show driving path (exact, no AI)" control
-> in the Ask panel (`drivePathUid`/`drivePathBtn`). Tests: `tests/ai/test_driving_facts.py`,
-> `tests/web/test_ask_everywhere.py`.
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): i18n fix + Portuguese.**
+> Operator: language switch "doesn't convert everything" and "won't switch back once changed."
+> Server flow was already correct (each switch reloads English; the client translates) — the gaps were
+> CLIENT-side. Fixes: (1) **`translate.js` rewritten non-destructive** — each text node/attribute
+> remembers its ORIGINAL English (`__sfSrc`), always translates FROM source, so it never double-
+> translates, the observer can't loop, and any switch sequence re-renders correctly; re-runs on
+> `pageshow` (bfcache). (2) **Coverage** — now also translates `placeholder/title/aria-label/alt`
+> attributes and `<option>` labels (catalog-only, so imported data values stay). (3) **Catalog
+> expanded** 80→117 terms (all the nav links/group labels, page titles, controls). (4) **Portuguese
+> added** to `LANGUAGES` + every `_TERMS` entry; flows through `normalize`/`catalog_for`/`/api/translate`.
+> Tests in `tests/web/test_i18n.py`. No ADR (extends ADR-0099/0102).
 >
-> ### Operator-feedback round — DONE after this PR merges
-> All four items from the operator's review addressed (S-curve fixes, Max Float, SRA, AI driving-path).
-> Open threads remain for later: Step 5 (EVM3 absent), SSI #6 (UID_145), Driving-Path UI overhaul,
-> Acumen-style Exec Briefing, tier-axis propagation to other charts.
+> ### Parked threads (operator: "we are going to do them all")
+> Driving-Path UI overhaul (3-col critical/secondary/tertiary + animation + slack-degradation trend);
+> tier-axis propagation to curves/evolution; multi-select + show/hide-completed on Finishes; Acumen
+> Exec Briefing; Step 5 (EVM3 absent); SSI #6 (UID_145). Next up after this: Driving-Path 3-col view.
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
 > continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:

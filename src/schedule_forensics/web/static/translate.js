@@ -1,65 +1,118 @@
 /* Schedule Forensics — client-side display translation (ADR-0099).
  *
- * When the session language is not English, walk the rendered DOM's text nodes and translate them:
- * fixed UI terms from the embedded catalog (window.SF_I18N) are swapped instantly; everything else
- * (imported activity names, computed/AI prose) is batched to /api/translate, which uses the
- * configured local model and caches. A MutationObserver re-translates content added later (AJAX
- * grids, charts, AI answers). Numbers/dates/codes and inputs/scripts are left untouched. Falls back
- * to the source text for anything not translated — the page is never broken. Nothing leaves the
+ * When the session language is not English, translate the rendered page: fixed UI terms from the
+ * embedded catalog (window.SF_I18N) are swapped instantly; text-node misses (imported activity
+ * names, computed/AI prose) are batched to /api/translate, which uses the configured LOCAL model
+ * and caches. A MutationObserver re-translates content added later (AJAX grids, charts, AI answers).
+ *
+ * NON-DESTRUCTIVE: every translated text node / attribute remembers its ORIGINAL English source and
+ * we always translate FROM that source — never from already-translated text. So nodes are never
+ * double-translated, the MutationObserver can't loop, and switching languages (back to English, or
+ * between two non-English languages on a restored page) always re-renders correctly from source.
+ *
+ * Coverage includes user-facing ATTRIBUTES (placeholder/title/aria-label/alt) and <option> labels
+ * via the catalog (catalog-only, so imported data values are left untouched). Numbers/dates/codes,
+ * <input> values, scripts, and anything under data-no-i18n are left alone. Nothing leaves the
  * machine beyond the same local model the rest of the AI features already use.
  */
 "use strict";
 
 (function () {
-  var lang = window.SF_LANG;
-  if (!lang || lang === "en") return;
+  var lang = window.SF_LANG || "en";
+  if (lang === "en") return; // English is the source language — nothing to translate or reset
   var dict = window.SF_I18N || {};
 
-  var SKIP_TAGS = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, OPTION: 1, CODE: 1, PRE: 1 };
-  // text that is purely numeric / dates / codes / punctuation — never sent for translation
+  // text nodes under these (or under data-no-i18n) are never translated
+  var TEXT_SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, OPTION: 1, CODE: 1, PRE: 1 };
+  // elements under these (or under data-no-i18n) get no attribute/option translation
+  var ATTR_SKIP = { SCRIPT: 1, STYLE: 1, CODE: 1, PRE: 1, TEXTAREA: 1 };
+  var ATTRS = ["placeholder", "title", "aria-label", "alt"];
+  // purely numeric / date / code / punctuation text — never translated or sent to the model
   var NON_TEXT = /^[\s\d.,:;/%+\-()$£€#×—–·…»«|]*$/;
+  var SRC = "__sfSrc";   // a text node's original English value (property on the node)
+  var ASRC = "__sfAttr"; // an element's original English attribute values (object on the element)
 
-  var memo = Object.create(null); // source text -> translation (catalog + fetched), this page
-  var done = Object.create(null); // already-applied translation strings (don't re-translate them)
-  var queue = {}; // pending source text -> [textNodes] awaiting the server
+  var memo = Object.create(null);  // source text -> model translation (fetched), this session
+  var queue = {};                  // pending source text -> [text nodes] awaiting the server
   var timer = null;
 
-  function skip(node) {
-    for (var p = node.parentNode; p; p = p.parentNode) {
-      if (p.nodeType === 1 && (SKIP_TAGS[p.tagName] || p.hasAttribute("data-no-i18n"))) return true;
+  function underSkip(node, table) {
+    for (var p = node.nodeType === 1 ? node : node.parentNode; p; p = p.parentNode) {
+      if (p.nodeType === 1 && (table[p.tagName] || p.hasAttribute("data-no-i18n"))) return true;
     }
     return false;
   }
 
-  function apply(node, raw, translation) {
-    done[translation] = 1; // so the resulting text is not itself re-translated by the observer
-    var text = raw.replace(raw.trim(), translation);
-    if (node.nodeValue !== text) node.nodeValue = text;
+  // catalog-or-memo translation of a source string; null = unknown (caller may queue it)
+  function lookup(src, catalogOnly) {
+    var key = src.trim();
+    if (!key || NON_TEXT.test(key)) return src;
+    if (dict[key] != null) return src.replace(key, dict[key]);
+    if (!catalogOnly && memo[key] != null) return src.replace(key, memo[key]);
+    return null;
   }
 
-  function handle(node) {
-    var raw = node.nodeValue;
-    if (!raw) return;
-    var key = raw.trim();
-    if (!key || NON_TEXT.test(key) || done[key]) return; // skip our own already-applied output
-    if (dict[key] != null) { apply(node, raw, dict[key]); return; }
-    if (memo[key] != null) { apply(node, raw, memo[key]); return; }
+  function setText(node, value) {
+    if (node.nodeValue !== value) node.nodeValue = value;
+  }
+
+  // a text node: translate from its remembered English source (catalogOnly for <option> labels)
+  function handleText(node, catalogOnly) {
+    var src = SRC in node ? node[SRC] : node.nodeValue;
+    if (src == null) return;
+    if (lang === "en") { if (SRC in node) setText(node, src); return; }
+    var out = lookup(src, catalogOnly);
+    if (out != null) { node[SRC] = src; setText(node, out); return; }
+    if (catalogOnly) return;            // unknown option label -> leave English
+    node[SRC] = src;                    // unknown prose -> remember + queue for the model
+    var key = src.trim();
     (queue[key] = queue[key] || []).push(node);
+  }
+
+  // an element's translatable attributes (catalog-only — short fixed UI strings, never data)
+  function handleAttrs(el) {
+    var store = null;
+    for (var i = 0; i < ATTRS.length; i++) {
+      var a = ATTRS[i];
+      if (!el.hasAttribute(a) && !(el[ASRC] && a in el[ASRC])) continue;
+      store = el[ASRC] || (el[ASRC] = {});
+      var src = a in store ? store[a] : el.getAttribute(a);
+      if (src == null) continue;
+      if (lang === "en") { el.setAttribute(a, src); continue; }
+      var out = lookup(src, true);
+      if (out != null) { store[a] = src; el.setAttribute(a, out); }
+    }
+  }
+
+  function handleOption(opt) {
+    if (opt.firstChild && opt.firstChild.nodeType === 3) handleText(opt.firstChild, true);
   }
 
   function walk(root) {
     if (!root) return;
-    if (root.nodeType === 3) { if (!skip(root)) handle(root); return; }
-    if (root.nodeType !== 1 || SKIP_TAGS[root.tagName] || root.hasAttribute("data-no-i18n")) return;
-    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
-    var n, batch = [];
-    while ((n = w.nextNode())) batch.push(n);
-    batch.forEach(function (t) { if (!skip(t)) handle(t); });
+    if (root.nodeType === 3) { if (!underSkip(root, TEXT_SKIP)) handleText(root); return; }
+    if (root.nodeType !== 1) return;
+    // text nodes
+    var tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var n, texts = [];
+    while ((n = tw.nextNode())) texts.push(n);
+    texts.forEach(function (t) { if (!underSkip(t, TEXT_SKIP)) handleText(t); });
+    // attributes + <option> labels, on root and every descendant element
+    var els = [root];
+    if (root.getElementsByTagName) {
+      var all = root.getElementsByTagName("*");
+      for (var i = 0; i < all.length; i++) els.push(all[i]);
+    }
+    els.forEach(function (e) {
+      if (e.nodeType !== 1 || underSkip(e, ATTR_SKIP)) return;
+      handleAttrs(e);
+      if (e.tagName === "OPTION") handleOption(e);
+    });
     schedule();
   }
 
   function schedule() {
-    if (timer) return;
+    if (timer || lang === "en") return;
     timer = setTimeout(flush, 120);
   }
 
@@ -82,7 +135,8 @@
           if (es == null) return; // no translation -> keep the source text
           memo[key] = es;
           sending[key].forEach(function (node) {
-            if (node.nodeValue) apply(node, node.nodeValue, es);
+            var src = SRC in node ? node[SRC] : node.nodeValue;
+            if (src != null) { node[SRC] = src; setText(node, src.replace(key, es)); }
           });
         });
       })
@@ -97,6 +151,9 @@
         if (m.type === "characterData") walk(m.target);
       });
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    // a page restored from the back/forward cache may carry DOM translated to another language;
+    // re-render from source so the language now in effect is what shows
+    window.addEventListener("pageshow", function () { walk(document.body); });
   }
 
   if (document.readyState === "loading") {
