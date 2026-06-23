@@ -3085,3 +3085,18 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   recommended.
 - **Remaining:** Acumen-style Executive Briefing (needs the Acumen format reference); migrate
   scurve.js onto the shared timeaxis module; condensed spacing.
+
+## 2026-06-22 — Executive Briefing: "Key Assessment" lede (first pass) (#222 merged)
+
+- **#222 merged** (`c6c471b`, tier-axis on curves). New branch fresh on it. All chart-framework
+  items from the operator's list are now done.
+- **Executive Briefing first pass** toward the operator's "Acumen-style" ask. `ai/briefing.py` now
+  leads with a **"Key Assessment"** section (latest version): an overall verdict (ON TRACK /
+  NEEDS ATTENTION / AT RISK — transparent heuristic from finish-slip days + DCMA-14 fail count) plus
+  the headline figures (forecast completion, vs-baseline, critical activities, DCMA fails failing,
+  activities in scope), every figure engine-cited. `_assessment_section` reuses the existing
+  finish/baseline/audit helpers; prepended in `build_briefing`. Updated the structure tests (kinds
+  now include "assessment"; section-index assertions made kind-based). Verified AT RISK on Project5
+  (200 days behind, 4/14 DCMA failing). Tests: `tests/ai/test_briefing.py`. No ADR.
+- **Still needs the operator's Acumen briefing** to match the full format (exact sections / ordering /
+  scoring). Other remaining: consolidate scurve.js onto the shared timeaxis module; condensed spacing.

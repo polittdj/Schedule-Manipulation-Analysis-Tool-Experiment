@@ -22,7 +22,7 @@ from schedule_forensics.ai.null import NullBackend
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, audit_schedule
 from schedule_forensics.engine.metrics import CheckStatus
-from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.metrics._common import is_effective_critical, non_summary
 from schedule_forensics.engine.trend import compute_quality_trend, order_versions
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -292,6 +292,73 @@ def _quality_section(schedule: Schedule, cpm: CPMResult) -> BriefingSection:
     )
 
 
+def _assessment_section(schedule: Schedule, cpm: CPMResult, today: dt.date) -> BriefingSection:
+    """The executive lede: an overall verdict (ON TRACK / NEEDS ATTENTION / AT RISK) plus the
+    headline numbers a sponsor reads first — forecast completion vs baseline, critical exposure,
+    and the DCMA-14 fail count — for the latest version. Every figure is engine-computed and cited;
+    the verdict is a transparent heuristic (finish slip + DCMA failures), not an opaque score."""
+    label = _label(schedule)
+    tasks = non_summary(schedule)
+    n = len(tasks)
+    audit = audit_schedule(schedule, cpm)
+    applicable = [c for c in audit.checks if c.status is not CheckStatus.NOT_APPLICABLE]
+    fails = sum(1 for c in applicable if c.status is CheckStatus.FAIL)
+    finish = _finish_date(schedule, cpm)
+    _, baseline_finish = _baseline_window(tasks)
+    delta_days = (finish.date() - baseline_finish.date()).days if baseline_finish else None
+    incomplete = [t for t in tasks if t.percent_complete < 100.0]
+    critical = sum(
+        1
+        for t in incomplete
+        if t.unique_id in cpm.timings
+        and is_effective_critical(t, cpm.timings[t.unique_id].total_float)
+    )
+    behind = delta_days is not None and delta_days > 0
+    if delta_days is not None and delta_days <= 0 and fails == 0:
+        verdict = "ON TRACK"
+    elif (behind and fails >= 4) or (delta_days is not None and delta_days > 20):
+        verdict = "AT RISK"
+    else:
+        verdict = "NEEDS ATTENTION"
+    if delta_days is None:
+        var_txt = "no baseline finish to compare against"
+        var_cell = "no baseline"
+    elif delta_days > 0:
+        var_txt = f"{delta_days} days behind baseline"
+        var_cell = f"+{delta_days} days"
+    elif delta_days < 0:
+        var_txt = f"{-delta_days} days ahead of baseline"
+        var_cell = f"{delta_days} days"
+    else:
+        var_txt = "on its baseline finish"
+        var_cell = "on schedule"
+    drivers = _finish_drivers(schedule, cpm)
+    text = (
+        f"Executive assessment of {label} as of {_day(today)}: {verdict}. The schedule forecasts "
+        f"completion on {_day(finish.date())} ({var_txt}); {critical} of {len(incomplete)} "
+        f"incomplete activities are critical, and {fails} of {len(applicable)} applicable DCMA-14 "
+        f"checks are failing."
+    )
+    profile: list[tuple[str, ...]] = [
+        ("Overall verdict", verdict),
+        ("Forecast completion", _day(finish.date())),
+        ("Vs baseline finish", var_cell),
+        ("Critical activities", f"{critical} of {len(incomplete)} incomplete"),
+        ("DCMA-14 checks failing", f"{fails} of {len(applicable)}"),
+        ("Activities in scope", str(n)),
+    ]
+    return BriefingSection(
+        "Key Assessment",
+        (CitedStatement(text, drivers),),
+        kind="assessment",
+        table=BriefingTable(
+            headers=(),
+            rows=tuple(profile),
+            row_citations=tuple(drivers for _ in profile),
+        ),
+    )
+
+
 def build_briefing(
     schedules: list[Schedule],
     *,
@@ -327,7 +394,11 @@ def build_briefing(
         )
         sections = [BriefingSection("Workbook Summary", (CitedStatement(text, cite),), kind="lede")]
     else:
-        sections = [_workbook_section(ordered, cpm_list, report_day)]
+        # the executive lede first: overall verdict + headline numbers for the latest version
+        sections = [
+            _assessment_section(ordered[-1], cpm_list[-1], report_day),
+            _workbook_section(ordered, cpm_list, report_day),
+        ]
         if len(ordered) >= 2:
             sections.append(_trend_section(ordered, cpm_list))
         for schedule, cpm in zip(ordered, cpm_list, strict=True):

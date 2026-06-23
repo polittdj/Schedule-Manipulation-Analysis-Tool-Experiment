@@ -23,6 +23,7 @@ def test_briefing_two_golden_versions_full_structure(golden_project2, golden_pro
     b = build_briefing([golden_project5, golden_project2], today=TODAY)  # any load order
     headings = [s.heading for s in b.sections]
     assert headings == [
+        "Key Assessment",  # the executive lede: verdict + headline numbers (latest version)
         "Workbook Summary",
         "Trend Analysis",
         "Project2.mspdi.xml Project",
@@ -35,11 +36,33 @@ def test_briefing_two_golden_versions_full_structure(golden_project2, golden_pro
         assert_all_cited(section.statements)  # §6: every sentence carries file+UID+task
 
 
+def test_briefing_leads_with_a_key_assessment(golden_project2, golden_project5) -> None:
+    """The briefing opens with an executive verdict + the headline numbers a sponsor reads first."""
+    b = build_briefing([golden_project2, golden_project5], today=TODAY)
+    lede = b.sections[0]
+    assert lede.heading == "Key Assessment"
+    assert lede.statements and "Executive assessment" in lede.statements[0].text
+    assert_all_cited(lede.statements)  # the verdict sentence is cited to the finish drivers
+    assert lede.table is not None
+    labels = [row[0] for row in lede.table.rows]
+    assert labels == [
+        "Overall verdict",
+        "Forecast completion",
+        "Vs baseline finish",
+        "Critical activities",
+        "DCMA-14 checks failing",
+        "Activities in scope",
+    ]
+    verdict = next(row[1] for row in lede.table.rows if row[0] == "Overall verdict")
+    assert verdict in {"ON TRACK", "NEEDS ATTENTION", "AT RISK"}
+
+
 def test_briefing_workbook_summary_names_versions_and_window(
     golden_project2, golden_project5
 ) -> None:
     b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    text = b.sections[0].statements[0].text
+    workbook = next(s for s in b.sections if s.kind == "lede")
+    text = workbook.statements[0].text
     assert "2 schedule version(s)" in text
     assert "Project2.mspdi.xml" in text and "Project5.mspdi.xml" in text
     assert "Wednesday, June 10, 2026" in text  # report date, briefing style
@@ -94,7 +117,7 @@ def test_briefing_sections_carry_kinds_and_cited_tables(golden_project2, golden_
     every table row cited exactly like prose (§6)."""
     b = build_briefing([golden_project2, golden_project5], today=TODAY)
     by_kind = {s.kind for s in b.sections}
-    assert by_kind == {"lede", "trend", "project", "quality"}
+    assert by_kind == {"assessment", "lede", "trend", "project", "quality"}
     for section in b.sections:
         if section.kind == "lede":
             assert section.table is None
@@ -120,6 +143,7 @@ def test_briefing_sections_carry_kinds_and_cited_tables(golden_project2, golden_
 def test_briefing_single_version_skips_trend(golden_project5) -> None:
     b = build_briefing([golden_project5], today=TODAY)
     assert [s.heading for s in b.sections] == [
+        "Key Assessment",
         "Workbook Summary",
         "Project5.mspdi.xml Project",
         "Project5.mspdi.xml Schedule Quality Analysis",
@@ -168,7 +192,8 @@ def test_briefing_handles_undated_schedule() -> None:
         tasks=(Task(unique_id=1, name="A", duration_minutes=480),),
     )
     b = build_briefing([sch], today=TODAY)
-    assert "not statused" in b.sections[1].statements[0].text
+    project = next(s for s in b.sections if s.kind == "project")
+    assert "not statused" in project.statements[0].text
 
 
 def test_briefing_on_empty_scope_is_cited_and_says_nothing_to_brief() -> None:
