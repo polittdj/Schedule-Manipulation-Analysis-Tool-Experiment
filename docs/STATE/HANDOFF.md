@@ -1,6 +1,22 @@
-# Handoff — 2026-06-22 (PRs #81–#221 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#222 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#221 merged; stacked time-tier axis on the curves charts in flight
+> ## STATUS (current) — #213–#222 merged; Executive Briefing "Key Assessment" lede in flight
+>
+> **`main` is green (#210–#222 merged):** all chart-framework items done — incl. tier-axis on the
+> curves charts (#222, shared `timeaxis.js`), Evolution/Driving-Path tiers, hide-completed, etc.
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Exec Briefing first pass.**
+> The big remaining operator item is an Acumen-style Executive Briefing. As a verifiable FIRST PASS
+> (no Acumen reference yet), `ai/briefing.py` now opens with a **"Key Assessment"** section for the
+> latest version: an overall **verdict** (ON TRACK / NEEDS ATTENTION / AT RISK — a transparent
+> heuristic from finish-slip + DCMA-14 fail count) plus the headline numbers a sponsor reads first
+> (forecast completion vs baseline, critical exposure, DCMA fails, activity count), all engine-cited.
+> `_assessment_section` reuses the existing finish/baseline/audit helpers; prepended in
+> `build_briefing`. Existing structure tests updated (kinds now incl. "assessment"). Tests in
+> `tests/ai/test_briefing.py`. No ADR. **Needs the operator's Acumen briefing to match the full
+> format** (sections/ordering/scoring) — flagged in the PR.
+
+> ## STATUS (prev) — #213–#221 merged; stacked time-tier axis on the curves charts in flight
 >
 > **`main` is green (#210–#221 merged):** … + Driving-Path 3-col tier (#219) + slack-degradation
 > trend (#220) + Finishes hide-completed toggle (#221).
