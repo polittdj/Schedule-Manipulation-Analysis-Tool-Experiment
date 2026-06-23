@@ -3116,3 +3116,21 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   (`tests/web/test_chart_callouts.py`: scurve uses SFTimeAxis; the tier logic lives in timeaxis.js).
 - **Remaining all need operator input/files:** Exec Briefing full Acumen format; Step 5 (EVM3); SSI #6
   (UID_145); confirm Max Float 275d.
+
+## 2026-06-23 — Session-close audit + handoff refresh (#224 merged)
+
+- **#224 merged** (`99f3fea`, optional polish — condensed spacing + tier-axis DRY). All of #213–#224
+  are now on `main`; the operator's "do them all" list is complete. No open PRs.
+- **From-scratch audit (assumed nothing, re-verified from the repo):** parity gate re-run clean
+  (`pytest -m parity` → 9 passed, 1 xfailed by design; prior full suite 1491 passed / 7 skipped /
+  2 xfailed). Max Float = 275.0 d (Avg 71.0, Critical 4) on golden Project5 via `effective_total_float`.
+  Highest ADR = **0114** (drift guard: referenced in both HANDOFF and this log).
+- **Intake audit — key correction to the prior seed prompt:** the **SSI UID_145 directional-path
+  export IS present** under `00_REFERENCE_INTAKE/audit/ssi_uid145/` (7 `.xlsx` + 2 `.mpp` + 1 `.docx`,
+  CUI/git-ignored), so the SSI driving-slack re-pin is **unblocked**, not awaiting a file. **EVM3**
+  report and the **NASA Acumen `.aft` "Bible"** remain **absent** (Step 5 + metric-formula audits stay
+  input-blocked). Do not fabricate reference numbers (Law 2).
+- **HANDOFF.md rewritten:** new "STATUS (current)" block records the verified post-#224 state and the
+  corrected open-thread list (SSI UID_145 = top unblocked task; build `golden/ssi_uid145/` + a
+  `target_uid=145` parity test — note it does not auto-lift the UID-143 `xfail`s, which are stale per
+  ADR-0112). Prior "current" block demoted to "prev". Doc-only change; no engine/metric number touched.

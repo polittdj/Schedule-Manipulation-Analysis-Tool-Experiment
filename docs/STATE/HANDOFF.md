@@ -1,6 +1,48 @@
-# Handoff — 2026-06-22 (PRs #81–#223 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-23 (PRs #81–#224 MERGED; **`main` green**; session-close audit + handoff refresh)
 
-> ## STATUS (current) — #213–#223 merged; optional polish (spacing + tier-axis DRY) in flight
+> ## STATUS (current) — #224 merged; **full from-scratch audit done**; no work in flight
+>
+> **Verified this session (assumed nothing, re-checked from the repo, 2026-06-23):**
+> - **`origin/main` HEAD = `99f3fea` (#224).** Every PR #213–#224 is squash-merged onto `main`; the
+>   operator's entire "do them all" list shipped: S-curve fixes (#213), Max Float→stored slack (#214),
+>   SRA indicator/Beta-PERT (#215), AI driving-path skill (#216, ADR-0114), i18n rewrite + Portuguese
+>   (#217), Evolution path-tier selector (#218), Driving-Path 3-col tier panel (#219), slack-degradation
+>   trend (#220), Finishes hide-completed (#221), curves tier-axis (#222), Exec-Briefing Key Assessment
+>   (#223), optional polish — condensed spacing + tier-axis DRY (#224).
+> - **Gate is green.** Parity gate re-run clean (`pytest -m parity` → 9 passed, 1 xfailed by design);
+>   prior full-suite run was 1491 passed / 7 skipped / 2 xfailed. **No open PRs.** Highest ADR = **0114**.
+> - **Max Float = 275.0 d** (Avg 71.0, Critical 4) on the authoritative golden Project5 via
+>   `effective_total_float` (ADR-0010/0080). Engine-verified — *confirm against Acumen's stored value*.
+> - **This branch (`claude/clever-hawking-06zdpz`) sits at `main` HEAD** and carries only this
+>   doc-only handoff/log refresh.
+>
+> ### Reference-intake audit (the important correction to the prior seed prompt)
+> - **SSI UID_145 directional-path export IS PRESENT — UNBLOCKED.**
+>   `00_REFERENCE_INTAKE/audit/ssi_uid145/` holds the SSI run
+>   `SSI Analysis UID_145_Directional_Path_Analysis_2026-6-22-…` — **7 `.xlsx` + 2 `.mpp` + 1 `.docx`**.
+>   So the SSI driving-slack re-pin is **actionable now**, not awaiting a file. (CUI — git-ignored;
+>   stays local; never commit it.)
+> - **EVM3 detailed-metric report ABSENT** → build-order **Step 5 (value-based / per-activity SPI(t))
+>   stays input-blocked.** Do not fabricate (Law 2).
+> - **NASA Acumen metric-library `.aft` ("the Bible") ABSENT** → metric formula audits wait on the
+>   operator's upload.
+>
+> ### Open threads (verified status)
+> 1. **SSI driving-slack parity — TOP, UNBLOCKED.** Build a `tests/fixtures/golden/ssi_uid145/`
+>    golden from the intake export and add a parity test for
+>    `compute_driving_slack(schedule, target_uid=145)` on the current `Project5_TAMPERED.mpp`. The two
+>    existing `xfail`s pin **UID 143** on the *prior* Project5 (stale per ADR-0112) — a UID-145 test is
+>    fresh coverage and does **not** auto-lift them; first open the `.xlsx` to see whether it also
+>    carries UID-143 path data that could re-pin/lift the `ssi_uid143` xfail, else leave it
+>    documented-stale.
+> 2. **Step 5 value-based ES — BLOCKED** (EVM3 absent; re-attach to resume).
+> 3. **Executive Briefing → full Acumen format** — "Key Assessment" first pass is on `main`; matching
+>    the full Acumen briefing (sections / ordering / scoring) needs the operator's reference document.
+> 4. **Confirm Max Float 275 d vs Acumen** — engine value verified; needs the operator's Acumen number.
+> 5. **Condensed spacing (#224)** — CSS-only, reversible; a visual eyeball is still recommended
+>    (no headless browser here).
+>
+> ## STATUS (prev) — #213–#223 merged; optional polish (spacing + tier-axis DRY) in flight
 >
 > **`main` is green (#210–#223 merged):** the operator's entire "do them all" list is done (S-curve,
 > Max Float, SRA, AI driving-path, i18n+PT, Evolution/Driving-Path tiers, trend, hide-completed,
