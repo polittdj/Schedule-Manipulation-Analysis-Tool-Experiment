@@ -5329,6 +5329,70 @@ def _driving_path_gantt(
     }
 
 
+def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
+    """Three columns of the activities driving ``target`` in the LATEST version, bucketed by
+    driving-slack tier (ADR-0011): critical/driving (0 working days — the driving path), secondary
+    (<= 10 days), tertiary (<= 20 days). Fewer days = more control over the target."""
+    sch, cpm = schedules[-1], cpms[-1]
+    if target not in sch.tasks_by_id:
+        return ""  # the corridor branch already reports a target absent from every version
+    try:
+        results = compute_driving_slack(sch, target, cpm_result=cpm)
+    except (KeyError, ValueError):
+        return ""
+    by_id = sch.tasks_by_id
+    buckets: dict[str, list[tuple[int, str, float]]] = {
+        "driving": [],
+        "secondary": [],
+        "tertiary": [],
+    }
+    for uid, r in results.items():
+        if uid == target:
+            continue
+        label = _EVO_TIER_LABEL.get(r.tier)
+        if label in buckets:
+            t = by_id.get(uid)
+            buckets[label].append(
+                (uid, t.name if t is not None else f"UID {uid}", float(r.driving_slack_days))
+            )
+    for items in buckets.values():
+        items.sort(key=lambda a: (a[2], a[0]))
+    cols = [
+        ("driving", "Critical / driving", "0 days"),
+        ("secondary", "Secondary", f"&le; {DEFAULT_SECONDARY_MAX_DAYS} days"),
+        ("tertiary", "Tertiary", f"&le; {DEFAULT_TERTIARY_MAX_DAYS} days"),
+    ]
+    blocks: list[str] = []
+    for key, title, sub in cols:
+        items = buckets[key]
+        if items:
+            rows = "".join(
+                f"<tr><td class=num>{u}</td><td>{_e(n)}</td><td class=num>{d:.1f}</td></tr>"
+                for u, n, d in items
+            )
+            body = (
+                "<table class=card-table><tr><th scope=col>UID</th>"
+                "<th scope=col>Activity</th><th scope=col>Slack (d)</th></tr>"
+                f"{rows}</table>"
+            )
+        else:
+            body = "<p class=muted>none</p>"
+        blocks.append(
+            f'<div style="flex:1;min-width:15em"><h3>{title} '
+            f"<span class=muted>({len(items)} &middot; {sub})</span></h3>{body}</div>"
+        )
+    focus = by_id.get(target)
+    fname = _e(focus.name) if focus is not None else f"UID {target}"
+    return (
+        f"<div class=panel><h2>Driving tiers to {target} &mdash; {fname}</h2>"
+        "<p class=muted>Activities driving this target in the latest version, by their driving "
+        "slack: <b>critical</b> (0 working days &mdash; the driving path), <b>secondary</b>, and "
+        "<b>tertiary</b>. Fewer days = more control over the target (SSI/ADR-0011).</p>"
+        '<div style="display:flex;gap:1em;align-items:flex-start;flex-wrap:wrap">'
+        f"{''.join(blocks)}</div></div>"
+    )
+
+
 def _driving_path_body(
     schedules: list[Schedule], cpms: list[CPMResult], source: int | None, target: int | None
 ) -> str:
@@ -5347,19 +5411,30 @@ slips, moves B. If A reaches B only through activities with float, the two are <
 but A does not <b>drive</b> B (the slack is reported instead). Trace it across every loaded
 version to see the corridor shift.</p></div>"""
 
+    tiers_html = _driving_tiers_panel(schedules, cpms, target) if target is not None else ""
+
     if source is None or target is None:
-        return form + (
-            "<div class=panel><p class=muted>Enter a source and a target UniqueID above to "
-            "trace the driving path between them.</p></div>"
+        hint = (
+            "Enter a source and a target UniqueID above to trace the driving path between them"
+            + (
+                " &mdash; or enter just a target to see its driving tiers above."
+                if target is None
+                else "."
+            )
         )
+        return form + tiers_html + f"<div class=panel><p class=muted>{hint}</p></div>"
 
     a_name = _task_name_across(schedules, source)
     b_name = _task_name_across(schedules, target)
     if a_name is None or b_name is None:
         missing = source if a_name is None else target
-        return form + (
-            f'<div class="notice err">UniqueID {missing} is not present in any loaded '
-            f"version.</div>"
+        return (
+            form
+            + tiers_html
+            + (
+                f'<div class="notice err">UniqueID {missing} is not present in any loaded '
+                f"version.</div>"
+            )
         )
 
     evo = compute_driving_path_evolution(schedules, cpms, source, target)
@@ -5416,7 +5491,7 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
             f"{left}</div>"
         )
 
-    return form + header + gantt_html + "".join(rows)
+    return form + tiers_html + header + gantt_html + "".join(rows)
 
 
 def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:

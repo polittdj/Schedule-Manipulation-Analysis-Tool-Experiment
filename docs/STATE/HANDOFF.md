@@ -1,21 +1,17 @@
-# Handoff — 2026-06-22 (PRs #81–#217 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#218 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#217 merged; Critical-Path Evolution TIER selector in flight
+> ## STATUS (current) — #213–#218 merged; Driving-Path 3-column tier panel in flight
 >
-> **`main` is green (#210–#217 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
+> **`main` is green (#210–#218 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
 > **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215) + AI driving-path "skill" (#216,
-> ADR-0114) + i18n non-destructive rewrite/coverage + Portuguese (#217).
+> ADR-0114) + i18n rewrite + Portuguese (#217) + Critical-Path Evolution path-tier selector (#218).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Evolution path-tier
-> selector.** Operator: on Critical-Path Evolution, choose critical / secondary / tertiary / all.
-> Confirmed model = driving-slack tiers to a focus (ADR-0011), show only the chosen tier (all =
-> colour-coded). New `tier` param on `/evolution` + `/api/evolution`; `_evolution_tier_data` reuses
-> `compute_path_evolution` for version framing and swaps in the driving-slack tier activities
-> (focus = pinned target, else that version's project-finish activity), same payload shape so the
-> Gantt renders unchanged. UI: a `name=tier` selector (Critical path / Secondary ≤10d / Tertiary
-> ≤20d / All) on the Focus form (reload), `data-tier` on `#evoChart`; JS appends `&tier=` and colours
-> bars by tier in "all" mode (`tierColor`/`TIER_COLOR` + tier legend). Tests in
-> `tests/web/test_evolution_view.py`. No ADR (extends ADR-0011/0044).
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Driving-Path 3-column
+> tier panel.** On `/driving-path`, when a target UID is given, a new panel shows the activities
+> driving it (latest version) in three columns by driving-slack tier — critical/driving (0d),
+> secondary (≤10d), tertiary (≤20d), each with UID/name/slack-days (`_driving_tiers_panel`,
+> reusing `compute_driving_slack`). Renders alongside the existing A→B corridor (or alone for a
+> target with no source). Tests in `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
 >
 > ### Parked threads (operator: "we are going to do them all") — still TODO
 > Driving-Path page 3-col critical/secondary/tertiary view + animation + slack-degradation trend;

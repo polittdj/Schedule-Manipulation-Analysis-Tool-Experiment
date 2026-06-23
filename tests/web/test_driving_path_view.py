@@ -27,6 +27,30 @@ def test_page_needs_a_schedule(client: TestClient) -> None:
     assert "Load a schedule" in client.get("/driving-path").text
 
 
+def _last_uid() -> int:
+    from schedule_forensics.engine.metrics._common import non_summary
+    from schedule_forensics.importers.mspdi import parse_mspdi
+
+    return non_summary(parse_mspdi(GOLDEN / "project2_5" / "Project5.mspdi.xml"))[-1].unique_id
+
+
+def test_driving_tiers_panel_shows_three_columns_for_a_target(client: TestClient) -> None:
+    """Operator wants a critical/secondary/tertiary tier breakdown for the focus (driving slack)."""
+    _upload(client, "Project5")
+    uid = _last_uid()
+    page = client.get(f"/driving-path?target={uid}").text
+    assert f"Driving tiers to {uid}" in page
+    assert "Critical / driving" in page and "Secondary" in page and "Tertiary" in page
+    assert "Slack (d)" in page  # the per-activity driving-slack column
+
+
+def test_driving_tiers_panel_renders_even_with_an_invalid_source(client: TestClient) -> None:
+    _upload(client, "Project5")
+    uid = _last_uid()
+    page = client.get(f"/driving-path?source=999999&target={uid}").text
+    assert f"Driving tiers to {uid}" in page
+
+
 def test_page_renders_the_two_uid_form(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/driving-path").text
