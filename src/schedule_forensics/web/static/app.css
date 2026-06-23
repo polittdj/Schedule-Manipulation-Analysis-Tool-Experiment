@@ -1,6 +1,6 @@
 /* Schedule Forensics — interactive visuals (M14). Vendored locally; no CDN, no external fetch. */
 #viz { margin-top: 6px; }
-.viz-controls { margin: 14px 0; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.viz-controls { margin: 9px 0; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .viz-controls input[type=number] { width: 74px; }
 .charts { display: flex; gap: 24px; flex-wrap: wrap; }
 .chart { flex: 1 1 320px; min-width: 280px; }

@@ -1,6 +1,24 @@
-# Handoff — 2026-06-22 (PRs #81–#222 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#223 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#222 merged; Executive Briefing "Key Assessment" lede in flight
+> ## STATUS (current) — #213–#223 merged; optional polish (spacing + tier-axis DRY) in flight
+>
+> **`main` is green (#210–#223 merged):** the operator's entire "do them all" list is done (S-curve,
+> Max Float, SRA, AI driving-path, i18n+PT, Evolution/Driving-Path tiers, trend, hide-completed,
+> tier-axis on curves, Exec-Briefing Key Assessment).
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): optional polish (both in
+> one PR).** (1) **Condensed spacing** — moderate (~25–30%) reductions to the dominant whitespace
+> in `base.css`/`app.css`: `main` 24/28→16/22, `.panel` 18/20→13/16 (margin 18→12), `h2` 12→9,
+> `th/td` 7/10→5/9, header 14/22→10/20, `.banner`, `.viz-controls` 14→9. (2) **Tier-axis DRY** —
+> `scurve.js` now draws its stacked Year/Quarter/Month header via the shared `SFTimeAxis`
+> (`timeaxis.js`) instead of its own copy (~50 lines removed; behaviour identical — same minW/edges/
+> first-letter logic). `timeaxis.js` loaded before `scurve.js` on the S-curve + Mission pages.
+> Tests in `tests/web/test_chart_callouts.py`. No ADR. **Spacing wants a visual eyeball** (no browser
+> here; CSS-only, fully reversible).
+>
+> ### Remaining — needs the operator's input/files
+> Exec Briefing full Acumen format (reference); Step 5 (EVM3 absent); SSI #6 (UID_145); confirm
+> Max Float 275d vs Acumen.
 >
 > **`main` is green (#210–#222 merged):** all chart-framework items done — incl. tier-axis on the
 > curves charts (#222, shared `timeaxis.js`), Evolution/Driving-Path tiers, hide-completed, etc.

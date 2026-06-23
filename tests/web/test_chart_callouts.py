@@ -43,17 +43,18 @@ def test_sra_charts_carry_callout_titles() -> None:
     assert "Sensitivity " in js and "Criticality " in js  # tornado bar call-out
 
 
-def test_scurve_has_stacked_time_scale_tiers() -> None:
-    """The S-curve gains a stacked Year/Quarter/Month time axis with a granularity selector."""
+def test_scurve_uses_the_shared_time_tier_axis() -> None:
+    """The S-curve draws its stacked Year/Quarter/Month axis via the shared SFTimeAxis module."""
     js = (STATIC / "scurve.js").read_text(encoding="utf-8")
-    assert "yearRuns" in js and "quarterRuns" in js and "monthRuns" in js
-    assert "drawTiers" in js and "parseMonth" in js
+    assert "SFTimeAxis.draw" in js and "SFTimeAxis.tiersFor" in js
 
 
-def test_scurve_month_tier_uses_first_letters() -> None:
-    """Operator: the lowest tier should show the first letter of each month (J F M A M J ...)."""
-    js = (STATIC / "scurve.js").read_text(encoding="utf-8")
-    assert "JFMAMJJASOND" in js
+def test_shared_time_axis_module_has_the_tier_logic() -> None:
+    """Operator: the lowest tier shows the first letter of each month (J F M A M J ...)."""
+    ta = (STATIC / "timeaxis.js").read_text(encoding="utf-8")
+    assert "yearRuns" in ta and "quarterRuns" in ta and "monthRuns" in ta
+    assert "function draw" in ta and "parseMonth" in ta
+    assert "JFMAMJJASOND" in ta  # first-letter month labels
 
 
 def test_scurve_page_offers_a_file_version_selector() -> None:

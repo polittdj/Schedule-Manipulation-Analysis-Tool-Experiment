@@ -2791,6 +2791,7 @@ Offenders, and Critical-Path Evolution &mdash; in lockstep. The session <b>Targe
 <div id=missionGrid class=mosaic>
 {tiles}
 </div>
+<script src="/static/timeaxis.js"></script>
 <script src="/static/scurve.js"></script>
 <script src="/static/cei.js"></script>
 <script src="/static/drift.js"></script>
@@ -4865,6 +4866,7 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <div id=scurveChart class=chart-host></div></div>
 {_scurve_interpretation(sc)}
 <script>window.SF_SCURVE_FIELDS = {fields_json};</script>
+<script src="/static/timeaxis.js"></script>
 <script src="/static/scurve.js"></script>"""
 
 
