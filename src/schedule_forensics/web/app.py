@@ -3135,7 +3135,12 @@ def _curves_body(curves: MonthCurves) -> str:
     )
     return f"""
 <div class=viz-controls><label><input type=checkbox id=curvesHideDone> hide 100% complete</label>
-<span class=muted>&mdash; show only the remaining / forecast work on every curve below.</span></div>
+<span class=muted>&mdash; show only the remaining / forecast work on every curve below.</span>
+<label style="margin-left:1em">Time scale <select id=curvesGran data-no-i18n>
+<option value=month selected>Months (year / quarter / month)</option>
+<option value=quarter>Quarters (year / quarter)</option>
+<option value=year>Years</option>
+</select></label></div>
 <div class=panel><h2>Finishes &mdash; actual vs baseline by month</h2>
 <p class=muted>For the latest version (<b>{_e(latest)}</b>): activities counted by the month
 they were <b>baselined</b> to finish (gold) against the month they <b>actually</b> finished
@@ -3152,6 +3157,7 @@ see the bow wave of slipped finishes as a line family.</p>{multi}
 <b>finish</b> month (dashed). Start- and finish-curve drift across versions is the slippage
 signature &mdash; the whole profile sliding right.</p>
 <div id=slippageChart class=chart-host></div></div>
+<script src="/static/timeaxis.js"></script>
 <script src="/static/curves.js"></script>"""
 
 

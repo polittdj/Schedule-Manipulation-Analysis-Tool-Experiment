@@ -41,6 +41,18 @@ def test_curves_page_renders_three_charts_for_one_version(client: TestClient) ->
     assert "Load more than one version" in page
 
 
+def test_curves_have_stacked_time_scale_tiers(client: TestClient) -> None:
+    """Operator: the stacked Year/Quarter/Month time axis (as on the S-curve) on the Finishes."""
+    _upload(client, "Project5")
+    page = client.get("/curves").text
+    assert "/static/timeaxis.js" in page  # the shared tier-axis module is loaded first
+    assert "id=curvesGran" in page  # the granularity selector
+    js = client.get("/static/curves.js").text
+    assert "SFTimeAxis.draw" in js and "SFTimeAxis.tiersFor" in js  # curves use the shared module
+    ta = client.get("/static/timeaxis.js").text
+    assert "JFMAMJJASOND" in ta and "function draw" in ta  # first-letter months + the renderer
+
+
 def test_curves_hide_completed_toggle_and_recompute(client: TestClient) -> None:
     """Operator: show/hide completed work on the Finishes views."""
     _upload(client, "Project5")

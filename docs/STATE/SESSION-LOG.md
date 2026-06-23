@@ -3069,3 +3069,19 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   No ADR.
 - **Next parked threads:** tier-axis on the curves charts; Acumen-style Executive Briefing (needs the
   Acumen format reference); condensed spacing.
+
+## 2026-06-22 — Stacked time-tier axis on the curves charts (#221 merged)
+
+- **#221 merged** (`b8fa961`, Finishes hide-completed). New branch fresh on it.
+- **Tier-axis on the curves charts** (Finishes/Data-date/Slippage), fulfilling "on all visuals with
+  time scales I want three tiers stacked." Extracted the S-curve's tier logic into a shared module
+  `static/timeaxis.js` (`window.SFTimeAxis`: `parseMonth` / `tiersFor` / `draw` — Year always, +
+  Quarter/Month per granularity, first-letter months). Wired into `curves.js` `lineChart`: stacked
+  tier header at the top (padT grows with tier count), removed the old rotated bottom month labels,
+  added a `#curvesGran` selector (Months/Quarters/Years) that re-renders the stored payload without a
+  re-fetch. The S-curve keeps its own copy (left stable to avoid regressing the working tiers; future
+  consolidation noted). Node-verified the curves coordinate math (padT 64/48/32, plot heights
+  238/254/270, valid band edges). Tests: `tests/web/test_curves_view.py`. No ADR. Visual eyeball
+  recommended.
+- **Remaining:** Acumen-style Executive Briefing (needs the Acumen format reference); migrate
+  scurve.js onto the shared timeaxis module; condensed spacing.

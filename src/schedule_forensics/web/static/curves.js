@@ -13,6 +13,8 @@
 (function () {
   var NS = "http://www.w3.org/2000/svg";
   var GOLD = "var(--warn)", BLUE = "var(--accent)";
+  var gran = "month";     // time-scale granularity for the stacked tier axis: year | quarter | month
+  var lastData = null;    // last fetched payload, so the granularity selector can re-render
   // a fixed, theme-independent palette for the per-version overlays (distinct hues that
   // read on both light and dark backgrounds); cycled if there are more versions than hues
   var PALETTE = [
@@ -109,15 +111,21 @@
   function lineChart(box, months, series, statusIndex, name) {
     if (!box) return;
     box.innerHTML = "";
-    var W = 980, H = 320, padL = 36, padR = 14, padT = 24, padB = 46;
-    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
+    var W = 980, H = 320, padL = 36, padR = 14, padB = 18;
     var n = months.length;
+    var slot = (n <= 1) ? (W - padL - padR) : (W - padL - padR) / (n - 1);
+    var x = function (i) { return padL + (n <= 1 ? 0 : (i * (W - padL - padR)) / (n - 1)); };
+    // stacked Year/Quarter/Month time-tier header at the top; padT grows with the tier count
+    var TIER_TOP = 8, ROW_H = 16;
+    var padT = TIER_TOP + SFTimeAxis.tiersFor(months, gran).length * ROW_H + 8;
+    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var top = 1;
     series.forEach(function (s) {
       s.values.forEach(function (v) { if (v > top) top = v; });
     });
-    var x = function (i) { return padL + (n <= 1 ? 0 : (i * (W - padL - padR)) / (n - 1)); };
     var y = function (v) { return padT + (1 - v / top) * (H - padT - padB); };
+    SFTimeAxis.draw(svg, { months: months, xOf: x, slot: slot, padL: padL, rightPx: W - padR,
+      top: TIER_TOP, rowH: ROW_H, gran: gran });
 
     // y gridlines + labels
     [0, 0.25, 0.5, 0.75, 1].forEach(function (frac) {
@@ -132,18 +140,7 @@
       svg.appendChild(lab);
     });
 
-    // month labels, thinned to avoid overlap
-    var step = Math.max(1, Math.ceil(n / 16));
-    for (var i = 0; i < n; i++) {
-      if (i % step === 0) {
-        var ml = svgEl("text", {
-          x: x(i), y: H - padB + 16, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
-          transform: "rotate(-35 " + x(i) + " " + (H - padB + 16) + ")",
-        });
-        ml.textContent = months[i];
-        svg.appendChild(ml);
-      }
-    }
+    // (month/quarter/year scale is the stacked tier header drawn above the plot)
 
     // dashed data-date marker (right edge of the data-date month)
     if (statusIndex != null) {
@@ -170,7 +167,6 @@
     // per-point hover call-outs: a transparent per-month hit-strip over the plot, each a <title>
     // listing every series' value at that month (read by the shared chartframe tooltip). The
     // lines are polylines with no per-point shapes, so the strips give the chart real hover data.
-    var slot = (n <= 1) ? (W - padL - padR) : (W - padL - padR) / (n - 1);
     for (var hi = 0; hi < n; hi++) {
       var hx = (n <= 1) ? padL : x(hi) - slot / 2;
       var hw = (n <= 1) ? (W - padL - padR) : slot;
@@ -204,6 +200,7 @@
   }
 
   function render(data) {
+    lastData = data;
     var months = data.months;
     var versions = data.versions;
     if (!versions || !versions.length) {
@@ -268,5 +265,10 @@
 
   var hideEl = document.getElementById("curvesHideDone");
   if (hideEl) hideEl.addEventListener("change", load);
+  var granEl = document.getElementById("curvesGran");
+  if (granEl) granEl.addEventListener("change", function () {
+    gran = granEl.value;
+    if (lastData) render(lastData);  // re-draw with the new granularity (no re-fetch needed)
+  });
   load();
 })();
