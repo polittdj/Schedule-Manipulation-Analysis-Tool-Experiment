@@ -1,6 +1,21 @@
-# Handoff — 2026-06-22 (PRs #81–#220 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#221 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#220 merged; Finishes hide-completed toggle in flight
+> ## STATUS (current) — #213–#221 merged; stacked time-tier axis on the curves charts in flight
+>
+> **`main` is green (#210–#221 merged):** … + Driving-Path 3-col tier (#219) + slack-degradation
+> trend (#220) + Finishes hide-completed toggle (#221).
+>
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): tier-axis on the curves
+> charts.** Extracted the S-curve's stacked Year/Quarter/Month tier logic into a shared module
+> `static/timeaxis.js` (`window.SFTimeAxis` — `parseMonth`/`tiersFor`/`draw`) and wired it into
+> `curves.js` `lineChart` (Finishes/Data-date/Slippage): a stacked tier header at the top (padT grows
+> with the tier count), the old rotated bottom month labels removed, plus a `#curvesGran` granularity
+> selector (Months/Quarters/Years) that re-renders without a re-fetch. The S-curve keeps its own copy
+> (stable; node math re-verified for the curves: padT 64/48/32, healthy plot heights). Tests in
+> `tests/web/test_curves_view.py`. No ADR. **Visual eyeball recommended** (no headless browser here).
+> Next: tier-axis could later be consolidated (migrate scurve.js onto the shared module).
+
+> ## STATUS (prev) — #213–#220 merged; Finishes hide-completed toggle in flight
 >
 > **`main` is green (#210–#220 merged):** S-curve/MaxFloat/SRA/AI-driving/i18n+PT + Evolution
 > path-tier (#218) + Driving-Path 3-col tier panel (#219) + slack-degradation trend (#220).
