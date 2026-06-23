@@ -15,7 +15,7 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
 font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
-padding:14px 22px;display:flex;align-items:center;gap:18px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
+padding:10px 20px;display:flex;align-items:center;gap:16px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
 header nav a{margin-right:14px;color:var(--muted)}header nav a:hover{color:var(--ink)}
 /* handbook-framed nav groups (Assessment / Control / Risks / Reporting / Setup) — labeled clusters */
 header nav .nav-group{display:inline-block;margin-right:8px}
@@ -30,13 +30,13 @@ header nav #themeToggle{background:none;border:0;color:var(--muted);font:inherit
 header nav .ui-scale-ctl{font-size:13px;color:var(--muted);white-space:nowrap}
 header nav .ui-scale-ctl select{font-size:13px;margin-left:4px}
 header nav #themeToggle:hover{color:var(--ink)}
-main{margin:0 auto;padding:24px 28px}.panel{background:var(--panel);border:1px solid var(--line);
-border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
+main{margin:0 auto;padding:16px 22px}.panel{background:var(--panel);border:1px solid var(--line);
+border-radius:10px;padding:13px 16px;margin:0 0 12px}h2{font-size:16px;margin:0 0 9px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:5px 9px;
 border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
 .pass{color:var(--ok)}.fail{color:var(--bad)}.na{color:var(--muted)}
 .sev-HIGH{color:var(--bad);font-weight:600}.sev-MEDIUM{color:var(--warn)}.sev-LOW,.sev-INFO{color:var(--muted)}
-.banner{padding:10px 16px;border-radius:8px;margin:0 0 16px;font-weight:600}
+.banner{padding:8px 14px;border-radius:8px;margin:0 0 12px;font-weight:600}
 .banner.local{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok)}
 .banner.cloud{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
 .muted{color:var(--muted)}.cite{color:var(--muted);font-size:12px}

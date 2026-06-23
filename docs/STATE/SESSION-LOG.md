@@ -3100,3 +3100,19 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   (200 days behind, 4/14 DCMA failing). Tests: `tests/ai/test_briefing.py`. No ADR.
 - **Still needs the operator's Acumen briefing** to match the full format (exact sections / ordering /
   scoring). Other remaining: consolidate scurve.js onto the shared timeaxis module; condensed spacing.
+
+## 2026-06-22 — Optional polish: condensed spacing + tier-axis DRY (#223 merged)
+
+- **#223 merged** (`d7e7c76`, Exec-Briefing Key Assessment). New branch fresh on it. The operator's
+  whole "do them all" list is now on `main`.
+- **Condensed spacing** (operator request): moderate ~25–30% reductions to the dominant whitespace in
+  `base.css`/`app.css` — `main` padding 24/28→16/22, `.panel` 18/20→13/16 (bottom margin 18→12),
+  `h2` margin 12→9, `th/td` padding 7/10→5/9, header 14/22→10/20, `.banner` 10/16→8/14 (margin 16→12),
+  `.viz-controls` margin 14→9. CSS-only, reversible; visual eyeball recommended.
+- **Tier-axis DRY**: `scurve.js` now renders its stacked Year/Quarter/Month header via the shared
+  `window.SFTimeAxis` (`timeaxis.js`) instead of its own duplicated copy (~50 lines removed). Behaviour
+  is identical — same minW (30/34/9), same edge clamping, same first-letter month labels. `timeaxis.js`
+  is loaded before `scurve.js` on the S-curve and Mission Control pages. Tests updated
+  (`tests/web/test_chart_callouts.py`: scurve uses SFTimeAxis; the tier logic lives in timeaxis.js).
+- **Remaining all need operator input/files:** Exec Briefing full Acumen format; Step 5 (EVM3); SSI #6
+  (UID_145); confirm Max Float 275d.
