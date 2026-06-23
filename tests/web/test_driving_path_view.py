@@ -51,6 +51,17 @@ def test_driving_tiers_panel_renders_even_with_an_invalid_source(client: TestCli
     assert f"Driving tiers to {uid}" in page
 
 
+def test_driving_slack_degradation_trend_needs_two_versions(client: TestClient) -> None:
+    """Operator: a driving-slack-degradation trend (per-version tier counts) on the Driving page."""
+    uid = _last_uid()
+    _upload(client, "Project5")
+    assert "Driving-slack degradation trend" not in client.get(f"/driving-path?target={uid}").text
+    _upload(client, "Project2")
+    page = client.get(f"/driving-path?target={uid}").text
+    assert "Driving-slack degradation trend" in page
+    assert "Driving (0d)" in page and "&Delta; driving" in page  # the tier-count + movement columns
+
+
 def test_page_renders_the_two_uid_form(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/driving-path").text

@@ -1,22 +1,23 @@
-# Handoff — 2026-06-22 (PRs #81–#218 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#219 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — #213–#218 merged; Driving-Path 3-column tier panel in flight
+> ## STATUS (current) — #213–#219 merged; Driving-Path slack-degradation TREND in flight
 >
-> **`main` is green (#210–#218 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
+> **`main` is green (#210–#219 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
 > **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215) + AI driving-path "skill" (#216,
-> ADR-0114) + i18n rewrite + Portuguese (#217) + Critical-Path Evolution path-tier selector (#218).
+> ADR-0114) + i18n rewrite + Portuguese (#217) + Evolution path-tier selector (#218) + Driving-Path
+> 3-column tier panel (#219).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Driving-Path 3-column
-> tier panel.** On `/driving-path`, when a target UID is given, a new panel shows the activities
-> driving it (latest version) in three columns by driving-slack tier — critical/driving (0d),
-> secondary (≤10d), tertiary (≤20d), each with UID/name/slack-days (`_driving_tiers_panel`,
-> reusing `compute_driving_slack`). Renders alongside the existing A→B corridor (or alone for a
-> target with no source). Tests in `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Driving-slack degradation
+> trend.** On `/driving-path?target=`, below the 3-column tier panel, a per-version table
+> (`_driving_tier_trend`, ≥2 versions) shows the count of activities at each driving-slack tier
+> (driving 0d / secondary / tertiary) oldest→newest, with a Δ-driving movement column (▲+n red =
+> slack eroding into the path, ▼ green = recovering). Reuses `compute_driving_slack`. Tests in
+> `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
 >
 > ### Parked threads (operator: "we are going to do them all") — still TODO
-> Driving-Path page 3-col critical/secondary/tertiary view + animation + slack-degradation trend;
-> tier-axis propagation to curves charts; multi-select + show/hide-completed on Finishes; Acumen
-> Exec Briefing; condensed spacing; Step 5 (EVM3 absent); SSI #6 (UID_145).
+> Driving-Path corridor ANIMATION already exists (corridor Gantt); remaining: tier-axis propagation
+> to the curves charts; multi-select + show/hide-completed on the Finishes views; Acumen Exec
+> Briefing; condensed spacing; Step 5 (EVM3 absent); SSI #6 (UID_145).
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
 > continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:

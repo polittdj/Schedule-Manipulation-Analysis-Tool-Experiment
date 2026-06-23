@@ -5393,6 +5393,67 @@ def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], targe
     )
 
 
+def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
+    """Per-version trend of how the driving path to ``target`` degrades: the count of activities at
+    each driving-slack tier — driving (0 days) / secondary (<=10) / tertiary (<=20) — over the
+    loaded versions, oldest first. A GROWING driving count means slack is eroding into the path
+    (more activities now control the target's date); the delta column flags that movement."""
+    if len(schedules) < 2:
+        return ""
+    rows: list[tuple[str, str, int | None, int | None, int | None, int | None]] = []
+    prior_driving: int | None = None
+    any_present = False
+    for sch, cpm in zip(schedules, cpms, strict=True):
+        label = sch.source_file or sch.name
+        dd = sch.status_date.date().isoformat() if sch.status_date else "&mdash;"
+        if target not in sch.tasks_by_id:
+            rows.append((label, dd, None, None, None, None))
+            continue
+        any_present = True
+        counts = {"driving": 0, "secondary": 0, "tertiary": 0}
+        try:
+            for uid, r in compute_driving_slack(sch, target, cpm_result=cpm).items():
+                if uid == target:
+                    continue
+                lab = _EVO_TIER_LABEL.get(r.tier)
+                if lab in counts:
+                    counts[lab] += 1
+        except (KeyError, ValueError):
+            pass
+        delta = None if prior_driving is None else counts["driving"] - prior_driving
+        prior_driving = counts["driving"]
+        rows.append((label, dd, counts["driving"], counts["secondary"], counts["tertiary"], delta))
+    if not any_present:
+        return ""
+
+    def num(v: int | None) -> str:
+        return "&mdash;" if v is None else str(v)
+
+    body = ""
+    for label, dd, drv, sec, ter, delta in rows:
+        if delta is None or delta == 0:
+            dtxt = "" if delta is None else "0"
+        elif delta > 0:  # the driving path GREW — slack eroded (degradation)
+            dtxt = f'<span style="color:var(--bad)">&#9650;+{delta}</span>'
+        else:
+            dtxt = f'<span style="color:var(--ok)">&#9660;{delta}</span>'
+        body += (
+            f"<tr><td>{_e(label)}</td><td>{dd}</td><td class=num>{num(drv)}</td>"
+            f"<td class=num>{num(sec)}</td><td class=num>{num(ter)}</td>"
+            f"<td class=num>{dtxt}</td></tr>"
+        )
+    return (
+        "<div class=panel><h2>Driving-slack degradation trend</h2>"
+        "<p class=muted>How the driving path to this target changes across the loaded versions "
+        "(oldest first): the count of activities at each driving-slack tier. A rising "
+        "<b>driving (0d)</b> count means slack is eroding into the path &mdash; more work now "
+        "controls the target's finish (SSI/ADR-0011).</p>"
+        "<table class=card-table><tr><th scope=col>Version</th><th scope=col>Data date</th>"
+        "<th scope=col>Driving (0d)</th><th scope=col>Secondary</th><th scope=col>Tertiary</th>"
+        f"<th scope=col>&Delta; driving</th></tr>{body}</table></div>"
+    )
+
+
 def _driving_path_body(
     schedules: list[Schedule], cpms: list[CPMResult], source: int | None, target: int | None
 ) -> str:
@@ -5411,7 +5472,11 @@ slips, moves B. If A reaches B only through activities with float, the two are <
 but A does not <b>drive</b> B (the slack is reported instead). Trace it across every loaded
 version to see the corridor shift.</p></div>"""
 
-    tiers_html = _driving_tiers_panel(schedules, cpms, target) if target is not None else ""
+    tiers_html = (
+        _driving_tiers_panel(schedules, cpms, target) + _driving_tier_trend(schedules, cpms, target)
+        if target is not None
+        else ""
+    )
 
     if source is None or target is None:
         hint = (
