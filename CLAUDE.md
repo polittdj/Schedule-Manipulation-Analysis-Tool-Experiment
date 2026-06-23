@@ -76,8 +76,8 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `SessionState.scope()`: `analysis_for` scopes internally and `ordered()` returns the scoped
   multi-version list, so a filter set on `/groups` applies to every page and every loaded file. Static
   JS/CSS are vendored (no CDN, no bundler) and a strict CSP enforces the air-gap.
-- **`web/i18n.py`** — EN/ES/FR/DE: a hand-built catalog (`_TERMS`, english → per-language) + an AI
-  fallback (`/api/translate`) + client-side DOM translation (`static/translate.js`).
+- **`web/i18n.py`** — EN/ES/FR/DE/PT: a hand-built catalog (`_TERMS`, english → per-language) + an AI
+  fallback (`/api/translate`) + non-destructive client-side DOM translation (`static/translate.js`).
 
 ## Metric formulas come from "the Bible"
 

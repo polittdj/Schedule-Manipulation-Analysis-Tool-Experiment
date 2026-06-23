@@ -1,4 +1,4 @@
-"""Language (EN/ES) selection — the i18n catalog, the /language switch, and /api/translate."""
+"""Language (EN/ES/FR/DE/PT) selection — the i18n catalog, /language switch, and /api/translate."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ def test_catalog_translate_and_fallback() -> None:
     assert i18n.translate("Dashboard", "en") == "Dashboard"
     assert i18n.translate("Totally Unmapped Task", "es") == "Totally Unmapped Task"
     assert i18n.normalize("zz") == "en" and i18n.normalize("es") == "es"
-    assert set(i18n.LANGUAGES) == {"en", "es", "fr", "de"}
+    assert set(i18n.LANGUAGES) == {"en", "es", "fr", "de", "pt"}
 
 
 def test_french_and_german_catalogs() -> None:
@@ -28,11 +28,20 @@ def test_french_and_german_catalogs() -> None:
     assert i18n.translate("Nope", "fr") == "Nope" and i18n.translate("Nope", "de") == "Nope"
 
 
+def test_portuguese_catalog() -> None:
+    assert i18n.normalize("pt") == "pt"
+    assert i18n.translate("Dashboard", "pt") == "Painel"
+    assert i18n.translate("Risk Analysis", "pt") == "Análise de riscos"
+    assert i18n.translate("Driving Path", "pt") == "Caminho determinante"
+    assert i18n.translate("Critical", "pt") == "Crítico"
+    assert i18n.translate("Nope", "pt") == "Nope"  # unknown -> source fallback
+
+
 def test_all_catalogs_cover_the_same_term_set() -> None:
-    # the _TERMS table keeps every non-English language aligned to one key set
-    keysets = {lang: set(i18n.catalog_for(lang)) for lang in ("es", "fr", "de")}
-    assert keysets["es"] == keysets["fr"] == keysets["de"]
-    assert len(keysets["es"]) > 80  # comprehensive core UI coverage
+    # the _TERMS table keeps EVERY non-English language aligned to one key set (incl. Portuguese)
+    keysets = {lang: set(i18n.catalog_for(lang)) for lang in ("es", "fr", "de", "pt")}
+    assert keysets["es"] == keysets["fr"] == keysets["de"] == keysets["pt"]
+    assert len(keysets["es"]) > 100  # comprehensive core UI coverage (nav + page titles + controls)
 
 
 @pytest.fixture
@@ -67,6 +76,44 @@ def test_language_switch_persists_and_returns_to_referer(
     page = client.get("/").text
     assert '<html lang="es"' in page
     assert '"Panel"' in page  # the catalog is embedded for the client when not English
+
+
+def test_portuguese_is_offered_selected_and_embedded(client: TestClient) -> None:
+    page = client.get("/").text
+    assert "Português" in page  # the endonym option is shown
+    client.post("/language", data={"lang": "pt"}, follow_redirects=False)
+    page = client.get("/").text
+    assert '<html lang="pt"' in page
+    assert '<option value="pt" selected>' in page  # the current language is marked selected
+    assert '"Painel"' in page  # the pt catalog is embedded for the client
+
+
+def test_language_can_switch_back_and_forth(client: TestClient, state: SessionState) -> None:
+    """Operator bug: once changed, the UI would not switch again. Each switch must persist and the
+    server must always re-render English (the client translates), so any sequence works."""
+    for lang, html_lang in [("es", "es"), ("fr", "fr"), ("pt", "pt"), ("en", "en"), ("de", "de")]:
+        client.post("/language", data={"lang": lang}, follow_redirects=False)
+        assert state.language == html_lang
+        page = client.get("/").text
+        assert f'<html lang="{html_lang}"' in page
+        assert f'<option value="{lang}" selected>' in page
+        # the body is always rendered in English (source) — the client does the translating
+        assert ">Dashboard</a>" in page
+
+
+def test_translate_js_is_non_destructive_and_covers_attributes(client: TestClient) -> None:
+    js = client.get("/static/translate.js").text
+    assert "__sfSrc" in js  # remembers each node's ORIGINAL English source (non-destructive)
+    assert "pageshow" in js  # re-renders a bfcache-restored page
+    assert "placeholder" in js and "aria-label" in js  # attribute coverage
+    assert "handleOption" in js  # <option> label coverage
+
+
+def test_translate_api_portuguese_catalog_hit(client: TestClient) -> None:
+    out = client.post(
+        "/api/translate", json={"lang": "pt", "texts": ["Dashboard", "Risk Analysis"]}
+    ).json()["translations"]
+    assert out["Dashboard"] == "Painel" and out["Risk Analysis"] == "Análise de riscos"
 
 
 def test_language_switch_rejects_offsite_referer(client: TestClient) -> None:
