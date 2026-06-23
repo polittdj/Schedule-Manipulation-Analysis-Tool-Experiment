@@ -41,6 +41,53 @@ def test_evolution_page_has_stepper_controls(client: TestClient) -> None:
     assert "id=evoChart" in page and "/static/path_evolution.js" in page
 
 
+def test_evolution_tier_selector_and_data_attr(client: TestClient) -> None:
+    """Operator: choose the path tier — critical / secondary / tertiary / all."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution?tier=secondary").text
+    assert "name=tier" in page and "Path tier:" in page
+    assert '<option value="secondary" selected>' in page
+    assert 'data-tier="secondary"' in page  # the JS reads this to fetch the tier path
+    # default keeps the float critical-path view (no tier scoping)
+    assert 'data-tier="off"' in client.get("/evolution").text
+
+
+def test_evolution_default_is_unchanged_float_critical_path(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    d = client.get("/api/evolution").json()
+    assert "snapshots" in d and "tier" not in d  # default payload carries no tier key
+
+
+def test_evolution_tier_api_classifies_by_driving_slack(client: TestClient) -> None:
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+
+    def uids(tier: str) -> set[int]:
+        d = client.get(f"/api/evolution?tier={tier}").json()
+        assert d["tier"] == tier
+        last = d["snapshots"][-1]
+        # every row is tagged with its tier and the top-level tier matches the request
+        for r in last["critical_rows"]:
+            assert r["tier"] in ("driving", "secondary", "tertiary")
+        return {r["uid"] for r in last["critical_rows"]}
+
+    crit, sec, ter, all_ = uids("critical"), uids("secondary"), uids("tertiary"), uids("all")
+    # the driving (critical) tier and the near-driving tiers are disjoint, and "all" is their union
+    assert crit and not (crit & sec) and not (crit & ter)
+    assert all_ == crit | sec | ter
+    # "all" rows carry all three tier labels
+    all_last = client.get("/api/evolution?tier=all").json()["snapshots"][-1]["critical_rows"]
+    assert {r["tier"] for r in all_last} == {"driving", "secondary", "tertiary"}
+
+
+def test_path_evolution_js_wires_the_tier(client: TestClient) -> None:
+    js = client.get("/static/path_evolution.js").text
+    assert "data-tier" in js and "tier=" in js  # fetch includes the tier
+    assert "tierColor" in js and "TIER_COLOR" in js  # colour-by-tier in the "all" mode
+
+
 def test_evolution_page_carries_the_counterfactual_panel(client: TestClient) -> None:
     """The 'what-if' panel reverts the duration/logic/constraint changes that took non-completed
     activities off the path and reports the finish impact (and explains 'gained float')."""
