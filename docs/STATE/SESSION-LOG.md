@@ -3055,3 +3055,17 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   Tests: `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
 - **Next parked threads:** tier-axis on the curves charts; multi-select + show/hide-completed on the
   Finishes views; Acumen-style Executive Briefing; condensed spacing.
+
+## 2026-06-22 — Finishes views: hide-completed toggle (#220 merged)
+
+- **#220 merged** (`259cce9`, Driving-Path slack-degradation trend). New branch fresh on it.
+- **Hide-completed toggle on the Finishes/Slippage curves.** `/api/curves?hide_complete=1` filters
+  each version to non-complete activities (the "% Complete" field, In Progress / Not Started) and
+  recomputes `compute_month_curves`, so the curves show only the remaining/forecast work. A
+  `#curvesHideDone` checkbox on `/curves` re-fetches all three charts; `curves.js` refactored into
+  `load()` + `render()`. Verified the month span changes when completed work is dropped (23→21 on
+  Project5). Per-series multi-select already existed (the legend's Show-all/Hide-all); field-level
+  "select multiples" is covered by the session-wide /groups filter. Tests: `tests/web/test_curves_view.py`.
+  No ADR.
+- **Next parked threads:** tier-axis on the curves charts; Acumen-style Executive Briefing (needs the
+  Acumen format reference); condensed spacing.

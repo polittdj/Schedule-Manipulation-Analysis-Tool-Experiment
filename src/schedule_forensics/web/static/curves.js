@@ -203,53 +203,70 @@
     }
   }
 
-  fetch("/api/curves")
-    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-    .then(function (data) {
-      var months = data.months;
-      var versions = data.versions;
-      var labels = shortLabels(versions);
-
-      // ── Finishes (latest version): actual vs baseline ──────────────────────────
-      var latest = versions[versions.length - 1];
-      lineChart(
-        document.getElementById("finishesChart"),
-        months,
-        [
-          { values: latest.baseline_finishes, color: GOLD, label: "Baseline finishes" },
-          { values: latest.actual_finishes, color: BLUE, label: "Actual / scheduled finishes" },
-        ],
-        latest.status_index,
-        "Finishes — actual vs baseline finishes by month"
-      );
-
-      // ── DATA Date Finishes: one actual-finish curve per version ─────────────────
-      lineChart(
-        document.getElementById("dataDateChart"),
-        months,
-        versions.map(function (v, i) {
-          return { values: v.actual_finishes, color: PALETTE[i % PALETTE.length], label: labels[i] };
-        }),
-        null,
-        "Data-date finishes — actual-finish curve per version"
-      );
-
-      // ── Slippage: per version, start (solid) + finish (dashed) curves ───────────
-      var slipSeries = [];
-      versions.forEach(function (v, i) {
-        var col = PALETTE[i % PALETTE.length];
-        slipSeries.push({ values: v.actual_starts, color: col, label: labels[i] + " starts" });
-        slipSeries.push({ values: v.actual_finishes, color: col, dashed: true, label: labels[i] + " finishes" });
-      });
-      lineChart(
-        document.getElementById("slippageChart"), months, slipSeries, null,
-        "Slippage — start and finish curves per version"
-      );
-    })
-    .catch(function () {
+  function render(data) {
+    var months = data.months;
+    var versions = data.versions;
+    if (!versions || !versions.length) {
       ["finishesChart", "dataDateChart", "slippageChart"].forEach(function (id) {
         var el = document.getElementById(id);
-        if (el) el.textContent = "Failed to load the curve data.";
+        if (el) el.textContent = "No activities to plot — try showing completed work.";
       });
+      return;
+    }
+    var labels = shortLabels(versions);
+
+    // ── Finishes (latest version): actual vs baseline ──────────────────────────
+    var latest = versions[versions.length - 1];
+    lineChart(
+      document.getElementById("finishesChart"),
+      months,
+      [
+        { values: latest.baseline_finishes, color: GOLD, label: "Baseline finishes" },
+        { values: latest.actual_finishes, color: BLUE, label: "Actual / scheduled finishes" },
+      ],
+      latest.status_index,
+      "Finishes — actual vs baseline finishes by month"
+    );
+
+    // ── DATA Date Finishes: one actual-finish curve per version ─────────────────
+    lineChart(
+      document.getElementById("dataDateChart"),
+      months,
+      versions.map(function (v, i) {
+        return { values: v.actual_finishes, color: PALETTE[i % PALETTE.length], label: labels[i] };
+      }),
+      null,
+      "Data-date finishes — actual-finish curve per version"
+    );
+
+    // ── Slippage: per version, start (solid) + finish (dashed) curves ───────────
+    var slipSeries = [];
+    versions.forEach(function (v, i) {
+      var col = PALETTE[i % PALETTE.length];
+      slipSeries.push({ values: v.actual_starts, color: col, label: labels[i] + " starts" });
+      slipSeries.push({ values: v.actual_finishes, color: col, dashed: true, label: labels[i] + " finishes" });
     });
+    lineChart(
+      document.getElementById("slippageChart"), months, slipSeries, null,
+      "Slippage — start and finish curves per version"
+    );
+  }
+
+  // ?hide_complete=1 drops 100%-complete activities so the curves show only remaining/forecast work
+  function load() {
+    var hide = document.getElementById("curvesHideDone");
+    fetch("/api/curves" + (hide && hide.checked ? "?hide_complete=1" : ""))
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(render)
+      .catch(function () {
+        ["finishesChart", "dataDateChart", "slippageChart"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = "Failed to load the curve data.";
+        });
+      });
+  }
+
+  var hideEl = document.getElementById("curvesHideDone");
+  if (hideEl) hideEl.addEventListener("change", load);
+  load();
 })();
