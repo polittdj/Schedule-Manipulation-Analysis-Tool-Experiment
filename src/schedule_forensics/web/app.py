@@ -44,6 +44,7 @@ from schedule_forensics.ai import (
 from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
 from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing, build_briefing
 from schedule_forensics.ai.citations import CitedStatement, Narrative
+from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
 from schedule_forensics.ai.narrative import build_narrative
 from schedule_forensics.ai.qa import (
     answer_question,
@@ -749,6 +750,10 @@ Settings</a> for interpretation.</p>
 <input id=askInput type=text size=60 maxlength=500
  placeholder="e.g. Why is the finish slipping? How many critical activities?">
 <button id=askBtn type=button>Ask</button></div>
+<div class=viz-controls><span class=muted>Driving path (exact, no AI):</span>
+<label>to UID <input id=drivePathUid type=number min=1 step=1 style="width:7em"
+ placeholder="UID"></label>
+<button id=drivePathBtn type=button>Show driving path</button></div>
 <div id=askOut></div></div>
 <script src="/static/ask.js"></script>"""
 
@@ -1391,6 +1396,7 @@ def create_app(
             return JSONResponse({"error": "ask a question"}, status_code=422)
         try:
             facts = _schedule_facts(st, name, sch)
+            facts += driving_path_facts(sch, st.analysis_for(name, sch).cpm, text)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return _ask_response(st, facts, text)
@@ -1408,13 +1414,63 @@ def create_app(
             key, sch = next(iter(st.schedules.items()))
             try:
                 facts = _schedule_facts(st, key, sch)
+                facts += driving_path_facts(sch, st.analysis_for(key, sch).cpm, text)
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
             return _ask_response(st, facts, text)
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "no analyzable versions loaded"}, status_code=422)
-        return _ask_response(st, build_workbook_fact_sheet(schedules, cpms), text)
+        # driving-path questions resolve against the newest analyzable version
+        facts = build_workbook_fact_sheet(schedules, cpms)
+        facts += driving_path_facts(schedules[-1], cpms[-1], text)
+        return _ask_response(st, facts, text)
+
+    @app.get("/api/driving-path")
+    def driving_path_answer(uid: int = Query(...), scope: str = Query("")) -> JSONResponse:
+        """One-click DETERMINISTIC driving-path answer for a UID — engine only, NO AI. The Ask
+        panel's "Driving path" button calls this so the operator never depends on the model for
+        path/slack (the model kept getting it wrong); the figures come straight from the engine."""
+        st = session()
+        if not st.schedules:
+            return JSONResponse({"error": "no schedule loaded"}, status_code=400)
+        key = scope.strip()
+        if key and key in st.schedules:
+            sch = st.schedules[key]
+            try:
+                cpm = st.analysis_for(key, sch).cpm
+            except CPMError as exc:
+                return JSONResponse({"error": str(exc)}, status_code=422)
+        else:
+            schedules, cpms, _skipped = _solvable_versions()
+            if not schedules:
+                return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=422)
+            sch, cpm = schedules[-1], cpms[-1]
+        facts = driving_path_summary(sch, cpm, uid)
+        if not facts:
+            return JSONResponse(
+                {
+                    "uid": uid,
+                    "answer": f"UID {uid} is not a scheduled activity in this file.",
+                    "facts": [],
+                }
+            )
+        return JSONResponse(
+            {
+                "uid": uid,
+                "answer": " ".join(f.text for f in facts),
+                "facts": [
+                    {
+                        "text": f.text,
+                        "citations": [
+                            {"file": c.source_file, "uid": c.unique_id, "task": c.task_name}
+                            for c in f.citations[:12]
+                        ],
+                    }
+                    for f in facts
+                ],
+            }
+        )
 
     @app.get("/trend", response_class=HTMLResponse)
     def trend_view(target: str | None = Query(None)) -> HTMLResponse:

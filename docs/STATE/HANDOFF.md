@@ -1,25 +1,24 @@
-# Handoff — 2026-06-22 (PRs #81–#214 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#215 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — operator-feedback round; #213+#214 merged, SRA features in flight
+> ## STATUS (current) — operator-feedback round; #213–#215 merged, AI driving-path "skill" in flight
 >
-> **`main` is green (#210–#214 merged):** 10-item UI/UX batch + hover call-outs + S-curve operator
-> fixes (#213) + Max Float (d) → stored Total Slack (#214; **operator to confirm 275d vs Acumen**).
+> **`main` is green (#210–#215 merged):** 10-item UI/UX batch + hover call-outs + S-curve operator
+> fixes (#213) + Max Float (d) → stored Total Slack (#214; **operator to confirm 275d vs Acumen**) +
+> SRA running indicator & Beta-PERT (#215).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`):** **SRA upgrades.**
-> (1) **Running indicator** — `sra.js setBusy` disables Run and animates a braille spinner +
-> elapsed-seconds while the (synchronous) simulation computes, so it never looks stuck (pure JS,
-> CSP-safe; `aria-live` status). (2) **Beta-PERT distribution** — new `#sraDistribution` toggle
-> (Triangular default / Beta-PERT); engine `_sample_beta_pert` (Vose PERT, lambda=4, via
-> `rng.betavariate`) dispatched by `SRAConfig.distribution`, plumbed through `/api/sra?distribution=`.
-> Triangular path is byte-for-byte unchanged (determinism preserved); PERT has its own Law-2
-> point-mass equivalence test. Tests in `test_sra.py` / `test_sra_view.py`. File selector already
-> existed (shown when >1 schedule). No ADR.
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): AI driving-path "skill"
+> (ADR-0114).** The last operator item. Don't let the 8B model traverse the graph — **inject the
+> engine's exact answer**: `ai/driving_facts.py` (`driving_path_summary` / `driving_path_facts`)
+> appends cited driving-path + near-driving facts for any keyword-named UID + driving intent to the
+> Ask-the-AI fact sheet (model narrates; citation gate blocks invented figures). PLUS a one-click,
+> **no-AI** path: `GET /api/driving-path?uid=&scope=` + a "Show driving path (exact, no AI)" control
+> in the Ask panel (`drivePathUid`/`drivePathBtn`). Tests: `tests/ai/test_driving_facts.py`,
+> `tests/web/test_ask_everywhere.py`.
 >
-> ### Operator-feedback items STILL TODO (this round) — last one
-> - **AI driving-path "skills":** make Ollama reliable on "driving path to UID X" / "count of driving
->   predecessors at 0 slack" by INJECTING the engine's deterministic per-UID driving-path facts
->   (`engine/driving_slack.py`, `driving_path_between`) into the Ask-the-AI fact sheet + a reference
->   doc — don't let the 8B model do graph traversal. (Architecture scoped via Explore agent.)
+> ### Operator-feedback round — DONE after this PR merges
+> All four items from the operator's review addressed (S-curve fixes, Max Float, SRA, AI driving-path).
+> Open threads remain for later: Step 5 (EVM3 absent), SSI #6 (UID_145), Driving-Path UI overhaul,
+> Acumen-style Exec Briefing, tier-axis propagation to other charts.
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
 > continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:
