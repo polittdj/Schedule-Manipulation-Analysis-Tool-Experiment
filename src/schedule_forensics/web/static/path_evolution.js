@@ -114,6 +114,18 @@
 
   function legend() {
     var wrap = el("div", "legend");
+    if (data && data.tier === "all") {
+      // colour-by-tier legend (driving-slack tiers to the focus)
+      [["driving", "var(--bad)", "critical / driving (0d)"],
+        ["secondary", "var(--warn)", "secondary (≤ secondary days)"],
+        ["tertiary", "var(--accent)", "tertiary"]].forEach(function (p) {
+        var s = el("span", "", "■ " + p[2]);
+        s.style.color = p[1];
+        s.style.marginRight = "10px";
+        wrap.appendChild(s);
+      });
+      return wrap;
+    }
     [["ev-entered", "entered the path"], ["ev-stayed", "stayed"], ["ev-left", "left the path"]]
       .forEach(function (p) { wrap.appendChild(el("span", p[0], p[1])); });
     wrap.appendChild(el("span", "ev-stayed", "▲ duration change · hover a reason for detail"));
@@ -168,7 +180,7 @@
           rx: 3, fill: "var(--accent)", opacity: 0.14,
         }));
       }
-      var labelColor = r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--ink)";
+      var labelColor = tierColor(r) || (r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--ink)");
 
       // name wrapped to <=2 small lines, prefixed with the UID; struck through if it left
       var lines = wrapName(r.name, 38, 2);
@@ -191,7 +203,7 @@
       if (r.start && r.finish) {
         var x1 = x(Date.parse(r.start)), x2 = x(Date.parse(r.finish));
         var bw = Math.max(2, x2 - x1);
-        var barColor = r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--accent)";
+        var barColor = tierColor(r) || (r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--accent)");
         var rect = svgEl("rect", { x: x1, y: cy - 6, width: bw, height: 12, rx: 2, fill: barColor });
         if (r.kind === "left") { rect.setAttribute("opacity", "0.45"); rect.setAttribute("stroke-dasharray", "3 2"); }
         svg.appendChild(rect);
@@ -212,9 +224,15 @@
     var o = {
       uid: r.uid, name: r.name, start: r.start, finish: r.finish,
       percent_complete: r.percent_complete, duration: r.duration, complete: r.complete,
+      tier: r.tier,
     };
     for (var k in extra) o[k] = extra[k];
     return o;
+  }
+  // driving-slack tier colours (only used in the "all tiers" evolution mode)
+  var TIER_COLOR = { driving: "var(--bad)", secondary: "var(--warn)", tertiary: "var(--accent)" };
+  function tierColor(r) {
+    return (data && data.tier === "all" && r.tier) ? TIER_COLOR[r.tier] : null;
   }
   function currentRows(snap) {
     return snap.critical_rows.map(function (r) {
@@ -341,7 +359,9 @@
   }
 
   var tgt = box.getAttribute("data-target");
-  fetch("/api/evolution" + (tgt ? "?target=" + encodeURIComponent(tgt) : ""))
+  var tierMode = box.getAttribute("data-tier") || "off";
+  fetch("/api/evolution?tier=" + encodeURIComponent(tierMode) +
+        (tgt ? "&target=" + encodeURIComponent(tgt) : ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (d) {
       data = d;

@@ -67,7 +67,12 @@ from schedule_forensics.engine.driving_path import (
     DrivingPathSnapshot,
     compute_driving_path_evolution,
 )
-from schedule_forensics.engine.driving_slack import date_basis
+from schedule_forensics.engine.driving_slack import (
+    DEFAULT_SECONDARY_MAX_DAYS,
+    DEFAULT_TERTIARY_MAX_DAYS,
+    PathTier,
+    date_basis,
+)
 from schedule_forensics.engine.forecast import (
     CarnacSummary,
     ForecastSet,
@@ -1626,7 +1631,7 @@ def create_app(
         return _page(st, "Schedule Quality Ribbon", _ribbon_body(rows, note))
 
     @app.get("/evolution", response_class=HTMLResponse)
-    def evolution_view(target: str | None = Query(None)) -> HTMLResponse:
+    def evolution_view(target: str | None = Query(None), tier: str = Query("off")) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -1643,16 +1648,18 @@ def create_app(
             "Critical-Path Evolution",
             _export_bar("evolution")
             + _skipped_notice(skipped)
-            + _evolution_body(schedules, cpms, uid),
+            + _evolution_body(schedules, cpms, uid, tier),
         )
 
     @app.get("/api/evolution")
-    def evolution_json(target: str | None = Query(None)) -> JSONResponse:
+    def evolution_json(target: str | None = Query(None), tier: str = Query("off")) -> JSONResponse:
         st = session()
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
+        if tier in _EVO_TIER_SELECT:
+            return JSONResponse(_evolution_tier_data(schedules, cpms, uid, tier))
         return JSONResponse(_evolution_data(schedules, cpms, uid))
 
     @app.get("/driving-path", response_class=HTMLResponse)
@@ -5643,17 +5650,35 @@ def _groups_body(
 
 
 def _evolution_body(
-    schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target: int | None = None,
+    tier: str = "off",
 ) -> str:
     """The Critical-Path Evolution view (M18 item 7): a Bow-Wave-style stepper over the
     versions, showing the critical path and how it enters/leaves between versions. ``target``
-    focuses a UniqueID (highlighted across every frame); zoom/pan controls scope the axis."""
+    focuses a UniqueID (highlighted across every frame); zoom/pan controls scope the axis. ``tier``
+    scopes the stepper to a driving-slack tier (secondary/tertiary/all) instead of the float
+    critical path — the activities driving the focused UID (or the project finish)."""
+    tier_opts = "".join(
+        f'<option value="{v}"{" selected" if tier == v else ""}>{lbl}</option>'
+        for v, lbl in [
+            ("off", "Critical path"),
+            ("secondary", f"Secondary tier (≤{DEFAULT_SECONDARY_MAX_DAYS}d slack)"),
+            ("tertiary", f"Tertiary tier (≤{DEFAULT_TERTIARY_MAX_DAYS}d slack)"),
+            ("all", "All tiers (colour-coded)"),
+        ]
+    )
     focus_form = f"""
 <div class=panel><form method=get action=/evolution class=viz-controls>
 Focus a specific activity across every version &mdash; UniqueID:
 <input name=target type=number min=1 value="{target if target is not None else ""}"
 placeholder="UID"> <button type=submit>Focus</button>
 {'<a class=btn-link href="/evolution?target=">clear focus</a>' if target is not None else ""}
+<label style="margin-left:1em">Path tier:
+<select name=tier data-no-i18n onchange="this.form.submit()">{tier_opts}</select></label>
+<span class=muted>critical / secondary / tertiary by driving slack to the focused UID (or the
+project finish).</span>
 </form></div>"""
     return (
         focus_form
@@ -5707,7 +5732,8 @@ visible.</p>
 <p class=muted style="margin:.2em 0">Each row carries its grid columns &mdash; <b>%&nbsp;complete</b>,
 <b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.
 Use <b>Focus</b> above to highlight one activity across every version.</p>
-<div id=evoChart data-target="{target if target is not None else ""}"></div></div>
+<div id=evoChart data-target="{target if target is not None else ""}"
+data-tier="{tier}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
         + _counterfactual_panel(schedules, cpms, target)
     )
@@ -5926,6 +5952,162 @@ def _evolution_data(
         "max": max(axis_dates).isoformat() if axis_dates else None,
     }
     return {"axis": axis, "snapshots": snapshots, "target": target}
+
+
+#: Evolution tier modes → the driving-slack tiers (ADR-0011) to include. "off" = the float
+#: critical-path view (the page default, with its rich entered/left attribution).
+_EVO_TIER_LABEL = {
+    PathTier.DRIVING: "driving",
+    PathTier.SECONDARY: "secondary",
+    PathTier.TERTIARY: "tertiary",
+}
+_EVO_TIER_SELECT: dict[str, set[PathTier]] = {
+    "critical": {PathTier.DRIVING},
+    "secondary": {PathTier.SECONDARY},
+    "tertiary": {PathTier.TERTIARY},
+    "all": {PathTier.DRIVING, PathTier.SECONDARY, PathTier.TERTIARY},
+}
+
+
+def _project_finish_uid(sch: Schedule, cpm: CPMResult) -> int | None:
+    """The non-summary activity that finishes last (drives the project finish) — the default focus
+    for the tiered driving-path view when no target UID is pinned."""
+    best_uid: int | None = None
+    best: int | None = None
+    for t in sch.tasks:
+        if t.is_summary:
+            continue
+        tm = cpm.timings.get(t.unique_id)
+        if tm is None:
+            continue
+        if best is None or tm.early_finish > best:
+            best, best_uid = tm.early_finish, t.unique_id
+    return best_uid
+
+
+def _evolution_tier_data(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None, tier: str
+) -> dict[str, object]:
+    """Critical-Path Evolution scoped to a DRIVING-SLACK tier (ADR-0011) instead of the float
+    critical path: per version, classify the activities driving the focus (the pinned ``target``,
+    else that version's project-finish activity) into driving (0 days) / secondary (<=10 days) /
+    tertiary (<=20 days), and show ONLY the chosen tier (``all`` shows all three, the client colours
+    them by tier). Same payload shape as :func:`_evolution_data` so the Gantt stepper renders it
+    unchanged; ``entered`` / ``left`` are by set difference of the tier membership across versions,
+    and the version framing (label / data date / project finish) is reused from the evolution."""
+    selected = _EVO_TIER_SELECT.get(tier, _EVO_TIER_SELECT["critical"])
+    evolution = compute_path_evolution(schedules, cpms)
+    by_id = [s.tasks_by_id for s in schedules]
+    axis_dates: list[dt.date] = []
+
+    def bar(idx: int, uid: int) -> tuple[str | None, str | None]:
+        timing = cpms[idx].timings.get(uid)
+        if timing is None:
+            return None, None
+        sch = schedules[idx]
+        start = offset_to_datetime(sch.project_start, timing.early_start, sch.calendar).date()
+        finish = offset_to_datetime(sch.project_start, timing.early_finish, sch.calendar).date()
+        axis_dates.extend((start, finish))
+        return start.isoformat(), finish.isoformat()
+
+    def grid(idx: int, uid: int) -> dict[str, object]:
+        task = by_id[idx].get(uid) if 0 <= idx < len(by_id) else None
+        if task is None:
+            return {"percent_complete": None, "duration": None, "complete": False}
+        per_day = schedules[idx].calendar.working_minutes_per_day or 1
+        return {
+            "percent_complete": round(task.percent_complete),
+            "duration": f"{task.duration_minutes / per_day:g}wd",
+            "complete": task.is_complete or task.actual_finish is not None,
+        }
+
+    # per-version tier membership: uid -> tier label, for the selected tiers only
+    members: list[dict[int, str]] = []
+    for i, sch in enumerate(schedules):
+        focus = (
+            target
+            if (target is not None and target in by_id[i])
+            else _project_finish_uid(sch, cpms[i])
+        )
+        m: dict[int, str] = {}
+        if focus is not None:
+            try:
+                results = compute_driving_slack(sch, focus, cpm_result=cpms[i])
+            except (KeyError, ValueError):
+                results = {}
+            for uid, r in results.items():
+                if r.tier in selected:
+                    m[uid] = _EVO_TIER_LABEL[r.tier]
+        members.append(m)
+
+    snapshots: list[dict[str, object]] = []
+    prior: set[int] = set()
+    for i, snap in enumerate(evolution.snapshots):
+        cur = set(members[i])
+        entered = (cur - prior) if i > 0 else set()
+        left = (prior - cur) if i > 0 else set()
+        rows: list[dict[str, object]] = []
+        for uid in cur:
+            start, finish = bar(i, uid)
+            task = by_id[i].get(uid)
+            rows.append(
+                {
+                    "uid": uid,
+                    "name": task.name if task is not None else f"UID {uid}",
+                    "start": start,
+                    "finish": finish,
+                    "entered": uid in entered,
+                    "duration_changed": False,
+                    "reason": None,
+                    "detail": None,
+                    "tier": members[i][uid],
+                    **grid(i, uid),
+                }
+            )
+        rows.sort(key=lambda r: (r["start"] is None, str(r["start"])))
+        left_rows: list[dict[str, object]] = []
+        for uid in sorted(left):
+            start, finish = bar(i - 1, uid) if i > 0 else (None, None)
+            g = grid(i - 1, uid)
+            now = by_id[i].get(uid)
+            g["complete"] = bool(now and (now.is_complete or now.actual_finish is not None))
+            name = by_id[i - 1][uid].name if (i > 0 and uid in by_id[i - 1]) else f"UID {uid}"
+            left_rows.append(
+                {
+                    "uid": uid,
+                    "name": name,
+                    "start": start,
+                    "finish": finish,
+                    "reason": None,
+                    "detail": None,
+                    "tier": members[i - 1].get(uid) if i > 0 else None,
+                    **g,
+                }
+            )
+        prior = cur
+        snapshots.append(
+            {
+                "label": snap.label,
+                "status_date": snap.status_date,
+                "project_finish": snap.project_finish,
+                "finish_delta_days": snap.finish_delta_days,
+                "critical": sorted(cur),
+                "entered": sorted(entered),
+                "left": sorted(left),
+                "duration_changed": [],
+                "shortened_on_path": [],
+                "removed_logic_count": 0,
+                "names": {str(u): (by_id[i][u].name if u in by_id[i] else f"UID {u}") for u in cur},
+                "critical_rows": rows,
+                "left_rows": left_rows,
+                "path_to_target": [],
+            }
+        )
+    axis = {
+        "min": min(axis_dates).isoformat() if axis_dates else None,
+        "max": max(axis_dates).isoformat() if axis_dates else None,
+    }
+    return {"axis": axis, "snapshots": snapshots, "target": target, "tier": tier}
 
 
 def _dashboard_data(st: SessionState) -> dict[str, object]:

@@ -3012,3 +3012,21 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   - Tests: `tests/web/test_i18n.py` (pt catalog, all-catalog alignment incl. pt, switch-back loop,
     translate.js non-destructive+attribute presence, /api/translate pt). No ADR (extends ADR-0099/0102).
 - **Next:** Driving-Path UI overhaul — 3-column critical/secondary/tertiary tier view (data layer first).
+
+## 2026-06-22 — Critical-Path Evolution: path-tier selector (#217 merged)
+
+- **#217 merged** (`b8af512`, i18n + Portuguese). New branch fresh on it.
+- **Evolution path-tier selector** (operator: "choose critical / secondary / tertiary / all").
+  Confirmed model = driving-slack tiers to a focus (ADR-0011), "show only the chosen tier" (all =
+  colour-coded). `tier` param on `/evolution` + `/api/evolution`; `_evolution_tier_data` reuses
+  `compute_path_evolution` for the version framing (label/data-date/finish) and substitutes the
+  driving-slack tier activities — focus = pinned target, else that version's project-finish activity
+  (`_project_finish_uid`) — classified DRIVING(0d)/SECONDARY(≤10d)/TERTIARY(≤20d). Same payload shape
+  (critical_rows/left_rows + a per-row `tier`), entered/left by set diff across versions. UI: a
+  `name=tier` `<select>` (Critical path / Secondary / Tertiary / All) on the Focus form (GET reload)
+  + `data-tier` on `#evoChart`. `path_evolution.js` appends `&tier=`, carries `r.tier`, and colours
+  bars/labels by tier in the "all" mode (`tierColor`/`TIER_COLOR` + a tier legend). Verified over
+  Project2→Project5: critical=2, secondary=3, tertiary=8, all=13 (= union, all three labels). Tests:
+  `tests/web/test_evolution_view.py`. No ADR (extends ADR-0011/0044). Visual eyeball recommended.
+- **Next parked threads:** Driving-Path page 3-col tier view; tier-axis on curves; multi-select +
+  show/hide-completed on Finishes; Acumen Exec Briefing.

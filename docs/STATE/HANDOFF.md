@@ -1,27 +1,26 @@
-# Handoff — 2026-06-22 (PRs #81–#216 MERGED; **`main` green**; audit campaign mid-stream)
+# Handoff — 2026-06-22 (PRs #81–#217 MERGED; **`main` green**; audit campaign mid-stream)
 
-> ## STATUS (current) — operator review round DONE (#213–#216 merged); i18n fix + Portuguese in flight
+> ## STATUS (current) — #213–#217 merged; Critical-Path Evolution TIER selector in flight
 >
-> **`main` is green (#210–#216 merged):** 10-item UI/UX batch + hover call-outs + S-curve fixes
-> (#213) + Max Float→stored slack (#214; **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215)
-> + AI driving-path "skill" (#216, ADR-0114).
+> **`main` is green (#210–#217 merged):** S-curve fixes (#213) + Max Float→stored slack (#214;
+> **confirm 275d vs Acumen**) + SRA indicator/Beta-PERT (#215) + AI driving-path "skill" (#216,
+> ADR-0114) + i18n non-destructive rewrite/coverage + Portuguese (#217).
 >
-> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): i18n fix + Portuguese.**
-> Operator: language switch "doesn't convert everything" and "won't switch back once changed."
-> Server flow was already correct (each switch reloads English; the client translates) — the gaps were
-> CLIENT-side. Fixes: (1) **`translate.js` rewritten non-destructive** — each text node/attribute
-> remembers its ORIGINAL English (`__sfSrc`), always translates FROM source, so it never double-
-> translates, the observer can't loop, and any switch sequence re-renders correctly; re-runs on
-> `pageshow` (bfcache). (2) **Coverage** — now also translates `placeholder/title/aria-label/alt`
-> attributes and `<option>` labels (catalog-only, so imported data values stay). (3) **Catalog
-> expanded** 80→117 terms (all the nav links/group labels, page titles, controls). (4) **Portuguese
-> added** to `LANGUAGES` + every `_TERMS` entry; flows through `normalize`/`catalog_for`/`/api/translate`.
-> Tests in `tests/web/test_i18n.py`. No ADR (extends ADR-0099/0102).
+> **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `main`): Evolution path-tier
+> selector.** Operator: on Critical-Path Evolution, choose critical / secondary / tertiary / all.
+> Confirmed model = driving-slack tiers to a focus (ADR-0011), show only the chosen tier (all =
+> colour-coded). New `tier` param on `/evolution` + `/api/evolution`; `_evolution_tier_data` reuses
+> `compute_path_evolution` for version framing and swaps in the driving-slack tier activities
+> (focus = pinned target, else that version's project-finish activity), same payload shape so the
+> Gantt renders unchanged. UI: a `name=tier` selector (Critical path / Secondary ≤10d / Tertiary
+> ≤20d / All) on the Focus form (reload), `data-tier` on `#evoChart`; JS appends `&tier=` and colours
+> bars by tier in "all" mode (`tierColor`/`TIER_COLOR` + tier legend). Tests in
+> `tests/web/test_evolution_view.py`. No ADR (extends ADR-0011/0044).
 >
-> ### Parked threads (operator: "we are going to do them all")
-> Driving-Path UI overhaul (3-col critical/secondary/tertiary + animation + slack-degradation trend);
-> tier-axis propagation to curves/evolution; multi-select + show/hide-completed on Finishes; Acumen
-> Exec Briefing; Step 5 (EVM3 absent); SSI #6 (UID_145). Next up after this: Driving-Path 3-col view.
+> ### Parked threads (operator: "we are going to do them all") — still TODO
+> Driving-Path page 3-col critical/secondary/tertiary view + animation + slack-degradation trend;
+> tier-axis propagation to curves charts; multi-select + show/hide-completed on Finishes; Acumen
+> Exec Briefing; condensed spacing; Step 5 (EVM3 absent); SSI #6 (UID_145).
 >
 > **OPEN draft PR (branch `claude/clever-hawking-06zdpz`, fresh on `61906b6`):** chart-framework
 > continuation — **per-point hover call-outs on the curves line charts** (`curves.js` `lineChart`:
