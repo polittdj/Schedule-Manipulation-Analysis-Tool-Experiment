@@ -130,6 +130,30 @@ def test_golden_ssi_driving_slack_parity(golden_project5: Schedule) -> None:
     assert len(driving_path(golden_project5, results)) == 36
 
 
+def test_golden_ssi_driving_slack_uid145_parity(golden_project5: Schedule) -> None:
+    """SSI 'Get all dependencies' export for focus UID 145 on the authoritative file (ADR-0115).
+
+    The live SSI driving-slack parity gate (108 UniqueIDs, exact, by UID) after ADR-0112 made the
+    ssi_uid143 golden stale. This export is focus 145, so it does NOT lift the ssi_uid143 xfail.
+    """
+    case = json.loads((GOLDEN / "ssi_uid145" / "case.json").read_text())
+    results = compute_driving_slack(golden_project5, target_uid=case["focus_task_uid"])
+
+    expected = {int(uid): days for uid, days in case["driving_slack_days_by_uid"].items()}
+    assert set(results) == set(expected)  # exact, UniqueID-keyed: every traced task, no extras
+    got_days = {uid: int(r.driving_slack_days) for uid, r in results.items()}
+    assert got_days == expected
+    assert all(r.driving_slack_minutes % DAY == 0 for r in results.values())  # whole working days
+
+    focus = results[case["focus_task_uid"]]
+    assert focus.driving_slack_minutes == 0 and focus.on_driving_path
+    assert driving_path(golden_project5, results) == tuple(case["driving_path_uids"])  # 144 -> 145
+
+    bands = case["tier_counts_default_bands"]
+    tiers = {tier: sum(1 for r in results.values() if r.tier is tier) for tier in PathTier}
+    assert {t.name: c for t, c in tiers.items()} == bands
+
+
 def test_subday_slack_is_driving_like_ssi_displays_it() -> None:
     # Real stored dates carry minutes of time-of-day raggedness: a chain SSI shows at
     # "0 days" of driving slack must read DRIVING here, not fall out over a sub-day

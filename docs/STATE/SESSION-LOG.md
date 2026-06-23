@@ -3134,3 +3134,29 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   corrected open-thread list (SSI UID_145 = top unblocked task; build `golden/ssi_uid145/` + a
   `target_uid=145` parity test — note it does not auto-lift the UID-143 `xfail`s, which are stale per
   ADR-0112). Prior "current" block demoted to "prev". Doc-only change; no engine/metric number touched.
+
+## 2026-06-23 — SSI driving-slack re-pinned on the authoritative Project5, focus UID 145 (ADR-0115)
+
+- **Branch:** `claude/clever-volta-wbnx0i` (draft PR). **Model/mode:** Opus 4.8.
+- **Re-verified state first (assumed nothing):** in this **cloud container** `origin/main` = `0324ba4`
+  (#47) while the work branch carries the #48–#225 history; the git-ignored CUI intake is **empty on a
+  fresh clone** (only `DEPOSIT-HERE.md`/`.gitkeep`) — the prior seed/handoff claim that the SSI UID_145
+  export was "in the intake" was true on the operator's machine, not here. No deps were installed;
+  installed `.[dev]`, parity gate green (9 passed / 1 xfailed).
+- **Operator uploaded** the SSI Directional Path Tool exports for focus **UID 145** ("Issue final
+  request for payment") on `Project5_TAMPERED.mpp` (both the *≤0d + 2 near paths* and the *Get all
+  dependencies* runs) + the `.mpp`. Read **locally only**; `.mpp`/`.xlsx` **not committed** (Law 1).
+  Project5 is the established non-CUI sample (ADR-0003/0005), so its derived driving-slack is
+  committable (same basis as the existing `ssi_uid143` golden).
+- **Engine reproduced the all-dependencies export bit-for-bit on the first run:** 108/108 UniqueIDs,
+  every whole-day value exact, driving path = {144, 145}, focus 0 d, tiers 2/3/8/95 (default bands).
+  No engine code changed.
+- **Shipped (ADR-0115):** `tests/fixtures/golden/ssi_uid145/case.json` (108 UIDs) + two parity tests —
+  `test_ssi_driving_slack_uid145_exact` (parity gate) and `test_golden_ssi_driving_slack_uid145_parity`
+  (engine). Closes the live-SSI gap ADR-0112 opened.
+- **Left documented-stale (not fabricated, Law 2):** the two `ssi_uid143` xfails — this export is focus
+  145, which can't yield the focus-143 map; lifting them needs an SSI focus-143 export on the
+  authoritative file.
+- **Still needs operator input/files:** confirm Max Float 275 d vs Acumen (Acumen stored value);
+  Exec-Briefing full Acumen format (reference doc); Step 5 (EVM3 absent); metric-formula audits
+  (NASA `.aft` absent).
