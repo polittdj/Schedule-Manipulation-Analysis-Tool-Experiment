@@ -3042,3 +3042,16 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   the tier view isn't lost). Tests: `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
 - **Next parked threads:** animation + slack-degradation trend on the Driving-Path page; tier-axis on
   the curves charts; multi-select + show/hide-completed on Finishes; Acumen Exec Briefing.
+
+## 2026-06-22 — Driving-Path: driving-slack degradation trend (#219 merged)
+
+- **#219 merged** (`4c5647b`, Driving-Path 3-column tier panel). New branch fresh on it.
+- **Driving-slack degradation trend** (`_driving_tier_trend`). On `/driving-path?target=`, below the
+  tier panel (when ≥2 versions loaded), a per-version table shows the count of activities at each
+  driving-slack tier (driving 0d / secondary ≤10d / tertiary ≤20d), oldest→newest, plus a Δ-driving
+  column (▲+n in red = the driving path grew / slack eroded; ▼ green = recovered). Reuses
+  `compute_driving_slack`; versions missing the target show "—". This completes the operator's
+  Driving-Path overhaul ask (3-col + trend); corridor animation already existed (the Gantt stepper).
+  Tests: `tests/web/test_driving_path_view.py`. No ADR (extends ADR-0011).
+- **Next parked threads:** tier-axis on the curves charts; multi-select + show/hide-completed on the
+  Finishes views; Acumen-style Executive Briefing; condensed spacing.
