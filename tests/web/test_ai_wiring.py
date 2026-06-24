@@ -139,6 +139,46 @@ def test_briefing_polish_is_async_off_the_page_load_and_degrades_on_failure(
     assert resp.status_code == 200 and resp.json() == {"polished": False}
 
 
+class _FakeOllamaManager:
+    """Records ensure_running()/shutdown() so the lazy-start wiring can be asserted off-thread."""
+
+    def __init__(self) -> None:
+        import threading
+
+        self.started = threading.Event()
+        self.stopped = False
+
+    def ensure_running(self) -> str:
+        self.started.set()
+        return "started"
+
+    def shutdown(self) -> None:
+        self.stopped = True
+
+
+def test_enabling_ollama_in_settings_starts_it_lazily() -> None:
+    """The tool starts Ollama only when the operator turns the Ollama backend on in AI Settings
+    (ADR-0122) — not at launch. A non-Ollama backend must not start it."""
+    mgr = _FakeOllamaManager()
+    client = TestClient(create_app(SessionState(), ollama=mgr))
+    # selecting a non-Ollama backend never spins Ollama up
+    client.post("/settings", data={"classification": "CLASSIFIED", "backend": "null", "model": "x"})
+    assert not mgr.started.wait(0.3)
+    # turning the Ollama backend on starts it (off-thread, so wait briefly)
+    client.post(
+        "/settings", data={"classification": "CLASSIFIED", "backend": "ollama", "model": "x"}
+    )
+    assert mgr.started.wait(2.0)  # ensure_running() ran on the background thread
+
+
+def test_settings_lazy_start_is_a_no_op_without_a_manager(client: TestClient) -> None:
+    """In a plain (non-desktop) app there is no Ollama manager; enabling Ollama must not error."""
+    resp = client.post(
+        "/settings", data={"classification": "CLASSIFIED", "backend": "ollama", "model": "x"}
+    )
+    assert resp.status_code in (200, 303)  # redirect, no crash when app.state.ollama is None
+
+
 def test_wipe_clears_polished_narratives(
     monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
 ) -> None:

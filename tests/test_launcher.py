@@ -98,31 +98,37 @@ def test_no_console_launch_survives_none_streams(monkeypatch: pytest.MonkeyPatch
     assert sys.stderr is not None
 
 
-def test_main_manages_ollama_lifecycle() -> None:
-    """The desktop launch starts Ollama off-thread and stops it on shutdown (injected manager)."""
-    import threading
+def test_main_hands_ollama_to_app_lazily_and_stops_it_on_shutdown() -> None:
+    """The desktop launch does NOT start Ollama at launch — it hands the manager to the app (which
+    starts it lazily when the operator enables AI) and stops it on shutdown (injected manager)."""
 
     class _FakeManager:
         def __init__(self) -> None:
-            self.started = threading.Event()
+            self.started = False
             self.stopped = False
 
         def ensure_running(self) -> str:
-            self.started.set()
+            self.started = True
             return "started"
 
         def shutdown(self) -> None:
             self.stopped = True
 
     mgr = _FakeManager()
+    served: dict[str, Any] = {}
+
+    def fake_serve(app: Any, **kwargs: Any) -> None:
+        served["app"] = app
+
     launcher.main(
         port=34567,
-        serve=lambda *a, **k: None,
+        serve=fake_serve,
         browser=lambda url: True,
         timer=_ImmediateTimer,
         ollama=mgr,
     )
-    assert mgr.started.wait(2.0)  # ensure_running() ran on the background thread
+    assert mgr.started is False  # NOT started at launch — only when AI is turned on in settings
+    assert served["app"].state.ollama is mgr  # the app got the manager for the lazy start
     assert mgr.stopped is True  # shutdown() ran in the finally after serve returned
 
 

@@ -3307,3 +3307,34 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Also (chat-only):** beginner install guide for `llama3.1:8b`, `qwen2.5:7b-instruct`, and
   `qwen2.5:72b-instruct` (operator's new 128 GB box), grounded in `docs/CONNECT-A-BIGGER-AI-MODEL.md`.
 - **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0121**.
+
+---
+
+## 2026-06-24 (cont. 5) — Ollama runs only when AI is enabled, and is freed/stopped on tool close (ADR-0122)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (fresh on `main` after #234). **Model/mode:** Opus 4.8.
+  **Operator bug (Task Manager screenshot):** wiped session + quit the tool + closed the browser, yet
+  Ollama kept running with a resident 72B model (~40% of 128 GB). "Only run Ollama when the user sets
+  up AI in the tool; close it when the tool closes."
+- **Root causes:** (1) `launcher.main` started `ollama serve` on **every** launch (`manage_ollama`
+  default) regardless of AI use; (2) `OllamaLauncher.shutdown` only stopped a server the tool itself
+  started — a Windows-desktop-app (`ollama app.exe`) server was adopted as "already-running" and never
+  freed, so the loaded model stayed resident.
+- **Fix (ADR-0122), gated on `OllamaLauncher._engaged`:**
+  - **Lazy start:** launcher stops eager-starting; passes the manager to `create_app(ollama=…)`. The
+    `/settings` POST starts it off-thread **only when the operator picks the Ollama backend** (primary
+    or cross-check). A session that never enables AI never starts Ollama.
+  - **Tidy on close (operator chose "fully stop Ollama"):** `shutdown()` is a no-op when never engaged;
+    otherwise it **unloads all in-memory models** (`GET /api/ps` → `POST /api/generate keep_alive:0`,
+    std-lib `urllib`, loopback only — Law 1) so RAM is freed even for an adopted server, gracefully
+    terminates the serve it started, then **stops any Ollama server still running** (`taskkill /F /T
+    /IM ollama.exe` on Windows, `pkill -x ollama` elsewhere — local OS tools, best-effort, injectable),
+    including a tray-started one it adopted. Launcher `finally` + `atexit` both call it (idempotent).
+  - **Out of the tool's hands:** the Ollama Windows desktop app relaunches a server at the next login;
+    the tool stops the server on close but not the tray app. AI Settings + `CONNECT-A-BIGGER-AI-MODEL.md`
+    tell the operator how to disable that auto-start so Ollama runs only with the tool.
+- **Tests:** `test_ollama_process.py` (adopt-unload-but-don't-kill, start-then-stop+unload, no-op when
+  never engaged, best-effort unload when server down); `test_coverage_ollama_process.py` updated for the
+  engaged gate; `test_launcher.py` (manager handed to the app, NOT started at launch, stopped on close);
+  `test_ai_wiring.py` (settings enables Ollama → lazy start; no-op without a manager).
+- **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0122**.
