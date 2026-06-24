@@ -135,12 +135,20 @@ header nav .navform button:hover,header nav #themeToggle:hover{color:#fff}
 header nav .linkbtn{color:#fff}
 header label{color:rgba(255,255,255,.9)}
 
-.nasa-logo{margin-left:auto;display:flex;align-items:center;flex:0 0 auto;perspective:280px}
-.nasa-logo img{width:46px;height:46px;display:block;border-radius:50%;transform-style:preserve-3d;
-  box-shadow:0 0 0 2px rgba(255,255,255,.28),0 2px 6px rgba(0,0,0,.4);
-  animation:nasa-spin 16s linear infinite}
-/* slow 3D spin about the vertical (Y) axis — a turning medallion, not the old in-plane wheel */
-@keyframes nasa-spin{from{transform:rotateY(0)}to{transform:rotateY(360deg)}}
+/* The header insignia is a transparent 3D wireframe Earth (globe.js) rotating around a STATIONARY
+   "NASA" wordmark — 3x the old meatball. It also doubles as the page-wide AI status light: ask.js
+   adds .ai-thinking while the local model generates (the globe spins up + glows cyan) and .ai-error
+   on failure (red flash), so every page shows whether the AI is working. */
+.nasa-globe{margin-left:auto;position:relative;width:132px;height:132px;flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center}
+.nasa-globe canvas{position:absolute;inset:0;width:132px;height:132px;display:block}
+.nasa-globe-text{position:relative;z-index:2;font-weight:800;font-size:23px;letter-spacing:3px;
+  color:#fff;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  text-shadow:0 0 5px rgba(0,0,0,.65),0 0 16px rgba(40,120,220,.85);transition:color .3s,text-shadow .3s}
+.nasa-globe.ai-thinking .nasa-globe-text{color:#dff2ff;
+  text-shadow:0 0 6px rgba(0,0,0,.6),0 0 22px rgba(120,210,255,.95)}
+.nasa-globe.ai-error .nasa-globe-text{color:#ffd9d9;
+  text-shadow:0 0 6px rgba(0,0,0,.6),0 0 18px rgba(252,61,33,.9)}
 
 .cui-banner{text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;
   text-transform:uppercase;padding:3px 10px;background:#1b1b1b;color:#fff}

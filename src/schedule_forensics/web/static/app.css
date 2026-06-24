@@ -112,6 +112,13 @@
 /* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
 .field-toggle.field-custom { color: var(--accent, #6ea8fe); }
 .ask-answer { white-space: pre-wrap; }
+/* AI "working" status (ask.js): a pulsing mark + live elapsed-seconds so a slow local model never
+   looks frozen; the header globe is the matching page-wide light. Pulse honours reduced-motion. */
+.ai-working { font-weight: 600; margin: 2px 0; }
+.ai-dot { color: var(--accent); display: inline-block; animation: ai-pulse 1.1s ease-in-out infinite; }
+@keyframes ai-pulse { 0%,100% { opacity: .3; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.15); } }
+.ai-hint { margin: 4px 0 0; max-width: 46em; }
+.ai-took { font-size: 11px; }
 #askOut ul { font-size: 13px; }
 
 /* M18: per-view export links (local downloads only) */

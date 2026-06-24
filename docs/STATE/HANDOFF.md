@@ -1,6 +1,32 @@
-# Handoff — 2026-06-24 (operator bug batch PR 2 of 3: nav legibility + MS-Project Gantt canvas + much wider offline translation)
+# Handoff — 2026-06-24 (PR 4: AI status light + a 3D wireframe-Earth insignia; metrics re-validated vs operator's MS Project)
 
-> ## STATUS (current) — PR 2 of 3 (UI): visible nav labels + de-bunched spacing, MS-Project Gantt plotting area, offline UI translation 7%→~58%; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — AI "working" indicator + 3D rotating-Earth header insignia; DCMA-14 re-verified against the operator's SRA Project5; branch `claude/compassionate-ptolemy-wip898`
+>
+> **PR 1 (#236) + PR 2 (#237) merged.** This PR ships two operator asks + a fidelity re-check:
+> - **Metrics re-validated (no code change).** Operator questioned DCMA-01 Logic (5/99 fail). Confirmed
+>   correct: the 5 offenders are incomplete tasks missing a successor (UID 106, 113, 129, 136, 145);
+>   DCMA-01 scores only the 99 incomplete activities, so the operator's other missing-logic tasks are
+>   100% complete (correctly excluded). 5/99 = 5.05% → marginal fail (UID 145/136 are end milestones the
+>   by-the-book metric still counts). Lags=1 verified against the RAW MSPDI (only 2 lag links exist;
+>   28→30 is on a complete task). Float matches MS Project stored Total Slack exactly; BEI 0.59, Missed
+>   37/46, High Float 39/99 all reproduce. **The engine is calculating correctly.**
+> - **AI status light (operator: a 72B q8 model used 100 GB RAM and "nothing generated" — was it stuck?).**
+>   It was thinking, not stuck (100 GB ≈ q8 72B + KV cache; CPU 72B is just slow). `ask.js` now shows a
+>   live "the local AI is working… (Ns)" counter + a >20s "large models take minutes, not stuck" hint,
+>   and toggles `.ai-thinking` on the header insignia so **every page** shows the AI is working (red
+>   flash on failure/timeout).
+> - **3D Earth insignia (replaces the meatball).** New vendored `static/globe.js` — a transparent
+>   `<canvas>` wireframe Earth (graticule + coarse continent coastlines, far side faded so it's
+>   see-through) rotating around a **stationary "NASA" wordmark**, **3× the old size** (132px). Pure
+>   canvas, no images/CDN (air-gap), honours prefers-reduced-motion, and spins up + glows cyan while the
+>   AI generates. `nasa-meatball.svg` removed. **Visual — eyeball it in the running app** (no headless
+>   browser here).
+> - **Gate:** ruff/format/mypy/bandit/`node --check` clean; full suite running. No new ADR.
+> - **STILL OPEN — the big one:** the SRA SSI remodel (task #19) is designed + parity-anchored but NOT
+>   yet built (engine layer was about to start when the operator pivoted to these asks). Plan:
+>   `/root/.claude/plans/virtual-wobbling-donut.md` (note: ephemeral) — see the prior STATUS blocks.
+>
+> ## STATUS (prev) — PR 2 of 3 (UI): visible nav labels + de-bunched spacing, MS-Project Gantt plotting area, offline UI translation 7%→~58%; branch `claude/compassionate-ptolemy-wip898`
 >
 > **PR 1 (`.mpp`/Ollama) merged as #236.** This PR ships the UI cluster from the operator's batch:
 > - **Nav legibility + spacing.** The function labels (OVERVIEW/ASSESSMENT/CONTROL/RISKS…) were 10px
