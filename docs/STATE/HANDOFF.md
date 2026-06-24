@@ -1,6 +1,38 @@
-# Handoff — 2026-06-23 (SSI driving-slack parity re-pinned on the authoritative Project5, focus UID 145)
+# Handoff — 2026-06-24 (driving-slack span-snap REMOVED — SSI parity verified end-to-end on the leveled Large Test File, focus UID 152, ADR-0116)
 
-> ## STATUS (current) — SSI driving-slack re-pinned (focus UID 145, ADR-0115); branch `claude/clever-volta-wbnx0i`
+> ## STATUS (current) — span-snap removed; shipped engine matches SSI on the leveled Large Test File (focus UID 152, ADR-0116); branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, draft PR):**
+> - **The driving-slack span-snap (ADR-0045) is REMOVED — ADR-0116.** The operator uploaded the
+>   **leveled-and-saved** Large Test File ("USA OTB Master IMS", 1723 activities) + the matching SSI
+>   Directional Path export for focus **UID 152** ("all dependents", **783** ancestors), plus un-leveled
+>   variants. Operator-confirmed **non-CUI**; read locally, `.mpp`/`.xlsx` **not committed** (the
+>   pre-commit guard blocks those binaries regardless).
+> - **Verified, in order:** (step 2) MPXJ-read stored `Start`/`Finish` **= SSI dates 783/783 to the
+>   minute**; (step 3) the **shipped** `compute_driving_slack(schedule, target_uid=152)` with the snap ON
+>   matched only **325/783** and got the driving path wrong — with the snap **OFF** (raw working-minute
+>   span) it reproduces SSI's **driving path 61/61, set-equal** (`driving_path()` returns the identical
+>   UID set) and slack **within one working day for 782/783** (one full-day residual, uid 6123).
+> - **Root-cause correction:** SSI does **not** snap to whole days (if it did, the raw span couldn't
+>   reproduce its path exactly). ADR-0045's "afternoon-shift span raggedness" was a **misdiagnosis** of the
+>   resource-leveling date discrepancy. The engine's calendar already applies the project calendar
+>   ("Dynetics Standard", 480 min/day, 111 holidays **incl. 2026**) uniformly, so the seed's "cal-68 lacks
+>   2026 holidays" residual hypothesis does not apply — the ~20 sub-day residuals are time-of-day boundary
+>   effects below day granularity and don't change path membership.
+> - **Change:** `engine/driving_slack.py` span line → raw span; the synthetic **TP1 battery test** updated
+>   (snap's sub-day minutes 60/60/120 → true 210/210/120; tiers 13/1/2/2, DRIVING/floor-0, and band edges
+>   all **unchanged**). **No Large-Test-File golden committed** (the `.mpp` can't be committed, so a
+>   derived golden is unreproducible; it's a 1723-activity real IMS). Regression guard = updated TP1 test +
+>   the committed **`ssi_uid145`** golden (ADR-0115), which **stays green** (snap was a no-op on whole-day
+>   spans).
+> - **Workflow answer (step 5):** the tool matches SSI **whenever the `.mpp` is saved in the same leveling
+>   state SSI was run on** (leveled↔leveled and un-leveled↔un-leveled both matched). Guidance: **level →
+>   save → analyze**. No tool change needed to ingest SSI's dates.
+> - **Gate green:** full suite **1493 passed / 7 env-skipped / 2 xfail**; coverage overall 99.17% (≥70),
+>   engine 99.84% (≥85), `driving_slack.py` 100%; ruff/format/mypy/bandit/`node --check` clean.
+> - **Highest ADR = 0116** (drift guard: referenced in this HANDOFF and SESSION-LOG).
+>
+> ## STATUS (prev) — SSI driving-slack re-pinned (focus UID 145, ADR-0115); branch `claude/clever-volta-wbnx0i`
 >
 > **What shipped this session (branch `claude/clever-volta-wbnx0i`, draft PR):**
 > - **SSI driving-slack parity is LIVE again on the authoritative Project5** — ADR-0115. The operator

@@ -138,18 +138,19 @@ def compute_driving_slack(
     trace = ancestors | {target_uid}
     per_day = schedule.calendar.working_minutes_per_day
     early_start, early_finish = date_basis(schedule, cpm_result)
-    # SSI computes driving slack on a WHOLE-WORKING-DAY grid, where each activity occupies a
-    # whole number of working days. Real stored dates carry ragged times of day (activities
-    # finishing at noon, afternoon-shift starts), so an activity's working span comes out a
-    # few minutes off a whole day; left raw, that sub-day raggedness ACCUMULATES through the
-    # backward pass's span subtraction and can tip a long driving chain's whole-day slack
-    # across a boundary — a genuine 0-day SSI path then reads as 1-day secondary (the
-    # operator's Large Test File). Snapping the SPAN to the nearest whole working day stops
-    # the accumulation while leaving each activity's own early-finish phase intact, so its
-    # remaining sub-day slack still floors onto the right SSI day. Whole-day (curated golden)
-    # spans round to themselves, so parity is preserved; the Path page still DISPLAYS the true
-    # stored dates (date_basis is unchanged — only the span used in the slack pass is snapped).
-    span = {uid: round((early_finish[uid] - early_start[uid]) / per_day) * per_day for uid in trace}
+    # SSI runs its backward pass on the activities' true working-minute spans — it does NOT
+    # snap each span to a whole working day. An earlier heuristic here rounded every span to
+    # the nearest whole day to keep sub-day raggedness from accumulating across long ancestor
+    # chains; verified against the operator's *leveled* Large Test File (focus UID 152, SSI
+    # Directional Path "all dependents" export, 783 activities) that snap does the OPPOSITE of
+    # its intent — it shifts whole-day slack across day boundaries and collapses parity to
+    # 325/783, whereas the raw span reproduces SSI's driving path exactly (61/61) and the
+    # per-activity driving slack to within one working day for 782/783 (ADR-0116). The snap was
+    # compensating for an un-leveled/mis-leveled prior state of that file; on the correctly
+    # leveled schedule SSI matches the raw span. Curated goldens carry whole-day spans, so the
+    # snap was a no-op for them and removing it leaves their parity unchanged. The Path page
+    # still DISPLAYS the true stored dates (date_basis is unchanged).
+    span = {uid: early_finish[uid] - early_start[uid] for uid in trace}
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}
     for rel in schedule.relationships:

@@ -135,9 +135,11 @@ def test_tp1_driving_tiers_floor_ragged_minutes_onto_ssi_day_axis() -> None:
     assert tiers[PathTier.TERTIARY] == 2
     assert tiers[PathTier.BEYOND] == 2
     # the completed design chain carries sub-day MINUTES of slack (ragged actual times) and
-    # still classifies DRIVING — pre-ADR-0032 tiering would have dropped all three; the
-    # ADR-0045 span-snap (whole-day spans, no accumulation) leaves each its own sub-day phase:
-    for uid, minutes in ((11, 60), (12, 60), (13, 120)):
+    # still classifies DRIVING — pre-ADR-0032 tiering would have dropped all three. ADR-0116
+    # removed the ADR-0045 whole-day span-snap (it collapsed SSI parity on the leveled Large
+    # Test File, 325/783); each task now keeps its true raw sub-day slack and still floors onto
+    # SSI's day axis as 0 days, so the DRIVING classification is unchanged:
+    for uid, minutes in ((11, 210), (12, 210), (13, 120)):
         assert results[uid].driving_slack_minutes == minutes
         assert results[uid].on_driving_path
         assert results[uid].tier is PathTier.DRIVING
