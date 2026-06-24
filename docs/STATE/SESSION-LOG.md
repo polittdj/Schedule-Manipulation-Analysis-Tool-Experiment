@@ -3258,3 +3258,22 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   SVG evolution Gantt gains quarter/year bands.
 - **Gate:** full suite **1502 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/`node --check`
   (all static JS) clean; coverage ≥70 overall / ≥85 engine. Highest ADR = **0119**.
+
+---
+
+## 2026-06-24 (cont. 3) — auto-shutdown idle grace 10s → 10 minutes (ADR-0120)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (reset fresh onto `main` after #232 squash-merged).
+  **Model/mode:** Opus 4.8. **Operator request:** "increase the amount of time to 10 minutes of idle
+  time before the tool times out once opened."
+- **Change:** `create_app(idle_grace=...)` default **10.0 → 600.0**. The desktop launcher's watchdog
+  stops the server once the browser stops beating (`static/heartbeat.js` beats every 3s) for
+  `idle_grace` seconds. 10s was too aggressive: browsers **throttle timers in a backgrounded/
+  minimized tab**, so one throttled beat past 10s shut a still-open session down — the *quiet-but-open*
+  false positive that ADR-0032's in-flight-request hold didn't cover. 10 min also tolerates a brief
+  step-away / laptop sleep. Quit + `POST /api/shutdown` still stop instantly; watchdog, heartbeat,
+  in-flight hold, and the pure `_is_idle` decision are unchanged. New ADR-0120 supersedes the
+  ADR-0022 `idle_grace`=10s; ADR-0022/0032 left as historical record.
+- **Tests:** `test_default_idle_grace_is_ten_minutes` pins 600s (launcher mode incl.) + that an
+  explicit override still wins; existing watchdog/`_is_idle` tests (inject a tiny grace) unchanged.
+- **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0120**.

@@ -50,6 +50,16 @@ def test_every_page_carries_heartbeat_and_quit() -> None:
     assert "/api/heartbeat" in hb and "sfQuit" in hb and "/api/shutdown" in hb
 
 
+def test_default_idle_grace_is_ten_minutes() -> None:
+    """ADR-0120: the tool stays up for 10 minutes of no heartbeat before it auto-times-out, so a
+    backgrounded/minimized tab (whose 3s beat the browser throttles) or a brief navigation away
+    does not shut a still-open session down. The in-page Quit control still stops it immediately."""
+    assert create_app().state.idle_grace == 600.0
+    assert create_app(auto_shutdown=True).state.idle_grace == 600.0  # the launcher's mode too
+    # an explicit override still wins (tests inject a tiny grace)
+    assert create_app(idle_grace=0.05).state.idle_grace == 0.05
+
+
 def test_is_idle_decision() -> None:
     assert _is_idle(browser_seen=False, idle_seconds=999.0, grace=10.0) is False  # never connected
     assert _is_idle(browser_seen=True, idle_seconds=3.0, grace=10.0) is False  # still fresh

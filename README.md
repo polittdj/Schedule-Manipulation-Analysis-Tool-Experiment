@@ -49,8 +49,9 @@ pip install -e .                # installs the `schedule-forensics` launcher com
   `.ps1` installer, Linux `.desktop`, macOS `.command`).
 
 The launcher picks a free **127.0.0.1** port, starts the server, and opens your browser at the
-dashboard. **Closing the last browser window turns the tool off** (the server's watchdog stops it when
-the heartbeat stops); the in-page **Quit** control stops it immediately.
+dashboard. **Closing the last browser window turns the tool off** (the server's watchdog stops it
+after ~10 minutes with no heartbeat, so a backgrounded tab or a brief step-away keeps your session);
+the in-page **Quit** control stops it immediately.
 
 ## Use
 

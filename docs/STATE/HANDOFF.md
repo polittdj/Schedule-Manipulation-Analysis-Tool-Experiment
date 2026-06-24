@@ -1,6 +1,18 @@
-# Handoff — 2026-06-24 (Gantt mirrors Microsoft Project on every page — shared SFGantt 3-tier timeline + gridlines + WBS indentation; DCMA-14 stoplight panel; ADR-0119)
+# Handoff — 2026-06-24 (auto-shutdown idle grace 10s → 10 min so a backgrounded tab / brief step-away no longer kills the session; ADR-0120)
 
-> ## STATUS (current) — UI overhaul: MS-Project Gantt parity on all pages + DCMA-14 stoplight dashboard; ADR-0119; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — auto-shutdown idle grace raised to 10 minutes (ADR-0120); branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main` after #232 merged):**
+> - **Auto-shutdown idle grace 10s → 600s (10 min) — ADR-0120.** `create_app`'s `idle_grace`
+>   default is now 600.0. The page beats every 3s, but browsers throttle timers in a
+>   backgrounded/minimized tab, so the old 10s grace shut a **still-open** tool down when it was
+>   merely in the background (ADR-0032 had only fixed the server-busy false positive, not the
+>   quiet-but-open one). 10 min also tolerates a brief navigation away / laptop sleep. The in-page
+>   **Quit** control + `POST /api/shutdown` still stop it instantly; watchdog / heartbeat /
+>   in-flight-hold / `_is_idle` all unchanged. Test `test_default_idle_grace_is_ten_minutes` pins it.
+> - **Gate green:** full suite passed; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0120**.
+>
+> ## STATUS (prev) — UI overhaul: MS-Project Gantt parity on all pages + DCMA-14 stoplight dashboard; ADR-0119 (merged #231/#232); branch `claude/compassionate-ptolemy-wip898`
 >
 > **What shipped this session (branch `claude/compassionate-ptolemy-wip898`):**
 > - **Part A — DCMA-14 dashboard panel (merged, PR #231).** The dashboard shows spaced labels
