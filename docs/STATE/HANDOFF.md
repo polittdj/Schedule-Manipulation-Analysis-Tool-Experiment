@@ -1,6 +1,27 @@
-# Handoff — 2026-06-24 (auto-shutdown idle grace 10s → 10 min so a backgrounded tab / brief step-away no longer kills the session; ADR-0120)
+# Handoff — 2026-06-24 (Executive Briefing rebuilt as a leadership forensic summary + Word/Excel export; ADR-0121)
 
-> ## STATUS (current) — auto-shutdown idle grace raised to 10 minutes (ADR-0120); branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — Executive Briefing rebuilt as a numbered, plain-English forensic summary (+ Word/Excel hand-out); ADR-0121; branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main`):**
+> - **Executive Briefing redesign (ADR-0121).** `ai/briefing.py` is rebuilt to model an operator-
+>   supplied forensic Executive Summary: a metadata header + a status-tinted verdict banner
+>   (ON TRACK / WATCH / AT RISK), then numbered sections — **1. The Bottom Line** (verdict + plain
+>   story + the duration-based SPI), **2. How the Project Has Performed**, **3. The Critical Path —
+>   Then and Now** (real entered/left from `path_evolution` with ≥2 versions; an honest single-
+>   version note otherwise), **4. Schedule Health Dashboard**, **5. Risks and Opportunities**
+>   (`recommend` findings), **6. Recommended Actions** (+ if-nothing-done / if-implemented),
+>   **7. How to Verify Every Number** (+ methodology + limitations). Every figure is engine-computed
+>   and every statement/table row is cited (§6); the model only rephrases prose.
+> - **Word + Excel hand-out.** New `/export/{fmt}/briefing` route + `briefing_blocks()`; the
+>   `/briefing` page renders one continuous `brief-doc` and links the .docx/.xlsx exports.
+> - **No model change:** `SCHEMA_VERSION` untouched; `ai/qa.py` reuses the new statements (signature
+>   preserved). Many briefing-dependent tests updated to the new structure.
+> - **Gate green:** ruff/format/mypy/bandit/`node --check` clean; full suite green. Highest ADR = **0121**.
+> - **Also delivered this session (chat-only):** a 13-year-old-friendly guide to install
+>   `llama3.1:8b`, `qwen2.5:7b-instruct`, and (for the operator's new 128 GB box) `qwen2.5:72b-instruct`
+>   as the most powerful local brain, grounded in `docs/CONNECT-A-BIGGER-AI-MODEL.md`.
+>
+> ## STATUS (prev) — auto-shutdown idle grace raised to 10 minutes (ADR-0120); branch `claude/compassionate-ptolemy-wip898`
 >
 > **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main` after #232 merged):**
 > - **Auto-shutdown idle grace 10s → 600s (10 min) — ADR-0120.** `create_app`'s `idle_grace`

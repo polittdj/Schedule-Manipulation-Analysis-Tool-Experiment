@@ -1,8 +1,10 @@
-"""Executive-briefing tests — the Acumen-style diagnostic briefing over the goldens.
+"""Executive-briefing tests — the leadership forensic summary over the goldens (ADR-0121).
 
-Counts asserted here are the validated golden values (126 normal activities; 20/27
-complete; 3/2 in progress; 18 summaries). Dates are the ENGINE's computed values —
-never copied from an external report (fidelity: compute, don't transcribe).
+The briefing is rebuilt as a numbered, plain-English forensic Executive Summary (Bottom Line →
+Performance → Critical Path Then & Now → Health Dashboard → Risks & Opportunities → Recommended
+Actions → How to Verify). Every figure is engine-computed and every statement / table row is cited
+(§6). Assertions here check the structure, the citation contract, and the headline facts — never a
+number transcribed from an external report (fidelity: compute, don't transcribe).
 """
 
 from __future__ import annotations
@@ -11,146 +13,117 @@ import datetime as dt
 
 import pytest
 
-from schedule_forensics.ai.briefing import build_briefing
+from schedule_forensics.ai.briefing import briefing_blocks, build_briefing
 from schedule_forensics.ai.citations import assert_all_cited
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
 TODAY = dt.date(2026, 6, 10)
 
+#: the numbered section outline a single-version briefing always emits
+_SINGLE_VERSION_HEADINGS = [
+    "1. The Bottom Line",
+    "1.1 The Story in Plain English",
+    "1.2 The Single Most Important Number",
+    "2. How the Project Has Performed",
+    "2.1 What Has Been Accomplished",
+    "2.2 What Is In Progress",
+    "3. The Critical Path — Then and Now",
+    "3.1 What Changed",
+    "4. Schedule Health Dashboard",
+    "5. Risks and Opportunities",
+    "5.1 Risk Register",
+    "5.2 Opportunities",
+    "6. Recommended Actions",
+    "6.1 If Nothing Is Done",
+    "6.2 If Recommended Actions Are Implemented",
+    "7. How to Verify Every Number",
+    "7.1 Methodology",
+    "7.2 Limitations",
+]
+_TOP_LEVEL_HEADINGS = [
+    "1. The Bottom Line",
+    "2. How the Project Has Performed",
+    "3. The Critical Path — Then and Now",
+    "4. Schedule Health Dashboard",
+    "5. Risks and Opportunities",
+    "6. Recommended Actions",
+    "7. How to Verify Every Number",
+]
 
-def test_briefing_two_golden_versions_full_structure(golden_project2, golden_project5) -> None:
-    b = build_briefing([golden_project5, golden_project2], today=TODAY)  # any load order
-    headings = [s.heading for s in b.sections]
-    assert headings == [
-        "Key Assessment",  # the executive lede: verdict + headline numbers (latest version)
-        "Workbook Summary",
-        "Trend Analysis",
-        "Project2.mspdi.xml Project",
-        "Project5.mspdi.xml Project",
-        "Project2.mspdi.xml Schedule Quality Analysis",
-        "Project5.mspdi.xml Schedule Quality Analysis",
-    ]  # chronological by data date, regardless of the order given
+
+def test_single_version_emits_the_full_numbered_outline(golden_project5) -> None:
+    b = build_briefing([golden_project5], today=TODAY)
+    assert [s.heading for s in b.sections] == _SINGLE_VERSION_HEADINGS
     for section in b.sections:
-        assert section.statements, section.heading
         assert_all_cited(section.statements)  # §6: every sentence carries file+UID+task
 
 
-def test_briefing_leads_with_a_key_assessment(golden_project2, golden_project5) -> None:
-    """The briefing opens with an executive verdict + the headline numbers a sponsor reads first."""
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    lede = b.sections[0]
-    assert lede.heading == "Key Assessment"
-    assert lede.statements and "Executive assessment" in lede.statements[0].text
-    assert_all_cited(lede.statements)  # the verdict sentence is cited to the finish drivers
-    assert lede.table is not None
-    labels = [row[0] for row in lede.table.rows]
-    assert labels == [
-        "Overall verdict",
-        "Forecast completion",
-        "Vs baseline finish",
-        "Critical activities",
-        "DCMA-14 checks failing",
-        "Activities in scope",
-    ]
-    verdict = next(row[1] for row in lede.table.rows if row[0] == "Overall verdict")
-    assert verdict in {"ON TRACK", "NEEDS ATTENTION", "AT RISK"}
-
-
-def test_briefing_workbook_summary_names_versions_and_window(
-    golden_project2, golden_project5
-) -> None:
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    workbook = next(s for s in b.sections if s.kind == "lede")
-    text = workbook.statements[0].text
-    assert "2 schedule version(s)" in text
-    assert "Project2.mspdi.xml" in text and "Project5.mspdi.xml" in text
-    assert "Wednesday, June 10, 2026" in text  # report date, briefing style
-    assert "earliest start date" in text and "latest completion date" in text
-
-
-def test_briefing_project_summary_golden_counts(golden_project2, golden_project5) -> None:
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    p2 = next(s for s in b.sections if s.heading == "Project2.mspdi.xml Project")
-    text = p2.statements[0].text
-    # validated golden progress counts (and the briefing's percent style)
-    assert "126 normal activities" in text
-    assert "20 (15.9%) are complete" in text
-    assert "3 (2.4%) are in progress" in text
-    assert "103 (81.7%) are still planned" in text
-    assert "18 summaries" in text
-    # baseline variance sentence is present with a computed day count
-    assert "baseline finish date" in p2.statements[1].text
-    assert "behind schedule by" in p2.statements[1].text
-
-    p5 = next(s for s in b.sections if s.heading == "Project5.mspdi.xml Project")
-    assert "27 (21.4%) are complete" in p5.statements[0].text
-    assert "2 (1.6%) are in progress" in p5.statements[0].text
-
-
-def test_briefing_trend_section_uses_metric_sentences(golden_project2, golden_project5) -> None:
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    trend = next(s for s in b.sections if s.heading == "Trend Analysis")
-    texts = [s.text for s in trend.statements]
-    assert any(t.startswith("Missing Logic:") for t in texts)
-    assert any("Critical: decreases over time" in t for t in texts)
-    assert any(
-        t
-        == (
-            "Hard Constraints: increases over time with the best version being"
-            " Project2.mspdi.xml (0) and the worst version being Project5.mspdi.xml (1)."
-        )
-        for t in texts
-    )
-
-
-def test_briefing_quality_section_has_verdicts(golden_project2, golden_project5) -> None:
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    q5 = next(s for s in b.sections if "Project5" in s.heading and "Quality" in s.heading)
-    texts = " ".join(s.text for s in q5.statements)
-    assert "Improvements are required." in texts  # at least one failing check verdict
-    assert "This is the target state." in texts  # at least one passing check verdict
-
-
-def test_briefing_sections_carry_kinds_and_cited_tables(golden_project2, golden_project5) -> None:
-    """The M18 readability reformat: lede / trend table / project cards / quality tables —
-    every table row cited exactly like prose (§6)."""
-    b = build_briefing([golden_project2, golden_project5], today=TODAY)
-    by_kind = {s.kind for s in b.sections}
-    assert by_kind == {"assessment", "lede", "trend", "project", "quality"}
-    for section in b.sections:
-        if section.kind == "lede":
-            assert section.table is None
-            continue
-        assert section.table is not None, section.heading
+def test_every_table_row_is_cited(golden_project5) -> None:
+    b = build_briefing([golden_project5], today=TODAY)
+    tabled = [s for s in b.sections if s.table is not None]
+    assert tabled  # the dashboard / accomplished / in-progress / risk / action tables exist
+    for section in tabled:
         assert len(section.table.rows) == len(section.table.row_citations)
         assert all(cites for cites in section.table.row_citations)  # §6: never uncited
-    trend = next(s for s in b.sections if s.kind == "trend")
-    assert trend.table is not None
-    assert trend.table.headers == ("Metric", "Oldest → newest", "Trend")
-    assert len(trend.table.rows) == len(trend.statements)  # one row per trended metric
-    project = next(s for s in b.sections if s.kind == "project")
-    assert project.table is not None and project.table.headers == ()
-    labels = [row[0] for row in project.table.rows]
-    for expected in ("Start", "Completion", "Activities", "Complete", "Milestones"):
-        assert expected in labels
-    quality = next(s for s in b.sections if s.kind == "quality")
-    assert quality.table is not None
-    assert quality.table.headers == ("DCMA check", "Count", "Value", "Verdict")
-    assert len(quality.table.rows) == len(quality.statements)  # one row per applicable check
 
 
-def test_briefing_single_version_skips_trend(golden_project5) -> None:
+def test_header_metadata_banner_and_verdict(golden_project5) -> None:
     b = build_briefing([golden_project5], today=TODAY)
-    assert [s.heading for s in b.sections] == [
-        "Key Assessment",
-        "Workbook Summary",
-        "Project5.mspdi.xml Project",
-        "Project5.mspdi.xml Schedule Quality Analysis",
+    assert b.title == "Schedule Forensics — Executive Briefing"
+    assert b.verdict in {"ON TRACK", "WATCH", "AT RISK"}
+    meta_labels = [k for k, _ in b.meta_rows]
+    assert meta_labels == [
+        "Report date",
+        "Schedule data date",
+        "Source schedule",
+        "Versions loaded",
+        "Classification",
+    ]
+    banner_labels = [k for k, _ in b.banner]
+    assert banner_labels == [
+        "Status",
+        "SPI (duration-based)",
+        "Forecast finish",
+        "Baseline finish",
+        "Slip",
+    ]
+    assert dict(b.banner)["Status"] == b.verdict
+
+
+def test_bottom_line_opens_in_one_sentence(golden_project5) -> None:
+    b = build_briefing([golden_project5], today=TODAY)
+    bottom = b.sections[0]
+    assert bottom.heading == "1. The Bottom Line"
+    assert "In one sentence:" in bottom.statements[0].text
+    assert b.verdict in bottom.statements[0].text
+
+
+def test_health_dashboard_has_the_four_indicators(golden_project5) -> None:
+    b = build_briefing([golden_project5], today=TODAY)
+    dash = next(s for s in b.sections if s.heading == "4. Schedule Health Dashboard")
+    assert dash.table is not None and dash.table.headers == ("Indicator", "Reading", "Status")
+    indicators = [row[0] for row in dash.table.rows]
+    assert indicators == [
+        "Task status",
+        "Schedule slippage",
+        "Schedule Performance Index",
+        "DCMA-14 quality",
     ]
 
 
-def test_briefing_backend_rephrases_but_keeps_citations(golden_project5) -> None:
+def test_two_versions_show_critical_path_then_and_now(golden_project2, golden_project5) -> None:
+    b = build_briefing([golden_project5, golden_project2], today=TODAY)  # any load order
+    headings = [s.heading for s in b.sections]
+    # ordered oldest -> newest by data date; the cross-version "then and now" subsection appears
+    assert "3.1 What Changed Between the Versions" in headings
+    for top in _TOP_LEVEL_HEADINGS:
+        assert top in headings
+    for section in b.sections:
+        assert_all_cited(section.statements)
+
+
+def test_backend_rephrases_prose_but_keeps_citations(golden_project5) -> None:
     class Shout:
         name = "shout"
         is_local = True
@@ -172,33 +145,50 @@ def test_briefing_backend_rephrases_but_keeps_citations(golden_project5) -> None
         for p, s in zip(ps.statements, ss.statements, strict=True):
             assert s.text == p.text.upper()  # rephrased
             assert s.citations == p.citations  # citations untouched
+        assert ss.table == ps.table  # tables are engine data — the model never touches them
 
 
-def test_briefing_to_text_renders_headings(golden_project5) -> None:
+def test_to_text_renders_numbered_headings(golden_project5) -> None:
     text = build_briefing([golden_project5], today=TODAY).to_text()
-    assert text.startswith("# Schedule Forensics — Diagnostic Executive Briefing")
-    assert "## Workbook Summary" in text and "## Project5.mspdi.xml Project" in text
+    assert text.startswith("# Schedule Forensics — Executive Briefing")
+    assert "## 1. The Bottom Line" in text
+    assert "### 7.1 Methodology" in text
+    assert "Verdict:" in text
 
 
-def test_briefing_requires_at_least_one_schedule() -> None:
+def test_briefing_blocks_render_word_structure(golden_project5) -> None:
+    from schedule_forensics.reports.docx import DocTable, Heading, Paragraph, render_document
+
+    blocks = briefing_blocks(build_briefing([golden_project5], today=TODAY))
+    assert isinstance(blocks[0], Heading) and blocks[0].level == 0
+    assert any(isinstance(b, Heading) and b.text == "1. The Bottom Line" for b in blocks)
+    assert any(isinstance(b, DocTable) for b in blocks)  # at least one cited table
+    assert any(isinstance(b, Paragraph) for b in blocks)
+    data = render_document(blocks)  # serializes to deterministic .docx bytes
+    assert data[:2] == b"PK"  # a real .docx (zip container)
+
+
+def test_requires_at_least_one_schedule() -> None:
     with pytest.raises(ValueError, match="at least one"):
         build_briefing([])
 
 
-def test_briefing_handles_undated_schedule() -> None:
+def test_undated_schedule_reports_not_statused() -> None:
     sch = Schedule(
         name="solo",
+        source_file="solo.xml",
         project_start=dt.datetime(2025, 1, 6, 8, 0),
         tasks=(Task(unique_id=1, name="A", duration_minutes=480),),
     )
     b = build_briefing([sch], today=TODAY)
-    project = next(s for s in b.sections if s.kind == "project")
-    assert "not statused" in project.statements[0].text
+    assert dict(b.meta_rows)["Schedule data date"] == "not statused"
+    for section in b.sections:
+        assert_all_cited(section.statements)
 
 
-def test_briefing_on_empty_scope_is_cited_and_says_nothing_to_brief() -> None:
-    """An empty scope (a filter that matched nothing / summary-only files) must yield a single
-    cited lede, not crash on uncitable trend/quality sentences (regression for the filter)."""
+def test_empty_scope_is_cited_and_says_nothing_to_brief() -> None:
+    """An empty scope (a filter that matched nothing / summary-only files) yields a single cited
+    section, not a crash on uncitable detail (regression for the session filter)."""
     start = dt.datetime(2025, 1, 6, 8, 0)
     empty = Schedule(
         name="empty", source_file="empty.xml", project_start=start, tasks=(), relationships=()

@@ -123,6 +123,29 @@
 .brief-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 18px; margin: 0 0 18px; }
 .brief-cards .panel { margin: 0; }
 .brief-lede p { font-size: 15px; }
+
+/* Executive Briefing — leadership forensic-summary document (ADR-0121): metadata header, a
+   verdict banner (status-tinted), then numbered sections rendered as one continuous document. */
+.brief-doc { max-width: 70em; }
+.brief-subtitle { margin: -2px 0 12px; color: var(--muted); font-size: 14px; }
+.brief-meta { border-collapse: collapse; margin: 0 0 14px; font-size: 13px; }
+.brief-meta th { text-align: left; color: var(--muted); font-weight: 600; padding: 2px 14px 2px 0; white-space: nowrap; }
+.brief-meta td { padding: 2px 0; }
+.brief-banner { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: stretch; padding: 12px 14px;
+  border-radius: 8px; margin: 0 0 16px; border: 1px solid var(--line); border-left-width: 5px; background: var(--field-bg); }
+.brief-banner.verdict-on-track { border-left-color: var(--ok); }
+.brief-banner.verdict-watch { border-left-color: var(--warn); }
+.brief-banner.verdict-at-risk { border-left-color: var(--bad); }
+.brief-stat { display: flex; flex-direction: column; gap: 2px; }
+.brief-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.brief-stat-value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.brief-h { margin: 18px 0 6px; }
+h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink); } h5.brief-h { font-size: 13px; color: var(--muted); }
+.brief-doc p { line-height: 1.5; }
+.brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
+.brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
+.brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
+.brief-table td.cite { color: var(--muted); font-size: 11px; white-space: nowrap; }
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }

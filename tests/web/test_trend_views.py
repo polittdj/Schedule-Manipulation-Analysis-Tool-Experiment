@@ -168,19 +168,19 @@ def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> No
     _upload(client, "Project2")
     _upload(client, "Project5")
     page = client.get("/briefing").text
-    assert "Diagnostic Executive Briefing" in page
-    assert "Workbook Summary" in page and "Trend Analysis" in page
-    assert "126 normal activities" in page  # golden project summary counts
-    assert "20 (15.9%) are complete" in page
-    assert "Schedule Quality Analysis" in page
-    assert "UID" in page  # citation tags rendered with every statement
+    assert "Schedule Forensics — Executive Briefing" in page
+    assert "1. The Bottom Line" in page and "4. Schedule Health Dashboard" in page
+    assert "3.1 What Changed Between the Versions" in page  # two versions: real then-vs-now
+    assert "class=cite" in page  # citation tags rendered with statements/tables
+    assert "/export/docx/briefing" in page  # Word hand-out export
 
 
 def test_briefing_single_version_works_without_trend(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/briefing").text
-    assert "Workbook Summary" in page and "Trend Analysis" not in page
-    assert "27 (21.4%) are complete" in page
+    assert "1. The Bottom Line" in page
+    # one version: the then-vs-now subsection states the single-version limitation
+    assert "Only one schedule version is loaded" in page
 
 
 def test_dashboard_links_trend_and_briefing(client: TestClient) -> None:

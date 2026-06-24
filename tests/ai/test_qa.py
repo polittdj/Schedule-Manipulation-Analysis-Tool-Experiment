@@ -218,7 +218,7 @@ def test_workbook_fact_sheet_spans_versions_and_is_cited(
     facts = build_workbook_fact_sheet(schedules, cpms)
     assert_all_cited(facts)  # §6 — every fact carries file + UID + task
     text = " ".join(f.text for f in facts)
-    assert "Schedule Forensics analysis" in text  # the workbook frame
-    assert "Project2" in text and "Project5" in text  # both versions narrated
+    assert "In one sentence:" in text  # the briefing bottom-line frame
+    assert "Project2" in text and "Project5" in text  # both versions referenced
     assert "Latest-version finish forecast" in text
-    assert "over time" in text  # the cross-version quality-trend sentences are present
+    assert "Manipulation signal" in text  # the latest-pair manipulation facts

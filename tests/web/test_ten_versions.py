@@ -54,8 +54,8 @@ def test_ten_versions_load_analyze_trend_and_brief(client: TestClient) -> None:
     assert [v["label"] for v in data["versions"]] == [f"v{i:02d}.json" for i in range(1, 11)]
     assert data["versions"][-1]["finish"] > data["versions"][0]["finish"]  # the injected slip
 
-    # the executive briefing covers all ten versions
+    # the executive briefing reports all ten loaded versions and subjects the newest (v10)
     briefing = client.get("/briefing").text
-    assert "10 schedule version(s)" in briefing
-    for i in range(1, 11):
-        assert f"v{i:02d}.json Project" in briefing
+    assert "Versions loaded" in briefing and "<td>10</td>" in briefing
+    assert "v10.json" in briefing  # the latest version is the report subject
+    assert "1. The Bottom Line" in briefing and "3.1 What Changed Between the Versions" in briefing
