@@ -15,6 +15,13 @@ detection, and serves an interactive, locally-rendered report with a cited local
    loopback-only and fails closed. **Never commit CUI files** — real `.mpp` / `.xlsx` / `.aft` / `.xer`
    / `.docx` schedules and reference exports. A pre-commit guard (`.githooks`, activated by the
    SessionStart hook) blocks them; intake/golden files live git-ignored under `00_REFERENCE_INTAKE/`.
+   **CUI boundary (operator-confirmed):** the *build/reference* inputs used to develop and parity-test
+   the tool — including `Large_Test_File.mpp`, the SSI/Acumen exports, and golden inputs — are **NOT
+   CUI** and may be loaded into a build session (e.g. uploaded to Claude Code). They are kept out of git
+   as large binaries / defense-in-depth, not because they are CUI. **Real CUI is only ever the
+   operator's production schedules loaded into the deployed tool, which runs locally and never touches a
+   build session.** The pre-commit guard still blocks `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` regardless,
+   so no binary reference file lands in the repo.
    Runtime I/O is **std-lib only** (no `requests`/`httpx`/etc.); a net-egress guard fails the build if a
    forbidden HTTP client enters the runtime, and an air-gap test fails if a served page references a
    remote asset.
