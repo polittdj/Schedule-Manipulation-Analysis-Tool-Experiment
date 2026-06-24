@@ -127,7 +127,7 @@ def test_briefing_polish_is_async_off_the_page_load_and_degrades_on_failure(
     _wire(monkeypatch, _PolishBackend())
     _load_example(client, state)
     page = client.get("/briefing").text
-    assert "Diagnostic Executive Briefing" in page  # deterministic briefing present on load…
+    assert "1. The Bottom Line" in page  # deterministic briefing present on load…
     assert "data-ai-endpoint" in page and "POLISHED" not in page  # …polish is deferred, not inline
     assert "POLISHED" in client.get("/api/ai/briefing").json()["html"]  # the endpoint does it
     # a dying model degrades the endpoint to {polished:false} (never a 500), page stays usable

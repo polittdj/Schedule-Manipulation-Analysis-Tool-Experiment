@@ -42,7 +42,12 @@ from schedule_forensics.ai import (
     route_backend,
 )
 from schedule_forensics.ai.brief import DiagnosticBrief, brief_blocks, build_brief
-from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing, build_briefing
+from schedule_forensics.ai.briefing import (
+    BriefingSection,
+    ExecutiveBriefing,
+    briefing_blocks,
+    build_briefing,
+)
 from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
 from schedule_forensics.ai.narrative import build_narrative
@@ -2259,6 +2264,30 @@ def create_app(
         return _export_response(
             fmt, TableSet(brief.title, (*tables, questions)), "diagnostic-brief"
         )
+
+    @app.get("/export/{fmt}/briefing")
+    def export_briefing(fmt: str) -> Response:
+        """The leadership Executive Briefing as a Word (.docx) or Excel (.xlsx) hand-out — the
+        same cited content the /briefing page renders (ADR-0121)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
+        briefing = build_briefing(schedules, cpms=cpms)
+        if fmt == "docx":
+            blocks = cast("list[Block]", briefing_blocks(briefing))
+            return Response(
+                content=render_document(blocks),
+                media_type=_EXPORT_MEDIA["docx"][0],
+                headers={"Content-Disposition": 'attachment; filename="executive-briefing.docx"'},
+            )
+        tables = tuple(
+            Table(s.heading, s.table.headers or ("Field", "Value"), s.table.rows)
+            for s in briefing.sections
+            if s.table is not None and s.table.rows
+        )
+        return _export_response(fmt, TableSet(briefing.title, tables), "executive-briefing")
 
     @app.get("/briefing", response_class=HTMLResponse)
     def briefing_view() -> HTMLResponse:
@@ -6402,7 +6431,7 @@ def _briefing_table_html(section: BriefingSection) -> str:
         head = (
             "<tr>"
             + "".join(f"<th scope=col>{_e(h)}</th>" for h in table.headers)
-            + "<th scope=col></th></tr>"
+            + "<th scope=col>Citation</th></tr>"
         )
     body = "".join(
         "<tr>"
@@ -6410,55 +6439,44 @@ def _briefing_table_html(section: BriefingSection) -> str:
         + f"<td class=cite>{_e(_cite_tag(cites))}</td></tr>"
         for row, cites in zip(table.rows, table.row_citations, strict=True)
     )
-    return f"<table>{head}{body}</table>"
+    return f"<table class=brief-table>{head}{body}</table>"
 
 
 def _briefing_body(briefing: ExecutiveBriefing) -> str:
-    """Render the ExecutiveBriefing readably (M18 reformat): the workbook lede as prose,
-    the cross-version trend and per-project quality verdicts as cited tables, and the
-    project summaries as side-by-side cards (polished prose + a profile strip). Every
-    statement and every table row carries its file + UID + task citation (§6)."""
+    """Render the leadership Executive Briefing (ADR-0121): a metadata header + a verdict banner,
+    then the numbered forensic sections (Bottom Line, Performance, Critical Path Then & Now, Health
+    Dashboard, Risks & Opportunities, Recommended Actions, How to Verify) as a single continuous
+    document. Every statement and every table row carries its file + UID + task citation (§6)."""
+    verdict_slug = briefing.verdict.lower().replace(" ", "-").replace("/", "")
+    meta = "".join(
+        f"<tr><th scope=row>{_e(k)}</th><td>{_e(v)}</td></tr>" for k, v in briefing.meta_rows
+    )
+    banner = "".join(
+        f"<div class=brief-stat><span class=brief-stat-label>{_e(k)}</span>"
+        f"<span class=brief-stat-value>{_e(v)}</span></div>"
+        for k, v in briefing.banner
+    )
     parts = [
-        f"<div class=panel><h2>{_e(briefing.title)}</h2>"
-        f"<p class=muted>Report generated on {_e(briefing.generated_on.strftime('%A, %B %d, %Y'))}."
-        " Every statement cites file + UniqueID + task name; use the browser's Print for a"
-        " hand-out copy.</p></div>"
+        '<div class="panel brief-doc">',
+        f"<h2>{_e(briefing.title)}</h2>",
+        f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>",
+        f"<table class=brief-meta>{meta}</table>",
+        f'<div class="brief-banner verdict-{_e(verdict_slug)}">{banner}</div>',
+        "<p class=muted>Every statement and table row cites file + UniqueID + task name. "
+        'Hand-out copy: <a href="/export/docx/briefing">&#11015; Word</a> &middot; '
+        '<a href="/export/xlsx/briefing">&#11015; Excel</a>.</p>',
     ]
-    cards: list[str] = []
-
-    def flush_cards() -> None:
-        if cards:
-            parts.append(f"<div class=brief-cards>{''.join(cards)}</div>")
-            cards.clear()
-
     for section in briefing.sections:
+        tag = f"h{min(section.level + 2, 6)}"
         prose = "".join(
             f"<p>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></p>"
             for s in section.statements
         )
-        if section.kind == "project":
-            cards.append(
-                f"<div class=panel><h2>{_e(section.heading)}</h2>"
-                f"{prose}{_briefing_table_html(section)}</div>"
-            )
-            continue
-        flush_cards()
-        if section.kind == "lede":
-            parts.append(
-                f'<div class="panel brief-lede"><h2>{_e(section.heading)}</h2>{prose}</div>'
-            )
-        elif section.kind in ("trend", "quality"):
-            parts.append(
-                f"<div class=panel><h2>{_e(section.heading)}</h2>"
-                f"{_briefing_table_html(section)}</div>"
-            )
-        else:  # prose fallback — any future section kind stays readable and cited
-            items = "".join(
-                f"<li>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></li>"
-                for s in section.statements
-            )
-            parts.append(f"<div class=panel><h2>{_e(section.heading)}</h2><ul>{items}</ul></div>")
-    flush_cards()
+        parts.append(
+            f"<{tag} class=brief-h>{_e(section.heading)}</{tag}>"
+            f"{prose}{_briefing_table_html(section)}"
+        )
+    parts.append("</div>")
     return "".join(parts)
 
 

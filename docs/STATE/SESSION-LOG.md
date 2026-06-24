@@ -3277,3 +3277,33 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Tests:** `test_default_idle_grace_is_ten_minutes` pins 600s (launcher mode incl.) + that an
   explicit override still wins; existing watchdog/`_is_idle` tests (inject a tiny grace) unchanged.
 - **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0120**.
+
+---
+
+## 2026-06-24 (cont. 4) — Executive Briefing rebuilt as a leadership forensic summary + Word/Excel export (ADR-0121)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (reset fresh onto `main` after #233 merged).
+  **Model/mode:** Opus 4.8. **Operator request:** "Redo the Executive Briefing to model the attached
+  example" — a NASA Glenn forensic "Executive Summary" .docx (read locally; not committed).
+- **Redesign (ADR-0121):** `ai/briefing.py` rebuilt into the example's numbered, plain-English
+  structure for leadership without a scheduling background: metadata header + status-tinted verdict
+  banner (ON TRACK / WATCH / AT RISK), then **1. The Bottom Line** (verdict + plain story + the
+  duration-based earned-schedule SPI), **2. How the Project Has Performed**, **3. The Critical Path —
+  Then and Now** (real entered/left from `compute_path_evolution` with ≥2 versions; an honest
+  single-version limitation note otherwise — an MPP stores only the current Critical flag),
+  **4. Schedule Health Dashboard**, **5. Risks & Opportunities** (`recommend` findings),
+  **6. Recommended Actions** (+ if-nothing-done / if-implemented), **7. How to Verify** (+ methodology
+  + limitations). Every figure engine-computed (`compute_finish_forecasts` SPI, `compute_s_curve`,
+  `compute_activity_makeup`, `audit_schedule`); every statement + table row cited (§6); the model
+  only rephrases prose.
+- **Model/data:** `BriefingSection` gained `level`; `ExecutiveBriefing` gained `subtitle`/`verdict`/
+  `meta_rows`/`banner`. No model-field change → `SCHEMA_VERSION` untouched. `ai/qa.py`'s workbook
+  fact-sheet reuses the new statements (signature preserved).
+- **Word/Excel:** new `/export/{fmt}/briefing` route + `briefing_blocks()`; `/briefing` renders one
+  continuous `brief-doc` and links the .docx/.xlsx hand-outs (verified PK-zip bytes).
+- **Tests:** `test_briefing.py` / `test_coverage_briefing.py` rewritten for the new outline, banner,
+  verdict arms, workday-slip math, and §6 fallbacks; `test_briefing_view.py` covers the page + exports;
+  trend / ask / ten-version / qa / coverage tests updated to the new content.
+- **Also (chat-only):** beginner install guide for `llama3.1:8b`, `qwen2.5:7b-instruct`, and
+  `qwen2.5:72b-instruct` (operator's new 128 GB box), grounded in `docs/CONNECT-A-BIGGER-AI-MODEL.md`.
+- **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0121**.

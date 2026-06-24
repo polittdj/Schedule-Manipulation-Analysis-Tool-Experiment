@@ -288,21 +288,35 @@ def test_render_counterfactual_no_target_uid() -> None:
     assert "X" in out and "Target activity" not in out and "individual impact" not in out
 
 
-def test_briefing_body_renders_a_prose_fallback_section() -> None:
-    from schedule_forensics.ai.briefing import BriefingSection, ExecutiveBriefing
+def test_briefing_body_renders_header_banner_and_sections() -> None:
+    from schedule_forensics.ai.briefing import BriefingSection, BriefingTable, ExecutiveBriefing
     from schedule_forensics.ai.citations import CitedStatement
     from schedule_forensics.engine.dcma_audit import Citation
     from schedule_forensics.web.app import _briefing_body
 
-    stmt = CitedStatement("a plain note", (Citation("f.xml", 1, "A"),))
+    cite = Citation("f.xml", 1, "A")
+    stmt = CitedStatement("a plain note", (cite,))
     brief = ExecutiveBriefing(
         title="Briefing",
+        subtitle="Health Review",
         generated_on=dt.date(2025, 1, 1),
-        # "prose" is none of lede/trend/quality/project -> the readable list fallback
-        sections=(BriefingSection("Misc", (stmt,), kind="prose"),),
+        verdict="WATCH",
+        meta_rows=(("Report date", "x"),),
+        banner=(("Status", "WATCH"),),
+        sections=(
+            BriefingSection(
+                "1. Misc",
+                (stmt,),
+                level=1,
+                table=BriefingTable(("Field", "Value"), (("a", "b"),), ((cite,),)),
+            ),
+        ),
     )
     out = _briefing_body(brief)
-    assert "a plain note" in out and "Misc" in out
+    assert "a plain note" in out and "1. Misc" in out  # heading + cited prose
+    assert "brief-banner" in out and "verdict-watch" in out  # the status-tinted banner
+    assert "brief-meta" in out and "Health Review" in out  # metadata header + subtitle
+    assert "brief-table" in out  # the section's cited table
 
 
 def test_compare_body_reports_an_earlier_finish() -> None:

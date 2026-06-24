@@ -93,7 +93,7 @@ def test_workbook_ask_answers_from_cross_version_facts(client: TestClient) -> No
     assert body["mode"] == "interpretive"  # the default answering mode
     assert body["facts"] and all(f["citations"] for f in body["facts"])
     text = " ".join(f["text"] for f in body["facts"])
-    assert "2 schedule version(s)" in text  # the workbook frame fact
+    assert "In one sentence:" in text  # the briefing bottom-line frame fact always leads
 
 
 def test_workbook_ask_with_one_version_uses_its_full_fact_sheet(client: TestClient) -> None:
