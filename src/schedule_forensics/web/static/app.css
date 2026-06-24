@@ -211,6 +211,10 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
   font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal;
 }
 .dcma-metric:hover + .dcma-tip, .dcma-metric:focus + .dcma-tip { display: block; }
+/* The analysis overview tooltip is parented to <body> and positioned by app.js (left/top inline),
+   so position:fixed lets it escape the chart frame's overflow — it no longer gets clipped behind
+   the Gantt. z-index clears the maximize frame (9999); pointer-events:none avoids hover flicker. */
+.dcma-tip-float { position: fixed; left: 0; top: 0; z-index: 10000; margin: 0; pointer-events: none; }
 .dcma-tip p { margin: 5px 0 0; }
 .dcma-tip code { font-size: 11px; background: var(--field-bg); padding: 0 3px; border-radius: 3px; }
 @media print { .dcma-tip { display: none !important; } .dcma-info { display: none; } }
@@ -236,7 +240,7 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
   flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap;
 }
 .dcma-ov-row .dcma-info { flex: 0 0 auto; }
-.dcma-ov-row:hover .dcma-tip, .dcma-ov-row:focus-within .dcma-tip { display: block; }
+/* the overview tooltip now lives on <body> and is toggled by app.js (see .dcma-tip-float above) */
 
 /* Chart legibility (operator request): every chart carries a one-line description + a
    color-key legend; swatches reuse theme colors and recolor live with the theme. */

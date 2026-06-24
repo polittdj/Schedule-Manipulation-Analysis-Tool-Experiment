@@ -52,14 +52,38 @@
   // DCMA overview: a stoplight (green/amber/red) + the measured value per check, instead of a
   // bar. Each row carries a hover/focus tooltip (what it is, why it matters, the threshold, and a
   // pass + a fail example). A plain-text title= keeps the same detail with no CSS/JS (a11y).
+  // Place a floating tooltip (appended to <body>, position:fixed) just under its row, flipping
+  // above when there's no room below and clamping to the viewport. Fixed positioning on <body>
+  // lets the tip ESCAPE the chart frame's overflow clip — the old in-flow absolute tooltip was
+  // cut off behind the Gantt (operator bug report).
+  function placeFloatTip(tip, row) {
+    tip.style.display = "block"; // must be visible to measure its size
+    const pad = 6;
+    const r = row.getBoundingClientRect();
+    const t = tip.getBoundingClientRect();
+    let left = r.left;
+    if (left + t.width > window.innerWidth - pad) left = window.innerWidth - pad - t.width;
+    let top = r.bottom + 4;
+    if (top + t.height > window.innerHeight - pad) {
+      const above = r.top - 4 - t.height;
+      top = above >= pad ? above : Math.max(pad, window.innerHeight - pad - t.height);
+    }
+    tip.style.left = Math.max(pad, left) + "px";
+    tip.style.top = Math.max(pad, top) + "px";
+  }
+
   function dcmaPanel(container, dcma) {
+    // a prior render's floating tips live on <body>; clear them before rebuilding
+    Array.prototype.forEach.call(document.querySelectorAll(".dcma-tip-float"), (n) => n.remove());
     const box = el("div", { class: "chart dcma-overview" });
     box.appendChild(el("h3", { text: "DCMA-14 checks" }));
     Object.keys(dcma).forEach((k) => {
       const d = dcma[k];
       const st = d.status === "PASS" ? "ok" : d.status === "FAIL" ? "bad" : "warn";
       const heading = d.label + " — " + d.name;
-      const tip = el("div", { class: "dcma-tip", role: "tooltip" });
+      // the rich tooltip is parented to <body> (position:fixed) so the chart frame's overflow
+      // can never clip it; app.js shows/positions it on hover & keyboard focus
+      const tip = el("div", { class: "dcma-tip dcma-tip-float", role: "tooltip" });
       tip.appendChild(el("b", { text: heading }));
       const para = (label, val) => {
         if (!val) return;
@@ -73,19 +97,12 @@
       para("Threshold:", d.threshold);
       para("Pass example:", d.example_ok);
       para("Fail example:", d.example_fail);
-      const plain = [
-        d.definition,
-        d.why && "Why it matters: " + d.why,
-        d.threshold && "Threshold: " + d.threshold,
-        d.example_ok && "Pass example: " + d.example_ok,
-        d.example_fail && "Fail example: " + d.example_fail,
-      ].filter(Boolean).join("  ");
+      document.body.appendChild(tip);
       const row = el(
         "div",
         {
           class: "dcma-ov-row sl-" + st,
           tabindex: "0",
-          title: plain,
           "aria-label": heading + ": " + d.status + ", " + d.measure,
         },
         [
@@ -93,9 +110,14 @@
           el("span", { class: "dcma-ov-name", text: heading }),
           el("span", { class: "dcma-ov-measure", text: d.measure }),
           el("span", { class: "dcma-info", "aria-hidden": "true", text: "ⓘ" }),
-          tip,
         ]
       );
+      const show = () => placeFloatTip(tip, row);
+      const hide = () => { tip.style.display = "none"; };
+      row.addEventListener("mouseenter", show);
+      row.addEventListener("mouseleave", hide);
+      row.addEventListener("focus", show);
+      row.addEventListener("blur", hide);
       box.appendChild(row);
     });
     container.appendChild(box);

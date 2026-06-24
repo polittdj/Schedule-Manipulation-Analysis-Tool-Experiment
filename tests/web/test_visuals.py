@@ -217,6 +217,12 @@ def test_dcma_overview_is_a_stoplight_not_a_bar(client: TestClient) -> None:
     # the DCMA red bar is gone (its title string removed); the stoplight panel replaces it
     assert "dcma-overview" in js and "sl-dot" in js
     assert "DCMA-14 checks (red = fail)" not in js
+    # the hover tooltip is parented to <body> as a fixed element so the chart frame's overflow
+    # can't clip it behind the Gantt (operator bug report); app.js positions it on hover/focus
+    assert "dcma-tip-float" in js and "document.body.appendChild(tip)" in js
+    assert "placeFloatTip" in js
+    css = client.get("/static/app.css").text
+    assert ".dcma-tip-float" in css and "position: fixed" in css
 
 
 def test_dcma_metric_docs_carry_importance_and_indication() -> None:
