@@ -75,11 +75,17 @@ def test_selected_backend_polishes_the_report_narrative_and_caches(
     fake = _PolishBackend()
     _wire(monkeypatch, fake)
     key = _load_example(client, state)
+    # the report page renders the deterministic narrative and defers polish (it must never block the
+    # render on a slow local model — the .mpp "won't load" / spinning-tab regression)
     page = client.get(f"/analysis/{quote(key)}").text
-    assert "POLISHED" in page  # the selected backend's rephrase reached the page
+    assert "POLISHED" not in page and "data-ai-endpoint" in page
+    assert fake.calls == 0  # the model is NOT run during the page render
+    # the async endpoint does the polish and caches it per (schedule, backend, model)
+    html = client.get(f"/api/ai/narrative?key={quote(key)}").json()["html"]
+    assert "POLISHED" in html
     calls = fake.calls
     assert calls > 0
-    again = client.get(f"/analysis/{quote(key)}").text
+    again = client.get(f"/api/ai/narrative?key={quote(key)}").json()["html"]
     assert "POLISHED" in again
     assert fake.calls == calls  # polished once per (schedule, backend, model) — then cached
 
@@ -89,9 +95,10 @@ def test_settings_change_switches_the_narrative_backend_immediately(
 ) -> None:
     _wire(monkeypatch, _PolishBackend())
     key = _load_example(client, state)
-    assert "POLISHED" in client.get(f"/analysis/{quote(key)}").text
+    assert "POLISHED" in client.get(f"/api/ai/narrative?key={quote(key)}").json()["html"]
     # switching to the Null backend must bypass the probe TTL and take effect now
     client.post("/settings", data={"classification": "CLASSIFIED", "backend": "null", "model": "x"})
+    assert client.get(f"/api/ai/narrative?key={quote(key)}").json()["polished"] is False
     page = client.get(f"/analysis/{quote(key)}").text
     assert "POLISHED" not in page and "AI narrative" in page
 
@@ -102,9 +109,13 @@ def test_figure_fabricating_generation_never_reaches_the_page(
     fake = _FabricatorBackend()
     _wire(monkeypatch, fake)
     key = _load_example(client, state)
-    page = client.get(f"/analysis/{quote(key)}").text
+    # the fabricating model runs at the async endpoint; the reattach figure-gate strips every
+    # invented number, so no fabricated figure can ever reach the client
+    html = client.get(f"/api/ai/narrative?key={quote(key)}").json()["html"]
     assert fake.calls > 0  # generation ran…
-    assert "FABRICATED" not in page and "12345" not in page  # …and was discarded wholesale
+    assert "FABRICATED" not in html and "12345" not in html  # …invented figure discarded
+    page = client.get(f"/analysis/{quote(key)}").text
+    assert "FABRICATED" not in page and "12345" not in page
     assert "AI narrative" in page  # the deterministic narrative serves instead
 
 
@@ -140,20 +151,21 @@ def test_briefing_polish_is_async_off_the_page_load_and_degrades_on_failure(
 
 
 class _FakeOllamaManager:
-    """Records ensure_running()/shutdown() so the lazy-start wiring can be asserted off-thread."""
+    """Records ensure_running()/shutdown() so the lazy start AND stop wiring can be asserted
+    off-thread (both run on a background thread so the redirect never waits on Ollama)."""
 
     def __init__(self) -> None:
         import threading
 
         self.started = threading.Event()
-        self.stopped = False
+        self.stopped = threading.Event()
 
     def ensure_running(self) -> str:
         self.started.set()
         return "started"
 
     def shutdown(self) -> None:
-        self.stopped = True
+        self.stopped.set()
 
 
 def test_enabling_ollama_in_settings_starts_it_lazily() -> None:
@@ -179,12 +191,85 @@ def test_settings_lazy_start_is_a_no_op_without_a_manager(client: TestClient) ->
     assert resp.status_code in (200, 303)  # redirect, no crash when app.state.ollama is None
 
 
+def test_switching_the_backend_off_ollama_stops_the_local_model() -> None:
+    """Turning the AI off Ollama (to Null/OpenAI/Cloud) stops the local model the tool started so it
+    is never left consuming RAM/CPU once it is no longer the chosen backend (operator report)."""
+    mgr = _FakeOllamaManager()
+    client = TestClient(create_app(SessionState(), ollama=mgr))
+    client.post(
+        "/settings", data={"classification": "CLASSIFIED", "backend": "ollama", "model": "x"}
+    )
+    assert mgr.started.wait(2.0)
+    client.post("/settings", data={"classification": "CLASSIFIED", "backend": "null", "model": "x"})
+    assert mgr.stopped.wait(2.0)  # switching the AI off Ollama stopped the local server
+
+
+def test_ai_off_button_routes_to_null_and_stops_the_model() -> None:
+    """The explicit 'Turn AI off' control routes back to the deterministic Null backend AND stops
+    the local model (operator order: an off switch once the AI is on, without quitting the tool)."""
+    from schedule_forensics.ai.backend import AIConfig
+
+    mgr = _FakeOllamaManager()
+    st = SessionState()
+    st.ai_config = AIConfig(backend="ollama")
+    client = TestClient(create_app(st, ollama=mgr))
+    resp = client.post("/settings/ai-off")
+    assert resp.status_code in (200, 303)
+    assert st.ai_config.backend == "null"  # routed back to the offline deterministic backend
+    assert mgr.stopped.wait(2.0)  # and the local model was stopped
+
+
+def test_wipe_turns_ai_off_and_stops_the_model() -> None:
+    """A session wipe is a full reset: it turns the AI back off and stops any local model, so a
+    wiped session never leaves Ollama running (operator report: Ollama survived a Wipe -> Quit)."""
+    from schedule_forensics.ai.backend import AIConfig
+
+    mgr = _FakeOllamaManager()
+    st = SessionState()
+    st.ai_config = AIConfig(backend="ollama")
+    client = TestClient(create_app(st, ollama=mgr))
+    client.post("/session/wipe")
+    assert st.ai_config.backend == "null"
+    assert mgr.stopped.wait(2.0)
+
+
+def test_settings_shows_the_ai_off_button_only_when_a_model_is_active(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    """The one-click 'Turn AI off' control is shown only while a real local model is active (there
+    is nothing to turn off otherwise)."""
+
+    class _Reachable:
+        name = "ollama"
+        is_local = True
+
+        def is_available(self) -> bool:
+            return True
+
+        def unavailable_reason(self) -> None:
+            return None
+
+        def list_models(self) -> tuple[str, ...]:
+            return ("m",)
+
+        def pull_model(self, model: str) -> None: ...
+
+        def generate(self, prompt: str) -> str:
+            return ""
+
+    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
+    page = client.get("/settings").text
+    assert "/settings/ai-off" in page and "Turn the AI off" in page
+    monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: None)  # no model reachable
+    assert "/settings/ai-off" not in client.get("/settings").text
+
+
 def test_wipe_clears_polished_narratives(
     monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
 ) -> None:
     _wire(monkeypatch, _PolishBackend())
     key = _load_example(client, state)
-    client.get(f"/analysis/{quote(key)}")
+    client.get(f"/api/ai/narrative?key={quote(key)}")  # the async polish caches into state.polished
     assert state.polished
     client.post("/session/wipe")
     assert not state.polished

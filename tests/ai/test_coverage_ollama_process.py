@@ -151,8 +151,14 @@ def test_default_stop_server_runs_the_platform_kill(monkeypatch: pytest.MonkeyPa
     calls: list[list[str]] = []
     monkeypatch.setattr(op.subprocess, "run", lambda cmd, **k: calls.append(cmd))
     op._default_stop_server()
-    assert len(calls) == 1
-    assert "ollama.exe" in calls[0] if sys.platform == "win32" else calls[0][:2] == ["pkill", "-x"]
+    assert calls  # at least one OS kill was issued
+    if sys.platform == "win32":  # pragma: no cover - Windows-only branch
+        # the tray supervisor (ollama app.exe) AND the server (ollama.exe) are both killed — killing
+        # only the server lets the tray respawn it (the operator saw ollama.exe survive Quit)
+        images = {c[-1] for c in calls}
+        assert "ollama app.exe" in images and "ollama.exe" in images
+    else:
+        assert len(calls) == 1 and calls[0][:2] == ["pkill", "-x"] and "ollama" in calls[0]
 
 
 def test_default_stop_server_swallows_errors(monkeypatch: pytest.MonkeyPatch) -> None:

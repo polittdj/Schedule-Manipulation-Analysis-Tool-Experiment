@@ -29,6 +29,13 @@ from schedule_forensics.model import Schedule
 #: Hard cap on the MPXJ conversion (seconds) so a hung JVM can't stall the tool.
 _CONVERT_TIMEOUT_S = 300
 
+#: Windows-only ``CREATE_NO_WINDOW`` (0 / no-op on POSIX). The desktop app runs **windowless**
+#: (``pythonw.exe``, no console); spawning a console child (``java.exe``) from it would flash a
+#: console window and — with an inherited/invalid console stdin handle — can **hang** the
+#: conversion (the operator saw ``.mpp`` loads "spin forever"). Pairing this with
+#: ``stdin=subprocess.DEVNULL`` makes the JVM headless and un-blockable on stdin.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 #: Standard Windows JDK/JRE install roots — Windows installers often do NOT update PATH,
 #: and a desktop shortcut won't see PATH changes until the next login anyway, so we look
 #: in the well-known places ourselves (each contains versioned dirs like ``jdk-21.0.4+7``).
@@ -164,10 +171,12 @@ def parse_mpp(path: str | os.PathLike[str]) -> Schedule:
         try:
             result = subprocess.run(  # nosec B603  # fixed argv, shell=False, validated paths
                 command,
+                stdin=subprocess.DEVNULL,  # no inherited console stdin (windowless desktop)
                 capture_output=True,
                 text=True,
                 timeout=_CONVERT_TIMEOUT_S,
                 check=False,
+                creationflags=_NO_WINDOW,  # Windows: no console window (0 on POSIX)
             )
         except (OSError, subprocess.SubprocessError) as exc:
             raise ImporterError(f"MPXJ runner failed to start: {exc}") from exc

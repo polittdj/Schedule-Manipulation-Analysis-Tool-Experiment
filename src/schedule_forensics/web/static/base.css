@@ -56,6 +56,8 @@ transition:border-color .15s,background .15s;background:var(--dz-bg)}
 .btn{display:inline-block;background:var(--accent);color:var(--btn-ink);border-radius:7px;padding:9px 18px;
 font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
 .btn-link{color:var(--accent);font-weight:600}
+.btn-danger{display:inline-block;background:var(--bad);color:#fff;border:0;border-radius:7px;
+padding:8px 16px;font:inherit;font-weight:600;cursor:pointer}.btn-danger:hover{filter:brightness(1.08)}
 .linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
 cursor:pointer;text-decoration:underline}
 .row-actions{font-size:13px}.row-actions a{color:var(--accent)}
