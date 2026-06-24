@@ -450,3 +450,12 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 .curve-legend-item.off { opacity: .5; text-decoration: line-through; }
 .curve-swatch { display: inline-block; width: 16px; height: 0; border-top-width: 3px; flex: 0 0 auto; }
 .curve-legend-ctrl { display: inline-flex; gap: 10px; margin-left: 6px; }
+
+/* SSI editable schedule grid (ADR-0123): the schedule as an inline-editable spreadsheet/Gantt.
+   It reuses .gantt-grid density/gridlines; the host scrolls both ways for a full ~1700-row plan. */
+.sra-grid-host { overflow: auto; max-height: 72vh; margin-top: 6px; }
+.sra-grid input.sra-inp { font-size: 11px; padding: 0 2px; }
+.sra-grid td.sra-focus-cell { text-align: center; }
+tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
+.g-envelope { position: absolute; top: 1px; height: 11px; border-radius: 3px;
+  background: var(--warn); opacity: .25; }

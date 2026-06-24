@@ -3367,3 +3367,30 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   `test_sra*.py` still green. **Deferred (follow-up, same branch):** the inline-editable Gantt grid,
   JSON Save/Load, and the six-sheet Excel export build on these routes.
 - **Gate:** ruff/format/mypy(strict)/bandit/`node --check` clean; full suite green. Highest ADR = **0123**.
+
+---
+
+## 2026-06-24 (cont. 7) — SRA SSI remodel finished: editable grid + JSON Save/Load + Excel/Word export (ADR-0123)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (fresh on `main` after #241 merged). **Model/mode:**
+  Opus 4.8. The deferred tail of the SSI remodel, all on the routes #241 landed (still ADR-0123, no new ADR).
+- **Editable schedule grid** (`web/static/sra_grid.js`, vendored, reuses `SFGantt`): the whole plan as an
+  SSI-style grid — inline **Risk Ranking Factor (1-5)** / **Best/Worst Case days**, a **focus** radio. A
+  factor auto-fills BC/WC from the factor table; an explicit BC/WC is a manual override (mirrors
+  `_ssi_three_point`). One delegated listener queues edits per-UID; **Save grid** batch-POSTs `deltas` JSON
+  to `/sra/grid`. Row feed `GET /api/sra/grid` reuses `_activity_rows` (+ remaining_days/factor/bc/wc/
+  has_risk/is_focus/editable). MS-Project Y/Q/M timeline + a translucent BC..WC finish envelope; summaries
+  bold + non-editable.
+- **JSON Save/Load** (`GET /sra/ssi/save`, `POST /sra/ssi/load`): versioned (`setup_version=1`) object
+  (focus, factor table, factors, bcwc minutes, risks, run options). Load validates UIDs against the active
+  schedule (unknown/summary dropped, factors clamped, probs 0..1). Std-lib `json` only; CUI-safe download.
+- **Excel/Word export** (`GET /export/{fmt}/sra`): six tables (run setup, per-task durations, risk
+  register, focus-finish results, OAT sensitivity, the two 5x5 matrices) via the existing
+  `TableSet`/`render_xlsx`/`render_docx` (CUI banner, byte-deterministic). Runs the MC + OAT on demand.
+- **No model/schema change** (SSI inputs live on `SessionState`); offline/std-lib/air-gap/CUI intact; new
+  JS vendored + same-origin. `contextlib` added to app.py (SIM105).
+- **Tests:** `tests/web/test_sra_grid.py` (11) — grid feed shape, factor auto-fill + manual override,
+  unknown/summary UID rejection, Save->Load round-trip, unknown-UID drop on load, xlsx/docx zip smoke,
+  no-schedule 400s, air-gap. Full suite **1553 passed**, 7 env-gated skips, 2 documented xfails; coverage
+  gates held.
+- **Gate:** ruff/format/mypy(strict)/bandit/`node --check` clean. Highest ADR = **0123** (unchanged).
