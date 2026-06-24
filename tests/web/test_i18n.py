@@ -44,6 +44,29 @@ def test_all_catalogs_cover_the_same_term_set() -> None:
     assert len(keysets["es"]) > 100  # comprehensive core UI coverage (nav + page titles + controls)
 
 
+def test_catalog_covers_ui_chrome_and_metric_terms() -> None:
+    # operator: translate the WHOLE UI offline, including domain/metric terms (the AI fallback only
+    # covers the long-tail prose). A representative sample of the expansion must be present.
+    es = i18n.catalog_for("es")
+    assert len(es) >= 180  # the expanded offline dictionary (was ~117)
+    for term in (
+        "Hard Constraints",
+        "Negative Float",
+        "Missing Logic",
+        "total float",
+        "Severity",
+        "Why it matters:",
+        "Threshold:",
+        "Realism",
+        "Show driving path",
+        "Forecast finish",
+    ):
+        assert term in es, term
+    # metric names are localized (operator chose "translate everything")
+    assert es["Negative Float"] == "Holgura negativa"
+    assert i18n.catalog_for("de")["Hard Constraints"] == "Harte Einschränkungen"
+
+
 @pytest.fixture
 def state() -> SessionState:
     return SessionState()

@@ -37,12 +37,12 @@
 .gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 180px; max-width: 380px; }
 .g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; white-space: nowrap; }
 .g-cell { padding: 4px 0; }
-.g-track { position: relative; height: 16px; background: var(--field-bg); border-radius: 3px; overflow: hidden; }
+.g-track { position: relative; height: 16px; background: var(--gantt-canvas); border-radius: 3px; overflow: hidden; }
 .g-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; background: var(--accent); }
 .g-bar.g-crit { background: var(--bad); }
-.g-bar.g-sum { top: 6px; height: 4px; background: var(--sum-ink); border-radius: 1px; }
-.g-done { height: 100%; background: var(--done-overlay); border-radius: 3px 0 0 3px; }
-.g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--ink); transform: translateX(-50%) rotate(45deg); }
+.g-bar.g-sum { top: 6px; height: 4px; background: var(--gantt-sum); border-radius: 1px; }
+.g-done { height: 100%; background: var(--gantt-done); border-radius: 3px 0 0 3px; }
+.g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--gantt-ms); transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
 #grid tr.sum td { color: var(--sum-ink); font-weight: 600; }
 #grid .filter-row td { padding: 2px 4px; }
@@ -60,7 +60,7 @@
 .gantt-head { align-items: flex-end; }
 .gantt-name { flex: 0 0 220px; white-space: normal; word-break: break-word; line-height: 1.3; }
 .gantt-scale { position: relative; height: 18px; flex: 0 0 auto; }
-.gantt-track { position: relative; height: 14px; background: var(--field-bg); border-radius: 3px; flex: 0 0 auto; }
+.gantt-track { position: relative; height: 14px; background: var(--gantt-canvas); border-radius: 3px; flex: 0 0 auto; }
 .gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
 /* tier colors apply to the BARS only — the legend text uses the color rules below
    (an unscoped background made the legend labels same-color-on-same-color: invisible) */
@@ -84,9 +84,9 @@
 .path-grid td, .path-grid th { white-space: nowrap; }
 .path-grid td.pv-name { white-space: normal; word-break: break-word; min-width: 200px; max-width: 360px; }
 .path-timeline, .path-timeline-head { padding: 2px 0 !important; }
-.path-track, .path-scale { position: relative; height: 16px; background: var(--field-bg); }
+.path-track, .path-scale { position: relative; height: 16px; background: var(--gantt-canvas); }
 .path-scale { height: 18px; }
-.pv-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid-line, rgba(127,127,127,.25)); }
+.pv-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
 .pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }
 .pv-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); z-index: 2; }
 .path-grid tr.done td { color: var(--muted); }
@@ -100,14 +100,14 @@
 .g-band {
   position: absolute; top: 0; height: 18px; line-height: 17px; overflow: hidden;
   box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 10px;
-  color: var(--muted); border-left: 1px solid var(--grid-line, rgba(127, 127, 127, .22));
-  border-bottom: 1px solid var(--grid-line, rgba(127, 127, 127, .22));
+  background: var(--gantt-band); color: var(--gantt-band-ink);
+  border-left: 1px solid var(--gantt-grid-qtr); border-bottom: 1px solid var(--gantt-grid-qtr);
 }
-.g-tier-yr .g-band { font-weight: 600; color: var(--ink); font-size: 11px; }
-.g-tier-qtr .g-band { color: var(--ink); }
-.g-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(127, 127, 127, .14); }
-.g-grid-qtr { background: rgba(127, 127, 127, .28); }
-.g-grid-yr { background: rgba(127, 127, 127, .45); }
+.g-tier-yr .g-band { font-weight: 600; color: var(--gantt-band-ink); font-size: 11px; }
+.g-tier-qtr .g-band { color: var(--gantt-band-ink); }
+.g-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
+.g-grid-qtr { background: var(--gantt-grid-qtr); }
+.g-grid-yr { background: var(--gantt-grid-yr); }
 .field-toggle { margin-right: 6px; font-size: 12px; }
 /* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
 .field-toggle.field-custom { color: var(--accent, #6ea8fe); }

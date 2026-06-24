@@ -1,6 +1,31 @@
-# Handoff — 2026-06-24 (urgent fixes: `.mpp` loads no longer hang on a slow model; Ollama fully stops + an "AI off" switch; extends ADR-0122)
+# Handoff — 2026-06-24 (operator bug batch PR 2 of 3: nav legibility + MS-Project Gantt canvas + much wider offline translation)
 
-> ## STATUS (current) — operator bug batch, PR 1 of 3: the analysis report never blocks on the AI, and Ollama is fully controllable/stoppable; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — PR 2 of 3 (UI): visible nav labels + de-bunched spacing, MS-Project Gantt plotting area, offline UI translation 7%→~58%; branch `claude/compassionate-ptolemy-wip898`
+>
+> **PR 1 (`.mpp`/Ollama) merged as #236.** This PR ships the UI cluster from the operator's batch:
+> - **Nav legibility + spacing.** The function labels (OVERVIEW/ASSESSMENT/CONTROL/RISKS…) were 10px
+>   at 0.6 opacity → now 12px, full-opacity, accent-coloured; nav links brightened to `--ink`. The
+>   ~25–30% spacing condensation from #224 is reverted (main 16/22→24/28, panel 13/16→18/20 + margin
+>   12→18, h2 9→12, th/td 5/9→7/10, header 10/20→14/24) so the UI is no longer "bunched up".
+> - **MS-Project Gantt canvas (dark mode kept).** New theme-independent `--gantt-*` tokens (white
+>   canvas, light/medium/dark gridlines, pale header band, dark milestone/%-complete overlay); the
+>   Gantt classes (`.g-track`/`.g-grid*`/`.g-band`/`.gantt-track`/`.path-track`) point at them, so the
+>   plotting area mirrors MS Project in BOTH themes while the rest of the page stays dark. Critically
+>   fixes the milestone diamond (`--ink`, invisible on white) and the %-complete overlay (was white-on-
+>   white in dark mode).
+> - **Translation (operator chose "both: offline dict + AI", "translate everything").** Verified the
+>   switch mechanism already works (reload + non-destructive client translate; switched es→fr→de→en→pt
+>   fine). The gap was COVERAGE: the offline catalog was 117 terms (~7% of visible UI). Expanded
+>   `i18n._TERMS` to **191 terms** (+UI chrome, DCMA/EVM metric names, severities, banners) → ~58% of
+>   short UI strings now translate **offline**; the AI fallback covers the long-tail prose when a model
+>   is on. Schedule DATA (task names) intentionally left untranslated.
+> - **Gate:** ruff/format/mypy/bandit/`node --check` clean; full suite running. No new ADR.
+> - **Next — PR 3:** the big SRA SSI remodel (editable Gantt grid + Risk Ranking Factors + risk
+>   register + 5×5 matrices + correlation + Save/Load + Excel). Plan: the SRA design is written and
+>   parity-anchored (BC/WC formula, deterministic focus finish 2027-12-03, OAT sensitivity all verified
+>   against the operator's SSI exports).
+>
+> ## STATUS (prev) — operator bug batch, PR 1 of 3: the analysis report never blocks on the AI, and Ollama is fully controllable/stoppable; branch `claude/compassionate-ptolemy-wip898`
 >
 > **Operator report (this session): a batch of issues.** This PR ships the two urgent ones; UI fixes
 > (nav legibility/spacing, MS-Project Gantt background, full i18n) and the big SRA SSI remodel follow
