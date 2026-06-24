@@ -49,16 +49,62 @@
     container.appendChild(box);
   }
 
+  // DCMA overview: a stoplight (green/amber/red) + the measured value per check, instead of a
+  // bar. Each row carries a hover/focus tooltip (what it is, why it matters, the threshold, and a
+  // pass + a fail example). A plain-text title= keeps the same detail with no CSS/JS (a11y).
+  function dcmaPanel(container, dcma) {
+    const box = el("div", { class: "chart dcma-overview" });
+    box.appendChild(el("h3", { text: "DCMA-14 checks" }));
+    Object.keys(dcma).forEach((k) => {
+      const d = dcma[k];
+      const st = d.status === "PASS" ? "ok" : d.status === "FAIL" ? "bad" : "warn";
+      const heading = d.label + " — " + d.name;
+      const tip = el("div", { class: "dcma-tip", role: "tooltip" });
+      tip.appendChild(el("b", { text: heading }));
+      const para = (label, val) => {
+        if (!val) return;
+        const node = el("p", {});
+        if (label) node.appendChild(el("b", { text: label + " " }));
+        node.appendChild(document.createTextNode(val));
+        tip.appendChild(node);
+      };
+      para("", d.definition);
+      para("Why it matters:", d.why);
+      para("Threshold:", d.threshold);
+      para("Pass example:", d.example_ok);
+      para("Fail example:", d.example_fail);
+      const plain = [
+        d.definition,
+        d.why && "Why it matters: " + d.why,
+        d.threshold && "Threshold: " + d.threshold,
+        d.example_ok && "Pass example: " + d.example_ok,
+        d.example_fail && "Fail example: " + d.example_fail,
+      ].filter(Boolean).join("  ");
+      const row = el(
+        "div",
+        {
+          class: "dcma-ov-row sl-" + st,
+          tabindex: "0",
+          title: plain,
+          "aria-label": heading + ": " + d.status + ", " + d.measure,
+        },
+        [
+          el("span", { class: "sl-dot sl-" + st, "aria-hidden": "true" }),
+          el("span", { class: "dcma-ov-name", text: heading }),
+          el("span", { class: "dcma-ov-measure", text: d.measure }),
+          el("span", { class: "dcma-info", "aria-hidden": "true", text: "ⓘ" }),
+          tip,
+        ]
+      );
+      box.appendChild(row);
+    });
+    container.appendChild(box);
+  }
+
   function renderCharts(data) {
     const charts = document.getElementById("charts");
     charts.innerHTML = "";
-    // DCMA pass/fail overview
-    const dcmaRows = Object.keys(data.dcma).map((k) => {
-      const c = data.dcma[k];
-      return { label: k, value: c.status === "FAIL" ? 1 : 0, max: 1,
-               cls: c.status === "FAIL" ? "bad" : "ok", display: c.status };
-    });
-    barChart(charts, "DCMA-14 checks (red = fail)", dcmaRows);
+    dcmaPanel(charts, data.dcma);
     // baseline compliance counts
     const bc = data.baseline_compliance;
     barChart(charts, "Baseline compliance (activities)", [

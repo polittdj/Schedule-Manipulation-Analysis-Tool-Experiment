@@ -152,12 +152,33 @@ def test_dcma_audit_table_shows_count_percent_and_tooltip(client: TestClient) ->
     assert " of " in page and "%" in page  # "n of population" + a percentage
     # the keyboard-operable, labelled tooltip per check
     assert "dcma-metric" in page and "role=tooltip" in page and "aria-describedby" in page
-    # the four tooltip facets the operator asked for
-    assert "Pass criteria:" in page
+    # the tooltip facets the operator asked for: what it is + why + threshold + a pass/fail example
+    assert "Threshold:" in page
     assert "Why it matters:" in page
-    assert "Indicates:" in page
+    assert "Pass example:" in page
+    assert "Fail example:" in page
+    # the spaced "DCMA NN" label (operator request) in the Check cell
+    assert "DCMA 01" in page and "DCMA 14" in page
     css = client.get("/static/app.css").text
     assert ".dcma-tip" in css and "td.num" in css
+
+
+def test_dcma_overview_is_a_stoplight_not_a_bar(client: TestClient) -> None:
+    """The analysis #charts DCMA overview is a stoplight + measure per check (operator request:
+    no red bar). The panel is client-rendered, so the JSON carries the label/name/measure/help
+    and app.js draws the stoplight rows + tooltip."""
+    data = client.get("/api/analysis/Project5").json()
+    card = data["dcma"]["DCMA01"]
+    assert card["label"] == "DCMA 01" and card["name"] == "Logic"
+    assert card["status"] in ("PASS", "FAIL", "NA")
+    for key in ("measure", "why", "threshold", "example_ok", "example_fail"):
+        assert card[key], f"DCMA01 card missing {key}"
+    # split DCMA-04 keeps its variant suffix in the label
+    assert data["dcma"]["DCMA04_FS"]["label"] == "DCMA 04 FS"
+    js = client.get("/static/app.js").text
+    # the DCMA red bar is gone (its title string removed); the stoplight panel replaces it
+    assert "dcma-overview" in js and "sl-dot" in js
+    assert "DCMA-14 checks (red = fail)" not in js
 
 
 def test_dcma_metric_docs_carry_importance_and_indication() -> None:
@@ -170,6 +191,10 @@ def test_dcma_metric_docs_carry_importance_and_indication() -> None:
         doc = METRIC_DICTIONARY[mid]
         assert doc.importance, f"{mid} missing importance"
         assert doc.indicates, f"{mid} missing indication"
+        # operator request: a threshold and a worked pass + fail example per check
+        assert doc.threshold, f"{mid} missing threshold"
+        assert doc.example_ok, f"{mid} missing pass example"
+        assert doc.example_fail, f"{mid} missing fail example"
 
 
 def test_driving_endpoint_returns_tiers_and_gantt_ordinals(client: TestClient) -> None:
