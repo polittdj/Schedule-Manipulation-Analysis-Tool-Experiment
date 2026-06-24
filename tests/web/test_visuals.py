@@ -94,6 +94,23 @@ def test_analysis_gantts_use_the_scalable_px_per_day_model(client: TestClient) -
     assert ".gantt-scroll" in css and "#grid { overflow-x" in css  # horizontal scroll, both
 
 
+def test_gantt_density_fit_button_and_trace_columns(client: TestClient) -> None:
+    """Operator: pack ~3x more tasks per page on the Gantts — small font, tight rows, BOLD summary
+    rows, gridlines between rows AND columns; a 'Fit project' button that zooms the whole project
+    onto screen; and Dur/Start/Finish/Driving-slack columns on the driving-path trace."""
+    page = client.get("/analysis/Project5").text
+    assert "id=fitBtn" in page  # the fit-the-whole-project-on-screen button
+    js = client.get("/static/app.js").text
+    assert "fitToWidth" in js and "forcedPx" in js  # the fit logic + the slider override
+    assert "traceCols" in js and "Driv slack" in js  # the trace's Dur/Start/Finish/Slack columns
+    css = client.get("/static/app.css").text
+    assert ".gantt-grid { font-size: 11px; }" in css  # denser font
+    assert ".gantt-grid tr.sum td { font-weight: 700; }" in css  # bold summary rows
+    assert "border-right: 1px solid var(--line)" in css  # vertical column gridlines
+    assert ".gantt-row { font-size: 11px; margin: 0; border-bottom" in css  # tight, gridlined trace
+    assert ".gantt-col.c-slack" in css  # the driving-slack trace column
+
+
 def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> None:
     """Operator request (item C): the Name column wraps to its FULL text on /path and the
     /analysis grid, instead of truncating (path.js sliced trace names to 22 chars before)."""

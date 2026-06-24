@@ -1,6 +1,24 @@
-# Handoff — 2026-06-24 (PR 4: AI status light + a 3D wireframe-Earth insignia; metrics re-validated vs operator's MS Project)
+# Handoff — 2026-06-24 (PR 5: denser/bolder/gridlined Gantts + Fit-to-screen + driving-path trace columns)
 
-> ## STATUS (current) — AI "working" indicator + 3D rotating-Earth header insignia; DCMA-14 re-verified against the operator's SRA Project5; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — Gantt density pass (3x more tasks/page, bold summaries, gridlines), a "Fit project" button, and Dur/Start/Finish/Driving-slack columns on the trace; branch `claude/compassionate-ptolemy-wip898`
+>
+> **PR 4 (#238) is in CI; this PR 5 is HELD locally until #238 merges (don't push onto an open PR).**
+> Operator wanted the Gantts much denser + a fit button + richer trace columns:
+> - **Density (app.css, scoped to the schedule grids — not the report tables):** `.gantt-grid` /
+>   `.gantt-row` / `.path-grid` → 11px font, ~1px row padding, line-height 1.2, **bold summary rows**
+>   (`tr.sum td` 700), and **gridlines between every row AND column** (`border-right`/`border-bottom`).
+>   Track 16→13px, bars 10→9px. ~2–3x more tasks per page; matches the trace font the operator liked.
+> - **Fit-to-screen (app.js):** a new `#fitBtn` "Fit project" button next to Scale; `fitToWidth()`
+>   computes px/day = (grid width − data cols) / project-span-days and sets `forcedPx` (overrides the
+>   slider; any slider move clears it). Whole project on one screen.
+> - **Driving-path trace columns (app.js renderGantt):** Dur / Start / Finish / Driving-slack columns
+>   per row (data already on each row — `duration_days`/`start`/`finish`/`driving_slack_days`; no API
+>   change), aligned via a fixed-width `.gantt-cols` block so the bars still line up under the scale.
+> - **Gate:** ruff/format/mypy/bandit/`node --check` clean; full suite running. No new ADR. Visual —
+>   eyeball it.
+> - **STILL OPEN — the big one:** the SRA SSI remodel (task #19), designed + parity-anchored, not built.
+>
+> ## STATUS (prev) — AI "working" indicator + 3D rotating-Earth header insignia; DCMA-14 re-verified against the operator's SRA Project5; branch `claude/compassionate-ptolemy-wip898`
 >
 > **PR 1 (#236) + PR 2 (#237) merged.** This PR ships two operator asks + a fidelity re-check:
 > - **Metrics re-validated (no code change).** Operator questioned DCMA-01 Logic (5/99 fail). Confirmed

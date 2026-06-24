@@ -108,6 +108,39 @@
 .g-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
 .g-grid-qtr { background: var(--gantt-grid-qtr); }
 .g-grid-yr { background: var(--gantt-grid-yr); }
+
+/* OPERATOR density pass: pack ~3x more tasks per page on the Gantt/activity grids — small font,
+   tight rows, BOLD summary rows, and gridlines between every row AND column (the font/spacing the
+   operator liked on the driving-path trace, applied everywhere). Scoped to the schedule grids only;
+   the report tables (DCMA audit, scorecards) keep their normal size. */
+.gantt-grid { font-size: 11px; }
+.gantt-grid th, .gantt-grid td { padding: 1px 6px; line-height: 1.2; border-right: 1px solid var(--line); }
+.gantt-grid tr.sum td { font-weight: 700; }            /* summary rows bold */
+.gantt-grid td.name-cell { min-width: 140px; max-width: 320px; }
+.g-cell { padding: 1px 0; }
+.g-track { height: 13px; }
+.g-bar { top: 2px; height: 9px; }
+.g-bar.g-sum { top: 5px; height: 4px; }
+.g-ms { top: 3px; }
+#grid .filter-row td { padding: 1px 3px; }
+#grid .filter-row input { font-size: 11px; padding: 1px 4px; }
+/* driving-path trace + path workspace: same tight, gridlined, bold-summary look */
+.gantt-row { font-size: 11px; margin: 0; border-bottom: 1px solid var(--line); align-items: stretch; }
+.gantt-row.gantt-head { border-bottom: 2px solid var(--gantt-grid-yr); }
+.gantt-row.sum .gantt-name, .gantt-row.summary .gantt-name { font-weight: 700; }
+.gantt-name { line-height: 1.2; padding: 1px 0; }
+.gantt-track { height: 13px; }
+/* the extra trace columns (Dur / Start / Finish / Driving slack) the operator asked for */
+.gantt-cols { display: flex; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.gantt-col { flex: 0 0 auto; padding: 1px 5px; border-left: 1px solid var(--line);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.gantt-col.c-dur { width: 46px; text-align: right; }
+.gantt-col.c-date { width: 70px; }
+.gantt-col.c-slack { width: 62px; text-align: right; }
+.gantt-head .gantt-col { color: var(--muted); font-weight: 600; }
+.path-grid { font-size: 11px; }
+.path-grid th, .path-grid td { padding: 1px 6px; border-right: 1px solid var(--line); }
+.path-grid tr.sum td, .path-grid tr.summary td { font-weight: 700; }
 .field-toggle { margin-right: 6px; font-size: 12px; }
 /* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
 .field-toggle.field-custom { color: var(--accent, #6ea8fe); }

@@ -182,10 +182,28 @@
   // ---- timeline helpers: a SCALABLE px-per-day axis (matches the /path workspace) ----
   const DAY_MS = 86400000;
 
+  let forcedPx = null; // set by the "Fit" button (whole project on screen); cleared by the slider
   function pxPerDay() {
+    if (forcedPx && forcedPx > 0) return forcedPx;
     const z = document.getElementById("vizZoom");
     const v = z ? Number(z.value) : 8;
     return v > 0 ? v : 8; // pixels per calendar day
+  }
+  // Fit the ENTIRE project span into the visible width (no horizontal scroll). avail = the grid's
+  // own client width minus an estimate of the data columns; the Scale slider then fine-tunes.
+  function fitToWidth() {
+    let t0 = null, t1 = null;
+    activities.forEach((a) => {
+      if (a.start) { const s = Date.parse(a.start); if (!isNaN(s)) t0 = t0 === null ? s : Math.min(t0, s); }
+      if (a.finish) { const f = Date.parse(a.finish); if (!isNaN(f)) t1 = t1 === null ? f : Math.max(t1, f); }
+    });
+    if (t0 === null || t1 === null) return;
+    const days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
+    const host = document.getElementById("grid");
+    const avail = Math.max(240, (host ? host.clientWidth : 960) - 360);
+    forcedPx = Math.max(0.05, avail / days);
+    renderGrid();
+    if (lastDriving) renderGantt(lastDriving);
   }
 
   // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded two days
@@ -401,9 +419,20 @@
     const axis = buildAxis(rows, driving.data_date);
     if (!axis) { box.appendChild(el("p", { class: "muted", text: "No dated activities to plot." })); return; }
     const scroll = el("div", { class: "gantt-scroll" });
-    // header row: a name spacer + the stacked Year/Quarter/Month scale (Microsoft Project)
+    // Dur / Start / Finish / Driving-slack columns (operator request) between the name and the bar.
+    function traceCols(r) {
+      const c = el("div", { class: "gantt-cols" });
+      const h = !r;
+      c.appendChild(el("div", { class: "gantt-col c-dur", text: h ? "Dur d" : (r.duration_days != null ? String(r.duration_days) : "") }));
+      c.appendChild(el("div", { class: "gantt-col c-date", text: h ? "Start" : (r.start || "") }));
+      c.appendChild(el("div", { class: "gantt-col c-date", text: h ? "Finish" : (r.finish || "") }));
+      c.appendChild(el("div", { class: "gantt-col c-slack", text: h ? "Driv slack" : (r.driving_slack_days != null ? r.driving_slack_days + "d" : "") }));
+      return c;
+    }
+    // header row: name spacer + the Dur/Start/Finish/Slack headers + the Y/Q/M scale (MS Project)
     const headRow = el("div", { class: "gantt-row gantt-head" });
     headRow.appendChild(el("span", { class: "gantt-name" }));
+    headRow.appendChild(traceCols(null));
     headRow.appendChild(buildTierScale(axis, "gantt-scale", driving.data_date));
     scroll.appendChild(headRow);
     const gridLns = gridLines(axis); // MS-Project vertical month/quarter/year gridlines
@@ -431,6 +460,7 @@
       }
       const row = el("div", { class: "gantt-row" + (done ? " done" : "") });
       row.appendChild(el("span", { class: "gantt-name", text: "UID " + r.unique_id + " " + r.name }));
+      row.appendChild(traceCols(r));
       row.appendChild(track);
       scroll.appendChild(row);
     });
@@ -477,7 +507,10 @@
   // one page-level "pixels per day" zoom rescales BOTH the activity grid timeline and the trace
   const vizZoom = document.getElementById("vizZoom");
   if (vizZoom) vizZoom.addEventListener("input", () => {
+    forcedPx = null; // a manual zoom returns from "Fit" to the slider value
     renderGrid();
     if (lastDriving) renderGantt(lastDriving);
   });
+  const fitBtn = document.getElementById("fitBtn");
+  if (fitBtn) fitBtn.addEventListener("click", fitToWidth);
 })();
