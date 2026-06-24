@@ -224,6 +224,28 @@ def test_happy_path_orchestration(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert s.task_by_id(1).name == "Solo"
 
 
+def test_conversion_spawns_headless_unblocked_subprocess(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The desktop app runs windowless (pythonw, no console). The JVM must be spawned with no
+    # console window and a DEVNULL stdin, or spawning java.exe can flash a console AND hang the
+    # conversion on an inherited/invalid stdin handle (the operator saw .mpp loads "spin forever").
+    sample = tmp_path / "sample.mpp"
+    sample.write_bytes(b"dummy")
+    monkeypatch.setattr(mpp_mpxj.shutil, "which", _fake_java)
+    seen: dict[str, object] = {}
+
+    def _run(cmd, *_a, **kwargs):
+        seen.update(kwargs)
+        Path(cmd[5]).write_text(_MINIMAL_MSPDI, encoding="utf-8")
+        return types.SimpleNamespace(returncode=0, stderr="")
+
+    monkeypatch.setattr(mpp_mpxj.subprocess, "run", _run)
+    parse_mpp(sample)
+    assert seen["stdin"] is mpp_mpxj.subprocess.DEVNULL  # never inherit a console stdin handle
+    assert seen["creationflags"] == mpp_mpxj._NO_WINDOW  # CREATE_NO_WINDOW on Windows, 0 on POSIX
+
+
 def test_mpxj_home_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SF_MPXJ_HOME", "/custom/mpxj/home")
     assert mpp_mpxj._mpxj_home() == Path("/custom/mpxj/home")

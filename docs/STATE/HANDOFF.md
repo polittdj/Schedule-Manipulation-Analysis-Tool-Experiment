@@ -1,6 +1,29 @@
-# Handoff — 2026-06-24 (Ollama runs only when the operator enables AI, and is unloaded/stopped on tool close; ADR-0122)
+# Handoff — 2026-06-24 (urgent fixes: `.mpp` loads no longer hang on a slow model; Ollama fully stops + an "AI off" switch; extends ADR-0122)
 
-> ## STATUS (current) — lazy Ollama lifecycle: start on AI-enable, free the model RAM + stop our serve on close (ADR-0122); branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — operator bug batch, PR 1 of 3: the analysis report never blocks on the AI, and Ollama is fully controllable/stoppable; branch `claude/compassionate-ptolemy-wip898`
+>
+> **Operator report (this session): a batch of issues.** This PR ships the two urgent ones; UI fixes
+> (nav legibility/spacing, MS-Project Gantt background, full i18n) and the big SRA SSI remodel follow
+> as PR 2 and PR 3 (SRA plan written; correlation included).
+> - **`.mpp` "won't load" — the tab spinner never finished. ROOT CAUSE: the `/analysis` report
+>   polished its narrative through the local model *synchronously during the page render* (one
+>   `backend.generate()` per statement). With the operator's 72B Ollama active, the report — the page
+>   a single uploaded schedule lands on — blocked for minutes, so a big `.mpp` looked exactly like
+>   "won't load."** Fix: `/analysis` now renders the **deterministic** narrative instantly and defers
+>   polish to the async `/api/ai/narrative` via `ai_polish.js` (the pattern #177 already gave
+>   Risks/Briefing; `/analysis` had been missed). Also hardened the MPXJ subprocess for the windowless
+>   desktop (`stdin=DEVNULL` + Windows `CREATE_NO_WINDOW`) so a `pythonw` launch can't flash a console
+>   / hang on an inherited stdin handle.
+> - **Ollama survived Wipe → Quit and kept eating RAM. ROOT CAUSE: `_default_stop_server` killed only
+>   `ollama.exe`; the Windows tray app (`ollama app.exe`) *respawns* it.** Fix: stop the tray
+>   supervisor first, then the server. The AI is now fully controllable: switching the backend off
+>   Ollama (to Null/etc.) **stops** the local model, a new **"Turn the AI off"** button on AI Settings
+>   routes back to Null and stops the model in one click, and **Wipe Session** turns the AI off + stops
+>   Ollama. Start stays lazy (only on AI-enable, ADR-0122).
+> - **Gate:** ruff/format/mypy/bandit/`node --check` clean; web/ai/importers suites green; full suite
+>   running. No new ADR (extends ADR-0122, still the highest on disk).
+>
+> ## STATUS (prev) — lazy Ollama lifecycle: start on AI-enable, free the model RAM + stop our serve on close (ADR-0122); branch `claude/compassionate-ptolemy-wip898`
 >
 > **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main`):**
 > - **Operator bug:** after quitting the tool, Ollama (a resident 72B model, ~40% RAM) kept running.

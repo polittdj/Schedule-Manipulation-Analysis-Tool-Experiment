@@ -133,27 +133,35 @@ def _loaded_models(endpoint: str, timeout: float) -> list[str]:
 
 
 def _default_stop_server() -> None:
-    """Best-effort: stop every local Ollama **server** process so it isn't left running once the
-    tool closes (the operator chose "fully stop Ollama on close", ADR-0122). Uses the OS process
-    tools — local only, no network — and never raises. This also stops a server the Windows desktop
-    app (the tray) started, which the tool only adopted; the tray ``ollama app.exe`` itself is left
-    alone (it relaunches at login — disabling that auto-start is covered in AI Settings). On a hard
-    network/exec failure it simply does nothing (cleanup is best-effort)."""
+    """Best-effort: stop the local Ollama so it isn't left running once the tool closes or the
+    operator turns the AI off (the operator chose "fully stop Ollama", ADR-0122). Local OS process
+    tools only — no network — and never raises.
+
+    On Windows this stops the desktop **tray app** (``ollama app.exe``) **first**, then the server
+    (``ollama.exe`` with ``/T`` for its model-runner children): the tray supervises the server and
+    immediately **respawns** it, so killing only ``ollama.exe`` leaves Ollama running — the operator
+    saw ``ollama.exe`` survive Quit for exactly this reason. The tray relaunches at the next login
+    (disabling that auto-start is covered in AI Settings). On POSIX ``pkill -x ollama`` stops the
+    server. A missing utility / nothing to kill is fine (cleanup is best-effort)."""
     if sys.platform == "win32":  # pragma: no cover - exercised only on Windows
-        cmd = ["taskkill", "/F", "/T", "/IM", "ollama.exe"]
+        cmds = [
+            ["taskkill", "/F", "/T", "/IM", "ollama app.exe"],  # tray supervisor first (no respawn)
+            ["taskkill", "/F", "/T", "/IM", "ollama.exe"],  # then server + model-runner children
+        ]
     else:
-        cmd = ["pkill", "-x", "ollama"]
-    try:
-        # fixed OS-utility argv, no shell, no user input — and `ollama.exe`/`ollama` is the server
-        subprocess.run(  # nosec B603 B607
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=10,
-            check=False,
-        )
-    except Exception as exc:  # the utility may be missing / nothing to kill — never raise on exit
-        logger.debug("could not stop Ollama server processes: %s", exc)
+        cmds = [["pkill", "-x", "ollama"]]
+    for cmd in cmds:
+        try:
+            # fixed OS-utility argv, no shell, no user input — `ollama*`/`ollama` are local procs
+            subprocess.run(  # nosec B603 B607
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=10,
+                check=False,
+            )
+        except Exception as exc:  # the utility may be missing / nothing to kill — never raise
+            logger.debug("could not stop Ollama process(es) via %s: %s", cmd[0], exc)
 
 
 def unload_loaded_models(endpoint: str = DEFAULT_ENDPOINT, *, timeout: float = 4.0) -> int:

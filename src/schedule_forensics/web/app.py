@@ -1110,12 +1110,16 @@ def create_app(
             analysis = st.analysis_for(name, sch)
         except CPMError as exc:
             return _page(st, name, _unschedulable_panel(sch, exc))
-        narrative = _polished_narrative(st, name, sch, analysis)
+        # Render the DETERMINISTIC narrative immediately so the report opens at once; ai_polish.js
+        # fetches /api/ai/narrative in the background and swaps in the local-AI-polished prose when a
+        # model is active. The old synchronous per-statement generate here blocked the whole render
+        # for minutes on a slow local model — a big .mpp landing on /analysis with a 72B Ollama active
+        # looked exactly like "the file won't load" (the browser tab just kept spinning).
         bar = _export_bar(f"analysis/{quote(name, safe='')}")
         return _page(
             st,
             name,
-            bar + _analysis_body(name, sch, analysis, st.target_uid, narrative),
+            bar + _analysis_body(name, sch, analysis, st.target_uid),
             ask_schedule=name,
         )
 
@@ -2411,12 +2415,34 @@ def create_app(
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
-        # Lazy Ollama: the desktop launcher's manager starts `ollama serve` only now, when the
-        # operator turns the Ollama backend on — never at tool launch (ADR-0122). Off-thread so the
-        # redirect never waits on the server coming up; a no-op if Ollama isn't the chosen backend.
+        # Lazy Ollama lifecycle (ADR-0122): the desktop launcher's manager starts `ollama serve`
+        # only when the operator turns the Ollama backend on — never at tool launch — and stops it
+        # again the moment they switch the AI off it (to Null/OpenAI/Cloud), so the local model is
+        # never left consuming RAM/CPU once it is no longer the chosen backend. Both run off-thread
+        # so the redirect never waits on the server coming up or shutting down.
         manager = getattr(app.state, "ollama", None)
-        if manager is not None and "ollama" in (backend, second_backend):
-            threading.Thread(target=manager.ensure_running, daemon=True).start()
+        if manager is not None:
+            if "ollama" in (backend, second_backend):
+                threading.Thread(target=manager.ensure_running, daemon=True).start()
+            else:
+                threading.Thread(target=manager.shutdown, daemon=True).start()
+        return RedirectResponse(url="/settings", status_code=303)
+
+    @app.post("/settings/ai-off")
+    def ai_off() -> RedirectResponse:
+        """One click: turn the AI fully off — route back to the deterministic Null backend AND stop
+        the local model. The operator asked for an explicit off switch once the AI is on; this also
+        frees the RAM/CPU the local model was using without quitting the tool."""
+        st = session()
+        st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
+        st.backend_cache = None  # re-route to Null immediately
+        st.second_cache = None
+        st.polished.clear()  # drop any model-polished narratives so pages show the engine read
+        manager = getattr(app.state, "ollama", None)
+        if manager is not None:
+            threading.Thread(
+                target=manager.shutdown, daemon=True
+            ).start()  # unload + stop, off-thread
         return RedirectResponse(url="/settings", status_code=303)
 
     @app.get("/help", response_class=HTMLResponse)
@@ -2498,6 +2524,15 @@ def create_app(
         st.sra_overrides.clear()
         st.sra_risks.clear()
         st.sra_risk_seq = 0
+        # A wipe is a full reset: turn the AI back off and stop any local model it is running, so a
+        # wiped session never leaves Ollama consuming RAM/CPU (operator report: Ollama survived a
+        # Wipe → Quit). Re-enabling is one click in AI Settings.
+        st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
+        st.backend_cache = None
+        st.second_cache = None
+        manager = getattr(app.state, "ollama", None)
+        if manager is not None:
+            threading.Thread(target=manager.shutdown, daemon=True).start()
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
 
@@ -3940,7 +3975,9 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <div class=panel><h2>Risks, opportunities &amp; concerns</h2>
 <table><tr><th scope=col>Severity</th><th scope=col>Type</th><th scope=col>Finding</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>
 {find_rows or "<tr><td colspan=5 class=muted>No findings — schedule is well-formed.</td></tr>"}</table></div>
-<div class=panel><h2>AI narrative (local, cited)</h2><ul>{story}</ul></div>"""
+<div class=panel><h2>AI narrative (local, cited)</h2>
+<ul class=story data-ai-endpoint="/api/ai/narrative?key={_e(quote(key))}">{story}</ul></div>
+<script src="/static/ai_polish.js"></script>"""
 
 
 def _brief_body(brief: DiagnosticBrief) -> str:
@@ -6539,6 +6576,18 @@ def _settings_body(state: SessionState) -> str:
     else:
         model_field = f'<input name=model id=primaryModel value="{_e(cfg.model)}">'
 
+    # A one-click "off" switch, shown only while a real local model is active (the operator asked
+    # for an explicit way to turn the AI off once it is on). It routes back to the deterministic Null
+    # backend AND stops the local model, freeing its RAM/CPU without quitting the tool.
+    ai_off_btn = (
+        '<form action="/settings/ai-off" method=post style="margin:6px 0 2px">'
+        '<button type=submit class=btn-danger title="Switch the AI back to offline deterministic '
+        "mode and stop the local model now (frees its RAM and CPU). You can turn it back on here any "
+        'time.">Turn the AI off &amp; stop the local model</button></form>'
+        if real_backend
+        else ""
+    )
+
     return f"""
 <div class=panel><h2>Local AI</h2>
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
@@ -6584,6 +6633,7 @@ engine never computed is discarded wholesale</option>
  title="Turning the cross-check on auto-fills this with the primary model id; edit it to use a
 different second model (e.g. qwen2.5:14b). Blank = the server's default/loaded model."></p>
 <input type=submit value="Save"></form>
+{ai_off_btn}
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
 Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
