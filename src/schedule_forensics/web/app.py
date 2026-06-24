@@ -240,11 +240,12 @@ title="Display language for the UI and AI results">
 onchange="this.form.submit()">{{ lang_options }}</select></label>
 </form>
 </nav>
-<span class="nasa-logo" data-no-i18n><img src="/static/nasa-meatball.svg" alt="NASA insignia" width="46" height="46"></span>
+<span class="nasa-globe" data-no-i18n title="NASA"><canvas width="132" height="132" aria-hidden="true"></canvas><span class="nasa-globe-text">NASA</span></span>
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
 <script src="/static/target.js"></script>
+<script src="/static/globe.js"></script>
 <div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
 </body></html>"""
 )

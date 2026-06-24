@@ -1,9 +1,11 @@
-"""NASA theme chrome — rotating meatball insignia, CUI page-marking bars, dotted chart grid.
+"""NASA theme chrome — a 3D rotating wireframe Earth insignia (globe.js), CUI page-marking bars,
+dotted chart grid.
 
-Operator request: a NASA-based, professional look on every page — the meatball logo rotating in
-the top-right corner, the CUI warning marking required by NASA standards at the top and bottom of
-each page, and a light dotted reading grid behind the charts. All assets stay vendored/local
-(air-gap, Law 1)."""
+Operator request: a transparent 3D Earth (continent outlines, see-through) rotating around a
+STATIONARY "NASA" wordmark in the top-right — 3x the old meatball — which also doubles as the
+page-wide AI status light (spins up + glows while the local model generates). Plus the CUI marking
+top and bottom of every page and a dotted reading grid behind the charts. All assets stay
+vendored/local (air-gap, Law 1)."""
 
 from __future__ import annotations
 
@@ -24,29 +26,33 @@ def client() -> TestClient:
     return TestClient(create_app(SessionState()))
 
 
-def test_meatball_svg_is_served_and_local(client: TestClient) -> None:
-    r = client.get("/static/nasa-meatball.svg")
+def test_globe_js_is_served_and_local(client: TestClient) -> None:
+    r = client.get("/static/globe.js")
     assert r.status_code == 200
     body = r.text
-    assert "<svg" in body and "NASA" in body
+    assert "canvas" in body and "ai-thinking" in body  # draws the globe; reads the AI-status class
     # air-gap: the only absolute URL allowed is the SVG XML namespace (never dereferenced)
     externals = [u for u in re.findall(r"https?://[^\s\"'<>]+", body) if "www.w3.org" not in u]
     assert not externals, externals
 
 
-def test_rotating_logo_on_every_page(client: TestClient) -> None:
+def test_rotating_globe_on_every_page(client: TestClient) -> None:
     for path in _PAGES:
         page = client.get(path).text
-        assert 'class="nasa-logo"' in page, path
-        assert "/static/nasa-meatball.svg" in page, path
+        assert 'class="nasa-globe"' in page, path  # the 3D Earth insignia host
+        assert "<canvas" in page, path
+        assert 'class="nasa-globe-text">NASA<' in page, path  # the STATIONARY wordmark
+        assert "/static/globe.js" in page, path
 
 
-def test_logo_rotation_animation_defined_and_reduced_motion_safe(client: TestClient) -> None:
+def test_globe_is_reduced_motion_safe_and_drives_ai_status(client: TestClient) -> None:
+    js = client.get("/static/globe.js").text
+    assert "prefers-reduced-motion" in js  # the rotation honours the OS pref (still globe)
     css = client.get("/static/base.css").text
-    assert "@keyframes nasa-spin" in css
-    assert ".nasa-logo img" in css and "animation:nasa-spin" in css
-    # the global reduced-motion block neutralizes every animation (so the spin honors the OS pref)
-    assert "@media (prefers-reduced-motion: reduce)" in css
+    assert ".nasa-globe" in css and ".nasa-globe.ai-thinking" in css  # page-wide AI status light
+    ask = client.get("/static/ask.js").text
+    # ask.js drives the indicator: toggles .ai-thinking on the globe + shows a live elapsed timer
+    assert "ai-thinking" in ask and "startWorking" in ask
 
 
 def test_cui_marking_top_and_bottom_when_classified(client: TestClient) -> None:
