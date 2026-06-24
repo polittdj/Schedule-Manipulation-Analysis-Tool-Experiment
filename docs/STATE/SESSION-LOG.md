@@ -3338,3 +3338,32 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   engaged gate; `test_launcher.py` (manager handed to the app, NOT started at launch, stopped on close);
   `test_ai_wiring.py` (settings enables Ollama → lazy start; no-op without a manager).
 - **Gate:** full suite green; ruff/format/mypy/bandit/`node --check` clean. Highest ADR = **0122**.
+
+---
+
+## 2026-06-24 (cont. 6) — SRA remodelled to mirror SSI's Schedule Risk & Opportunity Analysis (ADR-0123)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898`. **Model/mode:** Opus 4.8. **Operator ask:** make
+  `/sra` behave and read like **SSI Tools' "Schedule Risk and Opportunity Analysis"** add-in — per-task
+  Risk Ranking Factor (1-5) → auto Best/Worst Case, an additive-days risk register, a chosen focus
+  event, occurrence modes, optional correlation, deterministic sensitivity, and 5x5 Risk/Opportunity
+  matrices. Delivered incrementally on one branch.
+- **Engine (landed first, ADR-0123):** `factor_to_bc_wc` (ML = remaining; `BC=ML*(1-sub%)`,
+  `WC=ML*(1+add%)`), `RiskFactorTable` (SSI defaults 1=50/10..5=10/50), `ScheduleRisk` (additive impact
+  **days**, risk-bearing task carries no BC/WC), `OATSensitivity`, `SSIRiskStat`, `SSIResult`;
+  `compute_sra_ssi` (focus targeting, occurrence modes random-each/exact-overall, single-factor
+  **Gaussian copula** correlation), `compute_oat_sensitivity` (deterministic one-at-a-time swing). The
+  legacy `compute_sra`/`RiskEvent` path is frozen; all recompute is via `compute_cpm(duration_overrides=)`
+  so deterministic CPM/DCMA never move (ADR-0106 parity-isolation). **Validated to the operator's SSI
+  exports:** BC/WC exact (UID107 24.80/41.34, UID35 10.27/20.54), OAT exact (UID107 2.8/13.8, UID35
+  6.8/3.4), deterministic focus finish **2027-12-03**; stochastic NOT bit-exact (RNG differs, ADR-0005).
+- **Web (this push):** `SessionState` SSI inputs (no model change); routes `POST /sra/ssi-run-config`,
+  `/sra/factor-table`, `/sra/factor`, `/sra/auto-calc`, `/sra/ssi-risk`, and off-page-load feeds
+  `GET /api/sra/ssi` (focus payload + per-risk stats + the two 5x5 matrices) + `GET /api/sra/oat`
+  (2N-solve OAT, on demand). New vendored `web/static/sra_ssi.js` renders the run result, per-risk
+  outcomes, OAT table, and matrices (reusing the existing `risk-matrix`/`rk-*` band CSS); the SSI panel
+  opens instantly and runs only on click.
+- **Tests:** `tests/engine/test_sra_ssi.py` (13) + `tests/web/test_sra_ssi_web.py` (8) green; legacy
+  `test_sra*.py` still green. **Deferred (follow-up, same branch):** the inline-editable Gantt grid,
+  JSON Save/Load, and the six-sheet Excel export build on these routes.
+- **Gate:** ruff/format/mypy(strict)/bandit/`node --check` clean; full suite green. Highest ADR = **0123**.

@@ -15,6 +15,7 @@ import datetime as dt
 import html
 import json
 import logging
+import re
 import tempfile
 import threading
 import time
@@ -143,9 +144,16 @@ from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.sra import (
     ActivityRisk,
     RiskEvent,
+    RiskFactorTable,
+    ScheduleRisk,
     SRAConfig,
     SRAResult,
+    SSIResult,
+    SSIRiskStat,
+    compute_oat_sensitivity,
     compute_sra,
+    compute_sra_ssi,
+    factor_to_bc_wc,
 )
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
@@ -346,6 +354,20 @@ class SessionState:
     # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
     # solvable version (the historical default). Set via GET /sra?file=<key>.
     sra_file: str | None = None
+    # --- SSI Schedule Risk & Opportunity Analysis inputs (ADR-0123) ---
+    # the focus event whose finish the SSI run/OAT report (SSI "Flag for Analysis"); None => project.
+    sra_focus_uid: int | None = None
+    # the Risk Factors table: (factor 1..5, % subtract for Best Case, % add for Worst Case).
+    sra_factor_rows: tuple[tuple[int, float, float], ...] = field(
+        default_factory=lambda: RiskFactorTable().rows
+    )
+    sra_factors: dict[int, int] = field(default_factory=dict)  # uid -> Risk Ranking Factor 1..5
+    sra_bcwc: dict[int, tuple[int, int]] = field(default_factory=dict)  # uid -> (BC, WC) minutes
+    sra_ssi_risks: list[ScheduleRisk] = field(default_factory=list)  # additive-days risk register
+    sra_ssi_risk_seq: int = 0
+    sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
+    sra_use_risk_register: bool = True
+    sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -2248,6 +2270,176 @@ def create_app(
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_sra_data(st, sch, result))
+
+    # --- SSI Schedule Risk & Opportunity Analysis (ADR-0123) -------------------------------
+    @app.post("/sra/ssi-run-config")
+    def ssi_run_config(
+        focus_uid: str = Form(""),
+        occurrence_mode: str = Form("random_each"),
+        correlation: float = Form(0.0),
+        use_risks: str = Form(""),
+    ) -> RedirectResponse:
+        st = session()
+        st.sra_focus_uid = int(focus_uid) if focus_uid.strip().isdigit() else None
+        st.sra_occurrence_mode = (
+            "exact_overall" if occurrence_mode == "exact_overall" else "random_each"
+        )
+        st.sra_correlation = min(1.0, max(0.0, correlation))
+        st.sra_use_risk_register = use_risks in ("on", "true", "1")
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.post("/sra/factor-table")
+    def ssi_factor_table(
+        sub1: float = Form(50.0),
+        add1: float = Form(10.0),
+        sub2: float = Form(40.0),
+        add2: float = Form(20.0),
+        sub3: float = Form(30.0),
+        add3: float = Form(30.0),
+        sub4: float = Form(20.0),
+        add4: float = Form(40.0),
+        sub5: float = Form(10.0),
+        add5: float = Form(50.0),
+    ) -> RedirectResponse:
+        st = session()
+        raw = ((1, sub1, add1), (2, sub2, add2), (3, sub3, add3), (4, sub4, add4), (5, sub5, add5))
+        st.sra_factor_rows = tuple(
+            (f, min(100.0, max(0.0, s)), min(300.0, max(0.0, a))) for f, s, a in raw
+        )
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.post("/sra/factor")
+    def ssi_set_factor(uids: str = Form(""), factor: int = Form(3)) -> RedirectResponse:
+        st = session()
+        f = min(5, max(1, factor))
+        for tok in re.split(r"[,\s]+", uids.strip()):
+            if tok.isdigit():
+                st.sra_factors[int(tok)] = f
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.post("/sra/auto-calc")
+    def ssi_auto_calc(scope: str = Form("all"), uids: str = Form("")) -> RedirectResponse:
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is not None:
+            _key, sch, _cpm = chosen
+            tbl = RiskFactorTable(rows=st.sra_factor_rows)
+            want: set[int] | None = None
+            if scope == "selected":
+                want = {int(t) for t in re.split(r"[,\s]+", uids.strip()) if t.isdigit()}
+            for t in non_summary(sch):
+                u = t.unique_id
+                if u not in st.sra_factors or (want is not None and u not in want):
+                    continue
+                rem = (
+                    t.remaining_duration_minutes
+                    if t.remaining_duration_minutes is not None
+                    else t.duration_minutes
+                )
+                bc, _ml, wc = factor_to_bc_wc(rem, st.sra_factors[u], tbl)
+                st.sra_bcwc[u] = (bc, wc)
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.post("/sra/ssi-risk")
+    def ssi_risk(
+        action: str = Form("add"),
+        rid: str = Form(""),
+        name: str = Form(""),
+        prob: float = Form(0.0),
+        impact_days: float = Form(0.0),
+        affected: str = Form(""),
+        consequence: str = Form(""),
+    ) -> RedirectResponse:
+        st = session()
+        if action == "remove":
+            st.sra_ssi_risks = [r for r in st.sra_ssi_risks if r.id != rid]
+        elif action == "clear":
+            st.sra_ssi_risks = []
+        else:
+            uids = tuple(int(t) for t in re.split(r"[,\s]+", affected.strip()) if t.isdigit())
+            if uids:
+                st.sra_ssi_risk_seq += 1
+                cons = int(consequence) if consequence.strip().isdigit() else None
+                st.sra_ssi_risks.append(
+                    ScheduleRisk(
+                        id=f"R{st.sra_ssi_risk_seq}",
+                        name=name.strip() or f"Risk {st.sra_ssi_risk_seq}",
+                        probability=min(1.0, max(0.0, prob / 100.0)),
+                        impact_days=impact_days,
+                        affected=uids,
+                        consequence_rating=min(5, max(1, cons)) if cons is not None else None,
+                    )
+                )
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.get("/api/sra/ssi")
+    def sra_ssi_json(
+        iterations: int = Query(1000), distribution: str = Query("triangular")
+    ) -> JSONResponse:
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        _key, sch, _cpm = chosen
+        cfg = SRAConfig(
+            iterations=max(100, min(10000, iterations)),
+            distribution="pert" if distribution == "pert" else "triangular",
+            target_uid=st.sra_focus_uid,
+            occurrence_mode=st.sra_occurrence_mode,
+            use_risk_register=st.sra_use_risk_register,
+            correlation=st.sra_correlation,
+        )
+        try:
+            result = compute_sra_ssi(
+                sch,
+                config=cfg,
+                three_point=_ssi_three_point(st, sch),
+                risks=tuple(st.sra_ssi_risks),
+            )
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_ssi_data(sch, result))
+
+    @app.get("/api/sra/oat")
+    def sra_oat_json() -> JSONResponse:
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        _key, sch, _cpm = chosen
+        exclude = (
+            frozenset(u for r in st.sra_ssi_risks for u in r.affected)
+            if st.sra_use_risk_register
+            else frozenset()
+        )
+        try:
+            oat = compute_oat_sensitivity(
+                sch,
+                three_point=_ssi_three_point(st, sch),
+                target_uid=st.sra_focus_uid,
+                exclude_uids=exclude,
+            )
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        names = sch.tasks_by_id
+        mpd = sch.calendar.working_minutes_per_day or 480
+        return JSONResponse(
+            {
+                "rows": [
+                    {
+                        "uid": o.unique_id,
+                        "name": names[o.unique_id].name if o.unique_id in names else "",
+                        "bc_days": round(o.bc_minutes / mpd, 1),
+                        "wc_days": round(o.wc_minutes / mpd, 1),
+                        "ml_days": round(o.ml_minutes / mpd, 1),
+                        "opportunity": o.opportunity_days,
+                        "risk": o.risk_days,
+                        "total": o.total_days,
+                    }
+                    for o in oat[:40]
+                ]
+            }
+        )
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
@@ -5204,6 +5396,179 @@ def _sra_risk_table(st: SessionState, sch: Schedule | None) -> str:
     )
 
 
+def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:
+    """Per-task ``(BestCase, MostLikely=remaining, WorstCase)`` minutes for the SSI run — a manual /
+    auto Best-Worst override when present, else derived from the task's Risk Ranking Factor. Tasks
+    with neither are absent (the engine treats them as a point mass = no duration uncertainty)."""
+    tbl = RiskFactorTable(rows=st.sra_factor_rows)
+    out: dict[int, tuple[int, int, int]] = {}
+    for t in non_summary(sch):
+        u = t.unique_id
+        rem = (
+            t.remaining_duration_minutes
+            if t.remaining_duration_minutes is not None
+            else t.duration_minutes
+        )
+        if u in st.sra_bcwc:
+            bc, wc = st.sra_bcwc[u]
+            out[u] = (bc, rem, wc)
+        elif u in st.sra_factors:
+            out[u] = factor_to_bc_wc(rem, st.sra_factors[u], tbl)
+    return out
+
+
+def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> list[list[int]]:
+    """A 5x5 ``[consequence-1][probability-1]`` count grid for the risks (impact >= 0) or the
+    opportunities (impact < 0) — the operator's Risk / Opportunity Assessment Matrix."""
+    grid = [[0] * 5 for _ in range(5)]
+    for r in risks:
+        if (r.impact_days < 0) == opportunity:
+            grid[r.consequence_rating - 1][r.probability_rating - 1] += 1
+    return grid
+
+
+def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
+    """The SSI run summary for ``sra.js`` — the focus finish dates + percentile + per-risk stats +
+    the 5x5 Risk/Opportunity matrices. Dates are already realigned to the stored finish (ADR-0123)."""
+    names = sch.tasks_by_id
+    focus = (
+        names[result.target_uid].name
+        if result.target_uid is not None and result.target_uid in names
+        else "Project finish"
+    )
+    return {
+        "target_uid": result.target_uid,
+        "focus_name": focus,
+        "iterations": result.iterations,
+        "occurrence_mode": result.occurrence_mode,
+        "correlation": result.correlation,
+        "used_risks": result.used_risks,
+        "deterministic": {
+            "date": result.deterministic_finish_date,
+            "percentile": round(result.deterministic_percentile * 100, 1),
+        },
+        "mean": result.mean_date,
+        "std_days": round(result.std_days, 1),
+        "percentiles": [
+            {"label": "P10", "date": result.p10_date},
+            {"label": "P50", "date": result.p50_date},
+            {"label": "P80", "date": result.p80_date},
+            {"label": "P90", "date": result.p90_date},
+        ],
+        "risks": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "probability": round(r.probability * 100, 1),
+                "impact_days": r.impact_days,
+                "hits": r.hits,
+                "mean_delta_days": r.mean_delta_days,
+                "probability_rating": r.probability_rating,
+                "consequence_rating": r.consequence_rating,
+            }
+            for r in result.risks
+        ],
+        "risk_matrix": _ssi_matrix_counts(result.risks, opportunity=False),
+        "opportunity_matrix": _ssi_matrix_counts(result.risks, opportunity=True),
+    }
+
+
+_OCC_RANDOM = (
+    "When this option is selected, the probability of risks/opportunities occurring is evaluated "
+    "independently on each iteration of the SRA using the entered probability of occurrence. Over "
+    "many iterations the average result will be close to the entered percentage, but the exact "
+    "number of occurrences may vary each time you run the SRA."
+)
+_OCC_EXACT = (
+    "When this option is selected, the total number of times a given risk/opportunity occurs is "
+    "determined at the beginning of the SRA process based on the entered probability and the total "
+    "number of SRA iterations chosen. That total is then randomly distributed across the iterations, "
+    "so the risk/opportunity occurs the exact expected number of times overall."
+)
+
+
+def _ssi_panel(st: SessionState) -> str:
+    """The SSI Schedule Risk & Opportunity Analysis controls (ADR-0123): focus event, Risk Factors
+    table + per-task ranking + auto-calc, occurrence/correlation run options, the risk register, and
+    the run/sensitivity buttons feeding ``/api/sra/ssi`` and ``/api/sra/oat`` (run off page-load)."""
+    factor_rows = "".join(
+        f"<tr><td>{f}</td>"
+        f'<td><input type=number name=sub{f} min=0 max=100 step=1 value="{s:g}" style="width:60px"></td>'
+        f'<td><input type=number name=add{f} min=0 max=300 step=1 value="{a:g}" style="width:60px"></td></tr>'
+        for f, s, a in st.sra_factor_rows
+    )
+    risk_rows = (
+        "".join(
+            f"<tr><td>{_e(r.id)}</td><td>{_e(r.name)}</td><td>{r.probability * 100:g}%</td>"
+            f"<td>{r.impact_days:g} d</td><td>{', '.join(str(u) for u in r.affected)}</td>"
+            f'<td><form action="/sra/ssi-risk" method=post style="display:inline">'
+            f'<input type=hidden name=action value=remove><input type=hidden name=rid value="{_e(r.id)}">'
+            f"<button type=submit class=linkbtn>remove</button></form></td></tr>"
+            for r in st.sra_ssi_risks
+        )
+        or "<tr><td colspan=6 class=muted>No risks registered.</td></tr>"
+    )
+    rand_ck = " checked" if st.sra_occurrence_mode == "random_each" else ""
+    exact_ck = " checked" if st.sra_occurrence_mode == "exact_overall" else ""
+    iters = "".join(
+        f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
+        for n in (500, 1000, 2000, 5000)
+    )
+    return f"""
+<div class=panel><h2>SSI Schedule Risk &amp; Opportunity Analysis</h2>
+<p class=muted>Mirrors SSI Tools' add-in: rank each task 1&ndash;5 (Risk Ranking Factor), auto-calculate
+its Best/Worst Case from the factor table, attach discrete risks with an additive schedule impact in
+days, and run a Monte-Carlo to a chosen <b>focus event</b>. The current Remaining Duration is the Most
+Likely. <b>Best/Worst Case and the deterministic sensitivity are validated to match SSI exactly</b>;
+the random distribution is statistically close, not bit-identical (a different RNG, ADR-0005).</p>
+<form action="/sra/ssi-run-config" method=post class=viz-controls>
+<label>Focus event UID <input type=number name=focus_uid min=1 value="{st.sra_focus_uid or ""}"
+ placeholder="project finish"></label>
+<label title="{_e(_OCC_RANDOM)}"><input type=radio name=occurrence_mode value=random_each{rand_ck}>
+ Random each iteration &#9432;</label>
+<label title="{_e(_OCC_EXACT)}"><input type=radio name=occurrence_mode value=exact_overall{exact_ck}>
+ Exact percentage overall &#9432;</label>
+<label title="Blanket correlation between the task duration distributions (0 = independent; 0.3&ndash;0.5 typical) — offsets the cancelling of extreme high/low results.">Correlation
+ <input type=number name=correlation min=0 max=1 step=0.05 value="{st.sra_correlation:g}" style="width:60px"></label>
+<label><input type=checkbox name=use_risks value=on{" checked" if st.sra_use_risk_register else ""}>
+ Use risk register</label>
+<button type=submit>Save run options</button></form>
+<h3>Risk Factors table</h3>
+<form action="/sra/factor-table" method=post>
+<table style="width:auto"><tr><th>Factor</th><th>% subtract (Best Case)</th><th>% add (Worst Case)</th></tr>
+{factor_rows}</table><button type=submit>Save factor table</button></form>
+<h3>Assign Risk Ranking Factor &amp; calculate Best/Worst durations</h3>
+<form action="/sra/factor" method=post class=viz-controls>
+<label>UIDs <input type=text name=uids placeholder="101, 102 205"></label>
+<label>Factor <input type=number name=factor min=1 max=5 value=3 style="width:56px"></label>
+<button type=submit>Set factor</button></form>
+<p class=muted>{len(st.sra_factors)} task(s) ranked; {len(st.sra_bcwc)} have calculated Best/Worst durations.</p>
+<form action="/sra/auto-calc" method=post style="display:inline"><input type=hidden name=scope value=all>
+<button type=submit>Calculate SRA Durations — all</button></form>
+<form action="/sra/auto-calc" method=post style="display:inline;margin-left:8px"><input type=hidden name=scope value=selected>
+<input type=text name=uids placeholder="selected UIDs" style="width:150px">
+<button type=submit>Calculate — selected</button></form>
+<h3>Risk / Opportunity register</h3>
+<form action="/sra/ssi-risk" method=post class=viz-controls><input type=hidden name=action value=add>
+<label>Name <input type=text name=name maxlength=80 placeholder="e.g. Permit delay"></label>
+<label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="79"></label>
+<label>Schedule impact (days) <input type=number name=impact_days step=any placeholder="100 (negative = opportunity)"></label>
+<label>Affected UIDs <input type=text name=affected placeholder="106"></label>
+<label>Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto"></label>
+<button type=submit>Add risk</button></form>
+<table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
+<div class=viz-controls style="margin-top:12px">
+<label>Iterations <select id=ssiIters>{iters}</select></label>
+<label>Distribution <select id=ssiDist data-no-i18n><option value=triangular>Triangular</option>
+<option value=pert>Beta-PERT</option></select></label>
+<button id=ssiRun type=button>Run SSI SRA</button>
+<button id=ssiOat type=button title="Deterministic one-at-a-time Best/Worst swing on the focus event (2xN CPM solves)">Run sensitivity</button></div>
+<p id=ssiStatus class=muted aria-live=polite></p>
+<div id=ssiResult></div><div id=ssiMatrices></div>
+<h3>Sensitivity — deterministic OAT (SSI Sensitivity Analysis)</h3><div id=ssiOatOut></div>
+<script src="/static/sra_ssi.js"></script></div>"""
+
+
 def _sra_body(st: SessionState) -> str:
     """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
 
@@ -5256,7 +5621,8 @@ def _sra_body(st: SessionState) -> str:
             "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
         )
     return f"""
-<div class=panel><h2>Schedule Risk Analysis (SRA) &mdash; Monte-Carlo</h2>
+{_ssi_panel(st)}
+<div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
 distribution and recomputes the network finish through the trusted CPM solver, building a
 finish-date confidence curve. The deterministic CPM finish is marked against the distribution
