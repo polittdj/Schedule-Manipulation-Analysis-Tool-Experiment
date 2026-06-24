@@ -24,6 +24,9 @@ class MetricDoc:
     source: str  # citing reference / framework
     importance: str = ""  # why the check matters (tooltip "Why it matters")
     indicates: str = ""  # what a failing value tells the analyst (tooltip "Indicates")
+    threshold: str = ""  # plain-language pass/fail threshold (tooltip "Threshold")
+    example_ok: str = ""  # a concrete passing example (tooltip "Pass example")
+    example_fail: str = ""  # a concrete failing example (tooltip "Fail example")
     citation_basis: str = "Every value cites file + UniqueID + task name (§6)."
 
 
@@ -35,6 +38,9 @@ def _doc(
     source: str,
     importance: str = "",
     indicates: str = "",
+    threshold: str = "",
+    example_ok: str = "",
+    example_fail: str = "",
 ) -> MetricDoc:
     return MetricDoc(
         metric_id=mid,
@@ -44,6 +50,9 @@ def _doc(
         source=source,
         importance=importance,
         indicates=indicates,
+        threshold=threshold,
+        example_ok=example_ok,
+        example_fail=example_fail,
     )
 
 
@@ -74,6 +83,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "anywhere flows through to the finish. Dangling tasks break that chain.",
         indicates="Open ends mean the schedule cannot reliably predict the finish date; the "
         "missing links must be added before the critical path can be trusted.",
+        threshold="No more than 5% of incomplete activities may be missing a predecessor or a "
+        "successor.",
+        example_ok="12 open-ended tasks on a 783-activity plan = 1.5% -> PASS (well under 5%).",
+        example_fail="180 of 600 incomplete tasks (30%) have no successor -> FAIL; the finish "
+        "date cannot be trusted.",
     ),
     "DCMA02": _doc(
         "DCMA02",
@@ -85,6 +99,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "compressing the plan in a way that hides true logic and can mask a slip.",
         indicates="Any lead is a red flag: the overlap should be modelled with an explicit "
         "SS/FF relationship and a positive lag so the logic is visible and statusable.",
+        threshold="Zero relationships may carry a negative lag (a lead).",
+        example_ok="No relationship has a negative lag -> PASS.",
+        example_fail="A 'FS -5d' link pulls a successor 5 days early -> FAIL; remodel as an SS "
+        "with a positive lag.",
     ),
     "DCMA03": _doc(
         "DCMA03",
@@ -96,6 +114,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "cannot be progressed, resourced, or seen — over-use distorts the critical path.",
         indicates="Heavy lag use suggests work modelled as delay instead of activities; replace "
         "each material lag with a real, statusable task.",
+        threshold="No more than 5% of relationships may carry a positive lag.",
+        example_ok="8 lagged links out of 900 (0.9%) -> PASS.",
+        example_fail="140 of 900 links (16%) bury cure/delivery time as lag -> FAIL; model the "
+        "wait as a real task.",
     ),
     "DCMA04_FS": _doc(
         "DCMA04_FS",
@@ -107,6 +129,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "mostly from FS links is easier to analyse and behaves predictably under change.",
         indicates="A low FS share means heavy use of SS/FF/SF, which can overlap work "
         "artificially and obscure the true driving path.",
+        threshold="At least 90% of relationships must be Finish-to-Start.",
+        example_ok="92% of links are FS -> PASS.",
+        example_fail="FS share is 71% (heavy SS/FF use) -> FAIL; the true driving path is "
+        "obscured.",
     ),
     "DCMA04_SSFF": _doc(
         "DCMA04_SSFF",
@@ -118,6 +144,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "concurrency rather than a workaround for missing detail.",
         indicates="A high count warrants review — some SS/FF links are often standing in for "
         "logic that should be broken into discrete FS-linked activities.",
+        threshold="Informational: the count of SS/FF links into incomplete work should reflect "
+        "real overlap, not missing detail.",
+        example_ok="A handful of SS/FF links, each a genuine concurrency -> acceptable.",
+        example_fail="Dozens of SS/FF links standing in for missing detail -> review and break "
+        "them into FS-linked tasks.",
     ),
     "DCMA04_SF": _doc(
         "DCMA04_SF",
@@ -129,6 +160,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "inverts the normal flow of work and confuses analysis.",
         indicates="Any SF relationship should be justified or removed — it usually signals a "
         "modelling error rather than a real dependency.",
+        threshold="Zero Start-to-Finish relationships (they are almost never correct).",
+        example_ok="No SF links in the network -> PASS.",
+        example_fail="Any SF link -> review; it inverts the normal flow of work and usually "
+        "signals a modelling error.",
     ),
     "DCMA05": _doc(
         "DCMA05",
@@ -140,6 +175,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "longer reacts to upstream slips. They mask true float and hide risk.",
         indicates="Excess hard constraints mean the dates are imposed rather than logic-driven; "
         "the plan may look on-track while the underlying network is already late.",
+        threshold="No more than 5% of activities may carry a hard constraint (MSO/MFO/SNLT/FNLT).",
+        example_ok="10 of 600 activities (1.7%) hard-constrained -> PASS.",
+        example_fail="120 of 600 (20%) hard-constrained -> FAIL; dates are imposed, not "
+        "logic-driven.",
     ),
     "DCMA06": _doc(
         "DCMA06",
@@ -151,6 +190,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "successors, so it floats free of the network and understates risk.",
         indicates="A cluster of high-float tasks points to missing successor logic — tie them "
         "back in so their true float (and risk) is revealed.",
+        threshold="No more than 5% of incomplete activities may have total float over 44 working "
+        "days.",
+        example_ok="15 of 600 incomplete tasks (2.5%) above 44 d -> PASS.",
+        example_fail="200 of 600 (33%) float free of the network -> FAIL; successor logic is "
+        "missing.",
     ),
     "DCMA07": _doc(
         "DCMA07",
@@ -162,6 +206,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "work must be recovered for the schedule to be achievable.",
         indicates="Any negative float flags a path that cannot meet its imposed finish; the "
         "logic, durations, or the constraint driving it must be addressed.",
+        threshold="Zero incomplete activities may have negative total float.",
+        example_ok="No task carries negative float -> PASS; the plan is achievable as drawn.",
+        example_fail="40 tasks at -12 d total float -> FAIL; a path cannot meet its imposed "
+        "finish.",
     ),
     "DCMA08": _doc(
         "DCMA08",
@@ -173,6 +221,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "inside a single bar; they should be decomposed into measurable detail.",
         indicates="Many long-duration tasks reduce visibility — break them down so progress and "
         "emerging slip can be seen and managed.",
+        threshold="No more than 5% of incomplete activities may have a baseline duration over 44 "
+        "working days.",
+        example_ok="12 of 600 (2%) run longer than 44 d -> PASS.",
+        example_fail="150 of 600 (25%) exceed 44 d -> FAIL; decompose them so progress is visible.",
     ),
     "DCMA09": _doc(
         "DCMA09",
@@ -184,6 +236,12 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "logically impossible and corrupt every downstream calculation.",
         indicates="Invalid dates mean the schedule was not properly statused against the data "
         "date; they must be corrected before any metric can be trusted.",
+        threshold="Zero actuals after the data date and zero incomplete (forecast) work "
+        "scheduled in the past.",
+        example_ok="Every actual is on or before the data date and every forecast is after it "
+        "-> PASS.",
+        example_fail="An actual finish dated two weeks after the data date -> FAIL; the schedule "
+        "was not statused.",
     ),
     "DCMA10": _doc(
         "DCMA10",
@@ -195,6 +253,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "unresourced real-duration work cannot be costed or levelled.",
         indicates="Gaps here mean the plan is not fully resource-loaded — confirm each open "
         "activity is either resourced or genuinely level-of-effort.",
+        threshold="No more than 5% of incomplete, real-duration activities may have no resource "
+        "assigned.",
+        example_ok="Every open task is resourced or flagged level-of-effort -> PASS.",
+        example_fail="300 of 600 open tasks carry no resource -> FAIL; the plan cannot be costed "
+        "or levelled.",
     ),
     "DCMA11": _doc(
         "DCMA11",
@@ -206,6 +269,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "of slip against the plan of record.",
         indicates="A high missed-activity rate shows the schedule is falling behind its "
         "baseline; the work needs re-planning or recovery.",
+        threshold="No more than 5% of activities baselined to finish by the data date may still "
+        "be unfinished.",
+        example_ok="5 of 200 due tasks slipped (2.5%) -> PASS.",
+        example_fail="60 of 200 due tasks (30%) not finished -> FAIL; the schedule is behind its "
+        "baseline.",
     ),
     "DCMA12": _doc(
         "DCMA12",
@@ -217,6 +285,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "a critical task does not move the finish, the network logic is broken.",
         indicates="Failure means a broken or discontinuous critical path — open ends or "
         "constraints are absorbing the delay instead of passing it to the finish.",
+        threshold="A delay injected on a critical activity must move the project finish by the "
+        "same amount.",
+        example_ok="Inject +10 d on a critical task and the finish moves +10 d -> PASS.",
+        example_fail="The finish does not move -> FAIL; a constraint or open end is absorbing the "
+        "delay (broken critical path).",
     ),
     "DCMA13": _doc(
         "DCMA13",
@@ -228,6 +301,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "fits, below ~0.95 means the path is already eroding into negative float.",
         indicates="A CPLI below 0.95 shows the controlling path is behind; recover its negative "
         "float to make the finish date credible.",
+        threshold="Critical Path Length Index must be at least 0.95 (1.0 means the path just "
+        "fits).",
+        example_ok="CPLI of 1.02 -> PASS; the finish has a little slack.",
+        example_fail="CPLI of 0.78 -> FAIL; the controlling path is eroding into negative float.",
     ),
     "DCMA14": _doc(
         "DCMA14",
@@ -239,6 +316,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "as fast as the plan said they would be?",
         indicates="A BEI below 0.95 means the team is finishing work slower than baselined — an "
         "early, leading indicator of overall slip.",
+        threshold="Baseline Execution Index must be at least 0.95 (work completed / work "
+        "baselined to be complete).",
+        example_ok="BEI of 0.98 -> PASS; throughput is on plan.",
+        example_fail="BEI of 0.62 -> FAIL; work is finishing far slower than baselined - an "
+        "early slip signal.",
     ),
     # --- Acumen Schedule-Quality summary ---
     "missing_logic": _doc(

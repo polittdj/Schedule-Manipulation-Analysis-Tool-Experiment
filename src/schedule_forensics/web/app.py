@@ -3708,6 +3708,50 @@ def _wbs_data(groups: tuple[WBSGroup, ...]) -> dict[str, object]:
     }
 
 
+def _dcma_label(metric_id: str) -> str:
+    """The spaced display label the operator asked for: ``DCMA01`` -> ``DCMA 01``;
+    ``DCMA04_FS`` -> ``DCMA 04 FS``. Non-DCMA ids pass through unchanged."""
+    if not metric_id.startswith("DCMA"):
+        return metric_id
+    base, _, suffix = metric_id[4:].partition("_")
+    return f"DCMA {base}" + (f" {suffix.replace('_', ' ')}" if suffix else "")
+
+
+def _dcma_measure(check: AuditCheck) -> str:
+    """A concise measured value to sit beside the stoplight (replacing the old bar): a percentage
+    with its count for population checks, the index for CPLI/BEI, a raw count otherwise."""
+    if check.unit == "ratio":  # CPLI / BEI — an index, not a count
+        return f"{check.value:.2f}"
+    if check.population:
+        pct = check.value if check.unit == "%" else 100.0 * check.count / check.population
+        return f"{pct:.1f}%  ({check.count} of {check.population})"
+    if check.count:
+        unit = f" {check.unit}" if check.unit and check.unit != "count" else ""
+        return f"{check.count}{unit}"
+    return str(check.status).title()  # e.g. the critical-path test: Pass / Fail
+
+
+def _dcma_card(check: AuditCheck) -> dict[str, object]:
+    """One DCMA check as Dashboard-overview JSON: the spaced label + human name, a simple measured
+    value, the PASS/FAIL/NA status (the stoplight), and the help text for the hover tooltip — what
+    the metric is, why it matters, the pass/fail threshold, and a pass + a fail example (operator
+    request). ``status`` and ``count`` are retained for back-compatibility with existing readers."""
+    doc = METRIC_DICTIONARY.get(check.metric_id)
+    return {
+        "label": _dcma_label(check.metric_id),
+        "name": doc.name if doc else check.name,
+        "status": str(check.status),
+        "count": check.count,
+        "value": check.value,
+        "measure": _dcma_measure(check),
+        "definition": doc.definition if doc else "",
+        "why": doc.importance if doc else "",
+        "threshold": doc.threshold if doc else "",
+        "example_ok": doc.example_ok if doc else "",
+        "example_fail": doc.example_fail if doc else "",
+    }
+
+
 def _dcma_definition_cell(metric_id: str) -> str:
     """The 'what it measures (how)' cell for a DCMA row, from the in-tool metric dictionary —
     plain-language definition + the formula/threshold, so each score is explained in place."""
@@ -3727,23 +3771,31 @@ def _dcma_metric_cell(check: AuditCheck) -> str:
     The tooltip is keyboard-operable (the trigger is focusable and labelled) and also carries a
     plain-text ``title=`` so the same detail is available with no CSS/JS (air-gap, a11y)."""
     doc = METRIC_DICTIONARY.get(check.metric_id)
-    name = check.name
     if doc is None:
-        return f"<td>{_e(name)}</td>"
+        return f"<td>{_e(check.name)}</td>"
+    display = f"{_dcma_label(check.metric_id)} — {doc.name}"
     tip_id = f"dcma-tip-{_e(check.metric_id)}"
-    rich = [f"<b>{_e(doc.name)}</b>", f"<p>{_e(doc.definition)}</p>"]
-    rich.append(f"<p><b>Pass criteria:</b> <code>{_e(doc.formula)}</code></p>")
-    title = f"{doc.definition} — Pass criteria: {doc.formula}."
+    rich = [f"<b>{_e(display)}</b>", f"<p>{_e(doc.definition)}</p>"]
+    title = f"{doc.definition}"
+    threshold = doc.threshold or f"Pass criteria: {doc.formula}"
+    rich.append(f"<p><b>Threshold:</b> {_e(threshold)}</p>")
+    title += f" Threshold: {threshold}."
     if doc.importance:
         rich.append(f"<p><b>Why it matters:</b> {_e(doc.importance)}</p>")
         title += f" Why it matters: {doc.importance}"
+    if doc.example_ok:
+        rich.append(f"<p><b>Pass example:</b> {_e(doc.example_ok)}</p>")
+        title += f" Pass example: {doc.example_ok}"
+    if doc.example_fail:
+        rich.append(f"<p><b>Fail example:</b> {_e(doc.example_fail)}</p>")
+        title += f" Fail example: {doc.example_fail}"
     if doc.indicates:
         rich.append(f"<p><b>Indicates:</b> {_e(doc.indicates)}</p>")
         title += f" Indicates: {doc.indicates}"
     return (
         f"<td class=dcma-cell>"
         f'<span class=dcma-metric tabindex=0 role=button aria-describedby="{tip_id}" '
-        f'title="{_e(title)}">{_e(name)} '
+        f'title="{_e(title)}">{_e(display)} '
         f"<span class=dcma-info aria-hidden=true>&#9432;</span></span>"
         f'<div class=dcma-tip id="{tip_id}" role=tooltip>{"".join(rich)}</div></td>'
     )
@@ -4180,10 +4232,7 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
             "work_weekdays": list(sch.calendar.work_weekdays),
             "holidays": [d.isoformat() for d in sch.calendar.holidays],
         },
-        "dcma": {
-            c.metric_id: {"status": str(c.status), "count": c.count, "value": c.value}
-            for c in audit.checks
-        },
+        "dcma": {c.metric_id: _dcma_card(c) for c in audit.checks},
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
         "float_bands": {
             k: {"count": v.count, "population": v.population, "value": v.value}
