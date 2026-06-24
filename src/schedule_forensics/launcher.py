@@ -70,11 +70,12 @@ def main(
 
     Refuses a non-loopback ``host`` (CUI: local-only). The app is built with
     ``auto_shutdown`` so that closing the browser stops the server (the tool turns itself
-    off). When ``manage_ollama`` is set (the desktop icon's default) a local ``ollama serve``
-    is started in the background so Ask-the-AI works without the operator starting it by hand,
-    and is stopped again on shutdown — but only if we were the one who started it (an Ollama the
-    operator already had running is left untouched). ``serve``/``browser``/``timer``/``ollama``
-    are injectable for testing.
+    off). When ``manage_ollama`` is set (the desktop icon's default) the tool may manage a local
+    ``ollama serve`` — but LAZILY: it is started only when the operator turns the Ollama backend on
+    in AI Settings (the app calls ``ensure_running``), never at launch, so a session that never
+    uses the AI never spins Ollama up. On shutdown the manager frees the model RAM and stops the
+    server it started (a pre-existing Ollama the operator runs themselves is left untouched).
+    ``serve``/``browser``/``timer``/``ollama`` are injectable for testing.
     """
     _ensure_streams()  # pythonw (the desktop icon) launches with stdout/stderr = None
     if not is_loopback_host(host):
@@ -87,15 +88,15 @@ def main(
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None
     if manager is not None:
-        # start Ollama off-thread so the server + browser are never blocked on it; stop it when
-        # the server returns (graceful shutdown) and via atexit as a backstop for a hard exit.
-        threading.Thread(target=manager.ensure_running, daemon=True).start()
+        # Do NOT start Ollama here — the app starts it lazily when the operator enables the Ollama
+        # backend in AI Settings. We only register the stop side now (atexit backstop for a hard
+        # exit; the finally below is the graceful path). Both are no-ops if AI was never turned on.
         atexit.register(manager.shutdown)
 
     if open_browser:
         timer(_BROWSER_DELAY, browser, args=(url,)).start()
     try:
-        serve_fn(create_app(auto_shutdown=True), host=host, port=chosen_port)
+        serve_fn(create_app(auto_shutdown=True, ollama=manager), host=host, port=chosen_port)
     finally:
         if manager is not None:
             manager.shutdown()

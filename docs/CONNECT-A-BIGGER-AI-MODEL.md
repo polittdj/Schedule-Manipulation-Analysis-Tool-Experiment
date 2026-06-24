@@ -188,6 +188,35 @@ truth either way. To set this up:
 
 ---
 
+## When does Ollama run? (and how to make it run *only* with the tool)
+
+The tool is careful about this:
+
+- It starts Ollama **only when you turn the *Ollama (local)* backend on** in AI Settings — never
+  just because you opened the tool.
+- When you **close the tool**, it **unloads the model** (freeing the memory it was using) and
+  **stops the Ollama server** — even one that was already running.
+
+There is **one thing the tool can't fully control**: on Windows, the Ollama **desktop app**
+(`ollama app.exe`) installs itself to **auto-start when you log in**. The tool stops the Ollama
+*server* when you close it, but the desktop app **starts a new server again at your next login**.
+So you may see Ollama back in Task Manager after you log in again — that's the Windows auto-start,
+not this tool.
+
+**To make Ollama run only when you use the tool**, turn that auto-start off (one time):
+
+1. Find the **Ollama icon in your system tray** (bottom-right, near the clock — click the little
+   `^` arrow if you don't see it).
+2. **Right-click it → Settings**, and **uncheck "Run at login"** (Ollama recent versions call it
+   "Start Ollama when you log in"). *Or:* open Windows **Settings → Apps → Startup** and switch
+   **Ollama** to **Off**.
+3. **Sign out and back in** (or restart). From now on Ollama stays off until the tool turns it on.
+
+> 💡 You can always still run Ollama by hand if you want to — this only stops it from launching
+> itself at login.
+
+---
+
 ## The short version (once you've done it once)
 
 1. Open the typing window (Terminal).

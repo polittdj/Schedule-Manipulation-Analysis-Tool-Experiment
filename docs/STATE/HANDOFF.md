@@ -1,6 +1,26 @@
-# Handoff — 2026-06-24 (Executive Briefing rebuilt as a leadership forensic summary + Word/Excel export; ADR-0121)
+# Handoff — 2026-06-24 (Ollama runs only when the operator enables AI, and is unloaded/stopped on tool close; ADR-0122)
 
-> ## STATUS (current) — Executive Briefing rebuilt as a numbered, plain-English forensic summary (+ Word/Excel hand-out); ADR-0121; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — lazy Ollama lifecycle: start on AI-enable, free the model RAM + stop our serve on close (ADR-0122); branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main`):**
+> - **Operator bug:** after quitting the tool, Ollama (a resident 72B model, ~40% RAM) kept running.
+>   Causes: (1) the launcher started `ollama serve` at **every** launch even without AI; (2) shutdown
+>   only stopped an Ollama the tool itself started, so a Windows-tray-started one was never freed.
+> - **Fix — ADR-0122 (lazy + self-cleaning), gated on `OllamaLauncher._engaged`:**
+>   - **Lazy start:** launcher no longer starts Ollama at launch; it hands the manager to
+>     `create_app(ollama=…)`, and the `/settings` POST starts it (off-thread) **only when the
+>     operator selects the Ollama backend**.
+>   - **Tidy on close (operator chose "fully stop"):** `shutdown()` is a **no-op if AI was never
+>     enabled**; otherwise it **unloads every in-memory model** (`/api/ps` + `keep_alive:0`, std-lib
+>     `urllib`, loopback only) — freeing RAM even when the tool only *adopted* a running server —
+>     gracefully terminates the serve it started, then **stops any Ollama server still running**
+>     (`taskkill /F /T /IM ollama.exe` / `pkill -x ollama`, incl. a tray-started one it adopted).
+>   - **Can't fully own:** the Ollama **Windows desktop app** (`ollama app.exe`) relaunches a server at
+>     **next login**; the tool stops the server on close but not the tray app. The AI Settings page +
+>     `docs/CONNECT-A-BIGGER-AI-MODEL.md` explain how to disable that auto-start.
+> - **Gate green:** ollama/launcher/ai-wiring suites pass; full gate run before commit. Highest ADR = **0122**.
+>
+> ## STATUS (prev) — Executive Briefing rebuilt as a numbered, plain-English forensic summary (+ Word/Excel hand-out); ADR-0121; branch `claude/compassionate-ptolemy-wip898`
 >
 > **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, fresh on `main`):**
 > - **Executive Briefing redesign (ADR-0121).** `ai/briefing.py` is rebuilt to model an operator-

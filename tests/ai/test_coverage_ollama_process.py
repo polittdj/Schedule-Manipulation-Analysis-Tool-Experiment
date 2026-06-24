@@ -103,10 +103,14 @@ def test_launcher_started_then_shutdown() -> None:
 
     proc = subprocess.Popen(["/bin/true"])
     launcher = op.OllamaLauncher(
-        prober=prober, finder=lambda: "/x/ollama", spawn=lambda exe, hp: proc
+        prober=prober,
+        finder=lambda: "/x/ollama",
+        spawn=lambda exe, hp: proc,
+        unloader=lambda e: 0,  # hermetic — no real /api/ps call on shutdown
+        stopper=lambda: None,  # hermetic — no real taskkill/pkill on shutdown
     )
     assert launcher.ensure_running() == "started"
-    launcher.shutdown()  # _proc set -> _terminate (already exited path)
+    launcher.shutdown()  # engaged + _proc set -> unload (no-op), _terminate, then stop-server
 
 
 def test_launcher_starting_when_never_listens(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,14 +129,15 @@ def test_launcher_starting_when_never_listens(monkeypatch: pytest.MonkeyPatch) -
             proc.kill()
 
 
-def test_launcher_shutdown_without_a_started_proc() -> None:
-    op.OllamaLauncher(prober=lambda e: True).shutdown()  # _proc is None -> no-op
+def test_launcher_shutdown_without_engaging_is_a_no_op() -> None:
+    op.OllamaLauncher(prober=lambda e: True).shutdown()  # never engaged -> no-op (nothing touched)
 
 
 def test_launcher_shutdown_swallows_terminate_errors(monkeypatch: pytest.MonkeyPatch) -> None:
     proc = subprocess.Popen(["/bin/true"])
     proc.wait()
-    launcher = op.OllamaLauncher()
+    launcher = op.OllamaLauncher(unloader=lambda e: 0, stopper=lambda: None)
+    launcher._engaged = True  # the tool managed Ollama this session, so shutdown proceeds
     launcher._proc = proc
 
     def boom(p: object, **k: object) -> None:
@@ -140,3 +145,19 @@ def test_launcher_shutdown_swallows_terminate_errors(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(op, "_terminate", boom)
     launcher.shutdown()  # exception is logged, not raised
+
+
+def test_default_stop_server_runs_the_platform_kill(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[list[str]] = []
+    monkeypatch.setattr(op.subprocess, "run", lambda cmd, **k: calls.append(cmd))
+    op._default_stop_server()
+    assert len(calls) == 1
+    assert "ollama.exe" in calls[0] if sys.platform == "win32" else calls[0][:2] == ["pkill", "-x"]
+
+
+def test_default_stop_server_swallows_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    def boom(cmd: list[str], **k: object) -> None:
+        raise FileNotFoundError("pkill missing")
+
+    monkeypatch.setattr(op.subprocess, "run", boom)
+    op._default_stop_server()  # missing utility / nothing to kill -> logged, never raised

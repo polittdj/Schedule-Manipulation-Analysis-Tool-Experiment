@@ -13,6 +13,7 @@ the lifecycle logic is unit-tested without a real Ollama or a real subprocess.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -21,6 +22,7 @@ import subprocess  # nosec B404 — used only to spawn a fixed, local `ollama se
 import sys
 import threading
 import time
+import urllib.request
 from collections.abc import Callable
 from urllib.parse import urlparse
 
@@ -31,6 +33,8 @@ DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
 Finder = Callable[[], "str | None"]
 Prober = Callable[[str], bool]
 Spawn = Callable[[str, str], "subprocess.Popen[bytes]"]
+Unloader = Callable[[str], int]
+Stopper = Callable[[], None]
 
 
 def _candidate_paths() -> list[str]:
@@ -113,8 +117,82 @@ def _terminate(proc: subprocess.Popen[bytes], *, timeout: float = 6.0) -> None:
         proc.kill()
 
 
+# A loopback-only, no-proxy urllib opener (Law 1): the cleanup calls below only ever talk to the
+# local Ollama, and on a corporate laptop the default opener would route even a 127.0.0.1 request
+# through the company proxy. An empty ProxyHandler forces a DIRECT connection.
+_DIRECT_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def _loaded_models(endpoint: str, timeout: float) -> list[str]:
+    """Names of the models the local Ollama currently holds in memory (``GET /api/ps``)."""
+    req = urllib.request.Request(f"{endpoint.rstrip('/')}/api/ps", method="GET")  # nosec B310
+    with _DIRECT_OPENER.open(req, timeout=timeout) as resp:  # nosec B310 — loopback endpoint only
+        payload = json.loads(resp.read().decode("utf-8"))
+    models = payload.get("models", []) if isinstance(payload, dict) else []
+    return [m["name"] for m in models if isinstance(m, dict) and "name" in m]
+
+
+def _default_stop_server() -> None:
+    """Best-effort: stop every local Ollama **server** process so it isn't left running once the
+    tool closes (the operator chose "fully stop Ollama on close", ADR-0122). Uses the OS process
+    tools — local only, no network — and never raises. This also stops a server the Windows desktop
+    app (the tray) started, which the tool only adopted; the tray ``ollama app.exe`` itself is left
+    alone (it relaunches at login — disabling that auto-start is covered in AI Settings). On a hard
+    network/exec failure it simply does nothing (cleanup is best-effort)."""
+    if sys.platform == "win32":  # pragma: no cover - exercised only on Windows
+        cmd = ["taskkill", "/F", "/T", "/IM", "ollama.exe"]
+    else:
+        cmd = ["pkill", "-x", "ollama"]
+    try:
+        # fixed OS-utility argv, no shell, no user input — and `ollama.exe`/`ollama` is the server
+        subprocess.run(  # nosec B603 B607
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            check=False,
+        )
+    except Exception as exc:  # the utility may be missing / nothing to kill — never raise on exit
+        logger.debug("could not stop Ollama server processes: %s", exc)
+
+
+def unload_loaded_models(endpoint: str = DEFAULT_ENDPOINT, *, timeout: float = 4.0) -> int:
+    """Best-effort: drop every in-memory model from the local Ollama so it stops holding RAM once
+    the tool closes. ``keep_alive: 0`` tells Ollama to unload the model immediately after the
+    (empty) request. Returns the count unloaded; never raises — close-time cleanup is best-effort.
+    Std-lib HTTP over loopback only (Law 1)."""
+    try:
+        names = _loaded_models(endpoint, timeout)
+    except Exception:
+        return 0
+    unloaded = 0
+    for name in names:
+        try:
+            body = json.dumps({"model": name, "keep_alive": 0}).encode("utf-8")
+            req = urllib.request.Request(  # nosec B310 — loopback endpoint only
+                f"{endpoint.rstrip('/')}/api/generate", data=body, method="POST"
+            )
+            req.add_header("Content-Type", "application/json")
+            with _DIRECT_OPENER.open(req, timeout=timeout):  # nosec B310
+                pass
+            unloaded += 1
+        except Exception:  # one model failing to unload must not block the rest / the exit
+            logger.debug("could not unload Ollama model %s", name)
+    return unloaded
+
+
 class OllamaLauncher:
-    """Starts a local ``ollama serve`` if none is running; stops it on shutdown if we started it."""
+    """Manages the local Ollama **only once the user enables AI in the tool** (lazy):
+
+    :meth:`ensure_running` is called when the operator turns the Ollama backend on in AI Settings
+    — never at tool launch — so the tool does not spin Ollama up for a session that never uses the
+    AI. It starts a local ``ollama serve`` if none is listening (and remembers it started it). On
+    :meth:`shutdown` (tool close) it frees the model RAM (unloads loaded models) and **stops the
+    Ollama server** — operator's choice (ADR-0122): not only the ``ollama serve`` the tool itself
+    started, but also one the Windows desktop app started that the tool merely adopted, so closing
+    the tool leaves no server running. If the tool never engaged Ollama this session, shutdown is a
+    no-op — a pre-existing Ollama is left entirely alone unless the operator actually used the AI.
+    """
 
     def __init__(
         self,
@@ -123,15 +201,20 @@ class OllamaLauncher:
         finder: Finder = find_ollama_executable,
         prober: Prober = endpoint_up,
         spawn: Spawn | None = None,
+        unloader: Unloader | None = None,
+        stopper: Stopper | None = None,
         start_timeout: float = 20.0,
     ) -> None:
         self.endpoint = endpoint
         self._finder = finder
         self._prober = prober
         self._spawn = spawn or _default_spawn
+        self._unload = unloader or (lambda ep: unload_loaded_models(ep))
+        self._stop_server = stopper or _default_stop_server
         self._start_timeout = start_timeout
         self._lock = threading.Lock()
         self._proc: subprocess.Popen[bytes] | None = None  # set only if WE started it
+        self._engaged = False  # True once the user enabled AI and we managed Ollama this session
         self.status = "idle"
 
     def ensure_running(self) -> str:
@@ -140,7 +223,10 @@ class OllamaLauncher:
         ``already-running`` (someone else's — left alone), ``started`` (we started it and it is
         up), ``starting`` (we started it; not listening yet within the budget), ``no-binary``
         (Ollama not installed — Ask-the-AI stays offline), or ``failed`` (spawn error).
+
+        Called when the operator enables the Ollama backend in AI Settings (not at tool launch).
         """
+        self._engaged = True  # the tool is now managing Ollama -> shutdown will tidy up
         if self._prober(self.endpoint):
             self.status = "already-running"
             return self.status
@@ -168,14 +254,34 @@ class OllamaLauncher:
         return self.status
 
     def shutdown(self) -> None:
-        """Stop the Ollama we started (no-op if we didn't start one / already stopped)."""
+        """Tidy up Ollama on tool close: free the model RAM, then stop the Ollama server.
+
+        A no-op if the tool never engaged Ollama this session (the user never turned AI on), so a
+        pre-existing Ollama is never touched unless the operator actually used the AI. When engaged:
+        loaded models are unloaded (frees RAM), the ``ollama serve`` we started — if any — is
+        terminated gracefully, and then any Ollama **server still running is stopped** (operator's
+        choice, ADR-0122) so nothing is left behind, including a server the Windows tray started.
+        """
+        if not self._engaged:
+            return
+        try:
+            freed = self._unload(self.endpoint)
+            if freed:
+                logger.info("freed %d in-memory Ollama model(s) on shutdown", freed)
+        except Exception as exc:  # cleanup is best-effort — never raise on the way out
+            logger.warning("could not unload Ollama models on shutdown: %s", exc)
         with self._lock:
             proc = self._proc
             self._proc = None
-        if proc is None:
-            return
+        if proc is not None:
+            try:
+                _terminate(proc)  # graceful stop of the serve we started
+                logger.info("stopped the local Ollama we started")
+            except Exception as exc:  # cleanup is best-effort — never raise on the way out
+                logger.warning("could not stop the Ollama we started: %s", exc)
         try:
-            _terminate(proc)
-            logger.info("stopped the local Ollama we started")
-        except Exception as exc:  # cleanup is best-effort — never raise on the way out
-            logger.warning("could not stop the Ollama we started: %s", exc)
+            # operator chose "fully stop Ollama on close": force-stop any server still running —
+            # including one the Windows tray started that we only adopted (else it would persist)
+            self._stop_server()
+        except Exception as exc:  # never raise on the way out
+            logger.warning("could not stop running Ollama server(s): %s", exc)

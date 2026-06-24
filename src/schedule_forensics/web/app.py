@@ -51,6 +51,7 @@ from schedule_forensics.ai.briefing import (
 from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
 from schedule_forensics.ai.narrative import build_narrative
+from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.qa import (
     answer_question,
     build_fact_sheet,
@@ -897,6 +898,7 @@ def create_app(
     *,
     auto_shutdown: bool = False,
     idle_grace: float = 600.0,
+    ollama: OllamaLauncher | None = None,
 ) -> FastAPI:
     """Build the FastAPI app. ``state`` lets a test/launcher inject a fresh session.
 
@@ -910,11 +912,16 @@ def create_app(
     tab — so a short grace would shut a still-open tool down when it was merely in the background.
     Ten minutes also lets the operator navigate away briefly (or let the laptop sleep) and come
     back to the same session. The in-page **Quit** control still stops it immediately.
+
+    ``ollama`` (passed by the desktop launcher) is the Ollama process manager. It is started
+    **lazily** — only when the operator turns the Ollama backend on in AI Settings — and stopped
+    on tool close, so the tool never spins Ollama up for a session that never uses the AI (ADR-0122).
     """
     app = FastAPI(title="Schedule Forensics", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
     app.state.auto_shutdown = auto_shutdown
     app.state.idle_grace = idle_grace
+    app.state.ollama = ollama  # lazy-started on AI enable, stopped on close (None in tests)
     app.state.last_beat = time.monotonic()
     app.state.browser_seen = False  # armed once the first heartbeat arrives
     app.state.shutting_down = False
@@ -2404,6 +2411,12 @@ def create_app(
         )
         st.backend_cache = None  # re-route immediately — a settings change must take effect now
         st.second_cache = None
+        # Lazy Ollama: the desktop launcher's manager starts `ollama serve` only now, when the
+        # operator turns the Ollama backend on — never at tool launch (ADR-0122). Off-thread so the
+        # redirect never waits on the server coming up; a no-op if Ollama isn't the chosen backend.
+        manager = getattr(app.state, "ollama", None)
+        if manager is not None and "ollama" in (backend, second_backend):
+            threading.Thread(target=manager.ensure_running, daemon=True).start()
         return RedirectResponse(url="/settings", status_code=303)
 
     @app.get("/help", response_class=HTMLResponse)
@@ -6600,7 +6613,16 @@ in <i>Model</i>, and click <b>Save</b>. The tool talks to Ollama only on
 so both answer every question and the engine compares their figures.</li>
 <li><b>If a big model runs slowly,</b> raise <i>Generation timeout</i> above (it defaults to
 900&nbsp;seconds). The full walk-through lives in <code>docs/CONNECT-A-BIGGER-AI-MODEL.md</code>.</li>
-</ol></details></div>
+</ol>
+<p class=muted style="margin-top:10px"><b>About Ollama running:</b> this tool starts Ollama only
+when you turn the <i>Ollama (local)</i> backend on here, and when you close the tool it unloads the
+model and <b>stops the Ollama server</b> (even one that was already running). If you installed
+Ollama on Windows, its desktop app (<code>ollama&nbsp;app.exe</code>) <b>auto-starts again at your
+next login</b> and brings the server back. To make Ollama run <i>only</i> with the tool, turn that
+auto-start off once: <b>right-click the Ollama icon in the system tray &rarr; Settings &rarr;
+uncheck &ldquo;Run at login&rdquo;</b> (or Windows <b>Settings &rarr; Apps &rarr; Startup &rarr;</b>
+switch <b>Ollama</b> off), then sign out and back in.</p>
+</details></div>
 <script src="/static/settings.js"></script>"""
 
 
