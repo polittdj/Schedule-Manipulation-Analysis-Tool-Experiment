@@ -48,6 +48,8 @@ def test_analysis_json_has_citable_activity_rows(client: TestClient) -> None:
         "is_critical",
         "is_milestone",
         "is_summary",
+        "outline_level",  # drives the MS-Project WBS indentation of the Name column
+        "order",  # file/outline order so the Gantt rows read top-down like MS Project
         "resource_names",
         "source_file",
     ):
@@ -55,11 +57,19 @@ def test_analysis_json_has_citable_activity_rows(client: TestClient) -> None:
     assert row["is_critical"] is True and row["source_file"] == "Project5.mspdi.xml"
     assert data["status_date"] == "2026-08-27"  # the data-date marker the Gantt draws
     assert all(s["total_float_days"] is None for s in summaries)  # no CPM float on summaries
+    # WBS indentation: the project-summary row sits at outline level 0, real WBS deeper; and the
+    # rows arrive in file/outline order (not UID order) so the tree reads top-down like MS Project
+    assert any(a["outline_level"] >= 1 for a in acts)  # nested WBS exists in the sample
+    assert next(a for a in acts if a["unique_id"] == 0)["outline_level"] == 0  # project summary
+    orders = [a["order"] for a in acts]
+    assert orders == sorted(orders)  # the grid renders in ascending file order
 
 
 def test_app_js_renders_the_gantt_timeline(client: TestClient) -> None:
     js = client.get("/static/app.js").text
-    assert "timelineCell" in js and "monthTicks" in js  # the MS-Project-style timeline column
+    # the MS-Project-style timeline column: a stacked Year/Quarter/Month header (via the shared
+    # SFGantt.buildTierScale) plus the per-track gridlines
+    assert "timelineCell" in js and "buildTierScale" in js and "gridLines" in js
     assert "g-ms" in js and "g-sum" in js and "g-crit" in js  # milestone/summary/critical bars
     css = client.get("/static/app.css").text
     assert ".g-bar" in css and ".g-status" in css
@@ -94,6 +104,34 @@ def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> N
     assert "name-cell" in app_js  # the /analysis grid Name cell wraps
     assert ".slice(0, 22)" not in app_js  # the trace no longer truncates the task name
     assert "td.name-cell" in client.get("/static/app.css").text
+
+
+def test_shared_msproject_gantt_timeline_is_used_on_every_gantt_page(client: TestClient) -> None:
+    """Operator request: make every Gantt mirror Microsoft Project — one stacked
+    Year/Quarter/Month timeline + month/quarter/year gridlines, shared across all pages so
+    they read identically. The primitive lives in static/gantt.js (window.SFGantt) and the
+    page shell loads it once; each Gantt page builds its header via SFGantt.buildTierScale and
+    paints SFGantt.gridLines down each track, replacing the old single-tier month-tick header."""
+    gj = client.get("/static/gantt.js")
+    assert gj.status_code == 200
+    for sym in ("window.SFGantt", "buildTierScale", "gridLines", "timeTiers", "paintGrid"):
+        assert sym in gj.text
+    # loaded once via the page shell, so every page can reach the shared timeline
+    assert "/static/gantt.js" in client.get("/analysis/Project5").text
+    assert "/static/gantt.js" in client.get("/path").text
+    # each HTML Gantt builds its header + gridlines from the shared primitive, not a local
+    # single-tier month-tick loop (the old "pv-tick" month ticks are gone)
+    for name in ("app.js", "path.js", "driving_path.js"):
+        js = client.get("/static/" + name).text
+        assert "SFGantt.buildTierScale" in js or "buildTierScale(" in js, name
+        assert "gridLines" in js, name
+        assert "pv-tick" not in js, name  # single-tier month-tick header replaced
+    # the SVG path-evolution Gantt gains the same stacked tiers (quarter/year bands)
+    evo = client.get("/static/path_evolution.js").text
+    assert "bandLabel" in evo and "Q" in evo
+    # the tiered header + gridlines are styled
+    css = client.get("/static/app.css").text
+    assert ".g-scale-tiered" in css and ".g-tier-qtr" in css and ".g-grid-yr" in css
 
 
 def test_msproject_checklist_filters_replace_substring_and_tier_selects(client: TestClient) -> None:

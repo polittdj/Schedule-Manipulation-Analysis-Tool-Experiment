@@ -51,23 +51,6 @@
   t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
   var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); };
 
-  function monthScale(width) {
-    var scale = el("div", { class: "path-scale", style: "width:" + width + "px" });
-    var d = new Date(t0); d.setDate(1);
-    while (d.getTime() <= t1) {
-      var tx = x(d.getTime());
-      if (tx >= 0) {
-        scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tx + "px" }));
-        scale.appendChild(el("div", {
-          class: "pv-tick-label", style: "left:" + (tx + 3) + "px",
-          text: (d.getMonth() + 1) + "/" + String(d.getFullYear()).slice(2),
-        }));
-      }
-      d.setMonth(d.getMonth() + 1);
-    }
-    return scale;
-  }
-
   function render() {
     var v = versions[idx];
     $("dpLabel").textContent = "Version " + (idx + 1) + "/" + versions.length + " — " + v.label +
@@ -80,20 +63,17 @@
       return;
     }
     var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
+    // MS-Project timeline: stacked Year/Quarter/Month header + month/quarter/year gridlines,
+    // shared with every other Gantt on the site (static/gantt.js).
+    var axis = { t0: t0, t1: t1, width: width, x: x };
+    var gridLns = SFGantt.gridLines(axis);
 
     var table = el("table", { class: "gantt-grid path-grid" });
     var head = el("tr");
     head.appendChild(el("th", { text: "UID" }));
     head.appendChild(el("th", { text: "Name" }));
-    var thTime = el("th", { class: "path-timeline-head" });
-    var scale = monthScale(width);
-    if (v.data_date) {
-      scale.appendChild(el("div", {
-        class: "pv-now", style: "left:" + x(Date.parse(v.data_date)) + "px",
-        title: "data date " + v.data_date,
-      }));
-    }
-    thTime.appendChild(scale);
+    var thTime = el("th", { class: "g-head path-timeline-head" });
+    thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", v.data_date));
     head.appendChild(thTime);
     table.appendChild(head);
 
@@ -103,6 +83,7 @@
       tr.appendChild(el("td", { class: "pv-name", text: a.name }));
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
+      SFGantt.paintGrid(track, gridLns);
       if (v.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(v.data_date)) + "px" }));
       }

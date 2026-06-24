@@ -160,15 +160,42 @@
     colText(COL.dur, padT - 26, "Dur", { fill: "var(--muted)", anchor: "end" });
     colText(COL.start, padT - 26, "Start", { fill: "var(--muted)" });
     colText(COL.finish, padT - 26, "Finish", { fill: "var(--muted)" });
-    var d = new Date(lo); d.setMonth(0, 1); d.setHours(0, 0, 0, 0);
-    while (d.getTime() <= hi) {
-      var tx = x(d.getTime());
-      if (tx >= plotL) {
-        svg.appendChild(svgEl("line", { x1: tx, y1: padT - 12, x2: tx, y2: H - padB, stroke: "var(--line)", "stroke-width": 1 }));
-        colText(tx + 2, padT - 15, d.getFullYear(), { fill: "var(--muted)" });
+    // MS-Project-style stacked time axis: month (faint) / quarter (medium) / year (heavy)
+    // gridlines down the plot, with year and quarter labels in the header. Month and quarter
+    // lines are gated by zoom so a wide frame doesn't turn to mush.
+    var gridTop = padT - 6, gridBot = H - padB;
+    var monthPx = x(lo + 30 * DAY) - x(lo); // approx pixels per month at this zoom
+    function gline(ms, op) {
+      var tx = x(ms);
+      if (tx >= plotL && tx <= plotR) {
+        svg.appendChild(svgEl("line", { x1: tx, y1: gridTop, x2: tx, y2: gridBot,
+          stroke: "var(--line)", "stroke-width": 1, opacity: op }));
       }
-      d.setFullYear(d.getFullYear() + 1);
     }
+    function bandLabel(s, e, yy, text, size, minW) {
+      var l = Math.max(plotL, x(s)), r = Math.min(plotR, x(e));
+      if (r - l < minW) return;
+      var t = svgEl("text", { x: (l + r) / 2, y: yy, "text-anchor": "middle", "font-size": size, fill: "var(--muted)" });
+      t.textContent = text;
+      svg.appendChild(t);
+    }
+    function eachPeriod(startOf, advance, fn) {
+      var dd = new Date(lo); startOf(dd); var guard = 0;
+      while (dd.getTime() <= hi && guard++ < 4000) {
+        var nd = new Date(dd); advance(nd); fn(dd.getTime(), nd.getTime(), dd); dd = nd;
+      }
+    }
+    if (monthPx >= 9) {
+      eachPeriod(function (dd) { dd.setUTCDate(1); dd.setUTCHours(0, 0, 0, 0); },
+        function (dd) { dd.setUTCMonth(dd.getUTCMonth() + 1); },
+        function (s) { gline(s, 0.16); });
+    }
+    eachPeriod(function (dd) { dd.setUTCMonth(Math.floor(dd.getUTCMonth() / 3) * 3, 1); dd.setUTCHours(0, 0, 0, 0); },
+      function (dd) { dd.setUTCMonth(dd.getUTCMonth() + 3); },
+      function (s, e, dd) { gline(s, 0.4); bandLabel(s, e, padT - 16, "Q" + (Math.floor(dd.getUTCMonth() / 3) + 1), 9, 22); });
+    eachPeriod(function (dd) { dd.setUTCMonth(0, 1); dd.setUTCHours(0, 0, 0, 0); },
+      function (dd) { dd.setUTCFullYear(dd.getUTCFullYear() + 1); },
+      function (s, e, dd) { gline(s, 0.8); bandLabel(s, e, padT - 30, String(dd.getUTCFullYear()), 11, 26); });
     svg.appendChild(svgEl("line", { x1: COL.name, y1: padT - 8, x2: W, y2: padT - 8, stroke: "var(--line)", "stroke-width": 1 }));
 
     rows.forEach(function (r, i) {

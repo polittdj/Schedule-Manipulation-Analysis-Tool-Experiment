@@ -176,6 +176,22 @@ def test_manual_flag_is_read() -> None:
     assert sch.tasks_by_id[3].is_manual is False  # absent element defaults to auto-scheduled
 
 
+def test_outline_level_is_read() -> None:
+    """MS Project's OutlineLevel drives the Gantt's WBS indentation (any depth). 0 = project
+    summary, 1 = top-level WBS, deeper levels indent further; absent defaults to 0."""
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><OutlineLevel>1</OutlineLevel><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><OutlineLevel>3</OutlineLevel><Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>3</UID><Name>C</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.tasks_by_id[1].outline_level == 1
+    assert sch.tasks_by_id[2].outline_level == 3  # deeper WBS nesting indents further
+    assert sch.tasks_by_id[3].outline_level == 0  # absent element defaults to 0
+
+
 def test_estimated_duration_flag_is_read() -> None:
     body = (
         "<Tasks>"

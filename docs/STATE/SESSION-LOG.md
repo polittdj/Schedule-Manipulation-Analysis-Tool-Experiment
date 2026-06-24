@@ -3225,3 +3225,36 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   + new SS/FF/SF + calendar-method unit tests; `ssi_uid145` stays exact.
 - **Gate:** full suite **1499 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/`node --check`
   clean; engine coverage ≥85, driving_slack.py + calendar.py 100%. Highest ADR = **0118**.
+
+---
+
+## 2026-06-24 (cont. 2) — UI overhaul: Gantt mirrors Microsoft Project on every page + DCMA-14 stoplight dashboard (ADR-0119)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (re-based fresh on `main` after #231 squash-merged).
+  **Model/mode:** Opus 4.8. **Trigger:** operator screenshot of `/analysis` beside Microsoft Project.
+- **Part A — DCMA-14 dashboard panel (merged, PR #231).** Spaced labels (`DCMA 01`, not `DCMA01`) + the
+  metric name, a simple measure, and a red/orange/green **stoplight** replacing the red bar. Hover a row
+  for what the metric is, why it matters, the pass/fail **threshold**, and a worked **pass**/**fail**
+  example. `help.py` gained `threshold`/`example_ok`/`example_fail` (named `_ok` not `_pass` to keep
+  bandit B106/B107 quiet); `_dcma_card` feeds the JSON; `app.js` `dcmaPanel` renders the stoplight rows.
+- **Part B — Gantt mirrors Microsoft Project on every page (ADR-0119, this branch).**
+  - **Model/importer:** `Task.outline_level` (MSPDI `<OutlineLevel>`, any depth, default 0) →
+    `SCHEMA_VERSION` **2.2.0 → 2.3.0** + schema-freeze test updated; importer reads it. The activity grid
+    indents the Name column by it and sorts rows in **file/outline order** (not UID), so parents nest
+    above children regardless of UID numbering.
+  - **Shared primitive:** new vendored `static/gantt.js` (`window.SFGantt`) — one stacked
+    **Year/Quarter/Month** header (`buildTierScale`, narrow bands collapse their label like MP) +
+    month/quarter/year **gridlines** (`gridLines`/`paintGrid`) on a tiny axis contract `{t0,t1,width,x}`.
+    Loaded once in the page shell. (`SFTimeAxis`/`timeaxis.js` is SVG + month-index, built for the line
+    charts — wrong tool for the pixel-per-day bar Gantts, hence a parallel primitive.)
+  - **Adopted everywhere a bar Gantt exists:** `app.js` (activity grid + driving-path trace), `path.js`,
+    `driving_path.js` drop their local month-tick loops and call `SFGantt`; the SVG `path_evolution.js`
+    grows the same quarter/year bands + graduated gridlines. Zoom, column add/remove, and the
+    MS-Project-style checklist filters are preserved. `phases.js` (year histogram) and `cei.js` (bow-wave
+    bar/curve) are categorical bar charts, not date-axis Gantts — left unchanged by design.
+- **Tests:** `test_outline_level_is_read` (importer); analysis payload exposes `outline_level` + `order`
+  and rows arrive in ascending file order; `test_shared_msproject_gantt_timeline_is_used_on_every_gantt_page`
+  asserts `SFGantt` is loaded once and used (gridlines, no `pv-tick`) on app/path/driving_path and that the
+  SVG evolution Gantt gains quarter/year bands.
+- **Gate:** full suite **1502 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/`node --check`
+  (all static JS) clean; coverage ≥70 overall / ≥85 engine. Highest ADR = **0119**.
