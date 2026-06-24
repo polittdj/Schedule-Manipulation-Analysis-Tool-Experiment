@@ -50,6 +50,10 @@ class Task(StrictFrozenModel):
     #: calendar. Resolved against ``Schedule.calendars`` for SSI driving-slack parity, where a
     #: link's free float is counted on the successor's own calendar (ADR-0118).
     calendar_uid: int | None = None
+    #: WBS/outline nesting depth (MSPDI ``<OutlineLevel>``): 0 = the project summary row, 1 = a
+    #: top-level WBS, 2 = its child, and so on to any depth. Drives the Gantt's Microsoft-Project
+    #: style name indentation; the value, not a fixed count, sets the indent (ADR-0119).
+    outline_level: int = 0
 
     # --- duration (working minutes; 0 + is_milestone == instantaneous event) ---
     duration_minutes: int = Field(ge=0)

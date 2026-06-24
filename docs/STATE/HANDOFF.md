@@ -1,6 +1,32 @@
-# Handoff — 2026-06-24 (driving slack reproduces SSI 783/783 on the leveled Large Test File — span-snap removed + intraday lunch + per-task calendars; ADR-0116/0117/0118)
+# Handoff — 2026-06-24 (Gantt mirrors Microsoft Project on every page — shared SFGantt 3-tier timeline + gridlines + WBS indentation; DCMA-14 stoplight panel; ADR-0119)
 
-> ## STATUS (current) — shipped engine matches SSI on ALL 783 activities (focus UID 152); ADR-0116/0117/0118; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — UI overhaul: MS-Project Gantt parity on all pages + DCMA-14 stoplight dashboard; ADR-0119; branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`):**
+> - **Part A — DCMA-14 dashboard panel (merged, PR #231).** The dashboard shows spaced labels
+>   (`DCMA 01`, not `DCMA01`) + the metric name, a simple measure, and a red/orange/green
+>   **stoplight** (the red bar is gone). Hover a row for a tooltip calling out what the metric is,
+>   why it matters, the pass/fail **threshold**, and a worked **pass** and **fail** example
+>   (`help.py` gained `threshold`/`example_ok`/`example_fail`; `_dcma_card` feeds the JSON).
+> - **Part B — Gantt mirrors Microsoft Project on every page (ADR-0119, this branch).**
+>   - New `Task.outline_level` (MSPDI `<OutlineLevel>`, any depth) → `SCHEMA_VERSION` **2.2.0 → 2.3.0**;
+>     MSPDI importer reads it; the activity grid indents the Name column by it and renders rows in
+>     **file/outline order** (not UID) so parents sit above children.
+>   - New vendored **`static/gantt.js` (`window.SFGantt`)** — one implementation of the stacked
+>     **Year/Quarter/Month** header (`buildTierScale`) + month/quarter/year **gridlines**
+>     (`gridLines`/`paintGrid`), on a tiny axis contract `{t0,t1,width,x}`. Loaded once in the shell.
+>   - **Adopted everywhere a bar Gantt exists:** `app.js` (activity grid + driving-path trace),
+>     `path.js`, `driving_path.js` drop their local month-tick loops and call `SFGantt`; the SVG
+>     `path_evolution.js` gains the same quarter/year bands + graduated gridlines. Zoom, column
+>     add/remove, and the checklist filters are preserved. `phases.js`/`cei.js` are categorical bar
+>     charts (not date-axis Gantts) — left unchanged by design.
+> - **Gate green:** full suite **1502 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/
+>   `node --check` (all static JS) clean; coverage ≥70 overall / ≥85 engine.
+> - **Highest ADR = 0119** (drift guard: referenced here and in SESSION-LOG).
+> - **Next:** optional WBS collapse/expand of summary rows; consider giving the bow-wave/phase bar
+>   charts the same stacked month axis if the operator wants time-scale parity there too.
+>
+> ## STATUS (prev) — shipped engine matches SSI on ALL 783 activities (focus UID 152); ADR-0116/0117/0118; branch `claude/compassionate-ptolemy-wip898`
 >
 > **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, draft PR — pushed atop the merged #229):**
 > - **`compute_driving_slack(target_uid=152)` reproduces the SSI Directional Path export for ALL

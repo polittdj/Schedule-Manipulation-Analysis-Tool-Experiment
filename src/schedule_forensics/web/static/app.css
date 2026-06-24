@@ -90,6 +90,24 @@
 .pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }
 .pv-now { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--warn); z-index: 2; }
 .path-grid tr.done td { color: var(--muted); }
+
+/* Microsoft-Project-style 3-tier timeline header (Year / Quarter / Month) + vertical gridlines
+   down each Gantt track aligned to the bands. The Name column indents by outline level (set
+   inline per row, any depth). Operator request: mirror MS Project's Gantt presentation. */
+.g-scale-tiered { height: 54px; }
+.g-tier { position: absolute; left: 0; right: 0; height: 18px; }
+.g-tier-yr { top: 0; } .g-tier-qtr { top: 18px; } .g-tier-mo { top: 36px; }
+.g-band {
+  position: absolute; top: 0; height: 18px; line-height: 17px; overflow: hidden;
+  box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 10px;
+  color: var(--muted); border-left: 1px solid var(--grid-line, rgba(127, 127, 127, .22));
+  border-bottom: 1px solid var(--grid-line, rgba(127, 127, 127, .22));
+}
+.g-tier-yr .g-band { font-weight: 600; color: var(--ink); font-size: 11px; }
+.g-tier-qtr .g-band { color: var(--ink); }
+.g-grid { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(127, 127, 127, .14); }
+.g-grid-qtr { background: rgba(127, 127, 127, .28); }
+.g-grid-yr { background: rgba(127, 127, 127, .45); }
 .field-toggle { margin-right: 6px; font-size: 12px; }
 /* custom-field columns (ADR-0093) read distinct from the built-in column toggles */
 .field-toggle.field-custom { color: var(--accent, #6ea8fe); }

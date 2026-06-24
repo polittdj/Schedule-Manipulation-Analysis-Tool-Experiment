@@ -131,30 +131,15 @@
     var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); };
 
     var on = FIELDS.filter(function (f) { return f.on; });
+    // MS-Project timeline: stacked Year/Quarter/Month header + month/quarter/year gridlines,
+    // shared with every other Gantt on the site (static/gantt.js).
+    var axis = { t0: t0, t1: t1, width: width, x: x };
+    var gridLns = SFGantt.gridLines(axis);
     var table = el("table", { class: "gantt-grid path-grid" });
     var head = el("tr");
     on.forEach(function (f) { head.appendChild(el("th", { text: f.label })); });
     var thTime = el("th", { class: "g-head path-timeline-head" });
-    var scale = el("div", { class: "path-scale", style: "width:" + width + "px" });
-    var d = new Date(t0); d.setDate(1); // month ticks
-    while (d.getTime() <= t1) {
-      var tx = x(d.getTime());
-      if (tx >= 0) {
-        scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tx + "px" }));
-        scale.appendChild(el("div", {
-          class: "pv-tick-label", style: "left:" + (tx + 3) + "px",
-          text: (d.getMonth() + 1) + "/" + String(d.getFullYear()).slice(2),
-        }));
-      }
-      d.setMonth(d.getMonth() + 1);
-    }
-    if (data.data_date) {
-      scale.appendChild(el("div", {
-        class: "pv-now", style: "left:" + x(Date.parse(data.data_date)) + "px",
-        title: "data date " + data.data_date,
-      }));
-    }
-    thTime.appendChild(scale);
+    thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
     head.appendChild(thTime);
     table.appendChild(head);
 
@@ -179,6 +164,7 @@
       });
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
+      SFGantt.paintGrid(track, gridLns);
       if (data.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(data.data_date)) + "px" }));
       }

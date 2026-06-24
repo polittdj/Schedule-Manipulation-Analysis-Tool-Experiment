@@ -201,6 +201,7 @@ _LAYOUT = Template(
 <script>window.SF_LANG={{ lang_json }};window.SF_I18N={{ catalog_json }};</script>
 <script src="/static/theme.js"></script>
 <script src="/static/checklist.js"></script>
+<script src="/static/gantt.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
@@ -4270,6 +4271,9 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     """
     by_id = sch.tasks_by_id
     per_day = sch.calendar.working_minutes_per_day
+    # file order (the task list order MS Project displays) so the Gantt nests parents above
+    # their children regardless of UID numbering; the indent itself comes from outline_level.
+    order = {t.unique_id: i for i, t in enumerate(sch.tasks)}
     rows: list[dict[str, object]] = []
     for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
@@ -4294,6 +4298,8 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "is_critical": fr.is_critical,
                 "is_milestone": task.is_milestone,
                 "is_summary": False,
+                "outline_level": task.outline_level,
+                "order": order[fr.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
             }
@@ -4318,11 +4324,13 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "is_critical": False,
                 "is_milestone": task.is_milestone,
                 "is_summary": True,
+                "outline_level": task.outline_level,
+                "order": order[task.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
             }
         )
-    rows.sort(key=lambda r: cast(int, r["unique_id"]))
+    rows.sort(key=lambda r: cast(int, r["order"]))
     return rows
 
 

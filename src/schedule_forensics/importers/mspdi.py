@@ -515,6 +515,7 @@ def _parse_task(
             name=_text(task_el, "Name") or f"Task {uid}",
             wbs=_text(task_el, "WBS"),
             calendar_uid=cal_uid,
+            outline_level=_int(task_el, "OutlineLevel") or 0,
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
             duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
             is_estimated_duration=_bool(task_el, "Estimated", default=False),

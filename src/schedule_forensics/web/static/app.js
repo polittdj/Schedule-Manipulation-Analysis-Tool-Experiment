@@ -135,7 +135,7 @@
   ];
   let activities = [];
   let statusDate = null; // ISO date from the schedule's data date (vertical marker)
-  let sortKey = "unique_id";
+  let sortKey = "order"; // default = file/outline order (parents above children, MS-Project)
   let sortDesc = false;
 
   function renderToggles() {
@@ -188,24 +188,15 @@
     return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
 
-  function monthTicks(axis) {
-    // first-of-month markers across the axis, in PIXELS (the scroll handles density)
-    const ticks = [];
-    const d = new Date(axis.t0);
-    d.setUTCDate(1);
-    for (;;) {
-      d.setUTCMonth(d.getUTCMonth() + 1);
-      const t = d.getTime();
-      if (t > axis.t1) break;
-      const left = axis.x(t);
-      if (left >= 0) ticks.push({ left, label: (d.getUTCMonth() + 1) + "/" + (d.getUTCFullYear() % 100) });
-    }
-    return ticks;
-  }
+  // The Microsoft-Project-style timeline (stacked Year/Quarter/Month header + month/quarter/year
+  // gridlines) is shared with every other Gantt on the site via window.SFGantt (static/gantt.js).
+  const buildTierScale = SFGantt.buildTierScale;
+  const gridLines = SFGantt.gridLines;
 
-  function timelineCell(act, axis) {
+  function timelineCell(act, axis, grid) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
+    (grid || []).forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
     if (statusDate) {
       const sd = Date.parse(statusDate);
       if (!isNaN(sd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(sd) + "px" }));
@@ -257,7 +248,7 @@
     });
   }
 
-  function renderBody(tbody, fields, axis) {
+  function renderBody(tbody, fields, axis, grid) {
     const rows = activities
       .filter((act) => rowMatches(act, fields))
       .sort((a, b) => {
@@ -272,10 +263,14 @@
       if (act.is_summary) tr.className = (tr.className + " sum").trim();
       fields.forEach((f) => {
         const td = el("td", { text: fmt(act[f.key]) });
-        if (f.key === "name") td.className = "name-cell"; // full, wrapped task name
+        if (f.key === "name") {
+          // MS-Project WBS indentation: each outline level indents the task name (any depth)
+          td.className = "name-cell";
+          td.style.paddingLeft = 6 + (act.outline_level || 0) * 14 + "px";
+        }
         tr.appendChild(td);
       });
-      if (axis) tr.appendChild(timelineCell(act, axis));
+      if (axis) tr.appendChild(timelineCell(act, axis, grid));
       tr.addEventListener("click", () => drill(act));
       tbody.appendChild(tr);
     });
@@ -292,6 +287,7 @@
     const fields = ALL_FIELDS.filter((f) => f.on);
     // the axis spans ALL activities so the scale stays stable as filters/columns change
     const axis = buildAxis(activities);
+    const gridLns = axis ? gridLines(axis) : null; // vertical month/quarter/year gridlines
     const table = el("table", { class: "gantt-grid" });
     const thead = el("thead");
     const head = el("tr");
@@ -306,16 +302,7 @@
     });
     if (axis) {
       const th = el("th", { class: "g-head" });
-      const scale = el("div", { class: "g-scale", style: "width:" + axis.width + "px" });
-      monthTicks(axis).forEach((tick) => {
-        scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tick.left + "px" }));
-        scale.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "px", text: tick.label }));
-      });
-      if (statusDate) {
-        const sd = Date.parse(statusDate);
-        if (!isNaN(sd)) scale.appendChild(el("div", { class: "pv-now", style: "left:" + axis.x(sd) + "px" }));
-      }
-      th.appendChild(scale);
+      th.appendChild(buildTierScale(axis, "g-scale", statusDate)); // Year/Quarter/Month (MS Project)
       head.appendChild(th);
     }
     thead.appendChild(head);
@@ -331,7 +318,7 @@
           selected: filters[f.key] || null,
           label: "Filter",
           title: "Filter " + f.label,
-          onChange: (selSet) => { filters[f.key] = selSet; renderBody(tbody, fields, axis); },
+          onChange: (selSet) => { filters[f.key] = selSet; renderBody(tbody, fields, axis, gridLns); },
         }));
       }
       td.addEventListener("click", (ev) => ev.stopPropagation());
@@ -341,7 +328,7 @@
     thead.appendChild(filterRow);
     table.appendChild(thead);
     table.appendChild(tbody);
-    renderBody(tbody, fields, axis);
+    renderBody(tbody, fields, axis, gridLns);
     grid.innerHTML = "";
     grid.appendChild(table);
   }
@@ -392,23 +379,16 @@
     const axis = buildAxis(rows, driving.data_date);
     if (!axis) { box.appendChild(el("p", { class: "muted", text: "No dated activities to plot." })); return; }
     const scroll = el("div", { class: "gantt-scroll" });
-    // header row: a name spacer + the px-wide month-tick scale carrying the data-date line
+    // header row: a name spacer + the stacked Year/Quarter/Month scale (Microsoft Project)
     const headRow = el("div", { class: "gantt-row gantt-head" });
     headRow.appendChild(el("span", { class: "gantt-name" }));
-    const scale = el("div", { class: "gantt-scale", style: "width:" + axis.width + "px" });
-    monthTicks(axis).forEach((tick) => {
-      scale.appendChild(el("div", { class: "pv-tick", style: "left:" + tick.left + "px" }));
-      scale.appendChild(el("span", { class: "g-tick", style: "left:" + tick.left + "px", text: tick.label }));
-    });
-    if (driving.data_date) {
-      const dd = Date.parse(driving.data_date);
-      if (!isNaN(dd)) scale.appendChild(el("div", { class: "pv-now", style: "left:" + axis.x(dd) + "px" }));
-    }
-    headRow.appendChild(scale);
+    headRow.appendChild(buildTierScale(axis, "gantt-scale", driving.data_date));
     scroll.appendChild(headRow);
+    const gridLns = gridLines(axis); // MS-Project vertical month/quarter/year gridlines
     rows.forEach((r) => {
       const done = !!r.complete;
       const track = el("div", { class: "gantt-track", style: "width:" + axis.width + "px" });
+      gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
       if (driving.data_date) {
         const dd = Date.parse(driving.data_date);
         if (!isNaN(dd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(dd) + "px" }));
