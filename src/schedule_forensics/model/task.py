@@ -46,6 +46,10 @@ class Task(StrictFrozenModel):
     unique_id: int
     name: str
     wbs: str | None = None  # WBS code (display / traceability; never an identity key)
+    #: Source ``<CalendarUID>`` the task is scheduled on; ``None`` = the project default
+    #: calendar. Resolved against ``Schedule.calendars`` for SSI driving-slack parity, where a
+    #: link's free float is counted on the successor's own calendar (ADR-0118).
+    calendar_uid: int | None = None
 
     # --- duration (working minutes; 0 + is_milestone == instantaneous event) ---
     duration_minutes: int = Field(ge=0)

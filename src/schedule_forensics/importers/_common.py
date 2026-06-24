@@ -186,19 +186,27 @@ def clock_minutes(value: str | None) -> int | None:
     return hours * 60 + minutes
 
 
-def working_span_minutes(start: str | None, finish: str | None) -> int:
-    """Length of one working-time span (``08:00``→``12:00`` = 240), 0 when unusable.
+def working_time_span(start: str | None, finish: str | None) -> tuple[int, int] | None:
+    """One working-time block as ``(from, to)`` minutes-from-midnight, ``None`` when unusable.
 
-    A finish of ``00:00`` with a later start is the sources' end-of-day midnight
-    (24:00) — P6 and MS Project both write it for spans that run to midnight.
+    A finish of ``00:00`` with a later start is the sources' end-of-day midnight (24:00) —
+    P6 and MS Project both write it for spans that run to midnight.
     """
     from_min = clock_minutes(start)
     to_min = clock_minutes(finish)
     if from_min is None or to_min is None:
-        return 0
+        return None
     if to_min == 0 and from_min > 0:
         to_min = 24 * 60
-    return max(0, to_min - from_min)
+    if to_min <= from_min:
+        return None
+    return (from_min, to_min)
+
+
+def working_span_minutes(start: str | None, finish: str | None) -> int:
+    """Length of one working-time span (``08:00``→``12:00`` = 240), 0 when unusable."""
+    span = working_time_span(start, finish)
+    return 0 if span is None else span[1] - span[0]
 
 
 def dominant_day_minutes(day_totals: list[int]) -> int | None:

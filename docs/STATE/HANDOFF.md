@@ -1,8 +1,36 @@
-# Handoff — 2026-06-24 (driving-slack span-snap REMOVED — SSI parity verified end-to-end on the leveled Large Test File, focus UID 152, ADR-0116)
+# Handoff — 2026-06-24 (driving slack reproduces SSI 783/783 on the leveled Large Test File — span-snap removed + intraday lunch + per-task calendars; ADR-0116/0117/0118)
 
-> ## STATUS (current) — span-snap removed; shipped engine matches SSI on the leveled Large Test File (focus UID 152, ADR-0116); branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — shipped engine matches SSI on ALL 783 activities (focus UID 152); ADR-0116/0117/0118; branch `claude/compassionate-ptolemy-wip898`
 >
-> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, draft PR):**
+> **What shipped this session (branch `claude/compassionate-ptolemy-wip898`, draft PR — pushed atop the merged #229):**
+> - **`compute_driving_slack(target_uid=152)` reproduces the SSI Directional Path export for ALL
+>   783 activities** (to the working day; driving path **61/61 set-equal**, zero full-day residuals)
+>   on the operator's leveled Large Test File. Got there in three verified steps:
+>   - **ADR-0116** — removed the whole-day **span-snap** (it collapsed parity to 325/783). Raw spans.
+>   - **ADR-0117** — the slack pass honors the calendar's real **intraday hours** (the 12:00-13:00
+>     lunch), so afternoon raggedness is no longer over-counted: 696 → **776/783**. New optional
+>     `Calendar.day_segments`, populated by the MSPDI importer; global CPM untouched.
+>   - **ADR-0118** — **per-task calendars + worked-exception days**: SSI counts each driving link's
+>     free float on the **successor's own calendar**, and honors `DayWorking=1` days (a worked
+>     Sunday). 776 → **783/783**. New `Calendar.uid`/`working_days`, `Task.calendar_uid`,
+>     populated `Schedule.calendars`; `compute_driving_slack` rewritten as
+>     `slack(i) = min over successor links of (link free float + successor slack)` — algebraically
+>     identical to the old backward pass for single-calendar schedules (curated goldens unchanged).
+> - **Root-cause story corrected:** the residuals were never "cosmetic." They were (1) the lunch
+>   over-count and (2) per-task calendars (cal-68 "ZIN" holidays differ from the project cal) +
+>   the skipped worked-Sunday — all consequences of ADR-0028 simplifications, now relaxed for the
+>   driving-slack path only. Per-task *span* over-corrects (747) — the calendar belongs to the
+>   free float, not the duration.
+> - **No CUI / no Large-Test-File golden committed** (the `.mpp` is uncommittable). Regression guard:
+>   `test_free_float_counted_on_successor_calendar` (synthetic — successor-cal holiday −1 day, worked
+>   Saturday +1) + the committed `ssi_uid145` golden, which **stays exact**.
+> - **Gate green:** full suite **1499 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/
+>   `node --check` clean; engine coverage ≥85, driving_slack.py + calendar.py 100%.
+> - **Highest ADR = 0118** (drift guard: referenced here and in SESSION-LOG).
+>
+> ## STATUS (prev) — span-snap removed; shipped engine matches SSI on the leveled Large Test File (focus UID 152, ADR-0116); branch `claude/compassionate-ptolemy-wip898`
+>
+> **What shipped (ADR-0116, merged as #229):**
 > - **The driving-slack span-snap (ADR-0045) is REMOVED — ADR-0116.** The operator uploaded the
 >   **leveled-and-saved** Large Test File ("USA OTB Master IMS", 1723 activities) + the matching SSI
 >   Directional Path export for focus **UID 152** ("all dependents", **783** ancestors), plus un-leveled

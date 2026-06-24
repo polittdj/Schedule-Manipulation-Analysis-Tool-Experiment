@@ -3198,3 +3198,30 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Still needs operator input/files:** SSI focus-143 export (lift `ssi_uid143` xfails); confirm Max
   Float 275 d vs Acumen; Exec-Briefing full Acumen format; Step 5 (EVM3 absent); metric-formula audits
   (NASA `.aft` absent).
+
+## 2026-06-24 (cont.) — driving slack reproduces SSI 783/783 on the leveled Large Test File (ADR-0117/0118)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (draft PR, atop merged #229). **Model/mode:** Opus 4.8.
+- **Operator pushback:** the ADR-0116 result left ~7 per-activity residuals I had called "cosmetic."
+  Directive: *failure is not an option — find a way.* Did. The shipped
+  `compute_driving_slack(target_uid=152)` now reproduces the SSI Directional Path export for **all 783
+  activities** (to the working day; driving path 61/61 set-equal; zero full-day residuals).
+- **Two root causes, reverse-engineered from the export (all CUI analysis in scratchpad):**
+  1. **Intraday lunch (ADR-0117).** The engine modeled the day as one contiguous block (ADR-0028), so
+     an afternoon finish was over-counted by the 12:00-13:00 lunch; on a progressed file the over-count
+     accumulates and flips whole-day slack. Honoring the calendar's real `day_segments` → **696→776/783**.
+  2. **Per-task calendars + worked days (ADR-0118).** SSI counts each driving link's free float on the
+     **successor's own calendar** (6 activities on the "ZIN" cal-68, whose holidays differ from the
+     project cal) and honors `DayWorking=1` exceptions (a worked Sunday 2018-08-26). → **776→783/783**.
+     Per-task *span* over-corrects (747) — the calendar belongs to the free float, not the duration.
+- **Implementation:** `Calendar` gains `uid`/`working_days`/`day_segments`; `Task` gains `calendar_uid`;
+  `Schedule.calendars` now populated by the MSPDI importer (generalized calendar parser + registry).
+  `compute_driving_slack` rewritten as `slack(i) = min over successor links of (free float + successor
+  slack)`, free float on the successor's calendar — **algebraically identical to the old late-finish
+  backward pass for single-calendar schedules**, so `ssi_uid145` and every golden are unchanged. Scope is
+  the driving-slack path only; CPM/DCMA/EVM keep the ADR-0028 single project-calendar model.
+- **No CUI / no Large-Test-File golden** (the `.mpp` is uncommittable). Guard:
+  `test_free_float_counted_on_successor_calendar` (synthetic: successor-cal holiday −1, worked Sat +1)
+  + new SS/FF/SF + calendar-method unit tests; `ssi_uid145` stays exact.
+- **Gate:** full suite **1499 passed / 7 env-skipped / 2 xfail**; ruff/format/mypy/bandit/`node --check`
+  clean; engine coverage ≥85, driving_slack.py + calendar.py 100%. Highest ADR = **0118**.

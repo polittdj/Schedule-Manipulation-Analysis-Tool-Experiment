@@ -45,7 +45,7 @@ from schedule_forensics.importers._common import (
     parse_float,
     parse_percent,
     weekday_from_source,
-    working_span_minutes,
+    working_time_span,
 )
 from schedule_forensics.model import (
     Calendar,
@@ -183,6 +183,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             status_date=status_date,
             baseline_finish=baseline_finish,
             calendar=_parse_project_calendar(root),  # ADR-0028; defaults on any surprise
+            calendars=parse_calendar_registry(root, tuple(tasks)),  # per-task cals (ADR-0118)
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
@@ -275,25 +276,65 @@ def _parse_project_calendar(root: ET.Element) -> Calendar:
 
 
 def _project_calendar(root: ET.Element) -> Calendar:
-    calendars_el = root.find("Calendars")
+    by_uid = _calendars_by_uid(root)
     target_uid = _text(root, "CalendarUID")
-    if calendars_el is None or target_uid is None:
-        return Calendar()
-    by_uid: dict[str, ET.Element] = {}
+    cal = _build_calendar(target_uid, by_uid) if target_uid is not None else None
+    return cal or Calendar()
+
+
+def _calendars_by_uid(root: ET.Element) -> dict[str, ET.Element]:
+    """``<Calendars>`` indexed by UID string (the base-calendar chain resolves through this)."""
+    calendars_el = root.find("Calendars")
+    if calendars_el is None:
+        return {}
+    out: dict[str, ET.Element] = {}
     for el in calendars_el.findall("Calendar"):
         uid = _text(el, "UID")
         if uid is not None:
-            by_uid[uid] = el
-    cal_el = by_uid.get(target_uid)
-    if cal_el is None:
-        return Calendar()
+            out[uid] = el
+    return out
 
-    # the base-calendar chain: the project calendar first, then its bases (cycle-safe;
-    # the "-1" base UID of a base calendar resolves to nothing and ends the walk)
+
+def parse_calendar_registry(root: ET.Element, tasks: tuple[Task, ...]) -> tuple[Calendar, ...]:
+    """Every calendar a task is scheduled on (plus the project calendar), UID-keyed, for the
+    SSI driving-slack parity path (ADR-0118 — a link's free float is counted on the successor's
+    own calendar). Best-effort: a calendar that won't parse is skipped, never sinking the file."""
+    by_uid = _calendars_by_uid(root)
+    needed: set[str] = set()
+    proj = _text(root, "CalendarUID")
+    if proj is not None:
+        needed.add(proj)
+    needed.update(str(t.calendar_uid) for t in tasks if t.calendar_uid is not None)
+    out: dict[int, Calendar] = {}
+    for uid in needed:
+        try:
+            cal = _build_calendar(uid, by_uid)
+        except Exception:
+            cal = None
+        if cal is not None:
+            out[cal.uid] = cal
+    return tuple(out[k] for k in sorted(out))
+
+
+def _build_calendar(target_uid: str | None, by_uid: dict[str, ET.Element]) -> Calendar | None:
+    """Parse one calendar (walking its base-calendar chain) into a model :class:`Calendar`.
+
+    Holidays (``DayWorking=0`` exceptions) and extra working days (``DayWorking=1`` — a worked
+    weekend or a recovered holiday) collect across the chain; the weekday pattern + intraday
+    segments come from the first chain member that defines one. ``None`` if no usable weekday
+    pattern is found. Per-task calendars feed the driving-slack parity (ADR-0118); the engine's
+    other metrics still consume the single project calendar (ADR-0028).
+    """
+    cal_el = by_uid.get(target_uid) if target_uid is not None else None
+    if cal_el is None or target_uid is None:
+        return None
+
+    # the base-calendar chain: this calendar first, then its bases (cycle-safe; the "-1" base
+    # UID of a base calendar resolves to nothing and ends the walk)
     chain: list[ET.Element] = []
     seen: set[str] = set()
     cursor: ET.Element | None = cal_el
-    cursor_uid = target_uid
+    cursor_uid: str = target_uid
     while cursor is not None and cursor_uid not in seen:
         chain.append(cursor)
         seen.add(cursor_uid)
@@ -303,8 +344,9 @@ def _project_calendar(root: ET.Element) -> Calendar:
 
     work_weekdays: set[int] = set()
     day_totals: list[int] = []
+    segments_by_total: dict[int, tuple[tuple[int, int], ...]] = {}
     holidays: set[dt.date] = set()
-    skipped_working_exceptions = 0
+    working: set[dt.date] = set()
     pattern_found = False
     for el in chain:
         weekdays_el = el.find("WeekDays")
@@ -313,10 +355,8 @@ def _project_calendar(root: ET.Element) -> Calendar:
         for wd in entries:
             if (_int(wd, "DayType") or 0) != 0:
                 continue
-            if _bool(wd, "DayWorking", default=False):
-                skipped_working_exceptions += 1  # extra working days are out of model scope
-            else:
-                holidays.update(_exception_range(wd.find("TimePeriod")))
+            sink = working if _bool(wd, "DayWorking", default=False) else holidays
+            sink.update(_exception_range(wd.find("TimePeriod")))
         # the weekday pattern comes from the FIRST chain member that defines one (a
         # derived resource/project calendar without WeekDays inherits its base's week)
         day_entries = [wd for wd in entries if (_int(wd, "DayType") or 0) != 0]
@@ -327,36 +367,44 @@ def _project_calendar(root: ET.Element) -> Calendar:
                 if weekday is None or not _bool(wd, "DayWorking", default=False):
                     continue
                 work_weekdays.add(weekday)
-                minutes = sum(
-                    working_span_minutes(_text(wt, "FromTime"), _text(wt, "ToTime"))
+                segments = tuple(
+                    span
                     for wt in wd.iter("WorkingTime")
+                    if (span := working_time_span(_text(wt, "FromTime"), _text(wt, "ToTime")))
                 )
+                minutes = sum(end - start for start, end in segments)
                 if minutes > 0:
                     day_totals.append(minutes)
+                    # keep the segment layout of the dominant day length (resolved below) so
+                    # the driving-slack pass can honor intraday gaps (e.g. a lunch break)
+                    segments_by_total.setdefault(minutes, tuple(sorted(segments)))
         # modern exceptions, collected across the whole chain
         for exc in el.iter("Exception"):
-            if _bool(exc, "DayWorking", default=False):
-                skipped_working_exceptions += 1
-            else:
-                holidays.update(
-                    _exception_range(exc.find("TimePeriod"), occurrences=_int(exc, "Occurrences"))
-                )
+            sink = working if _bool(exc, "DayWorking", default=False) else holidays
+            occ = _int(exc, "Occurrences")
+            sink.update(_exception_range(exc.find("TimePeriod"), occurrences=occ))
 
     if not work_weekdays:
-        return Calendar()  # no usable weekday pattern anywhere — keep the safe default
-    if skipped_working_exceptions:
-        logger.info(
-            "ignored %d working calendar exception(s) (outside the single-block day model)",
-            skipped_working_exceptions,
-        )
+        return None  # no usable weekday pattern anywhere
     # a DayWorking day with no WorkingTimes means "the default times" (480) in MS Project
     minutes_per_day = dominant_day_minutes(day_totals) or MINUTES_PER_DAY
+    # only carry intraday segments when they actually gap (a lunch break); a single
+    # contiguous block is the legacy default and stays as () so nothing else changes
+    segments = segments_by_total.get(minutes_per_day, ())
+    day_segments = segments if len(segments) > 1 else ()
+    # keep only working-day exceptions that a weekday-minus-holiday count would miss
+    extra_working = tuple(
+        sorted(d for d in working if d.weekday() not in work_weekdays or d in holidays)
+    )
     return Calendar(
+        uid=int(target_uid) if target_uid.lstrip("-").isdigit() else 0,
         name=_text(cal_el, "Name") or "Standard",
         working_minutes_per_day=minutes_per_day,
         work_weekdays=tuple(sorted(work_weekdays)),
         # a weekend holiday is a no-op for the engine; keep the model lean
         holidays=tuple(sorted(h for h in holidays if h.weekday() in work_weekdays)),
+        working_days=extra_working,
+        day_segments=day_segments,
     )
 
 
@@ -457,11 +505,16 @@ def _parse_task(
         constraint_date = None
     bl_start, bl_finish, bl_cost, bl_duration = _primary_baseline(task_el)
 
+    cal_uid = _int(task_el, "CalendarUID")
+    if cal_uid is not None and cal_uid < 0:  # MSPDI writes -1 for "use the project calendar"
+        cal_uid = None
+
     try:
         return Task(
             unique_id=uid,
             name=_text(task_el, "Name") or f"Task {uid}",
             wbs=_text(task_el, "WBS"),
+            calendar_uid=cal_uid,
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
             duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
             is_estimated_duration=_bool(task_el, "Estimated", default=False),

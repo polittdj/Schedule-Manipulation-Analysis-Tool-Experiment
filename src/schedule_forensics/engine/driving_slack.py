@@ -6,36 +6,68 @@ task along its logic path. The method (matched bit-for-bit against the SSI golde
 for Project5 / UID 143, `docs/PLAN/SSI-DRIVING-SLACK.md`):
 
 1. Trace the focus task's ancestors (its transitive predecessors — :mod:`.path_trace`).
-2. Take each task's **as-scheduled** early start/finish from the schedule's stored
-   ``start``/``finish`` (progress-aware — SSI runs inside MS Project and measures
-   against the *progressed* schedule, honoring actuals and the data date). Where a task
-   has no stored dates (hand-authored schedules), fall back to the CPM forward pass.
-3. Anchor a backward pass at the focus: ``late_finish(focus) = early_finish(focus)``,
-   then propagate the latest each ancestor may finish without delaying the focus.
-4. ``driving_slack = late_finish - early_finish`` (working minutes → days). Tasks on the
-   driving path have **0**; the rest are classified into the user's secondary/tertiary
-   day-tiers (§6.C; defaults 0<secondary≤10, 10<tertiary≤20 — `PARITY-INPUTS.md`).
+2. Take each task's **as-scheduled** start/finish from the schedule's stored ``start``/
+   ``finish`` (progress-aware — SSI runs inside MS Project and measures against the
+   *progressed* schedule). The working-minute conversion honors the calendar's true intraday
+   hours (a lunch break is not over-counted — ADR-0117). Where a task has no stored dates
+   (hand-authored schedules), fall back to the CPM forward pass.
+3. Accumulate slack along the driving direction: ``slack(focus) = 0`` and, for each ancestor,
+   ``slack = min over successor links of (the link's free float + that successor's slack)``.
+   Each link's free float is counted on the **successor's own calendar** — so on a
+   multi-calendar file a predecessor's slack is measured in the successor's working days,
+   honoring per-task calendars and worked-weekend exceptions (ADR-0118). On a single-calendar
+   schedule this is identical to the late-finish backward pass (raw spans, no snap — ADR-0116).
+4. Tasks on the driving path have slack **0**; the rest are classified into the user's
+   secondary/tertiary day-tiers (§6.C; defaults 0<secondary≤10, 10<tertiary≤20).
 
 Using stored dates was the key to exact parity: without it, completed activities whose
-actuals ran late (e.g. Project5 UID 8/13/14/16, +16 days) computed too much slack.
+actuals ran late (e.g. Project5 UID 8/13/14/16, +16 days) computed too much slack. On the
+operator's leveled Large Test File (focus UID 152, 783 activities) the method reproduces the
+SSI Directional Path export to the working day for all 783 (driving path 61/61 exact).
 """
 
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import StrEnum
 
 from schedule_forensics.engine.cpm import (
     CPMResult,
+    _count_working_days,
     compute_cpm,
     datetime_to_offset,
-    lf_upper_bound,
 )
 from schedule_forensics.engine.path_trace import ancestors_of, topo_order
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.units import minutes_to_days
+
+
+def _stored_offset(project_start: dt.datetime, target: dt.datetime, calendar: Calendar) -> int:
+    """Working-minute offset of a stored date, honoring intraday gaps (a lunch break).
+
+    The engine's :func:`datetime_to_offset` models the day as one contiguous block, so an
+    afternoon finish (after the 12:00-13:00 lunch) is over-counted by the lunch hour - which
+    accumulates through the driving-slack backward pass and flips whole-day slack across day
+    boundaries on a progressed schedule with ragged actual times (ADR-0117). When the calendar
+    carries real intraday segments, count the intraday term through them; otherwise defer to the
+    legacy contiguous conversion so nothing else changes.
+    """
+    if not calendar.day_segments or target < project_start:
+        return datetime_to_offset(project_start, target, calendar)
+    # sources write a cosmetic -1-second day boundary (16:59:59.99 = 17:00); round to the minute
+    target = (target + dt.timedelta(seconds=30)).replace(second=0, microsecond=0)
+    whole_days = _count_working_days(
+        calendar, project_start.date(), target.date()
+    ) + calendar.extra_working_days_in(project_start.date(), target.date())
+    base = whole_days * calendar.working_minutes_per_day
+    if not calendar.is_worked(target.date()):
+        return base
+    return base + calendar.intraday_worked_minutes(target.hour * 60 + target.minute)
+
 
 #: §6.C default day-thresholds the user may override at upload (`PARITY-INPUTS.md`).
 DEFAULT_SECONDARY_MAX_DAYS = 10
@@ -86,8 +118,8 @@ def date_basis(
         if task.is_summary:
             continue
         if task.start is not None and task.finish is not None:
-            early_start[task.unique_id] = datetime_to_offset(start, task.start, cal)
-            early_finish[task.unique_id] = datetime_to_offset(start, task.finish, cal)
+            early_start[task.unique_id] = _stored_offset(start, task.start, cal)
+            early_finish[task.unique_id] = _stored_offset(start, task.finish, cal)
         else:
             if result is None:
                 result = compute_cpm(schedule)
@@ -136,43 +168,67 @@ def compute_driving_slack(
     """
     ancestors = ancestors_of(schedule, target_uid)
     trace = ancestors | {target_uid}
-    per_day = schedule.calendar.working_minutes_per_day
+    project_cal = schedule.calendar
+    per_day = project_cal.working_minutes_per_day
+    ps = schedule.project_start
+    tasks_by_id = schedule.tasks_by_id
+    cal_by_uid = {c.uid: c for c in schedule.calendars}
+
+    def cal_for(uid: int) -> Calendar:
+        cuid = tasks_by_id[uid].calendar_uid
+        return project_cal if cuid is None else cal_by_uid.get(cuid, project_cal)
+
+    # Project-calendar offsets (lunch-/working-day-aware) with a CPM fallback for tasks the
+    # source never dated — these feed links on the project calendar and any undated task.
     early_start, early_finish = date_basis(schedule, cpm_result)
-    # SSI runs its backward pass on the activities' true working-minute spans — it does NOT
-    # snap each span to a whole working day. An earlier heuristic here rounded every span to
-    # the nearest whole day to keep sub-day raggedness from accumulating across long ancestor
-    # chains; verified against the operator's *leveled* Large Test File (focus UID 152, SSI
-    # Directional Path "all dependents" export, 783 activities) that snap does the OPPOSITE of
-    # its intent — it shifts whole-day slack across day boundaries and collapses parity to
-    # 325/783, whereas the raw span reproduces SSI's driving path exactly (61/61) and the
-    # per-activity driving slack to within one working day for 782/783 (ADR-0116). The snap was
-    # compensating for an un-leveled/mis-leveled prior state of that file; on the correctly
-    # leveled schedule SSI matches the raw span. Curated goldens carry whole-day spans, so the
-    # snap was a no-op for them and removing it leaves their parity unchanged. The Path page
-    # still DISPLAYS the true stored dates (date_basis is unchanged).
-    span = {uid: early_finish[uid] - early_start[uid] for uid in trace}
+
+    def endpoint(uid: int, *, finish: bool, cal: Calendar) -> int:
+        """Offset of a task's start/finish on ``cal``: the stored datetime measured on that
+        calendar when present (so a non-project successor calendar is honored), else the
+        project-calendar offset from ``date_basis`` (the CPM fallback for undated tasks)."""
+        when = tasks_by_id[uid].finish if finish else tasks_by_id[uid].start
+        if when is not None:
+            return _stored_offset(ps, when, cal)
+        return early_finish[uid] if finish else early_start[uid]
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}
-    for rel in schedule.relationships:
-        if rel.predecessor_id in trace and rel.successor_id in trace:
-            successors[rel.predecessor_id].append((rel.successor_id, rel.type, rel.lag_minutes))
+    for link in schedule.relationships:
+        if link.predecessor_id in trace and link.successor_id in trace:
+            successors[link.predecessor_id].append((link.successor_id, link.type, link.lag_minutes))
 
+    # SSI total slack along the driving direction = min over successor links of
+    # (the link's free float + the successor's slack). Each link's free float is counted on the
+    # SUCCESSOR's own calendar, so on a multi-calendar file a predecessor's slack to the focus is
+    # measured in the successor's working days — reproducing the SSI MS Project add-on exactly
+    # (ADR-0118: leveled Large Test File, focus 152, 783/783; the driving path stays 61/61).
+    # For a single-calendar schedule every link uses the project calendar and this is identical
+    # to the late-finish backward pass (raw spans, no snap — ADR-0116), so the curated goldens
+    # are unchanged. The Path page still DISPLAYS the true stored dates (date_basis unchanged).
     order = topo_order(schedule, trace)
-    late_finish: dict[int, int] = {}
-    late_start: dict[int, int] = {}
+    slack_minutes: dict[int, int] = {}
     for uid in reversed(order):
         if uid == target_uid:
-            late_finish[uid] = early_finish[uid]
-        else:
-            late_finish[uid] = min(
-                lf_upper_bound(rel, late_start[succ], late_finish[succ], lag, span[uid])
-                for succ, rel, lag in successors[uid]
-            )
-        late_start[uid] = late_finish[uid] - span[uid]
+            slack_minutes[uid] = 0
+            continue
+        best: int | None = None
+        for succ, rel, lag in successors[uid]:
+            cal = cal_for(succ)
+            if rel is RelationshipType.FS:  # successor start - this finish
+                free = endpoint(succ, finish=False, cal=cal) - endpoint(uid, finish=True, cal=cal)
+            elif rel is RelationshipType.SS:  # successor start - this start
+                free = endpoint(succ, finish=False, cal=cal) - endpoint(uid, finish=False, cal=cal)
+            elif rel is RelationshipType.FF:  # successor finish - this finish
+                free = endpoint(succ, finish=True, cal=cal) - endpoint(uid, finish=True, cal=cal)
+            else:  # SF: successor finish - this start
+                free = endpoint(succ, finish=True, cal=cal) - endpoint(uid, finish=False, cal=cal)
+            candidate = free - lag + slack_minutes[succ]
+            if best is None or candidate < best:
+                best = candidate
+        slack_minutes[uid] = best if best is not None else 0
 
     results: dict[int, DrivingSlackResult] = {}
     for uid in trace:
-        slack = late_finish[uid] - early_finish[uid]
+        slack = slack_minutes[uid]
         results[uid] = DrivingSlackResult(
             unique_id=uid,
             driving_slack_minutes=slack,
