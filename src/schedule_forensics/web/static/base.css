@@ -12,15 +12,25 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 --sum-ink:#5d6b7d;--beyond:#b9c4d0;--beyond-ink:#7d8b9b;--done-overlay:rgba(0,0,0,.25);
 --border:var(--line);--grid-line:rgba(90,104,120,.22);
 --focus:#8a3fc4}
+/* Microsoft-Project Gantt palette — the operator asked for the Gantt plotting area to mirror MS
+   Project exactly: a WHITE canvas with light-gray month / darker quarter / darkest year gridlines
+   and a pale blue-gray header band. These are theme-INDEPENDENT (defined once, never overridden by
+   the dark/light blocks above) so the Gantt looks like MS Project while the rest of the page keeps
+   its theme. The dark ink/overlay/milestone tokens keep bars, milestones and the % -complete
+   overlay legible on the white canvas (var(--ink)/(--done-overlay) would vanish on white). */
+:root{--gantt-canvas:#ffffff;--gantt-grid:#dfe3e8;--gantt-grid-qtr:#c2c7cd;--gantt-grid-yr:#9aa1a8;
+--gantt-band:#eef2f7;--gantt-band-ink:#2f3742;--gantt-done:rgba(20,28,40,.30);--gantt-ms:#2a3340;
+--gantt-sum:#586471}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
 font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
-padding:10px 20px;display:flex;align-items:center;gap:16px}header h1{font-size:17px;margin:0;letter-spacing:.5px}
-header nav a{margin-right:14px;color:var(--muted)}header nav a:hover{color:var(--ink)}
-/* handbook-framed nav groups (Assessment / Control / Risks / Reporting / Setup) — labeled clusters */
-header nav .nav-group{display:inline-block;margin-right:8px}
-header nav .nav-grp-label{font-size:10px;text-transform:uppercase;letter-spacing:.04em;
-  color:var(--muted);opacity:.6;font-weight:700;margin-right:5px}
+padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}header h1{font-size:17px;margin:0;letter-spacing:.5px}
+header nav a{margin-right:14px;color:var(--ink)}header nav a:hover{color:var(--accent)}
+/* handbook-framed nav groups (Overview / Assessment / Control / Risks / Reporting / Setup) — the
+   function labels are prominent (the operator asked for them to be much more visible, not faded) */
+header nav .nav-group{display:inline-block;margin-right:18px}
+header nav .nav-grp-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--accent);opacity:1;font-weight:700;margin-right:8px}
 header nav form.navform{display:inline;margin:0 14px 0 0}
 header nav .navform button{color:var(--muted);text-decoration:none;font:inherit;cursor:pointer}
 header nav .navform button:hover{color:var(--ink)}
@@ -30,9 +40,9 @@ header nav #themeToggle{background:none;border:0;color:var(--muted);font:inherit
 header nav .ui-scale-ctl{font-size:13px;color:var(--muted);white-space:nowrap}
 header nav .ui-scale-ctl select{font-size:13px;margin-left:4px}
 header nav #themeToggle:hover{color:var(--ink)}
-main{margin:0 auto;padding:16px 22px}.panel{background:var(--panel);border:1px solid var(--line);
-border-radius:10px;padding:13px 16px;margin:0 0 12px}h2{font-size:16px;margin:0 0 9px;color:var(--accent)}
-table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:5px 9px;
+main{margin:0 auto;padding:24px 28px}.panel{background:var(--panel);border:1px solid var(--line);
+border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
 border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
 .pass{color:var(--ok)}.fail{color:var(--bad)}.na{color:var(--muted)}
 .sev-HIGH{color:var(--bad);font-weight:600}.sev-MEDIUM{color:var(--warn)}.sev-LOW,.sev-INFO{color:var(--muted)}
