@@ -1,14 +1,20 @@
-# Handoff — 2026-06-24 (PR 6 WIP: SRA SSI remodel — ENGINE landed + parity-validated; UI next)
+# Handoff — 2026-06-24 (PR 6 WIP: SRA SSI remodel — ENGINE + SSI control/matrix/OAT WEB surface landed; editable grid + persistence NEXT)
 
-> ## STATUS (current) — SRA SSI remodel (ADR-0123) — the parity-anchored ENGINE is in + validated against the operator's SSI exports; the editable-grid/matrices/persistence UI is NEXT; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — SRA SSI remodel (ADR-0123) — the parity-anchored ENGINE **and** the SSI control panel + 5×5 matrices + deterministic OAT web surface are IN; the inline-editable Gantt grid + JSON Save/Load + Excel export are NEXT; branch `claude/compassionate-ptolemy-wip898`
 >
-> **PR 6 is the big SRA SSI remodel, built incrementally on one branch (draft PR).** This first push is
-> the **engine layer** in `engine/sra.py` (the legacy `compute_sra`/`RiskEvent` path is left frozen):
-> - `factor_to_bc_wc` (ML = remaining; `BC=ML*(1-sub%)`, `WC=ML*(1+add%)`), `RiskFactorTable` (SSI
+> **PR 6 is the big SRA SSI remodel, built incrementally on one branch (draft PR).** Landed so far —
+> the **engine** (`engine/sra.py`, legacy `compute_sra`/`RiskEvent` left frozen) **and** the **SSI web
+> control surface**:
+> - Engine: `factor_to_bc_wc` (ML = remaining; `BC=ML*(1-sub%)`, `WC=ML*(1+add%)`), `RiskFactorTable` (SSI
 >   defaults 1=50/10…5=10/50), `ScheduleRisk` (additive impact **days**), `OATSensitivity`, `SSIRiskStat`,
 >   `SSIResult`; `compute_sra_ssi` (focus-event targeting, occurrence modes random-each/exact-overall,
 >   risk-excludes-BC/WC, single-factor **Gaussian copula correlation**), `compute_oat_sensitivity`
 >   (deterministic one-at-a-time swing).
+> - Web (`web/app.py` + new vendored `web/static/sra_ssi.js`): `SessionState` SSI inputs (no model
+>   change); routes `POST /sra/ssi-run-config|factor-table|factor|auto-calc|ssi-risk` + off-page-load
+>   feeds `GET /api/sra/ssi` (focus payload + per-risk stats + the two 5×5 matrices) and `GET /api/sra/oat`
+>   (2N-solve OAT, on demand). The `_ssi_panel` opens instantly; the Monte-Carlo runs only on click. The
+>   matrices reuse the existing `risk-matrix`/`rk-*` band CSS.
 > - **Validated against the operator's SRA Project5 + SSI exports:** BC/WC formula **EXACT**
 >   (UID107 24.80/41.34, UID35 10.27/20.54); OAT **EXACT** (UID107 2.8/13.8, UID35 6.8/3.4); the full
 >   risk run reproduces SSI's deterministic finish **2027-12-03 @ ~9%** (SSI ~11%), **mean 12/13** (SSI
@@ -16,11 +22,11 @@
 >   deterministic anchor is the **all-ML run** (so the percentile is consistent), and the date axis is
 >   realigned to the focus task's **stored finish** (pure-CPM packs completed work at project start).
 >   Stochastic distribution NOT claimed bit-exact (RNG + scheduler differ — ADR-0005/0106).
-> - Tests: `tests/engine/test_sra_ssi.py` (13) green; legacy `test_sra.py` (29) still green.
-> - **NEXT (same PR):** the web layer — editable Gantt grid (Risk Ranking Factor + Best/Worst columns),
->   factor table + auto-calc, risk register, focus picker, occurrence/correlation run controls, OAT
->   table + 5×5 Risk/Opportunity matrices, Save/Load JSON + Excel; then **ADR-0123** + HANDOFF +
->   SESSION-LOG (drift guard) at the end. Plan: `/root/.claude/plans/virtual-wobbling-donut.md`.
+> - Tests: `tests/engine/test_sra_ssi.py` (13) + `tests/web/test_sra_ssi_web.py` (8) green; legacy
+>   `test_sra*.py` still green. ADR-0123 + HANDOFF + SESSION-LOG refreshed (drift guard).
+> - **NEXT (same PR):** the inline-editable Gantt grid (rank Factor / edit Best/Worst per row over the
+>   ~1700-row schedule), JSON **Save/Load** of the SSI setup, and the six-sheet **Excel** export — all
+>   build on these routes. Plan: `/root/.claude/plans/virtual-wobbling-donut.md`.
 >
 > ## STATUS (prev) — Gantt density pass (3x more tasks/page, bold summaries, gridlines), a "Fit project" button, and Dur/Start/Finish/Driving-slack columns on the trace; branch `claude/compassionate-ptolemy-wip898`
 >
