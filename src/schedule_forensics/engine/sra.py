@@ -33,6 +33,7 @@ GAO "minimize date constraints").
 from __future__ import annotations
 
 import bisect
+import datetime as _dt
 import math
 import random
 import statistics
@@ -65,6 +66,17 @@ class SRAConfig:
     auto_high: float = 1.10
     #: Duration distribution: ``"triangular"`` (default, inverse-CDF) or ``"pert"`` (Beta-PERT).
     distribution: str = "triangular"
+    #: SSI path (ADR-0123): the focus event whose finish the simulation reports. ``None`` →
+    #: project finish (back-compat with the legacy ``compute_sra``).
+    target_uid: int | None = None
+    #: SSI risk occurrence mode: ``"random_each"`` (independent Bernoulli per iteration) or
+    #: ``"exact_overall"`` (exactly ``round(p*iterations)`` firings, scattered at random).
+    occurrence_mode: str = "random_each"
+    #: Whether the SSI risk register is factored into the run (SSI "Use Risk Registry Tasks").
+    use_risk_register: bool = True
+    #: Optional blanket correlation (0..1) between task duration distributions — a single-factor
+    #: Gaussian copula (0 = independent, today's behaviour; 0.3-0.5 is the usual SRA range).
+    correlation: float = 0.0
 
 
 #: The default run config — a module-level singleton so it can be a keyword default
@@ -585,3 +597,446 @@ def _build_histogram(sorted_finishes: Sequence[int]) -> tuple[tuple[int, int, in
         bin_hi = round(lo + (b + 1) * width)
         bins.append((bin_lo, bin_hi, counts[b]))
     return tuple(bins)
+
+
+# ======================================================================================
+# SSI Schedule Risk & Opportunity Analysis (ADR-0123) — a separate, parity-isolated path
+# that mirrors SSI Tools' add-in. It reuses the same trusted ``compute_cpm`` chokepoint and the
+# sampling/percentile/CDF primitives above; the legacy ``compute_sra``/``RiskEvent`` path is left
+# byte-frozen. Validated against the operator's SSI exports: the BC/WC formula and the
+# deterministic OAT swing reproduce SSI; the stochastic distribution is NOT bit-exact (std-lib RNG
+# ≠ SSI's generator — ADR-0005/0106).
+# ======================================================================================
+
+#: Working minutes in one working day (480 = 8h). The presentation-boundary days conversion.
+_MIN_PER_DAY = 480
+
+
+@dataclass(frozen=True)
+class RiskFactorTable:
+    """The SSI "Risk Factors" table: ranking factor 1..5 → (% to subtract for Best Case,
+    % to add for Worst Case). The default rows are SSI's (operator screenshot)."""
+
+    rows: tuple[tuple[int, float, float], ...] = (
+        (1, 50.0, 10.0),
+        (2, 40.0, 20.0),
+        (3, 30.0, 30.0),
+        (4, 20.0, 40.0),
+        (5, 10.0, 50.0),
+    )
+
+    def for_factor(self, factor: int) -> tuple[float, float]:
+        """``(subtract%, add%)`` for a 1..5 factor (clamped into range)."""
+        f = max(1, min(5, factor))
+        for row_f, sub, add in self.rows:
+            if row_f == f:
+                return (sub, add)
+        return (0.0, 0.0)
+
+
+@dataclass(frozen=True)
+class ScheduleRisk:
+    """An SSI risk-register entry — a discrete risk/opportunity with an **additive** schedule
+    impact in working days on its affected task(s).
+
+    When it fires (per :class:`SRAConfig.occurrence_mode`) ``impact_days`` working days are added to
+    each affected activity's sampled duration (SSI: a positive impact is a risk/delay, a negative
+    one an opportunity/acceleration). A risk-bearing task carries **no** Best/Worst duration
+    uncertainty in the run — the risk drives it instead (the SSI behaviour the operator confirmed).
+    ``consequence_rating`` (1..5) is the operator's severity for the 5x5 matrix; ``None`` derives it
+    from the ``|impact_days|`` band."""
+
+    id: str
+    name: str
+    probability: float  # 0..1 occurrence probability
+    impact_days: float  # additive working days when it fires (>=0 risk, <0 opportunity)
+    affected: tuple[int, ...]
+    consequence_rating: int | None = None
+
+
+@dataclass(frozen=True)
+class OATSensitivity:
+    """A deterministic one-at-a-time sensitivity row (SSI "Sensitivity Analysis" export).
+
+    With every other activity held at its Most-Likely (=remaining) duration, this one activity is
+    forced to its Best Case then Worst Case and the **focus event finish** is re-solved.
+    ``opportunity_days`` = baseline - finish_at_BC (how much earlier the focus could finish);
+    ``risk_days`` = finish_at_WC - baseline (how much later); ``total_days`` = their sum. Working
+    days throughout."""
+
+    unique_id: int
+    bc_minutes: int
+    wc_minutes: int
+    ml_minutes: int
+    event_finish_bc: int
+    event_finish_wc: int
+    opportunity_days: float
+    risk_days: float
+    total_days: float
+
+
+@dataclass(frozen=True)
+class SSIRiskStat:
+    """Per-risk outcome of an SSI run + its 5x5-matrix ratings."""
+
+    id: str
+    name: str
+    probability: float
+    impact_days: float
+    hits: int  # iterations the risk fired
+    mean_delta_days: float  # mean focus finish when it fired minus when it didn't (working days)
+    probability_rating: int  # 1..5 from the occurrence band
+    consequence_rating: int  # 1..5 (operator-entered or |impact_days| band)
+
+
+@dataclass(frozen=True)
+class SSIResult:
+    """The SSI focus-event finish distribution + per-risk stats (parity-isolated, ADR-0123)."""
+
+    iterations: int
+    seed: int
+    target_uid: int | None
+    distribution: str
+    occurrence_mode: str
+    correlation: float
+    used_risks: bool
+    deterministic_finish: int  # the focus event's deterministic CPM finish (working-minute offset)
+    deterministic_percentile: float
+    p10: int
+    p50: int
+    p80: int
+    p90: int
+    mean: float
+    std_days: float
+    deterministic_finish_date: str
+    p10_date: str
+    p50_date: str
+    p80_date: str
+    p90_date: str
+    mean_date: str
+    cdf: tuple[tuple[int, float], ...]
+    histogram: tuple[tuple[int, int, int], ...]
+    risks: tuple[SSIRiskStat, ...] = field(default=())
+
+
+def factor_to_bc_wc(
+    remaining_minutes: int, factor: int, table: RiskFactorTable, minutes_per_day: int = _MIN_PER_DAY
+) -> tuple[int, int, int]:
+    """``(BestCase, MostLikely, WorstCase)`` working minutes from a 1..5 ranking factor.
+
+    SSI: *the current Remaining Duration is the Most Likely*. ``BC = ML*(1 - sub%/100)``,
+    ``WC = ML*(1 + add%/100)`` with the per-factor percentages from ``table`` — validated to match
+    SSI's stored Best/Worst Case durations exactly. ``minutes_per_day`` is unused by the maths (the
+    ratio is unit-free) but documents the working-day basis. Rounded to whole working minutes."""
+    sub, add = table.for_factor(factor)
+    ml = max(0, int(remaining_minutes))
+    bc = max(0, round(ml * (1.0 - sub / 100.0)))
+    wc = max(ml, round(ml * (1.0 + add / 100.0)))
+    return (bc, ml, wc)
+
+
+def _ml_minutes(task: Task) -> int:
+    """The activity's Most-Likely duration basis = the engine's ML mode: a completed task's own
+    duration, else its remaining duration (matching ``_three_point`` at ``auto_most_likely=1.0``,
+    so an all-ML SSI run reproduces ``compute_cpm`` — the ADR-0106 equivalence)."""
+    if _is_completed(task):
+        return int(task.duration_minutes)
+    rem = task.remaining_duration_minutes
+    return int(rem if rem is not None else task.duration_minutes)
+
+
+def _finish_of(result: CPMResult, target_uid: int | None) -> int:
+    """The focus event's early finish (the SSI 'Flag for Analysis' target), else project finish."""
+    if target_uid is None or target_uid not in result.timings:
+        return result.project_finish
+    return result.timings[target_uid].early_finish
+
+
+def _phi(z: float) -> float:
+    """Standard-normal CDF Φ(z) via ``math.erf`` (std-lib) — the Gaussian-copula link function."""
+    return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+
+
+def _prob_rating(probability: float) -> int:
+    """5x5-matrix likelihood rating 1..5 from an occurrence probability (SSI/▸DoD bands:
+    1 <20%, 2 20-39%, 3 40-59%, 4 60-79%, 5 ≥80%)."""
+    p = max(0.0, min(1.0, probability)) * 100.0
+    if p >= 80.0:
+        return 5
+    if p >= 60.0:
+        return 4
+    if p >= 40.0:
+        return 3
+    if p >= 20.0:
+        return 2
+    return 1
+
+
+def _consequence_rating(impact_days: float) -> int:
+    """5x5-matrix consequence rating 1..5 from an absolute schedule impact in working days
+    (≥60→5, ≥20→4, ≥5→3, >0→2, else 1) — the recommendations.py impact bands."""
+    d = abs(impact_days)
+    if d >= 60.0:
+        return 5
+    if d >= 20.0:
+        return 4
+    if d >= 5.0:
+        return 3
+    if d > 0.0:
+        return 2
+    return 1
+
+
+def _occurrence_schedule(
+    active_risks: Sequence[ScheduleRisk], mode: str, iterations: int, seed: int
+) -> list[list[bool]]:
+    """Per-risk x per-iteration occurrence matrix, drawn on a stream **disjoint** from the
+    per-iteration duration RNG (so the duration draws — and thus the ``correlation=0`` result — are
+    independent of the risk mode). ``random_each``: independent Bernoulli per iteration.
+    ``exact_overall``: exactly ``round(p*iterations)`` firings at random iteration indices."""
+    out: list[list[bool]] = []
+    for ridx, risk in enumerate(active_risks):
+        p = max(0.0, min(1.0, risk.probability))
+        rng = random.Random((seed * 2654435761 ^ (ridx + 1) * 40503) & 0x7FFFFFFF)  # nosec B311
+        if mode == "exact_overall":
+            k = round(p * iterations)
+            fired = [False] * iterations
+            for i in rng.sample(range(iterations), min(k, iterations)):
+                fired[i] = True
+        else:  # random_each (default)
+            fired = [rng.random() < p for _ in range(iterations)]
+        out.append(fired)
+    return out
+
+
+def compute_sra_ssi(
+    schedule: Schedule,
+    *,
+    config: SRAConfig = _DEFAULT_CONFIG,
+    three_point: Mapping[int, tuple[int, int, int]] | None = None,
+    risks: Sequence[ScheduleRisk] = (),
+) -> SSIResult:
+    """Run the SSI Monte-Carlo and return the focus-event :class:`SSIResult` (ADR-0123).
+
+    ``three_point`` maps a ``unique_id`` to ``(BestCase, MostLikely, WorstCase)`` minutes for the
+    activities that carry **duration uncertainty** (a Risk Ranking Factor or a manual Best/Worst);
+    activities absent from it are a **point mass** at their ML (blank factor => no uncertainty). A
+    **risk-affected** activity is always a point mass - the risk impact drives it, not a Best/Worst
+    draw. Each iteration recomputes the finish through ``compute_cpm`` so the simulation
+    can't diverge from the gate-locked engine; with everything point-mass at ML the reported finish
+    equals ``compute_cpm``'s focus finish (the equivalence a test pins).
+
+    ``config.correlation`` > 0 applies a single-factor **Gaussian copula** across the sampled
+    activities (one shared normal per iteration), countering the central-limit cancelling of
+    independent draws; it samples via the triangular inverse-CDF (the documented choice — the PERT
+    quantile has no std-lib inverse), and at 0 the configured distribution is honoured exactly."""
+    if config.iterations < 1:
+        raise ValueError("SRAConfig.iterations must be >= 1")
+    tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
+    uids = [t.unique_id for t in tasks]
+    uid_set = set(uids)
+    ml = {t.unique_id: _ml_minutes(t) for t in tasks}
+    # The deterministic anchor for the SSI distribution is the **all-ML run** finish (so the
+    # simulation, the anchor and the percentile share one basis). Its DISPLAY date is realigned to
+    # the focus task's STORED finish (the SSI "Current Finish") — pure-CPM offsets pack completed
+    # work at the project start, so a constant correction puts the date axis back on the stored
+    # dates (what the rest of the tool shows). Relative spacing + the OAT swing are unaffected.
+    ml_finish = _finish_of(compute_cpm(schedule, duration_overrides=ml), config.target_uid)
+    focus = next((t for t in tasks if t.unique_id == config.target_uid), None)
+    anchor = (
+        focus.finish if focus is not None and focus.finish is not None else _latest_finish(tasks)
+    )
+    tp_in = dict(three_point or {})
+    active_risks = [
+        r for r in risks if config.use_risk_register and any(u in uid_set for u in r.affected)
+    ]
+    risk_uids = {u for r in active_risks for u in r.affected}
+
+    three: dict[int, tuple[int, int, int]] = {}
+    for u in uids:
+        if u in risk_uids or u not in tp_in:
+            three[u] = (
+                ml[u],
+                ml[u],
+                ml[u],
+            )  # point mass (risk-driven, or no factor → no uncertainty)
+        else:
+            bc, mlv, wc = tp_in[u]
+            three[u] = (max(0, int(bc)), int(mlv), max(int(bc), int(wc)))
+
+    occ = _occurrence_schedule(active_risks, config.occurrence_mode, config.iterations, config.seed)
+    mpd = schedule.calendar.working_minutes_per_day or _MIN_PER_DAY
+    r = max(0.0, min(1.0, config.correlation))
+    k_common, k_indep = math.sqrt(r), math.sqrt(1.0 - r)
+
+    finishes: list[int] = []
+    critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
+    risk_occurred: list[list[bool]] = [[] for _ in active_risks]
+
+    for i in range(config.iterations):
+        rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
+        common = rng.gauss(0.0, 1.0) if r > 0.0 else 0.0
+        overrides: dict[int, int] = {}
+        for u in uids:
+            low, mode, high = three[u]
+            if high <= low:  # point mass — no draw
+                overrides[u] = round(low)
+                continue
+            if r > 0.0:
+                uni = _phi(k_common * common + k_indep * rng.gauss(0.0, 1.0))
+                minutes = _sample_triangular(uni, float(low), float(mode), float(high))
+            else:
+                minutes = _sample_duration(rng, config, float(low), float(mode), float(high))
+            overrides[u] = max(0, round(minutes))
+        for ridx, risk in enumerate(active_risks):
+            fired = occ[ridx][i]
+            risk_occurred[ridx].append(fired)
+            if fired:
+                add = round(risk.impact_days * mpd)
+                for u in risk.affected:
+                    if u in overrides:
+                        overrides[u] = max(0, overrides[u] + add)
+        result = compute_cpm(schedule, duration_overrides=overrides)
+        finishes.append(_finish_of(result, config.target_uid))
+        for u in uids:
+            if result.timings[u].total_float <= 0:
+                critical_counts[u] += 1
+
+    return _build_ssi_result(
+        schedule, config, finishes, active_risks, risk_occurred, mpd, ml_finish, anchor
+    )
+
+
+def _latest_finish(tasks: Sequence[Task]) -> _dt.datetime | None:
+    """The latest stored finish among ``tasks`` (the project completion), or ``None``."""
+    stored = [t.finish for t in tasks if t.finish is not None]
+    return max(stored) if stored else None
+
+
+def _build_ssi_result(
+    schedule: Schedule,
+    config: SRAConfig,
+    finishes: Sequence[int],
+    active_risks: Sequence[ScheduleRisk],
+    risk_occurred: Sequence[Sequence[bool]],
+    mpd: int,
+    deterministic: int,
+    anchor_date: _dt.datetime | None,
+) -> SSIResult:
+    n = len(finishes)
+    sorted_f = sorted(finishes)
+    sorted_ff = [float(x) for x in sorted_f]
+    finishes_f = [float(x) for x in finishes]
+    p10 = round(_percentile(sorted_ff, 10))
+    p50 = round(_percentile(sorted_ff, 50))
+    p80 = round(_percentile(sorted_ff, 80))
+    p90 = round(_percentile(sorted_ff, 90))
+    mean = statistics.fmean(finishes_f)
+    std_days = (statistics.pstdev(finishes_f) / mpd) if n > 1 else 0.0
+    det_pct = bisect.bisect_right(sorted_f, deterministic) / n
+    cal = schedule.calendar
+    ps = schedule.project_start
+    # realign the pure-CPM date axis so the deterministic finish lands on the focus task's STORED
+    # finish (completed work otherwise packs at the project start, shifting every date); a single
+    # constant correction preserves the relative spacing of the distribution.
+    naive_det = offset_to_datetime(ps, max(deterministic, 0), cal)
+    correction = (anchor_date - naive_det) if anchor_date is not None else _dt.timedelta(0)
+
+    def iso(offset: float) -> str:
+        return (offset_to_datetime(ps, max(round(offset), 0), cal) + correction).date().isoformat()
+
+    rstats: list[SSIRiskStat] = []
+    for risk, occ in zip(active_risks, risk_occurred, strict=True):
+        on = [float(f) for f, o in zip(finishes, occ, strict=True) if o]
+        off = [float(f) for f, o in zip(finishes, occ, strict=True) if not o]
+        delta = (
+            round((statistics.fmean(on) - statistics.fmean(off)) / mpd, 1) if on and off else 0.0
+        )
+        cons = (
+            risk.consequence_rating
+            if risk.consequence_rating is not None
+            else _consequence_rating(risk.impact_days)
+        )
+        rstats.append(
+            SSIRiskStat(
+                id=risk.id,
+                name=risk.name,
+                probability=risk.probability,
+                impact_days=risk.impact_days,
+                hits=len(on),
+                mean_delta_days=delta,
+                probability_rating=_prob_rating(risk.probability),
+                consequence_rating=cons,
+            )
+        )
+
+    return SSIResult(
+        iterations=config.iterations,
+        seed=config.seed,
+        target_uid=config.target_uid,
+        distribution=config.distribution,
+        occurrence_mode=config.occurrence_mode,
+        correlation=config.correlation,
+        used_risks=bool(active_risks),
+        deterministic_finish=deterministic,
+        deterministic_percentile=det_pct,
+        p10=p10,
+        p50=p50,
+        p80=p80,
+        p90=p90,
+        mean=mean,
+        std_days=std_days,
+        deterministic_finish_date=iso(deterministic),
+        p10_date=iso(p10),
+        p50_date=iso(p50),
+        p80_date=iso(p80),
+        p90_date=iso(p90),
+        mean_date=iso(mean),
+        cdf=_build_cdf(sorted_f, n),
+        histogram=_build_histogram(sorted_f),
+        risks=tuple(rstats),
+    )
+
+
+def compute_oat_sensitivity(
+    schedule: Schedule,
+    *,
+    three_point: Mapping[int, tuple[int, int, int]],
+    target_uid: int | None = None,
+    exclude_uids: frozenset[int] = frozenset(),
+) -> tuple[OATSensitivity, ...]:
+    """SSI's deterministic one-at-a-time sensitivity (NOT the Monte-Carlo Spearman tornado).
+
+    Baseline = the focus finish with every activity at its ML (= remaining). For each activity that
+    has a 3-point estimate (skipping ``exclude_uids`` — the risk-bearing tasks), re-solve the finish
+    with just that activity forced to Best then Worst, and report the opportunity/risk day swing.
+    Cost: 2*N ``compute_cpm`` solves — call it off the page-load path. Sorted by total desc."""
+    tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
+    ml = {t.unique_id: _ml_minutes(t) for t in tasks}
+    baseline = _finish_of(compute_cpm(schedule, duration_overrides=ml), target_uid)
+    mpd = schedule.calendar.working_minutes_per_day or _MIN_PER_DAY
+    out: list[OATSensitivity] = []
+    for t in tasks:
+        u = t.unique_id
+        if u in exclude_uids or u not in three_point:
+            continue
+        bc, mlv, wc = three_point[u]
+        f_bc = _finish_of(compute_cpm(schedule, duration_overrides={**ml, u: int(bc)}), target_uid)
+        f_wc = _finish_of(compute_cpm(schedule, duration_overrides={**ml, u: int(wc)}), target_uid)
+        opp = round((baseline - f_bc) / mpd, 1)
+        risk = round((f_wc - baseline) / mpd, 1)
+        out.append(
+            OATSensitivity(
+                unique_id=u,
+                bc_minutes=int(bc),
+                wc_minutes=int(wc),
+                ml_minutes=int(mlv),
+                event_finish_bc=f_bc,
+                event_finish_wc=f_wc,
+                opportunity_days=opp,
+                risk_days=risk,
+                total_days=round(opp + risk, 1),
+            )
+        )
+    out.sort(key=lambda o: (-o.total_days, o.unique_id))
+    return tuple(out)
