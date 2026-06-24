@@ -891,7 +891,7 @@ def create_app(
     state: SessionState | None = None,
     *,
     auto_shutdown: bool = False,
-    idle_grace: float = 10.0,
+    idle_grace: float = 600.0,
 ) -> FastAPI:
     """Build the FastAPI app. ``state`` lets a test/launcher inject a fresh session.
 
@@ -899,6 +899,12 @@ def create_app(
     stops the server once the browser stops sending heartbeats for ``idle_grace`` seconds —
     so closing the window turns the whole tool off. ``request_shutdown`` is wired by
     :func:`serve`; the in-page "Quit" control and the watchdog both call it.
+
+    ``idle_grace`` defaults to **600s (10 minutes)** of no heartbeat before the tool times out
+    (ADR-0120). The page beats every 3s, but browsers throttle timers in a backgrounded/minimized
+    tab — so a short grace would shut a still-open tool down when it was merely in the background.
+    Ten minutes also lets the operator navigate away briefly (or let the laptop sleep) and come
+    back to the same session. The in-page **Quit** control still stops it immediately.
     """
     app = FastAPI(title="Schedule Forensics", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
