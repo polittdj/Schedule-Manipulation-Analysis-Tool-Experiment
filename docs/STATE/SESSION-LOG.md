@@ -3160,3 +3160,41 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Still needs operator input/files:** confirm Max Float 275 d vs Acumen (Acumen stored value);
   Exec-Briefing full Acumen format (reference doc); Step 5 (EVM3 absent); metric-formula audits
   (NASA `.aft` absent).
+
+## 2026-06-24 — driving-slack span-snap removed; SSI parity on the leveled Large Test File, focus UID 152 (ADR-0116)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (draft PR). **Model/mode:** Opus 4.8.
+- **Housekeeping first:** merged #228 (CUI-boundary note in `CLAUDE.md`); closed stale draft **#227**
+  (its ADR-0115 parity already on `main` via #226; remaining diff was doc-only and would have reverted
+  #228).
+- **Operator uploaded (non-CUI, read locally, not committed):** the **leveled-and-saved** Large Test
+  File ("USA OTB Master IMS", 1723 activities — the same file ADR-0045 was written against) + the SSI
+  Directional Path export for focus **UID 152** ("all dependents" = 783 transitive predecessors), plus
+  un-leveled `.mpp`/SSI variants. MPXJ-converted in scratchpad; all analysis ephemeral.
+- **Step 2 (dates):** MPXJ-read stored `Start`/`Finish` **= SSI exported dates 783/783 to the minute**
+  (offset histogram `{0: 783}`). MPXJ reads the leveled dates correctly.
+- **Step 3 (the finding):** the **shipped** `compute_driving_slack(target_uid=152)` matched only
+  **325/783** with the span-snap ON, and got the driving path wrong. The snap (ADR-0045) sheds sub-day
+  fractions that accumulate across long ancestor chains. With the snap **OFF** (raw working-minute span)
+  the shipped engine reproduces SSI's **driving path 61/61, set-equal** (`driving_path()` returns the
+  identical UID set), and per-activity slack **within one working day for 782/783** (one full-day
+  outlier, uid 6123). Curated `ssi_uid145` golden stays exact (snap was a no-op on whole-day spans).
+- **Root-cause correction:** SSI does **not** compute on a whole-day grid (else the raw span couldn't
+  match its path). ADR-0045's "afternoon-shift span raggedness" was a misdiagnosis of the
+  resource-leveling date discrepancy. Engine calendar = project calendar "Dynetics Standard" (480
+  min/day, 111 holidays incl. 2026) applied uniformly → the "cal-68 lacks 2026 holidays" residual
+  hypothesis from the seed does not apply; residuals are sub-day time-of-day boundary effects.
+- **Shipped (ADR-0116):** removed the span-snap in `engine/driving_slack.py` (raw span); updated the
+  synthetic **TP1 battery test** (snap's 60/60/120 → raw 210/210/120; tiers 13/1/2/2, DRIVING/floor-0,
+  band edges all unchanged). **No Large-Test-File golden committed** (`.mpp` uncommittable ⇒ a derived
+  golden would be unreproducible; 1723-activity real IMS — repo hygiene). Regression guard = the updated
+  TP1 test + the committed `ssi_uid145` golden.
+- **Workflow answer (step 5):** the tool matches SSI whenever the `.mpp` is **saved in the same leveling
+  state SSI was run on** (leveled↔leveled and un-leveled↔un-leveled both reproduced). Guidance: level →
+  save → analyze. No tool change needed to ingest SSI's dates.
+- **Gate:** full suite **1493 passed / 7 env-skipped (CUI/Java) / 2 xfail** (by-design stale
+  `ssi_uid143`); coverage overall 99.17% (≥70 CI gate), engine 99.84% (≥85), `driving_slack.py` 100%;
+  ruff / ruff-format / mypy / bandit / `node --check` clean.
+- **Still needs operator input/files:** SSI focus-143 export (lift `ssi_uid143` xfails); confirm Max
+  Float 275 d vs Acumen; Exec-Briefing full Acumen format; Step 5 (EVM3 absent); metric-formula audits
+  (NASA `.aft` absent).
