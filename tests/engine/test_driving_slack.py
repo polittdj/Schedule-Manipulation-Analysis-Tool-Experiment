@@ -19,7 +19,7 @@ from schedule_forensics.engine.driving_slack import (
     driving_path,
 )
 from schedule_forensics.model.calendar import Calendar
-from schedule_forensics.model.relationship import Relationship
+from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -52,6 +52,133 @@ def test_synthetic_driving_slack() -> None:
     assert results[1].driving_slack_minutes == 2 * DAY  # A may slip 2 days
     assert results[1].on_driving_path is False
     assert results[1].tier is PathTier.SECONDARY
+
+
+_LUNCH = ((480, 720), (780, 1020))  # 08:00-12:00 + 13:00-17:00
+
+
+def _per_cal_schedule(
+    *, holidays: tuple[dt.date, ...] = (), working_days: tuple[dt.date, ...] = ()
+) -> Schedule:
+    """Ancestor A (project calendar) -> FS -> focus F (calendar 2). A's driving slack is the
+    free float to F, which SSI counts on F's (the successor's) own calendar (ADR-0118)."""
+    cal2 = Calendar(uid=2, holidays=holidays, working_days=working_days, day_segments=_LUNCH)
+    tasks = (
+        Task(
+            unique_id=1,
+            name="A",
+            duration_minutes=DAY,
+            start=dt.datetime(2025, 1, 6, 8, 0),
+            finish=dt.datetime(2025, 1, 6, 17, 0),
+        ),
+        Task(
+            unique_id=2,
+            name="F",
+            duration_minutes=DAY,
+            calendar_uid=2,
+            start=dt.datetime(2025, 1, 20, 8, 0),
+            finish=dt.datetime(2025, 1, 20, 17, 0),
+        ),
+    )
+    return Schedule(
+        name="percal",
+        project_start=MON,
+        calendar=Calendar(day_segments=_LUNCH),
+        calendars=(cal2,),
+        tasks=tasks,
+        relationships=(Relationship(predecessor_id=1, successor_id=2),),
+    )
+
+
+def test_free_float_counted_on_successor_calendar() -> None:
+    # baseline: 9 clear working days of free float from A's finish to F's start
+    assert (
+        compute_driving_slack(_per_cal_schedule(), target_uid=2)[1].driving_slack_minutes == 9 * DAY
+    )
+    # a holiday on F's calendar inside the window removes one working day (ADR-0118)
+    hol = (dt.date(2025, 1, 15),)
+    assert (
+        compute_driving_slack(_per_cal_schedule(holidays=hol), target_uid=2)[
+            1
+        ].driving_slack_minutes
+        == 8 * DAY
+    )
+    # an extra working day (a worked Saturday) on F's calendar adds one
+    sat = (dt.date(2025, 1, 11),)
+    assert (
+        compute_driving_slack(_per_cal_schedule(working_days=sat), target_uid=2)[
+            1
+        ].driving_slack_minutes
+        == 10 * DAY
+    )
+
+
+def test_sf_link_and_non_worked_endpoint() -> None:
+    # SF link exercises the start->finish free-float branch; A's Saturday start (non-worked on
+    # its calendar with a lunch) exercises the non-worked-day branch of the date conversion.
+    cal2 = Calendar(uid=2, day_segments=_LUNCH)
+    tasks = (
+        Task(
+            unique_id=1,
+            name="A",
+            duration_minutes=DAY,
+            calendar_uid=2,
+            start=dt.datetime(2025, 1, 11, 8, 0),  # Saturday — not a worked day
+            finish=dt.datetime(2025, 1, 11, 17, 0),
+        ),
+        Task(
+            unique_id=2,
+            name="F",
+            duration_minutes=DAY,
+            calendar_uid=2,
+            start=dt.datetime(2025, 1, 13, 8, 0),
+            finish=dt.datetime(2025, 1, 20, 17, 0),
+        ),
+    )
+    sched = Schedule(
+        name="sf",
+        project_start=MON,
+        calendar=Calendar(day_segments=_LUNCH),
+        calendars=(cal2,),
+        tasks=tasks,
+        relationships=(Relationship(predecessor_id=1, successor_id=2, type=RelationshipType.SF),),
+    )
+    # ff_SF = off(F.finish=11 working days) - off(A.start=Saturday, 5 working days) = 6 days
+    assert compute_driving_slack(sched, target_uid=2)[1].driving_slack_minutes == 6 * DAY
+
+
+def test_ss_and_ff_link_free_float() -> None:
+    # exercise the start-start and finish-finish free-float branches on the project calendar
+    f = dt.datetime(2025, 1, 13, 8, 0)
+    tasks = (
+        Task(
+            unique_id=1,
+            name="A",
+            duration_minutes=DAY,
+            start=MON,
+            finish=dt.datetime(2025, 1, 6, 17, 0),
+        ),
+        Task(
+            unique_id=2,
+            name="B",
+            duration_minutes=DAY,
+            start=MON,
+            finish=dt.datetime(2025, 1, 6, 17, 0),
+        ),
+        Task(unique_id=3, name="F", duration_minutes=DAY, start=f, finish=f.replace(hour=17)),
+    )
+    sched = Schedule(
+        name="ssff",
+        project_start=MON,
+        tasks=tasks,
+        relationships=(
+            Relationship(predecessor_id=1, successor_id=3, type=RelationshipType.SS),
+            Relationship(predecessor_id=2, successor_id=3, type=RelationshipType.FF),
+        ),
+    )
+    res = compute_driving_slack(sched, target_uid=3)
+    assert res[1].driving_slack_minutes == 5 * DAY  # SS: F.start - A.start = 5 working days
+    assert res[2].driving_slack_minutes == 5 * DAY  # FF: F.finish - B.finish = 5 working days
 
 
 def test_driving_path_is_ordered() -> None:
