@@ -1,6 +1,17 @@
-# Handoff — 2026-06-25 (operator UI/analysis sweep; PRs #248–#256 all MERGED to `main`; branch `claude/compassionate-ptolemy-wip898` is level with `main`)
+# Handoff — 2026-06-25 (operator fixes on branch `claude/eager-rubin-xianw9`; #258 MERGED; SRA process-offload PR open, ADR-0126)
 
-> ## STATUS (current) — verified clean baseline; remaining operator queue is 5 items (1 needs an operator decision)
+> ## STATUS (current) — Gantt-view fixes + SRA Ask-the-AI freeze: #258 merged; SRA Monte-Carlo process-offload (ADR-0126) in flight; branch `claude/eager-rubin-xianw9`
+>
+> **Active branch is `claude/eager-rubin-xianw9`** (the seed's `claude/compassionate-ptolemy-wip898` is retired). Reset to `origin/main` after #258 merged, then this PR stacked on top.
+> - **#258 MERGED to `main`** (`ba2dc69`): the path-analysis **Gantt view fixes** from the operator screenshot + the first SRA Ask-the-AI freeze fix.
+>   - **Frozen data columns on every table Gantt** — shared `SFGantt.freezeColumns(table)` pins every column but the scalable timeline (`position:sticky` + measured per-column left offset, opaque canvas bg, freeze line); the activity/path/driving/SRA grids all call it, a column resize re-pins, print un-pins.
+>   - **Path timeline fits the selected path** — the axis spans `axisRows()` (the chosen tier, else every activity) and auto-scales (`fitFill`) to the page width minus the measured columns, so bars fill the page next to the columns instead of squished at the far right; the zoom slider switches to a fixed px (scroll). `render()`/`reflow()` split so a tier/zoom change re-fits without tearing down dropdowns. **"View entire project"** widens to every activity (`scopeAll`). Asymmetric padding keeps the gold data-date line off the right border.
+>   - **SRA Ask-the-AI freeze (client side)** — the header globe is the AI-status light; asking turned on `.ai-thinking`, restarting `globe.js`'s stroke-heavy canvas for the whole generation and pegging a CPU core on the heavy SRA page. Throttled the spin to ~15 fps (each frame schedules the next on a timer).
+> - **THIS PR — SRA Monte-Carlo process-offload (ADR-0126)** — the operator chose "also harden the server side". `compute_sra` / `compute_sra_ssi` / `compute_oat_sensitivity` are CPU-bound pure Python that held the GIL in a `def` route and starved a concurrent Ask-the-AI call. New `web/offload.py` `run_offloaded` / `run_maybe_offloaded` dispatch the **heavy** runs (gated on `len(tasks) >= 300`) to a lazily-created single worker process, **byte-identical** to in-process (same seeded RNG), with an **in-process fallback** on any pool failure and the function's own exceptions propagating unchanged. Five SRA routes wired; `shutdown_offload()` on Quit; `launcher.py` adds `freeze_support()`. **No model change** (`SCHEMA_VERSION` 2.4.0 untouched), still std-lib only, air-gap intact. Tests: `tests/web/test_offload.py`. **Highest ADR = 0126.**
+> - **Operator decisions this session (AskUserQuestion):** SRA freeze → "also harden the server side" (this PR). **iPhone access → "out of scope for CUI"** — queue item #5 is CLOSED; do **not** add any LAN/off-loopback bind. The responsive mobile *view* (#4) remains optional/separate (not requested again).
+> - **REMAINING operator queue:** #1 unified SRA risk register, #2 SRA JSON save/load of the whole setup, #3 more User Tips, #4 responsive mobile view (optional). See the block below for the settled designs.
+
+> ## STATUS (prev) — verified clean baseline; remaining operator queue is 5 items (1 needs an operator decision)
 >
 > **Verified state (assume nothing — checked on this branch):**
 > - **Branch `claude/compassionate-ptolemy-wip898` is LEVEL with `origin/main`** (`git diff --quiet origin/main HEAD` → clean). No un-pushed work, no open PR for this branch (PR #256 merged).

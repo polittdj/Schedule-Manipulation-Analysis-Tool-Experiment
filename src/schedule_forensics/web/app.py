@@ -218,6 +218,11 @@ from schedule_forensics.web.help import (
     field_or_metric_doc,
     reliability_dimension,
 )
+from schedule_forensics.web.offload import (
+    OFFLOAD_TASK_THRESHOLD,
+    run_maybe_offloaded,
+    shutdown_offload,
+)
 
 logger = logging.getLogger("schedule_forensics.web")
 
@@ -1014,6 +1019,7 @@ def create_app(
 
     @app.post("/api/shutdown")
     def shutdown() -> JSONResponse:
+        shutdown_offload()  # tear down the SRA worker process, if one was started
         _trigger_shutdown(app)
         return JSONResponse({"stopping": True})
 
@@ -2319,10 +2325,19 @@ def create_app(
                 if u in sch.tasks_by_id and o <= m <= p
             }
         )
-        # never 500 on the simulation — surface the engine message as a 422 instead
+        # never 500 on the simulation — surface the engine message as a 422 instead. A large schedule
+        # runs the 1000x CPM Monte-Carlo in a worker process so a concurrent request (e.g. Ask-the-AI)
+        # isn't starved while it computes; the result is byte-identical to an in-process run.
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
-            result = compute_sra(
-                sch, cpm, config=config, overrides=overrides, risks=tuple(st.sra_risks)
+            result = run_maybe_offloaded(
+                heavy,
+                compute_sra,
+                sch,
+                cpm,
+                config=config,
+                overrides=overrides,
+                risks=tuple(st.sra_risks),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -2446,8 +2461,13 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
         )
+        # offload the heavy Monte-Carlo to a worker process on big schedules (keeps the server
+        # responsive for a concurrent Ask-the-AI call); byte-identical to an in-process run
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
-            result = compute_sra_ssi(
+            result = run_maybe_offloaded(
+                heavy,
+                compute_sra_ssi,
                 sch,
                 config=cfg,
                 three_point=_ssi_three_point(st, sch),
@@ -2469,8 +2489,12 @@ def create_app(
             if st.sra_use_risk_register
             else frozenset()
         )
+        # the OAT sweep is one CPM solve per task — offload it on big schedules too
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
-            oat = compute_oat_sensitivity(
+            oat = run_maybe_offloaded(
+                heavy,
+                compute_oat_sensitivity,
                 sch,
                 three_point=_ssi_three_point(st, sch),
                 target_uid=st.sra_focus_uid,
@@ -2620,14 +2644,22 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
         )
-        result = compute_sra_ssi(sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks))
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
+        result = run_maybe_offloaded(
+            heavy, compute_sra_ssi, sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks)
+        )
         exclude = (
             frozenset(u for r in st.sra_ssi_risks for u in r.affected)
             if st.sra_use_risk_register
             else frozenset()
         )
-        oat = compute_oat_sensitivity(
-            sch, three_point=tp, target_uid=st.sra_focus_uid, exclude_uids=exclude
+        oat = run_maybe_offloaded(
+            heavy,
+            compute_oat_sensitivity,
+            sch,
+            three_point=tp,
+            target_uid=st.sra_focus_uid,
+            exclude_uids=exclude,
         )
         if fmt == "docx":
             # the comprehensive narrative SRA report (PM summary -> per-section detail + vector
@@ -2659,7 +2691,14 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
         )
-        result = compute_sra_ssi(sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks))
+        result = run_maybe_offloaded(
+            len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD,
+            compute_sra_ssi,
+            sch,
+            config=cfg,
+            three_point=tp,
+            risks=tuple(st.sra_ssi_risks),
+        )
         keep = {"Risk register", "Per-task durations"}
         full = _ssi_export_tables(st, sch, result, [])  # registry needs no OAT (skip the 2N solves)
         ts = TableSet(
