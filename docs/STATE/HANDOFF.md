@@ -1,10 +1,13 @@
-# Handoff — 2026-06-25 (READ-ONLY QC AUDIT complete → fix session next; branch `claude/eager-rubin-xianw9`; highest ADR 0127)
+# Handoff — 2026-06-25 (QC AUDIT merged (#265) → FIX SESSION next; branch fresh from `main`; highest ADR 0127)
 
-> ## STATUS (current) — Full-repository QC audit DONE; the next session executes the plan of action
+> ## STATUS (current) — Full-repository QC audit MERGED (#265); the next session executes the plan of action
 >
-> **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` — the full audit report + a sequenced 3-wave plan of action.
-> This was a **read-only** audit: no code was changed (gate stayed green, `git status` clean). The next
-> session's job is to **fix** the findings, wave by wave.
+> **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` (now on `main`) — the full audit report, a sequenced
+> 3-wave plan of action, and a verification appendix (every finding re-confirmed by executing the real code
+> paths; every "solid" claim survived falsification). The audit landed via **PR #265 (merged)**; that branch
+> was consumed by the squash-merge, so **branch fresh from `main`** for the fix work.
+> The audit itself was **read-only** — no code was changed (gate stayed green). The next session's job is to
+> **fix** the findings, wave by wave.
 >
 > **Baseline is GREEN** (verified this session): ruff/format/mypy/bandit/node clean; `pytest -q`
 > **1659 passed, 7 skipped, 2 xfailed**; `pytest -m parity` green. Both non-negotiable laws hold; no air-gap
@@ -32,8 +35,10 @@
 > rather than loosen an assertion for any importer/engine behavior change; if a fix warrants a decision, mint
 > **ADR-0128** and refresh HANDOFF + SESSION-LOG in the same commit. **Highest ADR remains 0127.**
 >
-> **Next session:** start Wave 1, ASK FIRST on C2 + M1, branch `claude/eager-rubin-xianw9` (or fresh off
-> `main`), draft PR. The audit doc is the single source of truth for what to fix and in what order.
+> **Next session:** branch **fresh off `main`** (the audit branch is merged/consumed), start Wave 1, ASK
+> FIRST on C2 + M1, open a draft PR. The audit doc is the single source of truth for what to fix and in what
+> order. **Two decisions gate coding:** C2 (default Ask-the-AI mode) and M1 (inactive-task semantics) — raise
+> both via AskUserQuestion before implementing them.
 
 > ## STATUS (prev) — Unified SRA risk register (enter once; ADR-0127); #258–#261 merged; branch `claude/eager-rubin-xianw9`
 >
