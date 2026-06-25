@@ -478,3 +478,43 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
 tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .g-envelope { position: absolute; top: 1px; height: 11px; border-radius: 3px;
   background: var(--warn); opacity: .25; }
+
+/* NASA 5x5 assessment matrices (SSI SRA) — framed like the operator's reference image: a title
+   band, Likelihood rows (5 Near Certainty top .. 1 Remote) x Consequence/Benefit columns (1..5),
+   the fixed NASA priority ranks 1..25, tri-band zones (Risk green/yellow/red; Opportunity light/
+   medium/dark blue), axis labels, a legend, and a count badge where the user's risks land. The
+   cell colours are fixed (theme-independent) so the matrix reads identically in dark or light. */
+.nasa-matrix { display: inline-block; margin: 10px 18px 10px 0; vertical-align: top; }
+.nm-title { font-weight: 700; font-size: 13px; text-align: center; margin-bottom: 4px; color: var(--ink); }
+.nm-body { display: flex; align-items: stretch; }
+.nm-yaxis { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center;
+  font-size: 11px; font-weight: 600; color: var(--muted); padding: 0 2px; }
+.nm-grid { border-collapse: separate; border-spacing: 2px; }
+.nm-grid th { background: transparent; color: var(--ink); font-weight: 600; }
+.nm-corner { width: 18px; }
+.nm-chead { font-size: 10px; text-align: center; padding: 1px 2px; vertical-align: bottom; }
+.nm-cnum { font-size: 12px; font-weight: 700; }
+.nm-clab { font-size: 9px; color: var(--muted); max-width: 64px; }
+.nm-rhead { text-align: right; padding-right: 4px; white-space: nowrap; }
+.nm-rnum { font-size: 12px; font-weight: 700; margin-right: 3px; }
+.nm-rlab { font-size: 9px; color: var(--muted); }
+.nm-cell { position: relative; width: 60px; height: 40px; text-align: center; vertical-align: middle;
+  border-radius: 4px; color: #10202e; }
+.nm-rank { font-size: 16px; font-weight: 800; }
+.nm-cell.nm-hit { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .9), 0 0 0 1px rgba(0, 0, 0, .35); }
+.nm-badge { position: absolute; top: 1px; right: 2px; min-width: 15px; height: 15px; line-height: 15px;
+  border-radius: 8px; background: #10202e; color: #fff; font-size: 10px; font-weight: 700; padding: 0 3px; }
+/* Risk zones (green / yellow / red) */
+.nm-r-g { background: #43a047; }
+.nm-r-y { background: #ffd400; }
+.nm-r-r { background: #e53935; color: #fff; }
+/* Opportunity zones (light / medium / dark blue) */
+.nm-o-g { background: #a8d3ea; }
+.nm-o-y { background: #3d8ec4; color: #fff; }
+.nm-o-r { background: #15527d; color: #fff; }
+.nm-xaxis { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 3px;
+  padding-left: 22px; }
+.nm-legend { display: flex; gap: 12px; justify-content: center; margin-top: 5px; padding-left: 22px; }
+.nm-leg-item { font-size: 10px; color: var(--ink); display: inline-flex; align-items: center; }
+.nm-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 3px;
+  vertical-align: middle; }

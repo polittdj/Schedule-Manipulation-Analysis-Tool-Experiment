@@ -205,20 +205,23 @@ def test_probability_and_consequence_ratings() -> None:
         5,
         5,
     ]
-    assert [_consequence_rating(d) for d in (0.0, 1.0, 5.0, 20.0, 60.0, 100.0)] == [
-        1,
-        2,
-        3,
-        4,
-        5,
-        5,
+    # the NASA Schedule guideline: impact days -> calendar months (30.44 d/mo)
+    # <1wk=1, 1wk-<1mo=2, 1-<3mo=3, 3-<=6mo=4, >6mo=5
+    assert [_consequence_rating(d) for d in (6.0, 7.0, 20.0, 31.0, 90.0, 100.0, 183.0)] == [
+        1,  # 6 days < 1 week
+        2,  # 1 week
+        2,  # < 1 month
+        3,  # 1 month (>= 30.44)
+        3,  # < 3 months (< 91.3)
+        4,  # ~3.3 months (3 to <= 6)
+        5,  # > 6 months (> 182.6)
     ]
 
 
 def test_risk_stats_carry_ratings_and_occurrence_band() -> None:
     s = _focus_net()
-    risk = ScheduleRisk(id="R1", name="permit", probability=0.79, impact_days=100.0, affected=(2,))
+    risk = ScheduleRisk(id="R1", name="permit", probability=0.79, impact_days=200.0, affected=(2,))
     r = compute_sra_ssi(s, config=SRAConfig(iterations=100, target_uid=4, seed=2), risks=[risk])
     rs = r.risks[0]
-    assert rs.probability_rating == 4 and rs.consequence_rating == 5  # 79% band, 100d impact
+    assert rs.probability_rating == 4 and rs.consequence_rating == 5  # 79% band, 200d (>6mo) impact
     assert 60 <= rs.hits <= 95  # ~79 of 100 (seeded)

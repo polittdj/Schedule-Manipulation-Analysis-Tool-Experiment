@@ -186,6 +186,19 @@ def test_grid_and_export_need_a_schedule() -> None:
     assert c.get("/export/xlsx/sra").status_code == 400
 
 
+def test_grid_supports_excel_column_paste_fill(client: TestClient) -> None:
+    """Operator: copy a whole Risk Ranking Factor column from Excel / MS Project and paste it onto
+    one cell to fill the column down across every task in one go (no per-cell entry)."""
+    js = client.get("/static/sra_grid.js").text
+    assert '"paste"' in js  # a paste handler on the grid
+    assert 'getData("text")' in js  # reads the clipboard text
+    assert 'var COLS = ["factor", "bc_days", "wc_days"]' in js  # fills down by column
+    assert 'split("\\t")' in js  # tab-separated columns (an Excel block paste)
+    # the panel tells the operator they can paste a column
+    page = client.get("/sra").text
+    assert "Paste from Excel" in page
+
+
 def test_sra_grid_js_is_air_gapped(client: TestClient) -> None:
     js = client.get("/static/sra_grid.js").text
     urls = [u for u in re.findall(r"https?://[^\s\"')]+", js) if "www.w3.org" not in u]

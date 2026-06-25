@@ -108,7 +108,7 @@ def test_risk_register_add_remove_and_matrix(client: TestClient) -> None:
             "action": "add",
             "name": "Permit",
             "prob": "79",
-            "impact_days": "100",
+            "impact_days": "200",
             "affected": "5",
             "consequence": "",
         },
@@ -118,7 +118,8 @@ def test_risk_register_add_remove_and_matrix(client: TestClient) -> None:
     assert len(j["risks"]) == 1
     r = j["risks"][0]
     assert r["name"] == "Permit" and r["probability"] == 79.0
-    assert r["probability_rating"] == 4 and r["consequence_rating"] == 5  # 79% band, 100d impact
+    # 79% band -> likelihood 4; 200 days (>6 months) -> consequence 5 (Schedule guideline)
+    assert r["probability_rating"] == 4 and r["consequence_rating"] == 5
     # the risk (impact >= 0) lands in the Risk matrix at [consequence-1][probability-1]
     assert j["risk_matrix"][4][3] == 1
     assert all(all(v == 0 for v in row) for row in j["opportunity_matrix"])
@@ -148,6 +149,52 @@ def test_api_ssi_no_schedule_returns_400() -> None:
     c = TestClient(create_app(SessionState()))
     assert c.get("/api/sra/ssi?iterations=200").status_code == 400
     assert c.get("/api/sra/oat").status_code == 400
+
+
+def test_consequence_rating_follows_the_schedule_day_to_month_guideline(client: TestClient) -> None:
+    """The consequence (1-5) is auto-rated from the schedule impact via the NASA Schedule guideline
+    (impact days -> calendar months): a sub-week impact is 1; a >6-month impact is 5."""
+    uid = "5"
+    client.post(
+        "/sra/ssi-risk",
+        data={
+            "action": "add",
+            "name": "tiny",
+            "prob": "50",
+            "impact_days": "3",
+            "affected": uid,
+            "consequence": "",
+        },
+    )
+    client.post(
+        "/sra/ssi-risk",
+        data={
+            "action": "add",
+            "name": "huge",
+            "prob": "50",
+            "impact_days": "250",
+            "affected": uid,
+            "consequence": "",
+        },
+    )
+    risks = {r["name"]: r for r in client.get("/api/sra/ssi?iterations=200").json()["risks"]}
+    assert risks["tiny"]["consequence_rating"] == 1  # 3 days < 1 week
+    assert risks["huge"]["consequence_rating"] == 5  # 250 days > 6 months
+
+
+def test_ssi_js_frames_the_nasa_5x5_matrices(client: TestClient) -> None:
+    """The matrices are framed like the operator's NASA reference: the fixed 1..25 priority ranks,
+    the tri-band zones, the Likelihood/Consequence axis labels, and a Risk vs Opportunity split."""
+    js = client.get("/static/sra_ssi.js").text
+    assert "Near Certainty" in js and "Remote" in js  # the Likelihood row labels
+    assert "Consequence of Occurrence" in js and "Benefit of Occurrence" in js  # the x-axis titles
+    assert "var RANK" in js and "[10, 16, 20, 23, 25]" in js  # the fixed NASA rank grid
+    assert (
+        'matrix("Risk Assessment Matrix"' in js and 'matrix("Opportunity Assessment Matrix"' in js
+    )
+    css = client.get("/static/app.css").text
+    assert ".nm-r-r { background: #e53935;" in css  # risk red zone
+    assert ".nm-o-r { background: #15527d" in css  # opportunity dark-blue zone
 
 
 def test_sra_ssi_js_is_air_gapped(client: TestClient) -> None:

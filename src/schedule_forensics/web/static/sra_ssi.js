@@ -22,29 +22,76 @@
     return tr;
   }
 
-  // a 5x5 heat grid: rows = consequence 5..1 (worst on top), cols = probability 1..5
-  function matrix(title, grid) {
-    var wrap = el("div", { class: "ssi-matrix" });
-    wrap.appendChild(el("h4", null, title));
-    var t = el("table", { class: "risk-matrix" });
+  // The NASA 5x5 assessment matrix (mirrors the operator's reference image): Likelihood-of-Occurrence
+  // rows (5 Near Certainty at top .. 1 Remote), Consequence/Benefit columns (1..5), the fixed NASA
+  // priority ranks 1..25 in each cell, tri-band zones (Risk = green/yellow/red; Opportunity = light/
+  // medium/dark blue), and a count badge wherever the user's risks land. grid is the engine count
+  // grid indexed [consequence-1][probability-1].
+  var RANK = [
+    [1, 3, 5, 8, 12],     // L1 Remote
+    [2, 6, 11, 14, 17],   // L2 Unlikely
+    [4, 9, 15, 19, 21],   // L3 Possible
+    [7, 13, 18, 22, 24],  // L4 Highly Likely
+    [10, 16, 20, 23, 25], // L5 Near Certainty
+  ];
+  var ZONE = [
+    ["g", "g", "g", "g", "y"],
+    ["g", "g", "y", "y", "r"],
+    ["g", "y", "y", "r", "r"],
+    ["g", "y", "r", "r", "r"],
+    ["g", "y", "r", "r", "r"],
+  ];
+  var LIK = ["Remote", "Unlikely", "Possible", "Highly Likely", "Near Certainty"];
+  var CONS_RISK = ["Low", "Minor", "Moderate", "Significant", "Severe"];
+  var CONS_OPP = ["Low", "Minor", "Moderate", "High", "Very High"];
+
+  function matrix(title, grid, opportunity) {
+    var cons = opportunity ? CONS_OPP : CONS_RISK;
+    var fam = opportunity ? "o" : "r"; // colour family
+    var wrap = el("div", { class: "nasa-matrix" });
+    wrap.appendChild(el("div", { class: "nm-title" }, title));
+    var body = el("div", { class: "nm-body" });
+    body.appendChild(el("div", { class: "nm-yaxis" }, "Likelihood of Occurrence"));
+    var t = el("table", { class: "nm-grid" });
     var hdr = el("tr");
-    hdr.appendChild(el("th", null, "C\\P"));
-    for (var p = 1; p <= 5; p++) hdr.appendChild(el("th", null, String(p)));
+    hdr.appendChild(el("th", { class: "nm-corner" }, ""));
+    for (var c = 1; c <= 5; c++) {
+      var th = el("th", { class: "nm-chead" });
+      th.appendChild(el("div", { class: "nm-cnum" }, String(c)));
+      th.appendChild(el("div", { class: "nm-clab" }, cons[c - 1]));
+      hdr.appendChild(th);
+    }
     t.appendChild(hdr);
-    for (var c = 5; c >= 1; c--) {
+    for (var L = 5; L >= 1; L--) {
       var tr = el("tr");
-      tr.appendChild(el("th", null, String(c)));
-      for (var pp = 1; pp <= 5; pp++) {
-        var n = grid[c - 1][pp - 1];
-        var score = c * pp;
-        var band = score >= 20 ? "rk-extreme" : score >= 12 ? "rk-high"
-          : score >= 6 ? "rk-mod" : score >= 3 ? "rk-low" : "rk-min";
-        tr.appendChild(el("td", { class: "rk-cell " + band + (n ? " rk-hit" : "") },
-          n ? String(n) : ""));
+      var rh = el("th", { class: "nm-rhead" });
+      rh.appendChild(el("span", { class: "nm-rnum" }, String(L)));
+      rh.appendChild(el("span", { class: "nm-rlab" }, LIK[L - 1]));
+      tr.appendChild(rh);
+      for (var C = 1; C <= 5; C++) {
+        var count = (grid[C - 1] && grid[C - 1][L - 1]) || 0;
+        var td = el("td", { class: "nm-cell nm-" + fam + "-" + ZONE[L - 1][C - 1] +
+          (count ? " nm-hit" : "") });
+        td.appendChild(el("span", { class: "nm-rank" }, String(RANK[L - 1][C - 1])));
+        if (count) {
+          td.appendChild(el("span", { class: "nm-badge", title: count + " here" }, String(count)));
+        }
+        tr.appendChild(td);
       }
       t.appendChild(tr);
     }
-    wrap.appendChild(t);
+    body.appendChild(t);
+    wrap.appendChild(body);
+    wrap.appendChild(el("div", { class: "nm-xaxis" },
+      opportunity ? "Benefit of Occurrence" : "Consequence of Occurrence"));
+    var leg = el("div", { class: "nm-legend" });
+    [["High", "r"], ["Medium", "y"], ["Low", "g"]].forEach(function (p) {
+      var item = el("span", { class: "nm-leg-item" });
+      item.appendChild(el("span", { class: "nm-swatch nm-" + fam + "-" + p[1] }));
+      item.appendChild(document.createTextNode(" " + p[0]));
+      leg.appendChild(item);
+    });
+    wrap.appendChild(leg);
     return wrap;
   }
 
@@ -79,8 +126,10 @@
     }
     var m = document.getElementById("ssiMatrices");
     m.innerHTML = "";
-    if (nonEmpty(d.risk_matrix)) m.appendChild(matrix("Risk Assessment Matrix (consequence × probability)", d.risk_matrix));
-    if (nonEmpty(d.opportunity_matrix)) m.appendChild(matrix("Opportunity Assessment Matrix", d.opportunity_matrix));
+    if (nonEmpty(d.risk_matrix)) m.appendChild(matrix("Risk Assessment Matrix", d.risk_matrix, false));
+    if (nonEmpty(d.opportunity_matrix)) {
+      m.appendChild(matrix("Opportunity Assessment Matrix", d.opportunity_matrix, true));
+    }
   }
 
   function run() {

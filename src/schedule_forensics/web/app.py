@@ -5983,14 +5983,16 @@ the random distribution is statistically close, not bit-identical (a different R
 <label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="79"></label>
 <label>Schedule impact (days) <input type=number name=impact_days step=any placeholder="100 (negative = opportunity)"></label>
 <label>Affected UIDs <input type=text name=affected placeholder="106"></label>
-<label>Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto"></label>
+<label title="Leave blank to auto-rate from the schedule impact (NASA Schedule guideline: the impact days converted to calendar months -- &lt;1 week=1, 1 week to &lt;1 month=2, 1 to &lt;3 months=3, 3 to &lt;=6 months=4, &gt;6 months=5).">Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto &#9432;"></label>
 <button type=submit>Add risk</button></form>
 <table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
 <h3>Editable schedule grid</h3>
 <p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (1&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. A factor
-auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override. Edits
-queue until you press <b>Save grid</b>. Summary rows are bold and not editable.</p>
+auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override.
+<b>Paste from Excel / MS&nbsp;Project:</b> copy a whole column (or a Factor/BC/WC block) and paste it
+onto the first cell to fill the column down across every task in one go. Edits queue until you press
+<b>Save grid</b>. Summary rows are bold and not editable.</p>
 <div class=viz-controls>
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridReload type=button>Refresh grid</button>
