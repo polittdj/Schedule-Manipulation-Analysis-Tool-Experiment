@@ -45,8 +45,9 @@ from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-#: Finish-date histogram resolution (PDF bins over [min, max] of the simulated finishes).
-_HISTOGRAM_BINS = 20
+#: Finish-date histogram resolution (PDF bins over [min, max] of the simulated finishes). Finer bins
+#: (operator: "the granularity of the data much more") give a smoother distribution on the charts.
+_HISTOGRAM_BINS = 40
 
 
 @dataclass(frozen=True)

@@ -41,7 +41,7 @@
     box.innerHTML = "";
     var cdf = data.cdf || [];
     if (!cdf.length) { box.textContent = "No simulation data."; return; }
-    var W = 980, H = 360, padL = 44, padR = 110, padT = 24, padB = 56;
+    var W = 980, H = 280, padL = 44, padR = 110, padT = 16, padB = 44;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
 
     // x axis is the run of finish dates (index-spaced so the step S-curve reads evenly);
@@ -142,7 +142,7 @@
     box.innerHTML = "";
     var hist = data.histogram || [];
     if (!hist.length) { box.textContent = "No simulation data."; return; }
-    var W = 980, H = 320, padL = 40, padR = 14, padT = 20, padB = 56;
+    var W = 980, H = 230, padL = 40, padR = 14, padT = 14, padB = 44;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var n = hist.length;
     var top = 1;
@@ -207,7 +207,7 @@
     var rows = data.sensitivity || [];
     if (!rows.length) { box.textContent = "No sensitivity data."; return; }
 
-    var W = 980, padL = 220, padR = 60, rowH = 22, padT = 10;
+    var W = 980, padL = 200, padR = 60, rowH = 18, padT = 8;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
@@ -299,7 +299,7 @@
       return;
     }
 
-    var W = 980, padL = 220, padR = 70, rowH = 24, padT = 10;
+    var W = 980, padL = 200, padR = 70, rowH = 18, padT = 8;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
