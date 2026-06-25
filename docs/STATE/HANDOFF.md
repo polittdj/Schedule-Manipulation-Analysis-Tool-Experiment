@@ -1,6 +1,25 @@
-# Handoff — 2026-06-25 (SRA reporting/UX overhaul — operator batch; CHUNK 1 done: consequence days->months + NASA 5x5 matrices; #25-#28 queued)
+# Handoff — 2026-06-25 (SRA reporting/UX overhaul — operator batch; #23-#28 + the comprehensive Word report (ADR-0124) DONE; only the legacy-chart shrink sweep remains)
 
-> ## STATUS (current) — SRA reporting/UX overhaul (operator batch, ADR-0123 family) — CHUNK 1 IN: consequence auto-calc (Schedule days->months) + the exact NASA 5x5 Risk/Opportunity matrices; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — SRA reporting/UX overhaul — the **comprehensive MS Word SRA report with vendor-free vector charts** + a downloadable risk registry landed (ADR-0124); branch `claude/compassionate-ptolemy-wip898`
+>
+> **The headline report is done.** `reports/docx.py` gained a `Chart` block that draws **native
+> DrawingML vector shapes** (wpg/wps shape group: `a:custGeom` polylines for the S-curve/axis/tornado,
+> `a:prstGeom rect` bars, ellipse dots) — **no image part, no rasterizer, no new ZIP part, byte-
+> deterministic** — and a shaded `w:tbl` for the 5x5 matrices. `web/app.py` `_sra_report_blocks` composes
+> the full report (Executive summary -> Focus-finish + S-curve + distribution -> Duration sensitivity +
+> tornado + OAT -> Per-task durations -> Risk register -> the two 5x5 matrices -> Methodology &
+> assumptions). `GET /export/docx/sra` now returns the narrative report; `/export/xlsx/sra` stays tabular;
+> `GET /export/{fmt}/sra-registry` is the downloadable risk registry. Approach was de-risked by a recon
+> **workflow** (mapped the writer + SSI data + proved the vector-docx technique builds a valid file in an
+> isolated worktree) before any code. Tests: `Chart` rendering + report/registry routes; full gate clean.
+> - **Operator batch status:** #23 consequence days->months (DONE, #243) - #24 NASA 5x5 matrices (DONE,
+>   #243) - #25 grid resize + paste-from-Excel (DONE, #243/#244) - #26 **risk registry + Word report
+>   (DONE, this push, ADR-0124)** - #27 SSI S-curve (DONE, #245) **but the legacy-chart shrink sweep +
+>   the on-screen tornado restyle still REMAIN** - #28 11px text (DONE, #244).
+> - **NEXT (the only operator item left):** the #27 tail — shrink/redraw the **legacy** `sra.js` charts
+>   (S-curve / tornado / histogram) smaller + denser, "same for all other graphs."
+>
+> ## STATUS (prev) — SRA reporting/UX overhaul (operator batch, ADR-0123 family) — CHUNK 1 IN: consequence auto-calc (Schedule days->months) + the exact NASA 5x5 Risk/Opportunity matrices; branch `claude/compassionate-ptolemy-wip898`
 >
 > **Operator dropped a large SRA overhaul spec (screenshots + the SSI reference Excel exports).** Working
 > it in sequenced chunks on one branch. **Chunk 1 (this push):**

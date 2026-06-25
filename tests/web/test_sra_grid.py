@@ -180,10 +180,74 @@ def test_export_emits_office_zip(client: TestClient, fmt: str) -> None:
     assert len(r.content) > 1000
 
 
+def test_word_export_is_a_comprehensive_report_with_vector_charts(client: TestClient) -> None:
+    """Operator: a full MS Word SRA report — PM summary then per-section detail with embedded
+    graphics. The .docx is a narrative document (not the plain table dump), it carries the section
+    headings + native vector drawings + the shaded 5x5 matrices, and it is byte-deterministic."""
+    import io
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    uid = _editable_uids(client, 1)[0]
+    client.post(
+        "/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": 5, "focus": True}])}
+    )
+    client.post(
+        "/sra/ssi-risk",
+        data={
+            "action": "add",
+            "name": "Permit",
+            "prob": "79",
+            "impact_days": "100",
+            "affected": str(uid),
+            "consequence": "",
+        },
+    )
+    r = client.get("/export/docx/sra")
+    assert r.status_code == 200 and r.content[:2] == b"PK"
+    zf = zipfile.ZipFile(io.BytesIO(r.content))
+    assert zf.testzip() is None
+    doc = zf.read("word/document.xml").decode()
+    ET.fromstring(doc)  # well-formed
+    for section in (
+        "Executive summary",
+        "Focus-finish results",
+        "Duration sensitivity",
+        "Risk / Opportunity register",
+        "Risk Assessment Matrix",
+        "Methodology",
+    ):
+        assert section in doc, section
+    assert "<w:drawing>" in doc and "<w:shd " in doc  # a vector chart + a shaded matrix
+    assert client.get("/export/docx/sra").content == r.content  # deterministic
+
+
+@pytest.mark.parametrize("fmt", ["xlsx", "docx"])
+def test_risk_registry_is_downloadable(client: TestClient, fmt: str) -> None:
+    uid = _editable_uids(client, 1)[0]
+    client.post(
+        "/sra/ssi-risk",
+        data={
+            "action": "add",
+            "name": "Permit",
+            "prob": "79",
+            "impact_days": "100",
+            "affected": str(uid),
+            "consequence": "",
+        },
+    )
+    r = client.get(f"/export/{fmt}/sra-registry")
+    assert r.status_code == 200 and r.content[:2] == b"PK" and len(r.content) > 1000
+    # the buttons are on the page
+    page = client.get("/sra").text
+    assert "/export/xlsx/sra-registry" in page and "Download SRA report (Word)" in page
+
+
 def test_grid_and_export_need_a_schedule() -> None:
     c = TestClient(create_app(SessionState()))
     assert c.get("/api/sra/grid").status_code == 400
     assert c.get("/export/xlsx/sra").status_code == 400
+    assert c.get("/export/docx/sra-registry").status_code == 400
 
 
 def test_grid_supports_excel_column_paste_fill(client: TestClient) -> None:

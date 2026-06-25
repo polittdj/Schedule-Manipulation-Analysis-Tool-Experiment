@@ -178,7 +178,15 @@ from schedule_forensics.importers import (
 )
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
-from schedule_forensics.reports.docx import Block, render_document, render_docx
+from schedule_forensics.reports.docx import (
+    Block,
+    Chart,
+    DocTable,
+    Heading,
+    Paragraph,
+    render_document,
+    render_docx,
+)
 from schedule_forensics.reports.tables import (
     Cell,
     Table,
@@ -2574,7 +2582,44 @@ def create_app(
         oat = compute_oat_sensitivity(
             sch, three_point=tp, target_uid=st.sra_focus_uid, exclude_uids=exclude
         )
+        if fmt == "docx":
+            # the comprehensive narrative SRA report (PM summary -> per-section detail + vector
+            # charts + the 5x5 matrices + assumptions); ADR-0124
+            return Response(
+                content=render_document(_sra_report_blocks(st, sch, result, oat)),
+                media_type=_EXPORT_MEDIA["docx"][0],
+                headers={"Content-Disposition": 'attachment; filename="sra-report.docx"'},
+            )
         return _export_response(fmt, _ssi_export_tables(st, sch, result, oat), "sra-ssi")
+
+    @app.get("/export/{fmt}/sra-registry")
+    def export_sra_registry(fmt: str) -> Response:
+        """The risk / opportunity registry as a standalone downloadable workbook/doc (register +
+        the per-task Best/Worst durations) — the operator's downloadable risk registry (ADR-0124)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "need an analyzable schedule"}, status_code=400)
+        _key, sch, _cpm = chosen
+        tp = _ssi_three_point(st, sch)
+        cfg = SRAConfig(
+            iterations=2000,
+            distribution="triangular",
+            target_uid=st.sra_focus_uid,
+            occurrence_mode=st.sra_occurrence_mode,
+            use_risk_register=st.sra_use_risk_register,
+            correlation=st.sra_correlation,
+        )
+        result = compute_sra_ssi(sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks))
+        keep = {"Risk register", "Per-task durations"}
+        full = _ssi_export_tables(st, sch, result, [])  # registry needs no OAT (skip the 2N solves)
+        ts = TableSet(
+            f"SRA Risk Registry - {sch.name}",
+            tuple(t for t in full.tables if t.title in keep),
+        )
+        return _export_response(fmt, ts, "sra-risk-registry")
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
@@ -5906,6 +5951,282 @@ def _ssi_export_tables(
     )
 
 
+# The NASA 5x5 priority ranks (1..25) + tri-band zones (mirrors web/static/sra_ssi.js), reused to
+# render the Risk/Opportunity matrices as shaded grids in the Word report (ADR-0124).
+_NASA_RANK = (
+    (1, 3, 5, 8, 12),
+    (2, 6, 11, 14, 17),
+    (4, 9, 15, 19, 21),
+    (7, 13, 18, 22, 24),
+    (10, 16, 20, 23, 25),
+)
+_NASA_ZONE = (
+    ("g", "g", "g", "g", "y"),
+    ("g", "g", "y", "y", "r"),
+    ("g", "y", "y", "r", "r"),
+    ("g", "y", "r", "r", "r"),
+    ("g", "y", "r", "r", "r"),
+)
+_NASA_FILL = {
+    "risk": {"g": "43A047", "y": "FFD400", "r": "E53935"},
+    "opp": {"g": "A8D3EA", "y": "3D8EC4", "r": "15527D"},
+}
+_NASA_LIK = ("Remote", "Unlikely", "Possible", "Highly Likely", "Near Certainty")
+_NASA_CONS_RISK = ("Low", "Minor", "Moderate", "Significant", "Severe")
+_NASA_CONS_OPP = ("Low", "Minor", "Moderate", "High", "Very High")
+
+
+def _sra_chart_scurve(result: SSIResult) -> Chart | None:
+    """The cumulative finish-date S-curve as a vector chart: axis + dense polyline + a dashed
+    deterministic-finish line + P10/50/80/90 dots, all in 0..1 plot fraction (dates -> x)."""
+    pts = [(dt.date.fromisoformat(d), p) for d, p in result.s_curve]
+    if len(pts) < 2:
+        return None
+    x0 = min(d.toordinal() for d, _ in pts)
+    span = (max(d.toordinal() for d, _ in pts) - x0) or 1
+
+    def fx(day: dt.date) -> float:
+        return max(0.0, min(1.0, (day.toordinal() - x0) / span))
+
+    axis = (((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525)
+    curve = (tuple((fx(d), p) for d, p in pts), "0B6BCB", 19050)
+    detf = fx(dt.date.fromisoformat(result.deterministic_finish_date))
+    det_line = (((detf, 0.0), (detf, 1.0)), "D29922", 9525)
+    dots = tuple(
+        (fx(dt.date.fromisoformat(ds)), q, "E8352E")
+        for q, ds in (
+            (0.10, result.p10_date),
+            (0.50, result.p50_date),
+            (0.80, result.p80_date),
+            (0.90, result.p90_date),
+        )
+    )
+    return Chart(
+        kind="vector", width_in=6.4, height_in=2.5, polylines=(axis, curve, det_line), dots=dots
+    )
+
+
+def _sra_chart_hist(result: SSIResult) -> Chart | None:
+    """The finish-date distribution (histogram) as vector bars."""
+    bins = result.finish_hist
+    if not bins:
+        return None
+    maxc = max((c for _d, c in bins), default=0) or 1
+    n = len(bins)
+    rects = tuple(
+        (i / n + 0.008, 0.0, (i + 1) / n - 0.008, c / maxc, "3D8EC4")
+        for i, (_d, c) in enumerate(bins)
+    )
+    axis = (((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525)
+    return Chart(kind="vector", width_in=6.4, height_in=2.1, polylines=(axis,), rects=rects)
+
+
+def _sra_chart_tornado(oat: Sequence[OATSensitivity]) -> Chart | None:
+    """The duration-sensitivity tornado: per task a centred bar — opportunity-to-accelerate (green,
+    left of centre) and risk-of-delay (red, right) — scaled to the largest total swing."""
+    rows = [o for o in oat if o.total_days > 0][:12]
+    if not rows:
+        return None
+    maxv = max((o.opportunity_days + o.risk_days for o in rows), default=0.0) or 1.0
+    n = len(rows)
+    rects: list[tuple[float, float, float, float, str]] = []
+    for i, o in enumerate(rows):
+        y0 = 1.0 - (i + 0.85) / n
+        y1 = 1.0 - (i + 0.15) / n
+        opp = (o.opportunity_days / maxv) * 0.5
+        risk = (o.risk_days / maxv) * 0.5
+        if opp > 0:
+            rects.append((0.5 - opp, y0, 0.5, y1, "43A047"))
+        if risk > 0:
+            rects.append((0.5, y0, 0.5 + risk, y1, "E53935"))
+    center = (((0.5, 0.0), (0.5, 1.0)), "555555", 9525)
+    return Chart(
+        kind="vector", width_in=6.4, height_in=2.8, polylines=(center,), rects=tuple(rects)
+    )
+
+
+def _sra_matrix_chart(result: SSIResult, *, opportunity: bool) -> Chart:
+    """The 5x5 Risk/Opportunity assessment matrix as a shaded grid: NASA rank (1-25) + (count)."""
+    counts = _ssi_matrix_counts(result.risks, opportunity=opportunity)  # [consequence-1][prob-1]
+    fam = "opp" if opportunity else "risk"
+    cons = _NASA_CONS_OPP if opportunity else _NASA_CONS_RISK
+    fill = _NASA_FILL[fam]
+
+    def cell(lk: int, c: int) -> tuple[str, str, str]:
+        cnt = counts[c - 1][lk - 1]
+        zone = _NASA_ZONE[lk - 1][c - 1]
+        text = f"{_NASA_RANK[lk - 1][c - 1]}" + (f" ({cnt})" if cnt else "")
+        dark_text = zone == "r" or (opportunity and zone == "y")
+        return (text, fill[zone], "FFFFFF" if dark_text else "10202E")
+
+    header = (
+        ("L \\ C", "E9EEF5", "333333"),
+        *((f"{c + 1} {cons[c]}", "E9EEF5", "333333") for c in range(5)),
+    )
+    body = tuple(
+        ((f"{lk} {_NASA_LIK[lk - 1]}", "E9EEF5", "333333"), *(cell(lk, c) for c in range(1, 6)))
+        for lk in range(5, 0, -1)
+    )
+    return Chart(kind="matrix", grid=(header, *body))
+
+
+def _sra_report_blocks(
+    st: SessionState, sch: Schedule, result: SSIResult, oat: Sequence[OATSensitivity]
+) -> list[Block]:
+    """The comprehensive narrative SRA Word report (ADR-0124): a PM-level executive summary, then
+    per-section detail (focus-finish + S-curve + distribution, duration sensitivity + tornado,
+    per-task durations, risk register, the 5x5 matrices) with embedded vendor-free vector charts,
+    plus a methodology & assumptions section. Reuses the export tables for the data grids."""
+    names = sch.tasks_by_id
+    focus = (
+        names[result.target_uid].name
+        if result.target_uid is not None and result.target_uid in names
+        else "Project finish"
+    )
+    by_title = {t.title: t for t in _ssi_export_tables(st, sch, result, oat).tables}
+
+    def doc(title: str) -> DocTable:
+        t = by_title[title]
+        return DocTable(t.headers, t.rows)
+
+    top = oat[0] if oat else None
+    top_txt = (
+        f"{top.unique_id} {names[top.unique_id].name if top.unique_id in names else ''} "
+        f"({top.total_days:g} wd total swing)"
+        if top
+        else "n/a"
+    )
+    det_pct = round(result.deterministic_percentile * 100)
+    blocks: list[Block] = [Heading(f"Schedule Risk Analysis Report - {sch.name}", level=0)]
+    blocks += [
+        Heading("Executive summary", level=1),
+        Paragraph(
+            f"This Schedule Risk Analysis evaluates the finish of {focus} over {result.iterations} "
+            f"Monte-Carlo iterations. The deterministic (logic-only) finish is "
+            f"{result.deterministic_finish_date} (about P{det_pct}). The risk-adjusted finish is most "
+            f"likely {result.p50_date} (P50); {result.p80_date} at P80 and {result.p90_date} at P90 "
+            f"carry progressively more contingency. The mean outcome is {result.mean_date} with a "
+            f"standard deviation of {round(result.std_days, 1)} working days. "
+            f"{len(result.risks)} discrete risk/opportunity event(s) were modeled. The largest "
+            f"duration-sensitivity driver is task {top_txt}."
+        ),
+        DocTable(
+            ("Measure", "Value"),
+            (
+                ("Focus event", f"{result.target_uid} - {focus}" if result.target_uid else focus),
+                (
+                    "Deterministic finish",
+                    f"{result.deterministic_finish_date} (P{round(result.deterministic_percentile * 100, 1)})",
+                ),
+                ("P50 (most likely)", result.p50_date),
+                ("P80", result.p80_date),
+                ("P90", result.p90_date),
+                ("Mean", result.mean_date),
+                ("Std deviation (working days)", round(result.std_days, 1)),
+                ("Risk / opportunity events", len(result.risks)),
+                ("Top sensitivity driver", top_txt),
+            ),
+        ),
+        Paragraph(
+            "Read the P-values as confidence levels: a P80 date has an approximately 80% modeled "
+            "chance of being met. The deterministic finish typically sits well below P50, so the gap "
+            "between them is the contingency the current logic does not yet carry.",
+            lead="How to read this:",
+        ),
+    ]
+    blocks += [
+        Heading("Focus-finish results", level=1),
+        Paragraph(
+            "The simulated finish-date distribution of the focus event: the deterministic finish, the "
+            "P10/P50/P80/P90 confidence dates, the mean, and the spread (standard deviation)."
+        ),
+        doc("Focus-finish results"),
+    ]
+    sc = _sra_chart_scurve(result)
+    if sc is not None:
+        blocks += [
+            Heading("Finish-date confidence (S-curve)", level=2),
+            sc,
+            Paragraph(
+                "Cumulative probability of finishing on or before each date (blue). The dashed amber "
+                "line is the deterministic finish; the red dots mark P10/P50/P80/P90.",
+                italic=True,
+            ),
+        ]
+    hc = _sra_chart_hist(result)
+    if hc is not None:
+        blocks += [Heading("Finish-date distribution", level=2), hc]
+    blocks += [
+        Heading("Duration sensitivity (one-at-a-time)", level=1),
+        Paragraph(
+            "Each ranked activity's Best/Worst-case duration is swung independently to measure how far "
+            "it can pull in (opportunity to accelerate, green) or push out (risk of delay, red) the "
+            "focus finish. This deterministic one-at-a-time method is validated to match SSI exactly."
+        ),
+    ]
+    tor = _sra_chart_tornado(oat)
+    if tor is not None:
+        blocks += [
+            tor,
+            Paragraph(
+                "Bars centred on zero: green extends left (acceleration), red right (delay); the "
+                "longest total swing sets the scale. Tasks are ordered by total sensitivity.",
+                italic=True,
+            ),
+        ]
+    blocks.append(doc("OAT sensitivity"))
+    blocks += [
+        Heading("Per-task Best/Worst-case durations", level=1),
+        Paragraph(
+            "The Risk Ranking Factor assigned to each ranked task and the Best/Worst-case durations "
+            "derived from it (ML = current Remaining Duration), or entered manually."
+        ),
+        doc("Per-task durations"),
+    ]
+    blocks += [
+        Heading("Risk / Opportunity register", level=1),
+        Paragraph(
+            "Discrete risks and opportunities, each with its probability, additive schedule impact, "
+            "simulated occurrence count, and 1-5 probability/consequence ratings."
+        ),
+        doc("Risk register"),
+    ]
+    blocks += [
+        Heading("Risk & Opportunity assessment matrices", level=1),
+        Paragraph(
+            "Each event is placed by its Likelihood of Occurrence (rows, 1-5) and Consequence/Benefit "
+            "of Occurrence (columns, 1-5). Each cell shows the NASA priority rank (1-25) and, in "
+            "parentheses, the count of events that land there."
+        ),
+        Heading("Risk Assessment Matrix", level=2),
+        _sra_matrix_chart(result, opportunity=False),
+        Heading("Opportunity Assessment Matrix", level=2),
+        _sra_matrix_chart(result, opportunity=True),
+    ]
+    blocks += [
+        Heading("Methodology & assumptions", level=1),
+        Paragraph(
+            "Best/Worst-case durations use ML = the current Remaining Duration; "
+            "BC = ML x (1 - subtract%/100), WC = ML x (1 + add%/100) with the per-factor percentages "
+            f"from the Risk Factors table. Occurrence mode: {result.occurrence_mode}. Correlation: "
+            f"{result.correlation:g}. Risk register: {'on' if result.used_risks else 'off'}. "
+            "Consequence (1-5) is auto-rated from the schedule impact via the NASA Schedule guideline "
+            "(impact days converted to calendar months: <1 week=1, 1 week to <1 month=2, 1 to "
+            "<3 months=3, 3 to <=6 months=4, >6 months=5)."
+        ),
+        Paragraph(
+            "The Best/Worst-case derivation and the deterministic one-at-a-time sensitivity are "
+            "validated to match SSI Tools exactly. The stochastic distribution (S-curve, histogram, "
+            "percentiles) uses a standard-library random generator that is statistically "
+            "representative but NOT bit-identical to SSI's, so treat the P-values as close, not exact "
+            "(ADR-0005/0106). All computation is local and offline; this document carries the CUI "
+            "marking in its header and footer.",
+            italic=True,
+        ),
+    ]
+    return blocks
+
+
 _OCC_RANDOM = (
     "When this option is selected, the probability of risks/opportunities occurring is evaluated "
     "independently on each iteration of the SRA using the entered probability of occurrence. Over "
@@ -6018,8 +6339,10 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <form action="/sra/ssi/load" method=post enctype="multipart/form-data" style="display:inline">
 <label>Load setup <input type=file name=setup accept="application/json,.json"></label>
 <button type=submit>Load</button></form>
-<a class=btn href="/export/xlsx/sra">Export Excel</a>
-<a class=btn href="/export/docx/sra">Export Word</a></div>
+<a class=btn href="/export/xlsx/sra">Export tables (Excel)</a>
+<a class=btn href="/export/docx/sra" title="A full PM-level SRA report: summary, S-curve, distribution, sensitivity tornado, risk register, and the 5x5 matrices as embedded graphics.">Download SRA report (Word)</a>
+<a class=btn href="/export/xlsx/sra-registry">Download risk registry (Excel)</a>
+<a class=btn href="/export/docx/sra-registry">Risk registry (Word)</a></div>
 <script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
 <script src="/static/sra_grid.js"></script></div>"""
 
