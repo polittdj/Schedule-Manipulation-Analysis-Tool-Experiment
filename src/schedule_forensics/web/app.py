@@ -116,7 +116,10 @@ from schedule_forensics.engine.metrics import (
 )
 from schedule_forensics.engine.metrics._common import MetricResult, non_summary
 from schedule_forensics.engine.metrics.constraint_health import compute_constraint_health
-from schedule_forensics.engine.metrics.evm import compute_schedule_variance
+from schedule_forensics.engine.metrics.evm import (
+    compute_evm_indices,
+    compute_schedule_variance,
+)
 from schedule_forensics.engine.metrics.float_erosion import compute_float_erosion
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
@@ -242,7 +245,7 @@ _LAYOUT = Template(
 <nav>
 <span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
 <span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a></span>
-<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a></span>
+<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a></span>
 <span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a></span>
 <span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
 <span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
@@ -1616,6 +1619,11 @@ def create_app(
                 ]
             }
         )
+
+    @app.get("/evm", response_class=HTMLResponse)
+    def evm_view() -> HTMLResponse:
+        st = session()
+        return _page(st, "EVM", _evm_body(st))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -7287,6 +7295,129 @@ def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
         "<table class=card-table><tr><th scope=col>Check</th><th scope=col>Value</th>"
         f"<th scope=col>Status</th></tr>{''.join(rows)}</table>"
     )
+
+
+def _evm_idx_str(m: MetricResult | None) -> str:
+    """A rounded index value for an EVM stat card; em dash when the metric is NOT_APPLICABLE."""
+    if m is None or str(m.status) == "NA":
+        return "—"
+    return f"{round(m.value, 2)}"
+
+
+def _evm_days_str(v: float | None) -> str:
+    return "—" if v is None else f"{v:g}"
+
+
+def _evm_explainer() -> str:
+    """Collapsible "what these EVM numbers mean" guidance, including how EVM relates to a JCL."""
+    return """
+<div class=panel><h2>What these EVM numbers mean</h2>
+<details class=explainer><summary><b>Schedule-based EVM</b> (always available)</summary>
+<p><b>Earned Schedule SPI(t)</b> = Earned Schedule &divide; Actual Time. Unlike the cost-based SPI
+(which mathematically returns to 1.0 as a late project finishes), SPI(t) stays meaningful to the end.
+<b>SVt</b> = ES &minus; AT in working days (negative = behind the baseline plan).</p>
+<p><b>CEI (Finish / Start)</b> &mdash; the Current Execution Index: of the activities the baseline said
+should have finished (started) by now, how many actually did, on time. <b>Baseline compliance</b>
+(BFC / BSC) measures the same idea against the baseline finish/start dates.</p></details>
+<details class=explainer><summary><b>Cost-based EVM</b> (needs a cost-loaded schedule)</summary>
+<p><b>SPI</b> = BCWP &divide; BCWS (value earned vs planned). <b>CPI</b> = BCWP &divide; ACWP (value earned
+per dollar spent). <b>TCPI</b> = (BAC &minus; BCWP) &divide; (BAC &minus; ACWP) &mdash; the cost efficiency
+the remaining work must hit to land on budget. These read <b>N/A</b> until the schedule carries task
+budgets and actual costs; the tool never fabricates a cost figure (Law&nbsp;2).</p></details>
+<details class=explainer><summary><b>How EVM relates to a JCL</b></summary>
+<p>A <b>JCL</b> (Joint Confidence Level) is a Monte-Carlo over a <b>cost-loaded, risk-loaded</b> schedule
+&mdash; the joint probability of finishing at or below a cost AND on or before a date. EVM here gives
+you the deterministic cost+schedule performance to date; once a schedule is cost-loaded, those cost
+indices populate and a full JCL becomes possible (today's <a href="/sra">Risk Analysis</a> is a
+schedule-only confidence level). See the JCL explainer on the Risk Analysis page.</p></details>
+</div>"""
+
+
+def _evm_body(st: SessionState) -> str:
+    """Earned Value Management page: schedule-based EVM always, plus cost EVM when the schedule is
+    cost-loaded (else gracefully N/A), baseline compliance, and the worst finish variances."""
+    chosen = _latest_solvable(st)
+    if chosen is None:
+        return (
+            "<div class=panel>Load an analyzable schedule to see its earned-value metrics "
+            "&mdash; SPI(t), schedule variance, baseline compliance, and (if the schedule is "
+            "cost-loaded) SPI / CPI / TCPI.</div>"
+        )
+    _key, sch, cpm = chosen
+    indices = compute_evm_indices(sch, cpm)
+    sv = compute_schedule_variance(sch, non_summary(sch))
+    compliance = compute_baseline_compliance(sch, cpm)
+    cost_loaded = any((t.budgeted_cost or 0.0) > 0 for t in non_summary(sch))
+
+    sched_idx = {k: indices[k] for k in ("spi_t", "cei_finish", "cei_start") if k in indices}
+    cost_idx = {k: indices[k] for k in ("spi", "cpi", "tcpi") if k in indices}
+
+    cards = _stat_cards(
+        [
+            ("SPI(t) — Earned Schedule", _evm_idx_str(indices.get("spi_t"))),
+            ("SVt (working days)", _evm_days_str(sv.svt_days)),
+            ("Earned Schedule (wd)", _evm_days_str(sv.es_days)),
+            ("Actual Time (wd)", _evm_days_str(sv.at_days)),
+        ]
+    )
+
+    if sv.worst:
+        worst_rows = "".join(
+            f"<tr><td class=num>{w.unique_id}</td>"
+            f"<td>{_e(_task_name_across([sch], w.unique_id) or '')}</td>"
+            f"<td class=num>{w.variance_days:+g}</td></tr>"
+            for w in sv.worst
+        )
+        worst_tbl = (
+            "<table class=card-table><tr><th scope=col>UID</th><th scope=col>Activity</th>"
+            f"<th scope=col>Finish variance (wd)</th></tr>{worst_rows}</table>"
+        )
+    else:
+        worst_tbl = (
+            "<p class=muted>No completed activities carry both an actual and a baseline "
+            "finish yet.</p>"
+        )
+
+    cost_note = (
+        ""
+        if cost_loaded
+        else _user_tip(
+            "This schedule is <b>not cost-loaded</b>, so the cost indices (SPI / CPI / TCPI) read "
+            "<b>N/A</b> &mdash; the tool never fabricates a cost number. Load a schedule with task "
+            "budgets and actual costs to compute them; the schedule-based metrics need no cost."
+        )
+    )
+
+    tip = _user_tip(
+        "SPI(t) and SVt come from <b>Earned Schedule</b> (time-based), so they stay meaningful late "
+        "in a project where the classic cost-based SPI saturates at 1.0. A negative SVt (in working "
+        "days) means the project is running behind the baseline plan."
+    )
+    return f"""
+<div class=panel><h2>Earned Value Management (EVM) &mdash; {_e(sch.source_file or sch.name)}</h2>
+<p class=muted>Performance against the baseline. The <b>schedule-based</b> metrics (Earned Schedule,
+baseline compliance) always compute; the <b>cost</b> indices (SPI / CPI / TCPI) need a cost-loaded
+schedule and otherwise read N/A.</p>
+{tip}
+{cards}</div>
+<div class=panel><h2>Schedule performance</h2>
+<p class=muted>Earned-Schedule index and the baseline-anchored Current Execution Index
+(finish / start).</p>
+{_metric_scorecard_table(sched_idx)}</div>
+<div class=panel><h2>Cost performance</h2>
+<p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets
+and actual costs.</p>
+{cost_note}
+{_metric_scorecard_table(cost_idx)}</div>
+<div class=panel><h2>Baseline compliance</h2>
+<p class=muted>How the executed work lines up with the baseline dates (BFC / BSC and the on-time
+counts).</p>
+{_metric_scorecard_table(compliance)}</div>
+<div class=panel><h2>Worst finish variances</h2>
+<p class=muted>Completed activities that finished latest relative to their baseline (working days;
+positive = late).</p>
+{worst_tbl}</div>
+{_evm_explainer()}"""
 
 
 def _groups_field_options(fields: Sequence[str], selected: str) -> str:
