@@ -379,3 +379,63 @@ def test_settings_page_carries_the_local_model_setup_guide(client: TestClient) -
     page = client.get("/settings").text
     assert "ollama pull llama3.1:8b" in page
     assert "How to download" in page
+
+
+def test_ai_models_endpoint_refuses_a_remote_endpoint(client: TestClient) -> None:
+    """The live model probe is loopback-only and fail-closed (Law 1): a remote endpoint is refused
+    and never reached, returning reachable=false rather than dialing out."""
+    j = client.get("/api/ai/models", params={"kind": "openai", "endpoint": "http://10.1.2.3:1234"})
+    assert j.status_code == 200
+    body = j.json()
+    assert body["reachable"] is False and body["models"] == []
+    assert "loopback" in body["reason"].lower()
+
+
+def test_ai_models_endpoint_is_graceful_when_unreachable(client: TestClient) -> None:
+    """A loopback endpoint with no server answering returns reachable=false (never a 500)."""
+    j = client.get("/api/ai/models", params={"kind": "ollama"})
+    assert j.status_code == 200
+    body = j.json()
+    assert body["reachable"] is False and body["models"] == []
+
+
+def test_ai_models_endpoint_lists_served_models(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """When the local server answers, the probe returns the model ids it serves — these feed the
+    live Model dropdowns in settings."""
+
+    class _Server:
+        def __init__(self, *a: object, **k: object) -> None: ...
+        def unavailable_reason(self) -> None:
+            return None
+
+        def list_models(self) -> tuple[str, ...]:
+            return ("phi3:mini", "qwen2.5:7b")
+
+    monkeypatch.setattr(app_module, "OllamaBackend", _Server)
+    body = client.get("/api/ai/models", params={"kind": "ollama"}).json()
+    assert body["reachable"] is True
+    assert body["models"] == ["phi3:mini", "qwen2.5:7b"]
+
+
+def test_cross_check_second_model_is_a_dropdown(client: TestClient) -> None:
+    """Operator: pick the cross-check second model from a dropdown (not a free-text box)."""
+    page = client.get("/settings").text
+    assert "<select name=second_model id=secondModel>" in page
+    # the live model probe + refresh affordance are wired
+    assert "id=refreshModels" in page
+    assert "/api/ai/models" in client.get("/static/settings.js").text
+
+
+def test_settings_explains_each_backend_and_its_cui_posture(client: TestClient) -> None:
+    """Operator: explain in detail what each model/backend does and how it handles CUI (local vs
+    leaving the machine)."""
+    page = client.get("/settings").text
+    assert "how it handles your data (CUI)" in page
+    # each option is covered, with its data-locality verdict
+    assert "Ollama (local)</b>" in page and "Stays on the machine" in page
+    assert "OpenAI-compatible (local)</b>" in page
+    assert "Null (offline, deterministic)</b>" in page
+    assert "Cloud</b>" in page and "Data LEAVES this machine" in page
+    assert "Cross-check second model</b>" in page

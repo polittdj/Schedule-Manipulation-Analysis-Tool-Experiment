@@ -2834,6 +2834,42 @@ def create_app(
                 threading.Thread(target=manager.shutdown, daemon=True).start()
         return RedirectResponse(url="/settings", status_code=303)
 
+    @app.get("/api/ai/models")
+    def ai_models(kind: str = Query("ollama"), endpoint: str = Query("")) -> JSONResponse:
+        """Probe a LOCAL model server for the model ids it currently serves.
+
+        Feeds the live model dropdowns in AI Settings so the operator picks a real, valid id
+        (especially for OpenAI-compatible servers, where the loaded model id must match exactly).
+        Loopback-only and fail-closed: a non-loopback endpoint returns ``reachable: false`` and
+        never reaches out (Law 1)."""
+        kind = kind if kind in ("ollama", "openai") else "ollama"
+        ep = endpoint.strip()
+        default = "http://127.0.0.1:11434" if kind == "ollama" else "http://127.0.0.1:1234"
+        if ep and not is_local_http_endpoint(ep):
+            return JSONResponse(
+                {"reachable": False, "models": [], "reason": "endpoint must be a loopback URL"}
+            )
+        try:
+            be: AIBackend = (
+                OllamaBackend(endpoint=ep or default, model="", timeout=8.0)
+                if kind == "ollama"
+                else OpenAICompatBackend(endpoint=ep or default, model="", timeout=8.0)
+            )
+        except Exception as exc:  # loopback guard or bad URL — report, never raise outward
+            return JSONResponse({"reachable": False, "models": [], "reason": str(exc)})
+        reason: str | None
+        try:
+            reason = be.unavailable_reason()  # type: ignore[attr-defined]
+        except Exception as exc:
+            reason = str(exc)
+        models: list[str] = []
+        if reason is None:
+            try:
+                models = list(be.list_models())
+            except Exception as exc:
+                reason = str(exc)
+        return JSONResponse({"reachable": reason is None, "models": models, "reason": reason or ""})
+
     @app.post("/settings/ai-off")
     def ai_off() -> RedirectResponse:
         """One click: turn the AI fully off — route back to the deterministic Null backend AND stop
@@ -8061,6 +8097,53 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
     return f"{header}{grid}</div>"
 
 
+def _ai_backend_explainer() -> str:
+    """Collapsible "what each AI option does + how it handles CUI" guidance for AI Settings: where
+    each model runs and therefore whether schedule data stays on this machine."""
+    return """
+<div class=panel><h2>What each AI option does &amp; how it handles your data (CUI)</h2>
+<p class=muted>The AI only ever <b>polishes wording</b> over figures the engine already computed and
+cites &mdash; it never invents numbers. What differs below is <b>where the model runs</b>, and
+therefore whether your schedule data stays on this machine.</p>
+<details class=explainer><summary><b>Ollama (local)</b> &mdash; recommended, CUI-safe</summary>
+<p><b>What it is.</b> Runs an open model (Llama&nbsp;3.1, Qwen&nbsp;2.5, &hellip;) on THIS computer via a
+local server on <code>127.0.0.1</code>.</p>
+<p><b>CUI / data locality.</b> <b>Stays on the machine.</b> The tool talks to Ollama only over loopback
+and a remote endpoint is refused, so no schedule content leaves the box. Safe for CUI.</p>
+<p><b>Pros.</b> Easiest setup (one-line model pulls), broad model library, and the tool can start/stop
+it for you. <b>Cons.</b> A separate install; large models need a lot of RAM/VRAM.</p></details>
+<details class=explainer><summary><b>OpenAI-compatible (local)</b> &mdash; LM Studio / llamafile / vLLM, CUI-safe</summary>
+<p><b>What it is.</b> A local server that speaks the OpenAI <code>/v1</code> API on a loopback address.
+You load the model in that app; the tool calls it on <code>127.0.0.1</code>.</p>
+<p><b>CUI / data locality.</b> <b>Stays on the machine</b> &mdash; the endpoint is loopback-validated
+(a remote URL is refused, Law&nbsp;1). Safe for CUI.</p>
+<p><b>Pros.</b> Use LM Studio's UI + model catalog and GPU offload; standard OpenAI-API tooling.
+<b>Cons.</b> Load the model in that app first and select the <b>exact model id it serves</b> &mdash; use
+the <i>Model</i> dropdown above, which lists what the server reports (click <b>Refresh models</b>).</p></details>
+<details class=explainer><summary><b>Null (offline, deterministic)</b> &mdash; CUI-safe</summary>
+<p><b>What it is.</b> No model at all &mdash; the answers are the engine's own <b>cited facts</b>, returned
+verbatim.</p>
+<p><b>CUI / data locality.</b> <b>Nothing can leave the machine</b> (no model, no network). Always safe.</p>
+<p><b>Pros.</b> Zero setup, fully deterministic, instant. <b>Cons.</b> No written interpretation &mdash;
+you get the facts, not prose.</p></details>
+<details class=explainer><summary><b>Cloud</b> &mdash; UNCLASSIFIED only, NOT for CUI</summary>
+<p><b>What it is.</b> Sends the prompt to a remote provider's model.</p>
+<p><b>CUI / data locality.</b> <b>Data LEAVES this machine.</b> This is <u>disqualifying for CUI</u>. It is
+only selectable after you explicitly switch <i>Classification</i> to <b>UNCLASSIFIED</b>, and a persistent
+banner then names the endpoint. Never use it with controlled schedule data.</p>
+<p><b>Pros.</b> The most capable models, no local hardware. <b>Cons.</b> Data egress &mdash; off-limits for
+CUI, and needs an internet connection.</p></details>
+<details class=explainer><summary><b>Cross-check second model</b> &mdash; corroboration, CUI-safe</summary>
+<p><b>What it is.</b> An optional second <b>local</b> model that answers every question independently; the
+engine compares the two answers' figures deterministically (agreement is corroboration; the citations
+remain the ground truth).</p>
+<p><b>CUI / data locality.</b> Both models are <b>local</b> (Ollama or OpenAI-compatible) &mdash; a cloud
+second model does not exist by design, so cross-checking never sends data off the machine.</p>
+<p><b>Pros.</b> Catches a single model's mistakes; raises confidence. <b>Cons.</b> Runs two models, so each
+answer uses more time and memory.</p></details>
+</div>"""
+
+
 def _settings_body(state: SessionState) -> str:
     cfg = state.ai_config
     backend, _banner = route_backend(
@@ -8081,6 +8164,12 @@ def _settings_body(state: SessionState) -> str:
         if second is not None
         else ("off" if cfg.second_backend == "none" else "configured but not reachable")
     )
+    second_models: tuple[str, ...] = ()
+    if second is not None:
+        try:
+            second_models = second.list_models()
+        except Exception:
+            second_models = ()
     status_note = _ai_status_note(cfg)
 
     def sel(value: str, current: str) -> str:
@@ -8091,21 +8180,45 @@ def _settings_body(state: SessionState) -> str:
     # free-text box the operator must match exactly. The configured model is always kept as a
     # (selected) option — marked if it isn't installed — so a save never silently loses it.
     real_backend = backend.name in ("ollama", "openai-compat")
-    if real_backend and models:
-        option_models = list(models)
-        if cfg.model and not _model_installed(cfg.model, models):
-            option_models = [cfg.model, *option_models]
-        model_field = (
-            "<select name=model id=primaryModel>"
-            + "".join(
-                f'<option value="{_e(m)}"{sel(m, cfg.model)}>{_e(m)}'
-                f"{'' if _model_installed(m, models) else ' — not installed'}</option>"
-                for m in option_models
-            )
-            + "</select>"
+    # The Model field is ALWAYS a <select> so settings.js can repopulate it live the instant the
+    # operator switches backend/endpoint — no save+reload. This is what makes OpenAI-compatible work
+    # in one flow: pick the exact model id the local server serves. A blank option = the server's
+    # loaded default; the configured model is always kept (flagged if the server isn't serving it).
+    model_opts = [
+        f'<option value=""{" selected" if not cfg.model else ""}>'
+        "(server default / loaded model)</option>"
+    ]
+    if cfg.model and not _model_installed(cfg.model, models):
+        model_opts.append(
+            f'<option value="{_e(cfg.model)}" selected>{_e(cfg.model)} &mdash; not installed</option>'
         )
-    else:
-        model_field = f'<input name=model id=primaryModel value="{_e(cfg.model)}">'
+    model_opts += [f'<option value="{_e(m)}"{sel(m, cfg.model)}>{_e(m)}</option>' for m in models]
+    model_field = (
+        "<select name=model id=primaryModel>" + "".join(model_opts) + "</select>"
+        " <span id=primaryModelStatus class=muted aria-live=polite></span>"
+        " <button type=button id=refreshModels class=linkbtn"
+        ' title="Re-probe the selected backend for the models it currently serves">'
+        "Refresh models</button>"
+    )
+
+    # The cross-check second model is a live <select> too (operator asked for a dropdown, not free
+    # text) — populated from the chosen second backend's served models, refreshed by settings.js.
+    second_opts = [
+        f'<option value=""{" selected" if not cfg.second_model else ""}>'
+        "(server default / loaded model)</option>"
+    ]
+    if cfg.second_model and not _model_installed(cfg.second_model, second_models):
+        second_opts.append(
+            f'<option value="{_e(cfg.second_model)}" selected>'
+            f"{_e(cfg.second_model)} &mdash; not installed</option>"
+        )
+    second_opts += [
+        f'<option value="{_e(m)}"{sel(m, cfg.second_model)}>{_e(m)}</option>' for m in second_models
+    ]
+    second_model_field = (
+        "<select name=second_model id=secondModel>" + "".join(second_opts) + "</select>"
+        " <span id=secondModelStatus class=muted aria-live=polite></span>"
+    )
 
     # A one-click "off" switch, shown only while a real local model is active (the operator asked
     # for an explicit way to turn the AI off once it is on). It routes back to the deterministic Null
@@ -8131,7 +8244,7 @@ def _settings_body(state: SessionState) -> str:
 <option value=UNCLASSIFIED{sel("UNCLASSIFIED", cfg.classification)}>UNCLASSIFIED (cloud allowed, banner shown)</option>
 </select></p>
 <p>Backend:
-<select name=backend>
+<select name=backend id=backendSel>
 <option value=ollama{sel("ollama", cfg.backend)}>Ollama (local)</option>
 <option value=openai{sel("openai", cfg.backend)}>OpenAI-compatible (local — LM Studio / llamafile / vLLM)</option>
 <option value=null{sel("null", cfg.backend)}>Null (offline, deterministic)</option>
@@ -8160,11 +8273,10 @@ engine never computed is discarded wholesale</option>
 <option value=ollama{sel("ollama", cfg.second_backend)}>Ollama (local)</option>
 <option value=openai{sel("openai", cfg.second_backend)}>OpenAI-compatible (local)</option>
 </select>
- model id: <input name=second_model id=secondModel size=20 value="{_e(cfg.second_model)}"
- title="Turning the cross-check on auto-fills this with the primary model id; edit it to use a
-different second model (e.g. qwen2.5:14b). Blank = the server's default/loaded model."></p>
+ model id: {second_model_field}</p>
 <input type=submit value="Save"></form>
 {ai_off_btn}
+{_ai_backend_explainer()}
 <p class=muted>The tool never sends schedule data off this machine while CLASSIFIED. Cloud is only
 reachable after you explicitly switch to UNCLASSIFIED, and a persistent banner names the endpoint.
 Either answer mode is prose-only: the cited facts shown with each answer are always engine-computed.
