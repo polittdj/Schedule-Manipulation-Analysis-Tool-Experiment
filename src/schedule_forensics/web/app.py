@@ -5987,17 +5987,25 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
     return rows
 
 
-_SSI_SETUP_VERSION = 1
+_SSI_SETUP_VERSION = (
+    2  # 2: + legacy triangular (low/ml/high) + per-activity overrides (whole setup)
+)
 
 
 def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
-    """The whole SSI setup as a plain, versioned, JSON-serialisable dict (Save/Load + Excel)."""
+    """The WHOLE SRA setup as a plain, versioned, JSON-serialisable dict (Save/Load + Excel) — both
+    models: the SSI factor/BC-WC/risk inputs AND the legacy global triangular + per-activity
+    overrides, so a load restores every model's inputs verbatim."""
     return {
         "setup_version": _SSI_SETUP_VERSION,
         "focus_uid": st.sra_focus_uid,
         "occurrence_mode": st.sra_occurrence_mode,
         "use_risk_register": st.sra_use_risk_register,
         "correlation": st.sra_correlation,
+        # legacy global triangular (fractions of each activity's remaining duration) + per-activity
+        # 3-point overrides in working minutes — the legacy Monte-Carlo's inputs
+        "triangular": {"low": st.sra_low, "ml": st.sra_ml, "high": st.sra_high},
+        "overrides_minutes": {str(u): [o, m, p] for u, (o, m, p) in st.sra_overrides.items()},
         "factor_table": [[f, sub, add] for f, sub, add in st.sra_factor_rows],
         "factors": {str(u): f for u, f in st.sra_factors.items()},
         "bcwc_minutes": {str(u): [bc, wc] for u, (bc, wc) in st.sra_bcwc.items()},
@@ -6046,6 +6054,33 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
         st.sra_correlation = min(1.0, max(0.0, float(data.get("correlation", 0.0))))  # type: ignore[arg-type]
     except (TypeError, ValueError):
         st.sra_correlation = 0.0
+    # legacy global triangular (fractions of remaining duration); absent in a v1 setup -> screening
+    # defaults, so a load is a clean, complete reset of every model's inputs
+    lo, ml, hi = 0.9, 1.0, 1.10
+    tri = data.get("triangular")
+    if isinstance(tri, dict):
+        with contextlib.suppress(TypeError, ValueError):
+            lo = max(0.0, float(tri.get("low", lo)))
+            ml = max(0.0, float(tri.get("ml", ml)))
+            hi = max(0.0, float(tri.get("high", hi)))
+    st.sra_low, st.sra_ml, st.sra_high = lo, ml, hi
+    # legacy per-activity 3-point overrides in working minutes (validated against the active schedule)
+    overrides: dict[int, tuple[int, int, int]] = {}
+    raw_over = data.get("overrides_minutes")
+    if isinstance(raw_over, dict):
+        for okey, triple in raw_over.items():
+            try:
+                ouid = int(okey)
+            except (TypeError, ValueError):
+                continue
+            if _ok(ouid) and isinstance(triple, list) and len(triple) == 3:
+                with contextlib.suppress(TypeError, ValueError):
+                    overrides[ouid] = (
+                        max(0, int(triple[0])),
+                        max(0, int(triple[1])),
+                        max(0, int(triple[2])),
+                    )
+    st.sra_overrides = overrides
     factors: dict[int, int] = {}
     raw_factors = data.get("factors")
     if isinstance(raw_factors, dict):

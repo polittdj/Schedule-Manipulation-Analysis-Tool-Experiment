@@ -147,7 +147,7 @@ def test_setup_save_load_round_trip(client: TestClient) -> None:
     saved = client.get("/sra/ssi/save")
     assert saved.status_code == 200
     blob = json.loads(saved.content)
-    assert blob["setup_version"] == 1 and blob["focus_uid"] == uids[0]
+    assert blob["setup_version"] == 2 and blob["focus_uid"] == uids[0]
     assert blob["factors"][str(uids[0])] == 4 and len(blob["risks"]) == 1
 
     # wipe, then restore from the saved JSON
@@ -177,6 +177,60 @@ def test_setup_load_drops_uids_unknown_to_the_active_schedule(client: TestClient
     j = client.get("/api/sra/ssi?iterations=200").json()
     assert j["target_uid"] is None  # unknown focus dropped
     assert j["risks"] == []  # risk on an unknown uid dropped
+
+
+def test_whole_setup_save_load_round_trip_includes_legacy_fields() -> None:
+    """Save/Load is the WHOLE SRA setup (setup_version 2): the SSI factor/risk inputs AND the legacy
+    global triangular + per-activity overrides, so a load restores every model's inputs verbatim."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    client.post("/upload", files={"files": ("Project5.mspdi.xml", GOLDEN.read_bytes(), "text/xml")})
+    uid = _editable_uids(client, 1)[0]
+    client.post("/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": 3}])})
+    client.post(
+        "/sra/risk-register",
+        data={
+            "action": "add",
+            "name": "R",
+            "prob": "50",
+            "affected": str(uid),
+            "impact_days": "10",
+        },
+    )
+    state.sra_low, state.sra_ml, state.sra_high = 0.8, 1.0, 1.3  # the legacy global triangular
+    state.sra_overrides = {uid: (400, 480, 720)}  # a legacy per-activity 3-point override (minutes)
+
+    blob = client.get("/sra/ssi/save").content
+    saved = json.loads(blob)
+    assert saved["setup_version"] == 2
+    assert saved["triangular"] == {"low": 0.8, "ml": 1.0, "high": 1.3}
+    assert saved["overrides_minutes"][str(uid)] == [400, 480, 720]
+
+    # restore into a FRESH session — every model's inputs come back
+    state2 = SessionState()
+    fresh = TestClient(create_app(state2))
+    fresh.post("/upload", files={"files": ("Project5.mspdi.xml", GOLDEN.read_bytes(), "text/xml")})
+    fresh.post("/sra/ssi/load", files={"setup": ("s.json", blob, "application/json")})
+    assert (state2.sra_low, state2.sra_ml, state2.sra_high) == (0.8, 1.0, 1.3)
+    assert state2.sra_overrides == {uid: (400, 480, 720)}
+    assert [r.name for r in state2.sra_risks] == ["R"]
+
+
+def test_v1_setup_loads_with_screening_defaults() -> None:
+    """A legacy v1 setup (no triangular / overrides) still loads — the legacy inputs reset to the
+    screening defaults (a clean, complete reset), not stale values."""
+    state = SessionState()
+    client = TestClient(create_app(state))
+    client.post("/upload", files={"files": ("Project5.mspdi.xml", GOLDEN.read_bytes(), "text/xml")})
+    state.sra_low, state.sra_ml, state.sra_high = 0.5, 1.0, 2.0  # non-default, to prove the reset
+    state.sra_overrides = {12345: (1, 2, 3)}
+    payload = {"setup_version": 1, "factors": {}, "risks": []}
+    client.post(
+        "/sra/ssi/load",
+        files={"setup": ("s.json", json.dumps(payload).encode(), "application/json")},
+    )
+    assert (state.sra_low, state.sra_ml, state.sra_high) == (0.9, 1.0, 1.10)
+    assert state.sra_overrides == {}
 
 
 @pytest.mark.parametrize("fmt", ["xlsx", "docx"])
