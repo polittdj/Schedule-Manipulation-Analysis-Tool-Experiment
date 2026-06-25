@@ -62,6 +62,20 @@ def test_factor_to_bc_wc_matches_the_ssi_formula() -> None:
     assert factor_to_bc_wc(10 * DAY, 1, tbl) == (5 * DAY, 10 * DAY, 11 * DAY)
     # ML is the REMAINING duration passed in (not any original) — the UID-35 regression
     assert factor_to_bc_wc(1711, 2, tbl) == (round(1711 * 0.6), 1711, round(1711 * 1.2))
+    # factor 0 = NO uncertainty: BC = ML = WC = the remaining duration (operator: a 0 means "use
+    # the remaining duration, there is no Best/Worst case", never clamp it up to 1)
+    assert factor_to_bc_wc(10 * DAY, 0, tbl) == (10 * DAY, 10 * DAY, 10 * DAY)
+    assert factor_to_bc_wc(1711, 0, tbl) == (1711, 1711, 1711)
+
+
+def test_factor_zero_is_a_point_mass_no_spread() -> None:
+    """A factor-0 task carries no Best/Worst spread, so it contributes no duration uncertainty to
+    the focus finish — the simulated finish equals the deterministic finish."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {2: factor_to_bc_wc(10 * DAY, 0, tbl)}  # the driver ranked 0 -> no uncertainty
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=50, target_uid=4), three_point=tp)
+    assert r.p10 == r.p50 == r.p90 == 12 * DAY  # no spread at all
 
 
 def test_factor_table_clamps_out_of_range() -> None:

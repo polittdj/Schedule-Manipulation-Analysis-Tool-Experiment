@@ -104,6 +104,19 @@ def test_api_sra_no_schedule_returns_400() -> None:
     assert "error" in r.json()
 
 
+def test_sra_charts_are_smaller_and_denser(client: TestClient) -> None:
+    """Operator: make the SRA graphs (S-curve / distribution / tornado) way smaller with smaller
+    text and finer granularity. The chart hosts are width-capped (the width:100% SVGs + their
+    viewBox-unit labels both shrink), the tall viewBoxes are trimmed, and the histogram has more
+    bins."""
+    css = client.get("/static/app.css").text
+    assert "#sraCdf, #sraHist, #sraSens, #sraRisk { max-width: 600px" in css  # way smaller
+    js = client.get("/static/sra.js").text
+    assert "var W = 980, H = 280" in js  # the S-curve viewBox is shorter (was 360) -> denser
+    assert "var W = 980, H = 230" in js  # the histogram viewBox is shorter (was 320)
+    assert "rowH = 18" in js  # tighter tornado rows (was 22/24)
+
+
 def test_sra_js_is_air_gapped(client: TestClient) -> None:
     import re
 

@@ -95,6 +95,17 @@ def test_grid_save_factor_autofills_bcwc_and_sets_focus(client: TestClient) -> N
     assert client.get("/api/sra/ssi?iterations=200").json()["target_uid"] == uid
 
 
+def test_grid_save_keeps_factor_zero_as_no_uncertainty(client: TestClient) -> None:
+    """Operator: a pasted/typed factor of 0 must NOT be clamped up to 1. Factor 0 means no
+    Best/Worst case — the remaining duration is used as-is (BC = WC = remaining, no spread)."""
+    uid = _editable_uids(client, 1)[0]
+    r = client.post("/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": 0}])})
+    assert r.status_code == 200 and r.json()["saved"] == 1
+    row = next(x for x in client.get("/api/sra/grid").json()["rows"] if x["unique_id"] == uid)
+    assert row["factor"] == 0  # kept as 0, not bumped to 1
+    assert row["bc_days"] == row["wc_days"] == row["remaining_days"]  # no Best/Worst spread
+
+
 def test_grid_save_manual_bcwc_overrides(client: TestClient) -> None:
     uid = _editable_uids(client, 1)[0]
     client.post(

@@ -315,6 +315,8 @@ def test_cdf_and_histogram_shape() -> None:
     assert probs[-1] == pytest.approx(1.0)
     # the histogram counts cover every sample
     assert sum(b[2] for b in r.histogram) == r.iterations
+    # finer granularity (operator ask): a spread distribution fills up to 40 bins, not ~20
+    assert len(r.histogram) > 20
 
 
 def test_iso_dates_present_and_ordered() -> None:
