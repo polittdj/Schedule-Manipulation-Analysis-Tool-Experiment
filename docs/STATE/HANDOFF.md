@@ -22,7 +22,17 @@
 >   vendored + same-origin (`node --check` clean). Still **ADR-0123** (no new ADR — this is its deferred tail).
 > - Tests: `tests/web/test_sra_grid.py` (11) + the merged `test_sra_ssi*.py` (21) green; full suite **1553
 >   passed**, coverage gates held. Engine parity unchanged (BC/WC + OAT exact; ADR-0005 stochastic caveat).
-> - **Done with the SSI remodel.** No SSI follow-ups outstanding.
+> - **Two operator Gantt-presentation asks added to the same PR (no new ADR):**
+>   1. **Gantts always render in LIGHT mode** (the MS-Project look) regardless of the page theme — the
+>      dark grid behind white bars was jarring. `app.css` scopes the light palette onto
+>      `.gantt-grid/.path-view/.gantt-scroll/.sra-grid-host` (cascade flips every descendant) with a
+>      white grid background; **summary-task names forced dark + bold**. Only the charts change.
+>   2. **Any .mpp field selectable as a column** (standard or custom). The model/importer already map
+>      extended attributes (`Task.custom_fields`, `Schedule.custom_field_labels`); this surfaces them —
+>      `_activity_rows` now emits each task's `custom` map and `_analysis_data` advertises
+>      `custom_field_labels`; `app.js` appends each as an optional toggleable column and reads it via a
+>      `valueOf()` accessor (sort/filter/drill all work on custom columns). Activity grid (the column
+>      chooser); the trace/SSI grids keep their fixed columns. Full suite **1556 passed**.
 >
 > ## STATUS (prev) — Gantt density pass (3x more tasks/page, bold summaries, gridlines), a "Fit project" button, and Dur/Start/Finish/Driving-slack columns on the trace; branch `claude/compassionate-ptolemy-wip898`
 >

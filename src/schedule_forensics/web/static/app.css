@@ -109,6 +109,25 @@
 .g-grid-qtr { background: var(--gantt-grid-qtr); }
 .g-grid-yr { background: var(--gantt-grid-yr); }
 
+/* The Gantt charts ALWAYS render in light mode (the MS-Project look) regardless of the page theme:
+   the operator found the dark grid behind the white bars jarring. Scoping the light-theme custom
+   properties onto each Gantt surface flips every descendant's text/border/hover/field colour to the
+   light palette through the cascade, and a white grid background (matching the bar canvas) makes the
+   whole chart one continuous light surface. Only the Gantt charts change; the rest of the UI keeps
+   its theme. Summary-task names are forced dark + bold. */
+.gantt-grid, .path-view, .gantt-scroll, .sra-grid-host {
+  --bg: #f2f5f9; --panel: #ffffff; --ink: #1a2330; --muted: #5a6878; --accent: #0b6bcb;
+  --ok: #17803a; --warn: #996b00; --bad: #cf222e; --line: #d6dde7;
+  --field-bg: #eef1f6; --hover: #eef2f7; --focus: #8a3fc4;
+  --sum-ink: #1a2330; --beyond: #b9c4d0; --beyond-ink: #7d8b9b; --done-overlay: rgba(0, 0, 0, .25);
+  background: var(--gantt-canvas);
+  color: var(--ink);
+}
+.gantt-scroll, .path-view { border-radius: 4px; }
+/* summary rows: dark + bold on every Gantt grid (the activity grid, the SSI grid, the trace) */
+.gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }
+.gantt-row.sum .gantt-name, .gantt-row.summary .gantt-name { color: var(--sum-ink); }
+
 /* OPERATOR density pass: pack ~3x more tasks per page on the Gantt/activity grids — small font,
    tight rows, BOLD summary rows, and gridlines between every row AND column (the font/spacing the
    operator liked on the driving-path trace, applied everywhere). Scoped to the schedule grids only;

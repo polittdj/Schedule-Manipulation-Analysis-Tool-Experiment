@@ -4657,6 +4657,8 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
             for k, v in analysis.completion.items()
         },
         "activities": analysis.activity_rows,
+        # the schedule's mapped .mpp custom/extended fields (declared order) -> optional grid columns
+        "custom_field_labels": list(sch.custom_field_labels),
         "findings": [
             {
                 "severity": str(f.severity),
@@ -4715,6 +4717,9 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "order": order[fr.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
+                # mapped .mpp custom/extended fields populated on this task (label -> value); the
+                # grid offers each as an optional column (ADR-0088 mapping -> ADR-0093 display)
+                "custom": dict(task.custom_field_map),
             }
         )
     for task in sch.tasks:
@@ -4741,6 +4746,7 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "order": order[task.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
+                "custom": dict(task.custom_field_map),
             }
         )
     rows.sort(key=lambda r: cast(int, r["order"]))

@@ -65,6 +65,33 @@ def test_analysis_json_has_citable_activity_rows(client: TestClient) -> None:
     assert orders == sorted(orders)  # the grid renders in ascending file order
 
 
+def test_analysis_feed_exposes_mpp_custom_fields_as_optional_columns(client: TestClient) -> None:
+    """Operator: let the user add ANY .mpp field as a column — standard or custom. The custom/
+    extended attributes are mapped at import; the activity feed advertises the schedule's custom
+    field labels and carries each task's populated values so the grid can offer them as columns."""
+    data = client.get("/api/analysis/Project5").json()
+    labels = data["custom_field_labels"]
+    assert labels, "the sample .mpp carries mapped custom fields"
+    # every activity row carries a (possibly empty) label -> value map for those fields
+    acts = data["activities"]
+    assert all("custom" in a for a in acts)
+    populated = [a for a in acts if a["custom"]]
+    assert populated, "at least one task has a populated custom field"
+    # the advertised labels are exactly the keys that appear in the per-task maps
+    seen = {k for a in populated for k in a["custom"]}
+    assert seen <= set(labels)
+
+
+def test_app_js_offers_custom_fields_as_toggleable_columns(client: TestClient) -> None:
+    """app.js turns each advertised custom field into an optional, toggleable grid column and reads
+    its value from the nested `custom` map (so sort/filter/drill all work on custom columns too)."""
+    js = client.get("/static/app.js").text
+    assert "custom_field_labels" in js  # the loader reads the advertised labels
+    assert "ALL_FIELDS.push(" in js and "custom: true" in js  # each becomes an optional column
+    assert "function valueOf(" in js  # the accessor that falls back to act.custom[label]
+    assert "act.custom ? act.custom[key]" in js
+
+
 def test_app_js_renders_the_gantt_timeline(client: TestClient) -> None:
     js = client.get("/static/app.js").text
     # the MS-Project-style timeline column: a stacked Year/Quarter/Month header (via the shared
@@ -109,6 +136,22 @@ def test_gantt_density_fit_button_and_trace_columns(client: TestClient) -> None:
     assert "border-right: 1px solid var(--line)" in css  # vertical column gridlines
     assert ".gantt-row { font-size: 11px; margin: 0; border-bottom" in css  # tight, gridlined trace
     assert ".gantt-col.c-slack" in css  # the driving-slack trace column
+
+
+def test_gantt_charts_render_in_light_mode_with_dark_bold_summaries(client: TestClient) -> None:
+    """Operator: the Gantt charts must always read in light mode (the MS-Project look) regardless of
+    the page theme, with the whole chart on one light surface and summary-task names dark + bold."""
+    css = client.get("/static/app.css").text
+    # the light palette is scoped onto every Gantt surface (not the whole UI)
+    assert ".gantt-grid, .path-view, .gantt-scroll, .sra-grid-host {" in css
+    assert "--ink: #1a2330;" in css and "--panel: #ffffff;" in css  # light text + surface
+    assert "background: var(--gantt-canvas);" in css  # white grid background = the bar canvas
+    assert "--sum-ink: #1a2330;" in css  # dark summary ink in the Gantt scope
+    # summary names forced dark + bold across the grids
+    summary_rule = (
+        ".gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }"
+    )
+    assert summary_rule in css
 
 
 def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> None:

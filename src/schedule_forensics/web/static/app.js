@@ -179,6 +179,15 @@
     return v == null ? "" : String(v);
   }
 
+  // Read a column value off an activity. Standard fields are top-level; .mpp custom/extended fields
+  // (added to ALL_FIELDS from data.custom_field_labels) live under act.custom[label]. Looking there
+  // only when the key is not a top-level property keeps sorting/filtering working for both.
+  function valueOf(act, key) {
+    if (act == null) return null;
+    if (Object.prototype.hasOwnProperty.call(act, key)) return act[key];
+    return act.custom ? act.custom[key] : null;
+  }
+
   // ---- timeline helpers: a SCALABLE px-per-day axis (matches the /path workspace) ----
   const DAY_MS = 86400000;
 
@@ -271,14 +280,14 @@
     return fields.every((f) => {
       const sel = filters[f.key];
       if (!sel) return true; // unfiltered (all values selected)
-      return sel.has(fmt(act[f.key])); // an empty Set hides every row
+      return sel.has(fmt(valueOf(act, f.key))); // an empty Set hides every row
     });
   }
 
   // distinct, sorted (numeric-aware) formatted values of a column — the checklist contents
   function distinctValues(key) {
     const seen = new Set();
-    activities.forEach((a) => seen.add(fmt(a[key])));
+    activities.forEach((a) => seen.add(fmt(valueOf(a, key))));
     const iso = /^\d{4}-\d\d-\d\d/;
     return Array.from(seen).sort((a, b) => {
       if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0; // ISO dates sort lexically
@@ -292,7 +301,7 @@
     const rows = activities
       .filter((act) => rowMatches(act, fields))
       .sort((a, b) => {
-        const x = a[sortKey], y = b[sortKey];
+        const x = valueOf(a, sortKey), y = valueOf(b, sortKey);
         const cmp = x < y ? -1 : x > y ? 1 : 0;
         return sortDesc ? -cmp : cmp;
       });
@@ -302,7 +311,7 @@
       if (act.is_critical) tr.className = "crit";
       if (act.is_summary) tr.className = (tr.className + " sum").trim();
       fields.forEach((f) => {
-        const td = el("td", { text: fmt(act[f.key]) });
+        const td = el("td", { text: fmt(valueOf(act, f.key)) });
         if (f.key === "name") {
           // MS-Project WBS indentation: each outline level indents the task name (any depth)
           td.className = "name-cell";
@@ -381,7 +390,7 @@
     const dl = el("dl");
     ALL_FIELDS.forEach((f) => {
       dl.appendChild(el("dt", { text: f.label }));
-      dl.appendChild(el("dd", { text: fmt(act[f.key]) }));
+      dl.appendChild(el("dd", { text: fmt(valueOf(act, f.key)) }));
     });
     dl.appendChild(el("dt", { text: "Citation" }));
     dl.appendChild(el("dd", { text: act.name + " (UID " + act.unique_id + ", " + (act.source_file || "schedule") + ")" }));
@@ -483,6 +492,12 @@
     .then((data) => {
       activities = data.activities || [];
       statusDate = data.status_date || null;
+      // every .mpp custom/extended field becomes an optional, toggleable column (default off)
+      (data.custom_field_labels || []).forEach((lbl) => {
+        if (!ALL_FIELDS.some((f) => f.key === lbl)) {
+          ALL_FIELDS.push({ key: lbl, label: lbl, on: false, custom: true });
+        }
+      });
       renderCharts(data);
       renderToggles();
       renderGrid();
