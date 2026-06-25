@@ -5983,7 +5983,7 @@ the random distribution is statistically close, not bit-identical (a different R
 <label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="79"></label>
 <label>Schedule impact (days) <input type=number name=impact_days step=any placeholder="100 (negative = opportunity)"></label>
 <label>Affected UIDs <input type=text name=affected placeholder="106"></label>
-<label>Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto"></label>
+<label title="Leave blank to auto-rate from the schedule impact (NASA Schedule guideline: the impact days converted to calendar months -- &lt;1 week=1, 1 week to &lt;1 month=2, 1 to &lt;3 months=3, 3 to &lt;=6 months=4, &gt;6 months=5).">Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto &#9432;"></label>
 <button type=submit>Add risk</button></form>
 <table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
 <h3>Editable schedule grid</h3>

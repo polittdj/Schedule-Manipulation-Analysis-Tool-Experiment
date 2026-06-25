@@ -3418,3 +3418,27 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Tests:** `test_visuals.py` +3 (light-mode CSS scope; custom-field feed shape; app.js custom-column
   wiring). Full suite **1556 passed**, coverage gates held; ruff/format/mypy(strict)/bandit/`node
   --check` clean. Highest ADR = **0123** (unchanged).
+
+---
+
+## 2026-06-25 (cont.) — SRA overhaul chunk 1: consequence days->months + exact NASA 5x5 matrices
+
+- **Branch:** `claude/compassionate-ptolemy-wip898`. **Model/mode:** Opus 4.8. First chunk of a large
+  operator SRA reporting/UX overhaul (spec via screenshots + the SSI reference Excel exports). Still
+  ADR-0123 (no new ADR).
+- **Consequence rating auto-calc** (`engine/sra.py` `_consequence_rating`): rewritten to the NASA
+  **Schedule** consequence guideline, converting the entered schedule-impact **days -> calendar months**
+  (365.25/12 = 30.44 d/mo): `<1 week=1, 1 wk-<1 mo=2, 1-<3 mo=3, 3-<=6 mo=4, >6 mo=5`. Risk-register
+  Consequence field tooltip documents it; leave blank to auto-rate.
+- **NASA 5x5 matrices** (`web/static/sra_ssi.js` `matrix()` + `app.css` `.nasa-matrix`/`.nm-*`): framed
+  exactly like the operator's reference image — Likelihood-of-Occurrence rows (5 Near Certainty .. 1
+  Remote) x Consequence/Benefit columns (1..5), the fixed NASA priority ranks 1..25 per cell, tri-band
+  zones (Risk green/yellow/red; Opportunity light/medium/dark blue), axis titles, a High/Medium/Low
+  legend, and a count badge + highlight where the user's risks land. Cell colours are theme-independent.
+- **Tests:** engine consequence bands updated; web `test_consequence_rating_follows_the_schedule_day_to_
+  month_guideline` + `test_ssi_js_frames_the_nasa_5x5_matrices`; risk-register/matrix expectations
+  re-pinned (200 d -> consequence 5). Full suite **1558 passed**, coverage held; ruff/format/mypy/bandit/
+  `node --check` clean. Highest ADR = **0123**.
+- **Queued (same operator batch):** SSI grid resizable columns + in-grid Factor + paste-from-Excel; a
+  downloadable risk registry + comprehensive MS Word SRA report with graphics; smoother high-granularity
+  S-curve + smaller/denser tornado/histogram/all charts; global 11px text.

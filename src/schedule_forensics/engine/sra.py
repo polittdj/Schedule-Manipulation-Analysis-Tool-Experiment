@@ -772,19 +772,24 @@ def _prob_rating(probability: float) -> int:
     return 1
 
 
+_DAYS_PER_MONTH = 365.25 / 12.0  # 30.4375 calendar days/month (the Schedule-guideline conversion)
+
+
 def _consequence_rating(impact_days: float) -> int:
-    """5x5-matrix consequence rating 1..5 from an absolute schedule impact in working days
-    (≥60→5, ≥20→4, ≥5→3, >0→2, else 1) — the recommendations.py impact bands."""
-    d = abs(impact_days)
-    if d >= 60.0:
-        return 5
-    if d >= 20.0:
-        return 4
-    if d >= 5.0:
-        return 3
-    if d > 0.0:
+    """5x5-matrix consequence rating 1..5 from a schedule-impact magnitude, following the NASA
+    "Schedule" consequence guideline by converting the impact **days to calendar months**
+    (365.25/12 = 30.44 days/month): <1 week -> 1; 1 week to <1 month -> 2; 1 to <3 months -> 3;
+    3 to <=6 months -> 4; >6 months -> 5. (An opportunity's negative impact uses its magnitude.)"""
+    days = abs(impact_days)
+    if days < 7.0:  # < 1 week
+        return 1
+    if days < _DAYS_PER_MONTH:  # 1 week to < 1 month
         return 2
-    return 1
+    if days < 3.0 * _DAYS_PER_MONTH:  # 1 to < 3 months
+        return 3
+    if days <= 6.0 * _DAYS_PER_MONTH:  # 3 to <= 6 months
+        return 4
+    return 5  # > 6 months
 
 
 def _occurrence_schedule(

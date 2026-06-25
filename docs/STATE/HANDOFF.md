@@ -1,6 +1,25 @@
-# Handoff — 2026-06-24 (SRA SSI remodel COMPLETE — engine + control/matrix/OAT (#241 merged) + the editable grid, JSON Save/Load, and Excel/Word export now in a follow-up PR)
+# Handoff — 2026-06-25 (SRA reporting/UX overhaul — operator batch; CHUNK 1 done: consequence days->months + NASA 5x5 matrices; #25-#28 queued)
 
-> ## STATUS (current) — SRA SSI remodel (ADR-0123) is feature-COMPLETE: the inline-editable schedule grid, JSON Save/Load, and Excel/Word export landed on top of the merged engine + control surface; follow-up PR on branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — SRA reporting/UX overhaul (operator batch, ADR-0123 family) — CHUNK 1 IN: consequence auto-calc (Schedule days->months) + the exact NASA 5x5 Risk/Opportunity matrices; branch `claude/compassionate-ptolemy-wip898`
+>
+> **Operator dropped a large SRA overhaul spec (screenshots + the SSI reference Excel exports).** Working
+> it in sequenced chunks on one branch. **Chunk 1 (this push):**
+> - **Consequence rating (1-5) auto-calc** — `engine/sra.py` `_consequence_rating` now follows the NASA
+>   **Schedule** guideline, converting the entered impact **days -> calendar months** (30.44 d/mo):
+>   `<1wk=1, 1wk-<1mo=2, 1-<3mo=3, 3-<=6mo=4, >6mo=5`. Tooltip on the risk-register Consequence field.
+> - **5x5 matrices framed exactly like the NASA reference image** (`web/static/sra_ssi.js` + `app.css`
+>   `.nasa-matrix`/`.nm-*`): Likelihood rows (5 Near Certainty..1 Remote) x Consequence/Benefit cols
+>   (1..5), the fixed NASA priority ranks 1..25, tri-band zones (Risk green/yellow/red; Opportunity
+>   light/medium/dark blue), axis labels, a High/Medium/Low legend, and a count badge where risks land.
+> - Tests updated (engine consequence bands; web consequence guideline + NASA matrix wiring). Full suite
+>   **1558 passed**, coverage held; gate clean. Still ADR-0123 (no new ADR).
+> - **QUEUED (operator batch, tasks #25-#28):** (#25) SSI grid resizable columns + in-grid Factor input +
+>   **paste-from-Excel** bulk fill; (#26) downloadable risk **registry** + a comprehensive **MS Word SRA
+>   report** (PM high-level then details, graphics/images/assumptions); (#27) smoother high-granularity
+>   **S-curve** + smaller/denser tornado + histogram + all charts (report-quality images); (#28) global
+>   tool text size = 11px (the Gantt size). These are the bulk of the remaining work.
+>
+> ## STATUS (prev) — SRA SSI remodel (ADR-0123) feature-COMPLETE: the inline-editable schedule grid, JSON Save/Load, and Excel/Word export landed on top of the merged engine + control surface; branch `claude/compassionate-ptolemy-wip898`
 >
 > **The SSI remodel is done.** PR #241 (merged) shipped the engine + the SSI control panel + 5×5 matrices
 > + deterministic OAT. This follow-up PR adds the three deferred pieces, all on the routes #241 landed:
