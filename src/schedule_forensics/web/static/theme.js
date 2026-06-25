@@ -1,7 +1,7 @@
 /* Schedule Forensics — light/dark theme switch (fully local; preference in localStorage).
  *
  * Loaded synchronously in <head> so the saved theme applies before first paint (no flash
- * of the wrong theme). Dark is the default; "light" is opted into via the header toggle.
+ * of the wrong theme). LIGHT is the default; "dark" is opted into via the header toggle.
  * Also stamps the header target-UID form with the current path so setting a target
  * returns you to the page you were on.
  */
@@ -11,11 +11,9 @@
   var KEY = "sf-theme";
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* storage may be unavailable */ }
-  // A10: a saved choice always wins; on a FIRST visit (no saved preference) follow the OS color
-  // scheme instead of hardcoding dark, so the tool respects prefers-color-scheme.
-  var prefersLight =
-    window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
-  if (saved === "light" || (!saved && prefersLight)) {
+  // Light is the default: apply it on a first visit and whenever the saved choice isn't "dark".
+  // Only an explicit toggle to dark (saved === "dark") leaves the document on the dark base theme.
+  if (saved !== "dark") {
     document.documentElement.setAttribute("data-theme", "light");
   }
 

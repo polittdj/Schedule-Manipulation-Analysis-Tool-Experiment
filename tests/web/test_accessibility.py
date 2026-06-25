@@ -119,11 +119,12 @@ def test_table_headers_carry_scope(client: TestClient) -> None:
     assert "scope=col" in client.get("/help").text  # the metric dictionary table too
 
 
-def test_theme_toggle_announces_state_and_respects_os_theme(client: TestClient) -> None:
-    """A10: the theme toggle sets aria-pressed, and a first visit follows the OS color scheme."""
+def test_theme_toggle_announces_state_and_defaults_to_light(client: TestClient) -> None:
+    """A10: the theme toggle sets aria-pressed; the tool defaults to Light mode (operator request),
+    applying light unless the saved choice is explicitly dark."""
     js = client.get("/static/theme.js").text
     assert "aria-pressed" in js
-    assert "prefers-color-scheme" in js and "matchMedia" in js
+    assert 'saved !== "dark"' in js and 'setAttribute("data-theme"' in js
 
 
 def test_layout_reflows_on_narrow_viewports(client: TestClient) -> None:

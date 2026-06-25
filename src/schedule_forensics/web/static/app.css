@@ -185,7 +185,15 @@
 
 /* Executive Briefing — leadership forensic-summary document (ADR-0121): metadata header, a
    verdict banner (status-tinted), then numbered sections rendered as one continuous document. */
-.brief-doc { max-width: 70em; }
+.brief-doc { max-width: none; }  /* fill the whole page width (sections tile into the grid below) */
+/* numbered sections tiled across the full width; each top-level section is its own card, the
+   opening Bottom Line card spans all columns as the headline. Collapses to one column when narrow. */
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 16px; align-items: start; margin-top: 6px; }
+.brief-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px 14px;
+  background: var(--field-bg); }
+.brief-card.lead { grid-column: 1 / -1; }
+.brief-card > .brief-h:first-child { margin-top: 0; }
 .brief-subtitle { margin: -2px 0 12px; color: var(--muted); font-size: 14px; }
 .brief-meta { border-collapse: collapse; margin: 0 0 14px; font-size: 13px; }
 .brief-meta th { text-align: left; color: var(--muted); font-weight: 600; padding: 2px 14px 2px 0; white-space: nowrap; }
@@ -293,6 +301,12 @@ td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-n
   font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal;
 }
 .dcma-metric:hover + .dcma-tip, .dcma-metric:focus + .dcma-tip { display: block; }
+/* metric column headers in the other report tables reuse the same hover/focus call-out — the cell
+   just needs to be a positioning context for the absolutely-placed tip. */
+th.metric-th { position: relative; }
+.metric-th .mhelp { font-weight: 600; }
+/* right-anchor the pop-out for a wide table's right-hand columns so it doesn't run off-screen */
+.mtip-right { left: auto; right: 0; }
 /* The analysis overview tooltip is parented to <body> and positioned by app.js (left/top inline),
    so position:fixed lets it escape the chart frame's overflow — it no longer gets clipped behind
    the Gantt. z-index clears the maximize frame (9999); pointer-events:none avoids hover flicker. */

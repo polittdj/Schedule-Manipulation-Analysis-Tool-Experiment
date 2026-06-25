@@ -49,6 +49,15 @@ def test_theme_js_persists_and_applies_data_theme(client: TestClient) -> None:
     assert 'setAttribute("data-theme"' in js
 
 
+def test_light_is_the_default_theme(client: TestClient) -> None:
+    """Operator: the tool opens in Light mode by default; only an explicit toggle to dark sticks."""
+    js = client.get("/static/theme.js").text
+    # light is applied unless the saved choice is exactly "dark" (first visit -> light)
+    assert 'saved !== "dark"' in js
+    # the old behaviour (default dark / follow OS prefers-color-scheme) is gone
+    assert "prefers-color-scheme" not in js
+
+
 def test_base_css_defines_the_light_palette(client: TestClient) -> None:
     css = client.get("/static/base.css").text
     assert "html[data-theme=light]" in css

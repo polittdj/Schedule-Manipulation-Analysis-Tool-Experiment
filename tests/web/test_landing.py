@@ -40,6 +40,19 @@ def test_dropzone_uses_native_form_submit_not_fetch(client: TestClient) -> None:
     assert "fetch('/upload'" not in home_js and 'fetch("/upload"' not in home_js
 
 
+def test_drag_drop_is_handled_window_wide_so_the_browser_does_not_open_the_file(
+    client: TestClient,
+) -> None:
+    """Operator: dragging a file into the tool must open it in the tool, not make the browser
+    navigate to the raw file. That requires preventing the default drag/drop on the WINDOW (not just
+    the small zone) and feeding the dropped files into the upload form."""
+    home_js = client.get("/static/home.js").text
+    assert "window.addEventListener('dragover'" in home_js  # allow the drop anywhere
+    assert "window.addEventListener('drop'" in home_js  # stop the browser opening the file
+    assert "ev.preventDefault()" in home_js
+    assert "input.files = files" in home_js  # the dropped files go onto the real form input
+
+
 def test_load_example_opens_a_full_report(client: TestClient) -> None:
     redirect = client.post("/example", follow_redirects=False)
     assert redirect.status_code == 303

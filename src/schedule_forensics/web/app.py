@@ -3096,7 +3096,8 @@ def _completion_panel(analysis: _Analysis) -> str:
         return f"{r.value:g}" if r.population else "&mdash;"
 
     rows = "".join(
-        f"<tr><th scope=col>{_e(label)}</th><td>{fmt(mid)}</td></tr>"
+        f"<tr><th scope=col class=metric-th>{_metric_help_cell(label, mid)}</th>"
+        f"<td>{fmt(mid)}</td></tr>"
         for mid, label in (
             ("completed_ahead", "Completed ahead of baseline"),
             ("completed_on_schedule", "Completed on schedule"),
@@ -4261,6 +4262,40 @@ def _dcma_metric_cell(check: AuditCheck) -> str:
     )
 
 
+def _metric_help_cell(label: str, metric_id: str, *, align: str = "left") -> str:
+    """Inner HTML for a metric column header: the label plus a hover/focus call-out from the in-tool
+    dictionary — what the metric is, how it's calculated, a real-world example of how it's used, and
+    what it indicates. Falls back to the plain label when the metric isn't documented. Reuses the
+    DCMA tooltip styling; wrap the result in a positioned cell (``<th class=metric-th>``). ``align``
+    'right' anchors the pop-out to the cell's right edge so a wide table's right columns don't clip."""
+    doc = METRIC_DICTIONARY.get(metric_id)
+    if doc is None:
+        return _e(label)
+    tip_id = f"mh-{_e(metric_id)}"
+    tip_cls = "dcma-tip mtip mtip-right" if align == "right" else "dcma-tip mtip"
+    used = doc.use_case or doc.importance
+    rich = [
+        f"<b>{_e(doc.name)}</b>",
+        f"<p>{_e(doc.definition)}</p>",
+        f"<p><b>How it&#39;s calculated:</b> {_e(doc.formula)}</p>",
+    ]
+    title = f"{doc.name}. {doc.definition} How it's calculated: {doc.formula}."
+    if used:
+        rich.append(f"<p><b>Real-world use:</b> {_e(used)}</p>")
+        title += f" Real-world use: {used}"
+    if doc.indicates:
+        rich.append(f"<p><b>Indicates:</b> {_e(doc.indicates)}</p>")
+        title += f" Indicates: {doc.indicates}"
+    if doc.threshold:
+        rich.append(f"<p><b>Threshold:</b> {_e(doc.threshold)}</p>")
+    return (
+        f'<span class="dcma-metric mhelp" tabindex=0 role=button aria-describedby="{tip_id}" '
+        f'title="{_e(title)}">{_e(label)} '
+        f"<span class=dcma-info aria-hidden=true>&#9432;</span></span>"
+        f'<div class="{tip_cls}" id="{tip_id}" role=tooltip>{"".join(rich)}</div>'
+    )
+
+
 def _dcma_count_cells(check: AuditCheck) -> str:
     """The Count + '% of tasks' cells, matching how Acumen Fuse shows each metric — the raw
     count over its population plus the percentage, instead of only a pass/fail colour.
@@ -5410,8 +5445,11 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
         ("Avg Float (d)", "avg_float_days"),
         ("Max Float (d)", "max_float_days"),
     ]
+    midcol = len(cols) // 2
     head = "<th scope=col>Schedule</th>" + "".join(
-        f"<th scope=col>{_e(label)}</th>" for label, _ in cols
+        f"<th scope=col class=metric-th>"
+        f"{_metric_help_cell(label, attr, align='right' if i >= midcol else 'left')}</th>"
+        for i, (label, attr) in enumerate(cols)
     )
     body = ""
     for key, r in rows:
@@ -7847,28 +7885,44 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
         f"<span class=brief-stat-value>{_e(v)}</span></div>"
         for k, v in briefing.banner
     )
-    parts = [
-        '<div class="panel brief-doc">',
-        f"<h2>{_e(briefing.title)}</h2>",
-        f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>",
-        f"<table class=brief-meta>{meta}</table>",
-        f'<div class="brief-banner verdict-{_e(verdict_slug)}">{banner}</div>',
+    # full-width header (title + meta + verdict banner), then the numbered sections tiled into a
+    # responsive card grid so the briefing fills the whole page width and each section stays cleanly
+    # boxed instead of running down one narrow column.
+    header = (
+        '<div class="panel brief-doc">'
+        f"<h2>{_e(briefing.title)}</h2>"
+        f"<p class=brief-subtitle>{_e(briefing.subtitle)}</p>"
+        f"<table class=brief-meta>{meta}</table>"
+        f'<div class="brief-banner verdict-{_e(verdict_slug)}">{banner}</div>'
         "<p class=muted>Every statement and table row cites file + UniqueID + task name. "
         'Hand-out copy: <a href="/export/docx/briefing">&#11015; Word</a> &middot; '
-        '<a href="/export/xlsx/briefing">&#11015; Excel</a>.</p>',
-    ]
-    for section in briefing.sections:
+        '<a href="/export/xlsx/briefing">&#11015; Excel</a>.</p>'
+    )
+
+    def _section_html(section: BriefingSection) -> str:
         tag = f"h{min(section.level + 2, 6)}"
         prose = "".join(
             f"<p>{_e(s.text)} <span class=cite>[{_e(_cite_tag(s.citations))}]</span></p>"
             for s in section.statements
         )
-        parts.append(
+        return (
             f"<{tag} class=brief-h>{_e(section.heading)}</{tag}>"
             f"{prose}{_briefing_table_html(section)}"
         )
-    parts.append("</div>")
-    return "".join(parts)
+
+    # group: each top-level (level 1) section opens a new card; its sub-sections nest inside it
+    cards: list[list[str]] = []
+    for section in briefing.sections:
+        if section.level <= 1 or not cards:
+            cards.append([])
+        cards[-1].append(_section_html(section))
+    card_html = []
+    for i, body in enumerate(cards):
+        # the opening "Bottom Line" card spans the full width as the headline
+        cls = "brief-card lead" if i == 0 else "brief-card"
+        card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
+    grid = f"<div class=brief-grid>{''.join(card_html)}</div>"
+    return f"{header}{grid}</div>"
 
 
 def _settings_body(state: SessionState) -> str:
