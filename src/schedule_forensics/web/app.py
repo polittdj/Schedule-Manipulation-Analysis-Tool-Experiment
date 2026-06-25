@@ -8738,7 +8738,7 @@ def _settings_body(state: SessionState) -> str:
 <p>AI answer mode:
 <select name=qa_mode>
 <option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and
-derive figures from the cited facts, but any figure the engine did not compute is flagged as
+derive figures grounded in the cited facts, but any figure the engine did not compute is flagged as
 AI-derived</option>
 <option value=strict{sel("strict", cfg.qa_mode)}>Strict — any answer containing a figure the
 engine never computed is discarded wholesale</option>
