@@ -111,10 +111,11 @@ def test_sra_charts_fill_the_panel_and_tornado_is_tight(client: TestClient) -> N
     width (the width:100% SVGs + their viewBox-unit labels both scale UP), and the tornado packs its
     rows with a small rowH and bigger label/value fonts."""
     css = client.get("/static/app.css").text
-    assert "#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }" in css
+    expected = "#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }"
+    assert expected in css  # the chart hosts fill the panel (was capped at max-width 600px)
     js = client.get("/static/sra.js").text
-    assert "var W = 980, H = 280" in js  # the S-curve viewBox is unchanged; the host is now uncapped
-    assert "var W = 980, H = 230" in js  # the histogram viewBox is unchanged
+    assert "var W = 980, H = 280" in js  # S-curve viewBox unchanged; host now uncapped
+    assert "var W = 980, H = 230" in js  # histogram viewBox unchanged
     assert "rowH = 13" in js  # the tornado rows are drastically tighter (was 18)
     # the tornado label/value fonts were bumped up (11/10 -> 12/11) for the enlarged, dense look
     assert '"font-size": 12' in js and '"font-size": 11' in js
