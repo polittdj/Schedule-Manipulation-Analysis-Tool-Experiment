@@ -192,6 +192,20 @@ def test_correlation_widens_the_focus_distribution() -> None:
     assert corr.std_days > indep.std_days
 
 
+def test_s_curve_is_dense_dated_and_monotonic() -> None:
+    """The SSI result carries a realigned-date cumulative S-curve (one point per distinct simulated
+    finish, so it is dense and smooth) and a dated finish-date histogram for direct plotting."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {2: factor_to_bc_wc(10 * DAY, 5, tbl)}  # a wide driver -> the focus finish spreads out
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=600, seed=3, target_uid=4), three_point=tp)
+    assert len(r.s_curve) > 5  # many distinct finish values -> a smooth curve, not a few steps
+    probs = [p for _date, p in r.s_curve]
+    assert probs == sorted(probs) and probs[-1] == 1.0  # cumulative, ends at 100%
+    assert all(len(d) == 10 and d[4] == "-" for d, _p in r.s_curve)  # ISO YYYY-MM-DD dates
+    assert sum(c for _d, c in r.finish_hist) == 600  # every iteration lands in a histogram bin
+
+
 # --- 5x5 matrix ratings --------------------------------------------------------------
 
 

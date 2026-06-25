@@ -5611,6 +5611,9 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         ],
         "risk_matrix": _ssi_matrix_counts(result.risks, opportunity=False),
         "opportunity_matrix": _ssi_matrix_counts(result.risks, opportunity=True),
+        # dense plotting series (realigned dates): the cumulative S-curve + the finish-date histogram
+        "s_curve": [{"date": d, "p": p} for d, p in result.s_curve],
+        "finish_hist": [{"date": d, "count": c} for d, c in result.finish_hist],
     }
 
 
@@ -6007,7 +6010,7 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <button id=ssiRun type=button>Run SSI SRA</button>
 <button id=ssiOat type=button title="Deterministic one-at-a-time Best/Worst swing on the focus event (2xN CPM solves)">Run sensitivity</button></div>
 <p id=ssiStatus class=muted aria-live=polite></p>
-<div id=ssiResult></div><div id=ssiMatrices></div>
+<div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div><div id=ssiMatrices></div>
 <h3>Sensitivity — deterministic OAT (SSI Sensitivity Analysis)</h3><div id=ssiOatOut></div>
 <h3>Save / load setup &amp; export</h3>
 <div class=viz-controls>
