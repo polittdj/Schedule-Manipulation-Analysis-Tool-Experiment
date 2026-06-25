@@ -36,6 +36,9 @@ def test_globe_js_is_served_and_local(client: TestClient) -> None:
     assert 'host.classList.contains("ai-thinking")' in body  # the loop gate
     assert "document.hidden" in body  # paused when the tab is not visible
     assert "visibilitychange" in body  # redraw/resume when the tab returns
+    # PERF: even WHILE thinking the spin is throttled (~15 fps) so it never pegs the CPU and
+    # freezes a heavy page (the SRA grid) for the whole AI generation (the prior SRA "Ask freezes")
+    assert "FRAME_MS" in body and "setTimeout(" in body  # each frame schedules the next on a timer
     # air-gap: the only absolute URL allowed is the SVG XML namespace (never dereferenced)
     externals = [u for u in re.findall(r"https?://[^\s\"'<>]+", body) if "www.w3.org" not in u]
     assert not externals, externals
