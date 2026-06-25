@@ -5989,8 +5989,10 @@ the random distribution is statistically close, not bit-identical (a different R
 <h3>Editable schedule grid</h3>
 <p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (1&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. A factor
-auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override. Edits
-queue until you press <b>Save grid</b>. Summary rows are bold and not editable.</p>
+auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override.
+<b>Paste from Excel / MS&nbsp;Project:</b> copy a whole column (or a Factor/BC/WC block) and paste it
+onto the first cell to fill the column down across every task in one go. Edits queue until you press
+<b>Save grid</b>. Summary rows are bold and not editable.</p>
 <div class=viz-controls>
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridReload type=button>Refresh grid</button>

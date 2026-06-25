@@ -184,6 +184,44 @@
     else if (t.classList.contains("sra-inp")) mark(uid, t.getAttribute("data-key"), t.value);
   });
 
+  // Excel / MS-Project column paste: copy a whole column (or a Factor/BC/WC block) and paste it onto
+  // one cell to fill DOWN the column across every task in one go (no per-cell entry). A single value
+  // pasted onto one cell falls through to the browser so manual entry still works.
+  var COLS = ["factor", "bc_days", "wc_days"]; // left-to-right column order for a multi-column paste
+  host.addEventListener("paste", function (e) {
+    var t = e.target;
+    if (!t || !t.classList || !t.classList.contains("sra-inp")) return;
+    var cb = e.clipboardData || window.clipboardData;
+    var text = cb ? cb.getData("text") : "";
+    if (!text) return;
+    var lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    while (lines.length > 1 && lines[lines.length - 1] === "") lines.pop(); // Excel's trailing newline
+    if (lines.length === 1 && lines[0].indexOf("\t") === -1) return; // single value -> manual entry
+    e.preventDefault();
+    var startCol = COLS.indexOf(t.getAttribute("data-key"));
+    if (startCol < 0) startCol = 0;
+    var byKey = {};
+    COLS.forEach(function (k) {
+      byKey[k] = Array.prototype.slice.call(host.querySelectorAll('input.sra-inp[data-key="' + k + '"]'));
+    });
+    var startRow = byKey[COLS[startCol]].indexOf(t);
+    if (startRow < 0) startRow = 0;
+    var filled = 0;
+    lines.forEach(function (line, r) {
+      line.split("\t").forEach(function (val, c) {
+        var key = COLS[startCol + c];
+        if (!key) return;
+        var inp = byKey[key][startRow + r];
+        if (!inp) return;
+        var v = String(val).trim();
+        inp.value = v;
+        mark(parseInt(inp.getAttribute("data-uid"), 10), key, v);
+        filled++;
+      });
+    });
+    statusEl.textContent = "Pasted " + filled + " value(s) down the column — press Save grid to apply.";
+  });
+
   var saveBtn = document.getElementById("ssiGridSave");
   if (saveBtn) saveBtn.addEventListener("click", save);
   var reloadBtn = document.getElementById("ssiGridReload");
