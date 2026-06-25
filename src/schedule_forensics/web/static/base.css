@@ -21,8 +21,11 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 :root{--gantt-canvas:#ffffff;--gantt-grid:#dfe3e8;--gantt-grid-qtr:#c2c7cd;--gantt-grid-yr:#9aa1a8;
 --gantt-band:#eef2f7;--gantt-band-ink:#2f3742;--gantt-done:rgba(20,28,40,.30);--gantt-ms:#2a3340;
 --gantt-sum:#586471}
+/* Operator: the whole tool's text should read at the Gantt's compact 11px. This is the single base
+   size everything inherits (paragraphs, labels, tables, controls); headings keep their own larger
+   sizes for hierarchy. Bump one value here to dial the whole UI up/down. */
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
-font:15px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
 padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}header h1{font-size:17px;margin:0;letter-spacing:.5px}
 header nav a{margin-right:14px;color:var(--ink)}header nav a:hover{color:var(--accent)}
