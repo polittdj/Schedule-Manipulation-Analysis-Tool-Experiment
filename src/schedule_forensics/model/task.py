@@ -17,6 +17,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from schedule_forensics.model._base import StrictFrozenModel
+from schedule_forensics.model.assignment import Assignment
 
 
 class ConstraintType(StrEnum):
@@ -113,6 +114,9 @@ class Task(StrictFrozenModel):
     # --- resource assignment (DCMA Resources check) ---
     resource_names: tuple[str, ...] = ()
     resource_ids: tuple[int, ...] = ()
+    # Per-resource bookings with work + units — the source for resource loading / over-allocation
+    # (engine/resources.py). Empty when the file records only names/UIDs (no work-phased loading).
+    resource_assignments: tuple[Assignment, ...] = ()
 
     # --- custom / extended fields (MSPDI ExtendedAttributes: Text/Number/Flag/Date/Outline codes).
     # Stored as (label, value) pairs — label is the MS Project alias (e.g. "CA-WBS") when set, else

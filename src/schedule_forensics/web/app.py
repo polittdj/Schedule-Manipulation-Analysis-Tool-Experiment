@@ -144,6 +144,7 @@ from schedule_forensics.engine.recommendations import (
     Finding,
     Severity,
 )
+from schedule_forensics.engine.resources import ResourceLoading, compute_resource_loading
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.sra import (
     ActivityRisk,
@@ -245,7 +246,7 @@ _LAYOUT = Template(
 <nav>
 <span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
 <span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a></span>
-<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a></span>
+<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
 <span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a></span>
 <span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
 <span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
@@ -1624,6 +1625,11 @@ def create_app(
     def evm_view() -> HTMLResponse:
         st = session()
         return _page(st, "EVM", _evm_body(st))
+
+    @app.get("/resources", response_class=HTMLResponse)
+    def resources_view() -> HTMLResponse:
+        st = session()
+        return _page(st, "Resources", _resources_body(st))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -7455,6 +7461,126 @@ counts).</p>
 positive = late).</p>
 {worst_tbl}</div>
 {_evm_explainer()}"""
+
+
+def _resource_loading_json(rl: ResourceLoading) -> str:
+    """The resource-loading payload for resources.js (load/capacity in working DAYS for display)."""
+    mpd = rl.working_minutes_per_day or 480
+    payload = {
+        "working_days_per_month": None,
+        "resources": [
+            {
+                "id": r.resource_id,
+                "name": r.name,
+                "type": r.type,
+                "max_units": r.max_units,
+                "total_days": round(r.total_work_minutes / mpd, 1),
+                "over": list(r.over_allocated_periods),
+                "series": [
+                    {
+                        "period": p.period,
+                        "load": round(p.load_minutes / mpd, 2),
+                        "cap": round(p.capacity_minutes / mpd, 2),
+                        "over": p.over_allocated,
+                    }
+                    for p in r.series
+                ],
+            }
+            for r in rl.resources
+        ],
+    }
+    return json.dumps(payload).replace("</", "<\\/")
+
+
+def _resources_explainer() -> str:
+    return """
+<div class=panel><h2>How to read the resource loading</h2>
+<details class=explainer><summary><b>What this shows &amp; how it's computed</b></summary>
+<p>Each task's assigned <b>work</b> (hours, from the schedule's resource assignments) is spread evenly
+across the <b>working days</b> of the task's span (its CPM early start &rarr; early finish) and totalled
+per <b>month</b>, per resource. A resource's monthly <b>capacity</b> is
+<code>max&nbsp;units &times; working&nbsp;hours/day &times; working&nbsp;days&nbsp;in&nbsp;the&nbsp;month</code>.</p>
+<p>A month where booked work <b>exceeds capacity</b> is <b class=res-over>over-allocated</b> (shown red)
+&mdash; the resource is asked to do more than its availability allows there, a signal to re-level,
+re-sequence, or add capacity. A schedule that records resource <i>names</i> but no <i>work</i> hours
+shows assignment counts only (no load bars).</p></details>
+<details class=explainer><summary><b>Pros &amp; cons of the even-spread method</b></summary>
+<p><b>Pro:</b> works on any schedule that carries assignment work, with no extra inputs, and gives a
+faithful monthly histogram. <b>Con:</b> it assumes work is spread evenly across the task (no front/back
+loading) when the source file doesn't carry a time-phased contour &mdash; the totals are exact, the
+within-task shape is an approximation.</p></details>
+</div>"""
+
+
+def _resources_body(st: SessionState) -> str:
+    """Resources page: per-resource loading histogram + over-allocation, and a roster table."""
+    chosen = _latest_solvable(st)
+    if chosen is None:
+        return (
+            "<div class=panel>Load a resource-loaded schedule to see resource loading and "
+            "over-allocation.</div>"
+        )
+    _key, sch, cpm = chosen
+    rl = compute_resource_loading(sch, cpm)
+    if not rl.resources:
+        return (
+            "<div class=panel><h2>Resources</h2><p class=muted>This schedule has no resource "
+            "assignments to load. Load an MS Project / Primavera file with assigned resources.</p>"
+            "</div>"
+        )
+    mpd = rl.working_minutes_per_day or 480
+    over_count = sum(1 for r in rl.resources if r.over_allocated_periods)
+    total_days = round(sum(r.total_work_minutes for r in rl.resources) / mpd, 1)
+    cards = _stat_cards(
+        [
+            ("Resources loaded", str(len(rl.resources))),
+            ("Total work (days)", f"{total_days:g}"),
+            ("Over-allocated resources", str(over_count)),
+            ("Months covered", str(len(rl.periods))),
+        ]
+    )
+    rows = "".join(
+        f"<tr><td>{_e(r.name)}</td><td>{_e(r.type.title())}</td>"
+        f"<td class=num>{r.max_units:g}</td><td class=num>{round(r.total_work_minutes / mpd, 1):g}</td>"
+        f"<td class=num>{r.task_count}</td><td>{_e(r.peak_period or '')}</td>"
+        f"<td class={'res-over' if r.over_allocated_periods else 'num'}>"
+        f"{len(r.over_allocated_periods) or ''}</td></tr>"
+        for r in rl.resources
+    )
+    roster = (
+        "<table class=card-table><tr><th scope=col>Resource</th><th scope=col>Type</th>"
+        "<th scope=col>Max units</th><th scope=col>Work (days)</th><th scope=col>Tasks</th>"
+        "<th scope=col>Peak month</th><th scope=col>Over-alloc months</th></tr>"
+        f"{rows}</table>"
+    )
+    res_opts = "".join(
+        f'<option value="{r.resource_id}">{_e(r.name)}'
+        f"{' ⚠' if r.over_allocated_periods else ''}</option>"
+        for r in rl.resources
+    )
+    blob = _resource_loading_json(rl)
+    tip = _user_tip(
+        "Pick a resource to see its monthly <b>work vs capacity</b> histogram. Bars above the capacity "
+        "line (red) are <b>over-allocated</b> months &mdash; where that resource is booked beyond its "
+        "availability."
+    )
+    return f"""
+<div class=panel><h2>Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}</h2>
+<p class=muted>Time-phased work per resource per month, against each resource's capacity. Over-allocated
+months are flagged.</p>
+{tip}
+{cards}</div>
+<div class=panel><h2>Loading histogram</h2>
+<div class=viz-controls><label>Resource <select id=resPick>{res_opts}</select></label>
+<span id=resStatus class=muted></span></div>
+<div id=resChart class=chart-host></div>
+<script type="application/json" id=resData>{blob}</script>
+<script src="/static/resources.js"></script></div>
+<div class=panel><h2>Resource roster</h2>
+<p class=muted>Every resource that carries work, sorted by total work. Over-allocated months are the
+count of months booked beyond capacity.</p>
+{roster}</div>
+{_resources_explainer()}"""
 
 
 def _groups_field_options(fields: Sequence[str], selected: str) -> str:

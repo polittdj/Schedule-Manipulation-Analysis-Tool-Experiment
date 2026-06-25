@@ -24,6 +24,7 @@ Change log:
 from __future__ import annotations
 
 from schedule_forensics.model import units
+from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -31,10 +32,11 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import ConstraintType, Task
 
 #: Bump on ANY change to a model's field set (see tests/model/test_schema_freeze.py).
-SCHEMA_VERSION = "2.3.0"  # 2.3.0: Task.outline_level for MS-Project WBS indentation (ADR-0119)
+SCHEMA_VERSION = "2.4.0"  # 2.4.0: Assignment + Task.resource_assignments (loading; ADR-0125)
 
 __all__ = [
     "SCHEMA_VERSION",
+    "Assignment",
     "Calendar",
     "ConstraintType",
     "Relationship",

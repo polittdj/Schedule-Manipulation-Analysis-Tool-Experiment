@@ -1,4 +1,27 @@
-# Handoff — 2026-06-25 (operator UI sweep on `claude/compassionate-ptolemy-wip898`; SRA visuals + branding + light default + metric call-outs landed (#248-#252); Gantt visual-consistency in flight)
+# Handoff — 2026-06-25 (operator UI sweep on `claude/compassionate-ptolemy-wip898`; #248-#255 merged; EVM + Correlation + Resources (ADR-0125) building)
+
+> ## STATUS (current) — Resources section (ADR-0125): schema 2.4.0 + resource-loading histogram; branch `claude/compassionate-ptolemy-wip898`
+>
+> **Resources section landed.** Schema migrated **2.3.0 → 2.4.0** (ADR-0125): a new frozen
+> `Assignment` model (`resource_id` / `work_minutes` / `units`) + `Task.resource_assignments`. The MSPDI
+> importer's `_parse_assignments` now reads each assignment's `Work`/`Units`; the friendly-JSON
+> importer/exporter round-trips `resource_assignments` + `resource_ids`; `tests/model/test_schema_freeze.py`
+> bumped in the same change. New `engine/resources.py` `compute_resource_loading(schedule, cpm)`
+> time-phases each task's assignment work evenly across the working days of its CPM span and totals it
+> per month per resource; monthly capacity = `max_units × wmpd × working-days-in-month`; months over
+> capacity are flagged. `/resources` page + nav: per-resource work-vs-capacity histogram (vendored
+> `resources.js`, over-allocated months red), roster table, KPIs, user tips + a method explainer.
+> Deterministic CPM/DCMA/EVM untouched; offline/std-lib/CUI laws preserved.
+> - **Also shipped this stretch (merged #248-#255):** SRA visuals enlarged + tornado tightened; one
+>   MS-Project Gantt look across every Gantt; SRA top-of-page file selector + shared factor/BC-WC
+>   durations for both models; SRA model + JCL explainers; the header-globe **freeze fix**; AI Settings
+>   live model dropdowns (fixes OpenAI-compatible) + cross-check dropdown + CUI explainer; **EVM**
+>   section; **Correlation** call-out.
+> - **NEXT (remaining operator queue):** unified SRA risk register (enter once, days↔% auto-derive +
+>   lockable per model); SRA JSON save/load of the whole setup; more User Tips; a responsive **mobile
+>   view** (CUI-safe); and the **iPhone-access** decision (loopback-only law vs LAN exposure — present
+>   options first).
+
 
 > ## STATUS (current) — Gantt visual-consistency: one MS-Project look + interaction on EVERY Gantt; branch `claude/compassionate-ptolemy-wip898`
 >

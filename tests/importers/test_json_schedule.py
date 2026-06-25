@@ -137,6 +137,33 @@ def test_constraint_and_dates_survive_round_trip() -> None:
     assert str(reparsed.tasks_by_id[1].constraint_type) == "MSO"
 
 
+def test_save_json_round_trips_resource_assignments() -> None:
+    """ADR-0125: a Save -> reopen cycle keeps the per-resource work/units for the loading view."""
+    import datetime as dt
+
+    from schedule_forensics.model.assignment import Assignment
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    original = Schedule(
+        name="rt-res",
+        project_start=dt.datetime(2025, 1, 6, 8, 0),
+        tasks=(
+            Task(
+                unique_id=1,
+                name="Build",
+                duration_minutes=480,
+                resource_ids=(7,),
+                resource_assignments=(Assignment(resource_id=7, work_minutes=960, units=0.5),),
+            ),
+        ),
+    )
+    reopened = parse_json_text(to_json_text(original))
+    task = reopened.tasks_by_id[1]
+    assert task.resource_ids == (7,)
+    assert task.resource_assignments == (Assignment(resource_id=7, work_minutes=960, units=0.5),)
+
+
 def test_save_json_round_trip_preserves_structure_and_costs() -> None:
     # the tool's own format must not silently demote milestones/summaries or drop WBS,
     # durations, costs, or the calendar's exact minute count on a Save -> reopen cycle
