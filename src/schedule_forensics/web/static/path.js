@@ -197,12 +197,14 @@
     lastGrid = SFGantt.gridLines(axis);
 
     var table = el("table", { class: "gantt-grid path-grid" });
+    // header rows live in a <thead> so the shared sticky-header CSS locks them on scroll
+    var thead = el("thead");
     var head = el("tr");
     on.forEach(function (f) { head.appendChild(el("th", { text: f.label })); });
     var thTime = el("th", { class: "g-head path-timeline-head" });
     thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
     head.appendChild(thTime);
-    table.appendChild(head);
+    thead.appendChild(head);
 
     // MS-Project per-column filter dropdowns (each lists that column's distinct values)
     var filterRow = el("tr", { class: "filter-row" });
@@ -220,11 +222,13 @@
       filterRow.appendChild(td);
     });
     filterRow.appendChild(el("td", { class: "muted" }));
-    table.appendChild(filterRow);
+    thead.appendChild(filterRow);
+    table.appendChild(thead);
 
     var tbody = el("tbody", { id: "pathBody" });
     table.appendChild(tbody);
     view.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "path"); // MS-Project drag-to-resize columns
     paintRows();
   }
 

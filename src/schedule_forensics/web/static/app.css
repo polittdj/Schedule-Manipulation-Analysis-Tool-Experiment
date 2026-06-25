@@ -14,7 +14,7 @@
 .bar-fill.accent { background: var(--accent); }
 .field-toggles { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0; font-size: 13px; color: var(--muted); }
 .field-toggles label { cursor: pointer; }
-#grid { overflow-x: auto; }
+#grid { overflow-x: auto; overflow-y: auto; max-height: 80vh; }
 #grid table { min-width: 100%; }
 #grid th { cursor: pointer; user-select: none; }
 #grid th.sorted::after { content: " \25B4"; }
@@ -33,6 +33,15 @@
 /* the timeline header + body cells share ZERO horizontal padding so the month ticks line up
    exactly over the bars (both hold a px-wide div positioned by the same axis.x mapping) */
 .gantt-grid th.g-head { position: relative; cursor: default; padding: 4px 0; }
+/* MS-Project: lock the column headers + the timescale so they stay visible as the grid scrolls.
+   The whole <thead> (column titles + any per-column filter row) sticks to the top of its own
+   scroll pane (#grid / .path-view / .sra-grid-host, each capped with max-height). An opaque
+   background keeps body rows from showing through, and a bottom border seats it like MS Project. */
+.gantt-grid thead { position: sticky; top: 0; z-index: 3; }
+.gantt-grid thead th, .gantt-grid thead td { background: var(--gantt-canvas); }
+.gantt-grid thead tr:last-child th, .gantt-grid thead tr:last-child td {
+  border-bottom: 1px solid var(--gantt-grid-qtr);
+}
 .g-scale { position: relative; height: 18px; }
 .gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 180px; max-width: 380px; }
 .g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; white-space: nowrap; }
@@ -80,7 +89,7 @@
 .legend .tier-TERTIARY { color: var(--accent); } .legend .tier-BEYOND { color: var(--beyond-ink); }
 
 /* SSI-style path-analysis workspace: data grid left, scalable timeline right */
-.path-view { overflow-x: auto; margin-top: 10px; }
+.path-view { overflow-x: auto; overflow-y: auto; max-height: 80vh; margin-top: 10px; }
 .path-grid td, .path-grid th { white-space: nowrap; }
 /* the MS-Project per-column filter row under the path headers */
 .path-grid .filter-row td { padding: 1px 3px; }
