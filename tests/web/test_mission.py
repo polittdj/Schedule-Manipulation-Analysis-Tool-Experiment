@@ -109,6 +109,22 @@ def test_scurve_surfaces_the_data_date_during_animation(client: TestClient) -> N
     assert "status_date" in js and "data date" in js  # …shown in the label + marker as it animates
 
 
+def test_mission_bottom_charts_match_the_top_tiles(client: TestClient) -> None:
+    """Operator: the big bottom charts (Critical-Path Evolution + Quality Trend) are now the SAME
+    size as the top tiles (no full-width 'wide' tile) and carry the same attributes — enlarge, the
+    Data toggle (underlying-data table), hover call-outs, and Play-all animation."""
+    page = client.get("/mission").text
+    assert "tile-wide" not in page  # no oversized bottom tiles — every tile is one grid cell
+    assert "id=evoChart" in page and "id=trendCharts" in page  # both still on the wall
+    # the Evolution tile now exposes an underlying-data table (Data toggle) — it had none before
+    evo = client.get("/static/path_evolution.js").text
+    assert "SFA11y.table(" in evo and "Critical path this version" in evo
+    assert 'svgEl("title"' in evo  # per-bar hover call-out
+    # the Quality Trend tile's points now carry hover call-outs too (it had none before)
+    trend = client.get("/static/trend.js").text
+    assert 'svgEl("title"' in trend
+
+
 def test_mission_is_air_gapped(client: TestClient) -> None:
     for path in ("/mission", "/static/mission.js"):
         text = client.get(path).text

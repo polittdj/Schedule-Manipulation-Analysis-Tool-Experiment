@@ -232,6 +232,14 @@
         var bw = Math.max(2, x2 - x1);
         var barColor = tierColor(r) || (r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--accent)");
         var rect = svgEl("rect", { x: x1, y: cy - 6, width: bw, height: 12, rx: 2, fill: barColor });
+        // hover call-out (chartframe tooltip + native SVG title) — same as the top tiles' charts
+        var bt = svgEl("title", {});
+        bt.textContent =
+          "U" + r.uid + " · " + r.name + " — " + (r.kind || "on path") +
+          ", " + fmtDate(r.start) + " → " + fmtDate(r.finish) +
+          (r.percent_complete != null ? ", " + r.percent_complete + "%" : "") +
+          (r.reason && REASON[r.reason] ? " (" + REASON[r.reason].label + ")" : "");
+        rect.appendChild(bt);
         if (r.kind === "left") { rect.setAttribute("opacity", "0.45"); rect.setAttribute("stroke-dasharray", "3 2"); }
         svg.appendChild(rect);
         if (r.durBadge) colText(x2 + 3, cy + 4, "▲", { size: 11, fill: "var(--warn)" });
@@ -244,6 +252,26 @@
       }
     });
     wrap.appendChild(svg);
+    // underlying-data table (revealed by the tile's "Data" toggle / read by assistive tech) — the
+    // critical path in THIS version, so the bottom Evolution tile matches the top tiles' "Data" view
+    if (window.SFA11y) {
+      wrap.appendChild(
+        SFA11y.table(
+          "Critical path this version",
+          ["UID", "Name", "Status", "Start", "Finish", "%"],
+          rows.map(function (r) {
+            return [
+              "U" + r.uid,
+              r.name,
+              r.kind || "on path",
+              fmtDate(r.start),
+              fmtDate(r.finish),
+              r.percent_complete != null ? r.percent_complete + "%" : "",
+            ];
+          })
+        )
+      );
+    }
     return wrap;
   }
 

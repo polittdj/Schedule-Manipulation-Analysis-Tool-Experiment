@@ -11,10 +11,20 @@
     input = document.getElementById('fileInput'),
     dz = document.getElementById('dropzone');
   if (!form || !input || !dz) return;
+  // reveal the full-screen "Loading your projects…" overlay the instant an import starts, so a slow
+  // import (a big .mpp/.xer) never looks like the tool is stuck. It stays up until the POST navigates.
+  function showLoading() {
+    var ov = document.getElementById('loadOverlay');
+    if (ov) { ov.hidden = false; ov.setAttribute('aria-hidden', 'false'); }
+  }
   function submit() {
     dz.classList.add('busy');
+    showLoading();
     form.submit();
   }
+  // the "Load example" import can also take a moment — show the same indicator on its submit
+  var exampleForm = document.getElementById('exampleForm');
+  if (exampleForm) exampleForm.addEventListener('submit', showLoading);
   var pick = document.getElementById('pickBtn');
   if (pick) pick.onclick = function () { input.click(); };
   input.onchange = function () {

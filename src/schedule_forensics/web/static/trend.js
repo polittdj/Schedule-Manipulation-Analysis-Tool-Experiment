@@ -112,7 +112,12 @@
     }));
     values.forEach(function (v, i) {
       if (v != null) {
-        svg.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: color }));
+        var dot = svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: color });
+        var dtt = svgEl("title", {});  // hover call-out (same as the top tiles' charts)
+        dtt.textContent =
+          labels[i] + " · " + (seriesLabel || title.split(" (")[0]) + ": " + valueText(v, i);
+        dot.appendChild(dtt);
+        svg.appendChild(dot);
         var val = svgEl("text", {
           x: x(i), y: y(v) - 9, "text-anchor": "middle", fill: "var(--ink)", "font-size": 12,
         });
@@ -170,7 +175,11 @@
       }
       s.values.forEach(function (v, i) {
         if (v != null) {
-          svg.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: s.color }));
+          var dot = svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: s.color });
+          var dtt = svgEl("title", {});  // hover call-out
+          dtt.textContent = labels[i] + " · " + s.label + ": " + v.toFixed(2);
+          dot.appendChild(dtt);
+          svg.appendChild(dot);
           var val = svgEl("text", {
             x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
           });
