@@ -10,7 +10,7 @@ figure. Formulas are stated per the cited sources (`docs/PLAN/METRICS-CATALOG.md
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,7 @@ class MetricDoc:
     threshold: str = ""  # plain-language pass/fail threshold (tooltip "Threshold")
     example_ok: str = ""  # a concrete passing example (tooltip "Pass example")
     example_fail: str = ""  # a concrete failing example (tooltip "Fail example")
+    use_case: str = ""  # a real-world example of how the metric is used (tooltip "Real-world use")
     citation_basis: str = "Every value cites file + UniqueID + task name (§6)."
 
 
@@ -942,6 +943,125 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "IEAC(t) = AT + (PD - ES) / SPI(t)",
         _PBIX,
     ),
+}
+
+
+#: Real-world "how it's used" examples for the metrics that appear as report column headers, so the
+#: hover call-out can show definition + how-it's-calculated + a concrete use. Merged into the docs
+#: below (kept here rather than inline so the example wording lives in one auditable block).
+_USE_CASES: dict[str, str] = {
+    # --- Schedule-quality ribbon ---
+    "missing_logic": (
+        "On a plant-overhaul IMS an activity left with no successor (an open end) pushes nothing "
+        "when it slips, so the finish looks safe when it isn't. Reviewers count open ends before "
+        "accepting a baseline, and a jump between updates flags links quietly deleted to hide a "
+        "driver."
+    ),
+    "logic_density": (
+        "A 1,200-activity schedule with only ~1 link per activity was drawn as a bar chart, not "
+        "networked, so its critical path can't be trusted. Estimators use logic density to tell a "
+        "genuinely networked schedule from a padded one before relying on its forecast."
+    ),
+    "critical": (
+        "Counts how many incomplete activities currently have zero float (drive the finish) — "
+        "'today 8 tasks control the completion date' — so a recovery team spends effort on those, "
+        "not on work that still has slack."
+    ),
+    "hard_constraints": (
+        "A 'Must Finish On' date pinned to a milestone overrides the network logic. Forensic "
+        "analysts count hard constraints to find dates hard-coded to mask a slip instead of being "
+        "driven by predecessors."
+    ),
+    "negative_float": (
+        "Negative float means the plan is already mathematically late against a deadline. A claims "
+        "analyst uses the count to quantify how much of the schedule is impossible as drawn and to "
+        "size the delay."
+    ),
+    "number_of_lags": (
+        "A 20-day lag buried on a relationship hides waiting time as if it were nothing. Reviewers "
+        "count lags to find float manufactured by inserting delay instead of real, statusable work."
+    ),
+    "number_of_leads": (
+        "A negative lag (lead) lets a successor start before its predecessor finishes — often "
+        "inserted to pull a finish date in artificially. DCMA flags leads because they distort the "
+        "true critical path."
+    ),
+    "merge_hotspot": (
+        "An activity with many predecessors is a merge point where parallel paths converge and "
+        "risk concentrates (merge bias). A slip on ANY feeder delays the merge, so schedulers "
+        "protect "
+        "hotspots with extra contingency."
+    ),
+    # --- Completion performance ---
+    "completed_ahead": (
+        "If 70% of finished work came in ahead of baseline the durations were probably padded. "
+        "Owners use completed-ahead to test whether a contractor's plan was realistic or "
+        "sandbagged to bank float."
+    ),
+    "completed_on_schedule": (
+        "A high share finishing EXACTLY on the baseline date is a red flag that actuals are being "
+        "snapped to plan ('statusing to plan') rather than reported honestly — used to audit data "
+        "quality."
+    ),
+    "completed_behind": (
+        "A rising share of activities finishing behind baseline is the early warning a PM cites to "
+        "justify a recovery plan before the slip reaches the critical path."
+    ),
+    "longer_than_planned": (
+        "Counting activities that ran longer than baseline tells an estimator which work was "
+        "systematically under-durationed, feeding more realistic durations into the next bid."
+    ),
+    "shorter_than_planned": (
+        "Many activities finishing well short of baseline suggests durations were inflated; used "
+        "with completed-ahead to argue the baseline carried hidden float."
+    ),
+    "duration_ratio_min": (
+        "The smallest actual/baseline duration ratio surfaces the most over-estimated activity — "
+        "the single task that finished in a fraction of its planned duration."
+    ),
+    "duration_ratio_avg": (
+        "The average actual/baseline duration ratio is a one-number realism check — a 1.4 average "
+        "says work is taking 40% longer than planned, which an analyst applies to forecast the "
+        "remaining durations."
+    ),
+    "duration_ratio_max": (
+        "The largest actual/baseline ratio flags the worst duration blow-out — the activity that "
+        "most exceeded its plan, a starting point for a root-cause review."
+    ),
+    "avg_days_ahead": (
+        "The average earliness of the early finishers shows how much margin the baseline carried — "
+        "large values support an argument that durations were padded."
+    ),
+    "avg_days_late": (
+        "The average lateness of the late finishers quantifies typical slip per activity ('late "
+        "tasks ran 6 working days over'), used to set a realistic schedule-margin allowance."
+    ),
+    "avg_completion_variance": (
+        "The mean finish variance (+ = late) across completed work is the single trend number a PM "
+        "tracks update-to-update to see whether execution is improving or decaying."
+    ),
+    "mei": (
+        "MEI (milestones met vs due) is the leadership 'are we keeping our commitments' number — a "
+        "contract with 12 milestones due and 7 met reads MEI 0.58, a citable status-review fact."
+    ),
+    "epi": (
+        "EPI compares execution events recorded to those expected this period — used to catch a "
+        "schedule statused selectively (only the good news entered) so progress looks better than "
+        "it is."
+    ),
+    "start_finish_ratio": (
+        "Comparing scheduled start/finish pairs to actual pairs detects activities started or "
+        "finished out of the planned order — a sign of out-of-sequence work that invalidates the "
+        "logic."
+    ),
+    "elapsed_since_last_finish": (
+        "Working days since the most recent actual finish flags a stalled schedule — a long gap "
+        "means no work has completed lately, prompting a check that status is current."
+    ),
+}
+METRIC_DICTIONARY = {
+    mid: (replace(doc, use_case=_USE_CASES[mid]) if mid in _USE_CASES else doc)
+    for mid, doc in METRIC_DICTIONARY.items()
 }
 
 

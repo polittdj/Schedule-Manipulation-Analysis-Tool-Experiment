@@ -29,6 +29,9 @@ def test_briefing_renders_the_numbered_forensic_document(client: TestClient) -> 
     page = client.get("/briefing").text
     assert "brief-doc" in page and "brief-banner" in page  # the document + the verdict banner
     assert "brief-meta" in page  # the metadata header (report date / data date / source / class)
+    # the numbered sections tile into a full-width responsive card grid (operator: "use the entire
+    # page space and keep it formatted"), with the Bottom Line spanning the top
+    assert "brief-grid" in page and 'class="brief-card lead"' in page
     for heading in (
         "1. The Bottom Line",
         "2. How the Project Has Performed",
