@@ -3610,3 +3610,29 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   mints **ADR-0128** in the fix session.
 - **Next session:** execute the plan of action wave-by-wave (Wave 1 fidelity/crash safety first), full gate
   + parity green before each commit, ASK FIRST on C2 and M1, draft PR.
+
+---
+
+## Fix session — 2026-06-25 — Audit Wave 1/2 start: M1 inactive-task exclusion (ADR-0128) + C2 AI figure mode (ADR-0129)
+
+- **Branch:** `claude/eager-rubin-xianw9` (fresh off `main` after the audit #265 + handoff #266 merged).
+  Executed the two operator-decision items from `docs/STATE/AUDIT-2026-06-25.md`. One PR; full gate + parity
+  green (**1664 passed, 7 skipped, 2 xfailed** — the documented stale `ssi_uid143` golden; +5 new tests).
+- **M1 (ADR-0128): exclude inactive tasks to match MS Project / Acumen.** Operator decision. `is_active=False`
+  tasks are now excluded at the two chokepoints `engine/metrics/_common.non_summary` and
+  `cpm._scheduled_tasks` (so they leave every metric denominator and the CPM network; links to them drop via
+  the network's `real_ids` filter), plus the scattered scheduling sites `driving_path`,
+  `driving_slack.date_basis`, `metrics/vertical_integration._dated`, and the DCMA12 target filter. The
+  **diff/manipulation layer is intentionally unchanged** (reads `schedule.tasks`), so deactivating a task
+  between versions stays a detectable manipulation. **No golden number moves** (goldens carry 0 inactive
+  tasks → parity green); new `tests/engine/test_inactive_tasks.py` pins CPM/DCMA/driving-slack exclusion.
+- **C2 (ADR-0129): operator-selectable Ask-the-AI figure mode.** Operator chose "give the option for strict
+  vs annotate + re-scope the guarantee." `qa_mode` ∈ {`annotate` (new default), `strict`, `interpretive`},
+  selectable in AI Settings. **annotate** keeps the rich answer but flags any figure not in the cited facts
+  in an `[AI-derived …]` footer (`qa._annotate_unsourced`); **strict** discards such answers wholesale;
+  **interpretive** is verbatim/ungated (explicit opt-in, disclaimer rides). CLAUDE.md's "no unsourced number"
+  guarantee **re-scoped** to be honest per mode (holds for narrative/briefing + strict/annotate, not
+  interpretive). Tests: updated the old interpretive-default assertions to `annotate`; added a 3-mode route
+  test (`test_ask_everywhere.py`) and an annotate unit test (`test_qa.py`).
+- **Highest ADR = 0129.** Remaining audit findings (C1, H1–H4, M2–M8, L1–L12) are still open — see
+  `AUDIT-2026-06-25.md` and the HANDOFF top block for the sequenced remainder.

@@ -1,6 +1,34 @@
-# Handoff — 2026-06-25 (QC AUDIT merged (#265) → FIX SESSION next; branch fresh from `main`; highest ADR 0127)
+# Handoff — 2026-06-25 (FIX SESSION underway — M1 + C2 done (ADR-0128/0129); audit #265 merged; highest ADR 0129)
 
-> ## STATUS (current) — Full-repository QC audit MERGED (#265); the next session executes the plan of action
+> ## STATUS (current) — Fix session: M1 (inactive-task exclusion) + C2 (operator AI figure mode) DONE; rest of the plan remains
+>
+> **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` (on `main`) — the audit + the 3-wave plan of action.
+> This session executed the two operator-decision items from that plan; the remaining findings are still open.
+>
+> **DONE this session (one PR, full gate + parity green; +5 tests → 1664 passed):**
+> - **M1 — exclude inactive tasks (ADR-0128).** Operator chose to match MS Project / Acumen. `is_active=False`
+>   tasks are now dropped at the two chokepoints `metrics/_common.non_summary` and `cpm._scheduled_tasks`
+>   (plus `driving_path`, `driving_slack.date_basis`, `vertical_integration`, the DCMA12 target filter), so
+>   they leave the CPM network and every metric denominator; links to them drop with them. The
+>   **diff/manipulation layer is intentionally left reading `schedule.tasks`** so a *deactivation* between
+>   versions is still a detectable manipulation. No golden number moves (goldens have 0 inactive tasks → parity
+>   green); pinned by new `tests/engine/test_inactive_tasks.py`.
+> - **C2 — operator-selectable Ask-the-AI figure mode (ADR-0129).** `qa_mode` is now `annotate` (default) /
+>   `strict` / `interpretive`, chosen in AI Settings. **annotate** keeps the rich answer but flags any figure
+>   the engine didn't compute in an `[AI-derived …]` footer (`qa._annotate_unsourced`); **strict** discards
+>   such answers; **interpretive** is verbatim/ungated (explicit opt-in). The CLAUDE.md guarantee is
+>   **re-scoped** to be honest per mode. Tests updated to the new default + a 3-mode route test + an annotate
+>   unit test.
+>
+> **REMAINING from the plan (next):** Wave 1 — **C1** (`to_json_text` Save→reopen field loss), **H1**
+> (`_apply_ssi_setup` 500 + partial mutation on non-list `affected`), **H3/H4** (XER one-bad-id sinks the file),
+> **M3** (friendly JSON fabricated `project_start`), **M4** (MSPDI root baseline leak), **M5** (days↔% rounding).
+> Wave 2 — **H2** (reattach guards digits not prose), **M6** (sign-blind figure regex), **M2** (pre-commit guard
+> omits `.aft`/`.docx`). Wave 3 — **M7, M8, L1–L12**. Full table + evidence in `AUDIT-2026-06-25.md`.
+> **Highest ADR = 0129.** Keep running the full gate + `pytest -m parity` before each commit; add/patch a golden
+> rather than loosen an assertion for any importer/engine change.
+
+> ## STATUS (prev) — Full-repository QC audit MERGED (#265); the next session executes the plan of action
 >
 > **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` (now on `main`) — the full audit report, a sequenced
 > 3-wave plan of action, and a verification appendix (every finding re-confirmed by executing the real code
