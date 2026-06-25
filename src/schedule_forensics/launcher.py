@@ -103,4 +103,9 @@ def main(
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entrypoint
+    import multiprocessing
+
+    # Required before any worker process is spawned in a frozen (PyInstaller) build; a no-op
+    # otherwise. The SRA Monte-Carlo offload (web/offload.py) spawns a worker on large schedules.
+    multiprocessing.freeze_support()
     main()

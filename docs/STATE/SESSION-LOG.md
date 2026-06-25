@@ -3524,3 +3524,33 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   `engine/resources.py` time-phases work into a monthly load-vs-capacity histogram with over-allocation;
   `/resources` page (vendored `resources.js`) + nav. Schema-freeze test bumped.
 - **Highest ADR = 0125.**
+
+---
+
+## Operator fixes — 2026-06-25 — Gantt view + SRA Ask-the-AI freeze (#258 merged) + SRA process-offload (ADR-0126)
+
+- **Branch:** `claude/eager-rubin-xianw9` (the rolling `compassionate-ptolemy` branch is retired). Reset
+  to `origin/main` after #258 merged; the offload PR stacked on top.
+- **#258 (MERGED, `ba2dc69`) — path-analysis Gantt view fixes + first SRA-freeze fix.** Shared
+  `SFGantt.freezeColumns(table)` pins every column but the scalable timeline (`position:sticky` +
+  measured per-column left offset, opaque canvas bg, freeze line) on the activity/path/driving/SRA
+  grids; a column resize re-pins, print un-pins. The path timeline now fits the selected tier
+  (`axisRows`/`fitFill`) and auto-scales to the page width minus the measured columns so the chosen path
+  fills the page next to the columns; the zoom slider switches to a fixed px (scroll); `render()`/
+  `reflow()` split so a tier/zoom change re-fits without tearing down the open dropdowns; "View entire
+  project" widens to every activity (`scopeAll`); asymmetric padding keeps the data-date line off the
+  right border. **SRA Ask-the-AI freeze (client side):** throttled the header-globe animation to ~15 fps
+  (it ran at the display refresh for the whole AI generation and pegged a CPU core on the heavy SRA grid).
+- **This change (ADR-0126): SRA Monte-Carlo process offload.** Operator chose "also harden the server
+  side." `compute_sra` / `compute_sra_ssi` / `compute_oat_sensitivity` are CPU-bound pure Python that
+  held the GIL in a `def` route and starved a concurrent Ask-the-AI call. New `web/offload.py`
+  (`run_offloaded` / `run_maybe_offloaded`) dispatches the **heavy** runs (gated on `len(tasks) >= 300`)
+  to a lazily-created single worker process — **byte-identical** to in-process (same seeded RNG), with an
+  **in-process fallback** on any pool failure, and the function's own exceptions propagating unchanged
+  (the route still 422s them). Five SRA routes wired; `shutdown_offload()` on Quit; `launcher.py` adds
+  `multiprocessing.freeze_support()`. No model change (`SCHEMA_VERSION` 2.4.0 untouched); std-lib only;
+  air-gap intact. Tests: `tests/web/test_offload.py`.
+- **Operator decisions (AskUserQuestion):** SRA freeze → harden the server side (this change); **iPhone
+  access → out of scope for CUI** (queue item closed; no LAN/off-loopback bind). Responsive mobile *view*
+  remains optional.
+- **Highest ADR = 0126.**
