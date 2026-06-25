@@ -334,6 +334,26 @@ def figure_agreement(primary: str, second: str) -> str:
     )
 
 
+_ANNOTATE_NOTE = (
+    "\n\n[AI-derived figures — produced by the local model, not computed by the engine; "
+    "verify against the cited facts above: {figs}]"
+)
+
+
+def _annotate_unsourced(text: str, allowed: set[str]) -> str:
+    """Flag every figure in ``text`` the engine did not compute (the C2 fix; ADR-0129).
+
+    Annotate, do not discard: the rich analysis is kept, but a footer enumerates each figure the
+    model derived itself (any token not in ``allowed``, the figures across the cited facts), so an
+    analyst can never mistake an AI-derived number for an engine figure. Order-preserving and
+    de-duplicated; returns ``text`` unchanged when every figure is already sourced.
+    """
+    derived = [fig for fig in dict.fromkeys(_FIGURE_RE.findall(text)) if fig not in allowed]
+    if not derived:
+        return text
+    return text + _ANNOTATE_NOTE.format(figs=", ".join(derived))
+
+
 def answer_question(
     backend: AIBackend,
     facts: tuple[CitedStatement, ...],
@@ -344,16 +364,23 @@ def answer_question(
     """(model answer or ``None``, the cited facts used). Fail-closed; mode-gated.
 
     The Null backend (or an empty/failed generation) answers with no prose — the caller
-    shows the facts themselves. In **strict** mode a model answer survives only if every
-    number it contains appears in the fact sheet (subset gate; discarded wholesale
-    otherwise). In **interpretive** mode the model may derive figures from the facts
-    (differences, ratios, plain-language analysis) — the caller must show the cited
-    facts alongside and the standing "AI can err" disclaimer.
+    shows the facts themselves. The operator chooses the mode (AI Settings); the figure
+    guarantee depends on it (ADR-0129):
+
+    * **strict** — a model answer survives only if every number it contains appears in the
+      fact sheet (subset gate; discarded wholesale otherwise). No unsourced figure can reach
+      the analyst.
+    * **annotate** (default) — the model may derive figures from the facts (differences,
+      ratios, plain-language analysis), but any figure NOT in the cited facts is flagged in a
+      footer as AI-derived, so a derived number can never be mistaken for an engine figure.
+    * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
+      into raw model analysis and the "AI can err — verify against the citations" disclaimer
+      rides every answer. (This mode does NOT guarantee sourced figures.)
     """
     shown = relevant_facts(facts, question)
     if backend.name == "null":
         return None, shown
-    if mode == "interpretive":
+    if mode in ("interpretive", "annotate"):
         # A live local model gets the WHOLE cited picture (free analysis, still grounded) —
         # not just the slice shown to the analyst — so it can reason across the schedule.
         evidence = model_evidence(facts, question)
@@ -390,10 +417,12 @@ def answer_question(
         return None, shown
     if not text:
         return None, shown
-    if mode != "interpretive":
-        allowed = set()
-        for f in evidence:
-            allowed.update(_FIGURE_RE.findall(f.text))
+    allowed: set[str] = set()
+    for f in evidence:
+        allowed.update(_FIGURE_RE.findall(f.text))
+    if mode == "strict":
         if set(_FIGURE_RE.findall(text)) - allowed:
             return None, shown  # the model introduced a number the engine never computed
+    elif mode == "annotate":
+        text = _annotate_unsourced(text, allowed)  # keep the answer; flag derived figures
     return text, shown

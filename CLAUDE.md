@@ -73,8 +73,14 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `NullBackend` (deterministic offline default — returns the prompt unchanged), `OllamaBackend`, and
   `OpenAICompatBackend` (both **loopback-validated at construction**; `route_backend` fails closed to
   Null and never auto-reaches cloud). Used for narrative polish, Ask-the-AI Q&A, the executive briefing,
-  and translation — every AI-emitted figure is re-verified against engine citations
-  (`ai.citations.reattach`), so the model can never introduce an unsourced number.
+  and translation. The **narrative / briefing / translation** paths re-verify every AI-emitted figure
+  against engine citations (`ai.citations.reattach` — a numeric subset gate; note it guards *digits*,
+  not prose). **Ask-the-AI Q&A is operator-mode-gated** (ADR-0129): `strict` discards any answer
+  containing an unsourced figure, `annotate` (default) keeps the answer but flags AI-derived figures in
+  a footer, and `interpretive` returns the model's text verbatim and is *not* figure-gated (the operator
+  opts into raw analysis, with the standing "AI can err — verify against the citations" disclaimer). So
+  "no unsourced number reaches the analyst" holds for narrative/briefing and the strict/annotate Q&A
+  modes — not for interpretive.
 - **`web/app.py`** — the entire UI in one (large) file: routes + server-rendered HTML + a Jinja layout.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once

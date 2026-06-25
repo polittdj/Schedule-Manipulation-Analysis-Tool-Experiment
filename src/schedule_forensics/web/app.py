@@ -2848,7 +2848,7 @@ def create_app(
         classification: str = Form("CLASSIFIED"),
         backend: str = Form("ollama"),
         model: str = Form("llama3.1:8b"),
-        qa_mode: str = Form("interpretive"),
+        qa_mode: str = Form("annotate"),
         endpoint: str = Form("http://127.0.0.1:11434"),
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
@@ -2860,8 +2860,8 @@ def create_app(
             cls = Classification(classification)
         except ValueError:
             cls = Classification.CLASSIFIED  # unknown -> safe default
-        if qa_mode not in ("interpretive", "strict"):
-            qa_mode = "interpretive"
+        if qa_mode not in ("annotate", "strict", "interpretive"):
+            qa_mode = "annotate"
         if second_backend not in ("none", "ollama", "openai"):
             second_backend = "none"
         # generation timeout: clamp to a sane window (30s … 1h) so a big slow model can finish
@@ -8737,10 +8737,13 @@ def _settings_body(state: SessionState) -> str:
  title="LM Studio defaults to http://127.0.0.1:1234; llamafile to http://127.0.0.1:8080"></p>
 <p>AI answer mode:
 <select name=qa_mode>
-<option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model may analyze
-and derive figures grounded in the cited facts (the "AI can err" disclaimer rides every answer)</option>
+<option value=annotate{sel("annotate", cfg.qa_mode)}>Annotate (default) — the model may analyze and
+derive figures from the cited facts, but any figure the engine did not compute is flagged as
+AI-derived</option>
 <option value=strict{sel("strict", cfg.qa_mode)}>Strict — any answer containing a figure the
 engine never computed is discarded wholesale</option>
+<option value=interpretive{sel("interpretive", cfg.qa_mode)}>Interpretive — the model's text is
+shown verbatim, ungated (raw analysis; no sourced-figure guarantee — verify against the citations)</option>
 </select></p>
 <p>Cross-check second model:
 <select name=second_backend id=secondBackend>

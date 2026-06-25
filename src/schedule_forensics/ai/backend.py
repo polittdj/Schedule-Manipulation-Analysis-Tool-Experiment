@@ -45,12 +45,13 @@ class AIConfig:
     backend: str = "ollama"  # "null" | "ollama" | "openai" | "cloud"
     model: str = "llama3.1:8b"
     endpoint: str = "http://127.0.0.1:11434"
-    #: Ask-the-AI answering mode (operator order, M18): "interpretive" lets the model
-    #: compute/explain beyond the fact sheet (the standing "AI can err — verify against
-    #: citations" disclaimer rides every answer); "strict" wholesale-discards any answer
-    #: containing a figure the engine never computed. Either way the cited facts are
-    #: returned alongside, and locality (Law 1) is unaffected — this only governs prose.
-    qa_mode: str = "interpretive"  # "interpretive" | "strict"
+    #: Ask-the-AI answering mode (operator-selectable; ADR-0129). "annotate" (default) lets the
+    #: model compute/explain beyond the fact sheet but FLAGS any figure the engine never computed
+    #: in an AI-derived footer; "strict" wholesale-discards any answer containing such a figure;
+    #: "interpretive" returns the model's text verbatim, ungated (raw analysis, no figure
+    #: guarantee). Every mode shows the cited facts alongside + the "AI can err" disclaimer, and
+    #: locality (Law 1) is unaffected — this only governs prose.
+    qa_mode: str = "annotate"  # "annotate" | "strict" | "interpretive"
     #: Any OpenAI-compatible LOCAL server (LM Studio :1234, llamafile :8080 …) — usable
     #: as the primary backend ("openai") AND as the cross-check second model. Loopback
     #: is enforced at backend construction (CUIEgressError otherwise — Law 1).
