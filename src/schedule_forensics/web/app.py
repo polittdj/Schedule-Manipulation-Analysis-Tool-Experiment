@@ -3256,6 +3256,7 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
 secondary/tertiary tiers within your day-bands trace back from it — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
 filter rows, and hide completed work.</p>
+{_user_tip("Pick a tier such as <b>DRIVING</b> to fit the timeline to just that path so its bars fill the page; the data columns stay locked on the left as the timeline scrolls, and <b>View entire project</b> zooms back out to the whole trace.")}
 <details class=path-explainer><summary>Why an activity can show 0&#8209;day driving slack here but not on another view</summary>
 <p class=muted>This trace is <b>relative to the target UniqueID</b> you choose. An activity has
 <b>0 days of driving slack</b> when a slip in it would push <i>this target's</i> finish, so it sits
@@ -3650,6 +3651,7 @@ progresses. Faint markers are the prior version's forecasts.</p>
 window, the three forecast end dates, the completion rate, remaining and project duration,
 SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
 "&mdash;" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
+{_user_tip("Three independent methods (logic, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
 {_carnac_cards(carnac)}</div>
 <div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
 <p class=muted>Three independent answers to "when will it really end": the schedule's own
@@ -4462,6 +4464,7 @@ def _analysis_body(
     target_panel = _target_panel(sch, analysis, target) if target is not None else ""
     viz = f"""{target_panel}
 <div class=panel><h2>Interactive analysis</h2>
+{_user_tip("Click a column header to sort, use the per-column <b>Filter</b> dropdowns to scope the rows, and drag a column edge to resize it. The data columns stay locked on the left while the Gantt timeline scrolls.")}
 <div id=viz data-name="{_e(key)}">
 <div class="charts chart-host" id=charts></div>
 <div class=viz-controls>Driving path to target UID:
@@ -5211,6 +5214,7 @@ placeholder="UID"> <button type=submit>Focus</button>
 </form></div>"""
     return f"""
 <div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
+{_user_tip("Load two or more versions (oldest first by data date) to see how the finish, criticality and schedule quality move over time &mdash; a finish that keeps sliding right is the classic bow-wave signature.")}
 <table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>Project finish</th>
 <th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th>
 <th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th>
@@ -7828,7 +7832,12 @@ def _groups_body(
         if breakdown and breakdown in available_fields(sch)
         else ""
     )
-    return form + summary + scorecard + breakdown_html
+    tip = _user_tip(
+        "Build a filter here and <b>Apply to all pages</b> to scope <b>every</b> metric on "
+        "<b>every</b> page across all loaded files at once. Rows are AND-ed together; the values "
+        "within a row are OR-ed."
+    )
+    return tip + form + summary + scorecard + breakdown_html
 
 
 def _evolution_body(
@@ -7866,6 +7875,7 @@ project finish).</span>
         focus_form
         + f"""
 <div class=panel><h2>Critical-Path Evolution</h2>
+{_user_tip("The date axis is held fixed across versions, so the critical path visibly extends as the finish slips. Use <b>View entire project</b> to fit the whole timeline, and set a <b>target UID</b> to highlight one activity across every frame.")}
 <p class=muted>Step through the versions (oldest first by data date) to watch the critical
 path change, drawn as a <b>Gantt</b> on a date axis held fixed across every version (so the
 path visibly extends as the finish slips). Bars are colored
@@ -8567,6 +8577,7 @@ def _settings_body(state: SessionState) -> str:
 
     return f"""
 <div class=panel><h2>Local AI</h2>
+{_user_tip("The tool works fully offline with no AI. Turning on a local model only adds written narrative on top of the engine&rsquo;s already-computed, cited numbers &mdash; every AI figure is re-checked against those citations, and nothing ever leaves this machine.")}
 <p>Active backend: <b>{_e(backend.name)}</b> &middot; installed models: {model_list}
 &middot; cross-check model: <b>{second_status}</b></p>
 {status_note}
