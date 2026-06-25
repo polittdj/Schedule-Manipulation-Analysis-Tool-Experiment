@@ -101,7 +101,7 @@
 
     var cap = document.createElement("p");
     cap.className = "chart-desc";
-    cap.textContent = "Number of offending activities for each Acumen §A quality metric in " +
+    cap.textContent = "Number of offending activities for each schedule-quality metric in " +
       "this version, on a y-axis locked across every version so the bars stay comparable as " +
       "you step. The selected metric is highlighted; pick a metric or click its bar to list " +
       "the offending activities below.";

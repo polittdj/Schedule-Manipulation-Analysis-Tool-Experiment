@@ -274,7 +274,7 @@
   function run() {
     var it = (document.getElementById("ssiIters") || {}).value || "1000";
     var dist = (document.getElementById("ssiDist") || {}).value || "triangular";
-    status.textContent = "Running the SSI Monte-Carlo…";
+    status.textContent = "Running the Monte-Carlo…";
     fetch("/api/sra/ssi?iterations=" + encodeURIComponent(it) + "&distribution=" + encodeURIComponent(dist))
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {

@@ -234,7 +234,8 @@
       stt.textContent =
         "UID " + r.uid + (r.name ? " — " + r.name : "") +
         "\nSensitivity " + r.sens.toFixed(3) +
-        " · Criticality " + (Math.round(r.ci * 1000) / 10) + "% · SSI " + r.ssi.toFixed(3);
+        " · Criticality " + (Math.round(r.ci * 1000) / 10) +
+        "% · Schedule Sensitivity Index " + r.ssi.toFixed(3);
       sbar.appendChild(stt);  // shared chartframe call-out
       svg.appendChild(sbar);
       // activity label (UID + truncated name) on the left
@@ -258,11 +259,12 @@
     if (window.SFA11y) SFA11y.label(svg, "Duration-sensitivity tornado");
     box.appendChild(svg);
 
-    // the companion table (UID, name, Criticality Index %, Sensitivity, SSI)
+    // the companion table (UID, name, Criticality Index %, Sensitivity, Schedule Sensitivity Index)
     var tbl = document.createElement("table");
     var thead = document.createElement("thead");
     var htr = document.createElement("tr");
-    ["UID", "Activity", "Criticality Index", "Sensitivity", "SSI"].forEach(function (h) {
+    ["UID", "Activity", "Criticality Index", "Sensitivity", "Schedule Sensitivity Index"].forEach(
+      function (h) {
       var th = document.createElement("th");
       th.setAttribute("scope", "col");
       th.textContent = h;

@@ -56,19 +56,17 @@ def _doc(
     )
 
 
-_DCMA = (
-    "DCMA 14-Point Assessment / Acumen Fuse 'Fuse Analyst Report' (PARITY-TARGETS §B, ADR-0012)."
-)
-_SQ = "Acumen Fuse Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012)."
-_C = "Acumen Fuse baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013)."
+_DCMA = "DCMA 14-Point Assessment / reference Analyst Report (PARITY-TARGETS §B, ADR-0012)."
+_SQ = "Reference Schedule-Quality summary (PARITY-TARGETS §A, ADR-0012)."
+_C = "Reference baseline-compliance / Half-Step-Delay (PARITY-TARGETS §C, ADR-0013)."
 _EVM = "EVM performance indices (METRICS-CATALOG §3, ADR-0013)."
-_E = "Acumen Fuse Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016)."
-_SSI = "SSI MS Project add-on driving slack (SSI-DRIVING-SLACK.md, ADR-0011)."
+_E = "Reference Schedule-Network / PP & Change (PARITY-TARGETS §E, ADR-0013/0016)."
+_SSI = "Reference MS Project driving-slack add-on (ADR-0011)."
 _PBIX = (
     "Reference Power BI deck measure, reconstructed — the deck's DataModel DAX is "
     "XPress9-compressed and unreadable (M15, ADR-0030)."
 )
-_HMI = "NASA Acumen metric library ('Bible') — extracted formula, ADR-0087."
+_HMI = "NASA metric library ('Bible') — extracted formula, ADR-0087."
 
 
 METRIC_DICTIONARY: dict[str, MetricDoc] = {
@@ -309,7 +307,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA14": _doc(
         "DCMA14",
         "BEI",
-        "Baseline Execution Index (Acumen 'BEI - Value Tasks'; Normal activities only).",
+        "Baseline Execution Index (BEI - Value Tasks; Normal activities only).",
         "complete Normal tasks / Normal tasks baselined-to-finish-by-status >= 0.95",
         _DCMA,
         importance="BEI tracks throughput against the baseline: are activities being completed "
@@ -322,7 +320,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         example_fail="BEI of 0.62 -> FAIL; work is finishing far slower than baselined - an "
         "early slip signal.",
     ),
-    # --- Acumen Schedule-Quality summary ---
+    # --- Schedule-Quality summary ---
     "missing_logic": _doc(
         "missing_logic",
         "Missing Logic",
@@ -474,8 +472,9 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "baseline_start_compliance": _doc(
         "baseline_start_compliance",
         "Baseline Start Compliance",
-        "Share of start-due activities that started before their baseline FINISH (Acumen's "
-        "Half-Step-Delay definition — distinct from Started On Time, which uses baseline start).",
+        "Share of start-due activities that started before their baseline FINISH (the reference "
+        "tool's Half-Step-Delay definition — distinct from Started On Time, which uses baseline "
+        "start).",
         "count(actual start <= baseline finish) / forecast_to_be_started",
         _C,
     ),
@@ -602,7 +601,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "(prior CPM finish date) - (current CPM finish date), in days",
         _C,
     ),
-    # --- SSI driving slack ---
+    # --- Driving slack ---
     "driving_slack": _doc(
         "driving_slack",
         "Driving Slack",
@@ -780,8 +779,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         importance="CEI reads whether the team executes the plan it most recently COMMITTED to "
         "(its own forecast) — the forecast-anchored sibling of the baseline-anchored HMI.",
         indicates="A low CEI means the latest forecast is not being met; the misses are the "
-        "forecast-due activities that did not complete by the data date. Validated EXACT vs Acumen "
-        "(Large Test File v1→v2: 24/129 = 0.19).",
+        "forecast-due activities that did not complete by the data date. Validated EXACT vs the "
+        "reference tool (Large Test File v1→v2: 24/129 = 0.19).",
     ),
     "cei_milestones": _doc(
         "cei_milestones",
@@ -795,7 +794,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         importance="Forecast milestone execution per period — whether committed milestone dates "
         "hold.",
         indicates="A forecast-due milestone that did not complete by the data date is a citable "
-        "slip against the team's own latest plan (validated vs Acumen: 1/6 = 0.17).",
+        "slip against the team's own latest plan (validated vs the reference tool: 1/6 = 0.17).",
     ),
     "cei_task_starts": _doc(
         "cei_task_starts",
@@ -806,8 +805,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         _HMI,
         importance="The start-side companion to CEI — are the activities the team planned to kick "
         "off this period actually starting?",
-        indicates="A low value means planned starts are slipping (validated vs Acumen: 12/117 = "
-        "0.10).",
+        indicates="A low value means planned starts are slipping (validated vs the reference tool: "
+        "12/117 = 0.10).",
     ),
     "cei_critical": _doc(
         "cei_critical",
@@ -819,7 +818,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         importance="Execution on the critical path is what moves the finish; this isolates CEI to "
         "the activities that matter most.",
         indicates="A low Critical CEI means the driving work is not being executed to plan "
-        "(validated vs Acumen: 0/3).",
+        "(validated vs the reference tool: 0/3).",
     ),
     "cei_tasks_adjusted": _doc(
         "cei_tasks_adjusted",
@@ -831,8 +830,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         _HMI,
         importance="Rewards finishing ahead of the committed forecast, not just on time — a fuller "
         "picture of execution than the plain CEI.",
-        indicates="Higher than the plain CEI when work is being pulled forward (validated vs "
-        "Acumen: 28/129 = 0.22).",
+        indicates="Higher than the plain CEI when work is being pulled forward (validated vs the "
+        "reference tool: 28/129 = 0.22).",
     ),
     "fei_starts": _doc(
         "fei_starts",
@@ -844,8 +843,8 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         _HMI,
         importance="FEI reads the to-go plan vs the baseline; above 1.0 means more remaining work "
         "is forecast than baselined — a to-go bow wave being pushed into the future.",
-        indicates="A rising FEI is work piling into the remaining window (validated vs Acumen on "
-        "the Large Test File: ~2.78; start numerator EXACT).",
+        indicates="A rising FEI is work piling into the remaining window (validated vs the "
+        "reference tool on the Large Test File: ~2.78; start numerator EXACT).",
     ),
     "fei_finish": _doc(
         "fei_finish",
@@ -856,7 +855,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         _HMI,
         importance="The finish-side companion to FEI (Starts) — to-go finish load vs baseline.",
         indicates="Above 1.0 = more finishes forecast in the remaining window than baselined "
-        "(validated vs Acumen: ~2.89).",
+        "(validated vs the reference tool: ~2.89).",
     ),
     "bri_cumulative": _doc(
         "bri_cumulative",
@@ -868,7 +867,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         importance="BRI asks whether the baseline was realistic / the team is executing the plan; "
         "the baselined-due activities that did not finish are the misses.",
         indicates="A low BRI means the baseline placed work to finish by now that did not — slip "
-        "against the plan (validated EXACT vs Acumen: 0.51, denominator 1228 EXACT).",
+        "against the plan (validated EXACT vs the reference tool: 0.51, denominator 1228 EXACT).",
     ),
     "float_ratio": _doc(
         "float_ratio",
@@ -884,7 +883,7 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         indicates="A very low ratio is a schedule running out of room (delay risk); an excessively "
         "high ratio flags poor logic — missing links / out-of-sequence work inflating float. "
         "Validated on the Large Test File: the population's average remaining duration (18.4 "
-        "working days) matches Acumen's reported Avg. Remaining Duration (~18).",
+        "working days) matches the reference tool's reported Avg. Remaining Duration (~18).",
     ),
     "float_ratio_aggregate": _doc(
         "float_ratio_aggregate",
