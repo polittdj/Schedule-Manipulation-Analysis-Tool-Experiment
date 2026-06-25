@@ -82,6 +82,9 @@
 /* SSI-style path-analysis workspace: data grid left, scalable timeline right */
 .path-view { overflow-x: auto; margin-top: 10px; }
 .path-grid td, .path-grid th { white-space: nowrap; }
+/* the MS-Project per-column filter row under the path headers */
+.path-grid .filter-row td { padding: 1px 3px; }
+.path-grid .filter-row .sf-filter-btn { padding: 1px 6px; font-size: 11px; }
 .path-grid td.pv-name { white-space: normal; word-break: break-word; min-width: 200px; max-width: 360px; }
 .path-timeline, .path-timeline-head { padding: 2px 0 !important; }
 .path-track, .path-scale { position: relative; height: 16px; background: var(--gantt-canvas); }
@@ -115,7 +118,7 @@
    light palette through the cascade, and a white grid background (matching the bar canvas) makes the
    whole chart one continuous light surface. Only the Gantt charts change; the rest of the UI keeps
    its theme. Summary-task names are forced dark + bold. */
-.gantt-grid, .path-view, .gantt-scroll, .sra-grid-host {
+.gantt-grid, .path-view, .gantt-scroll, .sra-grid-host, .evo-gantt {
   --bg: #f2f5f9; --panel: #ffffff; --ink: #1a2330; --muted: #5a6878; --accent: #0b6bcb;
   --ok: #17803a; --warn: #996b00; --bad: #cf222e; --line: #d6dde7;
   --field-bg: #eef1f6; --hover: #eef2f7; --focus: #8a3fc4;
@@ -124,6 +127,9 @@
   color: var(--ink);
 }
 .gantt-scroll, .path-view { border-radius: 4px; }
+/* the Critical-Path Evolution is an SVG Gantt — give its plot the same white MS-Project canvas */
+.evo-gantt { border: 1px solid var(--line); border-radius: 4px; padding: 2px; }
+.evo-gantt svg { background: var(--gantt-canvas); display: block; }
 /* summary rows: dark + bold on every Gantt grid (the activity grid, the SSI grid, the trace) */
 .gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }
 .gantt-row.sum .gantt-name, .gantt-row.summary .gantt-name { color: var(--sum-ink); }

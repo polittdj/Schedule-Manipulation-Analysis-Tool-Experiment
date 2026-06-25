@@ -3161,6 +3161,7 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
+<button id=pathFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 </div>
 <div id=pathFields class=muted></div>
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
@@ -6575,6 +6576,7 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <b>Save grid</b>. Summary rows are bold and not editable.</p>
 <div class=viz-controls>
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
+<button id=ssiGridFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 <button id=ssiGridReload type=button>Refresh grid</button>
 <button id=ssiGridSave type=button>Save grid</button>
 <span id=ssiGridStatus class=muted aria-live=polite></span></div>
@@ -7094,6 +7096,7 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
 <span class=muted style="margin-left:1em">Zoom:</span>
 <button id=dpZoomOut type=button title="zoom out">&minus;</button>
 <button id=dpZoomIn type=button title="zoom in">&plus;</button>
+<button id=dpFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 </div>
 <div id=dpChart class=path-view></div></div>
 <script type="application/json" id=dpData>{blob}</script>
@@ -7413,7 +7416,7 @@ visible.</p>
 <button id=evoZoomIn type=button title="zoom in">&plus;</button>
 <button id=evoPanL type=button title="pan earlier">&#9664;</button>
 <button id=evoPanR type=button title="pan later">&#9654;</button>
-<button id=evoZoomReset type=button>reset</button>
+<button id=evoZoomReset type=button title="Auto-scale to show the whole project">View entire project</button>
 </div>
 <div class=viz-controls>
 <label>Filter the path:

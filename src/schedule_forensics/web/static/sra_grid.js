@@ -18,9 +18,25 @@
   var dataDate = null;
   var pending = {}; // uid -> {uid, factor?, bc_days?, wc_days?, focus?}
 
+  var forcedPx = null; // set by "View entire project"; cleared when the zoom slider is nudged
   function pxPerDay() {
+    if (forcedPx && forcedPx > 0) return forcedPx;
     var v = zoomEl ? parseFloat(zoomEl.value) : 1.4;
     return isNaN(v) || v <= 0 ? 1.4 : v;
+  }
+  // auto-scale the timeline so the whole project span fits the visible width (no horizontal scroll)
+  function fitToProject() {
+    var t0 = null, t1 = null;
+    rows.forEach(function (r) {
+      if (r.start) { var s = Date.parse(r.start); if (!isNaN(s)) t0 = t0 === null ? s : Math.min(t0, s); }
+      if (r.finish) { var f = Date.parse(r.finish); if (!isNaN(f)) t1 = t1 === null ? f : Math.max(t1, f); }
+    });
+    if (dataDate) { var a = Date.parse(dataDate); if (!isNaN(a)) { t0 = t0 === null ? a : Math.min(t0, a); t1 = t1 === null ? a : Math.max(t1, a); } }
+    if (t0 === null || t1 === null) return;
+    var days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
+    var avail = Math.max(240, (host ? host.clientWidth : 1100) - 520);
+    forcedPx = Math.max(0.02, avail / days);
+    render();
   }
 
   // Time axis from rows carrying ISO start/finish, padded two days each side and stretched to the
@@ -228,7 +244,9 @@
   if (saveBtn) saveBtn.addEventListener("click", save);
   var reloadBtn = document.getElementById("ssiGridReload");
   if (reloadBtn) reloadBtn.addEventListener("click", load);
-  if (zoomEl) zoomEl.addEventListener("input", function () { if (rows.length) render(); });
+  if (zoomEl) zoomEl.addEventListener("input", function () { forcedPx = null; if (rows.length) render(); });
+  var fitBtn = document.getElementById("ssiGridFit");
+  if (fitBtn) fitBtn.addEventListener("click", function () { if (rows.length) fitToProject(); });
 
   load();
 })();
