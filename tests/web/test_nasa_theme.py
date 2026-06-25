@@ -31,6 +31,11 @@ def test_globe_js_is_served_and_local(client: TestClient) -> None:
     assert r.status_code == 200
     body = r.text
     assert "canvas" in body and "ai-thinking" in body  # draws the globe; reads the AI-status class
+    # PERF: the globe must NOT animate perpetually (a forever-rAF pegged a CPU core on every page
+    # and froze input on heavy pages). It spins only while the AI thinks, and pauses when hidden.
+    assert 'host.classList.contains("ai-thinking")' in body  # the loop gate
+    assert "document.hidden" in body  # paused when the tab is not visible
+    assert "visibilitychange" in body  # redraw/resume when the tab returns
     # air-gap: the only absolute URL allowed is the SVG XML namespace (never dereferenced)
     externals = [u for u in re.findall(r"https?://[^\s\"'<>]+", body) if "www.w3.org" not in u]
     assert not externals, externals

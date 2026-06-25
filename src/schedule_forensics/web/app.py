@@ -6675,11 +6675,11 @@ percentage impacts <b>scale with task size</b> (a 20% slip is 20% on a 10-day or
 risk mapped to several tasks <b>correlates</b> them automatically (the shared-driver correlation, no
 coefficient needed); a clean project-finish confidence curve.</p>
 <p><b>Cons.</b> Oriented to the <b>project</b> finish rather than a chosen milestone; multiplicative
-thinking is less intuitive than "add N days"; the auto 90/100/110 default is a <b>screening placeholder,
-not SME-validated</b>.</p>
+thinking is less intuitive than "add N days"; the auto 90&ndash;100&ndash;110 default is a
+<b>screening default, not SME-validated</b> (supply elicited ranges for a real run).</p>
 <p><b>When to use.</b> You want the classic risk-driver Monte-Carlo for the overall project finish, with
 <b>percentage</b> impacts and automatic shared-driver correlation.</p>
-<p class=muted><b>Example.</b> Keep the global 90/100/110, add a risk "Permit delay" 40% likely /
+<p class=muted><b>Example.</b> Keep the global 90&ndash;100&ndash;110, add a risk "Permit delay" 40% likely /
 100&ndash;120&ndash;150% on the permit tasks &rarr; the S-curve shows project-finish confidence and the
 risk-driver tornado ranks each risk by the mean slip it causes.</p></details>
 <details class=explainer><summary><b>JCL (Joint Confidence Level)</b> &mdash; why cost+schedule is a separate thing</summary>
