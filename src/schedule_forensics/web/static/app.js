@@ -371,6 +371,10 @@
       tr.appendChild(el("td", { class: "muted", text: "No activities match the filters." }));
       tbody.appendChild(tr);
     }
+    // re-pin the frozen data columns once the new body rows exist (only when the table is already in
+    // the DOM — the initial renderGrid freezes after it appends the table)
+    const tbl = tbody.parentNode;
+    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(tbl);
   }
 
   function renderGrid() {
@@ -424,6 +428,8 @@
     grid.innerHTML = "";
     grid.appendChild(table);
     if (window.SFColResize) SFColResize.attach(table, "analysis"); // MS-Project drag-to-resize columns
+    // lock the data columns so they stay visible as the wide timeline scrolls left↔right
+    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
   }
 
   function drill(act) {

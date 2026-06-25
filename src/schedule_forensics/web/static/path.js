@@ -33,8 +33,14 @@
   var data = null; // last /api/driving payload
   var pathTierSel = null; // checklist selection of tiers to show (null = all)
   var colFilters = {}; // MS-Project per-column filter: field key -> Set|null (null = unfiltered)
-  var forcedPx = null; // set by "View entire project"; cleared by the zoom slider
+  // Timeline span + scale state. By default the axis fits the SELECTED tier (the path you picked) and
+  // the px auto-scales to fill the page next to the frozen columns; "View entire project" widens the
+  // axis to every traced activity; nudging the zoom slider switches to a fixed px (wide → scroll).
+  var scopeAll = false; // true = span every path activity, not just the selected tier
+  var fitFill = true; // true = auto-scale px so the span fills the page width; the zoom slider clears it
   var lastAxis = null, lastGrid = null, lastOn = null; // header built once; body repaints on filter
+  var lastTable = null, lastScaleTh = null; // refs so a tier/zoom reflow rebuilds only the timeline
+  var lastFrozenWidth = 0, refitting = false; // measured data-column width → the timeline fills the rest
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -77,25 +83,68 @@
     });
   }
 
-  // pixels per calendar day: the "View entire project" fit overrides the slider until it's nudged
-  function pxPerDay() {
-    if (forcedPx && forcedPx > 0) return forcedPx;
-    var v = Number($("pathZoom").value);
-    return v > 0 ? v : 8;
+  // The width left for the timeline once the (measured) data columns are subtracted — so the bars
+  // fill the page right up against the frozen columns. lastFrozenWidth is measured after each paint;
+  // 360 is the first-paint estimate before the columns are laid out.
+  function availWidth() {
+    var vw = view ? view.clientWidth : 960;
+    return Math.max(240, vw - (lastFrozenWidth || 360) - 18);
   }
-  function fitToProject() {
-    if (!data) return;
+
+  // The rows that DEFINE the timeline span: the selected tier when one is picked (so choosing a path
+  // fits the axis to it and the bars fill the page next to the columns) — else every traced activity.
+  // "View entire project" (scopeAll) forces the full set.
+  function axisRows() {
+    if (!data) return [];
+    if (!scopeAll && pathTierSel) {
+      var sub = data.rows.filter(function (r) { return pathTierSel.has(r.tier); });
+      if (sub.length) return sub; // fall through to all rows if the tier has nothing dated
+    }
+    return data.rows;
+  }
+
+  // Build the px-per-day axis from axisRows(): a small LEFT margin keeps the first bar close to the
+  // columns; a larger RIGHT margin keeps the gold data-date line off the right border. In fill mode
+  // the px auto-scales so the whole span fits the page; the zoom slider switches to a fixed px (wide
+  // → horizontal scroll, with the columns frozen).
+  function buildAxis() {
     var t0 = null, t1 = null;
-    data.rows.forEach(function (r) {
-      if (r.start) t0 = Math.min(t0 === null ? Infinity : t0, Date.parse(r.start));
-      if (r.finish) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(r.finish));
-    });
+    function scan(list) {
+      list.forEach(function (r) {
+        if (r.start) t0 = Math.min(t0 === null ? Infinity : t0, Date.parse(r.start));
+        if (r.finish) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(r.finish));
+      });
+    }
+    scan(axisRows());
+    if (t0 === null || t1 === null) scan(data.rows); // a tier with no dated rows → fall back to all
     if (data.data_date) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(data.data_date));
-    if (t0 === null || t1 === null) return;
-    var days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
-    var avail = Math.max(240, (view ? view.clientWidth : 960) - 380);
-    forcedPx = Math.max(0.02, avail / days);
-    render();
+    if (t0 === null || t1 === null) return null;
+    var span = Math.max(1, (t1 - t0) / DAY_MS);
+    t0 -= 2 * DAY_MS; // bars sit close to the data columns
+    t1 += Math.max(4, Math.round(span * 0.04)) * DAY_MS; // breathing room past the data-date line
+    var spanDays = Math.max(1, (t1 - t0) / DAY_MS);
+    var slider = Number($("pathZoom").value);
+    var px = fitFill ? Math.max(0.02, availWidth() / spanDays) : (slider > 0 ? slider : 8);
+    var width = Math.max(120, Math.round(spanDays * px));
+    return { t0: t0, t1: t1, width: width, x: function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); } };
+  }
+
+  // "View entire project": widen the axis to every path activity and auto-scale it to fit the page.
+  function fitToProject() {
+    scopeAll = true;
+    fitFill = true;
+    reflow();
+  }
+
+  // Once the data columns are laid out, refit the fill width to their REAL measured width so the
+  // timeline uses the exact remaining page space (operator: "utilize the entire page space"). Runs
+  // at most once per render via the refitting guard.
+  function refitToColumns(assumed) {
+    if (fitFill && !refitting && Math.abs(lastFrozenWidth - assumed) > 6) {
+      refitting = true;
+      reflow();
+      refitting = false;
+    }
   }
 
   // --- columns dropdown (MS-Project-style "add/remove columns") ---------------------
@@ -172,27 +221,20 @@
   }
 
   // --- the two-pane grid + scalable timeline ----------------------------------------
-  // render() builds the header (column titles + the MS-Project per-column filter row) and the date
-  // axis once; paintRows() repopulates only the body, so toggling a filter checkbox or hide-completed
-  // keeps the open filter dropdown in place. The axis spans ALL rows so it is stable as filters change.
+  // render() builds the whole table (column titles + the MS-Project per-column filter row + the date
+  // axis) and stores refs; reflow() rebuilds ONLY the timeline (axis scale + bars) in place when the
+  // span changes (tier / zoom / View entire project), leaving the open dropdowns alone; paintRows()
+  // repopulates only the body for a row filter. The axis fits axisRows() (the selected tier, else
+  // every activity) so the chosen path fills the page next to the frozen columns.
   function render() {
     if (window.SFChecklist) SFChecklist.close();
     view.textContent = "";
     if (!data) { $("pathStatus").textContent = ""; return; }
     var on = FIELDS.filter(function (f) { return f.on; });
     lastOn = on;
-    var px = pxPerDay();
-    var t0 = null, t1 = null;
-    data.rows.forEach(function (r) {
-      if (r.start) t0 = Math.min(t0 === null ? Infinity : t0, Date.parse(r.start));
-      if (r.finish) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(r.finish));
-    });
-    if (data.data_date) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(data.data_date));
-    if (t0 === null || t1 === null) { paintStatus([]); return; }
-    t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
-    var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
-    var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); };
-    var axis = { t0: t0, t1: t1, width: width, x: x };
+    var assumed = lastFrozenWidth;
+    var axis = buildAxis();
+    if (!axis) { paintStatus([]); return; }
     lastAxis = axis;
     lastGrid = SFGantt.gridLines(axis);
 
@@ -205,6 +247,7 @@
     thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
     head.appendChild(thTime);
     thead.appendChild(head);
+    lastScaleTh = thTime;
 
     // MS-Project per-column filter dropdowns (each lists that column's distinct values)
     var filterRow = el("tr", { class: "filter-row" });
@@ -228,8 +271,25 @@
     var tbody = el("tbody", { id: "pathBody" });
     table.appendChild(tbody);
     view.appendChild(table);
+    lastTable = table;
     if (window.SFColResize) SFColResize.attach(table, "path"); // MS-Project drag-to-resize columns
     paintRows();
+    refitToColumns(assumed);
+  }
+
+  // Rebuild only the timeline scale + bars (no header teardown, no SFChecklist.close) so selecting a
+  // tier or zooming re-fits the span without closing the tier / filter dropdowns mid-interaction.
+  function reflow() {
+    if (!data || !lastTable || !lastScaleTh) { render(); return; }
+    var assumed = lastFrozenWidth;
+    var axis = buildAxis();
+    if (!axis) { paintStatus([]); return; }
+    lastAxis = axis;
+    lastGrid = SFGantt.gridLines(axis);
+    lastScaleTh.textContent = "";
+    lastScaleTh.appendChild(SFGantt.buildTierScale(axis, "path-scale", data.data_date));
+    paintRows();
+    refitToColumns(assumed);
   }
 
   function paintRows() {
@@ -294,6 +354,11 @@
         el("tr", {}, [el("td", { class: "muted", text: "No activities match the filters." })])
       );
     }
+    // pin the data columns to the left so they stay put as the wide timeline scrolls; the returned
+    // total width drives the fill-to-page refit in render()/reflow()
+    if (window.SFGantt && SFGantt.freezeColumns && lastTable) {
+      lastFrozenWidth = SFGantt.freezeColumns(lastTable) || lastFrozenWidth;
+    }
   }
 
   // --- data loading -----------------------------------------------------------------
@@ -314,6 +379,8 @@
         syncCustomColumns();
         renderToggles();
         updateExportLinks();
+        scopeAll = false; // a fresh trace fits the selected tier, not the whole project
+        fitFill = true; // and auto-scales to the page until the zoom slider is nudged
         render();
       })
       .catch(function () { $("pathStatus").textContent = "Trace failed."; });
@@ -328,13 +395,14 @@
       selected: null,
       label: "Tier",
       title: "Show driving-path tiers",
-      onChange: function (s) { pathTierSel = s; paintRows(); },
+      // selecting a tier IS "selecting a path": re-fit the timeline to it so its bars fill the page
+      onChange: function (s) { pathTierSel = s; scopeAll = false; fitFill = true; reflow(); },
     }));
   }
   $("pathRun").addEventListener("click", trace);
   $("pathHideDone").addEventListener("change", paintRows);
   $("pathFilter").addEventListener("input", paintRows);
-  $("pathZoom").addEventListener("input", function () { forcedPx = null; render(); });
+  $("pathZoom").addEventListener("input", function () { fitFill = false; reflow(); });
   var pathFit = $("pathFit");
   if (pathFit) pathFit.addEventListener("click", fitToProject);
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately

@@ -109,6 +109,7 @@ cursor:pointer;text-decoration:underline}
   .panel{border:1px solid #bbb;box-shadow:none}
   .cf-scroll,.gantt-scroll,#grid,.path-view,.evo-gantt,#forecastRuler,.sra-grid-host{overflow:visible!important;max-height:none!important}
   .gantt-grid thead{position:static!important}
+  .gantt-grid .sf-frozen-col{position:static!important;left:auto!important}
   @page{margin:14mm}
 }
 

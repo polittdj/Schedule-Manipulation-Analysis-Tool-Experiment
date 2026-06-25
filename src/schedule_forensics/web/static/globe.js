@@ -148,26 +148,35 @@
   // run the animation loop WHILE the AI is generating (the host carries .ai-thinking); when idle we
   // draw one static frame and stop, and we never animate while the tab is hidden. A tiny observer on
   // the host's class restarts the spin the instant ask.js flags the model as thinking.
-  var rot = 0.6, last = 0, running = false;
+  //
+  // Asking the AI turns .ai-thinking ON, so the spin runs for the WHOLE generation — minutes with a
+  // big local model. At 60 fps the stroke-heavy redraw still froze the SRA page for that whole span
+  // (operator: "Ask the AI freezes on the SRA page"). So the redraw is throttled to ~15 fps: each
+  // frame schedules the next one FRAME_MS later, so the spin never monopolizes the main thread on a
+  // heavy page while the model thinks. A slow rotation still reads clearly as "the AI is working".
+  var FRAME_MS = 66; // ~15 fps: enough motion to signal activity, ~4x less CPU than an unthrottled rAF
+  var rot = 0.6, last = 0, running = false, raf = 0;
   function tick(now) {
+    raf = 0;
     if (document.hidden || !host.classList.contains("ai-thinking")) {
       running = false;
       render(rot, false); // settle to a static, idle globe
       return;
     }
     if (!last) last = now;
-    var dt = Math.min(80, now - last);
+    var dt = Math.min(120, now - last);
     last = now;
     if (!reduce) rot += 0.0011 * dt; // radians/ms — spins while the AI works
     render(rot, true);
-    window.requestAnimationFrame(tick);
+    // schedule the next redraw FRAME_MS out (throttle) rather than back-to-back at the display rate
+    setTimeout(function () { raf = window.requestAnimationFrame(tick); }, FRAME_MS);
   }
   function start() {
     if (running || reduce || document.hidden) return;
     if (!host.classList.contains("ai-thinking")) { render(rot, false); return; }
     running = true;
     last = 0;
-    window.requestAnimationFrame(tick);
+    raf = window.requestAnimationFrame(tick);
   }
   render(rot, false); // initial static draw (idle); the loop only spins up while the AI works
   // restart the spin when ask.js toggles .ai-thinking, and redraw/resume when the tab returns

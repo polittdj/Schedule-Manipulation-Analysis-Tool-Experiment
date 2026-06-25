@@ -157,6 +157,8 @@
     host.innerHTML = "";
     host.appendChild(table);
     if (window.SFColResize) SFColResize.attach(table, "ssiGrid"); // MS-Project drag-to-resize columns
+    // lock the data columns so they stay visible as the wide timeline scrolls left↔right
+    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
   }
 
   function load() {
