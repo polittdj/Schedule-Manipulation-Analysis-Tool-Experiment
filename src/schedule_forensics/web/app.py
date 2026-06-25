@@ -208,7 +208,12 @@ from schedule_forensics.reports.tables import (
 )
 from schedule_forensics.reports.xlsx import render_xlsx
 from schedule_forensics.web import i18n
-from schedule_forensics.web.help import METRIC_DICTIONARY, reliability_dimension
+from schedule_forensics.web.help import (
+    METRIC_DICTIONARY,
+    field_help_payload,
+    field_or_metric_doc,
+    reliability_dimension,
+)
 
 logger = logging.getLogger("schedule_forensics.web")
 
@@ -3078,8 +3083,8 @@ of float (critical or negative), under 5, and under 10 working days &mdash; cumu
 this schedule's calendar. A swelling low-float band is the early warning that the schedule is
 losing its ability to absorb slips.</p>
 <table><tr><th scope=col></th><th scope=col>0 days</th><th scope=col>&lt; 5 days</th><th scope=col>&lt; 10 days</th></tr>
-<tr><th scope=col>Total float</th>{cell("float_total_0")}{cell("float_total_lt5")}{cell("float_total_lt10")}</tr>
-<tr><th scope=col>Free float</th>{cell("float_free_0")}{cell("float_free_lt5")}{cell("float_free_lt10")}</tr>
+<tr><th scope=col class=metric-th>{_metric_help_cell("Total float", "total_float")}</th>{cell("float_total_0")}{cell("float_total_lt5")}{cell("float_total_lt10")}</tr>
+<tr><th scope=col class=metric-th>{_metric_help_cell("Free float", "free_float")}</th>{cell("float_free_0")}{cell("float_free_lt5")}{cell("float_free_lt10")}</tr>
 </table></div>"""
 
 
@@ -4268,7 +4273,7 @@ def _metric_help_cell(label: str, metric_id: str, *, align: str = "left") -> str
     what it indicates. Falls back to the plain label when the metric isn't documented. Reuses the
     DCMA tooltip styling; wrap the result in a positioned cell (``<th class=metric-th>``). ``align``
     'right' anchors the pop-out to the cell's right edge so a wide table's right columns don't clip."""
-    doc = METRIC_DICTIONARY.get(metric_id)
+    doc = field_or_metric_doc(metric_id)
     if doc is None:
         return _e(label)
     tip_id = f"mh-{_e(metric_id)}"
@@ -4999,7 +5004,7 @@ def _compare_body(
     return f"""
 <div class=panel><h2>Version trend &mdash; {_e(prior.source_file or "prior")} &rarr; {_e(current.source_file or "current")}</h2>
 <p class=muted>Versions are ordered by data date (oldest first); the trend reads prior &rarr; current.</p>
-<table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col>Completed</th><th scope=col>In&nbsp;progress</th><th scope=col>Critical</th></tr>{trend_rows}</table>
+<table><tr><th scope=col>Version</th><th scope=col>Project finish</th><th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th><th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th><th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table>
 {impact_html}</div>
 <div class=panel><h2>Manipulation-trend signals</h2>
 <table><tr><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
@@ -5087,8 +5092,10 @@ placeholder="UID"> <button type=submit>Focus</button>
 </form></div>"""
     return f"""
 <div class=panel><h2>Version trend &mdash; {len(schedules)} versions, oldest first (by data date)</h2>
-<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>Project finish</th><th scope=col>Completed</th>
-<th scope=col>In&nbsp;progress</th><th scope=col>Critical</th></tr>{trend_rows}</table>
+<table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>Project finish</th>
+<th scope=col class=metric-th>{_metric_help_cell("Completed", "completed")}</th>
+<th scope=col class=metric-th>{_metric_help_cell("In progress", "in_progress")}</th>
+<th scope=col class=metric-th>{_metric_help_cell("Critical", "critical")}</th></tr>{trend_rows}</table>
 <p>Net Finish Impact across the series: <b class={cls}>{days:+d} calendar days</b>
 &mdash; the project finish moved {word} between the first and last version.</p></div>
 {focus_form}{focus_panel}
@@ -5574,8 +5581,10 @@ def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
         )
     return (
         "<table><thead><tr><th scope=col>UID</th><th scope=col>Activity</th>"
-        "<th scope=col>Optimistic (d)</th><th scope=col>Most-likely (d)</th>"
-        "<th scope=col>Pessimistic (d)</th><th scope=col></th></tr></thead><tbody>"
+        f"<th scope=col class=metric-th>{_metric_help_cell('Optimistic (d)', 'optimistic_duration')}</th>"
+        f"<th scope=col class=metric-th>{_metric_help_cell('Most-likely (d)', 'most_likely_duration')}</th>"
+        f"<th scope=col class=metric-th>{_metric_help_cell('Pessimistic (d)', 'pessimistic_duration')}</th>"
+        "<th scope=col></th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table>"
         + '<form action="/sra/risk" method=post class=navform style="margin-top:8px">'
@@ -6471,6 +6480,23 @@ def _ssi_panel(st: SessionState) -> str:
     """The SSI Schedule Risk & Opportunity Analysis controls (ADR-0123): focus event, Risk Factors
     table + per-task ranking + auto-calc, occurrence/correlation run options, the risk register, and
     the run/sensitivity buttons feeding ``/api/sra/ssi`` and ``/api/sra/oat`` (run off page-load)."""
+    # field help for the JS-rendered SRA tables (run results + OAT sensitivity) — same hover call-out
+    field_help_json = json.dumps(
+        field_help_payload(
+            (
+                "risk_ranking_factor",
+                "bc_duration",
+                "wc_duration",
+                "ml_duration",
+                "opportunity_accelerate",
+                "risk_of_delay",
+                "total_sensitivity",
+                "deterministic_finish",
+                "mean_finish",
+                "std_dev_finish",
+            )
+        )
+    ).replace("<", "\\u003c")
     factor_rows = "".join(
         f"<tr><td>{f}</td>"
         f'<td><input type=number name=sub{f} min=0 max=100 step=1 value="{s:g}" style="width:60px"></td>'
@@ -6576,6 +6602,7 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <a class=btn href="/export/docx/sra" title="A full PM-level SRA report: summary, S-curve, distribution, sensitivity tornado, risk register, and the 5x5 matrices as embedded graphics.">Download SRA report (Word)</a>
 <a class=btn href="/export/xlsx/sra-registry">Download risk registry (Excel)</a>
 <a class=btn href="/export/docx/sra-registry">Risk registry (Word)</a></div>
+<script>window.SF_FIELD_HELP = {field_help_json};</script>
 <script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
 <script src="/static/sra_grid.js"></script></div>"""
 
