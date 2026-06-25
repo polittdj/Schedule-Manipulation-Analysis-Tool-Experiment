@@ -219,6 +219,7 @@ _LAYOUT = Template(
 <script src="/static/theme.js"></script>
 <script src="/static/checklist.js"></script>
 <script src="/static/gantt.js"></script>
+<script src="/static/colresize.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>

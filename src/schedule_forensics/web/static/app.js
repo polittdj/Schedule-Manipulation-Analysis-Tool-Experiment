@@ -380,6 +380,7 @@
     renderBody(tbody, fields, axis, gridLns);
     grid.innerHTML = "";
     grid.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "analysis"); // MS-Project drag-to-resize columns
   }
 
   function drill(act) {

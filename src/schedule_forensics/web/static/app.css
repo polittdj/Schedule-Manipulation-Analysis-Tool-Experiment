@@ -518,3 +518,16 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .nm-leg-item { font-size: 10px; color: var(--ink); display: inline-flex; align-items: center; }
 .nm-swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 3px;
   vertical-align: middle; }
+
+/* MS-Project-style draggable column resizing (window.SFColResize). A thin grab handle on each data
+   column header; the table switches to fixed layout so dragging one column reflows only its own data
+   (names wrap, the short fixed columns clip with an ellipsis). The scalable timeline column is left
+   untouched. */
+.col-rsz { position: absolute; top: 0; right: 0; width: 7px; height: 100%; cursor: col-resize;
+  user-select: none; touch-action: none; z-index: 3; }
+.col-rsz:hover { background: var(--accent); opacity: .55; }
+.col-resizable { width: auto; }
+.col-resizable td, .col-resizable th { overflow: hidden; text-overflow: ellipsis; }
+.col-resizable td.name-cell, .col-resizable th { white-space: normal; word-break: break-word; }
+.col-resizable td:not(.name-cell):not(.g-cell) { white-space: nowrap; }
+.col-resizable td.g-cell { overflow: visible; }
