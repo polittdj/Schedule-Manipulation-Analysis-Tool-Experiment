@@ -116,6 +116,26 @@ def test_all_table_gantts_have_resizable_columns(client: TestClient) -> None:
     assert 'el("thead")' in client.get("/static/driving_path.js").text
 
 
+def test_main_grid_has_msproject_find_outline_and_bar_dates(client: TestClient) -> None:
+    """Operator: mirror MS Project on the activity Gantt — a Find-a-UID box that snaps to the row,
+    an outline-level picker, a 'dates on bars' toggle, and always-visible bold summary tasks with a
+    distinct summary bar."""
+    page = client.get("/analysis/Project5").text
+    for cid in ("id=gridFind", "id=gridOutline", "id=gridBarDates"):
+        assert cid in page, cid
+    js = client.get("/static/app.js").text
+    assert "function findUid" in js and "scrollIntoView" in js  # snap to the UID's row
+    assert "function populateOutline" in js and "maxOutline" in js  # outline-level picker
+    assert "barDates" in js and "function shortDate" in js  # dates on the bars
+    assert 'tr.setAttribute("data-uid"' in js  # rows carry their UID for Find
+    # summaries are ALWAYS shown (WBS context); the outline-level picker collapses depth
+    assert "act.is_summary || rowMatches(act, fields)" in js
+    css = client.get("/static/app.css").text
+    assert ".g-barlabel" in css  # the on-bar date labels
+    assert ".g-bar.g-sum::before, .g-bar.g-sum::after" in css  # MS-Project summary end-caps
+    assert "#grid tr.row-found td" in css  # the Find highlight
+
+
 def _evolution_page(client: TestClient) -> str:
     """The evolution view needs two versions to render its animated controls; load a second
     version (a copy is enough to exercise the control markup) and return the page body."""

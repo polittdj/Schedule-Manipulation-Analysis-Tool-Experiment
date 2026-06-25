@@ -50,9 +50,20 @@
 .g-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; background: var(--accent); }
 .g-bar.g-crit { background: var(--bad); }
 .g-bar.g-sum { top: 6px; height: 4px; background: var(--gantt-sum); border-radius: 1px; }
+/* MS-Project summary bar: a thin dark bar with downward end-caps (the WBS "bracket" look) */
+.g-bar.g-sum::before, .g-bar.g-sum::after {
+  content: ""; position: absolute; top: 0; border-style: solid; border-width: 5px 3px 0;
+  border-color: var(--gantt-sum) transparent transparent;
+}
+.g-bar.g-sum::before { left: 0; } .g-bar.g-sum::after { right: 0; }
 .g-done { height: 100%; background: var(--gantt-done); border-radius: 3px 0 0 3px; }
 .g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--gantt-ms); transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
+/* MS-Project "dates on bars": compact start/finish text at the ends of each bar / milestone */
+.g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+.g-barlabel-s { transform: translateX(-100%); padding-right: 3px; }
+/* Find-a-UID lands the row here and keeps it highlighted until the next search */
+#grid tr.row-found td { background: #fff3b0; }
 #grid tr.sum td { color: var(--sum-ink); font-weight: 600; }
 #grid .filter-row td { padding: 2px 4px; }
 #grid .filter-row input { width: 100%; min-width: 56px; font-size: 12px; padding: 3px 6px; }

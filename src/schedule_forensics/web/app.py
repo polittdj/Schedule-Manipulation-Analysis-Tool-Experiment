@@ -4358,7 +4358,11 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
 <label>Scale <input id=vizZoom type=range min=2 max=40 value=8 title="pixels per day — drag to zoom both timelines"></label>
-<button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button></div>
+<button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
+<label>Find UID <input id=gridFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<span id=gridFindStatus class=muted aria-live=polite></span>
+<label>Outline <select id=gridOutline title="Show tasks up to this outline level (like MS Project)"></select></label>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=gridBarDates type=checkbox> dates on bars</label></div>
 <div id=gantt></div>
 <h3>Activities &amp; Gantt <span class=muted>(add/remove columns; the right-hand timeline is
 scalable — drag <b>Scale</b> to zoom (pixels/day) and scroll horizontally; red = critical,

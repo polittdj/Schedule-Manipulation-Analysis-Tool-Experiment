@@ -159,6 +159,8 @@
   let statusDate = null; // ISO date from the schedule's data date (vertical marker)
   let sortKey = "order"; // default = file/outline order (parents above children, MS-Project)
   let sortDesc = false;
+  let maxOutline = 0; // MS-Project "show outline level N"; 0 = all levels
+  let barDates = false; // MS-Project "dates on bars" — start/finish text at the bar ends
 
   // MS-Project-style "add/remove columns" dropdown (the same checklist component as the filters)
   function renderToggles() {
@@ -184,6 +186,13 @@
     if (v === true) return "yes";
     if (v === false) return "no";
     return v == null ? "" : String(v);
+  }
+
+  // A compact M/D/YY date for the on-bar labels (MS-Project shows the bar dates this way). The
+  // value is an ISO yyyy-mm-dd string; parse the parts directly to avoid any timezone shift.
+  function shortDate(iso) {
+    const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(iso || ""));
+    return m ? Number(m[2]) + "/" + Number(m[3]) + "/" + m[1].slice(2) : "";
   }
 
   // Read a column value off an activity. Standard fields are top-level; .mpp custom/extended fields
@@ -263,6 +272,13 @@
       const ms = el("div", { class: "g-ms", style: "left:" + axis.x(s) + "px" });
       ms.title = act.name + " (milestone) " + act.start;
       track.appendChild(ms);
+      // MS-Project "dates on bars": a milestone shows its finish date next to the diamond
+      if (barDates && act.finish) {
+        track.appendChild(el("div", {
+          class: "g-barlabel g-barlabel-f", style: "left:" + (axis.x(s) + 7) + "px",
+          text: shortDate(act.finish),
+        }));
+      }
     } else if (s != null && f != null) {
       const left = axis.x(s);
       const width = Math.max(2, axis.x(f) - left);
@@ -275,6 +291,17 @@
         bar.appendChild(el("div", { class: "g-done", style: "width:" + pctDone + "%" }));
       }
       track.appendChild(bar);
+      // MS-Project "dates on bars": start date left of the bar, finish date right of it
+      if (barDates) {
+        track.appendChild(el("div", {
+          class: "g-barlabel g-barlabel-s", style: "left:" + (left - 3) + "px",
+          text: shortDate(act.start),
+        }));
+        track.appendChild(el("div", {
+          class: "g-barlabel g-barlabel-f", style: "left:" + (left + width + 3) + "px",
+          text: shortDate(act.finish),
+        }));
+      }
     }
     cell.appendChild(track);
     return cell;
@@ -304,9 +331,17 @@
     });
   }
 
+  // Row visibility: the MS-Project "show outline level N" collapses deeper tasks, and summary
+  // tasks are ALWAYS shown (they carry the WBS context) so the per-column filters only scope the
+  // detail rows beneath them.
+  function rowVisible(act, fields) {
+    if (maxOutline > 0 && (act.outline_level || 0) > maxOutline) return false;
+    return act.is_summary || rowMatches(act, fields);
+  }
+
   function renderBody(tbody, fields, axis, grid) {
     const rows = activities
-      .filter((act) => rowMatches(act, fields))
+      .filter((act) => rowVisible(act, fields))
       .sort((a, b) => {
         const x = valueOf(a, sortKey), y = valueOf(b, sortKey);
         const cmp = x < y ? -1 : x > y ? 1 : 0;
@@ -315,6 +350,7 @@
     tbody.innerHTML = "";
     rows.forEach((act) => {
       const tr = el("tr");
+      tr.setAttribute("data-uid", act.unique_id); // Find-a-UID jumps to tr[data-uid]
       if (act.is_critical) tr.className = "crit";
       if (act.is_summary) tr.className = (tr.className + " sum").trim();
       fields.forEach((f) => {
@@ -495,6 +531,33 @@
       .catch(() => { document.getElementById("gantt").textContent = "No driving path for that UID."; });
   }
 
+  // MS-Project "find" — jump the grid to a UniqueID, scroll it into view and flash it.
+  function findUid(uid) {
+    const grid = document.getElementById("grid");
+    const status = document.getElementById("gridFindStatus");
+    if (!grid || !uid) return;
+    const row = grid.querySelector('tr[data-uid="' + uid + '"]');
+    if (!row) {
+      if (status) status.textContent = "UID " + uid + " not in view";
+      return;
+    }
+    if (status) status.textContent = "";
+    row.scrollIntoView({ block: "center", behavior: "smooth" });
+    grid.querySelectorAll("tr.row-found").forEach((r) => r.classList.remove("row-found"));
+    row.classList.add("row-found");
+  }
+
+  // Fill the MS-Project "show outline level" picker from the actual depth of the loaded plan.
+  function populateOutline() {
+    const sel = document.getElementById("gridOutline");
+    if (!sel) return;
+    let max = 0;
+    activities.forEach((a) => { if ((a.outline_level || 0) > max) max = a.outline_level || 0; });
+    sel.innerHTML = "";
+    sel.appendChild(el("option", { value: "0", text: "All levels" }));
+    for (let i = 1; i <= max; i++) sel.appendChild(el("option", { value: String(i), text: "Level " + i }));
+  }
+
   fetch("/api/analysis/" + enc)
     .then((r) => r.json())
     .then((data) => {
@@ -508,6 +571,7 @@
       });
       renderCharts(data);
       renderToggles();
+      populateOutline();
       renderGrid();
       // a session-wide target pre-fills the trace box — run the trace right away
       if (document.getElementById("targetUid").value) loadGantt();
@@ -536,4 +600,22 @@
   });
   const fitBtn = document.getElementById("fitBtn");
   if (fitBtn) fitBtn.addEventListener("click", fitToWidth);
+  // MS-Project Find: jump to a UniqueID; Outline level: collapse to a depth; Dates on bars toggle
+  const gridFind = document.getElementById("gridFind");
+  if (gridFind) {
+    const go = () => findUid(parseInt(gridFind.value, 10));
+    gridFind.addEventListener("change", go);
+    gridFind.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+  }
+  const gridOutline = document.getElementById("gridOutline");
+  if (gridOutline) {
+    gridOutline.addEventListener("change", () => {
+      maxOutline = parseInt(gridOutline.value, 10) || 0;
+      renderGrid();
+    });
+  }
+  const gridBarDates = document.getElementById("gridBarDates");
+  if (gridBarDates) {
+    gridBarDates.addEventListener("change", () => { barDates = gridBarDates.checked; renderGrid(); });
+  }
 })();
