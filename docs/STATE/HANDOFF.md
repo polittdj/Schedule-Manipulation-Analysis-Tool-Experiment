@@ -1,3 +1,31 @@
+# Handoff — 2026-06-25 (operator UI sweep on `claude/compassionate-ptolemy-wip898`; SRA visuals + branding + light default + metric call-outs landed (#248-#252); Gantt visual-consistency in flight)
+
+> ## STATUS (current) — Gantt visual-consistency: one MS-Project look + interaction on EVERY Gantt; branch `claude/compassionate-ptolemy-wip898`
+>
+> **Operator ask:** "make the gantt chart views in the critical path evolution and path analysis and
+> driving path look like those with the white background ... a consistent visual ... a drop down such as
+> that in MS Project [for filters] ... the same kind of drop down to add columns or remove columns ...
+> the (view entire project) option available on all gantt charts that auto scales the timeline."
+> Confirmed (AskUserQuestion): do all four pieces, with **per-column filters like MS Project**.
+> - **White canvas on every Gantt.** The light-scope CSS selector now also covers `.evo-gantt` (the
+>   Critical-Path Evolution SVG), so evolution/path/driving/SRA/main grids all share the white MS-Project
+>   surface. (driving-path already rode `.gantt-grid`.)
+> - **"View entire project" on every Gantt.** A `forcedPx` fit (auto-scale the timeline to the whole span,
+>   cleared when the zoom control is nudged) is wired into `path.js` (`pathFit`), `sra_grid.js`
+>   (`ssiGridFit`), `driving_path.js` (`dpFit`); the evolution view's axis-reset is relabelled
+>   "View entire project" (it already snaps lo/hi back to the full padded axis).
+> - **Shared columns dropdown.** The activity grid (`app.js`) and path grid (`path.js`) now add/remove
+>   columns through the **same** `SFChecklist.filter` "Columns ▾" dropdown (was a loose checkbox row).
+> - **Per-column MS-Project filters on the path grid.** A `.filter-row` under the headers mounts an
+>   `SFChecklist.filter` per column (distinct values, `colFilters` Set), scoping visible rows;
+>   `render()`/`paintRows()` split so toggling a filter repaints only the body.
+> - Tests: `tests/web/test_gantt_consistency.py` (fit buttons, fit logic per script, evolution relabel,
+>   shared columns dropdown, per-column filter row) + the `.evo-gantt` white-canvas assertions in
+>   `test_visuals.py`. Full gate clean; **1599 passed**. No engine numbers move; no new ADR.
+> - **NEXT / deferred:** the paused driving-path feature — pick up to 2 versions side-by-side, animate the
+>   source→target corridor earliest→latest, call out what enters/leaves the path and why, and a
+>   hide-completed filter. Engine already returns `source_uid`/`target_uid`/`entered`.
+
 # Handoff — 2026-06-25 (SRA reporting/UX overhaul — operator batch; #23-#28 + the comprehensive Word report (ADR-0124) DONE; only the legacy-chart shrink sweep remains)
 
 > ## STATUS (current) — SRA reporting/UX overhaul — the **comprehensive MS Word SRA report with vendor-free vector charts** + a downloadable risk registry landed (ADR-0124); branch `claude/compassionate-ptolemy-wip898`

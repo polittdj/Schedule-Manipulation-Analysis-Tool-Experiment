@@ -10,6 +10,7 @@ figure. Formulas are stated per the cited sources (`docs/PLAN/METRICS-CATALOG.md
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 
 
@@ -1068,6 +1069,175 @@ METRIC_DICTIONARY = {
 def metric_doc(metric_id: str) -> MetricDoc | None:
     """The help entry for ``metric_id`` (or ``None`` if undocumented)."""
     return METRIC_DICTIONARY.get(metric_id)
+
+
+def _gloss(
+    name: str, definition: str, formula: str, use_case: str, indicates: str = ""
+) -> MetricDoc:
+    return MetricDoc(
+        metric_id="",
+        name=name,
+        definition=definition,
+        formula=formula,
+        source="Schedule-analysis concept (in-tool glossary).",
+        indicates=indicates,
+        use_case=use_case,
+    )
+
+
+#: A glossary for the DISPLAY columns that aren't engine-emitted DCMA/quality metrics (float bands,
+#: the trend status counts, the legacy 3-point SRA inputs, and the SRA SSI run/sensitivity fields).
+#: Kept OUT of METRIC_DICTIONARY (so coverage / reliability / dictionary-markdown tests see only the
+#: real engine metrics) but fed to the SAME hover call-out so every report header can be
+#: explained — definition, how it's calculated, and a real-world use.
+_FIELD_GLOSSARY: dict[str, MetricDoc] = {
+    "total_float": _gloss(
+        "Total Float",
+        "Working days an activity can slip without delaying the project finish.",
+        "late_finish - early_finish (from the CPM pass)",
+        "An owner uses the 0-day band as the live critical path; a band of activities at 1-2 days "
+        "of total float is the 'near-critical' work that becomes critical with one bad week.",
+        "Zero or negative total float = the activity drives (or is past) the finish.",
+    ),
+    "free_float": _gloss(
+        "Free Float",
+        "Working days an activity can slip without delaying its OWN immediate successor.",
+        "min(successor early_start) - activity early_finish",
+        "Free float shows where a single activity can absorb a slip locally without renegotiating "
+        "downstream dates — a foreman uses it to resequence crews without touching the schedule.",
+        "Free float <= total float; a feeder with free float can slip silently up to that limit.",
+    ),
+    "completed": _gloss(
+        "Completed",
+        "Activities recorded as 100% complete as of the data date.",
+        "count(percent_complete == 100) in the version",
+        "Tracking the completed count per update is the simplest progress curve a PM shows "
+        "leadership — a flat count between updates means no work finished that period.",
+    ),
+    "in_progress": _gloss(
+        "In Progress",
+        "Activities started but not finished as of the data date.",
+        "count(0 < percent_complete < 100)",
+        "A growing in-progress count with few completions is the classic 'everything open, nothing "
+        "done' pattern reviewers flag as work being started to show motion without finishing it.",
+    ),
+    # --- legacy 3-point SRA inputs ---
+    "optimistic_duration": _gloss(
+        "Optimistic (Best Case) duration",
+        "The shortest credible duration for an activity in the risk model.",
+        "analyst-entered, or auto = remaining x low multiplier",
+        "The optimistic leg is the upside an SME signs off as achievable only if everything goes "
+        "right — it sets the left tail of the finish-date S-curve.",
+    ),
+    "most_likely_duration": _gloss(
+        "Most Likely duration",
+        "The single most probable duration — the peak of the activity's distribution.",
+        "the current Remaining Duration (or analyst-entered)",
+        "The Most Likely is what the deterministic schedule already uses; the simulation centres "
+        "each activity here and spreads around it.",
+    ),
+    "pessimistic_duration": _gloss(
+        "Pessimistic (Worst Case) duration",
+        "The longest credible duration for an activity in the risk model.",
+        "analyst-entered, or auto = remaining x high multiplier",
+        "The pessimistic leg captures the realistic bad day (rework, weather, late material) and "
+        "sets the right tail that drives the P80/P90 contingency dates.",
+    ),
+    # --- SRA SSI run / sensitivity fields ---
+    "risk_ranking_factor": _gloss(
+        "Risk Ranking Factor (0-5)",
+        "A 0-5 rating that sets each task's Best/Worst-case spread from the factor table.",
+        "0 = no uncertainty (BC=ML=WC); 1-5 widen subtract%/add% off ML",
+        "An estimator ranks the few driving tasks 1-5 by how uncertain their durations are and "
+        "leaves stable work at 0, so the simulation only spreads the activities that actually "
+        "carry risk.",
+    ),
+    "bc_duration": _gloss(
+        "Best Case (BC) duration",
+        "The low end of a task's sampled duration range, in working days.",
+        "BC = ML x (1 - subtract%/100) from the factor",
+        "BC is the optimistic duration the Monte-Carlo can draw — collectively the BCs set how "
+        "early the finish can realistically land (the acceleration opportunity).",
+    ),
+    "wc_duration": _gloss(
+        "Worst Case (WC) duration",
+        "The high end of a task's sampled duration range, in working days.",
+        "WC = ML x (1 + add%/100) from the factor",
+        "WC is the pessimistic duration the simulation can draw; the WCs of the driving tasks are "
+        "what push the P80/P90 finish dates out and size the schedule contingency.",
+    ),
+    "ml_duration": _gloss(
+        "Most Likely (ML) duration",
+        "The centre of a task's distribution — its current Remaining Duration.",
+        "ML = the task's current Remaining Duration",
+        "Setting ML to remaining (not original) duration is what keeps the all-ML run equal to the "
+        "deterministic CPM finish, so the simulation is anchored to the real schedule.",
+    ),
+    "opportunity_accelerate": _gloss(
+        "Opportunity to Accelerate",
+        "Working days the focus finish pulls IN when this one task is set to its Best Case.",
+        "baseline_finish - finish_with_task_at_BC",
+        "The opportunity column tells a recovery team which single task, if accelerated, buys the "
+        "most finish-date back — the highest-leverage place to crash the schedule.",
+    ),
+    "risk_of_delay": _gloss(
+        "Risk of Delay",
+        "Working days the focus finish pushes OUT when this one task is set to its Worst Case.",
+        "finish_with_task_at_WC - baseline_finish",
+        "The risk column ranks which task most threatens the finish if it goes long — where to put "
+        "management reserve or a mitigation plan first.",
+    ),
+    "total_sensitivity": _gloss(
+        "Total Sensitivity",
+        "The full swing in the focus finish from a task's Best to Worst case.",
+        "Opportunity to Accelerate + Risk of Delay (working days)",
+        "Total sensitivity is the tornado bar length — the one number that ranks every activity by "
+        "how much it can move the completion date, focusing risk attention on the top few.",
+    ),
+    "deterministic_finish": _gloss(
+        "Deterministic finish",
+        "The logic-only (all-Most-Likely) focus finish — the current schedule's own date.",
+        "the CPM finish of the focus event with every task at ML",
+        "The gap between the deterministic finish and the P50 is the contingency the current logic "
+        "does not yet carry — the headline 'how optimistic is this date' fact.",
+    ),
+    "mean_finish": _gloss(
+        "Mean finish",
+        "The average simulated finish date across all iterations.",
+        "mean(simulated focus-finish dates)",
+        "The mean vs the deterministic finish shows the directional bias the risk model adds; a "
+        "mean well past the deterministic date says the plan is optimistic on average.",
+    ),
+    "std_dev_finish": _gloss(
+        "Standard deviation",
+        "The spread of the simulated finish dates around the mean.",
+        "std(simulated finish dates); shown in working AND calendar days",
+        "A large standard deviation means the finish is highly uncertain (wide P10-P90), so a "
+        "schedule with a tight commitment needs more contingency or risk burn-down.",
+    ),
+}
+
+
+def field_or_metric_doc(key: str) -> MetricDoc | None:
+    """Help for a report column header: a real engine metric first, then the display glossary."""
+    return METRIC_DICTIONARY.get(key) or _FIELD_GLOSSARY.get(key)
+
+
+def field_help_payload(keys: Sequence[str]) -> dict[str, dict[str, str]]:
+    """A JSON-able {key: {name, definition, formula, use, indicates}} for client-rendered tables
+    (the SRA SSI run/sensitivity tables are built in JS) so they show the same hover call-out."""
+    out: dict[str, dict[str, str]] = {}
+    for k in keys:
+        doc = field_or_metric_doc(k)
+        if doc is not None:
+            out[k] = {
+                "name": doc.name,
+                "definition": doc.definition,
+                "formula": doc.formula,
+                "use": doc.use_case or doc.importance,
+                "indicates": doc.indicates,
+            }
+    return out
 
 
 def documented_metric_ids() -> frozenset[str]:

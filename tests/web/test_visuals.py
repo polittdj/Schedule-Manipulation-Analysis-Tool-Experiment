@@ -142,8 +142,10 @@ def test_gantt_charts_render_in_light_mode_with_dark_bold_summaries(client: Test
     """Operator: the Gantt charts must always read in light mode (the MS-Project look) regardless of
     the page theme, with the whole chart on one light surface and summary-task names dark + bold."""
     css = client.get("/static/app.css").text
-    # the light palette is scoped onto every Gantt surface (not the whole UI)
-    assert ".gantt-grid, .path-view, .gantt-scroll, .sra-grid-host {" in css
+    # the light palette is scoped onto every Gantt surface (not the whole UI), incl. the
+    # Critical-Path Evolution SVG (.evo-gantt) so all Gantts share the white MS-Project canvas
+    assert ".gantt-grid, .path-view, .gantt-scroll, .sra-grid-host, .evo-gantt {" in css
+    assert ".evo-gantt svg { background: var(--gantt-canvas);" in css
     assert "--ink: #1a2330;" in css and "--panel: #ffffff;" in css  # light text + surface
     assert "background: var(--gantt-canvas);" in css  # white grid background = the bar canvas
     assert "--sum-ink: #1a2330;" in css  # dark summary ink in the Gantt scope

@@ -20,6 +20,7 @@
 
   var idx = versions.length - 1; // start on the newest version
   var px = 6; // pixels per calendar day
+  var forcedPx = null; // set by "View entire project"; cleared when a zoom button is pressed
   var timer = null;
 
   function $(id) { return document.getElementById(id); }
@@ -49,7 +50,16 @@
   });
   if (t0 === null || t1 === null) return;
   t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
-  var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); };
+  // pixels per calendar day: the "View entire project" fit overrides the zoom buttons until nudged
+  function pxPerDay() { return forcedPx && forcedPx > 0 ? forcedPx : px; }
+  var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * pxPerDay()); };
+  // auto-scale so the whole (shared, fixed) corridor span fits the visible width — no scroll
+  function fitToProject() {
+    var days = Math.max(1, (t1 - t0) / DAY_MS);
+    var avail = Math.max(240, (mount ? mount.clientWidth : 1000) - 320);
+    forcedPx = Math.max(0.02, avail / days);
+    render();
+  }
 
   function render() {
     var v = versions[idx];
@@ -62,7 +72,7 @@
       mount.appendChild(el("p", { class: "muted", text: "No driving corridor in this version." }));
       return;
     }
-    var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
+    var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * pxPerDay());
     // MS-Project timeline: stacked Year/Quarter/Month header + month/quarter/year gridlines,
     // shared with every other Gantt on the site (static/gantt.js).
     var axis = { t0: t0, t1: t1, width: width, x: x };
@@ -126,8 +136,10 @@
       step(1);
     }, 1100);
   });
-  $("dpZoomIn").addEventListener("click", function () { px = Math.min(40, px + 2); render(); });
-  $("dpZoomOut").addEventListener("click", function () { px = Math.max(1, px - 2); render(); });
+  $("dpZoomIn").addEventListener("click", function () { forcedPx = null; px = Math.min(40, px + 2); render(); });
+  $("dpZoomOut").addEventListener("click", function () { forcedPx = null; px = Math.max(1, px - 2); render(); });
+  var dpFit = $("dpFit");
+  if (dpFit) dpFit.addEventListener("click", fitToProject);
 
   render();
 })();

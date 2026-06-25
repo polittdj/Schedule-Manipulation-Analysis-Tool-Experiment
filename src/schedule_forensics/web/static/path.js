@@ -32,6 +32,9 @@
   ];
   var data = null; // last /api/driving payload
   var pathTierSel = null; // checklist selection of tiers to show (null = all)
+  var colFilters = {}; // MS-Project per-column filter: field key -> Set|null (null = unfiltered)
+  var forcedPx = null; // set by "View entire project"; cleared by the zoom slider
+  var lastAxis = null, lastGrid = null, lastOn = null; // header built once; body repaints on filter
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -44,23 +47,77 @@
   }
   function $(id) { return document.getElementById(id); }
 
-  // --- field add/remove toggles ----------------------------------------------------
+  function fmt(v) {
+    if (v === true) return "yes";
+    if (v === false) return "—";
+    return v === null || v === undefined || v === "" ? "—" : String(v);
+  }
+  // the raw (filterable) value of a column for a row; the "Drives →" column isn't value-filterable
+  function rawValue(r, f) {
+    if (f.key === "drives") return null;
+    return f.custom ? r.custom && r.custom[f.label] : r[f.key];
+  }
+  // distinct, numeric/ISO-aware sorted formatted values of a column — the checklist contents
+  function distinctValues(f) {
+    var seen = {};
+    (data ? data.rows : []).forEach(function (r) { seen[fmt(rawValue(r, f))] = true; });
+    var iso = /^\d{4}-\d\d-\d\d/;
+    return Object.keys(seen).sort(function (a, b) {
+      if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0;
+      var na = parseFloat(a), nb = parseFloat(b);
+      var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
+    });
+  }
+  function rowMatchesColumns(r) {
+    return (lastOn || []).every(function (f) {
+      var sel = colFilters[f.key];
+      if (!sel || f.key === "drives") return true; // unfiltered
+      return sel.has(fmt(rawValue(r, f))); // an empty Set hides every row
+    });
+  }
+
+  // pixels per calendar day: the "View entire project" fit overrides the slider until it's nudged
+  function pxPerDay() {
+    if (forcedPx && forcedPx > 0) return forcedPx;
+    var v = Number($("pathZoom").value);
+    return v > 0 ? v : 8;
+  }
+  function fitToProject() {
+    if (!data) return;
+    var t0 = null, t1 = null;
+    data.rows.forEach(function (r) {
+      if (r.start) t0 = Math.min(t0 === null ? Infinity : t0, Date.parse(r.start));
+      if (r.finish) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(r.finish));
+    });
+    if (data.data_date) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(data.data_date));
+    if (t0 === null || t1 === null) return;
+    var days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
+    var avail = Math.max(240, (view ? view.clientWidth : 960) - 380);
+    forcedPx = Math.max(0.02, avail / days);
+    render();
+  }
+
+  // --- columns dropdown (MS-Project-style "add/remove columns") ---------------------
   function renderToggles() {
     var box = $("pathFields");
-    box.textContent = "Columns: ";
-    FIELDS.forEach(function (f) {
-      var lab = el("label", { class: "field-toggle" + (f.custom ? " field-custom" : "") });
-      var cb = el("input", { type: "checkbox" });
-      cb.checked = f.on;
-      cb.addEventListener("change", function () {
-        f.on = cb.checked;
-        updateExportLinks(); // a toggled-on custom column is added to the export too
-        render();
-      });
-      lab.appendChild(cb);
-      lab.appendChild(document.createTextNode(" " + f.label + "  "));
-      box.appendChild(lab);
-    });
+    box.textContent = "";
+    if (!window.SFChecklist) return;
+    box.appendChild(
+      window.SFChecklist.filter({
+        values: FIELDS.map(function (f) { return f.label; }),
+        selected: new Set(
+          FIELDS.filter(function (f) { return f.on; }).map(function (f) { return f.label; })
+        ),
+        label: "Columns",
+        title: "Add or remove columns",
+        onChange: function (sel) {
+          FIELDS.forEach(function (f) { f.on = sel ? sel.has(f.label) : true; });
+          updateExportLinks(); // a toggled-on custom column is added to the export too
+          render();
+        },
+      })
+    );
   }
 
   // Keep the export links in sync with the chosen custom columns (ADR-0095): the path export
@@ -100,41 +157,45 @@
       if (hideDone && r.complete) return false;
       if (pathTierSel && !pathTierSel.has(r.tier)) return false; // empty Set hides every row
       if (q && (r.name + " " + r.unique_id).toLowerCase().indexOf(q) < 0) return false;
+      if (!rowMatchesColumns(r)) return false; // MS-Project per-column value filters
       return true;
     });
   }
 
-  // --- the two-pane grid + scalable timeline ----------------------------------------
-  function render() {
-    view.textContent = "";
-    if (!data) return;
-    var rows = visibleRows();
-    var status = $("pathStatus");
-    status.textContent = data.note
+  function paintStatus(rows) {
+    $("pathStatus").textContent = data && data.note
       ? data.note
-      : rows.length + " of " + data.rows.length + " path activities to UID " +
-        data.target_uid + " (" + (data.target_name || "?") + ")" +
-        (data.data_date ? " — data date " + data.data_date : "") +
-        (data.coverage ? " — " + data.coverage : "");
-    if (!rows.length) return;
+      : rows.length + " of " + (data ? data.rows.length : 0) + " path activities to UID " +
+        (data ? data.target_uid : "") + " (" + ((data && data.target_name) || "?") + ")" +
+        (data && data.data_date ? " — data date " + data.data_date : "") +
+        (data && data.coverage ? " — " + data.coverage : "");
+  }
 
-    var px = Number($("pathZoom").value); // pixels per calendar day
+  // --- the two-pane grid + scalable timeline ----------------------------------------
+  // render() builds the header (column titles + the MS-Project per-column filter row) and the date
+  // axis once; paintRows() repopulates only the body, so toggling a filter checkbox or hide-completed
+  // keeps the open filter dropdown in place. The axis spans ALL rows so it is stable as filters change.
+  function render() {
+    if (window.SFChecklist) SFChecklist.close();
+    view.textContent = "";
+    if (!data) { $("pathStatus").textContent = ""; return; }
+    var on = FIELDS.filter(function (f) { return f.on; });
+    lastOn = on;
+    var px = pxPerDay();
     var t0 = null, t1 = null;
-    rows.forEach(function (r) {
+    data.rows.forEach(function (r) {
       if (r.start) t0 = Math.min(t0 === null ? Infinity : t0, Date.parse(r.start));
       if (r.finish) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(r.finish));
     });
-    if (data.data_date) t1 = Math.max(t1, Date.parse(data.data_date));
-    if (t0 === null || t1 === null) return;
+    if (data.data_date) t1 = Math.max(t1 === null ? -Infinity : t1, Date.parse(data.data_date));
+    if (t0 === null || t1 === null) { paintStatus([]); return; }
     t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
     var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
     var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); };
-
-    var on = FIELDS.filter(function (f) { return f.on; });
-    // MS-Project timeline: stacked Year/Quarter/Month header + month/quarter/year gridlines,
-    // shared with every other Gantt on the site (static/gantt.js).
     var axis = { t0: t0, t1: t1, width: width, x: x };
-    var gridLns = SFGantt.gridLines(axis);
+    lastAxis = axis;
+    lastGrid = SFGantt.gridLines(axis);
+
     var table = el("table", { class: "gantt-grid path-grid" });
     var head = el("tr");
     on.forEach(function (f) { head.appendChild(el("th", { text: f.label })); });
@@ -143,6 +204,37 @@
     head.appendChild(thTime);
     table.appendChild(head);
 
+    // MS-Project per-column filter dropdowns (each lists that column's distinct values)
+    var filterRow = el("tr", { class: "filter-row" });
+    on.forEach(function (f) {
+      var td = el("td");
+      if (window.SFChecklist && f.key !== "drives") {
+        td.appendChild(window.SFChecklist.filter({
+          values: distinctValues(f),
+          selected: colFilters[f.key] || null,
+          label: "Filter",
+          title: "Filter " + f.label,
+          onChange: function (sel) { colFilters[f.key] = sel; paintRows(); },
+        }));
+      }
+      filterRow.appendChild(td);
+    });
+    filterRow.appendChild(el("td", { class: "muted" }));
+    table.appendChild(filterRow);
+
+    var tbody = el("tbody", { id: "pathBody" });
+    table.appendChild(tbody);
+    view.appendChild(table);
+    paintRows();
+  }
+
+  function paintRows() {
+    var tbody = $("pathBody");
+    if (!tbody || !lastAxis) return;
+    var axis = lastAxis, gridLns = lastGrid, on = lastOn, x = axis.x, width = axis.width;
+    var rows = visibleRows();
+    paintStatus(rows);
+    tbody.innerHTML = "";
     rows.forEach(function (r) {
       var tr = el("tr", { class: r.complete ? "done" : "" });
       on.forEach(function (f) {
@@ -191,9 +283,13 @@
       }
       cell.appendChild(track);
       tr.appendChild(cell);
-      table.appendChild(tr);
+      tbody.appendChild(tr);
     });
-    view.appendChild(table);
+    if (!rows.length) {
+      tbody.appendChild(
+        el("tr", {}, [el("td", { class: "muted", text: "No activities match the filters." })])
+      );
+    }
   }
 
   // --- data loading -----------------------------------------------------------------
@@ -228,11 +324,14 @@
       selected: null,
       label: "Tier",
       title: "Show driving-path tiers",
-      onChange: function (s) { pathTierSel = s; render(); },
+      onChange: function (s) { pathTierSel = s; paintRows(); },
     }));
   }
   $("pathRun").addEventListener("click", trace);
-  $("pathHideDone").addEventListener("change", render);
-  ["pathFilter", "pathZoom"].forEach(function (id) { $(id).addEventListener("input", render); });
+  $("pathHideDone").addEventListener("change", paintRows);
+  $("pathFilter").addEventListener("input", paintRows);
+  $("pathZoom").addEventListener("input", function () { forcedPx = null; render(); });
+  var pathFit = $("pathFit");
+  if (pathFit) pathFit.addEventListener("click", fitToProject);
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately
 })();

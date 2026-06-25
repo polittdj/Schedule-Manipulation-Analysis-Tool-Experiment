@@ -160,17 +160,24 @@
   let sortKey = "order"; // default = file/outline order (parents above children, MS-Project)
   let sortDesc = false;
 
+  // MS-Project-style "add/remove columns" dropdown (the same checklist component as the filters)
   function renderToggles() {
     const box = document.getElementById("fieldToggles");
     box.innerHTML = "";
     box.className = "field-toggles";
-    ALL_FIELDS.forEach((f) => {
-      const cb = el("input", { type: "checkbox" });
-      cb.checked = f.on;
-      cb.addEventListener("change", () => { f.on = cb.checked; renderGrid(); });
-      const lab = el("label", {}, [cb, document.createTextNode(" " + f.label)]);
-      box.appendChild(lab);
-    });
+    if (!window.SFChecklist) return;
+    box.appendChild(
+      SFChecklist.filter({
+        values: ALL_FIELDS.map((f) => f.label),
+        selected: new Set(ALL_FIELDS.filter((f) => f.on).map((f) => f.label)),
+        label: "Columns",
+        title: "Add or remove columns",
+        onChange: (sel) => {
+          ALL_FIELDS.forEach((f) => { f.on = sel ? sel.has(f.label) : true; });
+          renderGrid();
+        },
+      })
+    );
   }
 
   function fmt(v) {

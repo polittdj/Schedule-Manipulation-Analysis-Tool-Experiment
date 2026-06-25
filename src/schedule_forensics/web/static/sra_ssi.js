@@ -22,6 +22,49 @@
     return tr;
   }
 
+  // Hover/focus call-out on a metric column header, from window.SF_FIELD_HELP (the server-rendered
+  // glossary): definition + how it's calculated + a real-world use, reusing the shared DCMA tooltip
+  // styling. An empty/unknown key falls back to a plain header.
+  var FIELD_HELP = window.SF_FIELD_HELP || {};
+  function tipPara(boldLabel, text) {
+    var p = el("p");
+    p.appendChild(el("b", null, boldLabel));
+    p.appendChild(document.createTextNode(" " + text));
+    return p;
+  }
+  function helpTh(label, key) {
+    var h = FIELD_HELP[key];
+    if (!h) return el("th", null, label);
+    var th = el("th", { class: "metric-th" });
+    var title = h.name + ". " + h.definition + " How it's calculated: " + h.formula +
+      (h.use ? " Real-world use: " + h.use : "");
+    var span = el("span", { class: "dcma-metric mhelp", tabindex: "0", role: "button", title: title });
+    span.textContent = label + " ";
+    span.appendChild(el("span", { class: "dcma-info", "aria-hidden": "true" }, "ⓘ"));
+    th.appendChild(span);
+    var tip = el("div", { class: "dcma-tip mtip", role: "tooltip" });
+    tip.appendChild(el("b", null, h.name));
+    tip.appendChild(el("p", null, h.definition));
+    tip.appendChild(tipPara("How it's calculated:", h.formula));
+    if (h.use) tip.appendChild(tipPara("Real-world use:", h.use));
+    if (h.indicates) tip.appendChild(tipPara("Indicates:", h.indicates));
+    th.appendChild(tip);
+    return th;
+  }
+  function headerRow(pairs) {
+    var tr = el("tr");
+    pairs.forEach(function (p) { tr.appendChild(helpTh(p[0], p[1])); });
+    return tr;
+  }
+  function labelRow(label, key, value) {
+    var tr = el("tr");
+    var th = helpTh(label, key);
+    th.setAttribute("scope", "row");
+    tr.appendChild(th);
+    tr.appendChild(el("td", null, String(value)));
+    return tr;
+  }
+
   // The NASA 5x5 assessment matrix (mirrors the operator's reference image): Likelihood-of-Occurrence
   // rows (5 Near Certainty at top .. 1 Remote), Consequence/Benefit columns (1..5), the fixed NASA
   // priority ranks 1..25 in each cell, tri-band zones (Risk = green/yellow/red; Opportunity = light/
@@ -232,11 +275,12 @@
       (d.used_risks ? ", risks on" : "")));
     var t = el("table");
     t.appendChild(row(["Measure", "Date / value"], true));
-    t.appendChild(row(["Deterministic finish", d.deterministic.date + "  (P" + d.deterministic.percentile + ")"]));
+    t.appendChild(labelRow("Deterministic finish", "deterministic_finish",
+      d.deterministic.date + "  (P" + d.deterministic.percentile + ")"));
     d.percentiles.forEach(function (p) { t.appendChild(row([p.label, p.date])); });
-    t.appendChild(row(["Mean", d.mean]));
-    t.appendChild(row(["Std deviation",
-      d.std_days + " working days (" + d.std_cal_days + " calendar days)"]));
+    t.appendChild(labelRow("Mean", "mean_finish", d.mean));
+    t.appendChild(labelRow("Std deviation", "std_dev_finish",
+      d.std_days + " working days (" + d.std_cal_days + " calendar days)"));
     out.appendChild(t);
     if (d.risks && d.risks.length) {
       out.appendChild(el("h3", null, "Risk outcomes"));
@@ -299,8 +343,10 @@
           return;
         }
         var t = el("table");
-        t.appendChild(row(["UID", "Task", "BC d", "WC d", "ML d",
-          "Opportunity (wd)", "Risk (wd)", "Total"], true));
+        t.appendChild(headerRow([["UID", ""], ["Task", ""], ["BC d", "bc_duration"],
+          ["WC d", "wc_duration"], ["ML d", "ml_duration"],
+          ["Opportunity (wd)", "opportunity_accelerate"], ["Risk (wd)", "risk_of_delay"],
+          ["Total", "total_sensitivity"]]));
         res.j.rows.forEach(function (r) {
           t.appendChild(row([r.uid, r.name, r.bc_days, r.wc_days, r.ml_days,
             r.opportunity, r.risk, r.total]));
