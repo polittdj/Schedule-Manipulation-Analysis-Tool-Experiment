@@ -5609,7 +5609,12 @@ def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> li
     grid = [[0] * 5 for _ in range(5)]
     for r in risks:
         if (r.impact_days < 0) == opportunity:
-            grid[r.consequence_rating - 1][r.probability_rating - 1] += 1
+            # clamp defensively: a hand-edited / third-party setup.json can carry a rating outside
+            # 1..5 (the form route clamps, the load route did too after the fix below) and must never
+            # IndexError or silently mis-bin a forensic export
+            c = min(5, max(1, r.consequence_rating))
+            p = min(5, max(1, r.probability_rating))
+            grid[c - 1][p - 1] += 1
     return grid
 
 
@@ -5810,7 +5815,7 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                     probability=prob,
                     impact_days=impact,
                     affected=affected,
-                    consequence_rating=int(cons) if isinstance(cons, int) else None,
+                    consequence_rating=min(5, max(1, int(cons))) if isinstance(cons, int) else None,
                 )
             )
     st.sra_ssi_risks = risks
@@ -5835,7 +5840,9 @@ def _ssi_export_tables(
         (
             (
                 "Focus event",
-                f"{result.target_uid} - {focus_name}" if result.target_uid else focus_name,
+                f"{result.target_uid} - {focus_name}"
+                if result.target_uid is not None
+                else focus_name,
             ),
             ("Occurrence mode", result.occurrence_mode),
             ("Correlation", result.correlation),
@@ -6113,7 +6120,10 @@ def _sra_report_blocks(
         DocTable(
             ("Measure", "Value"),
             (
-                ("Focus event", f"{result.target_uid} - {focus}" if result.target_uid else focus),
+                (
+                    "Focus event",
+                    f"{result.target_uid} - {focus}" if result.target_uid is not None else focus,
+                ),
                 (
                     "Deterministic finish",
                     f"{result.deterministic_finish_date} (P{round(result.deterministic_percentile * 100, 1)})",
@@ -6166,11 +6176,17 @@ def _sra_report_blocks(
     ]
     tor = _sra_chart_tornado(oat)
     if tor is not None:
+        ranked = sum(1 for o in oat if o.total_days > 0)
+        scope = (
+            f"Top {min(12, ranked)} of {ranked} ranked activities shown"
+            if ranked > 12
+            else "All ranked activities shown"
+        )
         blocks += [
             tor,
             Paragraph(
                 "Bars centred on zero: green extends left (acceleration), red right (delay); the "
-                "longest total swing sets the scale. Tasks are ordered by total sensitivity.",
+                f"longest total swing sets the scale. {scope}; the full set is in the table below.",
                 italic=True,
             ),
         ]
