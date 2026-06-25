@@ -6638,6 +6638,70 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <script src="/static/sra_grid.js"></script></div>"""
 
 
+def _sra_explainers() -> str:
+    """Detailed, example-rich "which model, and when" guidance for the SRA page: the two Monte-Carlo
+    models the tool offers (SSI additive vs legacy multiplicative) and JCL — what each does, its
+    pros/cons, and when to reach for it. Collapsible so it never crowds the working controls."""
+    return """
+<div class=panel><h2>Which risk model should I use? (pros, cons &amp; examples)</h2>
+<p class=muted>This page offers two schedule risk models. They answer the same question &mdash; "how
+confident am I in the finish?" &mdash; with different math. Open each below. JCL is explained too, so
+it is clear why a cost+schedule confidence is a separate thing.</p>
+<details class=explainer><summary><b>SSI Schedule Risk &amp; Opportunity</b> &mdash; additive days, focus event (the top model)</summary>
+<p><b>What it does.</b> Each task gets a <b>Best / Worst Case</b> duration &mdash; either from a 1&ndash;5
+<b>Risk Ranking Factor</b> (e.g. factor&nbsp;3 = Best&nbsp;&minus;30% / Worst&nbsp;+30% of the remaining
+duration) or from Best/Worst days you type. A Monte-Carlo samples each task between those bounds and
+reports the <b>finish-date confidence of a chosen focus event</b> (e.g. "Ready to Ship"). Discrete
+<b>risks add a fixed number of days</b> to the tasks they hit when they fire.</p>
+<p><b>Pros.</b> Mirrors SSI Tools' SRA workflow (factor table, focus event, additive risks); intuitive
+for SMEs who think "this task could run X&ndash;Y days"; the focus-event curve answers "how likely is
+<i>this milestone</i> by date&nbsp;D?"; the deterministic facts (all-most-likely finish, one-at-a-time
+sensitivity) validate against SSI to a fraction of a day.</p>
+<p><b>Cons.</b> An additive day impact is a fixed count, not scaled to task size; the stochastic
+distribution is statistically close to SSI but <i>not bit-identical</i> (different RNG, ADR-0005); you
+must supply factors / Best-Worst durations and day-based risks.</p>
+<p><b>When to use.</b> You want the SSI-style milestone confidence and risk register, and your SMEs give
+you factors or best/worst durations and discrete risks measured <b>in days</b>.</p>
+<p class=muted><b>Example.</b> Focus = "Ready to Ship". Set factor&nbsp;3 on the integration tasks, add a
+risk "Late castings" 40% likely / <b>+20 days</b> on UIDs&nbsp;101,&nbsp;102. Run &rarr; P50/P80 finish
+for the milestone and a tornado of which tasks drive the date.</p></details>
+<details class=explainer><summary><b>Legacy Monte-Carlo</b> &mdash; multiplicative risk drivers (GAO/AACE/Hulett)</summary>
+<p><b>What it does.</b> Samples each activity's duration from a triangular/PERT distribution (a global
+"Min&nbsp;90% / ML&nbsp;100% / Max&nbsp;110%" default, or your per-activity 3-point), optionally fires
+discrete <b>risks that MULTIPLY</b> the duration of the tasks they hit (e.g. 1.0&nbsp;/&nbsp;1.2&nbsp;/
+&nbsp;1.5), and recomputes the whole project finish each iteration.</p>
+<p><b>Pros.</b> The canonical <b>risk-driver</b> method (GAO Schedule Assessment Guide / AACE / Hulett);
+percentage impacts <b>scale with task size</b> (a 20% slip is 20% on a 10-day or a 100-day task); one
+risk mapped to several tasks <b>correlates</b> them automatically (the shared-driver correlation, no
+coefficient needed); a clean project-finish confidence curve.</p>
+<p><b>Cons.</b> Oriented to the <b>project</b> finish rather than a chosen milestone; multiplicative
+thinking is less intuitive than "add N days"; the auto 90/100/110 default is a <b>screening placeholder,
+not SME-validated</b>.</p>
+<p><b>When to use.</b> You want the classic risk-driver Monte-Carlo for the overall project finish, with
+<b>percentage</b> impacts and automatic shared-driver correlation.</p>
+<p class=muted><b>Example.</b> Keep the global 90/100/110, add a risk "Permit delay" 40% likely /
+100&ndash;120&ndash;150% on the permit tasks &rarr; the S-curve shows project-finish confidence and the
+risk-driver tornado ranks each risk by the mean slip it causes.</p></details>
+<details class=explainer><summary><b>JCL (Joint Confidence Level)</b> &mdash; why cost+schedule is a separate thing</summary>
+<p><b>What it is.</b> A <b>joint cost-AND-schedule</b> confidence: the probability of finishing at or
+below a given <b>cost</b> <i>and</i> on or before a given <b>date</b>, from a cost-loaded, risk-loaded
+schedule (NASA NPR&nbsp;7120.5 / CEH Appendix&nbsp;J; the policy target is typically <b>~70%</b>).</p>
+<p><b>Requirement.</b> A <b>cost-loaded</b> schedule (a budget and actuals on the tasks). Without cost, a
+duration-only run is a <b>Schedule</b> Confidence Level (SCL) only &mdash; it must <u>not</u> be called a
+JCL.</p>
+<p><b>Pros.</b> The integrated cost+schedule risk picture agencies require at major milestones; ties
+reserve (cost contingency + schedule margin) to a confidence target; captures cost/schedule
+correlation that a schedule-only run cannot.</p>
+<p><b>Cons.</b> Needs trustworthy cost loading and cost-risk inputs; more data and effort than a
+schedule-only SRA.</p>
+<p><b>When to use.</b> A formal cost+schedule confidence at a decision point (e.g. a NASA KDP) where a
+cost-loaded, risk-adjusted IMS exists.</p>
+<p class=muted><b>Status here.</b> The two models above are <b>schedule</b> SRA (an SCL). JCL is out of
+scope until cost inputs exist (ADR-0106): load a cost-loaded schedule and the <a href="/evm">EVM</a>
+section surfaces the cost indices; a full joint cost+schedule Monte-Carlo is a tracked follow-on.</p></details>
+</div>"""
+
+
 def _sra_body(st: SessionState) -> str:
     """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
 
@@ -6705,6 +6769,7 @@ def _sra_body(st: SessionState) -> str:
         )
     return f"""
 {top_file_panel}
+{_sra_explainers()}
 {_ssi_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its

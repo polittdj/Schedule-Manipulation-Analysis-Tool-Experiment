@@ -48,6 +48,24 @@ def test_sra_file_selector_is_at_the_top_and_governs_all_models(client: TestClie
     assert "User Tip" in page  # the shared-inputs tip
 
 
+def test_sra_page_explains_each_model_and_jcl(client: TestClient) -> None:
+    """Operator: explain in detail the pros/cons of each SRA model + when to use, and the same for
+    JCL. The page carries collapsible explainers for the SSI model, the legacy Monte-Carlo, and JCL,
+    each with pros / cons / when-to-use / an example."""
+    page = client.get("/sra").text
+    assert "Which risk model should I use" in page
+    assert "class=explainer" in page
+    # each model + JCL is covered
+    assert "SSI Schedule Risk &amp; Opportunity" in page
+    assert "Legacy Monte-Carlo" in page
+    assert "JCL (Joint Confidence Level)" in page
+    # the explainers carry pros / cons / when-to-use / example structure
+    for token in ("<b>Pros.</b>", "<b>Cons.</b>", "<b>When to use.</b>"):
+        assert token in page, token
+    # JCL is correctly framed as cost+schedule and out of scope until cost exists
+    assert "cost-loaded" in page and "Schedule</b> Confidence Level (SCL)" in page
+
+
 def test_legacy_run_uses_the_shared_factor_durations(client: TestClient) -> None:
     """Operator: Risk Ranking Factors entered once feed the legacy Monte-Carlo too. Setting a
     factor must not break the legacy run, and the factored task gains duration uncertainty."""
