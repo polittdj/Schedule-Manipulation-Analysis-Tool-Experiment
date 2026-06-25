@@ -99,6 +99,81 @@
     return grid.some(function (r) { return r.some(function (x) { return x; }); });
   }
 
+  // --- small, dense vector charts (the operator wanted compact graphs + many data points) -----
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function svg(tag, attrs) {
+    var n = document.createElementNS(SVGNS, tag);
+    if (attrs) for (var k in attrs) n.setAttribute(k, attrs[k]);
+    return n;
+  }
+  function txt(node, s) { node.textContent = s; return node; }
+  function ms(date) { var t = Date.parse(date); return isNaN(t) ? null : t; }
+
+  // The cumulative finish-date confidence curve. The engine emits one point per distinct simulated
+  // finish, so the line is dense and smooth; P10/50/80/90 + the deterministic finish are marked.
+  function sCurve(points, det, pcts) {
+    var W = 380, H = 168, ml = 30, mr = 8, mt = 8, mb = 22;
+    var wrap = el("div", { class: "ssi-chart" });
+    wrap.appendChild(el("div", { class: "ssi-chart-t" }, "Finish-date confidence (S-curve)"));
+    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: W, height: H });
+    var xs = points.map(function (p) { return ms(p.date); }).filter(function (x) { return x != null; });
+    if (xs.length) {
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+      var X = function (m) { return ml + (x1 === x0 ? 0 : (m - x0) / (x1 - x0)) * (W - ml - mr); };
+      var Y = function (p) { return mt + (1 - p) * (H - mt - mb); };
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (p) {
+        var y = Y(p);
+        s.appendChild(svg("line", { x1: ml, y1: y, x2: W - mr, y2: y, class: "ch-grid" }));
+        s.appendChild(txt(svg("text", { x: ml - 2, y: y + 3, class: "ch-yl" }), p * 100 + "%"));
+      });
+      if (det && ms(det.date) != null) {
+        var dx = X(ms(det.date));
+        s.appendChild(svg("line", { x1: dx, y1: mt, x2: dx, y2: H - mb, class: "ch-det" }));
+      }
+      s.appendChild(svg("polyline", {
+        class: "ch-line",
+        points: points.map(function (p) { return X(ms(p.date)) + "," + Y(p.p); }).join(" "),
+      }));
+      (pcts || []).forEach(function (pc) {
+        var mm = ms(pc.date);
+        if (mm == null) return;
+        s.appendChild(svg("circle", { cx: X(mm), cy: Y(pc.p), r: 2.2, class: "ch-dot" }));
+      });
+      s.appendChild(svg("line", { x1: ml, y1: mt, x2: ml, y2: H - mb, class: "ch-ax" }));
+      s.appendChild(svg("line", { x1: ml, y1: H - mb, x2: W - mr, y2: H - mb, class: "ch-ax" }));
+      s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), points[0].date));
+      s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
+        points[points.length - 1].date));
+    }
+    wrap.appendChild(s);
+    return wrap;
+  }
+
+  // The finish-date distribution (histogram / PDF) as compact bars.
+  function histChart(bins) {
+    var W = 380, H = 168, ml = 26, mr = 8, mt = 8, mb = 22;
+    var wrap = el("div", { class: "ssi-chart" });
+    wrap.appendChild(el("div", { class: "ssi-chart-t" }, "Finish-date distribution"));
+    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: W, height: H });
+    var maxc = bins.reduce(function (a, b) { return Math.max(a, b.count); }, 0) || 1;
+    var bw = (W - ml - mr) / (bins.length || 1);
+    bins.forEach(function (b, i) {
+      var h = (b.count / maxc) * (H - mt - mb);
+      s.appendChild(svg("rect", {
+        class: "ch-bar", x: ml + i * bw + 0.5, y: H - mb - h,
+        width: Math.max(1, bw - 1), height: h,
+      }));
+    });
+    s.appendChild(svg("line", { x1: ml, y1: H - mb, x2: W - mr, y2: H - mb, class: "ch-ax" }));
+    if (bins.length) {
+      s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "ch-xl" }), bins[0].date));
+      s.appendChild(txt(svg("text", { x: W - mr, y: H - 6, class: "ch-xl", "text-anchor": "end" }),
+        bins[bins.length - 1].date));
+    }
+    wrap.appendChild(s);
+    return wrap;
+  }
+
   function renderResult(d) {
     var out = document.getElementById("ssiResult");
     out.innerHTML = "";
@@ -124,6 +199,16 @@
       });
       out.appendChild(rt);
     }
+    var ch = document.getElementById("ssiCharts");
+    ch.innerHTML = "";
+    if (d.s_curve && d.s_curve.length) {
+      var pc = [10, 50, 80, 90].map(function (q, i) {
+        return { date: d.percentiles[i] && d.percentiles[i].date, p: q / 100 };
+      });
+      ch.appendChild(sCurve(d.s_curve, d.deterministic, pc));
+    }
+    if (d.finish_hist && d.finish_hist.length) ch.appendChild(histChart(d.finish_hist));
+
     var m = document.getElementById("ssiMatrices");
     m.innerHTML = "";
     if (nonEmpty(d.risk_matrix)) m.appendChild(matrix("Risk Assessment Matrix", d.risk_matrix, false));

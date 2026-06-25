@@ -197,6 +197,20 @@ def test_ssi_js_frames_the_nasa_5x5_matrices(client: TestClient) -> None:
     assert ".nm-o-r { background: #15527d" in css  # opportunity dark-blue zone
 
 
+def test_ssi_run_carries_dated_s_curve_and_histogram(client: TestClient) -> None:
+    """The SSI payload exposes a realigned-date S-curve + finish-date histogram for plotting, and
+    the page hosts + JS render them as compact vector charts (the operator's 'smoother S-curve')."""
+    j = client.get("/api/sra/ssi?iterations=300").json()
+    assert "s_curve" in j and "finish_hist" in j
+    assert all({"date", "p"} <= set(pt) for pt in j["s_curve"])
+    assert all({"date", "count"} <= set(b) for b in j["finish_hist"])
+    assert "id=ssiCharts" in client.get("/sra").text  # the chart host
+    js = client.get("/static/sra_ssi.js").text
+    assert "function sCurve(" in js and "function histChart(" in js
+    assert "createElementNS" in js  # vendor-free inline SVG (no chart library)
+    assert ".ssi-svg .ch-line" in client.get("/static/app.css").text  # the curve styling
+
+
 def test_sra_ssi_js_is_air_gapped(client: TestClient) -> None:
     js = client.get("/static/sra_ssi.js").text
     urls = [u for u in re.findall(r"https?://[^\s\"')]+", js) if "www.w3.org" not in u]

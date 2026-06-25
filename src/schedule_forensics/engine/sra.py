@@ -716,6 +716,10 @@ class SSIResult:
     mean_date: str
     cdf: tuple[tuple[int, float], ...]
     histogram: tuple[tuple[int, int, int], ...]
+    # the same curves keyed by realigned ISO date for direct plotting (S-curve points + histogram
+    # bin-centre counts): one S-curve point per distinct simulated finish (a dense, smooth curve)
+    s_curve: tuple[tuple[str, float], ...] = field(default=())
+    finish_hist: tuple[tuple[str, int], ...] = field(default=())
     risks: tuple[SSIRiskStat, ...] = field(default=())
 
 
@@ -975,6 +979,10 @@ def _build_ssi_result(
             )
         )
 
+    cdf = _build_cdf(sorted_f, n)
+    histogram = _build_histogram(sorted_f)
+    s_curve = tuple((iso(off), round(prob, 4)) for off, prob in cdf)
+    finish_hist = tuple((iso((lo + hi) / 2.0), count) for lo, hi, count in histogram)
     return SSIResult(
         iterations=config.iterations,
         seed=config.seed,
@@ -997,8 +1005,10 @@ def _build_ssi_result(
         p80_date=iso(p80),
         p90_date=iso(p90),
         mean_date=iso(mean),
-        cdf=_build_cdf(sorted_f, n),
-        histogram=_build_histogram(sorted_f),
+        cdf=cdf,
+        histogram=histogram,
+        s_curve=s_curve,
+        finish_hist=finish_hist,
         risks=tuple(rstats),
     )
 

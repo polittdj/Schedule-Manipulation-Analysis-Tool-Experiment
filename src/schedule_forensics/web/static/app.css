@@ -531,3 +531,19 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .col-resizable td.name-cell, .col-resizable th { white-space: normal; word-break: break-word; }
 .col-resizable td:not(.name-cell):not(.g-cell) { white-space: nowrap; }
 .col-resizable td.g-cell { overflow: visible; }
+
+/* Compact SSI vector charts (S-curve + finish-date distribution) — the operator wanted small graphs
+   with small text and many data points. Fixed small size, theme-independent ink so they read on the
+   panel in either theme. */
+.ssi-charts { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0; }
+.ssi-chart { display: inline-block; }
+.ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+.ssi-svg { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
+.ssi-svg .ch-ax { stroke: #5a6878; stroke-width: 1; }
+.ssi-svg .ch-grid { stroke: #e3e8ee; stroke-width: 1; }
+.ssi-svg .ch-line { fill: none; stroke: #0b6bcb; stroke-width: 1.4; }
+.ssi-svg .ch-bar { fill: #3d8ec4; }
+.ssi-svg .ch-det { stroke: #d29922; stroke-width: 1; stroke-dasharray: 3 2; }
+.ssi-svg .ch-dot { fill: #e8352e; }
+.ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }
+.ssi-svg .ch-yl { text-anchor: end; }
