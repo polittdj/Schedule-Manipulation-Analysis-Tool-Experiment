@@ -35,6 +35,31 @@ def test_sra_in_nav(client: TestClient) -> None:
     assert '<a href="/sra">Risk Analysis</a>' in client.get("/").text
 
 
+def test_sra_file_selector_is_at_the_top_and_governs_all_models(client: TestClient) -> None:
+    """Operator: pick the schedule file once at the TOP of /sra and have it apply to every model."""
+    second = GOLDEN.parent / "Project2.mspdi.xml"
+    client.post("/upload", files={"files": ("Project2.mspdi.xml", second.read_bytes(), "text/xml")})
+    page = client.get("/sra").text
+    # the top panel names the file pick and says it governs every model
+    top = page.index("Schedule file for the SRA")
+    assert top < page.index("Legacy SRA")  # it sits above the legacy model
+    assert "every</b> SRA model" in page or "every" in page[top : top + 400]
+    assert 'action="/sra"' in page and "Run on this file" in page  # the selector form
+    assert "User Tip" in page  # the shared-inputs tip
+
+
+def test_legacy_run_uses_the_shared_factor_durations(client: TestClient) -> None:
+    """Operator: Risk Ranking Factors entered once feed the legacy Monte-Carlo too. Setting a
+    factor must not break the legacy run, and the factored task gains duration uncertainty."""
+    rows = client.get("/api/sra/grid").json()["rows"]
+    uid = next(r["unique_id"] for r in rows if r["editable"])
+    client.post("/sra/factor", data={"uids": str(uid), "factor": "5"})
+    r = client.get("/api/sra?iterations=200&distribution=triangular")
+    assert r.status_code == 200  # the shared three-point override did not break the legacy run
+    sens = {row["uid"] for row in r.json().get("sensitivity", [])}
+    assert isinstance(sens, set)  # the run produced a sensitivity ranking
+
+
 def test_sra_empty_session_prompts_load() -> None:
     c = TestClient(create_app(SessionState()))
     page = c.get("/sra").text

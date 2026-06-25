@@ -905,6 +905,19 @@ def _e(text: object) -> str:
     return html.escape(str(text))
 
 
+def _user_tip(text: str) -> str:
+    """A small, consistent "User Tip" call-out to guide the operator on a page or control.
+
+    ``text`` is a developer-authored static string (it may contain simple inline HTML such as
+    ``<b>`` for emphasis); it is never operator input, so it is embedded as-is. Rendered the same
+    way everywhere so tips read consistently across the tool.
+    """
+    return (
+        '<p class="user-tip" role="note"><span class="ut-badge">User Tip</span> '
+        f"<span>{text}</span></p>"
+    )
+
+
 #: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
 #: just in the test: ``default-src``/``connect-src``/``img-src`` are ``'self'`` so the page can
 #: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``'unsafe-inline'``
@@ -2275,11 +2288,23 @@ def create_app(
             auto_high=st.sra_high,
             distribution=dist,
         )
+        # The Risk Ranking Factors + Best/Worst-Case durations are entered ONCE (the SSI grid) and
+        # apply to BOTH models: here they become this legacy run's per-activity 3-point overrides
+        # (BestCase, MostLikely=remaining, WorstCase minutes -> optimistic/most_likely/pessimistic).
+        # An explicit legacy per-activity override still wins; tasks with neither use the global
+        # triangular. compute_sra/RiskEvent are untouched — only the inputs we hand it are shared.
         overrides = {
             u: ActivityRisk(u, o, m, p)
-            for u, (o, m, p) in st.sra_overrides.items()
-            if u in sch.tasks_by_id
+            for u, (o, m, p) in _ssi_three_point(st, sch).items()
+            if u in sch.tasks_by_id and o <= m <= p  # skip any inverted manual BC/WC triple
         }
+        overrides.update(
+            {
+                u: ActivityRisk(u, o, m, p)
+                for u, (o, m, p) in st.sra_overrides.items()
+                if u in sch.tasks_by_id and o <= m <= p
+            }
+        )
         # never 500 on the simulation — surface the engine message as a 422 instead
         try:
             result = compute_sra(
@@ -6640,6 +6665,20 @@ def _sra_body(st: SessionState) -> str:
         if len(st.schedules) > 1
         else ""
     )
+    # The file pick governs EVERY model on the page (SSI, OAT, and the legacy Monte-Carlo all
+    # resolve their schedule through _sra_selected), so it lives in one panel at the very top.
+    active_note = (
+        f'<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b> '
+        f'{"(latest solvable version)" if st.sra_file is None else ""}</p>'
+    )
+    top_file_panel = (
+        "<div class=panel><h2>Schedule file for the SRA</h2>"
+        "<p class=muted>Choose which loaded version <b>every</b> SRA model on this page runs "
+        "against &mdash; the SSI Schedule Risk &amp; Opportunity model, the one-at-a-time "
+        "sensitivity, and the legacy Monte-Carlo all use this same file.</p>"
+        f"{_user_tip('Set your Risk Ranking Factors, Best/Worst-Case durations and risks once: they are shared by both the SSI model and the legacy Monte-Carlo, so you never re-enter them per model.')}"
+        f"{file_selector}{active_note}</div>"
+    )
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"
@@ -6665,6 +6704,7 @@ def _sra_body(st: SessionState) -> str:
             "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
         )
     return f"""
+{top_file_panel}
 {_ssi_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
@@ -6673,9 +6713,6 @@ finish-date confidence curve. The deterministic CPM finish is marked against the
 so you can read how much contingency it implies (the deterministic date typically sits well
 below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
 {disclaimer}
-{file_selector}
-<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b>
-{"(latest solvable version)" if st.sra_file is None else ""}</p>
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
 <label>Distribution <select id=sraDistribution data-no-i18n>
