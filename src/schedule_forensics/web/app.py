@@ -1042,8 +1042,8 @@ def create_app(
 <section class=hero>
   <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
   <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
-  Acumen-Fuse&nbsp;&amp;&nbsp;SSI-parity metrics, driving-path and manipulation-trend analysis, and a
-  cited AI narrative &mdash; nothing leaves this computer.</p>
+  schedule-quality&nbsp;&amp;&nbsp;schedule-risk metrics, driving-path and manipulation-trend analysis,
+  and a cited AI narrative &mdash; nothing leaves this computer.</p>
 </section>
 <div class=panel>
   <div id=dropzone class=dropzone>
@@ -1392,7 +1392,7 @@ def create_app(
             return _page(
                 st,
                 "Path Analysis",
-                "<div class=panel>Load a schedule to run the SSI-style path analysis.</div>",
+                "<div class=panel>Load a schedule to run the path analysis.</div>",
             )
         keys = [k for k, _ in st.ordered_versions()]
         return _page(st, "Path Analysis", _path_body(keys, st.target_uid))
@@ -1674,7 +1674,7 @@ def create_app(
             return _page(
                 st,
                 "Schedule Quality Ribbon",
-                "<div class=panel>Load one or more schedules to see the Acumen-Fuse-style "
+                "<div class=panel>Load one or more schedules to see the "
                 "schedule-quality ribbon.</div>",
             )
         rows: list[tuple[str, object]] = []
@@ -1909,7 +1909,7 @@ def create_app(
             (
                 schedule_summary_table(sch),
                 dcma_table(analysis.audit),
-                metric_results_table("Schedule quality (Acumen)", quality),
+                metric_results_table("Schedule quality", quality),
                 metric_results_table("Float bands", analysis.float_bands),
                 metric_results_table("Completion performance", analysis.completion),
                 metric_results_table("Baseline compliance", analysis.compliance),
@@ -3133,7 +3133,7 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
     return f"""
 <div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
 <p class=muted>Pick a schedule and a target UniqueID: the driving path (slack &le; 0) and the
-secondary/tertiary tiers within your day-bands trace back from it, SSI-style — data on the
+secondary/tertiary tiers within your day-bands trace back from it — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
 filter rows, and hide completed work.</p>
 <details class=path-explainer><summary>Why an activity can show 0&#8209;day driving slack here but not on another view</summary>
@@ -4341,7 +4341,7 @@ metadata)</span></h3>
 {_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
-Each row shows the <b>count</b> and the <b>percentage</b> of its population (as Acumen Fuse does),
+Each row shows the <b>count</b> and the <b>percentage</b> of its population,
 not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
 criteria, why it matters, and what it indicates; full formulas + citations are in the
 <a href="/help">Metric Dictionary</a>.</p>
@@ -5061,7 +5061,7 @@ placeholder="UID"> <button type=submit>Focus</button>
 data-target="{target if target is not None else ""}"></div></div>
 <div class=panel id=qualDrillPanel><h2>Quality drill-down &amp; animation</h2>
 <p class=muted>Step through the versions (oldest first) and watch the count of <b>offending
-activities</b> for each Acumen &sect;A quality metric move on a <b>locked axis</b> &mdash; bar
+activities</b> for each schedule-quality metric move on a <b>locked axis</b> &mdash; bar
 heights stay comparable frame to frame, so a metric that worsens stands out. Pick a metric to
 list the exact activities behind its number in the current version (the drill-down).</p>
 <div class=viz-controls>
@@ -5076,7 +5076,7 @@ list the exact activities behind its number in the current version (the drill-do
 <div id=qualDrill class=qual-offenders></div>
 </div></div>
 <div class=panel><h2>Schedule-quality trends</h2>
-<p class=muted>How each Acumen &sect;A quality metric moves across the versions.</p>
+<p class=muted>How each schedule-quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
 <div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
 <table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
@@ -5419,16 +5419,16 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
         body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
     return f"""{note}
 <div class=panel><h2>Schedule Quality Ribbon</h2>
-<p class=muted>The Acumen-Fuse "Ribbon Analysis" schedule-quality metrics, one row per loaded
+<p class=muted>The schedule-quality ribbon metrics, one row per loaded
 schedule. <b>Missing Logic</b> = activities missing a predecessor and/or successor;
 <b>Logic Density™</b> = logic links per activity (2&times;links &divide; activities);
 <b>Critical</b> = activities the source tool flags critical (its stored Critical / Total Slack);
 <b>Lags</b> / <b>Leads</b> = activities whose predecessors carry a positive / negative offset,
-across all statuses (planned, in-progress, or complete &mdash; as Fuse counts them, unlike the
+counted across all statuses (planned, in-progress, or complete &mdash; unlike the
 incomplete-only DCMA-14 checks); <b>Hard Constraints</b> / <b>Negative Float</b> are the DCMA
-counts; <b>Merge Hotspot</b> = activities with more than two predecessors. These are validated against the reference Fuse
-export (docs/FUSE-VALIDATION.md). <i>Insufficient Detail™ and Float Ratio™ are Fuse-proprietary
-formulas and are omitted pending their exact definition.</i></p>
+counts; <b>Merge Hotspot</b> = activities with more than two predecessors. These are validated
+against the reference schedule-quality export. <i>Insufficient Detail™ and Float Ratio™ are
+proprietary formulas and are omitted pending their exact definition.</i></p>
 <table><tr>{head}</tr>{body}</table></div>"""
 
 
@@ -5956,7 +5956,7 @@ def _ssi_export_tables(
         tuple((c + 1, *(opp_grid[c][p] for p in range(5))) for c in reversed(range(5))),
     )
     return TableSet(
-        f"SSI Schedule Risk & Opportunity Analysis - {sch.name}",
+        f"Schedule Risk & Opportunity Analysis - {sch.name}",
         (setup, durations, risks, results, sens, risk_matrix, opp_matrix),
     )
 
@@ -6327,7 +6327,8 @@ def _sra_report_blocks(
         Paragraph(
             "Each ranked activity's Best/Worst-case duration is swung independently to measure how far "
             "it can pull in (opportunity to accelerate, green) or push out (risk of delay, red) the "
-            "focus finish. This deterministic one-at-a-time method is validated to match SSI exactly."
+            "focus finish. This deterministic one-at-a-time method is validated against the "
+            "reference tool."
         ),
     ]
     tor = _sra_chart_tornado(oat)
@@ -6388,9 +6389,10 @@ def _sra_report_blocks(
         ),
         Paragraph(
             "The Best/Worst-case derivation and the deterministic one-at-a-time sensitivity are "
-            "validated to match SSI Tools exactly. The stochastic distribution (S-curve, histogram, "
+            "validated against the reference tool. The stochastic distribution (S-curve, histogram, "
             "percentiles) uses a standard-library random generator that is statistically "
-            "representative but NOT bit-identical to SSI's, so treat the P-values as close, not exact "
+            "representative but NOT bit-identical to the reference tool's, so treat the P-values as "
+            "close, not exact "
             "(ADR-0005/0106). All computation is local and offline; this document carries the CUI "
             "marking in its header and footer.",
             italic=True,
@@ -6441,12 +6443,13 @@ def _ssi_panel(st: SessionState) -> str:
         for n in (500, 1000, 2000, 5000)
     )
     return f"""
-<div class=panel><h2>SSI Schedule Risk &amp; Opportunity Analysis</h2>
-<p class=muted>Mirrors SSI Tools' add-in: rank each task 1&ndash;5 (Risk Ranking Factor), auto-calculate
+<div class=panel><h2>Schedule Risk &amp; Opportunity Analysis</h2>
+<p class=muted>Rank each task 1&ndash;5 (Risk Ranking Factor), auto-calculate
 its Best/Worst Case from the factor table, attach discrete risks with an additive schedule impact in
 days, and run a Monte-Carlo to a chosen <b>focus event</b>. The current Remaining Duration is the Most
-Likely. <b>Best/Worst Case and the deterministic sensitivity are validated to match SSI exactly</b>;
-the random distribution is statistically close, not bit-identical (a different RNG, ADR-0005).</p>
+Likely. <b>Best/Worst Case and the deterministic sensitivity are validated against the reference
+tool</b>; the random distribution is statistically close, not bit-identical (a different RNG,
+ADR-0005).</p>
 <form action="/sra/ssi-run-config" method=post class=viz-controls>
 <label>Focus event UID <input type=number name=focus_uid min=1 value="{st.sra_focus_uid or ""}"
  placeholder="project finish"></label>
@@ -6484,7 +6487,7 @@ the random distribution is statistically close, not bit-identical (a different R
 <button type=submit>Add risk</button></form>
 <table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
 <h3>Editable schedule grid</h3>
-<p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
+<p class=muted>The whole schedule as a spreadsheet-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. <b>Factor 0
 means no duration uncertainty</b> &mdash; no Best/Worst case, the remaining duration is used as-is;
 1&ndash;5 widen the Best/Worst spread. A factor auto-fills Best/Worst from the table above; an explicit
@@ -6502,13 +6505,13 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <label>Iterations <select id=ssiIters>{iters}</select></label>
 <label>Distribution <select id=ssiDist data-no-i18n><option value=triangular>Triangular</option>
 <option value=pert>Beta-PERT</option></select></label>
-<button id=ssiRun type=button>Run SSI SRA</button>
+<button id=ssiRun type=button>Run SRA</button>
 <button id=ssiOat type=button title="Deterministic one-at-a-time Best/Worst swing on the focus event (2xN CPM solves)">Run sensitivity</button></div>
 <p id=ssiStatus class=muted aria-live=polite></p>
 <div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div>
 <div id=ssiMatrices class=ssi-matrices></div>
 <p class=muted style="font-size:11px">Tip: each chart and matrix has its own toolbar (full screen, zoom in/out, reset) to enlarge or shrink it, and hovering any point, bar, or matrix cell calls out its values (a matrix cell lists the risks that land there).</p>
-<h3>Sensitivity — deterministic OAT (SSI Sensitivity Analysis)</h3><div id=ssiOatOut></div>
+<h3>Sensitivity — deterministic one-at-a-time (OAT)</h3><div id=ssiOatOut></div>
 <h3>Save / load setup &amp; export</h3>
 <div class=viz-controls>
 <a class=btn href="/sra/ssi/save" download>Save setup (JSON)</a>
@@ -6561,8 +6564,8 @@ def _sra_body(st: SessionState) -> str:
             '<div class="notice warn" role=note><b>Auto defaults &mdash; screening placeholder, '
             "not SME-validated.</b> With no analyst-supplied risk ranges this run applies an "
             "industry-default <b>triangular</b> distribution to each activity's <i>remaining</i> "
-            "duration (Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; Deltek Acumen "
-            '"Realistic"). It is a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE '
+            "duration (Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; an industry "
+            '"Realistic" default). It is a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE '
             "prefer elicited ranges) and is overridable per-activity. A duration-only run is a "
             "<i>schedule</i> confidence level &mdash; JCL (cost-loaded) is out of scope until cost "
             "inputs exist (ADR-0106).</div>"
@@ -6867,7 +6870,7 @@ def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], targe
         f"<div class=panel><h2>Driving tiers to {target} &mdash; {fname}</h2>"
         "<p class=muted>Activities driving this target in the latest version, by their driving "
         "slack: <b>critical</b> (0 working days &mdash; the driving path), <b>secondary</b>, and "
-        "<b>tertiary</b>. Fewer days = more control over the target (SSI/ADR-0011).</p>"
+        "<b>tertiary</b>. Fewer days = more control over the target (ADR-0011).</p>"
         '<div style="display:flex;gap:1em;align-items:flex-start;flex-wrap:wrap">'
         f"{''.join(blocks)}</div></div>"
     )
@@ -6927,7 +6930,7 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
         "<p class=muted>How the driving path to this target changes across the loaded versions "
         "(oldest first): the count of activities at each driving-slack tier. A rising "
         "<b>driving (0d)</b> count means slack is eroding into the path &mdash; more work now "
-        "controls the target's finish (SSI/ADR-0011).</p>"
+        "controls the target's finish (ADR-0011).</p>"
         "<table class=card-table><tr><th scope=col>Version</th><th scope=col>Data date</th>"
         "<th scope=col>Driving (0d)</th><th scope=col>Secondary</th><th scope=col>Tertiary</th>"
         f"<th scope=col>&Delta; driving</th></tr>{body}</table></div>"

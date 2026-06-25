@@ -669,7 +669,7 @@
         });
         if (floatRatioSeries.length) {
           multiLineChart("Float Ratio™ across periods", labels, floatRatioSeries,
-            "Average activity total float divided by remaining duration (Acumen 'Float Ratio™'), over the normal planned/in-progress activities, scored per version so it reads period to period. Higher = more float per day of remaining work. Bands: <0.1 very tight, 0.1–0.3 tight, 0.3–0.6 healthy, >0.6 generous (check for missing logic). A falling ratio means the schedule is losing room; the solid line is the mean-of-ratios, the muted line the more outlier-robust ratio-of-means.");
+            "Average activity total float divided by remaining duration (the 'Float Ratio™' metric), over the normal planned/in-progress activities, scored per version so it reads period to period. Higher = more float per day of remaining work. Bands: <0.1 very tight, 0.1–0.3 tight, 0.3–0.6 healthy, >0.6 generous (check for missing logic). A falling ratio means the schedule is losing room; the solid line is the mean-of-ratios, the muted line the more outlier-robust ratio-of-means.");
         }
 
         var sfrVals = data.versions.map(function (v) {

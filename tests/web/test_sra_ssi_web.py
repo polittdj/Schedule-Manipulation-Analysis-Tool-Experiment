@@ -39,7 +39,7 @@ def test_ssi_panel_renders_without_running(client: TestClient) -> None:
     elapsed = time.perf_counter() - start
     # the SSI panel must open instantly — the Monte-Carlo runs only when the operator clicks Run
     assert elapsed < 2.0, f"/sra ran the SSI simulation on load ({elapsed:.1f}s)"
-    assert "SSI Schedule Risk" in page
+    assert "Schedule Risk &amp; Opportunity Analysis" in page
     hosts = (
         "id=ssiRun",
         "id=ssiOat",
