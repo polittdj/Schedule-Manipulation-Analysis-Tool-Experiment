@@ -134,7 +134,7 @@ def test_setup_save_load_round_trip(client: TestClient) -> None:
         data={"deltas": json.dumps([{"uid": uids[0], "factor": 4, "focus": True}])},
     )
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Permit",
@@ -204,7 +204,7 @@ def test_word_export_is_a_comprehensive_report_with_vector_charts(client: TestCl
         "/sra/grid", data={"deltas": json.dumps([{"uid": uid, "factor": 5, "focus": True}])}
     )
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Permit",
@@ -237,7 +237,7 @@ def test_word_export_is_a_comprehensive_report_with_vector_charts(client: TestCl
 def test_risk_registry_is_downloadable(client: TestClient, fmt: str) -> None:
     uid = _editable_uids(client, 1)[0]
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Permit",

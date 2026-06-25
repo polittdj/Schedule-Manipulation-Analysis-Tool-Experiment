@@ -333,6 +333,33 @@ def _compute_analysis(sch: Schedule) -> _Analysis:
     )
 
 
+@dataclass(frozen=True)
+class UnifiedRisk:
+    """One operator-entered risk/opportunity that feeds BOTH SRA models.
+
+    The operator enters a risk ONCE. It carries two magnitudes for the same event: an additive
+    ``impact_days`` (the SSI model) and a multiplicative ``impact_pct`` uplift (the legacy model;
+    ``20`` => x1.20). Typing one auto-derives the other from the affected tasks' remaining duration
+    (client-side ``sra_risk.js``; the server mirrors it for the JS-off / load path). A field the
+    operator set explicitly is *locked* (``days_locked`` / ``pct_locked``) and used verbatim for that
+    model; the unlocked one is the derived value. At the web boundary this record is turned into the
+    engine's frozen :class:`ScheduleRisk` (from ``impact_days``) and :class:`RiskEvent` (from
+    ``impact_pct``) — the engine and its byte-frozen parity tests are untouched.
+    """
+
+    id: str
+    name: str
+    probability: float  # 0..1
+    affected: tuple[int, ...]
+    impact_days: float  # additive working days (>=0 risk, <0 opportunity) — the SSI magnitude
+    impact_pct: (
+        float  # multiplicative % uplift (20 => x1.20; <0 opportunity) -- the legacy magnitude
+    )
+    days_locked: bool = False  # the operator set days explicitly → use verbatim for the SSI model
+    pct_locked: bool = False  # the operator set % explicitly → use verbatim for the legacy model
+    consequence_rating: int | None = None  # 1..5 for the 5x5 matrix; None auto-derives from days
+
+
 @dataclass
 class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk persistence."""
@@ -375,9 +402,10 @@ class SessionState:
     sra_high: float = 1.10
     # per-activity 3-point overrides: uid -> (optimistic, most_likely, pessimistic) WORKING MINUTES.
     sra_overrides: dict[int, tuple[int, int, int]] = field(default_factory=dict)
-    # discrete risk register (ADR-0106 risk-driver method): probability x triangular impact
-    # multiplier on the affected activities' sampled durations. Set via POST /sra/risk-event.
-    sra_risks: list[RiskEvent] = field(default_factory=list)
+    # UNIFIED risk register (entered once): each risk carries BOTH an additive-days (SSI) and a
+    # multiplicative-% (legacy) magnitude + per-model lock flags. At the compute boundary it derives
+    # the engine's ScheduleRisk (additive) and RiskEvent (multiplicative). Set via POST /sra/risk-register.
+    sra_risks: list[UnifiedRisk] = field(default_factory=list)
     # monotonic id counter so each registered risk keeps a stable, unique id across removals.
     sra_risk_seq: int = 0
     # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
@@ -392,8 +420,7 @@ class SessionState:
     )
     sra_factors: dict[int, int] = field(default_factory=dict)  # uid -> Risk Ranking Factor 1..5
     sra_bcwc: dict[int, tuple[int, int]] = field(default_factory=dict)  # uid -> (BC, WC) minutes
-    sra_ssi_risks: list[ScheduleRisk] = field(default_factory=list)  # additive-days risk register
-    sra_ssi_risk_seq: int = 0
+    # (the SSI + legacy registers are unified into `sra_risks` above — both magnitudes per risk)
     sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
     sra_use_risk_register: bool = True
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
@@ -2235,61 +2262,68 @@ def create_app(
                     st.sra_overrides[add_uid] = (o, m, p)
         return RedirectResponse(url="/sra", status_code=303)
 
-    @app.post("/sra/risk-event")
-    def sra_risk_event(
+    @app.post("/sra/risk-register")
+    def sra_risk_register(
+        action: str = Form("add"),
+        rid: str = Form(""),
         name: str = Form(""),
         prob: str = Form(""),
-        imp_low: str = Form(""),
-        imp_ml: str = Form(""),
-        imp_high: str = Form(""),
         affected: str = Form(""),
-        remove: str = Form(""),
-        clear: str = Form(""),
+        impact_days: str = Form(""),
+        impact_pct: str = Form(""),
+        days_locked: str = Form(""),
+        pct_locked: str = Form(""),
+        consequence: str = Form(""),
     ) -> RedirectResponse:
-        """Maintain the discrete-risk register (ADR-0106 risk-driver method), then redirect to /sra.
+        """Maintain the UNIFIED risk register (entered ONCE; feeds both SRA models), then redirect.
 
-        A risk = a name, a probability (% it occurs), a 3-point *multiplicative* impact on the
-        sampled duration of the activities it is mapped to (entered as percentages, e.g. 100/120/150),
-        and an ``affected`` UID list. ``clear`` empties the register; ``remove`` drops one risk by id.
-        Affected UIDs are validated against the latest solvable schedule — unknown / summary uids are
-        dropped, and a risk that maps to no real activity is ignored (it could never fire)."""
+        A risk = a name, a probability (% it occurs), an ``affected`` UID list, and BOTH magnitudes of
+        the same event: an additive ``impact_days`` (the SSI model) and a multiplicative ``impact_pct``
+        uplift (the legacy model). The operator types one; the other is auto-derived (client-side, and
+        mirrored here for the JS-off / load path) from the affected tasks' average remaining duration;
+        a supplied field is locked and used verbatim for that model. ``action`` is add / remove /
+        clear. Unknown / summary UIDs are dropped; a risk mapping to no real activity is ignored."""
         st = session()
-        if clear.strip():
+        if action == "clear":
             st.sra_risks.clear()
-        rid = remove.strip()
-        if rid:
-            st.sra_risks = [r for r in st.sra_risks if r.id != rid]
+            return RedirectResponse(url="/sra", status_code=303)
+        if action == "remove":
+            st.sra_risks = [r for r in st.sra_risks if r.id != rid.strip()]
+            return RedirectResponse(url="/sra", status_code=303)
         label = name.strip()
-        uids = _parse_uid_list(affected)
-        if label and uids:
-            chosen = _latest_solvable(st)
-            valid: list[int] = []
-            if chosen is not None:
-                _, sch, _cpm = chosen
-                for u in uids:
-                    task = sch.tasks_by_id.get(u)
-                    if task is not None and not task.is_summary and u not in valid:
-                        valid.append(u)
-            if valid:
-                # percentages -> fractions; probability clamped to [0,1]; impacts ordered & >= 0
-                p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
-                lo = max(0.0, _to_float(imp_low, 100.0) * 0.01)
-                mid = max(0.0, _to_float(imp_ml, 100.0) * 0.01)
-                hi = max(0.0, _to_float(imp_high, 100.0) * 0.01)
-                mid = max(lo, mid)  # keep impact_low <= impact_ml <= impact_high
-                hi = max(mid, hi)
-                st.sra_risk_seq += 1
-                st.sra_risks.append(
-                    RiskEvent(
-                        id=f"R{st.sra_risk_seq}",
-                        name=label,
-                        probability=p,
-                        impact_low=lo,
-                        impact_ml=mid,
-                        impact_high=hi,
-                        affected=tuple(valid),
-                    )
+        chosen = _sra_selected(st)
+        sch = chosen[1] if chosen is not None else None
+        valid: list[int] = []
+        if sch is not None:
+            for u in _parse_uid_list(affected):
+                task = sch.tasks_by_id.get(u)
+                if task is not None and not task.is_summary and u not in valid:
+                    valid.append(u)
+        if label and valid:
+            avg_rem = _affected_avg_remaining_days(sch, valid)
+            days, pct, dl, pl = _reconcile_magnitudes(
+                impact_days,
+                impact_pct,
+                days_locked.strip() in ("1", "on", "true"),
+                pct_locked.strip() in ("1", "on", "true"),
+                avg_rem,
+            )
+            p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
+            cons = int(consequence) if consequence.strip().isdigit() else None
+            st.sra_risk_seq += 1
+            st.sra_risks.append(
+                UnifiedRisk(
+                    id=f"R{st.sra_risk_seq}",
+                    name=label,
+                    probability=p,
+                    affected=tuple(valid),
+                    impact_days=days,
+                    impact_pct=pct,
+                    days_locked=dl,
+                    pct_locked=pl,
+                    consequence_rating=min(5, max(1, cons)) if cons is not None else None,
                 )
+            )
         return RedirectResponse(url="/sra", status_code=303)
 
     @app.get("/api/sra")
@@ -2339,7 +2373,7 @@ def create_app(
                 cpm,
                 config=config,
                 overrides=overrides,
-                risks=tuple(st.sra_risks),
+                risks=_risk_events(st),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -2414,38 +2448,6 @@ def create_app(
                 st.sra_bcwc[u] = (bc, wc)
         return RedirectResponse(url="/sra", status_code=303)
 
-    @app.post("/sra/ssi-risk")
-    def ssi_risk(
-        action: str = Form("add"),
-        rid: str = Form(""),
-        name: str = Form(""),
-        prob: float = Form(0.0),
-        impact_days: float = Form(0.0),
-        affected: str = Form(""),
-        consequence: str = Form(""),
-    ) -> RedirectResponse:
-        st = session()
-        if action == "remove":
-            st.sra_ssi_risks = [r for r in st.sra_ssi_risks if r.id != rid]
-        elif action == "clear":
-            st.sra_ssi_risks = []
-        else:
-            uids = tuple(int(t) for t in re.split(r"[,\s]+", affected.strip()) if t.isdigit())
-            if uids:
-                st.sra_ssi_risk_seq += 1
-                cons = int(consequence) if consequence.strip().isdigit() else None
-                st.sra_ssi_risks.append(
-                    ScheduleRisk(
-                        id=f"R{st.sra_ssi_risk_seq}",
-                        name=name.strip() or f"Risk {st.sra_ssi_risk_seq}",
-                        probability=min(1.0, max(0.0, prob / 100.0)),
-                        impact_days=impact_days,
-                        affected=uids,
-                        consequence_rating=min(5, max(1, cons)) if cons is not None else None,
-                    )
-                )
-        return RedirectResponse(url="/sra", status_code=303)
-
     @app.get("/api/sra/ssi")
     def sra_ssi_json(
         iterations: int = Query(1000), distribution: str = Query("triangular")
@@ -2473,7 +2475,7 @@ def create_app(
                 sch,
                 config=cfg,
                 three_point=_ssi_three_point(st, sch),
-                risks=tuple(st.sra_ssi_risks),
+                risks=_schedule_risks(st),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -2487,7 +2489,7 @@ def create_app(
             return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
         _key, sch, _cpm = chosen
         exclude = (
-            frozenset(u for r in st.sra_ssi_risks for u in r.affected)
+            frozenset(u for r in st.sra_risks for u in r.affected)
             if st.sra_use_risk_register
             else frozenset()
         )
@@ -2648,10 +2650,10 @@ def create_app(
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         result = run_maybe_offloaded(
-            heavy, compute_sra_ssi, sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks)
+            heavy, compute_sra_ssi, sch, config=cfg, three_point=tp, risks=_schedule_risks(st)
         )
         exclude = (
-            frozenset(u for r in st.sra_ssi_risks for u in r.affected)
+            frozenset(u for r in st.sra_risks for u in r.affected)
             if st.sra_use_risk_register
             else frozenset()
         )
@@ -2699,7 +2701,7 @@ def create_app(
             sch,
             config=cfg,
             three_point=tp,
-            risks=tuple(st.sra_ssi_risks),
+            risks=_schedule_risks(st),
         )
         keep = {"Risk register", "Per-task durations"}
         full = _ssi_export_tables(st, sch, result, [])  # registry needs no OAT (skip the 2N solves)
@@ -5718,43 +5720,71 @@ def _sra_overrides_table(st: SessionState, sch: Schedule | None) -> str:
     )
 
 
-def _sra_risk_table(st: SessionState, sch: Schedule | None) -> str:
-    """The discrete-risk register as a table (name, probability, impact, affected) + Remove buttons."""
-    if not st.sra_risks:
-        return (
-            "<p class=muted>No discrete risks registered &mdash; the run uses duration uncertainty "
-            "only. Add a risk above to model a probabilistic event (e.g. a 40%-likely permit delay "
-            "that stretches its activities 1.2&ndash;1.6&times;).</p>"
-        )
-    names = sch.tasks_by_id if sch is not None else {}
+_CONSEQUENCE_HINT = (
+    "Leave blank to auto-rate from the schedule impact (NASA Schedule guideline: the impact days "
+    "converted to calendar months -- &lt;1 week=1, 1 week to &lt;1 month=2, 1 to &lt;3 months=3, "
+    "3 to &lt;=6 months=4, &gt;6 months=5)."
+)
 
-    def _affected(uids: tuple[int, ...]) -> str:
-        chips = []
-        for u in uids:
-            nm = _e(names[u].name) if u in names else "?"
-            chips.append(f"{u} &mdash; {nm}")
-        return "; ".join(chips)
 
-    rows = []
-    for r in st.sra_risks:
-        impact = f"{r.impact_low * 100:g}/{r.impact_ml * 100:g}/{r.impact_high * 100:g}%"
-        rows.append(
+def _unified_risk_section(st: SessionState) -> str:
+    """The single 'enter once' risk/opportunity register: ONE form carrying BOTH a days magnitude
+    (SSI) and a %/multiplicative magnitude (legacy), the registered-risk table (with each magnitude
+    and its lock state), and the client-side days<->% auto-derive (sra_risk.js, fed a uid->remaining-
+    days map). Removing/clearing posts to the same /sra/risk-register route. Both magnitudes are
+    turned into the engine's ScheduleRisk / RiskEvent at the compute boundary."""
+    chosen = _sra_selected(st)
+    sch = chosen[1] if chosen is not None else None
+    mpd = (sch.calendar.working_minutes_per_day or 480) if sch is not None else 480
+    rem_map: dict[int, float] = {}
+    if sch is not None:
+        for t in non_summary(sch):
+            rem = (
+                t.remaining_duration_minutes
+                if t.remaining_duration_minutes is not None
+                else t.duration_minutes
+            )
+            rem_map[t.unique_id] = round(rem / mpd, 3)
+    rem_json = json.dumps({str(u): d for u, d in rem_map.items()}).replace("<", "\\u003c")
+    lock = "&#128274;"  # a small lock marks a magnitude the operator set explicitly (used verbatim)
+    rows = (
+        "".join(
             f"<tr><td>{_e(r.id)}</td><td>{_e(r.name)}</td><td>{r.probability * 100:g}%</td>"
-            f"<td>{impact}</td><td>{_affected(r.affected)}</td><td>"
-            f'<form action="/sra/risk-event" method=post class=navform style="display:inline">'
-            f'<input type=hidden name=remove value="{_e(r.id)}">'
-            "<button type=submit class=linkbtn>Remove</button></form></td></tr>"
+            f"<td>{r.impact_days:g} d{(' ' + lock) if r.days_locked else ''}</td>"
+            f"<td>{r.impact_pct:g}%{(' ' + lock) if r.pct_locked else ''}</td>"
+            f"<td>{_e(', '.join(str(u) for u in r.affected))}</td>"
+            f'<td><form action="/sra/risk-register" method=post style="display:inline">'
+            f'<input type=hidden name=action value=remove><input type=hidden name=rid value="{_e(r.id)}">'
+            "<button type=submit class=linkbtn>remove</button></form></td></tr>"
+            for r in st.sra_risks
         )
-    return (
-        "<table><thead><tr><th scope=col>ID</th><th scope=col>Risk</th>"
-        "<th scope=col>Probability</th><th scope=col>Impact (lo/ml/hi)</th>"
-        "<th scope=col>Affected activities</th><th scope=col></th></tr></thead><tbody>"
-        + "".join(rows)
-        + "</tbody></table>"
-        + '<form action="/sra/risk-event" method=post class=navform style="margin-top:8px">'
-        + '<input type=hidden name=clear value="1">'
-        + "<button type=submit>Clear all risks</button></form>"
+        or "<tr><td colspan=7 class=muted>No risks registered.</td></tr>"
     )
+    return f"""
+<h3>Risk / Opportunity register</h3>
+<p class=muted>Enter a risk <b>once</b> &mdash; it feeds <b>both</b> the additive-days (SSI) and the
+multiplicative-% (legacy) Monte-Carlo. Type a <b>days</b> impact <i>or</i> a <b>%</b> impact and the
+other auto-calculates from the affected tasks' remaining duration; edit either to override it (it
+locks {lock} and is used as-entered for that model). A negative value is an opportunity.</p>
+<form id=riskForm action="/sra/risk-register" method=post class=viz-controls>
+<input type=hidden name=action value=add>
+<input type=hidden id=riskDaysLocked name=days_locked value="">
+<input type=hidden id=riskPctLocked name=pct_locked value="">
+<label>Name <input type=text name=name maxlength=80 placeholder="e.g. Permit delay"></label>
+<label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="40"></label>
+<label>Affected UIDs <input type=text id=riskAffected name=affected placeholder="106, 152"></label>
+<label>Impact (days) <input type=number id=riskDays name=impact_days step=any placeholder="auto"></label>
+<label>Impact (%) <input type=number id=riskPct name=impact_pct step=any placeholder="auto"></label>
+<label title="{_CONSEQUENCE_HINT}">Consequence 1-5 <input type=number name=consequence min=1 max=5
+ style="width:56px" placeholder="auto &#9432;"></label>
+<button type=submit>Add risk</button></form>
+<table><thead><tr><th scope=col>ID</th><th scope=col>Name</th><th scope=col>Prob</th>
+<th scope=col>Impact (days)</th><th scope=col>Impact (%)</th><th scope=col>Affected</th>
+<th scope=col></th></tr></thead><tbody>{rows}</tbody></table>
+<form action="/sra/risk-register" method=post class=navform style="margin-top:6px">
+<input type=hidden name=action value=clear><button type=submit>Clear all risks</button></form>
+<script>window.SF_REMAIN_DAYS={rem_json};</script>
+<script src="/static/sra_risk.js"></script>"""
 
 
 def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, int, int]]:
@@ -5776,6 +5806,80 @@ def _ssi_three_point(st: SessionState, sch: Schedule) -> dict[int, tuple[int, in
         elif u in st.sra_factors:
             out[u] = factor_to_bc_wc(rem, st.sra_factors[u], tbl)
     return out
+
+
+def _risk_events(st: SessionState) -> tuple[RiskEvent, ...]:
+    """The legacy multiplicative RiskEvents derived from the unified register: ``impact_pct`` becomes
+    a point multiplier (``low = ml = high = 1 + pct/100``). compute_sra/RiskEvent stay byte-frozen —
+    only the inputs handed to them are derived."""
+    out: list[RiskEvent] = []
+    for r in st.sra_risks:
+        m = max(0.0, 1.0 + r.impact_pct / 100.0)
+        out.append(
+            RiskEvent(
+                id=r.id,
+                name=r.name,
+                probability=r.probability,
+                impact_low=m,
+                impact_ml=m,
+                impact_high=m,
+                affected=r.affected,
+            )
+        )
+    return tuple(out)
+
+
+def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
+    """The SSI additive-days ScheduleRisks derived from the unified register."""
+    return tuple(
+        ScheduleRisk(
+            id=r.id,
+            name=r.name,
+            probability=r.probability,
+            impact_days=r.impact_days,
+            affected=r.affected,
+            consequence_rating=r.consequence_rating,
+        )
+        for r in st.sra_risks
+    )
+
+
+def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> float:
+    """Average REMAINING duration (working days) of the affected leaf tasks — the basis the days↔%
+    auto-derive uses so the additive and multiplicative magnitudes produce the same TOTAL schedule
+    impact across the affected set. 0.0 when nothing is known (then no derivation is possible)."""
+    if sch is None:
+        return 0.0
+    mpd = sch.calendar.working_minutes_per_day or 480
+    rems: list[float] = []
+    for u in uids:
+        t = sch.tasks_by_id.get(u)
+        if t is not None and not t.is_summary:
+            rem = (
+                t.remaining_duration_minutes
+                if t.remaining_duration_minutes is not None
+                else t.duration_minutes
+            )
+            rems.append(rem / mpd)
+    return sum(rems) / len(rems) if rems else 0.0
+
+
+def _reconcile_magnitudes(
+    days_str: str, pct_str: str, days_locked: bool, pct_locked: bool, avg_rem: float
+) -> tuple[float, float, bool, bool]:
+    """Parse the two magnitudes and derive whichever the operator did not supply, using ``avg_rem``
+    (days = pct/100 x avg ; pct = days/avg x 100). A field that was supplied (or flagged) is locked
+    and used verbatim. Mirrors the client-side ``sra_risk.js`` so the JS-off / load path agrees."""
+    days = _to_float(days_str, 0.0) if days_str.strip() else None
+    pct = _to_float(pct_str, 0.0) if pct_str.strip() else None
+    dl = days_locked or days is not None
+    pl = pct_locked or pct is not None
+    if avg_rem > 0:
+        if days is not None and pct is None:
+            pct = round(days / avg_rem * 100.0, 2)
+        elif pct is not None and days is None:
+            days = round(pct / 100.0 * avg_rem, 2)
+    return (days or 0.0), (pct or 0.0), dl, pl
 
 
 def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> list[list[int]]:
@@ -5849,7 +5953,7 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
     Factor, Best/Worst-case days, a risk flag, the focus flag). Only leaf (non-summary) tasks
     are editable — summaries carry no factor."""
     mpd = sch.calendar.working_minutes_per_day or 480
-    risk_uids = {u for r in st.sra_ssi_risks for u in r.affected}
+    risk_uids = {u for r in st.sra_risks for u in r.affected}
     by_id = sch.tasks_by_id
     rows = _activity_rows(sch, cpm)
     for row in rows:
@@ -5903,10 +6007,13 @@ def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
                 "name": r.name,
                 "probability": r.probability,
                 "impact_days": r.impact_days,
+                "impact_pct": r.impact_pct,
+                "days_locked": r.days_locked,
+                "pct_locked": r.pct_locked,
                 "affected": list(r.affected),
                 "consequence_rating": r.consequence_rating,
             }
-            for r in st.sra_ssi_risks
+            for r in st.sra_risks
         ],
     }
 
@@ -5967,9 +6074,10 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                 except (TypeError, ValueError):
                     continue
     st.sra_bcwc = bcwc
-    risks: list[ScheduleRisk] = []
+    risks: list[UnifiedRisk] = []
     seq = 0
     raw_risks = data.get("risks")
+    sch_sel = chosen[1] if chosen is not None else None
     if isinstance(raw_risks, list):
         for item in raw_risks:
             if not isinstance(item, dict):
@@ -5981,21 +6089,35 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
             cons = item.get("consequence_rating")
             try:
                 prob = min(1.0, max(0.0, float(item.get("probability", 0.0))))
-                impact = float(item.get("impact_days", 0.0))
+                days = float(item.get("impact_days", 0.0))
             except (TypeError, ValueError):
                 continue
+            # a new setup carries BOTH magnitudes + locks; an older (SSI-only) setup carries
+            # impact_days alone — derive the % from the affected tasks' avg remaining so it still
+            # feeds both models, and lock days (the value the operator actually entered).
+            has_pct = "impact_pct" in item
+            try:
+                pct = float(item.get("impact_pct", 0.0))
+            except (TypeError, ValueError):
+                pct = 0.0
+            if not has_pct:
+                avg = _affected_avg_remaining_days(sch_sel, affected)
+                pct = round(days / avg * 100.0, 2) if avg > 0 else 0.0
             risks.append(
-                ScheduleRisk(
+                UnifiedRisk(
                     id=str(item.get("id") or f"R{seq}"),
                     name=str(item.get("name") or f"Risk {seq}"),
                     probability=prob,
-                    impact_days=impact,
                     affected=affected,
+                    impact_days=days,
+                    impact_pct=pct,
+                    days_locked=bool(item.get("days_locked", not has_pct)),
+                    pct_locked=bool(item.get("pct_locked", False)),
                     consequence_rating=min(5, max(1, int(cons))) if isinstance(cons, int) else None,
                 )
             )
-    st.sra_ssi_risks = risks
-    st.sra_ssi_risk_seq = seq
+    st.sra_risks = risks
+    st.sra_risk_seq = seq
 
 
 def _ssi_export_tables(
@@ -6047,7 +6169,7 @@ def _ssi_export_tables(
         ("UID", "Task", "Factor", "Best case d", "Worst case d"),
         tuple(dur_rows),
     )
-    risk_by_id = {r.id: r for r in st.sra_ssi_risks}
+    risk_by_id = {r.id: r for r in _schedule_risks(st)}
     risks = Table(
         "Risk register",
         (
@@ -6628,17 +6750,6 @@ def _ssi_panel(st: SessionState) -> str:
         f'<td><input type=number name=add{f} min=0 max=300 step=1 value="{a:g}" style="width:60px"></td></tr>'
         for f, s, a in st.sra_factor_rows
     )
-    risk_rows = (
-        "".join(
-            f"<tr><td>{_e(r.id)}</td><td>{_e(r.name)}</td><td>{r.probability * 100:g}%</td>"
-            f"<td>{r.impact_days:g} d</td><td>{', '.join(str(u) for u in r.affected)}</td>"
-            f'<td><form action="/sra/ssi-risk" method=post style="display:inline">'
-            f'<input type=hidden name=action value=remove><input type=hidden name=rid value="{_e(r.id)}">'
-            f"<button type=submit class=linkbtn>remove</button></form></td></tr>"
-            for r in st.sra_ssi_risks
-        )
-        or "<tr><td colspan=6 class=muted>No risks registered.</td></tr>"
-    )
     rand_ck = " checked" if st.sra_occurrence_mode == "random_each" else ""
     exact_ck = " checked" if st.sra_occurrence_mode == "exact_overall" else ""
     iters = "".join(
@@ -6717,15 +6828,7 @@ risk firing is a separate stream, and <b>r&nbsp;=&nbsp;0 reproduces the independ
 <form action="/sra/auto-calc" method=post style="display:inline;margin-left:8px"><input type=hidden name=scope value=selected>
 <input type=text name=uids placeholder="selected UIDs" style="width:150px">
 <button type=submit>Calculate — selected</button></form>
-<h3>Risk / Opportunity register</h3>
-<form action="/sra/ssi-risk" method=post class=viz-controls><input type=hidden name=action value=add>
-<label>Name <input type=text name=name maxlength=80 placeholder="e.g. Permit delay"></label>
-<label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="79"></label>
-<label>Schedule impact (days) <input type=number name=impact_days step=any placeholder="100 (negative = opportunity)"></label>
-<label>Affected UIDs <input type=text name=affected placeholder="106"></label>
-<label title="Leave blank to auto-rate from the schedule impact (NASA Schedule guideline: the impact days converted to calendar months -- &lt;1 week=1, 1 week to &lt;1 month=2, 1 to &lt;3 months=3, 3 to &lt;=6 months=4, &gt;6 months=5).">Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto &#9432;"></label>
-<button type=submit>Add risk</button></form>
-<table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
+{_unified_risk_section(st)}
 <h3>Editable schedule grid</h3>
 <p class=muted>The whole schedule as a spreadsheet-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. <b>Factor 0
@@ -6939,28 +7042,13 @@ take precedence over the global for the activities you elicit.</p>
 <button type=submit>Add override</button>
 </form>
 {_sra_overrides_table(st, scoped)}</div>
-<div class=panel><h2>Risk register (discrete risk drivers)</h2>
-<p class=muted>Discrete, probabilistic events (the GAO/AACE/Hulett <b>risk-driver</b> method). Each risk
-has a <b>probability</b> of occurring; when it occurs it multiplies the sampled duration of the
-activities it is mapped to by a 3-point <b>impact</b> factor (entered as percentages &mdash; e.g.
-100/120/150 means no change to +50%). One risk mapped to several activities correlates them
-automatically (the shared-driver correlation, no coefficient needed). Risks combine with the
-duration uncertainty above; the resulting "Risk drivers" tornado ranks each by the schedule slip it
-causes.</p>
-<form action="/sra/risk-event" method=post class=viz-controls>
-<label>Risk name <input type=text name=name maxlength=80 placeholder="e.g. Permit delay"></label>
-<label>Probability % <input type=number name=prob min=0 max=100 step=any placeholder="40"></label>
-<label>Impact low % <input type=number name=imp_low min=0 step=any placeholder="100"></label>
-<label>Impact ml % <input type=number name=imp_ml min=0 step=any placeholder="120"></label>
-<label>Impact high % <input type=number name=imp_high min=0 step=any placeholder="150"></label>
-<label>Affected UIDs <input type=text name=affected placeholder="101, 102 205"></label>
-<button type=submit>Add risk</button>
-</form>
-{_sra_risk_table(st, scoped)}
-<h3>Risk drivers (tornado)</h3>
-<p class=muted>The mean project-finish slip each risk contributes &mdash; the difference between the
-mean finish over the iterations the risk fired and the iterations it did not (working days), with
-its observed occurrence rate. Empty until a risk is registered.</p>
+<div class=panel><h2>Risk drivers (tornado)</h2>
+<p class=muted>Register risks <b>once</b> in the <b>Risk / Opportunity register</b> above (the Schedule
+Risk &amp; Opportunity Analysis panel) &mdash; each carries both an additive-days (SSI) and a
+multiplicative-% (legacy) magnitude and feeds this Monte-Carlo. This tornado ranks each registered
+risk by the mean project-finish slip it contributes: the difference between the mean finish over the
+iterations the risk fired and the iterations it did not (working days), with its observed occurrence
+rate. Empty until a risk is registered.</p>
 <div id=sraRisk class=chart-host></div></div>
 <div class=panel><h2>Finish-date confidence (S-curve)</h2>
 <p class=muted>Cumulative probability of finishing on or before each date, with P10/P50/P80/P90

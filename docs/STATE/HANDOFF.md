@@ -1,6 +1,14 @@
-# Handoff — 2026-06-25 (operator fixes on branch `claude/eager-rubin-xianw9`; #258 MERGED; SRA process-offload PR open, ADR-0126)
+# Handoff — 2026-06-25 (operator queue on branch `claude/eager-rubin-xianw9`; #258–#261 MERGED; unified SRA risk register PR open, ADR-0127)
 
-> ## STATUS (current) — Gantt-view fixes + SRA Ask-the-AI freeze: #258 merged; SRA Monte-Carlo process-offload (ADR-0126) in flight; branch `claude/eager-rubin-xianw9`
+> ## STATUS (current) — Unified SRA risk register (enter once; ADR-0127) in flight; #258–#261 merged; branch `claude/eager-rubin-xianw9`
+>
+> **Five PRs this session.** Reset to `origin/main` after each merge, next stacked fresh.
+> - **MERGED:** **#258** Gantt view fixes + globe-throttle SRA-freeze fix → **#259** SRA Monte-Carlo process-offload (ADR-0126) → **#260** more User Tips (7 pages) → **#261** responsive small-screen layout (hamburger nav, touch controls, table scroll — CUI-safe, pure CSS).
+> - **THIS PR — Unified SRA risk register (full clean migration, ADR-0127).** Operator: enter a risk ONCE; it feeds BOTH SRA models. New `UnifiedRisk` (web/SessionState) carries one event's additive `impact_days` (SSI) AND multiplicative `impact_pct` (legacy) + per-model lock flags; `SessionState.sra_risks` is now `list[UnifiedRisk]` (the SSI list/seq removed). ONE form + ONE route `POST /sra/risk-register` (the two old routes `/sra/risk-event` + `/sra/ssi-risk` REMOVED). `_risk_events`/`_schedule_risks` derive the frozen `RiskEvent`/`ScheduleRisk` at the boundary — **engine + byte-frozen parity tests untouched** (`SCHEMA_VERSION` 2.4.0 unchanged). Days↔% auto-derive from the affected tasks' **avg remaining duration** (client `static/sra_risk.js` fed a uid→remaining-days map; server mirrors it via `_reconcile_magnitudes` for JS-off/load); typing a field locks it. Save/Load (`_ssi_setup_dict`/`_apply_ssi_setup`) persist the unified risks (both magnitudes + locks) and still load older SSI-only setups. ~5 web test files rewritten to the unified route + new derive/lock tests. Full gate green (**1654 passed**). **Highest ADR = 0127.**
+> - **Operator decisions (AskUserQuestion):** SRA freeze → harden server side (#259); **iPhone access → out of scope for CUI** (no LAN bind); risk register → **full clean migration** (this PR).
+> - **REMAINING queue:** #2 SRA JSON save/load of the whole setup — the unified Save/Load already landed in THIS PR (`_ssi_setup_dict` persists both magnitudes + locks); any further setup-version polish rides on top. (The responsive *view* #4 shipped in #261; tips #3 in #260.) Effectively the operator queue is complete pending review.
+
+> ## STATUS (prev) — Gantt-view fixes + SRA Ask-the-AI freeze: #258 merged; SRA Monte-Carlo process-offload (ADR-0126) in flight; branch `claude/eager-rubin-xianw9`
 >
 > **Active branch is `claude/eager-rubin-xianw9`** (the seed's `claude/compassionate-ptolemy-wip898` is retired). Reset to `origin/main` after #258 merged, then this PR stacked on top.
 > - **#258 MERGED to `main`** (`ba2dc69`): the path-analysis **Gantt view fixes** from the operator screenshot + the first SRA Ask-the-AI freeze fix.
