@@ -1111,13 +1111,21 @@ def create_app(
       <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>
       &mdash; up to {MAX_FILES} at once.</p>
     <div class=dz-actions>
-      <form action="/example" method=post><button type=submit class=btn>Load example</button></form>
+      <form id=exampleForm action="/example" method=post><button type=submit class=btn>Load example</button></form>
       <span class=muted>or import your own file above</span>
     </div>
   </div>
   <form id=uploadForm action="/upload" method=post enctype="multipart/form-data" hidden>
     <input id=fileInput type=file name=files multiple accept="{_ACCEPT}">
   </form>
+</div>
+<div id=loadOverlay class=load-overlay hidden role=status aria-live=assertive aria-hidden=true>
+  <div class=load-card>
+    <div class=load-spinner aria-hidden=true></div>
+    <p class=load-title>Loading your project(s)&hellip;</p>
+    <p class=muted>Importing and analyzing &mdash; large files can take a moment. The tool is
+      working, not stuck.</p>
+  </div>
 </div>
 {loaded}
 <script src="/static/home.js"></script>"""
@@ -3353,13 +3361,11 @@ def _mission_body(target_uid: int | None) -> str:
                 "/evolution",
                 f'<div id=evoLabel class=muted></div><div id=evoChart data-target="{target}"></div>',
                 controls=steps("prevEvo", "evoPlay", "nextEvo"),
-                wide=True,
             ),
             tile(
                 "Quality Trend",
                 "/trend",
                 f'<div id=trendCharts data-target="{target}"></div>',
-                wide=True,
             ),
         ]
     )
