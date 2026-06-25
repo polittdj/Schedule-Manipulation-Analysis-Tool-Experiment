@@ -122,9 +122,44 @@ window.SFGantt = (function () {
     });
   }
 
+  // MS-Project frozen columns: pin every data column (all but the final, scalable timeline column)
+  // to the left edge so the data stays visible while the wide timeline scrolls left↔right. The
+  // rendered header widths give each column's cumulative left offset; we set position:sticky + that
+  // offset on the column's header, filter-row and body cells (the CSS gives them an opaque canvas
+  // background + a freeze line). Returns the total frozen width (px) so a caller can size the
+  // remaining timeline to exactly fill the page. Idempotent — safe to re-run after a body repaint
+  // or a column resize. Works whether the body rows live in a <tbody> or are bare <tr> children.
+  function freezeColumns(table) {
+    if (!table) return 0;
+    var headRow = table.querySelector("thead tr");
+    if (!headRow) return 0;
+    var headCells = headRow.children;
+    var frozen = headCells.length - 1; // the last column is the scalable timeline — it must scroll
+    if (frozen < 1) return 0;
+    var offsets = [];
+    var acc = 0;
+    for (var i = 0; i < frozen; i++) {
+      offsets.push(acc);
+      acc += headCells[i].offsetWidth;
+    }
+    var rows = table.rows; // every row: the header rows, the filter row, and all body rows
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].children;
+      for (var c = 0; c < frozen && c < cells.length; c++) {
+        var cell = cells[c];
+        cell.style.position = "sticky";
+        cell.style.left = offsets[c] + "px";
+        cell.classList.add("sf-frozen-col");
+        if (c === frozen - 1) cell.classList.add("sf-frozen-last");
+        else cell.classList.remove("sf-frozen-last");
+      }
+    }
+    return acc;
+  }
+
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
-    gridLines: gridLines, paintGrid: paintGrid,
+    gridLines: gridLines, paintGrid: paintGrid, freezeColumns: freezeColumns,
   };
 })();

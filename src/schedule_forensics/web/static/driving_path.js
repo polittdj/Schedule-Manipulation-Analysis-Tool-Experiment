@@ -122,6 +122,8 @@
     });
     mount.appendChild(table);
     if (window.SFColResize) SFColResize.attach(table, "driving"); // MS-Project drag-to-resize columns
+    // lock the UID/Name columns so they stay visible as the wide corridor timeline scrolls
+    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
   }
 
   function stopPlay() {

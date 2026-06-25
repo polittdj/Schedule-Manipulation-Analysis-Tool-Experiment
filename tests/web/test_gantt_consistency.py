@@ -36,22 +36,61 @@ def test_view_entire_project_button_on_every_gantt_page(client: TestClient) -> N
 
 
 def test_fit_to_project_logic_in_every_gantt_script(client: TestClient) -> None:
-    """Every scalable-timeline Gantt script implements the same fit-to-project behaviour: a
-    `forcedPx` override set by the fit button and cleared when the zoom control is nudged. The
-    driving-path and evolution pages gate their controls on a multi-version corridor, so the
-    wiring is pinned at the source level here."""
-    for name, button in (
-        ("path.js", "pathFit"),
-        ("sra_grid.js", "ssiGridFit"),
-        ("driving_path.js", "dpFit"),
-    ):
+    """Every scalable-timeline Gantt script implements a `fitToProject` "View entire project"
+    behaviour. The SRA and driving-path grids keep the `forcedPx` override (set by the fit button,
+    cleared when the zoom control is nudged); the path grid drives the same control through its
+    auto-fill axis (see test_path_timeline_fills_the_page_next_to_the_columns). The driving-path and
+    evolution pages gate their controls on a multi-version corridor, so the wiring is pinned at the
+    source level here."""
+    for name, button in (("sra_grid.js", "ssiGridFit"), ("driving_path.js", "dpFit")):
         js = client.get(f"/static/{name}").text
         assert "fitToProject" in js, name
         assert "forcedPx" in js, name
         assert button in js, name
+    path_js = client.get("/static/path.js").text
+    assert "function fitToProject" in path_js and "pathFit" in path_js
     # the evolution SVG Gantt fits the whole project by snapping the view back to its full axis
     evo = client.get("/static/path_evolution.js").text
     assert "evoZoomReset" in evo and "lo = fullLo; hi = fullHi" in evo
+
+
+def test_freeze_columns_locks_data_columns_on_every_gantt(client: TestClient) -> None:
+    """Operator: lock the left-hand data columns on every Gantt so they stay visible when the wide
+    timeline scrolls left↔right. The shared SFGantt.freezeColumns() pins every column but the
+    scalable timeline (position:sticky + a per-column left offset); each table Gantt calls it, the
+    CSS gives the pinned cells an opaque canvas background + a freeze line, it is undone for print,
+    and a column resize re-pins."""
+    gantt = client.get("/static/gantt.js").text
+    assert "function freezeColumns" in gantt
+    assert "freezeColumns: freezeColumns" in gantt  # exported on window.SFGantt
+    for name in ("app.js", "path.js", "driving_path.js", "sra_grid.js"):
+        js = client.get(f"/static/{name}").text
+        assert "SFGantt.freezeColumns(" in js, name
+    # a drag-resize shifts later columns' left edges → colresize re-pins them
+    assert "SFGantt.freezeColumns(table)" in client.get("/static/colresize.js").text
+    css = client.get("/static/app.css").text
+    assert ".gantt-grid .sf-frozen-col { background: var(--gantt-canvas)" in css
+    assert ".gantt-grid .sf-frozen-last { border-right:" in css  # the MS-Project freeze line
+    base = client.get("/static/base.css").text
+    assert ".gantt-grid .sf-frozen-col{position:static!important" in base  # print un-pins them
+
+
+def test_path_timeline_fills_the_page_next_to_the_columns(client: TestClient) -> None:
+    """Operator: when a path is selected, fit the timeline to it so the bars fill the page next to
+    the frozen columns; "View entire project" widens to every activity and rescales; keep the gold
+    data-date line off the right border."""
+    js = client.get("/static/path.js").text
+    # the axis fits the selected tier (the chosen path), else every activity; View-entire widens it
+    assert "function axisRows" in js and "scopeAll" in js
+    assert "scopeAll = true" in js  # fitToProject spans every activity
+    assert "fitFill" in js  # auto-scale px to fill the page; the zoom slider clears it
+    # selecting a tier re-fits the timeline to that path
+    assert "pathTierSel = s; scopeAll = false; fitFill = true; reflow()" in js
+    # asymmetric padding: small left (bars hug the columns), larger right (status-date room)
+    assert "t0 -= 2 * DAY_MS" in js
+    assert "span * 0.04" in js  # right margin keeps the data-date line off the border
+    # the fill width is the page minus the MEASURED data-column width
+    assert "function availWidth" in js and "lastFrozenWidth" in js
 
 
 def test_evolution_reset_button_reads_view_entire_project(client: TestClient) -> None:

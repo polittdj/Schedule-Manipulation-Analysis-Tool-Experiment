@@ -56,6 +56,8 @@ window.SFColResize = (function () {
           handle.removeEventListener("pointermove", move);
           handle.removeEventListener("pointerup", up);
           try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          // a resize shifts every later column's left edge — re-pin the frozen columns to match
+          if (window.SFGantt && window.SFGantt.freezeColumns) window.SFGantt.freezeColumns(table);
         }
         handle.addEventListener("pointermove", move);
         handle.addEventListener("pointerup", up);
