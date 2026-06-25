@@ -107,8 +107,11 @@ _Link = tuple[int, RelationshipType, int]
 
 
 def _scheduled_tasks(schedule: Schedule) -> list[Task]:
-    """Real activities only — summary tasks are date rollups, excluded from the network."""
-    return [t for t in schedule.tasks if not t.is_summary]
+    """Real activities only — summary tasks (date rollups) and inactive tasks
+    (``is_active=False``) never enter the CPM network. MS Project / Acumen exclude inactive
+    tasks from scheduling, so their links drop with them (the network is keyed on this set) and
+    they cannot appear on the critical path or in any derived float (ADR-0128)."""
+    return [t for t in schedule.tasks if not t.is_summary and t.is_active]
 
 
 def es_lower_bound(rel: RelationshipType, es_p: int, ef_p: int, lag: int, dur_s: int) -> int:

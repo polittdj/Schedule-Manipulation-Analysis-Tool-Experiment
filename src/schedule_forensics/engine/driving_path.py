@@ -74,8 +74,9 @@ def driving_path_between(
     by_id = schedule.tasks_by_id
     src_t = by_id.get(source_uid)
     tgt_t = by_id.get(target_uid)
-    source_present = src_t is not None and not src_t.is_summary
-    target_present = tgt_t is not None and not tgt_t.is_summary
+    # inactive tasks are not in the scheduled network (ADR-0128), so they are not valid endpoints
+    source_present = src_t is not None and not src_t.is_summary and src_t.is_active
+    target_present = tgt_t is not None and not tgt_t.is_summary and tgt_t.is_active
 
     if not target_present:
         return DrivingPathBetween(

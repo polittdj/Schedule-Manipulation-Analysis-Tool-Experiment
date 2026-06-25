@@ -115,7 +115,9 @@ def date_basis(
     early_finish: dict[int, int] = {}
     result = cpm_result
     for task in schedule.tasks:
-        if task.is_summary:
+        if (
+            task.is_summary or not task.is_active
+        ):  # inactive tasks are out of the network (ADR-0128)
             continue
         if task.start is not None and task.finish is not None:
             early_start[task.unique_id] = _stored_offset(start, task.start, cal)

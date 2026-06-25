@@ -356,7 +356,10 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     targets = [
         tid
         for tid in result.critical_path
-        if tid in by_id and by_id[tid].duration_minutes > 0 and not by_id[tid].is_summary
+        if tid in by_id
+        and by_id[tid].duration_minutes > 0
+        and not by_id[tid].is_summary
+        and by_id[tid].is_active  # inactive tasks are off the network (ADR-0128)
     ]
     if not targets:
         return MetricResult(
