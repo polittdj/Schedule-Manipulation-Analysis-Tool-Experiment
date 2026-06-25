@@ -3506,3 +3506,21 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   `test_sra_report.py` (chart titles/axis/legend/value labels + the setup section), `test_exports.py`
   (`ChartText` -> inline text boxes, multi-line split, determinism). Full gate clean: ruff / ruff format
   / mypy(strict) / bandit / pytest (1583 passed) / node --check. **Highest ADR = 0124.**
+
+---
+
+## Operator UI batch (cont.) — 2026-06-25 — EVM, Correlation, Resources (ADR-0125)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (rolling; PRs #248-#255 merged through `main`).
+- **Shipped this stretch:** SRA visuals enlarged + tornado tightened; one MS-Project Gantt look
+  (sticky headers/timescale, resizable columns, Find-a-UID, outline-level picker, dates-on-bars,
+  distinct summary bars) across every Gantt; SRA top-of-page file selector + shared factor/BC-WC
+  durations for both models; SRA model + JCL explainers; the header-globe perpetual-rAF **freeze fix**;
+  AI Settings live model dropdowns (fixes OpenAI-compatible) + cross-check dropdown + per-backend CUI
+  explainer; the **EVM** section (`/evm`, schedule-based always, cost adaptive N/A); a detailed
+  **Correlation** call-out.
+- **This change (ADR-0125): Resources section.** Schema migration to **2.4.0** — new `Assignment`
+  model + `Task.resource_assignments`; MSPDI + friendly-JSON importers now carry assignment work/units;
+  `engine/resources.py` time-phases work into a monthly load-vs-capacity histogram with over-allocation;
+  `/resources` page (vendored `resources.js`) + nav. Schema-freeze test bumped.
+- **Highest ADR = 0125.**

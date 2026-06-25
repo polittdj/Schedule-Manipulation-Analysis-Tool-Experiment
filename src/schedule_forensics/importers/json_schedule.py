@@ -18,6 +18,7 @@ from typing import Any
 
 from schedule_forensics.importers._common import ImporterError
 from schedule_forensics.model import Schedule
+from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.task import ConstraintType, Task
@@ -121,6 +122,18 @@ def _task(raw: dict[str, Any]) -> Task:
         fields["constraint_type"] = ConstraintType(str(raw["constraint_type"]))
     if isinstance(fields.get("resource_names"), list):
         fields["resource_names"] = tuple(str(r) for r in fields["resource_names"])
+    if isinstance(raw.get("resource_ids"), list):
+        fields["resource_ids"] = tuple(int(r) for r in raw["resource_ids"])
+    if isinstance(raw.get("resource_assignments"), list):
+        fields["resource_assignments"] = tuple(
+            Assignment(
+                resource_id=int(a["resource_id"]),
+                work_minutes=int(a.get("work_minutes", 0)),
+                units=float(a.get("units", 1.0)),
+            )
+            for a in raw["resource_assignments"]
+            if isinstance(a, dict) and a.get("resource_id") is not None
+        )
     return Task(**fields)
 
 
@@ -210,6 +223,13 @@ def to_json_text(schedule: Schedule) -> str:
             task["percent_complete"] = t.percent_complete
         if t.resource_names:
             task["resource_names"] = list(t.resource_names)
+        if t.resource_ids:
+            task["resource_ids"] = list(t.resource_ids)
+        if t.resource_assignments:
+            task["resource_assignments"] = [
+                {"resource_id": a.resource_id, "work_minutes": a.work_minutes, "units": a.units}
+                for a in t.resource_assignments
+            ]
         # every field the parser reads is written back: a Save .json round-trip must not
         # silently demote milestones/summaries or drop WBS, durations, or costs
         if t.wbs:

@@ -48,6 +48,7 @@ from schedule_forensics.importers._common import (
     working_time_span,
 )
 from schedule_forensics.model import (
+    Assignment,
     Calendar,
     ConstraintType,
     Relationship,
@@ -144,7 +145,9 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
 
     resources = _parse_resources(root)
     resource_name_by_uid = {res.unique_id: res.name for res in resources}
-    assigned_uids_by_task, assigned_names_by_task = _parse_assignments(root, resource_name_by_uid)
+    assigned_uids_by_task, assigned_names_by_task, assignments_by_task = _parse_assignments(
+        root, resource_name_by_uid
+    )
     ext_defs = _parse_extended_attribute_defs(root)
 
     tasks: list[Task] = []
@@ -153,7 +156,9 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     for task_el in [] if tasks_el is None else tasks_el.findall("Task"):
         if _text(task_el, "IsNull") == "1":
             continue  # an explicitly null placeholder row (not a real activity)
-        task = _parse_task(task_el, assigned_uids_by_task, assigned_names_by_task, ext_defs)
+        task = _parse_task(
+            task_el, assigned_uids_by_task, assigned_names_by_task, assignments_by_task, ext_defs
+        )
         tasks.append(task)
         raw_links.extend((task.unique_id, el) for el in task_el.findall("PredecessorLink"))
 
@@ -483,6 +488,7 @@ def _parse_task(
     task_el: ET.Element,
     assigned_uids_by_task: dict[int, tuple[int, ...]],
     assigned_names_by_task: dict[int, tuple[str, ...]],
+    assignments_by_task: dict[int, tuple[Assignment, ...]],
     ext_defs: dict[str, str],
 ) -> Task:
     uid = _int(task_el, "UID")
@@ -544,6 +550,7 @@ def _parse_task(
             budgeted_cost=bl_cost,
             resource_names=assigned_names_by_task.get(uid, ()),
             resource_ids=assigned_uids_by_task.get(uid, ()),
+            resource_assignments=assignments_by_task.get(uid, ()),
             stored_total_float_minutes=_stored_slack_minutes(task_el),
             stored_is_critical=_bool_or_none(task_el, "Critical"),
             custom_fields=_task_custom_fields(task_el, ext_defs),
@@ -734,10 +741,19 @@ def _parse_resources(root: ET.Element) -> list[Resource]:
 
 def _parse_assignments(
     root: ET.Element, resource_name_by_uid: dict[int, str]
-) -> tuple[dict[int, tuple[int, ...]], dict[int, tuple[str, ...]]]:
-    """``Project/Assignments`` → per-task resource UID and name tuples (order-preserving)."""
+) -> tuple[
+    dict[int, tuple[int, ...]],
+    dict[int, tuple[str, ...]],
+    dict[int, tuple[Assignment, ...]],
+]:
+    """``Project/Assignments`` → per-task resource UID / name tuples (order-preserving) and the
+    richer per-task :class:`Assignment` list (resource UID + Work minutes + Units) the resource
+    loading view needs. Multiple assignment rows for the same task+resource are summed (work) /
+    kept (units) so a task carries one Assignment per resource."""
     uids_by_task: dict[int, list[int]] = {}
     names_by_task: dict[int, list[str]] = {}
+    work_by_task_res: dict[int, dict[int, int]] = {}
+    units_by_task_res: dict[int, dict[int, float]] = {}
     assignments_el = root.find("Assignments")
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
@@ -752,7 +768,27 @@ def _parse_assignments(
             names = names_by_task.setdefault(task_uid, [])
             if name not in names:
                 names.append(name)
+        work = iso_duration_to_minutes(_text(assign_el, "Work")) or 0
+        units = parse_float(_text(assign_el, "Units"))
+        work_map = work_by_task_res.setdefault(task_uid, {})
+        work_map[resource_uid] = work_map.get(resource_uid, 0) + max(0, work)
+        units_map = units_by_task_res.setdefault(task_uid, {})
+        # keep the first/representative units booked for the pair (typically constant per pair)
+        units_map.setdefault(resource_uid, 1.0 if units is None else max(0.0, units))
+    assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
+    for task_uid, uids in uids_by_task.items():
+        work_map = work_by_task_res.get(task_uid, {})
+        units_map = units_by_task_res.get(task_uid, {})
+        assignments_by_task[task_uid] = tuple(
+            Assignment(
+                resource_id=ruid,
+                work_minutes=work_map.get(ruid, 0),
+                units=units_map.get(ruid, 1.0),
+            )
+            for ruid in uids
+        )
     return (
         {uid: tuple(v) for uid, v in uids_by_task.items()},
         {uid: tuple(v) for uid, v in names_by_task.items()},
+        assignments_by_task,
     )

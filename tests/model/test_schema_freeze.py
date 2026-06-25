@@ -12,6 +12,7 @@ import pydantic
 import pytest
 
 from schedule_forensics import model
+from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
@@ -53,8 +54,10 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "budgeted_cost",
         "resource_names",
         "resource_ids",
+        "resource_assignments",
         "custom_fields",
     },
+    Assignment: {"resource_id", "work_minutes", "units"},
     Relationship: {"predecessor_id", "successor_id", "type", "lag_minutes"},
     Resource: {"unique_id", "name", "type", "is_generic", "max_units", "standard_rate"},
     Calendar: {
@@ -84,7 +87,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.3.0"
+    assert model.SCHEMA_VERSION == "2.4.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))
@@ -117,6 +120,7 @@ def test_models_are_frozen_strict_and_closed(cls: type[pydantic.BaseModel]) -> N
 def test_public_api_exports() -> None:
     assert set(model.__all__) == {
         "SCHEMA_VERSION",
+        "Assignment",
         "Calendar",
         "ConstraintType",
         "Relationship",
