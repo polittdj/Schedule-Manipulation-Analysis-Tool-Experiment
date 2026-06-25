@@ -727,14 +727,18 @@ class SSIResult:
 def factor_to_bc_wc(
     remaining_minutes: int, factor: int, table: RiskFactorTable, minutes_per_day: int = _MIN_PER_DAY
 ) -> tuple[int, int, int]:
-    """``(BestCase, MostLikely, WorstCase)`` working minutes from a 1..5 ranking factor.
+    """``(BestCase, MostLikely, WorstCase)`` working minutes from a 0..5 ranking factor.
 
     SSI: *the current Remaining Duration is the Most Likely*. ``BC = ML*(1 - sub%/100)``,
     ``WC = ML*(1 + add%/100)`` with the per-factor percentages from ``table`` — validated to match
-    SSI's stored Best/Worst Case durations exactly. ``minutes_per_day`` is unused by the maths (the
-    ratio is unit-free) but documents the working-day basis. Rounded to whole working minutes."""
-    sub, add = table.for_factor(factor)
+    SSI's stored Best/Worst Case durations exactly. **Factor 0 means NO duration uncertainty**: no
+    Best/Worst case to calculate, so BC = ML = WC = the remaining duration (a point mass).
+    ``minutes_per_day`` is unused by the maths (the ratio is unit-free) but documents the working
+    basis. Rounded to whole working minutes."""
     ml = max(0, int(remaining_minutes))
+    if factor <= 0:  # operator: factor 0 -> no Best/Worst, use the remaining duration as-is
+        return (ml, ml, ml)
+    sub, add = table.for_factor(factor)
     bc = max(0, round(ml * (1.0 - sub / 100.0)))
     wc = max(ml, round(ml * (1.0 + add / 100.0)))
     return (bc, ml, wc)

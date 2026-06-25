@@ -2323,7 +2323,7 @@ def create_app(
     @app.post("/sra/factor")
     def ssi_set_factor(uids: str = Form(""), factor: int = Form(3)) -> RedirectResponse:
         st = session()
-        f = min(5, max(1, factor))
+        f = min(5, max(0, factor))  # factor 0 is valid = no Best/Worst uncertainty
         for tok in re.split(r"[,\s]+", uids.strip()):
             if tok.isdigit():
                 st.sra_factors[int(tok)] = f
@@ -2504,10 +2504,12 @@ def create_app(
                 changed = True
             if d.get("factor") not in (None, ""):
                 try:
-                    f = min(5, max(1, int(d["factor"])))
+                    # factor 0 is VALID (no Best/Worst uncertainty -> use remaining); only 1..5 carry
+                    # a Best/Worst spread, so clamp to 0..5, not 1..5
+                    f = min(5, max(0, int(d["factor"])))
                 except (TypeError, ValueError):
-                    f = 0
-                if f:
+                    f = None
+                if f is not None:
                     st.sra_factors[uid] = f
                     bc, _ml, wc = factor_to_bc_wc(rem, f, tbl)
                     st.sra_bcwc[uid] = (bc, wc)
@@ -5773,7 +5775,7 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                 continue
             if _ok(uid):
                 try:
-                    factors[uid] = min(5, max(1, int(val)))
+                    factors[uid] = min(5, max(0, int(val)))  # 0 = no Best/Worst uncertainty
                 except (TypeError, ValueError):
                     continue
     st.sra_factors = factors
@@ -6310,7 +6312,7 @@ the random distribution is statistically close, not bit-identical (a different R
 <h3>Assign Risk Ranking Factor &amp; calculate Best/Worst durations</h3>
 <form action="/sra/factor" method=post class=viz-controls>
 <label>UIDs <input type=text name=uids placeholder="101, 102 205"></label>
-<label>Factor <input type=number name=factor min=1 max=5 value=3 style="width:56px"></label>
+<label title="0 = no Best/Worst uncertainty (use the remaining duration as-is); 1-5 widen the Best/Worst spread.">Factor (0&ndash;5) <input type=number name=factor min=0 max=5 value=3 style="width:56px"></label>
 <button type=submit>Set factor</button></form>
 <p class=muted>{len(st.sra_factors)} task(s) ranked; {len(st.sra_bcwc)} have calculated Best/Worst durations.</p>
 <form action="/sra/auto-calc" method=post style="display:inline"><input type=hidden name=scope value=all>
@@ -6328,9 +6330,11 @@ the random distribution is statistically close, not bit-identical (a different R
 <button type=submit>Add risk</button></form>
 <table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
 <h3>Editable schedule grid</h3>
-<p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (1&ndash;5) or
-edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. A factor
-auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override.
+<p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
+edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. <b>Factor 0
+means no duration uncertainty</b> &mdash; no Best/Worst case, the remaining duration is used as-is;
+1&ndash;5 widen the Best/Worst spread. A factor auto-fills Best/Worst from the table above; an explicit
+Best/Worst entry is a manual override.
 <b>Paste from Excel / MS&nbsp;Project:</b> copy a whole column (or a Factor/BC/WC block) and paste it
 onto the first cell to fill the column down across every task in one go. Edits queue until you press
 <b>Save grid</b>. Summary rows are bold and not editable.</p>

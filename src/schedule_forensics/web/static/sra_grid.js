@@ -126,7 +126,8 @@
       tr.appendChild(nm);
       tr.appendChild(el("td", { text: r.remaining_days == null ? "" : String(r.remaining_days) }));
       if (r.editable) {
-        tr.appendChild(inputCell(r, "factor", { min: "1", max: "5", step: "1", style: "width:48px" }));
+        tr.appendChild(inputCell(r, "factor", { min: "0", max: "5", step: "1", style: "width:48px",
+          title: "0 = no Best/Worst uncertainty (use remaining); 1-5 widen the spread" }));
         tr.appendChild(inputCell(r, "bc_days", { min: "0", step: "0.1", style: "width:64px" }));
         tr.appendChild(inputCell(r, "wc_days", { min: "0", step: "0.1", style: "width:64px" }));
         tr.appendChild(focusCell(r));
