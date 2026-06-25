@@ -43,6 +43,8 @@ header nav #themeToggle{background:none;border:0;color:var(--muted);font:inherit
 header nav .ui-scale-ctl{font-size:13px;color:var(--muted);white-space:nowrap}
 header nav .ui-scale-ctl select{font-size:13px;margin-left:4px}
 header nav #themeToggle:hover{color:var(--ink)}
+/* the mobile hamburger toggle (a CSS-only checkbox) is hidden on desktop — nav is always shown */
+.nav-toggle,.nav-burger{display:none}
 main{margin:0 auto;padding:24px 28px}.panel{background:var(--panel);border:1px solid var(--line);
 border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
@@ -113,14 +115,41 @@ cursor:pointer;text-decoration:underline}
   @page{margin:14mm}
 }
 
-/* A9 (WCAG 1.4.10 reflow): at ~200% zoom / narrow widths the header (13 nav links + forms) and the
-   wide card grids must wrap to a single column with no horizontal page scroll. */
+/* A9 (WCAG 1.4.10 reflow) + a real small-screen (phone/tablet) layout: at ~200% zoom or narrow
+   widths the header collapses behind a hamburger, controls become touch-sized and stack, the card
+   grids drop to one column, and wide tables/Gantts scroll inside their panel — never a horizontal
+   PAGE scroll. CUI-safe: pure CSS/layout, no network change (the tool still runs on the device). */
 @media (max-width:760px){
-  header{flex-wrap:wrap;gap:8px 16px}
-  header nav{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px}
-  header nav a{margin-right:0}
+  header{position:relative;flex-wrap:wrap;gap:8px 12px;padding:10px 14px}
+  /* hamburger: a visible burger glyph with an invisible-but-FOCUSABLE checkbox overlaid on it, so
+     the menu toggles by tap AND by keyboard (Tab to it, Space to open). :checked reveals the stacked
+     menu — no JS. The two are pinned to the same top-right corner so the tap target lands on glyph. */
+  .nav-burger{display:inline-flex;align-items:center;justify-content:center;position:absolute;
+    top:10px;right:14px;min-width:44px;min-height:44px;font-size:22px;color:var(--accent);
+    background:var(--field-bg);border:1px solid var(--line);border-radius:8px}
+  .nav-toggle{display:block;position:absolute;top:10px;right:14px;width:44px;height:44px;margin:0;
+    opacity:0;cursor:pointer;z-index:3}
+  .nav-toggle:focus-visible ~ .nav-burger{outline:2px solid var(--focus);outline-offset:2px}
+  header nav{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:2px;
+    flex-wrap:wrap;margin-top:8px}
+  .nav-toggle:checked ~ nav{display:flex}
+  header nav .nav-group{display:block;margin:0;padding:6px 0;border-bottom:1px solid var(--line)}
+  header nav .nav-grp-label{display:block;margin:0 0 4px}
+  header nav a{display:inline-block;margin:0 2px;padding:8px 10px;min-height:40px;line-height:24px}
+  /* each header control (target / theme / size / language / wipe / quit) on its own touch-sized row */
+  header nav form.navform,header nav .navform,header nav .ui-scale-ctl,header nav .langform,
+  header nav .targetform{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0;width:100%}
+  header nav input,header nav select,header nav button,header nav .linkbtn{min-height:40px}
+  header nav .targetform input[type=number]{width:auto;flex:1 1 90px}
+  /* the decorative insignia would collide with the burger corner — drop it on phones (the AI-working
+     status still shows inline in the Ask panel) */
+  .nasa-globe{display:none}
   main{padding:16px 14px}
   .dash-cards,.brief-cards,.card-cols,.qual-drill-grid{grid-template-columns:1fr}
+  /* wide report tables (DCMA audit, scorecards) + Gantts scroll inside the panel, not the page */
+  .panel{overflow-x:auto}
+  .viz-controls{flex-wrap:wrap;gap:8px}
+  .viz-controls input,.viz-controls select,.viz-controls button{min-height:40px}
 }
 
 /* ── NASA theme chrome — professional command-banner header + slowly rotating meatball insignia,
