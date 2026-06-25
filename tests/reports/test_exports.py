@@ -197,6 +197,37 @@ def test_chart_block_renders_native_vector_drawing_and_shaded_matrix() -> None:
     assert render_document((Heading("Charts", level=0), vector, matrix)) == blob
 
 
+def test_chart_labels_render_as_inline_text_boxes() -> None:
+    """ChartText labels (titles / axis values / legend / data call-outs) become transparent
+    DrawingML text boxes in the chart group; multi-line text splits into separate paragraphs."""
+    from schedule_forensics.reports.docx import Chart, ChartText
+
+    chart = Chart(
+        kind="vector",
+        polylines=((((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525),),
+        labels=(
+            ChartText(0.0, 1.1, "Finish-date confidence", "l", 18, "222B35", True),
+            ChartText(-0.02, 1.0, "100%", "r", 12),
+            ChartText(0.02, 0.8, "P50  2027-12-01\nP80  2027-12-10", "l", 12),
+        ),
+    )
+    document = (
+        zipfile.ZipFile(io.BytesIO(render_document((Heading("C", level=0), chart))))
+        .read("word/document.xml")
+        .decode()
+    )
+    ET.fromstring(document)  # well-formed even with the text boxes
+    assert '<wps:cNvSpPr txBox="1"/>' in document  # the label is a text box
+    assert "<w:txbxContent>" in document
+    assert "Finish-date confidence" in document and "100%" in document
+    # the two-line call-out becomes two paragraphs, one per line
+    assert document.count("P50  2027-12-01") == 1 and document.count("P80  2027-12-10") == 1
+    # byte-deterministic with the labels embedded
+    assert render_document((Heading("C", level=0), chart)) == render_document(
+        (Heading("C", level=0), chart)
+    )
+
+
 def test_chart_docpr_ids_are_unique_across_multiple_drawings() -> None:
     """Word flags 'repair' on duplicate drawing ids — every chart gets a distinct docPr id."""
     import re

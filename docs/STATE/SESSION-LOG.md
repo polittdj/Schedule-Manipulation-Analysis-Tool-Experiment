@@ -3478,3 +3478,31 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Caveat:** the PoC proved package validity, not live-Office pixels (no Word/LibreOffice in the
   sandbox); wps/wpg is the MS-2010 vocabulary Word renders natively, shaded-table is the conservative
   fallback. **Highest ADR = 0124.** Remaining operator item: the #27 legacy-chart shrink sweep.
+
+## 2026-06-25 — SRA visuals made self-describing (interactive web charts + labelled Word-report graphs)
+
+Operator follow-ups on the SRA visuals: (1) enlarge/shrink the charts + hover to read values, (2) dive
+into the Risk Assessment Matrix to see which risks land in a cell, and (3) the **Word report** graphs
+must carry titles/axis labels/legends/values plus a setup "how to enter the inputs" section. Extends
+ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptolemy-wip898`.
+
+- **Web (chartframe.js):** exposed `window.SFChartFrame = {frame, scan}` so on-demand charts (the SSI
+  run) can be framed after load, and taught `applyZoom` to transform-scale non-SVG visuals marked
+  `.cf-zoom-box` (the HTML 5x5 matrix) with reserved margin so the scroller pans the magnified copy.
+- **Web (sra_ssi.js):** each S-curve / histogram / matrix now renders in its OWN `.chart-host` (so it
+  gets the ⤢ / − / ＋ toolbar + the shared hover call-out) and re-scans via `SFChartFrame.scan()`. Chart
+  shapes carry `<title>` call-outs (per-point S-curve confidence via transparent `.ch-hot` hotspots,
+  percentile dots, histogram bar counts). Matrix cells get a `data-callout` listing the actual risks /
+  opportunities that land there (same binning as the engine grid) + a dive-in cursor.
+- **Word report (reports/docx.py):** new `ChartText` label + `labels` field on `Chart`; `_chart_xml`
+  draws transparent DrawingML text boxes (multi-line via `\n`) for titles, axis tick values, axis
+  titles, legends, and data call-outs, with roomier margins. Still inline, no image part, byte-stable.
+- **Word report (web/app.py):** the three vector charts now carry full titles/axes/legends/values
+  (S-curve confidence ticks + percentile block + legend; histogram frequency axis + "most likely"
+  call-out; tornado per-row UID + working-day swing + opportunity/risk legend), and a new **"How to set
+  up this analysis (inputs)"** section documents the focus event, Risk Ranking Factor (0-5, with the
+  factor→Best/Worst table actually used), the risk register, and the occurrence modes.
+- **Tests:** `test_chart_callouts.py` (SFChartFrame API + zoomable matrix + SSI chart/matrix call-outs),
+  `test_sra_report.py` (chart titles/axis/legend/value labels + the setup section), `test_exports.py`
+  (`ChartText` -> inline text boxes, multi-line split, determinism). Full gate clean: ruff / ruff format
+  / mypy(strict) / bandit / pytest (1583 passed) / node --check. **Highest ADR = 0124.**

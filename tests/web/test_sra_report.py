@@ -98,13 +98,41 @@ def test_degenerate_scurve_and_histogram_return_none() -> None:
     assert _sra_chart_scurve(_ssi(s_curve=())) is None  # no points
     assert _sra_chart_scurve(_ssi(s_curve=(("2027-12-03", 1.0),))) is None  # a single point
     assert _sra_chart_hist(_ssi(finish_hist=())) is None  # empty histogram
-    # a real multi-point curve renders: axis + curve + deterministic line = 3 polylines, 4 P-dots
+    # a real multi-point curve renders: 4 gridlines + axis + curve + deterministic line = 7
+    # polylines, 4 P-dots, and a full set of labels (title + 5 y-ticks + dates + legend + values)
     sc = _sra_chart_scurve(
         _ssi(s_curve=(("2027-11-20", 0.1), ("2027-12-01", 0.5), ("2027-12-20", 1.0)))
     )
-    assert sc is not None and len(sc.polylines) == 3 and len(sc.dots) == 4
+    assert sc is not None and len(sc.polylines) == 7 and len(sc.dots) == 4
+    assert len(sc.labels) >= 13
     hc = _sra_chart_hist(_ssi(finish_hist=(("2027-11-20", 3), ("2027-12-01", 7))))
-    assert hc is not None and len(hc.rects) == 2
+    assert hc is not None and len(hc.rects) == 2 and hc.labels  # bars + axis/value labels
+
+
+def test_charts_carry_titles_axis_values_legends_and_data_labels() -> None:
+    """Operator: the report graphs must say what the data is — titles, axis labels + values,
+    legends, and plotted values. The labels are real text boxes inside the chart drawing group."""
+    sc = _sra_chart_scurve(
+        _ssi(s_curve=(("2027-11-20", 0.1), ("2027-12-01", 0.5), ("2027-12-20", 1.0)))
+    )
+    assert sc is not None
+    sc_txt = " | ".join(lab.text for lab in sc.labels)
+    assert "Finish-date confidence (S-curve)" in sc_txt  # chart title
+    assert "100%" in sc_txt and "Forecast finish date" in sc_txt  # y/x axis values + title
+    assert "confidence curve" in sc_txt and "P10" in sc_txt  # legend + plotted values
+
+    hc = _sra_chart_hist(_ssi(finish_hist=(("2027-11-20", 3), ("2027-12-01", 7))))
+    assert hc is not None
+    hc_txt = " | ".join(lab.text for lab in hc.labels)
+    assert "Finish-date distribution" in hc_txt and "most likely" in hc_txt
+    assert "number of simulated finishes" in hc_txt  # the y-axis meaning
+
+    tor = _sra_chart_tornado((_oat(131, 4.0, 8.0), _oat(142, 2.0, 4.0)))
+    assert tor is not None
+    tor_txt = " | ".join(lab.text for lab in tor.labels)
+    assert "Duration sensitivity" in tor_txt  # title
+    assert "opportunity (accelerate)" in tor_txt and "risk (delay)" in tor_txt  # legend
+    assert "wd" in tor_txt and "131" in tor_txt  # working-day scale + per-row UID labels
 
 
 def test_empty_or_zero_tornado_returns_none_else_a_split_bar() -> None:
@@ -127,6 +155,22 @@ def test_report_omits_scurve_and_tornado_on_a_degenerate_run(client: TestClient)
     assert "Finish-date confidence (S-curve)" not in doc  # the degenerate curve is omitted
     # the sensitivity section heading stays even when the tornado figure is dropped
     assert "Duration sensitivity" in doc
+
+
+def test_report_documents_the_setup_and_how_to_enter_inputs(client: TestClient) -> None:
+    """Operator: the report must explain the setup — how to enter the inputs, what the Risk Ranking
+    Factor is, and the factor -> Best/Worst-case table actually used."""
+    doc = (
+        zipfile.ZipFile(io.BytesIO(client.get("/export/docx/sra").content))
+        .read("word/document.xml")
+        .decode()
+    )
+    assert "How to set up this analysis (inputs)" in doc
+    assert "How you enter it" in doc  # the inputs table column
+    assert "Risk Ranking Factor" in doc and "no duration uncertainty" in doc  # factor 0 meaning
+    assert "Risk Factors table (factor -&gt; Best/Worst case)" in doc  # the factor table heading
+    assert "% subtract (Best case)" in doc and "% add (Worst case)" in doc  # the table columns
+    assert "Random each iteration" in doc and "Exact percentage overall" in doc  # occurrence modes
 
 
 # --- consequence clamp on the setup-JSON load path (the real bug the review found) -----

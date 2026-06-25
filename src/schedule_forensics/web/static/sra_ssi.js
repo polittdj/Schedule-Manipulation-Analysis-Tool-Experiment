@@ -45,10 +45,21 @@
   var CONS_RISK = ["Low", "Minor", "Moderate", "Significant", "Severe"];
   var CONS_OPP = ["Low", "Minor", "Moderate", "High", "Very High"];
 
-  function matrix(title, grid, opportunity) {
+  // The items (risks or opportunities) that land in one matrix cell — same binning the engine count
+  // grid uses: opportunities are impact_days < 0, ratings clamped to 1..5, indexed [consequence][prob].
+  function cellItems(risks, opportunity, consequence, likelihood) {
+    return (risks || []).filter(function (r) {
+      if ((r.impact_days < 0) !== !!opportunity) return false;
+      var c = Math.min(5, Math.max(1, r.consequence_rating));
+      var p = Math.min(5, Math.max(1, r.probability_rating));
+      return c === consequence && p === likelihood;
+    });
+  }
+
+  function matrix(title, grid, opportunity, risks) {
     var cons = opportunity ? CONS_OPP : CONS_RISK;
     var fam = opportunity ? "o" : "r"; // colour family
-    var wrap = el("div", { class: "nasa-matrix" });
+    var wrap = el("div", { class: "nasa-matrix cf-zoom-box" });
     wrap.appendChild(el("div", { class: "nm-title" }, title));
     var body = el("div", { class: "nm-body" });
     body.appendChild(el("div", { class: "nm-yaxis" }, "Likelihood of Occurrence"));
@@ -70,12 +81,26 @@
       tr.appendChild(rh);
       for (var C = 1; C <= 5; C++) {
         var count = (grid[C - 1] && grid[C - 1][L - 1]) || 0;
+        var items = cellItems(risks, opportunity, C, L);
         var td = el("td", { class: "nm-cell nm-" + fam + "-" + ZONE[L - 1][C - 1] +
           (count ? " nm-hit" : "") });
-        td.appendChild(el("span", { class: "nm-rank" }, String(RANK[L - 1][C - 1])));
-        if (count) {
-          td.appendChild(el("span", { class: "nm-badge", title: count + " here" }, String(count)));
+        // hover call-out: name the cell (consequence × likelihood + NASA rank) and list every
+        // risk / opportunity that lands here so the operator can dive into the matrix detail.
+        var head = cons[C - 1] + (opportunity ? " benefit" : " consequence") + " × " +
+          LIK[L - 1] + " likelihood — rank " + RANK[L - 1][C - 1];
+        if (items.length) {
+          td.setAttribute("data-callout", head + "\n" +
+            (opportunity ? "Opportunities here:" : "Risks here:") + "\n" +
+            items.map(function (r) {
+              return "• " + r.name + " — " + Math.abs(r.impact_days) + " d, " + r.probability +
+                "% (" + r.hits + " hits)";
+            }).join("\n"));
+          td.classList.add("nm-detail");
+        } else {
+          td.setAttribute("data-callout", head + "\n(no items)");
         }
+        td.appendChild(el("span", { class: "nm-rank" }, String(RANK[L - 1][C - 1])));
+        if (count) td.appendChild(el("span", { class: "nm-badge" }, String(count)));
         tr.appendChild(td);
       }
       t.appendChild(tr);
@@ -99,6 +124,14 @@
     return grid.some(function (r) { return r.some(function (x) { return x; }); });
   }
 
+  // Each chart / matrix gets its OWN ".chart-host" so chartframe.js frames it independently with a
+  // zoom (− / ＋), full-screen, and reset toolbar plus cursor-following hover call-outs.
+  function chartHost(node) {
+    var h = el("div", { class: "chart-host" });
+    h.appendChild(node);
+    return h;
+  }
+
   // --- small, dense vector charts (the operator wanted compact graphs + many data points) -----
   var SVGNS = "http://www.w3.org/2000/svg";
   function svg(tag, attrs) {
@@ -108,6 +141,9 @@
   }
   function txt(node, s) { node.textContent = s; return node; }
   function ms(date) { var t = Date.parse(date); return isNaN(t) ? null : t; }
+  // Hover call-out: chartframe.js reads a direct <title> child of any shape and shows it as a styled,
+  // cursor-following tooltip — so every charted value can be read on hover with no per-chart wiring.
+  function titled(node, s) { var t = svg("title"); t.textContent = s; node.appendChild(t); return node; }
 
   // The cumulative finish-date confidence curve. The engine emits one point per distinct simulated
   // finish, so the line is dense and smooth; P10/50/80/90 + the deterministic finish are marked.
@@ -115,7 +151,7 @@
     var W = 380, H = 168, ml = 30, mr = 8, mt = 8, mb = 22;
     var wrap = el("div", { class: "ssi-chart" });
     wrap.appendChild(el("div", { class: "ssi-chart-t" }, "Finish-date confidence (S-curve)"));
-    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: W, height: H });
+    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: "100%" });
     var xs = points.map(function (p) { return ms(p.date); }).filter(function (x) { return x != null; });
     if (xs.length) {
       var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
@@ -128,16 +164,26 @@
       });
       if (det && ms(det.date) != null) {
         var dx = X(ms(det.date));
-        s.appendChild(svg("line", { x1: dx, y1: mt, x2: dx, y2: H - mb, class: "ch-det" }));
+        s.appendChild(titled(svg("line", { x1: dx, y1: mt, x2: dx, y2: H - mb, class: "ch-det" }),
+          "Deterministic (all-ML) finish — " + det.date));
       }
       s.appendChild(svg("polyline", {
         class: "ch-line",
         points: points.map(function (p) { return X(ms(p.date)) + "," + Y(p.p); }).join(" "),
       }));
+      // a transparent hot-spot on every plotted point so hovering anywhere along the curve calls out
+      // that finish date and its cumulative confidence (chartframe shows the <title> at the cursor)
+      points.forEach(function (p) {
+        var mm = ms(p.date);
+        if (mm == null) return;
+        s.appendChild(titled(svg("circle", { cx: X(mm), cy: Y(p.p), r: 4, class: "ch-hot" }),
+          p.date + " — " + Math.round(p.p * 100) + "% confidence"));
+      });
       (pcts || []).forEach(function (pc) {
         var mm = ms(pc.date);
         if (mm == null) return;
-        s.appendChild(svg("circle", { cx: X(mm), cy: Y(pc.p), r: 2.2, class: "ch-dot" }));
+        s.appendChild(titled(svg("circle", { cx: X(mm), cy: Y(pc.p), r: 2.6, class: "ch-dot" }),
+          pc.label + " — " + pc.date + " (" + Math.round(pc.p * 100) + "%)"));
       });
       s.appendChild(svg("line", { x1: ml, y1: mt, x2: ml, y2: H - mb, class: "ch-ax" }));
       s.appendChild(svg("line", { x1: ml, y1: H - mb, x2: W - mr, y2: H - mb, class: "ch-ax" }));
@@ -154,15 +200,17 @@
     var W = 380, H = 168, ml = 26, mr = 8, mt = 8, mb = 22;
     var wrap = el("div", { class: "ssi-chart" });
     wrap.appendChild(el("div", { class: "ssi-chart-t" }, "Finish-date distribution"));
-    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: W, height: H });
+    var s = svg("svg", { class: "ssi-svg", viewBox: "0 0 " + W + " " + H, width: "100%" });
     var maxc = bins.reduce(function (a, b) { return Math.max(a, b.count); }, 0) || 1;
+    var total = bins.reduce(function (a, b) { return a + b.count; }, 0) || 1;
     var bw = (W - ml - mr) / (bins.length || 1);
     bins.forEach(function (b, i) {
       var h = (b.count / maxc) * (H - mt - mb);
-      s.appendChild(svg("rect", {
+      s.appendChild(titled(svg("rect", {
         class: "ch-bar", x: ml + i * bw + 0.5, y: H - mb - h,
         width: Math.max(1, bw - 1), height: h,
-      }));
+      }), b.date + " — " + b.count + " finish" + (b.count === 1 ? "" : "es") +
+        " (" + Math.round((b.count / total) * 100) + "%)"));
     });
     s.appendChild(svg("line", { x1: ml, y1: H - mb, x2: W - mr, y2: H - mb, class: "ch-ax" }));
     if (bins.length) {
@@ -202,19 +250,25 @@
     var ch = document.getElementById("ssiCharts");
     ch.innerHTML = "";
     if (d.s_curve && d.s_curve.length) {
+      var labels = ["P10", "P50", "P80", "P90"];
       var pc = [10, 50, 80, 90].map(function (q, i) {
-        return { date: d.percentiles[i] && d.percentiles[i].date, p: q / 100 };
+        return { label: labels[i], date: d.percentiles[i] && d.percentiles[i].date, p: q / 100 };
       });
-      ch.appendChild(sCurve(d.s_curve, d.deterministic, pc));
+      ch.appendChild(chartHost(sCurve(d.s_curve, d.deterministic, pc)));
     }
-    if (d.finish_hist && d.finish_hist.length) ch.appendChild(histChart(d.finish_hist));
+    if (d.finish_hist && d.finish_hist.length) ch.appendChild(chartHost(histChart(d.finish_hist)));
 
     var m = document.getElementById("ssiMatrices");
     m.innerHTML = "";
-    if (nonEmpty(d.risk_matrix)) m.appendChild(matrix("Risk Assessment Matrix", d.risk_matrix, false));
-    if (nonEmpty(d.opportunity_matrix)) {
-      m.appendChild(matrix("Opportunity Assessment Matrix", d.opportunity_matrix, true));
+    if (nonEmpty(d.risk_matrix)) {
+      m.appendChild(chartHost(matrix("Risk Assessment Matrix", d.risk_matrix, false, d.risks)));
     }
+    if (nonEmpty(d.opportunity_matrix)) {
+      m.appendChild(
+        chartHost(matrix("Opportunity Assessment Matrix", d.opportunity_matrix, true, d.risks)));
+    }
+    // frame the freshly-built charts/matrices: independent zoom + full screen + hover call-outs
+    if (window.SFChartFrame) window.SFChartFrame.scan();
   }
 
   function run() {
