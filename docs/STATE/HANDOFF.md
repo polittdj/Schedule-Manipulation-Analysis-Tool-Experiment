@@ -1,26 +1,23 @@
-# Handoff — 2026-06-25 (operator UI sweep on `claude/compassionate-ptolemy-wip898`; #248-#255 merged; EVM + Correlation + Resources (ADR-0125) building)
+# Handoff — 2026-06-25 (operator UI/analysis sweep; PRs #248–#256 all MERGED to `main`; branch `claude/compassionate-ptolemy-wip898` is level with `main`)
 
-> ## STATUS (current) — Resources section (ADR-0125): schema 2.4.0 + resource-loading histogram; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — verified clean baseline; remaining operator queue is 5 items (1 needs an operator decision)
 >
-> **Resources section landed.** Schema migrated **2.3.0 → 2.4.0** (ADR-0125): a new frozen
-> `Assignment` model (`resource_id` / `work_minutes` / `units`) + `Task.resource_assignments`. The MSPDI
-> importer's `_parse_assignments` now reads each assignment's `Work`/`Units`; the friendly-JSON
-> importer/exporter round-trips `resource_assignments` + `resource_ids`; `tests/model/test_schema_freeze.py`
-> bumped in the same change. New `engine/resources.py` `compute_resource_loading(schedule, cpm)`
-> time-phases each task's assignment work evenly across the working days of its CPM span and totals it
-> per month per resource; monthly capacity = `max_units × wmpd × working-days-in-month`; months over
-> capacity are flagged. `/resources` page + nav: per-resource work-vs-capacity histogram (vendored
-> `resources.js`, over-allocated months red), roster table, KPIs, user tips + a method explainer.
-> Deterministic CPM/DCMA/EVM untouched; offline/std-lib/CUI laws preserved.
-> - **Also shipped this stretch (merged #248-#255):** SRA visuals enlarged + tornado tightened; one
->   MS-Project Gantt look across every Gantt; SRA top-of-page file selector + shared factor/BC-WC
->   durations for both models; SRA model + JCL explainers; the header-globe **freeze fix**; AI Settings
->   live model dropdowns (fixes OpenAI-compatible) + cross-check dropdown + CUI explainer; **EVM**
->   section; **Correlation** call-out.
-> - **NEXT (remaining operator queue):** unified SRA risk register (enter once, days↔% auto-derive +
->   lockable per model); SRA JSON save/load of the whole setup; more User Tips; a responsive **mobile
->   view** (CUI-safe); and the **iPhone-access** decision (loopback-only law vs LAN exposure — present
->   options first).
+> **Verified state (assume nothing — checked on this branch):**
+> - **Branch `claude/compassionate-ptolemy-wip898` is LEVEL with `origin/main`** (`git diff --quiet origin/main HEAD` → clean). No un-pushed work, no open PR for this branch (PR #256 merged).
+> - **`main` tip = `29f7aaa` (#256).** Merged this sweep: **#248** self-describing SRA visuals → **#249** drop operator-facing Acumen/SSI branding → **#250** SRA finish-spread calendar-days + OAT float basis → **#251** metric-header call-outs + full-width briefing + light default + drag-drop fix → **#252** call-outs on Float/Trend/SRA tables → **#253** larger SRA visuals + full MS-Project Gantt parity + shared SRA inputs + globe freeze fix → **#254** AI Settings live model pickers + CUI explainer → **#255** EVM section + Correlation explainer → **#256** Resources section (schema 2.4.0, ADR-0125).
+> - **`SCHEMA_VERSION = "2.4.0"`**; **highest ADR = 0125**; nav carries `/evm` and `/resources`.
+> - **Full gate GREEN** (verified): `ruff check` ✓, `ruff format --check` ✓, `mypy src/` (strict, 84 files) ✓, `bandit -r src` exit 0 (only nosec/comment warnings) ✓, `node --check` all static JS ✓, `pytest` **1628 passed, 7 skipped (env-gated CUI intake / Java), 2 xfail (stale ssi_uid143 golden, ADR-0112)**.
+>
+> **What landed in this sweep (highlights):** SRA finish-date charts enlarged + tornado tightened (rowH 18→13); one MS-Project Gantt look across EVERY Gantt (sticky headers/timescale, resizable columns, Find-a-UID, outline-level picker, dates-on-bars, distinct summary bars); SRA **top-of-page file selector** for all models + **shared factor/BC-WC durations** feeding BOTH the SSI and legacy Monte-Carlo; SRA-model + JCL + **Correlation** explainers; the header-globe **perpetual-rAF freeze fix** (page froze while typing in Ask-the-AI); AI Settings **live model dropdowns** (fixes OpenAI-compatible in one flow) + cross-check-model dropdown + per-backend **CUI/data-locality** explainer; the **EVM** section (`/evm`, schedule-based always, cost indices adaptive N/A); the **Resources** section (`/resources`, ADR-0125 schema migration → assignment work/units → monthly load-vs-capacity histogram + over-allocation).
+>
+> **REMAINING operator queue (verified NOT done; design already settled where noted):**
+> 1. **Unified SRA risk register** — still TWO separate forms: `/sra/risk-event` (legacy multiplicative %, `sra_risks`/`RiskEvent`) and `/sra/ssi-risk` (SSI additive days, `sra_ssi_risks`/`ScheduleRisk`). Operator wants to **enter a risk once**. **Decided design (operator's answer):** one register/form carrying BOTH a days magnitude (SSI) and a %/multiplicative magnitude (legacy); when the user types ONE, the tool **auto-calculates the other** from the affected tasks' remaining duration; the user may **override either**, and once overridden it is **locked** and used verbatim for that model. Keep `compute_sra`/`RiskEvent` byte-frozen — derive both `ScheduleRisk` and `RiskEvent` from the unified record at the web boundary (a parity test pins legacy byte-identity). Auto-derive is client-side JS (embed a uid→remaining-days map in the page) with per-field lock flags in SessionState.
+> 2. **SRA JSON save/load of the WHOLE setup** — `_ssi_setup_dict` (`setup_version`) currently persists only the SSI inputs; extend it to the unified risks (both magnitudes + lock flags) + the legacy fields so a load applies to every model. Bump `setup_version`.
+> 3. **More User Tips** — the `_user_tip()` component + `.user-tip` CSS exist (used ~5× on /sra, /evm, /resources). Add tips to the other major pages (analysis grid, path, evolution, trend, groups, forecast, settings).
+> 4. **Responsive mobile view** — CUI-SAFE (pure CSS/layout). A `viewport` meta + a couple of reflow `@media` rules already exist; build a real small-screen layout (collapsible nav, touch-sized controls, stacked panels, the wide Gantt/tables scroll). No network change.
+> 5. **iPhone access — NEEDS AN OPERATOR DECISION (do not build blind).** Reaching the tool *from a separate iPhone* requires binding off-loopback (LAN), which **conflicts with Law 1** (loopback-only; CUI never leaves the machine). Present options and get the call BEFORE any network-binding change: (a) responsive view only, used when the tool itself runs on the portable device; (b) explicit, opt-in LAN bind gated to **UNCLASSIFIED** only, with a loud CUI warning + the egress banner; (c) document phone access as out-of-scope for CUI. The mobile *view* (#4) is safe to build regardless.
+>
+> **Workflow note for the next session:** the operator merges each draft PR quickly and prefers **one focused PR per piece** (merge, then `git merge origin/main`, then next). Squash-merges diverge the rolling branch, so after a merge run `git merge origin/main` (content reconciles to a no-op) before new work. Commit author `noreply@anthropic.com`; never put the model id in commits/PRs/code. Each model-field change is change-controlled: bump `SCHEMA_VERSION` + update `tests/model/test_schema_freeze.py` + add an ADR + refresh BOTH `HANDOFF.md` and `SESSION-LOG.md` (the drift guard fails otherwise).
 
 
 > ## STATUS (current) — Gantt visual-consistency: one MS-Project look + interaction on EVERY Gantt; branch `claude/compassionate-ptolemy-wip898`
