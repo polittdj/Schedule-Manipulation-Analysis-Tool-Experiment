@@ -144,3 +144,70 @@ def test_render_document_marks_cui_on_the_narrative_brief() -> None:
     zf = zipfile.ZipFile(io.BytesIO(blob))
     assert _CUI in zf.read("word/header1.xml").decode()
     assert _CUI in zf.read("word/footer1.xml").decode()
+
+
+def test_chart_block_renders_native_vector_drawing_and_shaded_matrix() -> None:
+    """A Chart block embeds a vendor-free vector drawing (DrawingML shape group: custGeom polylines
+    + prstGeom rects) for kind='vector' and a shaded w:tbl for kind='matrix' — no image part, no new
+    relationship, and byte-deterministic (ADR-0124)."""
+    from schedule_forensics.reports.docx import Chart
+
+    vector = Chart(
+        kind="vector",
+        polylines=(
+            (((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525),
+            (((0.05, 0.05), (0.5, 0.55), (0.95, 0.98)), "0B6BCB", 19050),
+        ),
+        rects=((0.2, 0.0, 0.3, 0.6, "4C78A8"), (0.5, 0.0, 0.6, 0.9, "F58518")),
+        dots=((0.5, 0.55, "E8352E"),),
+    )
+    matrix = Chart(
+        kind="matrix",
+        grid=tuple(
+            tuple((str(c * p), "43A047" if c * p < 8 else "E53935", "FFFFFF") for p in range(1, 6))
+            for c in range(5, 0, -1)
+        ),
+    )
+    blob = render_document((Heading("Charts", level=0), vector, matrix))
+    zf = zipfile.ZipFile(io.BytesIO(blob))
+    assert zf.testzip() is None  # valid zip
+    # NO new parts/relationships were added (the drawing lives inline in document.xml)
+    assert set(zf.namelist()) == {
+        "[Content_Types].xml",
+        "_rels/.rels",
+        "word/_rels/document.xml.rels",
+        "word/document.xml",
+        "word/header1.xml",
+        "word/footer1.xml",
+    }
+    document = zf.read("word/document.xml").decode()
+    ET.fromstring(document)  # well-formed
+    for token in (
+        "<w:drawing>",
+        "<wpg:wgp>",
+        "<a:custGeom>",
+        '<a:prstGeom prst="rect"',
+        '<a:prstGeom prst="ellipse"',
+        "<w:shd ",
+    ):
+        assert token in document, token
+    # the inline vector chart needs a unique, non-zero extent + docPr id; the matrix is a w:tbl
+    assert 'wp:docPr id="2"' in document  # the vector chart is the 2nd block -> id 2
+    # byte-deterministic
+    assert render_document((Heading("Charts", level=0), vector, matrix)) == blob
+
+
+def test_chart_docpr_ids_are_unique_across_multiple_drawings() -> None:
+    """Word flags 'repair' on duplicate drawing ids — every chart gets a distinct docPr id."""
+    import re
+
+    from schedule_forensics.reports.docx import Chart
+
+    charts = [Chart(rects=((0.1, 0.0, 0.2, 0.5, "4C78A8"),)) for _ in range(4)]
+    document = (
+        zipfile.ZipFile(io.BytesIO(render_document(tuple(charts))))
+        .read("word/document.xml")
+        .decode()
+    )
+    ids = re.findall(r'wp:docPr id="(\d+)"', document)
+    assert len(ids) == 4 and len(set(ids)) == 4

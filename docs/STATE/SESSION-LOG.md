@@ -3442,3 +3442,39 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
 - **Queued (same operator batch):** SSI grid resizable columns + in-grid Factor + paste-from-Excel; a
   downloadable risk registry + comprehensive MS Word SRA report with graphics; smoother high-granularity
   S-curve + smaller/denser tornado/histogram/all charts; global 11px text.
+
+---
+
+## 2026-06-25 (cont.) — Comprehensive SRA Word report + downloadable risk registry, vendor-free vector charts (ADR-0124)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898`. **Model/mode:** Opus 4.8 + Ultracode. The headline
+  item of the operator's SRA overhaul batch: a full MS Word SRA report **with graphics**, plus a
+  downloadable risk registry. Hard constraint: offline / std-lib only (no rasterizer).
+- **De-risked first with a recon workflow** (5 agents): 3 parallel readers mapped `reports/docx.py`, the
+  briefing-export pattern, and the exact SSI data surfaces; a design agent chose the vector technique; a
+  worktree-isolated PoC **built and validated a real .docx** (valid zip, well-formed parts, drawing
+  present, deterministic) before any production code.
+- **`reports/docx.py` `Chart` block (ADR-0124):** `kind='vector'` emits one inline DrawingML shape group
+  (`w:drawing > wp:inline > a:graphic > wpg:wgp`) — `a:custGeom` polylines (S-curve / axis / tornado),
+  `a:prstGeom rect` bars, `ellipse` dots — positioned in a 0..1 plot-fraction space mapped to EMU
+  (914400/in, `chExt==ext`). **No image/media part, no relationship, no content-type change** -> the
+  fixed 6-part zip + `_ZIP_EPOCH` + part order are untouched, so **byte-determinism is preserved**. Each
+  chart gets a unique `wp:docPr id` (block index). `kind='matrix'` emits a shaded `w:tbl` (`w:shd` per
+  cell) for the 5x5 grid (the most reliably-rendered primitive). wp/a/wpg/wps namespaces declared on the
+  document root.
+- **`web/app.py` `_sra_report_blocks`:** Executive summary (PM prose + key-results table + how-to-read
+  note) -> Focus-finish results + S-curve + finish-date histogram -> Duration sensitivity (centred
+  tornado + OAT table) -> Per-task Best/Worst durations -> Risk/Opportunity register -> the two 5x5
+  matrices (shaded NASA grids with rank 1-25 + landed counts) -> Methodology & assumptions (BC/WC
+  formula, occurrence/correlation, days->months consequence, ADR-0005 stochastic caveat). Reuses
+  `_ssi_export_tables`; chart builders degrade gracefully (a flat distribution omits the S-curve).
+- **Routes:** `GET /export/docx/sra` now returns the narrative report (xlsx stays tabular);
+  `GET /export/{fmt}/sra-registry` is the downloadable risk registry (register + per-task durations,
+  skips the OAT solves). Panel buttons relabelled: Export tables (Excel) / Download SRA report (Word) /
+  Download risk registry (Excel|Word).
+- **Tests:** `tests/reports/test_exports.py` Chart vector+matrix (valid zip, no new parts, drawing +
+  shaded matrix present, unique docPr ids, byte-deterministic); `tests/web/test_sra_grid.py` the report
+  (sections + a drawing + determinism) + registry routes. ruff/format/mypy(strict)/bandit clean.
+- **Caveat:** the PoC proved package validity, not live-Office pixels (no Word/LibreOffice in the
+  sandbox); wps/wpg is the MS-2010 vocabulary Word renders natively, shaded-table is the conservative
+  fallback. **Highest ADR = 0124.** Remaining operator item: the #27 legacy-chart shrink sweep.
