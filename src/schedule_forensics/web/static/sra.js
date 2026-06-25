@@ -207,7 +207,10 @@
     var rows = data.sensitivity || [];
     if (!rows.length) { box.textContent = "No sensitivity data."; return; }
 
-    var W = 980, padL = 200, padR = 60, rowH = 18, padT = 8;
+    // Operator: drastically tighten the row spacing (rowH) AND enlarge the chart + its text. The
+    // chart is width:100% and now fills the whole (uncapped) panel, so the viewBox units scale UP;
+    // a tight rowH keeps the bars dense (MS-Project tornado look) while the bigger fonts stay legible.
+    var W = 980, padL = 210, padR = 64, rowH = 13, padT = 6;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
@@ -227,7 +230,7 @@
       var positive = r.sens >= 0;
       var bx = positive ? mid : mid - w;
       var sbar = svgEl("rect", {
-        x: bx, y: cy - rowH * 0.32, width: Math.max(w, 0.5), height: rowH * 0.64,
+        x: bx, y: cy - rowH * 0.34, width: Math.max(w, 0.5), height: rowH * 0.68,
         fill: positive ? GOLD : BLUE,
       });
       var stt = svgEl("title", {});
@@ -243,14 +246,14 @@
       var label = "UID " + r.uid + name;
       if (label.length > 34) label = label.slice(0, 33) + "…";
       var lab = svgEl("text", {
-        x: padL - 8, y: cy + 4, "text-anchor": "end", fill: "var(--ink)", "font-size": 11,
+        x: padL - 8, y: cy + 3.5, "text-anchor": "end", fill: "var(--ink)", "font-size": 12,
       });
       lab.textContent = label;
       svg.appendChild(lab);
       // sensitivity value at the bar end
       var val = svgEl("text", {
-        x: positive ? bx + w + 4 : bx - 4, y: cy + 4,
-        "text-anchor": positive ? "start" : "end", fill: "var(--muted)", "font-size": 10,
+        x: positive ? bx + w + 4 : bx - 4, y: cy + 3.5,
+        "text-anchor": positive ? "start" : "end", fill: "var(--muted)", "font-size": 11,
       });
       val.textContent = r.sens.toFixed(2);
       svg.appendChild(val);
@@ -301,7 +304,8 @@
       return;
     }
 
-    var W = 980, padL = 200, padR = 70, rowH = 18, padT = 8;
+    // Same tight-row + enlarged-text treatment as the duration-sensitivity tornado above.
+    var W = 980, padL = 210, padR = 72, rowH = 13, padT = 6;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
@@ -321,19 +325,19 @@
       var slip = r.delta_days >= 0;
       var bx = slip ? mid : mid - w;
       svg.appendChild(svgEl("rect", {
-        x: bx, y: cy - rowH * 0.3, width: Math.max(w, 0.5), height: rowH * 0.6,
+        x: bx, y: cy - rowH * 0.34, width: Math.max(w, 0.5), height: rowH * 0.68,
         fill: slip ? BAD : GREEN,
       }));
       var label = "" + r.name;
       if (label.length > 36) label = label.slice(0, 35) + "…";
       var lab = svgEl("text", {
-        x: padL - 8, y: cy + 4, "text-anchor": "end", fill: "var(--ink)", "font-size": 11,
+        x: padL - 8, y: cy + 3.5, "text-anchor": "end", fill: "var(--ink)", "font-size": 12,
       });
       lab.textContent = label;
       svg.appendChild(lab);
       var val = svgEl("text", {
-        x: slip ? bx + w + 4 : bx - 4, y: cy + 4,
-        "text-anchor": slip ? "start" : "end", fill: "var(--muted)", "font-size": 10,
+        x: slip ? bx + w + 4 : bx - 4, y: cy + 3.5,
+        "text-anchor": slip ? "start" : "end", fill: "var(--muted)", "font-size": 11,
       });
       val.textContent = (r.delta_days > 0 ? "+" : "") + r.delta_days + "d";
       svg.appendChild(val);

@@ -578,7 +578,8 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
    finish-date distribution, duration-sensitivity tornado) are width:100% SVGs, so capping the host
    width shrinks the whole chart, and because their labels are in viewBox units the text scales down
    with it. Applies to the legacy SRA panel charts and the SSI risk chart; the finer histogram bins
-   (engine _HISTOGRAM_BINS) add the requested data granularity. */
-#sraCdf, #sraHist, #sraSens, #sraRisk { max-width: 600px; margin: 0 auto; }
+   (engine _HISTOGRAM_BINS) add the requested data granularity. Operator wants these as LARGE as the
+   panel allows, so they fill the full panel width (the chartframe zoom can shrink them if needed). */
+#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }
 .chart h3, #gantt h3 { font-size: 11px; }
 .bar-row { font-size: 11px; }

@@ -104,17 +104,20 @@ def test_api_sra_no_schedule_returns_400() -> None:
     assert "error" in r.json()
 
 
-def test_sra_charts_are_smaller_and_denser(client: TestClient) -> None:
-    """Operator: make the SRA graphs (S-curve / distribution / tornado) way smaller with smaller
-    text and finer granularity. The chart hosts are width-capped (the width:100% SVGs + their
-    viewBox-unit labels both shrink), the tall viewBoxes are trimmed, and the histogram has more
-    bins."""
+def test_sra_charts_fill_the_panel_and_tornado_is_tight(client: TestClient) -> None:
+    """Operator: make the SRA graphs (S-curve / distribution / tornado) way LARGER, and for the
+    duration-sensitivity tornado drastically reduce the spacing between the bars while enlarging the
+    chart + its text and keeping the line spacing tight. The chart hosts now fill the full panel
+    width (the width:100% SVGs + their viewBox-unit labels both scale UP), and the tornado packs its
+    rows with a small rowH and bigger label/value fonts."""
     css = client.get("/static/app.css").text
-    assert "#sraCdf, #sraHist, #sraSens, #sraRisk { max-width: 600px" in css  # way smaller
+    assert "#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }" in css
     js = client.get("/static/sra.js").text
-    assert "var W = 980, H = 280" in js  # the S-curve viewBox is shorter (was 360) -> denser
-    assert "var W = 980, H = 230" in js  # the histogram viewBox is shorter (was 320)
-    assert "rowH = 18" in js  # tighter tornado rows (was 22/24)
+    assert "var W = 980, H = 280" in js  # the S-curve viewBox is unchanged; the host is now uncapped
+    assert "var W = 980, H = 230" in js  # the histogram viewBox is unchanged
+    assert "rowH = 13" in js  # the tornado rows are drastically tighter (was 18)
+    # the tornado label/value fonts were bumped up (11/10 -> 12/11) for the enlarged, dense look
+    assert '"font-size": 12' in js and '"font-size": 11' in js
 
 
 def test_sra_js_is_air_gapped(client: TestClient) -> None:
