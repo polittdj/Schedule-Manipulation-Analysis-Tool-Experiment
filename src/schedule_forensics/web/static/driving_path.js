@@ -79,13 +79,15 @@
     var gridLns = SFGantt.gridLines(axis);
 
     var table = el("table", { class: "gantt-grid path-grid" });
+    var thead = el("thead");  // a <thead> so the shared sticky-header CSS locks it on scroll
     var head = el("tr");
     head.appendChild(el("th", { text: "UID" }));
     head.appendChild(el("th", { text: "Name" }));
     var thTime = el("th", { class: "g-head path-timeline-head" });
     thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", v.data_date));
     head.appendChild(thTime);
-    table.appendChild(head);
+    thead.appendChild(head);
+    table.appendChild(thead);
 
     acts.forEach(function (a) {
       var tr = el("tr");
@@ -119,6 +121,7 @@
       table.appendChild(tr);
     });
     mount.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "driving"); // MS-Project drag-to-resize columns
   }
 
   function stopPlay() {

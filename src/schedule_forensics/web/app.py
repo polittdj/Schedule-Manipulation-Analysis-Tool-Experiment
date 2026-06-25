@@ -905,6 +905,19 @@ def _e(text: object) -> str:
     return html.escape(str(text))
 
 
+def _user_tip(text: str) -> str:
+    """A small, consistent "User Tip" call-out to guide the operator on a page or control.
+
+    ``text`` is a developer-authored static string (it may contain simple inline HTML such as
+    ``<b>`` for emphasis); it is never operator input, so it is embedded as-is. Rendered the same
+    way everywhere so tips read consistently across the tool.
+    """
+    return (
+        '<p class="user-tip" role="note"><span class="ut-badge">User Tip</span> '
+        f"<span>{text}</span></p>"
+    )
+
+
 #: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
 #: just in the test: ``default-src``/``connect-src``/``img-src`` are ``'self'`` so the page can
 #: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``'unsafe-inline'``
@@ -2275,11 +2288,23 @@ def create_app(
             auto_high=st.sra_high,
             distribution=dist,
         )
+        # The Risk Ranking Factors + Best/Worst-Case durations are entered ONCE (the SSI grid) and
+        # apply to BOTH models: here they become this legacy run's per-activity 3-point overrides
+        # (BestCase, MostLikely=remaining, WorstCase minutes -> optimistic/most_likely/pessimistic).
+        # An explicit legacy per-activity override still wins; tasks with neither use the global
+        # triangular. compute_sra/RiskEvent are untouched — only the inputs we hand it are shared.
         overrides = {
             u: ActivityRisk(u, o, m, p)
-            for u, (o, m, p) in st.sra_overrides.items()
-            if u in sch.tasks_by_id
+            for u, (o, m, p) in _ssi_three_point(st, sch).items()
+            if u in sch.tasks_by_id and o <= m <= p  # skip any inverted manual BC/WC triple
         }
+        overrides.update(
+            {
+                u: ActivityRisk(u, o, m, p)
+                for u, (o, m, p) in st.sra_overrides.items()
+                if u in sch.tasks_by_id and o <= m <= p
+            }
+        )
         # never 500 on the simulation — surface the engine message as a 422 instead
         try:
             result = compute_sra(
@@ -4358,7 +4383,11 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
 <label>Scale <input id=vizZoom type=range min=2 max=40 value=8 title="pixels per day — drag to zoom both timelines"></label>
-<button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button></div>
+<button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
+<label>Find UID <input id=gridFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<span id=gridFindStatus class=muted aria-live=polite></span>
+<label>Outline <select id=gridOutline title="Show tasks up to this outline level (like MS Project)"></select></label>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=gridBarDates type=checkbox> dates on bars</label></div>
 <div id=gantt></div>
 <h3>Activities &amp; Gantt <span class=muted>(add/remove columns; the right-hand timeline is
 scalable — drag <b>Scale</b> to zoom (pixels/day) and scroll horizontally; red = critical,
@@ -6609,6 +6638,70 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <script src="/static/sra_grid.js"></script></div>"""
 
 
+def _sra_explainers() -> str:
+    """Detailed, example-rich "which model, and when" guidance for the SRA page: the two Monte-Carlo
+    models the tool offers (SSI additive vs legacy multiplicative) and JCL — what each does, its
+    pros/cons, and when to reach for it. Collapsible so it never crowds the working controls."""
+    return """
+<div class=panel><h2>Which risk model should I use? (pros, cons &amp; examples)</h2>
+<p class=muted>This page offers two schedule risk models. They answer the same question &mdash; "how
+confident am I in the finish?" &mdash; with different math. Open each below. JCL is explained too, so
+it is clear why a cost+schedule confidence is a separate thing.</p>
+<details class=explainer><summary><b>SSI Schedule Risk &amp; Opportunity</b> &mdash; additive days, focus event (the top model)</summary>
+<p><b>What it does.</b> Each task gets a <b>Best / Worst Case</b> duration &mdash; either from a 1&ndash;5
+<b>Risk Ranking Factor</b> (e.g. factor&nbsp;3 = Best&nbsp;&minus;30% / Worst&nbsp;+30% of the remaining
+duration) or from Best/Worst days you type. A Monte-Carlo samples each task between those bounds and
+reports the <b>finish-date confidence of a chosen focus event</b> (e.g. "Ready to Ship"). Discrete
+<b>risks add a fixed number of days</b> to the tasks they hit when they fire.</p>
+<p><b>Pros.</b> Mirrors SSI Tools' SRA workflow (factor table, focus event, additive risks); intuitive
+for SMEs who think "this task could run X&ndash;Y days"; the focus-event curve answers "how likely is
+<i>this milestone</i> by date&nbsp;D?"; the deterministic facts (all-most-likely finish, one-at-a-time
+sensitivity) validate against SSI to a fraction of a day.</p>
+<p><b>Cons.</b> An additive day impact is a fixed count, not scaled to task size; the stochastic
+distribution is statistically close to SSI but <i>not bit-identical</i> (different RNG, ADR-0005); you
+must supply factors / Best-Worst durations and day-based risks.</p>
+<p><b>When to use.</b> You want the SSI-style milestone confidence and risk register, and your SMEs give
+you factors or best/worst durations and discrete risks measured <b>in days</b>.</p>
+<p class=muted><b>Example.</b> Focus = "Ready to Ship". Set factor&nbsp;3 on the integration tasks, add a
+risk "Late castings" 40% likely / <b>+20 days</b> on UIDs&nbsp;101,&nbsp;102. Run &rarr; P50/P80 finish
+for the milestone and a tornado of which tasks drive the date.</p></details>
+<details class=explainer><summary><b>Legacy Monte-Carlo</b> &mdash; multiplicative risk drivers (GAO/AACE/Hulett)</summary>
+<p><b>What it does.</b> Samples each activity's duration from a triangular/PERT distribution (a global
+"Min&nbsp;90% / ML&nbsp;100% / Max&nbsp;110%" default, or your per-activity 3-point), optionally fires
+discrete <b>risks that MULTIPLY</b> the duration of the tasks they hit (e.g. 1.0&nbsp;/&nbsp;1.2&nbsp;/
+&nbsp;1.5), and recomputes the whole project finish each iteration.</p>
+<p><b>Pros.</b> The canonical <b>risk-driver</b> method (GAO Schedule Assessment Guide / AACE / Hulett);
+percentage impacts <b>scale with task size</b> (a 20% slip is 20% on a 10-day or a 100-day task); one
+risk mapped to several tasks <b>correlates</b> them automatically (the shared-driver correlation, no
+coefficient needed); a clean project-finish confidence curve.</p>
+<p><b>Cons.</b> Oriented to the <b>project</b> finish rather than a chosen milestone; multiplicative
+thinking is less intuitive than "add N days"; the auto 90&ndash;100&ndash;110 default is a
+<b>screening default, not SME-validated</b> (supply elicited ranges for a real run).</p>
+<p><b>When to use.</b> You want the classic risk-driver Monte-Carlo for the overall project finish, with
+<b>percentage</b> impacts and automatic shared-driver correlation.</p>
+<p class=muted><b>Example.</b> Keep the global 90&ndash;100&ndash;110, add a risk "Permit delay" 40% likely /
+100&ndash;120&ndash;150% on the permit tasks &rarr; the S-curve shows project-finish confidence and the
+risk-driver tornado ranks each risk by the mean slip it causes.</p></details>
+<details class=explainer><summary><b>JCL (Joint Confidence Level)</b> &mdash; why cost+schedule is a separate thing</summary>
+<p><b>What it is.</b> A <b>joint cost-AND-schedule</b> confidence: the probability of finishing at or
+below a given <b>cost</b> <i>and</i> on or before a given <b>date</b>, from a cost-loaded, risk-loaded
+schedule (NASA NPR&nbsp;7120.5 / CEH Appendix&nbsp;J; the policy target is typically <b>~70%</b>).</p>
+<p><b>Requirement.</b> A <b>cost-loaded</b> schedule (a budget and actuals on the tasks). Without cost, a
+duration-only run is a <b>Schedule</b> Confidence Level (SCL) only &mdash; it must <u>not</u> be called a
+JCL.</p>
+<p><b>Pros.</b> The integrated cost+schedule risk picture agencies require at major milestones; ties
+reserve (cost contingency + schedule margin) to a confidence target; captures cost/schedule
+correlation that a schedule-only run cannot.</p>
+<p><b>Cons.</b> Needs trustworthy cost loading and cost-risk inputs; more data and effort than a
+schedule-only SRA.</p>
+<p><b>When to use.</b> A formal cost+schedule confidence at a decision point (e.g. a NASA KDP) where a
+cost-loaded, risk-adjusted IMS exists.</p>
+<p class=muted><b>Status here.</b> The two models above are <b>schedule</b> SRA (an SCL). JCL is out of
+scope until cost inputs exist (ADR-0106): load a cost-loaded schedule and the <a href="/evm">EVM</a>
+section surfaces the cost indices; a full joint cost+schedule Monte-Carlo is a tracked follow-on.</p></details>
+</div>"""
+
+
 def _sra_body(st: SessionState) -> str:
     """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
 
@@ -6636,6 +6729,20 @@ def _sra_body(st: SessionState) -> str:
         if len(st.schedules) > 1
         else ""
     )
+    # The file pick governs EVERY model on the page (SSI, OAT, and the legacy Monte-Carlo all
+    # resolve their schedule through _sra_selected), so it lives in one panel at the very top.
+    active_note = (
+        f"<p class=muted>Active file: <b>{_e(selected_key) if selected_key else '&mdash;'}</b> "
+        f"{'(latest solvable version)' if st.sra_file is None else ''}</p>"
+    )
+    top_file_panel = (
+        "<div class=panel><h2>Schedule file for the SRA</h2>"
+        "<p class=muted>Choose which loaded version <b>every</b> SRA model on this page runs "
+        "against &mdash; the SSI Schedule Risk &amp; Opportunity model, the one-at-a-time "
+        "sensitivity, and the legacy Monte-Carlo all use this same file.</p>"
+        f"{_user_tip('Set your Risk Ranking Factors, Best/Worst-Case durations and risks once: they are shared by both the SSI model and the legacy Monte-Carlo, so you never re-enter them per model.')}"
+        f"{file_selector}{active_note}</div>"
+    )
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"
@@ -6661,6 +6768,8 @@ def _sra_body(st: SessionState) -> str:
             "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
         )
     return f"""
+{top_file_panel}
+{_sra_explainers()}
 {_ssi_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
@@ -6669,9 +6778,6 @@ finish-date confidence curve. The deterministic CPM finish is marked against the
 so you can read how much contingency it implies (the deterministic date typically sits well
 below P50). Per-activity criticality and duration sensitivity drive the tornado.</p>
 {disclaimer}
-{file_selector}
-<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b>
-{"(latest solvable version)" if st.sra_file is None else ""}</p>
 <div class=viz-controls>
 <label>Iterations <select id=sraIters>{iter_opts}</select></label>
 <label>Distribution <select id=sraDistribution data-no-i18n>

@@ -140,21 +140,37 @@
   }
 
   resize();
-  window.addEventListener("resize", resize);
+  window.addEventListener("resize", function () { resize(); if (!running) render(rot, false); });
 
-  var rot = 0, last = 0;
-  function frame(now) {
-    var busy = host.classList.contains("ai-thinking");
+  // PERFORMANCE: the globe is a stroke-heavy 2D canvas (hundreds of ctx.stroke() per frame). A
+  // perpetual rAF redrawing it on EVERY page — even idle, even with the tab hidden — pegs a CPU
+  // core and starves keyboard/scroll input on heavy pages (e.g. the 1746-row SRA grid). So we only
+  // run the animation loop WHILE the AI is generating (the host carries .ai-thinking); when idle we
+  // draw one static frame and stop, and we never animate while the tab is hidden. A tiny observer on
+  // the host's class restarts the spin the instant ask.js flags the model as thinking.
+  var rot = 0.6, last = 0, running = false;
+  function tick(now) {
+    if (document.hidden || !host.classList.contains("ai-thinking")) {
+      running = false;
+      render(rot, false); // settle to a static, idle globe
+      return;
+    }
     if (!last) last = now;
     var dt = Math.min(80, now - last);
     last = now;
-    if (!reduce) rot += (busy ? 0.0011 : 0.00035) * dt; // radians/ms — spins up while the AI works
-    render(rot, busy);
-    window.requestAnimationFrame(frame);
+    if (!reduce) rot += 0.0011 * dt; // radians/ms — spins while the AI works
+    render(rot, true);
+    window.requestAnimationFrame(tick);
   }
-  if (reduce) {
-    render(0.6, false); // a still, slightly-turned globe
-  } else {
-    window.requestAnimationFrame(frame);
+  function start() {
+    if (running || reduce || document.hidden) return;
+    if (!host.classList.contains("ai-thinking")) { render(rot, false); return; }
+    running = true;
+    last = 0;
+    window.requestAnimationFrame(tick);
   }
+  render(rot, false); // initial static draw (idle); the loop only spins up while the AI works
+  // restart the spin when ask.js toggles .ai-thinking, and redraw/resume when the tab returns
+  new MutationObserver(start).observe(host, { attributes: true, attributeFilter: ["class"] });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) start(); });
 })();
