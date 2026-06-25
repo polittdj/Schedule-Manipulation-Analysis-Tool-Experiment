@@ -157,6 +157,19 @@ def test_report_omits_scurve_and_tornado_on_a_degenerate_run(client: TestClient)
     assert "Duration sensitivity" in doc
 
 
+def test_report_reports_std_in_both_units_and_the_oat_float_basis(client: TestClient) -> None:
+    """Operator (vs SSI): the spread must read in calendar days too (SSI reports calendar; the tool
+    reports working) so '6.8 vs 8.91' is not misread, and the OAT must state its pure-logic float
+    basis so the near-critical ranking difference is not mistaken for an error."""
+    doc = (
+        zipfile.ZipFile(io.BytesIO(client.get("/export/docx/sra").content))
+        .read("word/document.xml")
+        .decode()
+    )
+    assert "Std deviation (working days)" in doc and "Std deviation (calendar days)" in doc
+    assert "Float basis:" in doc and "pure-logic CPM float" in doc
+
+
 def test_report_documents_the_setup_and_how_to_enter_inputs(client: TestClient) -> None:
     """Operator: the report must explain the setup — how to enter the inputs, what the Risk Ranking
     Factor is, and the factor -> Best/Worst-case table actually used."""

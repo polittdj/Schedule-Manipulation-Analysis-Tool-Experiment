@@ -235,7 +235,8 @@
     t.appendChild(row(["Deterministic finish", d.deterministic.date + "  (P" + d.deterministic.percentile + ")"]));
     d.percentiles.forEach(function (p) { t.appendChild(row([p.label, p.date])); });
     t.appendChild(row(["Mean", d.mean]));
-    t.appendChild(row(["Std deviation (working days)", d.std_days]));
+    t.appendChild(row(["Std deviation",
+      d.std_days + " working days (" + d.std_cal_days + " calendar days)"]));
     out.appendChild(t);
     if (d.risks && d.risks.length) {
       out.appendChild(el("h3", null, "Risk outcomes"));
