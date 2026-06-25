@@ -6614,6 +6614,43 @@ ADR-0005).</p>
 <label><input type=checkbox name=use_risks value=on{" checked" if st.sra_use_risk_register else ""}>
  Use risk register</label>
 <button type=submit>Save run options</button></form>
+<details class=explainer><summary><b>What is Correlation, and what value should I use?</b> (with examples &amp; pros/cons)</summary>
+<p><b>What it is.</b> A single <b>blanket correlation</b> (0&ndash;1) that ties the task duration draws
+together in the Monte-Carlo. At <b>0</b> every task's duration is sampled <i>independently</i>. At a
+positive <b>r</b>, when one task draws toward its worst case the others tend to as well (and toward best
+case together) &mdash; modelling a <b>common cause</b> (a shared crew, the weather, one vendor, a single
+test rig) that pushes many activities the same direction at once.</p>
+<p><b>Why it matters &mdash; the "cancelling" trap.</b> With <i>independent</i> draws, one task's high
+swing is offset by another's low swing, so across a big schedule the extremes cancel (the central-limit
+effect) and the simulated finish distribution comes out <b>too narrow</b>. That <u>understates</u> the
+real spread and gives a <b>falsely optimistic</b> P50/P80. Real programs have systemic drivers, so
+durations <i>are</i> correlated; adding correlation <b>widens and fattens the tails</b> of the finish
+distribution for a more honest confidence.</p>
+<p><b>How to choose the value.</b></p>
+<ul>
+<li><b>0</b> &mdash; independent. Only defensible if tasks are genuinely unrelated (rare on one program).</li>
+<li><b>0.3&ndash;0.5</b> &mdash; the <b>typical, recommended</b> range (GAO/NASA SRA guidance leans here).
+Start around <b>0.3&ndash;0.4</b>.</li>
+<li><b>0.6&ndash;0.9</b> &mdash; strongly coupled work (one team/resource/site driving most tasks).</li>
+<li><b>1.0</b> &mdash; perfect lockstep (every task moves together); usually too extreme.</li>
+</ul>
+<p><b>Example 1 (shared driver).</b> A 200-task program where most work flows through one integration
+team. Independent run &rarr; P80 = +12 days; at <b>r&nbsp;=&nbsp;0.4</b> the P80 widens to +28 days,
+because the shared team makes slips <i>compound</i> instead of cancel &mdash; the 0.4 number is the
+defensible one. <b>Example 2 (truly separate).</b> Two unrelated subprojects with their own teams and
+funding &rarr; <b>r&nbsp;=&nbsp;0</b> (or a low 0.1&ndash;0.2); forcing high correlation would overstate
+the spread.</p>
+<p><b>Pros of using it.</b> A realistic, wider, fatter-tailed finish distribution; avoids the false
+precision of independent draws; aligns with GAO/NASA practice; yields defensible contingency / P-values.
+<b>Cons of using it.</b> It's one blanket value &mdash; it can't say <i>which</i> task pairs are actually
+correlated (a full correlation matrix could, but needs far more elicitation); set too high it overstates
+risk; the "right" number is a judgement call, so document your rationale.</p>
+<p><b>Not using it (r&nbsp;=&nbsp;0).</b> <b>Pro:</b> simplest, and correct when tasks really are
+independent. <b>Con:</b> on a real project it almost always <u>understates</u> schedule risk (the
+cancelling effect) and reads falsely optimistic &mdash; not recommended for a forecast you intend to
+defend.</p>
+<p class=muted>Mechanics: a single-factor Gaussian copula (one shared draw per iteration), std-lib only;
+risk firing is a separate stream, and <b>r&nbsp;=&nbsp;0 reproduces the independent run exactly</b>.</p></details>
 <h3>Risk Factors table</h3>
 <form action="/sra/factor-table" method=post>
 <table style="width:auto"><tr><th>Factor</th><th>% subtract (Best Case)</th><th>% add (Worst Case)</th></tr>

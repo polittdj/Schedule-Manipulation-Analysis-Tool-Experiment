@@ -66,6 +66,17 @@ def test_sra_page_explains_each_model_and_jcl(client: TestClient) -> None:
     assert "cost-loaded" in page and "Schedule</b> Confidence Level (SCL)" in page
 
 
+def test_sra_page_explains_correlation(client: TestClient) -> None:
+    """Operator: explain what Correlation is, how to apply the value (with examples) and the
+    pros/cons of using vs not using it, in a call-out."""
+    page = client.get("/sra").text
+    assert "What is Correlation" in page
+    assert "cancelling" in page  # the central-limit understatement it corrects
+    assert "0.3&ndash;0.5" in page  # the recommended range / how to apply the value
+    assert "Example 1" in page and "Example 2" in page  # worked examples
+    assert "Pros of using it" in page and "Not using it" in page  # pros/cons both ways
+
+
 def test_legacy_run_uses_the_shared_factor_durations(client: TestClient) -> None:
     """Operator: Risk Ranking Factors entered once feed the legacy Monte-Carlo too. Setting a
     factor must not break the legacy run, and the factored task gains duration uncertainty."""
