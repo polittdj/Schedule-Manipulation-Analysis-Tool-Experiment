@@ -56,6 +56,9 @@ def test_ssi_panel_renders_without_running(client: TestClient) -> None:
     assert "name=correlation" in page
     assert "Risk Factors table" in page
     assert "/static/sra_ssi.js" in page
+    # the OAT float-basis note (so the near-critical sensitivity difference vs a stored-float tool
+    # is documented, not mistaken for an error)
+    assert "pure-logic CPM float" in page
 
 
 def test_ssi_run_config_persists(client: TestClient) -> None:
@@ -81,6 +84,8 @@ def test_api_ssi_returns_focus_payload_and_matrices(client: TestClient) -> None:
     assert [p["label"] for p in j["percentiles"]] == ["P10", "P50", "P80", "P90"]
     assert all(p["date"] for p in j["percentiles"])
     assert j["mean"] and isinstance(j["std_days"], float)
+    # the spread is reported in BOTH working and calendar days so it lines up with date-based tools
+    assert isinstance(j["std_cal_days"], float)
     # both 5x5 matrices are present and well-formed (empty until a risk lands in them)
     for key in ("risk_matrix", "opportunity_matrix"):
         grid = j[key]

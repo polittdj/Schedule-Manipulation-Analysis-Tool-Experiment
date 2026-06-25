@@ -717,6 +717,9 @@ class SSIResult:
     mean_date: str
     cdf: tuple[tuple[int, float], ...]
     histogram: tuple[tuple[int, int, int], ...]
+    # the finish-date spread in CALENDAR days (the std of the realigned finish dates) — the working-
+    # day std_days converted to the basis SSI/MS-Project report dates in, so the two line up
+    std_cal_days: float = 0.0
     # the same curves keyed by realigned ISO date for direct plotting (S-curve points + histogram
     # bin-centre counts): one S-curve point per distinct simulated finish (a dense, smooth curve)
     s_curve: tuple[tuple[str, float], ...] = field(default=())
@@ -956,8 +959,19 @@ def _build_ssi_result(
     naive_det = offset_to_datetime(ps, max(deterministic, 0), cal)
     correction = (anchor_date - naive_det) if anchor_date is not None else _dt.timedelta(0)
 
+    def _cal_date(offset: float) -> _dt.date:
+        return (offset_to_datetime(ps, max(round(offset), 0), cal) + correction).date()
+
     def iso(offset: float) -> str:
-        return (offset_to_datetime(ps, max(round(offset), 0), cal) + correction).date().isoformat()
+        return _cal_date(offset).isoformat()
+
+    # the spread in CALENDAR days: std of the realigned finish dates (SSI/MS-Project report dates in
+    # calendar days, the tool's std_days is working days — same distribution, different unit)
+    std_cal_days = (
+        round(statistics.pstdev([_cal_date(f).toordinal() for f in finishes_f]), 1)
+        if n > 1
+        else 0.0
+    )
 
     rstats: list[SSIRiskStat] = []
     for risk, occ in zip(active_risks, risk_occurred, strict=True):
@@ -1004,6 +1018,7 @@ def _build_ssi_result(
         p90=p90,
         mean=mean,
         std_days=std_days,
+        std_cal_days=std_cal_days,
         deterministic_finish_date=iso(deterministic),
         p10_date=iso(p10),
         p50_date=iso(p50),

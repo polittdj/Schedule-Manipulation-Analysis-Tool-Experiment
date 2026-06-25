@@ -5643,6 +5643,7 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         },
         "mean": result.mean_date,
         "std_days": round(result.std_days, 1),
+        "std_cal_days": round(result.std_cal_days, 1),
         "percentiles": [
             {"label": "P10", "date": result.p10_date},
             {"label": "P50", "date": result.p50_date},
@@ -5915,6 +5916,7 @@ def _ssi_export_tables(
             ("P90", result.p90_date),
             ("Mean", result.mean_date),
             ("Std deviation (working days)", round(result.std_days, 2)),
+            ("Std deviation (calendar days)", round(result.std_cal_days, 2)),
         ),
     )
     sens = Table(
@@ -6200,7 +6202,8 @@ def _sra_report_blocks(
             f"{result.deterministic_finish_date} (about P{det_pct}). The risk-adjusted finish is most "
             f"likely {result.p50_date} (P50); {result.p80_date} at P80 and {result.p90_date} at P90 "
             f"carry progressively more contingency. The mean outcome is {result.mean_date} with a "
-            f"standard deviation of {round(result.std_days, 1)} working days. "
+            f"standard deviation of {round(result.std_days, 1)} working days "
+            f"({round(result.std_cal_days, 1)} calendar days). "
             f"{len(result.risks)} discrete risk/opportunity event(s) were modeled. The largest "
             f"duration-sensitivity driver is task {top_txt}."
         ),
@@ -6220,6 +6223,7 @@ def _sra_report_blocks(
                 ("P90", result.p90_date),
                 ("Mean", result.mean_date),
                 ("Std deviation (working days)", round(result.std_days, 1)),
+                ("Std deviation (calendar days)", round(result.std_cal_days, 1)),
                 ("Risk / opportunity events", len(result.risks)),
                 ("Top sensitivity driver", top_txt),
             ),
@@ -6348,6 +6352,16 @@ def _sra_report_blocks(
             ),
         ]
     blocks.append(doc("OAT sensitivity"))
+    blocks.append(
+        Paragraph(
+            "Swings are measured on pure-logic CPM float; this tool does not consume the file's "
+            "stored, progress-aware Critical flag (ADR-0010). A near-critical activity that a tool "
+            "reading the stored float treats as driving can show a smaller delay-swing here, and "
+            "vice-versa, so the mid/low ranking may differ slightly from such a tool even though the "
+            "top drivers and the Best/Worst-case inputs agree.",
+            lead="Float basis:",
+        )
+    )
     blocks += [
         Heading("Per-task Best/Worst-case durations", level=1),
         Paragraph(
@@ -6511,7 +6525,9 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div>
 <div id=ssiMatrices class=ssi-matrices></div>
 <p class=muted style="font-size:11px">Tip: each chart and matrix has its own toolbar (full screen, zoom in/out, reset) to enlarge or shrink it, and hovering any point, bar, or matrix cell calls out its values (a matrix cell lists the risks that land there).</p>
-<h3>Sensitivity — deterministic one-at-a-time (OAT)</h3><div id=ssiOatOut></div>
+<h3>Sensitivity — deterministic one-at-a-time (OAT)</h3>
+<p class=muted style="font-size:11px">Swings are measured on <b>pure-logic CPM float</b> (this tool does not consume the file's stored, progress-aware Critical flag &mdash; ADR-0010). A near-critical activity that a tool reading the stored float treats as driving can therefore show a smaller delay-swing here, and vice-versa, so the mid/low ranking may differ slightly versus a stored-float tool while the top drivers agree.</p>
+<div id=ssiOatOut></div>
 <h3>Save / load setup &amp; export</h3>
 <div class=viz-controls>
 <a class=btn href="/sra/ssi/save" download>Save setup (JSON)</a>
