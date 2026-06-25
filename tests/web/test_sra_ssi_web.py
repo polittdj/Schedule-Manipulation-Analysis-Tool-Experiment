@@ -108,7 +108,7 @@ def test_factor_then_auto_calc_then_oat(client: TestClient) -> None:
 
 def test_risk_register_add_remove_and_matrix(client: TestClient) -> None:
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Permit",
@@ -129,13 +129,13 @@ def test_risk_register_add_remove_and_matrix(client: TestClient) -> None:
     assert j["risk_matrix"][4][3] == 1
     assert all(all(v == 0 for v in row) for row in j["opportunity_matrix"])
     # remove it
-    client.post("/sra/ssi-risk", data={"action": "remove", "rid": r["id"]})
+    client.post("/sra/risk-register", data={"action": "remove", "rid": r["id"]})
     assert client.get("/api/sra/ssi?iterations=200").json()["risks"] == []
 
 
 def test_opportunity_goes_to_the_opportunity_matrix(client: TestClient) -> None:
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Early permit",
@@ -161,7 +161,7 @@ def test_consequence_rating_follows_the_schedule_day_to_month_guideline(client: 
     (impact days -> calendar months): a sub-week impact is 1; a >6-month impact is 5."""
     uid = "5"
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "tiny",
@@ -172,7 +172,7 @@ def test_consequence_rating_follows_the_schedule_day_to_month_guideline(client: 
         },
     )
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "huge",

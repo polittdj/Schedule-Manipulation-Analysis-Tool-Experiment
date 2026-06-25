@@ -223,7 +223,7 @@ def test_setup_load_clamps_out_of_range_consequence_and_export_does_not_crash(
 def test_opportunity_event_renders_the_opportunity_matrix_in_the_report(client: TestClient) -> None:
     uid = _editable_uid(client)
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "Early",
@@ -248,7 +248,7 @@ def test_opportunity_event_renders_the_opportunity_matrix_in_the_report(client: 
 def test_registry_export_is_the_reduced_register_not_the_full_report(client: TestClient) -> None:
     uid = _editable_uid(client)
     client.post(
-        "/sra/ssi-risk",
+        "/sra/risk-register",
         data={
             "action": "add",
             "name": "PermitDelay",

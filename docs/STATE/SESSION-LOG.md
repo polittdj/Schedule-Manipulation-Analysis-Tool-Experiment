@@ -3554,3 +3554,25 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   access → out of scope for CUI** (queue item closed; no LAN/off-loopback bind). Responsive mobile *view*
   remains optional.
 - **Highest ADR = 0126.**
+
+---
+
+## Operator queue (cont.) — 2026-06-25 — User Tips (#260), responsive view (#261), unified SRA risk register (ADR-0127)
+
+- **Branch:** `claude/eager-rubin-xianw9` (reset to `origin/main` after each merge). This stretch:
+  **#260** User Tips on the 7 remaining major pages; **#261** responsive small-screen layout
+  (CSS-only hamburger nav that toggles by tap AND keyboard, 44/40px touch controls, in-panel table
+  scroll; the tool still runs on the device — Law 1 intact); then the headline below.
+- **This change (ADR-0127): unified SRA risk register.** Operator chose the **full clean migration**.
+  A risk is entered ONCE and feeds BOTH SRA models. New `UnifiedRisk` (web/SessionState) carries one
+  event's additive `impact_days` (SSI) + multiplicative `impact_pct` (legacy) + per-model lock flags;
+  `SessionState.sra_risks` is now `list[UnifiedRisk]` (the SSI list/seq removed). ONE form + ONE route
+  `POST /sra/risk-register`; the two old routes `/sra/risk-event` and `/sra/ssi-risk` REMOVED.
+  `_risk_events` / `_schedule_risks` derive the frozen engine `RiskEvent` / `ScheduleRisk` at the web
+  boundary, so `compute_sra` and the byte-frozen parity tests are UNTOUCHED (`SCHEMA_VERSION` 2.4.0
+  unchanged). Days↔% auto-derive from the affected tasks' avg remaining duration (client
+  `static/sra_risk.js` + a uid→remaining-days map; server mirrors it in `_reconcile_magnitudes` for the
+  JS-off / JSON-load path); typing a field locks it for that model. Save/Load persist both magnitudes +
+  locks and still load older SSI-only setups. ~5 web test files rewritten to the unified route + new
+  derive/lock/cross-model tests. Std-lib only; offline/air-gap intact. Full gate green (1654 passed).
+- **Highest ADR = 0127.**
