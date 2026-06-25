@@ -139,6 +139,7 @@
     table.appendChild(tbody);
     host.innerHTML = "";
     host.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "ssiGrid"); // MS-Project drag-to-resize columns
   }
 
   function load() {

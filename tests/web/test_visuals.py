@@ -154,6 +154,30 @@ def test_gantt_charts_render_in_light_mode_with_dark_bold_summaries(client: Test
     assert summary_rule in css
 
 
+def test_base_text_size_matches_the_gantt(client: TestClient) -> None:
+    """Operator: the whole tool's text should read at the Gantt's compact 11px. The single base
+    body font drives everything that inherits it (paragraphs, labels, tables, controls)."""
+    base = client.get("/static/base.css").text
+    assert "font:11px/1.5" in base  # the app-wide base size = the Gantt's 11px
+    # the Gantt itself stays 11px (unchanged), so the base now matches it
+    assert ".gantt-grid { font-size: 11px; }" in client.get("/static/app.css").text
+
+
+def test_gantt_columns_are_msproject_resizable(client: TestClient) -> None:
+    """Operator: widen/narrow each Gantt column like MS Project, with the data reflowing to the new
+    width. A shared SFColResize util attaches drag handles to the data-column headers and switches
+    the table to fixed layout; it is wired on both the activity grid and the SSI risk grid."""
+    page = client.get("/analysis/Project5").text
+    assert "/static/colresize.js" in page  # loaded globally in the layout
+    cr = client.get("/static/colresize.js").text
+    assert "window.SFColResize" in cr and 'className = "col-rsz"' in cr
+    assert 'tableLayout = "fixed"' in cr  # pin columns so one resize doesn't reflow the others
+    assert "SFColResize.attach(table" in client.get("/static/app.js").text  # activity grid
+    assert "SFColResize.attach(table" in client.get("/static/sra_grid.js").text  # SSI risk grid
+    css = client.get("/static/app.css").text
+    assert ".col-rsz" in css and "cursor: col-resize" in css  # the grab handle + cursor
+
+
 def test_full_task_names_wrap_on_both_path_and_analysis(client: TestClient) -> None:
     """Operator request (item C): the Name column wraps to its FULL text on /path and the
     /analysis grid, instead of truncating (path.js sliced trace names to 22 chars before)."""
