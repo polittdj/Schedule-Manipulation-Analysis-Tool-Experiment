@@ -43,6 +43,42 @@ def test_sra_charts_carry_callout_titles() -> None:
     assert "Sensitivity " in js and "Criticality " in js  # tornado bar call-out
 
 
+def test_chartframe_exposes_a_rescan_api_and_zooms_non_svg_visuals() -> None:
+    """Charts built AFTER load (the on-demand SSI run) need a public hook to frame their fresh
+    .chart-host wrappers; the HTML 5x5 matrix opts into zoom via the cf-zoom-box transform path."""
+    js = (STATIC / "chartframe.js").read_text(encoding="utf-8")
+    assert "window.SFChartFrame" in js and "scan: scan" in js  # public re-scan hook
+    assert "cf-zoom-box" in js and "scale(" in js  # transform-zoom the non-SVG matrix
+
+
+def test_ssi_charts_are_framed_and_carry_value_callouts() -> None:
+    """Operator: enlarge/shrink the SSI visuals and read the values on hover. Each S-curve /
+    histogram is wrapped in its own .chart-host (zoom + full screen) and every shape emits a
+    <title> call-out."""
+    js = (STATIC / "sra_ssi.js").read_text(encoding="utf-8")
+    assert "chart-host" in js  # each chart gets its own frame
+    assert "SFChartFrame.scan()" in js  # re-frame the freshly-built charts
+    assert 'svg("title")' in js and "function titled(" in js  # hover-callout helper
+    assert "% confidence" in js  # the S-curve per-point call-out
+    assert 'class: "ch-hot"' in js  # transparent per-point hover hotspots
+    assert 'finish" + (b.count === 1' in js  # the histogram bar call-out (count of finishes)
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert ".ssi-svg .ch-hot" in css  # the invisible hover hotspots
+    assert ".ssi-matrices" in css  # the matrices laid out in a framed row
+
+
+def test_ssi_matrix_cells_call_out_the_risks_that_land_in_them() -> None:
+    """Operator: dive into the Risk Assessment Matrix — hover a cell to see its risks."""
+    js = (STATIC / "sra_ssi.js").read_text(encoding="utf-8")
+    assert "function cellItems(" in js  # the per-cell membership (same binning as the engine grid)
+    assert "data-callout" in js  # the rich hover call-out chartframe reads
+    assert "Risks here:" in js and "Opportunities here:" in js  # the cell detail headings
+    assert "cf-zoom-box" in js  # the matrix is zoomable
+    assert "nm-detail" in js  # populated cells get the dive-in cursor
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert ".nm-cell.nm-detail" in css and "cursor: help" in css
+
+
 def test_scurve_uses_the_shared_time_tier_axis() -> None:
     """The S-curve draws its stacked Year/Quarter/Month axis via the shared SFTimeAxis module."""
     js = (STATIC / "scurve.js").read_text(encoding="utf-8")

@@ -102,6 +102,18 @@
     function applyZoom() {
       var svgs = host.querySelectorAll("svg");
       for (var i = 0; i < svgs.length; i++) svgs[i].style.width = Math.round(100 * scale) + "%";
+      // Non-SVG visuals (e.g. the HTML 5x5 assessment matrix) opt in with class "cf-zoom-box":
+      // CSS-transform-scale them and reserve the grown footprint via margin so the scroller can
+      // pan a magnified copy. offsetWidth/Height stay the untransformed layout size at any zoom.
+      var boxes = host.querySelectorAll(".cf-zoom-box");
+      for (var b = 0; b < boxes.length; b++) {
+        var box = boxes[b];
+        var w = box.offsetWidth, h = box.offsetHeight;
+        box.style.transformOrigin = "top left";
+        box.style.transform = scale === 1 ? "" : "scale(" + scale + ")";
+        box.style.marginRight = w * (scale - 1) + "px";
+        box.style.marginBottom = h * (scale - 1) + "px";
+      }
       zlabel.textContent = Math.round(scale * 100) + "%";
     }
     function setZoom(next) {
@@ -153,6 +165,11 @@
     var hosts = document.querySelectorAll(".chart-host");
     for (var i = 0; i < hosts.length; i++) frame(hosts[i]);
   }
+
+  // Public hook so charts rendered AFTER page load (e.g. the SSI run fetches its S-curve / histogram /
+  // assessment matrices on demand) can frame their freshly-built ".chart-host" wrappers: call
+  // SFChartFrame.scan() once the new nodes are in the DOM. frame() is idempotent (guards __cfFramed).
+  window.SFChartFrame = { frame: frame, scan: scan };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scan);

@@ -111,13 +111,33 @@ class DocTable:
 
 
 @dataclass(frozen=True)
+class ChartText:
+    """A text label drawn on a vector chart (title, axis tick value, axis title, legend entry, or a
+    data call-out). ``x``/``y`` are in the same 0..1 plot fraction as the shapes, but MAY fall
+    outside [0, 1] to sit in a margin (``y=-0.06`` just below the x-axis, ``x=-0.02`` just left of
+    the y-axis, ``y=1.1`` above the plot for a title). ``anchor`` aligns the text-box edge to
+    ``(x, y)``: ``l`` left, ``c`` centre, ``r`` right. ``text`` may contain ``\\n`` for stacked
+    lines. ``size`` is half-points (12 = 6pt)."""
+
+    x: float
+    y: float
+    text: str
+    anchor: str = "l"
+    size: int = 12
+    color: str = "5A6878"
+    bold: bool = False
+    width_in: float = 0.0  # 0 = auto-estimate from the longest line
+
+
+@dataclass(frozen=True)
 class Chart:
     """A vendor-free chart embedded natively in the .docx (ADR-0124). ``kind='vector'`` draws an
     inline DrawingML shape group — ``polylines`` (S-curve / axis), ``rects`` (histogram & tornado
-    bars), and ``dots`` (percentile markers) — all positioned in a 0..1 plot-fraction space (x
-    right, y up; the renderer inverts y). ``kind='matrix'`` emits a shaded ``w:tbl`` (the 5x5 grid),
-    the most reliably-rendered primitive. No image part: the drawing lives inline in document.xml so
-    byte-determinism is preserved."""
+    bars), ``dots`` (percentile markers), and ``labels`` (titles / axis values / legend / data
+    call-outs) — all positioned in a 0..1 plot-fraction space (x right, y up; the renderer inverts
+    y). ``kind='matrix'`` emits a shaded ``w:tbl`` (the 5x5 grid), the most reliably-rendered
+    primitive. No image part: the drawing lives inline in document.xml so byte-determinism is
+    preserved."""
 
     kind: str = "vector"
     width_in: float = 6.2
@@ -128,6 +148,8 @@ class Chart:
     rects: tuple[tuple[float, float, float, float, str], ...] = ()
     # each dot: (x, y) in 0..1 plot fraction + fill hex
     dots: tuple[tuple[float, float, str], ...] = ()
+    # text labels (titles, axis values/titles, legend entries, data call-outs)
+    labels: tuple[ChartText, ...] = ()
     # matrix grid: rows top->bottom of (cell text, fill hex, text-colour hex)
     grid: tuple[tuple[tuple[str, str, str], ...], ...] = ()
 
@@ -302,12 +324,74 @@ def _ellipse_shape(cx: int, cy: int, r: int, fill: str) -> str:
     )
 
 
+def _text_shape(
+    off_x: int,
+    off_y: int,
+    w_emu: int,
+    h_emu: int,
+    text: str,
+    size: int,
+    color: str,
+    bold: bool,
+    jc: str,
+) -> str:
+    """A transparent text-box shape (``\\n`` -> stacked lines) — chart titles, axis tick values,
+    axis titles, legend entries, and data call-outs drawn inside the DrawingML group."""
+    b = "<w:b/>" if bold else ""
+    paras = "".join(
+        f'<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{size * 10}" '
+        f'w:lineRule="exact"/><w:jc w:val="{jc}"/></w:pPr>'
+        f'<w:r><w:rPr>{b}<w:color w:val="{color}"/><w:sz w:val="{size}"/></w:rPr>'
+        f'<w:t xml:space="preserve">{_esc(line)}</w:t></w:r></w:p>'
+        for line in text.split("\n")
+    )
+    return (
+        '<wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr>'
+        f"{_xfrm(off_x, off_y, max(1, w_emu), max(1, h_emu))}"
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/>'
+        "<a:ln><a:noFill/></a:ln></wps:spPr>"
+        f"<wps:txbx><w:txbxContent>{paras}</w:txbxContent></wps:txbx>"
+        '<wps:bodyPr lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr" wrap="none"/></wps:wsp>'
+    )
+
+
+def _label_shape(lab: ChartText, px: int, py: int) -> str:
+    """Place one :class:`ChartText` at chart-EMU point ``(px, py)``, aligning the box edge to the
+    point per ``lab.anchor`` and vertically centring on it."""
+    lines = lab.text.split("\n")
+    longest = max((len(s) for s in lines), default=1)
+    char_in = (lab.size / 2) * 0.52 / 72.0  # ~half-em per glyph at the run's point size
+    line_in = (lab.size / 2) * 1.30 / 72.0
+    w_emu = _emu(lab.width_in or (longest * char_in + 0.06))
+    h_emu = _emu(len(lines) * line_in + 0.02)
+    if lab.anchor == "r":
+        ox = px - w_emu
+    elif lab.anchor == "c":
+        ox = px - w_emu // 2
+    else:
+        ox = px
+    jc = {"l": "left", "c": "center", "r": "right"}[lab.anchor]
+    return _text_shape(
+        max(0, ox),
+        max(0, py - h_emu // 2),
+        w_emu,
+        h_emu,
+        lab.text,
+        lab.size,
+        lab.color,
+        lab.bold,
+        jc,
+    )
+
+
 def _chart_xml(chart: Chart, draw_id: int) -> str:
     if chart.kind == "matrix":
         return _matrix_table_xml(chart.grid)
     w_emu = _emu(chart.width_in)
     h_emu = _emu(chart.height_in)
-    ml, mr, mt, mb = _emu(0.45), _emu(0.12), _emu(0.10), _emu(0.28)
+    # generous margins so titles (top), tick values + axis titles + legend (bottom), and y tick
+    # values + axis title (left) have room outside the plot area
+    ml, mr, mt, mb = _emu(0.62), _emu(0.45), _emu(0.34), _emu(0.52)
     plot_w = max(1, w_emu - ml - mr)
     plot_h = max(1, h_emu - mt - mb)
 
@@ -328,6 +412,8 @@ def _chart_xml(chart: Chart, draw_id: int) -> str:
         shapes.append(_rect_shape(left, top, right - left, bot - top, fill))
     for x, y, fill in chart.dots:
         shapes.append(_ellipse_shape(gx(x), gy(y), _emu(0.028), fill))
+    for lab in chart.labels:
+        shapes.append(_label_shape(lab, gx(lab.x), gy(lab.y)))
     group = (
         "<wpg:wgp><wpg:cNvGrpSpPr/><wpg:grpSpPr>"
         f'<a:xfrm><a:off x="0" y="0"/><a:ext cx="{w_emu}" cy="{h_emu}"/>'

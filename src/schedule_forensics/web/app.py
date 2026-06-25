@@ -181,6 +181,7 @@ from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_hos
 from schedule_forensics.reports.docx import (
     Block,
     Chart,
+    ChartText,
     DocTable,
     Heading,
     Paragraph,
@@ -5986,8 +5987,9 @@ _NASA_CONS_OPP = ("Low", "Minor", "Moderate", "High", "Very High")
 
 
 def _sra_chart_scurve(result: SSIResult) -> Chart | None:
-    """The cumulative finish-date S-curve as a vector chart: axis + dense polyline + a dashed
-    deterministic-finish line + P10/50/80/90 dots, all in 0..1 plot fraction (dates -> x)."""
+    """The cumulative finish-date S-curve as a fully-labelled vector chart: gridlines + axis + dense
+    curve + dashed deterministic line + P10/50/80/90 dots, with a title, y-axis confidence ticks,
+    x-axis date ticks + axis title, a legend, and a parked block of the percentile dates."""
     pts = [(dt.date.fromisoformat(d), p) for d, p in result.s_curve]
     if len(pts) < 2:
         return None
@@ -5997,6 +5999,7 @@ def _sra_chart_scurve(result: SSIResult) -> Chart | None:
     def fx(day: dt.date) -> float:
         return max(0.0, min(1.0, (day.toordinal() - x0) / span))
 
+    grids = tuple((((0.0, g), (1.0, g)), "E3E8EE", 6350) for g in (0.25, 0.5, 0.75, 1.0))
     axis = (((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525)
     curve = (tuple((fx(d), p) for d, p in pts), "0B6BCB", 19050)
     detf = fx(dt.date.fromisoformat(result.deterministic_finish_date))
@@ -6010,47 +6013,129 @@ def _sra_chart_scurve(result: SSIResult) -> Chart | None:
             (0.90, result.p90_date),
         )
     )
+    start_iso, end_iso = pts[0][0].isoformat(), pts[-1][0].isoformat()
+    labels = (
+        ChartText(0.0, 1.15, "Finish-date confidence (S-curve)", "l", 18, "222B35", True),
+        *(ChartText(-0.015, q, f"{int(q * 100)}%", "r", 12) for q in (0.0, 0.25, 0.5, 0.75, 1.0)),
+        ChartText(0.0, -0.07, start_iso, "l", 12),
+        ChartText(1.0, -0.07, end_iso, "r", 12),
+        ChartText(
+            0.5, -0.18, "Forecast finish date  (y = % chance of finishing on or before)", "c", 12
+        ),
+        ChartText(
+            0.02,
+            0.84,
+            f"P10  {result.p10_date}\nP50  {result.p50_date}\nP80  {result.p80_date}\n"
+            f"P90  {result.p90_date}\nDeterministic  {result.deterministic_finish_date}",
+            "l",
+            13,
+            "33414E",
+        ),
+        ChartText(0.04, -0.30, "— confidence curve", "l", 11, "0B6BCB"),
+        ChartText(0.40, -0.30, "- - deterministic (logic-only) finish", "l", 11, "B5790C"),
+        ChartText(0.80, -0.30, "* P10-P90 markers", "l", 11, "E8352E"),
+    )
     return Chart(
-        kind="vector", width_in=6.4, height_in=2.5, polylines=(axis, curve, det_line), dots=dots
+        kind="vector",
+        width_in=6.4,
+        height_in=2.7,
+        polylines=(*grids, axis, curve, det_line),
+        dots=dots,
+        labels=labels,
     )
 
 
 def _sra_chart_hist(result: SSIResult) -> Chart | None:
-    """The finish-date distribution (histogram) as vector bars."""
+    """The finish-date distribution (histogram) as labelled vector bars: title, a 0..max frequency
+    y-axis, x-axis date ticks + axis title, and a call-out on the most-likely (tallest) bar."""
     bins = result.finish_hist
     if not bins:
         return None
     maxc = max((c for _d, c in bins), default=0) or 1
+    peak_i = max(range(len(bins)), key=lambda i: bins[i][1])
+    peak_date, peak_count = bins[peak_i]
     n = len(bins)
     rects = tuple(
         (i / n + 0.008, 0.0, (i + 1) / n - 0.008, c / maxc, "3D8EC4")
         for i, (_d, c) in enumerate(bins)
     )
+    grids = tuple((((0.0, g), (1.0, g)), "E3E8EE", 6350) for g in (0.5, 1.0))
     axis = (((0.0, 1.0), (0.0, 0.0), (1.0, 0.0)), "555555", 9525)
-    return Chart(kind="vector", width_in=6.4, height_in=2.1, polylines=(axis,), rects=rects)
+    labels = (
+        ChartText(0.0, 1.15, "Finish-date distribution", "l", 18, "222B35", True),
+        ChartText(-0.015, 0.0, "0", "r", 12),
+        ChartText(-0.015, 0.5, f"{round(maxc / 2)}", "r", 12),
+        ChartText(-0.015, 1.0, f"{maxc}", "r", 12),
+        ChartText(-0.04, 1.13, "Iterations", "l", 11),
+        ChartText(0.0, -0.07, bins[0][0], "l", 12),
+        ChartText(1.0, -0.07, bins[-1][0], "r", 12),
+        ChartText(0.5, -0.18, "Forecast finish date  (y = number of simulated finishes)", "c", 12),
+        ChartText(
+            (peak_i + 0.5) / n,
+            min(1.07, peak_count / maxc + 0.07),
+            f"most likely\n{peak_date} ({peak_count})",
+            "c",
+            11,
+            "1A5276",
+        ),
+    )
+    return Chart(
+        kind="vector",
+        width_in=6.4,
+        height_in=2.5,
+        polylines=(*grids, axis),
+        rects=rects,
+        labels=labels,
+    )
 
 
 def _sra_chart_tornado(oat: Sequence[OATSensitivity]) -> Chart | None:
     """The duration-sensitivity tornado: per task a centred bar — opportunity-to-accelerate (green,
-    left of centre) and risk-of-delay (red, right) — scaled to the largest total swing."""
+    left of centre) and risk-of-delay (red, right) — scaled to the largest total swing, with a
+    title, per-row UID + total-swing labels, a centre baseline, a working-day scale, and a legend."""
     rows = [o for o in oat if o.total_days > 0][:12]
     if not rows:
         return None
     maxv = max((o.opportunity_days + o.risk_days for o in rows), default=0.0) or 1.0
     n = len(rows)
     rects: list[tuple[float, float, float, float, str]] = []
+    labels: list[ChartText] = [
+        ChartText(
+            0.0, 1.13, "Duration sensitivity (tornado) — working-day swing", "l", 18, "222B35", True
+        ),
+        ChartText(0.27, 1.04, "◀ opportunity (accelerate)", "c", 11, "2E7D32"),
+        ChartText(0.73, 1.04, "risk (delay) ▶", "c", 11, "C62828"),
+        ChartText(0.5, -0.06, "0", "c", 12),
+        ChartText(0.0, -0.06, f"-{maxv:g} wd", "l", 11),
+        ChartText(1.0, -0.06, f"+{maxv:g} wd", "r", 11),
+        ChartText(
+            0.5,
+            -0.17,
+            "Working days the focus finish moves when each task is swung Best↔Worst",
+            "c",
+            12,
+        ),
+    ]
     for i, o in enumerate(rows):
         y0 = 1.0 - (i + 0.85) / n
         y1 = 1.0 - (i + 0.15) / n
+        yc = 1.0 - (i + 0.5) / n
         opp = (o.opportunity_days / maxv) * 0.5
         risk = (o.risk_days / maxv) * 0.5
         if opp > 0:
             rects.append((0.5 - opp, y0, 0.5, y1, "43A047"))
         if risk > 0:
             rects.append((0.5, y0, 0.5 + risk, y1, "E53935"))
+        labels.append(ChartText(-0.015, yc, str(o.unique_id), "r", 11, "33414E"))
+        labels.append(ChartText(1.0, yc, f"{o.total_days:g} wd", "l", 11, "33414E"))
     center = (((0.5, 0.0), (0.5, 1.0)), "555555", 9525)
     return Chart(
-        kind="vector", width_in=6.4, height_in=2.8, polylines=(center,), rects=tuple(rects)
+        kind="vector",
+        width_in=6.4,
+        height_in=2.9,
+        polylines=(center,),
+        rects=tuple(rects),
+        labels=tuple(labels),
     )
 
 
@@ -6147,6 +6232,67 @@ def _sra_report_blocks(
         ),
     ]
     blocks += [
+        Heading("How to set up this analysis (inputs)", level=1),
+        Paragraph(
+            "The forecast is driven entirely by the inputs below. Enter them on the Schedule Risk & "
+            "Opportunity Analysis page, then run the Monte-Carlo. This section documents exactly what "
+            "was used for this report so the analysis can be reviewed and reproduced."
+        ),
+        DocTable(
+            ("Input", "How you enter it", "What it does"),
+            (
+                (
+                    "Focus event",
+                    "Type the task UID whose finish you want to forecast (blank = project finish).",
+                    "Every result (S-curve, percentiles, sensitivity) is measured at this event's finish.",
+                ),
+                (
+                    "Risk Ranking Factor (0-5)",
+                    "Per task, in the grid or the 'Assign Risk Ranking Factor' box (one value, a list of "
+                    "UIDs, or paste a whole column from Excel/MS Project).",
+                    "0 = no duration uncertainty (uses the Remaining Duration as-is). 1-5 widen the "
+                    "Best/Worst-case spread using the Risk Factors table below.",
+                ),
+                (
+                    "Best / Worst-case duration",
+                    "Auto-calculated from the factor (ML = current Remaining Duration), or type a value "
+                    "to override.",
+                    "Sets the low/high ends of each task's sampled duration range.",
+                ),
+                (
+                    "Risk / Opportunity register",
+                    "Add an event with a probability %, a schedule impact in days (positive = delay/risk, "
+                    "negative = acceleration/opportunity), and the affected task UID(s).",
+                    "On each iteration the event may fire and add its impact to the affected tasks.",
+                ),
+                (
+                    "Occurrence mode",
+                    "Choose 'Random each iteration' or 'Exact percentage overall'.",
+                    "How often registered events fire across the run (see below).",
+                ),
+                (
+                    "Correlation",
+                    "0 to 1 (0 = independent; 0.3-0.5 typical).",
+                    "Couples task durations so highs/lows do not fully cancel, widening the spread.",
+                ),
+            ),
+        ),
+        Heading("Risk Factors table (factor -> Best/Worst case)", level=2),
+        Paragraph(
+            "Best case = ML x (1 - subtract%/100); Worst case = ML x (1 + add%/100), where ML is the "
+            "task's current Remaining Duration. These are the percentages used for this report:"
+        ),
+        DocTable(
+            ("Risk Ranking Factor", "% subtract (Best case)", "% add (Worst case)"),
+            (
+                ("0 (no uncertainty)", "0", "0"),
+                *((f, f"{s:g}", f"{a:g}") for f, s, a in st.sra_factor_rows),
+            ),
+        ),
+        Paragraph(_OCC_RANDOM, lead="Random each iteration:"),
+        Paragraph(_OCC_EXACT, lead="Exact percentage overall:"),
+    ]
+    blocks += [
         Heading("Focus-finish results", level=1),
         Paragraph(
             "The simulated finish-date distribution of the focus event: the deterministic finish, the "
@@ -6167,7 +6313,15 @@ def _sra_report_blocks(
         ]
     hc = _sra_chart_hist(result)
     if hc is not None:
-        blocks += [Heading("Finish-date distribution", level=2), hc]
+        blocks += [
+            Heading("Finish-date distribution", level=2),
+            hc,
+            Paragraph(
+                "How many of the simulated runs landed on each finish date (taller = more likely). The "
+                "labelled bar is the single most-likely finish date.",
+                italic=True,
+            ),
+        ]
     blocks += [
         Heading("Duration sensitivity (one-at-a-time)", level=1),
         Paragraph(
@@ -6351,7 +6505,9 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <button id=ssiRun type=button>Run SSI SRA</button>
 <button id=ssiOat type=button title="Deterministic one-at-a-time Best/Worst swing on the focus event (2xN CPM solves)">Run sensitivity</button></div>
 <p id=ssiStatus class=muted aria-live=polite></p>
-<div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div><div id=ssiMatrices></div>
+<div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div>
+<div id=ssiMatrices class=ssi-matrices></div>
+<p class=muted style="font-size:11px">Tip: each chart and matrix has its own toolbar (full screen, zoom in/out, reset) to enlarge or shrink it, and hovering any point, bar, or matrix cell calls out its values (a matrix cell lists the risks that land there).</p>
 <h3>Sensitivity — deterministic OAT (SSI Sensitivity Analysis)</h3><div id=ssiOatOut></div>
 <h3>Save / load setup &amp; export</h3>
 <div class=viz-controls>

@@ -502,6 +502,7 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
   border-radius: 4px; color: #10202e; }
 .nm-rank { font-size: 16px; font-weight: 800; }
 .nm-cell.nm-hit { box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .9), 0 0 0 1px rgba(0, 0, 0, .35); }
+.nm-cell.nm-detail { cursor: help; }  /* hover a populated cell to dive into the risks/opportunities */
 .nm-badge { position: absolute; top: 1px; right: 2px; min-width: 15px; height: 15px; line-height: 15px;
   border-radius: 8px; background: #10202e; color: #fff; font-size: 10px; font-weight: 700; padding: 0 3px; }
 /* Risk zones (green / yellow / red) */
@@ -535,8 +536,11 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 /* Compact SSI vector charts (S-curve + finish-date distribution) — the operator wanted small graphs
    with small text and many data points. Fixed small size, theme-independent ink so they read on the
    panel in either theme. */
-.ssi-charts { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0; }
-.ssi-chart { display: inline-block; }
+.ssi-charts, .ssi-matrices { display: flex; flex-wrap: wrap; gap: 16px; margin: 8px 0;
+  align-items: flex-start; }
+/* Fixed compact width so the framed chart stays small at 100%; zoom (chartframe) scales the SVG past
+   the host and the cf-scroll pans the magnified copy. */
+.ssi-chart { display: block; width: 380px; max-width: 100%; }
 .ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }
 .ssi-svg { background: #fff; border: 1px solid var(--line); border-radius: 4px; }
 .ssi-svg .ch-ax { stroke: #5a6878; stroke-width: 1; }
@@ -545,6 +549,8 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .ssi-svg .ch-bar { fill: #3d8ec4; }
 .ssi-svg .ch-det { stroke: #d29922; stroke-width: 1; stroke-dasharray: 3 2; }
 .ssi-svg .ch-dot { fill: #e8352e; }
+/* invisible hover hotspots on each S-curve point — carry a <title> so chartframe calls out the value */
+.ssi-svg .ch-hot { fill: #fff; opacity: 0; cursor: crosshair; }
 .ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }
 .ssi-svg .ch-yl { text-anchor: end; }
 
