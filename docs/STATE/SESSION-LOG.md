@@ -3576,3 +3576,9 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   locks and still load older SSI-only setups. ~5 web test files rewritten to the unified route + new
   derive/lock/cross-model tests. Std-lib only; offline/air-gap intact. Full gate green (1654 passed).
 - **Highest ADR = 0127.**
+- **Follow-up (queue #2, operator "Do #2"): SRA JSON Save/Load of the WHOLE setup.** Extended
+  `_ssi_setup_dict` / `_apply_ssi_setup` to also persist/restore the legacy model's inputs — the global
+  triangular (`sra_low/ml/high`) and the per-activity 3-point overrides (`sra_overrides`, minutes) —
+  alongside the unified risks (already added in #262). Bumped `setup_version` 1 → 2; a v1 setup still
+  loads (legacy fields absent → screening defaults, a clean reset). Tests: whole-setup round-trip +
+  v1 back-compat. Extends ADR-0127 (no new ADR). Full gate green (1656 passed).
