@@ -3367,3 +3367,54 @@ deterministic across two full runs. No new ADR (tests + gate bump). Model: Opus 
   `test_sra*.py` still green. **Deferred (follow-up, same branch):** the inline-editable Gantt grid,
   JSON Save/Load, and the six-sheet Excel export build on these routes.
 - **Gate:** ruff/format/mypy(strict)/bandit/`node --check` clean; full suite green. Highest ADR = **0123**.
+
+---
+
+## 2026-06-24 (cont. 7) — SRA SSI remodel finished: editable grid + JSON Save/Load + Excel/Word export (ADR-0123)
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (fresh on `main` after #241 merged). **Model/mode:**
+  Opus 4.8. The deferred tail of the SSI remodel, all on the routes #241 landed (still ADR-0123, no new ADR).
+- **Editable schedule grid** (`web/static/sra_grid.js`, vendored, reuses `SFGantt`): the whole plan as an
+  SSI-style grid — inline **Risk Ranking Factor (1-5)** / **Best/Worst Case days**, a **focus** radio. A
+  factor auto-fills BC/WC from the factor table; an explicit BC/WC is a manual override (mirrors
+  `_ssi_three_point`). One delegated listener queues edits per-UID; **Save grid** batch-POSTs `deltas` JSON
+  to `/sra/grid`. Row feed `GET /api/sra/grid` reuses `_activity_rows` (+ remaining_days/factor/bc/wc/
+  has_risk/is_focus/editable). MS-Project Y/Q/M timeline + a translucent BC..WC finish envelope; summaries
+  bold + non-editable.
+- **JSON Save/Load** (`GET /sra/ssi/save`, `POST /sra/ssi/load`): versioned (`setup_version=1`) object
+  (focus, factor table, factors, bcwc minutes, risks, run options). Load validates UIDs against the active
+  schedule (unknown/summary dropped, factors clamped, probs 0..1). Std-lib `json` only; CUI-safe download.
+- **Excel/Word export** (`GET /export/{fmt}/sra`): six tables (run setup, per-task durations, risk
+  register, focus-finish results, OAT sensitivity, the two 5x5 matrices) via the existing
+  `TableSet`/`render_xlsx`/`render_docx` (CUI banner, byte-deterministic). Runs the MC + OAT on demand.
+- **No model/schema change** (SSI inputs live on `SessionState`); offline/std-lib/air-gap/CUI intact; new
+  JS vendored + same-origin. `contextlib` added to app.py (SIM105).
+- **Tests:** `tests/web/test_sra_grid.py` (11) — grid feed shape, factor auto-fill + manual override,
+  unknown/summary UID rejection, Save->Load round-trip, unknown-UID drop on load, xlsx/docx zip smoke,
+  no-schedule 400s, air-gap. Full suite **1553 passed**, 7 env-gated skips, 2 documented xfails; coverage
+  gates held.
+- **Gate:** ruff/format/mypy(strict)/bandit/`node --check` clean. Highest ADR = **0123** (unchanged).
+
+---
+
+## 2026-06-25 — Gantt presentation: always-light charts + selectable .mpp custom-field columns
+
+- **Branch:** `claude/compassionate-ptolemy-wip898` (on the open SSI-grid PR). **Model/mode:** Opus 4.8.
+  Two operator asks from a dark-mode screenshot; no new ADR (display work on ADR-0088/0093 mapping).
+- **Gantts always light mode** (`app.css`): the operator found the dark grid behind the white bars
+  jarring. Scoping the light-theme custom properties onto `.gantt-grid, .path-view, .gantt-scroll,
+  .sra-grid-host` flips every descendant's text/border/hover/field colour via the cascade, plus a white
+  grid background (= the bar canvas) so the whole chart is one continuous light surface. **Summary-task
+  names forced dark + bold** (`--sum-ink` dark in scope + `font-weight:700`). Only the charts change;
+  the rest of the UI keeps its theme.
+- **Any .mpp field as a column** (standard or custom): the importer/model already map extended
+  attributes (`Task.custom_fields`, `Schedule.custom_field_labels`, ADR-0088/0093). Surfaced them on the
+  activity grid — `_activity_rows` now emits each task's `custom` label->value map and `_analysis_data`
+  advertises `custom_field_labels`; `app.js` appends each custom field to `ALL_FIELDS` as an optional
+  toggleable column and reads values via a new `valueOf(act, key)` accessor (falls back to
+  `act.custom[label]`), so sort / checklist-filter / drill-down all work on custom columns. The sample
+  Project5 exposes `Trace Log` + `Driving Slack`. The driving-path trace and SSI grid keep their fixed
+  task-specific columns.
+- **Tests:** `test_visuals.py` +3 (light-mode CSS scope; custom-field feed shape; app.js custom-column
+  wiring). Full suite **1556 passed**, coverage gates held; ruff/format/mypy(strict)/bandit/`node
+  --check` clean. Highest ADR = **0123** (unchanged).

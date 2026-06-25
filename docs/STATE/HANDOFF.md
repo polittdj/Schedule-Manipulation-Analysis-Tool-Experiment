@@ -1,32 +1,38 @@
-# Handoff — 2026-06-24 (PR 6 WIP: SRA SSI remodel — ENGINE + SSI control/matrix/OAT WEB surface landed; editable grid + persistence NEXT)
+# Handoff — 2026-06-24 (SRA SSI remodel COMPLETE — engine + control/matrix/OAT (#241 merged) + the editable grid, JSON Save/Load, and Excel/Word export now in a follow-up PR)
 
-> ## STATUS (current) — SRA SSI remodel (ADR-0123) — the parity-anchored ENGINE **and** the SSI control panel + 5×5 matrices + deterministic OAT web surface are IN; the inline-editable Gantt grid + JSON Save/Load + Excel export are NEXT; branch `claude/compassionate-ptolemy-wip898`
+> ## STATUS (current) — SRA SSI remodel (ADR-0123) is feature-COMPLETE: the inline-editable schedule grid, JSON Save/Load, and Excel/Word export landed on top of the merged engine + control surface; follow-up PR on branch `claude/compassionate-ptolemy-wip898`
 >
-> **PR 6 is the big SRA SSI remodel, built incrementally on one branch (draft PR).** Landed so far —
-> the **engine** (`engine/sra.py`, legacy `compute_sra`/`RiskEvent` left frozen) **and** the **SSI web
-> control surface**:
-> - Engine: `factor_to_bc_wc` (ML = remaining; `BC=ML*(1-sub%)`, `WC=ML*(1+add%)`), `RiskFactorTable` (SSI
->   defaults 1=50/10…5=10/50), `ScheduleRisk` (additive impact **days**), `OATSensitivity`, `SSIRiskStat`,
->   `SSIResult`; `compute_sra_ssi` (focus-event targeting, occurrence modes random-each/exact-overall,
->   risk-excludes-BC/WC, single-factor **Gaussian copula correlation**), `compute_oat_sensitivity`
->   (deterministic one-at-a-time swing).
-> - Web (`web/app.py` + new vendored `web/static/sra_ssi.js`): `SessionState` SSI inputs (no model
->   change); routes `POST /sra/ssi-run-config|factor-table|factor|auto-calc|ssi-risk` + off-page-load
->   feeds `GET /api/sra/ssi` (focus payload + per-risk stats + the two 5×5 matrices) and `GET /api/sra/oat`
->   (2N-solve OAT, on demand). The `_ssi_panel` opens instantly; the Monte-Carlo runs only on click. The
->   matrices reuse the existing `risk-matrix`/`rk-*` band CSS.
-> - **Validated against the operator's SRA Project5 + SSI exports:** BC/WC formula **EXACT**
->   (UID107 24.80/41.34, UID35 10.27/20.54); OAT **EXACT** (UID107 2.8/13.8, UID35 6.8/3.4); the full
->   risk run reproduces SSI's deterministic finish **2027-12-03 @ ~9%** (SSI ~11%), **mean 12/13** (SSI
->   12/14), occurrence modes exact, correlation widens the spread. Two basis fixes were key: the
->   deterministic anchor is the **all-ML run** (so the percentile is consistent), and the date axis is
->   realigned to the focus task's **stored finish** (pure-CPM packs completed work at project start).
->   Stochastic distribution NOT claimed bit-exact (RNG + scheduler differ — ADR-0005/0106).
-> - Tests: `tests/engine/test_sra_ssi.py` (13) + `tests/web/test_sra_ssi_web.py` (8) green; legacy
->   `test_sra*.py` still green. ADR-0123 + HANDOFF + SESSION-LOG refreshed (drift guard).
-> - **NEXT (same PR):** the inline-editable Gantt grid (rank Factor / edit Best/Worst per row over the
->   ~1700-row schedule), JSON **Save/Load** of the SSI setup, and the six-sheet **Excel** export — all
->   build on these routes. Plan: `/root/.claude/plans/virtual-wobbling-donut.md`.
+> **The SSI remodel is done.** PR #241 (merged) shipped the engine + the SSI control panel + 5×5 matrices
+> + deterministic OAT. This follow-up PR adds the three deferred pieces, all on the routes #241 landed:
+> - **Editable schedule grid** (`web/static/sra_grid.js`, vendored, reuses `SFGantt`): the whole plan as
+>   an SSI-style grid — type a **Risk Ranking Factor (1–5)** or edit **Best/Worst Case days** inline, pick
+>   the **focus** event with a radio. A factor auto-fills Best/Worst from the table; an explicit BC/WC entry
+>   is a manual override (mirrors `_ssi_three_point` precedence). Edits queue per-UID (one delegated
+>   listener, no per-cell handlers) and batch-save to `POST /sra/grid`; the row feed is `GET /api/sra/grid`
+>   (built on the existing `_activity_rows`). MS-Project Year/Quarter/Month timeline + a translucent
+>   Best/Worst finish envelope per bar. Summary rows bold + non-editable.
+> - **JSON Save/Load** (`GET /sra/ssi/save` download, `POST /sra/ssi/load` upload): a versioned
+>   (`setup_version=1`) object — focus, factor table, factors, BC/WC minutes, risks, run options. Load
+>   validates UIDs against the active schedule (unknown/summary dropped, factors clamped). Std-lib `json`.
+> - **Excel/Word export** (`GET /export/{fmt}/sra`): a six-table hand-out (run setup, per-task durations,
+>   risk register, focus-finish results, OAT sensitivity, the two 5×5 matrices) via the existing
+>   `TableSet`/`render_xlsx`/`render_docx` (CUI banner stamped, byte-deterministic). Runs the MC + OAT on
+>   demand, off the page-load path.
+> - No model/schema change (all SSI inputs on `SessionState`); offline/std-lib/air-gap/CUI intact; new JS
+>   vendored + same-origin (`node --check` clean). Still **ADR-0123** (no new ADR — this is its deferred tail).
+> - Tests: `tests/web/test_sra_grid.py` (11) + the merged `test_sra_ssi*.py` (21) green; full suite **1553
+>   passed**, coverage gates held. Engine parity unchanged (BC/WC + OAT exact; ADR-0005 stochastic caveat).
+> - **Two operator Gantt-presentation asks added to the same PR (no new ADR):**
+>   1. **Gantts always render in LIGHT mode** (the MS-Project look) regardless of the page theme — the
+>      dark grid behind white bars was jarring. `app.css` scopes the light palette onto
+>      `.gantt-grid/.path-view/.gantt-scroll/.sra-grid-host` (cascade flips every descendant) with a
+>      white grid background; **summary-task names forced dark + bold**. Only the charts change.
+>   2. **Any .mpp field selectable as a column** (standard or custom). The model/importer already map
+>      extended attributes (`Task.custom_fields`, `Schedule.custom_field_labels`); this surfaces them —
+>      `_activity_rows` now emits each task's `custom` map and `_analysis_data` advertises
+>      `custom_field_labels`; `app.js` appends each as an optional toggleable column and reads it via a
+>      `valueOf()` accessor (sort/filter/drill all work on custom columns). Activity grid (the column
+>      chooser); the trace/SSI grids keep their fixed columns. Full suite **1556 passed**.
 >
 > ## STATUS (prev) — Gantt density pass (3x more tasks/page, bold summaries, gridlines), a "Fit project" button, and Dur/Start/Finish/Driving-slack columns on the trace; branch `claude/compassionate-ptolemy-wip898`
 >

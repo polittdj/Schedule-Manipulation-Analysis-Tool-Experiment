@@ -11,6 +11,7 @@ Power-BI-style visuals are layered on at M14; M13 is the shell + server-rendered
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import html
 import json
@@ -143,6 +144,7 @@ from schedule_forensics.engine.recommendations import (
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
 from schedule_forensics.engine.sra import (
     ActivityRisk,
+    OATSensitivity,
     RiskEvent,
     RiskFactorTable,
     ScheduleRisk,
@@ -178,6 +180,7 @@ from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
 from schedule_forensics.reports.docx import Block, render_document, render_docx
 from schedule_forensics.reports.tables import (
+    Cell,
     Table,
     TableSet,
     activities_table,
@@ -2441,6 +2444,137 @@ def create_app(
             }
         )
 
+    @app.get("/api/sra/grid")
+    def sra_grid_json() -> JSONResponse:
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        _key, sch, cpm = chosen
+        return JSONResponse(
+            {
+                "rows": _ssi_grid_rows(st, sch, cpm),
+                "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+            }
+        )
+
+    @app.post("/sra/grid")
+    def sra_grid_save(deltas: str = Form("[]")) -> JSONResponse:
+        """Batched inline-edit save from the SSI grid: one JSON array of per-task deltas
+        ``[{uid, factor?, bc_days?, wc_days?, focus?}]`` (the fields_json/gantt JSON-in-page
+        precedent). A factor delta auto-fills Best/Worst from the factor table; an explicit
+        bc_days/wc_days delta is a manual override that wins (mirrors ``_ssi_three_point``)."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        _key, sch, _cpm = chosen
+        mpd = sch.calendar.working_minutes_per_day or 480
+        tbl = RiskFactorTable(rows=st.sra_factor_rows)
+        by_id = sch.tasks_by_id
+        try:
+            items = json.loads(deltas)
+        except (ValueError, TypeError):
+            return JSONResponse({"error": "bad deltas payload"}, status_code=422)
+        saved = 0
+        for d in items if isinstance(items, list) else []:
+            if not isinstance(d, dict):
+                continue
+            uid = d.get("uid")
+            if not isinstance(uid, int) or uid not in by_id or by_id[uid].is_summary:
+                continue
+            task = by_id[uid]
+            rem = (
+                task.remaining_duration_minutes
+                if task.remaining_duration_minutes is not None
+                else task.duration_minutes
+            )
+            changed = False
+            if d.get("focus"):
+                st.sra_focus_uid = uid
+                changed = True
+            if d.get("factor") not in (None, ""):
+                try:
+                    f = min(5, max(1, int(d["factor"])))
+                except (TypeError, ValueError):
+                    f = 0
+                if f:
+                    st.sra_factors[uid] = f
+                    bc, _ml, wc = factor_to_bc_wc(rem, f, tbl)
+                    st.sra_bcwc[uid] = (bc, wc)
+                    changed = True
+            bc_min, wc_min = st.sra_bcwc.get(uid, (rem, rem))
+            manual = False
+            for key, slot in (("bc_days", 0), ("wc_days", 1)):
+                if d.get(key) not in (None, ""):
+                    try:
+                        minutes = max(0, round(float(d[key]) * mpd))
+                    except (TypeError, ValueError):
+                        continue
+                    bc_min, wc_min = (minutes, wc_min) if slot == 0 else (bc_min, minutes)
+                    manual = True
+            if manual:
+                st.sra_bcwc[uid] = (int(bc_min), int(wc_min))
+                changed = True
+            saved += int(changed)
+        return JSONResponse({"ok": True, "saved": saved})
+
+    @app.get("/sra/ssi/save")
+    def sra_ssi_save() -> Response:
+        """Download the whole SSI setup (focus, factor table, per-task factors + Best/Worst,
+        risk register, run options) as a versioned JSON file — local download, CUI-safe."""
+        st = session()
+        return Response(
+            json.dumps(_ssi_setup_dict(st), indent=2),
+            media_type="application/json",
+            headers={"Content-Disposition": 'attachment; filename="sra-ssi-setup.json"'},
+        )
+
+    @app.post("/sra/ssi/load")
+    def sra_ssi_load(setup: UploadFile) -> RedirectResponse:
+        """Restore an SSI setup from a previously-saved JSON file. UIDs are validated against the
+        active schedule (unknown/summary tasks dropped, factors clamped) so a setup saved on one
+        version applies cleanly to another."""
+        st = session()
+        try:
+            payload = json.loads(setup.file.read())
+        except (ValueError, TypeError):
+            return RedirectResponse(url="/sra", status_code=303)
+        if isinstance(payload, dict):
+            _apply_ssi_setup(st, payload)
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.get("/export/{fmt}/sra")
+    def export_sra(fmt: str) -> Response:
+        """The SSI setup + a focus-targeted run + the deterministic OAT as a six-table Excel/Word
+        hand-out (ADR-0123). Runs the Monte-Carlo + OAT on demand (off the page-load path)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "need an analyzable schedule"}, status_code=400)
+        _key, sch, _cpm = chosen
+        tp = _ssi_three_point(st, sch)
+        cfg = SRAConfig(
+            iterations=2000,
+            distribution="triangular",
+            target_uid=st.sra_focus_uid,
+            occurrence_mode=st.sra_occurrence_mode,
+            use_risk_register=st.sra_use_risk_register,
+            correlation=st.sra_correlation,
+        )
+        result = compute_sra_ssi(sch, config=cfg, three_point=tp, risks=tuple(st.sra_ssi_risks))
+        exclude = (
+            frozenset(u for r in st.sra_ssi_risks for u in r.affected)
+            if st.sra_use_risk_register
+            else frozenset()
+        )
+        oat = compute_oat_sensitivity(
+            sch, three_point=tp, target_uid=st.sra_focus_uid, exclude_uids=exclude
+        )
+        return _export_response(fmt, _ssi_export_tables(st, sch, result, oat), "sra-ssi")
+
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
         if (bad := _bad_format(fmt)) is not None:
@@ -4523,6 +4657,8 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
             for k, v in analysis.completion.items()
         },
         "activities": analysis.activity_rows,
+        # the schedule's mapped .mpp custom/extended fields (declared order) -> optional grid columns
+        "custom_field_labels": list(sch.custom_field_labels),
         "findings": [
             {
                 "severity": str(f.severity),
@@ -4581,6 +4717,9 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "order": order[fr.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
+                # mapped .mpp custom/extended fields populated on this task (label -> value); the
+                # grid offers each as an optional column (ADR-0088 mapping -> ADR-0093 display)
+                "custom": dict(task.custom_field_map),
             }
         )
     for task in sch.tasks:
@@ -4607,6 +4746,7 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "order": order[task.unique_id],
                 "resource_names": ", ".join(task.resource_names),
                 "source_file": sch.source_file,
+                "custom": dict(task.custom_field_map),
             }
         )
     rows.sort(key=lambda r: cast(int, r["order"]))
@@ -5473,6 +5613,295 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
     }
 
 
+def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
+    """Per-task rows for the editable SSI Gantt grid: the activity row (name, indent, dates,
+    bar metadata — reusing ``_activity_rows``) plus the SSI inputs (Remaining d, Risk Ranking
+    Factor, Best/Worst-case days, a risk flag, the focus flag). Only leaf (non-summary) tasks
+    are editable — summaries carry no factor."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    risk_uids = {u for r in st.sra_ssi_risks for u in r.affected}
+    by_id = sch.tasks_by_id
+    rows = _activity_rows(sch, cpm)
+    for row in rows:
+        uid = cast("int", row["unique_id"])
+        task = by_id.get(uid)
+        editable = task is not None and not row["is_summary"]
+        rem_days: float | None = None
+        if editable and task is not None and mpd:
+            rem_min = (
+                task.remaining_duration_minutes
+                if task.remaining_duration_minutes is not None
+                else task.duration_minutes
+            )
+            rem_days = round(rem_min / mpd, 1)
+        bc_days: float | None = None
+        wc_days: float | None = None
+        if uid in st.sra_bcwc and mpd:
+            bc_days = round(st.sra_bcwc[uid][0] / mpd, 1)
+            wc_days = round(st.sra_bcwc[uid][1] / mpd, 1)
+        row.update(
+            {
+                "remaining_days": rem_days,
+                "factor": st.sra_factors.get(uid),
+                "bc_days": bc_days,
+                "wc_days": wc_days,
+                "has_risk": uid in risk_uids,
+                "is_focus": uid == st.sra_focus_uid,
+                "editable": editable,
+            }
+        )
+    return rows
+
+
+_SSI_SETUP_VERSION = 1
+
+
+def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
+    """The whole SSI setup as a plain, versioned, JSON-serialisable dict (Save/Load + Excel)."""
+    return {
+        "setup_version": _SSI_SETUP_VERSION,
+        "focus_uid": st.sra_focus_uid,
+        "occurrence_mode": st.sra_occurrence_mode,
+        "use_risk_register": st.sra_use_risk_register,
+        "correlation": st.sra_correlation,
+        "factor_table": [[f, sub, add] for f, sub, add in st.sra_factor_rows],
+        "factors": {str(u): f for u, f in st.sra_factors.items()},
+        "bcwc_minutes": {str(u): [bc, wc] for u, (bc, wc) in st.sra_bcwc.items()},
+        "risks": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "probability": r.probability,
+                "impact_days": r.impact_days,
+                "affected": list(r.affected),
+                "consequence_rating": r.consequence_rating,
+            }
+            for r in st.sra_ssi_risks
+        ],
+    }
+
+
+def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
+    """Repopulate the SSI SessionState from a saved setup dict, validating against the active
+    schedule: unknown / summary UIDs are dropped, factors clamped 1..5, probabilities 0..1."""
+    chosen = _sra_selected(st)
+    leaf: set[int] = set()
+    if chosen is not None:
+        _key, sch, _cpm = chosen
+        leaf = {t.unique_id for t in non_summary(sch)}
+
+    def _ok(uid: object) -> bool:
+        return isinstance(uid, int) and (not leaf or uid in leaf)
+
+    rows = data.get("factor_table")
+    if isinstance(rows, list) and len(rows) == 5:
+        with contextlib.suppress(TypeError, ValueError, IndexError):
+            st.sra_factor_rows = tuple(
+                (int(r[0]), min(100.0, max(0.0, float(r[1]))), min(300.0, max(0.0, float(r[2]))))
+                for r in rows
+            )
+    focus = data.get("focus_uid")
+    st.sra_focus_uid = focus if isinstance(focus, int) and _ok(focus) else None
+    mode = data.get("occurrence_mode")
+    st.sra_occurrence_mode = "exact_overall" if mode == "exact_overall" else "random_each"
+    st.sra_use_risk_register = bool(data.get("use_risk_register", True))
+    try:
+        st.sra_correlation = min(1.0, max(0.0, float(data.get("correlation", 0.0))))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        st.sra_correlation = 0.0
+    factors: dict[int, int] = {}
+    raw_factors = data.get("factors")
+    if isinstance(raw_factors, dict):
+        for key, val in raw_factors.items():
+            try:
+                uid = int(key)
+            except (TypeError, ValueError):
+                continue
+            if _ok(uid):
+                try:
+                    factors[uid] = min(5, max(1, int(val)))
+                except (TypeError, ValueError):
+                    continue
+    st.sra_factors = factors
+    bcwc: dict[int, tuple[int, int]] = {}
+    raw_bcwc = data.get("bcwc_minutes")
+    if isinstance(raw_bcwc, dict):
+        for key, pair in raw_bcwc.items():
+            try:
+                uid = int(key)
+            except (TypeError, ValueError):
+                continue
+            if _ok(uid) and isinstance(pair, list) and len(pair) == 2:
+                try:
+                    bcwc[uid] = (max(0, int(pair[0])), max(0, int(pair[1])))
+                except (TypeError, ValueError):
+                    continue
+    st.sra_bcwc = bcwc
+    risks: list[ScheduleRisk] = []
+    seq = 0
+    raw_risks = data.get("risks")
+    if isinstance(raw_risks, list):
+        for item in raw_risks:
+            if not isinstance(item, dict):
+                continue
+            affected = tuple(u for u in item.get("affected", []) if _ok(u))
+            if not affected:
+                continue
+            seq += 1
+            cons = item.get("consequence_rating")
+            try:
+                prob = min(1.0, max(0.0, float(item.get("probability", 0.0))))
+                impact = float(item.get("impact_days", 0.0))
+            except (TypeError, ValueError):
+                continue
+            risks.append(
+                ScheduleRisk(
+                    id=str(item.get("id") or f"R{seq}"),
+                    name=str(item.get("name") or f"Risk {seq}"),
+                    probability=prob,
+                    impact_days=impact,
+                    affected=affected,
+                    consequence_rating=int(cons) if isinstance(cons, int) else None,
+                )
+            )
+    st.sra_ssi_risks = risks
+    st.sra_ssi_risk_seq = seq
+
+
+def _ssi_export_tables(
+    st: SessionState, sch: Schedule, result: SSIResult, oat: Sequence[OATSensitivity]
+) -> TableSet:
+    """The six-table SSI hand-out (ADR-0123): run setup, per-task durations, risk register,
+    focus-finish results, OAT sensitivity, and the two 5x5 matrices."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    names = sch.tasks_by_id
+    focus_name = (
+        names[result.target_uid].name
+        if result.target_uid is not None and result.target_uid in names
+        else "Project finish"
+    )
+    setup = Table(
+        "Run setup",
+        ("Field", "Value"),
+        (
+            (
+                "Focus event",
+                f"{result.target_uid} - {focus_name}" if result.target_uid else focus_name,
+            ),
+            ("Occurrence mode", result.occurrence_mode),
+            ("Correlation", result.correlation),
+            ("Risk register", "on" if result.used_risks else "off"),
+            ("Iterations", result.iterations),
+            ("Schedule", sch.name),
+        ),
+    )
+    dur_rows: list[tuple[Cell, ...]] = []
+    for uid in sorted(set(st.sra_factors) | set(st.sra_bcwc)):
+        task = names.get(uid)
+        if task is None:
+            continue
+        bc = st.sra_bcwc.get(uid)
+        dur_rows.append(
+            (
+                uid,
+                task.name,
+                st.sra_factors.get(uid),
+                round(bc[0] / mpd, 2) if bc else None,
+                round(bc[1] / mpd, 2) if bc else None,
+            )
+        )
+    durations = Table(
+        "Per-task durations",
+        ("UID", "Task", "Factor", "Best case d", "Worst case d"),
+        tuple(dur_rows),
+    )
+    risk_by_id = {r.id: r for r in st.sra_ssi_risks}
+    risks = Table(
+        "Risk register",
+        (
+            "ID",
+            "Name",
+            "Probability %",
+            "Impact d",
+            "Affected",
+            "Consequence",
+            "Hits",
+            "Mean delta d",
+        ),
+        tuple(
+            (
+                rs.id,
+                rs.name,
+                round(rs.probability * 100, 1),
+                rs.impact_days,
+                ", ".join(str(u) for u in risk_by_id[rs.id].affected)
+                if rs.id in risk_by_id
+                else "",
+                rs.consequence_rating,
+                rs.hits,
+                rs.mean_delta_days,
+            )
+            for rs in result.risks
+        ),
+    )
+    results = Table(
+        "Focus-finish results",
+        ("Measure", "Value"),
+        (
+            ("Deterministic finish", result.deterministic_finish_date),
+            ("Deterministic percentile", round(result.deterministic_percentile * 100, 1)),
+            ("P10", result.p10_date),
+            ("P50", result.p50_date),
+            ("P80", result.p80_date),
+            ("P90", result.p90_date),
+            ("Mean", result.mean_date),
+            ("Std deviation (working days)", round(result.std_days, 2)),
+        ),
+    )
+    sens = Table(
+        "OAT sensitivity",
+        (
+            "UID",
+            "Task",
+            "Best case d",
+            "Worst case d",
+            "ML d",
+            "Opportunity wd",
+            "Risk wd",
+            "Total wd",
+        ),
+        tuple(
+            (
+                o.unique_id,
+                names[o.unique_id].name if o.unique_id in names else "",
+                round(o.bc_minutes / mpd, 2),
+                round(o.wc_minutes / mpd, 2),
+                round(o.ml_minutes / mpd, 2),
+                o.opportunity_days,
+                o.risk_days,
+                o.total_days,
+            )
+            for o in oat[:200]
+        ),
+    )
+    risk_grid = _ssi_matrix_counts(result.risks, opportunity=False)
+    opp_grid = _ssi_matrix_counts(result.risks, opportunity=True)
+    risk_matrix = Table(
+        "Risk matrix",
+        ("Consequence \\ Probability", "1", "2", "3", "4", "5"),
+        tuple((c + 1, *(risk_grid[c][p] for p in range(5))) for c in reversed(range(5))),
+    )
+    opp_matrix = Table(
+        "Opportunity matrix",
+        ("Consequence \\ Probability", "1", "2", "3", "4", "5"),
+        tuple((c + 1, *(opp_grid[c][p] for p in range(5))) for c in reversed(range(5))),
+    )
+    return TableSet(
+        f"SSI Schedule Risk & Opportunity Analysis - {sch.name}",
+        (setup, durations, risks, results, sens, risk_matrix, opp_matrix),
+    )
+
+
 _OCC_RANDOM = (
     "When this option is selected, the probability of risks/opportunities occurring is evaluated "
     "independently on each iteration of the SRA using the entered probability of occurrence. Over "
@@ -5557,6 +5986,17 @@ the random distribution is statistically close, not bit-identical (a different R
 <label>Consequence 1-5 <input type=number name=consequence min=1 max=5 style="width:56px" placeholder="auto"></label>
 <button type=submit>Add risk</button></form>
 <table><tr><th>ID</th><th>Name</th><th>Prob</th><th>Impact</th><th>Affected</th><th></th></tr>{risk_rows}</table>
+<h3>Editable schedule grid</h3>
+<p class=muted>The whole schedule as an SSI-style grid: type a <b>Risk Ranking Factor</b> (1&ndash;5) or
+edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. A factor
+auto-fills Best/Worst from the table above; an explicit Best/Worst entry is a manual override. Edits
+queue until you press <b>Save grid</b>. Summary rows are bold and not editable.</p>
+<div class=viz-controls>
+<label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
+<button id=ssiGridReload type=button>Refresh grid</button>
+<button id=ssiGridSave type=button>Save grid</button>
+<span id=ssiGridStatus class=muted aria-live=polite></span></div>
+<div id=ssiGrid class=sra-grid-host></div>
 <div class=viz-controls style="margin-top:12px">
 <label>Iterations <select id=ssiIters>{iters}</select></label>
 <label>Distribution <select id=ssiDist data-no-i18n><option value=triangular>Triangular</option>
@@ -5566,7 +6006,16 @@ the random distribution is statistically close, not bit-identical (a different R
 <p id=ssiStatus class=muted aria-live=polite></p>
 <div id=ssiResult></div><div id=ssiMatrices></div>
 <h3>Sensitivity — deterministic OAT (SSI Sensitivity Analysis)</h3><div id=ssiOatOut></div>
-<script src="/static/sra_ssi.js"></script></div>"""
+<h3>Save / load setup &amp; export</h3>
+<div class=viz-controls>
+<a class=btn href="/sra/ssi/save" download>Save setup (JSON)</a>
+<form action="/sra/ssi/load" method=post enctype="multipart/form-data" style="display:inline">
+<label>Load setup <input type=file name=setup accept="application/json,.json"></label>
+<button type=submit>Load</button></form>
+<a class=btn href="/export/xlsx/sra">Export Excel</a>
+<a class=btn href="/export/docx/sra">Export Word</a></div>
+<script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
+<script src="/static/sra_grid.js"></script></div>"""
 
 
 def _sra_body(st: SessionState) -> str:
