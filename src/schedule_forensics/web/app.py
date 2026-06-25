@@ -6668,8 +6668,8 @@ def _sra_body(st: SessionState) -> str:
     # The file pick governs EVERY model on the page (SSI, OAT, and the legacy Monte-Carlo all
     # resolve their schedule through _sra_selected), so it lives in one panel at the very top.
     active_note = (
-        f'<p class=muted>Active file: <b>{_e(selected_key) if selected_key else "&mdash;"}</b> '
-        f'{"(latest solvable version)" if st.sra_file is None else ""}</p>'
+        f"<p class=muted>Active file: <b>{_e(selected_key) if selected_key else '&mdash;'}</b> "
+        f"{'(latest solvable version)' if st.sra_file is None else ''}</p>"
     )
     top_file_panel = (
         "<div class=panel><h2>Schedule file for the SRA</h2>"
