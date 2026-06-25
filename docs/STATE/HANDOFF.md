@@ -1,6 +1,41 @@
-# Handoff — 2026-06-25 (operator queue on branch `claude/eager-rubin-xianw9`; #258–#261 MERGED; unified SRA risk register PR open, ADR-0127)
+# Handoff — 2026-06-25 (READ-ONLY QC AUDIT complete → fix session next; branch `claude/eager-rubin-xianw9`; highest ADR 0127)
 
-> ## STATUS (current) — Unified SRA risk register (enter once; ADR-0127) in flight; #258–#261 merged; branch `claude/eager-rubin-xianw9`
+> ## STATUS (current) — Full-repository QC audit DONE; the next session executes the plan of action
+>
+> **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` — the full audit report + a sequenced 3-wave plan of action.
+> This was a **read-only** audit: no code was changed (gate stayed green, `git status` clean). The next
+> session's job is to **fix** the findings, wave by wave.
+>
+> **Baseline is GREEN** (verified this session): ruff/format/mypy/bandit/node clean; `pytest -q`
+> **1659 passed, 7 skipped, 2 xfailed**; `pytest -m parity` green. Both non-negotiable laws hold; no air-gap
+> leak, no forbidden HTTP client, no committed CUI, no model-id leak. The findings are gaps the goldens/tests
+> **don't exercise**, not regressions in the gate.
+>
+> **Findings: 2 Critical, 4 High, 8 Medium, 12 Low/Nit.** Headlines:
+> - **C1 (Critical)** `to_json_text` Save→reopen (.json) **silently drops** the Acumen-parity
+>   `stored_total_float_minutes` / `stored_is_critical` + 9 other fields (`is_active`, `custom_fields`,
+>   calendar `working_days`/`day_segments`…) → silent Law-2 fidelity break. `importers/json_schedule.py:75,95,180`.
+> - **C2 (Critical, ASK FIRST)** the **default** interpretive Ask-the-AI mode passes model-invented numbers
+>   to the operator (the figure-gate is skipped) — contradicts the "no unsourced number" guarantee; a test
+>   pins it (`31415`). `ai/qa.py:393`, `ai/backend.py:53`.
+> - **H1** `_apply_ssi_setup` 500s **and half-mutates the session** on a hand-edited non-list `affected`
+>   (`web/app.py:6126`). **H2** the reattach gate guards digits not prose (`ai/citations.py`). **H3/H4** one
+>   malformed XER id sinks the whole file (`importers/xer.py:168,415`).
+> - Medium incl. **M1** inactive tasks never excluded from CPM/metrics (no engine consumer of `is_active`;
+>   goldens can't catch it — **ASK FIRST** on semantics + add a golden), **M2** pre-commit guard omits
+>   `.aft`/`.docx`, **M5** days↔% client/server rounding mismatch. Full table + per-finding evidence + the
+>   sequenced plan are in `AUDIT-2026-06-25.md`.
+>
+> **Plan of action (in the audit doc):** Wave 1 = fidelity/crash safety (C1, H1, H3/H4, M3, M4, M5; M1 ASK
+> FIRST). Wave 2 = AI honesty + Law-1 spec (C2 ASK FIRST, H2, M6, M2). Wave 3 = robustness/perf/docs/test
+> depth (M7, M8, all Low). Run the full gate + `pytest -m parity` before every commit; add/patch a **golden**
+> rather than loosen an assertion for any importer/engine behavior change; if a fix warrants a decision, mint
+> **ADR-0128** and refresh HANDOFF + SESSION-LOG in the same commit. **Highest ADR remains 0127.**
+>
+> **Next session:** start Wave 1, ASK FIRST on C2 + M1, branch `claude/eager-rubin-xianw9` (or fresh off
+> `main`), draft PR. The audit doc is the single source of truth for what to fix and in what order.
+
+> ## STATUS (prev) — Unified SRA risk register (enter once; ADR-0127); #258–#261 merged; branch `claude/eager-rubin-xianw9`
 >
 > **Five PRs this session.** Reset to `origin/main` after each merge, next stacked fresh.
 > - **MERGED:** **#258** Gantt view fixes + globe-throttle SRA-freeze fix → **#259** SRA Monte-Carlo process-offload (ADR-0126) → **#260** more User Tips (7 pages) → **#261** responsive small-screen layout (hamburger nav, touch controls, table scroll — CUI-safe, pure CSS).

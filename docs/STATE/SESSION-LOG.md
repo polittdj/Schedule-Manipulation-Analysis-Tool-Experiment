@@ -3582,3 +3582,31 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   alongside the unified risks (already added in #262). Bumped `setup_version` 1 → 2; a v1 setup still
   loads (legacy fields absent → screening defaults, a clean reset). Tests: whole-setup round-trip +
   v1 back-compat. Extends ADR-0127 (no new ADR). Full gate green (1656 passed).
+
+---
+
+## Audit session — 2026-06-25 — Full-repository QC audit (read-only; report + plan, no code)
+
+- **Branch:** `claude/eager-rubin-xianw9`. **Mode:** read-only audit — NO code changed/edited/rewritten;
+  `git status` clean throughout. Deliverables are docs-only: `docs/STATE/AUDIT-2026-06-25.md` (report +
+  sequenced plan of action) + this log entry + the HANDOFF refresh.
+- **Method:** six parallel read-only subsystem auditors (engine; web `app.py` + #259/#262/#263/#264;
+  the two laws; importers/model/schema; AI layer + test quality; vendored JS) + an independent green-gate
+  baseline + per-finding sandbox verification (throwaway snippets under the scratchpad dir only).
+- **Baseline confirmed GREEN:** ruff/format/mypy/bandit/node clean; `pytest -q` 1659 passed, 7 skipped,
+  2 xfailed; `pytest -m parity` green. No air-gap leak, no forbidden HTTP client, no committed CUI, no
+  model-id leak. Both non-negotiable laws hold; the two `ssi_uid143` xfails are an honest ADR-0112
+  quarantine with a live passing replacement.
+- **Findings: 2 Critical, 4 High, 8 Medium, 12 Low/Nit** — all in code paths the current goldens/tests do
+  not exercise (real inputs with inactive tasks, default interpretive AI mode, hand-edited load files,
+  sub-day arithmetic, perf edges). Headlines: **C1** Save→reopen (.json) silently drops the Acumen-parity
+  stored float/critical + 9 other fields (Law-2, silent); **C2** default interpretive Ask-the-AI returns
+  model-invented numbers (contradicts the "no unsourced number" guarantee; pinned by a test); **H1**
+  `_apply_ssi_setup` 500s + half-mutates the session on a non-list `affected`; **H2** the reattach gate
+  guards digits not prose; **H3/H4** one malformed XER id sinks the whole file. Full list + sequenced
+  three-wave plan in `AUDIT-2026-06-25.md`.
+- **No ADR minted** (an audit is not an architectural decision); **highest ADR remains 0127**, unchanged in
+  both durable docs. Any fix that warrants a decision (e.g. the C2 default, the M1 inactive-task semantics)
+  mints **ADR-0128** in the fix session.
+- **Next session:** execute the plan of action wave-by-wave (Wave 1 fidelity/crash safety first), full gate
+  + parity green before each commit, ASK FIRST on C2 and M1, draft PR.
