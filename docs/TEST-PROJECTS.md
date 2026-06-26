@@ -4,10 +4,19 @@ Eight fictional, non-CUI MS Project XML schedules built to verify this tool agai
 **MS Project + SSI** and **Acumen Fuse** on exactly the surfaces the curated goldens
 (Project2–Project5) cannot reach: ragged real-world actual times, a non-standard
 calendar, hand-seeded DCMA violations with known counts, and a version series with a
-deliberate manipulation. Every number in the tables below is **engine-measured and
-pinned by `tests/test_projects/`** — load the same file into SSI / Fuse and the two
-sides should agree (definitional residuals are flagged where they exist;
+deliberate manipulation. The DCMA/float/driving/manipulation counts in the tables below are
+**engine-measured and pinned by `tests/test_projects/`** — load the same file into SSI / Fuse
+and the two sides should agree (definitional residuals are flagged where they exist;
 `docs/PARITY-REPORT.md` documents the known classes).
+
+> **"Sched. finish" caveat (audit F-02).** The *Sched. finish* column is the **MS-Project-stored**
+> finish (the date the source file carries), **not** necessarily the engine's pure-logic CPM finish.
+> They agree on logic-consistent files but diverge on out-of-sequence / progressed schedules, where
+> the CPM does not floor in-progress remaining work at the data date (ADR-0108). The clearest case is
+> **TP4 v5: stored 2026-07-17 vs CPM 2026-06-26** — a real ~3-week understatement now **guarded** by
+> `tests/engine/test_data_date_finish_gap.py` and **surfaced** in the forecast page's new
+> "As-scheduled (stored dates)" method. The general battery test only asserts `cpm.project_finish > 0`,
+> so the per-file finish *dates* are not otherwise test-pinned.
 
 - **Files:** `tests/fixtures/test_projects/TP*.xml` (committed; the only
   schedule-format path allowed in git — synthetic fixtures only, Law 1).
@@ -21,7 +30,7 @@ sides should agree (definitional residuals are flagged where they exist;
 | `TP1_Library_Progressed.xml` | Ragged actual times → day-floored driving tiers (ADR-0032), completion performance, 3-method forecast | 2026-03-31 | 2026-09-17 **09:00** |
 | `TP2_Bridge_4x10_Calendar.xml` | 4×10 Mon–Thu calendar + 4 holidays → calendar-true day math, float bands, 44-day boundary | 2026-04-06 | 2026-11-04 |
 | `TP3_Outage_DCMA_Seeded.xml` | Every DCMA-14 check with hand-seeded, counted violations | 2026-04-30 | 2026-06-26 |
-| `TP4_DataCenter_v1..v5.xml` | Trend, Compare, Bow Wave/CEI, forecast drift, manipulation signals | monthly, Jan–May 2026 | v1–v3: 06-05 · v4: 06-26 · v5: 07-17 |
+| `TP4_DataCenter_v1..v5.xml` | Trend, Compare, Bow Wave/CEI, forecast drift, manipulation signals | monthly, Jan–May 2026 | v1–v3: 06-05 · v4: 06-26 · **v5: stored 07-17 (CPM 06-26 — see caveat)** |
 
 ## Getting the files into MS Project
 

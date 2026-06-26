@@ -6,8 +6,13 @@ computed-vs-golden summary for the committed, non-CUI commercial-construction sa
 (`Project2` / `Project5`, UID 2–145). It is enforced continuously by `tests/parity/` (`pytest -m parity`,
 a dedicated CI step) over the golden fixtures in `tests/fixtures/golden/`.
 
-**Status: all reproduced figures are exact; the few residuals are documented with a single root cause
-and driven as close to zero as the static MSPDI allows.**
+**Status: every figure the engine reproduces against the committed recorded golden (`case.json`) is exact,
+and the former §A/§B/§C residuals (High Float, Baseline-Start-Compliance) are now CLOSED. The one open
+parity gap is the §E float/critical change subset, which is currently *engine-pinned* (asserts the
+engine's own value, not a transcribed Acumen value) pending a fresh Acumen Fuse §E export — see §E and
+audit F-01.** Important scope: these tables verify *engine == recorded golden*; the recorded golden is a
+transcription of Acumen Fuse / SSI exports (the exports themselves are CUI, not committed), so
+*golden == Fuse* is not independently re-checkable from the repo alone.
 
 ## Native `.mpp` structural parse (Project2.mpp — verified 2026-06-17, local only)
 
@@ -69,21 +74,28 @@ would require inventing holidays absent from the file or adopting a different ca
 is precisely the failure `docs/TEST-PROJECTS.md` anticipates ("if it shifts, the calendar didn't survive
 the trip").
 
-## SSI — driving slack (Project5, focus UID 143)
+## SSI — driving slack (Project5, **live gate = focus UID 145**)
+
+The live SSI driving-slack parity runs on the **authoritative** `Project5_TAMPERED.mpp`, focus UID 145
+("Issue final request for payment"), against the committed SSI Directional Path export
+`tests/fixtures/golden/ssi_uid145/case.json` (`test_ssi_driving_slack_uid145_exact`). The **prior focus
+UID 143** table (107 UIDs, 36/12/12 tiers) was validated against the *prior* Project5 (37 stored-critical)
+and is now **stale / `xfail`** (ADR-0112) pending a fresh SSI export for the current file.
 
 | Check | Golden (SSI) | Computed | Status |
 |---|---|---|---|
-| Driving Slack (days) per UniqueID | 107 UIDs | 107 UIDs | ✅ exact, all 107 |
-| Driving / Secondary / Tertiary tiers | 36 / 12 / 12 | 36 / 12 / 12 | ✅ exact |
-| Focus on driving path, slack 0 | yes | yes | ✅ |
+| Driving Slack (days) per UniqueID (focus 145) | 108 UIDs | 108 UIDs | ✅ exact, all 108 |
+| Driving / Secondary / Tertiary / Beyond tiers | 2 / 3 / 8 / 95 | 2 / 3 / 8 / 95 | ✅ exact |
+| Focus on driving path (144→145), slack 0 | yes | yes | ✅ |
+| ~~focus UID 143 (prior file)~~ | ~~107 / 36-12-12~~ | — | ⚠ stale, `xfail` (ADR-0112) |
 
 ## Acumen Fuse §A — Schedule-Quality summary (Project2 / Project5)
 
 | Metric | Golden | Computed | Status |
 |---|---|---|---|
-| Missing Logic | 6 / 6 | 6 / 6 | ✅ |
-| Logic Density | 2.79 / 2.83 | 2.79 / 2.83 | ✅ |
-| Critical (incomplete) | 41 / 37 | 41 / 37 | ✅ |
+| Missing Logic | 6 / 7 | 6 / 7 | ✅ |
+| Logic Density | 2.79 / 2.81 | 2.79 / 2.81 | ✅ |
+| Critical (incomplete) | 41 / 4 | 41 / 4 | ✅ (P5 = authoritative `Project5_TAMPERED.mpp`, ADR-0112) |
 | Hard Constraints | 0 / 0 | 0 / 0 | ✅ |
 | Negative Float | 0 / 0 | 0 / 0 | ✅ |
 | Insufficient Detail | 1 / 0 | 1 / 0 | ✅ |
@@ -99,14 +111,14 @@ the trip").
 | 3 | Lags | 2 / 1 | 2 / 1 | ✅ |
 | 4 | FS / SS-FF / SF | 99% / … | 99% / … | ✅ |
 | 5 | Hard Constraint | 0 / 0 | 0 / 0 | ✅ |
-| 6 | **High Float** | 44 / 41 | **43 / 40** | ⚠ residual −1 (see below) |
+| 6 | **High Float** | 44 / 44 | 44 / 44 | ✅ now exact both projects (stored Total Slack, ADR-0109/0112; former −1 residual closed) |
 | 7 | Negative Float | 0 / 0 | 0 / 0 | ✅ |
 | 8 | High Duration | 1 / 0 | 1 / 0 | ✅ |
 | 9 | Invalid Dates | 0 / 0 | 0 / 0 | ✅ |
 | 10 | Resources | 0 / 0 | 0 / 0 | ✅ |
 | 11 | Missed Activities | 18 / 37 | 18 / 37 | ✅ |
 | 12 | Critical Path Test | pass | pass | ✅ |
-| 13 | CPLI | 1 / 1 | 1.0 / 1.0 | ✅ |
+| 13 | CPLI | 1.0 / 1.0 | 1.0 / 1.0 | ✅ |
 | 14 | BEI | 0.74 / 0.59 | 0.74 / 0.59 | ✅ |
 
 ## Acumen Fuse §C — baseline compliance / Half-Step-Delay (Project2 / Project5)
@@ -118,38 +130,55 @@ the trip").
 | **Baseline Finish Compliance** | 33% / 20% | 33% / 20% | ✅ |
 | Forecast to be Started | 29 / 48 | 29 / 48 | ✅ |
 | Started On Time / Late / Not | 11,12,6 / 11,18,19 | 11,12,6 / 11,18,19 | ✅ |
-| **Baseline Start Compliance** | 41% / 25% | **38% / 23%** | ⚠ residual (counts exact; denominator quirk) |
+| **Baseline Start Compliance** | 41% / 25% | 41% / 25% | ✅ now exact (ADR-0083 residual resolved) |
 
 ## Acumen Fuse §E — Schedule-Network change + HSD (Project5 vs Project2)
 
-| Metric | Golden | Computed | Status |
+These run on the **authoritative** `Project5_TAMPERED.mpp` (ADR-0112), so the figures below differ from
+the prior committed Project5 (e.g. Net Finish Impact is now **−148**, not the old −99). **Provenance
+matters here (audit F-01 / ADR-0130):** the *date-deterministic* subset is Acumen-equivalent date
+arithmetic, but the *float/critical-dependent* subset is **engine-pinned** — a fresh Acumen §E PP&Change
+export for the current P5-vs-P2 pair is pending, so the gate asserts the engine's own pure-logic value for
+those rows, **not** a transcribed Acumen value. They are NOT cross-tool validated yet.
+
+| Metric | Engine | Provenance | Status |
 |---|---|---|---|
-| SN02 Activities Added | 0 | 0 | ✅ |
-| SN03 New Critical | 0 | 0 | ✅ |
-| SN05 Finish Date Slips | 9 | 9 | ✅ |
-| SN18 Completed | 27 | 27 | ✅ |
-| SN19 In-Progress | 2 | 2 | ✅ |
-| **HSD10 Net Finish Impact (days)** | **−99** | **−99** | ✅ |
-| SN04 No Longer Critical | 1 | 0 | ⚠ residual −1 |
-| SN06 Start Date Slips | 10 | 9 | ⚠ residual −1 |
-| SN07 Remaining Duration Increases | 8 | 7 | ⚠ residual −1 |
-| SN09 Float Erosion | 6 | 4 | ⚠ residual −2 |
+| SN02 Activities Added | 0 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| SN05 Finish Date Slips | 9 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| SN06 Start Date Slips | 9 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| SN07 Remaining Duration Increases | 9 | duration-deterministic | ✅ engine==golden |
+| SN18 Completed | 27 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| SN19 In-Progress | 2 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| **HSD10 Net Finish Impact (days)** | **−148** | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
+| SN03 New Critical | 1 | **engine-pinned** (progress-aware Critical; awaiting Fuse) | ⚠ NOT Fuse-validated |
+| SN04 No Longer Critical | 34 | **engine-pinned** (progress-aware Critical; awaiting Fuse) | ⚠ NOT Fuse-validated |
+| SN09 Float Erosion | 1 | **engine-pinned** (progress-aware float; awaiting Fuse) | ⚠ NOT Fuse-validated |
+
+> The ⚠ rows above prove only **engine self-consistency**, not Acumen parity, until the operator supplies a
+> fresh Acumen Fuse §E export of the current pair. The SSI golden was deliberately *not* relabeled this way
+> (it is left `xfail`, ADR-0112) — the same caution applies here.
 
 Cost-based EVM (SPI / CPI / TCPI) is reported **NOT_APPLICABLE** — the sample schedules carry no cost
 data, and the tool never fabricates a value (Law 2).
 
-## Residuals — one root cause, documented and bounded
+## Residuals — what was closed, and the one that remains
 
-All ⚠ residuals trace to **one cause**: Acumen Fuse reads **MS Project's progress-aware total slack /
-Critical flag**, whereas this engine recomputes **pure-logic CPM float** for independence and
-auditability (ADR-0010). A handful of near-threshold activities therefore differ by 1–2. An M9 probe
-confirmed that **neither pure-logic CPM nor the stored MS Project values reproduce the golden exactly**
-(stored `TotalSlack > 44d` gives High Float 44/40, not 44/41; stored Critical transitions give SN04=2,
-SN09=13 — also wrong), so these are formally **accepted as documented deltas** rather than fabricated
-(ADR-0012, ADR-0013, ADR-0014). They are recorded in `tests/fixtures/golden/project2_5/case.json._deltas`
-and **locked by the parity gate** — the gate asserts both the engine value and the exact golden delta, so
-a residual cannot silently change and, if a future change closes one, the gate forces the golden
-assertion to be tightened. None of the residuals flips a pass/fail outcome.
+The historical §A/§B/§C residuals are **closed**: High Float is now 44/44 exact (stored Total Slack,
+ADR-0109/0112) and Baseline-Start-Compliance is 41%/25% exact (ADR-0083). The remaining gap is **not** a
+±1 residual against an Acumen golden — it is the §E **float/critical-dependent change subset**
+(`new_critical`, `no_longer_critical`, `float_erosion`), which is **engine-pinned**: the authoritative
+`Project5_TAMPERED.mpp` (ADR-0112) has no matching Acumen §E export yet, so the gate asserts the engine's
+own pure-logic value for those rows (self-consistency), not a transcribed Acumen value (audit F-01).
+
+The original root cause still explains *why* the §E subset is hard: Acumen Fuse reads **MS Project's
+progress-aware total slack / Critical flag**, whereas this engine recomputes **pure-logic CPM float** for
+independence and auditability (ADR-0010). An M9 probe confirmed that **neither pure-logic CPM nor the
+stored MS Project values reproduce the prior golden exactly**, so the team accepted documented deltas
+(ADR-0012/0013/0014) and, for the refreshed file, left these rows engine-pinned and the SSI focus-143
+golden `xfail` rather than relabel a recorded golden as engine-truth (ADR-0112). All of this is recorded in
+`tests/fixtures/golden/project2_5/case.json._deltas` and locked by the parity gate. **To upgrade the §E
+⚠ rows from self-consistency to true Acumen parity, the operator must supply a fresh Acumen Fuse §E
+PP&Change export of the current Project5-vs-Project2 pair.**
 
 The Acumen composite **scores** (SQ 88; DCMA 57 / 49) are **deferred, not fabricated**: their
 Bad/Neutral/Good weighting is not published in the exports or the Acumen 8.11 guide. Every per-check

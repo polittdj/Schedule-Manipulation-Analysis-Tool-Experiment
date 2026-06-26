@@ -3636,3 +3636,32 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
   test (`test_ask_everywhere.py`) and an annotate unit test (`test_qa.py`).
 - **Highest ADR = 0129.** Remaining audit findings (C1, H1–H4, M2–M8, L1–L12) are still open — see
   `AUDIT-2026-06-25.md` and the HANDOFF top block for the sequenced remainder.
+
+---
+
+## Fix session (cont.) — 2026-06-26 — Audit in-env remediation batch (ADR-0130)
+
+- **Branch:** `claude/eager-rubin-xianw9` (fresh off `main` after #265/#267/#268 merged). Operator: "execute
+  everything you can that doesn't require me to submit anything" — i.e. every `audit/PATH-FORWARD.md` item
+  not gated on an external artifact. One PR; full gate + `pytest -m parity` green; **no parity number moved.**
+- **ADR-0130** records the batch. Highlights:
+  - **F-03/F-07/F-01:** `PARITY-REPORT.md` refreshed to the authoritative `case.json` (P5 Critical 4, High
+    Float 44/44, Baseline-Start-Compliance 41/25, Net Finish Impact −148, SSI focus 145) and the §E
+    float/critical change subset **labeled engine-pinned / NOT Fuse-validated** (asserts engine
+    self-consistency pending a fresh Acumen §E export). New `tests/test_parity_report_sync.py` pins the
+    report's headline numbers to `case.json`; `risks.md` R-02 + `ADR-0045` carry dated errata.
+  - **F-02:** new **"As-scheduled (stored dates)"** finish-forecast method surfaces the source-tool stored
+    finish next to the pure-logic CPM finish (TP4 v5: stored 2026-07-17 vs CPM 2026-06-26 — the data-date
+    understatement, ADR-0108). Guarded by `tests/engine/test_data_date_finish_gap.py`; `TEST-PROJECTS.md`'s
+    "pinned by tests" overclaim corrected. No engine reschedule (two prior attempts regressed parity).
+  - **F-05:** two new manipulation detectors — `MANIP_CONSTRAINT_ADDED` (a hard constraint added to
+    incomplete work now at ≤0 float — clamping, the masking signature) and `MANIP_CALENDAR_LOOSENED`
+    (project calendar gained working time). Synthetic positive/negative fixtures; the constraint detector
+    also surfaces the real UID-131 ASAP→MSO clamp in `Project5_TAMPERED` (a true signal the prior set missed).
+  - **F-06:** surgical `_e(title)` at the `_LAYOUT` render boundary (autoescape stays off — `body`/`banner`
+    are raw HTML; CSP allows `unsafe-inline`, so escaping is the barrier) + `tests/web/test_title_escaping.py`.
+  - **F-04 / F-08 / F-12:** float-view "critical" labeled as the pure-logic set (not unified — the §E basis
+    is engine-pinned); `pyproject fail_under` 99.9→70.0 (honest, matches CI); `ai/qa.py` module docstring →
+    three-mode / annotate-default.
+- **REMAINING = artifact-gated only** (Fuse §E export, `.mpp`+Java, `.aft` Bible, SSI focus UID, cost-loaded
+  schedule) — see `PATH-FORWARD.md` §D. **Highest ADR = 0130.**

@@ -111,9 +111,12 @@ source = ["schedule_forensics"]
 
 [tool.coverage.report]
 show_missing = true
-# Coverage gates (§7): overall >=99.9% (this `fail_under`); engine >=85% is enforced
-# as a separate CI step (`coverage report --include='*/engine/*' --fail-under=85`).
-fail_under = 99.9
+# Coverage gates (§7) are enforced in CI: overall >= 70 (`pytest --cov-fail-under=70`) and
+# engine >= 85 (`coverage report --include='*/engine/*' --fail-under=85`); see
+# .github/workflows/ci.yml. This `fail_under` matches the CI overall gate and only takes
+# effect when coverage is collected (CI passes `--cov`; the default local `pytest` does not,
+# so a local run does not gate coverage). Actual coverage runs well above this floor.
+fail_under = 70.0
 precision = 2
 
 # --- bandit: security ----------------------------------------------------------

@@ -874,7 +874,12 @@ def _page(
     )
     return HTMLResponse(
         _LAYOUT.render(
-            title=title,
+            # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
+            # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
+            # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
+            # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
+            # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
+            title=_e(title),
             banner=_banner_html(state),
             body=(
                 _filter_banner(state)
@@ -3430,7 +3435,7 @@ _FORECAST_METHOD_COLORS = {
 
 def _forecast_ruler(fc: ForecastSet) -> str:
     """A static single-version SVG 'ruler' (M18 item 8): the data date, the baseline finish,
-    and the three method forecasts on one timeline so the spread between them is visible at a
+    and each method's forecast on one timeline so the spread between them is visible at a
     glance. Inline SVG (no JS, no external fetch); the multi-version movement is the animated
     drift stepper below. Methods with missing inputs render '— (inputs missing)'."""
     lanes = [(f.name, f.method_id, f.finish) for f in fc.forecasts]
@@ -3512,7 +3517,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
     if len(method_dates) >= 2:
         lo_m, hi_m = min(method_dates), max(method_dates)
         spread = (
-            f"<p class=muted>The three methods span <b>{(hi_m - lo_m).days} days</b> "
+            f"<p class=muted>The methods span <b>{(hi_m - lo_m).days} days</b> "
             f"({lo_m.isoformat()} &rarr; {hi_m.isoformat()}). A wide fan means the plan, the "
             "throughput, and the earned-schedule performance disagree about the finish.</p>"
         )
@@ -3520,7 +3525,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
 
 
 def _forecast_explainer(fc: ForecastSet) -> str:
-    """Plain-English methodology for the three finish forecasts (M18 item 8): one card per
+    """Plain-English methodology for the finish forecasts (M18 item 8): one card per
     method (what it measures, the formula in words + symbols, when it is available, and this
     version's value), plus the static ruler. Every value reuses the forecast set — nothing
     is recomputed."""
@@ -3576,14 +3581,14 @@ def _forecast_explainer(fc: ForecastSet) -> str:
         for title, tag, what, how, needs, value in cards
     )
     return f"""
-<div class=panel><h2>How the three forecasts are computed</h2>
+<div class=panel><h2>How the forecasts are computed</h2>
 <p class=muted>Each method answers "when will it really end?" from a different angle &mdash;
 the plan's own logic, the observed throughput, and the earned-schedule performance. When they
 agree you can trust the date; when they fan apart, the disagreement is itself a finding. Every
 figure here reuses the forecast above &mdash; nothing is recomputed.</p>
 <div class=card-cols>{card_html}</div>
 <h3>Forecast spread &mdash; latest version</h3>
-<p class=muted>The data date, the baseline finish, and the three method forecasts on one
+<p class=muted>The data date, the baseline finish, and each method's forecast on one
 timeline. The multi-version movement is animated in the stepper below when two or more
 versions are loaded.</p>
 {_forecast_ruler(fc)}</div>"""
@@ -3592,7 +3597,7 @@ versions are loaded.</p>
 def _forecast_body(
     schedules: list[Schedule], cpms: list[CPMResult], sets: list[ForecastSet]
 ) -> str:
-    """The three-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
+    """The multi-method finish-forecast page (M15/ADR-0030): logic vs throughput vs
     performance, the deck's Carnac KPI cards (PBIX p13, ADR-0042), plus per-version drift."""
     latest_sch, latest = schedules[-1], sets[-1]
     carnac = compute_carnac_summary(latest_sch, cpms[-1], latest)
@@ -3639,7 +3644,7 @@ def _forecast_body(
         )
         drift = f"""
 <div class=panel><h2>Forecast drift across versions</h2>
-<p class=muted>The three forecasts re-run per loaded version (oldest first). Forecasts that
+<p class=muted>The forecasts re-run per loaded version (oldest first). Forecasts that
 keep sliding right are the bow-wave signature; methods that diverge from the CPM date tell
 you the logic and the observed performance disagree.</p>
 <div class=viz-controls>
@@ -3649,7 +3654,7 @@ you the logic and the observed performance disagree.</p>
 <button id=driftPlay type=button>&#9654; Auto-play</button>
 </div>
 <p class=muted>Each forecast marker sits on a <b>locked date axis</b> (held fixed across every
-version); step or play to watch the three forecasts drift toward later dates as the project
+version); step or play to watch the forecasts drift toward later dates as the project
 progresses. Faint markers are the prior version's forecasts.</p>
 <div id=driftChart class=chart-host></div>
 <table><tr><th scope=col>Version</th><th scope=col>Data date</th><th scope=col>CPM</th><th scope=col>Completion rate</th>
@@ -3658,13 +3663,13 @@ progresses. Faint markers are the prior version's forecasts.</p>
     return f"""
 <div class=panel><h2>Forecast cards &mdash; {_e(latest_sch.name)}</h2>
 <p class=muted>The reference deck's <i>Carnac</i> forecast KPIs (PBIX page 13): the project
-window, the three forecast end dates, the completion rate, remaining and project duration,
+window, the forecast end dates, the completion rate, remaining and project duration,
 SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
 "&mdash;" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
-{_user_tip("Three independent methods (logic, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
+{_user_tip("Independent methods (logic, the source schedule, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
 {_carnac_cards(carnac)}</div>
 <div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
-<p class=muted>Three independent answers to "when will it really end": the schedule's own
+<p class=muted>Independent answers to "when will it really end": the schedule's own
 logic (CPM), the observed completion throughput, and earned-schedule performance
 (IEAC(t) = AT + (PD &minus; ES) / SPI(t)). Methods that disagree are themselves a finding.
 A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated date.</p>
@@ -3675,7 +3680,7 @@ A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated dat
 
 
 def _forecast_data(schedules: list[Schedule], sets: list[ForecastSet]) -> dict[str, object]:
-    # LOCKED date axis (item 5) for the drift animation: span every version's three
+    # LOCKED date axis (item 5) for the drift animation: span every version's
     # forecasts + data dates + baseline finishes, so the time scale is held fixed through
     # the stepper and the forecasts visibly drift right rather than the axis rescaling.
     axis_dates: list[dt.date] = []

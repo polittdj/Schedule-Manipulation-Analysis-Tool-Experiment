@@ -1,6 +1,32 @@
-# Handoff — 2026-06-25 (FIX SESSION underway — M1 + C2 done (ADR-0128/0129); audit #265 merged; highest ADR 0129)
+# Handoff — 2026-06-26 (FIX SESSION — M1/C2 (#267) + audit (#265/#268) merged; in-env remediation batch done, ADR-0130; highest ADR 0130)
 
-> ## STATUS (current) — Fix session: M1 (inactive-task exclusion) + C2 (operator AI figure mode) DONE; rest of the plan remains
+> ## STATUS (current) — Audit in-env remediation batch DONE (ADR-0130); only artifact-gated items remain
+>
+> **READ FIRST:** `audit/AUDIT-REPORT.md` + `audit/PATH-FORWARD.md` (on `main`, #268). The operator asked to
+> "execute everything that doesn't require me to submit anything"; this batch did exactly the in-environment
+> PATH-FORWARD items. Full gate + parity green (no parity number moved).
+>
+> **DONE this batch (ADR-0130):**
+> - **F-03/F-07/F-01 docs** — `PARITY-REPORT.md` refreshed to authoritative `case.json` (P5 Critical 4, High
+>   Float 44/44, BSC 41/25, Net Impact −148, SSI focus 145); §E float/critical subset **labeled
+>   engine-pinned / NOT Fuse-validated**; new `tests/test_parity_report_sync.py` pins report↔case.json;
+>   risks.md R-02 + ADR-0045 errata.
+> - **F-02 finish gap** — new **"As-scheduled (stored dates)"** forecast method surfaces the source-tool
+>   finish next to the pure-logic CPM finish (TP4 v5: 07-17 vs 06-26); `test_data_date_finish_gap.py` guards
+>   it; TEST-PROJECTS.md overclaim fixed. (No engine reschedule — ADR-0108.)
+> - **F-05 detectors** — new `MANIP_CONSTRAINT_ADDED` (clamping hard constraint, ≤0 float) + `MANIP_CALENDAR_LOOSENED`;
+>   the constraint one correctly surfaces the real UID-131 ASAP→MSO clamp in `Project5_TAMPERED`.
+> - **F-06 XSS** — surgical `_e(title)` at the layout boundary + `test_title_escaping.py`.
+> - **F-04 / F-08 / F-12** — float-view "critical" labeled (not unified); `pyproject fail_under` 99.9→70.0;
+>   qa.py module docstring → three-mode/annotate-default.
+>
+> **REMAINING — artifact-gated only (need the operator to supply files; see PATH-FORWARD.md §D):** true Fuse
+> numeric re-validation of §E (needs an Acumen Fuse §E export), the `.mpp`↔MSPDI round-trip (needs `.mpp` +
+> Java/MPXJ), the literal `.aft` formula match (needs the Bible), the Large-File absolute SSI values (needs
+> SSI's recorded focus UID), cost-EVM parity (needs a cost-loaded schedule + Fuse EVM export). **Highest ADR
+> = 0130.** Keep running the full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — Fix session: M1 (inactive-task exclusion) + C2 (operator AI figure mode) DONE; rest of the plan remains
 >
 > **READ FIRST:** `docs/STATE/AUDIT-2026-06-25.md` (on `main`) — the audit + the 3-wave plan of action.
 > This session executed the two operator-decision items from that plan; the remaining findings are still open.
