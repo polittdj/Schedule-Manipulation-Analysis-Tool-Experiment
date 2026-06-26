@@ -147,9 +147,12 @@ window.SFGantt = (function () {
       var cells = rows[r].children;
       for (var c = 0; c < frozen && c < cells.length; c++) {
         var cell = cells[c];
-        cell.style.position = "sticky";
-        cell.style.left = offsets[c] + "px";
-        cell.classList.add("sf-frozen-col");
+        // skip redundant style writes (audit M7): on a ~1700-row grid most cells already carry
+        // the correct sticky offset after a repaint, so only touch the DOM when a value changes.
+        var leftPx = offsets[c] + "px";
+        if (cell.style.position !== "sticky") cell.style.position = "sticky";
+        if (cell.style.left !== leftPx) cell.style.left = leftPx;
+        cell.classList.add("sf-frozen-col"); // idempotent
         if (c === frozen - 1) cell.classList.add("sf-frozen-last");
         else cell.classList.remove("sf-frozen-last");
       }

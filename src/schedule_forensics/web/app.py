@@ -233,6 +233,11 @@ _STATIC_DIR = Path(__file__).parent / "static"
 _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 #: File types the open/import picker accepts.
 _ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
+#: Decimal places for the per-task remaining-days values shared with the client SRA derive math
+#: (``window.SF_REMAIN_DAYS``). The server and client MUST round each per-task value at the SAME
+#: precision before averaging, or their derived days↔% magnitudes diverge for sub-day tasks
+#: (audit M5). 6 dp keeps sub-day tasks from collapsing to 0 while still matching exactly.
+_REMAIN_DAYS_DP = 6
 
 _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
@@ -5762,7 +5767,7 @@ def _unified_risk_section(st: SessionState) -> str:
                 if t.remaining_duration_minutes is not None
                 else t.duration_minutes
             )
-            rem_map[t.unique_id] = round(rem / mpd, 3)
+            rem_map[t.unique_id] = round(rem / mpd, _REMAIN_DAYS_DP)
     rem_json = json.dumps({str(u): d for u, d in rem_map.items()}).replace("<", "\\u003c")
     lock = "&#128274;"  # a small lock marks a magnitude the operator set explicitly (used verbatim)
     rows = (
@@ -5878,7 +5883,9 @@ def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> f
                 if t.remaining_duration_minutes is not None
                 else t.duration_minutes
             )
-            rems.append(rem / mpd)
+            # round each per-task value at the SAME precision the client receives in
+            # SF_REMAIN_DAYS so the two averages match exactly for sub-day tasks (audit M5)
+            rems.append(round(rem / mpd, _REMAIN_DAYS_DP))
     return sum(rems) / len(rems) if rems else 0.0
 
 

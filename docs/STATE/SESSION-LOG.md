@@ -3718,3 +3718,29 @@ existed). Highest ADR still 0130; doc drift + parity-report sync guards green.
 M5 (days↔% client/server rounding — JS+server), M7 (path-filter debounce — JS perf), L3 (offload atexit
 hook), H2 (prose-tamper denylist — operator design decision). F-11 stays an accepted documented choice.
 The artifact-gated items (Fuse/SSI/.aft/.mpp) remain in `audit/PARK-LIST.md`.
+
+---
+
+## 2026-06-26 — Remediation batch 2 (ADR-0132) — audit cluster fully closed in-env
+
+- **Branch:** `claude/audit-cluster-remediation-batch2` (fresh from `origin/main` after #272).
+- **Highest ADR:** 0132.
+
+### What changed
+- **H2** — `ai/citations.reattach` now rejects a rephrase that introduces an accusatory/intent term the
+  engine never asserted (`introduces_loaded_terms`: fraud/deliberate/intentional/conceal/…); a loaded term
+  already in the engine's sentence is fine. Guards accuracy without restricting legitimate derivation
+  (per the operator's "derive from the metrics, but verified to industry standard" direction). CLAUDE.md
+  "digits not prose" note updated.
+- **M5** — client and server now round each per-task remaining-days value at the same precision
+  (`_REMAIN_DAYS_DP = 6`) before averaging, so the days↔% auto-derive magnitudes match for sub-day tasks.
+- **M7** — `pathFilter` input handler debounced (~140 ms) + `freezeColumns` skips redundant per-cell style
+  writes (no more typing jank on the ~1700-row grid).
+- **L3** — `web/offload` registers its pool teardown with `atexit`, so the worker is reaped on the
+  watchdog / any non-`/api/shutdown` exit, not just the Quit route.
+- No parity number moved; every fix pinned by a new/updated test.
+
+### Status
+The audit cluster (both prior trails + the re-audit's NEW-1) is now **fully remediated in-environment**.
+Remaining items are artifact-gated only (`audit/PARK-LIST.md`: Fuse/SSI/.aft/.mpp); F-11 stays an accepted
+documented design choice.

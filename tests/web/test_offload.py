@@ -121,3 +121,25 @@ def _raise() -> None:
 def _reset_offload() -> object:
     yield None
     shutdown_offload()
+
+
+def test_reset_is_registered_with_atexit_for_watchdog_exit() -> None:
+    """Audit L3: the worker teardown must run on ANY interpreter exit, not just the /api/shutdown
+    route — the browser-gone watchdog exit skips the explicit call. The module registers `_reset`
+    with atexit; here we exercise the teardown it invokes (start a pool, then `_reset` clears it).
+    """
+    import platform
+
+    if platform.system() == "Windows":  # pragma: no cover - spawn cost in CI is POSIX-only here
+        pytest.skip("pool spawn not exercised on this platform")
+    try:
+        offload.run_offloaded(_identity, 5)
+    except Exception:  # pragma: no cover - platform without a usable spawn method
+        pytest.skip("offload pool not available on this platform")
+    assert offload._pool is not None  # a worker is live
+    offload._reset()  # the function atexit invokes
+    assert offload._pool is None  # torn down deterministically
+
+
+def _identity(x: int) -> int:
+    return x

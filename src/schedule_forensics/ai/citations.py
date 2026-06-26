@@ -7,7 +7,10 @@ fact statement lacks a citation). A model may *rephrase* a statement's text but 
 its citations — :func:`reattach` carries them onto polished prose and re-verifies coverage,
 so the AI can never emit an uncited claim. The same gate guards the **figures**: a rephrase
 that drops, invents, or alters any number (:func:`preserves_figures`) is discarded for the
-engine's verbatim sentence — dates, counts, and percentages are evidence, not prose.
+engine's verbatim sentence — dates, counts, and percentages are evidence, not prose. It also
+guards against an **introduced conclusion**: a rephrase that injects an accusatory/intent term
+the engine never asserted (fraud, deliberate, concealed, …; :func:`introduces_loaded_terms`)
+is likewise discarded — the model may polish wording, never add an unverified accusation.
 """
 
 from __future__ import annotations
@@ -26,6 +29,59 @@ from schedule_forensics.engine.dcma_audit import Citation
 #: reformatting "21600" as "21,600" likewise fails the check and the verbatim sentence is kept —
 #: fail closed.
 _FIGURE_RE = re.compile(r"-?\d+(?:\.\d+)?")
+
+#: Accusatory / intent-attributing terms the engine never asserts. The engine reports *what*
+#: changed (a constraint added, float eroded); it never concludes *why* (fraud, intent). A local
+#: model polishing prose must not introduce such a conclusion — if a rephrase adds one of these
+#: terms that the engine's own sentence did not contain, the verbatim engine sentence is kept
+#: (audit H2). This guards *accuracy* (no unverified intent reaches a testimony reader); it does
+#: NOT restrict legitimate numeric/analytic derivation, which carries none of these words.
+_LOADED_TERMS = frozenset(
+    {
+        "fraud",
+        "fraudulent",
+        "fraudulently",
+        "deliberate",
+        "deliberately",
+        "intentional",
+        "intentionally",
+        "conceal",
+        "concealed",
+        "concealing",
+        "concealment",
+        "falsify",
+        "falsified",
+        "falsifying",
+        "falsification",
+        "sabotage",
+        "sabotaged",
+        "malicious",
+        "maliciously",
+        "willful",
+        "willfully",
+        "deceive",
+        "deceptive",
+        "deception",
+        "dishonest",
+        "dishonestly",
+        "criminal",
+        "criminally",
+    }
+)
+_WORD_RE = re.compile(r"[a-z]+")
+
+
+def introduces_loaded_terms(source: str, candidate: str) -> bool:
+    """True iff ``candidate`` adds an accusatory/intent term (``_LOADED_TERMS``) the ``source``
+    did not contain — an unverified conclusion the engine never drew, so the rephrase is rejected
+    in favor of the verbatim engine sentence (audit H2). A loaded term already present in the
+    source (e.g. the engine's own ``manipulation`` finding) is fine; only *introduced* ones fail.
+    """
+    src_words = set(_WORD_RE.findall(source.lower()))
+    return any(
+        word in _LOADED_TERMS and word not in src_words
+        for word in _WORD_RE.findall(candidate.lower())
+    )
 
 
 class UncitedStatementError(ValueError):
@@ -87,9 +143,10 @@ def reattach(texts: Sequence[str], sources: Sequence[CitedStatement]) -> tuple[C
     ``texts`` is the rephrased prose, aligned 1:1 with ``sources``. Citations come from the
     deterministic source (never from the model), and the result is re-verified — so polishing
     can change wording but can never drop or invent a citation. A rephrased text is used only
-    when it is non-empty **and** preserves every numeric figure of its source
-    (:func:`preserves_figures`); otherwise the engine's verbatim sentence is kept — the model
-    may polish prose, never edit evidence.
+    when it is non-empty, preserves every numeric figure of its source (:func:`preserves_figures`),
+    **and** introduces no accusatory/intent term the source lacked
+    (:func:`introduces_loaded_terms`); otherwise the engine's verbatim sentence is kept — the model
+    may polish prose, never edit evidence or add an unverified conclusion.
     """
     if len(texts) != len(sources):
         raise UncitedStatementError(
@@ -98,7 +155,12 @@ def reattach(texts: Sequence[str], sources: Sequence[CitedStatement]) -> tuple[C
     out: list[CitedStatement] = []
     for text, src in zip(texts, sources, strict=True):
         polished = text.strip()
-        kept = polished if polished and preserves_figures(src.text, polished) else src.text
+        acceptable = (
+            bool(polished)
+            and preserves_figures(src.text, polished)
+            and not introduces_loaded_terms(src.text, polished)
+        )
+        kept = polished if acceptable else src.text
         out.append(CitedStatement(text=kept, citations=src.citations))
     result = tuple(out)
     assert_all_cited(result)

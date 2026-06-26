@@ -401,7 +401,13 @@
   }
   $("pathRun").addEventListener("click", trace);
   $("pathHideDone").addEventListener("change", paintRows);
-  $("pathFilter").addEventListener("input", paintRows);
+  // debounce the free-text filter: each keystroke otherwise rebuilds the whole tbody and rewrites
+  // ~10k inline freeze styles on a ~1700-row grid, janking while typing (audit M7)
+  var pathFilterTimer;
+  $("pathFilter").addEventListener("input", function () {
+    clearTimeout(pathFilterTimer);
+    pathFilterTimer = setTimeout(paintRows, 140);
+  });
   $("pathZoom").addEventListener("input", function () { fitFill = false; reflow(); });
   var pathFit = $("pathFit");
   if (pathFit) pathFit.addEventListener("click", fitToProject);

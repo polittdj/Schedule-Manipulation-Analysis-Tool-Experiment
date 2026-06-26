@@ -256,3 +256,27 @@ def test_parse_uid_list_separators_and_dedup() -> None:
     assert _parse_uid_list("7, x, -3, 0, 9") == [7, 9]  # non-numeric / non-positive dropped
     assert _parse_uid_list("") == []
     assert _parse_uid_list(None) == []
+
+
+def test_affected_avg_remaining_days_matches_client_precision() -> None:
+    """Audit M5: the server must round each per-task remaining-days value at the SAME precision
+    the client receives in window.SF_REMAIN_DAYS, so their derived days↔% magnitudes agree for
+    sub-day tasks (previously the server averaged unrounded values → divergence)."""
+    import datetime as dt
+
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+    from schedule_forensics.web.app import _REMAIN_DAYS_DP, _affected_avg_remaining_days
+
+    mpd = 480
+    tasks = (
+        Task(unique_id=1, name="a", duration_minutes=36, remaining_duration_minutes=36),
+        Task(unique_id=2, name="b", duration_minutes=20, remaining_duration_minutes=20),
+    )
+    sch = Schedule(
+        name="s", project_start=dt.datetime(2025, 1, 6, 8, 0), tasks=tasks, relationships=()
+    )
+    # the exact values the client averages (SF_REMAIN_DAYS = round(rem/mpd, _REMAIN_DAYS_DP))
+    client_vals = [round(36 / mpd, _REMAIN_DAYS_DP), round(20 / mpd, _REMAIN_DAYS_DP)]
+    client_avg = sum(client_vals) / len(client_vals)
+    assert _affected_avg_remaining_days(sch, [1, 2]) == client_avg
