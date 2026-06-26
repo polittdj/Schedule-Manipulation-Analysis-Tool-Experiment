@@ -20,11 +20,19 @@
 > - **F-04 / F-08 / F-12** — float-view "critical" labeled (not unified); `pyproject fail_under` 99.9→70.0;
 >   qa.py module docstring → three-mode/annotate-default.
 >
-> **REMAINING — artifact-gated only (need the operator to supply files; see PATH-FORWARD.md §D):** true Fuse
-> numeric re-validation of §E (needs an Acumen Fuse §E export), the `.mpp`↔MSPDI round-trip (needs `.mpp` +
-> Java/MPXJ), the literal `.aft` formula match (needs the Bible), the Large-File absolute SSI values (needs
-> SSI's recorded focus UID), cost-EVM parity (needs a cost-loaded schedule + Fuse EVM export). **Highest ADR
-> = 0130.** Keep running the full gate + `pytest -m parity` before each commit.
+> **REMAINING — genuinely artifact-gated (need the operator to supply files; see PATH-FORWARD.md §D):** true
+> Fuse numeric re-validation of §E (needs a fresh Acumen Fuse §E export of the current P5-vs-P2 pair), the
+> literal `.aft` formula match (needs the `NASA_Metrics_Complete_*.aft` Bible), the native `.mpp` **data**
+> (`Project2`/`Project5`/`Large_Test_File.mpp` — git-ignored CUI), the Large-File absolute SSI values (needs
+> SSI's recorded focus UID). **Two items the audit had listed here were corrected on 2026-06-26 (re-sweep
+> after "do you already have these files?"):** (a) **cost-EVM parity is NOT artifact-gated** — `golden/evm/
+> EVM1|EVM2.mspdi.xml` are committed cost-loaded **Acumen-Fuse** references and `test_evm_acumen_reference.py`
+> (6 pass) already validates BCWS/BCWP/DCMA/BEI against them; only the SPI(t)/finish/NFI residuals are open,
+> and those are the ADR-0108 data-date gap (engine work), not a missing export; (b) the **`.mpp`→MSPDI
+> toolchain is present** — Java 17 + vendored MPXJ (`tools/mpxj/`) are installed and runnable here, so the
+> `.mpp` round-trip is blocked only on the absent `.mpp` data, not the toolchain. The audit/PATH-FORWARD
+> errata blocks record both. **Highest ADR = 0130.** Keep running the full gate + `pytest -m parity` before
+> each commit.
 
 > ## STATUS (prev) — Fix session: M1 (inactive-task exclusion) + C2 (operator AI figure mode) DONE; rest of the plan remains
 >

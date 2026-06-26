@@ -3665,3 +3665,28 @@ ADR-0124 (no new ADR; highest ADR stays 0124). Branch `claude/compassionate-ptol
     three-mode / annotate-default.
 - **REMAINING = artifact-gated only** (Fuse §E export, `.mpp`+Java, `.aft` Bible, SSI focus UID, cost-loaded
   schedule) — see `PATH-FORWARD.md` §D. **Highest ADR = 0130.**
+
+---
+
+## 2026-06-26 (errata) — audit "missing artifact" overstatement corrected
+
+Operator: *"Don't you already have access to those files? Triple check everywhere."* A full working-tree
+re-sweep confirmed the genuinely-absent artifacts (`NASA_Metrics_Complete_*.aft` Bible; a fresh Acumen
+Fuse §A/§B/§C/§E export of the current Project2/Project5 pair; the native `.mpp` files
+`Project2`/`Project5`/`Large_Test_File`; SSI's recorded focus UID for `Large_Test_File.mpp`) — but found
+**two items the audit had wrongly listed as artifact-gated were already satisfied in-repo:**
+
+1. **Cost-EVM parity is NOT un-oracled.** `tests/fixtures/golden/evm/EVM1.mspdi.xml` and `EVM2.mspdi.xml`
+   are committed, cost-loaded **Acumen-Fuse exports**; `tests/engine/test_evm_acumen_reference.py` (6 pass)
+   already validates BCWS/BCWP, DCMA, and BEI against the Fuse "Metric History Report" and pins the
+   documented SPI(t)/finish/Net-Finish-Impact **residuals** (EVM2 finish 2012-10-01 vs Acumen 2012-10-04;
+   NFI −19 vs −22). Those residuals are the standing **ADR-0108 data-date gap** (engine work), not a
+   missing export.
+2. **The `.mpp`→MSPDI toolchain is present and runnable.** Java 17 is installed and the vendored MPXJ
+   converter (`tools/mpxj/` — `MpxjToMspdi.class` + `lib/*.jar`) runs here; the native-`.mpp` work is
+   blocked only on the absent `.mpp` **data**, not the toolchain.
+
+Corrected in place (doc-only, no code/test/parity change): errata blocks + inline rows in
+`audit/AUDIT-REPORT.md` (§3 oracle inventory, §8 blind-spots) and `audit/PATH-FORWARD.md` (§D table), and
+the HANDOFF STATUS "REMAINING" block. No ADR added (no decision changed; the EVM validation already
+existed). Highest ADR still 0130; doc drift + parity-report sync guards green.

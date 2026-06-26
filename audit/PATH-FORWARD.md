@@ -8,6 +8,14 @@ in-environment** and the exact external artifact required.
 
 This is a plan. Per the audit's read-only mandate, nothing here was executed.
 
+> **Errata (2026-06-26).** A re-sweep corrected two §D rows that overstated what's missing:
+> (1) **Cost-EVM is already oracled** — `golden/evm/EVM1|EVM2.mspdi.xml` are committed Acumen-Fuse exports
+> and `test_evm_acumen_reference.py` (6 pass) validates the cost metrics against them; only the
+> SPI(t)/finish/NFI residuals are open, and those are the ADR-0108 data-date gap (engine work), not a
+> missing export. (2) **The `.mpp`→MSPDI toolchain (Java 17 + vendored MPXJ `tools/mpxj/`) is present and
+> runnable here**; the native-`.mpp` work is blocked only on the absent `.mpp` data. The §D rows below
+> reflect these corrections.
+
 ---
 
 ## A. MUST-FIX to legitimately claim Acumen Fuse / MS Project / MSPDI parity
@@ -184,9 +192,9 @@ Fuse" without the "against our transcribed targets" qualifier.
 |------|-----------------------|----------------------------|
 | A-1 numeric §E re-validation | no committed Fuse export | Acumen Fuse v8.11.0 §E PP&Change export of current Project5-vs-Project2 |
 | Any "engine == Fuse" upgrade (all §A/§B/§C rows) | `case.json` is a transcription | the operator's Fuse workbook/ribbon/DCMA exports of Project2 & Project5 |
-| Cost EVM (SPI/CPI/TCPI) parity | goldens carry no cost | a cost-loaded schedule + its Fuse EVM export |
+| Cost EVM SPI(t)/finish/NFI **residuals** (matched rows already pass) | NOT artifact-gated — `golden/evm/EVM1\|EVM2.mspdi.xml` ARE committed Acumen-Fuse exports and `test_evm_acumen_reference.py` (6 pass) already validates BCWS/BCWP/DCMA/BEI; the residuals are the ADR-0108 data-date gap | progress-aware reschedule (engine work), **not** a new export |
 | Literal `.aft` formula match for the AUDIT table | `.aft` Bible absent | `NASA_Metrics_Complete_*.aft` |
-| `.mpp` ↔ MSPDI equivalence; TP2 calendar `.mpp` round-trip; Large-File `.mpp` parse | no `.mpp` / no Java/MPXJ | native `.mpp` intake + Java 17 + vendored MPXJ exercised |
+| `.mpp` ↔ MSPDI equivalence; TP2 calendar `.mpp` round-trip; Large-File `.mpp` parse | no native `.mpp` **data** (Java 17 + vendored MPXJ `tools/mpxj/` ARE present & runnable here) | the native `.mpp` files only — the toolchain is already in place |
 | Large-File absolute SSI driving-slack (Phase-E item 3) | SSI focus UID never recorded | SSI's recorded target/focus UniqueID for `Large_Test_File.mpp` |
 | Structural/health threshold authority (F-14) | handbook/decks absent | NASA Schedule Management Handbook + the assessment decks |
 | SSI driving slack on current `Project5_TAMPERED` (ssi_uid143 xfail) | export is stale | a fresh SSI Directional-Path export for the current file |
