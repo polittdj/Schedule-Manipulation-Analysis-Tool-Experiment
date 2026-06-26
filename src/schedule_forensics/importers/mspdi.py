@@ -228,6 +228,21 @@ def _int(parent: ET.Element, tag: str) -> int | None:
         raise ImporterError(f"expected an integer for <{tag}>, got {raw!r}") from exc
 
 
+def _cosmetic_int(parent: ET.Element, tag: str, default: int) -> int:
+    """Parse an integer for a **cosmetic-only** field (e.g. OutlineLevel — Gantt indentation).
+
+    A non-integer in such a field must NOT refuse the whole file (audit L7): the value is purely
+    presentational, so a malformed entry falls back to ``default``. Identity / structural fields
+    keep the loud :func:`_int` that raises."""
+    raw = _text(parent, tag)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
 def _bool(parent: ET.Element, tag: str, *, default: bool) -> bool:
     """MSPDI boolean; absent → ``default``. MS Project writes ``"1"``/``"0"`` but
     xsd:boolean also admits ``"true"``/``"false"``, which third-party exporters use."""
@@ -521,7 +536,7 @@ def _parse_task(
             name=_text(task_el, "Name") or f"Task {uid}",
             wbs=_text(task_el, "WBS"),
             calendar_uid=cal_uid,
-            outline_level=_int(task_el, "OutlineLevel") or 0,
+            outline_level=_cosmetic_int(task_el, "OutlineLevel", 0),
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
             duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
             is_estimated_duration=_bool(task_el, "Estimated", default=False),
@@ -599,7 +614,10 @@ def _project_baseline_finish(root: ET.Element) -> dt.datetime | None:
     tasks_el = root.find("Tasks")
     finishes: list[dt.datetime] = []
     for task_el in [] if tasks_el is None else tasks_el.findall("Task"):
-        if _bool(task_el, "Summary", default=False):
+        # mirror the model's effective-summary rule (`is_summary or uid == 0`, :531): a UID-0
+        # project-summary row whose XML omits <Summary> must NOT leak its project-spanning
+        # rollup baseline into the CPLI basis (audit M4).
+        if _bool(task_el, "Summary", default=False) or _int(task_el, "UID") == 0:
             continue
         _, bl_finish, _, _ = _primary_baseline(task_el)
         if bl_finish is not None:

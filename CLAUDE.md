@@ -117,5 +117,9 @@ python -c "from schedule_forensics.web.help import render_dictionary_markdown as
 
 - Branch from `main`, open a **draft PR**, get CI green, squash-merge. Squash-merges make stacked
   branches conflict, so branch fresh from `main` and merge-resolve rather than stacking.
+- **Always `git fetch origin` before you branch or rebase** (best practice, all sessions). The local
+  `main` goes stale between sessions; `git fetch origin` updates the remote-tracking refs *without*
+  touching your working branches, so you branch/rebase onto the real latest `origin/main`
+  (e.g. `git fetch origin && git switch -c <branch> origin/main`) instead of a stale local copy.
 - The `qc-checker` subagent (`.claude/agents/`) runs the full gate, triages real errors vs
   environment-gated skips / flakes, and fixes them — on demand or via a throttled SessionStart trigger.

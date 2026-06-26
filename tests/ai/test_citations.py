@@ -80,6 +80,15 @@ def test_preserves_figures_rejects_dropped_invented_or_altered_numbers() -> None
     assert not preserves_figures("29.4% missed", "29% missed, 4 unknown")
 
 
+def test_preserves_figures_is_sign_aware() -> None:
+    # Audit M6: a sign is load-bearing in schedule forensics (variance/float/slip direction).
+    # A flip from "-5" (ahead) to "5" (behind) must change the multiset and fail the gate.
+    assert not preserves_figures("Variance -5 days", "Variance 5 days behind")
+    assert not preserves_figures("total float -240 minutes", "total float 240 minutes")
+    # an unchanged sign still passes; a preserved negative is fine
+    assert preserves_figures("Net impact -148 days", "the net impact was -148 days")
+
+
 def test_reattach_discards_rephrase_that_alters_figures() -> None:
     # a model that mangles a number loses its rephrase — the verbatim sentence is kept
     sources = (CitedStatement("the finish slipped 99 calendar days", (C,)),)

@@ -745,6 +745,13 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Milestone Execution Index — BEI restricted to milestones.",
         "milestones finished by status / milestones baselined-to-finish by status",
         _PBIX,
+        indicates=(
+            "Like BEI, MEI can read **above 1.0**: the numerator counts every milestone finished "
+            "by the status date, while the denominator counts only those the baseline placed to "
+            "finish by then — so a milestone finished ahead of its baseline lifts the ratio over "
+            "100%. A value > 1.0 means milestones are being met faster than baselined, not an "
+            "error (audit M8)."
+        ),
     ),
     "hmi_tasks": _doc(
         "hmi_tasks",

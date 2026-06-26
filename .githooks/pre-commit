@@ -10,7 +10,7 @@
 # (the SessionStart hook does this automatically each session).
 set -euo pipefail
 
-blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|csv|xls|xlsx|pbix|mspdi|pkl|pickle)$'
+blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|csv|xls|xlsx|pbix|mspdi|pkl|pickle|aft|docx|doc)$'
 allow_prefix='tests/fixtures/'
 
 violations=()

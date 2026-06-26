@@ -388,7 +388,10 @@ def test_self_loop_relationship_is_dropped() -> None:
     assert sched.relationships == ()  # self-referential row dropped, schedule kept
 
 
-def test_taskpred_missing_task_id_raises() -> None:
+def test_taskpred_missing_task_id_is_dropped_not_fatal() -> None:
+    # Audit H4: a TASKPRED row with no resolvable endpoint (empty/missing or non-integer
+    # task_id) is an unresolvable link, not corruption — it is dropped and counted, like a
+    # dangling endpoint, rather than sinking the whole file.
     text = _xer(
         [
             _MIN_PROJECT,
@@ -400,8 +403,8 @@ def test_taskpred_missing_task_id_raises() -> None:
             ("TASKPRED", ["task_id", "pred_task_id", "pred_type"], [["", "10", "PR_FS"]]),
         ]
     )
-    with pytest.raises(ImporterError, match="missing required integer column 'task_id'"):
-        parse_xer_text(text)
+    sched = parse_xer_text(text)  # must not raise
+    assert sched.relationships == ()
 
 
 def test_resource_rows_skipped_with_name_fallback() -> None:
@@ -1100,3 +1103,51 @@ def test_fixture_without_cost_columns_stays_cost_free(schedule: Schedule) -> Non
     # the curated fixture's TASKRSRC has no cost columns — fields keep their defaults
     t = schedule.task_by_id(2001)
     assert (t.cost, t.actual_cost, t.budgeted_cost) == (None, None, 0.0)
+
+
+def test_non_integer_task_id_in_non_selected_project_is_tolerated() -> None:
+    """Audit H3: a malformed task_id in a NON-selected project must not sink the file. The
+    cross-project id universe is built tolerantly; only in-scope rows are validated loudly."""
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date"],
+                [["1", "P1", "2025-01-06 08:00"], ["2", "P2", "2025-02-01 08:00"]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [
+                    ["10", "2", "A", "TT_Task", "8"],
+                    ["11", "2", "B", "TT_Task", "8"],
+                    ["GARBAGE", "1", "C", "TT_Task", "8"],  # non-selected project's bad id
+                ],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)  # must not raise
+    assert set(sched.tasks_by_id) == {10, 11}
+
+
+def test_non_integer_taskpred_endpoint_drops_the_link_not_the_file() -> None:
+    """Audit H4: a non-integer endpoint in a TASKPRED row drops that (unresolvable) link and
+    is counted, instead of sinking the whole file."""
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A", "TT_Task", "8"], ["11", "1", "B", "TT_Task", "8"]],
+            ),
+            (
+                "TASKPRED",
+                ["task_id", "pred_task_id", "pred_type", "lag_hr_cnt"],
+                [["11", "10", "PR_FS", "0"], ["11", "BADPRED", "PR_FS", "0"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)  # must not raise
+    assert len(sched.relationships) == 1  # the 11->10 link kept; the BADPRED link dropped
+    assert _rel(sched, 10, 11) is RelationshipType.FS

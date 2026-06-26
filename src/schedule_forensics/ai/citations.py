@@ -19,10 +19,13 @@ from dataclasses import dataclass
 
 from schedule_forensics.engine.dcma_audit import Citation
 
-#: A numeric figure as the engine writes them: an integer or plain decimal. Used as the
-#: unit of comparison for figure preservation (a model reformatting "21600" as "21,600"
-#: simply fails the check and the verbatim sentence is kept — fail closed).
-_FIGURE_RE = re.compile(r"\d+(?:\.\d+)?")
+#: A numeric figure as the engine writes them: an optional leading minus, then an integer or
+#: plain decimal. The sign is part of the figure — in schedule forensics a sign is load-bearing
+#: (variance, total float, slip direction), so a rephrase that flips "-5 days" (ahead) to
+#: "5 days behind" must change the multiset and force the verbatim fallback (audit M6). A model
+#: reformatting "21600" as "21,600" likewise fails the check and the verbatim sentence is kept —
+#: fail closed.
+_FIGURE_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 class UncitedStatementError(ValueError):

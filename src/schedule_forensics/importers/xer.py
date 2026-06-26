@@ -165,7 +165,10 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
         )
         for row in task_rows
     ]
-    all_task_ids = {_req_int(t, "task_id") for t in all_tasks}
+    # the cross-project id universe is built tolerantly: a non-integer task_id in a
+    # non-selected/partial-export row must not sink the file (audit H3). In-scope rows were
+    # already validated loudly by `_parse_task` above.
+    all_task_ids = {i for t in all_tasks if (i := _drop_int(t, "task_id")) is not None}
     in_scope_ids = {t.unique_id for t in tasks}
     relationships = _parse_relationships(tables.get("TASKPRED", []), all_task_ids, in_scope_ids)
 
@@ -248,6 +251,23 @@ def _opt_int(row: Row, key: str) -> int | None:
         return int(raw)
     except ValueError as exc:
         raise ImporterError(f"expected an integer for {key!r}, got {raw!r}") from exc
+
+
+def _drop_int(row: Row, key: str) -> int | None:
+    """Parse an integer column, returning ``None`` on missing OR non-integer text (never raises).
+
+    Used for the cross-project task-id *universe* and for ``TASKPRED`` endpoints, where an
+    unparseable id from a non-selected/partial-export row is a droppable real-world state, not
+    corruption — it must not sink an otherwise-valid file (audit H3/H4). In-scope task rows are
+    still validated loudly by ``_parse_task`` / ``_req_int``.
+    """
+    raw = _g(row, key)
+    if raw is None:
+        return None
+    try:
+        return int(raw)
+    except ValueError:
+        return None
 
 
 def _opt_hours(row: Row, key: str) -> int | None:
@@ -412,8 +432,13 @@ def _parse_relationships(
     seen: set[tuple[int, int, RelationshipType]] = set()
     dropped = 0
     for row in pred_rows:
-        successor = _req_int(row, "task_id")
-        predecessor = _req_int(row, "pred_task_id")
+        # a non-integer endpoint can't resolve to any task — drop the link (count it), don't
+        # raise: a single malformed TASKPRED row must not sink the whole file (audit H4).
+        successor = _drop_int(row, "task_id")
+        predecessor = _drop_int(row, "pred_task_id")
+        if successor is None or predecessor is None:
+            dropped += 1
+            continue
         link_type = _RELATIONSHIP_BY_XER.get(_g(row, "pred_type") or "", RelationshipType.FS)
         key = (predecessor, successor, link_type)
         if (

@@ -85,10 +85,19 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
         "name": str(raw.get("name", "Standard")),
         "working_minutes_per_day": wmpd,
     }
+    if raw.get("uid") is not None:
+        kwargs["uid"] = int(raw["uid"])
     if weekdays:
         kwargs["work_weekdays"] = tuple(int(d) for d in weekdays)
     if raw.get("holidays"):
         kwargs["holidays"] = tuple(dt.date.fromisoformat(str(h)) for h in raw["holidays"])
+    # working_days exceptions + intraday day_segments round-trip (driving-slack parity inputs)
+    if raw.get("working_days"):
+        kwargs["working_days"] = tuple(dt.date.fromisoformat(str(d)) for d in raw["working_days"])
+    if raw.get("day_segments"):
+        kwargs["day_segments"] = tuple(
+            (int(s[0]), int(s[1])) for s in raw["day_segments"] if isinstance(s, (list, tuple))
+        )
     return Calendar(**kwargs)
 
 
@@ -104,14 +113,33 @@ def _task(raw: dict[str, Any]) -> Task:
         "is_milestone",
         "is_summary",
         "is_manual",
+        "is_estimated_duration",
+        "is_level_of_effort",
+        "is_active",
         "percent_complete",
         "resource_names",
     ):
         if key in raw and raw[key] is not None:
             fields[key] = raw[key]
-    for key in ("remaining_duration_minutes", "baseline_duration_minutes"):
+    for key in (
+        "remaining_duration_minutes",
+        "baseline_duration_minutes",
+        "calendar_uid",
+        "outline_level",
+        "stored_total_float_minutes",
+    ):
         if raw.get(key) is not None:
             fields[key] = int(raw[key])
+    if raw.get("physical_percent_complete") is not None:
+        fields["physical_percent_complete"] = float(raw["physical_percent_complete"])
+    if raw.get("stored_is_critical") is not None:
+        fields["stored_is_critical"] = bool(raw["stored_is_critical"])
+    if isinstance(raw.get("custom_fields"), list):
+        fields["custom_fields"] = tuple(
+            (str(pair[0]), str(pair[1]))
+            for pair in raw["custom_fields"]
+            if isinstance(pair, (list, tuple)) and len(pair) == 2
+        )
     for key in ("cost", "actual_cost", "budgeted_cost"):
         if raw.get(key) is not None:
             fields[key] = float(raw[key])
@@ -163,14 +191,22 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
                 rels.append(_relationship(int(pred_id), int(t["unique_id"]), p))
             else:
                 rels.append(_relationship(int(p), int(t["unique_id"])))
+    # project_start is the CPM anchor; a missing/null value must NOT be fabricated (the old
+    # 2025-01-06 default invented a forensic input and masked truncated files). Raise like the
+    # MSPDI / XER importers do (audit M3).
+    project_start = _dt(data.get("project_start"))
+    if project_start is None:
+        raise ImporterError("JSON schedule is missing 'project_start'")
     schedule_kwargs: dict[str, Any] = {
         "name": str(data.get("name", "Schedule")),
-        "project_start": _dt(data.get("project_start")) or dt.datetime(2025, 1, 6, 8, 0),
+        "project_start": project_start,
         "tasks": tuple(tasks),
         "relationships": tuple(rels),
     }
     if data.get("status_date"):
         schedule_kwargs["status_date"] = _dt(data["status_date"])
+    if isinstance(data.get("custom_field_labels"), list):
+        schedule_kwargs["custom_field_labels"] = tuple(str(x) for x in data["custom_field_labels"])
     if calendars:
         schedule_kwargs["calendar"] = calendars[0]
         schedule_kwargs["calendars"] = tuple(calendars)
@@ -191,12 +227,16 @@ def to_json_text(schedule: Schedule) -> str:
         # human readability (the parser prefers the minute count)
         "calendars": [
             {
+                "uid": cal.uid,
                 "name": cal.name,
                 "hours_per_day": cal.working_minutes_per_day / 60,
                 "working_minutes_per_day": cal.working_minutes_per_day,
                 "work_weekdays": list(cal.work_weekdays),
-                # holidays round-trip exactly (imported calendars carry them now)
+                # holidays / working-day exceptions / intraday segments round-trip exactly so a
+                # re-opened file keeps the SSI driving-slack parity inputs (audit C1)
                 "holidays": [d.isoformat() for d in cal.holidays],
+                "working_days": [d.isoformat() for d in cal.working_days],
+                "day_segments": [list(seg) for seg in cal.day_segments],
             }
         ],
         "tasks": [],
@@ -212,6 +252,8 @@ def to_json_text(schedule: Schedule) -> str:
     }
     if schedule.status_date is not None:
         out["status_date"] = schedule.status_date.isoformat()
+    if schedule.custom_field_labels:
+        out["custom_field_labels"] = list(schedule.custom_field_labels)
     for t in schedule.tasks:
         task: dict[str, Any] = {
             "unique_id": t.unique_id,
@@ -240,6 +282,28 @@ def to_json_text(schedule: Schedule) -> str:
             task["is_summary"] = True
         if t.is_manual:
             task["is_manual"] = True
+        if t.is_estimated_duration:
+            task["is_estimated_duration"] = True
+        if t.is_level_of_effort:
+            task["is_level_of_effort"] = True
+        # is_active defaults True; emit only when False so a deactivated task survives a
+        # round-trip (re-activating it silently would defeat the inactive-task exclusion — ADR-0128)
+        if not t.is_active:
+            task["is_active"] = False
+        if t.calendar_uid is not None:
+            task["calendar_uid"] = t.calendar_uid
+        if t.outline_level:
+            task["outline_level"] = t.outline_level
+        if t.physical_percent_complete is not None:
+            task["physical_percent_complete"] = t.physical_percent_complete
+        # stored, progress-aware Total Slack / Critical flag — preferred over recomputed CPM float
+        # for Acumen parity (effective_total_float / is_effective_critical); MUST survive Save .json
+        if t.stored_total_float_minutes is not None:
+            task["stored_total_float_minutes"] = t.stored_total_float_minutes
+        if t.stored_is_critical is not None:
+            task["stored_is_critical"] = t.stored_is_critical
+        if t.custom_fields:
+            task["custom_fields"] = [[k, v] for k, v in t.custom_fields]
         if t.remaining_duration_minutes is not None:
             task["remaining_duration_minutes"] = t.remaining_duration_minutes
         if t.baseline_duration_minutes is not None:

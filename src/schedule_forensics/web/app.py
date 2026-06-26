@@ -16,6 +16,7 @@ import datetime as dt
 import html
 import json
 import logging
+import math
 import re
 import tempfile
 import threading
@@ -927,13 +928,19 @@ def _parse_uid_list(value: str | None) -> list[int]:
 
 
 def _to_float(value: str | None, default: float) -> float:
-    """A float from form/query text — blank or non-numeric falls back to ``default``."""
+    """A float from form/query text — blank, non-numeric, or non-finite falls back to ``default``.
+
+    ``inf``/``nan`` are rejected at the boundary (audit L2): ``float('inf')`` parses cleanly but
+    later poisons SRA arithmetic (a magnitude of ``inf`` 422s every downstream sim), so a
+    non-finite entry is treated like any other invalid input and discarded here.
+    """
     if value is None:
         return default
     try:
-        return float(value.strip())
+        parsed = float(value.strip())
     except ValueError:
         return default
+    return parsed if math.isfinite(parsed) else default
 
 
 def _clamp_float(
@@ -6128,7 +6135,14 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
         for item in raw_risks:
             if not isinstance(item, dict):
                 continue
-            affected = tuple(u for u in item.get("affected", []) if _ok(u))
+            # `affected` MUST be a list/tuple; a hand-edited non-list (e.g. 5 or null) previously
+            # raised TypeError mid-loop, 500ing the route AND leaving the session half-mutated
+            # (the factor/focus/override/bcwc fields were already assigned above). Guard like the
+            # sibling dict fields so a malformed risk is dropped, not fatal (audit H1).
+            raw_affected = item.get("affected", [])
+            if not isinstance(raw_affected, (list, tuple)):
+                continue
+            affected = tuple(u for u in raw_affected if _ok(u))
             if not affected:
                 continue
             seq += 1

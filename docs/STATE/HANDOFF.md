@@ -1,6 +1,32 @@
-# Handoff — 2026-06-26 (FIX SESSION — M1/C2 (#267) + audit (#265/#268) merged; in-env remediation batch done, ADR-0130; highest ADR 0130)
+# Handoff — 2026-06-26 (RE-AUDIT #271 merged + remediation batch 1, ADR-0131; highest ADR 0131)
 
-> ## STATUS (current) — Audit in-env remediation batch DONE (ADR-0130); only artifact-gated items remain
+> ## STATUS (current) — Orphaned internal-audit cluster + NEW-1 remediated (ADR-0131); batch-2/artifact-gated items remain
+>
+> **READ FIRST:** `audit/VERIFICATION-REPORT.md` (the unified ledger of BOTH prior audit trails,
+> re-derived by re-executing code/tests) + `audit/PARK-LIST.md`. The re-audit (PR #271, merged) found the
+> two trails were never merged: ADR-0130 closed the F-set, ADR-0128/0129 closed M1/C2, but the internal
+> audit's own Wave plan — **C1 (CRITICAL), H1, H3, H4, M2–M8, L2/L3/L5/L7** — was orphaned and left OPEN,
+> and the prior "only artifact-gated items remain" status was false. It also found **NEW-1** (a Float-Ratio
+> day-axis mismatch) that neither trail had.
+>
+> **DONE this batch (ADR-0131, branch `claude/audit-cluster-remediation-batch1`, full gate + parity green,
+> no parity number moved):**
+> - **C1 (CRITICAL)** — `to_json_text` now round-trips EVERY model field (stored float/critical, is_active,
+>   custom_fields, calendar working_days/day_segments, …); `test_save_json_round_trips_every_fidelity_field`
+>   diffs the full set so any future schema add that isn't wired into JSON I/O fails loudly.
+> - **H1** SSI load non-list `affected` guarded (no 500 / no half-mutation); **H3/H4** one malformed XER id
+>   is dropped-and-counted, not fatal; **M3** friendly JSON raises on missing `project_start`; **M4** UID-0
+>   baseline-finish leak closed; **M2** pre-commit + `.gitignore` block `.aft`/`.docx` (+ a blocklist test);
+>   **M6** sign-aware figure gate; **NEW-1** Float Ratio single-axis; **L2/L7/M8** non-finite `_to_float`
+>   guard, tolerant cosmetic OutlineLevel, MEI >1.0 help note (dictionary regenerated).
+>
+> **REMAINING — batch 2 (in-env, flagged in ADR-0131):** M5 (days↔% client/server rounding — JS+server),
+> M7 (path-filter debounce — JS perf), L3 (offload atexit hook), H2 (prose-tamper denylist — operator
+> design decision). F-11 stays an accepted documented choice. **Artifact-gated** items (Fuse/SSI/.aft/.mpp)
+> are consolidated in `audit/PARK-LIST.md`. **Workflow:** always `git fetch origin` before branching/
+> rebasing (CLAUDE.md). **Highest ADR = 0131.** Run the full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev, SUPERSEDED) — Audit in-env remediation batch DONE (ADR-0130); only artifact-gated items remain (the F-set batch WAS done, but the internal-audit cluster above was still open)
 >
 > **READ FIRST:** `audit/AUDIT-REPORT.md` + `audit/PATH-FORWARD.md` (on `main`, #268). The operator asked to
 > "execute everything that doesn't require me to submit anything"; this batch did exactly the in-environment
