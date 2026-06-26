@@ -1,14 +1,21 @@
-"""Finish-date forecasting — three independent answers to "when will it really end?" (M15).
+"""Finish-date forecasting — independent answers to "when will it really end?" (M15).
 
 The reference Power BI deck's forecasting page triangulates the project end date with
-**three methods side by side** so an analyst can see whether logic, throughput, and
-performance agree (a divergence is itself a finding):
+**methods side by side** so an analyst can see whether logic, the source schedule,
+throughput, and performance agree (a divergence is itself a finding):
 
 1. **Schedule logic (CPM)** — the network's own computed finish (the date the plan
-   claims, given its logic, durations, and calendar).
-2. **Completion-rate extrapolation** — the throughput answer: at the historical pace of
+   claims, given its logic, durations, and calendar). This is the engine's *pure-logic*
+   finish; it does NOT floor in-progress remaining work at the data date, so on an
+   out-of-sequence / progressed schedule it can read *earlier* than the source tool's
+   progress-aware finish (the standing ADR-0108 gap; audit F-02).
+2. **As-scheduled (stored dates)** — the latest *stored* finish the source tool wrote
+   into the file (its progress-aware forecast). Surfaced alongside the CPM finish so a
+   disagreement between the two (e.g. TP4 v5: stored 2026-07-17 vs CPM 2026-06-26) is
+   visible to the analyst rather than hidden. ``None`` if the file carries no dates.
+3. **Completion-rate extrapolation** — the throughput answer: at the historical pace of
    *activities actually completed per month*, how long do the to-go activities take?
-3. **Earned-schedule IEAC(t)** — the performance answer: the standard Earned-Schedule
+4. **Earned-schedule IEAC(t)** — the performance answer: the standard Earned-Schedule
    estimate ``IEAC(t) = AT + (PD - ES) / SPI(t)`` on the working-time axis (the same ES
    machinery as the SPI(t) metric).
 
@@ -36,7 +43,7 @@ _DAYS_PER_MONTH = 365.25 / 12
 class FinishForecast:
     """One method's answer: the forecast finish date and the basis it was computed from."""
 
-    method_id: str  # "cpm" | "rate" | "earned_schedule"
+    method_id: str  # "cpm" | "as_scheduled" | "rate" | "earned_schedule"
     name: str
     finish: dt.date | None  # None == inputs missing; never a fabricated date
     basis: str  # plain-language inputs (figures inline, verifiable)
@@ -44,7 +51,7 @@ class FinishForecast:
 
 @dataclass(frozen=True)
 class ForecastSet:
-    """The three forecasts plus the shared inputs the page shows alongside them."""
+    """The method forecasts plus the shared inputs the page shows alongside them."""
 
     as_of: dt.date | None  # the status (data) date the forecasts run from
     completed_count: int
@@ -74,9 +81,25 @@ def compute_finish_forecasts(
             "cpm",
             "Schedule logic (CPM)",
             cpm_finish,
-            f"the network's computed finish over {len(tasks)} activities",
+            f"the network's pure-logic computed finish over {len(tasks)} activities",
         )
     ]
+
+    # --- as-scheduled: the source tool's stored (progress-aware) finish ----------------
+    # Pure-logic CPM does not floor in-progress remaining work at the data date (ADR-0108),
+    # so it can understate a slip; the latest STORED finish is the source tool's
+    # progress-aware answer. Surfacing both makes the disagreement visible (audit F-02).
+    stored_finishes = [t.finish for t in tasks if t.finish is not None]
+    as_scheduled = max(stored_finishes).date() if stored_finishes else None
+    as_basis = (
+        "the latest finish stored in the source file (its progress-aware forecast); may "
+        "exceed the pure-logic CPM finish on out-of-sequence / in-progress schedules (ADR-0108)"
+        if as_scheduled is not None
+        else "the file carries no stored finish dates"
+    )
+    forecasts.append(
+        FinishForecast("as_scheduled", "As-scheduled (stored dates)", as_scheduled, as_basis)
+    )
 
     # --- completion-rate extrapolation -------------------------------------------------
     rate: float | None = None
@@ -168,7 +191,7 @@ def compute_carnac_summary(
 ) -> CarnacSummary:
     """The Carnac KPI cards for one version, derived from the CPM + the forecast set.
 
-    Pulls the three method finishes from ``forecasts`` (CPM / rate / earned-schedule) and
+    Pulls the method finishes from ``forecasts`` (CPM / as-scheduled / rate / earned-schedule) and
     computes the deck's remaining card values — earliest start, project + remaining
     duration (working days), and Earned Schedule in working days — from the stored dates
     and the same count-based Earned-Schedule construction as SPI(t). Nothing is recomputed

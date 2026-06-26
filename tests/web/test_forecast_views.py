@@ -34,9 +34,15 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
     _upload(client, "Project5")
     page = client.get("/forecast").text
     assert "Finish forecast" in page
-    for method in ("Schedule logic (CPM)", "Completion-rate extrapolation", "Earned-schedule"):
+    for method in (
+        "Schedule logic (CPM)",
+        "As-scheduled (stored dates)",
+        "Completion-rate extrapolation",
+        "Earned-schedule",
+    ):
         assert method in page
     assert "2028-01-25" in page  # CPM
+    assert "2028-01-26" in page  # as-scheduled (source-tool stored finish)
     assert "2028-06-10" in page  # rate
     assert "2029-02-01" in page  # earned schedule (exact-ratio IEAC)
     assert "SPI(t)" in page and "0.47" in page
@@ -71,7 +77,7 @@ def test_forecast_page_explains_methodology_and_shows_spread_ruler(client: TestC
     # M18 item 8 — the plain-English explainer + the static single-version spread ruler
     _upload(client, "Project5")
     page = client.get("/forecast").text
-    assert "How the three forecasts are computed" in page
+    assert "How the forecasts are computed" in page
     assert "The throughput answer" in page and "The performance answer" in page
     assert "rate = completed" in page  # the rate method explained in words
     assert "IEAC(t) = AT" in page  # the earned-schedule formula
@@ -123,7 +129,12 @@ def test_forecast_drift_animation_controls_and_locked_axis(client: TestClient) -
             all_iso.append(v["planned_finish"])
     assert axis["min"] == min(all_iso) and axis["max"] == max(all_iso)
     # the method lanes the animation plots, in a stable order
-    assert [m["id"] for m in data["methods"]] == ["cpm", "rate", "earned_schedule"]
+    assert [m["id"] for m in data["methods"]] == [
+        "cpm",
+        "as_scheduled",
+        "rate",
+        "earned_schedule",
+    ]
 
 
 def test_single_version_has_no_drift_animation(client: TestClient) -> None:
