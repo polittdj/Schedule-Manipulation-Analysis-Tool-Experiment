@@ -874,7 +874,12 @@ def _page(
     )
     return HTMLResponse(
         _LAYOUT.render(
-            title=title,
+            # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
+            # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
+            # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
+            # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
+            # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
+            title=_e(title),
             banner=_banner_html(state),
             body=(
                 _filter_banner(state)

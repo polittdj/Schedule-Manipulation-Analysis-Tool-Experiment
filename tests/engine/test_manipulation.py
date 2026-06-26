@@ -7,9 +7,10 @@ import itertools
 
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.recommendations import Severity
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.task import Task
+from schedule_forensics.model.task import ConstraintType, Task
 
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
@@ -28,15 +29,100 @@ def _chain(durations: dict[int, int], **task_kw: object) -> Schedule:
     return _s(tasks, rels, **task_kw)
 
 
-def test_golden_p2_to_p5_has_no_false_positive_manipulation(
+def test_golden_p2_to_p5_surfaces_only_the_real_tamper_signals(
     golden_project2: Schedule, golden_project5: Schedule
 ) -> None:
-    # The authoritative Project5 (ADR-0112) has 2 removed logic links vs Project2
-    # (106→135 and 113→138), so the detector correctly raises one MANIP_DELETED_LOGIC finding.
-    # Baselines unchanged, no deleted tasks, no edited actuals, no shortened durations.
+    # The authoritative (TAMPERED) Project5 vs Project2 (ADR-0112) carries exactly two real,
+    # cited signals — no benign false positives:
+    #   1. MANIP_DELETED_LOGIC — 2 removed logic links (106→135, 113→138).
+    #   2. MANIP_CONSTRAINT_ADDED — UID 131 "Set HVAC trim…" went ASAP→MSO (a hard constraint)
+    #      on still-incomplete work that is now at 0 total float: the constraint-abuse vector the
+    #      prior detector set missed (audit F-05 / ADR-0130). It fires ONLY because the new hard
+    #      constraint is actually clamping (≤0 float), not on every constraint edit.
+    # Baselines unchanged, no deleted tasks, no edited actuals, no shortened durations, calendar
+    # unchanged — so nothing else fires.
     findings = detect_manipulation(golden_project5, golden_project2)
-    assert len(findings) == 1
-    assert findings[0].metric_id == "MANIP_DELETED_LOGIC"
+    by_id = {f.metric_id: f for f in findings}
+    assert set(by_id) == {"MANIP_DELETED_LOGIC", "MANIP_CONSTRAINT_ADDED"}
+    constraint = by_id["MANIP_CONSTRAINT_ADDED"]
+    assert [c.unique_id for c in constraint.citations] == [131]
+
+
+def test_constraint_abuse_fires_only_when_a_new_hard_constraint_clamps_float() -> None:
+    """ADR-0130 / F-05: a hard constraint added to incomplete work that is now at ≤0 float fires
+    (the masking signature); a hard constraint on a task with positive float, or a soft-constraint
+    edit, does NOT (so benign contractual constraints don't cry wolf)."""
+    chain = [
+        Task(unique_id=1, name="T1", duration_minutes=DAY),
+        Task(unique_id=2, name="T2", duration_minutes=DAY),
+    ]
+    link = [Relationship(predecessor_id=1, successor_id=2)]
+    prior = _s(chain, link)
+    # task 2 is the last activity (float 0); pin it with an MSO at its natural start -> clamping
+    pinned = Task(
+        unique_id=2,
+        name="T2",
+        duration_minutes=DAY,
+        constraint_type=ConstraintType.MSO,
+        constraint_date=dt.datetime(2025, 1, 7, 8, 0),
+    )
+    current = _s([chain[0], pinned], link)
+    ids = {f.metric_id for f in detect_manipulation(current, prior)}
+    assert "MANIP_CONSTRAINT_ADDED" in ids
+
+    # negative: a SOFT constraint edit (ASAP -> SNET) is not a hard constraint -> no fire
+    soft = Task(
+        unique_id=2,
+        name="T2",
+        duration_minutes=DAY,
+        constraint_type=ConstraintType.SNET,
+        constraint_date=dt.datetime(2025, 1, 7, 8, 0),
+    )
+    soft_ids = {f.metric_id for f in detect_manipulation(_s([chain[0], soft], link), prior)}
+    assert "MANIP_CONSTRAINT_ADDED" not in soft_ids
+
+    # negative: a hard constraint on a task with POSITIVE float (non-binding) -> no fire.
+    # Diamond: 1->2->4 (long) and 1->3->4 (short) gives task 3 float; constrain 3 far in the future.
+    diamond = [
+        Task(unique_id=1, name="A", duration_minutes=DAY),
+        Task(unique_id=2, name="B", duration_minutes=3 * DAY),
+        Task(unique_id=3, name="C", duration_minutes=DAY),
+        Task(unique_id=4, name="D", duration_minutes=DAY),
+    ]
+    dlinks = [
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=4),
+        Relationship(predecessor_id=1, successor_id=3),
+        Relationship(predecessor_id=3, successor_id=4),
+    ]
+    d_prior = _s(diamond, dlinks)
+    c3 = Task(
+        unique_id=3,
+        name="C",
+        duration_minutes=DAY,
+        constraint_type=ConstraintType.SNLT,
+        constraint_date=dt.datetime(2025, 6, 1, 8, 0),  # far future -> does not bind float
+    )
+    d_current = _s([diamond[0], diamond[1], c3, diamond[3]], dlinks)
+    d_ids = {f.metric_id for f in detect_manipulation(d_current, d_prior)}
+    assert "MANIP_CONSTRAINT_ADDED" not in d_ids  # positive float -> not clamping -> no fire
+
+
+def test_calendar_gaming_fires_only_on_loosening() -> None:
+    """ADR-0130 / F-05: adding working time (here, a longer work day) fires, cited to the project
+    calendar (UID 0); removing working time does not (only loosening can absorb a slip)."""
+    task = [Task(unique_id=1, name="T", duration_minutes=DAY)]
+    prior = _s(task, calendar=Calendar(working_minutes_per_day=480))
+    looser = _s(task, calendar=Calendar(working_minutes_per_day=600))  # +2h/day
+    findings = detect_manipulation(looser, prior)
+    cal = next((f for f in findings if f.metric_id == "MANIP_CALENDAR_LOOSENED"), None)
+    assert cal is not None
+    assert [c.unique_id for c in cal.citations] == [0]  # cited to the project calendar
+
+    # negative: a SHORTER work day (less working time) is not a masking signal -> no fire
+    tighter = _s(task, calendar=Calendar(working_minutes_per_day=420))
+    tighter_ids = {f.metric_id for f in detect_manipulation(tighter, prior)}
+    assert "MANIP_CALENDAR_LOOSENED" not in tighter_ids
 
 
 def test_detect_deleted_task_on_critical_path() -> None:
