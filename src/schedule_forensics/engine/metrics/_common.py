@@ -70,8 +70,15 @@ class MetricResult:
 
 
 def non_summary(schedule: Schedule) -> list[Task]:
-    """Real activities (summary rollups are excluded from every metric population)."""
-    return [t for t in schedule.tasks if not t.is_summary]
+    """Real schedulable activities — the population for every metric.
+
+    Both **summary rollups** (date aggregations, never real work) and **inactive tasks**
+    (``is_active=False``) are excluded. MS Project and Acumen Fuse drop inactive tasks from
+    scheduling, rollups, and metric denominators, so a forensic parity tool must too; counting
+    them would inflate DCMA / float / EVM populations versus the reference tools (ADR-0128).
+    The forensic diff/manipulation layer reads ``schedule.tasks`` directly, so a task being
+    *deactivated* between versions is still detected as a change."""
+    return [t for t in schedule.tasks if not t.is_summary and t.is_active]
 
 
 def is_incomplete(task: Task) -> bool:

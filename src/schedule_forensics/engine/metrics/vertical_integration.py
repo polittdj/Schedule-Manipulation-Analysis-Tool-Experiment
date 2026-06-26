@@ -52,7 +52,7 @@ def _dated(schedule: Schedule, *, summary: bool) -> list[tuple[int, str, dt.date
     (non-None) tuples so the envelope comparison is fully typed."""
     out: list[tuple[int, str, dt.datetime, dt.datetime]] = []
     for t in schedule.tasks:
-        if t.is_summary != summary:
+        if t.is_summary != summary or not t.is_active:  # inactive excluded (ADR-0128)
             continue
         wbs = (t.wbs or "").strip()
         if wbs and t.start is not None and t.finish is not None:

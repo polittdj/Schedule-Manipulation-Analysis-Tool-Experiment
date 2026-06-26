@@ -90,7 +90,7 @@ def test_workbook_ask_answers_from_cross_version_facts(client: TestClient) -> No
     _upload(client, "Project5")
     body = client.post("/api/ask", data={"question": "how is the workbook trending?"}).json()
     assert body["answer"] is None  # Null backend -> facts only
-    assert body["mode"] == "interpretive"  # the default answering mode
+    assert body["mode"] == "annotate"  # the default answering mode (ADR-0129)
     assert body["facts"] and all(f["citations"] for f in body["facts"])
     text = " ".join(f["text"] for f in body["facts"])
     assert "In one sentence:" in text  # the briefing bottom-line frame fact always leads
@@ -149,30 +149,49 @@ def test_driving_question_injects_engine_facts_into_ask(client: TestClient) -> N
     assert "driving slack" in text  # the engine's per-UID driving-path fact was injected
 
 
-def test_interpretive_mode_keeps_a_derived_figure_strict_discards_it(
+def test_qa_modes_annotate_flags_strict_discards_interpretive_passes(
     monkeypatch: pytest.MonkeyPatch, state: SessionState, client: TestClient
 ) -> None:
+    """The operator-selectable figure modes (ADR-0129). 31415 is a figure the engine never
+    computed: annotate (default) KEEPS the answer but flags it; strict DISCARDS it; interpretive
+    passes it verbatim (ungated)."""
     monkeypatch.setattr(
         app_module, "_ollama_or_none", lambda config: _Model("That derives to 31415 days.")
     )
     _upload(client, "Project5")
-    # default mode: interpretive — the derived figure survives, facts ride along
-    body = client.post("/api/ask/Project5", data={"question": "how long?"}).json()
-    assert body["answer"] == "That derives to 31415 days." and body["mode"] == "interpretive"
+
+    def ask() -> dict:
+        return client.post("/api/ask/Project5", data={"question": "how long?"}).json()
+
+    def set_mode(mode: str) -> None:
+        client.post(
+            "/settings",
+            data={
+                "classification": "CLASSIFIED",
+                "backend": "ollama",
+                "model": "m",
+                "qa_mode": mode,
+            },
+        )
+
+    # default is annotate — the derived 31415 survives but is flagged as AI-derived
+    body = ask()
+    assert body["mode"] == "annotate"
+    assert body["answer"].startswith("That derives to 31415 days.")
+    assert "AI-derived" in body["answer"] and "31415" in body["answer"]
     assert body["facts"]
-    # switch to strict in settings — the same answer is discarded wholesale
-    client.post(
-        "/settings",
-        data={
-            "classification": "CLASSIFIED",
-            "backend": "ollama",
-            "model": "m",
-            "qa_mode": "strict",
-        },
-    )
-    body2 = client.post("/api/ask/Project5", data={"question": "how long?"}).json()
+
+    # strict — the same answer is discarded wholesale
+    set_mode("strict")
+    body2 = ask()
     assert body2["answer"] is None and body2["mode"] == "strict"
     assert body2["facts"]
+
+    # interpretive — verbatim, ungated (no annotation footer)
+    set_mode("interpretive")
+    body3 = ask()
+    assert body3["answer"] == "That derives to 31415 days." and body3["mode"] == "interpretive"
+    assert "AI-derived" not in body3["answer"]
 
 
 def test_dual_model_cross_check_answers_and_compares(
@@ -187,8 +206,9 @@ def test_dual_model_cross_check_answers_and_compares(
     monkeypatch.setattr(app, "_second_backend", lambda st: second)
     _upload(client, "Project5")
     body = client.post("/api/ask/Project5", data={"question": "how long?"}).json()
-    assert body["answer"] == "The answer is 42 days."
-    assert body["second_answer"] == "It computes to 41 days."
+    # default annotate mode keeps the answers (42/41 are AI-derived → a footer is appended)
+    assert body["answer"].startswith("The answer is 42 days.")
+    assert body["second_answer"].startswith("It computes to 41 days.")
     assert "openai-compat" in body["second_model"]
     assert "DIFFER" in body["agreement"] and "42" in body["agreement"] and "41" in body["agreement"]
     # agreeing answers report corroboration
@@ -251,4 +271,4 @@ def test_settings_round_trips_the_answer_mode(client: TestClient, state: Session
         "/settings",
         data={"classification": "CLASSIFIED", "backend": "null", "model": "m", "qa_mode": "bogus"},
     )
-    assert state.ai_config.qa_mode == "interpretive"
+    assert state.ai_config.qa_mode == "annotate"

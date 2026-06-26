@@ -155,6 +155,28 @@ def test_interpretive_mode_keeps_derived_figures_but_still_grounds(
     assert answer3 is None and used3
 
 
+def test_annotate_mode_keeps_the_answer_but_flags_unsourced_figures(
+    golden_project5: Schedule,
+) -> None:
+    """ADR-0129 annotate (the default): a derived figure is NOT discarded (unlike strict) but is
+    flagged in an AI-derived footer (unlike interpretive, which passes it silently)."""
+    facts = _facts(golden_project5)
+    # 31415 is a figure no engine fact contains
+    model = _Model("The answer derives to 31415 days.")
+    answer, used = answer_question(model, facts, "how long?", mode="annotate")
+    assert answer is not None and answer.startswith("The answer derives to 31415 days.")
+    assert "AI-derived" in answer and "31415" in answer  # flagged, not silently passed
+    assert used  # the cited facts still ride along
+    assert "compute" in model.prompts[-1]  # annotate uses the rich (interpretive) prompt
+    # an answer with no figures to flag is returned unchanged (no footer)
+    plain = _Model("The schedule is broadly healthy with no major concerns.")
+    a2, _ = answer_question(plain, facts, "how is it?", mode="annotate")
+    assert a2 is not None and "AI-derived" not in a2
+    # Null backend / failures stay fail-closed in annotate mode too
+    a3, used3 = answer_question(NullBackend(), facts, "anything?", mode="annotate")
+    assert a3 is None and used3
+
+
 def test_fact_sheet_reports_the_finish_driving_count(golden_project5: Schedule) -> None:
     """The cited sheet now states how many activities drive the computed finish — the
     'critical path' question has a fact to stand on."""
