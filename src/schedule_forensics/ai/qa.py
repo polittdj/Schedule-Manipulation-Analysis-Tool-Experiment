@@ -35,6 +35,7 @@ from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation
 from schedule_forensics.engine.metrics._common import CheckStatus, MetricResult, non_summary
+from schedule_forensics.engine.metrics.derived import dcma_pass_rate, population_share
 from schedule_forensics.engine.recommendations import Finding
 from schedule_forensics.engine.trend import order_versions
 from schedule_forensics.model.schedule import Schedule
@@ -150,6 +151,18 @@ def build_fact_sheet(
                 drivers,
             )
         )
+        # Derived (Layer A): the finish-driving share as a sourced percentage, so the analyst (and a
+        # live model) gets "N of M = X%" already computed and cited rather than deriving it ad hoc.
+        driving_share = population_share(len(finish_driving), len(tasks))
+        if driving_share is not None:
+            facts.append(
+                CitedStatement(
+                    f"Derived — finish-driving concentration: {driving_share}% of the network "
+                    f"({len(finish_driving)} of {len(tasks)} activities) sits at zero float to the "
+                    "project end.",
+                    drivers,
+                )
+            )
     for f in forecast.forecasts:
         if f.finish is not None:
             facts.append(
@@ -166,6 +179,19 @@ def build_fact_sheet(
                 f"DCMA {check.name}: {check.status} — {check.count} of {check.population} "
                 f"({round(check.value, 2)}{check.unit}).",
                 cites,
+            )
+        )
+    # Derived (Layer A): the DCMA 14-point pass rate over the APPLICABLE checks (n/a excluded),
+    # a cited headline health figure computed from the audit's own pass/fail tally.
+    pass_rate = dcma_pass_rate(audit.passed, audit.failed)
+    if pass_rate is not None:
+        applicable = audit.passed + audit.failed
+        fail_cites = tuple(c for chk in audit.failed_checks for c in chk.citations[:1])[:5]
+        facts.append(
+            CitedStatement(
+                f"Derived — DCMA 14-point assessment: {audit.passed} of {applicable} applicable "
+                f"checks pass ({pass_rate}% pass rate); {audit.not_applicable} not applicable.",
+                fail_cites or drivers,
             )
         )
     for finding in findings[:8]:

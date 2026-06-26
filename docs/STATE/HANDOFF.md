@@ -1,4 +1,24 @@
-# Handoff — 2026-06-26 (Audit cluster CLOSED in-env — batch 2, ADR-0132; highest ADR 0132)
+# Handoff — 2026-06-26 (Derived metrics Layer A, ADR-0133; highest ADR 0133)
+
+> ## STATUS (current) — Derived metrics Layer A shipped (ADR-0133); Layer B scoped/deferred
+>
+> **READ FIRST:** `docs/PLAN/AI-DERIVED-METRICS-SCOPE.md` (the signed-off two-layer design). The
+> operator chose **Layer A first** (A: % of population + B: DCMA checks passed n/14). This branch
+> `claude/ai-derived-metrics-layer-a` implements it:
+> - `engine/metrics/derived.py` — `population_share(count, population)` + `dcma_pass_rate(passed,
+>   failed)`, pure 1-dp functions of the primary metrics (verification-contract rounding).
+> - `ai/qa.build_fact_sheet` appends two **cited derived facts** (DCMA 14-point pass rate; finish-driving
+>   share) — engine-computed, so usable in every Q&A mode incl. strict (no `[AI-derived]` flag).
+> - `web/help.py` documents both (formula + source); dictionary regenerated. Golden test pins
+>   `derived == hand-computed`; **no parity number moved.**
+>
+> **REMAINING — Layer B (deferred, operator to evaluate-then-go):** the Q&A *verified-derivation gate*
+> (recompute the model's ad-hoc derivations over a closed operation whitelist; relabel verified vs
+> unverified) — scoped in `AI-DERIVED-METRICS-SCOPE.md` §5. Artifact-gated audit items remain in
+> `audit/PARK-LIST.md`. **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR =
+> 0133.** Run the full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — Audit cluster CLOSED in-env — batch 2, ADR-0132; highest ADR 0132
 
 > ## STATUS (current) — Audit cluster fully remediated in-env (ADR-0131 + ADR-0132); only artifact-gated items remain
 >

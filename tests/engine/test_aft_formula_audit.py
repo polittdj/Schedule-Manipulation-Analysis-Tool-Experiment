@@ -624,6 +624,24 @@ AUDIT: tuple[Row, ...] = (
         NOT_IN_BIBLE,
         "Tool forecasting (IEAC(t) = AT + (PD-ES)/SPI(t)); see the spi_t drift row.",
     ),
+    # Derived metrics (Layer A, ADR-0133): standard secondary figures computed from the primary
+    # metrics, not literal .aft library entries.
+    Row(
+        "dcma_pass_rate",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "Derived roll-up of the DCMA 14-Point Assessment (passing applicable checks / applicable); "
+        "not a literal .aft metric (ADR-0133).",
+    ),
+    Row(
+        "population_share",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "Derived normalisation (count / population) applied to a primary metric; standard ratio, "
+        "not a literal .aft metric (ADR-0133).",
+    ),
 )
 
 

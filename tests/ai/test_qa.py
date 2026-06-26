@@ -66,6 +66,17 @@ def test_fact_sheet_is_fully_cited_and_covers_the_families(golden_project5: Sche
         assert token in text
 
 
+def test_fact_sheet_includes_cited_derived_metrics(golden_project5: Schedule) -> None:
+    """Layer A: the engine-computed derived figures (DCMA pass rate, finish-driving share) appear
+    as cited facts, so the analyst (and a live model) gets them already computed and sourced."""
+    facts = _facts(golden_project5)
+    derived = [f for f in facts if f.text.startswith("Derived —")]
+    assert_all_cited(derived)  # derived facts carry citations like any other
+    blob = " ".join(f.text for f in derived)
+    assert "DCMA 14-point assessment" in blob and "pass rate" in blob
+    assert "finish-driving concentration" in blob and "% of the network" in blob
+
+
 def test_relevant_facts_match_question_terms(golden_project5: Schedule) -> None:
     facts = _facts(golden_project5)
     chosen = relevant_facts(facts, "what does the finish forecast say?")

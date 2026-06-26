@@ -3744,3 +3744,27 @@ The artifact-gated items (Fuse/SSI/.aft/.mpp) remain in `audit/PARK-LIST.md`.
 The audit cluster (both prior trails + the re-audit's NEW-1) is now **fully remediated in-environment**.
 Remaining items are artifact-gated only (`audit/PARK-LIST.md`: Fuse/SSI/.aft/.mpp); F-11 stays an accepted
 documented design choice.
+
+---
+
+## 2026-06-26 — Derived metrics Layer A (ADR-0133)
+
+- **Branch:** `claude/ai-derived-metrics-layer-a` (fresh from `origin/main` after #274).
+- **Highest ADR:** 0133.
+
+### What changed
+- New `engine/metrics/derived.py`: `population_share(count, population)` and
+  `dcma_pass_rate(passed, failed)` — pure, 1-dp functions of the engine's primary metrics (the
+  verification contract's rounding rule). Exported from the metrics package.
+- `ai/qa.build_fact_sheet` appends two **cited derived facts** (DCMA 14-point pass rate; finish-driving
+  population share) after the primaries — usable in every Q&A mode incl. strict, because the engine,
+  not the model, computed them (no `[AI-derived]` flag).
+- `web/help.py` documents both as dictionary entries (formula + source); `dcma_pass_rate` tagged
+  Construction; `docs/METRIC-DICTIONARY.md` regenerated.
+- Tests: `tests/engine/metrics/test_derived.py` (formulas + golden `derived == hand-computed` on
+  P2/P5) + a fact-sheet presence/citation test. **No parity number moved.**
+
+### Status
+Layer A of `docs/PLAN/AI-DERIVED-METRICS-SCOPE.md` is implemented (operator chose A: % of population +
+B: DCMA pass rate, Layer A first). Layer B (the Q&A verified-derivation gate) remains scoped/deferred
+pending the operator's evaluate-then-go on this batch.
