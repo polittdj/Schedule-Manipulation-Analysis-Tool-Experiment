@@ -12,6 +12,23 @@ adversarial disproof attempted) → Phase E open-item reconciliation → Phase F
 quantitative claim cites a `file:line` or a named oracle fixture. Confidence is tagged
 CONFIRMED / SUSPECTED / UNVERIFIABLE-IN-ENV.
 
+> **Errata (2026-06-26) — two "missing artifact" claims were overstated; corrected below.**
+> A follow-up re-sweep of the working tree found that two items this report had listed as artifact-gated
+> were in fact already satisfied in-repo:
+> 1. **Cost EVM parity is NOT un-oracled.** `tests/fixtures/golden/evm/EVM1.mspdi.xml` and `EVM2.mspdi.xml`
+>    are committed, cost-loaded **Acumen-Fuse exports**, and `tests/engine/test_evm_acumen_reference.py`
+>    (6 tests, passing) already validates the cost metrics (BCWS/BCWP, DCMA, BEI) against the Fuse "Metric
+>    History Report" and pins the documented SPI(t)/finish/Net-Finish-Impact **residuals**. Those residuals
+>    are the standing **ADR-0108 data-date gap** (a pure-logic-CPM limitation), *not* a missing export. So
+>    cost-EVM is **partially verifiable in-env** (matched rows confirmed), not "NONE / UNVERIFIABLE."
+> 2. **The `.mpp`→MSPDI toolchain is present.** A Java 17 runtime is installed and the vendored MPXJ
+>    converter (`tools/mpxj/` — `MpxjToMspdi.class` + `lib/*.jar`) is runnable here. The native-`.mpp`
+>    parity work is blocked **only on the absent `.mpp` data**, not on the toolchain.
+> The genuinely-absent artifacts are unchanged: the `NASA_Metrics_Complete_*.aft` Bible, the operator's
+> Acumen Fuse §A/§B/§C/§E exports of the current Project2/Project5 pair, the native `.mpp` files
+> (`Project2`/`Project5`/`Large_Test_File`), and SSI's recorded focus UID for `Large_Test_File.mpp`.
+> The inline rows in §3 and §8 below carry these corrections.
+
 ---
 
 ## 1. Executive summary (worst-first)
@@ -97,10 +114,10 @@ Bible is absent). Numeric reference values are transcribed from Acumen Fuse v8.1
 | Recorded golden == actual Acumen Fuse output | committed Fuse export | **NONE** — Fuse exports not committed → **UNVERIFIABLE-IN-ENV** (transcription unconfirmable here) |
 | Literal metric formula == `.aft` Fuse expression | authoritative formula file | `NASA_Metrics_Complete_*.aft` **ABSENT**; in-repo proxy = `test_aft_formula_audit.py::AUDIT` (transcription) → formula *sourcing* verifiable, literal `.aft` match **UNVERIFIABLE-IN-ENV** |
 | Engine CPM (ES/EF/LS/LF/TF/FF/critical) correct | independent recompute + MSP-stored fields | own from-scratch pass + `<TotalSlack>`/`<Critical>` in golden MSPDI — **PRESENT, verifiable** |
-| `.mpp` → result == MSPDI → result (parser fidelity) | native `.mpp` + Java/MPXJ | **ABSENT** (git-ignored CUI) → **UNVERIFIABLE-IN-ENV** |
+| `.mpp` → result == MSPDI → result (parser fidelity) | native `.mpp` + Java/MPXJ | toolchain **PRESENT** (`tools/mpxj/` class+jars, Java 17 installed & runnable); native `.mpp` **data** **ABSENT** (git-ignored CUI) → **UNVERIFIABLE-IN-ENV** (blocked on data, not capability) |
 | SSI driving slack per UID | recorded SSI golden | `golden/ssi_uid145/case.json` (focus 145, 108 UIDs) — **PRESENT, verifiable**; `ssi_uid143` is **stale/xfail** |
 | §E float/critical change metrics == Acumen | independent Acumen §E export | **stale** (`PARITY-TARGETS.md` has the old pairing); current values **engine-pinned** → **UNVERIFIABLE-IN-ENV** (circular, see F-01) |
-| Cost EVM (SPI/CPI/TCPI) == Acumen | cost-loaded schedule + Fuse EVM export | **NONE** (goldens carry no cost) → correctly returned NOT_APPLICABLE; parity **UNVERIFIABLE-IN-ENV** |
+| Cost EVM (SPI/CPI/TCPI) == Acumen | cost-loaded schedule + Fuse EVM export | **PRESENT** — `golden/evm/EVM1\|EVM2.mspdi.xml` are committed cost-loaded **Acumen-Fuse exports**; `test_evm_acumen_reference.py` (6 pass) validates BCWS/BCWP/DCMA/BEI vs the Fuse "Metric History Report" and pins the SPI(t)/finish/NFI **residuals** (the ADR-0108 data-date gap) → **PARTIALLY VERIFIABLE** (matched rows confirmed; residual closure awaits the progress-scheduler, not an export). The Project2/5 `case.json` goldens separately carry no cost → those rows correctly return NOT_APPLICABLE |
 | Structural/health thresholds authority | NASA Handbook / assessment decks | **ABSENT** → cutoffs **UNVERIFIABLE-IN-ENV** (in-repo design choices) |
 | Determinism, escaping, air-gap, goal-coverage | the code itself | **PRESENT, verifiable** by static + read-only execution |
 
@@ -236,15 +253,19 @@ figure required passing `--cov` explicitly, as CI does.)
 
 **What I did NOT / could NOT verify, and the artifact required:**
 
-1. **Acumen Fuse *numeric* parity** (every §A/§B/§C/§E row, and cost EVM). The Fuse exports are not
+1. **Acumen Fuse *numeric* parity** for the §A/§B/§C/§E rows. The Project2/5 Fuse exports are not
    committed; `case.json`/`PARITY-TARGETS.md` are human transcriptions I cannot re-confirm here. *Need: the
-   operator's Acumen Fuse v8.11.0 workbook/ribbon/DCMA/§E exports of Project2 & Project5 (and a cost-loaded
-   schedule + its Fuse EVM export for SPI/CPI/TCPI).*
+   operator's Acumen Fuse v8.11.0 workbook/ribbon/DCMA/§E exports of Project2 & Project5.* **Cost EVM is the
+   exception, not a gap** — `golden/evm/EVM1|EVM2.mspdi.xml` ARE committed Acumen-Fuse exports and
+   `test_evm_acumen_reference.py` (6 pass) already validates the cost metrics against them; only the
+   SPI(t)/finish/NFI residuals remain open, and those are the ADR-0108 data-date gap (engine work), not a
+   missing artifact.
 2. **Literal `.aft` formula match.** The live-Bible test skips; the in-repo `AUDIT` table is itself a
    transcription. *Need: `NASA_Metrics_Complete_*.aft`.*
 3. **`.mpp` ↔ MSPDI transitive equivalence** and all native-`.mpp` behavior (incl. the TP2 calendar
-   round-trip and the Large-File parse). *Need: the native `.mpp` intake + a Java 17 runtime + the vendored
-   MPXJ exercised.*
+   round-trip and the Large-File parse). The Java 17 runtime and the vendored MPXJ (`tools/mpxj/`) are
+   **present and runnable here**; the block is solely the absent native `.mpp` intake data. *Need: the
+   native `.mpp` files — the toolchain is already in place.*
 4. **The four disclosed metric drifts' numeric magnitude** and the §E float/critical subset's true Acumen
    values. *Need: targeted Fuse exports.*
 5. **Structural/health-check threshold authority** (35% lag, 10-d low-float band, etc.). *Need: the NASA
