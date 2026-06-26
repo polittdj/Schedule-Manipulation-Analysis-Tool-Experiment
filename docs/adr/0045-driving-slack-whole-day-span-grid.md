@@ -42,9 +42,19 @@ still floors onto the correct SSI day. Two properties matter:
 - The Path page still **displays** the true stored dates — `date_basis` is unchanged; only the
   span consumed by the slack pass is snapped.
 
+> **Erratum (2026-06-26, audit F-07).** "matches SSI exactly" below refers to the **relative tier
+> spacing** (0 / 9 / 12 / 13) across the compared activities — the property this span-snap fixes — **not**
+> the *absolute* driving-slack values. As `docs/PARITY-REPORT.md` (§"Large File") records, the absolute
+> Large-File values are **not** reproducible from repo artifacts because SSI's target/focus UniqueID was
+> never recorded (the global-finish milestone UID 6077 leaves the chain at ~514 working days of float, so
+> SSI evidently targeted an earlier milestone). PARITY-REPORT.md is authoritative on this open limitation;
+> this Verification section overstates it. Action still open: record SSI's focus UID next time the file is
+> in hand.
+
 ## Verification
 
-- **Large Test File** now matches SSI exactly on every compared activity: the driving path
+- **Large Test File** reproduces SSI's relative tier spacing on every compared activity (see the erratum
+  above re: absolute values): the driving path
   reads 0 (UID 6509/6514/6997/5571/5738…), Path 02 reads 9 (UID 5539/5542), Path 03 reads 12
   (UID 7543/7544) and 13 (UID 6533).
 - **TP1 (validated SSI parity)** unchanged at the tier level: 13 DRIVING / 1 SECONDARY /

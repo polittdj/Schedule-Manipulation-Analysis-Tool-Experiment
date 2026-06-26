@@ -11,7 +11,15 @@ Two notions of "critical" live here, kept distinct:
 * the **Acumen "Critical" metric** — ``total_float <= 0`` **and** the activity is not
   yet complete (a finished activity is no longer a forward schedule risk).
   :attr:`ScheduleFloatSummary.critical_incomplete_count` is that metric, validated
-  against the Acumen targets (Project2 = 41, Project5 = 37).
+  against the Acumen targets (Project2 = 41, Project5 = 4 — the authoritative
+  ``Project5_TAMPERED.mpp`` per ADR-0112; the prior committed golden read 37).
+
+**Definition caveat (ADR-0130 / audit F-04).** This module derives "critical" from the
+*pure-logic* CPM flag (``is_critical``), whereas the DCMA / schedule-quality metric surfaces
+use ``is_effective_critical`` (which prefers the source tool's stored progress-aware Critical
+flag). On the curated goldens the *counts* coincide, but on a progressed real file the two
+can name **different activities** — so this float view is the pure-logic critical set, not
+necessarily the same UID set as the Acumen-parity metric.
 
 Cross-version float *trends* (erosion across a series) are a separate, forensic
 concern handled at M11, not here.

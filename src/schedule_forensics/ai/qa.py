@@ -2,16 +2,19 @@
 
 The analyst types a question; the answer is grounded in a **fact sheet the engine
 computed** (frame dates, DCMA verdicts, findings, float bands, completion performance,
-forecasts, driving path) — every fact a :class:`CitedStatement`. Two answering modes
-(operator-selectable, M18 "AI at full power"):
+forecasts, driving path) — every fact a :class:`CitedStatement`. Three answering modes
+(operator-selectable in AI Settings, M18 "AI at full power"; ADR-0129):
 
-* **interpretive** (default): the model may compute differences/ratios from the facts
-  and explain implications — derived figures are allowed; every answer ships with the
-  cited facts alongside and the standing *"AI can err — verify against citations"*
-  disclaimer in the UI.
+* **annotate** (the default): the model may compute differences/ratios from the facts and
+  explain implications, but any figure NOT in the cited facts is flagged in an
+  ``[AI-derived …]`` footer (``_annotate_unsourced``) — the answer is kept, yet a derived
+  number can never be mistaken for an engine figure.
 * **strict**: any numeric figure in the model's answer that does not appear in the fact
   sheet **discards the whole answer** (the cited facts are shown instead — the tool
   presents no number the engine did not compute).
+* **interpretive**: the model's text is returned verbatim and is **not** figure-gated — the
+  operator opts into raw analysis; the standing *"AI can err — verify against citations"*
+  disclaimer rides every answer and the cited facts are always shown alongside.
 
 With the offline Null backend there is no generation at all: the facts matching the
 question are returned verbatim. :func:`build_workbook_fact_sheet` extends the same
