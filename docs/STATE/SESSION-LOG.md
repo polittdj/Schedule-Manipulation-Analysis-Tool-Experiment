@@ -3690,3 +3690,31 @@ Corrected in place (doc-only, no code/test/parity change): errata blocks + inlin
 `audit/AUDIT-REPORT.md` (§3 oracle inventory, §8 blind-spots) and `audit/PATH-FORWARD.md` (§D table), and
 the HANDOFF STATUS "REMAINING" block. No ADR added (no decision changed; the EVM validation already
 existed). Highest ADR still 0130; doc drift + parity-report sync guards green.
+
+---
+
+## 2026-06-26 — Re-audit (PR #271 merged) + remediation batch 1 (ADR-0131)
+
+- **Branch:** `claude/audit-cluster-remediation-batch1` (fresh from `origin/main` after #271).
+- **Highest ADR:** 0131.
+
+### What changed
+- **Read-only re-audit merged (#271):** `audit/VERIFICATION-REPORT.md` (unified ledger of both prior
+  trails, re-derived by re-executing code/tests) + `audit/PARK-LIST.md`. Key finding: the two audit
+  trails were never merged, so ADR-0130 closed only the F-set while the internal audit's own Wave plan —
+  **C1 (CRITICAL), H1, H3, H4, M2–M8, L2/L3/L5/L7** — was orphaned and left OPEN; the HANDOFF "only
+  artifact-gated items remain" status was false. Also surfaced **NEW-1**, a Float-Ratio day-axis mismatch
+  neither trail had found.
+- **Remediation batch 1 (ADR-0131)** — closed C1 (full Save .json fidelity round-trip + guard test), H1
+  (SSI non-list `affected` no longer 500s/half-mutates), H3/H4 (one bad XER id no longer sinks the file),
+  M3 (friendly JSON raises on missing `project_start`), M4 (UID-0 baseline-finish leak), M2 (pre-commit +
+  `.gitignore` block `.aft`/`.docx` + a blocklist test), M6 (sign-aware figure gate), NEW-1 (Float Ratio
+  single-axis), and L2/L7/M8 (non-finite `_to_float` guard; tolerant cosmetic OutlineLevel; MEI >1.0 help
+  note + regenerated dictionary). No parity number moved; every fix pinned by a new/updated test.
+- **Workflow note (operator standing instruction):** always `git fetch origin` before branching/rebasing
+  so work lands on the real latest `origin/main`, not a stale local copy — recorded in CLAUDE.md.
+
+### Remaining (deferred to batch 2, flagged in ADR-0131)
+M5 (days↔% client/server rounding — JS+server), M7 (path-filter debounce — JS perf), L3 (offload atexit
+hook), H2 (prose-tamper denylist — operator design decision). F-11 stays an accepted documented choice.
+The artifact-gated items (Fuse/SSI/.aft/.mpp) remain in `audit/PARK-LIST.md`.

@@ -113,3 +113,23 @@ def test_float_ratio_trend_is_period_to_period_with_deltas() -> None:
 def test_float_ratio_trend_single_version_has_no_prior_delta() -> None:
     series = compute_float_ratio_trend([_sched([_t(1, remaining=4800, float_min=2400)])])
     assert series.values == (0.5,) and series.deltas == (None,)
+
+
+def test_float_ratio_elapsed_activity_uses_a_single_axis() -> None:
+    """Audit NEW-1: for an elapsed-duration activity, float and remaining duration must be
+    divided on the SAME axis. Previously float used the working-day axis (480) while remaining
+    used the wall-clock axis (1440), distorting the ratio by 1440/480 = 3x (reporting 1.0 where
+    the unit-consistent value is 0.33)."""
+    # remaining 5 elapsed days (7200 min); stored float 5 working days (2400 min); 8h calendar
+    elapsed = Task(
+        unique_id=1,
+        name="elapsed WIP",
+        duration_minutes=7200,
+        duration_is_elapsed=True,
+        remaining_duration_minutes=7200,
+        stored_total_float_minutes=2400,
+    )
+    out = compute_float_ratio(_sched([elapsed]))
+    # unit-consistent ratio is 5/15 (working-day) == 1.67/5 (elapsed-axis) == 0.33; the old
+    # mixed-axis bug reported 1.0 (float 5 working-days / remaining 5 elapsed-days).
+    assert out["float_ratio"].value == 0.33

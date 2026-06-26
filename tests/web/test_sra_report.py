@@ -266,3 +266,45 @@ def test_registry_export_is_the_reduced_register_not_the_full_report(client: Tes
     assert "<w:drawing>" not in doc
     assert "OAT sensitivity" not in doc and "Focus-finish results" not in doc
     assert client.get("/export/docx/sra-registry").content == r.content  # deterministic
+
+
+def test_setup_load_non_list_affected_does_not_500_or_half_mutate(client: TestClient) -> None:
+    """Audit H1: a hand-edited setup whose risk ``affected`` is a non-list (e.g. ``5`` or
+    ``null``) must NOT 500 and must NOT leave the session half-mutated. Previously the
+    ``for u in <non-list>`` raised TypeError after the factor/focus/override fields had already
+    been assigned, 500ing the route mid-write."""
+    uid = _editable_uid(client)
+    good = {
+        "setup_version": 1,
+        "focus_uid": uid,
+        "risks": [
+            {"id": "R1", "name": "ok", "probability": 0.4, "impact_days": 10, "affected": [uid]}
+        ],
+    }
+    r0 = client.post(
+        "/sra/ssi/load",
+        files={"setup": ("s.json", json.dumps(good).encode(), "application/json")},
+    )
+    assert r0.status_code in (200, 303)
+
+    for bad_affected in (5, None, "12"):
+        bad = {
+            "setup_version": 1,
+            "focus_uid": uid,
+            "risks": [
+                {
+                    "id": "R2",
+                    "name": "bad",
+                    "probability": 0.9,
+                    "impact_days": 99,
+                    "affected": bad_affected,
+                }
+            ],
+        }
+        r1 = client.post(
+            "/sra/ssi/load",
+            files={"setup": ("s.json", json.dumps(bad).encode(), "application/json")},
+        )
+        assert r1.status_code != 500, f"non-list affected={bad_affected!r} 500ed the route"
+        # the session remains usable (not corrupted by a partial write)
+        assert client.get("/api/sra/ssi?iterations=100").status_code == 200

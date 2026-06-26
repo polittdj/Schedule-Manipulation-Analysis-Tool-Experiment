@@ -193,3 +193,17 @@ def test_report_calendar_panel_reflects_an_imported_non_default_calendar(
     data = client.get("/api/analysis/tens").json()
     assert data["calendar"]["working_minutes_per_day"] == 600
     assert data["calendar"]["holidays"] == ["2025-07-14"]
+
+
+def test_to_float_rejects_non_finite_at_the_boundary() -> None:
+    """Audit L2: inf/nan parse cleanly via float() but poison downstream SRA arithmetic, so
+    `_to_float` discards a non-finite entry like any other invalid input."""
+    from schedule_forensics.web.app import _to_float
+
+    assert _to_float("inf", 0.0) == 0.0
+    assert _to_float("-inf", 1.0) == 1.0
+    assert _to_float("nan", 2.0) == 2.0
+    assert _to_float("Infinity", 3.0) == 3.0
+    # ordinary finite values still parse
+    assert _to_float("42.5", 0.0) == 42.5
+    assert _to_float("", 7.0) == 7.0

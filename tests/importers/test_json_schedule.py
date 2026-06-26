@@ -238,3 +238,130 @@ def test_save_json_round_trips_calendar_holidays() -> None:
     )
     reread = parse_json_text(to_json_text(original))
     assert reread.calendar.holidays == (dt.date(2025, 1, 20), dt.date(2025, 7, 4))
+
+
+def test_save_json_round_trips_every_fidelity_field() -> None:
+    """Audit C1: a Save .json round-trip must not silently drop ANY field the model carries.
+
+    Builds a maximal Task/Schedule/Calendar with every field set to a non-default value and
+    asserts field-by-field equality after ``parse_json_text(to_json_text(...))``. This guards
+    the Acumen-parity ``stored_total_float_minutes`` / ``stored_is_critical``, the ADR-0128
+    ``is_active`` flag, ``custom_fields`` / ``custom_field_labels`` (the group/filter population),
+    and the calendar ``working_days`` / ``day_segments`` (SSI driving-slack inputs). If a future
+    schema add is not wired into JSON I/O, this test fails loudly.
+    """
+    import datetime as dt
+
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import ConstraintType, Task
+
+    cal = Calendar(
+        uid=3,
+        name="Site",
+        working_minutes_per_day=600,
+        work_weekdays=(0, 1, 2, 3, 4, 5),
+        holidays=(dt.date(2025, 1, 1), dt.date(2025, 7, 4)),
+        working_days=(dt.date(2025, 1, 18),),
+        day_segments=((480, 720), (780, 1020)),
+    )
+    task = Task(
+        unique_id=7,
+        name="Pour foundation",
+        wbs="1.2.3",
+        calendar_uid=42,
+        outline_level=3,
+        duration_minutes=4800,
+        duration_is_elapsed=True,
+        remaining_duration_minutes=2400,
+        baseline_duration_minutes=4800,
+        is_estimated_duration=True,
+        is_milestone=False,
+        is_summary=False,
+        is_level_of_effort=True,
+        is_active=False,
+        is_manual=True,
+        constraint_type=ConstraintType.MSO,
+        constraint_date=dt.datetime(2025, 3, 1, 8, 0),
+        deadline=dt.datetime(2025, 4, 1, 17, 0),
+        percent_complete=50.0,
+        physical_percent_complete=33.0,
+        stored_total_float_minutes=-240,
+        stored_is_critical=True,
+        start=dt.datetime(2025, 2, 1, 8, 0),
+        finish=dt.datetime(2025, 2, 10, 17, 0),
+        actual_start=dt.datetime(2025, 2, 1, 8, 0),
+        baseline_start=dt.datetime(2025, 1, 15, 8, 0),
+        baseline_finish=dt.datetime(2025, 1, 25, 17, 0),
+        cost=1000.0,
+        actual_cost=400.0,
+        budgeted_cost=900.0,
+        resource_names=("Crew A",),
+        resource_ids=(11,),
+        custom_fields=(("CA-WBS", "X1"), ("Risk", "High")),
+    )
+    original = Schedule(
+        name="maximal",
+        project_start=dt.datetime(2025, 1, 6, 8, 0),
+        status_date=dt.datetime(2025, 2, 5, 17, 0),
+        calendar=cal,
+        calendars=(cal,),
+        custom_field_labels=("CA-WBS", "Risk"),
+        tasks=(task,),
+    )
+    reread = parse_json_text(to_json_text(original))
+
+    rt = reread.tasks[0]
+    for field in (
+        "wbs",
+        "calendar_uid",
+        "outline_level",
+        "duration_minutes",
+        "duration_is_elapsed",
+        "remaining_duration_minutes",
+        "baseline_duration_minutes",
+        "is_estimated_duration",
+        "is_level_of_effort",
+        "is_active",
+        "is_manual",
+        "constraint_type",
+        "constraint_date",
+        "deadline",
+        "percent_complete",
+        "physical_percent_complete",
+        "stored_total_float_minutes",
+        "stored_is_critical",
+        "start",
+        "finish",
+        "actual_start",
+        "baseline_start",
+        "baseline_finish",
+        "cost",
+        "actual_cost",
+        "budgeted_cost",
+        "resource_names",
+        "resource_ids",
+        "custom_fields",
+    ):
+        assert getattr(rt, field) == getattr(task, field), f"Task.{field} lost in round-trip"
+    assert reread.custom_field_labels == ("CA-WBS", "Risk")
+    assert reread.status_date == original.status_date
+    rc = reread.calendar
+    for field in (
+        "uid",
+        "working_minutes_per_day",
+        "work_weekdays",
+        "holidays",
+        "working_days",
+        "day_segments",
+    ):
+        assert getattr(rc, field) == getattr(cal, field), f"Calendar.{field} lost in round-trip"
+
+
+def test_missing_project_start_raises_not_fabricated() -> None:
+    """Audit M3: a friendly JSON with valid tasks but no project_start must raise (like MSPDI/
+    XER), never silently fabricate a 2025-01-06 CPM anchor."""
+    with pytest.raises(ImporterError, match="missing 'project_start'"):
+        parse_json_text(
+            '{"name": "x", "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}]}'
+        )

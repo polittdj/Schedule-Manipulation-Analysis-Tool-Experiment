@@ -839,3 +839,36 @@ def test_no_extended_attributes_leaves_custom_fields_empty() -> None:
     s = parse_mspdi(FIXTURE)
     assert s.custom_field_labels == ()
     assert all(t.custom_fields == () for t in s.tasks)
+
+
+def test_uid0_summary_baseline_excluded_from_project_baseline_finish() -> None:
+    """Audit M4: a UID-0 project-summary row whose XML omits <Summary> must NOT leak its
+    project-spanning rollup baseline into the project baseline finish (the CPLI basis). The
+    baseline-finish scan now mirrors the model's `is_summary or uid == 0` rule."""
+    body = (
+        "<Tasks>"
+        "<Task><UID>0</UID><Name>Proj</Name><Duration>PT0H0M0S</Duration>"
+        "<BaselineFinish>2099-12-31T17:00:00</BaselineFinish>"
+        "<Baseline><Number>0</Number><Finish>2099-12-31T17:00:00</Finish></Baseline></Task>"
+        "<Task><UID>1</UID><Name>Leaf</Name><Summary>0</Summary><Duration>PT8H0M0S</Duration>"
+        "<BaselineStart>2030-01-01T08:00:00</BaselineStart>"
+        "<BaselineFinish>2030-01-10T17:00:00</BaselineFinish>"
+        "<Baseline><Number>0</Number><Start>2030-01-01T08:00:00</Start>"
+        "<Finish>2030-01-10T17:00:00</Finish></Baseline></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    assert sch.baseline_finish == dt.datetime(2030, 1, 10, 17, 0)  # not the leaked 2099
+
+
+def test_non_integer_outline_level_is_tolerated_not_fatal() -> None:
+    """Audit L7: OutlineLevel is cosmetic (Gantt indentation only) — a non-integer value must
+    fall back to 0, never refuse the whole file."""
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><OutlineLevel>n/a</OutlineLevel>"
+        "<Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))  # must not raise
+    assert sch.tasks_by_id[1].outline_level == 0
