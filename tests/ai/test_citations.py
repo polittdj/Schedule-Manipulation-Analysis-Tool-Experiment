@@ -9,6 +9,7 @@ from schedule_forensics.ai.citations import (
     Narrative,
     UncitedStatementError,
     assert_all_cited,
+    introduces_loaded_terms,
     preserves_figures,
     reattach,
 )
@@ -98,3 +99,38 @@ def test_reattach_discards_rephrase_that_alters_figures() -> None:
     # while a figure-faithful rephrase is kept
     kept = reattach(("a 99-calendar-day slip on the finish",), sources)
     assert kept[0].text == "a 99-calendar-day slip on the finish"
+
+
+def test_introduces_loaded_terms_flags_unverified_accusations() -> None:
+    # Audit H2: a rephrase that injects an accusatory/intent term the engine never asserted
+    # (fraud, deliberate, concealed, intentional, ...) must be flagged.
+    src = "12 of 126 activities have hard constraints. Review and justify each."
+    assert introduces_loaded_terms(
+        src,
+        "The contractor DELIBERATELY CONCEALED schedule fraud: 12 of 126 activities have hard "
+        "constraints, proving intentional manipulation. Review.",
+    )
+    # a faithful polish that adds no loaded term is fine
+    assert not introduces_loaded_terms(
+        src, "Hard constraints appear on 12 of 126 activities; review and justify each."
+    )
+    # a loaded term already in the source (the engine's own finding) is not an introduction
+    assert not introduces_loaded_terms(
+        "Deliberate constraint manipulation suspected on 3 tasks.",
+        "Deliberate manipulation suspected on 3 tasks.",
+    )
+
+
+def test_reattach_discards_prose_that_injects_an_accusation() -> None:
+    # the verbatim engine sentence is kept when a rephrase preserves the digits but adds an
+    # unverified conclusion (digits 12/126 unchanged, but "fraud"/"deliberately" injected)
+    src = CitedStatement("12 of 126 activities have hard constraints; justify each.", (C,))
+    tampered = (
+        "12 of 126 activities have hard constraints — clear evidence the contractor "
+        "deliberately concealed fraud."
+    )
+    out = reattach([tampered], (src,))
+    assert out[0].text == src.text  # verbatim kept, accusation discarded
+    # a clean rephrase with the same digits and no accusation IS used
+    clean = "Hard date constraints sit on 12 of 126 activities; justify each."
+    assert reattach([clean], (src,))[0].text == clean

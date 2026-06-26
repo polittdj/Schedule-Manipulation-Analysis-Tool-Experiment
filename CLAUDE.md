@@ -74,8 +74,11 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `OpenAICompatBackend` (both **loopback-validated at construction**; `route_backend` fails closed to
   Null and never auto-reaches cloud). Used for narrative polish, Ask-the-AI Q&A, the executive briefing,
   and translation. The **narrative / briefing / translation** paths re-verify every AI-emitted figure
-  against engine citations (`ai.citations.reattach` — a numeric subset gate; note it guards *digits*,
-  not prose). **Ask-the-AI Q&A is operator-mode-gated** (ADR-0129): `strict` discards any answer
+  against engine citations (`ai.citations.reattach` — a numeric subset gate). It guards *digits*
+  (figure preservation, sign-aware) **and**, since ADR-0132 (audit H2), rejects a rephrase that
+  *introduces an accusatory/intent term the engine never asserted* (fraud, deliberate, concealed, …
+  via `introduces_loaded_terms`) — but it does not otherwise constrain prose wording, so a model can
+  still reword non-accusatorily. **Ask-the-AI Q&A is operator-mode-gated** (ADR-0129): `strict` discards any answer
   containing an unsourced figure, `annotate` (default) keeps the answer but flags AI-derived figures in
   a footer, and `interpretive` returns the model's text verbatim and is *not* figure-gated (the operator
   opts into raw analysis, with the standing "AI can err — verify against the citations" disclaimer). So

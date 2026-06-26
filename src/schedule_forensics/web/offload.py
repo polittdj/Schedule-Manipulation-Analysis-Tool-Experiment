@@ -25,6 +25,7 @@ network — a local child process).
 
 from __future__ import annotations
 
+import atexit
 import threading
 from collections.abc import Callable
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor
@@ -107,3 +108,10 @@ def shutdown_offload() -> None:
     _reset()
     with _lock:
         _disabled = False
+
+
+# Safety net: the explicit teardown is wired only to the Quit route (/api/shutdown), but the
+# browser-gone watchdog and any other non-graceful exit skip it. Registering the pool teardown with
+# atexit guarantees the worker process is reaped on ANY interpreter exit (audit L3). ProcessPool has
+# its own atexit join, but this also cancels queued futures and drops our handle deterministically.
+atexit.register(_reset)

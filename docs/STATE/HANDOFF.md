@@ -1,6 +1,29 @@
-# Handoff — 2026-06-26 (RE-AUDIT #271 merged + remediation batch 1, ADR-0131; highest ADR 0131)
+# Handoff — 2026-06-26 (Audit cluster CLOSED in-env — batch 2, ADR-0132; highest ADR 0132)
 
-> ## STATUS (current) — Orphaned internal-audit cluster + NEW-1 remediated (ADR-0131); batch-2/artifact-gated items remain
+> ## STATUS (current) — Audit cluster fully remediated in-env (ADR-0131 + ADR-0132); only artifact-gated items remain
+>
+> **READ FIRST:** `audit/VERIFICATION-REPORT.md` + `audit/PARK-LIST.md`. The re-audit's full finding set
+> from BOTH prior trails — plus the re-audit's own NEW-1 — is now closed in-environment across two batches.
+> ADR-0131 (batch 1, #272) closed C1 (CRITICAL) + H1/H3/H4/M2-M8/L2/L7 + NEW-1. **ADR-0132 (batch 2, this
+> branch `claude/audit-cluster-remediation-batch2`) closes the rest:**
+> - **H2** — the narrative gate now rejects a rephrase that *introduces* an accusatory/intent term the
+>   engine never asserted (`ai.citations.introduces_loaded_terms`); legitimate derivation/polish is intact.
+> - **M5** — client & server round per-task remaining-days at the same precision (`_REMAIN_DAYS_DP=6`), so
+>   the days↔% derive matches for sub-day tasks.
+> - **M7** — `pathFilter` debounced (~140 ms) + `freezeColumns` skips redundant style writes (no grid jank).
+> - **L3** — `web/offload` registers pool teardown with `atexit` (worker reaped on any exit).
+>
+> **AI direction (operator):** use the engine's computed metrics fully and derive further metrics from them
+> when helpful — but only by industry-standard methods, verified for accuracy. H2 enforces that bar (no
+> unverified accusation), without restricting legitimate derivation.
+>
+> **REMAINING — artifact-gated ONLY** (need operator files; see `audit/PARK-LIST.md`): the Acumen Fuse
+> §A/§B/§C/§E export of the current P2/P5 pair, the `NASA_Metrics_Complete_*.aft` Bible, the native `.mpp`
+> data, and SSI's focus UID for `Large_Test_File.mpp`. **F-11** (interpretive-mode role re-labeling) stays an
+> accepted, documented design choice. **Workflow:** always `git fetch origin` before branching/rebasing
+> (CLAUDE.md). **Highest ADR = 0132.** Run the full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — Orphaned internal-audit cluster + NEW-1 remediated (ADR-0131); batch-2/artifact-gated items remain
 >
 > **READ FIRST:** `audit/VERIFICATION-REPORT.md` (the unified ledger of BOTH prior audit trails,
 > re-derived by re-executing code/tests) + `audit/PARK-LIST.md`. The re-audit (PR #271, merged) found the
