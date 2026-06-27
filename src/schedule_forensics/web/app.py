@@ -842,6 +842,12 @@ data: with a local model active (Ollama) you get a full written analysis grounde
 engine's computed, cited facts &mdash; the matching facts are always shown alongside. With no
 local model active you get the cited facts themselves; <a href="/settings">enable Ollama in AI
 Settings</a> for interpretation.</p>
+<p class=muted><b>Figure check guards presence, not role.</b> In <i>strict</i> and <i>annotate</i>
+modes a number the model writes is matched against the figures in the cited facts &mdash; but only
+that the <i>digit</i> appears, not how it is used. A digit that occurs in an activity <i>name</i> or
+<i>ID</i> (e.g. "Milestone 2099", UID&nbsp;6077) counts as present, so the model could re-use it in a
+different role (a finish year, a count). <i>Interpretive</i> mode is not figure-gated at all. Read any
+figure against the cited facts &mdash; the meaning, not just the number.</p>
 <div class=viz-controls>
 <label>About <select id=askScope>{"".join(options)}</select></label>
 <input id=askInput type=text size=60 maxlength=500

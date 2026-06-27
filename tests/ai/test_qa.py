@@ -255,3 +255,35 @@ def test_workbook_fact_sheet_spans_versions_and_is_cited(
     assert "Project2" in text and "Project5" in text  # both versions referenced
     assert "Latest-version finish forecast" in text
     assert "Manipulation signal" in text  # the latest-pair manipulation facts
+
+
+def test_strict_gate_guards_figure_presence_not_role_f11() -> None:
+    """Audit F-11 (disclosed, not set-gated): the strict gate verifies a figure is PRESENT in the
+    cited facts, not its ROLE. A digit carried by an activity name/UID is 'present', so a model can
+    re-role it and pass. Disclosed at the point of use (Ask-the-AI panel, qa docstring, CLAUDE.md);
+    pinned here so any future tightening is a deliberate, semantic change — not an accident."""
+    from schedule_forensics.ai import qa as qa_module
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("P.xml", 6077, "Milestone 2099")
+    facts = (
+        CitedStatement(
+            "Finding: 5 activities drive the path to 'Milestone 2099' (UID 6077).", (cite,)
+        ),
+    )
+    # the model re-roles the name-digit 2099 as a finish YEAR; every digit it writes is present in
+    # the fact text, so STRICT accepts it — the documented F-11 limitation.
+    answer, _ = answer_question(
+        _Model("The project finishes in 2099."), facts, "when does the path finish?", mode="strict"
+    )
+    assert answer == "The project finishes in 2099."  # presence gate passes; role unchecked
+
+    # a genuinely-invented number (in no fact, name, or value) is still discarded wholesale
+    invented, _ = answer_question(
+        _Model("The project finishes in 2031."), facts, "when does the path finish?", mode="strict"
+    )
+    assert invented is None
+
+    # the limitation is disclosed in the module docstring (point-of-use disclosure, not silent)
+    assert qa_module.__doc__ is not None
+    assert "presence, not role" in qa_module.__doc__

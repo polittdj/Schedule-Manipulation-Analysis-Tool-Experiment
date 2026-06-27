@@ -83,7 +83,12 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   a footer, and `interpretive` returns the model's text verbatim and is *not* figure-gated (the operator
   opts into raw analysis, with the standing "AI can err — verify against the citations" disclaimer). So
   "no unsourced number reaches the analyst" holds for narrative/briefing and the strict/annotate Q&A
-  modes — not for interpretive.
+  modes — not for interpretive. The strict/annotate gate guards a figure's *presence* in the cited
+  facts, **not its role** (audit F-11, ADR-0134): a digit carried by an activity **name**/**UID**
+  (e.g. "Milestone 2099", UID 6077) is "present", so a model could re-role it. It is **not** set-gated —
+  a UID `5` is indistinguishable from a count `5`, so excluding identifier digits would discard real
+  figures — so it is **disclosed at the point of use** (the Ask-the-AI panel + `ai/qa.py`) instead; a
+  role-aware gate needs semantic comparison (the `AI-DERIVED-METRICS-SCOPE.md` Layer B direction).
 - **`web/app.py`** — the entire UI in one (large) file: routes + server-rendered HTML + a Jinja layout.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once
