@@ -951,6 +951,37 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "IEAC(t) = AT + (PD - ES) / SPI(t)",
         _PBIX,
     ),
+    # --- Derived metrics (Layer A) — standard secondary figures computed deterministically from the
+    # primary metrics above (engine, never the AI); see docs/PLAN/AI-DERIVED-METRICS-SCOPE.md. ---
+    "dcma_pass_rate": _doc(
+        "dcma_pass_rate",
+        "DCMA Checks Passed (derived)",
+        "Headline schedule-health figure: the share of APPLICABLE DCMA-14 checks that pass. "
+        "Not-applicable checks are excluded from the denominator (DCMA convention), so it reads "
+        "the same way an assessor tallies the 14-point card. Derived from the audit's own "
+        "pass/fail tally — it cannot disagree with the per-check results.",
+        "passing applicable checks / (passing + failing applicable checks) x 100",
+        _DCMA,
+        indicates=(
+            "A low pass rate flags a schedule that breaks several DCMA construction rules at once; "
+            "read it alongside WHICH checks fail (a single critical-path or BEI failure matters "
+            "more than several cosmetic ones)."
+        ),
+    ),
+    "population_share": _doc(
+        "population_share",
+        "Population Share (derived)",
+        "The percentage of a metric's population that its count represents — the standard "
+        "normalisation that turns a raw 'N of M' count into a comparable rate (e.g. 12 of 126 hard "
+        "constraints = 9.5%). Computed from the primary metric's own count and population, to one "
+        "decimal place; undefined (not a fabricated 0) when the population is empty.",
+        "count / population x 100",
+        "Standard ratio normalisation / the Acumen population-ratio metrics (NASA metric library).",
+        indicates=(
+            "Lets two schedules of different sizes be compared on the same axis; a rising share "
+            "across versions is a normalised trend a raw count would obscure."
+        ),
+    ),
 }
 
 
@@ -1282,6 +1313,7 @@ _DIM_CONSTRUCTION = frozenset(
         "DCMA08",
         "DCMA09",
         "DCMA12",
+        "dcma_pass_rate",  # derived: the DCMA-14 construction-quality roll-up
         "logic_density",
         "critical",
         "hard_constraints",
