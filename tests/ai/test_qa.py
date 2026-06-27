@@ -287,3 +287,51 @@ def test_strict_gate_guards_figure_presence_not_role_f11() -> None:
     # the limitation is disclosed in the module docstring (point-of-use disclosure, not silent)
     assert qa_module.__doc__ is not None
     assert "presence, not role" in qa_module.__doc__
+
+
+def test_annotate_shows_verified_derivation_and_flags_unverified_layer_b() -> None:
+    """Layer B (ADR-0135): in annotate, a figure reconstructed from the cited figures by a standard
+    operation is shown as a VERIFIED derivation (with its arithmetic); a non-reconstructible figure
+    is still flagged AI-derived."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("P.xml", 1, "T1")
+    facts = (CitedStatement("DCMA Missing Logic: 10 of 200 activities lack logic.", (cite,)),)
+    ans, _ = answer_question(
+        _Model("That is 5% of the network, with 999 unrelated."),
+        facts,
+        "how much missing logic?",
+        mode="annotate",
+    )
+    assert ans is not None
+    assert "Derived figures" in ans and "10 / 200 * 100 = 5" in ans  # verified reconstruction shown
+    assert "AI-derived" in ans and "999" in ans  # the invented figure still flagged
+
+
+def test_strict_accepts_ratio_derivation_but_discards_additive_and_invented_layer_b() -> None:
+    """Layer B (ADR-0135): strict accepts a figure that is a RATIO-class reconstruction of sourced
+    figures (showing the arithmetic), but discards an additive-only reconstruction (coincidence
+    prone) and an invented number."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("P.xml", 1, "T1")
+    facts = (CitedStatement("DCMA Missing Logic: 10 of 200 activities lack logic.", (cite,)),)
+
+    ok, _ = answer_question(
+        _Model("Missing logic affects 5% of activities."), facts, "how much?", mode="strict"
+    )
+    assert ok is not None
+    assert ok.startswith("Missing logic affects 5% of activities.")
+    assert "Derived figures" in ok and "10 / 200 * 100 = 5" in ok
+
+    # 210 = 10 + 200 is only an ADDITIVE reconstruction -> strict does not trust it
+    additive, _ = answer_question(
+        _Model("There are 210 things."), facts, "how many?", mode="strict"
+    )
+    assert additive is None
+
+    # a genuinely invented number -> discarded
+    invented, _ = answer_question(
+        _Model("There are 999 things."), facts, "how many?", mode="strict"
+    )
+    assert invented is None

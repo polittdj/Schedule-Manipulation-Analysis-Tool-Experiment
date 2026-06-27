@@ -1,7 +1,8 @@
 # SCOPE — Derive-and-Verify AI metrics
 
-**Status:** proposal / scope only. Nothing here is implemented. Awaiting operator sign-off on the
-metric list (§4) and the verification contract (§3) before Phase 1.
+**Status:** IMPLEMENTED. Layer A shipped in ADR-0133 (% of population + DCMA pass rate); Layer B shipped
+in ADR-0135 (the verified ad-hoc derivation gate). This document is retained as the design record; the
+"what I need from you" questions in §7 were answered (build A+B, Layer A first).
 
 **Operator direction (the requirement this serves):** *"Use the metrics calculated by the code to
 answer questions to the best of its ability, even if that means deriving new metrics from those

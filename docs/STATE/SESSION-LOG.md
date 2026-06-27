@@ -3790,3 +3790,31 @@ pending the operator's evaluate-then-go on this batch.
 ### Status
 F-11 closed by disclosure (the audit's prescribed treatment). Remaining open items are artifact-gated
 (`audit/PARK-LIST.md`) and the optional Layer B verified-derivation gate.
+
+---
+
+## 2026-06-27 — Derived metrics Layer B — verified ad-hoc derivation gate (ADR-0135)
+
+- **Branch:** `claude/ai-derived-metrics-layer-b` (fresh from `origin/main` after #276).
+- **Highest ADR:** 0135.
+
+### What changed
+- New `ai/derivation.py`: `verify_derivation(target_token, sourced)` reconstructs a model-emitted figure
+  from the engine's sourced figures via a closed op whitelist (percent_of / percent_change / ratio →
+  ratio-class; difference / sum → additive), 1-dp ratios / exact counts; returns the simplest match or
+  None. `RATIO_KINDS` marks the strict-trusted ops.
+- `ai/qa.answer_question` is now verify-or-flag: **annotate** shows a reconstructed figure as a VERIFIED
+  derivation (with its arithmetic) and still flags non-reconstructible figures as AI-derived; **strict**
+  accepts an answer whose every non-sourced figure is a RATIO-class reconstruction (shown), else
+  discards. Interpretive unchanged.
+- Tests: `tests/ai/test_derivation.py` (verifier) + qa tests (annotate verify-vs-flag; strict accepts
+  ratio-class, discards additive/invented). Backward-compatible (the 31415 cases still flag/discard).
+- `docs/PLAN/AI-DERIVED-METRICS-SCOPE.md` marked IMPLEMENTED. No parity number moved; no engine/fact
+  change (Layer B operates on the model's answer text vs the already-computed fact figures).
+
+### Status
+The derive-and-verify capability (Layer A + Layer B) is complete. A figure reaching the analyst is now
+either sourced, an engine-computed derived metric (Layer A), or a shown, recomputed combination of
+sourced figures (Layer B) — or, in interpretive/annotate, explicitly flagged. Remaining: artifact-gated
+parity items (`audit/PARK-LIST.md`) and the optional semantic/role-aware gate (the F-11 value-level half
+is done; the role-level half is future work).

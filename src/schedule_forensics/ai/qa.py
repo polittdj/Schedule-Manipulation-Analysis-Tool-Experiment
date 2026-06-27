@@ -18,7 +18,7 @@ forecasts, driving path) — every fact a :class:`CitedStatement`. Three answeri
 
 **Scope of the figure gate — presence, not role (audit F-11).** The strict/annotate gate compares
 the *multiset of digit tokens* in the answer against those in the cited facts. It verifies a number
-is **present** in the evidence, not that it is used in the same **role**. Because a fact text
+is **present** in the evidence, not that it is used in the same **role**. Because a fact's
 text can carry an activity **name** or **UID** (e.g. a finding "… drive the path to 'Milestone 2099'
 (UID 6077)"), the digits ``2099`` / ``6077`` are in the sourced set, so a model could re-role one (a
 name-digit as a finish year, a UID as a count) and pass the gate. This is *not* tightened by set
@@ -42,6 +42,7 @@ from collections.abc import Callable
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _FIGURE_RE, CitedStatement
+from schedule_forensics.ai.derivation import RATIO_KINDS, Derivation, verify_derivation
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
@@ -379,20 +380,61 @@ _ANNOTATE_NOTE = (
     "\n\n[AI-derived figures — produced by the local model, not computed by the engine; "
     "verify against the cited facts above: {figs}]"
 )
+#: Layer B (ADR-0135): figures NOT literally in the facts but RECONSTRUCTED from sourced figures by
+#: a standard operation are shown with their reconstruction — a verified derivation, not invented.
+_DERIVED_NOTE = (
+    "\n\n[Derived figures — recomputed by the tool from the cited facts via a standard operation "
+    "(confirm each relationship is meaningful): {exprs}]"
+)
+
+
+def _sourced_floats(allowed: set[str]) -> list[float]:
+    out: list[float] = []
+    for tok in allowed:
+        try:
+            out.append(float(tok))
+        except ValueError:
+            continue
+    return out
+
+
+def _classify_unsourced(text: str, allowed: set[str]) -> tuple[list[Derivation], list[str]]:
+    """Split the answer's non-sourced figures into VERIFIED derivations (reconstructed from the
+    cited figures by a standard operation — Layer B) and UNVERIFIED figures (no reconstruction).
+
+    Order-preserving and de-duplicated; a figure literally present in the facts is neither.
+    """
+    sourced = _sourced_floats(allowed)
+    verified: list[Derivation] = []
+    unverified: list[str] = []
+    for fig in dict.fromkeys(_FIGURE_RE.findall(text)):
+        if fig in allowed:
+            continue
+        derivation = verify_derivation(fig, sourced)
+        if derivation is not None:
+            verified.append(derivation)
+        else:
+            unverified.append(fig)
+    return verified, unverified
 
 
 def _annotate_unsourced(text: str, allowed: set[str]) -> str:
-    """Flag every figure in ``text`` the engine did not compute (the C2 fix; ADR-0129).
+    """Annotate the non-sourced figures (C2 fix, ADR-0129; verify-or-flag, ADR-0135).
 
-    Annotate, do not discard: the rich analysis is kept, but a footer enumerates each figure the
-    model derived itself (any token not in ``allowed``, the figures across the cited facts), so an
-    analyst can never mistake an AI-derived number for an engine figure. Order-preserving and
-    de-duplicated; returns ``text`` unchanged when every figure is already sourced.
+    Annotate, do not discard: the rich analysis is kept. A figure the engine did not state literally
+    is either **verified-derived** — reconstructed from the cited figures by a standard operation
+    (shown with its arithmetic) — or **unverified** — flagged as AI-derived. So an analyst can never
+    mistake an AI-derived number for an engine figure, and a legitimate derived rate is shown as a
+    recomputation rather than an unexplained flag. Returns ``text`` unchanged when every figure is
+    already sourced.
     """
-    derived = [fig for fig in dict.fromkeys(_FIGURE_RE.findall(text)) if fig not in allowed]
-    if not derived:
-        return text
-    return text + _ANNOTATE_NOTE.format(figs=", ".join(derived))
+    verified, unverified = _classify_unsourced(text, allowed)
+    out = text
+    if verified:
+        out += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
+    if unverified:
+        out += _ANNOTATE_NOTE.format(figs=", ".join(unverified))
+    return out
 
 
 def answer_question(
@@ -409,11 +451,14 @@ def answer_question(
     guarantee depends on it (ADR-0129):
 
     * **strict** — a model answer survives only if every number it contains appears in the
-      fact sheet (subset gate; discarded wholesale otherwise). No unsourced figure can reach
-      the analyst.
+      fact sheet **or is a ratio-class reconstruction of sourced figures** (Layer B, ADR-0135 —
+      a standard rate recomputed by the tool and shown with its arithmetic). Any other figure
+      discards the answer wholesale. No invented number reaches the analyst.
     * **annotate** (default) — the model may derive figures from the facts (differences,
-      ratios, plain-language analysis), but any figure NOT in the cited facts is flagged in a
-      footer as AI-derived, so a derived number can never be mistaken for an engine figure.
+      ratios, plain-language analysis); a figure NOT in the cited facts is either shown as a
+      **verified derivation** (reconstructed from the cited figures by a standard operation,
+      Layer B) or flagged as **AI-derived** (no reconstruction) — so a derived number can never
+      be mistaken for an engine figure, and a legitimate derived rate is shown, not just flagged.
     * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
       into raw model analysis and the "AI can err — verify against the citations" disclaimer
       rides every answer. (This mode does NOT guarantee sourced figures.)
@@ -467,8 +512,15 @@ def answer_question(
     for f in evidence:
         allowed.update(_FIGURE_RE.findall(f.text))
     if mode == "strict":
-        if set(_FIGURE_RE.findall(text)) - allowed:
-            return None, shown  # the model introduced a number the engine never computed
+        verified, unverified = _classify_unsourced(text, allowed)
+        # strict trusts a figure only if it is sourced OR a RATIO-class reconstruction of sourced
+        # figures (a standard rate — far less coincidence-prone than an integer difference; Layer B,
+        # ADR-0135). Any unverified figure, or one whose only reconstruction is additive, discards
+        # the whole answer (the caller shows the cited facts instead).
+        if unverified or any(d.kind not in RATIO_KINDS for d in verified):
+            return None, shown
+        if verified:  # all ratio-class — accept, but show how each was recomputed
+            text += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
     elif mode == "annotate":
-        text = _annotate_unsourced(text, allowed)  # keep the answer; flag derived figures
+        text = _annotate_unsourced(text, allowed)  # keep the answer; verify-or-flag derived figures
     return text, shown
