@@ -1,4 +1,26 @@
-# Handoff — 2026-06-27 (F-11 figure-gate role disclosure, ADR-0134; highest ADR 0134)
+# Handoff — 2026-06-27 (Derived metrics Layer B — verified derivation gate, ADR-0135; highest ADR 0135)
+
+> ## STATUS (current) — Derive-and-verify AI metrics COMPLETE (Layer A ADR-0133 + Layer B ADR-0135)
+>
+> Branch `claude/ai-derived-metrics-layer-b` ships **Layer B**, the verified ad-hoc derivation gate:
+> - `ai/derivation.py` `verify_derivation(...)` reconstructs a model-emitted figure from the engine's
+>   sourced figures via a closed op whitelist (percent_of/percent_change/ratio = ratio-class;
+>   difference/sum = additive), 1-dp ratios / exact counts.
+> - `ai/qa.answer_question` is verify-or-flag: **annotate** shows a reconstructed figure as a VERIFIED
+>   derivation (with its arithmetic) and still flags non-reconstructible ones as AI-derived; **strict**
+>   accepts an answer whose every non-sourced figure is a RATIO-class reconstruction (shown), else
+>   discards. Interpretive unchanged. Verifies the *arithmetic*, not the *meaning* — so the
+>   reconstruction is always shown and only ratio-class ops are strict-trusted (coincidence-bounded).
+> - No parity number moved; no engine/fact change; backward-compatible (the 31415 cases still
+>   flag/discard). `AI-DERIVED-METRICS-SCOPE.md` marked IMPLEMENTED.
+>
+> **REMAINING:** the **artifact-gated** parity items in `audit/PARK-LIST.md` (Fuse/SSI/.aft/.mpp —
+> operator deposits files), and the optional **semantic/role-aware** gate (F-11's value-level half is
+> done via Layer B; the role-level half — comparing a figure's role to the engine fact it came from — is
+> future work). **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR = 0135.** Full
+> gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — F-11 figure-gate role disclosure, ADR-0134; highest ADR 0134
 
 > ## STATUS (current) — F-11 closed by point-of-use disclosure (ADR-0134)
 >
