@@ -67,6 +67,8 @@ def test_ask_panel_is_on_every_page_with_the_standing_disclaimer(client: TestCli
         text = client.get(page).text
         assert "askPanel" in text, page
         assert "AI can err" in text, page  # the permanent disclaimer
+        # the figure-gate scope caveat (audit F-11): presence, not role
+        assert "guards presence, not role" in text, page
         assert "/static/ask.js" in text, page
 
 

@@ -1,4 +1,22 @@
-# Handoff — 2026-06-26 (Derived metrics Layer A, ADR-0133; highest ADR 0133)
+# Handoff — 2026-06-27 (F-11 figure-gate role disclosure, ADR-0134; highest ADR 0134)
+
+> ## STATUS (current) — F-11 closed by point-of-use disclosure (ADR-0134)
+>
+> The Ask-the-AI strict/annotate figure gate guards a figure's **presence** in the cited facts, **not
+> its role**: a digit carried by an activity name/UID ("Milestone 2099", UID 6077) is "present", so a
+> model could re-role it. Branch `claude/f11-figure-gate-role-disclosure` **discloses** this at the
+> point of use (Ask-the-AI panel, `ai/qa.py` docstrings, CLAUDE.md) — it is NOT set-gated because a UID
+> `5` is indistinguishable from a count `5`, so excluding identifier digits would discard real figures
+> (a strict false positive). A role-aware gate needs semantic comparison (the `AI-DERIVED-METRICS-SCOPE`
+> Layer B direction), deferred. Guard tests pin the documented behaviour + the panel caveat; no behaviour
+> change, no parity number moved.
+>
+> **REMAINING:** the optional **Layer B** verified-derivation gate (scoped, deferred) and the
+> **artifact-gated** items in `audit/PARK-LIST.md` (Fuse/SSI/.aft/.mpp — operator to deposit files).
+> **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR = 0134.** Full gate +
+> `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — Derived metrics Layer A, ADR-0133; highest ADR 0133
 
 > ## STATUS (current) — Derived metrics Layer A shipped (ADR-0133); Layer B scoped/deferred
 >

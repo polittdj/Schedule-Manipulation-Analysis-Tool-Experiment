@@ -16,6 +16,18 @@ forecasts, driving path) — every fact a :class:`CitedStatement`. Three answeri
   operator opts into raw analysis; the standing *"AI can err — verify against citations"*
   disclaimer rides every answer and the cited facts are always shown alongside.
 
+**Scope of the figure gate — presence, not role (audit F-11).** The strict/annotate gate compares
+the *multiset of digit tokens* in the answer against those in the cited facts. It verifies a number
+is **present** in the evidence, not that it is used in the same **role**. Because a fact text
+text can carry an activity **name** or **UID** (e.g. a finding "… drive the path to 'Milestone 2099'
+(UID 6077)"), the digits ``2099`` / ``6077`` are in the sourced set, so a model could re-role one (a
+name-digit as a finish year, a UID as a count) and pass the gate. This is *not* tightened by set
+arithmetic: a UID like ``5`` is indistinguishable from a legitimate count ``5``, so excluding
+identifier digits would discard real figures (a false positive in the rigour mode). It is therefore
+**disclosed at the point of use** (the Ask-the-AI panel, this docstring, CLAUDE.md) rather than
+papered over; interpretive mode is ungated by design. A role-aware gate would need contextual /
+semantic comparison, not token matching — see ``docs/PLAN/AI-DERIVED-METRICS-SCOPE.md`` Layer B.
+
 With the offline Null backend there is no generation at all: the facts matching the
 question are returned verbatim. :func:`build_workbook_fact_sheet` extends the same
 contract across every loaded version (multi-version pages). Everything runs locally;
@@ -405,6 +417,11 @@ def answer_question(
     * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
       into raw model analysis and the "AI can err — verify against the citations" disclaimer
       rides every answer. (This mode does NOT guarantee sourced figures.)
+
+    The strict/annotate gate verifies a figure is **present** in the cited facts, not that it is
+    used in the same **role** (audit F-11) — a digit carried by an activity name/UID is "present",
+    so it could be re-roled. See the module docstring for why this is disclosed rather than
+    set-gated.
     """
     shown = relevant_facts(facts, question)
     if backend.name == "null":

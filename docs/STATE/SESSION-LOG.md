@@ -3768,3 +3768,25 @@ documented design choice.
 Layer A of `docs/PLAN/AI-DERIVED-METRICS-SCOPE.md` is implemented (operator chose A: % of population +
 B: DCMA pass rate, Layer A first). Layer B (the Q&A verified-derivation gate) remains scoped/deferred
 pending the operator's evaluate-then-go on this batch.
+
+---
+
+## 2026-06-27 — F-11 figure-gate role disclosure (ADR-0134)
+
+- **Branch:** `claude/f11-figure-gate-role-disclosure` (fresh from `origin/main` after #275).
+- **Highest ADR:** 0134.
+
+### What changed
+- The Ask-the-AI strict/annotate figure gate guards a figure's PRESENCE in the cited facts, not its
+  ROLE: a digit carried by an activity name/UID (e.g. "Milestone 2099", UID 6077) is "present", so a
+  model could re-role it. **Disclosed at the point of use** (Ask-the-AI panel, `ai/qa.py` docstrings,
+  CLAUDE.md) rather than set-gated — a UID `5` is indistinguishable from a count `5`, so excluding
+  identifier digits would discard real figures (strict false positive). A role-aware gate needs
+  semantic comparison (AI-DERIVED-METRICS-SCOPE Layer B), deferred.
+- Guard tests: `tests/ai/test_qa.py` pins the documented behaviour (strict accepts a re-roled
+  name-digit, still discards an invented number) + the docstring caveat; `tests/web/test_ask_everywhere.py`
+  asserts the panel caveat on every page. No behaviour change; no parity number moved.
+
+### Status
+F-11 closed by disclosure (the audit's prescribed treatment). Remaining open items are artifact-gated
+(`audit/PARK-LIST.md`) and the optional Layer B verified-derivation gate.
