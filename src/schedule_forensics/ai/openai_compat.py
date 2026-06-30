@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from schedule_forensics.ai.backend import DETERMINISTIC_SEED, DETERMINISTIC_TEMPERATURE
 from schedule_forensics.ai.ollama import Opener, _urllib_opener, probe_error_text
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
@@ -94,6 +95,10 @@ class OpenAICompatBackend:
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
+                # deterministic decoding: same prompt -> same answer run-to-run (forensic
+                # consistency); the engine is already deterministic, this pins the model too
+                "temperature": DETERMINISTIC_TEMPERATURE,
+                "seed": DETERMINISTIC_SEED,
             },
         )
         try:

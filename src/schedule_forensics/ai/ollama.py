@@ -18,6 +18,11 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
+from schedule_forensics.ai.backend import (
+    DETERMINISTIC_SEED,
+    DETERMINISTIC_TEMPERATURE,
+    DETERMINISTIC_TOP_P,
+)
 from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 
 #: Injectable opener: (url, data, timeout) -> decoded response body. Defaults to urllib.
@@ -162,9 +167,24 @@ class OllamaBackend:
         self._post("/api/pull", {"name": model, "stream": False})
 
     def generate(self, prompt: str) -> str:
-        """Run a non-streaming completion on the active model (``POST /api/generate``)."""
+        """Run a non-streaming completion on the active model (``POST /api/generate``).
+
+        Decoding is **deterministic** (``temperature 0`` + a fixed ``seed``) so the same prompt
+        yields the same answer run-to-run — the engine is already deterministic, and a forensic
+        tool must not give two analysts different prose for the same question.
+        """
         payload = self._post(
-            "/api/generate", {"model": self.model, "prompt": prompt, "stream": False}
+            "/api/generate",
+            {
+                "model": self.model,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": DETERMINISTIC_TEMPERATURE,
+                    "seed": DETERMINISTIC_SEED,
+                    "top_p": DETERMINISTIC_TOP_P,
+                },
+            },
         )
         response = payload.get("response", "") if isinstance(payload, dict) else ""
         return str(response)

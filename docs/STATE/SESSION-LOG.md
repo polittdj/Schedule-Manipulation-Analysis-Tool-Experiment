@@ -3818,3 +3818,25 @@ either sourced, an engine-computed derived metric (Layer A), or a shown, recompu
 sourced figures (Layer B) — or, in interpretive/annotate, explicitly flagged. Remaining: artifact-gated
 parity items (`audit/PARK-LIST.md`) and the optional semantic/role-aware gate (the F-11 value-level half
 is done; the role-level half is future work).
+
+---
+
+## 2026-06-27 — AI consistency: deterministic decoding + grounding/blind-spot guards (ADR-0136)
+
+- **Branch:** `claude/ai-consistency-determinism` (fresh from `origin/main` after #277/#278).
+- **Highest ADR:** 0136.
+
+### What changed (Claude-Council steps 2-4 — the in-env consistency wins)
+- **Determinism:** `OllamaBackend`/`OpenAICompatBackend` `generate` now send `temperature 0` + a fixed
+  `seed` (shared constants in `ai/backend.py`), so the same prompt gives the same answer run-to-run.
+- **Golden Q&A grounding regression** (`tests/ai/test_qa_golden.py`): pins which cited-fact family each
+  representative question retrieves on the Project5 golden — the model is variable, the grounding is not.
+- **Blind-spot population guard** (`tests/engine/test_blind_spot_populations.py`): one synthetic schedule
+  with a summary + an inactive task + an elapsed in-progress activity, pinning the exclusions (ADR-0128)
+  and the elapsed single-axis handling (NEW-1) the parity goldens are blind to.
+- No parity number moved; no engine/metric math changed.
+
+### Status (the Council recommendation)
+Accuracy is oracle-bound (needs the operator's Fuse/.aft/.mpp/SSI exports — `audit/PARK-LIST.md`);
+consistency is model-bound and now hardened in-env. Operator-gated next: deposit the reference files
+(flips parity to ENGINE==FUSE, runs the .aft match), and the flag-gated data-date reschedule.

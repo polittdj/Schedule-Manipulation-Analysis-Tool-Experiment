@@ -232,3 +232,34 @@ def test_probe_timeout_default_is_generous_for_slow_first_contact() -> None:
     # reads as up (generate/pull keep the long timeout).
     assert OllamaBackend()._probe_timeout >= 8.0
     assert OpenAICompatBackend()._probe_timeout >= 8.0
+
+
+def test_ollama_generate_sends_deterministic_decoding_options() -> None:
+    """Consistency: the same prompt must give the same answer run-to-run, so generate pins
+    temperature 0 + a fixed seed (the engine is already deterministic; this removes the model as
+    a variability source)."""
+    captured: dict[str, object] = {}
+
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        if url.endswith("/api/generate") and data is not None:
+            captured.update(json.loads(data))
+            return json.dumps({"response": "ok"})
+        return "{}"
+
+    OllamaBackend(opener=opener).generate("Q?")
+    opts = captured.get("options")
+    assert isinstance(opts, dict)
+    assert opts["temperature"] == 0.0 and opts["seed"] == 0 and opts["top_p"] == 1.0
+
+
+def test_openai_compat_generate_sends_deterministic_temperature_and_seed() -> None:
+    captured: dict[str, object] = {}
+
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        if url.endswith("/v1/chat/completions") and data is not None:
+            captured.update(json.loads(data))
+            return json.dumps({"choices": [{"message": {"content": "ok"}}]})
+        return "{}"
+
+    OpenAICompatBackend(opener=opener).generate("Q?")
+    assert captured.get("temperature") == 0.0 and captured.get("seed") == 0

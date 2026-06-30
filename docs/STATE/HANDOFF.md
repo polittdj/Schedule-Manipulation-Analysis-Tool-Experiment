@@ -1,4 +1,25 @@
-# Handoff — 2026-06-27 (Derived metrics Layer B — verified derivation gate, ADR-0135; highest ADR 0135)
+# Handoff — 2026-06-27 (AI consistency — deterministic decoding + guards, ADR-0136; highest ADR 0136)
+
+> ## STATUS (current) — AI consistency hardened in-env (ADR-0136); accuracy ceiling remains operator-gated
+>
+> A "Claude Council" review framed it: **accuracy is oracle-bound** (needs the operator's Fuse/`.aft`/
+> `.mpp`/SSI exports — `audit/PARK-LIST.md`), **consistency is model-bound** and fixable in-env. This
+> branch `claude/ai-consistency-determinism` lands the in-env consistency wins:
+> - **Deterministic decoding:** both local backends (`OllamaBackend`/`OpenAICompatBackend`) send
+>   `temperature 0` + a fixed `seed` (constants in `ai/backend.py`) — same prompt → same answer.
+> - **Golden Q&A grounding regression** (`tests/ai/test_qa_golden.py`) — pins which fact family each
+>   question retrieves; **blind-spot population guard** (`tests/engine/test_blind_spot_populations.py`) —
+>   summary + inactive + elapsed in one schedule, the populations the parity goldens lack.
+> - No parity number moved; no engine math changed.
+>
+> **REMAINING (operator-gated accuracy ceiling):** deposit the reference exports in `00_REFERENCE_INTAKE/`
+> → flips parity from ENGINE==GOLDEN to ENGINE==FUSE, runs the literal `.aft` formula match,
+> de-circularizes §E; then the **flag-gated data-date / progress-aware reschedule** (ADR-0108) and the
+> **role-aware figure gate** (F-11 semantic half). Also the **3-tier installer** (`docs/PLAN/INSTALLER-SPEC.md`,
+> built on operator "go"). **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR =
+> 0136.** Full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — Derived metrics Layer B — verified derivation gate, ADR-0135; highest ADR 0135
 
 > ## STATUS (current) — Derive-and-verify AI metrics COMPLETE (Layer A ADR-0133 + Layer B ADR-0135)
 >
