@@ -14,6 +14,11 @@
 > - No parity number moved; no engine/fact change; backward-compatible (the 31415 cases still
 >   flag/discard). `AI-DERIVED-METRICS-SCOPE.md` marked IMPLEMENTED.
 >
+> **DEFERRED DELIVERABLE (operator memory):** three one-file distributable installers (16 GB/no-GPU,
+> 64 GB/GPU, 128 GB/GPU) — verify prereqs, install only what's missing, set up the tool + UI (+ local
+> Ollama model per tier), desktop start/stop shortcuts, uninstaller. Spec + open questions in
+> `docs/PLAN/INSTALLER-SPEC.md`. **Not built yet** — build on operator "go" after answering its §3.
+>
 > **REMAINING:** the **artifact-gated** parity items in `audit/PARK-LIST.md` (Fuse/SSI/.aft/.mpp —
 > operator deposits files), and the optional **semantic/role-aware** gate (F-11's value-level half is
 > done via Layer B; the role-level half — comparing a figure's role to the engine fact it came from — is
