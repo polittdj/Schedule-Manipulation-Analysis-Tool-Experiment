@@ -523,10 +523,19 @@ def compute_cpm(
                     start_caps.append(late_finish[s] - lag)
             if tid in lf_cap:
                 finish_caps.append(lf_cap[tid])
-            ls_cands = [_elapsed_start_offset(ps, cal, f, dur_p) for f in finish_caps]
-            ls = min(ls_cands + start_caps)
-            late_start[tid] = ls
-            late_finish[tid] = _elapsed_finish_offset(ps, cal, ls, dur_p)
+            # Slack is computed in CAP SPACE — a finish cap and this task's early finish are both
+            # working-grid offsets of the same event, so their difference IS the float. Never
+            # round-trip the elapsed task's wall-clock instants through the working axis here:
+            # that mapping is lossy across non-working time (a Sunday-08:00 finish reads back as
+            # Friday 17:00), and reconstructing the late start from it fabricated NEGATIVE float
+            # (and false DCMA-07/CPLI failures) for every weekend/holiday-spanning elapsed
+            # activity (QC audit D2). late start/finish are then the early dates shifted by the
+            # slack, keeping LS-ES == LF-EF on the working axis.
+            slack_cands = [f - early_finish[tid] for f in finish_caps]
+            slack_cands += [s0 - early_start[tid] for s0 in start_caps]
+            slack = min(slack_cands)
+            late_start[tid] = early_start[tid] + slack
+            late_finish[tid] = early_finish[tid] + slack
         else:
             bounds = [
                 lf_upper_bound(rel, late_start[s], late_finish[s], lag, dur_p)

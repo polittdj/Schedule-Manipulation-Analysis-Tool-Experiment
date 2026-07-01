@@ -201,8 +201,12 @@ def _quantify(
         compute_driving_slack,
     )
 
+    # Convert on the SCHEDULE'S calendar, like every other engine day conversion — a fixed 480
+    # overstated float/impact days by 25% on a 10-hour calendar (QC audit D13); 480 remains only
+    # the fallback for a degenerate 0-minute calendar.
+    per_day = schedule.calendar.working_minutes_per_day or _MIN_PER_DAY
     tf_days: dict[int, float] = {
-        uid: round(t.total_float / _MIN_PER_DAY, 1) for uid, t in cpm.timings.items()
+        uid: round(t.total_float / per_day, 1) for uid, t in cpm.timings.items()
     }
     ds: dict[int, DrivingSlackResult] = {}
     if target_uid is not None:

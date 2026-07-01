@@ -3840,3 +3840,110 @@ is done; the role-level half is future work).
 Accuracy is oracle-bound (needs the operator's Fuse/.aft/.mpp/SSI exports — `audit/PARK-LIST.md`);
 consistency is model-bound and now hardened in-env. Operator-gated next: deposit the reference files
 (flips parity to ENGINE==FUSE, runs the .aft match), and the flag-gated data-date reschedule.
+
+---
+
+## 2026-07-01 — F-11 figure gate now role-aware: value vs. identifier (ADR-0137)
+
+- **Branch:** `claude/f11-role-aware-gate` (fresh from `origin/main` after #279).
+- **Highest ADR:** 0137 (supersedes ADR-0134's disclose-don't-gate posture).
+
+### What changed (the last in-env, no-upload item)
+- **`ai/qa.py::_figure_roles`** splits cited figures into **value** figures (digits in a fact's text
+  *outside* every cited activity name / `UID n`) and **identifier** figures (a citation's task name /
+  unique id). A digit that is *both* counts as a value — collision-safe, so a count `5` that also
+  happens to be UID `5` is never discarded (the false positive that had kept ADR-0134 disclosure-only).
+- **`_classify_figures`** now returns `(verified derivations, identifier-reused, unverified)`; strict
+  discards on any unverified figure, any additive-only reconstruction, **or any identifier-reused
+  figure**; annotate appends a new `_ROLE_NOTE` flag for identifier-reused figures. Interpretive stays
+  ungated by design.
+- **Disclosure flipped to "role-aware":** the Ask-the-AI panel (`web/app.py`), the `qa.py` module +
+  `answer_question` docstrings, and CLAUDE.md. `tests/web/test_ask_everywhere.py` asserts the new panel
+  copy; `tests/ai/test_qa.py::test_strict_gate_is_role_aware_discards_reused_identifier_f11` pins strict
+  discard + annotate flag + collision-safe value survival.
+- No engine/metric math changed; no parity number moved (the gate operates on already-computed facts).
+
+### Status
+F-11 is closed for strict/annotate at the value level. Remaining: the artifact-gated parity items
+(`audit/PARK-LIST.md`), the flag-gated data-date reschedule (ADR-0108), the **semantic** half of the
+figure-role model (beyond value-vs-identifier), and the 3-tier installer (operator "go").
+
+---
+
+## 2026-07-01 — Master QC audit (read-only) + remediation batch R1 (ADR-0138)
+
+- **Audit:** five deep-review agents (AI/engine/importers/web/docs) + ~20 personal live
+  reproductions over HEAD (main + PR #280); every finding verified three independent ways.
+  **26 confirmed defects behind the green gate** — headline D1 (CRITICAL): strict mode's
+  "no invented number" guarantee falsified (ISO-date fragments + ±0.05 tolerance laundered ~33% of
+  invented small integers WITH a tool-verified footer); D4 identifier-laundering through Layer B;
+  D6 name-span shredding; D2/D3 engine elapsed false-FAILs; D7 the NEW-1 fix itself wrong on the
+  float axis; D5 round-trip calendar loss; D8 stale audit ledgers. Root causes: goldens lack
+  population diversity (no elapsed task, no non-480 calendar, no hostile name), and the figure
+  gates composed three individually-reasonable changes into a laundering channel.
+- **R1 (ADR-0138) — figure-gate hardening, all live-verified:** `citations.figure_tokens`
+  (whole-date tokens, shared by every gate); derivation exact-match for integer targets + operand/
+  figure caps; `_classify_figures` identifier-BEFORE-derivation; span-based `_identifier_spans`
+  (digit-boundary-guarded, empty-name-safe); `UID n`/quoted-name answer references allowed as
+  identifier-role usage; `figure_agreement` on pre-footer prose. Regression tests pin
+  D1/D4/D6/D15/D16 + exact-count matching + tokenizer; the full AI suite passes with zero changes
+  to pre-existing expectations. Disclosures updated (qa docstrings, Ask panel, CLAUDE.md).
+- **Next:** R2 elapsed/calendar engine (ADR-0139), R3 round-trip (ADR-0140), R4 cross-version
+  (ADR-0141), R5 ledger refresh, R6 polish (ADR-0142).
+
+### R2 (same session) — elapsed/calendar engine corrections (ADR-0139)
+- **D2:** CPM backward pass now computes an elapsed task's float in CAP SPACE (finish caps − EF /
+  start caps − ES on the working grid) — the lossy wall-clock instant round-trip that fabricated
+  TF=-480 for a weekend-spanning eday task is gone; genuine constraint negatives preserved.
+- **D3:** DCMA-12 injects the 100-day delay on the tested activity's OWN axis (1440 for elapsed)
+  and compares against the exactly-computed expected finish movement; non-elapsed path unchanged.
+- **D7:** Float Ratio converts each term on its own axis (TF/per_day ÷ RD/1440) — corrects the
+  NEW-1 fix's wrong 0.33 pin to the displayed-days 1.0 (Fuse-oracle re-check pending artifacts).
+- **D13:** recommendations convert float days on the schedule calendar (was fixed 480).
+  **D21:** margin elapsed durations display on the 1440 axis.
+- New `tests/engine/test_elapsed_axis_regressions.py` (6 tests). No golden parity number moves
+  (goldens carry no elapsed activity / non-480 calendar).
+
+### R3 (same session) — Save .json completeness (ADR-0140)
+- **D5:** writer emits the project `calendar` + the FULL `calendars` registry (per-task calendars —
+  the SSI driving-slack parity inputs — survive reopen; `calendar_uid` no longer dangles).
+- **D9:** reader takes the explicit project calendar; `calendars[0]` only as legacy fallback — a
+  strict model_dump reload can no longer swap the project calendar.
+- **D10/D24:** `resources` (all fields), `project_finish`, schedule `baseline_finish` round-trip;
+  `wbs=""` preserved; strict `_int` reads (fractional `unique_id` fails loud, never truncates);
+  null/empty names fall back to `Task {uid}` (also closes the ADR-0138 D6 empty-name vector at the
+  source); `parse_json` stamps `source_file` like MSPDI/XER.
+- **Introspection guard:** `test_writer_covers_every_model_field_introspection_guard_qc_d5` walks
+  `model_fields` of all six models against the emitted JSON — a new model field without a writer
+  line now fails a test. Maximal-schedule `model_dump` round-trip asserted byte-equal.
+
+### R4 (same session) — cross-version robustness (ADR-0141)
+- **D11:** friendly-JSON datetimes normalize tz-naive like MSPDI/XER — a "…Z" status_date can no
+  longer crash order_versions/every multi-version page. **D12:** XER `total_float_hr_cnt` →
+  `stored_total_float_minutes`, engaging effective_total_float for P6 files. **D19:** Logic
+  Density + Layer-A rates round HALF-UP (the Fuse-validated ribbon convention; 2.625 → 2.63).
+- **D14 documented+parked:** SN07 caveat added to help.py/METRIC-DICTIONARY (compares TOTAL
+  duration; remaining_duration not consulted); semantics change awaits the .aft verbatim formula.
+- **D20 reverted+documented:** stored-float bands broke the pinned Acumen Critical parity counts
+  (41→39 on P2); raw-CPM float is the validated design, now documented in float_bands.py.
+- Regressions: `tests/engine/test_cross_version_robustness.py`. No golden number moved.
+
+### R5 (same session) — ledger/docs refresh (D8/D22/D26)
+- VERIFICATION-REPORT §2 statuses refreshed in place (C1/H1-H4/M2-M8/L2/L3/L7/F-11/NEW-1 → FIXED
+  with their ADRs) + new §7: refresh discipline note + the full 2026-07-01 D-series ledger with
+  dispositions. PARK-LIST §C struck through (all closed) + §B-addendum (D7/D14/D20/F-11-semantic
+  artifact-gated re-verifications). AUDIT-2026-06-25 got a dated STALE-BY-DESIGN banner.
+- CLAUDE.md: CI-vs-local gate wording (node local-only; coverage CI-enforced), engine module list
+  (`recommendations`; narrative lives in `ai/`), hook allowlist phrasing. Hook scans AMR (renames).
+- help.py DCMA-02/03 formulas now state the distinct-incomplete-successor counting; SN07 caveat
+  (from R4); METRIC-DICTIONARY regenerated.
+
+### R6 (same session) — operational polish (ADR-0142)
+- **D17:** polish paths send an instruction-wrapped rephrase prompt (`polish_prompt`) with an
+  echo/scaffolding guard (`clean_polish` → verbatim fallback); Null backend skips generation.
+- **D18:** SessionState RLock — scope/analysis caches + filter/target/wipe mutations atomic (the
+  live-reproduced /trend KeyError race). **D25:** XER dropped-link count logs at WARNING.
+- INFO: 500 MB per-file upload cap; the two weaker `</`-escape script embeds now use `<`.
+- **All six remediation batches (R1-R6) complete: 20 of 26 QC-audit findings fixed in code, 3
+  documented/parked or reverted-by-oracle with rationale (D14/D20 + the 100% choice), D8/D22/D26
+  closed in docs, 0 regressions.** Full gate + parity green.

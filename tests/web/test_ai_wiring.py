@@ -31,7 +31,8 @@ class _PolishBackend:
 
     def generate(self, prompt: str) -> str:
         self.calls += 1
-        return "POLISHED " + prompt
+        text = prompt.split("STATEMENT: ", 1)[1].rsplit("\nREWRITE:", 1)[0]
+        return "POLISHED " + text
 
 
 class _FabricatorBackend(_PolishBackend):

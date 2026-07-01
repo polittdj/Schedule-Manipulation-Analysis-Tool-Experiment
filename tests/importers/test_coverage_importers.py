@@ -99,12 +99,16 @@ def test_friendly_parse_failure_falls_back_to_strict_serialization() -> None:
 
 
 def test_friendly_parse_failure_that_strict_also_rejects_surfaces_friendly_cause() -> None:
-    # tasks present (so the 'tasks' guard passes) but each task is malformed in a way that
-    # breaks BOTH the friendly parser (TypeError on int(None)) and strict validation — the
+    # tasks present (so the 'tasks' guard passes) but the task is malformed in a way that
+    # breaks BOTH the friendly parser (KeyError: no unique_id) and strict validation — the
     # error must name the friendly cause, not pydantic's strict-schema text.
-    bad = json.dumps({"name": "x", "tasks": [{"unique_id": None, "name": "A"}]})
+    bad = json.dumps({"name": "x", "tasks": [{"name": "A"}]})
     with pytest.raises(ImporterError, match="could not read JSON schedule"):
         parse_json_text(bad)
+    # a null unique_id gets the SPECIFIC strict-integer error (ADR-0140), not the generic wrapper
+    bad_null = json.dumps({"name": "x", "tasks": [{"unique_id": None, "name": "A"}]})
+    with pytest.raises(ImporterError, match="invalid integer for 'unique_id'"):
+        parse_json_text(bad_null)
 
 
 # --- MSPDI: exception-range, extended-attribute, and validation-error field paths --------

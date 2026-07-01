@@ -53,7 +53,7 @@ from schedule_forensics.ai.briefing import (
 )
 from schedule_forensics.ai.citations import CitedStatement, Narrative
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
-from schedule_forensics.ai.narrative import build_narrative
+from schedule_forensics.ai.narrative import build_narrative, clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
 from schedule_forensics.ai.qa import (
     answer_question,
@@ -238,6 +238,9 @@ _ACCEPT = ".json,.xml,.mspdi,.xer,.mpp,.mpt"
 #: precision before averaging, or their derived days↔% magnitudes diverge for sub-day tasks
 #: (audit M5). 6 dp keeps sub-day tasks from collapsing to 0 while still matching exactly.
 _REMAIN_DAYS_DP = 6
+
+#: Per-file upload cap (bytes). Local operator files; largest real exports are well under this.
+_MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 
 _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
@@ -430,6 +433,11 @@ class SessionState:
     sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
     sra_use_risk_register: bool = True
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
+    # Routes are sync `def` (Starlette threadpool = real concurrency); this reentrant lock makes
+    # the scope/analysis caches and the filter/wipe invalidations atomic, so a render can never
+    # iterate a dict another request is clearing (QC audit D18 — live-reproduced KeyError on
+    # /trend under concurrent filter+render). Single-operator tool: contention is negligible.
+    _lock: threading.RLock = field(default_factory=threading.RLock)
 
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
@@ -443,37 +451,40 @@ class SessionState:
         the original's identity so repeated calls in one request share one object (keeping the
         per-key analysis cache valid); the memo resets on :meth:`set_filter` / :meth:`set_target` /
         wipe."""
-        if not self.active_filter and self.target_uid is None:
-            return sch
-        cached = self._scoped.get(id(sch))
-        if cached is not None and cached[0] is sch:
-            return cached[1]
-        scoped = filter_schedule(sch, self.active_filter) if self.active_filter else sch
-        if self.target_uid is not None and any(
-            t.unique_id == self.target_uid and not t.is_summary for t in scoped.tasks
-        ):
-            # target present in this (filtered) version → truncate to it + its drivers; a version
-            # that doesn't contain the target keeps its full (filtered) population.
-            scoped = subschedule_to_target(scoped, self.target_uid)
-        self._scoped[id(sch)] = (sch, scoped)
-        return scoped
+        with self._lock:
+            if not self.active_filter and self.target_uid is None:
+                return sch
+            cached = self._scoped.get(id(sch))
+            if cached is not None and cached[0] is sch:
+                return cached[1]
+            scoped = filter_schedule(sch, self.active_filter) if self.active_filter else sch
+            if self.target_uid is not None and any(
+                t.unique_id == self.target_uid and not t.is_summary for t in scoped.tasks
+            ):
+                # target present in this (filtered) version → truncate to it + its drivers; a
+                # version that doesn't contain the target keeps its full (filtered) population.
+                scoped = subschedule_to_target(scoped, self.target_uid)
+            self._scoped[id(sch)] = (sch, scoped)
+            return scoped
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide filter and invalidate the scope/analysis
         caches so every page recomputes against the new scope."""
-        self.active_filter = tuple(criteria)
-        self._scoped.clear()
-        self.analyses.clear()
-        self.polished.clear()
+        with self._lock:
+            self.active_filter = tuple(criteria)
+            self._scoped.clear()
+            self.analyses.clear()
+            self.polished.clear()
 
     def set_target(self, uid: int | None) -> None:
         """Set (or clear) the session-wide Target UID *endpoint* and invalidate the scope/analysis
         caches so every metric, audit, and visual recomputes against the target's driving
         sub-network (or the full schedule again when cleared)."""
-        self.target_uid = uid
-        self._scoped.clear()
-        self.analyses.clear()
-        self.polished.clear()
+        with self._lock:
+            self.target_uid = uid
+            self._scoped.clear()
+            self.analyses.clear()
+            self.polished.clear()
 
     def ordered(self) -> list[Schedule]:
         """Loaded schedules **scoped to the active filter**, ordered by data date (oldest first).
@@ -481,25 +492,28 @@ class SessionState:
         This is what the multi-version views that call engine functions directly (bow-wave, S-curve,
         month curves) iterate, so the filter reaches them too. Views that go through
         :meth:`analysis_for` pass the raw schedule from :meth:`ordered_versions` (it scopes)."""
-        return [self.scope(s) for s in order_versions(list(self.schedules.values()))]
+        with self._lock:
+            return [self.scope(s) for s in order_versions(list(self.schedules.values()))]
 
     def ordered_versions(self) -> list[tuple[str, Schedule]]:
         """(key, UNSCOPED schedule) pairs, oldest first. Callers either hand the schedule to
         :meth:`analysis_for` (which scopes it) or, for the filter UI, need the full field/value set —
         so this stays raw. Use :meth:`ordered` / :meth:`scope` when you need the filtered tasks."""
-        by_obj = {id(s): k for k, s in self.schedules.items()}
-        return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
+        with self._lock:
+            by_obj = {id(s): k for k, s in self.schedules.items()}
+            return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
 
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
         """The cached analysis for ``key`` over the active scope; recomputes when the schedule object
         or the filter changes (both reflected in the scoped object's identity)."""
-        scoped = self.scope(sch)
-        cached = self.analyses.get(key)
-        if cached is not None and cached[0] is scoped:
-            return cached[1]
-        analysis = _compute_analysis(scoped)
-        self.analyses[key] = (scoped, analysis)
-        return analysis
+        with self._lock:
+            scoped = self.scope(sch)
+            cached = self.analyses.get(key)
+            if cached is not None and cached[0] is scoped:
+                return cached[1]
+            analysis = _compute_analysis(scoped)
+            self.analyses[key] = (scoped, analysis)
+            return analysis
 
 
 def _banner_html(state: SessionState) -> str:
@@ -808,7 +822,7 @@ def _polished_narrative(
         return cached[2]
     sources = analysis.narrative.statements
     try:
-        polished = tuple(backend.generate(s.text) for s in sources)
+        polished = tuple(clean_polish(backend.generate(polish_prompt(s.text))) for s in sources)
     except Exception:
         logger.warning("AI narrative generation failed; serving the deterministic narrative")
         return analysis.narrative
@@ -842,12 +856,17 @@ data: with a local model active (Ollama) you get a full written analysis grounde
 engine's computed, cited facts &mdash; the matching facts are always shown alongside. With no
 local model active you get the cited facts themselves; <a href="/settings">enable Ollama in AI
 Settings</a> for interpretation.</p>
-<p class=muted><b>Figure check guards presence, not role.</b> In <i>strict</i> and <i>annotate</i>
-modes a number the model writes is matched against the figures in the cited facts &mdash; but only
-that the <i>digit</i> appears, not how it is used. A digit that occurs in an activity <i>name</i> or
-<i>ID</i> (e.g. "Milestone 2099", UID&nbsp;6077) counts as present, so the model could re-use it in a
-different role (a finish year, a count). <i>Interpretive</i> mode is not figure-gated at all. Read any
-figure against the cited facts &mdash; the meaning, not just the number.</p>
+<p class=muted><b>Figure check is role-aware.</b> In <i>strict</i> and <i>annotate</i> modes a number
+the model writes is matched against the figures in the cited facts, and a digit that appears only in
+an activity <i>name</i> or <i>ID</i> (e.g. "Milestone 2099", UID&nbsp;6077) &mdash; never as an engine
+value &mdash; is treated as an identifier the model has re-used in another role (a finish year, a
+count): <i>strict</i> discards that answer and <i>annotate</i> flags it &mdash; and the identifier
+check runs <i>before</i> the derived-figure check, so a re-used ID can never pass as a coincidental
+derivation. Writing an ID <i>as</i> an ID ("UID&nbsp;143", a quoted activity name) is fine; dates
+count as whole dates, not digit fragments; a derived whole number must reconstruct exactly. A digit
+that is also a genuine value is untouched (collision-safe). <i>Interpretive</i> mode is not
+figure-gated at all. Read any figure against the cited facts &mdash; the meaning, not just the
+number.</p>
 <div class=viz-controls>
 <label>About <select id=askScope>{"".join(options)}</select></label>
 <input id=askInput type=text size=60 maxlength=500
@@ -1196,7 +1215,16 @@ def create_app(
             )
         for upload_file in files[:MAX_FILES]:
             name = upload_file.filename or "schedule"
-            data = upload_file.file.read()
+            # read one byte past the cap: whole-file reads are memory-bound, so an oversized file
+            # is rejected with a named reason instead of exhausting RAM (QC audit INFO; 500 MB
+            # comfortably exceeds any real schedule export)
+            data = upload_file.file.read(_MAX_UPLOAD_BYTES + 1)
+            if len(data) > _MAX_UPLOAD_BYTES:
+                errors.append(
+                    f"{name}: exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB per-file cap"
+                )
+                logger.warning("rejected oversized upload; ext=%s", Path(name).suffix)
+                continue
             try:
                 schedule = _parse_upload(name, data)
             except (ImporterError, ValueError, OSError) as exc:
@@ -3041,12 +3069,13 @@ def create_app(
     @app.post("/session/wipe")
     def wipe() -> RedirectResponse:
         st = session()
-        st.schedules.clear()
-        st.analyses.clear()
-        st.polished.clear()
-        st.set_filter(())  # drop the session-wide group/filter and its scope cache
-        st.flash = None
-        st.target_uid = None
+        with st._lock:  # atomic vs any in-flight render (QC audit D18)
+            st.schedules.clear()
+            st.analyses.clear()
+            st.polished.clear()
+            st.set_filter(())  # drop the session-wide group/filter and its scope cache
+            st.flash = None
+            st.target_uid = None
         # reset the SRA manual inputs back to the screening defaults
         st.sra_low = 0.9
         st.sra_ml = 1.0
@@ -7481,7 +7510,7 @@ version to see the corridor shift.</p></div>"""
     has_corridor = any(v["activities"] for v in versions)
     gantt_html = ""
     if has_corridor and len(schedules) > 1:
-        blob = json.dumps(gantt).replace("</", "<\\/")  # safe to embed in a <script> tag
+        blob = json.dumps(gantt).replace("<", "\\u003c")  # match the scurve/rem embeds (QC INFO)
         gantt_html = f"""
 <div class=panel><h2>Corridor over time</h2>
 <p class=muted>The driving corridor drawn on a date axis held fixed across every version, so it
@@ -7695,7 +7724,7 @@ def _resource_loading_json(rl: ResourceLoading) -> str:
             for r in rl.resources
         ],
     }
-    return json.dumps(payload).replace("</", "<\\/")
+    return json.dumps(payload).replace("<", "\\u003c")  # match the scurve/rem embeds (QC INFO)
 
 
 def _resources_explainer() -> str:

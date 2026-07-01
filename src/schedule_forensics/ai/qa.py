@@ -16,17 +16,21 @@ forecasts, driving path) — every fact a :class:`CitedStatement`. Three answeri
   operator opts into raw analysis; the standing *"AI can err — verify against citations"*
   disclaimer rides every answer and the cited facts are always shown alongside.
 
-**Scope of the figure gate — presence, not role (audit F-11).** The strict/annotate gate compares
-the *multiset of digit tokens* in the answer against those in the cited facts. It verifies a number
-is **present** in the evidence, not that it is used in the same **role**. Because a fact's
-text can carry an activity **name** or **UID** (e.g. a finding "… drive the path to 'Milestone 2099'
-(UID 6077)"), the digits ``2099`` / ``6077`` are in the sourced set, so a model could re-role one (a
-name-digit as a finish year, a UID as a count) and pass the gate. This is *not* tightened by set
-arithmetic: a UID like ``5`` is indistinguishable from a legitimate count ``5``, so excluding
-identifier digits would discard real figures (a false positive in the rigour mode). It is therefore
-**disclosed at the point of use** (the Ask-the-AI panel, this docstring, CLAUDE.md) rather than
-papered over; interpretive mode is ungated by design. A role-aware gate would need contextual /
-semantic comparison, not token matching — see ``docs/PLAN/AI-DERIVED-METRICS-SCOPE.md`` Layer B.
+**Role-aware figure gate (audit F-11, ADR-0137; hardened ADR-0138).** The strict/annotate gate
+distinguishes a figure that appears in the facts as a real engine **value** from one that appears
+**only** as an activity **name** or **UID** (e.g. a finding "… drive the path to 'Milestone 2099'
+(UID 6077)"). A digit matching only such an identifier — never a value — is one the model has
+re-used in another role (a name-digit ``2099`` as a finish year, a UID ``6077`` as a count):
+**strict discards** that answer and **annotate flags** it. The split is collision-safe: a digit
+that is *both* a value and an identifier counts as a value, so real figures are never discarded.
+The ADR-0138 hardening (QC audit 2026-07-01): identifier extraction is **span-based** (an empty or
+digit-bearing task name can no longer shred the value set — D6); ISO dates are **whole tokens**
+(their fragments can never become derivation operands — D1); the identifier check runs **before**
+the Layer-B derivation check (a re-roled UID can never launder through a coincidental
+reconstruction — D4); and an identifier written *as* an identifier — a ``UID n`` reference or a
+quoted cited activity name — is correct role usage and passes, so strict no longer discards a
+faithful driving-path answer (D15). **Interpretive mode stays ungated by design** (raw model
+output, opt-in). A fuller *semantic* role model remains future work.
 
 With the offline Null backend there is no generation at all: the facts matching the
 question are returned verbatim. :func:`build_workbook_fact_sheet` extends the same
@@ -38,10 +42,10 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 
 from schedule_forensics.ai.backend import AIBackend
-from schedule_forensics.ai.citations import _FIGURE_RE, CitedStatement
+from schedule_forensics.ai.citations import _TOKEN_RE, CitedStatement, figure_tokens
 from schedule_forensics.ai.derivation import RATIO_KINDS, Derivation, verify_derivation
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
@@ -352,14 +356,25 @@ def model_evidence(
     return tuple([facts[0], *ranked])[:limit]
 
 
+def _strip_gate_footers(text: str) -> str:
+    """The model's own prose, without any tool-appended gate footer (``\\n\\n[…]`` blocks).
+
+    The cross-check must compare what the MODELS said — a footer's arithmetic operands are the
+    tool's, and counting them fabricated "the answers DIFFER" verdicts on agreeing answers
+    (QC audit D16)."""
+    return text.split("\n\n[", 1)[0]
+
+
 def figure_agreement(primary: str, second: str) -> str:
     """The dual-model cross-check note: do the two answers cite the same figures?
 
     Deterministic (engine-computed, never a third model): the numeric figures of each
-    answer are compared as multisets. Agreement is corroboration, not proof — the cited
-    facts remain the ground truth either way.
+    answer — footers stripped, dates as whole tokens — are compared as multisets.
+    Agreement is corroboration, not proof — the cited facts remain the ground truth
+    either way.
     """
-    a, b = Counter(_FIGURE_RE.findall(primary)), Counter(_FIGURE_RE.findall(second))
+    a = Counter(figure_tokens(_strip_gate_footers(primary)))
+    b = Counter(figure_tokens(_strip_gate_footers(second)))
     if a == b:
         return "Cross-check: both models cite identical figures."
     parts = []
@@ -388,50 +403,161 @@ _DERIVED_NOTE = (
 )
 
 
+#: Role-aware gate (ADR-0137, audit F-11): figures that match ONLY an activity name / UID in the
+#: facts (never a real engine value) are identifiers the model has re-used in another role.
+_ROLE_NOTE = (
+    "\n\n[Figures matching an activity name or ID, not an engine value — confirm the role, not "
+    "just the number: {figs}]"
+)
+
+
 def _sourced_floats(allowed: set[str]) -> list[float]:
     out: list[float] = []
-    for tok in allowed:
+    for tok in sorted(allowed):  # deterministic operand order (sets are unordered)
         try:
             out.append(float(tok))
-        except ValueError:
+        except ValueError:  # whole-date tokens are evidence, never arithmetic operands
             continue
     return out
 
 
-def _classify_unsourced(text: str, allowed: set[str]) -> tuple[list[Derivation], list[str]]:
-    """Split the answer's non-sourced figures into VERIFIED derivations (reconstructed from the
-    cited figures by a standard operation — Layer B) and UNVERIFIED figures (no reconstruction).
+def _boundary_pattern(literal: str) -> str:
+    """``literal`` escaped for regex, digit-boundary-guarded when it starts/ends with a digit —
+    so a task named "5" matches the standalone 5, never the 5 inside 45 (QC audit D6)."""
+    pattern = re.escape(literal)
+    if literal[0].isdigit() or literal[0] == "-":
+        pattern = r"(?<![\d.-])" + pattern
+    if literal[-1].isdigit():
+        pattern = pattern + r"(?![\d.])"
+    return pattern
 
-    Order-preserving and de-duplicated; a figure literally present in the facts is neither.
+
+def _identifier_spans(
+    text: str, names: Iterable[str], uids: Iterable[int]
+) -> list[tuple[int, int]]:
+    """Character spans of ``text`` occupied by a cited activity name or a ``UID n`` reference.
+
+    Span-based (never ``str.replace``): an empty name contributes no span instead of shredding the
+    text character-by-character, and digit-boundary guards keep a numeric name from swallowing
+    digits inside adjacent numbers (QC audit D6).
     """
-    sourced = _sourced_floats(allowed)
-    verified: list[Derivation] = []
-    unverified: list[str] = []
-    for fig in dict.fromkeys(_FIGURE_RE.findall(text)):
-        if fig in allowed:
+    spans: list[tuple[int, int]] = []
+    for name in names:
+        if not name:
             continue
-        derivation = verify_derivation(fig, sourced)
+        spans += [m.span() for m in re.finditer(_boundary_pattern(name), text)]
+    for uid in uids:
+        spans += [m.span() for m in re.finditer(rf"\bUID\s+{re.escape(str(uid))}(?![\d.])", text)]
+    return spans
+
+
+def _inside(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
+    return any(start <= span[0] and span[1] <= end for start, end in spans)
+
+
+def _figure_roles(
+    evidence: Iterable[CitedStatement],
+) -> tuple[set[str], set[str], set[str]]:
+    """``(value_figures, identifier_figures, identifier_names)`` across the evidence facts
+    (audit F-11 role split, hardened per QC audit D1/D6).
+
+    A **value** figure is a token that appears in a fact's text *outside* every cited activity-name
+    / ``UID n`` span — a real engine value (count, %, duration). ISO dates are single whole tokens
+    (never year/month/day fragments). An **identifier** figure is one carried by a citation's task
+    name or unique id. A digit that is *both* is a value (not role-suspect); only a digit appearing
+    **exclusively** as an identifier is treated as one — the collision-safety that keeps a UID ``5``
+    from discarding a genuine count ``5``. ``identifier_names`` are the non-empty cited task names,
+    used to recognise a name *quoted* in an answer as identifier-role usage.
+    """
+    value_figs: set[str] = set()
+    id_figs: set[str] = set()
+    id_names: set[str] = set()
+    for f in evidence:
+        names = [c.task_name for c in f.citations if c.task_name]
+        uids = [c.unique_id for c in f.citations]
+        id_names.update(names)
+        for name in names:
+            id_figs.update(figure_tokens(name))
+        id_figs.update(str(uid) for uid in uids)
+        spans = _identifier_spans(f.text, names, uids)
+        for m in _TOKEN_RE.finditer(f.text):
+            if not _inside(m.span(), spans):
+                value_figs.add(m.group())
+    return value_figs, id_figs, id_names
+
+
+#: Most distinct non-value figures per answer given a Layer-B reconstruction attempt; the rest are
+#: flagged unverified (fail-closed). Bounds the gate's cost on a pathological answer (QC audit D23).
+_MAX_GATED_FIGURES = 24
+
+
+def _classify_figures(
+    text: str, value_figs: set[str], id_figs: set[str], id_names: set[str]
+) -> tuple[list[Derivation], list[str], list[str]]:
+    """Split the answer's figures into VERIFIED derivations (reconstructed from the cited *values*
+    by a standard operation — Layer B), IDENTIFIER-reused figures (an identifier digit used as a
+    value — F-11 role gate), and UNVERIFIED figures (neither). A figure literally present as a
+    value is none of these; a figure written *as* an identifier (inside a ``UID n`` reference or a
+    quoted cited activity name) is correct identifier-role usage and passes.
+
+    Priority per occurrence: value → identifier-role usage → **identifier-only (checked BEFORE
+    derivation, so a re-roled UID can never launder through a coincidental reconstruction — QC
+    audit D4)** → verified derivation → unverified. A token is flagged if ANY occurrence misuses
+    it; deduped in first-occurrence order.
+    """
+    sourced = _sourced_floats(value_figs)
+    identifier_only = id_figs - value_figs
+    ref_spans = _identifier_spans(text, id_names, [])
+    ref_spans += [m.span() for m in re.finditer(r"\bUID\s+-?\d+(?![\d.])", text)]
+    verified: list[Derivation] = []
+    id_reused: list[str] = []
+    unverified: list[str] = []
+    handled: set[str] = set()
+    gated = 0
+    for m in _TOKEN_RE.finditer(text):
+        fig = m.group()
+        if fig in value_figs or fig in handled:
+            continue
+        if _inside(m.span(), ref_spans):
+            # written as an identifier (a "UID n" reference / a quoted cited name): correct role
+            # when it IS a cited identifier; an invented reference is unverified (fail closed).
+            if fig in id_figs:
+                continue
+            handled.add(fig)
+            unverified.append(fig)
+            continue
+        handled.add(fig)
+        if fig in identifier_only:  # BEFORE derivation — never launder a re-roled identifier (D4)
+            id_reused.append(fig)
+            continue
+        gated += 1
+        derivation = verify_derivation(fig, sourced) if gated <= _MAX_GATED_FIGURES else None
         if derivation is not None:
             verified.append(derivation)
         else:
             unverified.append(fig)
-    return verified, unverified
+    return verified, id_reused, unverified
 
 
-def _annotate_unsourced(text: str, allowed: set[str]) -> str:
-    """Annotate the non-sourced figures (C2 fix, ADR-0129; verify-or-flag, ADR-0135).
+def _annotate_unsourced(
+    text: str, value_figs: set[str], id_figs: set[str], id_names: set[str]
+) -> str:
+    """Annotate the non-value figures (C2 fix, ADR-0129; verify-or-flag, ADR-0135; role gate,
+    ADR-0137; hardened ADR-0138).
 
-    Annotate, do not discard: the rich analysis is kept. A figure the engine did not state literally
-    is either **verified-derived** — reconstructed from the cited figures by a standard operation
-    (shown with its arithmetic) — or **unverified** — flagged as AI-derived. So an analyst can never
-    mistake an AI-derived number for an engine figure, and a legitimate derived rate is shown as a
-    recomputation rather than an unexplained flag. Returns ``text`` unchanged when every figure is
-    already sourced.
+    Annotate, do not discard: the rich analysis is kept. A figure the engine did not state as a
+    value is either **verified-derived** (reconstructed from the cited values, with arithmetic),
+    an **identifier reused as a figure** (matches only a name/UID — flagged for role, F-11),
+    or **unverified** (flagged AI-derived). So a derived number can never be mistaken for an engine
+    figure, and a name/UID digit re-used in another role is called out. Returns ``text`` unchanged
+    when every figure is already a cited value or a correct identifier reference.
     """
-    verified, unverified = _classify_unsourced(text, allowed)
+    verified, id_reused, unverified = _classify_figures(text, value_figs, id_figs, id_names)
     out = text
     if verified:
         out += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
+    if id_reused:
+        out += _ROLE_NOTE.format(figs=", ".join(id_reused))
     if unverified:
         out += _ANNOTATE_NOTE.format(figs=", ".join(unverified))
     return out
@@ -450,23 +576,26 @@ def answer_question(
     shows the facts themselves. The operator chooses the mode (AI Settings); the figure
     guarantee depends on it (ADR-0129):
 
-    * **strict** — a model answer survives only if every number it contains appears in the
-      fact sheet **or is a ratio-class reconstruction of sourced figures** (Layer B, ADR-0135 —
-      a standard rate recomputed by the tool and shown with its arithmetic). Any other figure
-      discards the answer wholesale. No invented number reaches the analyst.
-    * **annotate** (default) — the model may derive figures from the facts (differences,
-      ratios, plain-language analysis); a figure NOT in the cited facts is either shown as a
-      **verified derivation** (reconstructed from the cited figures by a standard operation,
-      Layer B) or flagged as **AI-derived** (no reconstruction) — so a derived number can never
-      be mistaken for an engine figure, and a legitimate derived rate is shown, not just flagged.
+    * **strict** — a model answer survives only if every number it contains is a cited engine
+      **value**, a correct **identifier reference** (a ``UID n`` / quoted cited activity name —
+      ADR-0138), **or a ratio-class reconstruction** of cited values (Layer B, ADR-0135 — a
+      standard rate recomputed by the tool, shown with its arithmetic; integer targets must
+      reconstruct **exactly**). An invented figure, an additive-only reconstruction, **or a figure
+      matching only an activity name/UID used as a value** (a re-roled identifier — F-11 role gate,
+      checked BEFORE the derivation gate so it can never launder through one) discards the answer
+      wholesale. No invented or re-roled number reaches the analyst.
+    * **annotate** (default) — the model may derive figures from the facts; a figure not stated as a
+      value is shown as a **verified derivation** (reconstructed, Layer B), flagged as an
+      **identifier reused as a figure** (matches only a name/UID — F-11), or flagged **AI-derived**
+      (no reconstruction) — so a derived number can never be mistaken for an engine figure.
     * **interpretive** — the model's text is returned verbatim, ungated; the operator opts
       into raw model analysis and the "AI can err — verify against the citations" disclaimer
       rides every answer. (This mode does NOT guarantee sourced figures.)
 
-    The strict/annotate gate verifies a figure is **present** in the cited facts, not that it is
-    used in the same **role** (audit F-11) — a digit carried by an activity name/UID is "present",
-    so it could be re-roled. See the module docstring for why this is disclosed rather than
-    set-gated.
+    The strict/annotate gate is **role-aware** (audit F-11; hardened ADR-0138): it splits a figure
+    that appears as an engine value from one that appears only as an activity name/UID, and the
+    latter — when used *as a value* — is discarded (strict) or flagged (annotate). See the module
+    docstring for the span/date/priority hardening.
     """
     shown = relevant_facts(facts, question)
     if backend.name == "null":
@@ -508,19 +637,19 @@ def answer_question(
         return None, shown
     if not text:
         return None, shown
-    allowed: set[str] = set()
-    for f in evidence:
-        allowed.update(_FIGURE_RE.findall(f.text))
+    value_figs, id_figs, id_names = _figure_roles(evidence)
     if mode == "strict":
-        verified, unverified = _classify_unsourced(text, allowed)
-        # strict trusts a figure only if it is sourced OR a RATIO-class reconstruction of sourced
-        # figures (a standard rate — far less coincidence-prone than an integer difference; Layer B,
-        # ADR-0135). Any unverified figure, or one whose only reconstruction is additive, discards
-        # the whole answer (the caller shows the cited facts instead).
-        if unverified or any(d.kind not in RATIO_KINDS for d in verified):
+        verified, id_reused, unverified = _classify_figures(text, value_figs, id_figs, id_names)
+        # strict trusts a figure only if it is a cited VALUE or a RATIO-class reconstruction of
+        # cited values (a standard rate — far less coincidence-prone than an integer difference;
+        # Layer B, ADR-0135). An unverified figure, an additive-only reconstruction, OR an
+        # identifier reused as a figure (matches only a name/UID — F-11 role gate) discards the
+        # whole answer (the caller shows the cited facts instead).
+        if unverified or id_reused or any(d.kind not in RATIO_KINDS for d in verified):
             return None, shown
         if verified:  # all ratio-class — accept, but show how each was recomputed
             text += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
     elif mode == "annotate":
-        text = _annotate_unsourced(text, allowed)  # keep the answer; verify-or-flag derived figures
+        # keep the answer; verify/role/flag its figures
+        text = _annotate_unsourced(text, value_figs, id_figs, id_names)
     return text, shown

@@ -30,6 +30,25 @@ from schedule_forensics.engine.dcma_audit import Citation
 #: fail closed.
 _FIGURE_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
+#: One evidence token per ISO date/timestamp, matched BEFORE the plain-number pattern. Without
+#: this, "2026-03-02" tokenizes as 2026 / -03 / -02 and the month/day fragments enter the gates
+#: as small negative "engine figures" — operands the Layer-B verifier could then use to
+#: "reconstruct" (and thereby launder) an invented number (QC audit 2026-07-01, D1). A date is
+#: one piece of evidence, not three numbers.
+_TOKEN_RE = re.compile(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?|-?\d+(?:\.\d+)?")
+
+
+def figure_tokens(text: str) -> list[str]:
+    """The numeric-evidence tokens of ``text``, in order.
+
+    ISO dates (and timestamps) are single whole tokens; every other number tokenizes exactly as
+    :data:`_FIGURE_RE` (sign-aware, audit M6). This is THE tokenizer for every figure gate —
+    ``preserves_figures``, the Ask-the-AI role gate, and the dual-model cross-check — so no gate
+    can disagree with another about what counts as a figure.
+    """
+    return _TOKEN_RE.findall(text)
+
+
 #: Accusatory / intent-attributing terms the engine never asserts. The engine reports *what*
 #: changed (a constraint added, float eroded); it never concludes *why* (fraud, intent). A local
 #: model polishing prose must not introduce such a conclusion — if a rephrase adds one of these
@@ -133,8 +152,10 @@ def preserves_figures(source: str, candidate: str) -> bool:
     Compared as a multiset: every number in the source must survive (same multiplicity)
     and no new number may appear. A rephrase may reorder figures and reword everything
     around them, but a dropped, invented, or altered date/count/percentage fails.
+    Dates compare as whole tokens (:func:`figure_tokens`), so reformatting a date fails
+    exactly as before — fail closed.
     """
-    return Counter(_FIGURE_RE.findall(source)) == Counter(_FIGURE_RE.findall(candidate))
+    return Counter(figure_tokens(source)) == Counter(figure_tokens(candidate))
 
 
 def reattach(texts: Sequence[str], sources: Sequence[CitedStatement]) -> tuple[CitedStatement, ...]:

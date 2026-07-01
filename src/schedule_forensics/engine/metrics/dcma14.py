@@ -375,7 +375,30 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
         )
     target = by_id[min(targets)]
     delay_min = _CRITICAL_PATH_TEST_DELAY_DAYS * schedule.calendar.working_minutes_per_day
-    delayed = target.model_copy(update={"duration_minutes": target.duration_minutes + delay_min})
+    if target.duration_is_elapsed:
+        # An elapsed activity's duration_minutes are WALL-CLOCK: injecting working minutes into it
+        # re-interprets the delay on the wrong axis and the finish moves by the wrong amount, so a
+        # structurally perfect schedule failed the test (QC audit D3). Inject the delay on the
+        # task's own axis (100 days x 1440) and compute the EXPECTED working-offset movement of
+        # its finish exactly, from its start instant (a working-grid point — unambiguous).
+        import datetime as _dt
+
+        from schedule_forensics.engine.cpm import datetime_to_offset, offset_to_datetime
+
+        delay_inj = _CRITICAL_PATH_TEST_DELAY_DAYS * 1440
+        cal = schedule.calendar
+        start_instant = offset_to_datetime(
+            schedule.project_start, result.timings[target.unique_id].early_start, cal
+        )
+        old_finish = start_instant + _dt.timedelta(minutes=target.duration_minutes)
+        new_finish = old_finish + _dt.timedelta(minutes=delay_inj)
+        expected = datetime_to_offset(schedule.project_start, new_finish, cal) - datetime_to_offset(
+            schedule.project_start, old_finish, cal
+        )
+    else:
+        delay_inj = delay_min
+        expected = delay_min
+    delayed = target.model_copy(update={"duration_minutes": target.duration_minutes + delay_inj})
     perturbed = schedule.model_copy(
         update={
             "tasks": tuple(
@@ -386,7 +409,7 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     # `result` already proved the network schedulable; only a duration grew, so this
     # recompute cannot newly cycle/refuse — any CPMError propagates (fail loud).
     new_result = compute_cpm(perturbed)
-    moved = new_result.project_finish - result.project_finish == delay_min
+    moved = new_result.project_finish - result.project_finish == expected
     measured = 0.0 if moved else 1.0
     return MetricResult(
         "DCMA12",

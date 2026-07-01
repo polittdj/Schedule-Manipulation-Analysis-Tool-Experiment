@@ -356,6 +356,10 @@ def _parse_task(
             wbs=_wbs_path(_g(row, "wbs_id"), wbs_short, wbs_parent),
             duration_minutes=hours_to_minutes(_g(row, "target_drtn_hr_cnt")),
             remaining_duration_minutes=_opt_hours(row, "remain_drtn_hr_cnt"),
+            # P6's own progress-aware Total Float — the "stored float wins" Acumen-parity input
+            # (effective_total_float). Without it every progressed P6 schedule silently fell back
+            # to recomputed pure-logic CPM float (QC audit D12). XER has no stored critical flag.
+            stored_total_float_minutes=_opt_hours(row, "total_float_hr_cnt"),
             baseline_duration_minutes=None,  # P6 baseline duration is in a separate project
             is_milestone=task_type in _MILESTONE_TYPES,
             is_summary=task_type == "TT_WBS",
@@ -464,7 +468,9 @@ def _parse_relationships(
         except pydantic.ValidationError as exc:
             raise ImporterError(f"invalid logic link {predecessor}->{successor}: {exc}") from exc
     if dropped:
-        logger.info(
+        # WARNING, not info: a dropped link changes DCMA logic-density denominators, and the
+        # default logging config never surfaced INFO (QC audit D25)
+        logger.warning(
             "dropped %d TASKPRED link(s) not resolvable within this project "
             "(external/cross-project, dangling, self-referential, or duplicate)",
             dropped,

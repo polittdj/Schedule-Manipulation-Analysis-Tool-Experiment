@@ -22,7 +22,7 @@ while IFS= read -r path; do
   if printf '%s\n' "$path" | grep -qiE "$blocked_re"; then
     violations+=("$path")
   fi
-done < <(git diff --cached --name-only --diff-filter=AM)
+done < <(git diff --cached --name-only --diff-filter=AMR)  # renames scanned too (QC audit D26)
 
 if [ "${#violations[@]}" -gt 0 ]; then
   {

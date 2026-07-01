@@ -14,8 +14,17 @@ Verification-contract rounding rule (scope §3.3): ratios/percentages round to *
 
 from __future__ import annotations
 
+from decimal import ROUND_HALF_UP, Decimal
+
 #: Display precision for derived ratios/percentages (the verification-contract rounding rule).
 _RATIO_DP = 1
+
+
+def _half_up(value: float) -> float:
+    """Half-up at the contract's decimal places — the Fuse-side convention used everywhere the
+    engine rounds a displayed rate (plain round() is banker's; QC audit D19)."""
+    q = Decimal(1).scaleb(-_RATIO_DP)
+    return float(Decimal(str(value)).quantize(q, rounding=ROUND_HALF_UP))
 
 
 def population_share(count: int, population: int) -> float | None:
@@ -27,7 +36,7 @@ def population_share(count: int, population: int) -> float | None:
     """
     if population <= 0:
         return None
-    return round(count / population * 100, _RATIO_DP)
+    return _half_up(count / population * 100)
 
 
 def dcma_pass_rate(passed: int, failed: int) -> float | None:
@@ -40,4 +49,4 @@ def dcma_pass_rate(passed: int, failed: int) -> float | None:
     applicable = passed + failed
     if applicable <= 0:
         return None
-    return round(passed / applicable * 100, _RATIO_DP)
+    return _half_up(passed / applicable * 100)

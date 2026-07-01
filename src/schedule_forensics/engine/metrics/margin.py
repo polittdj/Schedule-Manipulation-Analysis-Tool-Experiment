@@ -80,11 +80,13 @@ def compute_margin(schedule: Schedule, cpm: CPMResult) -> MarginAnalysis:
     for t in margin:
         timing = cpm.timings.get(t.unique_id)
         on_critical = timing is not None and timing.total_float <= 0
+        # an elapsed margin task's minutes are wall-clock: "5 edays" is 5 days, not 15 (QC D21)
+        axis = 1440 if t.duration_is_elapsed else wmpd
         tasks.append(
             MarginTask(
                 unique_id=t.unique_id,
                 name=t.name,
-                duration_days=round(t.duration_minutes / wmpd, 1),
+                duration_days=round(t.duration_minutes / axis, 1),
                 on_critical=on_critical,
             )
         )

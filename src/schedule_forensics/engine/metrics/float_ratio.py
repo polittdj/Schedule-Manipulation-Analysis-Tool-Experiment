@@ -22,11 +22,12 @@ Population (the Bible's ``PrimaryFilter``): **Normal** activities (non-summary, 
 non-hammock) that are **Planned or In-Progress** — completed work is excluded (it has no remaining
 duration and carries no forward risk). Total float is read from the source tool's stored,
 progress-aware value when present (matching Acumen — :func:`effective_total_float`), otherwise the
-engine's recomputed CPM float. Float and remaining duration are converted to days on the **same
-axis** before dividing — working days for a normal activity, or wall-clock days (1440 min) for an
-*elapsed*-duration activity (matching how MS Project measures it) — so the ratio is unit-consistent
-(audit NEW-1); activities with no remaining duration are skipped
-(division guard).
+engine's recomputed CPM float. Each term converts to days on **its own axis** before dividing:
+total float is always working minutes → working days (``per_day``); remaining duration converts on
+the activity's duration axis — working days normally, wall-clock days (1440 min) for an *elapsed*
+activity (audit NEW-1, corrected by QC audit D7: the float term stays on the working axis). This is
+the displayed-days ratio an analyst reads in MS Project ("1 day" float over "1 eday" remaining =
+1.0). Activities with no remaining duration are skipped (division guard).
 
 Bible interpretation bands (informational — Float Ratio is not a DCMA pass/fail check): ``< 0.1``
 very tight, ``0.1-0.3`` tight, ``0.3-0.6`` healthy, ``> 0.6`` generous (check for missing logic).
@@ -89,12 +90,15 @@ def _scored(schedule: Schedule, result: CPMResult) -> list[tuple[Task, float, fl
         recomputed = (
             float(result.timings[t.unique_id].total_float) if t.unique_id in result.timings else 0.0
         )
-        # float MUST be divided on the SAME axis as remaining_days: an elapsed activity's
-        # remaining duration is wall-clock (1440 min/day), so scoring its float on the working-day
-        # axis (per_day) would distort the ratio by 1440/per_day (audit NEW-1). For non-elapsed
-        # activities — every golden — both collapse to per_day, so no parity number moves.
-        axis_per_day = 1440 if t.duration_is_elapsed else per_day
-        float_days = effective_total_float(t, recomputed) / axis_per_day
+        # Each term converts to DAYS on ITS OWN axis. Total float — stored or recomputed — is
+        # ALWAYS working minutes (Task model; MSPDI "TotalSlack → working minutes"), so it divides
+        # by per_day even for an elapsed activity; only an elapsed activity's REMAINING duration is
+        # wall-clock (1440, handled by duration_days_axis above). This matches the displayed-days
+        # ratio an analyst reads in MSP ("1 day" float against "1 eday" remaining = 1.0). Audit
+        # NEW-1 fixed the remaining-duration axis but wrongly moved the float term to 1440 with it,
+        # understating every elapsed ratio by 1440/per_day (QC audit D7 corrects that). For
+        # non-elapsed activities — every golden — both axes are per_day, so no parity number moves.
+        float_days = effective_total_float(t, recomputed) / per_day
         out.append((t, float_days, remaining_days))
     return out
 

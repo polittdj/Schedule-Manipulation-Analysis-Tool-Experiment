@@ -1,6 +1,62 @@
-# Handoff — 2026-06-27 (AI consistency — deterministic decoding + guards, ADR-0136; highest ADR 0136)
+# Handoff — 2026-07-01 (QC-audit remediation in progress; highest ADR 0142)
 
-> ## STATUS (current) — AI consistency hardened in-env (ADR-0136); accuracy ceiling remains operator-gated
+> ## STATUS (current) — 2026-07-01 master QC audit → remediation batches R1–R6 (R1 done, ADR-0138)
+>
+> A full read-only QC audit (five deep-review agents + ~20 personal reproductions; every finding
+> verified 3 ways) found 26 defects behind the green gate — headline: the strict-mode figure
+> guarantee was falsifiable (D1: date-fragment + tolerance laundering; D4: identifier laundering
+> through Layer B; D6: name-span shredding), plus engine elapsed-axis defects (D2 CPM negative
+> float, D3 DCMA-12 false FAIL, D7 the NEW-1 fix itself wrong), round-trip losses (D5 calendars),
+> and stale audit ledgers (D8). Remediation is batched on this branch (PR #280):
+> - **R1 (DONE, ADR-0138):** whole-date tokens (`figure_tokens`), exact integer derivation targets,
+>   identifier-checked-before-derivation, span-based name extraction, UID-reference allowance,
+>   pre-footer cross-check, caps. Regression tests pin D1/D4/D6/D15/D16.
+> - **R2 (DONE, ADR-0139):** cap-space elapsed float in the CPM backward pass (D2), own-axis
+>   DCMA-12 delay injection (D3), per-axis Float Ratio (D7 — corrects NEW-1's own pin),
+>   calendar-aware recommendation days (D13), margin display axis (D21);
+>   `tests/engine/test_elapsed_axis_regressions.py` pins the audit reproductions.
+> - **R3 (DONE, ADR-0140):** Save .json writes the FULL calendar registry + resources +
+>   schedule finish dates; reader takes the explicit project calendar (never calendars[0] on
+>   multi-calendar files); strict `_int` identity reads; parse_json stamps source_file; a
+>   model-introspection guard test fails when any model field lacks a writer line.
+> - **R4 (DONE, ADR-0141):** tz-naive JSON dates (D11), XER stored Total Float wired into the
+>   Acumen parity path (D12), half-up rounding everywhere (D19). D14 (SN07 semantics) is
+>   DOCUMENTED+PARKED (artifact-gated .aft formula); D20 (float-band float source) was
+>   REVERTED after the oracle check (raw CPM float reproduces the pinned Acumen Critical
+>   counts) and the by-design divergence documented in float_bands.py.
+> - **R5 (DONE):** both audit ledgers status-refreshed in place + §7 D-series ledger appended
+>   (VERIFICATION-REPORT/PARK-LIST/AUDIT-2026-06-25 banner); CLAUDE.md CI/module/hook wording
+>   corrected; hook scans renames (AMR); DCMA-02/03 help formulas state the activity scope.
+> - **R6 (DONE, ADR-0142):** instruction-wrapped polish prompt + echo guard (Null skips);
+>   SessionState RLock (the reproduced /trend race); 500 MB upload cap; XER drop WARNING;
+>   one script-embed escape convention. **ALL SIX BATCHES COMPLETE.**
+> **Residual in-env OPENs (all LOW/NIT):** L4/L6/L8/L9/L10/L11/F-09/F-10/F-13/F-14/NEW-2 +
+> F-01-partial (ledger §2/§7) — the earlier "REMAINING artifact-gated ONLY" wording overclaimed
+> (QC audit D26). **Highest ADR = 0142.** Full gate + parity before each commit; `git fetch
+> origin` before branching.
+
+> ## STATUS (prev) — F-11 figure gate closed (role-aware, ADR-0137); accuracy ceiling remains operator-gated
+>
+> Branch `claude/f11-role-aware-gate` closes the last in-env, no-upload item. ADR-0134 had only
+> *disclosed* that the strict/annotate figure gate guarded a figure's presence, not its role (a
+> name-digit `2099` or a UID `6077` re-emitted as a value would pass). This closes it collision-safely:
+> - **`ai/qa.py::_figure_roles`** splits cited figures into **value** figures (digits in a fact's text
+>   *outside* every cited activity name / `UID n`) and **identifier** figures (a citation's task name /
+>   unique id). A digit that is *both* counts as a value (so a count `5` that is also UID `5` is never
+>   discarded — the collision that blocked a blunt set-gate).
+> - **Strict discards** an answer with an identifier-only figure; **annotate flags** it (`_ROLE_NOTE`);
+>   **interpretive** stays ungated by design.
+> - Disclosure flipped to "role-aware" (Ask-the-AI panel, `qa.py` docstrings, CLAUDE.md); ADR-0137
+>   supersedes ADR-0134's disclose-don't-gate posture. No engine math changed; no parity number moved.
+>
+> **REMAINING (operator-gated accuracy ceiling):** deposit the reference exports in `00_REFERENCE_INTAKE/`
+> → flips parity from ENGINE==GOLDEN to ENGINE==FUSE, runs the literal `.aft` formula match,
+> de-circularizes §E; then the **flag-gated data-date / progress-aware reschedule** (ADR-0108) and the
+> **semantic** half of the figure-role model (F-11 beyond value-vs-identifier). Also the **3-tier
+> installer** (`docs/PLAN/INSTALLER-SPEC.md`, built on operator "go"). **Workflow:** `git fetch origin`
+> before branching/rebasing. **Highest ADR = 0137.** Full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — AI consistency hardened in-env (ADR-0136); accuracy ceiling remains operator-gated
 >
 > A "Claude Council" review framed it: **accuracy is oracle-bound** (needs the operator's Fuse/`.aft`/
 > `.mpp`/SSI exports — `audit/PARK-LIST.md`), **consistency is model-bound** and fixable in-env. This
@@ -11,13 +67,6 @@
 >   question retrieves; **blind-spot population guard** (`tests/engine/test_blind_spot_populations.py`) —
 >   summary + inactive + elapsed in one schedule, the populations the parity goldens lack.
 > - No parity number moved; no engine math changed.
->
-> **REMAINING (operator-gated accuracy ceiling):** deposit the reference exports in `00_REFERENCE_INTAKE/`
-> → flips parity from ENGINE==GOLDEN to ENGINE==FUSE, runs the literal `.aft` formula match,
-> de-circularizes §E; then the **flag-gated data-date / progress-aware reschedule** (ADR-0108) and the
-> **role-aware figure gate** (F-11 semantic half). Also the **3-tier installer** (`docs/PLAN/INSTALLER-SPEC.md`,
-> built on operator "go"). **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR =
-> 0136.** Full gate + `pytest -m parity` before each commit.
 
 > ## STATUS (prev) — Derived metrics Layer B — verified derivation gate, ADR-0135; highest ADR 0135
 

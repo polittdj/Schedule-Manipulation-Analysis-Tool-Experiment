@@ -40,3 +40,20 @@ def test_division_by_zero_is_skipped() -> None:
     # 0 in the sourced set must not crash a ratio/percent reconstruction
     assert verify_derivation("7", [7, 0]) is None  # 7 is "sourced" upstream; here no op yields 7
     assert verify_derivation("100.0", [5, 0, 5]) is None
+
+
+def test_integer_targets_require_an_exact_reconstruction_qc_d1() -> None:
+    """QC audit D1 (ADR-0138): a count is exact. 0.8/27*100 = 2.963 must NOT verify an invented
+    '3' — the 1-dp tolerance that made a third of invented small integers 'verifiable' applies
+    only to decimal ratio targets (the engine's own display precision)."""
+    assert verify_derivation("3", [0.8, 27.0]) is None  # 2.963 is not 3
+    assert verify_derivation("19", [12.04, 7.0]) is None  # 19.04 is not 19
+    d = verify_derivation("50", [12.0, 24.0])  # 12/24*100 = 50.0 exactly — still verified
+    assert d is not None and d.kind == "percent_of"
+    d = verify_derivation("9.5", [12.0, 126.0])  # decimal target keeps the 1-dp contract
+    assert d is not None and d.expression == "12 / 126 * 100 = 9.5"
+
+
+def test_date_tokens_are_never_operands_qc_d1() -> None:
+    """A whole-date token is evidence, not arithmetic — it can never be an operand or target."""
+    assert verify_derivation("2026-03-02", [5.0, 10.0]) is None

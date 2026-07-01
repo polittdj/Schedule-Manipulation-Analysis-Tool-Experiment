@@ -38,24 +38,33 @@ The 7 current skips are exactly these intake gates — none hides a defect:
 
 ---
 
-## C. NOT artifact-gated — open and fixable in-env NOW (do NOT wait for files)
+## B-addendum (2026-07-01) — new artifact-gated re-verification items from the QC audit
 
-These were re-confirmed **OPEN by live repro** this audit and need **no external artifact** — they are the
-internal-audit roadmap that was orphaned when the F-set batch shipped (VERIFICATION-REPORT §1.2, §6). Listed
-here so the next session does not mistakenly file them under "waiting on the operator."
+- **D7 — Float Ratio elapsed value.** ADR-0139 pins the displayed-days computation
+  (TF/per_day ÷ RD/1440 → 1.0 on the reference case). Confirm against a fresh Fuse export that
+  includes an elapsed in-progress Normal activity.
+- **D14 — SN07 "Remaining Duration Increases" semantics.** The engine-pinned formula compares
+  TOTAL duration (help.py caveat added, ADR-0141). Pull the verbatim `<Metric>` formula from the
+  `.aft` Bible; if it consults remaining duration, change the computation and re-pin §E (this may
+  also explain the ADR-0013 7-vs-8 residual).
+- **D20 — float-band float source.** Raw CPM float reproduces the pinned Acumen Critical counts
+  (P2 41 / P5 37); a stored-float variant broke the match and was reverted (ADR-0141). Re-examine
+  only against a fresh Fuse float/critical export.
+- **F-11 semantic half.** The value-vs-identifier role gate is closed (ADR-0137/0138); a *semantic*
+  figure-role model remains future work.
 
-- **C1 (CRITICAL)** — `to_json_text` drops 12 fidelity fields on Save→reopen (`json_schedule.py:180`). In-env.
-- **H1** — SSI load 500 + session half-mutation on non-list `affected` (`app.py:6131`). In-env.
-- **H3/H4** — one malformed XER id sinks the whole file (`xer.py:168,415`). In-env.
-- **M2** — pre-commit guard + `.gitignore` omit `.aft`/`.docx` (`.githooks/pre-commit:13`). In-env.
-- **M3** — friendly JSON fabricates `project_start` (`json_schedule.py:168`). In-env.
-- **M4** — UID-0 baseline-finish leak (`mspdi.py:602`). In-env.
-- **M5** — days↔% client/server rounding mismatch (`app.py:5758` vs `:5874`). In-env.
-- **M6** — sign-blind figure regex (`citations.py:25`). In-env.
-- **M7/M8/L2/L3/L5/L7** — perf debounce, MEI doc note, non-finite guard, offload atexit, DCMA-08 baseline-flag
-  note, tolerant OutlineLevel parse. All in-env.
-- **NEW-1** — Float-Ratio elapsed-duration axis mismatch (`float_ratio.py:78-82` vs `:90`). In-env; a golden
-  with an elapsed in-progress Normal activity would pin the fix.
+## C. NOT artifact-gated — STATUS 2026-07-01: ALL CLOSED (kept for the record)
+
+Every item below was closed in-env by ADR-0131/0132 (and F-11 by ADR-0137/0138); the unified ledger
+(`VERIFICATION-REPORT.md` §2, refreshed §7) is the authoritative status. Remaining in-env items are the
+LOW/NIT residuals (L4/L6/L8/L9/L10/L11/F-09/F-10/F-13/F-14/NEW-2/F-01-partial) and the 2026-07-01
+QC-audit leftovers D17/D18/D25 (batch R6).
+
+- ~~**C1 (CRITICAL)** — Save .json fidelity~~ → FIXED ADR-0131, completed (calendars/resources) ADR-0140.
+- ~~**H1 / H3 / H4 / M2 / M3 / M4 / M6 / M8 / L2 / L7**~~ → FIXED ADR-0131.
+- ~~**M5 / M7 / L3 / H2**~~ → FIXED ADR-0132. L5 stays OPEN/disclosed (ADR-0110).
+- ~~**NEW-1**~~ → FIXED ADR-0131; float-term axis CORRECTED by ADR-0139 (QC audit D7 — the 0131 fix
+  itself divided the float term by 1440; the displayed-days value is TF/per_day ÷ RD/1440).
 
 ---
 

@@ -92,8 +92,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA02": _doc(
         "DCMA02",
         "Leads",
-        "Relationships with a negative lag (a lead).",
-        "count(lag < 0) == 0",
+        "Relationships with a negative lag (a lead). Counted as DISTINCT incomplete-successor"
+        " activities (the Fuse-validated activity scope), not raw relationships: a task with two"
+        " lead predecessors is ONE offender (QC audit D22).",
+        "count(distinct incomplete successors of lag < 0 links) == 0",
         _DCMA,
         importance="Leads (negative lag) let a successor start before its predecessor finishes, "
         "compressing the plan in a way that hides true logic and can mask a slip.",
@@ -107,8 +109,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA03": _doc(
         "DCMA03",
         "Lags",
-        "Relationships with a positive lag into an incomplete successor.",
-        "count(lag > 0) / links <= 5%",
+        "Relationships with a positive lag into an incomplete successor. Counted as DISTINCT"
+        " incomplete-successor activities over a total-links denominator (the Fuse-validated"
+        " scope): a task with two lagged predecessors is ONE offender (QC audit D22).",
+        "count(distinct incomplete successors of lag > 0 links) / links <= 5%",
         _DCMA,
         importance="Lags bury real work (cure, delivery, review) inside a relationship where it "
         "cannot be progressed, resourced, or seen — over-use distorts the critical path.",
@@ -575,7 +579,12 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "SN07": _doc(
         "SN07",
         "Remaining Duration Increases",
-        "Activities whose duration grew vs the prior version.",
+        "Activities whose duration grew vs the prior version. CAVEAT (QC audit D14): despite the"
+        " Fuse metric NAME, the engine-pinned formula compares TOTAL duration (planned+actual), so"
+        " a completed activity whose actuals ran long counts, and a true remaining-duration"
+        " increase with flat total does not. The stored remaining_duration field is NOT consulted."
+        " Awaiting the .aft Bible verbatim formula + an Acumen §E cross-check before changing the"
+        " pinned semantics (artifact-gated; see audit/PARK-LIST.md).",
         "count(duration_now > duration_prior)",
         _E,
     ),
