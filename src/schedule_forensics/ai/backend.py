@@ -16,6 +16,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
+#: Deterministic decoding parameters every local backend sends, so the SAME prompt yields the SAME
+#: answer run-to-run (forensic consistency). ``temperature 0`` is greedy decoding; a fixed ``seed``
+#: pins any residual sampling. A forensic tool must not give two analysts different prose for one
+#: question — the engine is already deterministic; this removes the model as a variability source.
+DETERMINISTIC_TEMPERATURE = 0.0
+DETERMINISTIC_SEED = 0
+DETERMINISTIC_TOP_P = 1.0
+
 
 class Classification(StrEnum):
     """Project data classification — drives whether any non-local backend is permitted."""
