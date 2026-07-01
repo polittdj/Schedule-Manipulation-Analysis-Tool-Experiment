@@ -43,7 +43,8 @@ class _CountingBackend:
 
     def generate(self, prompt: str) -> str:
         self.calls += 1
-        return prompt + " (AI polished)."
+        text = prompt.split("STATEMENT: ", 1)[1].rsplit("\nREWRITE:", 1)[0]
+        return text + " (AI polished)."
 
 
 @pytest.fixture

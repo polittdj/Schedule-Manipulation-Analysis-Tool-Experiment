@@ -18,6 +18,7 @@ tracked as an M9 calibration item (ADR-0012).
 from __future__ import annotations
 
 from collections import Counter
+from decimal import ROUND_HALF_UP, Decimal
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
 from schedule_forensics.engine.metrics._common import (
@@ -72,7 +73,13 @@ def compute_schedule_quality(
         "missing_logic", "Missing Logic", len(missing), n_tasks, 5.0, Direction.LE, missing
     )
 
-    density = round(2 * n_links / n_tasks, 2) if n_tasks else 0.0
+    # half-up to 2 dp, matching ribbon.py's Fuse-validated convention (2.625 -> 2.63) — plain
+    # round() is banker's and disagreed with the ribbon by 0.01 at exact halves (QC audit D19)
+    density = (
+        float(Decimal(str(2 * n_links / n_tasks)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        if n_tasks
+        else 0.0
+    )
     out["logic_density"] = MetricResult(
         "logic_density",
         "Logic Density",

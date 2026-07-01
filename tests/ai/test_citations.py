@@ -134,3 +134,22 @@ def test_reattach_discards_prose_that_injects_an_accusation() -> None:
     # a clean rephrase with the same digits and no accusation IS used
     clean = "Hard date constraints sit on 12 of 126 activities; justify each."
     assert reattach([clean], (src,))[0].text == clean
+
+
+def test_iso_dates_tokenize_whole_never_as_fragments_qc_d1() -> None:
+    """QC audit D1 (ADR-0138): '2026-03-02' is ONE evidence token. Splitting it into
+    2026 / -03 / -02 fed small negative pseudo-figures into the Layer-B operand pool."""
+    from schedule_forensics.ai.citations import figure_tokens
+
+    assert figure_tokens("project start 2026-03-02, finish 2028-01-25") == [
+        "2026-03-02",
+        "2028-01-25",
+    ]
+    assert figure_tokens("data date 2026-08-27T08:00:00") == ["2026-08-27T08:00:00"]
+    # sign-awareness for real numbers is unchanged (audit M6)
+    assert figure_tokens("variance -5 days, float -12.5") == ["-5", "-12.5"]
+    # and preserves_figures still fails a reformatted date (fail closed)
+    from schedule_forensics.ai.citations import preserves_figures
+
+    assert preserves_figures("finish 2028-01-25", "finish 2028-01-25 confirmed")
+    assert not preserves_figures("finish 2028-01-25", "finish January 25, 2028")

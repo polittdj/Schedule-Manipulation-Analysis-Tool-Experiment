@@ -365,3 +365,163 @@ def test_missing_project_start_raises_not_fabricated() -> None:
         parse_json_text(
             '{"name": "x", "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}]}'
         )
+
+
+def _maximal_schedule():  # type: ignore[no-untyped-def]
+    """Every model field set to a NON-DEFAULT value, so any writer omission is visible."""
+    import datetime as dt
+
+    from schedule_forensics.model.assignment import Assignment
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.resource import Resource, ResourceType
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import ConstraintType, Task
+
+    project_cal = Calendar(
+        uid=3,
+        name="Project 10h",
+        working_minutes_per_day=600,
+        work_weekdays=(0, 1, 2, 3, 4, 5),
+        holidays=(dt.date(2026, 7, 3),),
+        working_days=(dt.date(2026, 7, 4),),
+        day_segments=((480, 720), (780, 1080)),
+    )
+    night = Calendar(uid=7, name="NightShift", working_minutes_per_day=480)
+    task = Task(
+        unique_id=11,
+        name="Erect steel — 鉄骨",
+        wbs="1.2.3",
+        calendar_uid=7,
+        outline_level=4,
+        duration_minutes=4800,
+        duration_is_elapsed=True,
+        remaining_duration_minutes=2400,
+        baseline_duration_minutes=4320,
+        is_estimated_duration=True,
+        is_milestone=False,
+        is_summary=False,
+        is_level_of_effort=True,
+        is_active=False,
+        is_manual=True,
+        constraint_type=ConstraintType.SNLT,
+        constraint_date=dt.datetime(2026, 8, 1, 8, 0),
+        deadline=dt.datetime(2026, 9, 1, 17, 0),
+        percent_complete=42.5,
+        physical_percent_complete=37.5,
+        stored_total_float_minutes=-480,
+        stored_is_critical=True,
+        start=dt.datetime(2026, 7, 6, 8, 0),
+        finish=dt.datetime(2026, 7, 20, 17, 0),
+        actual_start=dt.datetime(2026, 7, 6, 9, 30),
+        actual_finish=dt.datetime(2026, 7, 21, 16, 45, 30),
+        baseline_start=dt.datetime(2026, 7, 1, 8, 0),
+        baseline_finish=dt.datetime(2026, 7, 15, 17, 0),
+        cost=-125.5,
+        actual_cost=99.25,
+        budgeted_cost=1000.0,
+        resource_names=("Crane", "Crew A"),
+        resource_ids=(21,),
+        resource_assignments=(Assignment(resource_id=21, work_minutes=960, units=0.5),),
+        custom_fields=(("CA-WBS", "X.1"), ("Text20", "note")),
+    )
+    other = Task(unique_id=12, name="Follow-on", duration_minutes=480)
+    # milestone/summary carriers: contradictory with the maximal task's flags, so they ride on
+    # their own rows — the introspection guard unions the emitted keys across all tasks
+    mile = Task(unique_id=13, name="Contract award", duration_minutes=0, is_milestone=True)
+    summ = Task(unique_id=14, name="Phase rollup", duration_minutes=0, is_summary=True)
+    return Schedule(
+        name="Maximal",
+        project_start=dt.datetime(2026, 7, 1, 8, 0),
+        project_finish=dt.datetime(2026, 12, 1, 17, 0),
+        status_date=dt.datetime(2026, 7, 15, 17, 0),
+        baseline_finish=dt.datetime(2026, 11, 1, 17, 0),
+        calendar=project_cal,
+        calendars=(project_cal, night),
+        tasks=(task, other, mile, summ),
+        relationships=(Relationship(predecessor_id=11, successor_id=12, lag_minutes=-30),),
+        resources=(
+            Resource(
+                unique_id=21,
+                name="Crane",
+                type=ResourceType.MATERIAL,
+                is_generic=True,
+                max_units=2.5,
+                standard_rate=180.0,
+            ),
+        ),
+        custom_field_labels=("CA-WBS", "Text20"),
+    )
+
+
+#: Fields to_json_text deliberately does not write. `source_file` is a runtime citation label —
+#: the loader re-stamps it from the file name on every open, so persisting it would be stale.
+_WRITER_EXCLUDED_FIELDS: dict[str, set[str]] = {"Schedule": {"source_file"}}
+
+
+def test_writer_covers_every_model_field_introspection_guard_qc_d5() -> None:
+    """QC audit D5/D10 (ADR-0140): the writer must emit EVERY model field (bar the documented
+    exclusions), checked by introspection — so adding a field to any model without a writer line
+    fails THIS test instead of silently losing data on Save .json."""
+    from schedule_forensics.model.assignment import Assignment
+    from schedule_forensics.model.calendar import Calendar
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.resource import Resource
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    doc = json.loads(to_json_text(_maximal_schedule()))
+    emitted = {
+        "Schedule": set(doc),
+        "Task": {k for t in doc["tasks"] for k in t},
+        "Relationship": set(doc["relationships"][0]),
+        "Calendar": set(doc["calendars"][0]),
+        "Resource": set(doc["resources"][0]),
+        "Assignment": set(doc["tasks"][0]["resource_assignments"][0]),
+    }
+    for model in (Schedule, Task, Relationship, Calendar, Resource, Assignment):
+        excluded = _WRITER_EXCLUDED_FIELDS.get(model.__name__, set())
+        missing = set(model.model_fields) - emitted[model.__name__] - excluded
+        assert not missing, f"{model.__name__} fields not written by to_json_text: {missing}"
+
+
+def test_maximal_round_trip_is_lossless_qc_d5() -> None:
+    """QC audit D5/D9/D10: a maximally-populated schedule — TWO calendars (the project default is
+    NOT calendars[0] by uid order), resources, schedule-level finish dates — round-trips with a
+    model_dump identical to the original (source_file excluded: runtime label)."""
+    original = _maximal_schedule()
+    reopened = parse_json_text(to_json_text(original))
+    a = original.model_dump(exclude={"source_file"})
+    b = reopened.model_dump(exclude={"source_file"})
+    assert a == b
+    # the D5/D9 specifics, asserted explicitly for readability
+    assert len(reopened.calendars) == 2 and reopened.tasks[0].calendar_uid == 7
+    assert reopened.calendar.name == "Project 10h"  # never swapped for calendars[0]/uid order
+    assert reopened.resources[0].max_units == 2.5
+    assert reopened.project_finish is not None and reopened.baseline_finish is not None
+
+
+def test_strict_identity_types_fail_loud_qc_d24() -> None:
+    """QC audit D24: a fractional unique_id must raise, never truncate (identity corruption);
+    a null/empty name falls back to the UID label instead of the literal 'None'/''."""
+    with pytest.raises(ImporterError):
+        parse_json_text(
+            '{"name": "P", "project_start": "2026-01-05T08:00:00",'
+            ' "tasks": [{"unique_id": 1.5, "name": "A", "duration_minutes": 480}]}'
+        )
+    sch = parse_json_text(
+        '{"name": "P", "project_start": "2026-01-05T08:00:00",'
+        ' "tasks": [{"unique_id": 7, "name": null, "duration_minutes": 480},'
+        '           {"unique_id": 8, "name": "", "duration_minutes": 480}]}'
+    )
+    assert sch.tasks[0].name == "Task 7" and sch.tasks[1].name == "Task 8"
+
+
+def test_parse_json_stamps_source_file_like_other_importers_qc_d24(tmp_path: Path) -> None:
+    p = tmp_path / "myplan.json"
+    p.write_text(
+        '{"name": "P", "project_start": "2026-01-05T08:00:00",'
+        ' "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}]}',
+        encoding="utf-8",
+    )
+    assert parse_json(p).source_file == "myplan.json"

@@ -137,7 +137,8 @@ def test_backend_rephrases_prose_but_keeps_citations(golden_project5) -> None:
         def pull_model(self, model: str) -> None: ...
 
         def generate(self, prompt: str) -> str:
-            return prompt.upper()
+            text = prompt.split("STATEMENT: ", 1)[1].rsplit("\nREWRITE:", 1)[0]
+            return text.upper()
 
     plain = build_briefing([golden_project5], today=TODAY)
     shouted = build_briefing([golden_project5], backend=Shout(), today=TODAY)

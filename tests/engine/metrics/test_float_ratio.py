@@ -115,12 +115,14 @@ def test_float_ratio_trend_single_version_has_no_prior_delta() -> None:
     assert series.values == (0.5,) and series.deltas == (None,)
 
 
-def test_float_ratio_elapsed_activity_uses_a_single_axis() -> None:
-    """Audit NEW-1: for an elapsed-duration activity, float and remaining duration must be
-    divided on the SAME axis. Previously float used the working-day axis (480) while remaining
-    used the wall-clock axis (1440), distorting the ratio by 1440/480 = 3x (reporting 1.0 where
-    the unit-consistent value is 0.33)."""
-    # remaining 5 elapsed days (7200 min); stored float 5 working days (2400 min); 8h calendar
+def test_float_ratio_elapsed_activity_each_term_converts_on_its_own_axis() -> None:
+    """Audit NEW-1, corrected by QC audit D7: each term converts to DAYS on ITS OWN axis. Total
+    float — stored or recomputed — is always WORKING minutes, so it divides by the calendar's
+    per-day (480 here); only the elapsed activity's remaining duration is wall-clock (1440). The
+    result is the displayed-days ratio an analyst reads in MSP: 5 days of float over 5 edays of
+    remaining work = 1.0. (NEW-1's fix put BOTH terms on 1440, understating the float term 3x and
+    pinning 0.33 here — that pin was itself wrong.)"""
+    # remaining 5 elapsed days (7200 wall-clock min); stored float 5 working days (2400 min)
     elapsed = Task(
         unique_id=1,
         name="elapsed WIP",
@@ -130,6 +132,5 @@ def test_float_ratio_elapsed_activity_uses_a_single_axis() -> None:
         stored_total_float_minutes=2400,
     )
     out = compute_float_ratio(_sched([elapsed]))
-    # unit-consistent ratio is 5/15 (working-day) == 1.67/5 (elapsed-axis) == 0.33; the old
-    # mixed-axis bug reported 1.0 (float 5 working-days / remaining 5 elapsed-days).
-    assert out["float_ratio"].value == 0.33
+    # TF 2400/480 = 5 days; RD 7200/1440 = 5 edays -> 1.0
+    assert out["float_ratio"].value == 1.0

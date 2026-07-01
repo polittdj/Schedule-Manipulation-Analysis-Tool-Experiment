@@ -21,6 +21,7 @@ from schedule_forensics.model import Schedule
 from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
+from schedule_forensics.model.resource import Resource, ResourceType
 from schedule_forensics.model.task import ConstraintType, Task
 
 _DATE_FIELDS = (
@@ -41,14 +42,36 @@ def _dt(value: Any) -> dt.datetime | None:
     if isinstance(value, dt.datetime):
         return value
     try:
-        return dt.datetime.fromisoformat(str(value))
+        parsed = dt.datetime.fromisoformat(str(value))
     except ValueError as exc:
         raise ImporterError(f"invalid datetime in JSON schedule: {value!r}") from exc
+    # naive like every other importer (_common.parse_datetime): one tz-aware status_date mixed
+    # with naive versions crashed order_versions -> every multi-version page (QC audit D11)
+    return parsed.replace(tzinfo=None)
+
+
+def _int(value: Any, field: str) -> int:
+    """A whole number, read strictly. ``unique_id`` is the SOLE cross-version identity, so a
+    fractional value must fail loud, never truncate (``1.5`` silently becoming task ``1`` corrupts
+    identity — QC audit D24); the same strictness applies to every integer field for consistency.
+    """
+    if isinstance(value, bool):
+        raise ImporterError(f"invalid integer for {field!r}: {value!r}")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    try:
+        return int(str(value), 10)
+    except (TypeError, ValueError) as exc:
+        raise ImporterError(f"invalid integer for {field!r}: {value!r}") from exc
 
 
 def parse_json(path: str | os.PathLike[str]) -> Schedule:
-    """Parse a ``.json`` schedule file."""
-    return parse_json_text(Path(os.fspath(path)).read_text(encoding="utf-8"))
+    """Parse a ``.json`` schedule file. ``source_file`` is stamped with the file's basename so
+    citations carry the file label, exactly like the MSPDI/XER importers (QC audit D24)."""
+    p = Path(os.fspath(path))
+    return parse_json_text(p.read_text(encoding="utf-8")).model_copy(update={"source_file": p.name})
 
 
 def parse_json_text(text: str) -> Schedule:
@@ -102,10 +125,14 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
 
 
 def _task(raw: dict[str, Any]) -> Task:
+    uid = _int(raw["unique_id"], "unique_id")
+    # a null or empty name falls back to the UID label, matching MSPDI/XER (a literal "None" /
+    # empty-string task name corrupted downstream name handling — QC audit D24)
+    name = raw.get("name")
     fields: dict[str, Any] = {
-        "unique_id": int(raw["unique_id"]),
-        "name": str(raw.get("name", f"Task {raw['unique_id']}")),
-        "duration_minutes": int(raw.get("duration_minutes", 0)),
+        "unique_id": uid,
+        "name": str(name) if name not in (None, "") else f"Task {uid}",
+        "duration_minutes": _int(raw.get("duration_minutes", 0), "duration_minutes"),
         "duration_is_elapsed": bool(raw.get("duration_is_elapsed", False)),
     }
     for key in (
@@ -129,7 +156,7 @@ def _task(raw: dict[str, Any]) -> Task:
         "stored_total_float_minutes",
     ):
         if raw.get(key) is not None:
-            fields[key] = int(raw[key])
+            fields[key] = _int(raw[key], key)
     if raw.get("physical_percent_complete") is not None:
         fields["physical_percent_complete"] = float(raw["physical_percent_complete"])
     if raw.get("stored_is_critical") is not None:
@@ -151,12 +178,12 @@ def _task(raw: dict[str, Any]) -> Task:
     if isinstance(fields.get("resource_names"), list):
         fields["resource_names"] = tuple(str(r) for r in fields["resource_names"])
     if isinstance(raw.get("resource_ids"), list):
-        fields["resource_ids"] = tuple(int(r) for r in raw["resource_ids"])
+        fields["resource_ids"] = tuple(_int(r, "resource_ids") for r in raw["resource_ids"])
     if isinstance(raw.get("resource_assignments"), list):
         fields["resource_assignments"] = tuple(
             Assignment(
-                resource_id=int(a["resource_id"]),
-                work_minutes=int(a.get("work_minutes", 0)),
+                resource_id=_int(a["resource_id"], "resource_id"),
+                work_minutes=_int(a.get("work_minutes", 0), "work_minutes"),
                 units=float(a.get("units", 1.0)),
             )
             for a in raw["resource_assignments"]
@@ -165,13 +192,27 @@ def _task(raw: dict[str, Any]) -> Task:
     return Task(**fields)
 
 
+def _resource(raw: dict[str, Any]) -> Resource:
+    kwargs: dict[str, Any] = {
+        "unique_id": _int(raw["unique_id"], "resource unique_id"),
+        "name": str(raw.get("name", f"Resource {raw['unique_id']}")),
+        "is_generic": bool(raw.get("is_generic", False)),
+    }
+    if raw.get("type"):
+        kwargs["type"] = ResourceType(str(raw["type"]))
+    for key in ("max_units", "standard_rate"):
+        if raw.get(key) is not None:
+            kwargs[key] = float(raw[key])
+    return Resource(**kwargs)
+
+
 def _relationship(pred: int, succ: int, raw: dict[str, Any] | None = None) -> Relationship:
     raw = raw or {}
     return Relationship(
         predecessor_id=pred,
         successor_id=succ,
         type=RelationshipType(str(raw.get("type", "FS"))),
-        lag_minutes=int(raw.get("lag_minutes", 0)),
+        lag_minutes=_int(raw.get("lag_minutes", 0), "lag_minutes"),
     )
 
 
@@ -180,7 +221,13 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
     tasks = [_task(t) for t in data["tasks"]]
     rels: list[Relationship] = []
     for r in data.get("relationships", []):
-        rels.append(_relationship(int(r["predecessor_id"]), int(r["successor_id"]), r))
+        rels.append(
+            _relationship(
+                _int(r["predecessor_id"], "predecessor_id"),
+                _int(r["successor_id"], "successor_id"),
+                r,
+            )
+        )
     # task-level predecessors: [2] or [{"id": 2, "type": "FS", "lag_minutes": 0}]
     for t in data["tasks"]:
         for p in t.get("predecessors", []) or []:
@@ -188,9 +235,15 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
                 pred_id = p.get("id", p.get("predecessor_id"))
                 if pred_id is None:
                     raise ImporterError("task predecessor entry needs an 'id' or 'predecessor_id'")
-                rels.append(_relationship(int(pred_id), int(t["unique_id"]), p))
+                rels.append(
+                    _relationship(
+                        _int(pred_id, "predecessor id"), _int(t["unique_id"], "unique_id"), p
+                    )
+                )
             else:
-                rels.append(_relationship(int(p), int(t["unique_id"])))
+                rels.append(
+                    _relationship(_int(p, "predecessor id"), _int(t["unique_id"], "unique_id"))
+                )
     # project_start is the CPM anchor; a missing/null value must NOT be fabricated (the old
     # 2025-01-06 default invented a forensic input and masked truncated files). Raise like the
     # MSPDI / XER importers do (audit M3).
@@ -205,40 +258,67 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
     }
     if data.get("status_date"):
         schedule_kwargs["status_date"] = _dt(data["status_date"])
+    for key in ("project_finish", "baseline_finish"):
+        if data.get(key):
+            schedule_kwargs[key] = _dt(data[key])
     if isinstance(data.get("custom_field_labels"), list):
         schedule_kwargs["custom_field_labels"] = tuple(str(x) for x in data["custom_field_labels"])
-    if calendars:
+    if isinstance(data.get("resources"), list):
+        schedule_kwargs["resources"] = tuple(
+            _resource(r) for r in data["resources"] if isinstance(r, dict)
+        )
+    # The PROJECT calendar is the explicit "calendar" object when present; "calendars" is the full
+    # per-task registry. Older saves carried only a single-entry "calendars" — first-entry remains
+    # the fallback for them. Never assume calendars[0] IS the project calendar on a multi-calendar
+    # file: a strict model_dump lists the registry in uid order, and picking [0] silently swapped
+    # the project calendar (every duration/day conversion shifted — QC audit D9).
+    if isinstance(data.get("calendar"), dict):
+        schedule_kwargs["calendar"] = _calendar(data["calendar"])
+        if calendars:
+            schedule_kwargs["calendars"] = tuple(calendars)
+    elif calendars:
         schedule_kwargs["calendar"] = calendars[0]
         schedule_kwargs["calendars"] = tuple(calendars)
     return Schedule(**schedule_kwargs)
 
 
+def _calendar_out(cal: Calendar) -> dict[str, Any]:
+    # working_minutes_per_day is the exact round-trip value; hours_per_day stays for
+    # human readability (the parser prefers the minute count)
+    return {
+        "uid": cal.uid,
+        "name": cal.name,
+        "hours_per_day": cal.working_minutes_per_day / 60,
+        "working_minutes_per_day": cal.working_minutes_per_day,
+        "work_weekdays": list(cal.work_weekdays),
+        # holidays / working-day exceptions / intraday segments round-trip exactly so a
+        # re-opened file keeps the SSI driving-slack parity inputs (audit C1)
+        "holidays": [d.isoformat() for d in cal.holidays],
+        "working_days": [d.isoformat() for d in cal.working_days],
+        "day_segments": [list(seg) for seg in cal.day_segments],
+    }
+
+
 def to_json_text(schedule: Schedule) -> str:
-    """Serialize a schedule to the friendly JSON format (for 'Save .json'); re-openable."""
+    """Serialize a schedule to the friendly JSON format (for 'Save .json'); re-openable.
+
+    Lossless by contract: **every** model field round-trips except ``source_file`` (a runtime
+    citation label the loader re-stamps from the file name) — a model-introspection guard test
+    fails if a new field is added without a writer line. In particular the whole per-task
+    ``calendars`` registry is written (Save .json used to keep only the project calendar, leaving
+    ``Task.calendar_uid`` dangling and silently changing driving-slack numbers on reopen — QC
+    audit D5), along with ``resources``, ``project_finish`` and ``baseline_finish`` (D10/D24).
+    """
 
     def iso(value: dt.datetime | None) -> str | None:
         return value.isoformat() if value is not None else None
 
-    cal = schedule.calendar
     out: dict[str, Any] = {
         "name": schedule.name,
         "project_start": schedule.project_start.isoformat(),
-        # working_minutes_per_day is the exact round-trip value; hours_per_day stays for
-        # human readability (the parser prefers the minute count)
-        "calendars": [
-            {
-                "uid": cal.uid,
-                "name": cal.name,
-                "hours_per_day": cal.working_minutes_per_day / 60,
-                "working_minutes_per_day": cal.working_minutes_per_day,
-                "work_weekdays": list(cal.work_weekdays),
-                # holidays / working-day exceptions / intraday segments round-trip exactly so a
-                # re-opened file keeps the SSI driving-slack parity inputs (audit C1)
-                "holidays": [d.isoformat() for d in cal.holidays],
-                "working_days": [d.isoformat() for d in cal.working_days],
-                "day_segments": [list(seg) for seg in cal.day_segments],
-            }
-        ],
+        # the project default calendar, then the FULL per-task registry (QC audit D5)
+        "calendar": _calendar_out(schedule.calendar),
+        "calendars": [_calendar_out(c) for c in (schedule.calendars or (schedule.calendar,))],
         "tasks": [],
         "relationships": [
             {
@@ -252,8 +332,26 @@ def to_json_text(schedule: Schedule) -> str:
     }
     if schedule.status_date is not None:
         out["status_date"] = schedule.status_date.isoformat()
+    for finish_key, finish_val in (
+        ("project_finish", schedule.project_finish),
+        ("baseline_finish", schedule.baseline_finish),
+    ):
+        if finish_val is not None:
+            out[finish_key] = finish_val.isoformat()
     if schedule.custom_field_labels:
         out["custom_field_labels"] = list(schedule.custom_field_labels)
+    if schedule.resources:
+        out["resources"] = [
+            {
+                "unique_id": res.unique_id,
+                "name": res.name,
+                "type": str(res.type),
+                "is_generic": res.is_generic,
+                "max_units": res.max_units,
+                "standard_rate": res.standard_rate,
+            }
+            for res in schedule.resources
+        ]
     for t in schedule.tasks:
         task: dict[str, Any] = {
             "unique_id": t.unique_id,
@@ -274,7 +372,7 @@ def to_json_text(schedule: Schedule) -> str:
             ]
         # every field the parser reads is written back: a Save .json round-trip must not
         # silently demote milestones/summaries or drop WBS, durations, or costs
-        if t.wbs:
+        if t.wbs is not None:  # an empty-string WBS is a value, not an absence (QC audit D24)
             task["wbs"] = t.wbs
         if t.is_milestone:
             task["is_milestone"] = True

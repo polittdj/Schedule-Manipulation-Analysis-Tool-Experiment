@@ -8,6 +8,15 @@ a schedule is losing its ability to absorb slips. The bands are **cumulative**
 (``<= 0`` ⊆ ``< 5`` ⊆ ``< 10``) and convert to working minutes on the schedule's own
 calendar (ADR-0027/0028). The DAX bodies in the reference deck are not extractable
 (XPress9-compressed DataModel) — these are the documented reconstructions (ADR-0030).
+
+**Float source — recomputed CPM, by validated design (QC audit D20 disposition).** The bands read
+the engine's pure-logic CPM float, NOT the stored-preferring ``effective_total_float`` that
+DCMA-06/07 use: the 0-day total band at raw CPM float reproduces the Acumen "Critical" parity
+counts on the goldens (P2 41 / P5 37 — pinned in ``test_float_bands.py``), while switching to
+stored float breaks that match (41 → 39). The reference tools themselves mix sources (a Critical
+count from their own recompute; a Negative Float check from stored slack), so on a progressed file
+this page and the DCMA float checks can legitimately cite different activity sets — that is the
+reference behaviour, not a defect. Re-examine only against a fresh Fuse export (artifact-gated).
 """
 
 from __future__ import annotations

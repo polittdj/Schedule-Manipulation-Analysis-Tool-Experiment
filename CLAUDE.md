@@ -20,8 +20,9 @@ detection, and serves an interactive, locally-rendered report with a cited local
    CUI** and may be loaded into a build session (e.g. uploaded to Claude Code). They are kept out of git
    as large binaries / defense-in-depth, not because they are CUI. **Real CUI is only ever the
    operator's production schedules loaded into the deployed tool, which runs locally and never touches a
-   build session.** The pre-commit guard still blocks `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` regardless,
-   so no binary reference file lands in the repo.
+   build session.** The pre-commit guard blocks `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` everywhere
+   except the `tests/fixtures/` allowlist (synthetic, hand-authored, non-CUI fixtures only), so no
+   real reference binary lands in the repo.
    Runtime I/O is **std-lib only** (no `requests`/`httpx`/etc.); a net-egress guard fails the build if a
    forbidden HTTP client enters the runtime, and an air-gap test fails if a served page references a
    remote asset.
@@ -30,14 +31,14 @@ detection, and serves an interactive, locally-rendered report with a cited local
 
 ## Commands
 
-Full gate — run before every commit (CI runs it on Python 3.11 + 3.13):
+Full gate — run before every commit. CI (Python 3.11 + 3.13) runs the Python steps plus pip-audit and enforces the coverage gates; the `node --check` step is local-only, and plain local `pytest -q` does NOT collect coverage (the 85/70 numbers are CI-enforced):
 
 ```bash
 ruff check src/ tests/
 ruff format --check .
 python -m mypy src/                                    # strict
 bandit -q -r src                                       # only a non-zero EXIT is a failure (nosec warnings are not)
-python -m pytest -q                                    # coverage gates: engine >=85%, overall >=70%
+python -m pytest -q                                    # coverage gates (CI-enforced): engine >=85%, overall >=70%
 node --check src/schedule_forensics/web/static/*.js    # vendored JS, no build step
 ```
 
@@ -63,7 +64,7 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   `cei`, `hmi`, `fei_bri`, `float_ratio`, `float_bands`, `schedule_quality`, `evm`,
   `completion_performance`, …), each returning the frozen `MetricResult` from `metrics/_common.py`;
   `trend.py` (cross-version series); `grouping.py` (field filters); plus `driving_slack`, `manipulation`,
-  `recommend`, `narrative`. Crucial for Acumen parity: `_common.effective_total_float` /
+  `recommendations` (findings/risk matrix; AI narrative lives in `ai/`). Crucial for Acumen parity: `_common.effective_total_float` /
   `is_effective_critical` prefer the source tool's **stored, progress-aware** Total Slack / Critical flag
   over recomputed pure-logic CPM float when the file carries it.
 - **`importers/`** — `mspdi` (MS Project XML, the richest path), `xer` (Primavera), `json_schedule` (the
@@ -83,16 +84,20 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   a footer, and `interpretive` returns the model's text verbatim and is *not* figure-gated (the operator
   opts into raw analysis, with the standing "AI can err — verify against the citations" disclaimer). So
   "no unsourced number reaches the analyst" holds for narrative/briefing and the strict/annotate Q&A
-  modes — not for interpretive. The strict/annotate gate is **role-aware** (audit F-11, ADR-0137):
-  `ai/qa.py::_figure_roles` splits the cited figures into **value** figures (a digit appearing in a
-  fact's text *outside* any cited activity name/`UID n`) and **identifier** figures (carried by a
-  citation's task name or unique id). A digit that matches **only** an identifier — e.g. a name-digit
-  `2099` from "Milestone 2099" re-used as a finish year, or UID `6077` re-used as a count — is one the
-  model re-roled: **strict discards** that answer, **annotate flags** it (`_ROLE_NOTE`). The split is
-  **collision-safe** — a digit that is *both* a value and an identifier (a count `5` that is also some
-  UID `5`) counts as a value and is never discarded, which is why a blunt set-exclusion (that couldn't
-  tell UID `5` from count `5`) was wrong. Interpretive stays ungated by design. A fuller *semantic* role
-  model (beyond value-vs-identifier) remains the `AI-DERIVED-METRICS-SCOPE.md` Layer B direction.
+  modes — not for interpretive. The strict/annotate gate is **role-aware** (audit F-11, ADR-0137;
+  hardened ADR-0138): `ai/qa.py::_figure_roles` splits the cited figures into **value** figures (a
+  token in a fact's text outside every cited activity-name/`UID n` **span**) and **identifier**
+  figures (carried by a citation's task name or unique id). A digit that matches **only** an
+  identifier and is used **as a value** — a name-digit `2099` re-used as a finish year, UID `6077`
+  re-used as a count — is discarded (strict) / flagged (annotate); writing an identifier *as* an
+  identifier (`UID 143`, a quoted cited name) passes. The split is **collision-safe** (a digit that
+  is both value and identifier counts as a value) and hardened per the 2026-07-01 QC audit: ISO
+  dates tokenize **whole** (`citations.figure_tokens` — no month/day pseudo-figures can seed the
+  Layer-B operand pool), integer derivation targets must reconstruct **exactly** (counts are exact;
+  1-dp tolerance is for decimal ratios only), the identifier check runs **before** the derivation
+  check (no laundering a re-roled UID through a coincidental ratio), and identifier extraction is
+  span-based (an empty/digit-bearing task name cannot shred the value set). Interpretive stays
+  ungated by design. A fuller *semantic* role model remains future work.
 - **`web/app.py`** — the entire UI in one (large) file: routes + server-rendered HTML + a Jinja layout.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once

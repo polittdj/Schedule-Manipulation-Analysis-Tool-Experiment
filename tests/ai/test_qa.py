@@ -353,3 +353,130 @@ def test_strict_accepts_ratio_derivation_but_discards_additive_and_invented_laye
         _Model("There are 999 things."), facts, "how many?", mode="strict"
     )
     assert invented is None
+
+
+def test_strict_rejects_invented_figures_no_date_fragment_laundering_qc_d1() -> None:
+    """QC audit D1 (ADR-0138): date-heavy facts must not launder an invented figure through the
+    Layer-B gate. The ISO dates tokenize whole, so their month/day fragments never become
+    'engine value' operands, and an integer target needs an EXACT reconstruction."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+    from schedule_forensics.ai.qa import _figure_roles
+
+    cite = Citation("P.xml", 7, "Kickoff")
+    facts = (
+        CitedStatement(
+            "Schedule frame: project start 2026-03-02, data date 2026-08-27, computed CPM "
+            "finish 2028-01-25. 27 activities: 0.8% complete.",
+            (cite,),
+        ),
+    )
+    value_figs, _id_figs, _names = _figure_roles(facts)
+    assert not any(tok.startswith("-0") for tok in value_figs)  # no month/day fragments
+    assert "2026-03-02" in value_figs  # the date itself is a (whole) citable value
+    invented, _ = answer_question(
+        _Model("There are exactly 3 activities in serious trouble."),
+        facts,
+        "how many in trouble?",
+        mode="strict",
+    )
+    assert invented is None  # 0.8/27*100 = 2.963 no longer 'verifies' an invented 3
+
+
+def test_strict_identifier_checked_before_derivation_no_uid_laundering_qc_d4() -> None:
+    """QC audit D4 (ADR-0138): a re-roled UID must not launder through a coincidental
+    reconstruction. UID 50 == 12/24*100 exactly, and strict must STILL discard it."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("plan.mpp", 50, "Install switchgear")
+    facts = (CitedStatement("24 activities: 12 complete, 12 not started.", (cite,)),)
+    answer, _ = answer_question(
+        _Model("50 activities are behind schedule."), facts, "how many behind?", mode="strict"
+    )
+    assert answer is None
+    annotated, _ = answer_question(
+        _Model("50 activities are behind schedule."), facts, "how many behind?", mode="annotate"
+    )
+    assert annotated is not None and "activity name or ID" in annotated  # role-flagged, not shown
+    assert "12 / 24 * 100" not in annotated  # never presented as a verified derivation
+
+
+def test_empty_and_digit_task_names_cannot_shred_the_value_set_qc_d6() -> None:
+    """QC audit D6 (ADR-0138): identifier extraction is span-based. An empty citation name must
+    not space-split the fact text, and a task literally named '5' must not swallow the 5 inside
+    45/95 — the engine's own figures stay citable values."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+    from schedule_forensics.ai.qa import _figure_roles
+
+    empty = (
+        CitedStatement(
+            "Float band Total Float 0 Days: 12 of 126 incomplete activities (9.5%).",
+            (Citation("P.json", 7, ""),),
+        ),
+    )
+    value_figs, _ids, _names = _figure_roles(empty)
+    assert {"12", "126", "9.5"} <= value_figs
+    kept, _ = answer_question(
+        _Model("12 of 126 activities (9.5%) sit at zero float."), empty, "float?", mode="strict"
+    )
+    assert kept == "12 of 126 activities (9.5%) sit at zero float."  # engine figures never shredded
+
+    digit_named = (
+        CitedStatement("Task '5' has 45 of 95 activities (47.4%).", (Citation("P.xml", 9, "5"),)),
+    )
+    value_figs, id_figs, _names = _figure_roles(digit_named)
+    assert {"45", "95", "47.4"} <= value_figs  # boundary-guarded: '5' matches only standalone
+    assert "5" in id_figs
+
+
+def test_strict_allows_identifier_written_as_identifier_qc_d15() -> None:
+    """QC audit D15 (ADR-0138): 'UID 143' in an answer is correct identifier-role usage when 143
+    is cited — a faithful driving-path answer survives strict. A bare re-roled 143, or an
+    invented 'UID 999', is still discarded."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("plan.mpp", 143, "Erect steel")
+    facts = (
+        CitedStatement(
+            "The driving path to 'Erect steel' (UID 143) comprises 7 activities with 0 days "
+            "of driving slack.",
+            (cite,),
+        ),
+    )
+    faithful, _ = answer_question(
+        _Model("7 activities drive the path to UID 143 with 0 days of driving slack."),
+        facts,
+        "driving path?",
+        mode="strict",
+    )
+    assert faithful is not None
+    named, _ = answer_question(
+        _Model("7 activities drive the path to 'Erect steel' (UID 143)."),
+        facts,
+        "driving path?",
+        mode="strict",
+    )
+    assert named is not None  # quoting the cited activity name is identifier-role usage
+    invented_ref, _ = answer_question(
+        _Model("The path runs through UID 999."), facts, "driving path?", mode="strict"
+    )
+    assert invented_ref is None  # an invented UID reference stays discarded
+    re_roled, _ = answer_question(
+        _Model("143 activities are late."), facts, "how many late?", mode="strict"
+    )
+    assert re_roled is None  # bare identifier-as-value stays discarded
+
+
+def test_cross_check_compares_model_prose_not_gate_footers_qc_d16() -> None:
+    """QC audit D16 (ADR-0138): the dual-model cross-check strips the tool-appended footers, so
+    two agreeing answers are reported as agreeing even when one carries derivation arithmetic."""
+    from schedule_forensics.ai.qa import figure_agreement
+
+    primary = (
+        "Half are complete: 50% (12 of 24).\n\n"
+        "[Derived figures — recomputed by the tool from the cited facts via a standard "
+        "operation (confirm each relationship is meaningful): 12 / 24 * 100 = 50]"
+    )
+    second = "50% (12 of 24) are complete."
+    assert "identical" in figure_agreement(primary, second)
+    # genuine disagreement is still reported
+    assert "DIFFER" in figure_agreement(primary, "60% (12 of 20) are complete.")

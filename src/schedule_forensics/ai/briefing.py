@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import CitedStatement, assert_all_cited, reattach
+from schedule_forensics.ai.narrative import clean_polish, polish_prompt
 from schedule_forensics.ai.null import NullBackend
 from schedule_forensics.engine.cpm import (
     CPMResult,
@@ -870,7 +871,14 @@ def build_briefing(
     polished_sections: list[BriefingSection] = []
     for section in sections:
         assert_all_cited(section.statements)
-        polished = tuple(be.generate(s.text) for s in section.statements)
+        # LIVE models get the instruction-wrapped rephrase prompt; Null skips generation (its
+        # echo is the verbatim text) — QC audit D17. reattach re-verifies figures either way.
+        if be.name == "null":
+            polished = tuple(s.text for s in section.statements)
+        else:
+            polished = tuple(
+                clean_polish(be.generate(polish_prompt(s.text))) for s in section.statements
+            )
         polished_sections.append(
             BriefingSection(
                 section.heading,

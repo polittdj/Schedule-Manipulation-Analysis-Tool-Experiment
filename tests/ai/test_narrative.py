@@ -14,6 +14,14 @@ MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480
 
 
+def _stmt(prompt: str) -> str:
+    """The engine statement inside the ADR-0142 polish prompt (fakes act like an
+    instruction-following model: transform the STATEMENT, reply with the rewrite only)."""
+    if "STATEMENT: " in prompt:
+        return prompt.split("STATEMENT: ", 1)[1].rsplit("\nREWRITE:", 1)[0]
+    return prompt
+
+
 class _ShoutBackend:
     """A fake model that rephrases (upper-cases) — proves citations survive rephrasing."""
 
@@ -29,7 +37,7 @@ class _ShoutBackend:
     def pull_model(self, model: str) -> None: ...
 
     def generate(self, prompt: str) -> str:
-        return prompt.upper()
+        return _stmt(prompt).upper()
 
 
 class _FabricatorBackend(_ShoutBackend):
