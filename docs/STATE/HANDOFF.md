@@ -1,6 +1,27 @@
-# Handoff — 2026-06-27 (AI consistency — deterministic decoding + guards, ADR-0136; highest ADR 0136)
+# Handoff — 2026-07-01 (F-11 figure gate now role-aware, ADR-0137; highest ADR 0137)
 
-> ## STATUS (current) — AI consistency hardened in-env (ADR-0136); accuracy ceiling remains operator-gated
+> ## STATUS (current) — F-11 figure gate closed (role-aware, ADR-0137); accuracy ceiling remains operator-gated
+>
+> Branch `claude/f11-role-aware-gate` closes the last in-env, no-upload item. ADR-0134 had only
+> *disclosed* that the strict/annotate figure gate guarded a figure's presence, not its role (a
+> name-digit `2099` or a UID `6077` re-emitted as a value would pass). This closes it collision-safely:
+> - **`ai/qa.py::_figure_roles`** splits cited figures into **value** figures (digits in a fact's text
+>   *outside* every cited activity name / `UID n`) and **identifier** figures (a citation's task name /
+>   unique id). A digit that is *both* counts as a value (so a count `5` that is also UID `5` is never
+>   discarded — the collision that blocked a blunt set-gate).
+> - **Strict discards** an answer with an identifier-only figure; **annotate flags** it (`_ROLE_NOTE`);
+>   **interpretive** stays ungated by design.
+> - Disclosure flipped to "role-aware" (Ask-the-AI panel, `qa.py` docstrings, CLAUDE.md); ADR-0137
+>   supersedes ADR-0134's disclose-don't-gate posture. No engine math changed; no parity number moved.
+>
+> **REMAINING (operator-gated accuracy ceiling):** deposit the reference exports in `00_REFERENCE_INTAKE/`
+> → flips parity from ENGINE==GOLDEN to ENGINE==FUSE, runs the literal `.aft` formula match,
+> de-circularizes §E; then the **flag-gated data-date / progress-aware reschedule** (ADR-0108) and the
+> **semantic** half of the figure-role model (F-11 beyond value-vs-identifier). Also the **3-tier
+> installer** (`docs/PLAN/INSTALLER-SPEC.md`, built on operator "go"). **Workflow:** `git fetch origin`
+> before branching/rebasing. **Highest ADR = 0137.** Full gate + `pytest -m parity` before each commit.
+
+> ## STATUS (prev) — AI consistency hardened in-env (ADR-0136); accuracy ceiling remains operator-gated
 >
 > A "Claude Council" review framed it: **accuracy is oracle-bound** (needs the operator's Fuse/`.aft`/
 > `.mpp`/SSI exports — `audit/PARK-LIST.md`), **consistency is model-bound** and fixable in-env. This
@@ -11,13 +32,6 @@
 >   question retrieves; **blind-spot population guard** (`tests/engine/test_blind_spot_populations.py`) —
 >   summary + inactive + elapsed in one schedule, the populations the parity goldens lack.
 > - No parity number moved; no engine math changed.
->
-> **REMAINING (operator-gated accuracy ceiling):** deposit the reference exports in `00_REFERENCE_INTAKE/`
-> → flips parity from ENGINE==GOLDEN to ENGINE==FUSE, runs the literal `.aft` formula match,
-> de-circularizes §E; then the **flag-gated data-date / progress-aware reschedule** (ADR-0108) and the
-> **role-aware figure gate** (F-11 semantic half). Also the **3-tier installer** (`docs/PLAN/INSTALLER-SPEC.md`,
-> built on operator "go"). **Workflow:** `git fetch origin` before branching/rebasing. **Highest ADR =
-> 0136.** Full gate + `pytest -m parity` before each commit.
 
 > ## STATUS (prev) — Derived metrics Layer B — verified derivation gate, ADR-0135; highest ADR 0135
 

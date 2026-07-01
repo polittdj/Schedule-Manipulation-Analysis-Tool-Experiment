@@ -3840,3 +3840,30 @@ is done; the role-level half is future work).
 Accuracy is oracle-bound (needs the operator's Fuse/.aft/.mpp/SSI exports — `audit/PARK-LIST.md`);
 consistency is model-bound and now hardened in-env. Operator-gated next: deposit the reference files
 (flips parity to ENGINE==FUSE, runs the .aft match), and the flag-gated data-date reschedule.
+
+---
+
+## 2026-07-01 — F-11 figure gate now role-aware: value vs. identifier (ADR-0137)
+
+- **Branch:** `claude/f11-role-aware-gate` (fresh from `origin/main` after #279).
+- **Highest ADR:** 0137 (supersedes ADR-0134's disclose-don't-gate posture).
+
+### What changed (the last in-env, no-upload item)
+- **`ai/qa.py::_figure_roles`** splits cited figures into **value** figures (digits in a fact's text
+  *outside* every cited activity name / `UID n`) and **identifier** figures (a citation's task name /
+  unique id). A digit that is *both* counts as a value — collision-safe, so a count `5` that also
+  happens to be UID `5` is never discarded (the false positive that had kept ADR-0134 disclosure-only).
+- **`_classify_figures`** now returns `(verified derivations, identifier-reused, unverified)`; strict
+  discards on any unverified figure, any additive-only reconstruction, **or any identifier-reused
+  figure**; annotate appends a new `_ROLE_NOTE` flag for identifier-reused figures. Interpretive stays
+  ungated by design.
+- **Disclosure flipped to "role-aware":** the Ask-the-AI panel (`web/app.py`), the `qa.py` module +
+  `answer_question` docstrings, and CLAUDE.md. `tests/web/test_ask_everywhere.py` asserts the new panel
+  copy; `tests/ai/test_qa.py::test_strict_gate_is_role_aware_discards_reused_identifier_f11` pins strict
+  discard + annotate flag + collision-safe value survival.
+- No engine/metric math changed; no parity number moved (the gate operates on already-computed facts).
+
+### Status
+F-11 is closed for strict/annotate at the value level. Remaining: the artifact-gated parity items
+(`audit/PARK-LIST.md`), the flag-gated data-date reschedule (ADR-0108), the **semantic** half of the
+figure-role model (beyond value-vs-identifier), and the 3-tier installer (operator "go").

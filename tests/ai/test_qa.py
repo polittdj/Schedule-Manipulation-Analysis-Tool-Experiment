@@ -257,11 +257,11 @@ def test_workbook_fact_sheet_spans_versions_and_is_cited(
     assert "Manipulation signal" in text  # the latest-pair manipulation facts
 
 
-def test_strict_gate_guards_figure_presence_not_role_f11() -> None:
-    """Audit F-11 (disclosed, not set-gated): the strict gate verifies a figure is PRESENT in the
-    cited facts, not its ROLE. A digit carried by an activity name/UID is 'present', so a model can
-    re-role it and pass. Disclosed at the point of use (Ask-the-AI panel, qa docstring, CLAUDE.md);
-    pinned here so any future tightening is a deliberate, semantic change — not an accident."""
+def test_strict_gate_is_role_aware_discards_reused_identifier_f11() -> None:
+    """Audit F-11 (now role-aware, ADR-0137): the strict/annotate gate distinguishes a figure that
+    appears as a real engine VALUE from one that appears ONLY as an activity name/UID. A digit that
+    matches only such an identifier is one the model re-used in another role: strict DISCARDS it and
+    annotate FLAGS it. A digit that is also a genuine value is untouched (collision-safe)."""
     from schedule_forensics.ai import qa as qa_module
     from schedule_forensics.ai.citations import Citation, CitedStatement
 
@@ -271,12 +271,12 @@ def test_strict_gate_guards_figure_presence_not_role_f11() -> None:
             "Finding: 5 activities drive the path to 'Milestone 2099' (UID 6077).", (cite,)
         ),
     )
-    # the model re-roles the name-digit 2099 as a finish YEAR; every digit it writes is present in
-    # the fact text, so STRICT accepts it — the documented F-11 limitation.
+    # the model re-roles the name-digit 2099 as a finish YEAR. 2099 appears in the facts only inside
+    # the activity NAME, never as an engine value — STRICT now discards the whole answer.
     answer, _ = answer_question(
         _Model("The project finishes in 2099."), facts, "when does the path finish?", mode="strict"
     )
-    assert answer == "The project finishes in 2099."  # presence gate passes; role unchecked
+    assert answer is None  # role-aware: a name-digit re-used as a value is discarded
 
     # a genuinely-invented number (in no fact, name, or value) is still discarded wholesale
     invented, _ = answer_question(
@@ -284,9 +284,27 @@ def test_strict_gate_guards_figure_presence_not_role_f11() -> None:
     )
     assert invented is None
 
-    # the limitation is disclosed in the module docstring (point-of-use disclosure, not silent)
+    # a real engine VALUE (5 — the count) survives strict; it is a cited value, not an identifier
+    kept, _ = answer_question(
+        _Model("5 activities drive the path."), facts, "how many drive the path?", mode="strict"
+    )
+    assert kept == "5 activities drive the path."
+
+    # annotate KEEPS the re-roled answer but flags the identifier for role confirmation
+    annotated, _ = answer_question(
+        _Model("The project finishes in 2099."),
+        facts,
+        "when does the path finish?",
+        mode="annotate",
+    )
+    assert annotated is not None
+    assert "The project finishes in 2099." in annotated
+    assert "2099" in annotated
+    assert "activity name or ID" in annotated  # the _ROLE_NOTE role flag
+
+    # the role-aware gate is documented in the module docstring
     assert qa_module.__doc__ is not None
-    assert "presence, not role" in qa_module.__doc__
+    assert "Role-aware figure gate" in qa_module.__doc__
 
 
 def test_annotate_shows_verified_derivation_and_flags_unverified_layer_b() -> None:
