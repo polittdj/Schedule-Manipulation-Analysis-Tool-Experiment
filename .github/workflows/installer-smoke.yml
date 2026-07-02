@@ -1,0 +1,79 @@
+# Installer smoke tests — real-OS verification of the one-file installers.
+#
+# The build container is Linux, so the Windows installers could never be executed before
+# shipping; this workflow closes that gap: windows-latest PARSES all three .ps1 files and
+# EXECUTES tier1 in smoke mode (temp root, prompts skipped, no Ollama/Java) — embedded wheel
+# -> venv -> import -> launcher/shutdown endpoints exist. ubuntu-latest does the same for the
+# .sh family plus an actual serve/stop round-trip. Triggered only when installer content
+# changes (the files are ~600 KB each; no need to run on every commit).
+name: installer-smoke
+
+on:
+  pull_request:
+    paths:
+      - "installer/**"
+      - "tools/installer/**"
+      - ".github/workflows/installer-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "installer/**"
+      - "tools/installer/**"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse all three PowerShell installers (syntax gate)
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($f in Get-ChildItem installer/install-*.ps1) {
+            $tokens = $null; $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              Write-Host "::error::$($f.Name): $($errors[0].Message)"
+              $failed = $true
+            } else { Write-Host "$($f.Name): parses clean" }
+          }
+          if ($failed) { exit 1 }
+      - name: Smoke-run tier1 (embedded wheel -> venv -> import)
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          $env:SF_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP "SFSmoke"
+          powershell -ExecutionPolicy Bypass -File installer/install-tier1.ps1
+          $venvPy = Join-Path $env:SF_INSTALL_ROOT "venv\Scripts\python.exe"
+          & $venvPy -c "import schedule_forensics; from schedule_forensics.launcher import main; print('deployed import OK')"
+          & $venvPy -c "import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')"
+
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check the sh/command installers
+        run: |
+          for f in installer/install-*.sh installer/install-*.command; do
+            bash -n "$f" && echo "$f: parses clean"
+          done
+      - name: Smoke-run tier1 end-to-end (install -> serve -> static -> stop -> uninstall)
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          export SF_INSTALL_ROOT="$RUNNER_TEMP/SFSmoke"
+          bash installer/install-tier1.sh
+          nohup bash "$SF_INSTALL_ROOT/start-schedule-forensics.sh" > "$SF_INSTALL_ROOT/run.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://127.0.0.1:8321/ && break || sleep 1; done
+          curl -fsS http://127.0.0.1:8321/ | head -c 100
+          curl -fsS -o /dev/null -w "static asset: HTTP %{http_code}\n" http://127.0.0.1:8321/static/app.js
+          bash "$SF_INSTALL_ROOT/stop-schedule-forensics.sh"
+          sleep 3
+          if curl -fsS -o /dev/null --max-time 3 http://127.0.0.1:8321/; then
+            echo "::error::server still up after stop"; exit 1
+          fi
+          bash "$SF_INSTALL_ROOT/uninstall-schedule-forensics.sh"
+          test ! -d "$SF_INSTALL_ROOT" && echo "uninstall OK"

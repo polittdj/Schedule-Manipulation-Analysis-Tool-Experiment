@@ -863,7 +863,9 @@ value &mdash; is treated as an identifier the model has re-used in another role 
 count): <i>strict</i> discards that answer and <i>annotate</i> flags it &mdash; and the identifier
 check runs <i>before</i> the derived-figure check, so a re-used ID can never pass as a coincidental
 derivation. Writing an ID <i>as</i> an ID ("UID&nbsp;143", a quoted activity name) is fine; dates
-count as whole dates, not digit fragments; a derived whole number must reconstruct exactly. A digit
+count as whole dates, not digit fragments; a derived whole number must reconstruct exactly; and a
+figure re-written with a <i>different explicit unit</i> than the engine stated (a "5%" re-used as
+"5&nbsp;days") is likewise discarded/flagged. A digit
 that is also a genuine value is untouched (collision-safe). <i>Interpretive</i> mode is not
 figure-gated at all. Read any figure against the cited facts &mdash; the meaning, not just the
 number.</p>

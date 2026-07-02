@@ -370,7 +370,7 @@ def test_strict_rejects_invented_figures_no_date_fragment_laundering_qc_d1() -> 
             (cite,),
         ),
     )
-    value_figs, _id_figs, _names = _figure_roles(facts)
+    value_figs, _id_figs, _names, _units = _figure_roles(facts)
     assert not any(tok.startswith("-0") for tok in value_figs)  # no month/day fragments
     assert "2026-03-02" in value_figs  # the date itself is a (whole) citable value
     invented, _ = answer_question(
@@ -413,7 +413,7 @@ def test_empty_and_digit_task_names_cannot_shred_the_value_set_qc_d6() -> None:
             (Citation("P.json", 7, ""),),
         ),
     )
-    value_figs, _ids, _names = _figure_roles(empty)
+    value_figs, _ids, _names, _units = _figure_roles(empty)
     assert {"12", "126", "9.5"} <= value_figs
     kept, _ = answer_question(
         _Model("12 of 126 activities (9.5%) sit at zero float."), empty, "float?", mode="strict"
@@ -423,7 +423,7 @@ def test_empty_and_digit_task_names_cannot_shred_the_value_set_qc_d6() -> None:
     digit_named = (
         CitedStatement("Task '5' has 45 of 95 activities (47.4%).", (Citation("P.xml", 9, "5"),)),
     )
-    value_figs, id_figs, _names = _figure_roles(digit_named)
+    value_figs, id_figs, _names, _units = _figure_roles(digit_named)
     assert {"45", "95", "47.4"} <= value_figs  # boundary-guarded: '5' matches only standalone
     assert "5" in id_figs
 
@@ -480,3 +480,41 @@ def test_cross_check_compares_model_prose_not_gate_footers_qc_d16() -> None:
     assert "identical" in figure_agreement(primary, second)
     # genuine disagreement is still reported
     assert "DIFFER" in figure_agreement(primary, "60% (12 of 20) are complete.")
+
+
+def test_unit_role_gate_blocks_explicit_unit_contradictions_adr0145() -> None:
+    """ADR-0145 (the F-11 semantic half's unit step): a value token written with an EXPLICIT unit
+    that contradicts every unit the facts state it with is discarded (strict) / flagged
+    (annotate). Both sides must be explicit and disjoint — bare usage, bare facts, and
+    multi-role tokens are never flagged (collision-safe)."""
+    from schedule_forensics.ai.citations import Citation, CitedStatement
+
+    cite = Citation("P.xml", 1, "T1")
+    facts = (
+        CitedStatement(
+            "DCMA Missing Logic: FAIL — 10 of 200 activities (5%). "
+            "Float band: 12 days of float on the driving path.",
+            (cite,),
+        ),
+    )
+    # a "5%"-only figure re-written as days is a re-roled unit -> strict discards
+    a, _ = answer_question(_Model("The margin is 5 days."), facts, "q", mode="strict")
+    assert a is None
+    # a plain-days figure re-written as a percentage -> strict discards
+    a, _ = answer_question(_Model("Float is 12%."), facts, "q", mode="strict")
+    assert a is None
+    # matching units pass
+    a, _ = answer_question(
+        _Model("5% of activities lack logic; 12 days of float remain."), facts, "q", mode="strict"
+    )
+    assert a is not None
+    # a bare usage carries no unit claim -> never flagged (conservative by design)
+    a, _ = answer_question(_Model("The figure to watch is 5."), facts, "q", mode="strict")
+    assert a is not None
+    # annotate keeps the answer and flags the unit contradiction
+    a, _ = answer_question(_Model("The margin is 5 days."), facts, "q", mode="annotate")
+    assert a is not None and "different unit" in a
+    # collision safety: a token the facts state in BOTH unit contexts is never flagged
+    both = (CitedStatement("5 activities fail (5%).", (cite,)),)
+    a, _ = answer_question(_Model("The answer is 5 days behind."), both, "q", mode="strict")
+    assert a is not None

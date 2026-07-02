@@ -31,7 +31,12 @@
 $ErrorActionPreference = "Stop"
 
 function Install-Main {
-$InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensics"
+# SF_INSTALLER_SMOKE=1: non-interactive CI/self-test mode — temp install root, prompts skipped,
+# no shortcuts, no Ollama/Java. Used by the windows-latest smoke workflow; harmless for users.
+$Smoke = ($env:SF_INSTALLER_SMOKE -eq "1")
+if ($Smoke -and $env:SF_INSTALL_ROOT) { $InstallRoot = $env:SF_INSTALL_ROOT }
+elseif ($Smoke) { $InstallRoot = Join-Path ([IO.Path]::GetTempPath()) "SFSmoke\ScheduleForensics" }
+else { $InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensics" }
 $VenvDir     = Join-Path $InstallRoot "venv"
 $AppPort     = 8321
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
@@ -113,6 +118,7 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
     if ([int]$jv -ge 17) { $haveJava = $true }
 }
 if ($haveJava) { Ok "Java 17+ present" }
+elseif ($Smoke) { Warn2 "Smoke mode: skipping Java offer" }
 else {
     $ans = Read-Host "    Java 17+ not found. Install it now for native .mpp support? [y/N]"
     if ($ans -match "^[Yy]") {
@@ -123,7 +129,8 @@ else {
 
 # --- 5. Ollama + this tier's local AI model -------------------------------------------
 Step "Local AI ($OllamaModel) — the tool runs fully without it (skippable)"
-$ans = Read-Host "    Install Ollama + pull '$OllamaModel' (~$ModelDiskGB GB download)? [Y/n]"
+if ($Smoke) { $ans = "n"; Warn2 "Smoke mode: skipping AI install" }
+else { $ans = Read-Host "    Install Ollama + pull '$OllamaModel' (~$ModelDiskGB GB download)? [Y/n]" }
 if ($ans -notmatch "^[Nn]") {
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
         winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent
@@ -183,6 +190,12 @@ AI:     enable it in AI Settings inside the app (model installed: $OllamaModel).
 Remove: run Uninstall-ScheduleForensics.ps1 in $InstallRoot.
 "@ | Set-Content -Path (Join-Path $InstallRoot "FIRST-RUN-README.txt") -Encoding UTF8
 
+if ($Smoke) {
+    Ok "Smoke mode: launchers written to $InstallRoot only (no shortcuts)"
+    Stop-Transcript | Out-Null
+    Write-Host "SMOKE INSTALL OK" -ForegroundColor Green
+    return
+}
 $shell = New-Object -ComObject WScript.Shell
 $desk  = [Environment]::GetFolderPath("Desktop")
 $menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Schedule Forensics"

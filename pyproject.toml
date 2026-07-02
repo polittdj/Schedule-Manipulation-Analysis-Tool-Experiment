@@ -70,6 +70,14 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+# Non-Python runtime data the DEPLOYED tool serves/loads: the vendored JS/CSS (air-gapped UI)
+# and the bundled example schedule. Without this the wheel installs but the app crashes at
+# startup mounting /static — caught by the Linux installer's end-to-end run (2026-07-02); the
+# dev environment never sees it because `pip install -e` reads the source tree. The installer
+# smoke tests (Linux in-container + windows-latest CI) now exercise the WHEEL, keeping it honest.
+[tool.setuptools.package-data]
+schedule_forensics = ["web/static/*", "web/examples/*"]
+
 # --- ruff: lint + format -------------------------------------------------------
 [tool.ruff]
 line-length = 100

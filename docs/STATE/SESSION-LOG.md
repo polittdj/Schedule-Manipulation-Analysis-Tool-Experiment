@@ -3968,3 +3968,18 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   only possible on a real Windows box (disclosed in the spec + README).
 - **Deliberately NOT done without the operator:** data-date reschedule (two prior attempts
   reverted for breaking parity — needs the Fuse oracle), all PARK-LIST §B artifacts.
+
+### 2026-07-02 (cont.) — all-OS installers + packaging fix (ADR-0144); unit-role gate (ADR-0145)
+- **ADR-0144:** Linux/macOS installer families generated from bash templates (9 files, one
+  byte-exact wheel, per-family identical bodies test-enforced). Executing the Linux tier1
+  installer END-TO-END caught the wheel omitting `web/static`/`web/examples` (startup crash on a
+  deployed install; dev -e installs masked it) — fixed with `[tool.setuptools.package-data]` +
+  regression tests on the declaration AND the embedded wheel contents. Full Linux lifecycle
+  verified in-container (install → dashboard serves → /static/app.js 200 from the wheel →
+  graceful stop → uninstall) and wired into CI; windows-latest CI parses all .ps1 + smoke-runs
+  tier1 (`SF_INSTALLER_SMOKE` non-interactive mode added to every family).
+- **ADR-0145:** unit-role figure gate — explicit unit contradictions (pct-only value re-used with
+  a plain unit or vice versa) discard in strict / flag in annotate; bare and multi-unit usages
+  never flagged. Live-verified 7 cases then pinned; a patch-script `\b`→backspace corruption in
+  the new regexes was caught by the live verification and fixed before commit.
+- PARK-LIST F-11 semantic-half entry updated (first slice closed in-env).
