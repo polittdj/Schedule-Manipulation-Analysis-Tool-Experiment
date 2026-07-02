@@ -100,16 +100,16 @@ reproducible from committed artifacts?
 | **L1** | Internal=**F-04** | LOW | ADR-0130 | **FIXED (labeled)** | `float_analysis.py:14-22` caveat + docstring 37→4; code still pure-CPM (by design) | CONFIRMED | Y — two surfaces now labeled distinctly |
 | **L2** | Internal | LOW | none | **FIXED** (ADR-0131) | no `math.isfinite` in `app.py`; `_to_float("inf")`→inf; 422 later | CONFIRMED | N/A |
 | **L3** | Internal | LOW | none | **FIXED** (ADR-0132) | `shutdown_offload` only at `app.py:1056`; no atexit/lifespan hook | CONFIRMED | N/A (mitigated by ProcessPool atexit) |
-| **L4** | Internal | LOW | none | **SUSPECTED-OPEN** | not re-executed this round; prior: `sra_risk.js:51` early return | SUSPECTED | N/A |
+| **L4** | Internal | LOW | none | **FIXED** (ADR-0143 — no-basis derive clears the unlocked field; node-harness-verified) | not re-executed this round; prior: `sra_risk.js:51` early return | SUSPECTED | N/A |
 | **L5** | Internal | LOW | none (ADR-0110 drift) | **OPEN / disclosed** | `dcma14.py:177` keys current `duration_is_elapsed`, not baseline | CONFIRMED | Y — ADR-0110-disclosed |
 | **L6** | Internal | LOW | none | **SUSPECTED-OPEN (as-designed)** | not re-executed; prior: EVM BCWS finish-gated, scope-correct | SUSPECTED | Y — scope-documented |
 | **L7** | Internal | LOW | none | **FIXED** (ADR-0131) | `mspdi.py:220` `_int`; `OutlineLevel=n/a`→ImporterError (whole file) | CONFIRMED | N/A |
-| **L8** | Internal | LOW | none | **SUSPECTED-OPEN** | not re-executed; prior: `gantt.js` header-width-only offsets | SUSPECTED | N/A |
-| **L9** | Internal | LOW | none | **SUSPECTED-OPEN** | not re-executed; prior: sra_risk.js derive math only substring-asserted | SUSPECTED | N/A |
-| **L10** | Internal | LOW | none | **SUSPECTED-OPEN** | not re-executed; prior: brittle source-string offload test | SUSPECTED | N/A |
-| **L11** | Internal | NIT | none | **SUSPECTED-OPEN** | not re-executed; prior: MSPDI lag-only dup links collapse | SUSPECTED | N/A |
+| **L8** | Internal | LOW | none | **DOCUMENTED** (ADR-0143 — freezeColumns precondition comment) | not re-executed; prior: `gantt.js` header-width-only offsets | SUSPECTED | N/A |
+| **L9** | Internal | LOW | none | **FIXED** (ADR-0143 — node-driven derive-math harness, pytest-wired) | not re-executed; prior: sra_risk.js derive math only substring-asserted | SUSPECTED | N/A |
+| **L10** | Internal | LOW | none | **FIXED** (ADR-0143 — behavioral offload test replaces source-string asserts) | not re-executed; prior: brittle source-string offload test | SUSPECTED | N/A |
+| **L11** | Internal | NIT | none | **DOCUMENTED** (ADR-0143 — lag-only dup-link collapse noted at the dedup site) | not re-executed; prior: MSPDI lag-only dup links collapse | SUSPECTED | N/A |
 | **L12** | Internal=**F-08** | LOW | ADR-0130 | **FIXED** | `pyproject.toml:119` `fail_under=70.0`; comment corrected | CONFIRMED | Y |
-| **F-01** | F-set | HIGH | ADR-0130 | **PARTIAL** | marker in `PARITY-REPORT.md:153-155` prose; **no test asserts it** (sync test pins numbers only) | CONFIRMED | Y (disclosed) / parity is self-consistency |
+| **F-01** | F-set | HIGH | ADR-0130 | **PARTIAL → marker now TEST-ENFORCED** (ADR-0143; numeric Fuse validation stays artifact-gated) | marker in `PARITY-REPORT.md:153-155` prose; **no test asserts it** (sync test pins numbers only) | CONFIRMED | Y (disclosed) / parity is self-consistency |
 | **F-02** | F-set | HIGH | ADR-0130 | **FIXED (disclosed+guarded)** | `forecast.py:101` as_scheduled; `test_data_date_finish_gap.py` 2 pass; engine still understates (06-26) but labeled | CONFIRMED | Y — stored finish surfaced + labeled |
 | **F-03** | F-set | HIGH | ADR-0130 | **FIXED** | `test_parity_report_sync.py` 1 pass; stale −99/41-37/43-40 only as struck-through history | CONFIRMED | Y |
 | **F-04** | F-set=L1 | MED | ADR-0130 | **FIXED (labeled)** | see L1 | CONFIRMED | Y |
@@ -121,10 +121,10 @@ reproducible from committed artifacts?
 | **F-10** | F-set | LOW | none (ADR-0010) | **SUSPECTED-OPEN (as-designed)** | not re-executed; 17:00 vs 16:00 contiguous-calendar model | SUSPECTED | Y — documented |
 | **F-11** | F-set | LOW | none (by-design) | **FIXED** (role gate ADR-0137, hardened ADR-0138) | `citations.py:71-78` digit presence not role; bounded to ungated interpretive | CONFIRMED | Y — CLAUDE.md "digits not prose" |
 | **F-12** | F-set | LOW | ADR-0130 | **FIXED** | `qa.py:6-19` lists annotate(default)/strict/interpretive | CONFIRMED | Y |
-| **F-13** | F-set | LOW | partial (ADR-0128/0130) | **OPEN (minor)** | `manipulation.py` shortened-dur scope; `is_active` not in `diff._TRACKED_FIELDS` (deactivation detected as change, no dedicated flag) | SUSPECTED | Y |
-| **F-14** | F-set | LOW | none | **OPEN (doc)** | `driving_slack.py:73-74`, `health_extra.py:25` unsourced thresholds | SUSPECTED | partly UNVERIFIABLE — handbook absent |
+| **F-13** | F-set | LOW | partial (ADR-0128/0130) | **FIXED** (ADR-0143 — is_active tracked in diff; MANIP_DEACTIVATED_TASK, HIGH on prior-critical) | `manipulation.py` shortened-dur scope; `is_active` not in `diff._TRACKED_FIELDS` (deactivation detected as change, no dedicated flag) | SUSPECTED | Y |
+| **F-14** | F-set | LOW | none | **DOCUMENTED** (ADR-0143 — provenance notes at both threshold sites; re-source when the handbook lands) | `driving_slack.py:73-74`, `health_extra.py:25` unsourced thresholds | SUSPECTED | partly UNVERIFIABLE — handbook absent |
 | **NEW-1** | *this audit* | LOW-MED | n/a | **FIXED** (ADR-0131), axis CORRECTED (ADR-0139 — the 0131 fix moved the float term to the wrong axis) | `float_ratio.py:78-82` (÷1440) vs `:90` (÷480); docstring `:25-27` false; live 3× distortion §D | CONFIRMED | **N — docstring asserts a property the code violates** |
-| **NEW-2** | *this audit* | LOW | n/a | **OPEN (new, weak)** | `manipulation.py:247-249` `MANIP_CALENDAR_LOOSENED` fires on net-zero weekday swap | CONFIRMED (low sev) | Y-ish — MEDIUM "confirm authorized" flag by design |
+| **NEW-2** | *this audit* | LOW | n/a | **FIXED** (ADR-0143 — net working-week growth only; net-zero swap no longer fires) | `manipulation.py:247-249` `MANIP_CALENDAR_LOOSENED` fires on net-zero weekday swap | CONFIRMED (low sev) | Y-ish — MEDIUM "confirm authorized" flag by design |
 
 **Tally of TRUE status:** FIXED = 12 (C2, M1, L1/F-04, L12/F-08, F-02, F-03, F-05, F-06, F-07, F-12; counting
 the L/F duplicates once → 10 distinct fixes) · PARTIAL = 1 (F-01) · OPEN (confirmed live) = **C1 + H1, H2,
@@ -403,9 +403,10 @@ refresh — every in-env finding had been closed by ADR-0131/0132/0137 while the
 OPEN (the 2026-07-01 QC audit's finding D8, the mirror image of the §6 root cause). §2 is now
 refreshed in place; keep refreshing it every session that changes a finding's status (PARK-LIST §D).
 
-**Residual in-env OPENs from §2 (all LOW/NIT, unchanged):** L4, L6 (as-designed), L8, L9, L10,
-L11, F-09/F-10 (as-designed), F-13, F-14, NEW-2 (weak), F-01 (PARTIAL — no test asserts the
-parity-scope marker). L5 remains OPEN/disclosed (ADR-0110).
+**Residual in-env OPENs from §2 — STATUS 2026-07-02 (ADR-0143): ALL CLOSED OR DOCUMENTED.**
+L4/L9/L10/F-13/NEW-2 fixed; L8/L11/F-14 documented at the point of use; F-01's engine-pinned
+marker is now test-enforced (numeric Fuse validation stays artifact-gated). Still as-designed:
+L5 (ADR-0110-disclosed), L6, F-09, F-10. **No in-env finding remains open in any ledger.**
 
 ### 2026-07-01 master QC audit (D-series) — 26 findings, each verified 3 ways
 
@@ -427,15 +428,15 @@ parity-scope marker). L5 remains OPEN/disclosed (ADR-0110).
 | D14 | MED | SN07 "Remaining Duration Increases" compares TOTAL duration (counts a completed activity with long actuals; misses a true remaining increase) | **DOCUMENTED+PARKED** ADR-0141 (engine-pinned §E; awaiting .aft verbatim formula — artifact-gated) |
 | D15 | MED | strict discarded correct driving-path answers naming the focus UID | **FIXED** ADR-0138 (identifier-role usage allowed) |
 | D16 | MED | dual-model cross-check compared post-footer text (false DIFFER on agreeing answers) | **FIXED** ADR-0138 (pre-footer comparison) |
-| D17 | MED | narrative/briefing polish sends the bare sentence, no instruction (feature ≈ dead weight) | **OPEN → R6** |
-| D18 | LOW | SessionState race (live-reproduced KeyError under concurrent filter+render) | **OPEN → R6** |
+| D17 | MED | narrative/briefing polish sends the bare sentence, no instruction (feature ≈ dead weight) | **FIXED** ADR-0142 (instruction prompt + echo guard) |
+| D18 | LOW | SessionState race (live-reproduced KeyError under concurrent filter+render) | **FIXED** ADR-0142 (session RLock) |
 | D19 | LOW | Logic Density rounded banker's in schedule_quality vs half-up in ribbon (0.01 disagreement at halves) | **FIXED** ADR-0141 (half-up everywhere) |
 | D20 | LOW | float bands read raw CPM float while DCMA-06/07 read stored float (same-page offender sets disjoint) | **REVERTED-BY-ORACLE + DOCUMENTED** ADR-0141 (raw CPM float reproduces the pinned Acumen Critical counts 41/37; stored float broke the match) |
 | D21 | LOW | margin displayed elapsed durations on the working axis (5 edays → 15 d) | **FIXED** ADR-0139 |
 | D22 | LOW | help.py DCMA-02/03 formula text omits the distinct-incomplete-successor counting the implementation uses | **FIXED** this refresh (help.py wording) |
 | D23 | LOW | derivation tolerance contradicted "counts exact"; x/x=100% unverifiable; no complexity cap (10.7 s measured) | **FIXED** ADR-0138 (exact integers, caps); 100% stays unverifiable BY CHOICE (fail-closed) |
 | D24 | LOW | round-trip gaps: project_finish/baseline_finish write-only; source_file unstamped; uid 1.5 truncated; name null→"None"; wbs ""→None | **FIXED** ADR-0140 |
-| D25 | LOW | XER dropped-link tolerance invisible at default logging; lag garbage raises while endpoint garbage drops | **OPEN → R6** (surface the drop count) |
+| D25 | LOW | XER dropped-link tolerance invisible at default logging; lag garbage raises while endpoint garbage drops | **FIXED** ADR-0142 (WARNING-level drop count) |
 | D26 | LOW | doc drift: HANDOFF "artifact-gated ONLY" overclaim; CLAUDE.md CI/node + module-list inaccuracies; hook rename gap | **FIXED** this refresh (CLAUDE.md/HANDOFF/hook AMR) |
 
 **Artifact-gated re-verification list (add to PARK-LIST):** D7 (Float-Ratio elapsed value vs a

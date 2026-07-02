@@ -85,21 +85,49 @@ def test_offload_threshold_is_reasonable() -> None:
     assert 100 <= OFFLOAD_TASK_THRESHOLD <= 2000
 
 
-def test_sra_routes_are_wired_through_the_offload() -> None:
-    """Every heavy SRA compute call site goes through run_maybe_offloaded with a task-count gate, so
-    a large schedule offloads while a small one stays in-process."""
-    import re
+def test_sra_routes_are_wired_through_the_offload(monkeypatch: pytest.MonkeyPatch) -> None:
+    """BEHAVIORAL (audit L10 / ADR-0143): drive a real >threshold schedule through the SRA route
+    with run_maybe_offloaded monkeypatched, and assert the route asked to OFFLOAD — a refactor
+    that renames/reflows the call sites passes; one that silently drops the task-count gate
+    fails. (The old test asserted exact source spelling and broke on harmless refactors.)"""
+    import datetime as dt
 
-    src = (Path(__file__).resolve().parents[2] / "src/schedule_forensics/web/app.py").read_text(
-        encoding="utf-8"
+    from schedule_forensics.importers.json_schedule import to_json_text
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+    from schedule_forensics.web import app as app_module
+    from schedule_forensics.web.offload import OFFLOAD_TASK_THRESHOLD
+
+    calls: list[bool] = []
+
+    def spy(offload: bool, fn, *args, **kwargs):  # type: ignore[no-untyped-def]
+        calls.append(bool(offload))
+        return fn(*args, **kwargs)  # always run in-process; we assert only the DECISION
+
+    monkeypatch.setattr(app_module, "run_maybe_offloaded", spy)
+    n = OFFLOAD_TASK_THRESHOLD + 10
+    big = Schedule(
+        name="big",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        tasks=tuple(Task(unique_id=i, name=f"T{i}", duration_minutes=480) for i in range(1, n + 1)),
     )
-    norm = re.sub(r"\s+", " ", src)  # whitespace-agnostic (survives ruff reflow)
-    assert norm.count("run_maybe_offloaded(") >= 5  # the 5 heavy SRA call sites
-    assert "run_maybe_offloaded( heavy, compute_sra," in norm
-    assert "run_maybe_offloaded( heavy, compute_sra_ssi," in norm
-    assert "run_maybe_offloaded( heavy, compute_oat_sensitivity," in norm
-    assert src.count("len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD") >= 4
-    assert "shutdown_offload()" in src  # the worker is torn down on Quit
+    c = TestClient(create_app(SessionState()))
+    c.post("/upload", files={"files": ("big.json", to_json_text(big), "application/json")})
+    r = c.get("/api/sra?iterations=50")
+    assert r.status_code == 200, r.status_code
+    assert calls and all(calls), f"heavy schedule must offload at every SRA call site: {calls}"
+
+    # and a small schedule stays in-process (the same gate, other side)
+    calls.clear()
+    small = Schedule(
+        name="small",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        tasks=(Task(unique_id=1, name="T", duration_minutes=480),),
+    )
+    c2 = TestClient(create_app(SessionState()))
+    c2.post("/upload", files={"files": ("small.json", to_json_text(small), "application/json")})
+    assert c2.get("/api/sra?iterations=50").status_code == 200
+    assert calls and not any(calls), f"small schedule must stay in-process: {calls}"
 
 
 def test_sra_simulation_still_runs_end_to_end() -> None:

@@ -1,6 +1,22 @@
-# Handoff — 2026-07-01 (QC-audit remediation in progress; highest ADR 0142)
+# Handoff — 2026-07-02 (residual closeout + installers; highest ADR 0143)
 
-> ## STATUS (current) — 2026-07-01 master QC audit → remediation batches R1–R6 (R1 done, ADR-0138)
+> ## STATUS (current) — R7 residual closeout (ADR-0143) + three-tier installers built
+>
+> **Every in-env finding across both audit trails is now FIXED, DOCUMENTED, or as-designed** —
+> the only open work is artifact-gated (PARK-LIST §B/§B-addendum) or operator-decision-gated.
+> - **R7 (ADR-0143):** L4 stale-derive clear + node-driven derive harness (L9, pytest-wired);
+>   behavioral offload test (L10); `is_active` diff-tracked + MANIP_DEACTIVATED_TASK (F-13, HIGH
+>   on prior-critical); net-zero calendar swap no longer fires LOOSENED (NEW-2); F-01
+>   engine-pinned marker test-enforced; L8/L11/F-14 documented at the point of use; 3 stale §7
+>   ledger rows (D17/D18/D25) corrected to FIXED ADR-0142.
+> - **Installers (INSTALLER-SPEC §3 defaulted 2026-07-02, operator may override):** three
+>   self-contained Windows `installer/install-tier{1,2,3}.ps1` + distributable README — prereq
+>   checks, install-only-missing (Python/venv/tool wheel embedded, optional Java 17, Ollama +
+>   per-tier model), Desktop/Start-Menu Start/Stop shortcuts, uninstaller. Defaults: Windows,
+>   online install, AI included (tier1 llama3.2:3b / tier2 llama3.1:8b / tier3 llama3.3:70b) —
+>   models are top-of-file variables. Untestable end-to-end in this Linux container (disclosed).
+>
+> ## STATUS (prev) — 2026-07-01 master QC audit → remediation batches R1–R6 (R1 done, ADR-0138)
 >
 > A full read-only QC audit (five deep-review agents + ~20 personal reproductions; every finding
 > verified 3 ways) found 26 defects behind the green gate — headline: the strict-mode figure
@@ -32,7 +48,7 @@
 >   one script-embed escape convention. **ALL SIX BATCHES COMPLETE.**
 > **Residual in-env OPENs (all LOW/NIT):** L4/L6/L8/L9/L10/L11/F-09/F-10/F-13/F-14/NEW-2 +
 > F-01-partial (ledger §2/§7) — the earlier "REMAINING artifact-gated ONLY" wording overclaimed
-> (QC audit D26). **Highest ADR = 0142.** Full gate + parity before each commit; `git fetch
+> (QC audit D26). **Highest ADR = 0143.** Full gate + parity before each commit; `git fetch
 > origin` before branching.
 
 > ## STATUS (prev) — F-11 figure gate closed (role-aware, ADR-0137); accuracy ceiling remains operator-gated

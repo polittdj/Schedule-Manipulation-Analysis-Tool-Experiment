@@ -48,11 +48,17 @@
   // derive the UNLOCKED magnitude from the LOCKED one (does nothing if both are locked or none is)
   function derive() {
     var avg = avgRemaining();
-    if (avg <= 0) return;
     var d = num(daysEl),
       p = num(pctEl);
     var dLocked = daysLock.value === "1",
       pLocked = pctLock.value === "1";
+    if (avg <= 0) {
+      // no derivation basis: CLEAR the unlocked field instead of leaving a stale derived value
+      // that would post as if freshly derived (audit L4)
+      if (dLocked && !pLocked) pctEl.value = "";
+      else if (pLocked && !dLocked) daysEl.value = "";
+      return;
+    }
     if (dLocked && !pLocked && d !== null) {
       pctEl.value = round2((d / avg) * 100);
     } else if (pLocked && !dLocked && p !== null) {
