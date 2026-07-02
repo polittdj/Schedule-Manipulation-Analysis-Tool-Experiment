@@ -50,8 +50,9 @@ The 7 current skips are exactly these intake gates — none hides a defect:
 - **D20 — float-band float source.** Raw CPM float reproduces the pinned Acumen Critical counts
   (P2 41 / P5 37); a stored-float variant broke the match and was reverted (ADR-0141). Re-examine
   only against a fresh Fuse float/critical export.
-- **F-11 semantic half.** The value-vs-identifier role gate is closed (ADR-0137/0138); a *semantic*
-  figure-role model remains future work.
+- **F-11 semantic half.** The value-vs-identifier role gate is closed (ADR-0137/0138), and the
+  first semantic slice — explicit unit contradictions — is closed in-env (ADR-0145). Remaining
+  future work: unit synonyms, cross-sentence inference, deeper semantic roles.
 
 ## C. NOT artifact-gated — STATUS 2026-07-01: ALL CLOSED (kept for the record)
 

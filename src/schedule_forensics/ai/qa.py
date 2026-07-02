@@ -29,8 +29,11 @@ digit-bearing task name can no longer shred the value set — D6); ISO dates are
 the Layer-B derivation check (a re-roled UID can never launder through a coincidental
 reconstruction — D4); and an identifier written *as* an identifier — a ``UID n`` reference or a
 quoted cited activity name — is correct role usage and passes, so strict no longer discards a
-faithful driving-path answer (D15). **Interpretive mode stays ungated by design** (raw model
-output, opt-in). A fuller *semantic* role model remains future work.
+faithful driving-path answer (D15). The **unit-role step (ADR-0145)** adds the first semantic
+check: a value written with an EXPLICIT unit that contradicts every unit the facts state it with
+(a "5%"-only figure re-used as "5 days") is discarded (strict) / flagged (annotate); bare usages
+and multi-unit tokens are never touched (collision-safe). **Interpretive mode stays ungated by
+design** (raw model output, opt-in). A fuller semantic role model remains future work.
 
 With the offline Null backend there is no generation at all: the facts matching the
 question are returned verbatim. :func:`build_workbook_fact_sheet` extends the same
@@ -403,6 +406,14 @@ _DERIVED_NOTE = (
 )
 
 
+#: Unit-role step (ADR-0145): a cited value re-used with an explicitly DIFFERENT unit than the
+#: engine stated (a percentage re-written as days, a count re-written as a percentage).
+_UNIT_NOTE = (
+    "\n\n[Figures re-used with a different unit than the engine stated — confirm the unit, not "
+    "just the number: {figs}]"
+)
+
+
 #: Role-aware gate (ADR-0137, audit F-11): figures that match ONLY an activity name / UID in the
 #: facts (never a real engine value) are identifiers the model has re-used in another role.
 _ROLE_NOTE = (
@@ -455,9 +466,29 @@ def _inside(span: tuple[int, int], spans: list[tuple[int, int]]) -> bool:
     return any(start <= span[0] and span[1] <= end for start, end in spans)
 
 
+#: Explicit unit context right after a figure (ADR-0145 unit-role step). Only UNAMBIGUOUS
+#: markers count: "%"/"percent" vs a plain count/duration unit word. A bare figure ("... is 5.")
+#: carries no unit information and is never role-checked — conservative by design.
+_PCT_UNIT_RE = re.compile(r"\s?(?:%|percent\b)", re.IGNORECASE)
+_PLAIN_UNIT_RE = re.compile(
+    r"\s(?:working\s+)?(?:days?|activities|tasks|minutes|hours|links|relationships)\b",
+    re.IGNORECASE,
+)
+
+
+def _unit_role(text: str, end: int) -> str | None:
+    """The explicit unit attached to the figure ending at ``end``: "pct", "plain", or None."""
+    tail = text[end : end + 16]
+    if _PCT_UNIT_RE.match(tail):
+        return "pct"
+    if _PLAIN_UNIT_RE.match(tail):
+        return "plain"
+    return None
+
+
 def _figure_roles(
     evidence: Iterable[CitedStatement],
-) -> tuple[set[str], set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str], dict[str, set[str]]]:
     """``(value_figures, identifier_figures, identifier_names)`` across the evidence facts
     (audit F-11 role split, hardened per QC audit D1/D6).
 
@@ -467,11 +498,14 @@ def _figure_roles(
     name or unique id. A digit that is *both* is a value (not role-suspect); only a digit appearing
     **exclusively** as an identifier is treated as one — the collision-safety that keeps a UID ``5``
     from discarding a genuine count ``5``. ``identifier_names`` are the non-empty cited task names,
-    used to recognise a name *quoted* in an answer as identifier-role usage.
+    used to recognise a name *quoted* in an answer as identifier-role usage. ``unit_roles`` maps a
+    value token to the EXPLICIT unit contexts the facts state it in ("pct" / "plain") — the
+    ADR-0145 unit-role step; tokens the facts only ever use bare carry no entry (never checked).
     """
     value_figs: set[str] = set()
     id_figs: set[str] = set()
     id_names: set[str] = set()
+    unit_roles: dict[str, set[str]] = {}
     for f in evidence:
         names = [c.task_name for c in f.citations if c.task_name]
         uids = [c.unique_id for c in f.citations]
@@ -483,7 +517,10 @@ def _figure_roles(
         for m in _TOKEN_RE.finditer(f.text):
             if not _inside(m.span(), spans):
                 value_figs.add(m.group())
-    return value_figs, id_figs, id_names
+                role = _unit_role(f.text, m.end())
+                if role is not None:  # record only EXPLICIT unit contexts (ADR-0145)
+                    unit_roles.setdefault(m.group(), set()).add(role)
+    return value_figs, id_figs, id_names, unit_roles
 
 
 #: Most distinct non-value figures per answer given a Layer-B reconstruction attempt; the rest are
@@ -492,8 +529,12 @@ _MAX_GATED_FIGURES = 24
 
 
 def _classify_figures(
-    text: str, value_figs: set[str], id_figs: set[str], id_names: set[str]
-) -> tuple[list[Derivation], list[str], list[str]]:
+    text: str,
+    value_figs: set[str],
+    id_figs: set[str],
+    id_names: set[str],
+    unit_roles: dict[str, set[str]] | None = None,
+) -> tuple[list[Derivation], list[str], list[str], list[str]]:
     """Split the answer's figures into VERIFIED derivations (reconstructed from the cited *values*
     by a standard operation — Layer B), IDENTIFIER-reused figures (an identifier digit used as a
     value — F-11 role gate), and UNVERIFIED figures (neither). A figure literally present as a
@@ -504,6 +545,12 @@ def _classify_figures(
     derivation, so a re-roled UID can never launder through a coincidental reconstruction — QC
     audit D4)** → verified derivation → unverified. A token is flagged if ANY occurrence misuses
     it; deduped in first-occurrence order.
+
+    The fourth return, ``unit_misused`` (ADR-0145), is the unit-role step of the F-11 semantic
+    half: a VALUE token written with an EXPLICIT unit that contradicts every unit the facts state
+    it with (a "5%"-only figure re-used as "5 days", or a plain count re-used as a percentage).
+    Both sides must be explicit and disjoint — a bare usage, a bare fact, or a token the facts use
+    in both unit contexts is never flagged (collision-safe, like the identifier split).
     """
     sourced = _sourced_floats(value_figs)
     identifier_only = id_figs - value_figs
@@ -512,11 +559,19 @@ def _classify_figures(
     verified: list[Derivation] = []
     id_reused: list[str] = []
     unverified: list[str] = []
+    unit_misused: list[str] = []
     handled: set[str] = set()
     gated = 0
     for m in _TOKEN_RE.finditer(text):
         fig = m.group()
-        if fig in value_figs or fig in handled:
+        if fig in value_figs:
+            fact_units = (unit_roles or {}).get(fig)
+            if fact_units:
+                usage = _unit_role(text, m.end())
+                if usage is not None and usage not in fact_units and fig not in unit_misused:
+                    unit_misused.append(fig)  # explicit unit contradicts every cited unit
+            continue
+        if fig in handled:
             continue
         if _inside(m.span(), ref_spans):
             # written as an identifier (a "UID n" reference / a quoted cited name): correct role
@@ -536,11 +591,15 @@ def _classify_figures(
             verified.append(derivation)
         else:
             unverified.append(fig)
-    return verified, id_reused, unverified
+    return verified, id_reused, unverified, unit_misused
 
 
 def _annotate_unsourced(
-    text: str, value_figs: set[str], id_figs: set[str], id_names: set[str]
+    text: str,
+    value_figs: set[str],
+    id_figs: set[str],
+    id_names: set[str],
+    unit_roles: dict[str, set[str]] | None = None,
 ) -> str:
     """Annotate the non-value figures (C2 fix, ADR-0129; verify-or-flag, ADR-0135; role gate,
     ADR-0137; hardened ADR-0138).
@@ -552,12 +611,16 @@ def _annotate_unsourced(
     figure, and a name/UID digit re-used in another role is called out. Returns ``text`` unchanged
     when every figure is already a cited value or a correct identifier reference.
     """
-    verified, id_reused, unverified = _classify_figures(text, value_figs, id_figs, id_names)
+    verified, id_reused, unverified, unit_misused = _classify_figures(
+        text, value_figs, id_figs, id_names, unit_roles
+    )
     out = text
     if verified:
         out += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
     if id_reused:
         out += _ROLE_NOTE.format(figs=", ".join(id_reused))
+    if unit_misused:
+        out += _UNIT_NOTE.format(figs=", ".join(unit_misused))
     if unverified:
         out += _ANNOTATE_NOTE.format(figs=", ".join(unverified))
     return out
@@ -637,19 +700,26 @@ def answer_question(
         return None, shown
     if not text:
         return None, shown
-    value_figs, id_figs, id_names = _figure_roles(evidence)
+    value_figs, id_figs, id_names, unit_roles = _figure_roles(evidence)
     if mode == "strict":
-        verified, id_reused, unverified = _classify_figures(text, value_figs, id_figs, id_names)
+        verified, id_reused, unverified, unit_misused = _classify_figures(
+            text, value_figs, id_figs, id_names, unit_roles
+        )
         # strict trusts a figure only if it is a cited VALUE or a RATIO-class reconstruction of
         # cited values (a standard rate — far less coincidence-prone than an integer difference;
         # Layer B, ADR-0135). An unverified figure, an additive-only reconstruction, OR an
         # identifier reused as a figure (matches only a name/UID — F-11 role gate) discards the
         # whole answer (the caller shows the cited facts instead).
-        if unverified or id_reused or any(d.kind not in RATIO_KINDS for d in verified):
+        if (
+            unverified
+            or id_reused
+            or unit_misused  # an explicit-unit contradiction (ADR-0145) is a re-roled figure
+            or any(d.kind not in RATIO_KINDS for d in verified)
+        ):
             return None, shown
         if verified:  # all ratio-class — accept, but show how each was recomputed
             text += _DERIVED_NOTE.format(exprs="; ".join(d.expression for d in verified))
     elif mode == "annotate":
         # keep the answer; verify/role/flag its figures
-        text = _annotate_unsourced(text, value_figs, id_figs, id_names)
+        text = _annotate_unsourced(text, value_figs, id_figs, id_names, unit_roles)
     return text, shown

@@ -15,10 +15,15 @@ regeneration if the operator wants different choices:
 4. **AI included, per tier, skippable at a prompt** — tier1 `llama3.2:3b`, tier2 `llama3.1:8b`,
    tier3 `llama3.3:70b`; models are top-of-file variables.
 
-End-to-end execution is only possible on a real Windows machine (this build container is Linux) —
-first-run verification is the operator's step; everything verifiable in-repo is test-enforced
-(three tiers exist, identical shared body, byte-exact embedded wheel matching the pyproject
-version, Start/Stop wiring targets real app endpoints, no CUI-shaped content).
+**UPDATE 2026-07-02 (ADR-0144):** all three OS families now exist (`.ps1`/`.sh`/`.command`,
+nine files), and execution is no longer operator-only: the Linux installer's FULL lifecycle
+(install → serve → static-from-wheel → graceful stop → uninstall) ran in the build container and
+runs in CI on every installer change; windows-latest CI parses all `.ps1` and smoke-runs tier1
+(`SF_INSTALLER_SMOKE=1`). Executing the Linux installer immediately caught a deployment blocker —
+the wheel never packaged `web/static` (dev's `pip install -e` masked it) — fixed via
+`[tool.setuptools.package-data]` and regression-locked. Structure remains test-enforced
+(per-family identical bodies, one byte-exact wheel across all nine files, real endpoints, no
+CUI-shaped content).
 
 ## 1. The requirement (operator's words, paraphrased)
 

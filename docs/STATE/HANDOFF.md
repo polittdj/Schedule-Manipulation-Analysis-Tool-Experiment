@@ -1,6 +1,20 @@
-# Handoff — 2026-07-02 (residual closeout + installers; highest ADR 0143)
+# Handoff — 2026-07-02 (all-OS installers + unit-role gate; highest ADR 0145)
 
-> ## STATUS (current) — R7 residual closeout (ADR-0143) + three-tier installers built
+> ## STATUS (current) — installers on all 3 OSes + wheel-packaging fix (ADR-0144); unit-role gate (ADR-0145)
+>
+> - **ADR-0144:** Linux `.sh` + macOS `.command` installers join the Windows `.ps1` set (9 files,
+>   one shared byte-exact wheel, per-family identical bodies — test-enforced). EXECUTING the Linux
+>   installer end-to-end caught a real deployment blocker: the wheel never packaged `web/static`
+>   (dev `pip install -e` masked it) — fixed via `[tool.setuptools.package-data]`, regression-locked,
+>   and the full Linux lifecycle (install → serve → static-from-wheel → stop → uninstall) now runs
+>   in the container AND in CI; windows-latest CI parses + smoke-runs the `.ps1` set
+>   (`.github/workflows/installer-smoke.yml`, `SF_INSTALLER_SMOKE=1` hook in every family).
+> - **ADR-0145:** the F-11 semantic half's first slice — a value re-written with an explicitly
+>   DIFFERENT unit than the engine stated ("5%"-only re-used as "5 days") is discarded (strict) /
+>   flagged (annotate); bare/multi-unit usages never touched (collision-safe, fail-open on
+>   ambiguity). Disclosures updated (qa docstring, Ask panel, CLAUDE.md).
+>
+> ## STATUS (prev) — R7 residual closeout (ADR-0143) + three-tier installers built
 >
 > **Every in-env finding across both audit trails is now FIXED, DOCUMENTED, or as-designed** —
 > the only open work is artifact-gated (PARK-LIST §B/§B-addendum) or operator-decision-gated.
@@ -48,7 +62,7 @@
 >   one script-embed escape convention. **ALL SIX BATCHES COMPLETE.**
 > **Residual in-env OPENs (all LOW/NIT):** L4/L6/L8/L9/L10/L11/F-09/F-10/F-13/F-14/NEW-2 +
 > F-01-partial (ledger §2/§7) — the earlier "REMAINING artifact-gated ONLY" wording overclaimed
-> (QC audit D26). **Highest ADR = 0143.** Full gate + parity before each commit; `git fetch
+> (QC audit D26). **Highest ADR = 0145.** Full gate + parity before each commit; `git fetch
 > origin` before branching.
 
 > ## STATUS (prev) — F-11 figure gate closed (role-aware, ADR-0137); accuracy ceiling remains operator-gated
