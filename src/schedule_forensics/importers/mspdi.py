@@ -681,6 +681,10 @@ def _in_file_links(relationships: list[Relationship], task_uids: set[int]) -> li
     seen: set[tuple[int, int, RelationshipType]] = set()
     dropped = 0
     for r in relationships:
+        # KNOWN APPROXIMATION (audit L11): duplicate links differing ONLY by lag collapse to the
+        # first occurrence (file order) — dedup keys on (pred, succ, type), matching the XER
+        # importer. MSP itself forbids exact same-pair duplicates in the UI, so a real export
+        # carries them only via XML editing; negligible impact, documented rather than modelled.
         key = (r.predecessor_id, r.successor_id, r.type)
         if (
             r.predecessor_id not in task_uids

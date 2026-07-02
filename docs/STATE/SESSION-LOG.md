@@ -3947,3 +3947,24 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
 - **All six remediation batches (R1-R6) complete: 20 of 26 QC-audit findings fixed in code, 3
   documented/parked or reverted-by-oracle with rationale (D14/D20 + the 100% choice), D8/D22/D26
   closed in docs, 0 regressions.** Full gate + parity green.
+
+---
+
+## 2026-07-02 — R7 residual closeout (ADR-0143) + three-tier installers
+
+- **Branch:** `claude/schedule-tool-forensic-reaudit-7da8p1` restarted on merged main (#280) via a
+  verified identical-tree merge (no force-push). **Highest ADR:** 0143.
+- **R7 (ADR-0143):** L4 (derive clears the unlocked field when the basis disappears —
+  node-harness-verified), L9 (node-driven derive harness, pytest-wired), L10 (behavioral offload
+  test replaces source-string asserts), F-13 (`is_active` diff-tracked; MANIP_DEACTIVATED_TASK,
+  HIGH on prior-critical, re-activation deliberately unflagged), NEW-2 (LOOSENED fires only on net
+  working-week growth), F-01 (engine-pinned marker now test-enforced), L8/L11/F-14 (documented at
+  the point of use). Ledger refreshed, incl. 3 rows the same-commit R6 fixes had left stale.
+  **No in-env finding remains open in any ledger.**
+- **Installers:** built per INSTALLER-SPEC with §3 defaulted (operator not available to answer;
+  authorized "do everything that needs no uploads"): Windows, online install, AI per tier
+  (3b/8b/70b, top-of-file variables). Self-contained .ps1 per tier (wheel embedded), Start/Stop
+  shortcuts, uninstaller, README. Body-identity across tiers is test-enforced; end-to-end run is
+  only possible on a real Windows box (disclosed in the spec + README).
+- **Deliberately NOT done without the operator:** data-date reschedule (two prior attempts
+  reverted for breaking parity — needs the Fuse oracle), all PARK-LIST §B artifacts.

@@ -70,6 +70,9 @@ def _stored_offset(project_start: dt.datetime, target: dt.datetime, calendar: Ca
 
 
 #: §6.C default day-thresholds the user may override at upload (`PARITY-INPUTS.md`).
+#: PROVENANCE (audit F-14): in-repo defaults chosen for the SSI three-tier convention — NOT
+#: sourced from a published handbook (the operator's assessment deck / NASA handbook is an
+#: absent intake artifact). Operator-overridable per upload; re-source when the handbook lands.
 DEFAULT_SECONDARY_MAX_DAYS = 10
 DEFAULT_TERTIARY_MAX_DAYS = 20
 

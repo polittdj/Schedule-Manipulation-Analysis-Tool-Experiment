@@ -30,6 +30,9 @@ _TRACKED_FIELDS: tuple[tuple[str, str], ...] = (
     ("percent_complete", "% Complete"),
     ("constraint_type", "Constraint Type"),
     ("constraint_date", "Constraint Date"),
+    # deactivating a task removes it from the CPM network (ADR-0128) — functionally deletion
+    # while the row stays visible, so the flip is tracked in its own right (audit F-13)
+    ("is_active", "Active"),
 )
 
 #: A logic link identity for set diffing: (predecessor, successor, type, lag_minutes).

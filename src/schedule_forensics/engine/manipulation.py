@@ -77,6 +77,7 @@ def detect_manipulation(
     findings: list[Finding] = []
 
     findings.extend(_deleted_tasks(diff, prior_by_id, prior_critical, prior.source_file))
+    findings.extend(_deactivated_tasks(diff, cur_by_id, prior_critical, current.source_file))
     findings.extend(_deleted_logic(diff, prior_by_id, prior.source_file))
     findings.extend(_shortened_durations(diff, prior_by_id, cur_by_id, current.source_file))
     findings.extend(
@@ -114,6 +115,48 @@ def _deleted_tasks(
             course_of_action="Confirm each deletion is authorized scope removal, not work "
             "removed to keep the critical path or a target date from slipping.",
             citations=citations,
+        )
+    ]
+
+
+def _deactivated_tasks(
+    diff: VersionDiff,
+    cur_by_id: dict[int, Task],
+    prior_critical: set[int],
+    current_file: str | None,
+) -> list[Finding]:
+    """Tasks flipped active → inactive between snapshots (audit F-13, ADR-0143).
+
+    Deactivation removes the task from the CPM network (ADR-0128) while the row stays visible —
+    functionally a deletion that never shows in the deleted-task count. HIGH when a deactivated
+    task was on the prior critical path (the classic finish-hold move), else MEDIUM.
+    """
+    offenders = [
+        c.unique_id
+        for c in diff.changed_tasks
+        for d in c.deltas
+        if d.field == "is_active"
+        and d.before is True
+        and d.after is False
+        and c.unique_id in cur_by_id
+    ]
+    if not offenders:
+        return []
+    on_path = tuple(u for u in offenders if u in prior_critical)
+    severity = Severity.HIGH if on_path else Severity.MEDIUM
+    detail = f"{len(offenders)} activities were deactivated (removed from the schedule network)"
+    if on_path:
+        detail += f"; {len(on_path)} were on the prior critical path (UIDs {list(on_path)})"
+    return [
+        Finding(
+            category=Category.CONCERN,
+            severity=severity,
+            metric_id="MANIP_DEACTIVATED_TASK",
+            title=f"{len(offenders)} activities deactivated since the prior version",
+            detail=detail + ".",
+            course_of_action="Confirm each deactivation is an authorized de-scope, not work "
+            "switched off to hold the finish while the row quietly remains in the file.",
+            citations=tuple(_cite(current_file, cur_by_id[u]) for u in offenders),
         )
     ]
 
@@ -244,9 +287,10 @@ def _calendar_loosening(
         signals.append(
             f"work day lengthened {pc.working_minutes_per_day}→{cc.working_minutes_per_day} min"
         )
-    added_weekdays = sorted(set(cc.work_weekdays) - set(pc.work_weekdays))
-    if added_weekdays:
-        signals.append(f"{len(added_weekdays)} working weekday(s) added")
+    # NET working-week growth only: a net-zero swap (e.g. Mon-Fri -> Tue-Sat) adds a weekday but
+    # loosens nothing, and flagging it as "gained working time" was a false positive (audit NEW-2)
+    if len(cc.work_weekdays) > len(pc.work_weekdays):
+        signals.append(f"working week grew {len(pc.work_weekdays)}→{len(cc.work_weekdays)} day(s)")
     removed_holidays = set(pc.holidays) - set(cc.holidays)
     if removed_holidays:
         signals.append(f"{len(removed_holidays)} holiday(s) removed")

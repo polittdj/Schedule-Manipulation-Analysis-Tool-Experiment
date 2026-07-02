@@ -19,6 +19,8 @@ from schedule_forensics.engine.metrics._common import is_effective_critical, non
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
+# PROVENANCE (audit F-14): the two cutoffs below are in-repo design choices — NOT sourced from a
+# published handbook (the reference deck is an absent intake artifact); re-source when it lands.
 #: more than this many predecessors (or successors) on one activity is a merge / diverge hotspot
 _HOTSPOT_MIN_LINKS = 2
 #: a predecessor lag longer than this fraction of the activity's duration "hides" real duration

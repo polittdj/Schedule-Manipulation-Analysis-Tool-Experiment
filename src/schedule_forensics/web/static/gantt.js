@@ -129,6 +129,9 @@ window.SFGantt = (function () {
   // background + a freeze line). Returns the total frozen width (px) so a caller can size the
   // remaining timeline to exactly fill the page. Idempotent — safe to re-run after a body repaint
   // or a column resize. Works whether the body rows live in a <tbody> or are bare <tr> children.
+  // PRECONDITION (audit L8): left offsets come from header offsetWidth, which is stable only
+  // because SFColResize.attach pins explicit widths (table-layout:fixed) BEFORE this runs. If
+  // that ordering ever changes, offsets drift on content reflow — keep attach() first.
   function freezeColumns(table) {
     if (!table) return 0;
     var headRow = table.querySelector("thead tr");

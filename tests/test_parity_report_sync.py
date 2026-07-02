@@ -52,3 +52,25 @@ def test_parity_report_reflects_current_case_json() -> None:
     # the specific stale strings this fix removed must not reappear
     for stale in ("41 / 37", "43 / 40", "38% / 23%", "**-99**"):
         assert stale not in report, f"stale parity figure resurfaced in PARITY-REPORT.md: {stale!r}"
+
+
+def test_engine_pinned_marker_cannot_be_silently_deleted_f01() -> None:
+    """Audit F-01 (ADR-0143): the §E float/critical change subset is engine-pinned, NOT
+    Fuse-validated — the disclosure exists in prose, but no test enforced it, so deleting the
+    label failed nothing. This pins the marker in BOTH the human-readable parity report and the
+    golden's own machine-readable caveat."""
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    report = (root / "docs" / "PARITY-REPORT.md").read_text(encoding="utf-8")
+    assert "engine-pinned" in report
+    assert "NOT Fuse-validated" in report
+
+    case = json.loads(
+        (root / "tests" / "fixtures" / "golden" / "project2_5" / "case.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    caveat = case["_deltas"]["change_P2_to_P5_engine_pinned"]
+    assert "pinned to the engine" in caveat and "re-validation" in caveat
