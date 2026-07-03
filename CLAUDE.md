@@ -96,8 +96,10 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   Layer-B operand pool), integer derivation targets must reconstruct **exactly** (counts are exact;
   1-dp tolerance is for decimal ratios only), the identifier check runs **before** the derivation
   check (no laundering a re-roled UID through a coincidental ratio), and identifier extraction is
-  span-based (an empty/digit-bearing task name cannot shred the value set). Interpretive stays
-  ungated by design. A fuller *semantic* role model remains future work.
+  span-based (an empty/digit-bearing task name cannot shred the value set). The unit-role step
+  (ADR-0145) adds the first semantic check: an explicit-unit contradiction (a "5%"-only figure
+  re-used as "5 days") is discarded/flagged; bare usages and multi-unit tokens never are.
+  Interpretive stays ungated by design. A fuller semantic role model remains future work.
 - **`web/app.py`** — the entire UI in one (large) file: routes + server-rendered HTML + a Jinja layout.
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once

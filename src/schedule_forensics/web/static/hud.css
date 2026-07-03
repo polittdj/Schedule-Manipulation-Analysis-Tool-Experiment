@@ -1,0 +1,144 @@
+/* Schedule Forensics — HUD layer: the JARVIS theme, live telemetry widgets, guidance hints,
+ * chart explainers, and the CUI/ITAR compliance drawer. Fully vendored/local (air-gap): no
+ * remote fonts, no external assets — every effect is CSS. The JARVIS skin is scoped under
+ * html[data-theme=jarvis] so the professional NASA default and light mode are untouched. */
+
+/* ── CUI / ITAR compliance drawer (all themes) ─────────────────────────────────────────── */
+.compliance-drawer{background:#241035;border-bottom:1px solid #5a2d82;font-size:11px}
+.compliance-drawer summary{cursor:pointer;padding:3px 12px;color:#d9c2ef;list-style:none;
+  text-align:center;letter-spacing:.06em}
+.compliance-drawer summary::-webkit-details-marker{display:none}
+.compliance-drawer summary:hover{color:#fff}
+.compliance-body{max-width:1080px;margin:0 auto;padding:10px 16px 14px;color:#e8dcf5;line-height:1.55}
+.compliance-body h3{margin:8px 0 4px;font-size:12px;color:#f3eafc;letter-spacing:.05em}
+.compliance-body p{margin:0 0 6px}
+.cui-banner.cui{background:#502b85;color:#fff}          /* CUI marking: DoD/DISA purple */
+.cui-banner.unclassified{background:#007a33;color:#fff} /* UNCLASSIFIED: green */
+
+/* ── Guidance hints (all themes) ───────────────────────────────────────────────────────── */
+[data-sf-hint]{position:relative}
+[data-sf-hint]:hover::after,[data-sf-hint]:focus-visible::after{
+  content:attr(data-sf-hint);position:absolute;left:0;top:calc(100% + 7px);z-index:60;
+  width:max-content;max-width:340px;padding:8px 11px;border-radius:8px;font-size:12px;
+  font-weight:400;line-height:1.45;letter-spacing:normal;text-transform:none;white-space:normal;
+  background:var(--panel);color:var(--ink);border:1px solid var(--accent);
+  box-shadow:0 6px 22px rgba(0,0,0,.35)}
+.hint-dot{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
+  margin-left:5px;border-radius:50%;font-size:10px;font-weight:700;cursor:help;
+  background:var(--accent);color:var(--btn-ink);vertical-align:middle;flex:0 0 auto}
+.metric-info{color:var(--accent);text-decoration:none;font-weight:700;margin-left:5px;cursor:help}
+.metric-info:hover{filter:brightness(1.2)}
+
+/* one-time guide nudges (hints.js): a soft pulse on key controls until first use/dismiss */
+.sf-nudge{animation:sf-nudge 2.2s ease-in-out 3}
+@keyframes sf-nudge{0%,100%{box-shadow:0 0 0 0 rgba(74,163,255,0)}
+  50%{box-shadow:0 0 0 6px rgba(74,163,255,.35)}}
+.guide-tip{border-left:3px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel));
+  border-radius:0 8px 8px 0;padding:8px 12px;margin:0 0 12px;font-size:12px;color:var(--ink)}
+.guide-tip b{color:var(--accent)}
+.guide-tip .guide-dismiss{float:right;background:none;border:0;color:var(--muted);cursor:pointer;
+  font:inherit;padding:0 2px}
+
+/* ── Chart / page explainers (all themes) ──────────────────────────────────────────────── */
+details.explain{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;
+  margin:0 0 14px;background:color-mix(in srgb,var(--accent) 5%,var(--panel));font-size:12px}
+details.explain>summary{cursor:pointer;padding:7px 12px;font-weight:600;color:var(--accent);
+  list-style:none}
+details.explain>summary::-webkit-details-marker{display:none}
+details.explain>summary::before{content:"◈ "}
+details.explain[open]>summary{border-bottom:1px solid var(--line)}
+.explain-body{padding:9px 14px 11px;line-height:1.6}
+.explain-body h4{margin:7px 0 3px;font-size:11px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--muted)}
+.explain-body p{margin:0 0 5px;max-width:900px}
+.explain-body .explain-decide{color:var(--ink)}
+.explain-body .explain-decide::before{content:"▸ ";color:var(--accent)}
+
+/* ── Live telemetry dock (all themes; JARVIS turns it on by default) ───────────────────── */
+#sysmonDock{position:fixed;right:12px;bottom:34px;z-index:55;display:flex;flex-direction:column;
+  gap:6px;align-items:flex-end;font-size:11px}
+#sysmonDock[hidden]{display:none}
+.sysmon-chip{display:flex;align-items:center;gap:7px;padding:4px 9px;border-radius:8px;
+  background:color-mix(in srgb,var(--panel) 88%,transparent);border:1px solid var(--line);
+  color:var(--ink);cursor:pointer;user-select:none;backdrop-filter:blur(3px);min-width:132px}
+.sysmon-chip .sm-label{color:var(--muted);font-weight:700;letter-spacing:.06em;width:34px}
+.sysmon-chip .sm-val{font-variant-numeric:tabular-nums;font-weight:600;min-width:44px;text-align:right}
+.sm-bar{flex:1 1 46px;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+.sm-bar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .5s}
+.sm-bar.warn i{background:var(--warn)}.sm-bar.crit i{background:var(--bad)}
+.sysmon-detail{width:264px;padding:9px 11px;border-radius:10px;border:1px solid var(--accent);
+  background:color-mix(in srgb,var(--panel) 94%,transparent);box-shadow:0 8px 26px rgba(0,0,0,.4)}
+.sysmon-detail[hidden]{display:none}
+.sysmon-detail h4{margin:0 0 6px;font-size:11px;letter-spacing:.08em;color:var(--accent);
+  text-transform:uppercase}
+.sysmon-detail .sm-row{display:flex;justify-content:space-between;gap:8px;padding:1.5px 0;
+  font-variant-numeric:tabular-nums}
+.sysmon-detail .sm-row span:first-child{color:var(--muted)}
+#sysmonToggle{border:1px solid var(--line);background:color-mix(in srgb,var(--panel) 88%,transparent);
+  color:var(--muted);border-radius:8px;padding:3px 9px;cursor:pointer;font:inherit}
+#sysmonToggle:hover{color:var(--ink)}
+@media (max-width:760px){#sysmonDock{display:none}}
+
+/* ═══ JARVIS theme ═════════════════════════════════════════════════════════════════════ */
+html[data-theme=jarvis]{
+  --bg:#020a12;--panel:rgba(6,24,38,.82);--ink:#bfe9ff;--muted:#5e8ba6;--accent:#19d3ff;
+  --ok:#27f2a4;--warn:#ffc857;--bad:#ff4f66;--header-bg:#02070d;
+  --field-bg:rgba(3,16,28,.9);--btn-ink:#02131f;--hover:#07253b;
+  --dz-bg:rgba(4,18,30,.7);--dz-over:rgba(8,40,64,.8);--ok-bg:rgba(14,68,48,.5);
+  --bad-bg:rgba(74,16,26,.55);--sum-ink:#7fb0cc;--beyond:#123146;--beyond-ink:#3f6a86;
+  --done-overlay:rgba(190,240,255,.35);--line:#0d3a52;--border:#0d3a52;
+  --grid-line:rgba(25,211,255,.14);--focus:#ffc857;--grid-dot:rgba(25,211,255,.12)}
+html[data-theme=jarvis] body{
+  background:
+    radial-gradient(1200px 700px at 75% -10%,rgba(25,211,255,.10),transparent 60%),
+    radial-gradient(900px 600px at -10% 110%,rgba(255,200,87,.05),transparent 55%),
+    repeating-linear-gradient(0deg,transparent 0 34px,rgba(25,211,255,.028) 34px 35px),
+    repeating-linear-gradient(90deg,transparent 0 34px,rgba(25,211,255,.028) 34px 35px),
+    var(--bg)}
+html[data-theme=jarvis] header{
+  background:linear-gradient(95deg,#031320 0%,#04202f 60%,#031320 100%);
+  border-bottom:1px solid var(--accent);
+  box-shadow:0 0 24px rgba(25,211,255,.25),inset 0 -1px 12px rgba(25,211,255,.15)}
+html[data-theme=jarvis] header h1{color:var(--accent);
+  text-shadow:0 0 12px rgba(25,211,255,.8),0 0 34px rgba(25,211,255,.35);letter-spacing:3px}
+html[data-theme=jarvis] header nav a{color:#9fd6ef}
+html[data-theme=jarvis] header nav a:hover{color:var(--accent);text-shadow:0 0 9px rgba(25,211,255,.8)}
+html[data-theme=jarvis] header nav .nav-grp-label{color:var(--warn)}
+html[data-theme=jarvis] .nasa-globe-text{color:var(--accent);
+  text-shadow:0 0 8px rgba(25,211,255,.9),0 0 26px rgba(25,211,255,.5)}
+/* HUD panels: glassy, corner-bracketed, glowing */
+html[data-theme=jarvis] .panel{position:relative;background:var(--panel);
+  border:1px solid rgba(25,211,255,.35);border-radius:4px;backdrop-filter:blur(4px);
+  box-shadow:0 0 18px rgba(25,211,255,.10),inset 0 0 26px rgba(25,211,255,.045)}
+html[data-theme=jarvis] .panel::before,html[data-theme=jarvis] .panel::after{
+  content:"";position:absolute;width:16px;height:16px;pointer-events:none}
+html[data-theme=jarvis] .panel::before{top:-1px;left:-1px;
+  border-top:2px solid var(--accent);border-left:2px solid var(--accent)}
+html[data-theme=jarvis] .panel::after{bottom:-1px;right:-1px;
+  border-bottom:2px solid var(--accent);border-right:2px solid var(--accent)}
+html[data-theme=jarvis] h2{color:var(--accent);text-transform:uppercase;letter-spacing:.14em;
+  font-size:13px;text-shadow:0 0 10px rgba(25,211,255,.45)}
+html[data-theme=jarvis] h2::before{content:"// ";color:var(--warn)}
+html[data-theme=jarvis] button,html[data-theme=jarvis] input[type=submit],
+html[data-theme=jarvis] .btn{background:transparent;color:var(--accent);
+  border:1px solid var(--accent);border-radius:3px;text-transform:uppercase;
+  letter-spacing:.08em;font-size:11px;box-shadow:inset 0 0 10px rgba(25,211,255,.12)}
+html[data-theme=jarvis] button:hover,html[data-theme=jarvis] .btn:hover{
+  background:rgba(25,211,255,.14);box-shadow:0 0 14px rgba(25,211,255,.45);filter:none}
+html[data-theme=jarvis] input,html[data-theme=jarvis] select{
+  border:1px solid rgba(25,211,255,.4);border-radius:3px;color:var(--ink)}
+html[data-theme=jarvis] table th{color:var(--warn);text-transform:uppercase;font-size:10px;
+  letter-spacing:.09em;border-bottom:1px solid rgba(25,211,255,.4)}
+html[data-theme=jarvis] td{border-bottom:1px solid rgba(25,211,255,.12)}
+html[data-theme=jarvis] .cui-banner.cui{background:#3a1660;color:#e9d5ff;
+  box-shadow:0 0 14px rgba(122,44,191,.5)}
+/* scanline sweep — decorative only; killed by prefers-reduced-motion global block */
+html[data-theme=jarvis] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,transparent 0%,rgba(25,211,255,.035) 50%,transparent 100%);
+  background-size:100% 220px;animation:sf-scan 9s linear infinite;mix-blend-mode:screen}
+@keyframes sf-scan{from{background-position:0 -220px}to{background-position:0 100vh}}
+html[data-theme=jarvis] .sysmon-chip{border-color:rgba(25,211,255,.45);
+  box-shadow:0 0 10px rgba(25,211,255,.15)}
+html[data-theme=jarvis] .sm-bar i{box-shadow:0 0 8px rgba(25,211,255,.7)}
+html[data-theme=jarvis] details.explain{border-left-color:var(--warn)}
+html[data-theme=jarvis] .guide-tip{border-left-color:var(--warn)}

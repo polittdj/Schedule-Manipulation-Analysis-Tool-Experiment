@@ -73,13 +73,19 @@ def test_cui_marking_top_and_bottom_when_classified(client: TestClient) -> None:
 
 
 def test_cui_marking_reflects_unclassified_mode() -> None:
-    """When the operator asserts UNCLASSIFIED, the bar drops the CUI controls marking."""
+    """When the operator asserts UNCLASSIFIED, the marking BANNERS drop the CUI controls text.
+
+    The compliance drawer (ADR-0146) still educates about CUI/ITAR handling on every page —
+    that content is unconditional by design — so the assertion targets the banner elements,
+    not the whole page."""
     state = SessionState(ai_config=AIConfig(classification=Classification.UNCLASSIFIED))
     client = TestClient(create_app(state))
     page = client.get("/").text
     assert "Unclassified • no CUI controls asserted" in page
     assert "cui-banner unclassified" in page
-    assert "Controlled Unclassified Information" not in page
+    assert "cui-banner cui" not in page  # no CUI-marked banner remains
+    for banner in re.findall(r'<div class="cui-banner[^"]*">([^<]*)</div>', page):
+        assert "Controlled Unclassified Information" not in banner
 
 
 def test_dotted_reading_grid_behind_charts(client: TestClient) -> None:

@@ -1,6 +1,47 @@
-# Handoff — 2026-07-02 (residual closeout + installers; highest ADR 0143)
+# Handoff — 2026-07-03 (HUD/UI layer: compliance drawer, explainers, JARVIS, telemetry; highest ADR 0146)
 
-> ## STATUS (current) — R7 residual closeout (ADR-0143) + three-tier installers built
+> ## STATUS (current) — HUD/UI overhaul (ADR-0146): compliance drawer, page explainers, JARVIS theme, live telemetry, guided hints
+>
+> Operator directive executed as one additive **presentation** layer — no engine/metric change,
+> full gate + parity green:
+> - **CUI/ITAR compliance drawer** on every page (32 CFR 2002 / ITAR 22 CFR 120–130 / EAR
+>   15 CFR 730–774 + operator responsibility), unconditional by design; CUI banner colors now
+>   convention-correct (CUI purple / UNCLASSIFIED green). The unclassified-mode test asserts on
+>   the *banners*, not the whole page.
+> - **Page explainers:** `_page()` injects a collapsed "What am I looking at — and how do I use
+>   it?" block (What it shows / How to read it / Decisions it informs) from the title-keyed
+>   `_EXPLAINERS` map — 21 pages covered centrally, test-enforced.
+> - **Hints:** `data-sf-hint` CSS tooltips, dismissable `.guide-tip`s (localStorage,
+>   `hints.js`), one-time nudge pulse; `/help#m-<id>` anchors + DCMA tooltip deep-links.
+> - **JARVIS theme** (`hud.css`, `data-theme=jarvis`): cyan/gold glass HUD — corner-bracket
+>   panels, grid + scanline (reduced-motion safe), pure CSS/air-gapped. `theme.js` cycles
+>   Light → Dark → JARVIS with aria-label announcing the next theme; default stays Light.
+> - **Live telemetry:** `web/system.py` (+`GET /api/system`, `sysmon.js`) — CPU/RAM/GPU/DISK
+>   chips expandable to detail cards (cores/temps/VRAM/totals); 2 s loopback poll, hidden-tab
+>   pause; ON by default only in JARVIS, persisted toggle everywhere. LOCAL reads only
+>   (`/proc`, `/sys`, `shutil`, local `nvidia-smi`); `psutil` optional (`[monitor]` extra;
+>   installers best-effort it). All fields nullable. Law 1 untouched.
+> - **i18n:** new fixed strings in `_TERMS` ×4 languages; explainer prose rides the AI-fallback
+>   + non-destructive `translate.js` (per-node originals ⇒ switch-back guaranteed).
+> - **Packaging:** wheel rebuilt (carries `system.py` + hud assets), all 9 installers
+>   regenerated and re-verified end-to-end (Linux smoke: deployed venv serves the HUD, psutil
+>   enhancer installed). `tests/web/test_hud_layer.py` (7) pins the layer.
+>
+> ## STATUS (prev) — installers on all 3 OSes + wheel-packaging fix (ADR-0144); unit-role gate (ADR-0145)
+>
+> - **ADR-0144:** Linux `.sh` + macOS `.command` installers join the Windows `.ps1` set (9 files,
+>   one shared byte-exact wheel, per-family identical bodies — test-enforced). EXECUTING the Linux
+>   installer end-to-end caught a real deployment blocker: the wheel never packaged `web/static`
+>   (dev `pip install -e` masked it) — fixed via `[tool.setuptools.package-data]`, regression-locked,
+>   and the full Linux lifecycle (install → serve → static-from-wheel → stop → uninstall) now runs
+>   in the container AND in CI; windows-latest CI parses + smoke-runs the `.ps1` set
+>   (`.github/workflows/installer-smoke.yml`, `SF_INSTALLER_SMOKE=1` hook in every family).
+> - **ADR-0145:** the F-11 semantic half's first slice — a value re-written with an explicitly
+>   DIFFERENT unit than the engine stated ("5%"-only re-used as "5 days") is discarded (strict) /
+>   flagged (annotate); bare/multi-unit usages never touched (collision-safe, fail-open on
+>   ambiguity). Disclosures updated (qa docstring, Ask panel, CLAUDE.md).
+>
+> ## STATUS (prev) — R7 residual closeout (ADR-0143) + three-tier installers built
 >
 > **Every in-env finding across both audit trails is now FIXED, DOCUMENTED, or as-designed** —
 > the only open work is artifact-gated (PARK-LIST §B/§B-addendum) or operator-decision-gated.
@@ -48,7 +89,7 @@
 >   one script-embed escape convention. **ALL SIX BATCHES COMPLETE.**
 > **Residual in-env OPENs (all LOW/NIT):** L4/L6/L8/L9/L10/L11/F-09/F-10/F-13/F-14/NEW-2 +
 > F-01-partial (ledger §2/§7) — the earlier "REMAINING artifact-gated ONLY" wording overclaimed
-> (QC audit D26). **Highest ADR = 0143.** Full gate + parity before each commit; `git fetch
+> (QC audit D26). **Highest ADR = 0145.** Full gate + parity before each commit; `git fetch
 > origin` before branching.
 
 > ## STATUS (prev) — F-11 figure gate closed (role-aware, ADR-0137); accuracy ceiling remains operator-gated

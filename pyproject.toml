@@ -53,6 +53,8 @@ Documentation = "https://github.com/polittdj/schedule-manipulation-analysis-tool
 schedule-forensics = "schedule_forensics.launcher:main"
 
 [project.optional-dependencies]
+# live HUD telemetry enhancer (CPU%/temps on Windows/macOS); LOCAL reads only — never network
+monitor = ["psutil>=5.9"]
 # Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
 # tightened when first wired into CI during Phase 2.
 dev = [
@@ -69,6 +71,14 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Non-Python runtime data the DEPLOYED tool serves/loads: the vendored JS/CSS (air-gapped UI)
+# and the bundled example schedule. Without this the wheel installs but the app crashes at
+# startup mounting /static — caught by the Linux installer's end-to-end run (2026-07-02); the
+# dev environment never sees it because `pip install -e` reads the source tree. The installer
+# smoke tests (Linux in-container + windows-latest CI) now exercise the WHEEL, keeping it honest.
+[tool.setuptools.package-data]
+schedule_forensics = ["web/static/*", "web/examples/*"]
 
 # --- ruff: lint + format -------------------------------------------------------
 [tool.ruff]
@@ -91,6 +101,12 @@ strict = true
 files = ["src"]
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
+
+# psutil is an OPTIONAL runtime enhancer (the [monitor] extra) — untyped and usually absent
+# from the dev env; web/system.py degrades to stdlib collectors without it.
+[[tool.mypy.overrides]]
+module = "psutil"
+ignore_missing_imports = true
 
 # --- pytest + coverage ---------------------------------------------------------
 [tool.pytest.ini_options]

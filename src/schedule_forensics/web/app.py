@@ -254,8 +254,29 @@ _LAYOUT = Template(
 <script src="/static/colresize.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
-<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"></head><body>
+<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
+<details class=compliance-drawer id=complianceDrawer>
+<summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
+<div class=compliance-body>
+<h3>Controlled Unclassified Information (CUI)</h3>
+<p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
+is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
+organization's CUI program: store on approved systems only, share only with a lawful government
+purpose, and destroy per records schedules. This tool enforces the technical side — it binds
+127.0.0.1 only and no schedule content ever leaves this machine.</p>
+<h3>Export control (ITAR / EAR)</h3>
+<p>WARNING — Schedules for defense or space programs may contain technical data subject to the
+International Traffic in Arms Regulations (ITAR, 22 CFR 120&ndash;130) or the Export
+Administration Regulations (EAR, 15 CFR 730&ndash;774). Do not export, release, or disclose such
+data to foreign persons, in the U.S. or abroad, without proper authorization. Violations carry
+severe criminal and civil penalties.</p>
+<h3>Your responsibility</h3>
+<p>The markings above reflect the session's declared classification &mdash; not a review of your
+data. You remain responsible for confirming the actual sensitivity, markings, and distribution
+statements of every file you load and every report you export.</p>
+</div>
+</details>
 <header><h1>&#9650; SCHEDULE FORENSICS</h1>
 <input type=checkbox id=navToggle class=nav-toggle aria-label="Toggle navigation menu">
 <label for=navToggle class=nav-burger title="Menu" data-no-i18n><span aria-hidden=true>&#9776;</span></label>
@@ -270,11 +291,13 @@ _LAYOUT = Template(
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>
 <form action="/target" method=post class="navform targetform"
-title="Focus every view on one activity (blank = clear)">
+title="Focus every view on one activity (blank = clear)"
+data-sf-hint="Type an activity's Unique ID and press Set: every page then treats that activity as the schedule's endpoint — metrics, paths and charts all focus on what drives IT. Blank + Set clears the focus.">
 <input type=hidden name=next_url value="/">
 <label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
 <button type=submit class=linkbtn>Set</button></form>
-<button id=themeToggle type=button class=linkbtn title="Switch light/dark mode">Theme</button>
+<button id=themeToggle type=button class=linkbtn title="Cycle theme: Light, Dark, JARVIS HUD"
+data-sf-hint="Cycles the look: professional Light and Dark, plus the JARVIS heads-up display with live system telemetry.">Theme</button>
 <label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size
 <select id=uiScale data-no-i18n>
 <option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option>
@@ -292,6 +315,8 @@ onchange="this.form.submit()">{{ lang_options }}</select></label>
 <script src="/static/chartframe.js"></script>
 <script src="/static/target.js"></script>
 <script src="/static/globe.js"></script>
+<script src="/static/sysmon.js"></script>
+<script src="/static/hints.js"></script>
 <div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
 </body></html>"""
 )
@@ -514,6 +539,29 @@ class SessionState:
             analysis = _compute_analysis(scoped)
             self.analyses[key] = (scoped, analysis)
             return analysis
+
+
+def _explain(what: str, read: str, decide: str) -> str:
+    """A collapsed "What am I looking at?" explainer rendered above a chart/section: WHAT the
+    visual shows, HOW to read it, and the DECISIONS it should inform. Server-rendered plain text
+    (escaped) so the i18n pass translates it like any other prose."""
+    return (
+        "<details class=explain><summary>What am I looking at &mdash; and how do I use it?"
+        "</summary><div class=explain-body>"
+        f"<h4>What this shows</h4><p>{_e(what)}</p>"
+        f"<h4>How to read it</h4><p>{_e(read)}</p>"
+        f"<h4>Decisions it informs</h4><p class=explain-decide>{_e(decide)}</p>"
+        "</div></details>"
+    )
+
+
+def _guide(tip_id: str, text: str) -> str:
+    """A dismissable first-visit guide tip (hints.js persists the dismissal per tip id)."""
+    return (
+        f'<div class=guide-tip data-tip-id="{_e(tip_id)}"><button type=button '
+        'class=guide-dismiss title="Dismiss this tip" data-no-i18n>&times;</button>'
+        f"<b>Tip:</b> {_e(text)}</div>"
+    )
 
 
 def _banner_html(state: SessionState) -> str:
@@ -863,7 +911,9 @@ value &mdash; is treated as an identifier the model has re-used in another role 
 count): <i>strict</i> discards that answer and <i>annotate</i> flags it &mdash; and the identifier
 check runs <i>before</i> the derived-figure check, so a re-used ID can never pass as a coincidental
 derivation. Writing an ID <i>as</i> an ID ("UID&nbsp;143", a quoted activity name) is fine; dates
-count as whole dates, not digit fragments; a derived whole number must reconstruct exactly. A digit
+count as whole dates, not digit fragments; a derived whole number must reconstruct exactly; and a
+figure re-written with a <i>different explicit unit</i> than the engine stated (a "5%" re-used as
+"5&nbsp;days") is likewise discarded/flagged. A digit
 that is also a genuine value is untouched (collision-safe). <i>Interpretive</i> mode is not
 figure-gated at all. Read any figure against the cited facts &mdash; the meaning, not just the
 number.</p>
@@ -878,6 +928,209 @@ number.</p>
 <button id=drivePathBtn type=button>Show driving path</button></div>
 <div id=askOut></div></div>
 <script src="/static/ask.js"></script>"""
+
+
+#: Per-page "What am I looking at?" explainers (title → what / how to read / decisions). Rendered
+#: collapsed at the top of every matching page by _page(); plain text (escaped + translated by the
+#: normal i18n pass). Written for a project analyst, decision-first.
+_EXPLAINERS: dict[str, tuple[str, str, str]] = {
+    "Dashboard": (
+        "Every schedule version loaded in this session, with its headline health: activity "
+        "counts, data date, computed finish, and the DCMA 14-point pass rate.",
+        "Each row is one schedule file. Green PASS rates and a stable computed finish are "
+        "healthy; a falling pass rate or a finish that moves right between versions is the "
+        "first warning. Click a file name for its full forensic report.",
+        "Decide which version needs attention first, whether the latest update degraded "
+        "schedule quality, and whether the finish date is drifting before anyone reports it.",
+    ),
+    "Mission Control": (
+        "A single wall-view of the whole session: every loaded version's key indicators side "
+        "by side, built for a stand-up or a war room screen.",
+        "Scan for red: failing checks, negative float, slipped finishes. Everything here is "
+        "computed by the engine from the files — nothing is typed in.",
+        "Use it to open a status meeting: pick the reddest column and drill into that "
+        "version's report before discussing anything else.",
+    ),
+    "Schedule Quality Ribbon": (
+        "The Acumen-Fuse-style quality ribbon: one chip per structural metric (missing logic, "
+        "leads, lags, constraints, high float, negative float, logic density and more) for the "
+        "selected version.",
+        "Each chip is a metric with its count and pass/fail color. Hover a chip for its "
+        "definition; click through to the Metric Dictionary for the formula, thresholds and a "
+        "worked example.",
+        "A failing chip tells you exactly which structural repair to schedule next — fix "
+        "missing logic before trusting any critical-path or float number downstream.",
+    ),
+    "Path Analysis": (
+        "The activity network laid out on a time axis: the critical path plus every driving "
+        "and near-driving chain, with float per activity.",
+        "Bars are activities; the highlighted chain is the path controlling the finish. Tight "
+        "float (colored) means little room before a slip hits the end date. Use the filter to "
+        "isolate a subsystem, and the export bar to take the picture into a report.",
+        "Identify WHERE to add resources or resequence: only work on the driving chain moves "
+        "the finish; float elsewhere is schedule margin you can spend deliberately.",
+    ),
+    "Driving Path": (
+        "The exact chain of activities that drives a chosen target activity (or the project "
+        "finish), with each link's driving slack — the SSI driving-path view.",
+        "Read top-down: each row is the next activity in the chain, and the slack column shows "
+        "how much that link can give before it stops driving. Zero-slack links are the "
+        "controlling logic.",
+        "This is the repair map for a late milestone: accelerate or de-couple the zero-slack "
+        "links; anything off this chain will not move the target date.",
+    ),
+    "Critical-Path Evolution": (
+        "How the critical path CHANGED across the loaded versions: which activities joined, "
+        "left, and stayed on the controlling path over time.",
+        "Each column is a version; each row an activity. Long unbroken rows are a stable "
+        "controlling chain; churn (rows appearing/disappearing) means the network's logic is "
+        "being rewired between updates.",
+        "Stable paths justify targeted recovery plans. Heavy churn is a red flag — either the "
+        "plan is being re-baselined quietly or logic is being edited to mask slips; ask for "
+        "the change log before accepting the update.",
+    ),
+    "Trend": (
+        "Every metric family tracked ACROSS versions: quality counts, float, completion "
+        "performance, forecast movement — the direction of the schedule over time.",
+        "Each mini-chart is one metric plotted per version, oldest to newest. Flat or "
+        "improving lines are health; worsening lines show exactly when a problem entered. "
+        "Click a point to drill into that version.",
+        "Trends turn one bad number into a story: use the inflection version to ask what "
+        "changed in THAT update — a re-baseline, a calendar edit, a logic rewrite.",
+    ),
+    "Bow Wave / CEI": (
+        "The bow-wave chart: work planned vs work actually finished per period, plus the "
+        "Current Execution Index (CEI) — how much of what was planned near-term actually got "
+        "done.",
+        "Bars pushing right of the data date are the bow wave — work sliding ahead of itself. "
+        "CEI below about 0.8 means the near-term plan is not being executed as written.",
+        "A growing bow wave predicts a finish slip BEFORE the finish moves: force-rank the "
+        "pushed work, fix the choke (resources, predecessors), and re-check next period.",
+    ),
+    "Finish & Slippage": (
+        "Two curves per version pair: where finishes were promised and how far they slipped — "
+        "the schedule's promise-keeping record.",
+        "Each point compares an activity's finish across versions. Points off the diagonal "
+        "slipped; the spread shows whether slippage is isolated or systemic.",
+        "Systemic slippage means the baseline is unrealistic — re-plan capacity. Isolated "
+        "slippage names the specific work packages to manage this period.",
+    ),
+    "S-Curve": (
+        "Cumulative planned vs actual progress over time — the classic S-curve for the "
+        "selected version(s).",
+        "The gap between the planned and actual curves is the schedule's true position; a "
+        "flattening actual curve means momentum is being lost even if percent-complete "
+        "numbers still look busy.",
+        "Use the gap and its growth rate to justify (or refute) a recovery plan: a widening "
+        "gap with a flat actual curve will not be closed by optimism.",
+    ),
+    "Year Phases": (
+        "The schedule cut into calendar-year phases: how much work each year carries, per version.",
+        "Each band is a year's share of activities/duration. Watch weight shifting to later "
+        "years across versions — the classic sign of work being pushed right.",
+        "If next year keeps absorbing this year's work, capacity is oversubscribed: re-baseline "
+        "honestly or add capacity, and say so in the next review.",
+    ),
+    "Forecast": (
+        "Multiple engine-computed finish forecasts side by side: pure-logic CPM, the stored "
+        "as-scheduled finish, and performance-adjusted projections.",
+        "Each method row shows its date and its basis. When methods disagree, the spread IS "
+        "the uncertainty; the as-scheduled row shows what the source tool itself stored.",
+        "Never brief a single date without the spread: use the range to set commitment dates "
+        "with margin, and investigate when the methods diverge sharply.",
+    ),
+    "EVM": (
+        "Earned-value indices computed from the schedule's cost loading: BCWS/BCWP/ACWP, "
+        "SPI, CPI and companions, validated against Acumen Fuse where reference data exists.",
+        "SPI/CPI near 1.0 is on-plan; below ~0.9 is trouble. NOT APPLICABLE rows mean the "
+        "loaded file carries no cost data — that is a fact about the file, not a failure.",
+        "Falling SPI with steady CPI means schedule pressure without overspend — a staffing or "
+        "sequencing fix. Falling both means the plan itself is broken: re-baseline.",
+    ),
+    "Resources": (
+        "Resource loading over time: who/what is booked, where bookings exceed capacity, and "
+        "which activities drive the peaks.",
+        "Bars above the capacity line are over-allocations. Expand a peak to see the exact "
+        "activities stacking on that resource in that window.",
+        "Level BEFORE committing dates: an over-allocated critical resource makes the whole "
+        "plan fiction. Move, split, or re-staff the peak drivers first.",
+    ),
+    "Risks & Opportunities": (
+        "The engine's cited findings ranked in a 5x5 risk matrix: every schedule-quality and "
+        "manipulation signal, with severity, likelihood and the exact activities cited.",
+        "Each finding carries its evidence (file + UID + activity). The matrix position comes "
+        "from computed exposure — the days of float actually at stake — not opinion.",
+        "Work the top-right cells first; every finding lists its recommended course of action "
+        "and the activities to open. Treat manipulation signals as questions to ASK, not "
+        "verdicts.",
+    ),
+    "Risk Analysis (SRA)": (
+        "A Monte-Carlo schedule risk analysis: activity durations varied per your 3-point "
+        "settings and risk register, run through the real CPM engine to a finish-date "
+        "distribution.",
+        "The histogram shows possible finish dates and their likelihood; P50/P80 markers are "
+        "the dates with 50%/80% confidence. The tornado ranks which activities drive the "
+        "spread.",
+        "Commit to P80-class dates, not the deterministic finish. Attack the top tornado "
+        "drivers — tightening their uncertainty moves the whole distribution left.",
+    ),
+    "Diagnostic Brief": (
+        "A printable, fully-cited diagnostic of the selected version: every failing check, "
+        "finding and key figure with its evidence trail.",
+        "Read it like an audit report: each statement cites the file, activity ID and name it "
+        "rests on. Nothing here is AI-generated — it is the engine's own computation.",
+        "Hand this to the schedule owner as the work list; every line is defensible because "
+        "every line is cited.",
+    ),
+    "Executive Briefing": (
+        "The whole session condensed for leadership: bottom line up front, cross-version "
+        "trend, per-version verdicts, risks and recommended actions — every statement cited.",
+        "Start at the one-sentence bottom line. Optional local-AI polish only rewords "
+        "sentences — every figure is verified against the engine before display.",
+        "Use it as the meeting document: decisions land faster when every claim carries its "
+        "citation inline.",
+    ),
+    "Metric Dictionary": (
+        "The authoritative definition of every metric this tool computes: formula, source, "
+        "thresholds, and a worked example for each.",
+        "Each entry states what the metric measures, the exact formula, why it matters, what "
+        "a failure indicates, and PASS/FAIL examples. Metrics link here from every page.",
+        "When two stakeholders argue about a number, this page ends the argument: same "
+        "formula, same thresholds, same source for everyone.",
+    ),
+    "Groups & Filters": (
+        "A session-wide lens: filter every page and every loaded version to the activities "
+        "matching your criteria (WBS, name, custom fields...).",
+        "Set criteria and Apply — the filter banner then shows on every page until cleared. "
+        "All metrics recompute over the filtered population only.",
+        "Isolate one subsystem or contractor and read its health in minutes instead of "
+        "exporting subsets by hand. Clear the filter before quoting whole-project numbers.",
+    ),
+    "AI Settings": (
+        "Controls for the OPTIONAL local AI: backend, model, answer mode, second-model "
+        "cross-check, and the project's classification posture.",
+        "Everything runs on 127.0.0.1 — a cloud backend is refused while the project is "
+        "CLASSIFIED. Answer modes trade breadth for strictness: strict never shows an "
+        "unverified number; annotate flags derived ones; interpretive is unfiltered analysis.",
+        "Pick strict for testimony work, annotate for daily analysis. If a figure ever "
+        "surprises you, check its citation before repeating it.",
+    ),
+    "Compare": (
+        "Two versions side by side: every tracked field change per activity — dates, "
+        "durations, logic, constraints, status.",
+        "Each row is one activity's deltas between the versions. Sort by the change that "
+        "matters (finish slip, duration growth, constraint added).",
+        "This is where quiet edits surface: baseline changes, added constraints and "
+        "deactivated work show up here even when the summary numbers look stable.",
+    ),
+}
+
+
+def _page_explainer(title: str) -> str:
+    entry = _EXPLAINERS.get(title)
+    if entry is None or not entry[0]:
+        return ""
+    return _explain(*entry)
 
 
 def _page(
@@ -915,6 +1168,7 @@ def _page(
             body=(
                 _filter_banner(state)
                 + _endpoint_banner(state)
+                + _page_explainer(title)
                 + body
                 + _ask_panel_html(state, ask_schedule)
             ),
@@ -1088,6 +1342,16 @@ def create_app(
         app.state.browser_seen = True
         return JSONResponse({"ok": True})
 
+    @app.get("/api/system")
+    def system_snapshot() -> JSONResponse:
+        """Live LOCAL machine telemetry for the HUD dock (sysmon.js) — CPU/RAM/disk/GPU/temps.
+
+        Local reads only (/proc, /sys, shutil, optional psutil, optional nvidia-smi) — nothing
+        network-facing, so Law 1 is untouched; fields a platform can't provide are null."""
+        from schedule_forensics.web import system as _system  # local: optional-psutil module
+
+        return JSONResponse(_system.snapshot())
+
     @app.post("/api/shutdown")
     def shutdown() -> JSONResponse:
         shutdown_offload()  # tear down the SRA worker process, if one was started
@@ -1171,7 +1435,14 @@ def create_app(
 </div>
 {loaded}
 <script src="/static/home.js"></script>"""
-        return _page(st, "Dashboard", body)
+        tip = _guide(
+            "dash-start",
+            "Load two or more versions of the same schedule to unlock the cross-version views "
+            "(Trend, Compare, Critical-Path Evolution, manipulation signals). Every chart has a "
+            "'What am I looking at?' explainer at the top, and every metric links to its "
+            "definition in the Metric Dictionary.",
+        )
+        return _page(st, "Dashboard", tip + body)
 
     @app.get("/api/dashboard")
     def dashboard_json() -> JSONResponse:
@@ -3007,7 +3278,8 @@ def create_app(
     def help_page() -> HTMLResponse:
         st = session()
         rows = "".join(
-            f"<tr><td>{_e(d.name)}</td><td class=muted>{_e(reliability_dimension(d.metric_id))}</td>"
+            f'<tr id="m-{_e(d.metric_id)}"><td>{_e(d.name)}</td>'
+            f"<td class=muted>{_e(reliability_dimension(d.metric_id))}</td>"
             f"<td>{_e(d.definition)}</td>"
             f"<td><code>{_e(d.formula)}</code></td><td class=muted>{_e(d.source)}</td></tr>"
             for d in METRIC_DICTIONARY.values()
@@ -4420,7 +4692,12 @@ def _dcma_metric_cell(check: AuditCheck) -> str:
         return f"<td>{_e(check.name)}</td>"
     display = f"{_dcma_label(check.metric_id)} — {doc.name}"
     tip_id = f"dcma-tip-{_e(check.metric_id)}"
-    rich = [f"<b>{_e(display)}</b>", f"<p>{_e(doc.definition)}</p>"]
+    rich = [
+        f"<b>{_e(display)}</b>",
+        f"<p>{_e(doc.definition)}</p>",
+        f'<p><a class=metric-info href="/help#m-{_e(check.metric_id)}">Full definition, '
+        "example and decision guidance &raquo;</a></p>",
+    ]
     title = f"{doc.definition}"
     threshold = doc.threshold or f"Pass criteria: {doc.formula}"
     rich.append(f"<p><b>Threshold:</b> {_e(threshold)}</p>")
