@@ -120,10 +120,13 @@ def test_table_headers_carry_scope(client: TestClient) -> None:
 
 
 def test_theme_toggle_announces_state_and_defaults_to_light(client: TestClient) -> None:
-    """A10: the theme toggle sets aria-pressed; the tool defaults to Light mode (operator request),
-    applying light unless the saved choice is explicitly dark."""
+    """A10: the theme control is a three-way CYCLE (Light -> Dark -> JARVIS, ADR-0146), so it
+    announces via aria-label naming the NEXT theme (aria-pressed is a two-state semantic and
+    would be wrong for a cycler). The tool still defaults to Light unless the saved choice is
+    explicitly dark or jarvis."""
     js = client.get("/static/theme.js").text
-    assert "aria-pressed" in js
+    assert "aria-label" in js and "Switch theme" in js
+    assert '"jarvis"' in js  # the HUD theme is part of the cycle
     assert 'saved !== "dark"' in js and 'setAttribute("data-theme"' in js
 
 

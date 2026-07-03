@@ -9,11 +9,15 @@
 
 (function () {
   var KEY = "sf-theme";
+  var MODES = ["light", "dark", "jarvis"]; // cycle order; jarvis = the HUD skin (hud.css)
   var saved = null;
   try { saved = localStorage.getItem(KEY); } catch (e) { /* storage may be unavailable */ }
-  // Light is the default: apply it on a first visit and whenever the saved choice isn't "dark".
-  // Only an explicit toggle to dark (saved === "dark") leaves the document on the dark base theme.
-  if (saved !== "dark") {
+  // Light is the default: apply it on a first visit and whenever the saved choice isn't one of
+  // the explicit non-light modes. "dark" leaves the document on the dark base theme; "jarvis"
+  // stamps data-theme=jarvis (which INHERITS the dark tokens, then hud.css re-skins them).
+  if (saved === "jarvis") {
+    document.documentElement.setAttribute("data-theme", "jarvis");
+  } else if (saved !== "dark") {
     document.documentElement.setAttribute("data-theme", "light");
   }
 
@@ -27,13 +31,16 @@
   } catch (e) { /* storage may be unavailable */ }
 
   function mode() {
-    return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    var t = document.documentElement.getAttribute("data-theme");
+    return t === "light" || t === "jarvis" ? t : "dark";
   }
 
   function label(btn) {
-    var light = mode() === "light";
-    btn.textContent = light ? "☾ Dark mode" : "☀ Light mode";
-    btn.setAttribute("aria-pressed", light ? "true" : "false"); // A10: announce toggle state
+    // the button names the NEXT theme in the cycle (Light -> Dark -> JARVIS -> Light)
+    var next = MODES[(MODES.indexOf(mode()) + 1) % MODES.length];
+    btn.textContent = next === "dark" ? "\u263e Dark mode"
+      : next === "jarvis" ? "\u2b21 JARVIS mode" : "\u2600 Light mode";
+    btn.setAttribute("aria-label", "Switch theme (next: " + next + ")");
   }
 
   document.addEventListener("DOMContentLoaded", function () {
@@ -41,7 +48,7 @@
     if (btn) {
       label(btn);
       btn.addEventListener("click", function () {
-        var next = mode() === "light" ? "dark" : "light";
+        var next = MODES[(MODES.indexOf(mode()) + 1) % MODES.length];
         document.documentElement.setAttribute("data-theme", next);
         try { localStorage.setItem(KEY, next); } catch (e) { /* keep the in-page switch */ }
         label(btn);

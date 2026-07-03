@@ -109,6 +109,8 @@ $b64 = $EMBEDDED_WHEEL_B64 -replace "\s", ""
 & $venvPy -c "import schedule_forensics" 2>$null
 if ($LASTEXITCODE -ne 0) { throw "The tool failed to import after install — see $InstallRoot\install.log" }
 Ok ("Installed " + "{{WHEEL_NAME}}")
+# optional HUD telemetry enhancer (CPU% / temps on Windows) — best-effort, never fatal
+try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
 # --- 4. Java 17+ (optional — native .mpp only) ----------------------------------------
 Step "Checking Java 17+ (optional — only needed to open native .mpp files)"

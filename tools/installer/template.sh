@@ -95,6 +95,8 @@ awk '/^# ===BEGIN WHEEL_B64===/{flag=1; next} /^# ===END WHEEL_B64===/{flag=0} f
 "$VENV_DIR/bin/python" -m pip install --quiet --force-reinstall "$WHEEL_PATH"
 "$VENV_DIR/bin/python" -c "import schedule_forensics" || { echo "The tool failed to import after install." >&2; exit 1; }
 ok "Installed {{WHEEL_NAME}}"
+# optional HUD telemetry enhancer — best-effort, never fatal (stdlib collectors cover Linux)
+"$VENV_DIR/bin/python" -m pip install --quiet psutil >/dev/null 2>&1 || true
 
 # --- 4. Ollama + this tier's local AI model -------------------------------------------
 step "Local AI ($OLLAMA_MODEL) — the tool runs fully without it (skippable)"

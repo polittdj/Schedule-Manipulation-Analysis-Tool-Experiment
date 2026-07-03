@@ -47,6 +47,79 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Einrichtung",
         "pt": "Configuração",
     },
+    # — HUD layer: explainers, guidance, compliance, telemetry (ADR-0146) —
+    "What am I looking at — and how do I use it?": {
+        "es": "¿Qué estoy viendo y cómo lo uso?",
+        "fr": "Qu'est-ce que je regarde — et comment l'utiliser ?",
+        "de": "Was sehe ich hier — und wie nutze ich es?",
+        "pt": "O que estou a ver — e como o utilizo?",
+    },
+    "What this shows": {
+        "es": "Qué muestra",
+        "fr": "Ce que cela montre",
+        "de": "Was hier gezeigt wird",
+        "pt": "O que isto mostra",
+    },
+    "How to read it": {
+        "es": "Cómo leerlo",
+        "fr": "Comment le lire",
+        "de": "So liest man es",
+        "pt": "Como ler",
+    },
+    "Decisions it informs": {
+        "es": "Decisiones que respalda",
+        "fr": "Décisions qu'il éclaire",
+        "de": "Entscheidungen, die es stützt",
+        "pt": "Decisões que apoia",
+    },
+    "Tip:": {"es": "Consejo:", "fr": "Astuce :", "de": "Tipp:", "pt": "Dica:"},
+    "Handling & export-control notice — click to review (CUI / ITAR / EAR)": {
+        "es": "Aviso de manejo y control de exportaciones — clic para revisar (CUI / ITAR / EAR)",
+        "fr": (
+            "Avis de manipulation et de contrôle des exportations — cliquer pour consulter"
+            " (CUI / ITAR / EAR)"
+        ),
+        "de": "Hinweis zu Handhabung und Exportkontrolle — zum Lesen klicken (CUI / ITAR / EAR)",
+        "pt": (
+            "Aviso de manuseamento e controlo de exportação — clique para rever (CUI / ITAR / EAR)"
+        ),
+    },
+    "Controlled Unclassified Information (CUI)": {
+        "es": "Información no clasificada controlada (CUI)",
+        "fr": "Informations non classifiées contrôlées (CUI)",
+        "de": "Kontrollierte nicht klassifizierte Informationen (CUI)",
+        "pt": "Informação não classificada controlada (CUI)",
+    },
+    "Export control (ITAR / EAR)": {
+        "es": "Control de exportaciones (ITAR / EAR)",
+        "fr": "Contrôle des exportations (ITAR / EAR)",
+        "de": "Exportkontrolle (ITAR / EAR)",
+        "pt": "Controlo de exportação (ITAR / EAR)",
+    },
+    "Your responsibility": {
+        "es": "Su responsabilidad",
+        "fr": "Votre responsabilité",
+        "de": "Ihre Verantwortung",
+        "pt": "A sua responsabilidade",
+    },
+    "Dark mode": {
+        "es": "Modo oscuro",
+        "fr": "Mode sombre",
+        "de": "Dunkler Modus",
+        "pt": "Modo escuro",
+    },
+    "Light mode": {
+        "es": "Modo claro",
+        "fr": "Mode clair",
+        "de": "Heller Modus",
+        "pt": "Modo claro",
+    },
+    "JARVIS mode": {
+        "es": "Modo JARVIS",
+        "fr": "Mode JARVIS",
+        "de": "JARVIS-Modus",
+        "pt": "Modo JARVIS",
+    },
     # — navigation: links —
     "Dashboard": {"es": "Panel", "fr": "Tableau de bord", "de": "Übersicht", "pt": "Painel"},
     "Mission Control": {

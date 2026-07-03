@@ -3983,3 +3983,29 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   never flagged. Live-verified 7 cases then pinned; a patch-script `\b`→backspace corruption in
   the new regexes was caught by the live verification and fixed before commit.
 - PARK-LIST F-11 semantic-half entry updated (first slice closed in-env).
+
+### 2026-07-03 — HUD/UI layer (ADR-0146): compliance drawer, explainers, JARVIS theme, live telemetry, hints, i18n
+- Operator directive (top-tier NASA UI; CUI/ITAR warnings; hints; per-metric/per-visual
+  explanations with decision guidance; unique look; optional JARVIS theme; live CPU/RAM/GPU/disk
+  usage + temps in expandable windows; languages translate everything with switch-back). Shipped
+  as one additive presentation layer — no engine number moved; full gate + parity green.
+- **ADR-0146:** (1) unconditional CUI/ITAR/EAR compliance drawer on every page (32 CFR 2002,
+  22 CFR 120–130, 15 CFR 730–774) + convention-correct banner colors (CUI purple / UNCLASSIFIED
+  green); the unclassified-mode test now asserts on the banner elements, not the whole page.
+  (2) `_page()`-injected explainers ("What am I looking at — and how do I use it?": what it
+  shows / how to read it / decisions it informs) for 21 pages via the title-keyed `_EXPLAINERS`
+  map. (3) `data-sf-hint` tooltips, dismissable guide tips (`hints.js`, localStorage), one-time
+  nudge pulse, `/help#m-<id>` anchors + DCMA tooltip deep-links. (4) JARVIS theme
+  (`data-theme=jarvis`, `hud.css`): cyan/gold glass HUD, corner-bracket panels, scanline
+  (reduced-motion safe), pure CSS/air-gapped; `theme.js` cycles Light → Dark → JARVIS
+  (aria-label announces next; default stays Light). (5) live telemetry: `web/system.py` +
+  `GET /api/system` + `sysmon.js` dock (CPU/RAM/GPU/DISK chips → detail cards with cores, temps,
+  VRAM, totals); 2 s loopback poll, hidden-tab pause, JARVIS-only default-on, persisted toggle;
+  LOCAL reads only (/proc, /sys, shutil, local nvidia-smi; optional psutil `[monitor]` extra) —
+  Law 1 untouched, every field nullable. (6) i18n: new fixed strings in `_TERMS` ×4 languages;
+  explainer prose rides the AI fallback + non-destructive translate.js (switch-back guaranteed).
+- **Packaging:** wheel rebuilt (now carries system.py + hud.css/sysmon.js/hints.js), all 9
+  installers regenerated + best-effort psutil line added to all 3 templates; Linux tier1
+  installer re-executed end-to-end — deployed venv serves the HUD assets and psutil landed.
+- Tests: `tests/web/test_hud_layer.py` (7) pins the layer; a11y theme-toggle test updated for
+  the 3-way cycle (aria-pressed → aria-label; two-state semantics wrong for a cycler).

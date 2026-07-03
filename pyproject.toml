@@ -53,6 +53,8 @@ Documentation = "https://github.com/polittdj/schedule-manipulation-analysis-tool
 schedule-forensics = "schedule_forensics.launcher:main"
 
 [project.optional-dependencies]
+# live HUD telemetry enhancer (CPU%/temps on Windows/macOS); LOCAL reads only — never network
+monitor = ["psutil>=5.9"]
 # Quality/PM toolchain required by §7 (QC/PM regime). Pinned loosely now;
 # tightened when first wired into CI during Phase 2.
 dev = [
@@ -99,6 +101,12 @@ strict = true
 files = ["src"]
 warn_unused_configs = true
 plugins = ["pydantic.mypy"]
+
+# psutil is an OPTIONAL runtime enhancer (the [monitor] extra) — untyped and usually absent
+# from the dev env; web/system.py degrades to stdlib collectors without it.
+[[tool.mypy.overrides]]
+module = "psutil"
+ignore_missing_imports = true
 
 # --- pytest + coverage ---------------------------------------------------------
 [tool.pytest.ini_options]
