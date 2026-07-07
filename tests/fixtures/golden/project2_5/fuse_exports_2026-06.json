@@ -1,0 +1,125 @@
+{
+  "_source": "Transcribed VERBATIM from the operator-delivered Acumen Fuse v8.11.0 export suite in 00_REFERENCE_INTAKE/ (repo-tracked, non-CUI): 'P2-P5 - Metric History Report.xlsx' + 'P2-P5 - DCMA Report.xlsx' + 'P2-P5 - Detailed Metric Report.xlsx' + 'P2-P5 - Quick Add Metrics.xlsx' (all created 6/21/2026 by dpolitte, workbook 'P-P5 - 288 Activities') and the two Forensic Analysis Report comparisons 'Project2v5 Forensic Analysis Report.xlsx' (6/22/2026) / 'Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx' (7/7/2026). Snapshots: Project2 (Time Now 5/24/2026) and Project5_TAMPERED (Time Now 8/27/2026) — the same pair as the committed goldens. Every value below appears in at least TWO independent places in the suite (a second export, a second sheet, or a per-activity derivation from the raw sheets); single-source values were NOT transcribed. The two Forensic reports' Critical / Total-Float / Original-Duration / Activity-Status sheets were diffed programmatically and are row-identical.",
+  "_rules": "ADDED reference values only (PARK-LIST A-1/A-2). The committed goldens and case.json numbers were not edited. Where the engine deliberately diverges from a Fuse value the divergence is recorded under _documented_divergences and asserted exactly in tests/parity/test_fuse_export_parity.py — never forced.",
+  "Project2": {
+    "schedule_quality": {
+      "logic_density": 2.79,
+      "critical_zero_days_float": 41,
+      "hard_constraints": 0,
+      "negative_float": 0,
+      "insufficient_detail": 1,
+      "merge_hotspot": 10,
+      "missing_logic_incomplete_scoped": 4,
+      "_provenance": "Metric History rows 'Logic Density™' (all-activity variant, CP section) 2.79, 'Zero Days Float'/'Critical Path (Tasks & Milestones)' 41, 'Hard Constraints' 0, 'Negative Float' 0, 'Insufficient Detail™' 1, 'Merge Hotspot (Predecessors >2)' 10, 'Missing Logic' 4; each repeated in the DCMA Report metric tables. Fuse publishes Missing Logic INCOMPLETE-scoped (= DCMA01); the engine's all-activity §A missing_logic (6) has no Fuse counterpart in the suite (documented scope delta, case.json _deltas)."
+    },
+    "dcma14": {
+      "DCMA01": 4,
+      "DCMA02": 0,
+      "DCMA03": 2,
+      "DCMA05": 0,
+      "DCMA06": 44,
+      "DCMA07": 0,
+      "DCMA08": 1,
+      "DCMA09": 0,
+      "DCMA11": 18,
+      "DCMA14": 0.74,
+      "DCMA14_complete": 20,
+      "DCMA14_total": 27,
+      "_provenance": "Metric History rows: 'Missing Logic' 4 (DCMA01), 'Activities w/Leads on Predecessor' 0 + 'Total # Predecessor Leads' N/A (DCMA02), 'Total # Predecessor Lags' 2 (DCMA03), 'Hard Constraints' 0 (DCMA05), 'High Float 44d' 44 (DCMA06), 'Negative Float' 0 (DCMA07), 'High Planned Duration (44d)' 1 (DCMA08), 'Wrong Status'/'Invalid Forecast Dates' 0 (DCMA09), 'Finished Late' 11 + 'Forecast to be Finished but not Finished yet' 7 = 18 (DCMA11), 'BEI - Value Tasks' 0.74 with Complete 20 / Total 27 (DCMA14). Second source: the same rows in the DCMA Report / Advanced-Baseline-Compliance / Program-Summary-2 sheets. DCMA04/10/12/13 do not appear in this export suite and keep their prior transcription basis."
+    },
+    "baseline_compliance": {
+      "forecast_to_be_finished": 27,
+      "completed_on_time": 9,
+      "completed_late": 11,
+      "not_completed": 7,
+      "baseline_finish_compliance": 0.33,
+      "forecast_to_be_started": 29,
+      "started_on_time": 11,
+      "started_late": 12,
+      "not_started": 6,
+      "baseline_start_compliance": 0.41,
+      "_provenance": "Metric History 'Baseline Compliance' block (Forecast to be Finished 27 / Completed On Time 9 / Completed Late 11 / Not Completed 7 / Baseline Finish Compliance 0.33 / Forecast to be Started 29 / Started On Time 11 / Started Late 12 / Not Started 6 / Baseline Start Compliance 0.41). Second source: the DCMA Report 'Advanced-Baseline-Compliance' sheet shows the identical block with Project2 side-by-side."
+    }
+  },
+  "Project5": {
+    "schedule_quality": {
+      "logic_density": 2.81,
+      "critical_zero_days_float": 4,
+      "hard_constraints": 1,
+      "negative_float": 0,
+      "insufficient_detail": 0,
+      "merge_hotspot": 10,
+      "missing_logic_incomplete_scoped": 5,
+      "_provenance": "Same rows as Project2 (second snapshot column): Logic Density™ 2.81, Zero Days Float / Critical Path 4, Hard Constraints 1 (Mandatory Start 1), Negative Float 0, Insufficient Detail™ 0, Merge Hotspot 10, Missing Logic 5."
+    },
+    "dcma14": {
+      "DCMA01": 5,
+      "DCMA02": 0,
+      "DCMA03": 1,
+      "DCMA05": 1,
+      "DCMA06": 44,
+      "DCMA07": 0,
+      "DCMA08": 0,
+      "DCMA09": 0,
+      "DCMA11": 37,
+      "DCMA14": 0.59,
+      "DCMA14_complete": 27,
+      "DCMA14_total": 46,
+      "_provenance": "Same rows as Project2 (second snapshot column). DCMA11 = 'Finished Late' 18 + 'Forecast to be Finished but not Finished yet' 19 = 37. DCMA14: BEI - Value Tasks 0.59, Complete 27 / Total 46 — third source: the DCMA Report 'BEI - Incomplete Activities Analysis' sheet row '0.59 | 46 | 27 | 19'."
+    },
+    "baseline_compliance": {
+      "forecast_to_be_finished": 46,
+      "completed_on_time": 9,
+      "completed_late": 18,
+      "not_completed": 19,
+      "baseline_finish_compliance": 0.2,
+      "forecast_to_be_started": 48,
+      "started_on_time": 11,
+      "started_late": 18,
+      "not_started": 19,
+      "baseline_start_compliance": 0.25,
+      "_provenance": "Metric History 'Baseline Compliance' block (second column) AND the DCMA Report 'Advanced-Baseline-Compliance' sheet header row '46 | 9 | 18 | 19 | 0.2 | 48 | 11 | 18 | 19 | 0.25'."
+    }
+  },
+  "change_P2_to_P5": {
+    "activities_added": 0,
+    "newly_critical": 1,
+    "newly_critical_uids": [131],
+    "no_longer_critical": 34,
+    "no_longer_critical_uids": [
+      35, 38, 39, 42, 44, 48, 49, 51, 52, 53, 55, 57, 58, 60, 61, 62, 63, 65, 66, 67,
+      68, 69, 78, 82, 94, 95, 96, 100, 106, 135, 138, 139, 140, 141
+    ],
+    "float_erosion_stored_basis": 1,
+    "float_erosion_stored_basis_uids": [131],
+    "finish_slips_cei_incomplete": 9,
+    "finish_slips_cei_incomplete_uids": [34, 35, 36, 37, 38, 39, 40, 42, 44],
+    "start_cei_by_status_dates": 0.4,
+    "original_duration_increases": 9,
+    "original_duration_increases_uids": [31, 34, 35, 39, 49, 50, 55, 106, 107],
+    "remaining_duration_increases_nonsummary": 7,
+    "remaining_duration_increases_nonsummary_uids": [35, 39, 49, 50, 55, 106, 107],
+    "completed": 27,
+    "in_progress": 2,
+    "net_finish_impact_days_stored": -134,
+    "project_finish_serial_P2": 46644.708333333336,
+    "project_finish_serial_P5": 46778.708333333336,
+    "_provenance": {
+      "activities_added": "Both Forensic reports: 'Activities - 0 (0%)' sheet header (identical UID set, 144 rows both snapshots).",
+      "newly_critical": "THREE sources: Metric History 'SN05 Newly Critical Activities' = 1; DCMA Report 'Newly Critical Activities' = 1 with the offender row UID 131 (Previous_Critical 0 -> Critical 1); Forensic 'Critical' sheet row UID 131 (only O->P transition).",
+      "no_longer_critical": "THREE sources: Metric History 'SN06 Activities No Longer Critical' = 34; DCMA Report 'Activities No Longer Critical' = 34 with the 34-row offender list (the UIDs above, all Previous_Critical=1 -> Critical=0, all incomplete); Forensic 'Critical' sheet derivation — 44 raw P->O flags, minus 6 WBS summaries (24/32/47/77/93/137), minus 4 completed-in-P5 (29/30/31/33) = the same 34 UIDs.",
+      "float_erosion_stored_basis": "Derived from the Forensic 'Total-Float' sheet (113 changed rows, identical in both reports): stored Total Float DECREASED for non-summary activities 12, 15, 17, 131; of these only UID 131 is incomplete in Project5 (12/15/17 completed per the Activity-Status sheet) -> count 1, UID 131. The .aft Bible (1,443 metrics) carries NO 'Float Erosion' headline metric; this is the per-activity Fuse-data derivation under the engine's documented scope (incomplete, non-summary).",
+      "finish_slips": "DCMA Report 'CEI - Incomplete Tasks' = 9 ('forecast to complete in the month ... but did not complete') with the 9-row offender list (UIDs above). Second source: Metric History 'CEI - Total Tasks' 16 / 'CEI - Complete Tasks' 7 -> 16-7 = 9.",
+      "start_cei": "Metric History + DCMA Report 'CEI - Value Task Starts - by Status Dates' = 0.4: 6 of the 15 activities the Project2 plan placed to start by 8/27/2026 started (Actual Starts 29-23=6) -> 9 did not. The suite carries NO per-activity start-slip offender list, so the start side is count-consistent only.",
+      "original_duration_increases": "Forensic 'Original-Duration' sheet (18 changed rows, identical in both reports): duration increased for exactly 9 non-summary activities — UIDs 31, 34, 35, 39, 49, 50, 55, 106, 107.",
+      "remaining_duration_increases_nonsummary": "Forensic 'Remaining-Duration' sheet (24 changed rows): REMAINING duration increased for exactly 7 non-summary activities (35/39/49/50/55/106/107) — the original-duration basis adds 31 and 34, whose remaining fell with progress while their total grew.",
+      "completed_in_progress": "Metric History 'Actually Finished' 20->27 / 'Actually Started - Tasks' 3->2; DCMA Report Advanced sheet 'Completed Activities' 27.",
+      "net_finish_impact": "Metric History 'HSD10 Net Finish Impact (Days)' = -134 and 'HSD20 Project Finish' 46644 -> 46778; Forensic 'Projects' sheet finish serials 46644.708 -> 46778.708 (= 2027-09-14 -> 2028-01-26, exactly 134 calendar days). The .aft Bible formula is ROUND(ProjectPreviousFinish - ProjectFinish, 0) over the STORED project finishes."
+    }
+  },
+  "_documented_divergences": {
+    "no_longer_critical_membership": "Counts are equal (34 == 34) but ONE member differs: the engine lists UID 99 where Fuse lists UID 96. Root cause is the critical-flag basis (ADR-0010): in Project2, MS Project's stored progress-aware Critical flag marks UID 96 True (stored) while pure-logic CPM float is 5d (not critical), and marks UID 99 False (stored slack 10d) while pure-logic CPM float is 0 (critical). Both bases count 41 critical in Project2 and agree on the other 33 transitions. Asserted exactly (symmetric difference == {96, 99}) in test_fuse_export_parity.py.",
+    "net_finish_impact_basis": "Engine -148 vs Fuse -134. Fuse subtracts the STORED project finishes (46644.708 -> 46778.708 = 134 calendar days; .aft formula above). The engine subtracts its own pure-logic CPM finishes (P2 2027-08-30, P5 2028-01-25 = 148 days) for independence/auditability. Reconciliation: the P2 CPM finish lands 15 days before the stored finish and the P5 CPM finish 1 day before, so -148 = -134 - 15 + 1 exactly — the ADR-0108 data-date gap, not a computation error. Asserted exactly in test_fuse_export_parity.py.",
+    "sn07_name_vs_basis": "QC audit D14 disposition: the .aft Bible has no 'Remaining Duration Increases' metric (nor any date-slip/float-erosion metric) — the SN05/SN06/SN07/SN09 §E names are this tool's forensic metrics, and Fuse's own export codes differ (Fuse SN05 = Newly Critical, SN06 = No Longer Critical). The engine's SN07 total-duration comparison is UID-EXACT against the Fuse Forensic Original-Duration change sheet (9/9); the remaining-duration basis would give 7. The engine formula is unchanged; help.py states the validated basis."
+  }
+}

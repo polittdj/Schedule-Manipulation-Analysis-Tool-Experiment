@@ -7,12 +7,15 @@ computed-vs-golden summary for the committed, non-CUI commercial-construction sa
 a dedicated CI step) over the golden fixtures in `tests/fixtures/golden/`.
 
 **Status: every figure the engine reproduces against the committed recorded golden (`case.json`) is exact,
-and the former §A/§B/§C residuals (High Float, Baseline-Start-Compliance) are now CLOSED. The one open
-parity gap is the §E float/critical change subset, which is currently *engine-pinned* (asserts the
-engine's own value, not a transcribed Acumen value) pending a fresh Acumen Fuse §E export — see §E and
-audit F-01.** Important scope: these tables verify *engine == recorded golden*; the recorded golden is a
-transcription of Acumen Fuse / SSI exports (the exports themselves are CUI, not committed), so
-*golden == Fuse* is not independently re-checkable from the repo alone.
+and the former §A/§B/§C residuals (High Float, Baseline-Start-Compliance) are now CLOSED. As of 2026-07-07
+(ADR-0151) the §E change subset — including the formerly engine-pinned float/critical rows — is
+Fuse-validated (ENGINE==FUSE) against the operator-delivered export suite; see §E.** Important scope
+(narrower than it used to be): the delivered Fuse exports for the P2↔P5 pair are **repo-tracked** under
+`00_REFERENCE_INTAKE/` and their transcriptions live in
+`tests/fixtures/golden/project2_5/fuse_exports_2026-06.json`, so for every row that suite carries,
+*engine == Fuse* IS re-checkable from the repo (`tests/parity/test_fuse_export_parity.py`). Rows the
+suite does not carry (DCMA-04/10/12/13, the composite scores) remain *engine == recorded golden*
+transcription-basis only.
 
 ## Native `.mpp` structural parse (Project2.mpp — verified 2026-06-17, local only)
 
@@ -93,33 +96,33 @@ and is now **stale / `xfail`** (ADR-0112) pending a fresh SSI export for the cur
 
 | Metric | Golden | Computed | Status |
 |---|---|---|---|
-| Missing Logic | 6 / 7 | 6 / 7 | ✅ |
-| Logic Density | 2.79 / 2.81 | 2.79 / 2.81 | ✅ |
-| Critical (incomplete) | 41 / 4 | 41 / 4 | ✅ (P5 = authoritative `Project5_TAMPERED.mpp`, ADR-0112) |
-| Hard Constraints | 0 / 0 | 0 / 0 | ✅ |
-| Negative Float | 0 / 0 | 0 / 0 | ✅ |
-| Insufficient Detail | 1 / 0 | 1 / 0 | ✅ |
-| Number of Lags / Leads | 2,0 / 2,0 | 2,0 / 2,0 | ✅ |
-| Merge Hotspot | 10 / 10 | 10 / 10 | ✅ |
+| Missing Logic | 6 / 7 | 6 / 7 | ✅ (all-activity scope; Fuse publishes the incomplete scope = DCMA01 4 / 5, ENGINE==FUSE) |
+| Logic Density | 2.79 / 2.81 | 2.79 / 2.81 | ✅ ENGINE==FUSE (Metric History "Logic Density™", all-activity variant) |
+| Critical (incomplete) | 41 / 4 | 41 / 4 | ✅ ENGINE==FUSE (Metric History + DCMA "Zero Days Float" / "Critical Path") |
+| Hard Constraints | 0 / 1 | 0 / 1 | ✅ ENGINE==FUSE (was misprinted 0 / 0 here; case.json always pinned P5 = 1) |
+| Negative Float | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE |
+| Insufficient Detail | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("Insufficient Detail™") |
+| Number of Lags / Leads | 2,0 / 2,0 | 2,0 / 2,0 | ✅ (all-links scope; Fuse's incomplete-scoped pred-lags 2 / 1 = DCMA03, ENGINE==FUSE) |
+| Merge Hotspot | 10 / 10 | 10 / 10 | ✅ ENGINE==FUSE ("Merge Hotspot (Predecessors >2)") |
 
 ## Acumen Fuse §B — DCMA-14 ribbon (Project2 / Project5)
 
 | # | Check | Golden | Computed | Status |
 |---|---|---|---|---|
-| 1 | Logic | 4 / 4 | 4 / 4 | ✅ |
-| 2 | Leads | 0 / 0 | 0 / 0 | ✅ |
-| 3 | Lags | 2 / 1 | 2 / 1 | ✅ |
-| 4 | FS / SS-FF / SF | 99% / … | 99% / … | ✅ |
-| 5 | Hard Constraint | 0 / 0 | 0 / 0 | ✅ |
-| 6 | **High Float** | 44 / 44 | 44 / 44 | ✅ now exact both projects (stored Total Slack, ADR-0109/0112; former −1 residual closed) |
-| 7 | Negative Float | 0 / 0 | 0 / 0 | ✅ |
-| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ |
-| 9 | Invalid Dates | 0 / 0 | 0 / 0 | ✅ |
-| 10 | Resources | 0 / 0 | 0 / 0 | ✅ |
-| 11 | Missed Activities | 18 / 37 | 18 / 37 | ✅ |
-| 12 | Critical Path Test | pass | pass | ✅ |
-| 13 | CPLI | 1.0 / 1.0 | 1.0 / 1.0 | ✅ |
-| 14 | BEI | 0.74 / 0.59 | 0.74 / 0.59 | ✅ |
+| 1 | Logic | 4 / 5 | 4 / 5 | ✅ ENGINE==FUSE (was misprinted 4 / 4 here; case.json always pinned P5 = 5) |
+| 2 | Leads | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE |
+| 3 | Lags | 2 / 1 | 2 / 1 | ✅ ENGINE==FUSE ("Total # Predecessor Lags") |
+| 4 | FS / SS-FF / SF | 99% / … | 99% / … | ✅ engine==golden (not in the 2026-06 suite) |
+| 5 | Hard Constraint | 0 / 1 | 0 / 1 | ✅ ENGINE==FUSE (was misprinted 0 / 0 here; case.json always pinned P5 = 1) |
+| 6 | **High Float** | 44 / 44 | 44 / 44 | ✅ ENGINE==FUSE ("High Float 44d"; former −1 residual closed, ADR-0109/0112) |
+| 7 | Negative Float | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE |
+| 8 | High Duration | 1 / 0 | 1 / 0 | ✅ ENGINE==FUSE ("High Planned Duration (44d)") |
+| 9 | Invalid Dates | 0 / 0 | 0 / 0 | ✅ ENGINE==FUSE ("Wrong Status" + "Invalid Forecast Dates") |
+| 10 | Resources | 0 / 0 | 0 / 0 | ✅ engine==golden (not in the 2026-06 suite) |
+| 11 | Missed Activities | 18 / 37 | 18 / 37 | ✅ ENGINE==FUSE (Finished Late 11/18 + due-but-unfinished 7/19) |
+| 12 | Critical Path Test | pass | pass | ✅ engine==golden (interactive test; not in the 2026-06 suite) |
+| 13 | CPLI | 1.0 / 1.0 | 1.0 / 1.0 | ✅ engine==golden (not in the 2026-06 suite) |
+| 14 | BEI | 0.74 / 0.59 | 0.74 / 0.59 | ✅ ENGINE==FUSE ("BEI - Value Tasks", numerators 20/27 and totals 27/46 also exact) |
 
 ## Acumen Fuse §C — baseline compliance / Half-Step-Delay (Project2 / Project5)
 
@@ -132,53 +135,64 @@ and is now **stale / `xfail`** (ADR-0112) pending a fresh SSI export for the cur
 | Started On Time / Late / Not | 11,12,6 / 11,18,19 | 11,12,6 / 11,18,19 | ✅ |
 | **Baseline Start Compliance** | 41% / 25% | 41% / 25% | ✅ now exact (ADR-0083 residual resolved) |
 
+> Every §C row above is ENGINE==FUSE: the identical block appears verbatim in TWO delivered exports
+> (the Metric History "Baseline Compliance" rows and the DCMA Report "Advanced-Baseline-Compliance"
+> sheet) and is gate-asserted from the transcription file (ADR-0151).
+
 ## Acumen Fuse §E — Schedule-Network change + HSD (Project5 vs Project2)
 
 These run on the **authoritative** `Project5_TAMPERED.mpp` (ADR-0112), so the figures below differ from
-the prior committed Project5 (e.g. Net Finish Impact is now **−148**, not the old −99). **Provenance
-matters here (audit F-01 / ADR-0130):** the *date-deterministic* subset is Acumen-equivalent date
-arithmetic, but the *float/critical-dependent* subset is **engine-pinned** — a fresh Acumen §E PP&Change
-export for the current P5-vs-P2 pair is pending, so the gate asserts the engine's own pure-logic value for
-those rows, **not** a transcribed Acumen value. They are NOT cross-tool validated yet.
+the prior committed Project5 (e.g. Net Finish Impact is now **−148**, not the old −99). **The F-01
+gap is closed (ADR-0151):** the operator delivered the complete Fuse export suite for exactly this pair
+(`00_REFERENCE_INTAKE/`, repo-tracked — Metric History / DCMA / Detailed / Quick Add reports plus two
+independently-created Forensic Analysis Report comparisons, verified row-identical), and the formerly
+engine-pinned float/critical subset is now asserted against **transcribed Fuse values**
+(`fuse_exports_2026-06.json`, gate: `tests/parity/test_fuse_export_parity.py`).
 
-| Metric | Engine | Provenance | Status |
+| Metric | Engine | Fuse (delivered exports) | Status |
 |---|---|---|---|
-| SN02 Activities Added | 0 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| SN05 Finish Date Slips | 9 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| SN06 Start Date Slips | 9 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| SN07 Remaining Duration Increases | 9 | duration-deterministic | ✅ engine==golden |
-| SN18 Completed | 27 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| SN19 In-Progress | 2 | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| **HSD10 Net Finish Impact (days)** | **−148** | date-deterministic (Acumen-equivalent) | ✅ engine==golden |
-| SN03 New Critical | 1 | **engine-pinned** (progress-aware Critical; awaiting Fuse) | ⚠ NOT Fuse-validated |
-| SN04 No Longer Critical | 34 | **engine-pinned** (progress-aware Critical; awaiting Fuse) | ⚠ NOT Fuse-validated |
-| SN09 Float Erosion | 1 | **engine-pinned** (progress-aware float; awaiting Fuse) | ⚠ NOT Fuse-validated |
+| SN02 Activities Added | 0 | 0 (Forensic "Activities — 0 (0%)") | ✅ ENGINE==FUSE |
+| SN05 Finish Date Slips | 9 | 9 = CEI-Incomplete Tasks, **UID-exact** | ✅ ENGINE==FUSE |
+| SN06 Start Date Slips | 9 | consistent w/ CEI Starts 0.40 (6 of 15 due started); no per-activity list published | ✅ count-consistent |
+| SN07 Remaining Duration Increases | 9 | 9 = Forensic Original-Duration increases, **UID-exact** (D14: total-duration basis validated) | ✅ ENGINE==FUSE |
+| SN18 Completed | 27 | 27 ("Actually Finished") | ✅ ENGINE==FUSE |
+| SN19 In-Progress | 2 | 2 ("Actually Started - Tasks") | ✅ ENGINE==FUSE |
+| **HSD10 Net Finish Impact (days)** | **−148** (CPM-finish basis) | **−134** (stored-finish basis, .aft formula) | ⚠ documented basis delta, reconciled to the day (−148 = −134 − 15 + 1, ADR-0108 gap) |
+| SN03 New Critical | 1 (UID 131) | 1, UID 131 in three independent places | ✅ ENGINE==FUSE, **UID-exact** |
+| SN04 No Longer Critical | 34 | 34 (Metric History + DCMA offender list + Forensic derivation) | ✅ ENGINE==FUSE count; membership 33/34 — engine UID 99 ↔ Fuse UID 96 (stored-vs-CPM critical basis, asserted exactly) |
+| SN09 Float Erosion | 1 (UID 131) | 1, UID 131 (derived from the Forensic Total-Float sheet, engine scope) | ✅ ENGINE==FUSE, **UID-exact** |
 
-> The ⚠ rows above prove only **engine self-consistency**, not Acumen parity, until the operator supplies a
-> fresh Acumen Fuse §E export of the current pair. The SSI golden was deliberately *not* relabeled this way
-> (it is left `xfail`, ADR-0112) — the same caution applies here.
+> Honesty notes, asserted by the gate rather than smoothed over: (1) the SN04 sets differ by exactly one
+> member — in Project2, MS Project's stored Critical flag marks UID 96 (CPM float 5d) while pure-logic
+> CPM marks UID 99 (stored slack 10d); both bases count 41, and the swap is pinned as
+> `engine−fuse=={99}` / `fuse−engine=={96}`. (2) HSD10: Fuse subtracts stored project finishes
+> (2027-09-14 → 2028-01-26 = 134d; verbatim .aft formula `ROUND(ProjectPreviousFinish −
+> ProjectFinish, 0)`); the engine subtracts its own CPM finishes (2027-08-30 → 2028-01-25 = 148d) for
+> independence (ADR-0010) — the P2 CPM finish lands 15d before stored and P5's 1d before, so the two
+> figures reconcile exactly. The stored finishes imported from the goldens equal Fuse's serials
+> (data-level parity is also asserted).
 
 Cost-based EVM (SPI / CPI / TCPI) is reported **NOT_APPLICABLE** — the sample schedules carry no cost
 data, and the tool never fabricates a value (Law 2).
 
-## Residuals — what was closed, and the one that remains
+## Residuals — what was closed, and what remains
 
 The historical §A/§B/§C residuals are **closed**: High Float is now 44/44 exact (stored Total Slack,
-ADR-0109/0112) and Baseline-Start-Compliance is 41%/25% exact (ADR-0083). The remaining gap is **not** a
-±1 residual against an Acumen golden — it is the §E **float/critical-dependent change subset**
-(`new_critical`, `no_longer_critical`, `float_erosion`), which is **engine-pinned**: the authoritative
-`Project5_TAMPERED.mpp` (ADR-0112) has no matching Acumen §E export yet, so the gate asserts the engine's
-own pure-logic value for those rows (self-consistency), not a transcribed Acumen value (audit F-01).
+ADR-0109/0112) and Baseline-Start-Compliance is 41%/25% exact (ADR-0083). The former headline gap —
+the §E float/critical subset asserting only engine self-consistency (audit F-01) — is **closed too**
+(ADR-0151): the delivered Fuse export suite validates those rows ENGINE==FUSE, UID-exact for
+`new_critical` and `float_erosion` and count-exact for `no_longer_critical`.
 
-The original root cause still explains *why* the §E subset is hard: Acumen Fuse reads **MS Project's
-progress-aware total slack / Critical flag**, whereas this engine recomputes **pure-logic CPM float** for
-independence and auditability (ADR-0010). An M9 probe confirmed that **neither pure-logic CPM nor the
-stored MS Project values reproduce the prior golden exactly**, so the team accepted documented deltas
-(ADR-0012/0013/0014) and, for the refreshed file, left these rows engine-pinned and the SSI focus-143
-golden `xfail` rather than relabel a recorded golden as engine-truth (ADR-0112). All of this is recorded in
-`tests/fixtures/golden/project2_5/case.json._deltas` and locked by the parity gate. **To upgrade the §E
-⚠ rows from self-consistency to true Acumen parity, the operator must supply a fresh Acumen Fuse §E
-PP&Change export of the current Project5-vs-Project2 pair.**
+What remains, each **documented and gate-asserted rather than open-ended** (the superseded engine-pinned
+marker language survives only inside `case.json._deltas` as history):
+
+* **SN04 membership swap (96↔99).** Acumen Fuse reads **MS Project's progress-aware Critical flag**,
+  this engine recomputes **pure-logic CPM float** (ADR-0010). On Project2 the bases disagree on exactly
+  one activity pair, so the 34-member sets differ by one UID. Asserted exactly.
+* **HSD10 basis (−148 vs −134).** CPM-recomputed vs stored project finishes (the ADR-0108 data-date
+  gap); reconciled to the day and both numbers asserted.
+* **Rows the suite doesn't carry.** DCMA-04/10/12/13 and the composite scores keep their prior
+  recorded-transcription basis (`engine == golden`).
 
 The Acumen composite **scores** (SQ 88; DCMA 57 / 49) are **deferred, not fabricated**: their
 Bad/Neutral/Good weighting is not published in the exports or the Acumen 8.11 guide. Every per-check

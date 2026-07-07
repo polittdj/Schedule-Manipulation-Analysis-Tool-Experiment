@@ -148,11 +148,12 @@ def test_acumen_change_metrics_and_net_finish_impact() -> None:
     g = _case()["change_P2_to_P5"]
     p2, p5 = _schedule("Project2"), _schedule("Project5")
     ch = compute_change_metrics(p5, p2)
-    # §E is pinned to the engine's pure-logic CPM output on the authoritative Project5 (ADR-0112).
-    # The date-deterministic subset (activities_added, finish/start slips, completed, in_progress,
-    # net_finish_impact) is Acumen-equivalent date arithmetic; the float/critical-dependent subset
-    # (new_critical, no_longer_critical, float_erosion) is pure-logic CPM by design (ADR-0010) and
-    # awaits a fresh Acumen §E PP&Change cross-check (see case.json _deltas).
+    # §E is Fuse-validated (ENGINE==FUSE) against the delivered 2026-06/07 export suite —
+    # UID-exact where Fuse publishes a per-activity list (new_critical, float_erosion,
+    # finish_date_slips, remaining_duration_increases); the one membership swap (no_longer_critical
+    # 96↔99) and the net-finish-impact basis (-148 CPM vs -134 stored) are asserted exactly in
+    # tests/parity/test_fuse_export_parity.py (ADR-0151; see case.json _deltas and
+    # fuse_exports_2026-06.json).
     for key in (
         "activities_added",  # 0
         "new_critical",  # 1

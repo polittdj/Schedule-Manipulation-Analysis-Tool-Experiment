@@ -109,7 +109,7 @@ reproducible from committed artifacts?
 | **L10** | Internal | LOW | none | **FIXED** (ADR-0143 — behavioral offload test replaces source-string asserts) | not re-executed; prior: brittle source-string offload test | SUSPECTED | N/A |
 | **L11** | Internal | NIT | none | **DOCUMENTED** (ADR-0143 — lag-only dup-link collapse noted at the dedup site) | not re-executed; prior: MSPDI lag-only dup links collapse | SUSPECTED | N/A |
 | **L12** | Internal=**F-08** | LOW | ADR-0130 | **FIXED** | `pyproject.toml:119` `fail_under=70.0`; comment corrected | CONFIRMED | Y |
-| **F-01** | F-set | HIGH | ADR-0130 | **PARTIAL → marker now TEST-ENFORCED** (ADR-0143; numeric Fuse validation stays artifact-gated) | marker in `PARITY-REPORT.md:153-155` prose; **no test asserts it** (sync test pins numbers only) | CONFIRMED | Y (disclosed) / parity is self-consistency |
+| **F-01** | F-set | HIGH | ADR-0130 | **CLOSED** (ADR-0143 test-enforced the marker; ADR-0151 delivered the numeric Fuse validation — §E is ENGINE==FUSE, marker flipped to the upgrade and still test-enforced) | `tests/parity/test_fuse_export_parity.py` + `fuse_exports_2026-06.json` | CONFIRMED | Y — true cross-tool parity |
 | **F-02** | F-set | HIGH | ADR-0130 | **FIXED (disclosed+guarded)** | `forecast.py:101` as_scheduled; `test_data_date_finish_gap.py` 2 pass; engine still understates (06-26) but labeled | CONFIRMED | Y — stored finish surfaced + labeled |
 | **F-03** | F-set | HIGH | ADR-0130 | **FIXED** | `test_parity_report_sync.py` 1 pass; stale −99/41-37/43-40 only as struck-through history | CONFIRMED | Y |
 | **F-04** | F-set=L1 | MED | ADR-0130 | **FIXED (labeled)** | see L1 | CONFIRMED | Y |
@@ -139,7 +139,7 @@ L4, L6, L8, L9, L10, L11, F-09, F-10, F-13, F-14 · NEW = 2 (NEW-1 confirmed, NE
 |-------|---------|------------------------|
 | **M1 / ADR-0128** inactive tasks excluded at `_common.non_summary`, `cpm._scheduled_tasks`, `driving_path`, `driving_slack.date_basis`, `vertical_integration`, DCMA12 | **FIXED** | All 6 sites quote `is_active`: `_common.py:81`, `cpm.py:114`, `driving_path.py:78-79`, `driving_slack.py:118-121`, `vertical_integration.py:55`, `dcma14.py:362`. diff/manipulation still read `schedule.tasks` (`diff.py:79`, `manipulation.py:75-76`) → deactivation stays detectable. Live: inactive task absent from CPM, DCMA pop 3→2. Goldens: 320×`<Active>1`, **0**×`<Active>0`. `test_inactive_tasks.py` 4 pass. |
 | **C2 / ADR-0129** annotate(default)/strict/interpretive; `_annotate_unsourced`; strict discards; interpretive verbatim | **FIXED** | `backend.py:54` default `"annotate"`; gate `qa.py:426-430`. Live with fake backend emitting unsourced `31415`: strict→`None`, annotate→kept + `[AI-derived …31415]` footer, interpretive→verbatim. `test_qa.py`+`test_ask_everywhere.py` 28 pass. CLAUDE.md scoping accurate. *(Cosmetic: `answer_question` signature default is `strict` (`qa.py:365`); harmless — every caller passes the `annotate` config.)* |
-| **F-01** §E change-metrics carry an "engine-pinned / NOT Fuse-validated" marker **that a test enforces** | **PARTIAL** | Marker prose present (`PARITY-REPORT.md:153-155`, `case.json` `change_P2_to_P5_engine_pinned`, `risks.md:9`). **But no test asserts the marker** — `test_parity_report_sync.py` pins only the numbers (Critical 4, DCMA06 44/44, −148, no_longer_critical 34) + forbids stale strings; deleting the "NOT Fuse-validated" label fails no test. The disclosure goal is met; the "can't be silently forgotten" guard is not. |
+| **F-01** §E change-metrics carry an "engine-pinned / NOT Fuse-validated" marker **that a test enforces** | **CLOSED** (2026-07-07) | Superseded by the real upgrade (ADR-0151): the §E subset is now **ENGINE==FUSE** against the delivered export suite, and `test_parity_report_sync.py::test_fuse_validation_marker_cannot_be_silently_deleted_f01` enforces the *new* provenance markers (ENGINE==FUSE + the 96↔99 and −148/−134 divulgences) the same way the old disclaimer was enforced. |
 | **F-02** as-scheduled stored finish surfaced; TP4 v5 reported finish 2026-07-17 pinned; TEST-PROJECTS over-claim fixed | **FIXED** | `forecast.py:101` `FinishForecast("as_scheduled", …)`; `app.py:1881-1893` renders it; `test_data_date_finish_gap.py` 2 pass (CPM 06-26 vs stored/forecast 07-17). Engine pure-logic CPM **still** computes 06-26 (unchanged — disclosed, not silently understated). `TEST-PROJECTS.md:18` corrected to `finish>0`. |
 | **F-03 / F-07** PARITY-REPORT regenerated from case.json; sync test; risks.md; ADR-0045 erratum | **FIXED** | `test_parity_report_sync.py` 1 pass; headline P5 Critical 4 / High-Float 44/44 / BSC 41-25 / −148 / focus 145; stale −99/41-37/43-40/UID-143 only as struck-through history. `risks.md` R-02/R-13 updated; `adr/0045*.md:45,56` erratum. |
 | **F-04** float "critical" labeled distinct from stored critical; docstring 37→4 | **FIXED** | `float_analysis.py:14-22` "Definition caveat (ADR-0130 / audit F-04)"; docstring active value 4 (37 marked historical); code still pure-CPM `is_critical` (intentionally not unified — see ADR-0130 §5). |
@@ -261,7 +261,7 @@ with a **live passing UID-145 replacement** (`test_ssi_driving_slack_uid145_exac
 | §B DCMA-01..14 (DCMA06 44/44) | **PASS** | **PARKED** |
 | §C Baseline-compliance (BSC 41/25) | **PASS** | **PARKED** |
 | §E date-deterministic (net_finish_impact −148) | **PASS** | **PARKED** (date arithmetic; −148 vs PARITY-TARGETS −99 pairing differs) |
-| §E float/critical (new_critical, no_longer_critical 34, float_erosion) | **PASS as self-consistency only** | **PARKED + CIRCULAR** — engine-pinned (F-01); marker disclosed in prose but **not test-enforced** |
+| §E float/critical (new_critical, no_longer_critical 34, float_erosion) | **PASS — ENGINE==FUSE** (2026-07-07) | De-circularized by ADR-0151: validated against the delivered Fuse suite, UID-exact where a per-activity list exists; divergences asserted, not smoothed |
 | SSI driving slack (focus 145, 108/108) | **PASS** (recorded SSI golden) | **PARKED** (transcription) |
 | EVM cost (BCWS/BCWP/DCMA/BEI) | **PASS** (`test_evm_acumen_reference.py` 6 pass; EVM1/2 ARE committed Fuse exports) | **partially ENGINE==FUSE** for matched rows; SPI(t)/finish/NFI residuals = ADR-0108 gap |
 | Native `.mpp` parity | **UNVERIFIABLE-IN-ENV** (no `.mpp` data; MPXJ+Java present) | PARKED |
@@ -418,20 +418,20 @@ L5 (ADR-0110-disclosed), L6, F-09, F-10. **No in-env finding remains open in any
 | D4 | HIGH | F-11 role gate bypassed via derivation-before-identifier priority | **FIXED** ADR-0138 (identifier-first) |
 | D5 | HIGH | Save .json dropped every calendar but the project default (dangling calendar_uid, silent driving-slack change) | **FIXED** ADR-0140 (full registry + introspection guard) |
 | D6 | HIGH | empty/digit task names shredded the figure-role split (engine figures discarded / mislabeled AI-derived) | **FIXED** ADR-0138 (span-based extraction) + ADR-0140 (importer name fallback) |
-| D7 | MED | the NEW-1 Float-Ratio fix put the float term on the wrong axis (elapsed ratios 3× understated; the 0.33 pin was itself wrong) | **FIXED** ADR-0139 (TF/per_day ÷ RD/1440); Fuse re-check pending artifacts |
+| D7 | MED | the NEW-1 Float-Ratio fix put the float term on the wrong axis (elapsed ratios 3× understated; the 0.33 pin was itself wrong) | **FIXED** ADR-0139 (TF/per_day ÷ RD/1440); the Fuse elapsed re-check stays artifact-gated — the delivered 2026-06/07 P2-P5 suite contains **no elapsed in-progress activity** to exercise it (verified, ADR-0151) |
 | D8 | MED | both audit ledgers never status-refreshed (asserted C1 CRIT open after closure) | **FIXED** this refresh (§7) |
 | D9 | MED | strict-dump reload silently swapped the project calendar (calendars[0]) | **FIXED** ADR-0140 (explicit project calendar) |
 | D10 | MED | Schedule.resources not serialized (over-allocation degraded after reopen) | **FIXED** ADR-0140 |
 | D11 | MED | tz-aware JSON datetimes crashed order_versions → every multi-version page | **FIXED** ADR-0141 (naive normalization) |
 | D12 | MED | XER never populated stored Total Float (Acumen stored-float path never engaged for P6) | **FIXED** ADR-0141 |
 | D13 | MED | recommendations converted float→days with fixed 480 (25% risk-matrix error on 10-h calendars) | **FIXED** ADR-0139 (calendar-aware) |
-| D14 | MED | SN07 "Remaining Duration Increases" compares TOTAL duration (counts a completed activity with long actuals; misses a true remaining increase) | **DOCUMENTED+PARKED** ADR-0141 (engine-pinned §E; awaiting .aft verbatim formula — artifact-gated) |
+| D14 | MED | SN07 "Remaining Duration Increases" compares TOTAL duration (counts a completed activity with long actuals; misses a true remaining increase) | **CLOSED** ADR-0151: the .aft Bible (1,443 metrics) has NO such metric — the name is this tool's §E label — and the total-duration basis is Fuse-validated **UID-exact** against the Forensic Original-Duration change sheet (9/9); the remaining-duration basis (7 UIDs) is recorded alongside (help.py + fuse_exports_2026-06.json) |
 | D15 | MED | strict discarded correct driving-path answers naming the focus UID | **FIXED** ADR-0138 (identifier-role usage allowed) |
 | D16 | MED | dual-model cross-check compared post-footer text (false DIFFER on agreeing answers) | **FIXED** ADR-0138 (pre-footer comparison) |
 | D17 | MED | narrative/briefing polish sends the bare sentence, no instruction (feature ≈ dead weight) | **FIXED** ADR-0142 (instruction prompt + echo guard) |
 | D18 | LOW | SessionState race (live-reproduced KeyError under concurrent filter+render) | **FIXED** ADR-0142 (session RLock) |
 | D19 | LOW | Logic Density rounded banker's in schedule_quality vs half-up in ribbon (0.01 disagreement at halves) | **FIXED** ADR-0141 (half-up everywhere) |
-| D20 | LOW | float bands read raw CPM float while DCMA-06/07 read stored float (same-page offender sets disjoint) | **REVERTED-BY-ORACLE + DOCUMENTED** ADR-0141 (raw CPM float reproduces the pinned Acumen Critical counts 41/37; stored float broke the match) |
+| D20 | LOW | float bands read raw CPM float while DCMA-06/07 read stored float (same-page offender sets disjoint) | **CLOSED** ADR-0151: re-examined against the fresh Fuse suite — raw CPM float reproduces the delivered "Zero Days Float" counts exactly (P2 41 / P5 4); the bases swap exactly one P2 membership (stored 96 ↔ CPM 99, asserted in the gate); disposition (raw CPM by design) CONFIRMED |
 | D21 | LOW | margin displayed elapsed durations on the working axis (5 edays → 15 d) | **FIXED** ADR-0139 |
 | D22 | LOW | help.py DCMA-02/03 formula text omits the distinct-incomplete-successor counting the implementation uses | **FIXED** this refresh (help.py wording) |
 | D23 | LOW | derivation tolerance contradicted "counts exact"; x/x=100% unverifiable; no complexity cap (10.7 s measured) | **FIXED** ADR-0138 (exact integers, caps); 100% stays unverifiable BY CHOICE (fail-closed) |
@@ -442,3 +442,10 @@ L5 (ADR-0110-disclosed), L6, F-09, F-10. **No in-env finding remains open in any
 **Artifact-gated re-verification list (add to PARK-LIST):** D7 (Float-Ratio elapsed value vs a
 fresh Fuse export), D14 (SN07 verbatim .aft formula), D20 (float-band float source vs a fresh Fuse
 export), the F-11 *semantic* role model, and everything already in PARK-LIST §B.
+
+> **2026-07-07 status (ADR-0151):** the delivered P2-P5 Fuse export suite closed **D14** and
+> **D20** (rows updated above) and flipped **F-01** to CLOSED — the §E float/critical subset is
+> now ENGINE==FUSE (`tests/parity/test_fuse_export_parity.py`; UID-exact for new_critical and
+> float_erosion; 34==34 with the 96↔99 swap asserted; HSD10 −148/−134 basis reconciled to the
+> day). **D7 remains artifact-gated**: the delivered pair carries no elapsed in-progress
+> activity, so the elapsed Float-Ratio value still cannot be cross-checked from it.

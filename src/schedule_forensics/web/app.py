@@ -292,8 +292,13 @@ p{margin:.4em 0}
 p.muted{margin:.3em 0}
 .brief-card,.brief-cards .panel,.dash-card,.stat-card{min-width:0}
 .brief-card{overflow-x:auto}
-.brief-card table{width:100%;word-break:break-word}
-.cite{word-break:break-word}
+.brief-card table{width:100%}
+/* Never let table auto-layout crush columns into vertical one-character text: headers stay on
+   one line, data cells wrap at word boundaries only, and a too-wide table scrolls inside its
+   card (overflow-x above) instead of squeezing its columns. */
+.brief-card th{white-space:nowrap}
+.brief-card td{overflow-wrap:break-word;word-break:normal}
+.cite{overflow-wrap:break-word}
 </style></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <details class=compliance-drawer id=complianceDrawer>

@@ -4130,3 +4130,37 @@ the COMPLETE Fuse export suite for P2→P5 (`DCMA Report`, `Detailed Metric Repo
 Report`, `Quick Add Metrics`, two Forensic Analysis comparisons) — PARK-LIST A-1 AND A-2 artifacts
 are now in hand; mining/re-pinning is the next session's headline task (see HANDOFF "NEXT SESSION"
 + the PARK-LIST status addendum). PR #287 open, installer smoke green, test jobs in flight.
+
+---
+
+## 2026-07-07 (6) — §E flips to ENGINE==FUSE from the delivered export suite (ADR-0151); briefing tables un-crushed
+
+PARK-LIST A-1 + A-2 executed against the repo-tracked Fuse suite (Metric History / DCMA /
+Detailed / Quick Add + two Forensic comparisons, programmatically verified row-identical):
+- **A-1 (F-01 closed):** new `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json`
+  (verbatim transcriptions, ≥2 independent sources each) + `tests/parity/test_fuse_export_parity.py`
+  (9 tests, parity-marked). §E New Critical **1 = UID 131 exact**; Float Erosion **1 = UID 131
+  exact** (derived from the Forensic Total-Float sheet under the engine's scope); Finish Slips
+  **9 UID-exact** (= Fuse CEI-Incomplete); Remaining-Duration Increases **9 UID-exact** (= Forensic
+  Original-Duration sheet); No Longer Critical **34==34** with the ONE membership swap asserted
+  exactly (engine UID 99 ↔ Fuse UID 96 — stored vs pure-CPM critical basis in P2, both count 41);
+  Net Finish Impact −148 (CPM) vs Fuse HSD10 −134 (stored, verbatim .aft formula) **reconciled to
+  the day** (−148 = −134 − 15 + 1). Marker test flipped to enforce the upgrade, PARITY-REPORT §E
+  rewritten (3 stale §A/§B P5 cells corrected: 4/5, 0/1), case.json caveats superseded in place.
+- **A-2:** every §A/§B/§C row the suite carries asserted ENGINE==FUSE (logic density 2.79/2.81,
+  critical 41/4, DCMA-01/02/03/05/06/07/08/09/11/14 incl. BEI numerators, the full §C block from
+  TWO sheets). DCMA-04/10/12/13 + composite scores are not in the suite — labeled per-row,
+  transcription basis kept.
+- **QC leftovers:** **D14 CLOSED** — the .aft Bible (1,443 metrics) has NO "Remaining Duration
+  Increases"/date-slip/float-erosion metric (the §E SN names are tool-local; Fuse's own SN05/06 =
+  Newly/No-Longer Critical); the engine's total-duration basis is Fuse-validated UID-exact, the
+  remaining-basis 7-UID subset recorded alongside (help.py + dictionary regenerated). **D20
+  CLOSED** — raw-CPM bands reproduce the fresh export's Zero-Days-Float 41/4; disposition
+  confirmed (float_bands docstring refreshed, stale 41/37 removed). **D7 stays artifact-gated** —
+  the delivered pair has no elapsed in-progress activity.
+- **Briefing formatting (operator screenshot):** the ADR-0150 containment override
+  (`word-break:break-word` on brief tables) + the nowrap citation column crushed every column to
+  one-character verticals. Fixed (citations wrap bounded; headers nowrap; wide tables scroll),
+  verified in scripted Chromium, pinned by `test_briefing_tables_are_never_column_crushed`.
+- Ledgers refreshed (VERIFICATION-REPORT §2/§5/§7, PARK-LIST addendum, risks R-02); version
+  **1.0.4**, wheel + 9 installers regenerated (packaged sources changed). Highest ADR = 0151.
