@@ -4093,3 +4093,27 @@ Linux browser automation). Fix: `creationflags` + `stdin=DEVNULL` on all 5 `web/
 Also this session: operator uploaded 5 native `.mpp` files to `00_REFERENCE_INTAKE/mpp/`
 (Project2/3/4/5_TAMPERED, `Large Test File.mpp`) — chain/mpxj tests go live; naming gaps:
 `Project5.mpp` + `Large_Test_File.mpp` still wanted. Highest ADR = 0149.
+
+---
+
+## 2026-07-07 (4) — operator work order: effective-critical basis, SRA pickle, forensics facts, UI overhaul (ADR-0150)
+
+Seventeen-item operator work order against their real schedules. Highlights:
+- **Critical-path basis (the "2 tasks vs 76" bug):** path displays now use the progress-aware
+  effective critical set (stored Critical flag first) — verified two ways (goldens = the
+  Acumen-validated 41/4; the operator's Large file: pure CPM 2 → effective 33, driving path to
+  UID 152 = 76, matching their count exactly). Focused evolution evolves the driving path to the
+  target; `completed_on_path` + a server-rendered version-to-version "completed on the path"
+  panel. Parity-pinned metrics untouched; gate green.
+- **SRA unblocked:** `Schedule.__getstate__` drops the unpicklable UID-map caches (mappingproxy)
+  from the offload payload — every Monte-Carlo/sensitivity run had failed on any touched schedule.
+- **Ask-the-AI forensics:** `manipulation_forensics_facts` — duration cuts on the path
+  (quantified), the reverted-changes counterfactual (naming each changed activity, finish delta),
+  baseline variance of the focus — wired into both ask endpoints, fully cited.
+- **UI:** uniform table gantts (trace rewritten), measured full-width Fit, sticky headers,
+  checklist filters on all columns (scroll-safe), dates-on-bars fixed, MM/DD/YYYY display dates
+  (AI text stays ISO for the figure gate, deliberate), provenance on every multi-file visual,
+  expandable "(+N more)", chart color legend, scatter written analysis + pressure points, erosion
+  custom-WBS-field picker, margin wording fix, briefing containment + tighter global density,
+  drilldown shows populated/humanized fields only, Trends/overlays animate per file. Highest
+  ADR = 0150.

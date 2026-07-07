@@ -297,6 +297,140 @@ def build_workbook_fact_sheet(
     return tuple(facts)
 
 
+def manipulation_forensics_facts(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target_uid: int | None = None,
+) -> tuple[CitedStatement, ...]:
+    """Cross-version manipulation-forensics facts for the Q&A fact base (ADR-0150).
+
+    Answers the operator's "what was changed to keep UID X from slipping?" class of question
+    with engine-computed, cited facts over the latest version pair: per-activity duration
+    shortenings ON the driving path to the focused UID (or on the effective critical path),
+    the counterfactual finish if the path-shedding changes were reverted (duration cuts,
+    removed logic, dropped constraints), and the focused activity's baseline-vs-current
+    variance. Deterministic; nothing generated."""
+    from schedule_forensics.engine.driving_slack import compute_driving_slack, driving_path
+    from schedule_forensics.engine.path_counterfactual import compute_path_counterfactual
+    from schedule_forensics.engine.path_evolution import effective_critical_set
+    from schedule_forensics.engine.trend import order_versions
+
+    if len(schedules) < 2:
+        return ()
+    ordered = order_versions(schedules)
+    by_obj = {id(s): c for s, c in zip(schedules, cpms, strict=True)}
+    prior, current = ordered[-2], ordered[-1]
+    prior_cpm, cur_cpm = by_obj[id(prior)], by_obj[id(current)]
+    cur_label = current.source_file or current.name
+    prior_label = prior.source_file or prior.name
+    facts: list[CitedStatement] = []
+
+    # the path whose protection we are auditing: the 0-driving-slack chain to the focused
+    # UID when one is set (the /path basis), else the progress-aware critical set
+    if target_uid is not None and target_uid in current.tasks_by_id:
+        try:
+            path_set = set(
+                driving_path(
+                    current, compute_driving_slack(current, target_uid, cpm_result=cur_cpm)
+                )
+            )
+            path_desc = f"the driving path to UID {target_uid}"
+        except (KeyError, ValueError):
+            path_set = effective_critical_set(current, cur_cpm)
+            path_desc = "the critical path"
+    else:
+        path_set = effective_critical_set(current, cur_cpm)
+        path_desc = "the critical path"
+
+    per_day = current.calendar.working_minutes_per_day or 480
+    prior_by = prior.tasks_by_id
+    shortened: list[CitedStatement] = []
+    for uid in sorted(path_set):
+        cur_t = current.tasks_by_id.get(uid)
+        prior_t = prior_by.get(uid)
+        if cur_t is None or prior_t is None or cur_t.is_complete:
+            continue
+        if cur_t.duration_minutes < prior_t.duration_minutes:
+            before = prior_t.duration_minutes / per_day
+            after = cur_t.duration_minutes / per_day
+            pct = (after - before) / before * 100 if before else 0.0
+            shortened.append(
+                CitedStatement(
+                    f"Duration shortened on {path_desc}: '{cur_t.name}' went from "
+                    f"{before:g} to {after:g} working days ({pct:+.0f}%) between "
+                    f"{prior_label} and {cur_label}. Shortening work on this path absorbs "
+                    "slip that would otherwise push the path's end date later.",
+                    (Citation(cur_label, uid, cur_t.name),),
+                )
+            )
+    if shortened:
+        facts.extend(shortened[:12])
+    else:
+        anchor_t = current.tasks_by_id.get(target_uid) if target_uid is not None else None
+        cite = (
+            (Citation(cur_label, target_uid, anchor_t.name),)
+            if target_uid is not None and anchor_t is not None
+            else (Citation(cur_label, current.tasks[0].unique_id, current.tasks[0].name),)
+        )
+        facts.append(
+            CitedStatement(
+                f"No incomplete activity on {path_desc} had its duration shortened between "
+                f"{prior_label} and {cur_label}.",
+                cite,
+            )
+        )
+
+    pc = compute_path_counterfactual(prior, current, prior_cpm, cur_cpm, target_uid=target_uid)
+    if pc is not None and pc.reverted:
+        names = "; ".join(
+            f"'{r.name}' (UID {r.uid}: {', '.join(r.changes)})" for r in pc.reverted[:6]
+        )
+        cites = tuple(Citation(cur_label, r.uid, r.name) for r in pc.reverted)
+        tgt = ""
+        if pc.target_uid is not None and pc.target_delta_days is not None:
+            tgt = (
+                f" UID {pc.target_uid}'s own finish would move from "
+                f"{pc.target_actual_finish} to {pc.target_counterfactual_finish} "
+                f"({pc.target_delta_days:+d} days)."
+            )
+        if not pc.uncomputable:
+            facts.append(
+                CitedStatement(
+                    f"Counterfactual (changes reverted): {len(pc.reverted)} activities left "
+                    f"the path between {prior_label} and {cur_label} because they were "
+                    f"CHANGED, not completed — {names}. Reverting exactly those changes "
+                    f"moves the computed finish from {pc.actual_finish} to "
+                    f"{pc.counterfactual_finish} ({pc.finish_delta_days:+d} days) — schedule "
+                    f"time removed by the edits, not by progress.{tgt}",
+                    cites,
+                )
+            )
+        else:
+            facts.append(
+                CitedStatement(
+                    f"{len(pc.reverted)} activities left the path between {prior_label} and "
+                    f"{cur_label} due to changes (not completion): {names}. The reverted "
+                    "network could not be re-solved, so no counterfactual finish is quoted.",
+                    cites,
+                )
+            )
+
+    if target_uid is not None:
+        t_cur = current.tasks_by_id.get(target_uid)
+        if t_cur is not None and t_cur.baseline_finish is not None and t_cur.finish is not None:
+            var_days = (t_cur.finish.date() - t_cur.baseline_finish.date()).days
+            facts.append(
+                CitedStatement(
+                    f"Focused activity UID {target_uid} '{t_cur.name}': baseline finish "
+                    f"{t_cur.baseline_finish.date().isoformat()} vs current finish "
+                    f"{t_cur.finish.date().isoformat()} ({var_days:+d} calendar days vs "
+                    "baseline).",
+                    (Citation(cur_label, target_uid, t_cur.name),),
+                )
+            )
+    return tuple(facts)
+
+
 def _question_overlap(question: str) -> Callable[[CitedStatement], int]:
     """A scorer: how strongly a fact relates to the question (stem overlap + intent aliases).
 

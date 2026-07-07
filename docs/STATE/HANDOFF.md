@@ -1,6 +1,22 @@
-# Handoff — 2026-07-07 (windowless-subprocess fix; highest ADR 0149)
+# Handoff — 2026-07-07 (effective-critical basis + UI overhaul; highest ADR 0150)
 
-> ## STATUS (current) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
+> ## STATUS (current) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
+>
+> The operator ran the tool on real files and filed a 17-item work order. Headline engine fix:
+> path displays (evolution/briefing/brief/counterfactual/grid Critical) moved from the pure-logic
+> CPM critical set to the **progress-aware effective basis** (`effective_critical_set`, stored
+> Critical flag first) — on the operator's Large file the old basis showed **2** activities where
+> MSP flags 33 and the driving path to UID 152 carries **76** incomplete 0-slack tasks (verified
+> both ways; goldens = the Acumen-validated 41/4; parity gate untouched). Focused evolution now
+> evolves the **driving path to the target**; `completed_on_path` records what finished on the
+> path each period. Also: SRA "cannot pickle mappingproxy" fixed (`Schedule.__getstate__`);
+> `manipulation_forensics_facts` gives the Q&A cited answers to "what was shortened / what would
+> reverting the edits do"; gantt uniformity/fit/sticky/filters/dates-on-bars; MM/DD/YYYY display
+> dates (AI-layer text stays ISO for the figure gate); provenance lines; expandable truncations;
+> scatter analysis; erosion custom-WBS-field picker; margin wording; briefing overlap+density.
+> See ADR-0150 for the full decision record.
+>
+> ## STATUS (prev) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
 >
 > Third report of "popup on open, continues until quit" — NOT the browser overlay after all. The
 > deployed app runs windowless (pythonw); the ADR-0147 telemetry loop spawns `nvidia-smi`/

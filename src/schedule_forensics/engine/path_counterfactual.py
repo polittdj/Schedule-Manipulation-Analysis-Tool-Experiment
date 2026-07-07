@@ -22,6 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from schedule_forensics.engine.cpm import CPMError, CPMResult, compute_cpm, offset_to_datetime
+from schedule_forensics.engine.path_evolution import effective_critical_set
 from schedule_forensics.model.schedule import Schedule
 
 #: A logic link as it touches one activity: (predecessor, successor, type, lag) — comparable
@@ -91,7 +92,10 @@ def compute_path_counterfactual(
 ) -> PathCounterfactual | None:
     """The counterfactual for the ``prior`` → ``current`` pair, or ``None`` when no
     non-completed, self-changed activity left the critical path (nothing to revert)."""
-    left = set(prior_cpm.critical_path) - set(current_cpm.critical_path)
+    # progress-aware effective basis (ADR-0150): the stored Critical flag first — the pure
+    # CPM set collapses to the tail of a progressed file, hiding the very reverts this
+    # counterfactual exists to expose
+    left = effective_critical_set(prior, prior_cpm) - effective_critical_set(current, current_cpm)
     cur_by = current.tasks_by_id
     prior_by = prior.tasks_by_id
     per_day = current.calendar.working_minutes_per_day

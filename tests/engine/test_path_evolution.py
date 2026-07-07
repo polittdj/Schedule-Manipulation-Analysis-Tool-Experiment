@@ -89,10 +89,19 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     ev = _ev([golden_project2, golden_project5])
     first, second = ev.snapshots
     assert first.finish_delta_days is None
-    assert len(first.critical) == 43 and len(second.critical) == 4
+    # ADR-0150: the path basis is the progress-aware EFFECTIVE critical set (stored Critical
+    # flag first) — 41/4 are the Acumen-validated Critical counts (case.json; the pure-logic
+    # CPM gave 43 on P2, and on the operator's progressed Large file collapsed to 2 of 33).
+    assert len(first.critical) == 41 and len(second.critical) == 4
     # P2 -> P5 slips 148 calendar days (the Net Finish Impact on the authoritative file ADR-0112)
     assert second.finish_delta_days == 148
-    assert len(second.left) == 40 and len(second.stayed) == 3 and second.entered == (131,)
+    assert len(second.left) == 38 and len(second.stayed) == 3 and second.entered == (131,)
+    # the month-to-month "what got done on the path" record: exactly the left-with-reason
+    # 'completed' set (4 activities on P2's path completed by P5)
+    assert len(second.completed_on_path) == 4
+    assert set(second.completed_on_path) == {
+        c.uid for c in second.left_changes if c.reason == "completed"
+    }
     # the authoritative P5 has 2 removed logic links and 1 new constraint-driven path entry
     assert second.shortened_on_path == () and second.removed_logic_count == 2
     # M18 follow-up: every 'left' activity is attributed a reason
@@ -350,3 +359,43 @@ def test_completed_detail_cites_progress_and_finish() -> None:
     pc = _left(1, prior, cur)
     assert pc.reason == "completed"
     assert "100%" in pc.detail and "finished 2025-01-06" in pc.detail
+
+
+def test_effective_basis_matches_stored_critical_flags(
+    golden_project2: Schedule, golden_project5: Schedule
+) -> None:
+    """Verification way 1 (ADR-0150): the evolution's critical set IS the source tool's
+    stored, progress-aware Critical flag set — the Acumen-validated 41 (P2) / 4 (P5)."""
+    from schedule_forensics.engine.path_evolution import effective_critical_set
+
+    for sch, want in ((golden_project2, 41), (golden_project5, 4)):
+        eff = effective_critical_set(sch, compute_cpm(sch))
+        stored = {
+            t.unique_id
+            for t in sch.tasks
+            if not t.is_summary and t.is_active and t.stored_is_critical
+        }
+        assert eff == stored and len(eff) == want
+
+
+def test_targeted_evolution_uses_the_driving_path_to_the_focus() -> None:
+    """With a focused UID the per-version path is the 0-driving-slack chain to it (the /path
+    basis), not the float-critical set — a side branch with float stays off the path."""
+    #  1 -> 2 -> 4 (main chain)  and  3 -> 4 (short side feeder with float)
+    tasks = [
+        Task(unique_id=1, name="T1", duration_minutes=5 * DAY),
+        Task(unique_id=2, name="T2", duration_minutes=5 * DAY),
+        Task(unique_id=3, name="T3", duration_minutes=1 * DAY),
+        Task(unique_id=4, name="T4", duration_minutes=2 * DAY),
+    ]
+    rels = [
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=4),
+        Relationship(predecessor_id=3, successor_id=4),
+    ]
+    sch = Schedule(name="s", project_start=MON, tasks=tuple(tasks), relationships=tuple(rels))
+    ev = compute_path_evolution([sch], [compute_cpm(sch)], target_uid=4)
+    assert set(ev.snapshots[0].critical) == {1, 2, 4}  # the driving chain; 3 has float
+    # an unknown focus falls back to the effective critical set rather than erroring
+    ev2 = compute_path_evolution([sch], [compute_cpm(sch)], target_uid=999)
+    assert set(ev2.snapshots[0].critical) == {1, 2, 4}

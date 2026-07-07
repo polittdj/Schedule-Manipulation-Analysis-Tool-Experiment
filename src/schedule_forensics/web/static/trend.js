@@ -3,6 +3,12 @@
  * Dependency-free SVG charts (no CDN, no external fetch — air-gap posture). Data comes from
  * /api/trend. Every chart carries a legend and a one-line description of what it conveys, and
  * thins its x-axis labels so they never overlap (readable on 10+ version workbooks).
+ *
+ * Trends-animation package: every chart also carries Mission-Control-style controls — a
+ * ⛶ Enlarge and ▦ Data toggle, and (with 2+ files loaded) a ‹ Prev / ▶ Play / Next › stepper
+ * that progressively reveals the versions on a LOCKED axis with a "file X of N — name
+ * (data date …)" provenance label. A page-level ▶ Play all / ⏭ Step all (#sfPlayAll /
+ * #sfStepAll) advances every stepper in lockstep, exactly like mission.js on the wall.
  */
 "use strict";
 
@@ -44,6 +50,174 @@
       if (cut) s = "…" + s;
       return s.length > 16 ? s.slice(0, 15) + "…" : s;
     });
+  }
+
+  // ── Trends-animation package: Mission-Control-style per-chart controls ────────
+  // Every chart gets the wall's ⛶ Enlarge (tile-expand → tile-expanded) and ▦ Data
+  // (tile-data → show-data) toggles, plus — because these charts plot VERSION-INDEXED
+  // series (x axis = one point per loaded file) — a ‹ Prev / ▶ Play / Next › stepper that
+  // progressively REVEALS versions on a LOCKED x-axis: frame k shows files 1…k+1 and the
+  // axis never rescales, so movement is visible frame to frame. A provenance label names
+  // frame k's file ("file X of N — name (data date …)"). Play honors
+  // prefers-reduced-motion (one frame per press, no timer), and the master "Play all"
+  // (mission.js on the wall, #sfPlayAll here) clicks every .sf-frame-next so all the
+  // animated visuals advance in lockstep.
+  var SF_REDUCED =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var SF_ON_WALL = !!document.getElementById("missionGrid");
+  var sfMeta = null; // { n, names, dates } — the loaded files, set from /api/trend versions
+
+  function sfCaption(k, n, name, date) {
+    var src = String(name || "v" + (k + 1)) + (date ? " (data date " + date + ")" : "");
+    return n > 1 ? "file " + (k + 1) + " of " + n + " — " + src : "Source: " + src;
+  }
+
+  // the current frame's version, marked on the locked axis (a dashed vertical guide)
+  function sfFrameGuide(gx, y1, y2) {
+    return svgEl("line", {
+      x1: gx, y1: y1, x2: gx, y2: y2, stroke: "var(--focus)", "stroke-width": 1.5,
+      "stroke-dasharray": "3 3", "class": "sf-frame-guide",
+    });
+  }
+
+  // frames descriptor for a version-indexed chart (progressive reveal on a locked axis)
+  function sfFrames(draw) {
+    if (!sfMeta || sfMeta.n < 2) return null;
+    return {
+      n: sfMeta.n,
+      name: function (k) { return sfMeta.names[k]; },
+      date: function (k) { return sfMeta.dates[k]; },
+      draw: draw,
+    };
+  }
+
+  // single-file provenance ("Source: <name>") when there is nothing to step through
+  function sfSource() {
+    return sfMeta && sfMeta.n === 1 ? { name: sfMeta.names[0], date: sfMeta.dates[0] } : null;
+  }
+
+  // Attach the Mission-Control-style control row to a chart. host gets the state classes
+  // (tile-expanded / show-data); mount(bar) places the row; opts = { data, frames, source }.
+  function sfChartControls(host, mount, opts) {
+    var bar = document.createElement("div");
+    bar.className = "viz-controls sf-chart-controls";
+    function btn(cls, text, title) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = text;
+      if (title) b.title = title;
+      bar.appendChild(b);
+      return b;
+    }
+    if (!SF_ON_WALL) { // on the Mission wall the tile header already carries these
+      var big = btn("tile-expand", "⛶ Enlarge", "Enlarge / shrink this chart");
+      big.setAttribute("aria-pressed", "false");
+      big.addEventListener("click", function (e) {
+        e.stopPropagation(); // never reaches a surrounding tile's delegated handler
+        var on = host.classList.toggle("tile-expanded");
+        big.setAttribute("aria-pressed", on ? "true" : "false");
+        big.textContent = on ? "⛶ Shrink" : "⛶ Enlarge";
+        if (on && host.scrollIntoView) host.scrollIntoView({ block: "nearest" });
+      });
+      if (opts.data) {
+        var dat = btn("tile-data", "▦ Data", "Show / hide the underlying data table");
+        dat.setAttribute("aria-pressed", "false");
+        dat.addEventListener("click", function (e) {
+          e.stopPropagation();
+          var on = host.classList.toggle("show-data");
+          dat.setAttribute("aria-pressed", on ? "true" : "false");
+          dat.textContent = on ? "▦ Hide data" : "▦ Data";
+        });
+      }
+    }
+    var label = document.createElement("span");
+    label.className = "sf-frame-label muted";
+    label.setAttribute("data-no-i18n", ""); // file names / dates — never machine-translated
+    var frames = opts.frames;
+    if (!frames) {
+      if (opts.source) { // single file → provenance only, no stepper
+        label.textContent = sfCaption(0, 1, opts.source.name, opts.source.date);
+        bar.appendChild(label);
+      }
+      if (bar.firstChild) mount(bar);
+      return;
+    }
+    var idx = frames.n - 1; // start fully revealed (= the classic all-versions chart)
+    var timer = null;
+    var prev = btn("sf-frame-prev", "‹ Prev", "Previous file");
+    bar.appendChild(label);
+    var next = btn("sf-frame-next", "Next ›", "Next file");
+    var play = btn("sf-frame-play", "▶ Play", "Animate through the loaded files");
+    function show(k) {
+      idx = (k + frames.n) % frames.n;
+      label.textContent = sfCaption(idx, frames.n, frames.name(idx), frames.date(idx));
+      frames.draw(idx);
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      play.textContent = "▶ Play";
+    }
+    prev.addEventListener("click", function () { stop(); show(idx - 1); });
+    next.addEventListener("click", function () { stop(); show(idx + 1); });
+    play.addEventListener("click", function () {
+      if (timer) { stop(); return; }
+      if (SF_REDUCED) { show(idx + 1); return; } // reduced motion: one frame per press
+      show(idx + 1);
+      timer = setInterval(function () { show(idx + 1); }, 1600);
+      play.textContent = "⏸ Stop";
+    });
+    show(idx);
+    mount(bar);
+  }
+
+  // master "Play all / Step all" for the whole Trends page (the mission.js pattern): one
+  // beat clicks every per-chart Next (.sf-frame-next — trend, margin) plus the quality
+  // drill-down's #qualNext, so the entire page animates through the files in lockstep.
+  function sfMasterBar() {
+    if (SF_ON_WALL || document.getElementById("sfPlayAll")) return;
+    if (!sfMeta || sfMeta.n < 2) return;
+    var panel = box.closest ? box.closest(".panel") : null;
+    if (!panel || !panel.parentNode) return;
+    var bar = document.createElement("div");
+    bar.className = "panel viz-controls sf-master-controls";
+    function mkBtn(id, text) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.id = id;
+      b.textContent = text;
+      bar.appendChild(b);
+      return b;
+    }
+    var play = mkBtn("sfPlayAll", "▶ Play all");
+    var stepBtn = mkBtn("sfStepAll", "⏭ Step all");
+    var note = document.createElement("span");
+    note.className = "muted";
+    note.textContent =
+      "Animate every chart on this page through the loaded files in lockstep (one beat per file).";
+    bar.appendChild(note);
+    var timer = null;
+    function stepAll() {
+      Array.prototype.forEach.call(
+        document.querySelectorAll(".sf-frame-next"),
+        function (b) { b.click(); }
+      );
+      var q = document.getElementById("qualNext"); // the quality drill-down joins the beat
+      if (q) q.click();
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+      play.textContent = "▶ Play all";
+    }
+    play.addEventListener("click", function () {
+      if (timer) { stop(); return; }
+      if (SF_REDUCED) { stepAll(); return; } // reduced motion: advance one frame per press
+      stepAll();
+      timer = setInterval(stepAll, 1600);
+      play.textContent = "⏸ Pause all";
+    });
+    stepBtn.addEventListener("click", stepAll);
+    panel.parentNode.insertBefore(bar, panel);
   }
 
   // ── helpers ──────────────────────────────────────────────────────────────────
@@ -104,26 +278,8 @@
     var step = labelStep(n);
     var x = function (i) { return xTick(i, n, W, padL, padR); };
     var y = function (v) { return padT + ((hi - v) * (H - padT - padB)) / (hi - lo); };
-    var pts = [];
-    values.forEach(function (v, i) { if (v != null) pts.push(x(i) + "," + y(v)); });
-    svg.appendChild(svgEl("polyline", {
-      points: pts.join(" "), fill: "none", stroke: color, "stroke-width": 2.5,
-      "class": "sf-curve-line", pathLength: "1",
-    }));
+    // static x-axis labels — the version axis is LOCKED across animation frames
     values.forEach(function (v, i) {
-      if (v != null) {
-        var dot = svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: color });
-        var dtt = svgEl("title", {});  // hover call-out (same as the top tiles' charts)
-        dtt.textContent =
-          labels[i] + " · " + (seriesLabel || title.split(" (")[0]) + ": " + valueText(v, i);
-        dot.appendChild(dtt);
-        svg.appendChild(dot);
-        var val = svgEl("text", {
-          x: x(i), y: y(v) - 9, "text-anchor": "middle", fill: "var(--ink)", "font-size": 12,
-        });
-        val.textContent = valueText(v, i);
-        svg.appendChild(val);
-      }
       if (i % step === 0) {
         var lab = svgEl("text", {
           x: x(i), y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
@@ -133,6 +289,33 @@
         svg.appendChild(lab);
       }
     });
+    // the data layer, re-drawn per frame: frame k reveals versions 0…k on the locked axis
+    var layer = svgEl("g", { "class": "sf-frame-layer" });
+    svg.appendChild(layer);
+    function drawData(k) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      var pts = [];
+      values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
+      layer.appendChild(svgEl("polyline", {
+        points: pts.join(" "), fill: "none", stroke: color, "stroke-width": 2.5,
+        "class": "sf-curve-line", pathLength: "1",
+      }));
+      values.forEach(function (v, i) {
+        if (v == null || i > k) return;
+        var dot = svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: color });
+        var dtt = svgEl("title", {});  // hover call-out (same as the top tiles' charts)
+        dtt.textContent =
+          labels[i] + " · " + (seriesLabel || title.split(" (")[0]) + ": " + valueText(v, i);
+        dot.appendChild(dtt);
+        layer.appendChild(dot);
+        var val = svgEl("text", {
+          x: x(i), y: y(v) - 9, "text-anchor": "middle", fill: "var(--ink)", "font-size": 12,
+        });
+        val.textContent = valueText(v, i);
+        layer.appendChild(val);
+      });
+      if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
+    }
     wrap.appendChild(svg);
     legend(wrap, [{ color: color, label: seriesLabel || title.split(" (")[0] }]);
     if (window.SFA11y) {
@@ -144,6 +327,11 @@
         })
       ));
     }
+    var frames = sfFrames(drawData);
+    if (!frames) drawData(n - 1);
+    sfChartControls(wrap, function (bar) { wrap.insertBefore(bar, svg); }, {
+      data: !!window.SFA11y, frames: frames, source: sfSource(),
+    });
     box.appendChild(wrap);
   }
 
@@ -164,30 +352,7 @@
     var step = labelStep(n);
     var x = function (i) { return xTick(i, n, W, padL, padR); };
     var y = function (v) { return padT + ((hi - v) * (H - padT - padB)) / (hi - lo); };
-    series.forEach(function (s) {
-      var pts = [];
-      s.values.forEach(function (v, i) { if (v != null) pts.push(x(i) + "," + y(v)); });
-      if (pts.length) {
-        svg.appendChild(svgEl("polyline", {
-          points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2.5,
-          "class": "sf-curve-line", pathLength: "1",
-        }));
-      }
-      s.values.forEach(function (v, i) {
-        if (v != null) {
-          var dot = svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: s.color });
-          var dtt = svgEl("title", {});  // hover call-out
-          dtt.textContent = labels[i] + " · " + s.label + ": " + v.toFixed(2);
-          dot.appendChild(dtt);
-          svg.appendChild(dot);
-          var val = svgEl("text", {
-            x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
-          });
-          val.textContent = v.toFixed(2);
-          svg.appendChild(val);
-        }
-      });
-    });
+    // static x-axis labels — the version axis is LOCKED across animation frames
     labels.forEach(function (l, i) {
       if (i % step !== 0) return;
       var lab = svgEl("text", {
@@ -197,6 +362,37 @@
       lab.textContent = l;
       svg.appendChild(lab);
     });
+    // the data layer, re-drawn per frame: frame k reveals versions 0…k on the locked axis
+    var layer = svgEl("g", { "class": "sf-frame-layer" });
+    svg.appendChild(layer);
+    function drawData(k) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      series.forEach(function (s) {
+        var pts = [];
+        s.values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
+        if (pts.length) {
+          layer.appendChild(svgEl("polyline", {
+            points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2.5,
+            "class": "sf-curve-line", pathLength: "1",
+          }));
+        }
+        s.values.forEach(function (v, i) {
+          if (v != null && i <= k) {
+            var dot = svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: s.color });
+            var dtt = svgEl("title", {});  // hover call-out
+            dtt.textContent = labels[i] + " · " + s.label + ": " + v.toFixed(2);
+            dot.appendChild(dtt);
+            layer.appendChild(dot);
+            var val = svgEl("text", {
+              x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+            });
+            val.textContent = v.toFixed(2);
+            layer.appendChild(val);
+          }
+        });
+      });
+      if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
+    }
     wrap.appendChild(svg);
     legend(wrap, series.map(function (s) { return { color: s.color, label: s.label }; }));
     if (window.SFA11y) {
@@ -210,6 +406,11 @@
         })
       ));
     }
+    var frames = sfFrames(drawData);
+    if (!frames) drawData(n - 1);
+    sfChartControls(wrap, function (bar) { wrap.insertBefore(bar, svg); }, {
+      data: !!window.SFA11y, frames: frames, source: sfSource(),
+    });
     box.appendChild(wrap);
   }
 
@@ -256,26 +457,7 @@
       lab.textContent = (v > 0 ? "+" : "") + Math.round(v);
       svg.appendChild(lab);
     });
-    // the SVt line
-    var pts = [];
-    values.forEach(function (v, i) { if (v != null) pts.push(x(i) + "," + y(v)); });
-    if (pts.length > 1) {
-      svg.appendChild(svgEl("polyline", {
-        points: pts.join(" "), fill: "none", stroke: "var(--accent)", "stroke-width": 2.5,
-        "class": "sf-curve-line", pathLength: "1",
-      }));
-    }
-    // markers + value labels, green when ahead (>= 0) / red when behind (< 0)
-    values.forEach(function (v, i) {
-      if (v == null) return;
-      var color = v >= 0 ? "var(--ok)" : "var(--bad)";
-      svg.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: 4, fill: color }));
-      var val = svgEl("text", {
-        x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
-      });
-      val.textContent = (v > 0 ? "+" : "") + v + suffix;
-      svg.appendChild(val);
-    });
+    // static x-axis labels — the version axis is LOCKED across animation frames
     labels.forEach(function (l, i) {
       if (i % step !== 0) return;
       var lab = svgEl("text", {
@@ -285,6 +467,32 @@
       lab.textContent = l;
       svg.appendChild(lab);
     });
+    // the SVt line + markers, re-drawn per frame (frame k reveals versions 0…k)
+    var layer = svgEl("g", { "class": "sf-frame-layer" });
+    svg.appendChild(layer);
+    function drawData(k) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      var pts = [];
+      values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
+      if (pts.length > 1) {
+        layer.appendChild(svgEl("polyline", {
+          points: pts.join(" "), fill: "none", stroke: "var(--accent)", "stroke-width": 2.5,
+          "class": "sf-curve-line", pathLength: "1",
+        }));
+      }
+      // markers + value labels, green when ahead (>= 0) / red when behind (< 0)
+      values.forEach(function (v, i) {
+        if (v == null || i > k) return;
+        var color = v >= 0 ? "var(--ok)" : "var(--bad)";
+        layer.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: color }));
+        var val = svgEl("text", {
+          x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+        });
+        val.textContent = (v > 0 ? "+" : "") + v + suffix;
+        layer.appendChild(val);
+      });
+      if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
+    }
     wrap.appendChild(svg);
     legend(wrap, [
       { color: "var(--ok)", label: "Ahead (favorable)" },
@@ -299,6 +507,11 @@
         })
       ));
     }
+    var frames = sfFrames(drawData);
+    if (!frames) drawData(n - 1);
+    sfChartControls(wrap, function (bar) { wrap.insertBefore(bar, svg); }, {
+      data: !!window.SFA11y, frames: frames, source: sfSource(),
+    });
     box.appendChild(wrap);
   }
 
@@ -332,19 +545,10 @@
       t.textContent = Math.round(f * maxTotal);
       svg.appendChild(t);
     });
+    // static x-axis labels — the version axis is LOCKED across animation frames
     data.forEach(function (d, i) {
-      var cx = padL + i * (bw + gap) + bw / 2;
-      var yBase = padT + barH;
-      segments.forEach(function (s) {
-        var v = d[s.key] || 0;
-        if (!v) return;
-        var bH = (v / maxTotal) * barH;
-        svg.appendChild(svgEl("rect", {
-          x: cx - bw / 2, y: yBase - bH, width: bw, height: bH, fill: s.color,
-        }));
-        yBase -= bH;
-      });
       if (i % step === 0) {
+        var cx = padL + i * (bw + gap) + bw / 2;
         var lab = svgEl("text", {
           x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
           transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
@@ -353,6 +557,29 @@
         svg.appendChild(lab);
       }
     });
+    // the bars, re-drawn per frame: frame k reveals versions 0…k on the locked axis
+    var layer = svgEl("g", { "class": "sf-frame-layer" });
+    svg.appendChild(layer);
+    function drawData(k) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      data.forEach(function (d, i) {
+        if (i > k) return;
+        var cx = padL + i * (bw + gap) + bw / 2;
+        var yBase = padT + barH;
+        segments.forEach(function (s) {
+          var v = d[s.key] || 0;
+          if (!v) return;
+          var bH = (v / maxTotal) * barH;
+          layer.appendChild(svgEl("rect", {
+            x: cx - bw / 2, y: yBase - bH, width: bw, height: bH, fill: s.color,
+          }));
+          yBase -= bH;
+        });
+      });
+      if (sfMeta && sfMeta.n > 1) {
+        layer.appendChild(sfFrameGuide(padL + k * (bw + gap) + bw / 2, padT, padT + barH));
+      }
+    }
     wrap.appendChild(svg);
     legend(wrap, segments.map(function (s) { return { color: s.color, label: s.label }; }));
     if (window.SFA11y) {
@@ -364,6 +591,11 @@
         })
       ));
     }
+    var frames = sfFrames(drawData);
+    if (!frames) drawData(n - 1);
+    sfChartControls(wrap, function (bar) { wrap.insertBefore(bar, svg); }, {
+      data: !!window.SFA11y, frames: frames, source: sfSource(),
+    });
     box.appendChild(wrap);
   }
 
@@ -396,19 +628,10 @@
       t.textContent = f.toFixed(0) === "1" ? maxVal.toFixed(0) : (f * maxVal).toFixed(0);
       svg.appendChild(t);
     });
+    // static x-axis labels — the version axis is LOCKED across animation frames
     data.forEach(function (d, i) {
-      var gx0 = padL + i * (totalBw + gap);
-      var cx = gx0 + totalBw / 2;
-      groups.forEach(function (g, gi) {
-        var v = d[g.key] || 0;
-        var bH = (v / maxVal) * barH;
-        if (bH > 0) {
-          svg.appendChild(svgEl("rect", {
-            x: gx0 + gi * bw, y: padT + barH - bH, width: bw - 1, height: bH, fill: g.color,
-          }));
-        }
-      });
       if (i % step === 0) {
+        var cx = padL + i * (totalBw + gap) + totalBw / 2;
         var lab = svgEl("text", {
           x: cx, y: H - padB + 14, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
           transform: "rotate(-35 " + cx + " " + (H - padB + 14) + ")",
@@ -417,6 +640,28 @@
         svg.appendChild(lab);
       }
     });
+    // the bars, re-drawn per frame: frame k reveals versions 0…k on the locked axis
+    var layer = svgEl("g", { "class": "sf-frame-layer" });
+    svg.appendChild(layer);
+    function drawData(k) {
+      while (layer.firstChild) layer.removeChild(layer.firstChild);
+      data.forEach(function (d, i) {
+        if (i > k) return;
+        var gx0 = padL + i * (totalBw + gap);
+        groups.forEach(function (g, gi) {
+          var v = d[g.key] || 0;
+          var bH = (v / maxVal) * barH;
+          if (bH > 0) {
+            layer.appendChild(svgEl("rect", {
+              x: gx0 + gi * bw, y: padT + barH - bH, width: bw - 1, height: bH, fill: g.color,
+            }));
+          }
+        });
+      });
+      if (sfMeta && sfMeta.n > 1) {
+        layer.appendChild(sfFrameGuide(padL + k * (totalBw + gap) + totalBw / 2, padT, padT + barH));
+      }
+    }
     wrap.appendChild(svg);
     legend(wrap, groups.map(function (g) { return { color: g.color, label: g.label }; }));
     if (window.SFA11y) {
@@ -428,6 +673,11 @@
         })
       ));
     }
+    var frames = sfFrames(drawData);
+    if (!frames) drawData(n - 1);
+    sfChartControls(wrap, function (bar) { wrap.insertBefore(bar, svg); }, {
+      data: !!window.SFA11y, frames: frames, source: sfSource(),
+    });
     box.appendChild(wrap);
   }
 
@@ -445,6 +695,12 @@
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (data) {
       var labels = shortLabels(data.versions);
+      // the loaded files (in version order) — powers every chart's stepper + provenance label
+      sfMeta = {
+        n: data.versions.length,
+        names: data.versions.map(function (v) { return v.label; }),
+        dates: data.versions.map(function (v) { return v.status_date || ""; }),
+      };
 
       // ── focus-activity finish movement ────────────────────────────────────────
       if (data.target && data.target.finishes && data.target.finishes.some(function (f) { return f; })) {
@@ -750,6 +1006,9 @@
           "Share of incomplete activities with low free float per version — free float is the tighter constraint, so a rising 0-day band is immediate downstream pressure."
         );
       }
+
+      // master "Play all / Step all" for the whole Trends page (mission.js pattern)
+      sfMasterBar();
     })
     .catch(function () { box.textContent = "Failed to load trend data."; });
 })();

@@ -189,7 +189,7 @@ def test_report_calendar_panel_reflects_an_imported_non_default_calendar(
     page = client.get("/analysis/tens").text
     assert "Tens" in page and "10 h/day (600 min)" in page
     assert "Mon, Tue, Wed, Thu" in page and "Fri" not in page.split("Work week")[1][:60]
-    assert "2025-07-14" in page
+    assert "07/14/2025" in page  # holidays render MM/DD/YYYY (operator convention)
     data = client.get("/api/analysis/tens").json()
     assert data["calendar"]["working_minutes_per_day"] == 600
     assert data["calendar"]["holidays"] == ["2025-07-14"]

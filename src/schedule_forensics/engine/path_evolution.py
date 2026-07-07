@@ -1,10 +1,19 @@
 """Critical-path evolution across versions — the Bow-Wave-style path animation (M18 item 7).
 
 Steps through the loaded versions (oldest → newest by data date) and, for each, the
-**critical path** (``total_float <= 0``) and how it changed from the prior version: which
-activities **entered** the critical path, which **left** it, which **stayed**, and the
-duration changes on the path. Alongside, the schedule-optics signals the operator asked to
-surface here — **remaining-duration cuts on the critical path** and **logic removed** — reuse
+**critical path** and how it changed from the prior version: which activities **entered**
+the critical path, which **left** it, which **stayed**, and the duration changes on the path.
+
+The critical set is the **progress-aware effective** one (:func:`effective_critical_set`):
+incomplete activities the source tool flags Critical (stored flag), falling back to the
+recomputed pure-logic CPM (``total_float <= 0``) when the file carries no flag. The pure-logic
+set alone collapses to the tail of a heavily progressed schedule (the ADR-0108 data-date gap:
+on the operator's real file it showed 2 activities where 76 incomplete tasks sat at 0 driving
+slack) — the stored flag is what MS Project/SSI/Acumen report and what the DCMA metrics
+already score on (``metrics/_common.is_effective_critical``, ADR-0080/0010).
+
+Alongside, the schedule-optics signals the operator asked to surface here —
+**remaining-duration cuts on the critical path** and **logic removed** — reuse
 the canonical manipulation detector (:func:`engine.manipulation.detect_manipulation`) so the
 flags match the Compare/Trend pages exactly.
 
@@ -22,7 +31,28 @@ from dataclasses import dataclass
 
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.manipulation import detect_manipulation
+from schedule_forensics.engine.metrics._common import is_effective_critical, is_incomplete
 from schedule_forensics.model.schedule import Schedule
+
+
+def effective_critical_set(schedule: Schedule, cpm: CPMResult) -> set[int]:
+    """The progress-aware critical set a path display should show.
+
+    Incomplete, active, non-summary activities that the source tool flags **Critical**
+    (stored, progress-aware — what MS Project/SSI report), falling back to the recomputed
+    pure-logic CPM float (``<= 0``) when the file carries no stored flag. Completed work is
+    excluded — a finished activity no longer drives anything; its passage OFF the path is
+    reported separately (``completed_on_path``)."""
+    out: set[int] = set()
+    for t in schedule.tasks:
+        if t.is_summary or not t.is_active or not is_incomplete(t):
+            continue
+        timing = cpm.timings.get(t.unique_id)
+        if timing is None:
+            continue
+        if is_effective_critical(t, timing.total_float):
+            out.add(t.unique_id)
+    return out
 
 
 @dataclass(frozen=True)
@@ -63,6 +93,9 @@ class CriticalSnapshot:
     #: ``entered`` / ``left`` by UID; empty for the first version — no prior to compare).
     entered_changes: tuple[PathChange, ...] = ()
     left_changes: tuple[PathChange, ...] = ()
+    #: prior-version path activities that COMPLETED since — the month-to-month "what got
+    #: done on the path" record the operator asked for (subset of ``left``).
+    completed_on_path: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -310,13 +343,41 @@ def _classify_left(
     return PathChange(uid, name, "gained_float", detail)
 
 
+def _target_path_set(schedule: Schedule, cpm: CPMResult, target_uid: int) -> set[int] | None:
+    """The incomplete activities on the 0-driving-slack chain to ``target_uid`` in this
+    version — the path the operator sees on the /path view — or ``None`` when the target
+    is not a scheduled task here (the caller falls back to the effective critical set)."""
+    from schedule_forensics.engine.driving_slack import compute_driving_slack, driving_path
+
+    if target_uid not in schedule.tasks_by_id:
+        return None
+    try:
+        results = compute_driving_slack(schedule, target_uid, cpm_result=cpm)
+    except (KeyError, ValueError):
+        return None
+    return {
+        uid
+        for uid in driving_path(schedule, results)
+        if (t := schedule.tasks_by_id.get(uid)) is not None
+        and not t.is_summary
+        and t.is_active
+        and is_incomplete(t)
+    }
+
+
 def compute_path_evolution(
-    schedules: Sequence[Schedule], cpms: Sequence[CPMResult]
+    schedules: Sequence[Schedule],
+    cpms: Sequence[CPMResult],
+    target_uid: int | None = None,
 ) -> PathEvolution:
     """Per-version critical-path snapshots for ``schedules`` (given oldest → newest).
 
     ``cpms`` is parallel to ``schedules`` (the caller's cached results). Requires at least
-    one version; the first has no prior, so its change fields are empty."""
+    one version; the first has no prior, so its change fields are empty.
+
+    With ``target_uid`` set, each version's path is the **0-driving-slack chain to that
+    target** (the same basis as the /path driving-slack view — on the operator's Large file,
+    76 incomplete activities); without one it is the progress-aware effective critical set."""
     if not schedules:
         raise ValueError("the path-evolution analysis needs at least one schedule version")
     if len(cpms) != len(schedules):
@@ -326,7 +387,11 @@ def compute_path_evolution(
     prior_critical: set[int] = set()
     prior_finish_date = None
     for i, (sch, cpm) in enumerate(zip(schedules, cpms, strict=True)):
-        critical = set(cpm.critical_path)
+        critical: set[int] | None = None
+        if target_uid is not None:
+            critical = _target_path_set(sch, cpm, target_uid)
+        if critical is None:
+            critical = effective_critical_set(sch, cpm)
         finish = offset_to_datetime(sch.project_start, cpm.project_finish, sch.calendar).date()
 
         if i == 0:
@@ -338,6 +403,7 @@ def compute_path_evolution(
             finish_delta: int | None = None
             entered_changes: tuple[PathChange, ...] = ()
             left_changes: tuple[PathChange, ...] = ()
+            completed_on_path: tuple[int, ...] = ()
         else:
             prior_sch, prior_cpm = schedules[i - 1], cpms[i - 1]
             entered = critical - prior_critical
@@ -378,6 +444,13 @@ def compute_path_evolution(
                 sorted(_finding_uids(signals, "MANIP_SHORTENED_DURATION") & critical)
             )
             removed_logic = _finding_count(signals, "MANIP_DELETED_LOGIC")
+            completed_on_path = tuple(
+                sorted(
+                    uid
+                    for uid in prior_critical
+                    if (t := sch.tasks_by_id.get(uid)) is not None and t.is_complete
+                )
+            )
 
         snapshots.append(
             CriticalSnapshot(
@@ -394,6 +467,7 @@ def compute_path_evolution(
                 removed_logic_count=removed_logic,
                 entered_changes=entered_changes,
                 left_changes=left_changes,
+                completed_on_path=completed_on_path,
             )
         )
         prior_critical = critical

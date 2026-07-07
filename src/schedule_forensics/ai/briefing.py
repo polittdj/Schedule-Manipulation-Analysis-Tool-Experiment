@@ -41,7 +41,7 @@ from schedule_forensics.engine.forecast import compute_finish_forecasts
 from schedule_forensics.engine.metrics import CheckStatus
 from schedule_forensics.engine.metrics._common import is_effective_critical, non_summary
 from schedule_forensics.engine.metrics.schedule_card import compute_activity_makeup
-from schedule_forensics.engine.path_evolution import compute_path_evolution
+from schedule_forensics.engine.path_evolution import compute_path_evolution, effective_critical_set
 from schedule_forensics.engine.recommendations import Category, Finding, Severity, recommend
 from schedule_forensics.engine.s_curve import compute_s_curve
 from schedule_forensics.engine.trend import order_versions
@@ -430,11 +430,9 @@ def _performance(schedule: Schedule, cpm: CPMResult) -> list[BriefingSection]:
 def _critical_path(schedules: list[Schedule], cpms: list[CPMResult]) -> list[BriefingSection]:
     schedule, cpm = schedules[-1], cpms[-1]
     drivers = _finish_drivers(schedule, cpm)
-    critical_uids = tuple(
-        t.unique_id
-        for t in non_summary(schedule)
-        if t.unique_id in cpm.timings and cpm.timings[t.unique_id].is_critical
-    )
+    # progress-aware effective basis (stored Critical flag first) — the pure-logic CPM set
+    # collapses to the tail of a heavily progressed file (ADR-0108 gap / ADR-0150)
+    critical_uids = tuple(sorted(effective_critical_set(schedule, cpm)))
     intro = CitedStatement(
         "The critical path is the longest chain of dependent activities through the project; a "
         "delay on any of them moves the finish date one-for-one. Everything else has float. "

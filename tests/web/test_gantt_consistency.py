@@ -165,7 +165,7 @@ def test_main_grid_has_msproject_find_outline_and_bar_dates(client: TestClient) 
     js = client.get("/static/app.js").text
     assert "function findUid" in js and "scrollIntoView" in js  # snap to the UID's row
     assert "function populateOutline" in js and "maxOutline" in js  # outline-level picker
-    assert "barDates" in js and "function shortDate" in js  # dates on the bars
+    assert "barDates" in js and "SFGantt.fmtMDY(" in js  # dates on the bars (MM/DD/YYYY)
     assert 'tr.setAttribute("data-uid"' in js  # rows carry their UID for Find
     # summaries are ALWAYS shown (WBS context); the outline-level picker collapses depth
     assert "act.is_summary || rowMatches(act, fields)" in js
@@ -181,3 +181,78 @@ def _evolution_page(client: TestClient) -> str:
     second = (GOLDEN / "project2_5" / "Project2.mspdi.xml").read_bytes()
     client.post("/upload", files={"files": ("Project2.mspdi.xml", second, "text/xml")})
     return client.get("/evolution").text
+
+
+def test_checklist_popup_survives_scrolling_its_own_list(client: TestClient) -> None:
+    """Bug fix: the checklist popup closed on ANY capture-phase scroll — including scrolling its
+    OWN option list (max-height 240px, app.css). The scroll handler now ignores events whose
+    target lives inside the open popup, and still closes on real page scrolls."""
+    js = client.get("/static/checklist.js").text
+    assert "openPopup.contains(ev.target)" in js  # the popup-scroll guard
+    assert 'window.addEventListener("scroll"' in js  # still closes on real page scrolls
+    css = client.get("/static/app.css").text
+    assert ".sf-filter-list { max-height: 240px; overflow-y: auto;" in css  # the scrollable list
+
+
+def test_shared_mdy_date_formatter_on_every_gantt(client: TestClient) -> None:
+    """Operator: every Gantt date reads MM/DD/YYYY (e.g. 02/25/2026), zero-padded, never a
+    time-of-day. One shared formatter (SFGantt.fmtMDY) renders the row date cells, the on-bar
+    labels and the bar tooltips; the underlying data stays ISO and is formatted at render only."""
+    gantt = client.get("/static/gantt.js").text
+    assert "function fmtMDY" in gantt
+    assert "fmtMDY: fmtMDY" in gantt  # exported on window.SFGantt
+    for name in ("app.js", "path.js", "sra_grid.js", "driving_path.js", "path_evolution.js"):
+        assert "fmtMDY(" in client.get(f"/static/{name}").text, name
+
+
+def test_trace_gantt_is_the_same_table_grid_as_the_others(client: TestClient) -> None:
+    """Uniformity: the /analysis driving-path trace (#gantt) renders the SAME table-based
+    gantt-grid as the other grids — a sticky thead with the tiered timescale, SFGantt-frozen
+    data columns, SFColResize resizable columns and per-column checklist filters — replacing its
+    old one-off flex-div layout (no sticky header, no filters, no frozen columns)."""
+    js = client.get("/static/app.js").text
+    assert '"gantt-grid trace-grid"' in js  # the shared table Gantt
+    assert 'SFColResize.attach(table, "trace")' in js  # drag-to-resize, persisted per view
+    assert "traceDistinct" in js and "traceFilters" in js  # per-column checklist filters
+    assert "TRACE_FIELDS" in js and "Driv slack" in js  # the trace data columns live on
+    assert "tier-" in js  # driving/secondary/tertiary/beyond tier tinting preserved
+    css = client.get("/static/app.css").text
+    # the trace scroll pane caps + scrolls like #grid/.path-view so the sticky thead engages
+    assert ".gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 80vh;" in css
+    assert ".trace-grid tr.done td" in css  # completed rows stay muted in the table form
+
+
+def test_trace_honors_dates_on_bars_and_labels_are_clamped(client: TestClient) -> None:
+    """#gridBarDates drives BOTH gantts (the activity grid AND the driving-path trace), and the
+    on-bar labels are clamped inside the visible track so a label near x=0 or the right edge is
+    no longer clipped by the track's overflow:hidden."""
+    js = client.get("/static/app.js").text
+    assert "function barLabel" in js and "axis.width - LABEL_W" in js  # clamped into the track
+    # grid bars + milestone AND trace bars + milestone all place labels through the clamp
+    assert js.count("barLabel(track, axis,") >= 6
+    assert "renderGantt(lastDriving)" in js  # the barDates toggle re-renders the trace too
+
+
+def test_fit_uses_measured_frozen_width_not_hardcoded(client: TestClient) -> None:
+    """Fit-to-page subtracts the REAL measured frozen-column width (recorded from the
+    SFGantt.freezeColumns return, as path.js already did) instead of the old hard-coded
+    estimates (360/520/320 px), so the timeline fills the whole page next to the columns."""
+    for name in ("app.js", "sra_grid.js", "driving_path.js"):
+        assert "lastFrozenWidth" in client.get(f"/static/{name}").text, name
+    assert "- 360" not in client.get("/static/app.js").text
+    assert "- 520" not in client.get("/static/sra_grid.js").text
+    assert "- 320" not in client.get("/static/driving_path.js").text
+
+
+def test_per_column_filters_on_sra_and_corridor_grids(client: TestClient) -> None:
+    """MS-Project per-column checklist filters everywhere: the SRA grid filters its non-editable
+    columns (UID / Task / Rem d) and the driving-path corridor filters UID / Name; both repaint
+    only the body so the open dropdown survives a selection."""
+    sra = client.get("/static/sra_grid.js").text
+    assert "SFChecklist.filter(" in sra
+    assert '"filter-row"' in sra and "rowMatchesFilters" in sra
+    assert '"UID"' in sra and '"Task"' in sra and '"Rem d"' in sra
+    dp = client.get("/static/driving_path.js").text
+    assert "SFChecklist.filter(" in dp
+    assert '"filter-row"' in dp and "rowMatchesFilters" in dp
+    assert "paintBody" in dp  # a filter change repaints the body, not the whole table
