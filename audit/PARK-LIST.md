@@ -17,6 +17,27 @@ present, the corresponding parity claim must keep its **"against our transcribed
 
 ---
 
+## STATUS ADDENDUM (2026-07-07, verified by running the gated tests) — most artifacts DELIVERED
+
+The operator delivered the reference artifacts to `00_REFERENCE_INTAKE/` (repo-tracked via GitHub
+web upload). Verified state of each item below (each checked by executing its gating test):
+
+| Item | Status (verified) |
+|------|-------------------|
+| A-1 §E re-pin | **ARTIFACT DELIVERED** — `Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx` + `Project2v5 Forensic Analysis Report.xlsx` (Fuse comparison exports, per-activity Total-Float/Critical sheets). **Mining/re-pin NOT yet done — next session.** |
+| A-2 §A/§B/§C engine==Fuse | **ARTIFACTS DELIVERED** — `P2-P5 - DCMA Report.xlsx`, `P2-P5 - Detailed Metric Report.xlsx`, `P2-P5 - Metric History Report.xlsx`, `P2-P5 - Quick Add Metrics.xlsx`. **Row-by-row upgrade NOT yet done — next session.** |
+| A-3 literal `.aft` match | **SATISFIED** — `NASA Metrics_Complete_20260423.aft` delivered (1,443 metrics); the live-Bible branch of `test_aft_formula_audit.py` runs and **passes**. |
+| A-4 Large-File absolute SSI | **HALF-DELIVERED** — `Large_Test_File.mpp` present (parses, 2,126 tasks); still missing SSI's recorded focus UID + export. |
+| A-5 `ssi_uid143` re-pin | **OPEN** — still awaiting a fresh SSI Directional-Path export for `Project5_TAMPERED.mpp`; the suite's only 2 xfails. |
+| A-6 native `.mpp` equivalence | **SATISFIED** — all `.mpp` files delivered; chain (P2→P3→P4→P5), loader, and mpxj round-trip tests run live and pass (33 tests, 0 skips repo-wide). |
+| A-7 cost-EVM residuals | unchanged — engine work (data-date floor), not an artifact. |
+| A-8 threshold authority | **OPEN** — NASA handbook/decks still wanted. |
+| B-addendum D7/D14/D20 | **UNBLOCKED** by A-1/A-2 exports + the `.aft` (D14's verbatim SN07 formula is now readable) — next session. |
+
+§B below is historical: the "7 current skips" are now **0** (every gated test runs).
+
+---
+
 ## A. Parity oracle-upgrade items (flip a gate from self-consistency/transcription to true reference parity)
 
 | # | Closes | Exact artifact required | Verification unlocked once present |

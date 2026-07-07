@@ -1,5 +1,30 @@
 # Handoff — 2026-07-07 (effective-critical basis + UI overhaul; highest ADR 0150)
 
+> ## NEXT SESSION — start here (audited 2026-07-07, every claim below re-verified by execution)
+>
+> 1. **PR #287** (ADR-0150 work order — effective-critical basis, SRA pickle fix, forensics facts,
+>    gantt/dates/provenance/animation overhaul, v1.0.3 installers) was OPEN with installer-smoke
+>    green and test jobs running at handoff time. If unmerged: get it green/merged first. After
+>    merge the operator installs the **1.0.3** installer and should confirm on their machine:
+>    (a) no flashing console popups (ADR-0149), (b) SRA runs (no mappingproxy error),
+>    (c) Critical-Path Evolution with target 152 shows the ~76-task driving chain.
+> 2. **THE BIG UNBLOCK — mine the delivered Fuse export suite.** `00_REFERENCE_INTAKE/` now holds
+>    the COMPLETE Acumen Fuse export set for the current P2→P5 pair: `P2-P5 - DCMA Report.xlsx`,
+>    `P2-P5 - Detailed Metric Report.xlsx`, `P2-P5 - Metric History Report.xlsx`,
+>    `P2-P5 - Quick Add Metrics.xlsx`, two `…Forensic Analysis Report.xlsx` comparisons, and the
+>    `.aft` Bible. Execute PARK-LIST §D per its ready-to-paste prompt: **A-1** (re-pin the
+>    engine-pinned §E float/critical rows from the Forensic comparison — flips the gate to
+>    ENGINE==FUSE), **A-2** (diff `case.json` §A/§B/§C row-by-row against the DCMA/Detailed/
+>    History exports; upgrade "engine==golden" to "engine==Fuse"), and the QC leftovers
+>    **D7/D14/D20** (D14: read SN07's verbatim formula from the `.aft`). Do NOT edit committed
+>    goldens — add transcribed reference values/tests per the PARK-LIST rules.
+> 3. **Still missing (ask the operator):** a fresh SSI Directional-Path export for
+>    `Project5_TAMPERED.mpp` (+ focus UID) — retires the suite's only 2 xfails (A-5); SSI's
+>    recorded focus UID for `Large_Test_File.mpp` (A-4); NASA handbook/decks (A-8).
+> 4. Suite state at handoff: **1819 passed, 0 skipped, 2 xfailed**; parity green; full gate green;
+>    wheel/installers in lockstep at v1.0.3 (gate-enforced).
+
+
 > ## STATUS (current) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
 >
 > The operator ran the tool on real files and filed a 17-item work order. Headline engine fix:
