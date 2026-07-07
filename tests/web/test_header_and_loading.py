@@ -36,3 +36,18 @@ def test_dashboard_shows_a_loading_indicator_on_import() -> None:
     js = c.get("/static/home.js").text
     assert "showLoading" in js and "loadOverlay" in js
     assert "exampleForm" in js
+
+
+def test_loading_overlay_is_reset_when_the_page_is_reshown() -> None:
+    """The overlay must never survive a Back-navigation / BFCache restore (operator bug report).
+
+    ``showLoading()`` unhides the overlay and the page then navigates away; nothing else hides it.
+    A history traversal that revives the dashboard from the browser's back-forward cache restores
+    the DOM exactly as it was left — overlay up, covering the page forever. home.js therefore
+    re-hides the overlay (and clears the busy dropzone + any revived file selection) on
+    ``pageshow``, which fires on both normal loads (no-op) and every BFCache/history restore.
+    """
+    js = _client().get("/static/home.js").text
+    assert "pageshow" in js  # the restore-aware event, not just DOMContentLoaded
+    assert "ov.hidden = true" in js  # the overlay is actively re-hidden
+    assert "dz.classList.remove('busy')" in js  # the dropzone busy state is cleared too
