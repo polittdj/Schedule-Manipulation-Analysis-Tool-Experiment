@@ -1,6 +1,26 @@
-# Handoff — 2026-07-07 (deployment freshness fix; highest ADR 0148)
+# Handoff — 2026-07-07 (windowless-subprocess fix; highest ADR 0149)
 
-> ## STATUS (current) — stuck-overlay "not fixed" root-caused: deployment freshness (ADR-0148)
+> ## STATUS (current) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
+>
+> Third report of "popup on open, continues until quit" — NOT the browser overlay after all. The
+> deployed app runs windowless (pythonw); the ADR-0147 telemetry loop spawns `nvidia-smi`/
+> `powershell` every 5 s **without CREATE_NO_WINDOW** → a black console window flashes
+> continuously from open to quit (and the Java converter flash during file loads is why it
+> "looks like the loading image"). Fixed: `creationflags=_NO_WINDOW` + `stdin=DEVNULL` on all 5
+> spawns in `web/system.py` + the Quit-time `taskkill` in `ai/ollama_process.py`; repo-wide AST
+> guard `tests/test_windowless_subprocess.py` (it immediately caught the taskkill site); version
+> **1.0.2**; wheel + 9 installers regenerated (embedded fix verified). Operator must install the
+> 1.0.2 installer. ADR-0149.
+>
+> **Reference artifacts delivered by the operator (repo-tracked via GitHub web upload):** the
+> `.aft` Bible (live-Bible audit RUNS + PASSES), the Fuse Forensic Analysis comparison export
+> (P2-vs-P5_TAMPERED, 7/7/2026 — the A-1 §E source), and **five native `.mpp` files** under
+> `00_REFERENCE_INTAKE/mpp/` (Project2/3/4/5_TAMPERED + `Large Test File.mpp`). Naming gaps for
+> the next upload: tests probe `Project5.mpp` (upload the tampered file again under that name)
+> and `Large_Test_File.mpp` (underscores). **NEXT: PARK-LIST A-6 (.mpp round-trips — chain tests
+> now live), A-1 (mine the Fuse export), A-3 extension.**
+>
+> ## STATUS (prev) — stuck-overlay "not fixed" root-caused: deployment freshness (ADR-0148)
 >
 > Operator: the PR #284 overlay fix "did not fix it." Investigation (wheel autopsy + live Chromium
 > repro + caching audit) proved the fix was CORRECT but **never reached the deployment**: (1) the
