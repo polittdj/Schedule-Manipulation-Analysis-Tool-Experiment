@@ -1,31 +1,42 @@
-# Handoff — 2026-07-07 (effective-critical basis + UI overhaul; highest ADR 0150)
+# Handoff — 2026-07-07 (§E → ENGINE==FUSE from the delivered exports; highest ADR 0151)
 
-> ## NEXT SESSION — start here (audited 2026-07-07, every claim below re-verified by execution)
+> ## NEXT SESSION — start here
 >
-> 1. **PR #287** (ADR-0150 work order — effective-critical basis, SRA pickle fix, forensics facts,
->    gantt/dates/provenance/animation overhaul, v1.0.3 installers) was OPEN with installer-smoke
->    green and test jobs running at handoff time. If unmerged: get it green/merged first. After
->    merge the operator installs the **1.0.3** installer and should confirm on their machine:
->    (a) no flashing console popups (ADR-0149), (b) SRA runs (no mappingproxy error),
->    (c) Critical-Path Evolution with target 152 shows the ~76-task driving chain.
-> 2. **THE BIG UNBLOCK — mine the delivered Fuse export suite.** `00_REFERENCE_INTAKE/` now holds
->    the COMPLETE Acumen Fuse export set for the current P2→P5 pair: `P2-P5 - DCMA Report.xlsx`,
->    `P2-P5 - Detailed Metric Report.xlsx`, `P2-P5 - Metric History Report.xlsx`,
->    `P2-P5 - Quick Add Metrics.xlsx`, two `…Forensic Analysis Report.xlsx` comparisons, and the
->    `.aft` Bible. Execute PARK-LIST §D per its ready-to-paste prompt: **A-1** (re-pin the
->    engine-pinned §E float/critical rows from the Forensic comparison — flips the gate to
->    ENGINE==FUSE), **A-2** (diff `case.json` §A/§B/§C row-by-row against the DCMA/Detailed/
->    History exports; upgrade "engine==golden" to "engine==Fuse"), and the QC leftovers
->    **D7/D14/D20** (D14: read SN07's verbatim formula from the `.aft`). Do NOT edit committed
->    goldens — add transcribed reference values/tests per the PARK-LIST rules.
+> 1. **PR #287 MERGED** (squash `1937a27` on `main`). Operator actions still outstanding: install
+>    the **1.0.4** installer set (this branch) and confirm on the real machine: (a) no flashing console popups
+>    (ADR-0149), (b) SRA runs (no mappingproxy error), (c) Critical-Path Evolution with target 152
+>    shows the ~76-task driving chain, (d) the Executive Briefing tables read as normal tables
+>    (this branch's fix — no more one-character-per-line columns).
+> 2. **DONE this session (ADR-0151): PARK-LIST A-1 + A-2 + QC D14 + D20.** §E and every §A/§B/§C
+>    row the delivered Fuse suite carries are now **ENGINE==FUSE** — verbatim transcriptions in
+>    `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json` (≥2 independent sources per
+>    value; the two Forensic reports verified row-identical), gate
+>    `tests/parity/test_fuse_export_parity.py` (9 tests; UID-exact where Fuse publishes a
+>    per-activity list). Two divergences asserted exactly, never forced: the no-longer-critical
+>    **96↔99** membership swap (stored vs pure-CPM critical basis; both count 41 in P2) and Net
+>    Finish Impact **−148 (CPM) vs −134 (Fuse, stored)**, reconciled to the day. F-01 CLOSED;
+>    marker test now enforces the upgrade. Rows NOT in the suite (DCMA-04/10/12/13, composite
+>    scores) stay transcription-basis, labeled per-row in PARITY-REPORT.md.
 > 3. **Still missing (ask the operator):** a fresh SSI Directional-Path export for
 >    `Project5_TAMPERED.mpp` (+ focus UID) — retires the suite's only 2 xfails (A-5); SSI's
->    recorded focus UID for `Large_Test_File.mpp` (A-4); NASA handbook/decks (A-8).
-> 4. Suite state at handoff: **1819 passed, 0 skipped, 2 xfailed**; parity green; full gate green;
->    wheel/installers in lockstep at v1.0.3 (gate-enforced).
+>    recorded focus UID for `Large_Test_File.mpp` (A-4); a Fuse export of a schedule containing an
+>    **elapsed in-progress activity** (D7 — the P2-P5 pair has none); the F-14 threshold-citation
+>    sweep now that the NASA handbooks are in the intake (A-8 partial).
+> 4. Suite state at handoff: full gate + `pytest -m parity` green (incl. the 9 new ENGINE==FUSE
+>    tests); 2 xfails (stale `ssi_uid143`, A-5); wheel + 9 installers regenerated in lockstep
+>    (packaged sources changed: app.py, app.css, help.py, float_bands.py, change_metrics.py).
 
+> ## STATUS (current) — true Fuse parity + briefing table fix (ADR-0151)
+>
+> The delivered export suite was mined per PARK-LIST §D. Everything the suite carries is now
+> validated ENGINE==FUSE (see NEXT SESSION block above for the full result set); the briefing
+> column-crush regression from ADR-0150's containment override is fixed and pinned
+> (`test_briefing_tables_are_never_column_crushed`). Ledgers refreshed: VERIFICATION-REPORT
+> (F-01 CLOSED, D14/D20 CLOSED, D7 still artifact-gated), PARK-LIST addendum, risks R-02,
+> PARITY-REPORT (§E table rewritten with per-row Fuse provenance; three stale §A/§B P5 cells
+> corrected to the case.json values: DCMA01 4/5, Hard Constraints 0/1).
 
-> ## STATUS (current) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
+> ## STATUS (prev) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
 >
 > The operator ran the tool on real files and filed a 17-item work order. Headline engine fix:
 > path displays (evolution/briefing/brief/counterfactual/grid Critical) moved from the pure-logic

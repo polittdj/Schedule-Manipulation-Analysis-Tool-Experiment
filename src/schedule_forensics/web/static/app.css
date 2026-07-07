@@ -260,7 +260,9 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
 .brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
 .brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
-.brief-table td.cite { color: var(--muted); font-size: 11px; white-space: nowrap; }
+/* Citations wrap inside a bounded block: nowrap here forced the table wide and auto-layout then
+   crushed every other column to one-character-per-line verticals (operator screenshot, 2026-07-07). */
+.brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; }
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }

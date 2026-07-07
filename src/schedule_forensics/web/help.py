@@ -579,19 +579,24 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "SN07": _doc(
         "SN07",
         "Remaining Duration Increases",
-        "Activities whose duration grew vs the prior version. CAVEAT (QC audit D14): despite the"
-        " Fuse metric NAME, the engine-pinned formula compares TOTAL duration (planned+actual), so"
-        " a completed activity whose actuals ran long counts, and a true remaining-duration"
-        " increase with flat total does not. The stored remaining_duration field is NOT consulted."
-        " Awaiting the .aft Bible verbatim formula + an Acumen §E cross-check before changing the"
-        " pinned semantics (artifact-gated; see audit/PARK-LIST.md).",
+        "Activities whose duration grew vs the prior version. Basis note (QC audit D14, CLOSED"
+        " ADR-0151): the formula compares TOTAL duration (planned+actual), not the stored"
+        " remaining_duration — and that basis is now Fuse-validated UID-EXACT against the Fuse"
+        " Forensic 'Original Duration' change sheet for the golden pair (9/9 UIDs). The .aft"
+        " Bible (1,443 metrics) carries no 'Remaining Duration Increases' metric, so the name is"
+        " this tool's §E label, not a Bible formula; a remaining-duration basis would count the"
+        " 7-UID subset that excludes progressed activities whose total grew (both sets recorded"
+        " in fuse_exports_2026-06.json).",
         "count(duration_now > duration_prior)",
         _E,
     ),
     "SN09": _doc(
         "SN09",
         "Float Erosion",
-        "Incomplete activities whose total float decreased vs the prior version.",
+        "Incomplete activities whose total float decreased vs the prior version. Fuse-validated"
+        " UID-exact on the golden pair (ADR-0151): the Fuse Forensic 'Total Float' change sheet,"
+        " scoped the same way (non-summary + incomplete), erodes exactly the same single"
+        " activity (UID 131).",
         "count(total_float_now < total_float_prior and incomplete)",
         _E,
     ),
