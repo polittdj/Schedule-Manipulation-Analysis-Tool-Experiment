@@ -1,6 +1,30 @@
-# Handoff — 2026-07-07 (telemetry cross-platform fix; highest ADR 0147)
+# Handoff — 2026-07-07 (deployment freshness fix; highest ADR 0148)
 
-> ## STATUS (current) — telemetry fixed for the operator's machine (ADR-0147)
+> ## STATUS (current) — stuck-overlay "not fixed" root-caused: deployment freshness (ADR-0148)
+>
+> Operator: the PR #284 overlay fix "did not fix it." Investigation (wheel autopsy + live Chromium
+> repro + caching audit) proved the fix was CORRECT but **never reached the deployment**: (1) the
+> nine installers embedded a wheel built 14 h BEFORE the fix commit — a reinstall reinstalled the
+> bug, and the installer tests only pinned the version STRING (unchanged 1.0.0), so nothing failed;
+> (2) `/static` sends no Cache-Control and installs run a FIXED port, so a browser can heuristically
+> serve a stale `home.js` for days even after a good upgrade. Fixed (ADR-0148): `_bust_static()`
+> version-busts every `/static` URL at `_page()` render (`?v=<pkg version>`), `Cache-Control:
+> no-cache` on `/static/*` in the `_liveness` middleware, **wheel↔source lockstep test**
+> (`test_embedded_wheel_is_in_lockstep_with_the_source_tree` byte-compares the embedded wheel to
+> `src/` both directions — a source change without regeneration now fails the gate), version bumped
+> **1.0.1**, wheel + all 9 installers regenerated from post-fix source (embedded `home.js` verified
+> to carry `pageshow`). Regeneration command (now gate-forced when packaged source changes):
+> `python -m build --wheel --outdir dist/wheel && python tools/installer/build_installers.py
+> dist/wheel/schedule_forensics-*.whl`.
+>
+> **ALSO: the operator delivered the first reference artifacts** (committed to the repo via GitHub
+> web upload, bypassing the local guard — operator's call, confirmed non-CUI):
+> `00_REFERENCE_INTAKE/NASA Metrics_Complete_20260423.aft` (the Bible — unblocks PARK-LIST A-3
+> literal formula validation; the live-Bible test stops skipping) and `00_REFERENCE_INTAKE/Project2
+> vs Project5_TAMPERED Forensic Analysis Report.xlsx` (likely feeds A-1/A-2 §E + per-file
+> re-validation). **NEXT SESSION: run the A-3 live-Bible pass + mine the xlsx per PARK-LIST §D.**
+>
+> ## STATUS (prev) — telemetry fixed for the operator's machine (ADR-0147)
 >
 > Operator reported CPU/RAM/VRAM/disk/GPU readouts broken. Live Chromium verification showed
 > the ADR-0146 JS mechanics fine on Linux — the real defects were platform coverage:

@@ -108,5 +108,6 @@ def test_assets_are_local_relative(client: TestClient) -> None:
     page = client.get("/analysis/Project5").text
     # the only script/style references are same-origin /static paths
     assets = re.findall(r"""(?:src|href)\s*=\s*["']([^"']+)["']""", page)
-    asset_refs = [a for a in assets if a.endswith((".js", ".css"))]
+    # cache-busting appends ?v=<version> (ADR-0148); strip the query before classifying
+    asset_refs = [a for a in assets if a.split("?", 1)[0].endswith((".js", ".css"))]
     assert asset_refs and all(a.startswith("/static/") for a in asset_refs)

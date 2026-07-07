@@ -115,3 +115,48 @@ def test_no_cui_or_secret_shaped_content_in_installers() -> None:
         head = text.split("WHEEL_B64", 1)[0]
         for banned in ("00_REFERENCE_INTAKE", "api_key", "token=", "Authorization:"):
             assert banned not in head, family
+
+
+def test_embedded_wheel_is_in_lockstep_with_the_source_tree() -> None:
+    """The embedded wheel must byte-match the packaged source files (ADR-0148).
+
+    The stuck-overlay incident: a home.js fix merged to main, but the installers still embedded
+    a wheel built hours earlier — the operator reinstalled and got the OLD JS, and the
+    version-string check above passed because the version hadn't been bumped. This test compares
+    every packaged ``schedule_forensics/**`` file inside the embedded wheel byte-for-byte against
+    ``src/schedule_forensics/**``: ANY source change to a packaged file now fails the gate until
+    the wheel + installers are regenerated::
+
+        python -m build --wheel --outdir dist/wheel
+        python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl
+    """
+    raw = base64.b64decode(_payload_b64(_read("tier1", "sh"), "sh"))
+    zf = zipfile.ZipFile(io.BytesIO(raw))
+    src_root = ROOT / "src"
+    stale: list[str] = []
+    compared = 0
+    for name in zf.namelist():
+        if not name.startswith("schedule_forensics/") or name.endswith("/"):
+            continue  # dist-info / metadata are wheel-only by design
+        src_file = src_root / name
+        if not src_file.exists():
+            stale.append(f"{name} (in wheel, gone from src)")
+            continue
+        if zf.read(name) != src_file.read_bytes():
+            stale.append(f"{name} (content drifted)")
+        compared += 1
+    # and nothing packaged in src may be missing from the wheel
+    wheel_names = set(zf.namelist())
+    for src_file in (src_root / "schedule_forensics").rglob("*"):
+        if not src_file.is_file() or "__pycache__" in src_file.parts:
+            continue
+        rel = src_file.relative_to(src_root).as_posix()
+        if rel not in wheel_names:
+            stale.append(f"{rel} (in src, missing from wheel)")
+    assert compared > 50, "wheel unexpectedly small — extraction went wrong"
+    assert not stale, (
+        "embedded wheel is STALE vs source — regenerate with "
+        "`python -m build --wheel --outdir dist/wheel && "
+        "python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl`:\n"
+        + "\n".join(stale[:20])
+    )
