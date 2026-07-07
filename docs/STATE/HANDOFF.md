@@ -1,6 +1,24 @@
-# Handoff — 2026-07-03 (HUD/UI layer: compliance drawer, explainers, JARVIS, telemetry; highest ADR 0146)
+# Handoff — 2026-07-07 (telemetry cross-platform fix; highest ADR 0147)
 
-> ## STATUS (current) — HUD/UI overhaul (ADR-0146): compliance drawer, page explainers, JARVIS theme, live telemetry, guided hints
+> ## STATUS (current) — telemetry fixed for the operator's machine (ADR-0147)
+>
+> Operator reported CPU/RAM/VRAM/disk/GPU readouts broken. Live Chromium verification showed
+> the ADR-0146 JS mechanics fine on Linux — the real defects were platform coverage:
+> Windows had NO native collector path (everything but disk hinged on the optional psutil),
+> Windows CPU temp could never work, GPU needed nvidia-smi on PATH (no AMD/Intel, no legacy
+> NVIDIA dir, whole-card blank on one `[N/A]` field), and the dock defaulted OFF outside
+> JARVIS (read as "broken"). Fixed in `web/system.py` + `sysmon.js`:
+> - native fast collectors (ctypes GetSystemTimes/GlobalMemoryStatusEx on Windows; /proc on
+>   Linux; sysctl+vm_stat on macOS — macOS CPU% stays psutil-only, no dishonest loadavg-as-%),
+> - slow probes (GPU, CPU temp) on a 5s background daemon thread served from cache (never
+>   blocks the poll; 3-strike retry stop), nvidia-smi found in PATH + System32 + legacy NVSMI,
+>   per-field-tolerant CSV parse, vendor-neutral Windows WDDM counter fallback, WMI ACPI
+>   thermal zone for Windows CPU temp,
+> - dock default-ON in every theme (explicit hide persists), fetch+response no-store.
+> Same /api/system shape. Verified: 21 HUD tests + scripted real-browser end-to-end run.
+> Wheel + 9 installers regenerated.
+>
+> ## STATUS (prev) — HUD/UI overhaul (ADR-0146): compliance drawer, page explainers, JARVIS theme, live telemetry, guided hints
 >
 > Operator directive executed as one additive **presentation** layer — no engine/metric change,
 > full gate + parity green:

@@ -1,9 +1,10 @@
 /* Schedule Forensics — live machine telemetry dock (CPU / RAM / disk / GPU / temps).
  *
  * Polls the LOCAL /api/system endpoint (loopback only — CSP connect-src 'self') every 2s and
- * renders compact chips that expand to detail cards on click. Off by default in the standard
- * themes, ON by default in the JARVIS theme; the choice persists in localStorage and is always
- * available from the dock's own show/hide button. Polling pauses when the tab is hidden.
+ * renders compact chips that expand to detail cards on click. ON by default in every theme
+ * (ADR-0147 — the operator expects the readouts visible without hunting for a button); the
+ * show/hide choice persists in localStorage via the dock's own toggle button. Polling pauses
+ * when the tab is hidden.
  * Values a platform can't provide arrive as null and render as "—". Numbers are data-no-i18n.
  */
 "use strict";
@@ -21,10 +22,7 @@
     try { localStorage.setItem(KEY, v); } catch (e) { /* storage unavailable */ }
   }
   function wanted() {
-    var p = pref();
-    if (p === "on") return true;
-    if (p === "off") return false;
-    return document.documentElement.getAttribute("data-theme") === "jarvis";
+    return pref() !== "off"; // ON by default everywhere; only an explicit hide turns it off
   }
 
   function fmt(v, suffix) {
@@ -122,7 +120,9 @@
 
   function poll() {
     if (document.hidden) return; // pause in background tabs
-    fetch("/api/system").then(function (r) { return r.json(); }).then(render)
+    fetch("/api/system", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) { throw new Error("http " + r.status); } return r.json(); })
+      .then(render)
       .catch(function () { /* endpoint briefly unavailable — keep last values */ });
   }
 
