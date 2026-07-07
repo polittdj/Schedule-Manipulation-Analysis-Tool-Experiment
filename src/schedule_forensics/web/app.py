@@ -1350,7 +1350,7 @@ def create_app(
         network-facing, so Law 1 is untouched; fields a platform can't provide are null."""
         from schedule_forensics.web import system as _system  # local: optional-psutil module
 
-        return JSONResponse(_system.snapshot())
+        return JSONResponse(_system.snapshot(), headers={"Cache-Control": "no-store"})
 
     @app.post("/api/shutdown")
     def shutdown() -> JSONResponse:

@@ -4009,3 +4009,28 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   installer re-executed end-to-end — deployed venv serves the HUD assets and psutil landed.
 - Tests: `tests/web/test_hud_layer.py` (7) pins the layer; a11y theme-toggle test updated for
   the 3-way cycle (aria-pressed → aria-label; two-state semantics wrong for a cycler).
+
+### 2026-07-07 — telemetry cross-platform fix (ADR-0147)
+- Operator: "cpu, v-ram, ram, hard drive and gpu isn't working properly. Find out why and fix
+  it." Diagnosed with a REAL browser first (Playwright + the container Chromium against the
+  running app): the ADR-0146 dock mechanics were fine on Linux (chips render, 2s refresh,
+  detail cards, zero console errors) — the defects were platform coverage + discoverability:
+  (1) NO native Windows collector path (/proc//sys only; everything but disk hinged on the
+  best-effort psutil extra), (2) Windows CPU temp impossible (psutil has no
+  sensors_temperatures there; only sysfs fallback), (3) GPU required nvidia-smi on PATH —
+  no AMD/Intel, no legacy NVSMI dir, and one `[N/A]` field blanked the whole card,
+  (4) dock default-OFF outside JARVIS read as broken, (5) slow probes ran inline in the
+  request path.
+- **ADR-0147 (`web/system.py` rework, same /api/system shape):** native fast collectors
+  (Windows ctypes GetSystemTimes/GlobalMemoryStatusEx; Linux /proc; macOS sysctl+vm_stat with
+  unit-tested parser; macOS CPU% stays psutil-only — no loadavg dressed up as a percent);
+  GPU + CPU-temp probes on a lazily-started 5s daemon thread served from cache (poll never
+  blocks; 3-strike stop on persistent failure); nvidia-smi discovery PATH→System32→legacy
+  NVSMI; per-field-tolerant smi CSV parse; vendor-neutral Windows WDDM counter fallback
+  (util+name via one PowerShell call); WMI ACPI thermal zone for Windows CPU temp;
+  `sysmon.js` default-ON in every theme (explicit hide persists, reload-safe) with
+  no-store fetch + Cache-Control: no-store on the endpoint.
+- Verified two ways: HUD suite grown to 21 tests (parsers, cache, non-Windows degradation,
+  no-store, default-on pin) AND a scripted Chromium end-to-end re-run post-fix (visible by
+  default, live values, expand cards, hide persists across reload, console clean).
+  Wheel + all 9 installers regenerated from the fixed source.
