@@ -4075,3 +4075,21 @@ render/caching audit):
   `Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx` landed in `00_REFERENCE_INTAKE/`
   via GitHub web upload (tracked in git — operator's call, non-CUI). Unblocks PARK-LIST A-3 (+
   likely A-1/A-2). Highest ADR = 0148.
+
+---
+
+## 2026-07-07 (3) — the popup was never the overlay: unsuppressed console spawns (ADR-0149)
+
+Operator (third report): popup starts on tool open, continues until quit. Fresh-eyes sweep found
+ZERO alert/dialog paths in the tool's JS — then the real culprit: the deployed app is windowless
+(pythonw), and the ADR-0147 telemetry loop spawns `nvidia-smi`/`powershell` every 5 s with **no
+CREATE_NO_WINDOW** → black console window flashes continuously. The "same image as when loading
+files" = the Java/MPXJ console flash — the exact failure mode `mpp_mpxj.py` already documents and
+suppresses; the telemetry code never applied the pattern (invisible in this Linux container and in
+Linux browser automation). Fix: `creationflags` + `stdin=DEVNULL` on all 5 `web/system.py` spawns
++ the Quit-time `taskkill` in `ai/ollama_process.py`; NEW repo-wide AST guard
+`tests/test_windowless_subprocess.py` (caught the taskkill site the manual sweep missed); version
+1.0.2; wheel + 9 installers regenerated, embedded `system.py` verified (5× creationflags).
+Also this session: operator uploaded 5 native `.mpp` files to `00_REFERENCE_INTAKE/mpp/`
+(Project2/3/4/5_TAMPERED, `Large Test File.mpp`) — chain/mpxj tests go live; naming gaps:
+`Project5.mpp` + `Large_Test_File.mpp` still wanted. Highest ADR = 0149.

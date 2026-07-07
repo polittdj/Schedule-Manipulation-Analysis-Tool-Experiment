@@ -157,8 +157,11 @@ def _default_stop_server() -> None:
                 cmd,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
                 timeout=10,
                 check=False,
+                # windowless app (pythonw): a bare `taskkill` would flash a console at Quit
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
         except Exception as exc:  # the utility may be missing / nothing to kill — never raise
             logger.debug("could not stop Ollama process(es) via %s: %s", cmd[0], exc)
