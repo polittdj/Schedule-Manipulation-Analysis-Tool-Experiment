@@ -4034,3 +4034,18 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   no-store, default-on pin) AND a scripted Chromium end-to-end re-run post-fix (visible by
   default, live values, expand cards, hide persists across reload, console clean).
   Wheel + all 9 installers regenerated from the fixed source.
+
+---
+
+## 2026-07-07 — fix: permanent "Loading your project(s)…" overlay on reopen (BFCache restore)
+
+Operator report: on opening the tool the full-screen upload-loading overlay shows continuously with
+no import running, until the tool is closed. Root cause: `home.js` **shows** `#loadOverlay` on
+submit and nothing anywhere ever hides it — the page normally navigates away, but a Back
+navigation / tab or session restore revives the dashboard from the browser's back-forward cache
+**exactly as it was left**: overlay up (`position:fixed; inset:0; z-index:100`), covering the page
+forever. Fix: `home.js` now re-hides the overlay, clears the dropzone `busy` state, and clears any
+revived file selection on **`pageshow`** — the event that fires on both normal loads (no-op; the
+server renders the overlay `hidden`) and every BFCache/history restore (the failing case).
+Regression-pinned in `tests/web/test_header_and_loading.py::test_loading_overlay_is_reset_when_the_page_is_reshown`.
+JS-only + test; no ADR (no design decision). Full gate green (1784 passed).
