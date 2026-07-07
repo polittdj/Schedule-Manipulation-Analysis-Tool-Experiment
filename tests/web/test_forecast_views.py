@@ -41,10 +41,10 @@ def test_forecast_page_shows_three_methods_and_inputs(client: TestClient) -> Non
         "Earned-schedule",
     ):
         assert method in page
-    assert "2028-01-25" in page  # CPM
-    assert "2028-01-26" in page  # as-scheduled (source-tool stored finish)
-    assert "2028-06-10" in page  # rate
-    assert "2029-02-01" in page  # earned schedule (exact-ratio IEAC)
+    assert "01/25/2028" in page  # CPM (dates render MM/DD/YYYY)
+    assert "01/26/2028" in page  # as-scheduled (source-tool stored finish, MM/DD/YYYY)
+    assert "06/10/2028" in page  # rate
+    assert "02/01/2029" in page  # earned schedule (exact-ratio IEAC)
     assert "SPI(t)" in page and "0.47" in page
     assert "Finish-controlling:" in page  # the §6 citation anchor
     assert "Forecast drift" not in page  # a single version has no drift table
@@ -68,7 +68,7 @@ def test_forecast_page_carries_carnac_cards(client: TestClient) -> None:
     ):
         assert label in page, label
     # card values cross-check the methods (golden P5)
-    assert "2026-03-02" in page  # earliest start
+    assert "03/02/2026" in page  # earliest start (MM/DD/YYYY)
     assert "497" in page  # project duration (working days)
     assert ">99<" in page  # to-go count card value
 

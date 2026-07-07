@@ -33,10 +33,16 @@
     if (openPopup) { openPopup.style.display = "none"; openPopup = null; }
   }
   // clicking anywhere outside, pressing Escape, or scrolling closes the open popup (it is
-  // position:fixed so it cannot follow a scroll — close it rather than let it drift)
+  // position:fixed so it cannot follow a scroll — close it rather than let it drift). A scroll
+  // INSIDE the popup (its option list scrolls at max-height 240px) must NOT close it, so the
+  // capture-phase handler ignores events whose target lives in the open popup (operator bug:
+  // scrolling the value list slammed the dropdown shut).
   document.addEventListener("click", closeOpen);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeOpen(); });
-  window.addEventListener("scroll", closeOpen, true);
+  window.addEventListener("scroll", function (ev) {
+    if (openPopup && ev.target && openPopup.contains(ev.target)) return; // popup's own list
+    closeOpen();
+  }, true);
   window.addEventListener("resize", closeOpen);
 
   function filter(opts) {

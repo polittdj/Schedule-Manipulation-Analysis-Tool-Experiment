@@ -35,6 +35,12 @@
       var b = document.getElementById(id);
       if (b) b.click();
     });
+    // the Trends-animation package steppers (trend / curves / margin charts register a
+    // .sf-frame-next each) — click them on the same beat so every animated visual on the
+    // wall advances through the loaded files in lockstep
+    Array.prototype.forEach.call(grid.querySelectorAll(".sf-frame-next"), function (b) {
+      b.click();
+    });
     replayDraw();
   }
   function setLabel(text) {

@@ -71,6 +71,25 @@ class Schedule(StrictFrozenModel):
             copy.__dict__.pop(key, None)
         return copy
 
+    def __getstate__(self) -> dict[str, Any]:
+        """Drop the primed UID-map caches from the pickle payload.
+
+        A ``MappingProxyType`` cannot pickle, and the SRA offload pickles the whole Schedule
+        into its worker process — so a schedule whose ``tasks_by_id`` had ever been touched
+        (every analysis page touches it) failed every Monte-Carlo/sensitivity run with
+        "cannot pickle 'mappingproxy' object" (operator report, 2026-07-07). The caches
+        rebuild on first access in the worker; same key set as :meth:`model_copy`."""
+        state = super().__getstate__()
+        inner = state.get("__dict__")
+        if isinstance(inner, dict) and ("tasks_by_id" in inner or "resources_by_id" in inner):
+            state = {
+                **state,
+                "__dict__": {
+                    k: v for k, v in inner.items() if k not in ("tasks_by_id", "resources_by_id")
+                },
+            }
+        return state
+
     @cached_property
     def tasks_by_id(self) -> Mapping[int, Task]:
         """An immutable UniqueID → Task view (the canonical UID-keyed access).

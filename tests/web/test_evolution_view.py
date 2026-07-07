@@ -109,9 +109,10 @@ def test_api_evolution_serves_per_version_snapshots(client: TestClient) -> None:
     assert [s["label"] for s in snaps] == ["Project2.mspdi.xml", "Project5.mspdi.xml"]
     first, second = snaps
     assert first["finish_delta_days"] is None  # no prior version
-    assert len(first["critical"]) == 43 and len(second["critical"]) == 4
+    # ADR-0150: effective (stored-flag) critical basis — the Acumen-validated 41/4
+    assert len(first["critical"]) == 41 and len(second["critical"]) == 4
     assert second["finish_delta_days"] == 148  # the known P2->P5 slip
-    assert len(second["left"]) == 40 and second["entered"] == [131]
+    assert len(second["left"]) == 38 and second["entered"] == [131]
     # critical UIDs carry display names; the "left" ones resolve from the prior version
     assert all(str(u) in second["names"] for u in second["critical"])
     assert all(str(u) in second["names"] for u in second["left"])
@@ -129,7 +130,7 @@ def test_api_evolution_carries_gantt_geometry_and_reasons(client: TestClient) ->
     row = second["critical_rows"][0]
     assert row["start"] and row["finish"] and "entered" in row and "uid" in row
     # the six that LEFT the path each carry a reason and their prior-version bar geometry
-    assert len(second["left_rows"]) == 40
+    assert len(second["left_rows"]) == 38
     assert {r["reason"] for r in second["left_rows"]} <= {
         "completed",
         "gained_float",

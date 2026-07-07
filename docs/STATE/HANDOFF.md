@@ -1,6 +1,47 @@
-# Handoff — 2026-07-07 (windowless-subprocess fix; highest ADR 0149)
+# Handoff — 2026-07-07 (effective-critical basis + UI overhaul; highest ADR 0150)
 
-> ## STATUS (current) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
+> ## NEXT SESSION — start here (audited 2026-07-07, every claim below re-verified by execution)
+>
+> 1. **PR #287** (ADR-0150 work order — effective-critical basis, SRA pickle fix, forensics facts,
+>    gantt/dates/provenance/animation overhaul, v1.0.3 installers) was OPEN with installer-smoke
+>    green and test jobs running at handoff time. If unmerged: get it green/merged first. After
+>    merge the operator installs the **1.0.3** installer and should confirm on their machine:
+>    (a) no flashing console popups (ADR-0149), (b) SRA runs (no mappingproxy error),
+>    (c) Critical-Path Evolution with target 152 shows the ~76-task driving chain.
+> 2. **THE BIG UNBLOCK — mine the delivered Fuse export suite.** `00_REFERENCE_INTAKE/` now holds
+>    the COMPLETE Acumen Fuse export set for the current P2→P5 pair: `P2-P5 - DCMA Report.xlsx`,
+>    `P2-P5 - Detailed Metric Report.xlsx`, `P2-P5 - Metric History Report.xlsx`,
+>    `P2-P5 - Quick Add Metrics.xlsx`, two `…Forensic Analysis Report.xlsx` comparisons, and the
+>    `.aft` Bible. Execute PARK-LIST §D per its ready-to-paste prompt: **A-1** (re-pin the
+>    engine-pinned §E float/critical rows from the Forensic comparison — flips the gate to
+>    ENGINE==FUSE), **A-2** (diff `case.json` §A/§B/§C row-by-row against the DCMA/Detailed/
+>    History exports; upgrade "engine==golden" to "engine==Fuse"), and the QC leftovers
+>    **D7/D14/D20** (D14: read SN07's verbatim formula from the `.aft`). Do NOT edit committed
+>    goldens — add transcribed reference values/tests per the PARK-LIST rules.
+> 3. **Still missing (ask the operator):** a fresh SSI Directional-Path export for
+>    `Project5_TAMPERED.mpp` (+ focus UID) — retires the suite's only 2 xfails (A-5); SSI's
+>    recorded focus UID for `Large_Test_File.mpp` (A-4); NASA handbook/decks (A-8).
+> 4. Suite state at handoff: **1819 passed, 0 skipped, 2 xfailed**; parity green; full gate green;
+>    wheel/installers in lockstep at v1.0.3 (gate-enforced).
+
+
+> ## STATUS (current) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
+>
+> The operator ran the tool on real files and filed a 17-item work order. Headline engine fix:
+> path displays (evolution/briefing/brief/counterfactual/grid Critical) moved from the pure-logic
+> CPM critical set to the **progress-aware effective basis** (`effective_critical_set`, stored
+> Critical flag first) — on the operator's Large file the old basis showed **2** activities where
+> MSP flags 33 and the driving path to UID 152 carries **76** incomplete 0-slack tasks (verified
+> both ways; goldens = the Acumen-validated 41/4; parity gate untouched). Focused evolution now
+> evolves the **driving path to the target**; `completed_on_path` records what finished on the
+> path each period. Also: SRA "cannot pickle mappingproxy" fixed (`Schedule.__getstate__`);
+> `manipulation_forensics_facts` gives the Q&A cited answers to "what was shortened / what would
+> reverting the edits do"; gantt uniformity/fit/sticky/filters/dates-on-bars; MM/DD/YYYY display
+> dates (AI-layer text stays ISO for the figure gate); provenance lines; expandable truncations;
+> scatter analysis; erosion custom-WBS-field picker; margin wording; briefing overlap+density.
+> See ADR-0150 for the full decision record.
+>
+> ## STATUS (prev) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
 >
 > Third report of "popup on open, continues until quit" — NOT the browser overlay after all. The
 > deployed app runs windowless (pythonw); the ADR-0147 telemetry loop spawns `nvidia-smi`/

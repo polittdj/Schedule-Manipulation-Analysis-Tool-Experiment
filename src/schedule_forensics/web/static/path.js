@@ -56,24 +56,37 @@
   function fmt(v) {
     if (v === true) return "yes";
     if (v === false) return "—";
-    return v === null || v === undefined || v === "" ? "—" : String(v);
+    if (v === null || v === undefined || v === "") return "—";
+    var s = String(v);
+    // operator: every Gantt date reads MM/DD/YYYY, no time-of-day (fmtMDY returns "" for
+    // non-dates so every other value passes through). The underlying data stays ISO.
+    return SFGantt.fmtMDY(s) || s;
   }
   // the raw (filterable) value of a column for a row; the "Drives →" column isn't value-filterable
   function rawValue(r, f) {
     if (f.key === "drives") return null;
     return f.custom ? r.custom && r.custom[f.label] : r[f.key];
   }
-  // distinct, numeric/ISO-aware sorted formatted values of a column — the checklist contents
+  // Numeric/date-aware comparator for the checklist filter value lists: MM/DD/YYYY dates sort
+  // chronologically, raw ISO dates lexically, numbers numerically, everything else lexically.
+  function compareValues(a, b) {
+    var mdy = /^(\d\d)\/(\d\d)\/(\d{4})$/;
+    var ma = mdy.exec(a), mb = mdy.exec(b);
+    if (ma && mb) {
+      var ka = ma[3] + ma[1] + ma[2], kb = mb[3] + mb[1] + mb[2]; // yyyymmdd
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    }
+    var iso = /^\d{4}-\d\d-\d\d/;
+    if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0;
+    var na = parseFloat(a), nb = parseFloat(b);
+    var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+    return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
+  }
+  // distinct, numeric/date-aware sorted formatted values of a column — the checklist contents
   function distinctValues(f) {
     var seen = {};
     (data ? data.rows : []).forEach(function (r) { seen[fmt(rawValue(r, f))] = true; });
-    var iso = /^\d{4}-\d\d-\d\d/;
-    return Object.keys(seen).sort(function (a, b) {
-      if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0;
-      var na = parseFloat(a), nb = parseFloat(b);
-      var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
-      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
-    });
+    return Object.keys(seen).sort(compareValues);
   }
   function rowMatchesColumns(r) {
     return (lastOn || []).every(function (f) {
@@ -312,9 +325,8 @@
           tr.appendChild(el("td", { class: "pv-drives", text: links.length ? links.join(", ") : "—" }));
           return;
         }
-        var v = f.custom ? (r.custom && r.custom[f.label]) : r[f.key];
-        if (typeof v === "boolean") v = v ? "yes" : "—";
-        var text = v === null || v === undefined ? "—" : String(v);
+        // fmt renders booleans as yes/—, blanks as —, and dates as MM/DD/YYYY (operator format)
+        var text = fmt(f.custom ? (r.custom && r.custom[f.label]) : r[f.key]);
         // the Name column wraps to its FULL text (no truncation); other columns stay nowrap
         tr.appendChild(el("td", f.key === "name" ? { class: "pv-name", text: text } : { text: text }));
       });
@@ -337,7 +349,8 @@
             class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : ""),
             style: "left:" + left + "px;width:" + w + "px",
             title: r.name + " — " + r.tier + ", slack " + r.driving_slack_days + "d, " +
-              r.start + " → " + r.finish + ", " + r.percent_complete + "%",
+              (SFGantt.fmtMDY(r.start) || r.start) + " → " + (SFGantt.fmtMDY(r.finish) || r.finish) +
+              ", " + r.percent_complete + "%",
           });
           if (!r.complete && r.percent_complete > 0 && r.percent_complete < 100) {
             bar.appendChild(el("div", { class: "g-done", style: "width:" + r.percent_complete + "%" }));
