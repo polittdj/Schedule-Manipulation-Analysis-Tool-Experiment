@@ -28,7 +28,28 @@ docs/sources/*.mpp
 # =====================================================================
 00_REFERENCE_INTAKE/*
 !00_REFERENCE_INTAKE/DEPOSIT-HERE.md
+!00_REFERENCE_INTAKE/FILE-NAMES.md
 !00_REFERENCE_INTAKE/.gitkeep
+# Tracked folder skeletons so the operator can browse into them on GitHub and
+# upload straight to the right place. The folders' CONTENTS stay ignored.
+!00_REFERENCE_INTAKE/mpp/
+00_REFERENCE_INTAKE/mpp/*
+!00_REFERENCE_INTAKE/mpp/.gitkeep
+!00_REFERENCE_INTAKE/acumen_v8.11.0/
+00_REFERENCE_INTAKE/acumen_v8.11.0/*
+!00_REFERENCE_INTAKE/acumen_v8.11.0/.gitkeep
+!00_REFERENCE_INTAKE/ssi/
+00_REFERENCE_INTAKE/ssi/*
+!00_REFERENCE_INTAKE/ssi/.gitkeep
+!00_REFERENCE_INTAKE/metrics_library/
+00_REFERENCE_INTAKE/metrics_library/*
+!00_REFERENCE_INTAKE/metrics_library/.gitkeep
+!00_REFERENCE_INTAKE/pbix/
+00_REFERENCE_INTAKE/pbix/*
+!00_REFERENCE_INTAKE/pbix/.gitkeep
+!00_REFERENCE_INTAKE/references/
+00_REFERENCE_INTAKE/references/*
+!00_REFERENCE_INTAKE/references/.gitkeep
 
 # Runtime data directories (uploads / parsed / derived / exports).
 session_data/

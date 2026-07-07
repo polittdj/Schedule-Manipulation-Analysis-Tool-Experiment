@@ -161,7 +161,7 @@ def test_download_filename_strips_header_injection_chars() -> None:
 def test_favicon_is_served_and_linked(client: TestClient) -> None:
     # the unique app icon doubles as the browser-tab favicon (same bytes as the
     # desktop .ico — packaging tests assert the sync); strictly a local asset
-    assert '<link rel=icon href="/static/favicon.ico">' in client.get("/").text
+    assert '<link rel=icon href="/static/favicon.ico?v=' in client.get("/").text  # cache-busted
     resp = client.get("/static/favicon.ico")
     assert resp.status_code == 200
     assert resp.content[:4] == b"\x00\x00\x01\x00"  # ICO magic

@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import html
+import importlib.metadata
 import json
 import logging
 import math
@@ -229,6 +230,22 @@ logger = logging.getLogger("schedule_forensics.web")
 
 #: Locally-vendored static assets (CSS/JS) — served from /static; no CDN, no external fetch.
 _STATIC_DIR = Path(__file__).parent / "static"
+try:  # the installed package version, used to cache-bust static asset URLs on upgrade
+    _ASSET_VERSION = importlib.metadata.version("schedule-forensics")
+except importlib.metadata.PackageNotFoundError:  # running from a raw source tree
+    _ASSET_VERSION = "dev"
+#: /static/<asset> not already carrying a query — rewritten to /static/<asset>?v=<version> at the
+#: page-render boundary. Deployed installs serve a FIXED port, so the browser cache origin
+#: persists across upgrades; without a versioned URL a browser may serve a heuristically-cached
+#: stale JS/CSS (StaticFiles sends no Cache-Control) and an upgraded tool keeps OLD behavior.
+_STATIC_REF = re.compile(r"(/static/[A-Za-z0-9_.\-]+)(?![A-Za-z0-9_.\-?])")
+
+
+def _bust_static(html_text: str) -> str:
+    """Append ``?v=<package version>`` to every static asset URL in a rendered page."""
+    return _STATIC_REF.sub(rf"\1?v={_ASSET_VERSION}", html_text)
+
+
 #: Bundled, non-CUI sample schedule for the "Load example" button.
 _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 #: File types the open/import picker accepts.
@@ -1156,30 +1173,35 @@ def _page(
         if classified
         else "Unclassified • no CUI controls asserted"
     )
+    # _bust_static: version-bust every /static URL so an upgraded install can never keep
+    # executing a stale browser-cached JS/CSS (the fixed-port deployment reuses the same
+    # cache origin across restarts, and StaticFiles alone sends no Cache-Control).
     return HTMLResponse(
-        _LAYOUT.render(
-            # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
-            # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
-            # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
-            # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
-            # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
-            title=_e(title),
-            banner=_banner_html(state),
-            body=(
-                _filter_banner(state)
-                + _endpoint_banner(state)
-                + _page_explainer(title)
-                + body
-                + _ask_panel_html(state, ask_schedule)
-            ),
-            target=state.target_uid if state.target_uid is not None else "",
-            lang=lang,
-            lang_json=json.dumps(lang),
-            # the catalog is only shipped to the client when not English (no payload for en)
-            catalog_json=json.dumps(i18n.catalog_for(lang)),
-            lang_options=lang_options,
-            cui_class=cui_class,
-            cui_text=cui_text,
+        _bust_static(
+            _LAYOUT.render(
+                # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
+                # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
+                # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
+                # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
+                # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
+                title=_e(title),
+                banner=_banner_html(state),
+                body=(
+                    _filter_banner(state)
+                    + _endpoint_banner(state)
+                    + _page_explainer(title)
+                    + body
+                    + _ask_panel_html(state, ask_schedule)
+                ),
+                target=state.target_uid if state.target_uid is not None else "",
+                lang=lang,
+                lang_json=json.dumps(lang),
+                # the catalog is only shipped to the client when not English (no payload for en)
+                catalog_json=json.dumps(i18n.catalog_for(lang)),
+                lang_options=lang_options,
+                cui_class=cui_class,
+                cui_text=cui_text,
+            )
         ),
         status_code=status_code,
     )
@@ -1327,6 +1349,12 @@ def create_app(
             response: Response = await call_next(request)
             for key, value in _SECURITY_HEADERS.items():
                 response.headers.setdefault(key, value)  # CSP/nosniff on every response (Law 1)
+            if request.url.path.startswith("/static/"):
+                # Always revalidate vendored assets (cheap 304s stay). StaticFiles sends no
+                # Cache-Control, so browsers heuristically cache JS/CSS — after an upgrade a
+                # deployed install (fixed port = same cache origin) could keep executing the
+                # OLD asset for days. Belt to the ?v= cache-busting braces in _bust_static.
+                response.headers.setdefault("Cache-Control", "no-cache")
             return response
         finally:
             app.state.active_requests -= 1

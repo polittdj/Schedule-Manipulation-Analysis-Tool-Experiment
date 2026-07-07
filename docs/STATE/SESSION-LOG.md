@@ -4049,3 +4049,29 @@ revived file selection on **`pageshow`** — the event that fires on both normal
 server renders the overlay `hidden`) and every BFCache/history restore (the failing case).
 Regression-pinned in `tests/web/test_header_and_loading.py::test_loading_overlay_is_reset_when_the_page_is_reshown`.
 JS-only + test; no ADR (no design decision). Full gate green (1784 passed).
+
+---
+
+## 2026-07-07 (2) — "the PR did not fix it": deployment-freshness root cause (ADR-0148)
+
+Operator: still seeing the stuck loading overlay after the PR #284 fix merged. Four-track
+investigation (JS show-path map, embedded-wheel autopsy, LIVE Chromium BFCache reproduction,
+render/caching audit):
+- The #284 `pageshow` fix is CORRECT — live repro captured the overlay visible at submit and
+  restored HIDDEN after back-nav with the fix present. The fix simply never reached the operator:
+- **Root cause 1:** all 9 installers embedded a wheel built 2026-07-07 02:28 UTC — 14 h BEFORE the
+  fix commit (16:38). The deployed tool serves `home.js` FROM the wheel; reinstalling reinstalled
+  the bug. The installer suite pinned only the wheel version STRING (still 1.0.0) → nothing failed.
+- **Root cause 2:** `/static` had no Cache-Control (heuristic browser caching) + installs run a
+  FIXED port (persistent cache origin) → even a good upgrade can keep executing stale JS for days.
+- **Fixes (ADR-0148):** `_bust_static()` rewrites every `/static/<asset>` to `?v=<pkg version>` at
+  the `_page()` boundary; `Cache-Control: no-cache` on `/static/*`; NEW lockstep gate test
+  byte-comparing the embedded wheel against `src/` (both directions — stale wheels can never ship
+  silently again); version 1.0.0→1.0.1; wheel + 9 installers regenerated (embedded home.js verified
+  to contain `pageshow`, embedded app.py contains `_bust_static`). Tests: new
+  `tests/web/test_static_cache.py` (4); `test_airgap.py` query-strip; 2 exact-URL assertions
+  updated in `test_target_and_theme.py`.
+- **Operator artifact delivery (separate, next session):** `NASA Metrics_Complete_20260423.aft` +
+  `Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx` landed in `00_REFERENCE_INTAKE/`
+  via GitHub web upload (tracked in git — operator's call, non-CUI). Unblocks PARK-LIST A-3 (+
+  likely A-1/A-2). Highest ADR = 0148.
