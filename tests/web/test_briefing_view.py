@@ -90,3 +90,18 @@ def test_briefing_word_and_excel_exports(client: TestClient) -> None:
     assert "executive-briefing.docx" in docx.headers["content-disposition"]
     xlsx = client.get("/export/xlsx/briefing")
     assert xlsx.status_code == 200 and xlsx.content[:2] == b"PK"
+
+
+def test_briefing_tables_stay_readable(client: TestClient) -> None:
+    """Operator report 2026-07-08: the citation column's nowrap let one long
+    'Task (UID n, file.mpp)' string hog its half-width card and crush every other column to one
+    character per line. Pins the three-part fix: citations WRAP, every table sits in a
+    horizontal-scroll wrapper (a too-wide table scrolls instead of squeezing its neighbours),
+    and many-column tables promote their card to the full grid row."""
+    css = client.get("/static/app.css").text
+    cite_rule = css.split(".brief-table td.cite")[1].split("}")[0]
+    assert "nowrap" not in cite_rule and "overflow-wrap" in cite_rule
+    assert ".brief-scroll" in css and ".brief-card.wide" in css
+    page = client.get("/briefing").text
+    assert "brief-scroll" in page  # every table is wrapped
+    assert 'class="brief-card wide"' in page  # >=5-column tables take the full row

@@ -4164,3 +4164,38 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   verified in scripted Chromium, pinned by `test_briefing_tables_are_never_column_crushed`.
 - Ledgers refreshed (VERIFICATION-REPORT §2/§5/§7, PARK-LIST addendum, risks R-02); version
   **1.0.4**, wheel + 9 installers regenerated (packaged sources changed). Highest ADR = 0151.
+
+### 2026-07-08 — Executive Briefing table readability HARDENING (no new ADR; presentation-only)
+- Note (merge with main): #288/ADR-0151's session independently removed the td.cite nowrap
+  (the shared root cause). This branch layers the structural guards on top — per-cell
+  min-width floors, the .brief-scroll wrapper, and full-row promotion for ≥5-column tables —
+  reconciled with ADR-0150's containment override (no word-break re-crush; both pins pass).
+- Operator screenshot: /briefing section tables crushed to one character per line. Reproduced in
+  a real browser (min cell width 30–38px) and root-caused: `.brief-table td.cite` was
+  `white-space:nowrap`, so one long "Task name (UID n, long file.mpp)" citation hogged its
+  half-width brief-grid card and starved every other column; comma-separated UID lists then
+  wrapped per digit.
+- Fix (CSS + one renderer touch, engine untouched): citations wrap (`overflow-wrap:anywhere`,
+  16em floor), all cells get a 3.5em readability floor with break-word, every brief table sits
+  in a `.brief-scroll` horizontal-scroll wrapper (a genuinely too-wide table scrolls inside its
+  card instead of squeezing), and a section whose table has ≥5 columns promotes its card to the
+  full grid row (`brief-card wide`).
+- Verified in Chromium before/after (min cell 30px → 72–79px on the wide tables, which now span
+  the full row; 2 wide cards on the golden pair); pinned by
+  `test_briefing_tables_stay_readable`. Wheel + 9 installers regenerated.
+
+### 2026-07-08 (cont.) — merge main (ADR-0148–0151) into the PR #289 branch; ADR-0152 guard rule
+- PR #289 conflicted after #284–#288 landed on main (overlay fix, lockstep installers,
+  no-window spawns, effective-critical overhaul, ENGINE==FUSE flip — and #288's independent
+  un-crush of the same briefing tables). Merged origin/main in; combined both table fixes
+  (cite keeps #288's min/max-width bounded block + gains overflow-wrap:anywhere; this branch's
+  cell floors, .brief-scroll, wide-card promotion layered on top; no word-break re-crush —
+  both crush-pins pass). SESSION-LOG union-merged; installers regenerated from the merged
+  source (v1.0.4 wheel).
+- **ADR-0152 (operator chose from three options):** main now permanently carries
+  00_REFERENCE_INTAKE binaries (operator web-UI uploads bypass local hooks), which wedged
+  every merge at the CUI guard. The hook now passes a staged file only when its blob is
+  byte-identical to origin/main's at the same path; new/modified/unfetched still block.
+  Three scratch-repo tests execute the real hook to pin all three behaviors.
+- Verified: guard suite 21/21, briefing re-verified in Chromium on the merged tree, full gate
+  run on the merge result before push.

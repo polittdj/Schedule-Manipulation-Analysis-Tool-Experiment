@@ -260,9 +260,16 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
 .brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
 .brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
-/* Citations wrap inside a bounded block: nowrap here forced the table wide and auto-layout then
-   crushed every other column to one-character-per-line verticals (operator screenshot, 2026-07-07). */
-.brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; }
+/* Readability guards, both halves (operator screenshots 2026-07-07 + 2026-07-08): the citation
+   column WRAPS inside a bounded block (nowrap let one long "Task name (UID n, file.mpp)" force
+   the table wide, and auto-layout then crushed every other column to one-character verticals);
+   per-cell min-widths stop any column collapsing below readability; overflow-wrap here is
+   intrinsic-size-safe (NOT word-break:break-word, which re-crushes — pinned by tests). When a
+   table's minimums genuinely exceed the card, .brief-scroll scrolls it instead of squeezing. */
+.brief-table td { overflow-wrap: break-word; min-width: 3.5em; }
+.brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; overflow-wrap: anywhere; }
+.brief-scroll { overflow-x: auto; }
+.brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }

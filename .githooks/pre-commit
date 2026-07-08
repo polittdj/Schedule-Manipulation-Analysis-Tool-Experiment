@@ -3,8 +3,14 @@
 #
 # Rejects any staged schedule / Office / Power BI / pickle artifact so that
 # Controlled Unclassified Information can never be committed, even with `git add -f`.
-# Synthetic, hand-authored, non-CUI test fixtures under tests/fixtures/ are the only
-# exception (they contain no real data).
+# Two exceptions only:
+#   1. Synthetic, hand-authored, non-CUI test fixtures under tests/fixtures/.
+#   2. INHERITED blobs (operator-approved 2026-07-08): a staged file whose exact blob
+#      already exists at the same path on origin/main is upstream content flowing through
+#      a merge — the operator committed the reference exports to main via the GitHub web
+#      UI (which no local hook can see), so blocking the identical bytes here would only
+#      wedge every merge while adding zero protection. Any NEW or MODIFIED schedule
+#      binary is still blocked.
 #
 # Activate with:  git config core.hooksPath .githooks
 # (the SessionStart hook does this automatically each session).
@@ -13,6 +19,14 @@ set -euo pipefail
 blocked_re='\.(mpp|mpt|mpx|xer|xml|pmxml|csv|xls|xlsx|pbix|mspdi|pkl|pickle|aft|docx|doc)$'
 allow_prefix='tests/fixtures/'
 
+inherited_from_main() {
+  # true only when the staged blob is byte-identical to origin/main's blob at this path
+  local staged upstream
+  staged=$(git rev-parse -q --verify ":$1" 2>/dev/null) || return 1
+  upstream=$(git rev-parse -q --verify "origin/main:$1" 2>/dev/null) || return 1
+  [ "$staged" = "$upstream" ]
+}
+
 violations=()
 while IFS= read -r path; do
   [ -z "$path" ] && continue
@@ -20,6 +34,7 @@ while IFS= read -r path; do
     "$allow_prefix"*) continue ;;  # synthetic non-CUI fixtures are allowed
   esac
   if printf '%s\n' "$path" | grep -qiE "$blocked_re"; then
+    inherited_from_main "$path" && continue  # upstream-identical blob riding a merge
     violations+=("$path")
   fi
 done < <(git diff --cached --name-only --diff-filter=AMR)  # renames scanned too (QC audit D26)

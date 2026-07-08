@@ -1,4 +1,18 @@
-# Handoff — 2026-07-07 (§E → ENGINE==FUSE from the delivered exports; highest ADR 0151)
+# Handoff — 2026-07-08 (briefing-table hardening + CUI-guard inherited-blob rule; highest ADR 0152)
+
+> ## STATUS (current) — PR #289 branch: briefing readability hardening + ADR-0152 guard rule
+>
+> - **Briefing tables (hardening over #288/ADR-0151's un-crush):** per-cell 3.5em min-width
+>   floors, `.brief-scroll` horizontal-scroll wrapper around every cited table, ≥5-column
+>   sections promoted to the full grid row (`brief-card wide`), cite column keeps #288's
+>   bounded block + gains `overflow-wrap:anywhere`. Reconciled with ADR-0150's containment
+>   override — both crush-pins pass; browser-verified on the merged tree (min cell 42–80px,
+>   wide tables span the full row).
+> - **ADR-0152 (operator-approved):** the CUI pre-commit guard allows a staged blob ONLY when
+>   byte-identical to origin/main's blob at the same path (the operator committed the
+>   reference exports to main via the web UI, which wedged every merge). New/modified/
+>   unfetched → still blocked; pinned by scratch-repo tests executing the real hook.
+
 
 > ## NEXT SESSION — start here
 >
