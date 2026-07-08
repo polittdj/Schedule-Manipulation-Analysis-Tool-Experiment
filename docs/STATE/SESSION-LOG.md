@@ -4271,3 +4271,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   15 fps busy, hidden-tab + reduced-motion guards kept; deliberately supersedes the idle-stop
   half of the SRA-freeze fix, documented in the ADR).
 - All live-verified in Chromium with zero console errors before commit.
+
+### 2026-07-08 (cont. 6) — MS-Project Timescale dialog (ADR-0157)
+- static/timescale.js: the Timescale popup (Top/Middle/Bottom tier tabs + Non-working time),
+  persisted config, live preview; SFGantt.buildTierScale/gridLines consume it so ALL table
+  Gantts (activity grid, path workspace, corridor, SRA grid) honor one setting; default
+  config reproduces the previous fixed Y/Q/M header exactly.
+- Units Years → Hours (no Minutes, per operator), per-unit label formats, Count, Align,
+  Use fiscal year (FY-end numbering + fiscal band grid; FY-start select, default October),
+  Tick lines, Show 1/2/3 tiers, Size % (multiplies each page's zoom), Scale separator.
+- Non-working time: Behind/In front/Do not draw, Color, Solid/Striped/Outlined patterns,
+  Calendar select fed by /api/analysis's new `calendars` list (weekdays + holidays); weekly
+  gradient per track + per-holiday divs; skipped below ~1.25 px/day.
+- Guard band replaces a hang when a unit is too fine for the span; the activity-grid axis
+  extends beyond the project finish to fill the page (operator requirement).
+- Live-verified in Chromium: 22 scripted checks, zero console errors. 5 new web tests;
+  wheel + 9 installers rebuilt in lockstep; full gate green.

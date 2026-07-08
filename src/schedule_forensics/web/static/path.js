@@ -138,7 +138,10 @@
     t1 += Math.max(4, Math.round(span * 0.04)) * DAY_MS; // breathing room past the data-date line
     var spanDays = Math.max(1, (t1 - t0) / DAY_MS);
     var slider = Number($("pathZoom").value);
-    var px = fitFill ? Math.max(0.02, availWidth() / spanDays) : (slider > 0 ? slider : 8);
+    // the Timescale dialog's Size % scales the slider zoom (fill mode is already an exact fit)
+    var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
+    var px = fitFill ? Math.max(0.02, availWidth() / spanDays)
+      : (slider > 0 ? slider : 8) * (size > 0 ? size : 1);
     var width = Math.max(120, Math.round(spanDays * px));
     return { t0: t0, t1: t1, width: width, x: function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); } };
   }
@@ -418,6 +421,7 @@
       });
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
+      SFGantt.paintNonwork(track, lastAxis); // Timescale dialog: non-working-time shading
       SFGantt.paintGrid(track, gridLns);
       if (data.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(data.data_date)) + "px" }));
@@ -582,6 +586,8 @@
     pathFilterTimer = setTimeout(paintRows, 140);
   });
   $("pathZoom").addEventListener("input", function () { fitFill = false; reflow(); });
+  // the Timescale dialog's OK repaints the timeline with the new tiers/size/shading
+  window.addEventListener("sf-timescale", function () { if (data) reflow(); });
   var pathFit = $("pathFit");
   if (pathFit) pathFit.addEventListener("click", fitToProject);
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately

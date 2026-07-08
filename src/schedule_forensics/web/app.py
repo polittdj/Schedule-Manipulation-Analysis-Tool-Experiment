@@ -278,6 +278,7 @@ _LAYOUT = Template(
 <script src="/static/theme.js"></script>
 <script src="/static/checklist.js"></script>
 <script src="/static/gantt.js"></script>
+<script src="/static/timescale.js"></script>
 <script src="/static/colresize.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
@@ -3983,6 +3984,7 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
+<button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <button id=pathFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 </div>
 <details class=path-options open><summary>Path options (SSI Directional Path Tool)</summary>
@@ -5339,6 +5341,7 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
 <label>Scale <input id=vizZoom type=range min=0.2 max=40 step=0.05 value=8 title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
 <button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
+<button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <label>Find UID <input id=gridFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
 <span id=gridFindStatus class=muted aria-live=polite></span>
 <label>Outline <select id=gridOutline title="Show tasks up to this outline level (like MS Project)"></select></label>
@@ -5728,6 +5731,16 @@ def _analysis_data(sch: Schedule, analysis: _Analysis) -> dict[str, object]:
             "work_weekdays": list(sch.calendar.work_weekdays),
             "holidays": [d.isoformat() for d in sch.calendar.holidays],
         },
+        # every named calendar in the file — the Timescale dialog's Non-working-time tab lets
+        # the operator pick which calendar's weekends/holidays to shade on the Gantt
+        "calendars": [
+            {
+                "name": c.name,
+                "work_weekdays": list(c.work_weekdays),
+                "holidays": [d.isoformat() for d in c.holidays],
+            }
+            for c in sch.calendars
+        ],
         "dcma": {c.metric_id: _dcma_card(c) for c in audit.checks},
         "baseline_compliance": {k: v.count for k, v in compliance.items()},
         "float_bands": {
@@ -8010,6 +8023,7 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <div class=viz-controls>
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
+<button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <button id=ssiGridReload type=button>Refresh grid</button>
 <button id=ssiGridSave type=button>Save grid</button>
 <span id=ssiGridStatus class=muted aria-live=polite></span></div>
@@ -8679,6 +8693,7 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
 <button id=dpZoomOut type=button title="zoom out">&minus;</button>
 <button id=dpZoomIn type=button title="zoom in">&plus;</button>
 <button id=dpFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
+<button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 </div>
 <div id=dpChart class=path-view></div></div>
 <script type="application/json" id=dpData>{blob}</script>

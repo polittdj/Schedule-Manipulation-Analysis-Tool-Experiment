@@ -1,6 +1,23 @@
-# Handoff — 2026-07-08 (Schedule Integrity page + grouping/links/chrome; highest ADR 0156)
+# Handoff — 2026-07-08 (MS-Project Timescale dialog; highest ADR 0157)
 
-> ## STATUS (current) — ADR-0156: the Integrity page + UI batch
+> ## STATUS (current) — ADR-0157: the Timescale dialog
+>
+> - **Timescale…** button on every table-Gantt page (Activity grid, Path Analysis, Driving
+>   Path corridor, SRA grid) opens the MS-Project Timescale popup: Top/Middle/Bottom tier tabs
+>   (Units Years→Hours — no Minutes per the operator; Label formats per unit; Count; Align;
+>   Use fiscal year; Tick lines), Show one/two/three tiers, Size %, Scale separator, and the
+>   Non-working time tab (Behind/In front/Do not draw, Color, Pattern, Calendar) + live preview.
+> - `static/timescale.js` (`window.SFTimescale`) owns config (localStorage) + dialog; the
+>   SHARED `SFGantt.buildTierScale`/`gridLines` consume it, so every page reads identically;
+>   the default config reproduces the old Y/Q/M header exactly. `/api/analysis` now ships every
+>   named calendar (weekdays + holidays) for the shading; a too-fine unit renders a guard band
+>   instead of hanging; the activity-grid axis extends past the finish to fill the page.
+> - Live-verified in Chromium: 22 scripted checks, zero console errors (tab set, every option
+>   reflected, Size % doubling the axis, shading modes/patterns, Cancel/Reset, the guard band,
+>   the full-page fill).
+> - 5 new web tests (`tests/web/test_timescale.py`); wheel + 9 installers rebuilt in lockstep.
+
+> ## STATUS — ADR-0156: the Integrity page + UI batch
 >
 > - **/integrity "Schedule Integrity"** (nav: Risks): per version pair, every cited
 >   manipulation signal + the counterfactual finish ("N wd of apparent recovery came from the

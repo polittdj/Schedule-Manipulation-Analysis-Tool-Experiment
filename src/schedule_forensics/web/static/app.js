@@ -224,10 +224,12 @@
   let forcedPx = null; // set by the "Fit" button (whole project on screen); cleared by the slider
   let lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
   function pxPerDay() {
-    if (forcedPx && forcedPx > 0) return forcedPx;
+    if (forcedPx && forcedPx > 0) return forcedPx; // "Fit" computed an exact fill — leave it be
     const z = document.getElementById("vizZoom");
     const v = z ? Number(z.value) : 8;
-    return v > 0 ? v : 8; // pixels per calendar day
+    // the Timescale dialog's Size % scales the slider zoom (100% = the slider value itself)
+    const size = window.SFTimescale ? SFTimescale.sizeFactor() : 1;
+    return (v > 0 ? v : 8) * (size > 0 ? size : 1); // pixels per calendar day
   }
   // "Fit project" (operator spec 2026-07-08): anchor the STATUS DATE near the left edge of the
   // visible timeline (FIT_LEAD in) and scale so the REMAINING project — status date to project
@@ -282,7 +284,15 @@
     }
     if (t0 === null || t1 === null) return null;
     t0 -= 1 * DAY_MS; t1 += 2 * DAY_MS; // small left pad: bars start close to the data columns
-    const width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
+    let width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
+    // operator 2026-07-08: the timeline always uses ALL available page space — when the project
+    // span is narrower than the page, extend the axis past the project finish to fill it.
+    const host = document.getElementById("grid");
+    const avail = host ? host.clientWidth - (lastFrozenWidth || 360) - 18 : 0;
+    if (avail > width) {
+      width = avail;
+      t1 = t0 + (width / px) * DAY_MS; // keep x() linear — the extra span is empty future
+    }
     return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
 
@@ -309,6 +319,7 @@
   function timelineCell(act, axis, grid) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
+    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading (weekends/holidays)
     (grid || []).forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
     if (statusDate) {
       const sd = Date.parse(statusDate);
@@ -565,6 +576,7 @@
   function traceTimelineCell(r, axis, gridLns, driving) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
+    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading
     gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
     if (driving.data_date) {
       const dd = Date.parse(driving.data_date);
@@ -739,6 +751,15 @@
     .then((data) => {
       activities = data.activities || [];
       statusDate = data.status_date || null;
+      // the schedule's real calendars feed the Timescale dialog's Non-working-time tab
+      if (window.SFTimescale) {
+        const cals = [];
+        if (data.calendar && data.calendar.name) cals.push(data.calendar);
+        (data.calendars || []).forEach((c) => {
+          if (!cals.some((x) => x.name === c.name)) cals.push(c);
+        });
+        SFTimescale.setCalendars(cals);
+      }
       // every .mpp custom/extended field becomes an optional, toggleable column (default off)
       (data.custom_field_labels || []).forEach((lbl) => {
         if (!ALL_FIELDS.some((f) => f.key === lbl)) {
@@ -776,6 +797,11 @@
   });
   const fitBtn = document.getElementById("fitBtn");
   if (fitBtn) fitBtn.addEventListener("click", fitToWidth);
+  // the Timescale dialog's OK repaints both timelines with the new tiers/size/shading
+  window.addEventListener("sf-timescale", () => {
+    renderGrid();
+    if (lastDriving) renderGantt(lastDriving);
+  });
   // MS-Project Find: jump to a UniqueID; Outline level: collapse to a depth; Dates on bars toggle
   const gridFind = document.getElementById("gridFind");
   if (gridFind) {

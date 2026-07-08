@@ -81,22 +81,47 @@ window.SFGantt = (function () {
     return { years: years, quarters: quarters, months: months };
   }
 
-  // The stacked Year/Quarter/Month header element (Microsoft Project timeline). `baseClass` is
-  // the page's own scale class (so its width/flex rules still apply); `anchorIso`, when given,
-  // draws the data-date / now line through the header.
+  // The stacked timescale header element (Microsoft Project timeline). `baseClass` is the
+  // page's own scale class (so its width/flex rules still apply); `anchorIso`, when given,
+  // draws the data-date / now line through the header. When the SFTimescale module is loaded
+  // (the MS-Project Timescale dialog, operator 2026-07-08) the tiers/units/labels/count/align/
+  // tick-lines/fiscal-year/separator all come from its configuration; without it the header
+  // falls back to the original fixed Year/Quarter/Month stack.
   function buildTierScale(axis, baseClass, anchorIso) {
     var scale = el("div", { class: baseClass + " g-scale-tiered", style: "width:" + axis.width + "px" });
-    var tiers = timeTiers(axis);
-    [["yr", tiers.years], ["qtr", tiers.quarters], ["mo", tiers.months]].forEach(function (t) {
-      var row = el("div", { class: "g-tier g-tier-" + t[0] });
-      t[1].forEach(function (b) {
-        row.appendChild(el("div", {
-          class: "g-band", title: b.label, text: b.label,
-          style: "left:" + b.left + "px;width:" + b.width + "px",
-        }));
+    var ts = window.SFTimescale;
+    if (ts) {
+      ts.axisHint(axis); // the dialog's preview mirrors the page's real span
+      var stack = ts.tiers(axis);
+      var n = stack.rows.length;
+      scale.classList.add("g-scale-rows-" + n);
+      if (!stack.separator) scale.classList.add("g-scale-nosep");
+      stack.rows.forEach(function (row, i) {
+        // reuse the yr/qtr/mo row styling top-down so fonts/weights read like MS Project
+        var cls = i === 0 ? "yr" : i === n - 1 ? "mo" : "qtr";
+        var tierEl = el("div", { class: "g-tier g-tier-" + cls + (row.ticks ? "" : " g-tier-noticks") });
+        tierEl.style.top = (i * 18) + "px";
+        row.bands.forEach(function (b) {
+          tierEl.appendChild(el("div", {
+            class: "g-band" + (b.warn ? " g-band-warn" : ""), title: b.label, text: b.label,
+            style: "left:" + b.left + "px;width:" + b.width + "px;text-align:" + (b.align || "center"),
+          }));
+        });
+        scale.appendChild(tierEl);
       });
-      scale.appendChild(row);
-    });
+    } else {
+      var tiers = timeTiers(axis);
+      [["yr", tiers.years], ["qtr", tiers.quarters], ["mo", tiers.months]].forEach(function (t) {
+        var row = el("div", { class: "g-tier g-tier-" + t[0] });
+        t[1].forEach(function (b) {
+          row.appendChild(el("div", {
+            class: "g-band", title: b.label, text: b.label,
+            style: "left:" + b.left + "px;width:" + b.width + "px",
+          }));
+        });
+        scale.appendChild(row);
+      });
+    }
     if (anchorIso) {
       var a = Date.parse(anchorIso);
       if (!isNaN(a)) scale.appendChild(el("div", { class: "pv-now", style: "left:" + axis.x(a) + "px" }));
@@ -104,9 +129,11 @@ window.SFGantt = (function () {
     return scale;
   }
 
-  // Vertical gridlines down a chart: light at month starts, heavier at quarter, heaviest at
-  // year — positioned in pixels so they line up with the header bands (MS-Project gridlines).
+  // Vertical gridlines down a chart, lined up with the header bands (MS-Project gridlines).
+  // With SFTimescale loaded they follow the configured tiers (light at the bottom tier's
+  // boundaries, heavier up the stack); the fallback is the original month/quarter/year set.
   function gridLines(axis) {
+    if (window.SFTimescale) return window.SFTimescale.gridBoundaries(axis);
     var lines = [];
     var d = new Date(axis.t0);
     d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0);
@@ -121,6 +148,12 @@ window.SFGantt = (function () {
       d.setUTCMonth(d.getUTCMonth() + 1);
     }
     return lines;
+  }
+
+  // Non-working-time shading (the dialog's fourth tab): delegate to SFTimescale so every page
+  // paints tracks identically; a no-op when the module is absent or drawing is off.
+  function paintNonwork(track, axis) {
+    if (window.SFTimescale) window.SFTimescale.decorateTrack(track, axis);
   }
 
   // Append month/quarter/year gridline divs into a track element (small convenience used by the
@@ -175,6 +208,7 @@ window.SFGantt = (function () {
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
-    gridLines: gridLines, paintGrid: paintGrid, freezeColumns: freezeColumns,
+    gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
+    freezeColumns: freezeColumns,
   };
 })();
