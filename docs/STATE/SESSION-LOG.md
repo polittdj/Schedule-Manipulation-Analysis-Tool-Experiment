@@ -4319,3 +4319,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Root causes documented in the golden + ADR + needs list; test asserts each divergence exactly.
 - Fixtures: fuse_hardfile/*.mspdi.xml.gz (gzipped MSPDI, ~27KB each); test_fuse_hardfile_parity.py
   (4 tests). Pre-commit CUI guard passes. .mpp stays out of git (non-CUI build input).
+
+### 2026-07-08 (cont. 9) — Timescale Size/shading/SVt UI batch (ADR-0160)
+- Timescale Size % now actually zooms (Fit-mode + page-fill were silently overriding it):
+  buildAxis fills the page as the baseline THEN multiplies by Size, in the grid/path/driving/SRA
+  paths; fixed a const-px reassignment that had blanked the activity grid.
+- Dialog Preview reflects Size live (content width = boxWidth × Size, clipped by the box).
+- Non-working-time shading is continuous down the column: moved from the inner 16px track to a
+  full-height CELL layer (.g-nonwork-behind/-front; track transparent, cell carries canvas +
+  position:relative) — the operator's white-breaks-between-rows are gone (145 continuous layers
+  verified).
+- Schedule Variance (time): added per-activity START variance (actual−baseline start) for every
+  started task, so a statused file with few completions shows slippage; panel now distinguishes
+  statused / baselined-only (points to statused version) / no-baseline. SV(t) stays
+  parity-isolated. New engine + panel tests.
+- Live-verified in Chromium (8 checks, zero console errors). Remaining work-order items #71-74
+  (Quality Trend split, Driving Path fields/export/banner, NA thresholds + metrics library,
+  Resources drill) follow as their own tranches.
+- Also: merged operator's new intake — Hard_File UID-155 SSI exports (engine reproduces the exact
+  9-task zero-slack driving path on both snapshots; near-path slack diverges ~0.375d intraday
+  convention, task #67 deferred) and Hard_File missing_logic Fuse detail reports (for #73).

@@ -128,6 +128,7 @@ from schedule_forensics.engine.metrics._common import (
 )
 from schedule_forensics.engine.metrics.constraint_health import compute_constraint_health
 from schedule_forensics.engine.metrics.evm import (
+    ActivityVariance,
     compute_evm_indices,
     compute_schedule_variance,
 )
@@ -4615,12 +4616,25 @@ def _schedule_variance_panel(sch: Schedule) -> str:
     """Schedule variance in TIME (handbook §7.3.3.1): project SVt = ES - AT (working days), plus the
     per-activity finish slip (actual - baseline). Favorable when ahead of plan (SVt >= 0)."""
     sv = compute_schedule_variance(sch, non_summary(sch))
-    if sv.svt_days is None and sv.completed == 0:
+    if sv.svt_days is None and sv.completed == 0 and sv.started == 0:
+        # Distinguish a baselined-but-un-statused plan (has baselines, no actuals) from a file
+        # with no baseline at all — the operator's Hard_File pair is exactly the former for the
+        # first version, and the message should point them at the statused version.
+        if sv.baselined > 0:
+            hint = (
+                f"This is the <b>baselined plan</b> ({sv.baselined} activities carry a baseline) "
+                "with <b>no progress statused yet</b> &mdash; there are no actual start/finish "
+                "dates to measure against it. Open the <b>statused version</b> of this schedule "
+                "(the later data date, with actuals recorded) to see the schedule variance."
+            )
+        else:
+            hint = (
+                "This schedule carries no baseline dates, so there is no plan to measure progress "
+                "against. Baseline the schedule in the source tool, then status it with progress."
+            )
         return (
             "<div class=panel><h2>Schedule variance (time)</h2>"
-            "<p class=muted>Not computable yet &mdash; SVt needs a status (data) date, at least one "
-            "completed activity, and baseline finishes; per-activity variance needs both an actual "
-            "and a baseline finish. This schedule does not yet carry them.</p></div>"
+            f"<p class=muted>Not computable on this file &mdash; {hint}</p></div>"
         )
     if sv.svt_days is None:
         svt_val = "n/a"
@@ -4634,39 +4648,53 @@ def _schedule_variance_panel(sch: Schedule) -> str:
             ("Schedule variance (SVt = ES - AT)", svt_val),
             ("Earned Schedule (ES)", "n/a" if sv.es_days is None else f"{sv.es_days:g} wd"),
             ("Actual Time (AT)", "n/a" if sv.at_days is None else f"{sv.at_days:g} wd"),
-            ("Completed activities measured", str(sv.completed)),
+            ("Completed (finish variance)", str(sv.completed)),
             (
-                "Mean activity finish variance",
+                "Mean finish variance",
                 "n/a"
                 if sv.mean_activity_variance_days is None
                 else f"{sv.mean_activity_variance_days:+g} wd",
             ),
+            ("Started (start variance)", str(sv.started)),
+            (
+                "Mean start variance",
+                "n/a"
+                if sv.mean_start_variance_days is None
+                else f"{sv.mean_start_variance_days:+g} wd",
+            ),
         ]
     )
-    table = ""
-    if sv.worst:
-        names = sch.tasks_by_id
+    names = sch.tasks_by_id
+
+    def _var_table(title: str, rows_data: tuple[ActivityVariance, ...], kind: str) -> str:
+        if not rows_data:
+            return ""
         rows = "".join(
             f"<tr><td>{v.unique_id}</td>"
             f"<td>{_e(names[v.unique_id].name) if v.unique_id in names else ''}</td>"
             f'<td class="rk-score {"rk-high" if v.variance_days > 0 else "rk-min"}">'
             f"{v.variance_days:+g}</td></tr>"
-            for v in sv.worst
+            for v in rows_data
         )
-        table = (
-            "<h3>Largest finish variances (actual &minus; baseline)</h3>"
+        return (
+            f"<h3>{title}</h3>"
             "<table><tr><th scope=col>UID</th><th scope=col>Activity</th>"
-            "<th scope=col>Variance (wd)</th></tr>"
-            f"{rows}</table>"
+            f"<th scope=col>{kind} variance (wd)</th></tr>{rows}</table>"
         )
+
+    table = _var_table("Largest finish variances (actual &minus; baseline)", sv.worst, "Finish")
+    table += _var_table(
+        "Largest start variances (actual &minus; baseline)", sv.worst_start, "Start"
+    )
     return (
         "<div class=panel><h2>Schedule variance (time)</h2>"
         "<p class=muted>The NASA Schedule Management Handbook (&sect;7.3.3.1) time view of progress. "
         "<b>SVt = ES &minus; AT</b> (Earned Schedule minus Actual Time): positive is "
         "<b>ahead</b> of plan (favorable), negative is <b>behind</b> (unfavorable) &mdash; the "
-        "count-based Earned-Schedule companion to SPI(t). Per-activity finish variance is each "
-        "completed activity's actual finish minus its baseline finish, in working days (positive = "
-        "late).</p>"
+        "count-based Earned-Schedule companion to SPI(t). Per-activity <b>finish</b> variance is a "
+        "completed activity's actual finish minus its baseline finish; <b>start</b> variance is a "
+        "started activity's actual start minus its baseline start (in working days, positive = "
+        "late) &mdash; the latter surfaces in-progress slippage before tasks complete.</p>"
         f"{cards}{table}</div>"
     )
 

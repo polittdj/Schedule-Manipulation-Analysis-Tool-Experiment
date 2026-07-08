@@ -223,13 +223,19 @@
 
   let forcedPx = null; // set by the "Fit" button (whole project on screen); cleared by the slider
   let lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
+  // RAW pixels-per-day (slider value, or the Fit button's exact-fill px). The Timescale Size %
+  // is applied SEPARATELY in buildAxis, AFTER the page-fill baseline, so Size scales the filled
+  // timeline in both slider and Fit modes (earlier it was multiplied in here and then silently
+  // undone by the fill-to-page step — operator: "Size ... nothing changes").
   function pxPerDay() {
     if (forcedPx && forcedPx > 0) return forcedPx; // "Fit" computed an exact fill — leave it be
     const z = document.getElementById("vizZoom");
     const v = z ? Number(z.value) : 8;
-    // the Timescale dialog's Size % scales the slider zoom (100% = the slider value itself)
-    const size = window.SFTimescale ? SFTimescale.sizeFactor() : 1;
-    return (v > 0 ? v : 8) * (size > 0 ? size : 1); // pixels per calendar day
+    return v > 0 ? v : 8; // pixels per calendar day
+  }
+  function sizeFactor() {
+    const s = window.SFTimescale ? SFTimescale.sizeFactor() : 1;
+    return s > 0 ? s : 1;
   }
   // "Fit project" (operator spec 2026-07-08): anchor the STATUS DATE near the left edge of the
   // visible timeline (FIT_LEAD in) and scale so the REMAINING project — status date to project
@@ -271,7 +277,7 @@
   // millisecond timestamp to a pixel offset; `width` is the full px span the track/scale must
   // occupy so the container scrolls instead of squeezing.
   function buildAxis(items, anchorDate) {
-    const px = pxPerDay();
+    let px = pxPerDay(); // reassigned below for the page-fill baseline + Size % scaling
     let t0 = null, t1 = null;
     items.forEach((it) => {
       if (it.start) { const s = Date.parse(it.start); if (!isNaN(s)) t0 = t0 === null ? s : Math.min(t0, s); }
@@ -285,14 +291,20 @@
     if (t0 === null || t1 === null) return null;
     t0 -= 1 * DAY_MS; t1 += 2 * DAY_MS; // small left pad: bars start close to the data columns
     let width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
-    // operator 2026-07-08: the timeline always uses ALL available page space — when the project
-    // span is narrower than the page, extend the axis past the project finish to fill it.
+    // operator 2026-07-08: at Size 100% the timeline uses ALL available page space — when the
+    // project span is narrower than the page, extend the axis past the finish to fill it. This
+    // establishes the FILL BASELINE (px), which the Timescale Size % then scales on top of.
     const host = document.getElementById("grid");
     const avail = host ? host.clientWidth - (lastFrozenWidth || 360) - 18 : 0;
     if (avail > width) {
       width = avail;
-      t1 = t0 + (width / px) * DAY_MS; // keep x() linear — the extra span is empty future
+      px = width / ((t1 - t0) / DAY_MS); // fill px: the whole span now fills the page at 100%
     }
+    // apply the Timescale dialog's Size %: <100 shrinks (leaves right-hand space), >100 overflows
+    // and scrolls — a true zoom of the filled timeline (MS Project's Size behavior).
+    const size = sizeFactor();
+    px *= size;
+    width = Math.max(120, Math.round(width * size));
     return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
 
@@ -319,7 +331,6 @@
   function timelineCell(act, axis, grid) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
-    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading (weekends/holidays)
     (grid || []).forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
     if (statusDate) {
       const sd = Date.parse(statusDate);
@@ -352,6 +363,7 @@
       }
     }
     cell.appendChild(track);
+    SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
     return cell;
   }
 
@@ -576,7 +588,6 @@
   function traceTimelineCell(r, axis, gridLns, driving) {
     const cell = el("td", { class: "g-cell" });
     const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
-    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading
     gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
     if (driving.data_date) {
       const dd = Date.parse(driving.data_date);
@@ -603,6 +614,7 @@
       }
     }
     cell.appendChild(track);
+    SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
     return cell;
   }
 

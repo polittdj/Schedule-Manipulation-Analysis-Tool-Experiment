@@ -68,7 +68,44 @@ def test_panel_shows_behind_when_late() -> None:
     assert "Largest finish variances" in html
 
 
-def test_panel_graceful_when_not_computable() -> None:
+def test_panel_graceful_when_no_baseline_or_actuals() -> None:
     sched = Schedule(name="S", project_start=MON, tasks=(_task(1),))
     html = _schedule_variance_panel(sched)
-    assert "Not computable yet" in html
+    assert "Not computable on this file" in html
+    assert "no baseline dates" in html  # no baseline at all → the "baseline it first" message
+
+
+def test_panel_points_to_statused_version_when_baselined_only() -> None:
+    # baselined plan with no actuals (the operator's first Hard_File version) → the panel names
+    # what is missing and tells the operator to open the statused version, rather than a bare "n/a".
+    tasks = [
+        _task(
+            1,
+            baseline_start=dt.datetime(2025, 1, 6, 8, 0),
+            baseline_finish=dt.datetime(2025, 1, 8, 8, 0),
+        ),
+    ]
+    sched = Schedule(
+        name="S", project_start=MON, tasks=tuple(tasks), status_date=dt.datetime(2025, 1, 16, 8, 0)
+    )
+    html = _schedule_variance_panel(sched)
+    assert "baselined plan" in html and "statused version" in html
+
+
+def test_panel_shows_start_variance_for_started_tasks() -> None:
+    # started 5 wd late, not finished → the panel surfaces a Start variance table + the SVt cards
+    tasks = [
+        _task(
+            1,
+            baseline_start=dt.datetime(2025, 1, 6, 8, 0),
+            actual_start=dt.datetime(2025, 1, 13, 8, 0),
+            baseline_finish=dt.datetime(2025, 1, 10, 8, 0),
+            percent_complete=40.0,
+        ),
+    ]
+    sched = Schedule(
+        name="S", project_start=MON, tasks=tuple(tasks), status_date=dt.datetime(2025, 1, 16, 8, 0)
+    )
+    html = _schedule_variance_panel(sched)
+    assert "Largest start variances" in html
+    assert "+5" in html  # the late start variance

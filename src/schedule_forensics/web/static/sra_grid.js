@@ -21,11 +21,13 @@
 
   var forcedPx = null; // set by "View entire project"; cleared when the zoom slider is nudged
   function pxPerDay() {
-    if (forcedPx && forcedPx > 0) return forcedPx;
-    var v = zoomEl ? parseFloat(zoomEl.value) : 1.4;
-    // the Timescale dialog's Size % scales the slider zoom (the fit is already exact)
+    // the Timescale dialog's Size % scales the timeline in BOTH modes (fit + slider), so Size
+    // works even after "View entire project" fits the page.
     var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
-    return (isNaN(v) || v <= 0 ? 1.4 : v) * (size > 0 ? size : 1);
+    if (!(size > 0)) size = 1;
+    if (forcedPx && forcedPx > 0) return forcedPx * size;
+    var v = zoomEl ? parseFloat(zoomEl.value) : 1.4;
+    return (isNaN(v) || v <= 0 ? 1.4 : v) * size;
   }
   // Auto-scale the timeline so the whole project span fits the visible width (no horizontal
   // scroll). The fill space subtracts the REAL measured frozen-column width recorded on each
@@ -120,7 +122,6 @@
   function timelineCell(r, axis, grid) {
     var cell = el("td", { class: "g-cell" });
     var track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
-    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading
     SFGantt.paintGrid(track, grid);
     if (dataDate) { var sd = Date.parse(dataDate); if (!isNaN(sd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(sd) + "px" })); }
     var s = r.start ? Date.parse(r.start) : null;
@@ -145,6 +146,7 @@
       track.appendChild(bar);
     }
     cell.appendChild(track);
+    SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
     return cell;
   }
 
