@@ -39,7 +39,7 @@ def _upload(client: TestClient, name: str) -> None:
 
 def test_every_page_carries_theme_toggle_and_script(client: TestClient) -> None:
     page = client.get("/").text
-    assert 'src="/static/theme.js"' in page
+    assert 'src="/static/theme.js?v=' in page  # cache-busted (ADR-0148)
     assert "id=themeToggle" in page
 
 
@@ -101,7 +101,7 @@ def test_target_form_returns_to_current_page_and_reaches_card_and_wbs(client: Te
     tjs = client.get("/static/target.js")
     assert tjs.status_code == 200
     assert "next_url" in tjs.text and "location.pathname" in tjs.text  # rewrites to current page
-    assert 'src="/static/target.js"' in client.get("/").text  # loaded on every page (shell)
+    assert 'src="/static/target.js?v=' in client.get("/").text  # every page (cache-busted)
     assert "name=next_url" in client.get("/analysis/Project5").text  # the field target.js drives
     # with a target set, the card and WBS pages now show its focus panel
     client.post("/target", data={"uid": "143", "next_url": "/"})

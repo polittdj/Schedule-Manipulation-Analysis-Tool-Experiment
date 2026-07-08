@@ -54,18 +54,19 @@ def test_parity_report_reflects_current_case_json() -> None:
         assert stale not in report, f"stale parity figure resurfaced in PARITY-REPORT.md: {stale!r}"
 
 
-def test_engine_pinned_marker_cannot_be_silently_deleted_f01() -> None:
-    """Audit F-01 (ADR-0143): the §E float/critical change subset is engine-pinned, NOT
-    Fuse-validated — the disclosure exists in prose, but no test enforced it, so deleting the
-    label failed nothing. This pins the marker in BOTH the human-readable parity report and the
-    golden's own machine-readable caveat."""
-    import json
-    from pathlib import Path
-
+def test_fuse_validation_marker_cannot_be_silently_deleted_f01() -> None:
+    """Audit F-01 closure (ADR-0151): the §E float/critical subset flipped from engine-pinned
+    self-consistency to ENGINE==FUSE against the delivered 2026-06/07 export suite. The prior
+    version of this test pinned the honest *disclaimer*; this version pins the honest *upgrade*
+    — the provenance markers and the two asserted divergences (the 96↔99 membership swap and
+    the -148 vs -134 Net-Finish-Impact basis) may not be silently deleted from either the
+    human-readable report or the golden's machine-readable caveat."""
     root = Path(__file__).resolve().parents[1]
-    report = (root / "docs" / "PARITY-REPORT.md").read_text(encoding="utf-8")
-    assert "engine-pinned" in report
-    assert "NOT Fuse-validated" in report
+    report = _norm((root / "docs" / "PARITY-REPORT.md").read_text(encoding="utf-8"))
+    assert "ENGINE==FUSE" in report
+    assert "fuse_exports_2026-06.json" in report
+    assert "-148 = -134 - 15 + 1" in report  # the Net-Finish-Impact basis reconciliation
+    assert "UID 99" in report and "UID 96" in report  # the SN04 membership swap disclosure
 
     case = json.loads(
         (root / "tests" / "fixtures" / "golden" / "project2_5" / "case.json").read_text(
@@ -73,4 +74,16 @@ def test_engine_pinned_marker_cannot_be_silently_deleted_f01() -> None:
         )
     )
     caveat = case["_deltas"]["change_P2_to_P5_engine_pinned"]
-    assert "pinned to the engine" in caveat and "re-validation" in caveat
+    assert "SUPERSEDED" in caveat and "ADR-0151" in caveat
+    assert "Fuse-validated (ENGINE==FUSE)" in caveat
+    # the transcription file itself records the divergences it asserts
+    fuse = json.loads(
+        (
+            root / "tests" / "fixtures" / "golden" / "project2_5" / "fuse_exports_2026-06.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert set(fuse["_documented_divergences"]) >= {
+        "no_longer_critical_membership",
+        "net_finish_impact_basis",
+        "sn07_name_vs_basis",
+    }

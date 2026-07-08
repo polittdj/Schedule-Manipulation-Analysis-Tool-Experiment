@@ -17,6 +17,7 @@
   var rows = [];
   var dataDate = null;
   var pending = {}; // uid -> {uid, factor?, bc_days?, wc_days?, focus?}
+  var lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
 
   var forcedPx = null; // set by "View entire project"; cleared when the zoom slider is nudged
   function pxPerDay() {
@@ -24,7 +25,9 @@
     var v = zoomEl ? parseFloat(zoomEl.value) : 1.4;
     return isNaN(v) || v <= 0 ? 1.4 : v;
   }
-  // auto-scale the timeline so the whole project span fits the visible width (no horizontal scroll)
+  // Auto-scale the timeline so the whole project span fits the visible width (no horizontal
+  // scroll). The fill space subtracts the REAL measured frozen-column width recorded on each
+  // paint (like path.js) — not a hard-coded estimate — so the bars use the entire page.
   function fitToProject() {
     var t0 = null, t1 = null;
     rows.forEach(function (r) {
@@ -34,7 +37,7 @@
     if (dataDate) { var a = Date.parse(dataDate); if (!isNaN(a)) { t0 = t0 === null ? a : Math.min(t0, a); t1 = t1 === null ? a : Math.max(t1, a); } }
     if (t0 === null || t1 === null) return;
     var days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
-    var avail = Math.max(240, (host ? host.clientWidth : 1100) - 520);
+    var avail = Math.max(240, (host ? host.clientWidth : 1100) - (lastFrozenWidth || 520) - 18);
     forcedPx = Math.max(0.02, avail / days);
     render();
   }
@@ -71,6 +74,8 @@
     Object.keys(attrs || {}).forEach(function (k) { a[k] = attrs[k]; });
     var inp = el("input", a);
     if (r[key] != null) inp.value = r[key];
+    // a body repaint (e.g. a column-filter change) must not silently blank an unsaved edit
+    if (pending[r.unique_id] && pending[r.unique_id][key] != null) inp.value = pending[r.unique_id][key];
     td.appendChild(inp);
     return td;
   }
@@ -78,9 +83,33 @@
   function focusCell(r) {
     var td = el("td", { class: "sra-focus-cell" });
     var radio = el("input", { type: "radio", name: "ssiFocus", class: "sra-focus", "data-uid": String(r.unique_id) });
-    if (r.is_focus) radio.checked = true;
+    if (r.is_focus || (pending[r.unique_id] && pending[r.unique_id].focus)) radio.checked = true;
     td.appendChild(radio);
     return td;
+  }
+
+  // --- MS-Project per-column checklist filters on the non-editable columns -----------------
+  var FILTER_COLS = [
+    { key: "unique_id", label: "UID" },
+    { key: "name", label: "Task" },
+    { key: "remaining_days", label: "Rem d" },
+  ];
+  var colFilters = {}; // key -> selected-value Set (null = unfiltered; an empty Set hides all)
+  function cellText(r, key) { var v = r[key]; return v == null ? "" : String(v); }
+  function distinctValues(key) {
+    var seen = {};
+    rows.forEach(function (r) { seen[cellText(r, key)] = true; });
+    return Object.keys(seen).sort(function (a, b) {
+      var na = parseFloat(a), nb = parseFloat(b);
+      var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
+    });
+  }
+  function rowMatchesFilters(r) {
+    return FILTER_COLS.every(function (f) {
+      var sel = colFilters[f.key];
+      return !sel || sel.has(cellText(r, f.key));
+    });
   }
 
   // The scheduled bar (start -> finish, accurate) plus a translucent Best/Worst-case finish envelope
@@ -94,7 +123,7 @@
     var s = r.start ? Date.parse(r.start) : null;
     var f = r.finish ? Date.parse(r.finish) : null;
     if (r.is_milestone && s != null) {
-      track.appendChild(el("div", { class: "g-ms", title: r.name + " (milestone) " + r.start, style: "left:" + axis.x(s) + "px" }));
+      track.appendChild(el("div", { class: "g-ms", title: r.name + " (milestone) " + (SFGantt.fmtMDY(r.start) || r.start), style: "left:" + axis.x(s) + "px" }));
     } else if (s != null && f != null) {
       if (r.editable && r.bc_days != null && r.wc_days != null) {
         var bcEnd = s + r.bc_days * DAY_MS, wcEnd = s + r.wc_days * DAY_MS;
@@ -106,7 +135,7 @@
       }
       var left = axis.x(s), width = Math.max(2, axis.x(f) - left);
       var cls = r.is_summary ? "g-bar g-sum" : r.is_critical ? "g-bar g-crit" : "g-bar";
-      var bar = el("div", { class: cls, title: r.name + "  " + r.start + " -> " + r.finish, style: "left:" + left + "px;width:" + width + "px" });
+      var bar = el("div", { class: cls, title: r.name + "  " + (SFGantt.fmtMDY(r.start) || r.start) + " -> " + (SFGantt.fmtMDY(r.finish) || r.finish), style: "left:" + left + "px;width:" + width + "px" });
       if (!r.is_summary && (r.complete || r.percent_complete > 0)) {
         bar.appendChild(el("div", { class: "g-done", style: "width:" + (r.complete ? 100 : Math.min(100, r.percent_complete)) + "%" }));
       }
@@ -116,22 +145,11 @@
     return cell;
   }
 
-  function render() {
-    var axis = buildAxis(rows);
-    var grid = axis ? SFGantt.gridLines(axis) : null;
-    var table = el("table", { class: "gantt-grid sra-grid" });
-    var thead = el("thead");
-    var hr = el("tr");
-    ["UID", "Task", "Rem d", "Factor", "BC d", "WC d", "Focus"].forEach(function (h) { hr.appendChild(el("th", { text: h })); });
-    if (axis) {
-      var th = el("th", { class: "g-head" });
-      th.appendChild(SFGantt.buildTierScale(axis, "g-scale", dataDate));
-      hr.appendChild(th);
-    }
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    var tbody = el("tbody");
-    rows.forEach(function (r) {
+  // repaint only the body rows (a column-filter change keeps the open dropdown + header alive)
+  function paintBody(tbody, axis, grid) {
+    var list = rows.filter(rowMatchesFilters);
+    tbody.innerHTML = "";
+    list.forEach(function (r) {
       var tr = el("tr");
       if (r.is_critical) tr.className = "crit";
       if (r.is_summary) tr.className = (tr.className + " sum").trim();
@@ -153,12 +171,60 @@
       if (axis) tr.appendChild(timelineCell(r, axis, grid));
       tbody.appendChild(tr);
     });
+    if (!list.length) {
+      var empty = el("tr");
+      empty.appendChild(el("td", { class: "muted", text: "No tasks match the filters." }));
+      tbody.appendChild(empty);
+    }
+    // re-pin the frozen data columns for the new rows (only once the table is in the DOM — the
+    // initial render freezes after appending) and record their measured width for fitToProject
+    var tbl = tbody.parentNode;
+    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) {
+      lastFrozenWidth = SFGantt.freezeColumns(tbl) || lastFrozenWidth;
+    }
+  }
+
+  function render() {
+    var axis = buildAxis(rows);
+    var grid = axis ? SFGantt.gridLines(axis) : null;
+    var table = el("table", { class: "gantt-grid sra-grid" });
+    var thead = el("thead");
+    var hr = el("tr");
+    ["UID", "Task", "Rem d", "Factor", "BC d", "WC d", "Focus"].forEach(function (h) { hr.appendChild(el("th", { text: h })); });
+    if (axis) {
+      var th = el("th", { class: "g-head" });
+      th.appendChild(SFGantt.buildTierScale(axis, "g-scale", dataDate));
+      hr.appendChild(th);
+    }
+    thead.appendChild(hr);
+    // MS-Project per-column checklist filters on the non-editable columns (UID / Task / Rem d)
+    var tbody = el("tbody");
+    var filterRow = el("tr", { class: "filter-row" });
+    ["unique_id", "name", "remaining_days", null, null, null, null].forEach(function (key) {
+      var td = el("td");
+      var f = null;
+      FILTER_COLS.forEach(function (fc) { if (fc.key === key) f = fc; });
+      if (f && window.SFChecklist) {
+        td.appendChild(SFChecklist.filter({
+          values: distinctValues(f.key),
+          selected: colFilters[f.key] || null,
+          label: "Filter",
+          title: "Filter " + f.label,
+          onChange: function (sel) { colFilters[f.key] = sel; paintBody(tbody, axis, grid); },
+        }));
+      }
+      filterRow.appendChild(td);
+    });
+    if (axis) filterRow.appendChild(el("td", { class: "muted" }));
+    thead.appendChild(filterRow);
+    table.appendChild(thead);
     table.appendChild(tbody);
     host.innerHTML = "";
     host.appendChild(table);
     if (window.SFColResize) SFColResize.attach(table, "ssiGrid"); // MS-Project drag-to-resize columns
-    // lock the data columns so they stay visible as the wide timeline scrolls left↔right
-    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
+    // paintBody locks the data columns (SFGantt.freezeColumns) so they stay visible as the wide
+    // timeline scrolls left↔right, and records their measured width for fitToProject
+    paintBody(tbody, axis, grid);
   }
 
   function load() {

@@ -63,21 +63,31 @@ def _status(min_float_days: float) -> str:
     return "green"
 
 
-def compute_float_erosion(schedule: Schedule, cpm: CPMResult) -> FloatErosion:
+def compute_float_erosion(
+    schedule: Schedule, cpm: CPMResult, wbs_field: str | None = None
+) -> FloatErosion:
     """Per-top-level-WBS total-float summary for ``schedule`` (progress-aware float; CPM-derived).
 
     Activities group by their top-level WBS segment (``"7.3"`` → ``"7"``; no code → ``"(none)"``),
     matching ``wbs_breakdown``. Each group reports its minimum and average total float in working
     days, its critical-activity count, and a stoplight on the minimum float.
+
+    ``wbs_field`` (ADR-0150) lets the operator group by ANY available field — e.g. a custom
+    outline code like "CA-WBS" — instead of the built-in WBS column. ``None``/``"WBS"`` keeps
+    the built-in behaviour; values group by their top-level dotted segment either way.
     """
+    from schedule_forensics.engine.grouping import field_value
+
     per_day = schedule.calendar.working_minutes_per_day or 480
     groups: dict[str, list[float]] = {}
     crit: dict[str, int] = {}
+    use_custom = wbs_field is not None and wbs_field != "WBS"
     for task in non_summary(schedule):
         timing = cpm.timings.get(task.unique_id)
         recomputed = float(timing.total_float) if timing is not None else 0.0
         tf_days = effective_total_float(task, recomputed) / per_day
-        key = _top_level(task.wbs)
+        raw = field_value(schedule, task, wbs_field) if use_custom and wbs_field else task.wbs
+        key = _top_level(str(raw) if raw else None)
         groups.setdefault(key, []).append(tf_days)
         if is_effective_critical(task, recomputed):
             crit[key] = crit.get(key, 0) + 1

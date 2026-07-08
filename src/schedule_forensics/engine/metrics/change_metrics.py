@@ -5,21 +5,27 @@ Acumen's "PP & Change — Schedule Quality" panel compares the current snapshot 
 snapshot has no prior, so every change count is 0 except *Activities Added* (all are
 new). Matching is by **UniqueID only** (§6.B) — never row ID, never name.
 
-Validated against the golden Project2 (prior) → Project5 (current) comparison:
+Validated ENGINE==FUSE against the operator-delivered Acumen Fuse export suite for the
+golden Project2 (prior) → Project5 (current) pair (ADR-0151;
+``tests/parity/test_fuse_export_parity.py`` + ``fuse_exports_2026-06.json``):
 
-* **Exact:** *Activities Added* (0 — identical UID set), *New Critical* (0),
-  **Finish Date Slips (9)** = activities the prior plan placed on/before the new data
-  date that are still incomplete, *Completed* (20 → 27), *In-Progress* (3 → 2), and the
-  forensic **Net Finish Impact (-99 days)** (:func:`compute_net_finish_impact`).
-* **Documented residuals (ADR-0013, → M9):** *No Longer Critical* (0 vs 1), *Start Date
-  Slips* (9 vs 10), *Remaining Duration Increases* (7 vs 8), *Float Erosion* (4 vs 6).
-  One root cause: Acumen reads MS Project's *progress-aware* total slack / Critical flag,
-  whereas this engine recomputes pure-logic CPM float for independence and auditability
-  (ADR-0010). The float-independent counts above are exact; the float-dependent and
-  per-snapshot-granularity counts differ by a few activities and are driven toward zero
-  at M9. Population is the schedulable (non-summary) activities — the same denominator as
-  every other framework here; Acumen's §E header counts all 144 task rows (incl. WBS
-  summaries), this engine's 126 schedulable activities.
+* **UID-exact vs Fuse:** *Activities Added* (0 — identical UID set), *New Critical*
+  (1, UID 131), *Float Erosion* (1, UID 131 — matches the Forensic Total-Float sheet
+  derivation under this scope), *Finish Date Slips* (9 — Fuse "CEI - Incomplete Tasks"),
+  *Remaining Duration Increases* (9 — the Forensic Original-Duration change sheet).
+* **Count-exact with one documented membership swap:** *No Longer Critical* (34 == 34;
+  the engine lists UID 99 where Fuse lists UID 96). Root cause: Acumen reads MS Project's
+  *progress-aware* Critical flag, whereas this engine recomputes pure-logic CPM float for
+  independence and auditability (ADR-0010) — in Project2 the two bases disagree on exactly
+  that one pair (both count 41).
+* **Documented basis difference:** :func:`compute_net_finish_impact` = **-148** over the
+  engine's CPM finishes; Fuse HSD10 = **-134** over the *stored* project finishes
+  (verbatim ``.aft`` formula ``ROUND(ProjectPreviousFinish - ProjectFinish, 0)``). The two
+  reconcile to the day (-148 = -134 - 15 + 1, the ADR-0108 data-date gap).
+
+Population is the schedulable (non-summary) activities — the same denominator as
+every other framework here; Acumen's §E header counts all 144 task rows (incl. WBS
+summaries), this engine's 126 schedulable activities (ADR-0013).
 """
 
 from __future__ import annotations
@@ -191,7 +197,9 @@ def compute_net_finish_impact(
     The CPM project finish of each version is mapped to a wall-clock date; the metric is
     ``(prior finish date - current finish date)`` in **calendar days**. A negative value
     means the finish slipped later (the headline forensic signal). The first snapshot has
-    no prior, so the impact is 0. Validated: Project2 → Project5 = **-99 days**.
+    no prior, so the impact is 0. Golden pair: **-148 days** on the engine's CPM-finish
+    basis; Fuse's HSD10 reports **-134** over the *stored* finishes — a documented,
+    day-exact-reconciled basis difference (ADR-0151), not a residual.
     """
     if prior is None:
         return MetricResult(

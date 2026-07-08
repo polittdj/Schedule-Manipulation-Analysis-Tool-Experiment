@@ -22,6 +22,8 @@
   var px = 6; // pixels per calendar day
   var forcedPx = null; // set by "View entire project"; cleared when a zoom button is pressed
   var timer = null;
+  var lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
+  var colFilters = {}; // MS-Project per-column filter: "uid"/"name" -> Set|null (null = all)
 
   function $(id) { return document.getElementById(id); }
   function el(tag, attrs, kids) {
@@ -53,12 +55,32 @@
   // pixels per calendar day: the "View entire project" fit overrides the zoom buttons until nudged
   function pxPerDay() { return forcedPx && forcedPx > 0 ? forcedPx : px; }
   var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * pxPerDay()); };
-  // auto-scale so the whole (shared, fixed) corridor span fits the visible width — no scroll
+  // Auto-scale so the whole (shared, fixed) corridor span fits the visible width — no scroll.
+  // The fill space subtracts the REAL measured frozen-column width recorded on each paint (like
+  // path.js) rather than a hard-coded estimate, so the corridor uses the entire page.
   function fitToProject() {
     var days = Math.max(1, (t1 - t0) / DAY_MS);
-    var avail = Math.max(240, (mount ? mount.clientWidth : 1000) - 320);
+    var avail = Math.max(240, (mount ? mount.clientWidth : 1000) - (lastFrozenWidth || 320) - 18);
     forcedPx = Math.max(0.02, avail / days);
     render();
+  }
+
+  // --- MS-Project per-column checklist filters (UID / Name), persistent across versions -----
+  function distinctValues(getter) {
+    var seen = {};
+    versions.forEach(function (v) {
+      (v.activities || []).forEach(function (a) { seen[getter(a)] = true; });
+    });
+    return Object.keys(seen).sort(function (a, b) {
+      var na = parseFloat(a), nb = parseFloat(b);
+      var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
+    });
+  }
+  function rowMatchesFilters(a) {
+    if (colFilters.uid && !colFilters.uid.has(String(a.uid))) return false;
+    if (colFilters.name && !colFilters.name.has(String(a.name))) return false;
+    return true;
   }
 
   function render() {
@@ -87,9 +109,42 @@
     thTime.appendChild(SFGantt.buildTierScale(axis, "path-scale", v.data_date));
     head.appendChild(thTime);
     thead.appendChild(head);
+    // MS-Project per-column checklist filters (UID / Name) — the selection survives stepping
+    // between versions; a filter change repaints only the body rows
+    var tbody = el("tbody");
+    var filterRow = el("tr", { class: "filter-row" });
+    [
+      { key: "uid", label: "UID", getter: function (a) { return String(a.uid); } },
+      { key: "name", label: "Name", getter: function (a) { return String(a.name); } },
+    ].forEach(function (f) {
+      var td = el("td");
+      if (window.SFChecklist) {
+        td.appendChild(SFChecklist.filter({
+          values: distinctValues(f.getter),
+          selected: colFilters[f.key] || null,
+          label: "Filter",
+          title: "Filter " + f.label,
+          onChange: function (sel) { colFilters[f.key] = sel; paintBody(tbody, v, acts, gridLns, width); },
+        }));
+      }
+      filterRow.appendChild(td);
+    });
+    filterRow.appendChild(el("td", { class: "muted" }));
+    thead.appendChild(filterRow);
     table.appendChild(thead);
+    table.appendChild(tbody);
+    mount.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "driving"); // MS-Project drag-to-resize columns
+    // paintBody locks the UID/Name columns (SFGantt.freezeColumns) so they stay visible as the
+    // wide corridor timeline scrolls, and records their measured width for fitToProject
+    paintBody(tbody, v, acts, gridLns, width);
+  }
 
-    acts.forEach(function (a) {
+  // repaint only the corridor body rows for the current version + column filters
+  function paintBody(tbody, v, acts, gridLns, width) {
+    var list = acts.filter(rowMatchesFilters);
+    tbody.innerHTML = "";
+    list.forEach(function (a) {
       var tr = el("tr");
       tr.appendChild(el("td", { text: String(a.uid) }));
       tr.appendChild(el("td", { class: "pv-name", text: a.name }));
@@ -104,7 +159,7 @@
         if (a.is_milestone) {
           track.appendChild(el("div", {
             class: "g-ms tier-DRIVING" + entered, style: "left:" + x(Date.parse(a.finish)) + "px",
-            title: a.name + " (milestone) " + a.finish + (a.entered ? " — entered" : ""),
+            title: a.name + " (milestone) " + (SFGantt.fmtMDY(a.finish) || a.finish) + (a.entered ? " — entered" : ""),
           }));
         } else {
           var left = x(Date.parse(a.start));
@@ -112,18 +167,23 @@
           track.appendChild(el("div", {
             class: "gantt-bar tier-DRIVING" + entered,
             style: "left:" + left + "px;width:" + w + "px",
-            title: a.name + " — " + a.start + " → " + a.finish + (a.entered ? " (entered)" : ""),
+            title: a.name + " — " + (SFGantt.fmtMDY(a.start) || a.start) + " → " + (SFGantt.fmtMDY(a.finish) || a.finish) + (a.entered ? " (entered)" : ""),
           }));
         }
       }
       cell.appendChild(track);
       tr.appendChild(cell);
-      table.appendChild(tr);
+      tbody.appendChild(tr);
     });
-    mount.appendChild(table);
-    if (window.SFColResize) SFColResize.attach(table, "driving"); // MS-Project drag-to-resize columns
-    // lock the UID/Name columns so they stay visible as the wide corridor timeline scrolls
-    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
+    if (!list.length) {
+      var empty = el("tr");
+      empty.appendChild(el("td", { class: "muted", text: "No activities match the filters." }));
+      tbody.appendChild(empty);
+    }
+    var tbl = tbody.parentNode;
+    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) {
+      lastFrozenWidth = SFGantt.freezeColumns(tbl) || lastFrozenWidth;
+    }
   }
 
   function stopPlay() {

@@ -1,6 +1,102 @@
-# Handoff — 2026-07-07 (telemetry cross-platform fix; highest ADR 0147)
+# Handoff — 2026-07-07 (§E → ENGINE==FUSE from the delivered exports; highest ADR 0151)
 
-> ## STATUS (current) — telemetry fixed for the operator's machine (ADR-0147)
+> ## NEXT SESSION — start here
+>
+> 1. **PR #287 MERGED** (squash `1937a27` on `main`). Operator actions still outstanding: install
+>    the **1.0.4** installer set (this branch) and confirm on the real machine: (a) no flashing console popups
+>    (ADR-0149), (b) SRA runs (no mappingproxy error), (c) Critical-Path Evolution with target 152
+>    shows the ~76-task driving chain, (d) the Executive Briefing tables read as normal tables
+>    (this branch's fix — no more one-character-per-line columns).
+> 2. **DONE this session (ADR-0151): PARK-LIST A-1 + A-2 + QC D14 + D20.** §E and every §A/§B/§C
+>    row the delivered Fuse suite carries are now **ENGINE==FUSE** — verbatim transcriptions in
+>    `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json` (≥2 independent sources per
+>    value; the two Forensic reports verified row-identical), gate
+>    `tests/parity/test_fuse_export_parity.py` (9 tests; UID-exact where Fuse publishes a
+>    per-activity list). Two divergences asserted exactly, never forced: the no-longer-critical
+>    **96↔99** membership swap (stored vs pure-CPM critical basis; both count 41 in P2) and Net
+>    Finish Impact **−148 (CPM) vs −134 (Fuse, stored)**, reconciled to the day. F-01 CLOSED;
+>    marker test now enforces the upgrade. Rows NOT in the suite (DCMA-04/10/12/13, composite
+>    scores) stay transcription-basis, labeled per-row in PARITY-REPORT.md.
+> 3. **Still missing (ask the operator):** a fresh SSI Directional-Path export for
+>    `Project5_TAMPERED.mpp` (+ focus UID) — retires the suite's only 2 xfails (A-5); SSI's
+>    recorded focus UID for `Large_Test_File.mpp` (A-4); a Fuse export of a schedule containing an
+>    **elapsed in-progress activity** (D7 — the P2-P5 pair has none); the F-14 threshold-citation
+>    sweep now that the NASA handbooks are in the intake (A-8 partial).
+> 4. Suite state at handoff: full gate + `pytest -m parity` green (incl. the 9 new ENGINE==FUSE
+>    tests); 2 xfails (stale `ssi_uid143`, A-5); wheel + 9 installers regenerated in lockstep
+>    (packaged sources changed: app.py, app.css, help.py, float_bands.py, change_metrics.py).
+
+> ## STATUS (current) — true Fuse parity + briefing table fix (ADR-0151)
+>
+> The delivered export suite was mined per PARK-LIST §D. Everything the suite carries is now
+> validated ENGINE==FUSE (see NEXT SESSION block above for the full result set); the briefing
+> column-crush regression from ADR-0150's containment override is fixed and pinned
+> (`test_briefing_tables_are_never_column_crushed`). Ledgers refreshed: VERIFICATION-REPORT
+> (F-01 CLOSED, D14/D20 CLOSED, D7 still artifact-gated), PARK-LIST addendum, risks R-02,
+> PARITY-REPORT (§E table rewritten with per-row Fuse provenance; three stale §A/§B P5 cells
+> corrected to the case.json values: DCMA01 4/5, Hard Constraints 0/1).
+
+> ## STATUS (prev) — operator work order: effective-critical basis + forensics + UI (ADR-0150)
+>
+> The operator ran the tool on real files and filed a 17-item work order. Headline engine fix:
+> path displays (evolution/briefing/brief/counterfactual/grid Critical) moved from the pure-logic
+> CPM critical set to the **progress-aware effective basis** (`effective_critical_set`, stored
+> Critical flag first) — on the operator's Large file the old basis showed **2** activities where
+> MSP flags 33 and the driving path to UID 152 carries **76** incomplete 0-slack tasks (verified
+> both ways; goldens = the Acumen-validated 41/4; parity gate untouched). Focused evolution now
+> evolves the **driving path to the target**; `completed_on_path` records what finished on the
+> path each period. Also: SRA "cannot pickle mappingproxy" fixed (`Schedule.__getstate__`);
+> `manipulation_forensics_facts` gives the Q&A cited answers to "what was shortened / what would
+> reverting the edits do"; gantt uniformity/fit/sticky/filters/dates-on-bars; MM/DD/YYYY display
+> dates (AI-layer text stays ISO for the figure gate); provenance lines; expandable truncations;
+> scatter analysis; erosion custom-WBS-field picker; margin wording; briefing overlap+density.
+> See ADR-0150 for the full decision record.
+>
+> ## STATUS (prev) — the operator's "continuous popup" TRULY root-caused: console-window spawns (ADR-0149)
+>
+> Third report of "popup on open, continues until quit" — NOT the browser overlay after all. The
+> deployed app runs windowless (pythonw); the ADR-0147 telemetry loop spawns `nvidia-smi`/
+> `powershell` every 5 s **without CREATE_NO_WINDOW** → a black console window flashes
+> continuously from open to quit (and the Java converter flash during file loads is why it
+> "looks like the loading image"). Fixed: `creationflags=_NO_WINDOW` + `stdin=DEVNULL` on all 5
+> spawns in `web/system.py` + the Quit-time `taskkill` in `ai/ollama_process.py`; repo-wide AST
+> guard `tests/test_windowless_subprocess.py` (it immediately caught the taskkill site); version
+> **1.0.2**; wheel + 9 installers regenerated (embedded fix verified). Operator must install the
+> 1.0.2 installer. ADR-0149.
+>
+> **Reference artifacts delivered by the operator (repo-tracked via GitHub web upload):** the
+> `.aft` Bible (live-Bible audit RUNS + PASSES), the Fuse Forensic Analysis comparison export
+> (P2-vs-P5_TAMPERED, 7/7/2026 — the A-1 §E source), and **five native `.mpp` files** under
+> `00_REFERENCE_INTAKE/mpp/` (Project2/3/4/5_TAMPERED + `Large Test File.mpp`). Naming gaps for
+> the next upload: tests probe `Project5.mpp` (upload the tampered file again under that name)
+> and `Large_Test_File.mpp` (underscores). **NEXT: PARK-LIST A-6 (.mpp round-trips — chain tests
+> now live), A-1 (mine the Fuse export), A-3 extension.**
+>
+> ## STATUS (prev) — stuck-overlay "not fixed" root-caused: deployment freshness (ADR-0148)
+>
+> Operator: the PR #284 overlay fix "did not fix it." Investigation (wheel autopsy + live Chromium
+> repro + caching audit) proved the fix was CORRECT but **never reached the deployment**: (1) the
+> nine installers embedded a wheel built 14 h BEFORE the fix commit — a reinstall reinstalled the
+> bug, and the installer tests only pinned the version STRING (unchanged 1.0.0), so nothing failed;
+> (2) `/static` sends no Cache-Control and installs run a FIXED port, so a browser can heuristically
+> serve a stale `home.js` for days even after a good upgrade. Fixed (ADR-0148): `_bust_static()`
+> version-busts every `/static` URL at `_page()` render (`?v=<pkg version>`), `Cache-Control:
+> no-cache` on `/static/*` in the `_liveness` middleware, **wheel↔source lockstep test**
+> (`test_embedded_wheel_is_in_lockstep_with_the_source_tree` byte-compares the embedded wheel to
+> `src/` both directions — a source change without regeneration now fails the gate), version bumped
+> **1.0.1**, wheel + all 9 installers regenerated from post-fix source (embedded `home.js` verified
+> to carry `pageshow`). Regeneration command (now gate-forced when packaged source changes):
+> `python -m build --wheel --outdir dist/wheel && python tools/installer/build_installers.py
+> dist/wheel/schedule_forensics-*.whl`.
+>
+> **ALSO: the operator delivered the first reference artifacts** (committed to the repo via GitHub
+> web upload, bypassing the local guard — operator's call, confirmed non-CUI):
+> `00_REFERENCE_INTAKE/NASA Metrics_Complete_20260423.aft` (the Bible — unblocks PARK-LIST A-3
+> literal formula validation; the live-Bible test stops skipping) and `00_REFERENCE_INTAKE/Project2
+> vs Project5_TAMPERED Forensic Analysis Report.xlsx` (likely feeds A-1/A-2 §E + per-file
+> re-validation). **NEXT SESSION: run the A-3 live-Bible pass + mine the xlsx per PARK-LIST §D.**
+>
+> ## STATUS (prev) — telemetry fixed for the operator's machine (ADR-0147)
 >
 > Operator reported CPU/RAM/VRAM/disk/GPU readouts broken. Live Chromium verification showed
 > the ADR-0146 JS mechanics fine on Linux — the real defects were platform coverage:

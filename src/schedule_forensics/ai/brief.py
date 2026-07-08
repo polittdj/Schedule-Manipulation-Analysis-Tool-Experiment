@@ -25,6 +25,7 @@ from schedule_forensics.engine.dcma_audit import Citation
 from schedule_forensics.engine.forecast import compute_finish_forecasts
 from schedule_forensics.engine.manipulation import detect_manipulation
 from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.engine.path_evolution import effective_critical_set
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.reports.tables import Table
@@ -193,9 +194,11 @@ def _questions_section(schedules: list[Schedule], cpms: list[CPMResult]) -> Brie
 
 
 def _incomplete_critical(schedule: Schedule, cpm: CPMResult) -> int:
-    """Count of incomplete activities on the critical path — the size of the at-risk path."""
-    by_id = schedule.tasks_by_id
-    return sum(1 for uid in cpm.critical_path if uid in by_id and not by_id[uid].is_complete)
+    """Count of incomplete activities on the critical path — the size of the at-risk path.
+
+    Progress-aware effective basis (stored Critical flag first, ADR-0150): the pure-logic
+    CPM set understates the at-risk path on a heavily progressed file (ADR-0108 gap)."""
+    return len(effective_critical_set(schedule, cpm))
 
 
 def _negative_float(schedule: Schedule, cpm: CPMResult) -> list[Task]:

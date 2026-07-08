@@ -424,7 +424,9 @@ def test_evolution_data_handles_activities_absent_from_a_version(monkeypatch) ->
             _ev_snap(label="v2", critical=(999,), left=(888,), left_changes=(left_change,)),
         ]
     )
-    monkeypatch.setattr(appmod, "compute_path_evolution", lambda schedules, cpms: evo)
+    monkeypatch.setattr(
+        appmod, "compute_path_evolution", lambda schedules, cpms, target_uid=None: evo
+    )
     data = _evolution_data([s0, s1], cpms, None)
     snaps = data["snapshots"]
     assert isinstance(snaps, list) and len(snaps) == 2

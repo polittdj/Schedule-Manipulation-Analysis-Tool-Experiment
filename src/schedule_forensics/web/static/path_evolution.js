@@ -86,7 +86,12 @@
     }
     return lines.length ? lines : [""];
   }
-  function fmtDate(iso) { return iso ? String(iso) : "—"; }
+  // dates read MM/DD/YYYY like every other Gantt (shared SFGantt.fmtMDY; data stays ISO)
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    var s = String(iso);
+    return (window.SFGantt && SFGantt.fmtMDY(s)) || s;
+  }
 
   function callout(snap) {
     var c = el("div", "ev-callout");

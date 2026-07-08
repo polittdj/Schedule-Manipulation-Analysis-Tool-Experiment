@@ -68,29 +68,30 @@
 .g-done { height: 100%; background: var(--gantt-done); border-radius: 3px 0 0 3px; }
 .g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--gantt-ms); transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
-/* MS-Project "dates on bars": compact start/finish text at the ends of each bar / milestone */
-.g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color: var(--muted); white-space: nowrap; pointer-events: none; }
-.g-barlabel-s { transform: translateX(-100%); padding-right: 3px; }
+/* MS-Project "dates on bars": compact MM/DD/YYYY start/finish text at the ends of each bar /
+   milestone. app.js sets an explicit left+width CLAMPED inside the track, so a label at either
+   edge is no longer clipped by the track's overflow:hidden; the alignment hugs the bar end. */
+.g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; pointer-events: none; }
+.g-barlabel-s { text-align: right; }
+.g-barlabel-f { text-align: left; }
 /* Find-a-UID lands the row here and keeps it highlighted until the next search */
 #grid tr.row-found td { background: #fff3b0; }
 #grid tr.sum td { color: var(--sum-ink); font-weight: 600; }
 #grid .filter-row td { padding: 2px 4px; }
 #grid .filter-row input { width: 100%; min-width: 56px; font-size: 12px; padding: 3px 6px; }
 .gantt-bar.done { opacity: .45; }
-.gantt-row.done span { color: var(--muted); text-decoration: line-through; }
 #gantt .g-ms { position: absolute; top: 2px; width: 9px; height: 9px; transform: translateX(-50%) rotate(45deg); }
 #gantt .g-ms.tier-DRIVING { background: var(--bad); } #gantt .g-ms.tier-SECONDARY { background: var(--warn); }
 #gantt .g-ms.tier-TERTIARY { background: var(--accent); } #gantt .g-ms.tier-BEYOND { background: var(--beyond); }
-/* Driving-path trace: a SCALABLE px-per-day Gantt (matches /path) — a name column + a
-   fixed-px timeline track per row, all wrapped in one horizontal scroller so the rows scroll
-   together at the chosen zoom. Full wrapped task names (no truncation). */
-.gantt-scroll { overflow-x: auto; margin-top: 4px; }
-.gantt-row { display: flex; gap: 8px; align-items: flex-start; margin: 2px 0; font-size: 12px; width: max-content; }
-.gantt-head { align-items: flex-end; }
-.gantt-name { flex: 0 0 220px; white-space: normal; word-break: break-word; line-height: 1.3; }
-.gantt-scale { position: relative; height: 18px; flex: 0 0 auto; }
-.gantt-track { position: relative; height: 14px; background: var(--gantt-canvas); border-radius: 3px; flex: 0 0 auto; }
+/* Driving-path trace (#gantt): the SAME table-based gantt-grid as every other grid, wrapped in
+   a capped scroll pane so its sticky thead + frozen data columns behave exactly like #grid /
+   .path-view. Completed rows read muted with the name struck through (the old flex-row look). */
+.gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 80vh; margin-top: 4px; }
+.trace-grid tr.done td { color: var(--muted); }
+.trace-grid tr.done td.name-cell { text-decoration: line-through; }
 .gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
+/* trace bars sit inside the shared 13px .g-track — trim them like the activity-grid bars */
+.trace-grid .gantt-bar { top: 2px; height: 9px; }
 /* tier colors apply to the BARS only — the legend text uses the color rules below
    (an unscoped background made the legend labels same-color-on-same-color: invisible) */
 .gantt-bar.tier-DRIVING { background: var(--bad); }
@@ -161,7 +162,6 @@
 .evo-gantt svg { background: var(--gantt-canvas); display: block; }
 /* summary rows: dark + bold on every Gantt grid (the activity grid, the SSI grid, the trace) */
 .gantt-grid tr.sum td, #grid tr.sum td { color: var(--sum-ink); font-weight: 700; }
-.gantt-row.sum .gantt-name, .gantt-row.summary .gantt-name { color: var(--sum-ink); }
 
 /* OPERATOR density pass: pack ~3x more tasks per page on the Gantt/activity grids — small font,
    tight rows, BOLD summary rows, and gridlines between every row AND column (the font/spacing the
@@ -178,20 +178,9 @@
 .g-ms { top: 3px; }
 #grid .filter-row td { padding: 1px 3px; }
 #grid .filter-row input { font-size: 11px; padding: 1px 4px; }
-/* driving-path trace + path workspace: same tight, gridlined, bold-summary look */
-.gantt-row { font-size: 11px; margin: 0; border-bottom: 1px solid var(--line); align-items: stretch; }
-.gantt-row.gantt-head { border-bottom: 2px solid var(--gantt-grid-yr); }
-.gantt-row.sum .gantt-name, .gantt-row.summary .gantt-name { font-weight: 700; }
-.gantt-name { line-height: 1.2; padding: 1px 0; }
-.gantt-track { height: 13px; }
-/* the extra trace columns (Dur / Start / Finish / Driving slack) the operator asked for */
-.gantt-cols { display: flex; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
-.gantt-col { flex: 0 0 auto; padding: 1px 5px; border-left: 1px solid var(--line);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
-.gantt-col.c-dur { width: 46px; text-align: right; }
-.gantt-col.c-date { width: 70px; }
-.gantt-col.c-slack { width: 62px; text-align: right; }
-.gantt-head .gantt-col { color: var(--muted); font-weight: 600; }
+/* driving-path trace: the numeric Dur/Start/Finish/Driv-slack cells read tabular (the trace
+   now shares the .gantt-grid table density/gridlines with every other grid) */
+.trace-grid td { font-variant-numeric: tabular-nums; }
 .path-grid { font-size: 11px; }
 .path-grid th, .path-grid td { padding: 1px 6px; border-right: 1px solid var(--line); }
 .path-grid tr.sum td, .path-grid tr.summary td { font-weight: 700; }
@@ -271,13 +260,14 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
 .brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
 .brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
-/* Readability guard (operator report 2026-07-08): the citation column must WRAP — nowrap let one
-   long "Task name (UID n, file.mpp)" hog the card and crush every other column to one character
-   per line. min-widths stop any cell collapsing below readability; when a table's minimums
-   genuinely exceed the card, .brief-scroll gives it a horizontal scrollbar instead of a squeeze. */
+/* Readability guards, both halves (operator screenshots 2026-07-07 + 2026-07-08): the citation
+   column WRAPS inside a bounded block (nowrap let one long "Task name (UID n, file.mpp)" force
+   the table wide, and auto-layout then crushed every other column to one-character verticals);
+   per-cell min-widths stop any column collapsing below readability; overflow-wrap here is
+   intrinsic-size-safe (NOT word-break:break-word, which re-crushes — pinned by tests). When a
+   table's minimums genuinely exceed the card, .brief-scroll scrolls it instead of squeezing. */
 .brief-table td { overflow-wrap: break-word; min-width: 3.5em; }
-.brief-table td.cite { color: var(--muted); font-size: 11px; white-space: normal;
-  overflow-wrap: anywhere; min-width: 16em; }
+.brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; overflow-wrap: anywhere; }
 .brief-scroll { overflow-x: auto; }
 .brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
@@ -644,3 +634,35 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 #sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }
 .chart h3, #gantt h3 { font-size: 11px; }
 .bar-row { font-size: 11px; }
+
+/* ── Trends-animation package (append-only): Mission-Control-style controls on the dedicated
+   chart pages. Per-chart ⛶ Enlarge / ▦ Data reuse the wall's tile-expand / tile-data button
+   styling; multi-file charts add a ‹ Prev / ▶ Play / Next › stepper with a "file X of N —
+   name (data date …)" provenance label, and #sfPlayAll / #sfStepAll drive every stepper in
+   lockstep (the mission.js pattern). ── */
+.sf-chart-controls { margin: 6px 0; row-gap: 4px; }
+.sf-chart-controls .sf-frame-prev, .sf-chart-controls .sf-frame-next,
+.sf-chart-controls .sf-frame-play {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 1px 9px; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.sf-frame-label { font-size: 12px; color: var(--muted); }
+.sf-master-controls { position: sticky; top: 0; z-index: 5; }
+/* a chart on the Trend page's flex wall enlarges to the full row… */
+.charts .chart.tile-expanded { flex-basis: 100%; max-width: none; }
+/* …and a standalone panel chart (curves / margin / scatter shells) lifts into a
+   near-full-viewport overlay so it can actually get bigger than its panel */
+.sf-tilebox.tile-expanded {
+  position: fixed; inset: 4vh 3vw; z-index: 60; background: var(--panel);
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; overflow: auto;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, .45);
+}
+/* the per-chart ▦ Data toggle un-hides that chart's .sr-only data table in place —
+   the same reveal the wall's tiles use, for hosts that are not .tile */
+.show-data .sr-only { position: static !important; width: auto !important; height: auto !important;
+  clip: auto !important; white-space: normal !important; margin: 8px 0 0 !important; overflow: auto !important;
+  max-height: 260px; border: 1px solid var(--line); border-radius: 6px; display: block; }
+.show-data .sr-only caption { text-align: left; font-size: 12px; color: var(--muted); padding: 4px 6px; }
+.show-data .sr-only th, .show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
+/* the current animation frame's dashed guide on a locked version axis */
+.sf-frame-guide { opacity: .8; }

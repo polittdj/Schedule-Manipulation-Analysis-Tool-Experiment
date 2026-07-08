@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import datetime as dt
 import html
+import importlib.metadata
 import json
 import logging
 import math
@@ -60,6 +61,7 @@ from schedule_forensics.ai.qa import (
     build_fact_sheet,
     build_workbook_fact_sheet,
     figure_agreement,
+    manipulation_forensics_facts,
 )
 from schedule_forensics.engine import (
     analyze_floats,
@@ -115,7 +117,13 @@ from schedule_forensics.engine.metrics import (
     compute_schedule_quality,
     compute_wbs_breakdown,
 )
-from schedule_forensics.engine.metrics._common import MetricResult, non_summary
+from schedule_forensics.engine.metrics._common import (
+    MetricResult,
+    effective_total_float,
+    is_effective_critical,
+    non_summary,
+    percent,
+)
 from schedule_forensics.engine.metrics.constraint_health import compute_constraint_health
 from schedule_forensics.engine.metrics.evm import (
     compute_evm_indices,
@@ -182,6 +190,7 @@ from schedule_forensics.importers import (
     to_json_text,
 )
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import Task
 from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
 from schedule_forensics.reports.docx import (
     Block,
@@ -229,6 +238,22 @@ logger = logging.getLogger("schedule_forensics.web")
 
 #: Locally-vendored static assets (CSS/JS) — served from /static; no CDN, no external fetch.
 _STATIC_DIR = Path(__file__).parent / "static"
+try:  # the installed package version, used to cache-bust static asset URLs on upgrade
+    _ASSET_VERSION = importlib.metadata.version("schedule-forensics")
+except importlib.metadata.PackageNotFoundError:  # running from a raw source tree
+    _ASSET_VERSION = "dev"
+#: /static/<asset> not already carrying a query — rewritten to /static/<asset>?v=<version> at the
+#: page-render boundary. Deployed installs serve a FIXED port, so the browser cache origin
+#: persists across upgrades; without a versioned URL a browser may serve a heuristically-cached
+#: stale JS/CSS (StaticFiles sends no Cache-Control) and an upgraded tool keeps OLD behavior.
+_STATIC_REF = re.compile(r"(/static/[A-Za-z0-9_.\-]+)(?![A-Za-z0-9_.\-?])")
+
+
+def _bust_static(html_text: str) -> str:
+    """Append ``?v=<package version>`` to every static asset URL in a rendered page."""
+    return _STATIC_REF.sub(rf"\1?v={_ASSET_VERSION}", html_text)
+
+
 #: Bundled, non-CUI sample schedule for the "Load example" button.
 _EXAMPLE = Path(__file__).parent / "examples" / "house_build.json"
 #: File types the open/import picker accepts.
@@ -254,7 +279,27 @@ _LAYOUT = Template(
 <script src="/static/colresize.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
-<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"></head><body>
+<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css">
+<style>
+/* Density + containment overrides (operator request, ADR-0150): tighter spacing everywhere,
+   and grid/table containment so wide tables scroll inside their card instead of overlapping
+   the neighbouring column (the Executive Briefing 3-column blowout). */
+.panel{padding:10px 14px;margin:10px 0}
+.panel h2{margin:.15em 0 .35em}
+.panel h3{margin:.5em 0 .25em}
+td,th{padding:3px 8px}
+p{margin:.4em 0}
+p.muted{margin:.3em 0}
+.brief-card,.brief-cards .panel,.dash-card,.stat-card{min-width:0}
+.brief-card{overflow-x:auto}
+.brief-card table{width:100%}
+/* Never let table auto-layout crush columns into vertical one-character text: headers stay on
+   one line, data cells wrap at word boundaries only, and a too-wide table scrolls inside its
+   card (overflow-x above) instead of squeezing its columns. */
+.brief-card th{white-space:nowrap}
+.brief-card td{overflow-wrap:break-word;word-break:normal}
+.cite{overflow-wrap:break-word}
+</style></head><body>
 <div class="cui-banner {{ cui_class }}" data-no-i18n>{{ cui_text }}</div>
 <details class=compliance-drawer id=complianceDrawer>
 <summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
@@ -583,7 +628,7 @@ def _filter_banner(state: SessionState) -> str:
         shown = (
             "(populated)"
             if not vals
-            else _e(", ".join(vals[:3]) + (f" +{len(vals) - 3}" if len(vals) > 3 else ""))
+            else _expandable_more(_e(", ".join(vals[:3])), [_e(v) for v in vals[3:]])
         )
         parts.append(f"{_e(fld)} = {shown}")
     chips = " &middot; ".join(parts)
@@ -1156,30 +1201,35 @@ def _page(
         if classified
         else "Unclassified • no CUI controls asserted"
     )
+    # _bust_static: version-bust every /static URL so an upgraded install can never keep
+    # executing a stale browser-cached JS/CSS (the fixed-port deployment reuses the same
+    # cache origin across restarts, and StaticFiles alone sends no Cache-Control).
     return HTMLResponse(
-        _LAYOUT.render(
-            # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
-            # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
-            # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
-            # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
-            # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
-            title=_e(title),
-            banner=_banner_html(state),
-            body=(
-                _filter_banner(state)
-                + _endpoint_banner(state)
-                + _page_explainer(title)
-                + body
-                + _ask_panel_html(state, ask_schedule)
-            ),
-            target=state.target_uid if state.target_uid is not None else "",
-            lang=lang,
-            lang_json=json.dumps(lang),
-            # the catalog is only shipped to the client when not English (no payload for en)
-            catalog_json=json.dumps(i18n.catalog_for(lang)),
-            lang_options=lang_options,
-            cui_class=cui_class,
-            cui_text=cui_text,
+        _bust_static(
+            _LAYOUT.render(
+                # _LAYOUT is a bare jinja2.Template (autoescape=False) because `body`/`banner` are
+                # already-built raw HTML; `title` is the one untrusted plain-text value (derived from the
+                # uploaded filename via _clean_key), so escape it here at the boundary to close the latent
+                # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
+                # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
+                title=_e(title),
+                banner=_banner_html(state),
+                body=(
+                    _filter_banner(state)
+                    + _endpoint_banner(state)
+                    + _page_explainer(title)
+                    + body
+                    + _ask_panel_html(state, ask_schedule)
+                ),
+                target=state.target_uid if state.target_uid is not None else "",
+                lang=lang,
+                lang_json=json.dumps(lang),
+                # the catalog is only shipped to the client when not English (no payload for en)
+                catalog_json=json.dumps(i18n.catalog_for(lang)),
+                lang_options=lang_options,
+                cui_class=cui_class,
+                cui_text=cui_text,
+            )
         ),
         status_code=status_code,
     )
@@ -1239,6 +1289,26 @@ def _e(text: object) -> str:
     return html.escape(str(text))
 
 
+def _mdY(value: dt.date | dt.datetime | str | None) -> str:
+    """A displayed date as ``MM/DD/YYYY`` (operator convention), never a time-of-day.
+
+    Accepts a date, a datetime (time dropped), or an ISO ``YYYY-MM-DD[Txx]`` string; ``None``
+    or an unparsable string renders as an em dash. Data payloads/exports stay ISO — this is
+    the presentation boundary only."""
+    if value is None:
+        return "—"
+    if isinstance(value, str):
+        try:
+            parsed: dt.date = dt.date.fromisoformat(value[:10])
+        except ValueError:
+            return value
+    elif isinstance(value, dt.datetime):
+        parsed = value.date()
+    else:
+        parsed = value
+    return f"{parsed.month:02d}/{parsed.day:02d}/{parsed.year:04d}"
+
+
 def _user_tip(text: str) -> str:
     """A small, consistent "User Tip" call-out to guide the operator on a page or control.
 
@@ -1249,6 +1319,38 @@ def _user_tip(text: str) -> str:
     return (
         '<p class="user-tip" role="note"><span class="ut-badge">User Tip</span> '
         f"<span>{text}</span></p>"
+    )
+
+
+def _sources_line(schedules: Sequence[Schedule]) -> str:
+    """The provenance line every multi-file visual carries (ADR-0150): which loaded file(s)
+    the data on this page is drawn from, so the operator always knows what they are looking
+    at — one name for a single file, the full list for a mix."""
+    names = [_e(s.source_file or s.name) for s in schedules]
+    if not names:
+        return ""
+    if len(names) == 1:
+        return f"<p class=muted>Source file: <b>{names[0]}</b></p>"
+    return (
+        f"<p class=muted>Sources ({len(names)} files, oldest first): <b>"
+        + "</b>, <b>".join(names)
+        + "</b></p>"
+    )
+
+
+def _expandable_more(shown_html: str, hidden_items: list[str]) -> str:
+    """``shown … <details>+N more</details>`` — every truncated list is expandable in place.
+
+    ``shown_html`` is already-escaped/authored HTML for the visible prefix; ``hidden_items``
+    are the already-escaped overflow entries. The operator asked that "(+N more)" never be a
+    dead end — the full list opens inline (native ``<details>``, no JS, air-gap safe)."""
+    if not hidden_items:
+        return shown_html
+    return (
+        f'{shown_html} <details class=more-inline style="display:inline-block">'
+        f'<summary style="display:inline;cursor:pointer" class=btn-link>+{len(hidden_items)}'
+        " more</summary> "
+        f"<span>{', '.join(hidden_items)}</span></details>"
     )
 
 
@@ -1327,6 +1429,12 @@ def create_app(
             response: Response = await call_next(request)
             for key, value in _SECURITY_HEADERS.items():
                 response.headers.setdefault(key, value)  # CSP/nosniff on every response (Law 1)
+            if request.url.path.startswith("/static/"):
+                # Always revalidate vendored assets (cheap 304s stay). StaticFiles sends no
+                # Cache-Control, so browsers heuristically cache JS/CSS — after an upgrade a
+                # deployed install (fixed port = same cache origin) could keep executing the
+                # OLD asset for days. Belt to the ?v= cache-busting braces in _bust_static.
+                response.headers.setdefault("Cache-Control", "no-cache")
             return response
         finally:
             app.state.active_requests -= 1
@@ -1519,7 +1627,7 @@ def create_app(
         return RedirectResponse(url="/", status_code=303)
 
     @app.get("/analysis/{name}", response_class=HTMLResponse)
-    def analysis(name: str) -> HTMLResponse:
+    def analysis(name: str, erosion_field: str | None = Query(None)) -> HTMLResponse:
         st = session()
         sch = st.schedules.get(name)
         if sch is None:
@@ -1542,7 +1650,7 @@ def create_app(
         return _page(
             st,
             name,
-            bar + _analysis_body(name, sch, analysis, st.target_uid),
+            bar + _analysis_body(name, sch, analysis, st.target_uid, erosion_field=erosion_field),
             ask_schedule=name,
         )
 
@@ -1697,7 +1805,9 @@ def create_app(
                 "Mission Control",
                 "<div class=panel>Load a schedule to populate the visual wall.</div>",
             )
-        return _page(st, "Mission Control", _mission_body(st.target_uid))
+        return _page(
+            st, "Mission Control", _sources_line(st.ordered()) + _mission_body(st.target_uid)
+        )
 
     @app.get("/compare", response_class=HTMLResponse)
     def compare() -> HTMLResponse:
@@ -1720,6 +1830,7 @@ def create_app(
         body = (
             _export_bar("compare")
             + _skipped_notice(skipped)
+            + _sources_line([prior, current])
             + _compare_body(prior, current, cpms[-2], cpms[-1])
         )
         if st.target_uid is not None:
@@ -1848,6 +1959,9 @@ def create_app(
         try:
             facts = _schedule_facts(st, name, sch)
             facts += driving_path_facts(sch, st.analysis_for(name, sch).cpm, text)
+            schedules, cpms, _skipped = _solvable_versions()
+            if len(schedules) >= 2:
+                facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return _ask_response(st, facts, text)
@@ -1875,6 +1989,10 @@ def create_app(
         # driving-path questions resolve against the newest analyzable version
         facts = build_workbook_fact_sheet(schedules, cpms)
         facts += driving_path_facts(schedules[-1], cpms[-1], text)
+        # cross-version manipulation forensics (ADR-0150): duration cuts on the driving/
+        # critical path, the reverted-changes counterfactual, the focus's baseline variance —
+        # so "what was shortened to keep UID X from slipping?" is answerable with citations
+        facts += manipulation_forensics_facts(schedules, cpms, target_uid=st.target_uid)
         return _ask_response(st, facts, text)
 
     @app.get("/api/driving-path")
@@ -1940,7 +2058,10 @@ def create_app(
         return _page(
             st,
             "Trend",
-            _export_bar("trend") + _skipped_notice(skipped) + _trend_body(schedules, cpms, uid),
+            _export_bar("trend")
+            + _skipped_notice(skipped)
+            + _sources_line(schedules)
+            + _trend_body(schedules, cpms, uid),
         )
 
     @app.get("/api/trend")
@@ -2014,7 +2135,11 @@ def create_app(
             wave = compute_bow_wave(st.ordered(), st.target_uid)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "Bow Wave / CEI", _export_bar("cei") + _cei_body(wave, st.target_uid))
+        return _page(
+            st,
+            "Bow Wave / CEI",
+            _export_bar("cei") + _sources_line(st.ordered()) + _cei_body(wave, st.target_uid),
+        )
 
     @app.get("/api/cei")
     def cei_json() -> JSONResponse:
@@ -2104,6 +2229,7 @@ def create_app(
             "Critical-Path Evolution",
             _export_bar("evolution")
             + _skipped_notice(skipped)
+            + _sources_line(schedules)
             + _evolution_body(schedules, cpms, uid, tier),
         )
 
@@ -2241,7 +2367,11 @@ def create_app(
             curves = compute_month_curves(versions)
         except ValueError as exc:
             return _page(st, "Finish & Slippage", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "Finish & Slippage", _export_bar("curves") + _curves_body(curves))
+        return _page(
+            st,
+            "Finish & Slippage",
+            _export_bar("curves") + _sources_line(versions) + _curves_body(curves),
+        )
 
     @app.get("/api/curves")
     def curves_json(hide_complete: bool = Query(False)) -> JSONResponse:
@@ -2385,7 +2515,8 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
-        ev = compute_path_evolution(schedules, cpms)
+        # match the on-screen view: honour the session-wide focused UID (driving-path basis)
+        ev = compute_path_evolution(schedules, cpms, target_uid=session().target_uid)
         return _export_response(
             fmt,
             TableSet("Critical-path evolution", path_evolution_tables(ev)),
@@ -3722,7 +3853,7 @@ def _carnac_cards(summary: CarnacSummary) -> str:
     """The deck's Carnac KPI card row (PBIX page 13) over the latest version."""
 
     def d(value: dt.date | None) -> str:
-        return value.isoformat() if value is not None else "—"
+        return _mdY(value)
 
     def n(value: float | None, *, suffix: str = "") -> str:
         return f"{value:g}{suffix}" if value is not None else "—"
@@ -3789,7 +3920,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
             f'<line x1="{ax:.1f}" y1="{pad_t - 12}" x2="{ax:.1f}" y2="{bottom}" '
             'style="stroke:var(--muted)" stroke-width="1.5" stroke-dasharray="2 3"/>'
             f'<text x="{ax:.1f}" y="{pad_t - 16}" text-anchor="middle" '
-            f'style="fill:var(--muted)" font-size="11">data date {fc.as_of.isoformat()}</text>'
+            f'style="fill:var(--muted)" font-size="11">data date {_mdY(fc.as_of)}</text>'
         )
     if fc.planned_finish is not None:
         px = x(fc.planned_finish)
@@ -3797,7 +3928,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
             f'<line x1="{px:.1f}" y1="{pad_t - 12}" x2="{px:.1f}" y2="{bottom}" '
             'style="stroke:var(--warn)" stroke-width="2" stroke-dasharray="5 4"/>'
             f'<text x="{px:.1f}" y="{pad_t - 30}" text-anchor="middle" '
-            f'style="fill:var(--warn)" font-size="11">baseline {fc.planned_finish.isoformat()}</text>'
+            f'style="fill:var(--warn)" font-size="11">baseline {_mdY(fc.planned_finish)}</text>'
         )
     for i, (name, mid, d) in enumerate(lanes):
         cy = pad_t + row_h * i + row_h / 2
@@ -3813,7 +3944,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
             parts.append(
                 f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6" style="fill:{color}"/>'
                 f'<text x="{cx:.1f}" y="{cy - 11:.1f}" text-anchor="middle" '
-                f'style="fill:var(--ink)" font-size="11">{d.isoformat()}</text>'
+                f'style="fill:var(--ink)" font-size="11">{_mdY(d)}</text>'
             )
         else:
             parts.append(
@@ -3837,7 +3968,7 @@ def _forecast_ruler(fc: ForecastSet) -> str:
         lo_m, hi_m = min(method_dates), max(method_dates)
         spread = (
             f"<p class=muted>The methods span <b>{(hi_m - lo_m).days} days</b> "
-            f"({lo_m.isoformat()} &rarr; {hi_m.isoformat()}). A wide fan means the plan, the "
+            f"({_mdY(lo_m)} &rarr; {_mdY(hi_m)}). A wide fan means the plan, the "
             "throughput, and the earned-schedule performance disagree about the finish.</p>"
         )
     return f"<div id=forecastRuler>{''.join(parts)}{legend}</div>{spread}"
@@ -3852,7 +3983,7 @@ def _forecast_explainer(fc: ForecastSet) -> str:
 
     def fin(mid: str) -> str:
         f = by.get(mid)
-        return f.finish.isoformat() if (f is not None and f.finish is not None) else "&#8212;"
+        return _mdY(f.finish) if (f is not None and f.finish is not None) else "&#8212;"
 
     rate_txt = f"{fc.rate_per_month:g} / month" if fc.rate_per_month is not None else "n/a"
     spi_txt = f"{fc.spi_t:g}" if fc.spi_t is not None else "n/a"
@@ -3923,14 +4054,14 @@ def _forecast_body(
     by_id = latest_sch.tasks_by_id
     method_rows = "".join(
         f"<tr><th scope=col>{_e(f.name)}</th>"
-        f"<td><b>{f.finish.isoformat() if f.finish else '&mdash;'}</b></td>"
+        f"<td><b>{_mdY(f.finish) if f.finish else '&mdash;'}</b></td>"
         f"<td class=muted>{_e(f.basis)}</td></tr>"
         for f in latest.forecasts
     )
     inputs = "".join(
         f"<tr><th scope=col>{_e(label)}</th><td>{_e(value)}</td></tr>"
         for label, value in (
-            ("Data date", latest.as_of.isoformat() if latest.as_of else "none recorded"),
+            ("Data date", _mdY(latest.as_of) if latest.as_of else "none recorded"),
             ("Completed activities", latest.completed_count),
             ("To-go activities", latest.remaining_count),
             (
@@ -3943,7 +4074,7 @@ def _forecast_body(
             ("SPI(t)", f"{latest.spi_t:g}" if latest.spi_t is not None else "n/a"),
             (
                 "Baseline (planned) finish",
-                latest.planned_finish.isoformat() if latest.planned_finish else "n/a",
+                _mdY(latest.planned_finish) if latest.planned_finish else "n/a",
             ),
         )
     )
@@ -3954,10 +4085,8 @@ def _forecast_body(
     if len(sets) >= 2:
         drift_rows = "".join(
             f"<tr><td>{_e(sch.source_file or sch.name)}</td>"
-            f"<td>{fs.as_of.isoformat() if fs.as_of else '-'}</td>"
-            + "".join(
-                f"<td>{f.finish.isoformat() if f.finish else '&mdash;'}</td>" for f in fs.forecasts
-            )
+            f"<td>{_mdY(fs.as_of) if fs.as_of else '-'}</td>"
+            + "".join(f"<td>{_mdY(f.finish) if f.finish else '&mdash;'}</td>" for f in fs.forecasts)
             + "</tr>"
             for sch, fs in zip(schedules, sets, strict=True)
         )
@@ -4066,14 +4195,16 @@ or are now scheduled to (blue). Where the blue curve sits to the right of the go
 finish work, read month by month.</p>
 <div id=finishesChart class=chart-host></div></div>
 <div class=panel><h2>DATA Date Finishes &mdash; actual-finish curve per version</h2>
-<p class=muted>Each loaded version (oldest first by data date) plots its monthly actual/scheduled
-finish curve on one shared month axis. As later versions push their curves to the right, you
-see the bow wave of slipped finishes as a line family.</p>{multi}
+<p class=muted>One file per frame on a month axis held fixed across every file (ADR-0150):
+step or play through the loaded versions (oldest first by data date) and watch the finish
+curve slide right &mdash; the bow wave of slipped finishes. The frame label names the file
+you are looking at.</p>{multi}
 <div id=dataDateChart class=chart-host></div></div>
 <div class=panel><h2>Slippage &mdash; start &amp; finish curves per version</h2>
-<p class=muted>Per version: activities counted by their <b>start</b> month (solid) and their
-<b>finish</b> month (dashed). Start- and finish-curve drift across versions is the slippage
-signature &mdash; the whole profile sliding right.</p>
+<p class=muted>One file per frame (fixed month axis, ADR-0150): activities counted by their
+<b>start</b> month (solid) and <b>finish</b> month (dashed). Step or play through the versions
+&mdash; the whole profile sliding right is the slippage signature. The frame label names the
+file shown.</p>
 <div id=slippageChart class=chart-host></div></div>
 <script src="/static/timeaxis.js"></script>
 <script src="/static/curves.js"></script>"""
@@ -4113,8 +4244,10 @@ def _health_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
         offs = ""
         if c.offenders:
             shown = ", ".join(f"UID {u}" for u in c.offenders[:8])
-            more = f" +{c.count - 8} more" if c.count > 8 else ""
-            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+            hidden = [_e(f"UID {u}") for u in c.offenders[8:]]
+            if c.count > len(c.offenders):
+                hidden.append(f"&hellip; and {c.count - len(c.offenders)} beyond the citation cap")
+            offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         cards.append(
             f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
             f'<div class=finding-head><span class="rk-score {badge_cls}">{badge}</span> '
@@ -4194,14 +4327,33 @@ def _schedule_variance_panel(sch: Schedule) -> str:
 _EROSION_BADGE = {"green": "rk-min", "yellow": "rk-mod", "red": "rk-extreme"}
 
 
-def _float_erosion_panel(sch: Schedule, cpm: CPMResult) -> str:
+def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = None) -> str:
     """Float erosion by WBS (handbook Figs 7-34/7-35): per-top-level-WBS minimum / average total
-    float, critical count, and a stoplight on the group's minimum float — where buffer is thinning."""
-    fe = compute_float_erosion(sch, cpm)
+    float, critical count, and a stoplight on the group's minimum float — where buffer is thinning.
+
+    ``wbs_field`` (ADR-0150): the operator-chosen grouping field — any custom field (e.g. a
+    "CA-WBS" outline code) or the built-in WBS — selected via the panel's own form."""
+    from schedule_forensics.engine.grouping import available_fields
+
+    field = wbs_field if wbs_field else "WBS"
+    fe = compute_float_erosion(sch, cpm, wbs_field=field)
+    options = "".join(
+        f'<option value="{_e(f)}"{" selected" if f == field else ""}>{_e(f)}</option>'
+        for f in ["WBS", *sorted(x for x in available_fields(sch) if x != "WBS")]
+    )
+    picker = (
+        '<form method=get class=viz-controls style="margin:.3em 0">'
+        "<label>Group by field: "
+        f'<select name=erosion_field data-no-i18n onchange="this.form.submit()">{options}'
+        "</select></label> "
+        "<span class=muted>use a custom field (e.g. an outline code) if your WBS lives there</span>"
+        "</form>"
+    )
     if not fe.groups:
         return (
             "<div class=panel><h2>Float erosion by WBS</h2>"
-            "<p class=muted>No schedulable activities to group.</p></div>"
+            + picker
+            + "<p class=muted>No schedulable activities to group.</p></div>"
         )
     thr = f"{fe.low_float_threshold_days:g}"
     rows = []
@@ -4222,7 +4374,9 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
     return (
         "<div class=panel><h2>Float erosion by WBS</h2>"
-        "<p class=muted>Total float grouped by top-level WBS (NASA Schedule Management Handbook) "
+        + picker
+        + f"<p class=muted>Grouping field: <b>{_e(field)}</b> (top-level dotted segment). "
+        "Total float grouped by top-level WBS (NASA Schedule Management Handbook) "
         "&mdash; where buffer is thinning before the project-level margin is hit. The stoplight is on "
         f"each group's <b>minimum</b> total float: <b>red</b> below 0 (eroded / behind a constraint), "
         f"<b>amber</b> 0&ndash;{thr} working days (thin buffer), <b>green</b> above {thr}. Float is "
@@ -4247,8 +4401,10 @@ def _constraint_checks_panel(sch: Schedule, cpm: CPMResult) -> str:
         offs = ""
         if c.offenders:
             shown = ", ".join(f"UID {u}" for u in c.offenders[:8])
-            more = f" +{c.count - 8} more" if c.count > 8 else ""
-            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+            hidden = [_e(f"UID {u}") for u in c.offenders[8:]]
+            if c.count > len(c.offenders):
+                hidden.append(f"&hellip; and {c.count - len(c.offenders)} beyond the citation cap")
+            offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         pop = f"<span class=muted> of {c.population}</span>" if c.population else ""
         cards.append(
             f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
@@ -4274,8 +4430,10 @@ def _vertical_integration_panel(sch: Schedule) -> str:
     offs = ""
     if vi.offenders:
         shown = ", ".join(f"UID {u}" for u in vi.offenders[:8])
-        more = f" +{vi.count - 8} more" if vi.count > 8 else ""
-        offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+        hidden = [_e(f"UID {u}") for u in vi.offenders[8:]]
+        if vi.count > len(vi.offenders):
+            hidden.append(f"&hellip; and {vi.count - len(vi.offenders)} beyond the citation cap")
+        offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
     pop = f"<span class=muted> of {vi.population} summary group(s)</span>" if vi.population else ""
     note = (
         ""
@@ -4315,8 +4473,10 @@ def _logic_checks_panel(sch: Schedule) -> str:
         offs = ""
         if c.offenders:
             shown = ", ".join(c.offenders[:8])
-            more = f" +{c.count - 8} more" if c.count > 8 else ""
-            offs = f"<p class=cite>{_e(shown)}{_e(more)}</p>"
+            hidden = [_e(o) for o in c.offenders[8:]]
+            if c.count > len(c.offenders):
+                hidden.append(f"&hellip; and {c.count - len(c.offenders)} beyond the citation cap")
+            offs = f"<p class=cite>{_expandable_more(_e(shown), hidden)}</p>"
         pop = f"<span class=muted> of {c.population} link(s)</span>" if c.population else ""
         cards.append(
             f'<div class="finding sev-{"INFO" if ok else "MEDIUM"}">'
@@ -4347,16 +4507,19 @@ def _margin_panel(sch: Schedule, cpm: CPMResult) -> str:
             "Margin activities are identified by the operator convention: a non-summary activity "
             "whose name contains the word &ldquo;margin&rdquo; (case-insensitive).</p></div>"
         )
+    # plain text only — _stat_cards HTML-escapes the value, so an entity like &middot;
+    # renders literally (the operator saw "1 &middot; none on the critical path")
+    plural = "activities" if m.count != 1 else "activity"
     crit_note = (
-        f" &middot; {m.on_critical_count} on the critical path"
+        f"{m.on_critical_count} of {m.count} on the critical path"
         if m.on_critical_count
-        else " &middot; none on the critical path"
+        else f"{m.count} margin {plural} found; 0 on the critical path"
     )
     cards = _stat_cards(
         [
             ("Total margin", f"{m.total_margin_days:g} wd"),
             ("Effective margin", f"{m.effective_margin_days:g} wd"),
-            ("Margin activities", f"{m.count}{crit_note}"),
+            ("Margin activities", crit_note),
         ]
     )
     rows = "".join(
@@ -4381,15 +4544,71 @@ def _margin_panel(sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
-def _scatter_panel(key: str) -> str:
-    """An activity scatter (total float x duration) on the analysis page — a new visual type from
-    the handbook/decks. Pure presentation over the activity rows the grid already serves."""
+def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult) -> str:
+    """An activity scatter (total float x duration) on the analysis page, WITH the story
+    (ADR-0150): a written health analysis naming the pressure points — long, low-float
+    incomplete work — plus what the float distribution says about logic quality. Every figure
+    is engine-computed here; the chart (scatter.js) is presentation over the same rows."""
+    per_day = sch.calendar.working_minutes_per_day or 480
+    incomplete: list[tuple[float, float, Task]] = []
+    for task in non_summary(sch):
+        if task.percent_complete >= 100.0:
+            continue
+        timing = cpm.timings.get(task.unique_id)
+        recomputed = float(timing.total_float) if timing is not None else 0.0
+        tf_days = effective_total_float(task, recomputed) / per_day
+        dur_days = task.duration_minutes / (1440 if task.duration_is_elapsed else per_day)
+        incomplete.append((tf_days, dur_days, task))
+    n = len(incomplete)
+    story: str
+    pressure_rows = ""
+    if n:
+        critical = sum(1 for tf, _d, task in incomplete if tf <= 0)
+        thin = sum(1 for tf, _d, _t in incomplete if 0 < tf <= 10)
+        high = sum(1 for tf, _d, _t in incomplete if tf > 44)
+        # pressure points: the longest incomplete activities inside the thin-float band
+        pressure = sorted((x for x in incomplete if x[0] <= 10), key=lambda x: -x[1])[:5]
+        med = sorted(tf for tf, _d, _t in incomplete)[n // 2]
+        story = (
+            f"<p><b>What this data says:</b> of the <b>{n}</b> incomplete activities, "
+            f"<b>{critical}</b> ({percent(critical, n):.1f}%) have zero-or-negative float "
+            f"(no room to slip), <b>{thin}</b> more sit within 10 working days of it, and "
+            f"<b>{high}</b> ({percent(high, n):.1f}%) carry more than 44 wd of float "
+            "&mdash; float that high usually means missing logic (DCMA-06), not genuine "
+            f"slack. The median float is <b>{med:.0f} wd</b>. "
+            + (
+                "The schedule's ability to absorb a slip rests on how the low-float band "
+                "is managed; the table below names the biggest pressure points &mdash; the "
+                "longest tasks with the least room."
+                if (critical + thin)
+                else "No incomplete work is inside the 10-day low-float band &mdash; the "
+                "network currently has room to absorb slips."
+            )
+            + "</p>"
+        )
+        if pressure:
+            prows = "".join(
+                f"<tr><td>{task.unique_id}</td><td>{_e(task.name)}</td>"
+                f"<td>{d:.0f}</td><td>{tf:.0f}</td>"
+                f"<td>{round(task.percent_complete)}%</td></tr>"
+                for tf, d, task in pressure
+            )
+            pressure_rows = (
+                "<details><summary class=btn-link>Top pressure points (longest low-float "
+                "work)</summary><table><tr><th scope=col>UID</th><th scope=col>Activity</th>"
+                "<th scope=col>Duration (wd)</th><th scope=col>Float (wd)</th>"
+                f"<th scope=col>%</th></tr>{prows}</table></details>"
+            )
+    else:
+        story = "<p class=muted>No incomplete activities to analyze.</p>"
     return (
         "<div class=panel><h2>Activity scatter &mdash; float vs duration</h2>"
-        "<p class=muted>One dot per activity: <b>total float</b> (x) against <b>duration</b> (y), "
-        "red = critical, diamonds = milestones. Long-duration, low-float activities sit at the "
-        "lower-left &mdash; the schedule's pressure points a count metric never reveals. The full "
-        "activity grid above is the accessible data table.</p>"
+        f"<p class=muted>Source: <b>{_e(sch.source_file or sch.name)}</b>. "
+        "One dot per activity: <b>total float</b> (x) against <b>duration</b> (y), "
+        "red = critical (progress-aware), diamonds = milestones. Long-duration, low-float "
+        "activities sit at the lower-left &mdash; the schedule's pressure points a count "
+        "metric never reveals. The full activity grid above is the accessible data table.</p>"
+        f"{story}{pressure_rows}"
         f'<div class=chart-host id=scatterChart data-name="{_e(key)}"></div></div>'
         '<script src="/static/scatter.js"></script>'
     )
@@ -4419,9 +4638,10 @@ def _calendar_panel(sch: Schedule) -> str:
     days = ", ".join(_WEEKDAY_NAMES[d] for d in cal.work_weekdays)
     hours_text = f"{cal.working_minutes_per_day / 60:g} h/day ({cal.working_minutes_per_day} min)"
     if cal.holidays:
-        shown = ", ".join(d.isoformat() for d in cal.holidays[:10])
-        extra = f" (+{len(cal.holidays) - 10} more)" if len(cal.holidays) > 10 else ""
-        holidays = f"{len(cal.holidays)} — {shown}{extra}"
+        shown = ", ".join(_mdY(d) for d in cal.holidays[:10])
+        holidays = _expandable_more(
+            f"{len(cal.holidays)} — {shown}", [_mdY(d) for d in cal.holidays[10:]]
+        )
     else:
         holidays = "none"
     return f"""
@@ -4507,10 +4727,8 @@ def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
 
     # KPI cards (reuse the engine outputs the report already computed)
     starts = [t.start for t in non_summary(sch) if t.start is not None]
-    earliest = min(starts).date().isoformat() if starts else "—"
-    latest_finish = (
-        offset_to_datetime(sch.project_start, cpm.project_finish, cal).date().isoformat()
-    )
+    earliest = _mdY(min(starts)) if starts else "—"
+    latest_finish = _mdY(offset_to_datetime(sch.project_start, cpm.project_finish, cal))
     critical = sum(
         1
         for t in non_summary(sch)
@@ -4528,7 +4746,7 @@ def _card_body(key: str, sch: Schedule, analysis: _Analysis) -> str:
         [
             ("Earliest start", earliest),
             ("Computed finish", latest_finish),
-            ("Data date", sch.status_date.date().isoformat() if sch.status_date else "—"),
+            ("Data date", _mdY(sch.status_date) if sch.status_date else "—"),
             ("Activities complete", f"{100.0 * makeup.complete / total:.1f}%"),
             ("Critical (incomplete)", str(critical)),
             ("To-go activities", str(togo_normal)),
@@ -4781,6 +4999,7 @@ def _analysis_body(
     analysis: _Analysis,
     target: int | None = None,
     narrative: Narrative | None = None,
+    erosion_field: str | None = None,
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
@@ -4794,8 +5013,7 @@ def _analysis_body(
     find_rows = "".join(
         f'<tr><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td><td>{_e(f.category)}</td>'
         f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td>"
-        f"<td class=cite>{_e('; '.join(str(c) for c in f.citations[:2]))}"
-        f"{_e(f' +{len(f.citations) - 2} more' if len(f.citations) > 2 else '')}</td></tr>"
+        f"<td class=cite>{_cites_cell(f)}</td></tr>"
         for f in findings
     )
     story_source = narrative if narrative is not None else analysis.narrative
@@ -4806,6 +5024,11 @@ def _analysis_body(
 {_user_tip("Click a column header to sort, use the per-column <b>Filter</b> dropdowns to scope the rows, and drag a column edge to resize it. The data columns stay locked on the left while the Gantt timeline scrolls.")}
 <div id=viz data-name="{_e(key)}">
 <div class="charts chart-host" id=charts></div>
+<p class=muted aria-label="chart color legend" style="margin:4px 0 8px">
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2e7d32"></span> pass / on time &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f9a825"></span> late / warning &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c62828"></span> fail / missed &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9e9e9e"></span> not applicable</p>
 <div class=viz-controls>Driving path to target UID:
 <input id=targetUid type=number min=1 placeholder="UID" value="{target if target is not None else ""}">
 secondary&le;<input id=secMax type=number value=10>d
@@ -4828,7 +5051,7 @@ metadata)</span></h3>
 </div></div>
 <script src="/static/app.js"></script>"""
     return f"""{viz}
-{_scatter_panel(key)}
+{_scatter_panel(key, sch, analysis.cpm)}
 {_float_histogram_panel(key)}
 {_calendar_panel(sch)}
 {_float_bands_panel(analysis)}
@@ -4838,7 +5061,7 @@ metadata)</span></h3>
 {_constraint_checks_panel(sch, analysis.cpm)}
 {_vertical_integration_panel(sch)}
 {_schedule_variance_panel(sch)}
-{_float_erosion_panel(sch, analysis.cpm)}
+{_float_erosion_panel(sch, analysis.cpm, erosion_field)}
 {_margin_panel(sch, analysis.cpm)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
@@ -4922,11 +5145,19 @@ def _finding_quant(f: Finding) -> str:
     return '<p class="finding-quant">' + " &middot; ".join(bits) + "</p>"
 
 
+def _cites_cell(f: Finding) -> str:
+    """A findings-table citation cell: first two cited, the rest expandable in place."""
+    shown = _e("; ".join(str(c) for c in f.citations[:2]))
+    return _expandable_more(shown, [_e(str(c)) for c in f.citations[2:]])
+
+
 def _finding_card(f: Finding) -> str:
     """One risk/issue/opportunity card: severity + risk-score badge, quantified read, detail,
     recommended action, citations."""
-    cites = "; ".join(_e(str(c)) for c in f.citations[:3])
-    more = f" +{len(f.citations) - 3} more" if len(f.citations) > 3 else ""
+    cites = _expandable_more(
+        "; ".join(_e(str(c)) for c in f.citations[:3]), [_e(str(c)) for c in f.citations[3:]]
+    )
+    more = ""
     action = (
         f"<p class=finding-action><b>Recommended action:</b> {_e(f.course_of_action)}</p>"
         if f.course_of_action
@@ -5260,7 +5491,11 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
                 "free_float_days": float(fr.free_float_days),
                 "percent_complete": task.percent_complete,
                 "complete": task.is_complete or task.actual_finish is not None,
-                "is_critical": fr.is_critical,
+                # progress-aware effective critical (stored flag first, ADR-0150) — what MS
+                # Project shows; the pure-logic fr.is_critical collapses on a progressed file
+                "is_critical": is_effective_critical(
+                    task, float(fr.total_float_days) * (per_day or 480)
+                ),
                 "is_milestone": task.is_milestone,
                 "is_summary": False,
                 "outline_level": task.outline_level,
@@ -5494,7 +5729,8 @@ def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) 
     title = f"Focus activity UID {target}" + (f" &mdash; {_e(names[0])}" if names else "")
     focus_rows = _focus_rows(schedules, cpms, target)
     rows = "".join(
-        f"<tr><td>{_e(label)}</td><td>{_e(finish)}</td><td>{_e(pct)}</td></tr>"
+        # focus_rows keeps ISO (the movement math below parses it); format at render only
+        f"<tr><td>{_e(label)}</td><td>{_e(_mdY(finish))}</td><td>{_e(pct)}</td></tr>"
         for label, finish, pct in focus_rows
     )
     note = "" if names else '<p class="notice err">No loaded version contains that UniqueID.</p>'
@@ -7676,7 +7912,7 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
     any_present = False
     for sch, cpm in zip(schedules, cpms, strict=True):
         label = sch.source_file or sch.name
-        dd = sch.status_date.date().isoformat() if sch.status_date else "&mdash;"
+        dd = _mdY(sch.status_date) if sch.status_date else "&mdash;"
         if target not in sch.tasks_by_id:
             rows.append((label, dd, None, None, None, None))
             continue
@@ -8245,7 +8481,7 @@ def _groups_body(
             shown = (
                 "(populated)"
                 if not vals
-                else _e(", ".join(vals[:4]) + (f" +{len(vals) - 4}" if len(vals) > 4 else ""))
+                else _expandable_more(_e(", ".join(vals[:4])), [_e(v) for v in vals[4:]])
             )
             return f'<span class="dp-chip">{_e(field)} = {shown}</span>'
 
@@ -8345,6 +8581,12 @@ project finish).</span>
         + f"""
 <div class=panel><h2>Critical-Path Evolution</h2>
 {_user_tip("The date axis is held fixed across versions, so the critical path visibly extends as the finish slips. Use <b>View entire project</b> to fit the whole timeline, and set a <b>target UID</b> to highlight one activity across every frame.")}
+<p class=muted><b>Path basis (ADR-0150):</b> with a <b>focused UID</b> the path shown is the
+<b>0-driving-slack chain to that UID</b> (the same set as the /path driving-slack view); with no
+focus it is the <b>progress-aware critical set</b> &mdash; the source tool&rsquo;s stored Critical
+flag (what MS Project shows), falling back to recomputed CPM float only when the file carries no
+flag. Completed work leaves the path and is recorded below under
+<b>Completed on the path</b>.</p>
 <p class=muted>Step through the versions (oldest first by data date) to watch the critical
 path change, drawn as a <b>Gantt</b> on a date axis held fixed across every version (so the
 path visibly extends as the finish slips). Bars are colored
@@ -8396,7 +8638,52 @@ Use <b>Focus</b> above to highlight one activity across every version.</p>
 <div id=evoChart data-target="{target if target is not None else ""}"
 data-tier="{tier}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
+        + _completed_on_path_panel(schedules, cpms, target)
         + _counterfactual_panel(schedules, cpms, target)
+    )
+
+
+def _completed_on_path_panel(
+    schedules: list[Schedule], cpms: list[CPMResult], target: int | None
+) -> str:
+    """Version-to-version record of path activities that COMPLETED — the operator's "what got
+    done on the path month to month". Server-rendered from the same evolution snapshots the
+    stepper animates (ADR-0150): for each version pair, the prior version's path activities
+    that are complete in the newer version, with their actual finishes."""
+    ev = compute_path_evolution(schedules, cpms, target_uid=target)
+    basis = f"driving path to UID {target}" if target is not None else "effective critical path"
+    sections: list[str] = []
+    for i in range(1, len(ev.snapshots)):
+        snap = ev.snapshots[i]
+        prior_label = _e(ev.snapshots[i - 1].label)
+        label = _e(snap.label)
+        period = f"{prior_label} &rarr; {label}"
+        if not snap.completed_on_path:
+            sections.append(
+                f"<h3>{period}</h3><p class=muted>No path activities completed this period.</p>"
+            )
+            continue
+        by_id = schedules[i].tasks_by_id
+        rows = "".join(
+            f"<tr><td>{uid}</td><td>{_e(t.name if t else f'UID {uid}')}</td>"
+            f"<td>{_mdY(t.actual_finish) if t is not None else '&mdash;'}</td>"
+            f"<td>{round(t.percent_complete) if t is not None else 0}%</td></tr>"
+            for uid in snap.completed_on_path
+            for t in (by_id.get(uid),)
+        )
+        sections.append(
+            f"<h3>{period} &mdash; {len(snap.completed_on_path)} completed on the path</h3>"
+            "<table><tr><th scope=col>UID</th><th scope=col>Activity</th>"
+            f"<th scope=col>Actual finish</th><th scope=col>%</th></tr>{rows}</table>"
+        )
+    src_names = ", ".join(_e(s.source_file or s.name) for s in schedules)
+    return (
+        "<div class=panel><h2>Completed on the path &mdash; version to version</h2>"
+        f"<p class=muted>Basis: <b>{basis}</b>. Sources ({len(schedules)} files): {src_names}. "
+        "Activities that were ON the path in one version and show complete in the next &mdash; "
+        "the work that actually burned down the driving chain each period.</p>"
+        + "".join(sections)
+        + "</div>"
     )
 
 
@@ -8492,7 +8779,9 @@ def _evolution_data(
     WHY each entered or left the path), and a date axis LOCKED across every version so bars
     stay comparable frame to frame. ``target`` (if set) is echoed so the view can highlight
     that UniqueID's row in every frame."""
-    evolution = compute_path_evolution(schedules, cpms)
+    # With a focused UID the path IS the 0-driving-slack chain to it (the /path basis);
+    # untargeted, the progress-aware effective critical set (stored Critical flag).
+    evolution = compute_path_evolution(schedules, cpms, target_uid=target)
     by_id = [s.tasks_by_id for s in schedules]
     axis_dates: list[dt.date] = []
 

@@ -28,6 +28,14 @@ import sys
 import threading
 from typing import Any
 
+#: Windows-only ``CREATE_NO_WINDOW`` (0 / no-op on POSIX). The deployed desktop app runs
+#: **windowless** (``pythonw.exe``); a console child spawned WITHOUT this flag flashes a black
+#: console window. These probes run every ``_SLOW_INTERVAL_S`` seconds from tool open to quit,
+#: so an unsuppressed spawn = a popup flashing continuously for the whole session (operator
+#: report, 2026-07-07). Pair with ``stdin=DEVNULL`` so no child can block on a console handle —
+#: the same hardening ``importers/mpp_mpxj.py`` applies to the Java converter.
+_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+
 try:  # optional enhancer — NOT a hard runtime dependency (see pyproject [monitor] extra)
     import psutil
 except Exception:  # pragma: no cover - absence is a supported configuration
@@ -168,11 +176,21 @@ def _mac_memory() -> dict[str, Any]:  # pragma: no cover - exercised on macOS on
     try:
         total = int(
             subprocess.run(  # nosec B603 B607 - fixed argv, local binary, no shell
-                ["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2
+                ["sysctl", "-n", "hw.memsize"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                stdin=subprocess.DEVNULL,
+                creationflags=_NO_WINDOW,
             ).stdout.strip()
         )
         vm = subprocess.run(  # nosec B603 B607 - fixed argv, local binary, no shell
-            ["vm_stat"], capture_output=True, text=True, timeout=2
+            ["vm_stat"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            stdin=subprocess.DEVNULL,
+            creationflags=_NO_WINDOW,
         ).stdout
         used = parse_vm_stat_used_bytes(vm)
         if used is None:
@@ -317,6 +335,8 @@ def _probe_gpu() -> dict[str, Any]:
                 text=True,
                 timeout=4,
                 check=False,
+                stdin=subprocess.DEVNULL,
+                creationflags=_NO_WINDOW,
             )
             line = out.stdout.strip().splitlines()[0] if out.stdout.strip() else ""
             if line:
@@ -347,6 +367,8 @@ def _win_gpu_counters() -> dict[str, Any]:  # pragma: no cover - Windows only
             text=True,
             timeout=8,
             check=False,
+            stdin=subprocess.DEVNULL,
+            creationflags=_NO_WINDOW,
         )
         lines = [ln.strip() for ln in out.stdout.strip().splitlines() if ln.strip()]
         if not lines:
@@ -402,6 +424,8 @@ def _win_cpu_temp() -> float | None:  # pragma: no cover - Windows only
             text=True,
             timeout=8,
             check=False,
+            stdin=subprocess.DEVNULL,
+            creationflags=_NO_WINDOW,
         )
         raw = out.stdout.strip().splitlines()[0] if out.stdout.strip() else ""
         tenths_kelvin = float(raw.replace(",", "."))

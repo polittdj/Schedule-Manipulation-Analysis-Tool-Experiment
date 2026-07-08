@@ -185,14 +185,28 @@
   function fmt(v) {
     if (v === true) return "yes";
     if (v === false) return "no";
-    return v == null ? "" : String(v);
+    if (v == null) return "";
+    const s = String(v);
+    // operator: every Gantt date reads MM/DD/YYYY, no time-of-day (SFGantt.fmtMDY returns ""
+    // for non-dates, so every other value falls through untouched). Data stays ISO underneath.
+    return SFGantt.fmtMDY(s) || s;
   }
 
-  // A compact M/D/YY date for the on-bar labels (MS-Project shows the bar dates this way). The
-  // value is an ISO yyyy-mm-dd string; parse the parts directly to avoid any timezone shift.
-  function shortDate(iso) {
-    const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(iso || ""));
-    return m ? Number(m[2]) + "/" + Number(m[3]) + "/" + m[1].slice(2) : "";
+  // Numeric/date-aware comparator for the checklist filter value lists: MM/DD/YYYY dates sort
+  // chronologically (they read month-first but must not SORT month-first), raw ISO dates sort
+  // lexically, numbers numerically, everything else lexically.
+  function compareValues(a, b) {
+    const mdy = /^(\d\d)\/(\d\d)\/(\d{4})$/;
+    const ma = mdy.exec(a), mb = mdy.exec(b);
+    if (ma && mb) {
+      const ka = ma[3] + ma[1] + ma[2], kb = mb[3] + mb[1] + mb[2]; // yyyymmdd
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    }
+    const iso = /^\d{4}-\d\d-\d\d/;
+    if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0;
+    const na = parseFloat(a), nb = parseFloat(b);
+    const bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+    return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
   }
 
   // Read a column value off an activity. Standard fields are top-level; .mpp custom/extended fields
@@ -208,6 +222,7 @@
   const DAY_MS = 86400000;
 
   let forcedPx = null; // set by the "Fit" button (whole project on screen); cleared by the slider
+  let lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
   function pxPerDay() {
     if (forcedPx && forcedPx > 0) return forcedPx;
     const z = document.getElementById("vizZoom");
@@ -215,7 +230,9 @@
     return v > 0 ? v : 8; // pixels per calendar day
   }
   // Fit the ENTIRE project span into the visible width (no horizontal scroll). avail = the grid's
-  // own client width minus an estimate of the data columns; the Scale slider then fine-tunes.
+  // own client width minus the REAL measured frozen-column width (recorded each paint, like
+  // path.js) — not a hard-coded estimate — so after Fit the timeline uses the whole page and the
+  // earliest bar lands right next to the data columns. The Scale slider then fine-tunes.
   function fitToWidth() {
     let t0 = null, t1 = null;
     activities.forEach((a) => {
@@ -223,18 +240,19 @@
       if (a.finish) { const f = Date.parse(a.finish); if (!isNaN(f)) t1 = t1 === null ? f : Math.max(t1, f); }
     });
     if (t0 === null || t1 === null) return;
-    const days = Math.max(1, (t1 - t0) / DAY_MS) + 4;
+    const days = Math.max(1, (t1 - t0) / DAY_MS) + 3; // + buildAxis's 1-day left / 2-day right pad
     const host = document.getElementById("grid");
-    const avail = Math.max(240, (host ? host.clientWidth : 960) - 360);
+    const avail = Math.max(240, (host ? host.clientWidth : 960) - (lastFrozenWidth || 360) - 18);
     forcedPx = Math.max(0.05, avail / days);
     renderGrid();
     if (lastDriving) renderGantt(lastDriving);
   }
 
-  // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded two days
-  // each side and stretched to include an anchor date (the data date). Returns null when
-  // nothing is dated. `x(ms)` maps a millisecond timestamp to a pixel offset; `width` is the
-  // full px span the track/scale must occupy so the container scrolls instead of squeezing.
+  // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded one day on the
+  // left (the earliest bar hugs the frozen data columns) and two on the right, stretched to
+  // include an anchor date (the data date). Returns null when nothing is dated. `x(ms)` maps a
+  // millisecond timestamp to a pixel offset; `width` is the full px span the track/scale must
+  // occupy so the container scrolls instead of squeezing.
   function buildAxis(items, anchorDate) {
     const px = pxPerDay();
     let t0 = null, t1 = null;
@@ -248,7 +266,7 @@
       if (!isNaN(a) && t0 !== null && t1 !== null) { t0 = Math.min(t0, a); t1 = Math.max(t1, a); }
     }
     if (t0 === null || t1 === null) return null;
-    t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
+    t0 -= 1 * DAY_MS; t1 += 2 * DAY_MS; // small left pad: bars start close to the data columns
     const width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
     return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
@@ -257,6 +275,21 @@
   // gridlines) is shared with every other Gantt on the site via window.SFGantt (static/gantt.js).
   const buildTierScale = SFGantt.buildTierScale;
   const gridLines = SFGantt.gridLines;
+
+  // MS-Project "dates on bars": an MM/DD/YYYY label beside a bar end / milestone diamond,
+  // CLAMPED into the visible track so a label near x=0 or the right edge is no longer clipped
+  // by the track's overflow:hidden (bug fix). `anchor` is the px the label should touch;
+  // side "s" ends there (right-aligned, left of the bar), side "f" starts there.
+  const LABEL_W = 64; // width estimate of "MM/DD/YYYY" at the 9px label font
+  function barLabel(track, axis, anchor, side, iso) {
+    let x = side === "s" ? anchor - LABEL_W : anchor;
+    x = Math.max(0, Math.min(axis.width - LABEL_W, x));
+    track.appendChild(el("div", {
+      class: "g-barlabel g-barlabel-" + side,
+      style: "left:" + x + "px;width:" + LABEL_W + "px",
+      text: SFGantt.fmtMDY(iso),
+    }));
+  }
 
   function timelineCell(act, axis, grid) {
     const cell = el("td", { class: "g-cell" });
@@ -273,12 +306,7 @@
       ms.title = act.name + " (milestone) " + act.start;
       track.appendChild(ms);
       // MS-Project "dates on bars": a milestone shows its finish date next to the diamond
-      if (barDates && act.finish) {
-        track.appendChild(el("div", {
-          class: "g-barlabel g-barlabel-f", style: "left:" + (axis.x(s) + 7) + "px",
-          text: shortDate(act.finish),
-        }));
-      }
+      if (barDates && act.finish) barLabel(track, axis, axis.x(s) + 7, "f", act.finish);
     } else if (s != null && f != null) {
       const left = axis.x(s);
       const width = Math.max(2, axis.x(f) - left);
@@ -293,14 +321,8 @@
       track.appendChild(bar);
       // MS-Project "dates on bars": start date left of the bar, finish date right of it
       if (barDates) {
-        track.appendChild(el("div", {
-          class: "g-barlabel g-barlabel-s", style: "left:" + (left - 3) + "px",
-          text: shortDate(act.start),
-        }));
-        track.appendChild(el("div", {
-          class: "g-barlabel g-barlabel-f", style: "left:" + (left + width + 3) + "px",
-          text: shortDate(act.finish),
-        }));
+        barLabel(track, axis, left - 3, "s", act.start);
+        barLabel(track, axis, left + width + 3, "f", act.finish);
       }
     }
     cell.appendChild(track);
@@ -318,17 +340,11 @@
     });
   }
 
-  // distinct, sorted (numeric-aware) formatted values of a column — the checklist contents
+  // distinct, sorted (numeric/date-aware) formatted values of a column — the checklist contents
   function distinctValues(key) {
     const seen = new Set();
     activities.forEach((a) => seen.add(fmt(valueOf(a, key))));
-    const iso = /^\d{4}-\d\d-\d\d/;
-    return Array.from(seen).sort((a, b) => {
-      if (iso.test(a) && iso.test(b)) return a < b ? -1 : a > b ? 1 : 0; // ISO dates sort lexically
-      const na = parseFloat(a), nb = parseFloat(b);
-      const bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
-      return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
-    });
+    return Array.from(seen).sort(compareValues);
   }
 
   // Row visibility: the MS-Project "show outline level N" collapses deeper tasks, and summary
@@ -372,9 +388,12 @@
       tbody.appendChild(tr);
     }
     // re-pin the frozen data columns once the new body rows exist (only when the table is already in
-    // the DOM — the initial renderGrid freezes after it appends the table)
+    // the DOM — the initial renderGrid freezes after it appends the table); record the measured
+    // frozen width so fitToWidth can size the timeline to the REAL remaining page space
     const tbl = tbody.parentNode;
-    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(tbl);
+    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) {
+      lastFrozenWidth = SFGantt.freezeColumns(tbl) || lastFrozenWidth;
+    }
   }
 
   function renderGrid() {
@@ -428,28 +447,172 @@
     grid.innerHTML = "";
     grid.appendChild(table);
     if (window.SFColResize) SFColResize.attach(table, "analysis"); // MS-Project drag-to-resize columns
-    // lock the data columns so they stay visible as the wide timeline scrolls left↔right
-    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
+    // lock the data columns so they stay visible as the wide timeline scrolls left↔right, and
+    // record their measured width — the fill space fitToWidth subtracts from the page
+    if (window.SFGantt && SFGantt.freezeColumns) {
+      lastFrozenWidth = SFGantt.freezeColumns(table) || lastFrozenWidth;
+    }
   }
 
+  // An ISO-8601 duration (PT184H0M0S) as working days at 8h/day — the raw form MS Project
+  // stores in custom fields is meaningless to an operator ("PT184H0M0S" -> "23 wd (184h)").
+  function humanizeDuration(v) {
+    const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(String(v));
+    if (!m) return null;
+    const hours = (Number(m[1]) || 0) + (Number(m[2]) || 0) / 60 + (Number(m[3]) || 0) / 3600;
+    const wd = hours / 8;
+    return (Math.round(wd * 10) / 10) + " wd (" + (Math.round(hours * 10) / 10) + "h)";
+  }
+
+  // One drill value, made readable: dates MM/DD/YYYY (time stripped), ISO durations in working
+  // days, booleans yes/no; null/blank means "don't show the row at all".
+  function drillValue(v) {
+    if (v === null || v === undefined) return null;
+    if (typeof v === "boolean") return v ? "yes" : "no";
+    const s = String(v).trim();
+    if (!s) return null;
+    const mdy = SFGantt.fmtMDY(s);
+    if (mdy) return mdy;
+    const dur = humanizeDuration(s);
+    if (dur) return dur;
+    return fmt(v);
+  }
+
+  // Populated fields only, core schedule fields first, custom fields in a collapsible group —
+  // the old dump listed EVERY mapped custom field including blanks and raw PT#H durations
+  // (operator: "makes no sense and provides no value").
   function drill(act) {
     const panel = document.getElementById("drill");
     panel.innerHTML = "";
     panel.className = "drill show";
     panel.appendChild(el("h3", { text: "Activity " + act.unique_id + " — " + act.name }));
-    const dl = el("dl");
+    const core = el("dl");
     ALL_FIELDS.forEach((f) => {
-      dl.appendChild(el("dt", { text: f.label }));
-      dl.appendChild(el("dd", { text: fmt(valueOf(act, f.key)) }));
+      if (f.custom) return; // customs get their own populated-only group below
+      const v = drillValue(valueOf(act, f.key));
+      if (v === null) return;
+      core.appendChild(el("dt", { text: f.label }));
+      core.appendChild(el("dd", { text: v }));
     });
-    dl.appendChild(el("dt", { text: "Citation" }));
-    dl.appendChild(el("dd", { text: act.name + " (UID " + act.unique_id + ", " + (act.source_file || "schedule") + ")" }));
-    panel.appendChild(dl);
+    core.appendChild(el("dt", { text: "Citation" }));
+    core.appendChild(el("dd", { text: act.name + " (UID " + act.unique_id + ", " + (act.source_file || "schedule") + ")" }));
+    panel.appendChild(core);
+    const custom = act.custom || {};
+    const populated = Object.keys(custom).filter(function (k) {
+      return drillValue(custom[k]) !== null;
+    }).sort();
+    if (populated.length) {
+      const det = el("details");
+      const sum = el("summary", { text: "Custom fields (" + populated.length + " populated)" });
+      sum.className = "btn-link";
+      det.appendChild(sum);
+      const dl = el("dl");
+      populated.forEach(function (k) {
+        dl.appendChild(el("dt", { text: k }));
+        dl.appendChild(el("dd", { text: drillValue(custom[k]) }));
+      });
+      det.appendChild(dl);
+      panel.appendChild(det);
+    }
   }
 
   let lastDriving = null; // re-render the trace when "show completed" / tier / zoom changes
   let ganttTierSel = null; // checklist selection of tiers to show in the trace (null = all)
 
+  // The driving-path trace columns (UID/Name + the operator's Dur/Start/Finish/Driving-slack).
+  const TRACE_FIELDS = [
+    { key: "unique_id", label: "UID" },
+    { key: "name", label: "Name" },
+    { key: "duration_days", label: "Dur d" },
+    { key: "start", label: "Start" },
+    { key: "finish", label: "Finish" },
+    { key: "driving_slack_days", label: "Driv slack" },
+  ];
+  const traceFilters = {}; // trace field key -> selected-value Set (MS-Project checklist); null = all
+
+  // one trace cell's display text: dates read MM/DD/YYYY, slack carries its unit
+  function traceCellText(r, f) {
+    const v = r[f.key];
+    if (v == null) return "";
+    if (f.key === "driving_slack_days") return v + "d";
+    return fmt(v);
+  }
+
+  // distinct, sorted values of a trace column across the WHOLE trace — the checklist contents
+  function traceDistinct(driving, f) {
+    const seen = new Set();
+    (driving.rows || []).forEach((r) => seen.add(traceCellText(r, f)));
+    return Array.from(seen).sort(compareValues);
+  }
+
+  // the trace's timeline cell: tier-tinted bar / milestone diamond + gridlines + data date,
+  // honoring the same "dates on bars" toggle as the activity grid below (bug fix)
+  function traceTimelineCell(r, axis, gridLns, driving) {
+    const cell = el("td", { class: "g-cell" });
+    const track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
+    gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
+    if (driving.data_date) {
+      const dd = Date.parse(driving.data_date);
+      if (!isNaN(dd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(dd) + "px" }));
+    }
+    const done = !!r.complete;
+    const s = r.start ? Date.parse(r.start) : null;
+    const f = r.finish ? Date.parse(r.finish) : null;
+    if (r.is_milestone && s != null) {
+      // milestones render as diamonds at their date, tinted by tier
+      const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + axis.x(s) + "px" });
+      ms.title = r.name + " (milestone) — driving slack " + r.driving_slack_days + "d (" + r.tier + ")";
+      track.appendChild(ms);
+      if (barDates && r.finish) barLabel(track, axis, axis.x(s) + 7, "f", r.finish);
+    } else if (s != null && f != null) {
+      const left = axis.x(s);
+      const width = Math.max(2, axis.x(f) - left);
+      const bar = el("div", { class: "gantt-bar tier-" + r.tier + (done ? " done" : ""), style: "left:" + left + "px;width:" + width + "px" });
+      bar.title = r.name + " — driving slack " + r.driving_slack_days + "d (" + r.tier + ")" + (done ? " — complete" : "");
+      track.appendChild(bar);
+      if (barDates) {
+        barLabel(track, axis, left - 3, "s", r.start);
+        barLabel(track, axis, left + width + 3, "f", r.finish);
+      }
+    }
+    cell.appendChild(track);
+    return cell;
+  }
+
+  // repaint only the trace body (per-column filter changes keep the open dropdown alive)
+  function renderTraceRows(tbody, rows, axis, gridLns, driving) {
+    const visible = rows.filter((r) =>
+      TRACE_FIELDS.every((f) => {
+        const sel = traceFilters[f.key];
+        return !sel || sel.has(traceCellText(r, f)); // an empty Set hides every row
+      })
+    );
+    tbody.innerHTML = "";
+    visible.forEach((r) => {
+      const tr = el("tr", { class: r.complete ? "done" : "" });
+      TRACE_FIELDS.forEach((f) => {
+        const td = el("td", { text: traceCellText(r, f) });
+        if (f.key === "name") td.className = "name-cell";
+        tr.appendChild(td);
+      });
+      tr.appendChild(traceTimelineCell(r, axis, gridLns, driving));
+      tbody.appendChild(tr);
+    });
+    if (!visible.length) {
+      const tr = el("tr");
+      tr.appendChild(el("td", { class: "muted", text: "No activities match the filters." }));
+      tbody.appendChild(tr);
+    }
+    // re-pin the frozen data columns once the new body rows exist (initial render freezes after
+    // the table is appended)
+    const tbl = tbody.parentNode;
+    if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(tbl);
+  }
+
+  // The driving-path trace is the SAME table-based gantt-grid as every other grid on the site:
+  // a sticky thead (column titles + the tiered Y/Q/M timescale + a per-column filter row),
+  // SFGantt-frozen data columns, SFColResize drag-to-resize — replacing the old one-off
+  // flex-div layout that had none of those.
   function renderGantt(driving) {
     lastDriving = driving;
     const box = document.getElementById("gantt");
@@ -475,55 +638,47 @@
       box.appendChild(el("p", { class: "muted", text: "No activities to show (adjust the tier filter or enable completed tasks)." }));
       return;
     }
+    // the axis spans the tier/completed selection; column filters repaint the body only, so the
+    // scale stays stable while the operator scopes rows (same policy as the activity grid)
     const axis = buildAxis(rows, driving.data_date);
     if (!axis) { box.appendChild(el("p", { class: "muted", text: "No dated activities to plot." })); return; }
-    const scroll = el("div", { class: "gantt-scroll" });
-    // Dur / Start / Finish / Driving-slack columns (operator request) between the name and the bar.
-    function traceCols(r) {
-      const c = el("div", { class: "gantt-cols" });
-      const h = !r;
-      c.appendChild(el("div", { class: "gantt-col c-dur", text: h ? "Dur d" : (r.duration_days != null ? String(r.duration_days) : "") }));
-      c.appendChild(el("div", { class: "gantt-col c-date", text: h ? "Start" : (r.start || "") }));
-      c.appendChild(el("div", { class: "gantt-col c-date", text: h ? "Finish" : (r.finish || "") }));
-      c.appendChild(el("div", { class: "gantt-col c-slack", text: h ? "Driv slack" : (r.driving_slack_days != null ? r.driving_slack_days + "d" : "") }));
-      return c;
-    }
-    // header row: name spacer + the Dur/Start/Finish/Slack headers + the Y/Q/M scale (MS Project)
-    const headRow = el("div", { class: "gantt-row gantt-head" });
-    headRow.appendChild(el("span", { class: "gantt-name" }));
-    headRow.appendChild(traceCols(null));
-    headRow.appendChild(buildTierScale(axis, "gantt-scale", driving.data_date));
-    scroll.appendChild(headRow);
     const gridLns = gridLines(axis); // MS-Project vertical month/quarter/year gridlines
-    rows.forEach((r) => {
-      const done = !!r.complete;
-      const track = el("div", { class: "gantt-track", style: "width:" + axis.width + "px" });
-      gridLns.forEach((g) => track.appendChild(el("div", { class: g.cls, style: "left:" + g.left + "px" })));
-      if (driving.data_date) {
-        const dd = Date.parse(driving.data_date);
-        if (!isNaN(dd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(dd) + "px" }));
+    const scroll = el("div", { class: "gantt-scroll" });
+    const table = el("table", { class: "gantt-grid trace-grid" });
+    const thead = el("thead");
+    const head = el("tr");
+    TRACE_FIELDS.forEach((f) => head.appendChild(el("th", { text: f.label })));
+    const thTime = el("th", { class: "g-head" });
+    thTime.appendChild(buildTierScale(axis, "g-scale", driving.data_date)); // Year/Quarter/Month
+    head.appendChild(thTime);
+    thead.appendChild(head);
+    // per-column MS-Project checklist filters (same component as the grids below)
+    const filterRow = el("tr", { class: "filter-row" });
+    const tbody = el("tbody");
+    TRACE_FIELDS.forEach((f) => {
+      const td = el("td");
+      if (window.SFChecklist) {
+        td.appendChild(SFChecklist.filter({
+          values: traceDistinct(driving, f),
+          selected: traceFilters[f.key] || null,
+          label: "Filter",
+          title: "Filter " + f.label,
+          onChange: (sel) => { traceFilters[f.key] = sel; renderTraceRows(tbody, rows, axis, gridLns, driving); },
+        }));
       }
-      const s = r.start ? Date.parse(r.start) : null;
-      const f = r.finish ? Date.parse(r.finish) : null;
-      if (r.is_milestone && s != null) {
-        // milestones render as diamonds at their date, tinted by tier
-        const ms = el("div", { class: "g-ms tier-" + r.tier, style: "left:" + axis.x(s) + "px" });
-        ms.title = r.name + " (milestone) — driving slack " + r.driving_slack_days + "d (" + r.tier + ")";
-        track.appendChild(ms);
-      } else if (s != null && f != null) {
-        const left = axis.x(s);
-        const width = Math.max(2, axis.x(f) - left);
-        const bar = el("div", { class: "gantt-bar tier-" + r.tier + (done ? " done" : ""), style: "left:" + left + "px;width:" + width + "px" });
-        bar.title = r.name + " — driving slack " + r.driving_slack_days + "d (" + r.tier + ")" + (done ? " — complete" : "");
-        track.appendChild(bar);
-      }
-      const row = el("div", { class: "gantt-row" + (done ? " done" : "") });
-      row.appendChild(el("span", { class: "gantt-name", text: "UID " + r.unique_id + " " + r.name }));
-      row.appendChild(traceCols(r));
-      row.appendChild(track);
-      scroll.appendChild(row);
+      td.addEventListener("click", (ev) => ev.stopPropagation());
+      filterRow.appendChild(td);
     });
+    filterRow.appendChild(el("td", { class: "muted" }));
+    thead.appendChild(filterRow);
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    renderTraceRows(tbody, rows, axis, gridLns, driving);
+    scroll.appendChild(table);
     box.appendChild(scroll);
+    if (window.SFColResize) SFColResize.attach(table, "trace"); // MS-Project drag-to-resize columns
+    // lock the data columns so they stay visible as the wide timeline scrolls left↔right
+    if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);
   }
 
   function loadGantt() {
@@ -622,6 +777,11 @@
   }
   const gridBarDates = document.getElementById("gridBarDates");
   if (gridBarDates) {
-    gridBarDates.addEventListener("change", () => { barDates = gridBarDates.checked; renderGrid(); });
+    // "dates on bars" drives BOTH gantts: the activity grid AND the driving-path trace
+    gridBarDates.addEventListener("change", () => {
+      barDates = gridBarDates.checked;
+      renderGrid();
+      if (lastDriving) renderGantt(lastDriving);
+    });
   }
 })();

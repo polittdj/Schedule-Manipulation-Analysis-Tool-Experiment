@@ -5,6 +5,10 @@
  * bottom-left (long duration, little float) is where the schedule's pressure points hide — a
  * pattern no count metric reveals. Data: the local /api/analysis/<name> endpoint (the activity
  * rows the grid already uses); the page's full activity grid is the accessible data table.
+ *
+ * Trends-animation package: the plot carries the Mission-Control tile conventions — a
+ * ⛶ Enlarge toggle (tile-expand → tile-expanded) and a visible provenance label naming the
+ * schedule it draws from (the host's data-name, the same key it fetches).
  */
 "use strict";
 
@@ -12,6 +16,37 @@
   var box = document.getElementById("scatterChart");
   if (!box) return;
   var NS = "http://www.w3.org/2000/svg";
+
+  // ── Mission-Control-style Enlarge + provenance (Trends-animation package) ────
+  function sfControls(host, name) {
+    if (!host || !host.parentNode) return;
+    var shell = document.createElement("div");
+    shell.className = "sf-tilebox";
+    host.parentNode.insertBefore(shell, host);
+    shell.appendChild(host);
+    var bar = document.createElement("div");
+    bar.className = "viz-controls sf-chart-controls";
+    var big = document.createElement("button");
+    big.type = "button";
+    big.className = "tile-expand";
+    big.textContent = "⛶ Enlarge";
+    big.title = "Enlarge / shrink this chart";
+    big.setAttribute("aria-pressed", "false");
+    big.addEventListener("click", function (e) {
+      e.stopPropagation();
+      var on = shell.classList.toggle("tile-expanded");
+      big.setAttribute("aria-pressed", on ? "true" : "false");
+      big.textContent = on ? "⛶ Shrink" : "⛶ Enlarge";
+      if (on && shell.scrollIntoView) shell.scrollIntoView({ block: "nearest" });
+    });
+    bar.appendChild(big);
+    var label = document.createElement("span");
+    label.className = "sf-frame-label muted";
+    label.setAttribute("data-no-i18n", ""); // the schedule name — never machine-translated
+    label.textContent = "Source: " + name;
+    bar.appendChild(label);
+    shell.insertBefore(bar, host);
+  }
 
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);
@@ -118,6 +153,7 @@
         .filter(function (p) { return p.x != null && p.y != null; });
       if (!pts.length) { box.textContent = "No activity data to plot."; return; }
       render(pts);
+      sfControls(box, name || "current schedule"); // ⛶ Enlarge + "Source: <schedule>"
     })
     .catch(function () { box.textContent = "Failed to load the scatter data."; });
 })();

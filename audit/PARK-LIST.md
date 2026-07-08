@@ -17,6 +17,27 @@ present, the corresponding parity claim must keep its **"against our transcribed
 
 ---
 
+## STATUS ADDENDUM (2026-07-07, verified by running the gated tests) — most artifacts DELIVERED
+
+The operator delivered the reference artifacts to `00_REFERENCE_INTAKE/` (repo-tracked via GitHub
+web upload). Verified state of each item below (each checked by executing its gating test):
+
+| Item | Status (verified) |
+|------|-------------------|
+| A-1 §E re-pin | **DONE 2026-07-07 (ADR-0151)** — §E flipped from self-consistency to **ENGINE==FUSE**: transcriptions in `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json`, gate `tests/parity/test_fuse_export_parity.py`. UID-exact for new_critical (131) and float_erosion (131); no_longer_critical 34==34 with the 96↔99 stored-vs-CPM membership swap asserted exactly; HSD10 −148 (CPM) vs −134 (stored) reconciled to the day. Marker test flipped to enforce the upgrade. |
+| A-2 §A/§B/§C engine==Fuse | **DONE 2026-07-07 (ADR-0151)** — every row the delivered suite carries is asserted ENGINE==FUSE from ≥2 independent places (Metric History + DCMA/Detailed/Advanced sheets); DCMA-04/10/12/13 + composite scores are NOT in the suite and keep the recorded-transcription basis (labeled per-row in PARITY-REPORT.md). |
+| A-3 literal `.aft` match | **SATISFIED** — `NASA Metrics_Complete_20260423.aft` delivered (1,443 metrics); the live-Bible branch of `test_aft_formula_audit.py` runs and **passes**. |
+| A-4 Large-File absolute SSI | **HALF-DELIVERED** — `Large_Test_File.mpp` present (parses, 2,126 tasks); still missing SSI's recorded focus UID + export. |
+| A-5 `ssi_uid143` re-pin | **OPEN** — still awaiting a fresh SSI Directional-Path export for `Project5_TAMPERED.mpp`; the suite's only 2 xfails. |
+| A-6 native `.mpp` equivalence | **SATISFIED** — all `.mpp` files delivered; chain (P2→P3→P4→P5), loader, and mpxj round-trip tests run live and pass (33 tests, 0 skips repo-wide). |
+| A-7 cost-EVM residuals | unchanged — engine work (data-date floor), not an artifact. |
+| A-8 threshold authority | **PARTIALLY DELIVERED** — NASA handbooks now in `00_REFERENCE_INTAKE/` (pm/wbs/ibr/srb/ppc/evm handbooks, SP-2024 docs); the F-14 threshold-citation sweep is still to do. |
+| B-addendum D7/D14/D20 | **D14 CLOSED** (the `.aft` has NO SN07-like metric; total-duration basis Fuse-validated UID-exact — ADR-0151). **D20 CLOSED** (raw-CPM bands reproduce the fresh export's Zero-Days-Float 41/4; disposition confirmed). **D7 STILL ARTIFACT-GATED** — the delivered pair contains no elapsed in-progress activity, so the elapsed Float-Ratio value cannot be exercised from it. |
+
+§B below is historical: the "7 current skips" are now **0** (every gated test runs).
+
+---
+
 ## A. Parity oracle-upgrade items (flip a gate from self-consistency/transcription to true reference parity)
 
 | # | Closes | Exact artifact required | Verification unlocked once present |

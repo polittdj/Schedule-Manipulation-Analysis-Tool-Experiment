@@ -49,6 +49,27 @@ def test_briefing_renders_the_numbered_forensic_document(client: TestClient) -> 
     assert page.count("class=cite") > 8
 
 
+def test_briefing_tables_are_never_column_crushed(client: TestClient) -> None:
+    """Operator screenshot (2026-07-07): every briefing table rendered one character per line.
+
+    Root cause was a pincer: ``td.cite`` was ``white-space: nowrap`` (an unbreakable, very wide
+    citation column) while ADR-0150's containment override set ``word-break: break-word`` on the
+    whole table — auto-layout gave the citation column its full unbreakable width and crushed
+    every other column to its new one-character min-content width. Pin both halves of the fix:
+    citations wrap in a bounded block, and no briefing-table rule reintroduces break-all/break-word
+    (a wide table scrolls inside its card instead)."""
+    page = client.get("/briefing").text
+    css = client.get("/static/app.css").text
+    # the layout override keeps containment but must NOT re-crush table cells
+    assert ".brief-card{overflow-x:auto}" in page
+    assert "word-break:break-word" not in page and "word-break: break-word" not in page
+    assert ".brief-card th{white-space:nowrap}" in page  # headers never stack vertically
+    # the citation column wraps inside a bounded block instead of forcing the table wide
+    cite_rule = next(line for line in css.splitlines() if line.startswith(".brief-table td.cite"))
+    assert "nowrap" not in cite_rule
+    assert "max-width" in cite_rule
+
+
 def test_briefing_single_version_still_renders(client: TestClient) -> None:
     c = TestClient(create_app(SessionState()))
     data = (GOLDEN / "Project5.mspdi.xml").read_bytes()

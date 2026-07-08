@@ -29,6 +29,15 @@ window.SFGantt = (function () {
     return node;
   }
 
+  // The operator's date format, everywhere a Gantt shows a date: "2026-02-25" (or an ISO
+  // datetime) -> "02/25/2026", zero-padded, never a time-of-day. Parses the ISO parts directly
+  // (no Date construction) so there is no timezone shift. Returns "" for anything that is not
+  // an ISO date, so callers can fall back to the raw value. Data stays ISO; format at render.
+  function fmtMDY(iso) {
+    var m = /^(\d{4})-(\d\d)-(\d\d)(?:[T ].*)?$/.exec(String(iso == null ? "" : iso));
+    return m ? m[2] + "/" + m[3] + "/" + m[1] : "";
+  }
+
   // Year / Quarter / Month bands across the axis, each spanning [period-start, next-start) in
   // pixels. Narrow bands collapse their label (a quarter to "Q1", a month to a single letter)
   // exactly like Microsoft Project's timeline does as you zoom out.
@@ -164,7 +173,7 @@ window.SFGantt = (function () {
   }
 
   return {
-    DAY_MS: DAY_MS, MONTHS: MONTHS, el: el,
+    DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, freezeColumns: freezeColumns,
   };

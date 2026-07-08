@@ -4035,7 +4035,141 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   default, live values, expand cards, hide persists across reload, console clean).
   Wheel + all 9 installers regenerated from the fixed source.
 
-### 2026-07-08 — Executive Briefing table readability fix (no new ADR; presentation-only)
+---
+
+## 2026-07-07 — fix: permanent "Loading your project(s)…" overlay on reopen (BFCache restore)
+
+Operator report: on opening the tool the full-screen upload-loading overlay shows continuously with
+no import running, until the tool is closed. Root cause: `home.js` **shows** `#loadOverlay` on
+submit and nothing anywhere ever hides it — the page normally navigates away, but a Back
+navigation / tab or session restore revives the dashboard from the browser's back-forward cache
+**exactly as it was left**: overlay up (`position:fixed; inset:0; z-index:100`), covering the page
+forever. Fix: `home.js` now re-hides the overlay, clears the dropzone `busy` state, and clears any
+revived file selection on **`pageshow`** — the event that fires on both normal loads (no-op; the
+server renders the overlay `hidden`) and every BFCache/history restore (the failing case).
+Regression-pinned in `tests/web/test_header_and_loading.py::test_loading_overlay_is_reset_when_the_page_is_reshown`.
+JS-only + test; no ADR (no design decision). Full gate green (1784 passed).
+
+---
+
+## 2026-07-07 (2) — "the PR did not fix it": deployment-freshness root cause (ADR-0148)
+
+Operator: still seeing the stuck loading overlay after the PR #284 fix merged. Four-track
+investigation (JS show-path map, embedded-wheel autopsy, LIVE Chromium BFCache reproduction,
+render/caching audit):
+- The #284 `pageshow` fix is CORRECT — live repro captured the overlay visible at submit and
+  restored HIDDEN after back-nav with the fix present. The fix simply never reached the operator:
+- **Root cause 1:** all 9 installers embedded a wheel built 2026-07-07 02:28 UTC — 14 h BEFORE the
+  fix commit (16:38). The deployed tool serves `home.js` FROM the wheel; reinstalling reinstalled
+  the bug. The installer suite pinned only the wheel version STRING (still 1.0.0) → nothing failed.
+- **Root cause 2:** `/static` had no Cache-Control (heuristic browser caching) + installs run a
+  FIXED port (persistent cache origin) → even a good upgrade can keep executing stale JS for days.
+- **Fixes (ADR-0148):** `_bust_static()` rewrites every `/static/<asset>` to `?v=<pkg version>` at
+  the `_page()` boundary; `Cache-Control: no-cache` on `/static/*`; NEW lockstep gate test
+  byte-comparing the embedded wheel against `src/` (both directions — stale wheels can never ship
+  silently again); version 1.0.0→1.0.1; wheel + 9 installers regenerated (embedded home.js verified
+  to contain `pageshow`, embedded app.py contains `_bust_static`). Tests: new
+  `tests/web/test_static_cache.py` (4); `test_airgap.py` query-strip; 2 exact-URL assertions
+  updated in `test_target_and_theme.py`.
+- **Operator artifact delivery (separate, next session):** `NASA Metrics_Complete_20260423.aft` +
+  `Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx` landed in `00_REFERENCE_INTAKE/`
+  via GitHub web upload (tracked in git — operator's call, non-CUI). Unblocks PARK-LIST A-3 (+
+  likely A-1/A-2). Highest ADR = 0148.
+
+---
+
+## 2026-07-07 (3) — the popup was never the overlay: unsuppressed console spawns (ADR-0149)
+
+Operator (third report): popup starts on tool open, continues until quit. Fresh-eyes sweep found
+ZERO alert/dialog paths in the tool's JS — then the real culprit: the deployed app is windowless
+(pythonw), and the ADR-0147 telemetry loop spawns `nvidia-smi`/`powershell` every 5 s with **no
+CREATE_NO_WINDOW** → black console window flashes continuously. The "same image as when loading
+files" = the Java/MPXJ console flash — the exact failure mode `mpp_mpxj.py` already documents and
+suppresses; the telemetry code never applied the pattern (invisible in this Linux container and in
+Linux browser automation). Fix: `creationflags` + `stdin=DEVNULL` on all 5 `web/system.py` spawns
++ the Quit-time `taskkill` in `ai/ollama_process.py`; NEW repo-wide AST guard
+`tests/test_windowless_subprocess.py` (caught the taskkill site the manual sweep missed); version
+1.0.2; wheel + 9 installers regenerated, embedded `system.py` verified (5× creationflags).
+Also this session: operator uploaded 5 native `.mpp` files to `00_REFERENCE_INTAKE/mpp/`
+(Project2/3/4/5_TAMPERED, `Large Test File.mpp`) — chain/mpxj tests go live; naming gaps:
+`Project5.mpp` + `Large_Test_File.mpp` still wanted. Highest ADR = 0149.
+
+---
+
+## 2026-07-07 (4) — operator work order: effective-critical basis, SRA pickle, forensics facts, UI overhaul (ADR-0150)
+
+Seventeen-item operator work order against their real schedules. Highlights:
+- **Critical-path basis (the "2 tasks vs 76" bug):** path displays now use the progress-aware
+  effective critical set (stored Critical flag first) — verified two ways (goldens = the
+  Acumen-validated 41/4; the operator's Large file: pure CPM 2 → effective 33, driving path to
+  UID 152 = 76, matching their count exactly). Focused evolution evolves the driving path to the
+  target; `completed_on_path` + a server-rendered version-to-version "completed on the path"
+  panel. Parity-pinned metrics untouched; gate green.
+- **SRA unblocked:** `Schedule.__getstate__` drops the unpicklable UID-map caches (mappingproxy)
+  from the offload payload — every Monte-Carlo/sensitivity run had failed on any touched schedule.
+- **Ask-the-AI forensics:** `manipulation_forensics_facts` — duration cuts on the path
+  (quantified), the reverted-changes counterfactual (naming each changed activity, finish delta),
+  baseline variance of the focus — wired into both ask endpoints, fully cited.
+- **UI:** uniform table gantts (trace rewritten), measured full-width Fit, sticky headers,
+  checklist filters on all columns (scroll-safe), dates-on-bars fixed, MM/DD/YYYY display dates
+  (AI text stays ISO for the figure gate, deliberate), provenance on every multi-file visual,
+  expandable "(+N more)", chart color legend, scatter written analysis + pressure points, erosion
+  custom-WBS-field picker, margin wording fix, briefing containment + tighter global density,
+  drilldown shows populated/humanized fields only, Trends/overlays animate per file. Highest
+  ADR = 0150.
+
+---
+
+## 2026-07-07 (5) — end-of-session audit + handoff refresh
+
+Full-repo/state audit before handoff, every claim re-verified by execution: tree clean at PR #287's
+HEAD (== remote); highest ADR 0150 (drift guard green); v1.0.3 consistent in pyproject AND the
+embedded installer wheel; the 33 formerly artifact-gated tests all RUN and PASS (0 skips repo-wide;
+2 xfails = the stale ssi_uid143 awaiting an SSI export). **Audit discovery:** the operator delivered
+the COMPLETE Fuse export suite for P2→P5 (`DCMA Report`, `Detailed Metric Report`, `Metric History
+Report`, `Quick Add Metrics`, two Forensic Analysis comparisons) — PARK-LIST A-1 AND A-2 artifacts
+are now in hand; mining/re-pinning is the next session's headline task (see HANDOFF "NEXT SESSION"
++ the PARK-LIST status addendum). PR #287 open, installer smoke green, test jobs in flight.
+
+---
+
+## 2026-07-07 (6) — §E flips to ENGINE==FUSE from the delivered export suite (ADR-0151); briefing tables un-crushed
+
+PARK-LIST A-1 + A-2 executed against the repo-tracked Fuse suite (Metric History / DCMA /
+Detailed / Quick Add + two Forensic comparisons, programmatically verified row-identical):
+- **A-1 (F-01 closed):** new `tests/fixtures/golden/project2_5/fuse_exports_2026-06.json`
+  (verbatim transcriptions, ≥2 independent sources each) + `tests/parity/test_fuse_export_parity.py`
+  (9 tests, parity-marked). §E New Critical **1 = UID 131 exact**; Float Erosion **1 = UID 131
+  exact** (derived from the Forensic Total-Float sheet under the engine's scope); Finish Slips
+  **9 UID-exact** (= Fuse CEI-Incomplete); Remaining-Duration Increases **9 UID-exact** (= Forensic
+  Original-Duration sheet); No Longer Critical **34==34** with the ONE membership swap asserted
+  exactly (engine UID 99 ↔ Fuse UID 96 — stored vs pure-CPM critical basis in P2, both count 41);
+  Net Finish Impact −148 (CPM) vs Fuse HSD10 −134 (stored, verbatim .aft formula) **reconciled to
+  the day** (−148 = −134 − 15 + 1). Marker test flipped to enforce the upgrade, PARITY-REPORT §E
+  rewritten (3 stale §A/§B P5 cells corrected: 4/5, 0/1), case.json caveats superseded in place.
+- **A-2:** every §A/§B/§C row the suite carries asserted ENGINE==FUSE (logic density 2.79/2.81,
+  critical 41/4, DCMA-01/02/03/05/06/07/08/09/11/14 incl. BEI numerators, the full §C block from
+  TWO sheets). DCMA-04/10/12/13 + composite scores are not in the suite — labeled per-row,
+  transcription basis kept.
+- **QC leftovers:** **D14 CLOSED** — the .aft Bible (1,443 metrics) has NO "Remaining Duration
+  Increases"/date-slip/float-erosion metric (the §E SN names are tool-local; Fuse's own SN05/06 =
+  Newly/No-Longer Critical); the engine's total-duration basis is Fuse-validated UID-exact, the
+  remaining-basis 7-UID subset recorded alongside (help.py + dictionary regenerated). **D20
+  CLOSED** — raw-CPM bands reproduce the fresh export's Zero-Days-Float 41/4; disposition
+  confirmed (float_bands docstring refreshed, stale 41/37 removed). **D7 stays artifact-gated** —
+  the delivered pair has no elapsed in-progress activity.
+- **Briefing formatting (operator screenshot):** the ADR-0150 containment override
+  (`word-break:break-word` on brief tables) + the nowrap citation column crushed every column to
+  one-character verticals. Fixed (citations wrap bounded; headers nowrap; wide tables scroll),
+  verified in scripted Chromium, pinned by `test_briefing_tables_are_never_column_crushed`.
+- Ledgers refreshed (VERIFICATION-REPORT §2/§5/§7, PARK-LIST addendum, risks R-02); version
+  **1.0.4**, wheel + 9 installers regenerated (packaged sources changed). Highest ADR = 0151.
+
+### 2026-07-08 — Executive Briefing table readability HARDENING (no new ADR; presentation-only)
+- Note (merge with main): #288/ADR-0151's session independently removed the td.cite nowrap
+  (the shared root cause). This branch layers the structural guards on top — per-cell
+  min-width floors, the .brief-scroll wrapper, and full-row promotion for ≥5-column tables —
+  reconciled with ADR-0150's containment override (no word-break re-crush; both pins pass).
 - Operator screenshot: /briefing section tables crushed to one character per line. Reproduced in
   a real browser (min cell width 30–38px) and root-caused: `.brief-table td.cite` was
   `white-space:nowrap`, so one long "Task name (UID n, long file.mpp)" citation hogged its

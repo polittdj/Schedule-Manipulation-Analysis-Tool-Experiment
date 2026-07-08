@@ -34,7 +34,9 @@ def test_analysis_json_has_citable_activity_rows(client: TestClient) -> None:
     summaries = [a for a in acts if a["is_summary"]]
     assert len(normal) == 126  # schedulable activities (CPM-covered)
     assert len(summaries) == 19  # WBS summaries incl. the UID-0 project row (Gantt rows)
-    row = next(a for a in acts if a["unique_id"] == 143)
+    # UID 145 is one of the four STORED-critical activities (the effective basis the grid
+    # colors by since ADR-0150; pure-logic-critical 143 carries no stored flag)
+    row = next(a for a in acts if a["unique_id"] == 145)
     # the drill-down + Gantt fields the grid exposes, each verifiable against the parent file
     for key in (
         "name",
@@ -129,13 +131,13 @@ def test_gantt_density_fit_button_and_trace_columns(client: TestClient) -> None:
     assert "id=fitBtn" in page  # the fit-the-whole-project-on-screen button
     js = client.get("/static/app.js").text
     assert "fitToWidth" in js and "forcedPx" in js  # the fit logic + the slider override
-    assert "traceCols" in js and "Driv slack" in js  # the trace's Dur/Start/Finish/Slack columns
+    assert "TRACE_FIELDS" in js and "Driv slack" in js  # the trace's Dur/Start/Finish/Slack columns
     css = client.get("/static/app.css").text
-    assert ".gantt-grid { font-size: 11px; }" in css  # denser font
+    assert ".gantt-grid { font-size: 11px; }" in css  # denser font (the trace shares it now)
     assert ".gantt-grid tr.sum td { font-weight: 700; }" in css  # bold summary rows
     assert "border-right: 1px solid var(--line)" in css  # vertical column gridlines
-    assert ".gantt-row { font-size: 11px; margin: 0; border-bottom" in css  # tight, gridlined trace
-    assert ".gantt-col.c-slack" in css  # the driving-slack trace column
+    # the trace is the same tight, gridlined .gantt-grid table; its done rows read muted
+    assert ".trace-grid tr.done td" in css
 
 
 def test_gantt_charts_render_in_light_mode_with_dark_bold_summaries(client: TestClient) -> None:

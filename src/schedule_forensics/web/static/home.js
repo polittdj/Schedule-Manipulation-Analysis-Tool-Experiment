@@ -17,6 +17,20 @@
     var ov = document.getElementById('loadOverlay');
     if (ov) { ov.hidden = false; ov.setAttribute('aria-hidden', 'false'); }
   }
+  // …and hide it again whenever this page is (re)shown. Nothing else ever hides the overlay, so a
+  // Back navigation / tab restore that revives the page from the browser's back-forward cache would
+  // otherwise resurrect it EXACTLY as it was left — spinner up, covering the dashboard forever
+  // (operator report: a permanent "Loading your project(s)…" screen with no import running).
+  // pageshow fires on normal loads too (harmless: the server renders the overlay hidden) and on
+  // every BFCache/history restore (the case that matters), so the reset covers all paths.
+  window.addEventListener('pageshow', function () {
+    var ov = document.getElementById('loadOverlay');
+    if (ov) { ov.hidden = true; ov.setAttribute('aria-hidden', 'true'); }
+    dz.classList.remove('busy');
+    // a restored page can also revive the picked FileList; clear it so the stale selection
+    // can't linger (the change event only fires on a NEW pick, so this never re-submits).
+    if (input.value) { try { input.value = ''; } catch (e) { /* readonly on very old engines */ } }
+  });
   function submit() {
     dz.classList.add('busy');
     showLoading();
