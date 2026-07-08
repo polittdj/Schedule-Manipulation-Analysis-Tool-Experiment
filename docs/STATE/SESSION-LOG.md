@@ -4339,3 +4339,15 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Also: merged operator's new intake — Hard_File UID-155 SSI exports (engine reproduces the exact
   9-task zero-slack driving path on both snapshots; near-path slack diverges ~0.375d intraday
   convention, task #67 deferred) and Hard_File missing_logic Fuse detail reports (for #73).
+
+### 2026-07-08 (cont. 10) — on-time execution thresholds (ADR-0161)
+- Established industry pass/fail thresholds for the on-time execution indices that previously read
+  N/A: Baseline Finish/Start Compliance, Completed/Started On-Time, CEI Finish/Start -> PASS at
+  >=95% (DCMA 14-Point BEI/CPLI 0.95 + GAO-16-89G BP9); Completed/Started Late -> PASS at <=5%.
+  Informational counts (Forecast to be…, Not Started/Completed) stay N/A by design; cost
+  SPI/CPI/TCPI stay N/A only without cost data (Law 2: never fabricate a pass/fail on an undefined
+  quantity).
+- evm.py: _ratio_result/_offender_ratio gained threshold+direction; compute_baseline_compliance +
+  compute_evm_indices wire the 95/5 bars. help.py thresholds+derivation updated + dictionary
+  regenerated; on-page collapsible threshold legend added to the Schedule-performance and
+  Baseline-compliance panels. New engine + view tests. Parity untouched (26 green).

@@ -112,6 +112,60 @@ def test_completed_on_time_late_and_not_completed() -> None:
     assert round(c["baseline_finish_compliance"].value) == 33  # 1/3
 
 
+def test_on_time_execution_thresholds_score_pass_fail() -> None:
+    """ADR-0161: the on-time execution indices score against the DCMA-derived 95% bar; their late
+    mirrors against 5%; the informational counts stay N/A. On the 1/3-on-time case above BFC/CEI
+    fall well short of 95% -> FAIL, while the informational counts carry no threshold."""
+    status = dt.datetime(2025, 2, 1, 17, 0)
+    bf = dt.datetime(2025, 1, 10, 17, 0)
+    tasks = [
+        Task(
+            unique_id=1,
+            name="ontime",
+            duration_minutes=DAY,
+            percent_complete=100.0,
+            baseline_finish=bf,
+            actual_finish=dt.datetime(2025, 1, 9, 17, 0),
+        ),
+        Task(
+            unique_id=2,
+            name="late",
+            duration_minutes=DAY,
+            percent_complete=100.0,
+            baseline_finish=bf,
+            actual_finish=dt.datetime(2025, 1, 15, 17, 0),
+        ),
+        Task(unique_id=3, name="open", duration_minutes=DAY, baseline_finish=bf),
+    ]
+    c = compute_baseline_compliance(_sched(tasks, status_date=status))
+    assert c["baseline_finish_compliance"].threshold == 95.0
+    assert c["baseline_finish_compliance"].status is CheckStatus.FAIL  # 33% < 95%
+    assert c["completed_on_time"].status is CheckStatus.FAIL
+    assert c["completed_late"].threshold == 5.0
+    assert c["completed_late"].status is CheckStatus.FAIL  # 33% late > 5%
+    # informational counts carry no threshold and stay N/A by design
+    assert c["forecast_to_be_finished"].threshold is None
+    assert c["not_completed"].status is CheckStatus.NOT_APPLICABLE
+    # a schedule delivering every due activity on time -> PASS at the 95% bar
+    good = compute_baseline_compliance(_sched([tasks[0], tasks[2]], status_date=status))
+    assert good["baseline_finish_compliance"].value == 50.0  # 1 of 2 due on time (task 3 open)
+    # and an all-on-time set passes
+    on_time_only = [
+        Task(
+            unique_id=i,
+            name=f"t{i}",
+            duration_minutes=DAY,
+            percent_complete=100.0,
+            baseline_finish=bf,
+            actual_finish=dt.datetime(2025, 1, 9, 17, 0),
+        )
+        for i in range(1, 21)
+    ]
+    passing = compute_baseline_compliance(_sched(on_time_only, status_date=status))
+    assert passing["baseline_finish_compliance"].value == 100.0
+    assert passing["baseline_finish_compliance"].status is CheckStatus.PASS
+
+
 def test_started_on_time_late_not_started() -> None:
     status = dt.datetime(2025, 2, 1, 17, 0)
     bs = dt.datetime(2025, 1, 10, 8, 0)

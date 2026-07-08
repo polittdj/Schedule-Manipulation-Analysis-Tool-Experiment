@@ -39,17 +39,37 @@ from schedule_forensics.engine.metrics._common import (
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
+# Industry on-time execution threshold (ADR-0161): the DCMA 14-Point Assessment sets the Baseline
+# Execution Index (BEI) and Critical Path Length Index (CPLI) pass bar at 0.95, and the GAO Schedule
+# Assessment Guide (GAO-16-89G, Best Practice 9) holds a credible schedule to high on-time baseline
+# performance. The baseline-compliance / CEI execution indices are the same family (share of due
+# work delivered on the baselined date), so they carry the same 95% pass bar; their LATE mirrors
+# carry the complementary ≤ 5% bar. Pure counts (Forecast to be … / Not Started / Not Completed) and
+# cost-dependent indices stay informational / NA — a threshold is only assigned where an industry
+# benchmark genuinely applies (Law 2: never fabricate a pass/fail on an undefined quantity).
+_ON_TIME_PCT = 95.0  # >= is favorable (GE)
+_LATE_PCT = 5.0  # <= is favorable (LE)
 
-def _ratio_result(metric_id: str, name: str, count: int, population: int) -> MetricResult:
-    """A percentage metric with no published pass/fail threshold (informational)."""
+
+def _ratio_result(
+    metric_id: str,
+    name: str,
+    count: int,
+    population: int,
+    *,
+    threshold: float | None = None,
+    direction: Direction | None = None,
+) -> MetricResult:
+    """A percentage metric. Informational (NA) unless an industry ``threshold``/``direction`` is
+    supplied, in which case it is scored PASS/FAIL against it (empty population stays NA)."""
+    value = round(percent(count, population), 1)
+    status = (
+        CheckStatus.NOT_APPLICABLE
+        if threshold is None or direction is None or population == 0
+        else evaluate(value, threshold, direction)
+    )
     return MetricResult(
-        metric_id,
-        name,
-        count,
-        population,
-        round(percent(count, population), 1),
-        "%",
-        CheckStatus.NOT_APPLICABLE,
+        metric_id, name, count, population, value, "%", status, threshold, direction
     )
 
 
@@ -116,12 +136,29 @@ def compute_baseline_compliance(
         "forecast_to_be_finished", "Forecast to be Finished", n_fin, n
     )
     out["completed_on_time"] = _offender_ratio(
-        "completed_on_time", "Completed On Time", on_time, n_fin
+        "completed_on_time",
+        "Completed On Time",
+        on_time,
+        n_fin,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
-    out["completed_late"] = _offender_ratio("completed_late", "Completed Late", late, n_fin)
+    out["completed_late"] = _offender_ratio(
+        "completed_late",
+        "Completed Late",
+        late,
+        n_fin,
+        threshold=_LATE_PCT,
+        direction=Direction.LE,
+    )
     out["not_completed"] = _offender_ratio("not_completed", "Not Completed", not_completed, n_fin)
     out["baseline_finish_compliance"] = _ratio_result(
-        "baseline_finish_compliance", "Baseline Finish Compliance", len(on_time), n_fin
+        "baseline_finish_compliance",
+        "Baseline Finish Compliance",
+        len(on_time),
+        n_fin,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
 
     # ---- start side ----
@@ -160,27 +197,61 @@ def compute_baseline_compliance(
         "forecast_to_be_started", "Forecast to be Started", n_start, n
     )
     out["started_on_time"] = _offender_ratio(
-        "started_on_time", "Started On Time", s_on_time, n_start
+        "started_on_time",
+        "Started On Time",
+        s_on_time,
+        n_start,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
-    out["started_late"] = _offender_ratio("started_late", "Started Late", s_late, n_start)
+    out["started_late"] = _offender_ratio(
+        "started_late",
+        "Started Late",
+        s_late,
+        n_start,
+        threshold=_LATE_PCT,
+        direction=Direction.LE,
+    )
     out["not_started"] = _offender_ratio("not_started", "Not Started", not_started, n_start)
     out["baseline_start_compliance"] = _ratio_result(
-        "baseline_start_compliance", "Baseline Start Compliance", len(bsc_compliant), n_start
+        "baseline_start_compliance",
+        "Baseline Start Compliance",
+        len(bsc_compliant),
+        n_start,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
     return out
 
 
-def _offender_ratio(metric_id: str, name: str, tasks: list[Task], population: int) -> MetricResult:
-    """Percentage metric whose offenders are the citable activities behind the count."""
+def _offender_ratio(
+    metric_id: str,
+    name: str,
+    tasks: list[Task],
+    population: int,
+    *,
+    threshold: float | None = None,
+    direction: Direction | None = None,
+) -> MetricResult:
+    """Percentage metric whose offenders are the citable activities behind the count. Informational
+    (NA) unless an industry ``threshold``/``direction`` is supplied (empty population stays NA)."""
     uids = tuple(sorted(t.unique_id for t in tasks))
+    value = round(percent(len(uids), population), 1)
+    status = (
+        CheckStatus.NOT_APPLICABLE
+        if threshold is None or direction is None or population == 0
+        else evaluate(value, threshold, direction)
+    )
     return MetricResult(
         metric_id,
         name,
         len(uids),
         population,
-        round(percent(len(uids), population), 1),
+        value,
         "%",
-        CheckStatus.NOT_APPLICABLE,
+        status,
+        threshold,
+        direction,
         offender_uids=uids,
     )
 
@@ -220,11 +291,15 @@ def compute_evm_indices(
         out["tcpi"] = _na_index("tcpi", "TCPI")
 
     compliance = compute_baseline_compliance(schedule, cpm_result)
+    # CEI (Finish/Start) are on-time execution indices (share of due work delivered on the baselined
+    # date) — the DCMA BEI family, so they carry the same 95% pass bar (ADR-0161).
     out["cei_finish"] = _ratio_result(
         "cei_finish",
         "CEI (Finish)",
         compliance["completed_on_time"].count,
         compliance["forecast_to_be_finished"].count,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
     # CEI (Start) == Acumen's "Started On Time" % (actual start <= baseline START / forecast). This
     # is DISTINCT from Baseline Start Compliance, whose Half-Step-Delay numerator compares the start
@@ -234,6 +309,8 @@ def compute_evm_indices(
         "CEI (Start)",
         compliance["started_on_time"].count,
         compliance["forecast_to_be_started"].count,
+        threshold=_ON_TIME_PCT,
+        direction=Direction.GE,
     )
     out["spi_t"] = _spi_t(schedule, tasks)
     return out

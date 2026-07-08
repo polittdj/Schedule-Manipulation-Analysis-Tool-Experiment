@@ -1,6 +1,19 @@
-# Handoff — 2026-07-08 (Timescale Size/shading/SVt UI batch; highest ADR 0160)
+# Handoff — 2026-07-08 (on-time execution thresholds; highest ADR 0161)
 
-> ## STATUS (current) — ADR-0160: Timescale Size %, continuous shading, SV(t) start variance
+> ## STATUS (current) — ADR-0161: industry pass/fail thresholds for on-time execution indices
+>
+> - On-time execution indices (Baseline Finish/Start Compliance, Completed/Started On-Time, CEI
+>   Finish/Start) now score PASS at ≥ 95% — the DCMA BEI/CPLI 0.95 bar + GAO-16-89G BP9; late
+>   mirrors (Completed/Started Late) PASS at ≤ 5%. Informational counts (Forecast to be …, Not
+>   Started/Completed) stay N/A by design; cost SPI/CPI/TCPI stay N/A only when no cost data.
+> - Documented in help.py (tooltips + regenerated METRIC-DICTIONARY.md) + an on-page collapsible
+>   "How these PASS/FAIL/N/A results are scored" legend on the Schedule-performance and
+>   Baseline-compliance panels. Parity untouched (golden tests assert counts/values, not statuses).
+> - Part of the 2026-07-08 UI work order; PR #297 shipped ADR-0160 (Timescale Size/shading/SVt).
+>   Remaining work-order items: #71 Quality Trend split, #72 Driving Path fields/export/banner,
+>   #74 Resources drill.
+
+> ## STATUS — ADR-0160: Timescale Size %, continuous shading, SV(t) start variance
 >
 > - **Timescale Size % now zooms** for real (was defeated by Fit-mode + the page-fill override):
 >   buildAxis establishes the fill baseline then multiplies by Size in every mode (grid + path +

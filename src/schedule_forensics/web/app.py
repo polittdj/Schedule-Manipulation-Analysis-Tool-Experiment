@@ -8839,6 +8839,33 @@ def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
     )
 
 
+def _threshold_legend() -> str:
+    """Explain, on-page, why some measures read PASS/FAIL and others N/A, and how the on-time
+    thresholds were derived (operator 2026-07-08: "define for the user what those are and how you
+    calculated them")."""
+    return (
+        "<details class=threshold-legend><summary>How these PASS / FAIL / N&#47;A results are "
+        "scored</summary><div class=threshold-legend-body>"
+        "<p><b>On-time execution indices</b> (Baseline Finish/Start Compliance, Completed/Started "
+        "On&nbsp;Time, CEI Finish/Start) score <b>PASS at &ge; 95%</b>. That bar is the DCMA "
+        "14-Point Assessment's Baseline-Execution-Index / CPLI standard (0.95), reinforced by the "
+        "GAO Schedule Assessment Guide (GAO-16-89G, Best Practice&nbsp;9); these indices are the "
+        "same on-time-delivery family, so they inherit the same threshold (ADR-0161).</p>"
+        "<p><b>Late mirrors</b> (Completed&nbsp;Late, Started&nbsp;Late) score <b>PASS at &le; 5%</b> "
+        "&mdash; the complement of the 95% on-time bar.</p>"
+        "<p><b>Informational counts</b> (Forecast to be Finished/Started, Not Started, Not "
+        "Completed) carry <b>no pass/fail</b> &mdash; they are denominators / status counts, not "
+        "quality gates, so they read <b>N&#47;A</b> by design.</p>"
+        "<p><b>Cost indices</b> (SPI, CPI, TCPI) read <b>N&#47;A</b> only when the schedule is not "
+        "cost-loaded &mdash; a <i>data limitation of the file</i>, not a missing threshold. On a "
+        "cost-loaded schedule they score against 1.0. A fabricated number is never shown in place "
+        "of a genuinely undefined one.</p>"
+        "<p class=muted>Every threshold and its derivation is in the "
+        '<a href="/help">Metric Dictionary</a>; hover any measure name for its own tooltip.</p>'
+        "</div></details>"
+    )
+
+
 def _evm_idx_str(m: MetricResult | None) -> str:
     """A rounded index value for an EVM stat card; em dash when the metric is NOT_APPLICABLE."""
     if m is None or str(m.status) == "NA":
@@ -8951,6 +8978,7 @@ schedule and otherwise read N/A.</p>
 <div class=panel><h2>Schedule performance</h2>
 <p class=muted>Earned-Schedule index and the baseline-anchored Current Execution Index
 (finish / start).</p>
+{_threshold_legend()}
 {_metric_scorecard_table(sched_idx)}</div>
 <div class=panel><h2>Cost performance</h2>
 <p class=muted>Cost-based EVM indices &mdash; applicable only when the schedule carries task budgets
@@ -8960,6 +8988,7 @@ and actual costs.</p>
 <div class=panel><h2>Baseline compliance</h2>
 <p class=muted>How the executed work lines up with the baseline dates (BFC / BSC and the on-time
 counts).</p>
+{_threshold_legend()}
 {_metric_scorecard_table(compliance)}</div>
 <div class=panel><h2>Worst finish variances</h2>
 <p class=muted>Completed activities that finished latest relative to their baseline (working days;

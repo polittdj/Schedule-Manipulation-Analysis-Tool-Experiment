@@ -69,6 +69,23 @@ _PBIX = (
     "XPress9-compressed and unreadable (M15, ADR-0030)."
 )
 _HMI = "NASA metric library ('Bible') — extracted formula, ADR-0087."
+# On-time execution threshold basis (ADR-0161): the DCMA 14-Point Assessment sets the Baseline
+# Execution Index (BEI) and CPLI pass bar at 0.95, and GAO's Schedule Assessment Guide
+# (GAO-16-89G, Best Practice 9) holds a credible schedule to high on-time baseline performance.
+# The baseline-compliance / CEI execution indices are the same family, so they inherit the 95%
+# pass bar; the LATE mirrors inherit the complementary 5% bar.
+_ONTIME_SRC = (
+    "Reference baseline-compliance (§C, ADR-0013); pass threshold derived from the DCMA "
+    "14-Point BEI/CPLI 0.95 standard + GAO-16-89G Best Practice 9 (established ADR-0161)."
+)
+_ONTIME_THR = (
+    "At least 95% of due activities must be delivered on their baselined date (the DCMA "
+    "Baseline-Execution 0.95 pass bar applied to on-time execution; ADR-0161)."
+)
+_LATE_THR = (
+    "No more than 5% of due activities may be delivered late (the complement of the 95% "
+    "on-time pass bar; ADR-0161)."
+)
 
 
 METRIC_DICTIONARY: dict[str, MetricDoc] = {
@@ -403,14 +420,20 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Completed On Time",
         "Due activities completed on/before their baseline finish.",
         "count(complete and actual_finish <= baseline_finish) / due",
-        _C,
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="19 of 20 due activities finished on their baseline date = 95% -> PASS.",
+        example_fail="2 of 11 due activities on time (18%) -> FAIL; execution is far behind plan.",
     ),
     "completed_late": _doc(
         "completed_late",
         "Completed Late",
         "Due activities completed after their baseline finish.",
         "count(complete and actual_finish > baseline_finish) / due",
-        _C,
+        _ONTIME_SRC,
+        threshold=_LATE_THR,
+        example_ok="1 of 40 due activities finished late = 2.5% -> PASS (under 5%).",
+        example_fail="1 of 11 due activities finished late (9%) -> FAIL (over 5%).",
     ),
     "not_completed": _doc(
         "not_completed",
@@ -422,9 +445,13 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "baseline_finish_compliance": _doc(
         "baseline_finish_compliance",
         "Baseline Finish Compliance",
-        "Share of due activities finished on time (BFC).",
+        "Share of due activities finished on time (BFC) — the DCMA Baseline-Execution index on "
+        "the finish side.",
         "completed_on_time / forecast_to_be_finished",
-        _C,
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="BFC 96% -> PASS (>= 95%).",
+        example_fail="BFC 18% -> FAIL; most due work is finishing late.",
     ),
     "logic_unsupported_dates": _doc(
         "logic_unsupported_dates",
@@ -459,14 +486,20 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Started On Time",
         "Start-due activities started on/before their baseline start.",
         "count(actual_start <= baseline_start) / start-due",
-        _C,
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="47 of 49 start-due activities started on time = 96% -> PASS.",
+        example_fail="4 of 12 start-due activities on time (33%) -> FAIL.",
     ),
     "started_late": _doc(
         "started_late",
         "Started Late",
         "Start-due activities started after their baseline start.",
         "count(actual_start > baseline_start) / start-due",
-        _C,
+        _ONTIME_SRC,
+        threshold=_LATE_THR,
+        example_ok="0 of 12 start-due activities started late = 0% -> PASS.",
+        example_fail="3 of 20 start-due activities started late (15%) -> FAIL.",
     ),
     "not_started": _doc(
         "not_started",
@@ -482,30 +515,51 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "tool's Half-Step-Delay definition — distinct from Started On Time, which uses baseline "
         "start).",
         "count(actual start <= baseline finish) / forecast_to_be_started",
-        _C,
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="BSC 95% -> PASS.",
+        example_fail="BSC 33% -> FAIL; most work is starting behind its Half-Step-Delay window.",
     ),
     # --- EVM indices ---
     "spi": _doc(
         "spi",
         "SPI",
-        "Schedule Performance Index (cost-based; NA without cost).",
-        "BCWP / BCWS",
+        "Schedule Performance Index (cost-based; N/A unless the schedule is cost-loaded — this "
+        "is a data limitation of the file, not a missing threshold: without BCWP/BCWS the ratio "
+        "is undefined and is never fabricated as 0).",
+        "BCWP / BCWS  (pass >= 1.0 when cost-loaded)",
         _EVM,
+        threshold="On a cost-loaded schedule, SPI >= 1.0 is on/ahead of the planned value; "
+        "< 1.0 is behind. N/A when the file carries no cost.",
     ),
-    "cpi": _doc("cpi", "CPI", "Cost Performance Index (NA without cost).", "BCWP / ACWP", _EVM),
+    "cpi": _doc(
+        "cpi",
+        "CPI",
+        "Cost Performance Index (N/A unless cost-loaded — a data limitation, not a missing "
+        "threshold).",
+        "BCWP / ACWP  (pass >= 1.0 when cost-loaded)",
+        _EVM,
+        threshold="CPI >= 1.0 is on/under budget; < 1.0 is an overrun. N/A without cost.",
+    ),
     "tcpi": _doc(
         "tcpi",
         "TCPI",
-        "To-Complete Performance Index (NA without cost).",
-        "(BAC - BCWP) / (BAC - ACWP)",
+        "To-Complete Performance Index (N/A unless cost-loaded — a data limitation, not a "
+        "missing threshold).",
+        "(BAC - BCWP) / (BAC - ACWP)  (pass <= 1.0 when cost-loaded)",
         _EVM,
+        threshold="TCPI <= 1.0 means the remaining work can complete within budget at the "
+        "current efficiency; > 1.0 requires better-than-planned performance. N/A without cost.",
     ),
     "cei_finish": _doc(
         "cei_finish",
         "CEI (Finish)",
         "Current Execution Index, finish side — single-schedule, baseline-anchored (= BFC).",
         "completed_on_time / forecast_to_be_finished",
-        "EVM performance indices (METRICS-CATALOG §3, ADR-0013; re-verified ADR-0052).",
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="CEI(Finish) 96% -> PASS.",
+        example_fail="CEI(Finish) 18% -> FAIL; execution is far behind the baseline.",
     ),
     "cei_start": _doc(
         "cei_start",
@@ -513,7 +567,10 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         "Current Execution Index, start side — single-schedule, baseline-anchored (= Started On "
         "Time %, distinct from Baseline Start Compliance's Half-Step-Delay numerator).",
         "started_on_time / forecast_to_be_started",
-        "EVM performance indices (METRICS-CATALOG §3, ADR-0013; re-verified ADR-0052).",
+        _ONTIME_SRC,
+        threshold=_ONTIME_THR,
+        example_ok="CEI(Start) 95% -> PASS.",
+        example_fail="CEI(Start) 33% -> FAIL; most work is starting late.",
     ),
     "cei_bow_wave": _doc(
         "cei_bow_wave",
