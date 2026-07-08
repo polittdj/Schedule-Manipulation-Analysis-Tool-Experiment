@@ -1,0 +1,49 @@
+{
+ "_source": "Acumen Fuse v8.11.0 export suite for Hard_File.mpp + Hard_File_updated.mpp, delivered by the operator 2026-07-08 in 00_REFERENCE_INTAKE/acumen_v8.11.0/ (repo-tracked, non-CUI build/reference input per CLAUDE.md). Values transcribed VERBATIM from 'Hard_File_Fuse - Metric History Report.xlsx' (workbook 'Hard_File_Fuse - 282 Activities', created 7/8/2026 by dpolitte), which carries both snapshots side by side: Hard_File (Time Now 7/7/2026) and Hard_File_updated (Time Now 8/11/2026). Corroborated by the Summary Metric and Quick Add Metrics reports in the same suite.",
+ "_note": "Second independent ENGINE==FUSE oracle (the first is project2_5/fuse_exports_2026-06.json, ADR-0151). This one uniquely covers an ELAPSED IN-PROGRESS activity (needs-list D7): the updated snapshot carries exactly one normal in-progress to-go task (Normal Tasks (To-Go, In Progress) 0 -> 1), reproduced exactly. 15 metric values across the two snapshots reproduce Fuse UID-for-count exactly (test_fuse_hardfile_engine_equals_fuse); 3 divergences are recorded under _documented_divergences and asserted EXACTLY in the test rather than forced (Law 2).",
+ "_fixtures": "Hard_File.mspdi.xml.gz / Hard_File_updated.mspdi.xml.gz — MPXJ-converted MSPDI of the intake .mpp files, gzipped (task names are the source file's own anonymized business-process strings; non-CUI).",
+ "snapshots": {
+  "Hard_File": {
+   "status_date": "2026-07-07",
+   "exact": {
+    "missing_logic": 7,
+    "hard_constraints": 0,
+    "high_float_44d": 2,
+    "milestones_with_duration_gt_0": 0,
+    "tasks_and_milestones_to_go": 110,
+    "milestones_to_go": 25,
+    "normal_tasks_to_go": 85,
+    "normal_tasks_to_go_in_progress": 0
+   }
+  },
+  "Hard_File_updated": {
+   "status_date": "2026-08-11",
+   "exact": {
+    "hard_constraints": 0,
+    "high_float_44d": 6,
+    "milestones_with_duration_gt_0": 0,
+    "tasks_and_milestones_to_go": 103,
+    "milestones_to_go": 24,
+    "normal_tasks_to_go": 79,
+    "normal_tasks_to_go_in_progress": 1
+   }
+  }
+ },
+ "_documented_divergences": {
+  "negative_float": {
+   "fuse": {"Hard_File": 0, "Hard_File_updated": 0},
+   "engine": {"Hard_File": 34, "Hard_File_updated": 33},
+   "cause": "Every engine offender carries the source tool's STORED Critical flag (stored_is_critical=True) but no stored TotalSlack: MPXJ's MSPDI conversion omits <TotalSlack> for these tasks (34/142 in Hard_File; UID 147 'Product Review COMPLETE' is a source-Critical milestone). The engine's effective_total_float (ADR-0010/0080) then falls back to the recomputed pure-logic CPM float, which reads negative on these constrained/leveled tasks where MS Project's stored slack (which Fuse reads) is 0. This is the documented stored-vs-recomputed CPM divergence, NOT a curve-fittable data typo: forcing a clamp to 0 would hide a genuine CPM-vs-MSProject difference. Recorded on the needs list for a deeper CPM-parity investigation (why the recompute diverges on these tasks — constraints/leveling/data-date)."
+  },
+  "missing_logic_updated": {
+   "fuse": 8,
+   "engine": 10,
+   "cause": "On Hard_File the engine matches Fuse exactly (7=7); on the updated snapshot the engine finds 10 open-ended tasks vs Fuse's 8. Fuse's own components on the updated file (Missing Predecessors 0 + Missing Successors 7) do not themselves sum to its Missing Logic 8, so Fuse applies a metric-definition nuance (likely an LOE/start-milestone exclusion) not published in the export. Not forced pending Fuse's exact Missing Logic definition."
+  },
+  "activities_with_duration_0": {
+   "fuse": {"Hard_File": 1, "Hard_File_updated": 1},
+   "engine": {"Hard_File": 0, "Hard_File_updated": 0},
+   "cause": "The raw MSPDI carries ZERO non-milestone zero-duration non-summary tasks (all 25 zero-duration tasks are flagged Milestone=1), so the engine counts 0 by MS Project's own milestone flag. Fuse reports 1 under a distinct internal classification of 'Activities with Duration=0' not derivable from the exported flags. A 1-count divergence on a minor metric; documented, not forced."
+  }
+ }
+}

@@ -4303,3 +4303,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   definition; recorded on the operator needs list.
 - Live-verified in Chromium (13 checks, zero console errors). PR #294 (Timescale dialog)
   merged mid-session; housekeeping done; this batch ships as the next PR.
+
+### 2026-07-08 (cont. 8) — Hard_File Acumen Fuse parity + D7 closed (ADR-0159)
+- Consumed the operator's Fuse v8.11.0 suite for Hard_File.mpp + Hard_File_updated.mpp (two
+  snapshots). Parsed the Metric History Report (raw per-metric counts for both snapshots);
+  MPXJ-converted both .mpp; ran engine DCMA/quality; compared.
+- 15 metrics reproduce Fuse EXACTLY across both snapshots (Missing Logic, Hard Constraints,
+  High Float >=44d, Milestones-dur>0, To-Go 110/103, Milestones-To-Go 25/24, Normal-To-Go
+  85/79, Normal-To-Go-In-Progress 0/1). needs-list D7 (elapsed in-progress oracle) CLOSED —
+  the 0->1 in-progress transition is a real Fuse comparison; ENGINE==FUSE now has TWO
+  independent delivered oracles (Project2/5 + Hard_File).
+- 3 divergences pinned EXACTLY (never forced): Negative Float 34/33 vs 0 (stored-critical, no
+  MPXJ TotalSlack -> recomputed CPM negative; ADR-0010 gap), Missing Logic updated 10 vs 8
+  (Fuse definition nuance), Activities-with-Duration=0 0 vs 1 (all zero-dur are milestones).
+  Root causes documented in the golden + ADR + needs list; test asserts each divergence exactly.
+- Fixtures: fuse_hardfile/*.mspdi.xml.gz (gzipped MSPDI, ~27KB each); test_fuse_hardfile_parity.py
+  (4 tests). Pre-commit CUI guard passes. .mpp stays out of git (non-CUI build input).

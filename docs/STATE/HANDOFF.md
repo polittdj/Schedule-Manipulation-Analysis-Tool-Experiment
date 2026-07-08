@@ -1,6 +1,24 @@
-# Handoff — 2026-07-08 (histogram drill + universal explainers + uid152 parity; highest ADR 0158)
+# Handoff — 2026-07-08 (Hard_File Fuse parity + D7; highest ADR 0159)
 
-> ## STATUS (current) — ADR-0158: histogram click-drill, viz explainers, Large_Test_File parity
+> ## STATUS (current) — ADR-0159: Hard_File Acumen Fuse parity (second oracle, closes D7)
+>
+> - Consumed the operator's Fuse v8.11.0 export suite for `Hard_File.mpp` + `Hard_File_updated.mpp`
+>   (two snapshots, 7/7 and 8/11/2026, 142 tasks each). **15 metric values across both snapshots
+>   reproduce the Fuse Metric History Report EXACTLY** (Missing Logic 7, Hard Constraints 0/0,
+>   High Float ≥44 d 2/6, To-Go 110/103, Milestones-To-Go 25/24, Normal-To-Go 85/79, and the
+>   in-progress transition **Normal Tasks To-Go In-Progress 0→1**).
+> - **needs-list D7 CLOSED**: the 0→1 in-progress transition gives the elapsed-axis metrics a
+>   real Fuse oracle (previously only engine self-consistency). ENGINE==FUSE now rests on TWO
+>   independent delivered oracles (Project2/5 + Hard_File).
+> - Fixtures committed as gzipped MSPDI (`fuse_hardfile/*.mspdi.xml.gz`, ~27 KB each, like
+>   ssi_uid152); gate `tests/parity/test_fuse_hardfile_parity.py` (parity suite now 26).
+> - **3 divergences pinned EXACTLY, not forced (Law 2)**: (1) Negative Float 34/33 vs 0/0 — all
+>   offenders are stored-Critical with no MPXJ-exported TotalSlack → engine falls back to
+>   recomputed CPM float (ADR-0010 stored-vs-recomputed gap); (2) Missing Logic updated 10 vs 8
+>   (Fuse definition nuance; its own components don't sum to 8); (3) Activities with Duration=0
+>   0 vs 1 (all zero-dur tasks are Milestone=1 in the file). Each on the needs list.
+
+> ## STATUS — ADR-0158: histogram click-drill, viz explainers, Large_Test_File parity
 >
 > - **Float-histogram click-drill**: chart on the LEFT half; clicking any band lists its
 >   activities (UID/Name/float + Gantt-style Columns dropdown incl. custom fields) on the
