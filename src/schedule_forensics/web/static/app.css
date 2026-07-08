@@ -212,6 +212,37 @@
 }
 .ts-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* Total-float histogram click-drill (operator 2026-07-08): chart on the left HALF, the
+   selected band's activities on the right with a columns dropdown + Excel export. */
+.hist-split { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+/* chartframe.js wraps the chart host in .cf-frame, so size whichever child is the flex item */
+.hist-split > .hist-left, .hist-split > .cf-frame, .hist-split > .hist-right {
+  flex: 1 1 46%; min-width: 320px; max-width: 52%;
+}
+.hist-left { min-width: 0; }
+.hist-right h3 { margin: 2px 0 6px; }
+.hist-drill-bar { display: flex; gap: 12px; align-items: center; margin: 4px 0 8px; }
+.hist-drill-scroll { max-height: 340px; overflow: auto; border: 1px solid var(--line); border-radius: 4px; }
+.hist-drill-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.hist-drill-table th {
+  position: sticky; top: 0; background: var(--panel); text-align: left;
+  border-bottom: 1px solid var(--line); padding: 4px 8px;
+}
+.hist-drill-table td { padding: 3px 8px; border-bottom: 1px solid var(--line); }
+
+/* Universal visual explainers (operator 2026-07-08): every chart/panel NAME carries a hover
+   callout (WHAT / EXAMPLE / HOW TO READ / PM USE) via the shared data-sf-hint mechanism. */
+h2.viz-hint, h3.viz-hint {
+  cursor: help;
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 3px;
+}
+h2.viz-hint:hover, h3.viz-hint:hover { text-decoration-color: var(--accent); }
+.viz-hint[data-sf-hint]:hover::after, .viz-hint[data-sf-hint]:focus-visible::after {
+  white-space: pre-line;
+  max-width: 480px;
+}
+
 /* The Gantt charts ALWAYS render in light mode (the MS-Project look) regardless of the page theme:
    the operator found the dark grid behind the white bars jarring. Scoping the light-theme custom
    properties onto each Gantt surface flips every descendant's text/border/hover/field colour to the

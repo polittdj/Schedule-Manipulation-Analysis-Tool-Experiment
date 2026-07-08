@@ -4287,3 +4287,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   extends beyond the project finish to fill the page (operator requirement).
 - Live-verified in Chromium: 22 scripted checks, zero console errors. 5 new web tests;
   wheel + 9 installers rebuilt in lockstep; full gate green.
+
+### 2026-07-08 (cont. 7) — histogram drill + universal explainers + uid152 parity (ADR-0158)
+- Float histogram: half-width left, click-drill panel right (band's tasks, Columns dropdown
+  incl. custom fields, Excel export of the selection via /export/{fmt}/float-band); fixed the
+  fractional-float binning gap (0<v<=5 now lands in 1–5, not >44) on client AND server.
+- vizhints.js: every visual on every page gets a hover explainer on its NAME (WHAT / EXAMPLE /
+  HOW TO READ / PM USE; ~65 catalog entries, substring-matched, MutationObserver for
+  late-rendered headings; Mission tiles keep their server hints).
+- ssi_uid152 golden pinned (closes A-4): Large_Test_File.mpp (USA OTB Master IMS, 2,126 tasks,
+  progressed + leveled) — engine == SSI on the 76-task path membership and every driving
+  slack, zero mismatches first run; 680 KB gzipped MSPDI fixture. Drag column provenance-only:
+  SSI 0/0.5 pattern decoded (milestone 0; stored-window overlap 0; serial 0.5 = near-path
+  slack under an SSI convention engine measures as 1.0 d) — not gated pending SSI's
+  definition; recorded on the operator needs list.
+- Live-verified in Chromium (13 checks, zero console errors). PR #294 (Timescale dialog)
+  merged mid-session; housekeeping done; this batch ships as the next PR.

@@ -365,6 +365,7 @@ onchange="this.form.submit()">{{ lang_options }}</select></label>
 <script src="/static/globe.js"></script>
 <script src="/static/sysmon.js"></script>
 <script src="/static/hints.js"></script>
+<script src="/static/vizhints.js"></script>
 <div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
 </body></html>"""
 )
@@ -2669,6 +2670,50 @@ def create_app(
         )
         return _export_response(fmt, tableset, "quality-ribbon")
 
+    @app.get("/export/{fmt}/float-band/{name}")
+    def export_float_band(
+        fmt: str, name: str, band: int = Query(...), cols: str = Query("")
+    ) -> Response:
+        """The activities inside one total-float histogram band, with any extra columns the
+        operator toggled on in the drill panel (standard or custom fields) — the histogram
+        click-through's Excel export (operator 2026-07-08)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        if not 0 <= band < len(_FLOAT_HIST_BANDS):
+            return JSONResponse({"error": "unknown band"}, status_code=422)
+        label, member = _FLOAT_HIST_BANDS[band]
+        analysis = st.analysis_for(name, sch)
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Name", "Total float (d)", *extra)
+
+        def _cell(value: object) -> str | int | float | None:
+            return value if isinstance(value, str | int | float) or value is None else str(value)
+
+        body: list[tuple[str | int | float | None, ...]] = []
+        for a in analysis.activity_rows:
+            tf = a.get("total_float_days")
+            if a.get("is_summary") or not isinstance(tf, int | float) or not member(float(tf)):
+                continue
+            custom_obj = a.get("custom")
+            custom: dict[str, object] = custom_obj if isinstance(custom_obj, dict) else {}
+            body.append(
+                (
+                    _cell(a.get("unique_id")),
+                    _cell(a.get("name")),
+                    tf,
+                    *(_cell(a.get(c, custom.get(c))) for c in extra),
+                )
+            )
+        tableset = TableSet(
+            f"{name} — total float {label} d",
+            (Table(f"Float band {label} d", headers, tuple(body)),),
+        )
+        return _export_response(fmt, tableset, "float-band")
+
     @app.get("/export/{fmt}/integrity")
     def export_integrity(
         fmt: str, file: str = Query(""), exception_field: str = Query("")
@@ -4917,16 +4962,38 @@ def _scatter_panel(key: str, sch: Schedule, cpm: CPMResult) -> str:
     )
 
 
+#: The histogram's DCMA-aligned total-float bands, by index — MUST mirror static/histogram.js
+#: BUCKETS (the drill panel posts the band INDEX to /export/{fmt}/float-band/{name}).
+_FLOAT_HIST_BANDS: tuple[tuple[str, Callable[[float], bool]], ...] = (
+    ("< 0", lambda v: v < 0),
+    ("0", lambda v: v == 0),
+    ("1-5", lambda v: 0 < v <= 5),
+    ("6-10", lambda v: 5 < v <= 10),
+    ("11-20", lambda v: 10 < v <= 20),
+    ("21-44", lambda v: 20 < v <= 44),
+    ("> 44", lambda v: v > 44),
+)
+
+
 def _float_histogram_panel(key: str) -> str:
     """An activity total-float distribution histogram on the analysis page (handbook §6.3.2.5.2.2).
-    Pure presentation over the activity rows the grid already serves (binned client-side)."""
+
+    Operator 2026-07-08: the chart takes the LEFT half of the panel; clicking a bar fills the
+    RIGHT half with that band's activities (UID + Name by default, any other standard or custom
+    column addable like the Gantt's Columns dropdown) and an Excel export of the selection.
+    """
     return (
         "<div class=panel><h2>Total-float distribution</h2>"
         "<p class=muted>Activities binned by <b>total float</b> (working days), in DCMA-aligned "
         "bands. Mass at <b>0 / &lt; 0</b> is the critical-and-behind core; a spike in the "
-        "<b>&gt; 44 d</b> band is float padding or missing successor logic (DCMA-06). The full "
-        "activity grid above is the accessible data table.</p>"
-        f'<div class=chart-host id=floatHist data-name="{_e(key)}"></div></div>'
+        "<b>&gt; 44 d</b> band is float padding or missing successor logic (DCMA-06). "
+        "<b>Click a bar</b> to list that band's activities on the right; add columns with the "
+        "selector and export the selection to Excel.</p>"
+        "<div class=hist-split>"
+        f'<div class="chart-host hist-left" id=floatHist data-name="{_e(key)}"></div>'
+        "<div class=hist-right id=floatHistDrill><p class=muted>Click a histogram bar to see "
+        "the activities in that float band here.</p></div>"
+        "</div></div>"
         '<script src="/static/histogram.js"></script>'
     )
 
