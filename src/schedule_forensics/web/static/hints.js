@@ -18,6 +18,15 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    // highlight the CURRENT page's link in the header ribbon (operator 2026-07-08)
+    var here = window.location.pathname;
+    document.querySelectorAll("header nav a[href]").forEach(function (a) {
+      var href = a.getAttribute("href");
+      if (href === here || (href !== "/" && here.indexOf(href) === 0)) {
+        a.classList.add("nav-active");
+      }
+    });
+
     var seen = dismissed();
     document.querySelectorAll(".guide-tip[data-tip-id]").forEach(function (tip) {
       var id = tip.getAttribute("data-tip-id");

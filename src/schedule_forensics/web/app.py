@@ -4002,6 +4002,9 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label><input type=radio name=pathOutput value=waterfall checked> &#8615; Waterfall</label>
 <label><input type=radio name=pathOutput value=summaries> With Summaries</label>
 <label><input type=radio name=pathOutput value=parallel> Separate parallel paths</label></span>
+<span class=opt-group><b>Group by</b>
+<select id=pathGroupBy title="Group the traced activities by any field — standard or custom (e.g. a CA-WBS code); overrides the Output grouping"><option value="">(none)</option></select></span>
+<span class=opt-group><label><input id=pathShowLinks type=checkbox title="Draw the logic links between traced activities on the timeline (MS-Project Layout style)"> Show links</label></span>
 </div></details>
 <div id=pathFields class=muted></div>
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
@@ -4047,7 +4050,7 @@ def _mission_body(target_uid: int | None) -> str:
             f"<button type=button id={nxt}>&#8250;</button></div>"
         )
 
-    tiles = "".join(
+    perf_tiles = "".join(
         [
             tile(
                 "S-Curve",
@@ -4069,15 +4072,6 @@ def _mission_body(target_uid: int | None) -> str:
                 "<div id=driftLabel class=muted></div><div id=driftChart></div>",
                 hint="WHAT: the forecast finish date from three independent methods (CPM network logic, historical throughput rate, earned schedule), tracked across every loaded version.\n\nEXAMPLE: over five updates the logic forecast holds March while the rate and earned-schedule forecasts drift to August — the network promises what the demonstrated pace can't deliver.\n\nHOW TO READ: lines drifting right = slipping; methods that AGREE make the forecast credible; a logic forecast far ahead of the performance-based ones usually means optimistic remaining durations or loosened logic.\n\nDECIDE: which finish date to plan around, and whether to challenge an optimistic official forecast.",
                 controls=steps("prevDrift", "driftPlay", "nextDrift"),
-            ),
-            tile(
-                "Quality Offenders",
-                "/trend",
-                "<div id=qualLabel class=muted></div>"
-                "<div class=qual-drill-grid><div id=qualBars></div><div id=qualDrill></div></div>"
-                "<label class=muted>Metric <select id=qualMetric></select></label>",
-                hint="WHAT: for the selected quality metric (missing logic, hard constraints, high float…), which specific activities offend, ranked, with a drill-down — across versions.\n\nEXAMPLE: 'Hard constraints' shows 12 offenders and the drill list is dominated by one subproject — that team is pinning dates instead of using logic.\n\nHOW TO READ: click a bar to list the offending activities (UIDs); recurring offenders across versions are structural, not accidental.\n\nDECIDE: exactly which activities to send back to the planner, and where quality problems concentrate.",
-                controls=steps("qualPrev", "qualPlay", "qualNext"),
             ),
             tile(
                 "Finishes",
@@ -4104,6 +4098,20 @@ def _mission_body(target_uid: int | None) -> str:
                 hint="WHAT: the driving path to the project finish (or your Target UID), version by version — which activities carry the schedule and how membership changes.\n\nEXAMPLE: the path ran through fabrication for four versions, then suddenly runs through software integration — either real progress or a logic change moved the drive.\n\nHOW TO READ: stable membership = a settled plan; churn every version = an unstable network; watch for activities that leave the path exactly when they start slipping (a manipulation signature).\n\nDECIDE: where management attention belongs now, and which path changes deserve a 'why did this change?' interrogation.",
                 controls=steps("prevEvo", "evoPlay", "nextEvo"),
             ),
+        ]
+    )
+    # operator 2026-07-08: the Quality Control visuals live in their OWN labeled section
+    qc_tiles = "".join(
+        [
+            tile(
+                "Quality Offenders",
+                "/trend",
+                "<div id=qualLabel class=muted></div>"
+                "<div class=qual-drill-grid><div id=qualBars></div><div id=qualDrill></div></div>"
+                "<label class=muted>Metric <select id=qualMetric></select></label>",
+                hint="WHAT: for the selected quality metric (missing logic, hard constraints, high float…), which specific activities offend, ranked, with a drill-down — across versions.\n\nEXAMPLE: 'Hard constraints' shows 12 offenders and the drill list is dominated by one subproject — that team is pinning dates instead of using logic.\n\nHOW TO READ: click a bar to list the offending activities (UIDs); recurring offenders across versions are structural, not accidental.\n\nDECIDE: exactly which activities to send back to the planner, and where quality problems concentrate.",
+                controls=steps("qualPrev", "qualPlay", "qualNext"),
+            ),
             tile(
                 "Quality Trend",
                 "/trend",
@@ -4123,8 +4131,13 @@ Offenders, and Critical-Path Evolution &mdash; in lockstep. The session <b>Targe
 <button id=missionPlay type=button>&#9654; Play all</button>
 <button id=missionStep type=button>&#9197; Step all</button>
 </div></div>
+<h2 class=mission-section>Performance &amp; Paths</h2>
 <div id=missionGrid class=mosaic>
-{tiles}
+{perf_tiles}
+</div>
+<h2 class=mission-section>Quality Control</h2>
+<div id=missionQcGrid class=mosaic>
+{qc_tiles}
 </div>
 <script src="/static/timeaxis.js"></script>
 <script src="/static/scurve.js"></script>

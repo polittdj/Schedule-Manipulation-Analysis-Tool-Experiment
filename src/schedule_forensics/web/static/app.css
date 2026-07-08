@@ -698,3 +698,27 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
 .counterfactual { border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel));
   border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
 .counterfactual h4 { margin: 0 0 5px; color: var(--bad); }
+
+/* operator 2026-07-08: no text under the chart toolbar — reserve the toolbar strip on the
+   first (label) line of every chart host, and make the bar opaque for any straggler */
+.cf-frame .chart-host > .muted:first-child, .cf-frame > .muted:first-child { padding-right: 210px; }
+.cf-bar { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 2px 5px; }
+
+/* active-page highlight in the header ribbon (operator 2026-07-08) */
+header nav a.nav-active { color: var(--accent); border-bottom: 2px solid var(--accent);
+  padding-bottom: 1px; }
+.mission-section { margin: 16px 2px 8px; font-size: 14px; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--muted); border-bottom: 1px solid var(--line);
+  padding-bottom: 4px; }
+
+/* GANTT STANDARDIZATION (operator 2026-07-08): every schedule grid on every page shares the
+   same type + rhythm — 11px font, 1px/6px cell padding, bold summaries, per-column gridlines,
+   280-460px Name columns, the same filter dropdowns. .gantt-grid carries it; the remaining
+   grids (evolution / SRA / corridor) are aliased here so no page drifts. */
+.evo-gantt table, .sra-grid-host table, .dp-gantt table { font-size: 11px; }
+.evo-gantt th, .evo-gantt td, .sra-grid-host th, .sra-grid-host td,
+.dp-gantt th, .dp-gantt td { padding: 1px 6px; line-height: 1.2; border-right: 1px solid var(--line); }
+.evo-gantt td.name-cell, .sra-grid-host td.name-cell, .dp-gantt td.name-cell,
+.evo-gantt .pv-name, .sra-grid-host .pv-name, .dp-gantt .pv-name {
+  min-width: 280px; max-width: 460px; white-space: normal; word-break: break-word; }
+.pv-link { z-index: 2; }

@@ -306,6 +306,51 @@
     refitToColumns(assumed);
   }
 
+  // MS-Project-style logic-link connectors (operator 2026-07-08): an SVG overlay per
+  // timeline row pair — elbow from the predecessor bar's finish down to the successor's start.
+  function drawLinkLines(tbody, rows, x) {
+    var rowTop = {};
+    var trs = tbody.querySelectorAll("tr");
+    var idx = 0;
+    trs.forEach(function (tr) {
+      if (tr.classList.contains("path-branch-head")) return;
+      var r = rows[idx];
+      // rows and non-header trs are painted in the same order (paintOne appends 1:1)
+      if (r) rowTop[r.unique_id] = tr;
+      idx += 1;
+    });
+    rows.forEach(function (r) {
+      (r.drives || []).forEach(function (lk) {
+        var fromTr = rowTop[r.unique_id];
+        var toTr = rowTop[lk.uid];
+        var toRow = null;
+        for (var i = 0; i < rows.length; i++) if (rows[i].unique_id === lk.uid) toRow = rows[i];
+        if (!fromTr || !toTr || !toRow || !r.finish || !toRow.start) return;
+        var track = toTr.querySelector(".path-track");
+        var fromTrack = fromTr.querySelector(".path-track");
+        if (!track || !fromTrack) return;
+        var x1 = x(Date.parse(r.finish));
+        var x2 = x(Date.parse(toRow.start));
+        var dy = toTr.rowIndex - fromTr.rowIndex; // vertical span in rows
+        var h = 15 * dy; // approximate row pitch (density pass: ~15px)
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttribute("class", "pv-link");
+        svg.style.cssText = "position:absolute;left:0;top:" + (-h) + "px;width:100%;height:" +
+          Math.abs(h) + "px;overflow:visible;pointer-events:none";
+        var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        var midY = h > 0 ? Math.abs(h) : 0;
+        path.setAttribute("d", "M" + x1 + " " + (h > 0 ? 7 : Math.abs(h) + 7) +
+          " L" + x1 + " " + (h > 0 ? midY + 3 : 3) + " L" + x2 + " " + (h > 0 ? midY + 3 : 3));
+        path.setAttribute("fill", "none");
+        path.setAttribute("stroke", lk.on_path ? "rgba(220,60,80,.75)" : "rgba(120,150,200,.55)");
+        path.setAttribute("stroke-width", "1");
+        path.setAttribute("marker-end", "");
+        svg.appendChild(path);
+        track.appendChild(svg);
+      });
+    });
+  }
+
   function paintRows() {
     var tbody = $("pathBody");
     if (!tbody || !lastAxis) return;
@@ -318,7 +363,18 @@
     // server's branch decomposition of the driving path, one header per parallel branch.
     var output = radioVal("pathOutput", "waterfall");
     var groups = null;
-    if (output === "parallel" && data.parallel_paths && data.parallel_paths.length) {
+    var gb = $("pathGroupBy") ? $("pathGroupBy").value : "";
+    if (gb) {
+      var byVal = {};
+      var orderG = [];
+      rows.forEach(function (r) {
+        var k = groupKeyOf(r, gb);
+        if (!byVal[k]) { byVal[k] = []; orderG.push(k); }
+        byVal[k].push(r);
+      });
+      orderG.sort();
+      groups = orderG.map(function (k) { return [k, byVal[k]]; });
+    } else if (output === "parallel" && data.parallel_paths && data.parallel_paths.length) {
       var byUid = {};
       rows.forEach(function (r) { byUid[r.unique_id] = r; });
       var used = {};
@@ -404,6 +460,7 @@
     } else {
       rows.forEach(paintOne);
     }
+    if ($("pathShowLinks") && $("pathShowLinks").checked) drawLinkLines(tbody, rows, x);
     if (!rows.length) {
       tbody.appendChild(
         el("tr", {}, [el("td", { class: "muted", text: "No activities match the filters." })])
@@ -414,6 +471,31 @@
     if (window.SFGantt && SFGantt.freezeColumns && lastTable) {
       lastFrozenWidth = SFGantt.freezeColumns(lastTable) || lastFrozenWidth;
     }
+  }
+
+  // --- Group by ANY field (operator 2026-07-08, e.g. a custom CA-WBS code) -----------
+  function populateGroupBy() {
+    var sel = $("pathGroupBy");
+    if (!sel) return;
+    var keep = sel.value;
+    var opts = ['<option value="">(none)</option>'];
+    FIELDS.forEach(function (f) {
+      if (f.key === "drives" || f.key === "name") return;
+      opts.push('<option value="' + f.key + '">' + f.label + "</option>");
+    });
+    ((data && data.custom_field_labels) || []).forEach(function (lb) {
+      opts.push('<option value="custom:' + lb + '">' + lb + " (custom)</option>");
+    });
+    sel.innerHTML = opts.join("");
+    sel.value = keep;
+  }
+  function groupKeyOf(r, key) {
+    if (key.indexOf("custom:") === 0) {
+      var lb = key.slice(7);
+      return (r.custom && r.custom[lb]) || "(blank)";
+    }
+    var v = r[key];
+    return v === null || v === undefined || v === "" ? "(blank)" : String(v);
   }
 
   // --- SSI Directional Path options (operator 2026-07-08) ----------------------------
@@ -447,6 +529,7 @@
         if (!res.ok) { $("pathStatus").textContent = res.j.error || "Trace failed."; data = null; view.textContent = ""; return; }
         data = res.j;
         syncCustomColumns();
+        populateGroupBy();
         renderToggles();
         updateExportLinks();
         scopeAll = false; // a fresh trace fits the selected tier, not the whole project
@@ -480,6 +563,8 @@
     var oel = $(id);
     if (oel) oel.addEventListener("change", function () { if (data) trace(); });
   });
+  if ($("pathGroupBy")) $("pathGroupBy").addEventListener("change", function () { if (data) paintRows(); });
+  if ($("pathShowLinks")) $("pathShowLinks").addEventListener("change", function () { if (data) paintRows(); });
   ["pathDir", "pathRange", "pathOutput"].forEach(function (name) {
     document.querySelectorAll("input[name=" + name + "]").forEach(function (rb) {
       rb.addEventListener("change", function () {
