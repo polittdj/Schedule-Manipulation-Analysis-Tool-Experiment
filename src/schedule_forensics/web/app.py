@@ -331,7 +331,7 @@ statements of every file you load and every report you export.</p>
 <span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
 <span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a></span>
 <span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
-<span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a></span>
+<span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a><a href="/integrity">Schedule Integrity</a></span>
 <span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
 <span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
 <form action="/session/wipe" method=post class=navform
@@ -1110,6 +1110,22 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "Work the top-right cells first; every finding lists its recommended course of action "
         "and the activities to open. Treat manipulation signals as questions to ASK, not "
         "verdicts.",
+    ),
+    "Schedule Integrity": (
+        "Version-over-version change forensics: every manipulation-pattern signal the engine "
+        "detects between consecutive files (deleted tasks or logic, shortened in-progress "
+        "durations, added hard constraints, loosened calendars, baseline-date changes, edited "
+        "or erased actuals), each cited to file + UniqueID + task — plus a counterfactual that "
+        "reverts the path-shedding changes and re-runs CPM to show what the finish would have "
+        "been without them.",
+        "Read each version-pair section top to bottom: the severity column ranks the signals; "
+        "the citations name the exact activities; the counterfactual panel quantifies how much "
+        "apparent recovery came from the changes rather than performed work. Select an "
+        "exception field (for example a BCR number) to badge or hide changes that were "
+        "authorized.",
+        "Whether the schedule's reported recovery is real; which specific changes to interrogate "
+        "in a schedule review; which findings are already covered by an approved change request "
+        "and which have no paper trail.",
     ),
     "Risk Analysis (SRA)": (
         "A Monte-Carlo schedule risk analysis: activity durations varied per your 3-point "
@@ -2282,6 +2298,41 @@ def create_app(
             + _evolution_body(schedules, cpms, uid, tier),
         )
 
+    @app.get("/integrity", response_class=HTMLResponse)
+    def integrity_view(
+        file: str = Query(""),
+        exception_field: str = Query(""),
+        hide_excepted: int = Query(0),
+    ) -> HTMLResponse:
+        """Schedule Integrity & Change Forensics — the tool's namesake page (operator
+        2026-07-08): every manipulation-pattern finding per version pair, the counterfactual
+        "what the finish would have been without those changes", and a custom-field exception
+        filter (e.g. a BCR field) to set aside authorized changes."""
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return _page(
+                st,
+                "Schedule Integrity",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least two versions of the schedule — integrity "
+                "findings are version-over-version comparisons (what changed, and what the "
+                "change did to the critical path).</div>",
+            )
+        return _page(
+            st,
+            "Schedule Integrity",
+            _skipped_notice(skipped)
+            + _integrity_body(
+                schedules,
+                cpms,
+                st.target_uid,
+                selected_file=file,
+                exception_field=exception_field,
+                hide_excepted=bool(hide_excepted),
+            ),
+        )
+
     @app.get("/api/evolution")
     def evolution_json(target: str | None = Query(None), tier: str = Query("off")) -> JSONResponse:
         st = session()
@@ -2616,6 +2667,58 @@ def create_app(
             "Schedule Quality Ribbon", (Table("Quality Ribbon", headers, tuple(body)),)
         )
         return _export_response(fmt, tableset, "quality-ribbon")
+
+    @app.get("/export/{fmt}/integrity")
+    def export_integrity(
+        fmt: str, file: str = Query(""), exception_field: str = Query("")
+    ) -> Response:
+        """Every integrity finding across the analyzed version pairs, with the exception-field
+        value carried per row so the authorized-change filter is auditable in Excel."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need two versions"}, status_code=422)
+        labels = [sch.source_file or sch.name for sch in schedules]
+        body = []
+        for i in range(len(schedules) - 1):
+            if file and labels[i + 1] != file:
+                continue
+            prior, current = schedules[i], schedules[i + 1]
+            for f in detect_manipulation(
+                current, prior, current_cpm=cpms[i + 1], prior_cpm=cpms[i]
+            ):
+                cites = "; ".join(
+                    f"UID {c.unique_id} — {c.task_name}" for c in f.citations if c.unique_id
+                )
+                exc = "yes" if _finding_excepted(f, current, exception_field) else ""
+                body.append(
+                    (
+                        f"{labels[i]} → {labels[i + 1]}",
+                        str(f.severity),
+                        f.metric_id,
+                        f.title,
+                        f.detail,
+                        f.course_of_action,
+                        cites,
+                        exc,
+                    )
+                )
+        headers = (
+            "Version pair",
+            "Severity",
+            "Signal",
+            "Finding",
+            "Detail",
+            "Course of action",
+            "Citations",
+            f"Excepted ({exception_field})" if exception_field else "Excepted",
+        )
+        tableset = TableSet(
+            "Schedule Integrity findings",
+            (Table("Integrity findings", headers, tuple(body)),),
+        )
+        return _export_response(fmt, tableset, "schedule-integrity")
 
     @app.get("/export/{fmt}/trend")
     def export_trend(fmt: str) -> Response:
@@ -5920,6 +6023,140 @@ def _driving_data(
         "rows": rows,
         "parallel_paths": parallel_paths,
     }
+
+
+def _finding_excepted(f: object, current: Schedule, exception_field: str) -> bool:
+    """True when any cited task carries a non-empty value in the exception field (e.g. a BCR
+    number) — the operator's 'this change was authorized' set-aside (expandable later)."""
+    if not exception_field:
+        return False
+    by_id = current.tasks_by_id
+    for c in f.citations:  # type: ignore[attr-defined]
+        if c.unique_id is not None and c.unique_id in by_id:
+            value = by_id[c.unique_id].custom_field(exception_field)
+            if value is not None and str(value).strip():
+                return True
+    return False
+
+
+def _integrity_body(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target_uid: int | None,
+    *,
+    selected_file: str,
+    exception_field: str,
+    hide_excepted: bool,
+) -> str:
+    """Schedule Integrity & Change Forensics: cited manipulation findings per version pair +
+    the counterfactual finish, with a custom-field (BCR-style) exception filter."""
+    labels = [sch.source_file or sch.name for sch in schedules]
+    # pairs analyzed: every consecutive (prior -> current), optionally scoped to one current file
+    pairs = [
+        (i, schedules[i], schedules[i + 1], cpms[i], cpms[i + 1])
+        for i in range(len(schedules) - 1)
+        if not selected_file or labels[i + 1] == selected_file
+    ]
+    banner_name = selected_file if selected_file else "ALL FILES"
+    file_opts = '<option value="">All files</option>' + "".join(
+        f'<option value="{_e(lb)}"{" selected" if lb == selected_file else ""}>{_e(lb)}</option>'
+        for lb in labels[1:]
+    )
+    all_custom = sorted({lb for sch in schedules for lb in sch.custom_field_labels})
+    field_opts = '<option value="">(none)</option>' + "".join(
+        f'<option value="{_e(lb)}"{" selected" if lb == exception_field else ""}>{_e(lb)}</option>'
+        for lb in all_custom
+    )
+    hx = " checked" if hide_excepted else ""
+    controls = f"""
+<div class=panel><div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
+<p class=muted>Every statement below is engine-computed and cited (file + UniqueID + task) —
+version-over-version changes and what each change did to the critical / driving path. This is
+analysis for review, not an accusation: use the exception field to set aside authorized changes
+(for example a <b>BCR</b> — Budget/Baseline Change Request — number carried on the task).</p>
+<form method=get action=/integrity class=viz-controls>
+<label>Analyze <select name=file>{file_opts}</select></label>
+<label>Exception field <select name=exception_field title="A finding whose cited task carries a value in this custom field (e.g. a BCR number) is treated as authorized">{field_opts}</select></label>
+<label><input type=checkbox name=hide_excepted value=1{hx}> hide excepted findings</label>
+<button type=submit>Apply</button>
+<a class=btn-link href="/export/xlsx/integrity?file={_e(selected_file)}&exception_field={_e(exception_field)}">&#11015; Excel (all findings)</a>
+</form></div>"""
+
+    sections: list[str] = []
+    for i, prior, current, pcpm, ccpm in pairs:
+        findings = detect_manipulation(current, prior, current_cpm=ccpm, prior_cpm=pcpm)
+        shown = 0
+        excepted = 0
+        rows = ""
+        for f in findings:
+            is_exc = _finding_excepted(f, current, exception_field)
+            if is_exc:
+                excepted += 1
+                if hide_excepted:
+                    continue
+            shown += 1
+            cites = "; ".join(
+                f"UID {c.unique_id} — {c.task_name}" for c in f.citations[:4] if c.unique_id
+            )
+            more = f" (+{len(f.citations) - 4} more)" if len(f.citations) > 4 else ""
+            exc_badge = (
+                ' <span class=exc-badge title="A cited task carries the exception field">excepted</span>'
+                if is_exc
+                else ""
+            )
+            rows += (
+                f'<tr class="{"row-excepted" if is_exc else ""}">'
+                f'<td class="sev-{_e(f.severity)}">{_e(f.severity)}</td>'
+                f"<td>{_e(f.title)}{exc_badge}</td>"
+                f"<td>{_e(f.detail)}</td>"
+                f"<td class=muted>{_e(f.course_of_action)}</td>"
+                f"<td class=cite>{_e(cites)}{_e(more)}</td></tr>"
+            )
+        cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
+        cf_html = ""
+        if cf is not None and cf.reverted:
+            delta_txt = (
+                f" — <b class=fail>{cf.finish_delta_days} working day(s)</b> of apparent"
+                " recovery came from the changes themselves, not from performed work"
+                if cf.finish_delta_days > 0
+                else ""
+            )
+            reverted = ", ".join(str(r.uid) for r in cf.reverted[:12])
+            tgt = ""
+            if cf.target_uid is not None and cf.target_counterfactual_finish:
+                tgt = (
+                    f"<p>Target UID {cf.target_uid} ({_e(cf.target_name or '')}): would have"
+                    f" finished <b>{_e(cf.target_counterfactual_finish)}</b> instead of"
+                    f" <b>{_e(cf.target_actual_finish or '?')}</b>.</p>"
+                )
+            cf_html = f"""
+<div class=counterfactual><h4>Counterfactual — without these changes</h4>
+<p>Activities left the critical/driving path after their own duration / logic / constraints
+changed (UIDs {_e(reverted)}). Reverting exactly those changes and re-running CPM: the project
+finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the reported
+<b>{_e(cf.actual_finish)}</b>{delta_txt}.</p>{tgt}</div>"""
+        empty = (
+            "<p class=muted>No manipulation-pattern findings between these two versions.</p>"
+            if not rows
+            else ""
+        )
+        exc_note = (
+            f"<p class=muted>{excepted} finding(s) carry the exception field"
+            f"{' and are hidden' if hide_excepted else ' (badged below)'}.</p>"
+            if exception_field and excepted
+            else ""
+        )
+        sections.append(f"""
+<div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[i + 1])}</h2>
+{exc_note}
+{f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
+{cf_html}</div>""")
+
+    if not sections:
+        sections.append(
+            "<div class=panel><p class=muted>No version pair matches the selected file.</p></div>"
+        )
+    return controls + "".join(sections)
 
 
 def _compare_body(

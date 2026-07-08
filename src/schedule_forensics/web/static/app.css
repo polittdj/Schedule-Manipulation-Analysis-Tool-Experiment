@@ -686,3 +686,15 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
 .opt-group b { color: var(--muted); font-weight: 600; margin-right: 2px; }
 .pv-drag { color: var(--accent); font-weight: 700; }
 .path-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+
+/* Schedule Integrity page (operator 2026-07-08): unmissable analyzed-file banner + tables */
+.integrity-file { font-size: 26px; font-weight: 800; letter-spacing: .06em; color: var(--accent);
+  text-transform: uppercase; margin: 2px 0 8px; }
+.integrity-table td { vertical-align: top; }
+.integrity-table td.cite { max-width: 340px; overflow-wrap: anywhere; }
+.row-excepted { opacity: .55; }
+.exc-badge { background: color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn);
+  border-radius: 4px; padding: 0 6px; font-size: 10px; font-weight: 700; }
+.counterfactual { border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel));
+  border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
+.counterfactual h4 { margin: 0 0 5px; color: var(--bad); }
