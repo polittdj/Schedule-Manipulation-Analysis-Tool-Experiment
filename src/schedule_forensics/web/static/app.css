@@ -666,3 +666,23 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .show-data .sr-only th, .show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
 /* the current animation frame's dashed guide on a locked version axis */
 .sf-frame-guide { opacity: .8; }
+
+/* Schedule Quality Ribbon pass/warning/fail coloring (operator 2026-07-08): thresholded
+   measures only — green pass, yellow approaching (>=80% of threshold), red fail */
+td.rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-weight: 600; }
+td.rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); font-weight: 600; }
+td.rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); font-weight: 700; }
+.rib-legend span { padding: 1px 7px; border-radius: 4px; margin-left: 6px; font-size: 11px; }
+.rib-legend .rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.rib-legend .rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.rib-legend .rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+
+/* SSI Directional Path Tool options panel (operator 2026-07-08) */
+details.path-options { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: var(--field-bg); font-size: 12px; }
+details.path-options > summary { cursor: pointer; padding: 5px 12px; color: var(--muted); font-weight: 600; }
+details.path-options .viz-controls { padding: 4px 12px 9px; }
+.opt-group { display: inline-flex; align-items: center; gap: 9px; padding: 2px 10px; border-right: 1px solid var(--line); }
+.opt-group:last-child { border-right: 0; }
+.opt-group b { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.pv-drag { color: var(--accent); font-weight: 700; }
+.path-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }

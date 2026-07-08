@@ -4236,3 +4236,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   delegation itself cited.
 - Root duplicate uploads (2× SP-2024, PM handbook, SOPI) byte-verified against intake copies
   and removed.
+
+### 2026-07-08 (cont. 4) — SSI path options + Drag Analysis + Ribbon colors (ADR-0155)
+- **Drag Analysis:** engine/drag.py (Devaux DRAG: remaining-duration cap + concurrent-parallel
+  cap) — validated against the SSI uid67 export BEFORE pinning: 20/20 Drag values exact,
+  including the in-progress 16-of-25-day cap (UID 35) and both 0-drag parallel pairs
+  (60/61, 65/66). Golden drag map upgraded provenance→gated (test_ssi_drag_exact).
+- **Engine options:** PathDirection predecessors/successors/both (forward propagation is the
+  mirrored link-gap recurrence; default byte-identical — all 32 driving-slack/parity tests
+  green), strip_constraints() re-solve, ignore_leveling_delay = pure-logic CPM dates
+  (SSI "0-day leveling delay" semantics), documented at point of use.
+- **UI:** Path Analysis gets the full SSI Directional Path panel (direction radios, Driving
+  Slack ≤ x / all dependencies, both ignore toggles, Waterfall / With Summaries / Separate
+  parallel paths, Run Drag Analysis button, options threaded into the Excel/Word exports).
+  Driving Path + Critical-Path Evolution get the applicable subset (both ignore toggles with
+  per-version re-solve via _optioned_versions + "Trace options active" banner + exports);
+  their direction is fixed by page semantics (A→B corridor / to-the-finish) — documented.
+- **Ribbon:** Insufficient Detail™ surfaced per file (single Bible-validated implementation,
+  ENGINE==FUSE P2=1/P5=0); pass/warning/fail colors on thresholded measures with an on-page
+  legend; /export/xlsx/ribbon added. Float Ratio™ alone remains omitted (no formula).
+- 7 new web tests (test_path_options.py); ribbon/hud/parity suites green.

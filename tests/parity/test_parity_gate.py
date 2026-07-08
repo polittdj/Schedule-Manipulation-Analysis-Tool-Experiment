@@ -220,3 +220,24 @@ def test_ssi_driving_slack_uid145_exact() -> None:
     assert tiers[PathTier.SECONDARY] == bands["SECONDARY"]  # 3 (the 1-day near path)
     assert tiers[PathTier.TERTIARY] == bands["TERTIARY"]  # 8 (the 20-day near path)
     assert tiers[PathTier.BEYOND] == bands["BEYOND"]  # 95
+
+
+@pytest.mark.parity
+def test_ssi_drag_exact() -> None:
+    """Drag Analysis (Devaux DRAG) reproduces the SSI export exactly (focus UID 67, A-5).
+
+    All 20 Path-01 Drag values match UID-for-UID — including the remaining-duration cap on the
+    in-progress UID 35 (16 of 25 days) and the zero drag on both parallel zero-slack pairs
+    (60/61 and 65/66), which SSI reports because removing one branch leaves the other governing.
+    """
+    from schedule_forensics.engine.drag import compute_drag
+
+    case = json.loads((GOLDEN / "ssi_uid67" / "case.json").read_text())
+    schedule = _schedule("Project5")
+    results = compute_driving_slack(schedule, target_uid=case["focus_task_uid"])
+    drag = compute_drag(schedule, results)
+    expected = {int(u): d for u, d in case["ssi_drag_days_by_uid"].items()}
+    assert set(drag) == set(expected)  # drag exists exactly for the Path-01 set
+    assert {uid: float(r.drag_days) for uid, r in drag.items()} == {
+        uid: float(d) for uid, d in expected.items()
+    }

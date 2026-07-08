@@ -18,9 +18,12 @@ docs/FUSE-VALIDATION.md):
 * **Avg / Max Float** — mean and maximum total float (working days) over incomplete activities
   (tool-computed; shown for context).
 
-Insufficient Detail™ and Float Ratio™ are Fuse-proprietary formulas that did not match any
-simple definition in calibration; they are deliberately left out pending the Fuse formula
-(see docs/FUSE-VALIDATION.md), rather than guessed.
+* **Insufficient Detail™** — count of activities whose duration exceeds 10% of the project
+  span, per the NASA Acumen metric library (the Bible): ``SUM((OriginalDuration /
+  (ProjectFinish-ProjectStart) > 0.1) * 1)`` — Fuse-validated ENGINE==FUSE on the delivered
+  exports (P2=1, P5=0; ADR-0151/0155). Sourced from :mod:`schedule_quality` (single formula).
+
+Float Ratio™ remains deliberately left out pending its exact Fuse formula (docs/FUSE-VALIDATION.md).
 """
 
 from __future__ import annotations
@@ -58,6 +61,7 @@ class RibbonMetrics:
     merge_hotspot: int
     avg_float_days: float
     max_float_days: float
+    insufficient_detail: int
 
 
 def _round_half_up(value: float, places: int = 2) -> float:
@@ -75,6 +79,9 @@ def _audit_count(audit: ScheduleAudit, metric_id: str) -> int:
 
 def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> RibbonMetrics:
     """Assemble the Fuse Ribbon metrics for ``schedule`` (its CPM + DCMA audit)."""
+    from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
+
+    quality = compute_schedule_quality(schedule, cpm)
     tasks = non_summary(schedule)
     ns_ids = {t.unique_id for t in tasks}
     n = len(tasks)
@@ -141,4 +148,5 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         merge_hotspot=merge_hotspot,
         avg_float_days=avg_float,
         max_float_days=max_float,
+        insufficient_detail=quality["insufficient_detail"].count,
     )
