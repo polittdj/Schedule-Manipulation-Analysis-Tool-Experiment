@@ -1,6 +1,21 @@
-# Handoff — 2026-07-08 (Hard_File Fuse parity + D7; highest ADR 0159)
+# Handoff — 2026-07-08 (Timescale Size/shading/SVt UI batch; highest ADR 0160)
 
-> ## STATUS (current) — ADR-0159: Hard_File Acumen Fuse parity (second oracle, closes D7)
+> ## STATUS (current) — ADR-0160: Timescale Size %, continuous shading, SV(t) start variance
+>
+> - **Timescale Size % now zooms** for real (was defeated by Fit-mode + the page-fill override):
+>   buildAxis establishes the fill baseline then multiplies by Size in every mode (grid + path +
+>   driving-path + SRA); fixed a `const px` reassignment that silently blanked the grid.
+> - **Dialog Preview reflects Size live** (bands widen/narrow as the field changes).
+> - **Non-working shading is continuous** down the column (moved from the 16px track to a
+>   full-height CELL layer; `.g-nonwork-behind`/`-front`, track transparent) — no white breaks.
+> - **Schedule Variance (time)** enriched with per-activity START variance (actual−baseline start)
+>   so a statused-but-mostly-unfinished file shows slippage; panel distinguishes statused vs
+>   baselined-only (points to the statused version) vs no-baseline. SV(t) stays parity-isolated.
+> - Live-verified in Chromium (8 checks, zero console errors). Remaining work-order items (Quality
+>   Trend split, Driving Path fields/export/banner, NA-metric thresholds + metrics library,
+>   Resources drill) are the next tranches (#71–74).
+
+> ## STATUS — ADR-0159: Hard_File Acumen Fuse parity (second oracle, closes D7)
 >
 > - Consumed the operator's Fuse v8.11.0 export suite for `Hard_File.mpp` + `Hard_File_updated.mpp`
 >   (two snapshots, 7/7 and 8/11/2026, 142 tasks each). **15 metric values across both snapshots

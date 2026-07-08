@@ -54,8 +54,11 @@
 .g-scale { position: relative; height: 18px; }
 .gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 280px; max-width: 460px; }
 .g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; white-space: nowrap; }
-.g-cell { padding: 4px 0; }
-.g-track { position: relative; height: 16px; background: var(--gantt-canvas); border-radius: 3px; overflow: hidden; }
+/* The cell is the continuous chart surface (canvas background + position:relative so the
+   non-working-time layer fills the full row with no white gap between rows); the inner track is
+   transparent and just hosts the bars/gridlines. */
+.g-cell { padding: 4px 0; position: relative; background: var(--gantt-canvas); }
+.g-track { position: relative; height: 16px; background: transparent; border-radius: 3px; overflow: hidden; }
 .g-bar { position: absolute; top: 3px; height: 10px; border-radius: 3px; background: var(--accent); }
 .g-bar.g-crit { background: var(--bad); }
 .g-bar.g-sum { top: 6px; height: 4px; background: var(--gantt-sum); border-radius: 1px; }
@@ -116,8 +119,11 @@
 .path-grid .filter-row td { padding: 1px 3px; }
 .path-grid .filter-row .sf-filter-btn { padding: 1px 6px; font-size: 11px; }
 .path-grid td.pv-name { white-space: normal; word-break: break-word; min-width: 200px; max-width: 360px; }
-.path-timeline, .path-timeline-head { padding: 2px 0 !important; }
-.path-track, .path-scale { position: relative; height: 16px; background: var(--gantt-canvas); }
+/* the path-timeline CELL carries the canvas + non-working layer (continuous down the column);
+   the inner path-track is transparent over it (see .g-nonwork-* above) */
+.path-timeline, .path-timeline-head { padding: 2px 0 !important; position: relative; background: var(--gantt-canvas); }
+.path-track { position: relative; height: 16px; background: transparent; }
+.path-scale { position: relative; height: 18px; background: var(--gantt-canvas); }
 .path-scale { height: 18px; }
 .pv-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--gantt-grid); }
 .pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }
@@ -151,10 +157,15 @@
 .g-tier-noticks .g-band { border-left: none; }
 .g-scale-nosep .g-band { border-bottom: none; }
 .g-band-warn { font-style: italic; color: var(--warn); text-align: center; }
-.g-nonwork-front {
-  position: absolute; inset: 0; pointer-events: none; z-index: 5;
-  background-repeat: repeat-x;
+/* Non-working-time shading layers fill the whole CELL (inset:0) so the weekend/holiday bands are
+   continuous down the column — no white break between rows. "Behind" sits under the bars (z0),
+   "in front" over them (z5, pointer-transparent). */
+.g-nonwork-behind, .g-nonwork-front {
+  position: absolute; inset: 0; pointer-events: none; background-repeat: repeat-x;
 }
+.g-nonwork-behind { z-index: 0; }
+.g-nonwork-front { z-index: 5; }
+.g-cell > .g-track, .path-timeline > .path-track { position: relative; z-index: 1; }
 .g-nonwork-holiday { position: absolute; top: 0; bottom: 0; pointer-events: none; }
 .ts-overlay {
   position: fixed; inset: 0; z-index: 300; background: rgba(10, 14, 24, .45);
@@ -200,7 +211,8 @@
   background: var(--gantt-canvas, #fff);
 }
 .ts-preview-scale { position: relative; display: block; }
-.ts-preview-track { height: 22px; border-radius: 0; margin-top: 2px; }
+.ts-preview-cell { position: relative; background: var(--gantt-canvas, #fff); }
+.ts-preview-track { height: 22px; border-radius: 0; margin-top: 2px; background: transparent; }
 .ts-foot {
   display: flex; gap: 8px; align-items: center; padding: 10px 14px 0; border-top: 1px solid var(--line);
   margin-top: 10px;

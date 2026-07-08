@@ -413,29 +413,29 @@ window.SFTimescale = (function () {
     return { image: image, posX: axis.x(sunday), color: color, holidays: holis, front: nw.draw === "front" };
   }
 
-  // Paint the shading onto one timeline track (called by every page as it builds each row).
-  // "Behind" sets the track's own background (bars are positioned children — always on top);
-  // "In front" appends a pointer-transparent overlay above the bars.
-  function decorateTrack(track, axis) {
+  // Paint the shading onto one timeline CELL (the <td>, full row height), NOT the inner track —
+  // so the weekend/holiday bands are CONTINUOUS down the column instead of broken by the white
+  // gap the cell padding leaves between each 16px track (operator: "not all the white breaks in
+  // the color bars ... between every line"). A full-height layer is appended to the cell:
+  // "behind" sits under the bars (z-index 0), "in front" over them (pointer-transparent). The
+  // cell must be position:relative (CSS .g-cell/.path-timeline) for the absolute layer to fill it.
+  function decorateCell(cell, axis) {
+    if (!cell) return;
     var s = nonworkStyle(axis);
     if (!s) return;
-    var host = track;
-    if (s.front) {
-      host = el("div", { class: "g-nonwork-front" });
-      track.appendChild(host);
-    }
+    var layer = el("div", { class: s.front ? "g-nonwork-front" : "g-nonwork-behind" });
     if (s.image !== "none") {
-      host.style.backgroundImage = s.image;
-      host.style.backgroundPosition = s.posX + "px 0";
+      layer.style.backgroundImage = s.image;
+      layer.style.backgroundPosition = s.posX + "px 0";
     }
     s.holidays.forEach(function (h) {
       var d = el("div", { class: "g-nonwork-holiday" });
       d.style.left = h.left + "px";
       d.style.width = h.width + "px";
       d.style.background = s.color;
-      if (s.front) host.appendChild(d);
-      else host.insertBefore(d, host.firstChild);
+      layer.appendChild(d);
     });
+    cell.appendChild(layer);
   }
 
   // ---------------------------------------------------------------- the dialog
@@ -449,27 +449,40 @@ window.SFTimescale = (function () {
   ];
   var overlay = null, work = null, activeTab = "middle";
 
-  function previewAxis(width) {
+  // The preview span fits the box at Size 100%; the Size % then scales the CONTENT width so the
+  // operator SEES Size change live (>100% widens the bands and overflows/clips the box; <100%
+  // narrows them and leaves space) — the same zoom the real page applies. `boxWidth` is the
+  // visible strip; the returned `width` is the (sized) content the bands are laid out across.
+  function previewAxis(boxWidth) {
     var t0 = lastAxis ? lastAxis.t0 : Date.UTC(2018, 0, 1);
     var t1 = lastAxis ? lastAxis.t1 : Date.UTC(2026, 6, 1);
     if (t1 <= t0) t1 = t0 + 365 * DAY_MS;
+    var size = (Number(work.size) || 100) / 100;
+    if (!(size > 0)) size = 1;
+    var width = Math.max(60, Math.round(boxWidth * size));
     return { t0: t0, t1: t1, width: width,
       x: function (ms) { return Math.round(((ms - t0) / (t1 - t0)) * width); } };
   }
 
   function renderPreview(box) {
     box.textContent = "";
-    var width = Math.max(320, box.clientWidth - 2 || 520);
-    var axis = previewAxis(width);
+    var boxWidth = Math.max(320, box.clientWidth - 2 || 520);
+    var axis = previewAxis(boxWidth);
     var real = CFG; CFG = work; // tiers()/nonworkStyle read the module config — swap in the draft
     try {
       var scale = window.SFGantt.buildTierScale(axis, "g-scale", null);
       scale.classList.add("ts-preview-scale");
+      scale.style.width = axis.width + "px";
       box.appendChild(scale);
+      // the preview cell carries the (sized) content width; the box clips it, so >100% Size
+      // visibly widens the bands and <100% leaves space — a live mirror of the page zoom
+      var cell = el("div", { class: "ts-preview-cell" });
+      cell.style.width = axis.width + "px";
       var track = el("div", { class: "g-track ts-preview-track" });
-      track.style.width = width + "px";
-      decorateTrack(track, axis);
-      box.appendChild(track);
+      track.style.width = axis.width + "px";
+      cell.appendChild(track);
+      decorateCell(cell, axis);
+      box.appendChild(cell);
     } finally { CFG = real; }
   }
 
@@ -711,7 +724,7 @@ window.SFTimescale = (function () {
     sizeFactor: function () { return (Number(CFG.size) || 100) / 100; },
     tiers: tiers,
     gridBoundaries: gridBoundaries,
-    decorateTrack: decorateTrack,
+    decorateCell: decorateCell,
     nonworkStyle: nonworkStyle,
     setCalendars: setCalendars,
     axisHint: axisHint,

@@ -374,6 +374,16 @@ class ScheduleVariance:
     completed: int
     mean_activity_variance_days: float | None
     worst: tuple[ActivityVariance, ...]
+    #: Per-activity START variance (actual_start minus baseline_start, working days) for every task
+    #: that has STARTED and carries a baseline start — surfaces in-progress slippage on a file
+    #: that has been statused but has few completions (operator 2026-07-08). Same sign convention
+    #: (positive = started later than planned / unfavorable).
+    started: int = 0
+    mean_start_variance_days: float | None = None
+    worst_start: tuple[ActivityVariance, ...] = ()
+    #: How many non-summary tasks carry a baseline finish (so the panel can distinguish "no
+    #: baseline at all" from "baselined plan, no progress statused yet").
+    baselined: int = 0
 
 
 def compute_schedule_variance(
@@ -396,17 +406,34 @@ def compute_schedule_variance(
         at_days = round(es.at_minutes / wmpd, 1)
 
     variances: list[ActivityVariance] = []
+    start_variances: list[ActivityVariance] = []
+    baselined = 0
     for t in tasks:
+        if to_offset(schedule, t.baseline_finish) is not None:
+            baselined += 1
         actual = to_offset(schedule, t.actual_finish)
         baseline = to_offset(schedule, t.baseline_finish)
-        if actual is None or baseline is None:
-            continue
-        var_days = round((actual - baseline) / wmpd, 1)
-        variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=var_days))
+        if actual is not None and baseline is not None:
+            var_days = round((actual - baseline) / wmpd, 1)
+            variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=var_days))
+        # START variance: any activity that has actually started + carries a baseline start —
+        # so a statused-but-mostly-unfinished schedule still shows its in-progress slippage.
+        a_start = to_offset(schedule, t.actual_start)
+        b_start = to_offset(schedule, t.baseline_start)
+        if a_start is not None and b_start is not None:
+            sv_days = round((a_start - b_start) / wmpd, 1)
+            start_variances.append(ActivityVariance(unique_id=t.unique_id, variance_days=sv_days))
     completed = len(variances)
+    started = len(start_variances)
     mean_var = round(sum(v.variance_days for v in variances) / completed, 1) if completed else None
-    # the latest finishers first (largest positive variance), capped for the UI
+    mean_start = (
+        round(sum(v.variance_days for v in start_variances) / started, 1) if started else None
+    )
+    # the latest finishers / starters first (largest positive variance), capped for the UI
     worst = tuple(sorted(variances, key=lambda v: v.variance_days, reverse=True)[:worst_cap])
+    worst_start = tuple(
+        sorted(start_variances, key=lambda v: v.variance_days, reverse=True)[:worst_cap]
+    )
     return ScheduleVariance(
         svt_days=svt_days,
         es_days=es_days,
@@ -414,4 +441,8 @@ def compute_schedule_variance(
         completed=completed,
         mean_activity_variance_days=mean_var,
         worst=worst,
+        started=started,
+        mean_start_variance_days=mean_start,
+        worst_start=worst_start,
+        baselined=baselined,
     )

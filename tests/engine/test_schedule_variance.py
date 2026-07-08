@@ -88,6 +88,53 @@ def test_activities_without_both_finishes_are_excluded() -> None:
     ]
     sv = compute_schedule_variance(_sched(tasks), tasks)
     assert sv.completed == 0
+
+
+def test_start_variance_surfaces_in_progress_slippage() -> None:
+    """Operator 2026-07-08: a statused schedule with few completions still shows START variance
+    (actual start minus baseline start) for every started task — so progress is visible before
+    activities finish. The Hard_File pair has actual starts without finishes."""
+    tasks = [
+        _task(  # started 5 wd late, not finished
+            1,
+            baseline_start=dt.datetime(2025, 1, 6, 8, 0),
+            actual_start=dt.datetime(2025, 1, 13, 8, 0),
+            percent_complete=40.0,
+        ),
+        _task(  # not started, only baselined
+            2,
+            baseline_start=dt.datetime(2025, 1, 20, 8, 0),
+            baseline_finish=dt.datetime(2025, 1, 24, 8, 0),
+        ),
+    ]
+    sched = _sched(tasks, status=dt.datetime(2025, 1, 16, 8, 0))
+    sv = compute_schedule_variance(sched, non_summary(sched))
+    assert sv.started == 1
+    assert sv.worst_start[0].unique_id == 1
+    assert sv.worst_start[0].variance_days == 5.0  # Jan 6 → Jan 13 is 5 working days
+    assert sv.mean_start_variance_days == 5.0
+    assert sv.baselined == 1  # only task 2 carries a baseline finish
+
+
+def test_baselined_but_unstatused_reports_no_progress_but_counts_baselines() -> None:
+    """The baselined-plan case (operator's first Hard_File version): baseline dates present, no
+    actuals — SVt undefined and zero started/completed, but the baseline count is surfaced so the
+    panel can point the operator at the statused version."""
+    tasks = [
+        _task(
+            1,
+            baseline_start=dt.datetime(2025, 1, 6, 8, 0),
+            baseline_finish=dt.datetime(2025, 1, 8, 8, 0),
+        ),
+        _task(
+            2,
+            baseline_start=dt.datetime(2025, 1, 9, 8, 0),
+            baseline_finish=dt.datetime(2025, 1, 10, 8, 0),
+        ),
+    ]
+    sv = compute_schedule_variance(_sched(tasks, status=dt.datetime(2025, 1, 16, 8, 0)), tasks)
+    assert sv.svt_days is None and sv.completed == 0 and sv.started == 0
+    assert sv.baselined == 2
     assert sv.worst == ()
     assert sv.mean_activity_variance_days is None
 

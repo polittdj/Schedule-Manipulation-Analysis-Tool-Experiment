@@ -138,10 +138,11 @@
     t1 += Math.max(4, Math.round(span * 0.04)) * DAY_MS; // breathing room past the data-date line
     var spanDays = Math.max(1, (t1 - t0) / DAY_MS);
     var slider = Number($("pathZoom").value);
-    // the Timescale dialog's Size % scales the slider zoom (fill mode is already an exact fit)
+    // the Timescale dialog's Size % scales the timeline in BOTH modes: fitFill establishes the
+    // page-fill baseline, then Size multiplies it (so Size works even when fitted to the page).
     var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
-    var px = fitFill ? Math.max(0.02, availWidth() / spanDays)
-      : (slider > 0 ? slider : 8) * (size > 0 ? size : 1);
+    if (!(size > 0)) size = 1;
+    var px = (fitFill ? Math.max(0.02, availWidth() / spanDays) : slider > 0 ? slider : 8) * size;
     var width = Math.max(120, Math.round(spanDays * px));
     return { t0: t0, t1: t1, width: width, x: function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); } };
   }
@@ -421,7 +422,6 @@
       });
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
-      SFGantt.paintNonwork(track, lastAxis); // Timescale dialog: non-working-time shading
       SFGantt.paintGrid(track, gridLns);
       if (data.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(data.data_date)) + "px" }));
@@ -449,6 +449,7 @@
         }
       }
       cell.appendChild(track);
+      SFGantt.paintNonwork(cell, lastAxis); // continuous weekend/holiday shading over the full row
       tr.appendChild(cell);
       tbody.appendChild(tr);
     };
