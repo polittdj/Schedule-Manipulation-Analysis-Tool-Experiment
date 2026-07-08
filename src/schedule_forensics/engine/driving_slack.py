@@ -70,9 +70,14 @@ def _stored_offset(project_start: dt.datetime, target: dt.datetime, calendar: Ca
 
 
 #: §6.C default day-thresholds the user may override at upload (`PARITY-INPUTS.md`).
-#: PROVENANCE (audit F-14): in-repo defaults chosen for the SSI three-tier convention — NOT
-#: sourced from a published handbook (the operator's assessment deck / NASA handbook is an
-#: absent intake artifact). Operator-overridable per upload; re-source when the handbook lands.
+#: PROVENANCE (audit F-14, swept against the delivered handbooks 2026-07-08, ADR-0153): the
+#: primary/secondary/tertiary PATH-TIER PRACTICE is NASA-sourced — PPC Handbook NASA/SP-2016-3424
+#: p.125 ("primary, secondary, and tertiary critical path data") and §3.4.3.2D p.151 (waterfall
+#: report of the three paths); SOPI 6.0 (OCFO-SID-0002) p.37 ("near critical … also referred to
+#: as secondary or tertiary paths"); SRB Handbook NASA/SP-20230001306 PDF p.48. The DAY VALUES
+#: are not published by any delivered handbook: 10 d aligns the secondary band with the PPC
+#: Fig. 3.4-3 health-check screen ("Tasks Less than or equal to 10 days Total Slack", p.138);
+#: 20 d is this tool's tertiary default (SSI three-tier convention), operator-overridable.
 DEFAULT_SECONDARY_MAX_DAYS = 10
 DEFAULT_TERTIARY_MAX_DAYS = 20
 

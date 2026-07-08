@@ -1,4 +1,21 @@
-# Handoff — 2026-07-08 (briefing-table hardening + CUI-guard inherited-blob rule; highest ADR 0152)
+# Handoff — 2026-07-08 (F-14 threshold sweep vs delivered handbooks; highest ADR 0153)
+
+> ## STATUS (current) — ADR-0153: F-14/A-8 threshold-citation sweep CLOSED
+>
+> All nine delivered NASA handbooks text-extracted and swept page-by-page. Written at each
+> point of use: the float-erosion 10-d band is **SOURCED** (PPC SP-2016-3424 Fig. 3.4-3 p.138
+> "≤ 10 days Total Slack" health screen); the secondary/tertiary path-tier **practice** is
+> sourced (PPC p.125 + §3.4.3.2D p.151, SOPI 6.0 p.37, SRB SP-20230001306) with the 10-d
+> secondary default aligned to the PPC screen and the 20-d tertiary default remaining the
+> tool's operator-overridable convention; the 35% lag ratio and merge-link count have **no
+> published value** in any delivered handbook (lag scrutiny itself is PPC-mandated) and stay
+> documented design choices. No numeric threshold changed (Law 2 — no guessing).
+> VERIFICATION-REPORT F-14 → CLOSED; PARK-LIST A-8 → CLOSED with the caveat that
+> **SP-2010-3403 (Schedule Management Handbook) is NOT in the intake** — deliver it to
+> re-sweep the two unsourced numbers. Remaining operator asks: SSI Directional-Path export
+> for Project5_TAMPERED (A-5, retires the 2 xfails), SSI focus UID for Large_Test_File (A-4),
+> a Fuse export with an elapsed in-progress activity (D7).
+
 
 > ## STATUS (current) — PR #289 branch: briefing readability hardening + ADR-0152 guard rule
 >
