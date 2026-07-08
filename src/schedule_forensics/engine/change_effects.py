@@ -263,23 +263,30 @@ def compute_change_effects(
                 _with_task_field(aggregate, uid, update),
             )
 
-    if not effects:
+    # Nothing to say ONLY when no change was detected at all. If changes WERE detected but every
+    # isolated revert cycled (all in skipped_unsolvable), still return a report with empty
+    # per_change so the page can DISCLOSE "N change(s) detected but none could be measured" rather
+    # than silently omitting the panel (Law 2 — every skip is disclosed).
+    if not effects and skipped_unsolvable == 0 and skipped_capped == 0:
         return None
+
+    from schedule_forensics.engine.cpm import offset_to_datetime
 
     # The aggregate re-solve can itself cycle even when every INCLUDED revert solved alone (two
     # restored links that are individually fine but together close a loop). Guard it: on failure
-    # report per-change only, with aggregate_solved=False, rather than 500.
-    from schedule_forensics.engine.cpm import offset_to_datetime
-
+    # report per-change only, with aggregate_solved=False, rather than 500. The aggregate folds in
+    # ONLY the individually-measured reverts (skipped/capped ones are excluded), so it is PARTIAL
+    # whenever any change was skipped/capped — the UI must not label a partial total "every change".
     agg_target_delta = 0
     agg_project_delta = 0
-    aggregate_solved = True
-    try:
-        agg_cpm = compute_cpm(aggregate)
-        agg_target_delta = _finish_delta_wd(base_cpm, agg_cpm, resolved_target, per_day)
-        agg_project_delta = round((agg_cpm.project_finish - base_cpm.project_finish) / per_day)
-    except CPMError:
-        aggregate_solved = False
+    aggregate_solved = bool(effects)  # no measured reverts -> no meaningful aggregate
+    if effects:
+        try:
+            agg_cpm = compute_cpm(aggregate)
+            agg_target_delta = _finish_delta_wd(base_cpm, agg_cpm, resolved_target, per_day)
+            agg_project_delta = round((agg_cpm.project_finish - base_cpm.project_finish) / per_day)
+        except CPMError:
+            aggregate_solved = False
 
     actual_target = offset_to_datetime(
         current.project_start, base_cpm.timings[resolved_target].early_finish, current.calendar
