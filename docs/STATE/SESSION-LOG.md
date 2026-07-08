@@ -4394,3 +4394,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   tests/web/test_brief_duo_and_chart_reflow.py. Lockstep: wheel + 9 installers rebuilt.
 - Operator queued next (this session): ribbon metric click-drill w/ persistent extra fields (#82),
   Driving Path per-file selector (#83).
+
+### 2026-07-08 (cont. 13) — Integrity never-500 + two-file picker; ribbon drill; DP selector (ADR-0164/0165)
+- CRITICAL: /integrity 500'd with >2 files (operator loaded ~20). Reproduced TWO root causes:
+  (1) change_effects indexed base_cpm.timings[target] and KeyError'd when the focus Target UID was a
+  summary/unscheduled activity (project-summary UID 0); (2) reverting a change can reintroduce a
+  logic cycle -> compute_cpm raised CPMError, unhandled -> 500 (near-certain across many real pairs,
+  so "only two files worked"). Both reproduced deterministically (synthetic A->B->C/C->A cycle;
+  golden UID 0 summary target).
+- ADR-0164 fix. Engine (change_effects.py): guard target-not-in-timings -> None; try/except CPMError
+  per revert (skipped_unsolvable, skipped from per-change AND aggregate) + aggregate guard
+  (aggregate_solved) + cap reverts at _MAX_CHANGE_EFFECTS=60 (skipped_capped); all disclosed (Law 2).
+  Web (_integrity_body): wrap detect_manipulation / compute_change_effects / compute_path_counterfactual
+  per pair. TWO-FILE picker: Baseline (A) vs Comparison (B) file indices (a/b), default two most
+  recent, prior->current chronological, a==b collapse-guarded; computes ONE pair; legacy ?file= still
+  resolves. 188->187 = +23 wd preserved through the picker.
+- Briefing 3+4 and 6+7 now BOTH half-page .brief-duo rows; .brief-scroll gains max-height:56vh so a
+  100+-row "No Longer Critical" table scrolls in-card instead of towering the page (no wasted width,
+  no page scroll). Chromium-verified (9 checks).
+- ADR-0165: Quality-Ribbon metric click-drill — every cell clickable -> activities behind that
+  figure (UID/name/duration/%/start/finish) below the ribbon + set-once persistent Columns
+  (localStorage sf-ribbon-drill-cols) + /export/xlsx/ribbon-drill. ribbon_offender_map offender
+  counts == Fuse-validated ribbon counts on both Hard_File snapshots. Driving-Path File selector
+  scopes tiers+Gantt+trace to one chosen version (path differs between files). Chromium-verified
+  (11 + selector checks).
+- New tests: test_integrity_multifile_robust.py (9). Adversarial review workflow run over the crash
+  fix. Lockstep: wheel + 9 installers rebuilt in the same commit.

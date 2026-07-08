@@ -118,6 +118,7 @@ from schedule_forensics.engine.metrics import (
     compute_ribbon,
     compute_schedule_quality,
     compute_wbs_breakdown,
+    ribbon_offender_map,
 )
 from schedule_forensics.engine.metrics._common import (
     CheckStatus,
@@ -2243,6 +2244,7 @@ def create_app(
             )
         rows: list[tuple[str, object, dict[str, MetricResult]]] = []
         skipped: list[str] = []
+        drill: dict[str, dict[str, tuple[int, ...]]] = {}
         for key, sch in st.ordered_versions():
             try:
                 analysis = st.analysis_for(key, sch)
@@ -2256,9 +2258,10 @@ def create_app(
                     compute_schedule_quality(sch, analysis.cpm),
                 )
             )
+            drill[key] = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
         note = _skipped_notice(skipped) if skipped else ""
         return _page(
-            st, "Schedule Quality Ribbon", _export_bar("ribbon") + _ribbon_body(rows, note)
+            st, "Schedule Quality Ribbon", _export_bar("ribbon") + _ribbon_body(rows, note, drill)
         )
 
     @app.get("/evolution", response_class=HTMLResponse)
@@ -2304,14 +2307,18 @@ def create_app(
 
     @app.get("/integrity", response_class=HTMLResponse)
     def integrity_view(
+        a: int = Query(-1),
+        b: int = Query(-1),
         file: str = Query(""),
         exception_field: str = Query(""),
         hide_excepted: int = Query(0),
     ) -> HTMLResponse:
         """Schedule Integrity & Change Forensics — the tool's namesake page (operator
-        2026-07-08): every manipulation-pattern finding per version pair, the counterfactual
+        2026-07-08): manipulation-pattern findings for one CHOSEN version pair, the counterfactual
         "what the finish would have been without those changes", and a custom-field exception
-        filter (e.g. a BCR field) to set aside authorized changes."""
+        filter (e.g. a BCR field) to set aside authorized changes. ``a``/``b`` are the baseline /
+        comparison file indices (operator: pick exactly two files to compare when more are
+        loaded); ``file`` is honored for back-compat (comparison label -> its predecessor)."""
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -2323,6 +2330,12 @@ def create_app(
                 "findings are version-over-version comparisons (what changed, and what the "
                 "change did to the critical path).</div>",
             )
+        # back-compat: a bare ?file=<label> means "compare that file to its predecessor"
+        if b < 0 and file:
+            labels = [sch.source_file or sch.name for sch in schedules]
+            if file in labels:
+                b = labels.index(file)
+                a = b - 1
         return _page(
             st,
             "Schedule Integrity",
@@ -2331,7 +2344,8 @@ def create_app(
                 schedules,
                 cpms,
                 st.target_uid,
-                selected_file=file,
+                baseline_idx=a,
+                comparison_idx=b,
                 exception_field=exception_field,
                 hide_excepted=bool(hide_excepted),
             ),
@@ -2352,6 +2366,7 @@ def create_app(
     def driving_path_view(
         source: str | None = Query(None),
         target: str | None = Query(None),
+        file: str = Query(""),
         ignore_constraints: int = Query(0),
         ignore_leveling: int = Query(0),
     ) -> HTMLResponse:
@@ -2364,6 +2379,14 @@ def create_app(
                 "<div class=panel>Load a schedule to trace the driving path between two "
                 "activities.</div>",
             )
+        # per-file scope (operator 2026-07-08): the driving path can differ between files, so
+        # the operator picks WHICH loaded version to trace; default stays every version.
+        file_options = [s.name for s in schedules]
+        if file and file in file_options:
+            pair = next((s, c) for s, c in zip(schedules, cpms, strict=True) if s.name == file)
+            schedules, cpms = [pair[0]], [pair[1]]
+        else:
+            file = ""
         src = _parse_uid(source)
         tgt = _parse_uid(target)
         schedules, cpms, opt_banner = _optioned_versions(
@@ -2384,6 +2407,8 @@ def create_app(
                 tgt,
                 ignore_constraints=bool(ignore_constraints),
                 ignore_leveling=bool(ignore_leveling),
+                file_options=file_options,
+                selected_file=file,
             ),
         )
 
@@ -2715,6 +2740,53 @@ def create_app(
             (Table(f"Float band {label} d", headers, tuple(body)),),
         )
         return _export_response(fmt, tableset, "float-band")
+
+    @app.get("/export/{fmt}/ribbon-drill/{name}")
+    def export_ribbon_drill(
+        fmt: str, name: str, metric: str = Query(...), cols: str = Query("")
+    ) -> Response:
+        """The activities behind one Quality-Ribbon cell (file x metric), with any extra columns
+        the operator toggled on in the drill panel — the ribbon click-through's Excel export
+        (operator 2026-07-08)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        sch = st.schedules.get(name)
+        if sch is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        analysis = st.analysis_for(name, sch)
+        offenders = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
+        if metric not in offenders:
+            return JSONResponse({"error": "unknown metric"}, status_code=422)
+        uid_order = {uid: i for i, uid in enumerate(offenders[metric])}
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Name", "Duration (d)", "% complete", "Start", "Finish", *extra)
+
+        def _cell(value: object) -> str | int | float | None:
+            return value if isinstance(value, str | int | float) or value is None else str(value)
+
+        rows_by_uid: dict[int, tuple[str | int | float | None, ...]] = {}
+        for a in analysis.activity_rows:
+            uid = a.get("unique_id")
+            if not isinstance(uid, int) or uid not in uid_order:
+                continue
+            custom_obj = a.get("custom")
+            custom: dict[str, object] = custom_obj if isinstance(custom_obj, dict) else {}
+            rows_by_uid[uid] = (
+                uid,
+                _cell(a.get("name")),
+                _cell(a.get("duration_days")),
+                _cell(a.get("percent_complete")),
+                _cell(a.get("start")),
+                _cell(a.get("finish")),
+                *(_cell(a.get(c, custom.get(c))) for c in extra),
+            )
+        body = tuple(rows_by_uid[uid] for uid in offenders[metric] if uid in rows_by_uid)
+        tableset = TableSet(
+            f"{name} — ribbon {metric}",
+            (Table(f"Ribbon drill — {metric}", headers, body),),
+        )
+        return _export_response(fmt, tableset, "ribbon-drill")
 
     @app.get("/export/{fmt}/integrity")
     def export_integrity(
@@ -6166,47 +6238,80 @@ def _integrity_body(
     cpms: list[CPMResult],
     target_uid: int | None,
     *,
-    selected_file: str,
+    baseline_idx: int,
+    comparison_idx: int,
     exception_field: str,
     hide_excepted: bool,
 ) -> str:
-    """Schedule Integrity & Change Forensics: cited manipulation findings per version pair +
-    the counterfactual finish, with a custom-field (BCR-style) exception filter."""
+    """Schedule Integrity & Change Forensics: cited manipulation findings for ONE chosen version
+    pair + the counterfactual finish, with a custom-field (BCR-style) exception filter.
+
+    The operator picks exactly TWO files to compare (baseline A vs comparison B) — previously the
+    page diffed EVERY consecutive pair, which on many large files ran a counterfactual CPM sweep
+    per pair and, if any single pair produced an unsolvable revert, 500'd the whole page. Now one
+    pair is analyzed at a time and every heavy compute is guarded, so it never crashes."""
+    n = len(schedules)
     labels = [sch.source_file or sch.name for sch in schedules]
-    # pairs analyzed: every consecutive (prior -> current), optionally scoped to one current file
-    pairs = [
-        (i, schedules[i], schedules[i + 1], cpms[i], cpms[i + 1])
-        for i in range(len(schedules) - 1)
-        if not selected_file or labels[i + 1] == selected_file
-    ]
-    banner_name = selected_file if selected_file else "ALL FILES"
-    file_opts = '<option value="">All files</option>' + "".join(
-        f'<option value="{_e(lb)}"{" selected" if lb == selected_file else ""}>{_e(lb)}</option>'
-        for lb in labels[1:]
-    )
+    # resolve the chosen pair; default to the two most recent (what changed last). Order prior ->
+    # current chronologically (schedules are oldest-first) regardless of pick order, and never let
+    # the two collapse to the same file.
+    cur = comparison_idx if 0 <= comparison_idx < n else n - 1
+    base = baseline_idx if 0 <= baseline_idx < n else cur - 1
+    if base == cur:
+        base = cur - 1 if cur > 0 else cur + 1
+    prior_idx, cur_idx = (base, cur) if base < cur else (cur, base)
+
+    def _file_opts(selected: int) -> str:
+        return "".join(
+            f'<option value="{i}"{" selected" if i == selected else ""}>{_e(lb)}</option>'
+            for i, lb in enumerate(labels)
+        )
+
     all_custom = sorted({lb for sch in schedules for lb in sch.custom_field_labels})
     field_opts = '<option value="">(none)</option>' + "".join(
         f'<option value="{_e(lb)}"{" selected" if lb == exception_field else ""}>{_e(lb)}</option>'
         for lb in all_custom
     )
     hx = " checked" if hide_excepted else ""
+    banner_name = f"{labels[prior_idx]} → {labels[cur_idx]}"
+    picker = (
+        f"<label>Baseline (A) <select name=a>{_file_opts(prior_idx)}</select></label>"
+        f"<label>Comparison (B) <select name=b>{_file_opts(cur_idx)}</select></label>"
+        if n > 2
+        else f'<input type=hidden name=a value="{prior_idx}"><input type=hidden name=b value="{cur_idx}">'
+    )
+    two_note = (
+        "<p class=muted>Pick the <b>two</b> versions to compare — A (baseline) vs B (comparison). "
+        "The analysis runs on that one pair.</p>"
+        if n > 2
+        else ""
+    )
     controls = f"""
 <div class=panel><div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
 <p class=muted>Every statement below is engine-computed and cited (file + UniqueID + task) —
 version-over-version changes and what each change did to the critical / driving path. This is
 analysis for review, not an accusation: use the exception field to set aside authorized changes
 (for example a <b>BCR</b> — Budget/Baseline Change Request — number carried on the task).</p>
+{two_note}
 <form method=get action=/integrity class=viz-controls>
-<label>Analyze <select name=file>{file_opts}</select></label>
+{picker}
 <label>Exception field <select name=exception_field title="A finding whose cited task carries a value in this custom field (e.g. a BCR number) is treated as authorized">{field_opts}</select></label>
 <label><input type=checkbox name=hide_excepted value=1{hx}> hide excepted findings</label>
 <button type=submit>Apply</button>
-<a class=btn-link href="/export/xlsx/integrity?file={_e(selected_file)}&exception_field={_e(exception_field)}">&#11015; Excel (all findings)</a>
+<a class=btn-link href="/export/xlsx/integrity?file={_e(labels[cur_idx])}&exception_field={_e(exception_field)}">&#11015; Excel (all findings)</a>
 </form></div>"""
 
     sections: list[str] = []
+    pairs = [(prior_idx, schedules[prior_idx], schedules[cur_idx], cpms[prior_idx], cpms[cur_idx])]
     for i, prior, current, pcpm, ccpm in pairs:
-        findings = detect_manipulation(current, prior, current_cpm=ccpm, prior_cpm=pcpm)
+        cur_i = (
+            cur_idx  # section header uses the actual comparison index (pairs are not consecutive)
+        )
+        try:
+            findings = detect_manipulation(current, prior, current_cpm=ccpm, prior_cpm=pcpm)
+        except (CPMError, ValueError, KeyError) as exc:  # never 500 the page on one bad pair
+            logging.getLogger("schedule_forensics").warning("integrity findings failed: %s", exc)
+            findings = ()
         shown = 0
         excepted = 0
         rows = ""
@@ -6240,7 +6345,15 @@ analysis for review, not an accusation: use the exception field to set aside aut
         # counterfactual below misses — e.g. a removed predecessor link whose endpoints STAYED
         # critical (the 188→187 case), which nonetheless moves the target's finish.
         effects_html = ""
-        eff = compute_change_effects(prior, current, ccpm, target_uid=target_uid)
+        try:
+            eff = compute_change_effects(prior, current, ccpm, target_uid=target_uid)
+        except (
+            CPMError,
+            ValueError,
+            KeyError,
+        ) as exc:  # defense in depth; the engine already guards
+            logging.getLogger("schedule_forensics").warning("change effects failed: %s", exc)
+            eff = None
         if eff is not None and eff.per_change:
             tgt_label = f"UID {eff.target_uid} ({_e(eff.target_name)})" + (
                 " — the last task on the critical path" if eff.target_is_last_critical else ""
@@ -6263,18 +6376,43 @@ analysis for review, not an accusation: use the exception field to set aside aut
                 f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} working"
                 f" day(s)</b>"
             )
+            # "all changes together" line — only when the aggregate re-solve was cycle-free
+            agg_line = (
+                f" With every change reverted together, {_e(eff.target_name)} would move "
+                f"{agg_txt} (currently {_e(eff.actual_target_finish)})."
+                if eff.aggregate_solved
+                else f" (Currently {_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}; "
+                "reverting every change together would reintroduce a logic cycle, so only the "
+                "per-change effects above are shown.)"
+            )
+            # disclose any reverts we could not measure (Law 2: no silent drop)
+            notes = []
+            if eff.skipped_unsolvable:
+                notes.append(
+                    f"{eff.skipped_unsolvable} change(s) could not be measured individually — "
+                    "reverting one alone reintroduces a logic cycle."
+                )
+            if eff.skipped_capped:
+                notes.append(
+                    f"{eff.skipped_capped} further change(s) beyond the first "
+                    f"{len(eff.per_change)} were not individually measured (large diff)."
+                )
+            skip_note = f"<p class=muted>{' '.join(_e(x) for x in notes)}</p>" if notes else ""
             effects_html = f"""
 <div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
 <p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
 and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change
 <b>hid</b> from the target's finish (restoring it would push the finish out that far); a
-<b class=ok>negative</b> value means the change pushed the finish out. With every change reverted
-together, {_e(eff.target_name)} would move {agg_txt} (currently {_e(eff.actual_target_finish)}).</p>
+<b class=ok>negative</b> value means the change pushed the finish out.{agg_line}</p>{skip_note}
 <table class=integrity-table><tr><th scope=col>Change (reverted)</th>
 <th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
 <th scope=col>Citations</th></tr>{eff_rows}</table></div>"""
-        cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
         cf_html = ""
+        try:
+            cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
+        except (CPMError, ValueError, KeyError) as exc:
+            logging.getLogger("schedule_forensics").warning("path counterfactual failed: %s", exc)
+            cf = None
         if cf is not None and cf.reverted:
             delta_txt = (
                 f" — <b class=fail>{cf.finish_delta_days} working day(s)</b> of apparent"
@@ -6308,7 +6446,7 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             else ""
         )
         sections.append(f"""
-<div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[i + 1])}</h2>
+<div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[cur_i])}</h2>
 {exc_note}
 {f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
 {effects_html}
@@ -6826,10 +6964,17 @@ def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -
     return ""  # no published threshold — neutral
 
 
-def _ribbon_body(rows: list[tuple[str, object, dict[str, MetricResult]]], note: str) -> str:
+def _ribbon_body(
+    rows: list[tuple[str, object, dict[str, MetricResult]]],
+    note: str,
+    drill: dict[str, dict[str, tuple[int, ...]]] | None = None,
+) -> str:
     """The Acumen-Fuse-style Schedule Quality Ribbon: one row per loaded schedule, one column
     per ribbon metric — the metrics validated against the operator's Fuse workbook export.
-    Thresholded measures are color-coded pass/warning/fail (operator 2026-07-08)."""
+    Thresholded measures are color-coded pass/warning/fail, and every metric cell is CLICKABLE
+    (operator 2026-07-08): the click lists that file's activities behind the figure below, with
+    UID / name / duration / % complete / start / finish plus a set-once persistent Columns
+    picker (standard + custom fields) and an Excel export of exactly the selection."""
     cols = [
         ("Missing Logic", "missing_logic"),
         ("Logic Density™", "logic_density"),
@@ -6855,11 +7000,21 @@ def _ribbon_body(rows: list[tuple[str, object, dict[str, MetricResult]]], note: 
         for _, attr in cols:
             cls = _ribbon_cell_class(attr, r, quality)
             cells += (
-                f'<td class="{cls}">{_e(getattr(r, attr))}</td>'
-                if cls
-                else f"<td>{_e(getattr(r, attr))}</td>"
+                f'<td class="rib-cell {cls}" data-file="{_e(key)}" data-metric="{attr}" '
+                f'tabindex=0 role=button title="Click to list the activities behind this figure">'
+                f"{_e(getattr(r, attr))}</td>"
             )
         body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
+    labels = {attr: label for label, attr in cols}
+    drill_json = json.dumps(
+        {k: {m: list(u) for m, u in v.items()} for k, v in (drill or {}).items()}
+    )
+    drill_script = (
+        f"<script>window.SF_RIBBON_DRILL = {drill_json}; "
+        f"window.SF_RIBBON_LABELS = {json.dumps(labels)};</script>"
+        "<div id=ribbonDrill class=ribbon-drill></div>"
+        '<script src="/static/ribbon_drill.js"></script>'
+    )
     return f"""{note}
 <div class=panel><h2>Schedule Quality Ribbon</h2>
 <p class=muted>The schedule-quality ribbon metrics, one row per loaded
@@ -6874,8 +7029,9 @@ project span (the NASA Acumen library formula, Fuse-validated). These are valida
 reference schedule-quality export. <i>Float Ratio™ is omitted pending its exact definition.</i>
 <span class=rib-legend><span class=rib-pass>pass</span> <span class=rib-warn>warning
 (&ge;80% of threshold)</span> <span class=rib-fail>fail</span> &mdash; colored where a
-published threshold exists; unthresholded measures stay neutral.</span></p>
-<table><tr>{head}</tr>{body}</table></div>"""
+published threshold exists; unthresholded measures stay neutral.</span>
+<b>Click any metric cell</b> to list the activities behind that figure below.</p>
+<table><tr>{head}</tr>{body}</table></div>{drill_script}"""
 
 
 def _scurve_data(sc: SCurve) -> dict[str, object]:
@@ -8738,13 +8894,28 @@ def _driving_path_body(
     *,
     ignore_constraints: bool = False,
     ignore_leveling: bool = False,
+    file_options: list[str] | None = None,
+    selected_file: str = "",
 ) -> str:
     """Server-rendered Driving Path view: the controlling logic corridor between two chosen
-    UniqueIDs, and how it changes across every loaded version (oldest first by data date).
+    UniqueIDs, and how it changes across every loaded version (oldest first by data date) — or
+    within ONE chosen file (operator 2026-07-08: the path can differ between files, so the File
+    selector scopes the whole page, tiers and Gantt included, to that version).
     The SSI trace options (ignore constraints / leveling) persist through the form; the page
     is directional by construction (A→B), so Path Direction lives on Path Analysis."""
     ic = " checked" if ignore_constraints else ""
     il = " checked" if ignore_leveling else ""
+    file_select = ""
+    if file_options and len(file_options) > 1:
+        opts = '<option value="">All files (chronological)</option>' + "".join(
+            f'<option value="{_e(n)}"{" selected" if n == selected_file else ""}>{_e(n)}</option>'
+            for n in file_options
+        )
+        file_select = (
+            f"<label>File <select name=file data-no-i18n "
+            f'title="Trace the driving path in one chosen file — it can differ between files">'
+            f"{opts}</select></label> "
+        )
     export_link = ""
     if target is not None and schedules:
         last = schedules[-1]
@@ -8755,7 +8926,7 @@ def _driving_path_body(
         )
     form = f"""
 <div class=panel><form method=get action=/driving-path class=viz-controls>
-<label>From (source UniqueID): <input name=source type=number min=1
+{file_select}<label>From (source UniqueID): <input name=source type=number min=1
 value="{source if source is not None else ""}" placeholder="UID A"></label>
 <label>To (target UniqueID): <input name=target type=number min=1
 value="{target if target is not None else ""}" placeholder="UID B"></label>
@@ -10025,14 +10196,31 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
         # a table with many columns needs the full page row, not a half-width card
         if section.table is not None and len(section.table.headers) >= 5:
             card_is_wide[-1] = True
-    # "6. Recommended Actions" and "7. How to Verify Every Number" share one full-width row as
-    # half-page partners (operator 2026-07-08) so the citation column reads without sideways
-    # scrolling instead of each landing in a narrow auto-fit column.
-    duo_idx = {
-        i for i, h in enumerate(card_heading) if "Recommended Actions" in h or "How to Verify" in h
-    }
-    card_html = []
-    duo_html: list[str] = []
+    # Half-page partner rows (operator 2026-07-08): pair sections that otherwise land in narrow
+    # auto-fit columns with wasted white space beside a short neighbour. Each ordered (A, B) group
+    # becomes one full-width `.brief-duo` row split 1fr/1fr, so neither section wastes page width
+    # and long tables scroll inside their half (capped in CSS) rather than towering the page.
+    duo_groups = (("Critical Path", "Schedule Health"), ("Recommended Actions", "How to Verify"))
+
+    def _group_of(heading: str) -> tuple[int, int] | None:
+        for g, (first, second) in enumerate(duo_groups):
+            if first in heading:
+                return (g, 0)
+            if second in heading:
+                return (g, 1)
+        return None
+
+    card_group = [_group_of(h) for h in card_heading]
+    # only pair a group when BOTH members are actually present (a briefing with an empty/skipped
+    # section falls back to a normal single card)
+    counts: dict[int, int] = {}
+    for cg in card_group:
+        if cg:
+            counts[cg[0]] = counts.get(cg[0], 0) + 1
+    active_groups = {g for g, c in counts.items() if c == 2}
+
+    card_html: list[str] = []
+    duo_buffers: dict[int, list[str]] = {}
     for i, body in enumerate(cards):
         # the opening "Bottom Line" card spans the full width as the headline
         cls = (
@@ -10040,10 +10228,12 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
             if i == 0
             else ("brief-card wide" if card_is_wide[i] else "brief-card")
         )
-        if i in duo_idx and len(duo_idx) == 2:
-            duo_html.append(f'<section class="brief-card">{"".join(body)}</section>')
-            if len(duo_html) == 2:
-                card_html.append(f"<div class=brief-duo>{''.join(duo_html)}</div>")
+        cg = card_group[i]
+        if cg and cg[0] in active_groups:
+            buf = duo_buffers.setdefault(cg[0], [])
+            buf.append(f'<section class="brief-card">{"".join(body)}</section>')
+            if len(buf) == 2:
+                card_html.append(f"<div class=brief-duo>{''.join(buf)}</div>")
         else:
             card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
     grid = f"<div class=brief-grid>{''.join(card_html)}</div>"

@@ -1,6 +1,29 @@
-# Handoff — 2026-07-08 (chart reflow + briefing duo; highest ADR 0163)
+# Handoff — 2026-07-08 (integrity multi-file crash fix + ribbon drill; highest ADR 0165)
 
-> ## STATUS (current) — ADR-0163: charts reformat on expand; briefing 6+7 half-page duo
+> ## STATUS (current) — ADR-0164/0165: Integrity never-500 + two-file picker; ribbon drill; DP file selector
+>
+> - **CRITICAL FIX (ADR-0164): Schedule Integrity no longer 500s with >2 files.** Two reproduced
+>   root causes: (1) `change_effects` KeyError'd indexing `base_cpm.timings[summary UID]` (e.g. the
+>   project-summary UID 0 as Target UID); (2) reverting a change can reintroduce a logic **cycle** →
+>   `compute_cpm` raised `CPMError`, unhandled → 500 (near-certain across many real pairs — why
+>   "only two files worked"). Engine now guards the target, catches `CPMError` per revert
+>   (`skipped_unsolvable`) + aggregate (`aggregate_solved`), caps reverts at 60 (`skipped_capped`),
+>   all disclosed. Web layer wraps every per-pair heavy compute so one bad pair can't crash the page.
+> - **Two-file compare picker (operator request):** Integrity analyzes ONE chosen pair — **Baseline
+>   (A)** vs **Comparison (B)** file selects (`a`/`b` indices), default = two most recent, ordered
+>   prior→current. Bounds work to one pair AND matches "pick two files to compare." Legacy `?file=`
+>   still resolves. Known-good 188→187 = **+23 wd** preserved through the picker.
+> - **Briefing 3+4 (and 6+7) half-page duos** with a `max-height` table cap so a 100+-row table
+>   scrolls in-card instead of towering the page — no wasted width, no page scroll. Chromium-verified.
+> - **ADR-0165: Quality-Ribbon metric click-drill** — click any metric/file → activities behind it
+>   (UID/name/duration/%/start/finish) + set-once persistent Columns (localStorage) + Excel export;
+>   `ribbon_offender_map` offender counts == the Fuse-validated ribbon counts. **Driving-Path File
+>   selector** scopes the trace to one chosen version.
+> - New tests: `test_integrity_multifile_robust.py` (9). Adversarial review workflow run over the
+>   crash fix. Lockstep: wheel + 9 installers rebuilt. **Remaining work-order:** #80 SRA grid Gantt,
+>   #71 Quality Trend split, #72 Driving Path fields/export/banner, #74 Resources drill, #67 SSI pin.
+
+> ## STATUS — ADR-0163: charts reformat on expand; briefing 6+7 half-page duo
 >
 > - **Charts REFORMAT instead of magnify.** SRA S-curve/histogram/both tornados (`sra.js`) and the
 >   progress S-curve (`scurve.js`) draw **1:1** (viewBox width == container px → 10–12px text at

@@ -77,6 +77,85 @@ def _audit_count(audit: ScheduleAudit, metric_id: str) -> int:
     return 0
 
 
+def _audit_uids(audit: ScheduleAudit, metric_id: str) -> tuple[int, ...]:
+    for check in audit.checks:
+        if check.metric_id == metric_id:
+            return tuple(c.unique_id for c in check.citations)
+    return ()
+
+
+def ribbon_offender_map(
+    schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit
+) -> dict[str, tuple[int, ...]]:
+    """The activities "in question" behind each ribbon cell (operator 2026-07-08 click-drill).
+
+    Keyed by the :class:`RibbonMetrics` attribute names. Counted metrics list exactly the
+    counted offenders; the ratio/float metrics list the population that produces the figure —
+    ``logic_density`` lists the open-ended activities diluting the density (the Missing-Logic
+    set), and ``avg_float_days`` / ``max_float_days`` list the incomplete float population
+    sorted float-descending, so the max-float task leads. Values are display-ordered, not a
+    metric of their own — the counts in :func:`compute_ribbon` stay the Fuse-validated truth.
+    """
+    from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
+
+    quality = compute_schedule_quality(schedule, cpm)
+    tasks = non_summary(schedule)
+    ns_ids = {t.unique_id for t in tasks}
+
+    has_pred: set[int] = set()
+    has_succ: set[int] = set()
+    pred_count: dict[int, int] = {}
+    lag_successors: set[int] = set()
+    lead_successors: set[int] = set()
+    for r in schedule.relationships:
+        if r.predecessor_id in ns_ids and r.successor_id in ns_ids:
+            has_pred.add(r.successor_id)
+            has_succ.add(r.predecessor_id)
+            pred_count[r.successor_id] = pred_count.get(r.successor_id, 0) + 1
+            if r.lag_minutes > 0:
+                lag_successors.add(r.successor_id)
+            elif r.lag_minutes < 0:
+                lead_successors.add(r.successor_id)
+
+    missing = tuple(
+        t.unique_id for t in tasks if t.unique_id not in has_pred or t.unique_id not in has_succ
+    )
+    critical = tuple(
+        t.unique_id
+        for t in tasks
+        if t.percent_complete < 100.0
+        and is_effective_critical(
+            t, cpm.timings[t.unique_id].total_float if t.unique_id in cpm.timings else 0
+        )
+    )
+    merge = tuple(
+        t.unique_id for t in tasks if pred_count.get(t.unique_id, 0) > _MERGE_HOTSPOT_MIN_PREDS
+    )
+    per_day = schedule.calendar.working_minutes_per_day or 1
+    float_pop = sorted(
+        (
+            (effective_total_float(t, cpm.timings[t.unique_id].total_float) / per_day, t.unique_id)
+            for t in tasks
+            if t.percent_complete < 100.0 and t.unique_id in cpm.timings
+        ),
+        key=lambda p: (-p[0], p[1]),
+    )
+    floats_desc = tuple(uid for _, uid in float_pop)
+    return {
+        "missing_logic": missing,
+        "logic_density": missing,
+        "critical": critical,
+        "hard_constraints": _audit_uids(audit, "DCMA05"),
+        "negative_float": _audit_uids(audit, "DCMA07"),
+        "number_of_lags": tuple(sorted(lag_successors)),
+        "number_of_leads": tuple(sorted(lead_successors)),
+        "merge_hotspot": merge,
+        "avg_float_days": floats_desc,
+        "max_float_days": floats_desc,
+        "insufficient_detail": quality["insufficient_detail"].offender_uids,
+    }
+
+
 def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> RibbonMetrics:
     """Assemble the Fuse Ribbon metrics for ``schedule`` (its CPM + DCMA audit)."""
     from schedule_forensics.engine.metrics.schedule_quality import compute_schedule_quality
