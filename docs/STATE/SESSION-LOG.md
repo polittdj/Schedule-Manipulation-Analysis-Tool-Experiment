@@ -4439,3 +4439,27 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
      partial, that the skipped changes are excluded.
 - +23-wd 188->187 result + "all N change(s)" honest aggregate preserved. New regression tests
   (reversed-diff guard, all-skipped disclosure, export guard). Full gate green; lockstep rebuild.
+
+### 2026-07-08 (cont. 15) — filter/columns/Excel drill tables (ADR-0167)
+- Operator (several screenshots): expand truncated citations into a full chart with add-columns +
+  Excel; filter the ribbon/what-if tables by any field; on the What-if, select any two files (the
+  latest-two-only default lumped a long history into a misleading "no change").
+- Evolution What-if: added a Baseline (A)/Comparison (B) two-file selector (cf_a/cf_b, default two
+  most recent, prior->current, out-of-range/collapse guarded). Intro now says it runs on the one
+  chosen pair, not lumped. Replaced the static reverted-changes table with an interactive one
+  (static/whatif.js): Columns dropdown (std+custom, localStorage), Filter box, Excel of the chosen
+  columns (/export/xlsx/whatif). Enriched rows carry each activity's current fields.
+- Ribbon drill (ribbon_drill.js): added a Filter box (new selection starts unfiltered; columns
+  persist).
+- Integrity findings: each "(+N more)" is now a "view all N" link -> findings_drill.js opens the
+  FULL cited-activity chart (UID/name/dur/%/start/finish default + Columns + Filter + Excel via
+  /export/xlsx/activities/{file}?uids=&cols=). No more truncation.
+- _find_schedule: resolve a file by session KEY or display label (source_file/cleaned name);
+  /api/analysis + /export/activities use it — fixed the citation drill returning no rows when the
+  cited label != the extension-stripped key.
+- Live-verified in Chromium (What-if selector runs the chosen pair; all three tables filter, add
+  persisted columns, export a 200 xlsx; "view all" lists all 17 cited activities). New tests
+  tests/web/test_drill_tables.py (5). Full suite green (1886 pre-test + 5). Lockstep rebuild.
+- STILL OPEN (larger, next session): #72 DP tiers per-column+Excel+banner, #71 Quality-Trend split,
+  #74 Resources bucketing+overallocation drill, #80 SRA grid Gantt. Variances: #67 SSI golden
+  blocked on operator's export not in repo; 3 Fuse divergences are genuine tool-definition diffs.

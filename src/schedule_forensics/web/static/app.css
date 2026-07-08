@@ -820,6 +820,13 @@ td.rib-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -2p
 td.rib-cell.rib-selected { outline: 2px solid var(--focus); outline-offset: -2px; }
 .ribbon-drill { margin-top: 14px; }
 .ribbon-drill h3 { margin: 8px 0 4px; }
+/* Integrity finding citation drill (operator 2026-07-08): the "(+N more — view all)" link opens
+   the full cited-activity chart below the findings table. */
+a.cite-more { color: var(--accent); cursor: pointer; white-space: nowrap; }
+.findings-drill { margin: 6px 0 4px; }
+.findings-drill h3 { margin: 8px 0 4px; }
+/* What-if reverted-changes interactive table shares the drill look. */
+#whatifTable { margin-top: 8px; }
 
 /* SSI Directional Path Tool options panel (operator 2026-07-08) */
 details.path-options { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: var(--field-bg); font-size: 12px; }

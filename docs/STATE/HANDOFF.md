@@ -1,6 +1,30 @@
-# Handoff — 2026-07-08 (integrity crash-fix + adversarial-review hardening; highest ADR 0166)
+# Handoff — 2026-07-08 (filter/columns/Excel drill tables; highest ADR 0167)
 
-> ## STATUS (current) — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
+> ## STATUS (current) — ADR-0167: filter / add-columns / Excel drill tables across the app
+>
+> - **Evolution "What-if" two-file selector** (`cf_a`/`cf_b`): the counterfactual runs on ONE chosen
+>   pair (default two most recent, out-of-range/collapse-guarded) so first-vs-last reveals cumulative
+>   change instead of the lumped "no change" the operator distrusted. Intro says "runs on the one
+>   pair you pick — not lumped across the whole history."
+> - **What-if reverted-changes table, ribbon metric drill, and Integrity finding "(+N more)"** are
+>   all interactive: a Columns dropdown (standard + custom, localStorage-persisted), a Filter box
+>   (text across shown columns), and an Excel export of the chosen columns. The finding "view all N"
+>   opens the FULL cited-activity chart (no more truncation) — `static/whatif.js`,
+>   `ribbon_drill.js` (filter added), `findings_drill.js`, routes `/export/xlsx/whatif`,
+>   `/export/xlsx/activities/{file}`.
+> - **`_find_schedule`** resolves a file by session key OR display label (source_file / cleaned
+>   name) — fixed the citation drill returning no rows when label ≠ key; `/api/analysis` +
+>   `/export/activities` use it.
+> - Live-verified in Chromium; pinned by `tests/web/test_drill_tables.py`; wheel + 9 installers
+>   rebuilt (lockstep).
+> - **STILL OPEN (larger features, next session):** #72 Driving-Path tiers per-column add + Excel +
+>   bold banner (the DP file selector already shipped, ADR-0165); #71 Quality-Trend visual split;
+>   #74 Resources day/week/month bucketing + overallocation click-drill; #80 SRA editable-grid Gantt
+>   matched to the other Gantts. **Variances:** #67 Hard_File UID-155 SSI driving-path golden is
+>   blocked on the operator's SSI export not in the repo; the 3 Fuse divergences (ADR-0159) are
+>   genuine tool-definition differences pinned with root causes.
+
+> ## STATUS — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
 >
 > - Follow-up to ADR-0164 after an adversarial multi-agent review of the crash fix. Four confirmed
 >   findings fixed: (1) **HIGH/Law-2:** an out-of-range/negative baseline (`/integrity?b=0` or legacy

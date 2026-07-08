@@ -1731,11 +1731,11 @@ def create_app(
     @app.get("/api/analysis/{name}")
     def analysis_json(name: str) -> JSONResponse:
         st = session()
-        sch = st.schedules.get(name)
-        if sch is None:
+        key, sch = _find_schedule(st, name)  # accept the session key OR the display label
+        if key is None or sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
         try:
-            analysis = st.analysis_for(name, sch)
+            analysis = st.analysis_for(key, sch)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_analysis_data(sch, analysis))
@@ -2270,6 +2270,8 @@ def create_app(
         tier: str = Query("off"),
         ignore_constraints: int = Query(0),
         ignore_leveling: int = Query(0),
+        cf_a: int = Query(-1),
+        cf_b: int = Query(-1),
     ) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
@@ -2302,7 +2304,7 @@ def create_app(
             + opt_banner
             + opt_form
             + _sources_line(schedules)
-            + _evolution_body(schedules, cpms, uid, tier),
+            + _evolution_body(schedules, cpms, uid, tier, cf_a=cf_a, cf_b=cf_b),
         )
 
     @app.get("/integrity", response_class=HTMLResponse)
@@ -2793,6 +2795,116 @@ def create_app(
             (Table(f"Ribbon drill — {metric}", headers, body),),
         )
         return _export_response(fmt, tableset, "ribbon-drill")
+
+    @app.get("/export/{fmt}/activities/{name}")
+    def export_activities(
+        fmt: str, name: str, uids: str = Query(""), cols: str = Query("")
+    ) -> Response:
+        """A chosen set of activities (by UniqueID) from one file, with any extra columns — the
+        Integrity finding-citation "view all" chart's Excel export (operator 2026-07-08). Rows are
+        emitted in the requested UID order."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        key, sch = _find_schedule(st, name)  # accept the session key OR the display label
+        if key is None or sch is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        try:
+            analysis = st.analysis_for(key, sch)
+        except CPMError:
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
+        want: list[int] = []
+        for tok in uids.split(","):
+            tok = tok.strip()
+            if tok.lstrip("-").isdigit():
+                want.append(int(tok))
+        order = {u: i for i, u in enumerate(want)}
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Name", "Duration (d)", "% complete", "Start", "Finish", *extra)
+
+        def _cell(value: object) -> str | int | float | None:
+            return value if isinstance(value, str | int | float) or value is None else str(value)
+
+        by_uid: dict[int, tuple[str | int | float | None, ...]] = {}
+        for a in analysis.activity_rows:
+            uid = a.get("unique_id")
+            if not isinstance(uid, int) or uid not in order:
+                continue
+            custom_obj = a.get("custom")
+            custom: dict[str, object] = custom_obj if isinstance(custom_obj, dict) else {}
+            by_uid[uid] = (
+                uid,
+                _cell(a.get("name")),
+                _cell(a.get("duration_days")),
+                _cell(a.get("percent_complete")),
+                _cell(a.get("start")),
+                _cell(a.get("finish")),
+                *(_cell(a.get(c, custom.get(c))) for c in extra),
+            )
+        body = tuple(by_uid[u] for u in want if u in by_uid)
+        tableset = TableSet(
+            f"{name} — cited activities", (Table("Cited activities", headers, body),)
+        )
+        return _export_response(fmt, tableset, "activities")
+
+    @app.get("/export/{fmt}/whatif")
+    def export_whatif(
+        fmt: str, a: str = Query(""), b: str = Query(""), cols: str = Query("")
+    ) -> Response:
+        """The 'What-if' reverted-changes list for a chosen version pair, with any extra columns
+        the operator toggled on — the Evolution counterfactual table's Excel export (operator
+        2026-07-08)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        labels = [s.source_file or s.name for s in schedules]
+        if a not in labels or b not in labels:
+            return JSONResponse({"error": "unknown file(s)"}, status_code=404)
+        ia, ib = labels.index(a), labels.index(b)
+        prior_idx, cur_idx = (ia, ib) if ia < ib else (ib, ia)
+        st = session()
+        pc = compute_path_counterfactual(
+            schedules[prior_idx],
+            schedules[cur_idx],
+            cpms[prior_idx],
+            cpms[cur_idx],
+            target_uid=st.target_uid,
+        )
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Activity", "Why it left", "Change reverted", *extra)
+        by_id = schedules[cur_idx].tasks_by_id
+        per_day = schedules[cur_idx].calendar.working_minutes_per_day or 480
+
+        def _field(uid: int, key: str) -> str | int | float | None:
+            t = by_id.get(uid)
+            if t is None:
+                return ""
+            simple: dict[str, object] = {
+                "duration_days": round(
+                    t.duration_minutes / (1440 if t.duration_is_elapsed else per_day), 1
+                ),
+                "percent_complete": t.percent_complete,
+                "start": _iso_date(t.start),
+                "finish": _iso_date(t.finish),
+                "wbs": t.wbs or "",
+                "resource_names": ", ".join(t.resource_names),
+            }
+            if key in simple:
+                v = simple[key]
+                return v if isinstance(v, str | int | float) else str(v)
+            cv = t.custom_field_map.get(key)
+            return cv if isinstance(cv, str | int | float) or cv is None else str(cv)
+
+        rev = pc.reverted if pc is not None else ()
+        rows = tuple(
+            (r.uid, r.name, r.reason, "; ".join(r.changes), *(_field(r.uid, c) for c in extra))
+            for r in rev
+        )
+        tableset = TableSet(
+            f"What-if reverted changes — {a} → {b}",
+            (Table("Reverted changes", headers, rows),),
+        )
+        return _export_response(fmt, tableset, "whatif")
 
     @app.get("/export/{fmt}/integrity")
     def export_integrity(
@@ -3882,6 +3994,22 @@ def _clean_key(name: str) -> str:
     while path.suffix.lower() in exts:
         path = path.with_suffix("")
     return path.name or "schedule"
+
+
+def _find_schedule(st: SessionState, name: str) -> tuple[str | None, Schedule | None]:
+    """Resolve a schedule by its session KEY or its display label (source_file / cleaned name).
+
+    Drill panels cite a file by its display label (``source_file``) while the session keys by the
+    extension-stripped filename, so a raw ``st.schedules.get(label)`` would miss. This tries the
+    key first, then matches on source_file / cleaned name, and returns ``(key, schedule)`` (the key
+    is needed for the per-key analysis cache) or ``(None, None)``."""
+    sch = st.schedules.get(name)
+    if sch is not None:
+        return name, sch
+    for key, s in st.schedules.items():
+        if s.source_file == name or _clean_key(s.source_file or s.name) == name:
+            return key, s
+    return None, None
 
 
 def _unique_key(base: str, existing: dict[str, Schedule]) -> str:
@@ -6324,6 +6452,7 @@ analysis for review, not an accusation: use the exception field to set aside aut
         shown = 0
         excepted = 0
         rows = ""
+        findings_data: list[dict[str, object]] = []  # per-finding full citation UIDs for the drill
         for f in findings:
             is_exc = _finding_excepted(f, current, exception_field)
             if is_exc:
@@ -6334,7 +6463,18 @@ analysis for review, not an accusation: use the exception field to set aside aut
             cites = "; ".join(
                 f"UID {c.unique_id} — {c.task_name}" for c in f.citations[:4] if c.unique_id
             )
-            more = f" (+{len(f.citations) - 4} more)" if len(f.citations) > 4 else ""
+            uids = [c.unique_id for c in f.citations if c.unique_id]
+            fi = len(findings_data)
+            findings_data.append({"title": f.title, "uids": uids})
+            # clickable "view all N" opens a full, columnable, exportable chart of every cited
+            # activity below the table (operator 2026-07-08) — no more truncated "(+66 more)".
+            more = (
+                f' <a href="#" class=cite-more data-finding="{fi}" '
+                f'title="List all {len(uids)} cited activities in a chart you can add columns to '
+                f'and export">(+{len(f.citations) - 4} more — view all {len(uids)})</a>'
+                if len(f.citations) > 4
+                else ""
+            )
             exc_badge = (
                 ' <span class=exc-badge title="A cited task carries the exception field">excepted</span>'
                 if is_exc
@@ -6346,8 +6486,18 @@ analysis for review, not an accusation: use the exception field to set aside aut
                 f"<td>{_e(f.title)}{exc_badge}</td>"
                 f"<td>{_e(f.detail)}</td>"
                 f"<td class=muted>{_e(f.course_of_action)}</td>"
-                f"<td class=cite>{_e(cites)}{_e(more)}</td></tr>"
+                f"<td class=cite>{_e(cites)}{more}</td></tr>"
             )
+        findings_blob = json.dumps({"file": labels[cur_idx], "findings": findings_data}).replace(
+            "<", "\\u003c"
+        )
+        findings_drill = (
+            "<div id=findingsDrill class=findings-drill></div>"
+            f'<script type="application/json" id=findingsData>{findings_blob}</script>'
+            '<script src="/static/findings_drill.js"></script>'
+            if findings_data
+            else ""
+        )
         # Per-change effect (operator 2026-07-08): revert EACH detected change one at a time and
         # re-run CPM to show its isolated working-day effect on the chosen target UID (or, when no
         # target is set, the last task on the critical path). This catches changes the path
@@ -6479,6 +6629,7 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
 <div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[cur_i])}</h2>
 {exc_note}
 {f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
+{findings_drill}
 {effects_html}
 {cf_html}</div>""")
 
@@ -9578,6 +9729,9 @@ def _evolution_body(
     cpms: list[CPMResult],
     target: int | None = None,
     tier: str = "off",
+    *,
+    cf_a: int = -1,
+    cf_b: int = -1,
 ) -> str:
     """The Critical-Path Evolution view (M18 item 7): a Bow-Wave-style stepper over the
     versions, showing the critical path and how it enters/leaves between versions. ``target``
@@ -9667,7 +9821,7 @@ Use <b>Focus</b> above to highlight one activity across every version.</p>
 data-tier="{tier}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
         + _completed_on_path_panel(schedules, cpms, target)
-        + _counterfactual_panel(schedules, cpms, target)
+        + _counterfactual_panel(schedules, cpms, target, baseline_idx=cf_a, comparison_idx=cf_b)
     )
 
 
@@ -9716,35 +9870,122 @@ def _completed_on_path_panel(
 
 
 def _counterfactual_panel(
-    schedules: list[Schedule], cpms: list[CPMResult], target: int | None
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target: int | None,
+    *,
+    baseline_idx: int = -1,
+    comparison_idx: int = -1,
 ) -> str:
-    """The 'what-if' panel for the latest version pair: revert the duration/logic/constraint
-    changes that took non-completed activities off the critical path, and report what the
-    finish (and the target UID) would have been — isolating slip removed by changes vs progress."""
+    """The 'what-if' panel for a CHOSEN version pair: revert the duration/logic/constraint changes
+    that took non-completed activities off the critical path, and report what the finish (and the
+    target UID) would have been — isolating slip removed by changes vs progress.
+
+    Operator 2026-07-08: the panel previously always used the LATEST two versions, so on a long
+    history it only showed the tiny most-recent update (looking like "no change") and hid the
+    cumulative manipulation. It now runs on ANY two files the operator picks (Baseline A vs
+    Comparison B), defaulting to the two most recent, so first-vs-last reveals the real change."""
     if len(schedules) < 2:
         return ""
+    n = len(schedules)
+    labels = [s.source_file or s.name for s in schedules]
+    # resolve the chosen pair safely (same rule as Integrity): default the two most recent, order
+    # prior -> current chronologically, never collapse to one file or a negative index.
+    cur = comparison_idx if 0 <= comparison_idx < n else n - 1
+    base = baseline_idx if 0 <= baseline_idx < n else cur - 1
+    if base == cur or not (0 <= base < n):
+        base = cur - 1 if cur > 0 else cur + 1
+    prior_idx, cur_idx = (base, cur) if base < cur else (cur, base)
+
+    picker = ""
+    if n > 2:
+
+        def _opts(selected: int) -> str:
+            return "".join(
+                f'<option value="{i}"{" selected" if i == selected else ""}>{_e(lb)}</option>'
+                for i, lb in enumerate(labels)
+            )
+
+        picker = f"""
+<form method=get action=/evolution class=viz-controls style="margin:.4em 0">
+<span class=muted>Compare any two of the {n} loaded versions:</span>
+<label>Baseline (A) <select name=cf_a>{_opts(prior_idx)}</select></label>
+<label>Comparison (B) <select name=cf_b>{_opts(cur_idx)}</select></label>
+<button type=submit>Run what-if</button></form>"""
+
     pc = compute_path_counterfactual(
-        schedules[-2], schedules[-1], cpms[-2], cpms[-1], target_uid=target
+        schedules[prior_idx], schedules[cur_idx], cpms[prior_idx], cpms[cur_idx], target_uid=target
     )
-    return _render_counterfactual(pc)
+    # enrich each reverted activity with its current-version fields (duration / % complete / start /
+    # finish / WBS / custom) so the client table can add columns and FILTER by any of them.
+    current = schedules[cur_idx]
+    by_id = current.tasks_by_id
+    per_day = current.calendar.working_minutes_per_day or 480
+    enriched: list[dict[str, object]] = []
+    if pc is not None:
+        for r in pc.reverted:
+            t = by_id.get(r.uid)
+            row: dict[str, object] = {
+                "unique_id": r.uid,
+                "name": r.name,
+                "why_left": r.reason,
+                "change_reverted": "; ".join(r.changes),
+            }
+            if t is not None:
+                row.update(
+                    {
+                        "duration_days": round(
+                            t.duration_minutes / (1440 if t.duration_is_elapsed else per_day), 1
+                        ),
+                        "percent_complete": t.percent_complete,
+                        "start": _iso_date(t.start),
+                        "finish": _iso_date(t.finish),
+                        "wbs": t.wbs or "",
+                        "resource_names": ", ".join(t.resource_names),
+                        "custom": dict(t.custom_field_map),
+                    }
+                )
+            enriched.append(row)
+    custom_labels = sorted(current.custom_field_labels)
+    return _render_counterfactual(
+        pc,
+        picker=picker,
+        pair=(labels[prior_idx], labels[cur_idx]),
+        enriched_rows=enriched,
+        custom_labels=custom_labels,
+    )
 
 
-def _render_counterfactual(pc: PathCounterfactual | None) -> str:
+def _render_counterfactual(
+    pc: PathCounterfactual | None,
+    *,
+    picker: str = "",
+    pair: tuple[str, str] | None = None,
+    enriched_rows: list[dict[str, object]] | None = None,
+    custom_labels: list[str] | None = None,
+) -> str:
     """Render the counterfactual panel from a computed result (split out for direct testing)."""
-    intro = """
+    pair_txt = (
+        f"between <b data-no-i18n>{_e(pair[0])}</b> and <b data-no-i18n>{_e(pair[1])}</b>"
+        if pair
+        else "between the two chosen versions"
+    )
+    intro = f"""
 <div class=panel><h2>What-if: work removed from the critical path</h2>
-<p class=muted>Between the latest two versions, some activities leave the critical (driving)
-path. A <b>completed</b> activity leaving is real progress (excluded here). An unchanged
-activity leaving <b>gained float</b> &mdash; a slip elsewhere made another chain longer, so this
-one is no longer on the longest path (nothing about it changed). But an activity that leaves
-because <b>its own remaining duration was cut, a logic link was removed, or a constraint was
-dropped</b> can make a slipping finish look recovered. Below, those specific changes (on
-non-completed activities) are reverted to their prior values and the schedule re-run &mdash; the
-gap is schedule time the <b>changes</b>, not progress, removed from the path.</p>"""
+<p class=muted>This runs on the <b>one pair you pick</b> {pair_txt} — not lumped across the whole
+history. Some activities leave the critical (driving) path between these two versions. A
+<b>completed</b> activity leaving is real progress (excluded here). An unchanged activity leaving
+<b>gained float</b> &mdash; a slip elsewhere made another chain longer, so this one is no longer on
+the longest path (nothing about it changed). But an activity that leaves because <b>its own
+remaining duration was cut, a logic link was removed, or a constraint was dropped</b> can make a
+slipping finish look recovered. Below, those specific changes (on non-completed activities) are
+reverted to their prior values and the schedule re-run &mdash; the gap is schedule time the
+<b>changes</b>, not progress, removed from the path.</p>{picker}"""
     if pc is None:
         return (
-            intro + "<p class=muted>No non-completed activity left the critical path between the "
-            "last two versions &mdash; nothing to revert.</p></div>"
+            intro + f"<p class=muted>No non-completed activity left the critical path {pair_txt} "
+            "&mdash; nothing to revert. Pick a wider pair (e.g. the first vs the latest version) "
+            "to see cumulative change.</p></div>"
         )
 
     def _delta(days: int) -> str:
@@ -9754,10 +9995,32 @@ gap is schedule time the <b>changes</b>, not progress, removed from the path.</p
             return f"<b class=pass>{days} day(s) earlier</b>"
         return "<b>no change</b>"
 
-    rows = "".join(
-        f"<tr><td>{r.uid}</td><td>{_e(r.name)}</td><td>{_e(r.reason)}</td>"
-        f"<td>{_e('; '.join(r.changes))}</td></tr>"
-        for r in pc.reverted
+    # interactive reverted-changes table: filter by any field + add standard/custom columns + Excel
+    # export (operator 2026-07-08). Rows carry each activity's current fields (embedded server-side).
+    # Fall back to the base columns from pc.reverted when no enriched rows were supplied (direct
+    # callers / tests) so the table always lists the reverted activities.
+    rows_data = (
+        enriched_rows
+        if enriched_rows is not None
+        else [
+            {
+                "unique_id": r.uid,
+                "name": r.name,
+                "why_left": r.reason,
+                "change_reverted": "; ".join(r.changes),
+            }
+            for r in pc.reverted
+        ]
+    )
+    whatif_blob = json.dumps({"rows": rows_data, "customLabels": custom_labels or []}).replace(
+        "<", "\\u003c"
+    )
+    a_attr = _e(pair[0]) if pair else ""
+    b_attr = _e(pair[1]) if pair else ""
+    table_html = (
+        f'<div id=whatifTable data-a="{a_attr}" data-b="{b_attr}"></div>'
+        f'<script type="application/json" id=whatifData>{whatif_blob}</script>'
+        '<script src="/static/whatif.js"></script>'
     )
     body = [intro]
     if pc.reverted:
@@ -9784,10 +10047,7 @@ gap is schedule time the <b>changes</b>, not progress, removed from the path.</p
                 f"<p class=muted>Target UID {pc.target_uid} is not in both the current and "
                 "counterfactual networks, so its individual impact is not shown.</p>"
             )
-        body.append(
-            "<table><tr><th scope=col>UID</th><th scope=col>Activity</th><th scope=col>Why it left</th>"
-            f"<th scope=col>Change reverted</th></tr>{rows}</table>"
-        )
+        body.append(table_html)
     if pc.gained_float:
         names = "; ".join(f"{g.name} (UID {g.uid})" for g in pc.gained_float)
         body.append(
