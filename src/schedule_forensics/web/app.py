@@ -8852,7 +8852,9 @@ def _briefing_table_html(section: BriefingSection) -> str:
         + f"<td class=cite>{_e(_cite_tag(cites))}</td></tr>"
         for row, cites in zip(table.rows, table.row_citations, strict=True)
     )
-    return f"<table class=brief-table>{head}{body}</table>"
+    # .brief-scroll: a table whose column minimums exceed the card scrolls sideways inside it
+    # instead of crushing its neighbours to a character a line (operator report 2026-07-08)
+    return f"<div class=brief-scroll><table class=brief-table>{head}{body}</table></div>"
 
 
 def _briefing_body(briefing: ExecutiveBriefing) -> str:
@@ -8896,14 +8898,23 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
 
     # group: each top-level (level 1) section opens a new card; its sub-sections nest inside it
     cards: list[list[str]] = []
+    card_is_wide: list[bool] = []
     for section in briefing.sections:
         if section.level <= 1 or not cards:
             cards.append([])
+            card_is_wide.append(False)
         cards[-1].append(_section_html(section))
+        # a table with many columns needs the full page row, not a half-width card
+        if section.table is not None and len(section.table.headers) >= 5:
+            card_is_wide[-1] = True
     card_html = []
     for i, body in enumerate(cards):
         # the opening "Bottom Line" card spans the full width as the headline
-        cls = "brief-card lead" if i == 0 else "brief-card"
+        cls = (
+            "brief-card lead"
+            if i == 0
+            else ("brief-card wide" if card_is_wide[i] else "brief-card")
+        )
         card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
     grid = f"<div class=brief-grid>{''.join(card_html)}</div>"
     return f"{header}{grid}</div>"

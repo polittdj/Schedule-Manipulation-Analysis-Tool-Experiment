@@ -4034,3 +4034,18 @@ figure-role model (beyond value-vs-identifier), and the 3-tier installer (operat
   no-store, default-on pin) AND a scripted Chromium end-to-end re-run post-fix (visible by
   default, live values, expand cards, hide persists across reload, console clean).
   Wheel + all 9 installers regenerated from the fixed source.
+
+### 2026-07-08 — Executive Briefing table readability fix (no new ADR; presentation-only)
+- Operator screenshot: /briefing section tables crushed to one character per line. Reproduced in
+  a real browser (min cell width 30–38px) and root-caused: `.brief-table td.cite` was
+  `white-space:nowrap`, so one long "Task name (UID n, long file.mpp)" citation hogged its
+  half-width brief-grid card and starved every other column; comma-separated UID lists then
+  wrapped per digit.
+- Fix (CSS + one renderer touch, engine untouched): citations wrap (`overflow-wrap:anywhere`,
+  16em floor), all cells get a 3.5em readability floor with break-word, every brief table sits
+  in a `.brief-scroll` horizontal-scroll wrapper (a genuinely too-wide table scrolls inside its
+  card instead of squeezing), and a section whose table has ≥5 columns promotes its card to the
+  full grid row (`brief-card wide`).
+- Verified in Chromium before/after (min cell 30px → 72–79px on the wide tables, which now span
+  the full row; 2 wide cards on the golden pair); pinned by
+  `test_briefing_tables_stay_readable`. Wheel + 9 installers regenerated.

@@ -271,7 +271,15 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
 .brief-table { border-collapse: collapse; margin: 6px 0 4px; font-size: 12px; width: 100%; }
 .brief-table th, .brief-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; vertical-align: top; }
 .brief-table th { background: var(--field-bg); color: var(--muted); font-weight: 600; }
-.brief-table td.cite { color: var(--muted); font-size: 11px; white-space: nowrap; }
+/* Readability guard (operator report 2026-07-08): the citation column must WRAP — nowrap let one
+   long "Task name (UID n, file.mpp)" hog the card and crush every other column to one character
+   per line. min-widths stop any cell collapsing below readability; when a table's minimums
+   genuinely exceed the card, .brief-scroll gives it a horizontal scrollbar instead of a squeeze. */
+.brief-table td { overflow-wrap: break-word; min-width: 3.5em; }
+.brief-table td.cite { color: var(--muted); font-size: 11px; white-space: normal;
+  overflow-wrap: anywhere; min-width: 16em; }
+.brief-scroll { overflow-x: auto; }
+.brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }
