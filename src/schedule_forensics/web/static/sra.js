@@ -34,6 +34,12 @@
   // short, axis-friendly date label from an ISO datetime ("2026-06-20T…") → "2026-06-20"
   function shortDate(iso) { return String(iso).slice(0, 10); }
 
+  // 1:1 pixel geometry (operator 2026-07-08): the viewBox width IS the container's pixel width,
+  // so text renders at its design size (10-12px) no matter how wide the panel or a full-screen
+  // expand is — extra width becomes extra PLOT area, never bigger fonts. The charts re-render
+  // on window resize / chartframe's "sf-reflow" (full-screen enter/exit) with the latest data.
+  function chartW(box) { return Math.max(640, box.clientWidth || 980); }
+
   // ── #sraCdf: the confidence S-curve ───────────────────────────────────────────────────
   function renderCdf(data) {
     var box = document.getElementById("sraCdf");
@@ -41,7 +47,7 @@
     box.innerHTML = "";
     var cdf = data.cdf || [];
     if (!cdf.length) { box.textContent = "No simulation data."; return; }
-    var W = 980, H = 280, padL = 44, padR = 110, padT = 16, padB = 44;
+    var W = chartW(box), H = 280, padL = 44, padR = 110, padT = 16, padB = 44;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
 
     // x axis is the run of finish dates (index-spaced so the step S-curve reads evenly);
@@ -142,7 +148,7 @@
     box.innerHTML = "";
     var hist = data.histogram || [];
     if (!hist.length) { box.textContent = "No simulation data."; return; }
-    var W = 980, H = 230, padL = 40, padR = 14, padT = 14, padB = 44;
+    var W = chartW(box), H = 230, padL = 40, padR = 14, padT = 14, padB = 44;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var n = hist.length;
     var top = 1;
@@ -207,10 +213,9 @@
     var rows = data.sensitivity || [];
     if (!rows.length) { box.textContent = "No sensitivity data."; return; }
 
-    // Operator: drastically tighten the row spacing (rowH) AND enlarge the chart + its text. The
-    // chart is width:100% and now fills the whole (uncapped) panel, so the viewBox units scale UP;
-    // a tight rowH keeps the bars dense (MS-Project tornado look) while the bigger fonts stay legible.
-    var W = 980, padL = 210, padR = 64, rowH = 13, padT = 6;
+    // Tight 13px rows (MS-Project tornado look) at 1:1 pixel scale — the bars stretch with the
+    // panel width but the labels stay their design size (operator 2026-07-08: no giant fonts).
+    var W = chartW(box), padL = 210, padR = 64, rowH = 13, padT = 6;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
@@ -304,8 +309,8 @@
       return;
     }
 
-    // Same tight-row + enlarged-text treatment as the duration-sensitivity tornado above.
-    var W = 980, padL = 210, padR = 72, rowH = 13, padT = 6;
+    // Same tight-row, 1:1-pixel treatment as the duration-sensitivity tornado above.
+    var W = chartW(box), padL = 210, padR = 72, rowH = 13, padT = 6;
     var H = padT * 2 + rows.length * rowH;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     var maxAbs = 0;
@@ -425,10 +430,8 @@
       })
       .then(function (data) {
         setBusy(false);
-        renderCdf(data);
-        renderHist(data);
-        renderSens(data);
-        renderRiskDrivers(data);
+        lastData = data;
+        renderAll(data);
         var p = {};
         (data.percentiles || []).forEach(function (x) { p[x.label] = shortDate(x.date); });
         var msg = data.iterations + " iterations · " + distName +
@@ -450,6 +453,24 @@
         setStatus("Could not run the simulation: " + (err && err.message ? err.message : err));
       });
   }
+
+  var lastData = null;
+  function renderAll(data) {
+    renderCdf(data);
+    renderHist(data);
+    renderSens(data);
+    renderRiskDrivers(data);
+  }
+  // redraw at the new 1:1 width when the window resizes or a chart frame expands/collapses —
+  // reformat to the available space instead of letting the SVG magnify (operator 2026-07-08)
+  var reflowTimer = null;
+  function reflow() {
+    if (!lastData) return;
+    if (reflowTimer) clearTimeout(reflowTimer);
+    reflowTimer = setTimeout(function () { renderAll(lastData); }, 120);
+  }
+  window.addEventListener("resize", reflow);
+  window.addEventListener("sf-reflow", reflow);
 
   var btn = document.getElementById("sraRun");
   if (btn) btn.addEventListener("click", run);

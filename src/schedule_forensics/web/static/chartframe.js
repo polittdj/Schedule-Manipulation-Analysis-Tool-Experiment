@@ -16,6 +16,12 @@
   var ZOOM_STEP = 1.25;
   var ZOOM_MIN = 0.5;
   var ZOOM_MAX = 6;
+  // Full screen REFORMATS instead of magnifying (operator 2026-07-08): an expanded chart may
+  // render at most this multiple of its design (viewBox) size, so fonts/marks stay near their
+  // intended 10-12px instead of blowing up with the container. Reflow-aware charts (the SRA
+  // S-curve/tornados, progress S-curve) additionally redraw at 1:1 to the wider container via
+  // the "sf-reflow" event, genuinely using the extra space for plot area rather than for scale.
+  var FS_FONT_CAP = 1.25;
 
   // ── shared hover call-out ───────────────────────────────────────────────────────────────────
   // One styled tooltip, reused by every framed chart. Hovering any SVG shape that carries a direct
@@ -99,9 +105,24 @@
     wrap.appendChild(bar);
     wrap.appendChild(scroll);
 
+    function inFsMode() {
+      return fsElement() === wrap || wrap.classList.contains("cf-max");
+    }
     function applyZoom() {
       var svgs = host.querySelectorAll("svg");
-      for (var i = 0; i < svgs.length; i++) svgs[i].style.width = Math.round(100 * scale) + "%";
+      var fs = inFsMode();
+      var avail = scroll.clientWidth || host.clientWidth || 0;
+      for (var i = 0; i < svgs.length; i++) {
+        var svg = svgs[i];
+        var vb = svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.width : 0;
+        if (fs && vb > 0 && avail > 0) {
+          // expanded: pixel-capped width (no font blow-up), centered by CSS; the user's explicit
+          // -/+ zoom still multiplies on top of the cap
+          svg.style.width = Math.round(Math.min(avail, vb * FS_FONT_CAP) * scale) + "px";
+        } else {
+          svg.style.width = Math.round(100 * scale) + "%";
+        }
+      }
       // Non-SVG visuals (e.g. the HTML 5x5 assessment matrix) opt in with class "cf-zoom-box":
       // CSS-transform-scale them and reserve the grown footprint via margin so the scroller can
       // pan a magnified copy. offsetWidth/Height stay the untransformed layout size at any zoom.
@@ -132,14 +153,26 @@
       return b;
     }
 
+    function reflowSoon() {
+      // let the layout settle at the new size, then re-apply the width policy and tell the
+      // reflow-aware charts to redraw to the resized container
+      window.requestAnimationFrame(function () {
+        applyZoom();
+        try { window.dispatchEvent(new CustomEvent("sf-reflow")); } catch (e) { /* very old engine */ }
+      });
+    }
+
     var fsBtn = button("⤢", "Full screen", function () {
-      if (fsElement() === wrap) {
-        exitFs();
-      } else if (requestFs(wrap) === null) {
-        // no Fullscreen API → fixed-position maximize fallback
+      if (fsElement() === wrap) { exitFs(); return; }
+      var maximize = function () {
+        // no/denied Fullscreen API → fixed-position maximize fallback
         wrap.classList.toggle("cf-max");
         fsBtn.textContent = wrap.classList.contains("cf-max") ? "✕" : "⤢";
-      }
+        reflowSoon();
+      };
+      var req = requestFs(wrap);
+      if (req === null) maximize();
+      else if (req && typeof req.catch === "function") req.catch(maximize);
     });
     button("−", "Zoom out", function () { setZoom(scale / ZOOM_STEP); });
     var zlabel = document.createElement("span");
@@ -151,6 +184,7 @@
 
     document.addEventListener("fullscreenchange", function () {
       fsBtn.textContent = fsElement() === wrap ? "✕" : "⤢";
+      reflowSoon();
     });
 
     // re-apply the current zoom to SVGs drawn later (async fetch, or stepper re-renders)

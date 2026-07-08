@@ -1,6 +1,24 @@
-# Handoff — 2026-07-08 (per-change counterfactual effect + chrome; highest ADR 0162)
+# Handoff — 2026-07-08 (chart reflow + briefing duo; highest ADR 0163)
 
-> ## STATUS (current) — ADR-0162: per-change counterfactual effect; nav + timeout chrome
+> ## STATUS (current) — ADR-0163: charts reformat on expand; briefing 6+7 half-page duo
+>
+> - **Charts REFORMAT instead of magnify.** SRA S-curve/histogram/both tornados (`sra.js`) and the
+>   progress S-curve (`scurve.js`) draw **1:1** (viewBox width == container px → 10–12px text at
+>   any width; extra width = extra plot area) and re-render on resize/`sf-reflow`. `chartframe.js`
+>   full-screen dispatches `sf-reflow`; non-reflow charts are width-capped at viewBox×1.25
+>   (`FS_FONT_CAP`) and centered when expanded; a DENIED fullscreen request now falls back to the
+>   fixed maximize.
+> - **Briefing 6+7 duo:** "Recommended Actions" + "How to Verify Every Number" share one
+>   full-width `.brief-duo` row (1fr 1fr, stacks <1100px) — half page each, citations wrap, no
+>   sideways scroll. Heading-anchored pairing.
+> - Live-verified in Chromium (20 checks, zero console errors); pinned by
+>   `tests/web/test_brief_duo_and_chart_reflow.py`. Lockstep: wheel + 9 installers rebuilt.
+> - **Operator queued next:** #82 ribbon metric click-drill (tasks below w/ UID/name/dur/%/
+>   start/finish + persistent extra standard/custom fields), #83 Driving Path per-file selector.
+>   Then #80 SRA grid Gantt, #71 Quality Trend split, #72 Driving Path fields/export/banner,
+>   #74 Resources drill, #67 UID-155 SSI golden.
+
+> ## STATUS — ADR-0162: per-change counterfactual effect; nav + timeout chrome
 >
 > - **Fixed the "zero effect" AI answer.** Operator reestablished the removed FS link 188→187 to
 >   see the effect on UID 155; the AI said "zero." Engine truth: restore ONLY 188→187, re-run CPM

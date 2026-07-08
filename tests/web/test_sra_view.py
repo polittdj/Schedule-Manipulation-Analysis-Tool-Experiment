@@ -158,20 +158,20 @@ def test_api_sra_no_schedule_returns_400() -> None:
     assert "error" in r.json()
 
 
-def test_sra_charts_fill_the_panel_and_tornado_is_tight(client: TestClient) -> None:
-    """Operator: make the SRA graphs (S-curve / distribution / tornado) way LARGER, and for the
-    duration-sensitivity tornado drastically reduce the spacing between the bars while enlarging the
-    chart + its text and keeping the line spacing tight. The chart hosts now fill the full panel
-    width (the width:100% SVGs + their viewBox-unit labels both scale UP), and the tornado packs its
-    rows with a small rowH and bigger label/value fonts."""
+def test_sra_charts_fill_the_panel_at_one_to_one_and_tornado_is_tight(client: TestClient) -> None:
+    """Operator 2026-07-08 (supersedes the earlier "way larger" request): the charts still fill
+    the full panel width, but at 1:1 PIXEL geometry — the viewBox width is the container's pixel
+    width (chartW), so the 12/11px labels render at design size instead of scaling up with the
+    panel, and extra width becomes extra plot area. The tornado keeps its tight 13px rows."""
     css = client.get("/static/app.css").text
     expected = "#sraCdf, #sraHist, #sraSens, #sraRisk { width: 100%; max-width: 100%; margin: 0; }"
     assert expected in css  # the chart hosts fill the panel (was capped at max-width 600px)
     js = client.get("/static/sra.js").text
-    assert "var W = 980, H = 280" in js  # S-curve viewBox unchanged; host now uncapped
-    assert "var W = 980, H = 230" in js  # histogram viewBox unchanged
-    assert "rowH = 13" in js  # the tornado rows are drastically tighter (was 18)
-    # the tornado label/value fonts were bumped up (11/10 -> 12/11) for the enlarged, dense look
+    assert "function chartW(box)" in js  # 1:1: viewBox width == container px
+    assert "var W = chartW(box), H = 280" in js  # S-curve reflows; height fixed
+    assert "var W = chartW(box), H = 230" in js  # histogram reflows
+    assert "rowH = 13" in js  # the tornado rows stay drastically tight
+    # label/value fonts render at their design size (12/11px) at ANY panel width
     assert '"font-size": 12' in js and '"font-size": 11' in js
 
 

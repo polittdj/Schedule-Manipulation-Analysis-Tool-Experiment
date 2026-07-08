@@ -46,7 +46,9 @@
       " (" + v.activities + " activities)";
     box.innerHTML = "";
 
-    var W = 980, H = 360, padL = 40, padR = 14, padB = 46;
+    // 1:1 pixel geometry (operator 2026-07-08): viewBox width == container pixels, so text stays
+    // its design size and extra width becomes extra plot area (re-rendered on resize/sf-reflow)
+    var W = Math.max(640, box.clientWidth || 980), H = 360, padL = 40, padR = 14, padB = 46;
     var n = months.length;
     // stacked Year/Quarter/Month tier header (top, below the title); padT grows with the tier count
     var TIER_TOP = 26, TIER_H = 16;
@@ -293,6 +295,16 @@
       else { stopAuto(); index = parseInt(verSel.value, 10) || 0; render(); }
     });
   }
+  // redraw at the new 1:1 width on window resize / chart-frame expand (chartframe "sf-reflow")
+  var reflowTimer = null;
+  function reflow() {
+    if (!data) return;
+    if (reflowTimer) clearTimeout(reflowTimer);
+    reflowTimer = setTimeout(render, 120);
+  }
+  window.addEventListener("resize", reflow);
+  window.addEventListener("sf-reflow", reflow);
+
   buildFilterUI();
   load();
 })();

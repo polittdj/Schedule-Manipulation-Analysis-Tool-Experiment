@@ -390,6 +390,12 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
 .brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; overflow-wrap: anywhere; }
 .brief-scroll { overflow-x: auto; }
 .brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
+/* "6. Recommended Actions" + "7. How to Verify Every Number" share one full-width row as true
+   half-page partners (operator 2026-07-08) so the citation column wraps and reads without
+   sideways scrolling. Stacks to one column when the viewport can't fit two readable halves. */
+.brief-duo { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.brief-duo .brief-table td.cite { min-width: 140px; }
+@media (max-width: 1100px) { .brief-duo { grid-template-columns: 1fr; } }
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
 .ask-agreement { font-size: 13px; color: var(--ok); }
 .ask-agreement.differ { color: var(--warn); font-weight: 600; }
@@ -539,6 +545,11 @@ th.metric-th { position: relative; }
 .cf-frame:fullscreen .cf-scroll { height: 100%; }
 .cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
   padding: 34px 20px 20px; overflow: auto; }
+/* Expanded charts REFORMAT rather than magnify (operator 2026-07-08): chartframe.js caps the
+   SVG's pixel width near its design size so fonts stay small; center the capped chart in the
+   leftover width so the expanded view reads as a page, not a blown-up thumbnail. */
+.cf-frame:fullscreen .cf-scroll svg, .cf-frame.cf-max .cf-scroll svg {
+  display: block; margin-left: auto; margin-right: auto; }
 /* Shared hover call-out (chartframe.js) — styled, instant tooltip following the cursor on any
    chart point that carries a <title> child or a data-callout attribute. */
 .cf-tip { position: fixed; z-index: 10000; pointer-events: none; max-width: 300px;

@@ -4376,3 +4376,21 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (4). Updated two ai_wiring timeout tests to the new 3600 default. Engine + app changed -> wheel +
   9 installers rebuilt in the same commit (lockstep ADR-0148). SSI cross-validation of the +23-wd
   figure against the operator's reestablished-logic export is a pin-when-it-lands follow-up.
+
+### 2026-07-08 (cont. 12) — charts reformat on expand; briefing 6+7 half-page duo (ADR-0163)
+- Charts REFORMAT instead of magnify (operator: "we don't need the tornado/S-curve this large nor
+  the fonts"). Root cause: fixed 980-unit viewBox stretched to width:100% -> wide panels and
+  full-screen scaled fonts ~2x. SRA S-curve/histogram/both tornados (sra.js chartW) + progress
+  S-curve (scurve.js) now draw 1:1 (viewBox width == container px; 10-12px text at any width) and
+  re-render on resize + the new "sf-reflow" event.
+- chartframe.js: full-screen/maximize dispatches sf-reflow (reflow charts redraw to the new size);
+  every OTHER chart's expanded width is capped at min(avail, viewBox*1.25) (FS_FONT_CAP) and
+  centered — no font blow-up; the explicit -/+ zoom still multiplies. A DENIED fullscreen request
+  now falls back to the fixed maximize (was: button silently did nothing).
+- Executive Briefing: "6. Recommended Actions" + "7. How to Verify Every Number" share one
+  full-width .brief-duo row (1fr 1fr, stacks <1100px) — each exactly half the page, citation
+  column wraps in place, no sideways scrolling. Heading-anchored pairing (survives renumbering).
+- Live-verified in Chromium (20 checks, zero console errors). Pinned by
+  tests/web/test_brief_duo_and_chart_reflow.py. Lockstep: wheel + 9 installers rebuilt.
+- Operator queued next (this session): ribbon metric click-drill w/ persistent extra fields (#82),
+  Driving Path per-file selector (#83).

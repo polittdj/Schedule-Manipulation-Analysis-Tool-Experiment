@@ -10015,15 +10015,26 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
     # group: each top-level (level 1) section opens a new card; its sub-sections nest inside it
     cards: list[list[str]] = []
     card_is_wide: list[bool] = []
+    card_heading: list[str] = []
     for section in briefing.sections:
         if section.level <= 1 or not cards:
             cards.append([])
             card_is_wide.append(False)
+            card_heading.append(section.heading)
         cards[-1].append(_section_html(section))
         # a table with many columns needs the full page row, not a half-width card
         if section.table is not None and len(section.table.headers) >= 5:
             card_is_wide[-1] = True
+    # "6. Recommended Actions" and "7. How to Verify Every Number" share one full-width row as
+    # half-page partners (operator 2026-07-08) so the citation column reads without sideways
+    # scrolling instead of each landing in a narrow auto-fit column.
+    duo_idx = {
+        i
+        for i, h in enumerate(card_heading)
+        if "Recommended Actions" in h or "How to Verify" in h
+    }
     card_html = []
+    duo_html: list[str] = []
     for i, body in enumerate(cards):
         # the opening "Bottom Line" card spans the full width as the headline
         cls = (
@@ -10031,7 +10042,12 @@ def _briefing_body(briefing: ExecutiveBriefing) -> str:
             if i == 0
             else ("brief-card wide" if card_is_wide[i] else "brief-card")
         )
-        card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
+        if i in duo_idx and len(duo_idx) == 2:
+            duo_html.append(f'<section class="brief-card">{"".join(body)}</section>')
+            if len(duo_html) == 2:
+                card_html.append(f'<div class=brief-duo>{"".join(duo_html)}</div>')
+        else:
+            card_html.append(f'<section class="{cls}">{"".join(body)}</section>')
     grid = f"<div class=brief-grid>{''.join(card_html)}</div>"
     return f"{header}{grid}</div>"
 
