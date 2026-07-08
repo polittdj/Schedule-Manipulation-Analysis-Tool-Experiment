@@ -142,3 +142,13 @@ html[data-theme=jarvis] .sysmon-chip{border-color:rgba(25,211,255,.45);
 html[data-theme=jarvis] .sm-bar i{box-shadow:0 0 8px rgba(25,211,255,.7)}
 html[data-theme=jarvis] details.explain{border-left-color:var(--warn)}
 html[data-theme=jarvis] .guide-tip{border-left-color:var(--warn)}
+
+/* ── Mission Control per-visual explainers (operator 2026-07-08) ───────────────────────── */
+/* the tile NAME is the hover target: dotted underline + help cursor signal it, and the
+   callout renders the multi-line WHAT / EXAMPLE / HOW TO READ / DECIDE text (pre-line) */
+.tile-head h3.viz-hint{cursor:help;text-decoration:underline dotted var(--muted);
+  text-underline-offset:3px}
+.tile-head h3.viz-hint:hover{text-decoration-color:var(--accent)}
+h3.viz-hint[data-sf-hint]:hover::after,h3.viz-hint[data-sf-hint]:focus-visible::after{
+  white-space:pre-line;max-width:460px;width:max-content;font-weight:400;z-index:70;
+  line-height:1.5}

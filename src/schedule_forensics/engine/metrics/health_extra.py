@@ -19,12 +19,14 @@ from schedule_forensics.engine.metrics._common import is_effective_critical, non
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-# PROVENANCE (audit F-14, swept against the delivered handbooks 2026-07-08, ADR-0153): lag
-# SCRUTINY is NASA-sourced — PPC Handbook NASA/SP-2016-3424 p.136 (lead/lag values are not
-# schedule margin) and §3.4.3.2B p.145 (validate that "lag values are accurate"); its Fig. 3.4-3
-# health check counts positive/negative lags per relationship type. No delivered handbook
-# publishes a NUMERIC lag-to-duration ratio or a merge/diverge link count, so the two values
-# below remain in-repo design choices, documented as such.
+# PROVENANCE (audit F-14; ADR-0153 sweep + ADR-0154 re-sweep vs the NASA Schedule Management
+# Handbook Rev 2, 2024-03-15): both CHECKS are now directly NASA-sourced — SMH Rev 2 p.172:
+# lags "tend to hide detail in schedules and cannot be statused" (this module's hidden-duration
+# rationale nearly verbatim); SMH Rev 2 p.207: "Merge bias indicates the complexity of the
+# start of an activity due to having a large number of predecessor activities." Also PPC
+# SP-2016-3424 p.136/§3.4.3.2B p.145 (lag scrutiny). NO handbook publishes a NUMERIC
+# lag-to-duration ratio or link count — the SMH leaves such screens to the project — so the two
+# values below are this tool's documented, handbook-conformant design choices.
 #: more than this many predecessors (or successors) on one activity is a merge / diverge hotspot
 _HOTSPOT_MIN_LINKS = 2
 #: a predecessor lag longer than this fraction of the activity's duration "hides" real duration

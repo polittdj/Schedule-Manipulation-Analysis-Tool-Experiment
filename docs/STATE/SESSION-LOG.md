@@ -4215,3 +4215,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Ledgers: VERIFICATION-REPORT F-14 CLOSED; PARK-LIST A-8 CLOSED with the SP-2010-3403 caveat
   (the actual Schedule Management Handbook is still not in the intake — it is the one document
   that could source the two remaining numbers).
+
+### 2026-07-08 (cont. 3) — operator work order + same-day uploads (ADR-0154)
+- **Gantt (operator spec):** "Fit project" now anchors the status date ~12% in from the left
+  (FIT_LEAD) and scales status-date→finish to fill the page, past scrolls left (falls back to
+  whole-project fit without a status date); Scale slider 0.05 px/day steps, min 0.2; Name
+  column default 280–460 px. Live-verified in Chromium.
+- **Mission Control:** every tile name is a hover target with a WHAT / EXAMPLE / HOW TO READ /
+  DECIDE callout (wide pre-line sf-hint variant); nine tiles covered, prose consistent with the
+  ADR-0146 page explainers.
+- **A-5 CLOSED:** delivered SSI export (focus UID 67, Driving Slack ≤ 0 d, Waterfall) verified
+  ENGINE==SSI BEFORE pinning — exact 20-task Path-01 set, 0 slack each, chain order matches.
+  New `ssi_uid67` golden (Drag provenance-only); ssi_uid143 golden deleted and both xfails
+  replaced with live pins. Suite: ZERO xfails, ZERO skips.
+- **SMH re-sweep (closes the ADR-0153 caveat):** Schedule Management Handbook Rev 2 (2024)
+  delivered (zip at repo root, moved to intake) — path-tier practice p.118/123/Fig 6-12 p.183;
+  the near-critical threshold is per the SMH set "by the P/p management" (operator-overridable
+  defaults = handbook-conformant design); lag-hides-detail p.172; merge bias p.207. Numeric
+  35%/link-count values: no handbook publishes any — documented design choices, now with the
+  delegation itself cited.
+- Root duplicate uploads (2× SP-2024, PM handbook, SOPI) byte-verified against intake copies
+  and removed.

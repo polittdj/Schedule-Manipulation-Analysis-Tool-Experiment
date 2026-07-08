@@ -180,26 +180,22 @@ def test_acumen_change_metrics_and_net_finish_impact() -> None:
 # --------------------------------------------------------------------------------------
 # SSI MS Project add-on — driving slack (107 UniqueIDs, exact, by UID)
 # --------------------------------------------------------------------------------------
-@pytest.mark.xfail(
-    reason=(
-        "ssi_uid143 golden was validated against the SSI add-on run on the PRIOR Project5 "
-        "(37 stored-critical); it is stale against the authoritative file (4 critical, ADR-0112). "
-        "Awaiting an SSI driving-slack export for the current Project5_TAMPERED.mpp to re-pin."
-    ),
-    strict=False,
-)
-def test_ssi_driving_slack_exact() -> None:
-    case = json.loads((GOLDEN / "ssi_uid143" / "case.json").read_text())
+def test_ssi_driving_slack_uid67_exact() -> None:
+    """SSI driving path on the authoritative Project5, focus UID 67 (delivered 2026-07-08, A-5).
+
+    The SSI Directional Path Tool export (Driving Slack <= 0 d) pins the exact 20-task Path-01
+    membership; the engine reproduces it UID-for-UID with 0 driving slack on every path task.
+    Together with ssi_uid145 (all-dependencies, 108 UIDs) this replaces the stale ssi_uid143
+    golden from the prior 37-critical file."""
+    case = json.loads((GOLDEN / "ssi_uid67" / "case.json").read_text())
     schedule = _schedule("Project5")
     results = compute_driving_slack(schedule, target_uid=case["focus_task_uid"])
-    expected = {int(uid): days for uid, days in case["driving_slack_days_by_uid"].items()}
-    assert set(results) == set(expected)  # exact set, no extras
-    assert {uid: int(r.driving_slack_days) for uid, r in results.items()} == expected
-    assert all(r.driving_slack_minutes % DAY == 0 for r in results.values())  # whole days
+    ssi_path = set(map(int, case["driving_slack_days_by_uid"]))
+    assert {uid for uid, r in results.items() if r.driving_slack_minutes == 0} == ssi_path
+    assert driving_path(schedule, results) == tuple(case["driving_path_uids"])
+    assert all(results[uid].tier is PathTier.DRIVING for uid in ssi_path)
     focus = results[case["focus_task_uid"]]
     assert focus.driving_slack_minutes == 0 and focus.on_driving_path
-    assert len(driving_path(schedule, results)) == 36  # the driving chain to UID 143
-    assert sum(1 for r in results.values() if r.tier is PathTier.DRIVING) == 36
 
 
 def test_ssi_driving_slack_uid145_exact() -> None:
