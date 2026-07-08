@@ -1,5 +1,26 @@
 # Handoff — 2026-07-08 (filter/columns/Excel drill tables; highest ADR 0167)
 
+> ## AUDIT (2026-07-08, end-of-session deep-dive — triple-verified findings)
+>
+> - **FINDING A1 (git hygiene, needs operator decision — NOT auto-fixed):** 60 reference binaries
+>   are tracked in git under `00_REFERENCE_INTAKE/` (real `.mpp` — Hard_File, Project2-5, Large Test
+>   File; Acumen Fuse `.xlsx`; SSI `.xlsx` exports; a `.docx` template). Verified 3 ways: (1)
+>   `.gitignore` lines 29-39 IGNORE `00_REFERENCE_INTAKE/*`; (2) they entered via the operator's
+>   GitHub **web-UI** "Add files via upload" commit `076e055` (bypasses the local `.githooks`
+>   guard); (3) `.githooks/pre-commit:19` blocks exactly these extensions. Per CLAUDE.md these are
+>   operator-confirmed **NON-CUI** build/reference inputs, so this is NOT a data-sovereignty leak —
+>   but it violates the stated "keep out of git" policy and defense-in-depth. It looks INTENTIONAL
+>   (the operator uploads them so remote build sessions can read them). **Do not delete unilaterally**
+>   (it would break that workflow + history already contains them). Operator to decide: (a) accept +
+>   document the deviation (add an ADR + a CLAUDE.md note), or (b) `git rm --cached` + purge history
+>   (BFG/git-filter-repo) if they should be out. The pre-commit guard has a gap: it only runs
+>   locally, so web-UI uploads are unguarded — consider a CI check that fails on tracked
+>   `00_REFERENCE_INTAKE/` binaries.
+> - **VERIFIED CLEAN:** runtime data-sovereignty intact — the net-egress / air-gap / CUI-guard /
+>   std-lib guard tests all pass (86 tests). ADR numbering 0130..0167 is contiguous (no gaps/dupes).
+>   Drift guard passes (0167 in HANDOFF + SESSION-LOG). `git status` clean; full gate green
+>   (1886 + 5 new). Working tree matches the committed wheel (lockstep).
+
 > ## STATUS (current) — ADR-0167: filter / add-columns / Excel drill tables across the app
 >
 > - **Evolution "What-if" two-file selector** (`cf_a`/`cf_b`): the counterfactual runs on ONE chosen
