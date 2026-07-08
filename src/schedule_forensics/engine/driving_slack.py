@@ -39,7 +39,7 @@ from schedule_forensics.engine.cpm import (
     compute_cpm,
     datetime_to_offset,
 )
-from schedule_forensics.engine.path_trace import ancestors_of, topo_order
+from schedule_forensics.engine.path_trace import ancestors_of, descendants_of, topo_order
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -82,6 +82,14 @@ def _stored_offset(project_start: dt.datetime, target: dt.datetime, calendar: Ca
 #: to 10 days Total Slack", p.138); 20 d is this tool's tertiary convention.
 DEFAULT_SECONDARY_MAX_DAYS = 10
 DEFAULT_TERTIARY_MAX_DAYS = 20
+
+
+class PathDirection(StrEnum):
+    """Which way the trace runs from the focus task (SSI Directional Path Tool semantics)."""
+
+    PREDECESSORS = "predecessors"  # what DRIVES the focus (default — the classic driving path)
+    SUCCESSORS = "successors"  # what the focus DRIVES (the forward ripple)
+    BOTH = "both"  # union of the two traces (the focus counted once, slack 0)
 
 
 class PathTier(StrEnum):
@@ -164,6 +172,22 @@ def _whole_days(slack_minutes: int, minutes_per_day: int) -> int:
     return slack_minutes // minutes_per_day
 
 
+def strip_constraints(schedule: Schedule) -> Schedule:
+    """A copy of ``schedule`` with every task constraint removed (ASAP, no date).
+
+    Powers the SSI-style "Ignore constraints" trace option: the CPM recomputed on this copy
+    shows the pure-logic network with no date pins. The original schedule is never mutated."""
+    from schedule_forensics.model.task import ConstraintType
+
+    tasks = tuple(
+        t.model_copy(update={"constraint_type": ConstraintType.ASAP, "constraint_date": None})
+        if t.constraint_type is not ConstraintType.ASAP or t.constraint_date is not None
+        else t
+        for t in schedule.tasks
+    )
+    return schedule.model_copy(update={"tasks": tasks})
+
+
 def compute_driving_slack(
     schedule: Schedule,
     target_uid: int,
@@ -171,15 +195,65 @@ def compute_driving_slack(
     secondary_max_days: int = DEFAULT_SECONDARY_MAX_DAYS,
     tertiary_max_days: int = DEFAULT_TERTIARY_MAX_DAYS,
     cpm_result: CPMResult | None = None,
+    direction: PathDirection = PathDirection.PREDECESSORS,
+    ignore_constraints: bool = False,
+    ignore_leveling_delay: bool = False,
 ) -> dict[int, DrivingSlackResult]:
-    """Driving slack to ``target_uid`` for the focus task and each of its ancestors.
+    """Driving slack between ``target_uid`` and its trace, in the chosen ``direction``.
 
-    Returns a UniqueID-keyed mapping covering the focus and every task that can drive
-    it (tasks with no logic path to the focus are not included). Raises ``KeyError`` if
-    ``target_uid`` is not a scheduled task, or ``ValueError`` on a cycle in the trace.
+    PREDECESSORS (default) covers the focus and every task that can drive it — the classic
+    driving path. SUCCESSORS covers every task the focus can drive, with the SAME slack
+    semantics measured along the forward links (the propagation is symmetric: each task's
+    slack is the minimum link free-float + accumulated slack back to the focus). BOTH is the
+    union of the two traces. Tasks with no logic path to/from the focus are not included.
+    Raises ``KeyError`` if ``target_uid`` is not a scheduled task, or ``ValueError`` on a
+    cycle in the trace.
+
+    ``ignore_constraints`` re-traces on a constraint-stripped copy (pure logic, no date pins);
+    ``ignore_leveling_delay`` traces on the RECOMPUTED CPM dates instead of the stored ones —
+    the recomputed network contains no resource-leveling delays (SSI: "pretend that all
+    activities have a 0 day leveling delay"), so both options measure the un-pinned logic.
+    Either option implies pure-CPM date arithmetic; the default trace keeps honoring the
+    source tool's stored dates (the parity-validated behavior).
     """
-    ancestors = ancestors_of(schedule, target_uid)
-    trace = ancestors | {target_uid}
+    if ignore_constraints:
+        stripped = strip_constraints(schedule)
+        inner = compute_driving_slack(
+            stripped,
+            target_uid,
+            secondary_max_days=secondary_max_days,
+            tertiary_max_days=tertiary_max_days,
+            cpm_result=None,  # the stripped network needs its own CPM
+            direction=direction,
+            ignore_leveling_delay=True,  # stored dates carry the pins — must use pure CPM
+        )
+        return inner
+    if direction is PathDirection.BOTH:
+        back = compute_driving_slack(
+            schedule,
+            target_uid,
+            secondary_max_days=secondary_max_days,
+            tertiary_max_days=tertiary_max_days,
+            cpm_result=cpm_result,
+            direction=PathDirection.PREDECESSORS,
+            ignore_leveling_delay=ignore_leveling_delay,
+        )
+        fwd = compute_driving_slack(
+            schedule,
+            target_uid,
+            secondary_max_days=secondary_max_days,
+            tertiary_max_days=tertiary_max_days,
+            cpm_result=cpm_result,
+            direction=PathDirection.SUCCESSORS,
+            ignore_leveling_delay=ignore_leveling_delay,
+        )
+        return {**fwd, **back}  # focus appears once (slack 0 on both sides)
+
+    forward = direction is PathDirection.SUCCESSORS
+    related = (
+        descendants_of(schedule, target_uid) if forward else ancestors_of(schedule, target_uid)
+    )
+    trace = related | {target_uid}
     project_cal = schedule.calendar
     per_day = project_cal.working_minutes_per_day
     ps = schedule.project_start
@@ -197,10 +271,13 @@ def compute_driving_slack(
     def endpoint(uid: int, *, finish: bool, cal: Calendar) -> int:
         """Offset of a task's start/finish on ``cal``: the stored datetime measured on that
         calendar when present (so a non-project successor calendar is honored), else the
-        project-calendar offset from ``date_basis`` (the CPM fallback for undated tasks)."""
-        when = tasks_by_id[uid].finish if finish else tasks_by_id[uid].start
-        if when is not None:
-            return _stored_offset(ps, when, cal)
+        project-calendar offset from ``date_basis`` (the CPM fallback for undated tasks).
+        In ``ignore_leveling_delay`` mode the stored dates are skipped entirely — the trace
+        runs on the recomputed pure-logic CPM offsets (no leveling delay, no pins)."""
+        if not ignore_leveling_delay:
+            when = tasks_by_id[uid].finish if finish else tasks_by_id[uid].start
+            if when is not None:
+                return _stored_offset(ps, when, cal)
         return early_finish[uid] if finish else early_start[uid]
 
     successors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}
@@ -216,24 +293,48 @@ def compute_driving_slack(
     # For a single-calendar schedule every link uses the project calendar and this is identical
     # to the late-finish backward pass (raw spans, no snap — ADR-0116), so the curated goldens
     # are unchanged. The Path page still DISPLAYS the true stored dates (date_basis unchanged).
+    predecessors: dict[int, list[tuple[int, RelationshipType, int]]] = {uid: [] for uid in trace}
+    for link in schedule.relationships:
+        if link.predecessor_id in trace and link.successor_id in trace:
+            predecessors[link.successor_id].append(
+                (link.predecessor_id, link.type, link.lag_minutes)
+            )
+
     order = topo_order(schedule, trace)
     slack_minutes: dict[int, int] = {}
-    for uid in reversed(order):
+    # SUCCESSORS: propagate FORWARD from the focus — a descendant's slack is the minimum over
+    # its in-trace predecessor links of (link free float - lag + the predecessor's slack); the
+    # same link-gap arithmetic as the backward pass, mirrored (endpoint/calendar rules unchanged).
+    walk = order if forward else tuple(reversed(order))
+    for uid in walk:
         if uid == target_uid:
             slack_minutes[uid] = 0
             continue
         best: int | None = None
-        for succ, rel, lag in successors[uid]:
-            cal = cal_for(succ)
-            if rel is RelationshipType.FS:  # successor start - this finish
-                free = endpoint(succ, finish=False, cal=cal) - endpoint(uid, finish=True, cal=cal)
-            elif rel is RelationshipType.SS:  # successor start - this start
-                free = endpoint(succ, finish=False, cal=cal) - endpoint(uid, finish=False, cal=cal)
-            elif rel is RelationshipType.FF:  # successor finish - this finish
-                free = endpoint(succ, finish=True, cal=cal) - endpoint(uid, finish=True, cal=cal)
-            else:  # SF: successor finish - this start
-                free = endpoint(succ, finish=True, cal=cal) - endpoint(uid, finish=False, cal=cal)
-            candidate = free - lag + slack_minutes[succ]
+        links = (
+            [(p, rel, lag, p, uid) for p, rel, lag in predecessors[uid]]
+            if forward
+            else [(succ, rel, lag, uid, succ) for succ, rel, lag in successors[uid]]
+        )
+        for other, rel, lag, pred_uid, succ_uid in links:
+            cal = cal_for(succ_uid)
+            if rel is RelationshipType.FS:  # successor start - predecessor finish
+                free = endpoint(succ_uid, finish=False, cal=cal) - endpoint(
+                    pred_uid, finish=True, cal=cal
+                )
+            elif rel is RelationshipType.SS:  # successor start - predecessor start
+                free = endpoint(succ_uid, finish=False, cal=cal) - endpoint(
+                    pred_uid, finish=False, cal=cal
+                )
+            elif rel is RelationshipType.FF:  # successor finish - predecessor finish
+                free = endpoint(succ_uid, finish=True, cal=cal) - endpoint(
+                    pred_uid, finish=True, cal=cal
+                )
+            else:  # SF: successor finish - predecessor start
+                free = endpoint(succ_uid, finish=True, cal=cal) - endpoint(
+                    pred_uid, finish=False, cal=cal
+                )
+            candidate = free - lag + slack_minutes[other]
             if best is None or candidate < best:
                 best = candidate
         slack_minutes[uid] = best if best is not None else 0

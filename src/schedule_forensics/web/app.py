@@ -81,6 +81,7 @@ from schedule_forensics.engine.driving_path import (
 from schedule_forensics.engine.driving_slack import (
     DEFAULT_SECONDARY_MAX_DAYS,
     DEFAULT_TERTIARY_MAX_DAYS,
+    PathDirection,
     PathTier,
     date_basis,
 )
@@ -147,7 +148,7 @@ from schedule_forensics.engine.path_counterfactual import (
     compute_path_counterfactual,
 )
 from schedule_forensics.engine.path_evolution import compute_path_evolution
-from schedule_forensics.engine.path_trace import subschedule_to_target
+from schedule_forensics.engine.path_trace import subschedule_to_target, topo_order
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
     Category,
@@ -1724,6 +1725,12 @@ def create_app(
         target: int = Query(...),
         secondary: int = Query(10),
         tertiary: int = Query(20),
+        direction: str = Query("predecessors"),
+        range_mode: str = Query("all"),
+        range_days: int = Query(0),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
+        drag: int = Query(0),
     ) -> JSONResponse:
         st = session()
         sch = st.schedules.get(name)
@@ -1733,7 +1740,21 @@ def create_app(
             cpm = st.analysis_for(name, sch).cpm
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return JSONResponse(_driving_data(sch, cpm, target, secondary, tertiary))
+        return JSONResponse(
+            _driving_data(
+                sch,
+                cpm,
+                target,
+                secondary,
+                tertiary,
+                direction=direction,
+                range_mode=range_mode,
+                range_days=range_days,
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+                with_drag=bool(drag),
+            )
+        )
 
     @app.get("/phases", response_class=HTMLResponse)
     def phases_view(name: str = Query(""), basis: str = Query("finish")) -> HTMLResponse:
@@ -2216,10 +2237,17 @@ def create_app(
                 )
             )
         note = _skipped_notice(skipped) if skipped else ""
-        return _page(st, "Schedule Quality Ribbon", _ribbon_body(rows, note))
+        return _page(
+            st, "Schedule Quality Ribbon", _export_bar("ribbon") + _ribbon_body(rows, note)
+        )
 
     @app.get("/evolution", response_class=HTMLResponse)
-    def evolution_view(target: str | None = Query(None), tier: str = Query("off")) -> HTMLResponse:
+    def evolution_view(
+        target: str | None = Query(None),
+        tier: str = Query("off"),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
+    ) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -2231,11 +2259,25 @@ def create_app(
                 "critical path evolve.</div>",
             )
         uid = _parse_uid(target) if target is not None else st.target_uid
+        schedules, cpms, opt_banner = _optioned_versions(
+            schedules,
+            cpms,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+        )
+        opt_form = _trace_options_form(
+            "/evolution",
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+            keep={"target": target or "", "tier": tier},
+        )
         return _page(
             st,
             "Critical-Path Evolution",
             _export_bar("evolution")
             + _skipped_notice(skipped)
+            + opt_banner
+            + opt_form
             + _sources_line(schedules)
             + _evolution_body(schedules, cpms, uid, tier),
         )
@@ -2253,7 +2295,10 @@ def create_app(
 
     @app.get("/driving-path", response_class=HTMLResponse)
     def driving_path_view(
-        source: str | None = Query(None), target: str | None = Query(None)
+        source: str | None = Query(None),
+        target: str | None = Query(None),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
     ) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
@@ -2266,10 +2311,25 @@ def create_app(
             )
         src = _parse_uid(source)
         tgt = _parse_uid(target)
+        schedules, cpms, opt_banner = _optioned_versions(
+            schedules,
+            cpms,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+        )
         return _page(
             st,
             "Driving Path",
-            _skipped_notice(skipped) + _driving_path_body(schedules, cpms, src, tgt),
+            _skipped_notice(skipped)
+            + opt_banner
+            + _driving_path_body(
+                schedules,
+                cpms,
+                src,
+                tgt,
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+            ),
         )
 
     @app.get("/groups", response_class=HTMLResponse)
@@ -2461,6 +2521,12 @@ def create_app(
         secondary: int = Query(10),
         tertiary: int = Query(20),
         cols: str = Query(""),
+        direction: str = Query("predecessors"),
+        range_mode: str = Query("all"),
+        range_days: int = Query(0),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
+        drag: int = Query(0),
     ) -> Response:
         if (bad := _bad_format(fmt)) is not None:
             return bad
@@ -2472,7 +2538,19 @@ def create_app(
             cpm = st.analysis_for(name, sch).cpm
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        data = _driving_data(sch, cpm, target, secondary, tertiary)
+        data = _driving_data(
+            sch,
+            cpm,
+            target,
+            secondary,
+            tertiary,
+            direction=direction,
+            range_mode=range_mode,
+            range_days=range_days,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+            with_drag=bool(drag),
+        )
         rows = data.get("rows") or []
         if not rows:
             return JSONResponse({"error": str(data.get("note", "no path"))}, status_code=422)
@@ -2487,6 +2565,57 @@ def create_app(
             (driving_table(rows, target, custom_labels),),  # type: ignore[arg-type]
         )
         return _export_response(fmt, tableset, f"{name}-path-uid{target}")
+
+    @app.get("/export/{fmt}/ribbon")
+    def export_ribbon(fmt: str) -> Response:
+        """The full Schedule Quality Ribbon (all measures, one row per loaded file) as a
+        spreadsheet/document — the operator's per-page Excel export (2026-07-08)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        headers = (
+            "Schedule",
+            "Missing Logic",
+            "Logic Density™",
+            "Critical",
+            "Hard Constraints",
+            "Negative Float",
+            "Number of Lags",
+            "Number of Leads",
+            "Merge Hotspot",
+            "Insufficient Detail™",
+            "Avg Float (d)",
+            "Max Float (d)",
+        )
+        body = []
+        for key, sch in st.ordered_versions():
+            try:
+                analysis = st.analysis_for(key, sch)
+            except CPMError:
+                continue
+            r = compute_ribbon(sch, analysis.cpm, analysis.audit)
+            body.append(
+                (
+                    key,
+                    r.missing_logic,
+                    r.logic_density,
+                    r.critical,
+                    r.hard_constraints,
+                    r.negative_float,
+                    r.number_of_lags,
+                    r.number_of_leads,
+                    r.merge_hotspot,
+                    r.insufficient_detail,
+                    r.avg_float_days,
+                    r.max_float_days,
+                )
+            )
+        if not body:
+            return JSONResponse({"error": "no analyzable schedules loaded"}, status_code=422)
+        tableset = TableSet(
+            "Schedule Quality Ribbon", (Table("Quality Ribbon", headers, tuple(body)),)
+        )
+        return _export_response(fmt, tableset, "quality-ribbon")
 
     @app.get("/export/{fmt}/trend")
     def export_trend(fmt: str) -> Response:
@@ -3746,12 +3875,31 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label>Secondary &le; <input id=pathSec type=number min=1 value=10 title="days of driving slack"> d</label>
 <label>Tertiary &le; <input id=pathTer type=number min=1 value=20 title="days of driving slack"> d</label>
 <button id=pathRun type=button>Trace</button>
+<button id=pathDrag type=button title="SSI-validated Devaux DRAG: how many working days each driving-path activity personally adds — capped by its remaining duration and by parallel branches">Run Drag Analysis</button>
 <label><input id=pathHideDone type=checkbox> hide 100% complete</label>
 <label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
 <button id=pathFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 </div>
+<details class=path-options open><summary>Path options (SSI Directional Path Tool)</summary>
+<div class=viz-controls id=pathOptions>
+<span class=opt-group><b>Path Direction</b>
+<label><input type=radio name=pathDir value=predecessors checked> &#8592; Predecessors</label>
+<label><input type=radio name=pathDir value=successors> &#8594; Successors</label>
+<label><input type=radio name=pathDir value=both> &#8596; Both</label></span>
+<span class=opt-group><b>Dependency Range</b>
+<label><input type=radio name=pathRange value=slack> Driving Slack &le;
+<input id=pathRangeDays type=number min=0 value=0 style="width:52px"> d</label>
+<label><input type=radio name=pathRange value=all checked> Get all dependencies</label></span>
+<span class=opt-group>
+<label><input id=pathIgnoreConstraints type=checkbox title="Re-trace on a constraint-stripped copy: pure logic, no date pins"> Ignore constraints</label>
+<label><input id=pathIgnoreLeveling type=checkbox title="Trace on the recomputed pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label></span>
+<span class=opt-group><b>Output</b>
+<label><input type=radio name=pathOutput value=waterfall checked> &#8615; Waterfall</label>
+<label><input type=radio name=pathOutput value=summaries> With Summaries</label>
+<label><input type=radio name=pathOutput value=parallel> Separate parallel paths</label></span>
+</div></details>
 <div id=pathFields class=muted></div>
 <div class="export-bar" id=pathExport style="display:none"><a id=pathXlsx href="#">&#11015; Excel</a><a id=pathDocx href="#">&#11015; Word</a></div>
 <div id=pathStatus class=muted></div>
@@ -5576,9 +5724,29 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
 
 
 def _driving_data(
-    sch: Schedule, cpm: CPMResult, target: int, secondary: int, tertiary: int
+    sch: Schedule,
+    cpm: CPMResult,
+    target: int,
+    secondary: int,
+    tertiary: int,
+    *,
+    direction: str = "predecessors",
+    range_mode: str = "all",
+    range_days: int = 0,
+    ignore_constraints: bool = False,
+    ignore_leveling: bool = False,
+    with_drag: bool = False,
 ) -> dict[str, object]:
-    """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID."""
+    """Driving-slack rows for the Gantt — tier + CPM ordinal positions for each traced UID.
+
+    SSI Directional Path Tool options (operator 2026-07-08): ``direction`` traces
+    predecessors / successors / both; ``range_mode`` "slack" keeps only rows with driving
+    slack <= ``range_days`` (SSI "Get dependencies with Driving Slack <= x"), "all" keeps the
+    full trace; ``ignore_constraints`` / ``ignore_leveling`` re-trace on the un-pinned logic;
+    ``with_drag`` adds Devaux DRAG (SSI-validated, test_ssi_drag_exact) per path activity.
+    The payload always carries ``parallel_paths`` — the on-path set decomposed into its
+    parallel branches — so the client can render the SSI "Separate parallel paths" output.
+    Defaults reproduce the original behavior byte-for-byte."""
     by_id = sch.tasks_by_id
     if target not in by_id:
         return {
@@ -5595,13 +5763,32 @@ def _driving_data(
             "rows": [],
             "note": f"UID {target} is a summary rollup — pick one of its activities instead.",
         }
+    try:
+        dir_enum = PathDirection(direction)
+    except ValueError:
+        dir_enum = PathDirection.PREDECESSORS
     results = compute_driving_slack(
         sch,
         target_uid=target,
         secondary_max_days=secondary,
         tertiary_max_days=tertiary,
         cpm_result=cpm,
+        direction=dir_enum,
+        ignore_constraints=ignore_constraints,
+        ignore_leveling_delay=ignore_leveling,
     )
+    if range_mode == "slack":
+        keep = {
+            uid
+            for uid, r in results.items()
+            if uid == target or int(r.driving_slack_days) <= max(0, range_days)
+        }
+        results = {uid: r for uid, r in results.items() if uid in keep}
+    drag_by_uid: dict[int, object] = {}
+    if with_drag:
+        from schedule_forensics.engine.drag import compute_drag
+
+        drag_by_uid = {uid: float(d.drag_days) for uid, d in compute_drag(sch, results).items()}
     cal = sch.calendar
     per_day = cal.working_minutes_per_day
     # display the AS-SCHEDULED stored-date axis the slack math runs on — pure CPM
@@ -5671,6 +5858,7 @@ def _driving_data(
                 "complete": task.is_complete or task.actual_finish is not None,
                 "is_milestone": task.is_milestone,
                 "date_driven": uid in date_driven,
+                "drag_days": drag_by_uid.get(uid),
                 "resource_names": ", ".join(task.resource_names),
                 # immediate logic successors within this trace (uid, type, lag, on_path) — the
                 # "linked to UID X" detail surfaced by the Drives → column
@@ -5691,6 +5879,37 @@ def _driving_data(
     driven_in_trace = sum(1 for r in rows if r["date_driven"])
     if driven_in_trace:
         coverage += f"; {driven_in_trace} traced date(s) are not supported by logic (see report)"
+    # SSI "Separate parallel paths": decompose the on-path set into serial branches — a new
+    # branch starts wherever a path task is not the single continuation of the previous one
+    path_set = {uid for uid, r in results.items() if r.on_driving_path}
+    succ_in_path: dict[int, list[int]] = {u: [] for u in path_set}
+    pred_in_path: dict[int, list[int]] = {u: [] for u in path_set}
+    for rel2 in sch.relationships:
+        if rel2.predecessor_id in path_set and rel2.successor_id in path_set:
+            succ_in_path[rel2.predecessor_id].append(rel2.successor_id)
+            pred_in_path[rel2.successor_id].append(rel2.predecessor_id)
+    ordered_path = [u for u in topo_order(sch, path_set)]
+    visited: set[int] = set()
+    branches: list[list[int]] = []
+    for u in ordered_path:
+        if u in visited:
+            continue
+        chain = [u]
+        visited.add(u)
+        cur = u
+        while True:
+            nxt = [x for x in succ_in_path.get(cur, ()) if x not in visited]
+            if len(nxt) == 1 and len(pred_in_path.get(nxt[0], ())) <= 1:
+                cur = nxt[0]
+                chain.append(cur)
+                visited.add(cur)
+            else:
+                break
+        branches.append(chain)
+    parallel_paths = [
+        {"label": f"Path 01 ({i})", "uids": chain} for i, chain in enumerate(branches, 1)
+    ]
+
     return {
         "target_uid": target,
         "target_name": by_id[target].name,
@@ -5699,6 +5918,7 @@ def _driving_data(
         # the schedule's mapped custom fields (declared order) → optional grid columns
         "custom_field_labels": list(sch.custom_field_labels),
         "rows": rows,
+        "parallel_paths": parallel_paths,
     }
 
 
@@ -8045,18 +8265,105 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
     )
 
 
+def _trace_options_form(
+    action: str, *, ignore_constraints: bool, ignore_leveling: bool, keep: dict[str, str]
+) -> str:
+    """The SSI trace-option toggles for the server-rendered path pages (operator 2026-07-08):
+    Ignore constraints / Ignore leveling delay re-solve every version's network un-pinned.
+    Direction and dependency range live on Path Analysis, whose trace is target-relative;
+    this corridor/evolution pair is directional by construction (A→B / to the finish)."""
+    hidden = "".join(
+        f'<input type=hidden name="{_e(k)}" value="{_e(v)}">' for k, v in keep.items() if v
+    )
+    ic = " checked" if ignore_constraints else ""
+    il = " checked" if ignore_leveling else ""
+    return f"""<form method=get action="{action}" class="viz-controls trace-options">{hidden}
+<label><input type=checkbox name=ignore_constraints value=1{ic}
+title="Re-solve every version with all date constraints removed (pure logic)"> Ignore constraints</label>
+<label><input type=checkbox name=ignore_leveling value=1{il}
+title="Re-solve on pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label>
+<button type=submit>Apply</button></form>"""
+
+
+def _optioned_versions(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    *,
+    ignore_constraints: bool,
+    ignore_leveling: bool,
+) -> tuple[list[Schedule], list[CPMResult], str]:
+    """Apply the SSI trace options to every loaded version (operator 2026-07-08).
+
+    ``ignore_constraints`` re-solves each version on a constraint-stripped copy;
+    ``ignore_leveling`` additionally clears the stored dates so the corridor/evolution
+    engines (which honor stored dates) run on the pure-logic CPM ("0-day leveling delay").
+    Returns the possibly-substituted lists plus a banner describing any active option —
+    defaults return the originals untouched."""
+    if not ignore_constraints and not ignore_leveling:
+        return schedules, cpms, ""
+    from schedule_forensics.engine.driving_slack import strip_constraints
+
+    out_s: list[Schedule] = []
+    out_c: list[CPMResult] = []
+    for sch in schedules:
+        s2 = strip_constraints(sch) if ignore_constraints else sch
+        if ignore_leveling:
+            tasks = tuple(
+                t.model_copy(update={"start": None, "finish": None}) if not t.is_complete else t
+                for t in s2.tasks
+            )
+            s2 = s2.model_copy(update={"tasks": tasks})
+        out_s.append(s2)
+        out_c.append(compute_cpm(s2))
+    opts = [
+        name
+        for on, name in (
+            (ignore_constraints, "constraints ignored"),
+            (ignore_leveling, "leveling delay ignored (pure-logic dates)"),
+        )
+        if on
+    ]
+    banner = (
+        '<div class="notice">Trace options active: ' + ", ".join(opts) + " — the dates and "
+        "paths below come from the re-solved pure-logic network, not the stored schedule.</div>"
+    )
+    return out_s, out_c, banner
+
+
 def _driving_path_body(
-    schedules: list[Schedule], cpms: list[CPMResult], source: int | None, target: int | None
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    source: int | None,
+    target: int | None,
+    *,
+    ignore_constraints: bool = False,
+    ignore_leveling: bool = False,
 ) -> str:
     """Server-rendered Driving Path view: the controlling logic corridor between two chosen
-    UniqueIDs, and how it changes across every loaded version (oldest first by data date)."""
+    UniqueIDs, and how it changes across every loaded version (oldest first by data date).
+    The SSI trace options (ignore constraints / leveling) persist through the form; the page
+    is directional by construction (A→B), so Path Direction lives on Path Analysis."""
+    ic = " checked" if ignore_constraints else ""
+    il = " checked" if ignore_leveling else ""
+    export_link = ""
+    if target is not None and schedules:
+        last = schedules[-1]
+        opts = f"&ignore_constraints={int(ignore_constraints)}&ignore_leveling={int(ignore_leveling)}&drag=1"
+        export_link = (
+            f'<a class=btn-link href="/export/xlsx/path/{_e(last.name)}?target={target}{opts}">'
+            "&#11015; Excel (full trace to target, latest version, incl. Drag)</a>"
+        )
     form = f"""
 <div class=panel><form method=get action=/driving-path class=viz-controls>
 <label>From (source UniqueID): <input name=source type=number min=1
 value="{source if source is not None else ""}" placeholder="UID A"></label>
 <label>To (target UniqueID): <input name=target type=number min=1
 value="{target if target is not None else ""}" placeholder="UID B"></label>
-<button type=submit>Trace</button></form>
+<label><input type=checkbox name=ignore_constraints value=1{ic}
+title="Re-solve every version with all date constraints removed (pure logic)"> Ignore constraints</label>
+<label><input type=checkbox name=ignore_leveling value=1{il}
+title="Re-solve on pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label>
+<button type=submit>Trace</button> {export_link}</form>
 <p class=muted style="margin:.4em 0 0">The <b>driving path</b> from A to B is the chain of
 activities controlling B's date that lie on a logic route from A &mdash; the work that, if it
 slips, moves B. If A reaches B only through activities with float, the two are <b>connected</b>

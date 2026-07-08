@@ -20,6 +20,7 @@
     { key: "wbs", label: "WBS", on: false },
     { key: "tier", label: "Tier", on: true },
     { key: "driving_slack_days", label: "Slack (d)", on: true },
+    { key: "drag_days", label: "Drag (d)", on: false },
     { key: "start", label: "Start", on: true },
     { key: "finish", label: "Finish", on: true },
     { key: "baseline_finish", label: "Baseline finish", on: false },
@@ -191,7 +192,7 @@
     var q = "/" + encodeURIComponent($("pathSchedule").value) +
       "?target=" + encodeURIComponent($("pathTarget").value) +
       "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
-      "&tertiary=" + encodeURIComponent($("pathTer").value || "20") +
+      "&tertiary=" + encodeURIComponent($("pathTer").value || "20") + optionParams() +
       (onCustom.length ? "&cols=" + encodeURIComponent(onCustom.join(",")) : "");
     $("pathXlsx").href = "/export/xlsx/path" + q;
     $("pathDocx").href = "/export/docx/path" + q;
@@ -312,7 +313,34 @@
     var rows = visibleRows();
     paintStatus(rows);
     tbody.innerHTML = "";
-    rows.forEach(function (r) {
+    // SSI Output modes (operator 2026-07-08): Waterfall = flat chronological (default);
+    // With Summaries = grouped under top-level WBS headers; Separate parallel paths = the
+    // server's branch decomposition of the driving path, one header per parallel branch.
+    var output = radioVal("pathOutput", "waterfall");
+    var groups = null;
+    if (output === "parallel" && data.parallel_paths && data.parallel_paths.length) {
+      var byUid = {};
+      rows.forEach(function (r) { byUid[r.unique_id] = r; });
+      var used = {};
+      groups = [];
+      data.parallel_paths.forEach(function (pp) {
+        var members = pp.uids.map(function (u) { return byUid[u]; }).filter(Boolean);
+        members.forEach(function (r) { used[r.unique_id] = 1; });
+        if (members.length) groups.push([pp.label, members]);
+      });
+      var rest = rows.filter(function (r) { return !used[r.unique_id]; });
+      if (rest.length) groups.push(["Off-path (secondary / tertiary / beyond)", rest]);
+    } else if (output === "summaries") {
+      var byWbs = {};
+      var order = [];
+      rows.forEach(function (r) {
+        var g = (r.wbs || "").split(".")[0] || "(no WBS)";
+        if (!byWbs[g]) { byWbs[g] = []; order.push(g); }
+        byWbs[g].push(r);
+      });
+      groups = order.map(function (g) { return ["WBS " + g, byWbs[g]]; });
+    }
+    var paintOne = function (r) {
       var tr = el("tr", { class: r.complete ? "done" : "" });
       on.forEach(function (f) {
         if (f.key === "drives") {
@@ -328,7 +356,9 @@
         // fmt renders booleans as yes/—, blanks as —, and dates as MM/DD/YYYY (operator format)
         var text = fmt(f.custom ? (r.custom && r.custom[f.label]) : r[f.key]);
         // the Name column wraps to its FULL text (no truncation); other columns stay nowrap
-        tr.appendChild(el("td", f.key === "name" ? { class: "pv-name", text: text } : { text: text }));
+        var attrs = f.key === "name" ? { class: "pv-name", text: text } : { text: text };
+        if (f.key === "drag_days" && r.drag_days != null) attrs = { class: "pv-drag", text: text };
+        tr.appendChild(el("td", attrs));
       });
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
@@ -361,7 +391,19 @@
       cell.appendChild(track);
       tr.appendChild(cell);
       tbody.appendChild(tr);
-    });
+    };
+    if (groups) {
+      groups.forEach(function (g) {
+        var bh = el("tr", { class: "path-branch-head" });
+        var btd = el("td", { text: g[0] });
+        btd.colSpan = on.length + 1;
+        bh.appendChild(btd);
+        tbody.appendChild(bh);
+        g[1].forEach(paintOne);
+      });
+    } else {
+      rows.forEach(paintOne);
+    }
     if (!rows.length) {
       tbody.appendChild(
         el("tr", {}, [el("td", { class: "muted", text: "No activities match the filters." })])
@@ -374,6 +416,21 @@
     }
   }
 
+  // --- SSI Directional Path options (operator 2026-07-08) ----------------------------
+  var dragOn = false; // toggled by the Run Drag Analysis button; re-traces with drag=1
+  function radioVal(name, fallback) {
+    var el = document.querySelector('input[name=' + name + ']:checked');
+    return el ? el.value : fallback;
+  }
+  function optionParams() {
+    return "&direction=" + encodeURIComponent(radioVal("pathDir", "predecessors")) +
+      "&range_mode=" + encodeURIComponent(radioVal("pathRange", "all")) +
+      "&range_days=" + encodeURIComponent($("pathRangeDays").value || "0") +
+      "&ignore_constraints=" + ($("pathIgnoreConstraints").checked ? "1" : "0") +
+      "&ignore_leveling=" + ($("pathIgnoreLeveling").checked ? "1" : "0") +
+      "&drag=" + (dragOn ? "1" : "0");
+  }
+
   // --- data loading -----------------------------------------------------------------
   function trace() {
     var sched = $("pathSchedule").value;
@@ -382,7 +439,7 @@
     var url = "/api/driving/" + encodeURIComponent(sched) +
       "?target=" + encodeURIComponent(target) +
       "&secondary=" + encodeURIComponent($("pathSec").value || "10") +
-      "&tertiary=" + encodeURIComponent($("pathTer").value || "20");
+      "&tertiary=" + encodeURIComponent($("pathTer").value || "20") + optionParams();
     $("pathStatus").textContent = "Tracing…";
     fetch(url)
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -413,6 +470,24 @@
     }));
   }
   $("pathRun").addEventListener("click", trace);
+  $("pathDrag").addEventListener("click", function () {
+    dragOn = true;
+    FIELDS.forEach(function (f) { if (f.key === "drag_days") f.on = true; });
+    trace();
+  });
+  // option changes re-trace immediately when a trace is already on screen
+  ["pathRangeDays", "pathIgnoreConstraints", "pathIgnoreLeveling"].forEach(function (id) {
+    var oel = $(id);
+    if (oel) oel.addEventListener("change", function () { if (data) trace(); });
+  });
+  ["pathDir", "pathRange", "pathOutput"].forEach(function (name) {
+    document.querySelectorAll("input[name=" + name + "]").forEach(function (rb) {
+      rb.addEventListener("change", function () {
+        if (name === "pathOutput") { if (data) paintRows(); return; }
+        if (data) trace();
+      });
+    });
+  });
   $("pathHideDone").addEventListener("change", paintRows);
   // debounce the free-text filter: each keystroke otherwise rebuilds the whole tbody and rewrites
   // ~10k inline freeze styles on a ~1700-row grid, janking while typing (audit M7)

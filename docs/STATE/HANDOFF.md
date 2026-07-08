@@ -1,4 +1,26 @@
-# Handoff — 2026-07-08 (Gantt fit + mission hints + SSI uid67 re-pin + SMH re-sweep; highest ADR 0154)
+# Handoff — 2026-07-08 (SSI path options + Drag Analysis + Ribbon colors; highest ADR 0155)
+
+> ## STATUS (current) — ADR-0155: the path-tools work order
+>
+> - **Drag Analysis** (`engine/drag.py`): Devaux DRAG per driving-path activity — remaining-
+>   duration cap + concurrent-parallel cap — validated ENGINE==SSI 20/20 on the uid67 export
+>   BEFORE pinning (`test_ssi_drag_exact`; the golden's drag map is now gated). "Run Drag
+>   Analysis" on Path Analysis (live Drag column) + the Driving Path Excel export.
+> - **SSI Directional Path options**: engine `PathDirection` (predecessors/successors/both —
+>   symmetric propagation, default byte-identical), `ignore_constraints`
+>   (`strip_constraints()` re-solve), `ignore_leveling_delay` (pure-logic CPM dates). Path
+>   Analysis carries the full SSI panel (direction, Driving Slack ≤ x / all deps, both ignore
+>   toggles, Output: Waterfall / With Summaries / Separate parallel paths via the server's
+>   `parallel_paths` branch decomposition). Driving Path + Evolution (directional by
+>   construction) carry the applicable subset with per-version re-solve + on-page banner.
+> - **Ribbon**: Insufficient Detail™ per file (Bible formula, already ENGINE==FUSE P2=1/P5=0)
+>   + green/yellow/red status colors on thresholded measures (5% LE family; DCMA
+>   zero-tolerance; DCMA-05; yellow = PASS ≥80% of threshold, a labeled display convention).
+>   Float Ratio™ alone stays omitted.
+> - **Excel exports**: /export/xlsx/ribbon (new); path export threads every option + Drag;
+>   Driving Path links the full-trace export; Evolution already had one.
+> - 7 new web tests (`test_path_options.py`) + the drag parity gate; full gate green.
+
 
 > ## STATUS (current) — ADR-0154: operator work order + same-day uploads, all landed
 >

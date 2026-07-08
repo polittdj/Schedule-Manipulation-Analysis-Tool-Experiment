@@ -176,14 +176,19 @@ def driving_table(
     """Path-analysis rows as a Table. ``custom_labels`` appends one column per mapped custom
     field (ADR-0093), read from each row's ``custom`` map — so the export mirrors the grid's
     chosen custom columns (ADR-0095)."""
+    rows_list = list(rows)
+    # Drag Analysis column (operator 2026-07-08): present when the trace ran with drag on —
+    # SSI-validated Devaux DRAG per driving-path activity (blank off-path)
+    has_drag = any(r.get("drag_days") is not None for r in rows_list)
+    columns = (*_DRIVING_COLUMNS, ("drag_days", "Drag (d)")) if has_drag else _DRIVING_COLUMNS
     body: list[tuple[Cell, ...]] = []
-    for r in rows:
-        cells = [_cell(r.get(key)) for key, _ in _DRIVING_COLUMNS]
+    for r in rows_list:
+        cells = [_cell(r.get(key)) for key, _ in columns]
         custom = r.get("custom")
         custom_map = custom if isinstance(custom, Mapping) else {}
         cells.extend(_cell(custom_map.get(label)) for label in custom_labels)
         body.append(tuple(cells))
-    headers = tuple(label for _, label in _DRIVING_COLUMNS) + tuple(custom_labels)
+    headers = tuple(label for _, label in columns) + tuple(custom_labels)
     return Table(f"Path analysis to UID {target_uid}", headers, tuple(body))
 
 
