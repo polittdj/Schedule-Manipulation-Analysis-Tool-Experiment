@@ -8140,8 +8140,14 @@ def _evm_body(st: SessionState) -> str:
     compliance = compute_baseline_compliance(sch, cpm)
     cost_loaded = any((t.budgeted_cost or 0.0) > 0 for t in non_summary(sch))
 
-    sched_idx = {k: indices[k] for k in ("spi_t", "cei_finish", "cei_start") if k in indices}
-    cost_idx = {k: indices[k] for k in ("spi", "cpi", "tcpi") if k in indices}
+    # explicit str keys: newer mypy infers the comprehension key type as a Literal union,
+    # which does not unify with _metric_scorecard_table's dict[str, MetricResult]
+    sched_idx: dict[str, MetricResult] = {
+        k: indices[k] for k in ("spi_t", "cei_finish", "cei_start") if k in indices
+    }
+    cost_idx: dict[str, MetricResult] = {
+        k: indices[k] for k in ("spi", "cpi", "tcpi") if k in indices
+    }
 
     cards = _stat_cards(
         [
