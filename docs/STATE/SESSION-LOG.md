@@ -4256,3 +4256,18 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   ENGINE==FUSE P2=1/P5=0); pass/warning/fail colors on thresholded measures with an on-page
   legend; /export/xlsx/ribbon added. Float Ratio™ alone remains omitted (no formula).
 - 7 new web tests (test_path_options.py); ribbon/hud/parity suites green.
+
+### 2026-07-08 (cont. 5) — Schedule Integrity page + grouping/links/chrome (ADR-0156)
+- /integrity assembles the pre-existing manipulation + counterfactual engines into the tool's
+  namesake page (diplomatic name), with the ALL FILES/filename mega-banner, BCR-style
+  custom-field exception filter, per-pair findings tables, counterfactual panels, Excel export
+  (+ exception column), nav entry, and page explainer.
+- Path Analysis: Group-by-any-field (standard + custom) and Show-links SVG connectors (drives
+  data; red = on-path); Gantt standardization CSS aliases the evolution/SRA/corridor grids to
+  the .gantt-grid rhythm.
+- Chrome: active-page nav highlight (shell script), chart-toolbar underlap fixed (the operator's
+  S-Curve screenshot), Mission Control QC visuals in their own labeled section.
+- Globe v2: 3-D shading + orbital rings + rocket launches + gentle always-on spin (12 fps idle /
+  15 fps busy, hidden-tab + reduced-motion guards kept; deliberately supersedes the idle-stop
+  half of the SRA-freeze fix, documented in the ADR).
+- All live-verified in Chromium with zero console errors before commit.

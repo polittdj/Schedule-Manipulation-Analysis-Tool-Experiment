@@ -134,9 +134,92 @@
     var gridFar = "rgba(120,160,210,0.10)";
     graticule(rot, gridNear, gridFar);
 
-    var landNear = busy ? "rgba(170,235,255,0.95)" : "rgba(120,235,180,0.92)";
-    var landFar = busy ? "rgba(120,190,230,0.28)" : "rgba(90,180,150,0.26)";
+    var landNear = busy ? "rgba(170,235,255,0.95)" : "rgba(120,225,255,0.92)";
+    var landFar = busy ? "rgba(120,190,230,0.28)" : "rgba(90,160,220,0.26)";
     for (var i = 0; i < LAND.length; i++) strokePath(LAND[i], rot, landNear, landFar, 1.5);
+
+    // 3-D depth (operator 2026-07-08, per the reference imagery): an off-center day/night
+    // shading inside the limb so the sphere reads lit from the upper left, not flat
+    var sh = ctx.createRadialGradient(cx - R * 0.45, cy - R * 0.45, R * 0.1, cx, cy, R * 1.05);
+    sh.addColorStop(0, "rgba(140,220,255,0.10)");
+    sh.addColorStop(0.55, "rgba(0,0,0,0)");
+    sh.addColorStop(1, "rgba(0,10,30,0.45)");
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = sh;
+    ctx.fillRect(cx - R, cy - R, 2 * R, 2 * R);
+    ctx.restore();
+
+    // orbital rings — one solid tilted ellipse + one dashed counter-tilted (futuristic HUD look)
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.35);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, R * 1.28, R * 0.34, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = busy ? "rgba(150,220,255,0.5)" : "rgba(120,180,240,0.35)";
+    ctx.stroke();
+    ctx.rotate(0.7);
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, R * 1.18, R * 0.5, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(120,180,240,0.22)";
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    drawRockets(rot);
+  }
+
+  // ── rocket launches (operator 2026-07-08): small craft climb an arc off the near limb,
+  // leaving a fading trail, then respawn from another site — cheap (2 strokes + 1 dot each)
+  var ROCKET_SITES = [[-80, 28], [-120, 34], [45, 63], [140, 40], [-52, 5]]; // lon,lat pads
+  var rockets = [
+    { site: 0, t: 0.0, speed: 0.00022 },
+    { site: 2, t: 0.55, speed: 0.00018 },
+  ];
+  function drawRockets(rotNow) {
+    for (var i = 0; i < rockets.length; i++) {
+      var rk = rockets[i];
+      var pad = ROCKET_SITES[rk.site];
+      var base = project(pad[0], pad[1], rotNow);
+      if (base.z <= 0.05) continue; // pad on the far side — hold until it rotates around
+      var t = rk.t;
+      // arc: radially outward with an eastward curl, up to ~0.55R above the surface
+      var ang = Math.atan2(base.y - cy, base.x - cx);
+      var lift = R * 0.55 * t;
+      var curl = 0.9 * t; // radians of curl along the flight
+      var px = cx + (R + lift) * Math.cos(ang - curl * 0.35);
+      var py = cy + (R + lift) * Math.sin(ang - curl * 0.35);
+      // trail
+      ctx.beginPath();
+      ctx.moveTo(base.x, base.y);
+      ctx.quadraticCurveTo(
+        cx + (R + lift * 0.45) * Math.cos(ang - curl * 0.12),
+        cy + (R + lift * 0.45) * Math.sin(ang - curl * 0.12),
+        px, py
+      );
+      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = "rgba(255,190,120," + (0.55 * (1 - t)) + ")";
+      ctx.stroke();
+      // the craft
+      ctx.beginPath();
+      ctx.arc(px, py, 1.8, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255,230,180,0.95)";
+      ctx.fill();
+    }
+  }
+  function stepRockets(dt) {
+    for (var i = 0; i < rockets.length; i++) {
+      var rk = rockets[i];
+      rk.t += rk.speed * dt;
+      if (rk.t >= 1) {
+        rk.t = 0;
+        rk.site = (rk.site + 1 + i) % ROCKET_SITES.length; // move to the next pad
+      }
+    }
   }
 
   resize();
@@ -154,31 +237,38 @@
   // (operator: "Ask the AI freezes on the SRA page"). So the redraw is throttled to ~15 fps: each
   // frame schedules the next one FRAME_MS later, so the spin never monopolizes the main thread on a
   // heavy page while the model thinks. A slow rotation still reads clearly as "the AI is working".
-  var FRAME_MS = 66; // ~15 fps: enough motion to signal activity, ~4x less CPU than an unthrottled rAF
+  // operator 2026-07-08: the earth SPINS continuously (with rockets launching) — but gently:
+  // ~12 fps idle / ~15 fps while the AI thinks (the throttle that fixed the SRA freeze stays),
+  // never while the tab is hidden, and perfectly still under prefers-reduced-motion.
+  var IDLE_MS = 83; // ~12 fps idle
+  var BUSY_MS = 66; // ~15 fps while the AI generates (the ADR-tracked throttle)
+  var IDLE_SPIN = 0.00018; // rad/ms — a stately idle rotation
+  var BUSY_SPIN = 0.0011; // the AI-working spin-up (state signal preserved)
   var rot = 0.6, last = 0, running = false, raf = 0;
   function tick(now) {
     raf = 0;
-    if (document.hidden || !host.classList.contains("ai-thinking")) {
+    if (document.hidden || reduce) {
       running = false;
-      render(rot, false); // settle to a static, idle globe
+      render(rot, false);
       return;
     }
+    var busy = host.classList.contains("ai-thinking");
     if (!last) last = now;
-    var dt = Math.min(120, now - last);
+    var dt = Math.min(160, now - last);
     last = now;
-    if (!reduce) rot += 0.0011 * dt; // radians/ms — spins while the AI works
-    render(rot, true);
-    // schedule the next redraw FRAME_MS out (throttle) rather than back-to-back at the display rate
-    setTimeout(function () { raf = window.requestAnimationFrame(tick); }, FRAME_MS);
+    rot += (busy ? BUSY_SPIN : IDLE_SPIN) * dt;
+    stepRockets(dt);
+    render(rot, busy);
+    setTimeout(function () { raf = window.requestAnimationFrame(tick); }, busy ? BUSY_MS : IDLE_MS);
   }
   function start() {
     if (running || reduce || document.hidden) return;
-    if (!host.classList.contains("ai-thinking")) { render(rot, false); return; }
     running = true;
     last = 0;
     raf = window.requestAnimationFrame(tick);
   }
-  render(rot, false); // initial static draw (idle); the loop only spins up while the AI works
+  render(rot, false); // one static frame first (also the reduced-motion/hidden final state)
+  start(); // the gentle idle spin + launches run whenever the tab is visible
   // restart the spin when ask.js toggles .ai-thinking, and redraw/resume when the tab returns
   new MutationObserver(start).observe(host, { attributes: true, attributeFilter: ["class"] });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) start(); });

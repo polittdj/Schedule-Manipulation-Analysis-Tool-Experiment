@@ -1,4 +1,26 @@
-# Handoff — 2026-07-08 (SSI path options + Drag Analysis + Ribbon colors; highest ADR 0155)
+# Handoff — 2026-07-08 (Schedule Integrity page + grouping/links/chrome; highest ADR 0156)
+
+> ## STATUS (current) — ADR-0156: the Integrity page + UI batch
+>
+> - **/integrity "Schedule Integrity"** (nav: Risks): per version pair, every cited
+>   manipulation signal + the counterfactual finish ("N wd of apparent recovery came from the
+>   changes, not work"; target-UID variant), an ALL FILES/filename mega-banner, a custom-field
+>   (BCR-style) exception filter (badge or hide authorized changes — operator will expand),
+>   /export/{fmt}/integrity with the exception column, page explainer. All engine machinery
+>   pre-existed (ADR-0130/0143/0150) — the page assembles it.
+> - **Path Analysis**: Group by ANY field (standard or custom, e.g. CA-WBS; overrides Output
+>   grouping) + Show links (SVG elbow connectors from each row's in-trace successors; red =
+>   on-path). Other Gantts lack per-row link data client-side — documented follow-up.
+> - **Gantt standardization**: one type/rhythm everywhere (11px, 1×6px, bold summaries,
+>   280–460px Name); evolution/SRA/corridor grids aliased to the .gantt-grid rules.
+> - **Chrome**: active-nav highlight; chart labels never underlap the zoom toolbar; Mission
+>   Control split into "Performance & Paths" / "Quality Control" sections.
+> - **Globe v2**: 3-D day/night shading, orbital rings, rocket launches, gentle ALWAYS-ON
+>   idle spin (~12 fps) — supersedes the idle-stop half of the SRA-freeze fix while keeping
+>   its throttle/hidden-tab/reduced-motion guards.
+> - Live-verified in Chromium (nav/banner/globe/groups/55 links/20 drag cells/sections; zero
+>   console errors).
+
 
 > ## STATUS (current) — ADR-0155: the path-tools work order
 >
