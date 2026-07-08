@@ -388,12 +388,17 @@ h3.brief-h { font-size: 16px; } h4.brief-h { font-size: 14px; color: var(--ink);
    table's minimums genuinely exceed the card, .brief-scroll scrolls it instead of squeezing. */
 .brief-table td { overflow-wrap: break-word; min-width: 3.5em; }
 .brief-table td.cite { color: var(--muted); font-size: 11px; min-width: 200px; max-width: 360px; overflow-wrap: anywhere; }
-.brief-scroll { overflow-x: auto; }
+/* Sideways scroll if columns exceed the card, AND a height cap so a very long table (e.g. a
+   100+-row "No Longer Critical" list in section 3) scrolls inside a bounded box instead of
+   stretching the page tall — that towering is what left wasted width beside its short partner. */
+.brief-scroll { overflow-x: auto; max-height: 56vh; overflow-y: auto; }
 .brief-card.wide { grid-column: 1 / -1; }  /* sections with wide tables take the full row */
-/* "6. Recommended Actions" + "7. How to Verify Every Number" share one full-width row as true
-   half-page partners (operator 2026-07-08) so the citation column wraps and reads without
-   sideways scrolling. Stacks to one column when the viewport can't fit two readable halves. */
-.brief-duo { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+/* Half-page partner rows (operator 2026-07-08): sections 3+4 (Critical Path / Health Dashboard)
+   and 6+7 (Recommended Actions / How to Verify) each share one full-width row split 1fr/1fr, so
+   the citation column wraps and reads without sideways scrolling and no page width is wasted
+   beside a short neighbour. Stacks to one column when the viewport can't fit two readable halves. */
+.brief-duo { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  align-items: start; }
 .brief-duo .brief-table td.cite { min-width: 140px; }
 @media (max-width: 1100px) { .brief-duo { grid-template-columns: 1fr; } }
 .ask-second { border-left: 3px solid var(--line); padding-left: 10px; }
@@ -807,6 +812,14 @@ td.rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color
 .rib-legend .rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
 .rib-legend .rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
 .rib-legend .rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+/* Ribbon click-drill (operator 2026-07-08): every metric cell is clickable; the selected cell
+   is outlined and the activities behind its figure list below the ribbon. */
+td.rib-cell { cursor: pointer; }
+td.rib-cell:hover { text-decoration: underline dotted; }
+td.rib-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+td.rib-cell.rib-selected { outline: 2px solid var(--focus); outline-offset: -2px; }
+.ribbon-drill { margin-top: 14px; }
+.ribbon-drill h3 { margin: 8px 0 4px; }
 
 /* SSI Directional Path Tool options panel (operator 2026-07-08) */
 details.path-options { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: var(--field-bg); font-size: 12px; }

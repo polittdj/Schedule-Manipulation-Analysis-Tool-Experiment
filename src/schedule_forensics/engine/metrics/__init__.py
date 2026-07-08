@@ -34,7 +34,11 @@ from schedule_forensics.engine.metrics.float_bands import (
 )
 from schedule_forensics.engine.metrics.float_ratio import compute_float_ratio
 from schedule_forensics.engine.metrics.hmi import compute_hmi
-from schedule_forensics.engine.metrics.ribbon import RibbonMetrics, compute_ribbon
+from schedule_forensics.engine.metrics.ribbon import (
+    RibbonMetrics,
+    compute_ribbon,
+    ribbon_offender_map,
+)
 from schedule_forensics.engine.metrics.schedule_card import (
     ActivityMakeup,
     ConstraintCount,
@@ -77,4 +81,5 @@ __all__ = [
     "compute_wbs_breakdown",
     "dcma_pass_rate",
     "population_share",
+    "ribbon_offender_map",
 ]
