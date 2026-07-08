@@ -19,8 +19,12 @@ from schedule_forensics.engine.metrics._common import is_effective_critical, non
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
-# PROVENANCE (audit F-14): the two cutoffs below are in-repo design choices — NOT sourced from a
-# published handbook (the reference deck is an absent intake artifact); re-source when it lands.
+# PROVENANCE (audit F-14, swept against the delivered handbooks 2026-07-08, ADR-0153): lag
+# SCRUTINY is NASA-sourced — PPC Handbook NASA/SP-2016-3424 p.136 (lead/lag values are not
+# schedule margin) and §3.4.3.2B p.145 (validate that "lag values are accurate"); its Fig. 3.4-3
+# health check counts positive/negative lags per relationship type. No delivered handbook
+# publishes a NUMERIC lag-to-duration ratio or a merge/diverge link count, so the two values
+# below remain in-repo design choices, documented as such.
 #: more than this many predecessors (or successors) on one activity is a merge / diverge hotspot
 _HOTSPOT_MIN_LINKS = 2
 #: a predecessor lag longer than this fraction of the activity's duration "hides" real duration

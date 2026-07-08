@@ -4199,3 +4199,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Three scratch-repo tests execute the real hook to pin all three behaviors.
 - Verified: guard suite 21/21, briefing re-verified in Chromium on the merged tree, full gate
   run on the merge result before push.
+
+### 2026-07-08 (cont. 2) — F-14/A-8 threshold-citation sweep (ADR-0153)
+- The handbook uploads unlocked the last handbook-gated audit item. Extracted all nine intake
+  PDFs (pypdf, dev-only) and swept page-by-page for slack bands / lag ratios / near-critical /
+  path-tier / merge-convergence language.
+- Results, cited at point of use with document + section/figure + printed page:
+  float_erosion 10-d band SOURCED (PPC SP-2016-3424 Fig. 3.4-3 p.138 "Tasks Less than or equal
+  to 10 days Total Slack"); driving-slack secondary/tertiary tier PRACTICE sourced (PPC p.125 +
+  §3.4.3.2D p.151 waterfall, SOPI 6.0 p.37 near-critical = secondary/tertiary, SRB
+  SP-20230001306 p.48) with the day values not published anywhere (10-d aligned to the PPC
+  screen; 20-d stays the tool's overridable convention); health_extra 35% lag ratio +
+  merge-link count remain design choices (lag scrutiny is PPC-mandated pp.136/145 but no
+  numeric ratio is published). No numeric threshold changed — no guessing (Law 2).
+- Ledgers: VERIFICATION-REPORT F-14 CLOSED; PARK-LIST A-8 CLOSED with the SP-2010-3403 caveat
+  (the actual Schedule Management Handbook is still not in the intake — it is the one document
+  that could source the two remaining numbers).

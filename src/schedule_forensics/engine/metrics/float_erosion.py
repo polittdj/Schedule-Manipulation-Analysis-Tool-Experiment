@@ -30,7 +30,9 @@ from schedule_forensics.engine.metrics.wbs_breakdown import _top_level
 from schedule_forensics.model.schedule import Schedule
 
 #: a group whose minimum total float is at/below this many working days is "thin" (yellow); below
-#: zero is "eroded" (red). 10 working days (two weeks) is the near-critical screening band.
+#: zero is "eroded" (red). SOURCED (audit F-14, ADR-0153): the PPC Handbook NASA/SP-2016-3424
+#: schedule health check (Fig. 3.4-3, p.138) scores "Tasks Less than or equal to 10 days Total
+#: Slack" as its near-critical Total Slack screen — the same ≤10-working-day band used here.
 _LOW_FLOAT_DAYS = 10.0
 
 
