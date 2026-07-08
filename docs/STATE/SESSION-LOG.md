@@ -4461,5 +4461,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   persisted columns, export a 200 xlsx; "view all" lists all 17 cited activities). New tests
   tests/web/test_drill_tables.py (5). Full suite green (1886 pre-test + 5). Lockstep rebuild.
 - STILL OPEN (larger, next session): #72 DP tiers per-column+Excel+banner, #71 Quality-Trend split,
-  #74 Resources bucketing+overallocation drill, #80 SRA grid Gantt. Variances: #67 SSI golden
-  blocked on operator's export not in repo; 3 Fuse divergences are genuine tool-definition diffs.
+  #74 Resources bucketing+overallocation drill, #80 SRA grid Gantt. Variances: #67 SSI golden is
+  ACTIONABLE (the two UID-155 SSI exports ARE in the repo under 00_REFERENCE_INTAKE/ssi/); 3 Fuse
+  divergences are genuine tool-definition diffs.
+
+### 2026-07-08 (cont. 16) — end-of-session audit doc corrections (no new ADR; docs-only)
+- Deep-dive audit of the repo/docs (triple-verified) found three stale-docs defects and corrected
+  them; no code behavior changed except a calendar.py docstring (which forced a lockstep rebuild).
+- CLAUDE.md Law 1 + "Bible" section: reconciled with ADR-0152. The reference binaries under
+  00_REFERENCE_INTAKE/ (incl. the NASA .aft) are NOT git-ignored/out-of-repo — the operator chose
+  (ADR-0152, §43-44 formally supersedes the "keep binaries out of git" posture) to commit them to
+  main via the web UI. Doc now states they live in-repo, describes the guard's inherited_from_main
+  exception (byte-identical-to-origin/main passes; new/tampered CUI still blocked).
+- calendar.py docstring: the stale "per-task calendars are deferred" line contradicted the class'
+  own uid field (ADR-0118: per-task calendars ARE resolved from Schedule.calendars in the
+  driving-slack path). Qualified: deferred for the base CPM pass, honored where the source file
+  carries them. Wheel + 9 installers rebuilt (lockstep test compares packaged bytes).
+- HANDOFF audit note A1 corrected: the earlier "needs an operator decision / policy violation"
+  framing was WRONG — ADR-0152 already accepted the in-repo binaries; the real defect was the stale
+  CLAUDE.md, now fixed. #67 re-labeled ACTIONABLE (SSI UID-155 exports verified present via
+  git ls-files), not blocked. Highest ADR unchanged = 0167.

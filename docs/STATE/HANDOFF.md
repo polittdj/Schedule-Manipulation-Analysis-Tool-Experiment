@@ -2,24 +2,28 @@
 
 > ## AUDIT (2026-07-08, end-of-session deep-dive — triple-verified findings)
 >
-> - **FINDING A1 (git hygiene, needs operator decision — NOT auto-fixed):** 60 reference binaries
+> - **FINDING A1 (RESOLVED — was a stale-docs defect, not an open decision):** 60 reference binaries
 >   are tracked in git under `00_REFERENCE_INTAKE/` (real `.mpp` — Hard_File, Project2-5, Large Test
 >   File; Acumen Fuse `.xlsx`; SSI `.xlsx` exports; a `.docx` template). Verified 3 ways: (1)
 >   `.gitignore` lines 29-39 IGNORE `00_REFERENCE_INTAKE/*`; (2) they entered via the operator's
->   GitHub **web-UI** "Add files via upload" commit `076e055` (bypasses the local `.githooks`
->   guard); (3) `.githooks/pre-commit:19` blocks exactly these extensions. Per CLAUDE.md these are
->   operator-confirmed **NON-CUI** build/reference inputs, so this is NOT a data-sovereignty leak —
->   but it violates the stated "keep out of git" policy and defense-in-depth. It looks INTENTIONAL
->   (the operator uploads them so remote build sessions can read them). **Do not delete unilaterally**
->   (it would break that workflow + history already contains them). Operator to decide: (a) accept +
->   document the deviation (add an ADR + a CLAUDE.md note), or (b) `git rm --cached` + purge history
->   (BFG/git-filter-repo) if they should be out. The pre-commit guard has a gap: it only runs
->   locally, so web-UI uploads are unguarded — consider a CI check that fails on tracked
->   `00_REFERENCE_INTAKE/` binaries.
+>   GitHub **web-UI** "Add files via upload" commit (bypasses the local `.githooks` guard); (3)
+>   `.githooks/pre-commit:19` blocks exactly these extensions. These are operator-confirmed
+>   **NON-CUI** build/reference inputs, so this is NOT a data-sovereignty leak. **The initial
+>   framing of A1 as "needs an operator decision / policy violation" was WRONG:** ADR-0152 (accepted,
+>   operator-approved 2026-07-08) already recorded the decision to keep the intake suite in-repo and
+>   *formally supersedes* the "keep binaries out of git" defense-in-depth posture (ADR-0152 §43-44).
+>   The real defect was that **CLAUDE.md still described the binaries as git-ignored / out of the
+>   repo** (Law-1 block L14-25 and the "Bible" section L118-124) — contradicting ADR-0152. **FIXED
+>   this commit:** CLAUDE.md Law 1 and the Bible section now state the binaries live in-repo by
+>   ADR-0152, describe the `inherited_from_main` guard exception, and the calendar.py docstring's
+>   stale "per-task calendars are deferred" line is reconciled with ADR-0118. No deletion/history
+>   purge (would break the remote-build workflow + already-public history). The web-UI-upload guard
+>   gap is intentional per ADR-0152 (the inherited-blob exception exists precisely so already-public
+>   intake blobs don't wedge `git merge origin/main`); a NEW/tampered CUI blob is still blocked.
 > - **VERIFIED CLEAN:** runtime data-sovereignty intact — the net-egress / air-gap / CUI-guard /
 >   std-lib guard tests all pass (86 tests). ADR numbering 0130..0167 is contiguous (no gaps/dupes).
->   Drift guard passes (0167 in HANDOFF + SESSION-LOG). `git status` clean; full gate green
->   (1886 + 5 new). Working tree matches the committed wheel (lockstep).
+>   Drift guard passes (0167 in HANDOFF + SESSION-LOG). Full gate green. Working tree matches the
+>   committed wheel (lockstep).
 
 > ## STATUS (current) — ADR-0167: filter / add-columns / Excel drill tables across the app
 >
@@ -42,8 +46,12 @@
 >   bold banner (the DP file selector already shipped, ADR-0165); #71 Quality-Trend visual split;
 >   #74 Resources day/week/month bucketing + overallocation click-drill; #80 SRA editable-grid Gantt
 >   matched to the other Gantts. **Variances:** #67 Hard_File UID-155 SSI driving-path golden is
->   blocked on the operator's SSI export not in the repo; the 3 Fuse divergences (ADR-0159) are
->   genuine tool-definition differences pinned with root causes.
+>   **ACTIONABLE, not blocked** — the two SSI exports ARE present in the repo
+>   (`00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx`
+>   and `..._Updated_...xlsx`, verified by `git ls-files`), so next session can parse them, validate
+>   the engine's UID-155 driving path, and pin the golden (this also lets the +23-wd 188→187
+>   counterfactual be SSI-cross-validated). The 3 Fuse divergences (ADR-0159) are genuine
+>   tool-definition differences pinned with root causes.
 
 > ## STATUS — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
 >

@@ -14,15 +14,21 @@ detection, and serves an interactive, locally-rendered report with a cited local
 1. **Data sovereignty (CUI).** No schedule content or derived metric ever leaves the machine; the AI is
    loopback-only and fails closed. **Never commit CUI files** — real `.mpp` / `.xlsx` / `.aft` / `.xer`
    / `.docx` schedules and reference exports. A pre-commit guard (`.githooks`, activated by the
-   SessionStart hook) blocks them; intake/golden files live git-ignored under `00_REFERENCE_INTAKE/`.
+   SessionStart hook) blocks them.
    **CUI boundary (operator-confirmed):** the *build/reference* inputs used to develop and parity-test
-   the tool — including `Large_Test_File.mpp`, the SSI/Acumen exports, and golden inputs — are **NOT
-   CUI** and may be loaded into a build session (e.g. uploaded to Claude Code). They are kept out of git
-   as large binaries / defense-in-depth, not because they are CUI. **Real CUI is only ever the
-   operator's production schedules loaded into the deployed tool, which runs locally and never touches a
-   build session.** The pre-commit guard blocks `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` everywhere
-   except the `tests/fixtures/` allowlist (synthetic, hand-authored, non-CUI fixtures only), so no
-   real reference binary lands in the repo.
+   the tool — including `Large_Test_File.mpp`, the SSI/Acumen exports, the NASA `.aft` metric library,
+   and golden inputs — are **NOT CUI** and may be loaded into a build session (e.g. uploaded to Claude
+   Code). **Real CUI is only ever the operator's production schedules loaded into the deployed tool,
+   which runs locally and never touches a build session.** Because those reference inputs are not CUI,
+   the operator chose (ADR-0152) to commit the intake suite under `00_REFERENCE_INTAKE/` to `main` (via
+   the GitHub web UI), formally superseding the earlier "keep the binaries out of git" defense-in-depth
+   posture — so the reference binaries **do** live in the repo now. The pre-commit guard still blocks
+   `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` everywhere except the `tests/fixtures/` allowlist (synthetic,
+   hand-authored, non-CUI fixtures only) **and** except a staged blob that is byte-identical to
+   `origin/main` at the same path (ADR-0152's `inherited_from_main` exception, so `git merge origin/main`
+   isn't wedged by the already-public intake blobs). A **new** or **modified** (tampered) blocked-extension
+   file anywhere outside those two allowances is still blocked — so no real CUI schedule from a build
+   session can land in the repo.
    Runtime I/O is **std-lib only** (no `requests`/`httpx`/etc.); a net-egress guard fails the build if a
    forbidden HTTP client enters the runtime, and an air-gap test fails if a served page references a
    remote asset.
