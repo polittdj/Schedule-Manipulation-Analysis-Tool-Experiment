@@ -4420,3 +4420,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (11 + selector checks).
 - New tests: test_integrity_multifile_robust.py (9). Adversarial review workflow run over the crash
   fix. Lockstep: wheel + 9 installers rebuilt in the same commit.
+
+### 2026-07-08 (cont. 14) — Integrity crash-fix hardening from adversarial review (ADR-0166)
+- The ADR-0164/0165 crash fix shipped as PR #300, THEN the adversarial multi-agent review (8 agents,
+  find -> verify) confirmed 4 findings. All fixed as a follow-up:
+  1. HIGH (Law 2): out-of-range/negative baseline reversed the diff. /integrity?b=0 (baseline
+     omitted) or legacy ?file=<oldest> -> base=cur-1=-1; the `if base == cur` guard missed the
+     negative case -> schedules[-1] (NEWEST) used as prior -> chronologically REVERSED diff shown as
+     authoritative. Fix: `if base == cur or not (0 <= base < n)` re-picks an in-range chronological
+     neighbour. Verified ?b=0 / ?file=<oldest> now render prior->current oldest-first.
+  2. ribbon-drill + float-band Excel exports called analysis_for unguarded -> 500 on an unsolvable
+     file via direct URL. Now try/except CPMError -> 422 (matches every other call site).
+  3. all-skipped reverts: `if not effects: return None` hid the disclosure. Engine now returns a
+     report with empty per_change when changes were detected-but-skipped; page discloses "N detected
+     but none measurable".
+  4. aggregate over-claimed "every change reverted together" when reverts were skipped/capped (they
+     are excluded from the aggregate schedule). Now states the honest measured count and, when
+     partial, that the skipped changes are excluded.
+- +23-wd 188->187 result + "all N change(s)" honest aggregate preserved. New regression tests
+  (reversed-diff guard, all-skipped disclosure, export guard). Full gate green; lockstep rebuild.

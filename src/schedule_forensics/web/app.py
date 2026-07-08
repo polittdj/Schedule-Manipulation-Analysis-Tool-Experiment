@@ -2713,7 +2713,10 @@ def create_app(
         if not 0 <= band < len(_FLOAT_HIST_BANDS):
             return JSONResponse({"error": "unknown band"}, status_code=422)
         label, member = _FLOAT_HIST_BANDS[band]
-        analysis = st.analysis_for(name, sch)
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError:  # an unsolvable file has no float histogram — 422, never 500
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
         extra = [c for c in (s.strip() for s in cols.split(",")) if c]
         headers = ("UID", "Name", "Total float (d)", *extra)
 
@@ -2754,7 +2757,10 @@ def create_app(
         sch = st.schedules.get(name)
         if sch is None:
             return JSONResponse({"error": "unknown schedule"}, status_code=404)
-        analysis = st.analysis_for(name, sch)
+        try:
+            analysis = st.analysis_for(name, sch)
+        except CPMError:  # an unsolvable file has no ribbon drill — 422, never 500
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
         offenders = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
         if metric not in offenders:
             return JSONResponse({"error": "unknown metric"}, status_code=422)
@@ -6254,10 +6260,13 @@ def _integrity_body(
     labels = [sch.source_file or sch.name for sch in schedules]
     # resolve the chosen pair; default to the two most recent (what changed last). Order prior ->
     # current chronologically (schedules are oldest-first) regardless of pick order, and never let
-    # the two collapse to the same file.
+    # the two collapse to the same file. The baseline guard must also catch an OUT-OF-RANGE index
+    # (e.g. comparison_idx==0 makes cur-1 == -1): a negative base would wrap to schedules[-1], the
+    # NEWEST file, and silently render a chronologically REVERSED diff (Law 2 fidelity bug) — so we
+    # re-pick an in-range neighbour whenever base is out of range or equal to cur.
     cur = comparison_idx if 0 <= comparison_idx < n else n - 1
     base = baseline_idx if 0 <= baseline_idx < n else cur - 1
-    if base == cur:
+    if base == cur or not (0 <= base < n):
         base = cur - 1 if cur > 0 else cur + 1
     prior_idx, cur_idx = (base, cur) if base < cur else (cur, base)
 
@@ -6354,37 +6363,12 @@ analysis for review, not an accusation: use the exception field to set aside aut
         ) as exc:  # defense in depth; the engine already guards
             logging.getLogger("schedule_forensics").warning("change effects failed: %s", exc)
             eff = None
-        if eff is not None and eff.per_change:
+        if eff is not None and (eff.per_change or eff.skipped_unsolvable or eff.skipped_capped):
             tgt_label = f"UID {eff.target_uid} ({_e(eff.target_name)})" + (
                 " — the last task on the critical path" if eff.target_is_last_critical else ""
             )
-            eff_rows = ""
-            for e in sorted(eff.per_change, key=lambda x: -abs(x.target_finish_delta_days)):
-                d = e.target_finish_delta_days
-                cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
-                effect_txt = (
-                    f"<b class={cls}>{d:+d} wd</b>" if d else "<span class=muted>no effect</span>"
-                )
-                cites = ", ".join(f"UID {u}" for u in e.citation_uids)
-                eff_rows += (
-                    f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
-                    f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
-                    f"{e.project_finish_delta_days} wd</td><td class=cite>{_e(cites)}</td></tr>"
-                )
-            agg = eff.aggregate_target_finish_delta_days
-            agg_txt = (
-                f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} working"
-                f" day(s)</b>"
-            )
-            # "all changes together" line — only when the aggregate re-solve was cycle-free
-            agg_line = (
-                f" With every change reverted together, {_e(eff.target_name)} would move "
-                f"{agg_txt} (currently {_e(eff.actual_target_finish)})."
-                if eff.aggregate_solved
-                else f" (Currently {_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}; "
-                "reverting every change together would reintroduce a logic cycle, so only the "
-                "per-change effects above are shown.)"
-            )
+            n_measured = len(eff.per_change)
+            partial = bool(eff.skipped_unsolvable or eff.skipped_capped)
             # disclose any reverts we could not measure (Law 2: no silent drop)
             notes = []
             if eff.skipped_unsolvable:
@@ -6394,11 +6378,57 @@ analysis for review, not an accusation: use the exception field to set aside aut
                 )
             if eff.skipped_capped:
                 notes.append(
-                    f"{eff.skipped_capped} further change(s) beyond the first "
-                    f"{len(eff.per_change)} were not individually measured (large diff)."
+                    f"{eff.skipped_capped} further change(s) beyond the first {n_measured} were "
+                    "not individually measured (large diff)."
                 )
             skip_note = f"<p class=muted>{' '.join(_e(x) for x in notes)}</p>" if notes else ""
-            effects_html = f"""
+            if not eff.per_change:
+                # every detected revert was skipped — disclose it instead of hiding the panel
+                total_skipped = eff.skipped_unsolvable + eff.skipped_capped
+                effects_html = f"""
+<div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
+<p class=muted>{total_skipped} change(s) were detected between these versions but none could be
+measured individually — reverting any one alone reintroduces a logic cycle. (Currently
+{_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}.)</p>{skip_note}</div>"""
+            else:
+                eff_rows = ""
+                for e in sorted(eff.per_change, key=lambda x: -abs(x.target_finish_delta_days)):
+                    d = e.target_finish_delta_days
+                    cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
+                    effect_txt = (
+                        f"<b class={cls}>{d:+d} wd</b>"
+                        if d
+                        else "<span class=muted>no effect</span>"
+                    )
+                    cites = ", ".join(f"UID {u}" for u in e.citation_uids)
+                    eff_rows += (
+                        f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
+                        f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
+                        f"{e.project_finish_delta_days} wd</td><td class=cite>{_e(cites)}</td></tr>"
+                    )
+                agg = eff.aggregate_target_finish_delta_days
+                agg_txt = (
+                    f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} "
+                    f"working day(s)</b>"
+                )
+                # "all changes together" line — the aggregate folds in ONLY the individually-
+                # measured reverts, so state that count honestly and, when any change was skipped/
+                # capped, say the total EXCLUDES them rather than over-claiming "every change".
+                scope_txt = (
+                    f"the {n_measured} individually-measured change(s) reverted together (the "
+                    "skipped change(s) noted below are excluded)"
+                    if partial
+                    else f"all {n_measured} change(s) reverted together"
+                )
+                agg_line = (
+                    f" With {scope_txt}, {_e(eff.target_name)} would move {agg_txt} (currently "
+                    f"{_e(eff.actual_target_finish)})."
+                    if eff.aggregate_solved
+                    else f" (Currently {_e(eff.target_name)} finishes "
+                    f"{_e(eff.actual_target_finish)}; reverting these changes together would "
+                    "reintroduce a logic cycle, so only the per-change effects above are shown.)"
+                )
+                effects_html = f"""
 <div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
 <p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
 and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change

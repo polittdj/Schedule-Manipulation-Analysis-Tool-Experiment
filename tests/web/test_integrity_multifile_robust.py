@@ -129,3 +129,72 @@ def test_integrity_guards_same_file_for_a_and_b() -> None:
 def test_integrity_legacy_file_param_still_resolves_a_pair() -> None:
     page = _client_with(4).get("/integrity?file=v3.mpp.xml")
     assert page.status_code == 200
+
+
+def _pair_header(html: str) -> tuple[str, str]:
+    import re
+
+    m = re.search(r"<h2>(.*?)&rarr;(.*?)</h2>", html)
+    assert m, "no pair header"
+    return m.group(1).strip(), m.group(2).strip()
+
+
+def test_integrity_out_of_range_baseline_never_reverses_the_diff() -> None:
+    """Adversarial-review finding (HIGH): ?b=0 (baseline omitted) or the legacy ?file=<oldest>
+    must NOT resolve baseline to -1 and silently diff the NEWEST file against the oldest (a
+    chronologically reversed, wrong forensic result). The pair must always read prior -> current
+    chronologically (files are oldest-first, so prior's label must not be a later 'updated' file).
+    """
+    # ordered oldest-first: v0,v2 = Hard_File(7/7); v1,v3 = Hard_File_updated(8/11)
+    c = _client_with(4)
+    for url in ("/integrity?b=0", "/integrity?file=v0.mpp.xml"):
+        prior_lbl, cur_lbl = _pair_header(c.get(url).text)
+        # prior must be an oldest (Hard_File) file, never the newest 'updated' one -> not reversed
+        assert "updated" not in prior_lbl, f"{url}: reversed diff, prior={prior_lbl}"
+        assert prior_lbl != cur_lbl
+
+
+def test_change_effects_discloses_when_every_revert_is_skipped() -> None:
+    """Adversarial-review finding: when all detected reverts are cyclic (skipped_unsolvable), the
+    engine must still return a report (not None) so the page can disclose the skip instead of
+    silently omitting the panel (Law 2)."""
+    cal = Calendar(name="Std")
+    fs = RelationshipType.FS
+    tasks = tuple(
+        Task(unique_id=u, name=n, duration_minutes=480) for u, n in ((1, "A"), (2, "B"), (3, "C"))
+    )
+    # current is acyclic (3->2->1); prior additionally carried 1->3 (a removed link). Restoring
+    # 1->3 closes 1->3->2->1 -> the only detected revert is unmeasurable.
+    prior = Schedule(
+        name="p",
+        source_file="p.mpp",
+        project_start=dt.datetime(2026, 1, 1),
+        calendar=cal,
+        tasks=tasks,
+        relationships=(
+            Relationship(predecessor_id=1, successor_id=3, type=fs),
+            Relationship(predecessor_id=2, successor_id=1, type=fs),
+            Relationship(predecessor_id=3, successor_id=2, type=fs),
+        ),
+    )
+    current = Schedule(
+        name="c",
+        source_file="c.mpp",
+        project_start=dt.datetime(2026, 1, 1),
+        calendar=cal,
+        tasks=tasks,
+        relationships=(
+            Relationship(predecessor_id=2, successor_id=1, type=fs),
+            Relationship(predecessor_id=3, successor_id=2, type=fs),
+        ),
+    )
+    report = compute_change_effects(prior, current, compute_cpm(current), target_uid=1)
+    assert report is not None
+    assert report.per_change == ()
+    assert report.skipped_unsolvable == 1
+
+
+def test_ribbon_drill_export_does_not_500_on_unknown_or_bad_file() -> None:
+    """Adversarial-review finding: ribbon-drill Excel export guards analysis_for -> never 500."""
+    c = _client_with(3)
+    assert c.get("/export/xlsx/ribbon-drill/does-not-exist?metric=critical").status_code == 404

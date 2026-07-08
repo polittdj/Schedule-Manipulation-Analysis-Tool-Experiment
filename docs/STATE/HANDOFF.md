@@ -1,6 +1,18 @@
-# Handoff — 2026-07-08 (integrity multi-file crash fix + ribbon drill; highest ADR 0165)
+# Handoff — 2026-07-08 (integrity crash-fix + adversarial-review hardening; highest ADR 0166)
 
-> ## STATUS (current) — ADR-0164/0165: Integrity never-500 + two-file picker; ribbon drill; DP file selector
+> ## STATUS (current) — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
+>
+> - Follow-up to ADR-0164 after an adversarial multi-agent review of the crash fix. Four confirmed
+>   findings fixed: (1) **HIGH/Law-2:** an out-of-range/negative baseline (`/integrity?b=0` or legacy
+>   `?file=<oldest>`) resolved to `schedules[-1]` and silently rendered a chronologically **reversed**
+>   diff — guard broadened to `if base == cur or not (0 <= base < n)`; (2) ribbon-drill + float-band
+>   Excel exports now `try/except CPMError → 422` (were unguarded → 500 on an unsolvable file);
+>   (3) all-skipped reverts now return a report so the page discloses "N detected but unmeasurable"
+>   instead of hiding the panel; (4) the aggregate line states the honest measured count ("all N
+>   change(s)" / "the N individually-measured change(s) … excluding the skipped ones") instead of
+>   over-claiming "every change". +23-wd 188→187 preserved. New regression tests. Lockstep rebuild.
+
+> ## STATUS — ADR-0164/0165: Integrity never-500 + two-file picker; ribbon drill; DP file selector
 >
 > - **CRITICAL FIX (ADR-0164): Schedule Integrity no longer 500s with >2 files.** Two reproduced
 >   root causes: (1) `change_effects` KeyError'd indexing `base_cpm.timings[summary UID]` (e.g. the
