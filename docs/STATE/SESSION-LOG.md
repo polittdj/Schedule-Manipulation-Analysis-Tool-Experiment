@@ -4339,3 +4339,40 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Also: merged operator's new intake — Hard_File UID-155 SSI exports (engine reproduces the exact
   9-task zero-slack driving path on both snapshots; near-path slack diverges ~0.375d intraday
   convention, task #67 deferred) and Hard_File missing_logic Fuse detail reports (for #73).
+
+### 2026-07-08 (cont. 10) — on-time execution thresholds (ADR-0161)
+- Established industry pass/fail thresholds for the on-time execution indices that previously read
+  N/A: Baseline Finish/Start Compliance, Completed/Started On-Time, CEI Finish/Start -> PASS at
+  >=95% (DCMA 14-Point BEI/CPLI 0.95 + GAO-16-89G BP9); Completed/Started Late -> PASS at <=5%.
+  Informational counts (Forecast to be…, Not Started/Completed) stay N/A by design; cost
+  SPI/CPI/TCPI stay N/A only without cost data (Law 2: never fabricate a pass/fail on an undefined
+  quantity).
+- evm.py: _ratio_result/_offender_ratio gained threshold+direction; compute_baseline_compliance +
+  compute_evm_indices wire the 95/5 bars. help.py thresholds+derivation updated + dictionary
+  regenerated; on-page collapsible threshold legend added to the Schedule-performance and
+  Baseline-compliance panels. New engine + view tests. Parity untouched (26 green).
+
+### 2026-07-08 (cont. 11) — per-change counterfactual effect; nav + timeout chrome (ADR-0162)
+- Fixed the "zero effect" AI answer. Operator reestablished the removed FS link 188→187 to see the
+  effect on UID 155; the AI answered "zero." Engine truth: restore ONLY 188→187 and re-run CPM ->
+  UID 155 finish 2026-11-27 -> 2026-12-31 = +23 working days (33 calendar). The removal HID a
+  23-wd slip. The existing path counterfactual missed it (UID 187 stayed critical, so it was never
+  reverted), so the AI fact base had no non-zero fact to cite.
+- New engine module change_effects.py: compute_change_effects reverts EACH detected change (removed
+  link -> restore, added link -> drop, duration/constraint -> restore prior) one at a time on a copy
+  of the later version, re-runs CPM, reports the working-day movement of the target's finish + the
+  project finish, plus an aggregate. Target = chosen UID, else the last task on the critical path
+  (max early-finish effective-critical). Does NOT gate on critical-set membership (that was the bug).
+- Wired into BOTH surfaces the operator named: Integrity page (_integrity_body) renders an
+  "Effect of each change on <target>" table (per-change target/project deltas + citations, sorted by
+  magnitude, + aggregate) before the path counterfactual; Ask-the-AI (manipulation_forensics_facts)
+  emits one cited fact per change (+ aggregate), e.g. "…moves the finish +23 working day(s) LATER —
+  the change hid that much slip." Model can no longer answer zero.
+- Chrome shipped with it (same operator message): nav active-page highlight -> high-contrast yellow
+  pill outlined black (#ffd400, app.css) + single-winner exact/longest-prefix pick (hints.js) so
+  /briefing no longer lights /brief; AI Generation timeout default -> form max 3600 s
+  (AIConfig.gen_timeout) so a slow local model finishes.
+- New tests: tests/engine/test_change_effects.py (4) + tests/web/test_change_effects_integration.py
+  (4). Updated two ai_wiring timeout tests to the new 3600 default. Engine + app changed -> wheel +
+  9 installers rebuilt in the same commit (lockstep ADR-0148). SSI cross-validation of the +23-wd
+  figure against the operator's reestablished-logic export is a pin-when-it-lands follow-up.

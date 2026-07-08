@@ -1,6 +1,41 @@
-# Handoff — 2026-07-08 (Timescale Size/shading/SVt UI batch; highest ADR 0160)
+# Handoff — 2026-07-08 (per-change counterfactual effect + chrome; highest ADR 0162)
 
-> ## STATUS (current) — ADR-0160: Timescale Size %, continuous shading, SV(t) start variance
+> ## STATUS (current) — ADR-0162: per-change counterfactual effect; nav + timeout chrome
+>
+> - **Fixed the "zero effect" AI answer.** Operator reestablished the removed FS link 188→187 to
+>   see the effect on UID 155; the AI said "zero." Engine truth: restore ONLY 188→187, re-run CPM
+>   → UID 155 finish 2026-11-27 → 2026-12-31 = **+23 working days** (33 cal) — the removal HID a
+>   23-wd slip. The old path counterfactual missed it (UID 187 stayed critical, so it was never
+>   reverted), so the fact base had no non-zero fact to cite.
+> - **New engine module `change_effects.py`** — `compute_change_effects` reverts EACH detected
+>   change (removed link→restore, added link→drop, duration/constraint→restore prior) one at a
+>   time, re-runs CPM, reports the working-day movement of the target's finish + the project
+>   finish, plus an aggregate. Target = chosen UID else the last task on the critical path. Does
+>   NOT gate on critical-set membership (that was the bug).
+> - **Wired into both surfaces the operator named:** Integrity page (`_integrity_body`) shows an
+>   "Effect of each change on <target>" table; Ask-the-AI (`manipulation_forensics_facts`) emits
+>   one cited fact per change (+ aggregate). Model can no longer answer zero.
+> - **Chrome (same message):** nav active-page highlight → high-contrast yellow pill outlined
+>   black (`#ffd400`) + single-winner exact/longest-prefix pick (so `/briefing` no longer lights
+>   `/brief`); AI Generation timeout default → form max **3600 s**.
+> - Engine + app changed → wheel + 9 installers rebuilt in the SAME commit (lockstep ADR-0148).
+>   SSI cross-validation of the +23-wd figure vs the operator's reestablished-logic export is a
+>   pin-when-it-lands follow-up. Remaining work-order items: **#77** Exec Briefing 6&7 side-by-side,
+>   **#80** SRA grid Gantt, **#81** chart expand reflow, **#71** Quality Trend split, **#72** Driving
+>   Path fields/export/banner, **#74** Resources drill.
+
+> ## STATUS — ADR-0161: industry pass/fail thresholds for on-time execution indices
+>
+> - On-time execution indices (Baseline Finish/Start Compliance, Completed/Started On-Time, CEI
+>   Finish/Start) now score PASS at ≥ 95% — the DCMA BEI/CPLI 0.95 bar + GAO-16-89G BP9; late
+>   mirrors (Completed/Started Late) PASS at ≤ 5%. Informational counts (Forecast to be …, Not
+>   Started/Completed) stay N/A by design; cost SPI/CPI/TCPI stay N/A only when no cost data.
+> - Documented in help.py (tooltips + regenerated METRIC-DICTIONARY.md) + an on-page collapsible
+>   "How these PASS/FAIL/N/A results are scored" legend on the Schedule-performance and
+>   Baseline-compliance panels. Parity untouched (golden tests assert counts/values, not statuses).
+> - Part of the 2026-07-08 UI work order; PR #297 shipped ADR-0160 (Timescale Size/shading/SVt).
+
+> ## STATUS — ADR-0160: Timescale Size %, continuous shading, SV(t) start variance
 >
 > - **Timescale Size % now zooms** for real (was defeated by Fit-mode + the page-fill override):
 >   buildAxis establishes the fill baseline then multiplies by Size in every mode (grid + path +

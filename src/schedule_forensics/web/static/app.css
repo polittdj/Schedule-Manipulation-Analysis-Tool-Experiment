@@ -242,6 +242,13 @@
 }
 .hist-drill-table td { padding: 3px 8px; border-bottom: 1px solid var(--line); }
 
+/* On-page threshold-derivation legend (operator 2026-07-08 / ADR-0161): a neutral collapsible
+   note that explains why measures read PASS/FAIL vs N/A and how the on-time bar was derived. */
+.threshold-legend { margin: 4px 0 10px; font-size: 12px; }
+.threshold-legend > summary { cursor: help; color: var(--accent); font-weight: 600; }
+.threshold-legend-body { padding: 6px 4px 2px; color: var(--ink); line-height: 1.5; max-width: 1000px; }
+.threshold-legend-body p { margin: 0 0 6px; }
+
 /* Universal visual explainers (operator 2026-07-08): every chart/panel NAME carries a hover
    callout (WHAT / EXAMPLE / HOW TO READ / PM USE) via the shared data-sf-hint mechanism. */
 h2.viz-hint, h3.viz-hint {
@@ -811,15 +818,31 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
 .counterfactual { border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel));
   border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
 .counterfactual h4 { margin: 0 0 5px; color: var(--bad); }
+/* Per-change counterfactual effects (ADR-0162): each detected change's isolated working-day
+   effect on the chosen target / last critical task. */
+.change-effects { border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--panel));
+  border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
+.change-effects h4 { margin: 0 0 5px; color: var(--accent); }
+.change-effects table { margin-top: 6px; }
+.change-effects td.cite { overflow-wrap: break-word; }
 
 /* operator 2026-07-08: no text under the chart toolbar — reserve the toolbar strip on the
    first (label) line of every chart host, and make the bar opaque for any straggler */
 .cf-frame .chart-host > .muted:first-child, .cf-frame > .muted:first-child { padding-right: 210px; }
 .cf-bar { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 2px 5px; }
 
-/* active-page highlight in the header ribbon (operator 2026-07-08) */
-header nav a.nav-active { color: var(--accent); border-bottom: 2px solid var(--accent);
-  padding-bottom: 1px; }
+/* active-page highlight in the header ribbon (operator 2026-07-08): high-contrast yellow pill
+   with a black outline — the previous accent-blue-on-blue was unreadable on the blue header. */
+header nav a.nav-active {
+  color: #111 !important;
+  background: #ffd400;
+  border: 1.5px solid #111;
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-weight: 700;
+  text-decoration: none;
+}
+header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
 .mission-section { margin: 16px 2px 8px; font-size: 14px; text-transform: uppercase;
   letter-spacing: .1em; color: var(--muted); border-bottom: 1px solid var(--line);
   padding-bottom: 4px; }
