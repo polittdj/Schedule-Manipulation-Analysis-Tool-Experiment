@@ -4183,3 +4183,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Verified in Chromium before/after (min cell 30px → 72–79px on the wide tables, which now span
   the full row; 2 wide cards on the golden pair); pinned by
   `test_briefing_tables_stay_readable`. Wheel + 9 installers regenerated.
+
+### 2026-07-08 (cont.) — merge main (ADR-0148–0151) into the PR #289 branch; ADR-0152 guard rule
+- PR #289 conflicted after #284–#288 landed on main (overlay fix, lockstep installers,
+  no-window spawns, effective-critical overhaul, ENGINE==FUSE flip — and #288's independent
+  un-crush of the same briefing tables). Merged origin/main in; combined both table fixes
+  (cite keeps #288's min/max-width bounded block + gains overflow-wrap:anywhere; this branch's
+  cell floors, .brief-scroll, wide-card promotion layered on top; no word-break re-crush —
+  both crush-pins pass). SESSION-LOG union-merged; installers regenerated from the merged
+  source (v1.0.4 wheel).
+- **ADR-0152 (operator chose from three options):** main now permanently carries
+  00_REFERENCE_INTAKE binaries (operator web-UI uploads bypass local hooks), which wedged
+  every merge at the CUI guard. The hook now passes a staged file only when its blob is
+  byte-identical to origin/main's at the same path; new/modified/unfetched still block.
+  Three scratch-repo tests execute the real hook to pin all three behaviors.
+- Verified: guard suite 21/21, briefing re-verified in Chromium on the merged tree, full gate
+  run on the merge result before push.
