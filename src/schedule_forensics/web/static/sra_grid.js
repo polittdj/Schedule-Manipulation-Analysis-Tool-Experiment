@@ -23,7 +23,9 @@
   function pxPerDay() {
     if (forcedPx && forcedPx > 0) return forcedPx;
     var v = zoomEl ? parseFloat(zoomEl.value) : 1.4;
-    return isNaN(v) || v <= 0 ? 1.4 : v;
+    // the Timescale dialog's Size % scales the slider zoom (the fit is already exact)
+    var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
+    return (isNaN(v) || v <= 0 ? 1.4 : v) * (size > 0 ? size : 1);
   }
   // Auto-scale the timeline so the whole project span fits the visible width (no horizontal
   // scroll). The fill space subtracts the REAL measured frozen-column width recorded on each
@@ -118,6 +120,7 @@
   function timelineCell(r, axis, grid) {
     var cell = el("td", { class: "g-cell" });
     var track = el("div", { class: "g-track", style: "width:" + axis.width + "px" });
+    SFGantt.paintNonwork(track, axis); // Timescale dialog: non-working-time shading
     SFGantt.paintGrid(track, grid);
     if (dataDate) { var sd = Date.parse(dataDate); if (!isNaN(sd)) track.appendChild(el("div", { class: "g-status", style: "left:" + axis.x(sd) + "px" })); }
     var s = r.start ? Date.parse(r.start) : null;
@@ -315,6 +318,8 @@
   if (zoomEl) zoomEl.addEventListener("input", function () { forcedPx = null; if (rows.length) render(); });
   var fitBtn = document.getElementById("ssiGridFit");
   if (fitBtn) fitBtn.addEventListener("click", function () { if (rows.length) fitToProject(); });
+  // the Timescale dialog's OK repaints the grid with the new tiers/size/shading
+  window.addEventListener("sf-timescale", function () { if (rows.length) render(); });
 
   load();
 })();

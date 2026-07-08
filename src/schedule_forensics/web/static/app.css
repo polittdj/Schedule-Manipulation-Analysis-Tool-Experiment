@@ -142,6 +142,76 @@
 .g-grid-qtr { background: var(--gantt-grid-qtr); }
 .g-grid-yr { background: var(--gantt-grid-yr); }
 
+/* Timescale dialog (MS-Project Timescale popup, operator 2026-07-08): the header height follows
+   the configured tier count, tick lines / the scale separator are per-tier toggles, and the
+   non-working-time tab shades tracks behind or in front of the bars. */
+.g-scale-rows-1 { height: 18px; }
+.g-scale-rows-2 { height: 36px; }
+.g-scale-rows-3 { height: 54px; }
+.g-tier-noticks .g-band { border-left: none; }
+.g-scale-nosep .g-band { border-bottom: none; }
+.g-band-warn { font-style: italic; color: var(--warn); text-align: center; }
+.g-nonwork-front {
+  position: absolute; inset: 0; pointer-events: none; z-index: 5;
+  background-repeat: repeat-x;
+}
+.g-nonwork-holiday { position: absolute; top: 0; bottom: 0; pointer-events: none; }
+.ts-overlay {
+  position: fixed; inset: 0; z-index: 300; background: rgba(10, 14, 24, .45);
+  display: flex; align-items: center; justify-content: center;
+}
+.ts-dialog {
+  width: min(620px, 94vw); max-height: 90vh; overflow: auto;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; box-shadow: 0 18px 60px rgba(0, 0, 0, .45); padding: 0 0 12px;
+}
+.ts-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.ts-x { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; }
+.ts-tabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--line); }
+.ts-tab {
+  border: 1px solid var(--line); border-bottom: none; border-radius: 6px 6px 0 0;
+  background: var(--field-bg); color: var(--ink); padding: 5px 12px; cursor: pointer; font-size: 12px;
+}
+.ts-tab-on { background: var(--panel); font-weight: 600; border-color: var(--accent); }
+.ts-pane { padding: 10px 14px 0; }
+.ts-group {
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px 10px; margin: 8px 14px;
+}
+.ts-pane .ts-group { margin: 8px 0; }
+.ts-group h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); }
+.ts-row { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 6px 0; }
+.ts-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.ts-field-name { color: var(--muted); }
+.ts-field select, .ts-field input[type=number] {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 4px; padding: 3px 6px; font-size: 12px; max-width: 240px;
+}
+.ts-field input[type=number] { width: 64px; }
+.ts-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; cursor: pointer; }
+.ts-draw { flex-direction: column; align-items: flex-start; gap: 4px; }
+.ts-unit { color: var(--muted); font-size: 12px; margin-left: -12px; }
+.ts-disabled { opacity: .55; }
+.ts-note { font-size: 11px; }
+.ts-preview-box {
+  position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--gantt-canvas, #fff);
+}
+.ts-preview-scale { position: relative; display: block; }
+.ts-preview-track { height: 22px; border-radius: 0; margin-top: 2px; }
+.ts-foot {
+  display: flex; gap: 8px; align-items: center; padding: 10px 14px 0; border-top: 1px solid var(--line);
+  margin-top: 10px;
+}
+.ts-spacer { flex: 1; }
+.ts-foot button {
+  background: var(--field-bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 5px; padding: 5px 16px; cursor: pointer; font-size: 12px;
+}
+.ts-ok { background: var(--accent); color: #fff; border-color: var(--accent); }
+
 /* The Gantt charts ALWAYS render in light mode (the MS-Project look) regardless of the page theme:
    the operator found the dark grid behind the white bars jarring. Scoping the light-theme custom
    properties onto each Gantt surface flips every descendant's text/border/hover/field colour to the

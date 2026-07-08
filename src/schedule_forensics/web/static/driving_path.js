@@ -52,8 +52,13 @@
   });
   if (t0 === null || t1 === null) return;
   t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
-  // pixels per calendar day: the "View entire project" fit overrides the zoom buttons until nudged
-  function pxPerDay() { return forcedPx && forcedPx > 0 ? forcedPx : px; }
+  // pixels per calendar day: the "View entire project" fit overrides the zoom buttons until
+  // nudged; the Timescale dialog's Size % scales the button zoom (the fit is already exact)
+  function pxPerDay() {
+    if (forcedPx && forcedPx > 0) return forcedPx;
+    var size = window.SFTimescale ? window.SFTimescale.sizeFactor() : 1;
+    return px * (size > 0 ? size : 1);
+  }
   var x = function (ms) { return Math.round(((ms - t0) / DAY_MS) * pxPerDay()); };
   // Auto-scale so the whole (shared, fixed) corridor span fits the visible width — no scroll.
   // The fill space subtracts the REAL measured frozen-column width recorded on each paint (like
@@ -150,6 +155,7 @@
       tr.appendChild(el("td", { class: "pv-name", text: a.name }));
       var cell = el("td", { class: "path-timeline" });
       var track = el("div", { class: "path-track", style: "width:" + width + "px" });
+      SFGantt.paintNonwork(track, { t0: t0, t1: t1, width: width, x: x }); // non-working shading
       SFGantt.paintGrid(track, gridLns);
       if (v.data_date) {
         track.appendChild(el("div", { class: "pv-now", style: "left:" + x(Date.parse(v.data_date)) + "px" }));
@@ -205,6 +211,8 @@
   $("dpZoomOut").addEventListener("click", function () { forcedPx = null; px = Math.max(1, px - 2); render(); });
   var dpFit = $("dpFit");
   if (dpFit) dpFit.addEventListener("click", fitToProject);
+  // the Timescale dialog's OK repaints the corridor with the new tiers/size/shading
+  window.addEventListener("sf-timescale", render);
 
   render();
 })();
