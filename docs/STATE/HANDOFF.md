@@ -1,6 +1,24 @@
-# Handoff — 2026-07-08 (MS-Project Timescale dialog; highest ADR 0157)
+# Handoff — 2026-07-08 (histogram drill + universal explainers + uid152 parity; highest ADR 0158)
 
-> ## STATUS (current) — ADR-0157: the Timescale dialog
+> ## STATUS (current) — ADR-0158: histogram click-drill, viz explainers, Large_Test_File parity
+>
+> - **Float-histogram click-drill**: chart on the LEFT half; clicking any band lists its
+>   activities (UID/Name/float + Gantt-style Columns dropdown incl. custom fields) on the
+>   right, with `/export/{fmt}/float-band/{name}` exporting exactly the selection.
+>   Fractional-float binning bug fixed on both sides (0 < v ≤ 5 → "1–5", not "> 44").
+> - **Universal visual explainers**: `static/vizhints.js` — ~65-entry catalog (WHAT /
+>   EXAMPLE / HOW TO READ / PM USE) decorating every visual's h2/h3 on every page via the
+>   shared data-sf-hint callout; MutationObserver catches late-rendered headings; Mission
+>   tiles keep their richer server hints.
+> - **ssi_uid152 golden (closes A-4)**: the operator's Large_Test_File UID-152 SSI export —
+>   engine reproduces the 76-task driving path + every slack EXACTLY on the 2,126-task
+>   leveled IMS (first run, zero mismatches); fixture is a 680 KB gzipped MSPDI. The export's
+>   Drag column is provenance-only: SSI's 0 / 0.5 pattern is decoded (milestones 0; stored-
+>   window overlap 0; serial 0.5 = near-path slack under an SSI convention the engine
+>   measures as 1.0 d) — NOT gated pending SSI's definition (Law 2; needs list).
+> - Live-verified in Chromium: 13 checks, zero console errors.
+
+> ## STATUS — ADR-0157: the Timescale dialog
 >
 > - **Timescale…** button on every table-Gantt page (Activity grid, Path Analysis, Driving
 >   Path corridor, SRA grid) opens the MS-Project Timescale popup: Top/Middle/Bottom tier tabs

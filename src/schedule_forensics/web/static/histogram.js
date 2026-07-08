@@ -38,12 +38,126 @@
     if (v < 0) return 0;
     if (v === 0) return 1;
     for (var i = 2; i < BUCKETS.length; i++) {
-      if (v >= BUCKETS[i].lo && v <= BUCKETS[i].hi) return i;
+      if (v <= BUCKETS[i].hi) return i;  // 0 < v <= hi (fractional floats land in the 1-5 band)
     }
     return BUCKETS.length - 1;  // the open-ended high bucket
   }
 
+  // ---- the click-drill panel (operator 2026-07-08): chart on the left, the selected band's
+  // activities on the right, with a Gantt-style add/remove-columns dropdown (standard + custom
+  // fields) and an Excel export of exactly the selection ----------------------------------
+  var drill = document.getElementById("floatHistDrill");
+  var acts = [];            // every non-summary activity with a float value
+  var customLabels = [];    // the schedule's mapped custom fields (payload-discovered)
+  var drillCols = [];       // [{key, label, on, custom}] — persists across bar clicks
+  var selectedBand = null;
+
+  function drillFields() {
+    if (drillCols.length) return drillCols;
+    drillCols = [
+      { key: "unique_id", label: "UID", on: true },
+      { key: "name", label: "Name", on: true },
+      { key: "total_float_days", label: "Total float (d)", on: true },
+      { key: "start", label: "Start", on: false },
+      { key: "finish", label: "Finish", on: false },
+      { key: "duration_days", label: "Duration (d)", on: false },
+      { key: "free_float_days", label: "Free float (d)", on: false },
+      { key: "percent_complete", label: "% complete", on: false },
+      { key: "is_critical", label: "Critical", on: false },
+      { key: "resource_names", label: "Resources", on: false },
+      { key: "wbs", label: "WBS", on: false },
+      { key: "baseline_start", label: "Baseline start", on: false },
+      { key: "baseline_finish", label: "Baseline finish", on: false },
+    ];
+    customLabels.forEach(function (lbl) {
+      drillCols.push({ key: lbl, label: lbl, on: false, custom: true });
+    });
+    return drillCols;
+  }
+
+  function cellValue(a, f) {
+    var v = Object.prototype.hasOwnProperty.call(a, f.key) ? a[f.key]
+      : (a.custom ? a.custom[f.key] : null);
+    if (v === true) return "yes";
+    if (v === false) return "no";
+    if (v == null) return "";
+    var s = String(v);
+    return (window.SFGantt && SFGantt.fmtMDY(s)) || s;
+  }
+
+  function el(tag, attrs) {
+    var node = document.createElement(tag);
+    for (var k in attrs || {}) {
+      if (k === "text") node.textContent = attrs[k];
+      else if (k === "class") node.className = attrs[k];
+      else node.setAttribute(k, attrs[k]);
+    }
+    return node;
+  }
+
+  function renderDrill() {
+    if (!drill || selectedBand === null) return;
+    var i = selectedBand;
+    var rows = acts.filter(function (a) { return bucketOf(a.total_float_days) === i; });
+    var fields = drillFields().filter(function (f) { return f.on; });
+    drill.textContent = "";
+    var name = box.getAttribute("data-name") || "";
+    drill.appendChild(el("h3", {
+      text: rows.length + (rows.length === 1 ? " activity" : " activities") +
+        " with total float " + BUCKETS[i].label + " working days",
+    }));
+    var bar = el("div", { class: "hist-drill-bar" });
+    var colMount = el("span", { class: "field-toggles" });
+    if (window.SFChecklist) {
+      colMount.appendChild(SFChecklist.filter({
+        values: drillFields().map(function (f) { return f.label; }),
+        selected: new Set(drillFields().filter(function (f) { return f.on; })
+          .map(function (f) { return f.label; })),
+        label: "Columns",
+        title: "Add or remove columns (standard and custom fields, like the Gantt)",
+        onChange: function (sel) {
+          drillFields().forEach(function (f) { f.on = sel ? sel.has(f.label) : true; });
+          renderDrill();
+        },
+      }));
+    }
+    bar.appendChild(colMount);
+    // Excel export of exactly this selection: the band index + the extra columns beyond UID/Name/float
+    var extra = fields.filter(function (f) {
+      return ["unique_id", "name", "total_float_days"].indexOf(f.key) < 0;
+    }).map(function (f) { return f.key; });
+    var href = "/export/xlsx/float-band/" + encodeURIComponent(name) + "?band=" + i +
+      (extra.length ? "&cols=" + encodeURIComponent(extra.join(",")) : "");
+    var x = el("a", { class: "btn-link", href: href, text: "Excel (this selection)" });
+    bar.appendChild(x);
+    drill.appendChild(bar);
+    var scroller = el("div", { class: "hist-drill-scroll" });
+    var table = el("table", { class: "hist-drill-table" });
+    var thead = el("thead");
+    var hr = el("tr");
+    fields.forEach(function (f) { hr.appendChild(el("th", { text: f.label })); });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    var tbody = el("tbody");
+    rows.forEach(function (a) {
+      var tr = el("tr");
+      fields.forEach(function (f) { tr.appendChild(el("td", { text: cellValue(a, f) })); });
+      tbody.appendChild(tr);
+    });
+    if (!rows.length) {
+      var tr0 = el("tr");
+      tr0.appendChild(el("td", { class: "muted", text: "No activities in this band." }));
+      tbody.appendChild(tr0);
+    }
+    table.appendChild(tbody);
+    scroller.appendChild(table);
+    drill.appendChild(scroller);
+  }
+
+  var lastFloats = null; // repaint source for the selected-band outline
+
   function render(floats) {
+    lastFloats = floats;
     box.innerHTML = "";
     var counts = BUCKETS.map(function () { return 0; });
     floats.forEach(function (v) { counts[bucketOf(v)] += 1; });
@@ -98,6 +212,29 @@
       });
       lab.textContent = b.label;
       svg.appendChild(lab);
+      // full-height transparent hit strip: EVERY band is clickable (even a zero-count one) —
+      // the click fills the right-hand drill panel with the band's activities
+      var hit = svgEl("rect", {
+        x: padL + i * slot, y: padT, width: slot, height: H - padT - padB,
+        fill: "transparent", "data-band": String(i),
+      });
+      hit.style.cursor = "pointer";
+      var ht = svgEl("title", {});
+      ht.textContent = "Click to list the " + b.label + "-day activities on the right";
+      hit.appendChild(ht);
+      hit.addEventListener("click", function () {
+        selectedBand = i;
+        render(lastFloats); // repaint so the selected band is outlined
+        renderDrill();
+      });
+      svg.appendChild(hit);
+      if (selectedBand === i) {
+        svg.appendChild(svgEl("rect", {
+          x: padL + i * slot + 1, y: padT, width: slot - 2, height: H - padT - padB,
+          fill: "none", stroke: "var(--focus)", "stroke-width": 1.5, "stroke-dasharray": "4 3",
+          "pointer-events": "none",
+        }));
+      }
     });
     // x-axis caption
     var cap = svgEl("text", {
@@ -121,9 +258,10 @@
   fetch("/api/analysis/" + encodeURIComponent(name))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (d) {
-      var floats = (d.activities || [])
-        .filter(function (a) { return !a.is_summary && a.total_float_days != null; })
-        .map(function (a) { return a.total_float_days; });
+      acts = (d.activities || [])
+        .filter(function (a) { return !a.is_summary && a.total_float_days != null; });
+      customLabels = d.custom_field_labels || [];
+      var floats = acts.map(function (a) { return a.total_float_days; });
       if (!floats.length) { box.textContent = "No activity float data to plot."; return; }
       render(floats);
     })

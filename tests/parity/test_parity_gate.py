@@ -24,6 +24,7 @@ Two classes of assertion:
 
 from __future__ import annotations
 
+import gzip
 import json
 from pathlib import Path
 
@@ -40,6 +41,7 @@ from schedule_forensics.engine.metrics import (
     compute_schedule_quality,
 )
 from schedule_forensics.importers import parse_mspdi
+from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.model.schedule import Schedule
 
 pytestmark = pytest.mark.parity
@@ -220,6 +222,29 @@ def test_ssi_driving_slack_uid145_exact() -> None:
     assert tiers[PathTier.SECONDARY] == bands["SECONDARY"]  # 3 (the 1-day near path)
     assert tiers[PathTier.TERTIARY] == bands["TERTIARY"]  # 8 (the 20-day near path)
     assert tiers[PathTier.BEYOND] == bands["BEYOND"]  # 95
+
+
+def test_ssi_driving_slack_uid152_exact() -> None:
+    """SSI driving path on the operator's LARGE master IMS, focus UID 152 (delivered 2026-07-08).
+
+    Second, independent SSI oracle at real-world scale: Large_Test_File.mpp ('USA OTB Master
+    IMS', 2,126 tasks, progressed and resource-leveled). The Directional Path Tool export
+    (Driving Slack <= 0 d) pins a 76-task Path-01; the engine reproduces the membership and
+    every driving-slack value UID-for-UID with ZERO mismatches on the first run (closes
+    needs-list A-4). The export's Drag column is provenance-only — see the golden's _note.
+    """
+    case = json.loads((GOLDEN / "ssi_uid152" / "case.json").read_text())
+    xml = gzip.decompress(
+        (GOLDEN / "ssi_uid152" / "Large_Test_File.mspdi.xml.gz").read_bytes()
+    ).decode("utf-8")
+    schedule = parse_mspdi_text(xml, source_file="Large_Test_File.mspdi.xml")
+    results = compute_driving_slack(schedule, target_uid=case["focus_task_uid"])
+    ssi_path = set(map(int, case["driving_slack_days_by_uid"]))
+    assert {uid for uid, r in results.items() if r.on_driving_path} == ssi_path  # 76 tasks
+    for uid in ssi_path:
+        assert float(results[uid].driving_slack_days) == case["driving_slack_days_by_uid"][str(uid)]
+    focus = results[case["focus_task_uid"]]
+    assert focus.driving_slack_minutes == 0 and focus.on_driving_path
 
 
 @pytest.mark.parity
