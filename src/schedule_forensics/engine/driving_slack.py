@@ -70,14 +70,16 @@ def _stored_offset(project_start: dt.datetime, target: dt.datetime, calendar: Ca
 
 
 #: §6.C default day-thresholds the user may override at upload (`PARITY-INPUTS.md`).
-#: PROVENANCE (audit F-14, swept against the delivered handbooks 2026-07-08, ADR-0153): the
-#: primary/secondary/tertiary PATH-TIER PRACTICE is NASA-sourced — PPC Handbook NASA/SP-2016-3424
-#: p.125 ("primary, secondary, and tertiary critical path data") and §3.4.3.2D p.151 (waterfall
-#: report of the three paths); SOPI 6.0 (OCFO-SID-0002) p.37 ("near critical … also referred to
-#: as secondary or tertiary paths"); SRB Handbook NASA/SP-20230001306 PDF p.48. The DAY VALUES
-#: are not published by any delivered handbook: 10 d aligns the secondary band with the PPC
-#: Fig. 3.4-3 health-check screen ("Tasks Less than or equal to 10 days Total Slack", p.138);
-#: 20 d is this tool's tertiary default (SSI three-tier convention), operator-overridable.
+#: PROVENANCE (audit F-14; ADR-0153 sweep + ADR-0154 re-sweep against the delivered NASA
+#: Schedule Management Handbook Rev 2, 2024-03-15): the primary/secondary/tertiary PATH-TIER
+#: PRACTICE is NASA-sourced — SMH Rev 2 p.118 ("common practice to track the primary, secondary,
+#: and tertiary critical paths, at a minimum") and p.123/Fig. 6-12 p.183; PPC Handbook
+#: NASA/SP-2016-3424 p.125 + §3.4.3.2D p.151; SOPI 6.0 p.37; SRB SP-20230001306. The DAY VALUES
+#: are DELIBERATELY project-defined per the SMH itself — Rev 2 p.118: near-critical paths are
+#: isolated by "some minimum threshold value of total float" set "by the P/p management" — so
+#: operator-overridable defaults are the handbook-conformant design, not a gap. Defaults: 10 d
+#: aligns the secondary band with the PPC Fig. 3.4-3 health screen ("Tasks Less than or equal
+#: to 10 days Total Slack", p.138); 20 d is this tool's tertiary convention.
 DEFAULT_SECONDARY_MAX_DAYS = 10
 DEFAULT_TERTIARY_MAX_DAYS = 20
 

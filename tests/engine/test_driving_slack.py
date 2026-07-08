@@ -11,8 +11,6 @@ import json
 from decimal import Decimal
 from pathlib import Path
 
-import pytest
-
 from schedule_forensics.engine.driving_slack import (
     PathTier,
     compute_driving_slack,
@@ -227,34 +225,24 @@ def test_tier_bands_convert_days_on_the_schedules_calendar() -> None:
     assert results[1].tier is PathTier.SECONDARY
 
 
-@pytest.mark.xfail(
-    reason=(
-        "ssi_uid143 golden was validated against the SSI MS Project add-on run on the PRIOR"
-        " Project5 (37 stored-critical); stale vs the authoritative file (4 critical, ADR-0112)."
-        " Awaiting an SSI driving-slack export for the current Project5_TAMPERED.mpp to re-pin."
-    ),
-    strict=False,
-)
-def test_golden_ssi_driving_slack_parity(golden_project5: Schedule) -> None:
-    case = json.loads((GOLDEN / "ssi_uid143" / "case.json").read_text())
+def test_golden_ssi_driving_slack_uid67_parity(golden_project5: Schedule) -> None:
+    """SSI Directional Path export, focus UID 67 'Pour roof slab' (delivered 2026-07-08, A-5).
+
+    Retires the stale ssi_uid143 xfail: this export was run on the AUTHORITATIVE
+    Project5_TAMPERED (4 stored-critical, ADR-0112) with Dependency Range = Driving Slack <= 0 d,
+    so it pins the exact 20-task driving-path membership; every Path-01 task carries 0 days of
+    driving slack. SSI's per-task Drag is provenance-only (the engine does not compute drag)."""
+    case = json.loads((GOLDEN / "ssi_uid67" / "case.json").read_text())
     results = compute_driving_slack(golden_project5, target_uid=case["focus_task_uid"])
 
-    expected = {int(uid): days for uid, days in case["driving_slack_days_by_uid"].items()}
-    # exact, UniqueID-keyed: every traced task and no extras
-    assert set(results) == set(expected)
-    got_days = {uid: int(r.driving_slack_days) for uid, r in results.items()}
-    assert got_days == expected
-    # whole working days, no fractional drift
-    assert all(r.driving_slack_minutes % DAY == 0 for r in results.values())
+    ssi_path = set(map(int, case["driving_slack_days_by_uid"]))
+    engine_zero = {uid for uid, r in results.items() if r.driving_slack_minutes == 0}
+    assert engine_zero == ssi_path  # exact membership, UID-for-UID, no extras
+    assert driving_path(golden_project5, results) == tuple(case["driving_path_uids"])
+    assert all(results[uid].tier is PathTier.DRIVING for uid in ssi_path)
 
     focus = results[case["focus_task_uid"]]
     assert focus.driving_slack_minutes == 0 and focus.on_driving_path
-
-    tiers = {tier: sum(1 for r in results.values() if r.tier is tier) for tier in PathTier}
-    assert tiers[PathTier.DRIVING] == 36
-    assert tiers[PathTier.SECONDARY] == 12  # 5/7/10-day groups
-    assert tiers[PathTier.TERTIARY] == 12  # 12/16/20-day groups
-    assert len(driving_path(golden_project5, results)) == 36
 
 
 def test_golden_ssi_driving_slack_uid145_parity(golden_project5: Schedule) -> None:

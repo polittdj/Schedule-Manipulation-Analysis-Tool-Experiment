@@ -52,7 +52,7 @@
 .gantt-grid .sf-frozen-last { border-right: 2px solid var(--gantt-grid-qtr); }
 #grid tbody tr:hover .sf-frozen-col { background: var(--hover); }
 .g-scale { position: relative; height: 18px; }
-.gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 180px; max-width: 380px; }
+.gantt-grid td.name-cell { white-space: normal; word-break: break-word; min-width: 280px; max-width: 460px; }
 .g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); font-weight: 400; white-space: nowrap; }
 .g-cell { padding: 4px 0; }
 .g-track { position: relative; height: 16px; background: var(--gantt-canvas); border-radius: 3px; overflow: hidden; }
@@ -170,7 +170,7 @@
 .gantt-grid { font-size: 11px; }
 .gantt-grid th, .gantt-grid td { padding: 1px 6px; line-height: 1.2; border-right: 1px solid var(--line); }
 .gantt-grid tr.sum td { font-weight: 700; }            /* summary rows bold */
-.gantt-grid td.name-cell { min-width: 140px; max-width: 320px; }
+.gantt-grid td.name-cell { min-width: 280px; max-width: 460px; }  /* operator 2026-07-08: screenshot width by default */
 .g-cell { padding: 1px 0; }
 .g-track { height: 13px; }
 .g-bar { top: 2px; height: 9px; }

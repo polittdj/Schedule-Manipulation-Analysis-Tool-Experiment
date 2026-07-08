@@ -3760,11 +3760,20 @@ def _mission_body(target_uid: int | None) -> str:
     target = target_uid if target_uid is not None else ""
 
     def tile(
-        title: str, full_url: str, inner: str, *, controls: str = "", wide: bool = False
+        title: str,
+        full_url: str,
+        inner: str,
+        *,
+        controls: str = "",
+        wide: bool = False,
+        hint: str = "",
     ) -> str:
         cls = "tile panel" + (" tile-wide" if wide else "")
+        # operator 2026-07-08: every visual explains itself on hover over its NAME — what it
+        # shows, an example, how to read it, and what to decide from it (sf-hint-wide callout)
+        hint_attr = f' class=viz-hint data-sf-hint="{_e(hint)}"' if hint else ""
         return f"""<section class="{cls}">
-<div class=tile-head><h3>{title}</h3>
+<div class=tile-head><h3{hint_attr}>{title}</h3>
 <span class=tile-actions>\
 <button type=button class=tile-expand aria-pressed=false title="Enlarge / shrink this tile">\
 &#11122; Enlarge</button>\
@@ -3786,18 +3795,21 @@ def _mission_body(target_uid: int | None) -> str:
                 "S-Curve",
                 "/scurve",
                 "<div id=scurveLabel class=muted></div><div id=scurveChart></div>",
+                hint="WHAT: cumulative % of activities finished over time — the planned curve (baseline dates) vs the actual/current curve.\n\nEXAMPLE: plan says 38% done by the data date but the actual curve reads 22% — the project is running ~16 points behind plan.\n\nHOW TO READ: actual below planned = behind; the horizontal gap between the curves at today's height = roughly how far behind in time; a flattening actual curve = throughput stalling.\n\nDECIDE: whether claimed % complete matches reality, and whether the remaining rate must accelerate to hit the finish.",
                 controls=steps("prevScurve", "scurvePlay", "nextScurve"),
             ),
             tile(
                 "Bow Wave / CEI",
                 "/cei",
                 "<div id=snapLabel class=muted></div><div id=ceiChart></div>",
+                hint="WHAT: where unfinished work piles up relative to each version's data date, stepped snapshot by snapshot, with the Current Execution Index (how much of the planned window's work was actually executed).\n\nEXAMPLE: each new version shows a taller hump of tasks packed just after the data date — work is being pushed ahead in a 'bow wave' instead of being finished.\n\nHOW TO READ: a stable, spread-out profile is healthy; a growing near-term hump that rolls forward version after version means replanning is deferring, not solving; CEI well below 1.0 means the team executes far less than each plan promises.\n\nDECIDE: whether the schedule is managed by slipping work windows (a classic health/manipulation red flag) and whether near-term commitments are credible.",
                 controls=steps("prevSnap", "autoPlay", "nextSnap"),
             ),
             tile(
                 "Forecast Drift",
                 "/forecast",
                 "<div id=driftLabel class=muted></div><div id=driftChart></div>",
+                hint="WHAT: the forecast finish date from three independent methods (CPM network logic, historical throughput rate, earned schedule), tracked across every loaded version.\n\nEXAMPLE: over five updates the logic forecast holds March while the rate and earned-schedule forecasts drift to August — the network promises what the demonstrated pace can't deliver.\n\nHOW TO READ: lines drifting right = slipping; methods that AGREE make the forecast credible; a logic forecast far ahead of the performance-based ones usually means optimistic remaining durations or loosened logic.\n\nDECIDE: which finish date to plan around, and whether to challenge an optimistic official forecast.",
                 controls=steps("prevDrift", "driftPlay", "nextDrift"),
             ),
             tile(
@@ -3806,21 +3818,39 @@ def _mission_body(target_uid: int | None) -> str:
                 "<div id=qualLabel class=muted></div>"
                 "<div class=qual-drill-grid><div id=qualBars></div><div id=qualDrill></div></div>"
                 "<label class=muted>Metric <select id=qualMetric></select></label>",
+                hint="WHAT: for the selected quality metric (missing logic, hard constraints, high float…), which specific activities offend, ranked, with a drill-down — across versions.\n\nEXAMPLE: 'Hard constraints' shows 12 offenders and the drill list is dominated by one subproject — that team is pinning dates instead of using logic.\n\nHOW TO READ: click a bar to list the offending activities (UIDs); recurring offenders across versions are structural, not accidental.\n\nDECIDE: exactly which activities to send back to the planner, and where quality problems concentrate.",
                 controls=steps("qualPrev", "qualPlay", "qualNext"),
             ),
-            tile("Finishes", "/curves", "<div id=finishesChart></div>"),
-            tile("Data-date Finishes", "/curves", "<div id=dataDateChart></div>"),
-            tile("Slippage", "/curves", "<div id=slippageChart></div>"),
+            tile(
+                "Finishes",
+                "/curves",
+                "<div id=finishesChart></div>",
+                hint="WHAT: the distribution of activity FINISH dates — baseline vs current — as overlaid curves.\n\nEXAMPLE: the current curve's bulk sits two quarters right of the baseline curve — most finishes have moved later, not just a few outliers.\n\nHOW TO READ: a rightward shift of the whole curve = broad slip; a matching shape but offset = uniform delay; a stretched tail = a few activities carrying extreme slips.\n\nDECIDE: whether delay is systemic (replan) or concentrated (recover the few outliers).",
+            ),
+            tile(
+                "Data-date Finishes",
+                "/curves",
+                "<div id=dataDateChart></div>",
+                hint="WHAT: finish dates relative to each version's own data date — how much work each update claims it will finish, and how soon.\n\nEXAMPLE: every version promises a surge of finishes in the 60 days after its data date, and every next version shows the surge didn't happen.\n\nHOW TO READ: compare the promised near-term finishes against what the next snapshot actually closed; repeated over-promising shows up as the same near-term bulge rolling forward.\n\nDECIDE: how much of the near-term plan to believe, and whether commitments need de-risking.",
+            ),
+            tile(
+                "Slippage",
+                "/curves",
+                "<div id=slippageChart></div>",
+                hint="WHAT: how far activity finishes have slipped against baseline (working days, positive = late), across the loaded versions.\n\nEXAMPLE: median slip grows +10 wd per update for three updates straight — the schedule is losing ground at a steady, predictable rate.\n\nHOW TO READ: a rising slip trend that never recovers is erosion; sudden drops without matching scope/logic changes can mean the baseline was quietly moved.\n\nDECIDE: the realistic slip rate to project forward, and whether baseline integrity needs a forensic look.",
+            ),
             tile(
                 "Critical-Path Evolution",
                 "/evolution",
                 f'<div id=evoLabel class=muted></div><div id=evoChart data-target="{target}"></div>',
+                hint="WHAT: the driving path to the project finish (or your Target UID), version by version — which activities carry the schedule and how membership changes.\n\nEXAMPLE: the path ran through fabrication for four versions, then suddenly runs through software integration — either real progress or a logic change moved the drive.\n\nHOW TO READ: stable membership = a settled plan; churn every version = an unstable network; watch for activities that leave the path exactly when they start slipping (a manipulation signature).\n\nDECIDE: where management attention belongs now, and which path changes deserve a 'why did this change?' interrogation.",
                 controls=steps("prevEvo", "evoPlay", "nextEvo"),
             ),
             tile(
                 "Quality Trend",
                 "/trend",
                 f'<div id=trendCharts data-target="{target}"></div>',
+                hint="WHAT: the DCMA-14 / schedule-quality metric scores tracked across every loaded version.\n\nEXAMPLE: missing-logic count falls from 40 to 5 in one update with no matching activity changes — links were bulk-added to pass the audit; verify they are real logic.\n\nHOW TO READ: gradual improvement is normal cleanup; step changes right before reviews are audit-chasing; deteriorating trends flag eroding schedule discipline.\n\nDECIDE: whether schedule quality is genuinely improving and which metric family to audit in depth.",
             ),
         ]
     )
@@ -5036,7 +5066,7 @@ tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button>
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
-<label>Scale <input id=vizZoom type=range min=2 max=40 value=8 title="pixels per day — drag to zoom both timelines"></label>
+<label>Scale <input id=vizZoom type=range min=0.2 max=40 step=0.05 value=8 title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
 <button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
 <label>Find UID <input id=gridFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
 <span id=gridFindStatus class=muted aria-live=polite></span>

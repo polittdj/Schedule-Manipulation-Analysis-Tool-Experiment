@@ -27,6 +27,10 @@ window.SFColResize = (function () {
       return saved[i] || Math.round(th.getBoundingClientRect().width);
     });
     ths.forEach(function (th, i) {
+      // the scalable timeline column (.g-head) must NEVER be pinned: its width is the zoom
+      // (px/day x span) and pinning the first render's width leaves thousands of px of dead
+      // scroll space after Fit/zoom-out (operator 2026-07-08)
+      if (th.classList.contains("g-head")) return;
       saved[i] = widths[i];
       setWidth(th, widths[i]);
     });

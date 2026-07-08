@@ -229,10 +229,13 @@
     const v = z ? Number(z.value) : 8;
     return v > 0 ? v : 8; // pixels per calendar day
   }
-  // Fit the ENTIRE project span into the visible width (no horizontal scroll). avail = the grid's
-  // own client width minus the REAL measured frozen-column width (recorded each paint, like
-  // path.js) — not a hard-coded estimate — so after Fit the timeline uses the whole page and the
-  // earliest bar lands right next to the data columns. The Scale slider then fine-tunes.
+  // "Fit project" (operator spec 2026-07-08): anchor the STATUS DATE near the left edge of the
+  // visible timeline (FIT_LEAD in) and scale so the REMAINING project — status date to project
+  // finish — fills the rest of the page. The completed past stays on the track and scrolls off
+  // to the LEFT (scroll back to see it). avail = the grid's client width minus the REAL measured
+  // frozen-column width (recorded each paint, like path.js). Falls back to whole-project fit
+  // when the schedule carries no status date. The Scale slider then fine-tunes.
+  const FIT_LEAD = 0.12; // fraction of the visible timeline kept ahead of the status date
   function fitToWidth() {
     let t0 = null, t1 = null;
     activities.forEach((a) => {
@@ -240,12 +243,24 @@
       if (a.finish) { const f = Date.parse(a.finish); if (!isNaN(f)) t1 = t1 === null ? f : Math.max(t1, f); }
     });
     if (t0 === null || t1 === null) return;
-    const days = Math.max(1, (t1 - t0) / DAY_MS) + 3; // + buildAxis's 1-day left / 2-day right pad
     const host = document.getElementById("grid");
     const avail = Math.max(240, (host ? host.clientWidth : 960) - (lastFrozenWidth || 360) - 18);
-    forcedPx = Math.max(0.05, avail / days);
+    const sd = statusDate ? Date.parse(statusDate) : NaN;
+    if (!isNaN(sd) && sd < t1) {
+      // remaining span (status date -> finish + buildAxis's 2-day right pad) fills (1-FIT_LEAD)
+      const remDays = Math.max(1, (t1 + 2 * DAY_MS - sd) / DAY_MS);
+      forcedPx = Math.max(0.05, (avail * (1 - FIT_LEAD)) / remDays);
+    } else {
+      const days = Math.max(1, (t1 - t0) / DAY_MS) + 3; // + 1-day left / 2-day right pad
+      forcedPx = Math.max(0.05, avail / days);
+    }
     renderGrid();
     if (lastDriving) renderGantt(lastDriving);
+    // scroll the past off to the left so the status date sits FIT_LEAD into the viewport
+    if (!isNaN(sd) && host) {
+      const trackX = ((sd - (t0 - 1 * DAY_MS)) / DAY_MS) * forcedPx; // buildAxis pads t0 by 1 day
+      host.scrollLeft = Math.max(0, Math.round(trackX - FIT_LEAD * avail));
+    }
   }
 
   // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded one day on the

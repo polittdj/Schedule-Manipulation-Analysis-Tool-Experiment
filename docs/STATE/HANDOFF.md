@@ -1,4 +1,25 @@
-# Handoff — 2026-07-08 (F-14 threshold sweep vs delivered handbooks; highest ADR 0153)
+# Handoff — 2026-07-08 (Gantt fit + mission hints + SSI uid67 re-pin + SMH re-sweep; highest ADR 0154)
+
+> ## STATUS (current) — ADR-0154: operator work order + same-day uploads, all landed
+>
+> - **Gantt:** Fit project anchors the STATUS DATE ~12% from the left and scales the remaining
+>   project to fill the page (past scrolls left); Scale slider steps 0.05 px/day (min 0.2);
+>   Name column defaults 280–460 px.
+> - **Mission Control:** all nine tile names carry hover callouts (WHAT / EXAMPLE / HOW TO
+>   READ / DECIDE), pre-line sf-hint variant.
+> - **A-5 CLOSED:** the delivered SSI Directional Path export (focus UID 67, Driving Slack
+>   ≤ 0 d) reproduces ENGINE==SSI UID-for-UID (20-task Path 01, all 0 slack, exact chain
+>   order) — pinned as `ssi_uid67`; the stale ssi_uid143 golden + both xfails are RETIRED.
+>   **The suite now has ZERO xfails and ZERO skips.**
+> - **ADR-0153 caveat CLOSED:** the actual NASA Schedule Management Handbook Rev 2 (2024)
+>   was delivered; re-sweep upgraded all three threshold sites — path tiers p.118/123/183,
+>   lag-hides-detail p.172 (near-verbatim rationale), merge bias p.207; the SMH itself says
+>   the near-critical float threshold is set "by the P/p management", making the tool's
+>   operator-overridable day values the handbook-conformant design.
+> - Intake tidy: root-level duplicate upload strays removed; SMH zip moved into intake.
+> - **Remaining operator asks: A-4 (SSI focus UID for Large_Test_File.mpp) and D7 (a Fuse
+>   export containing an elapsed in-progress activity). Nothing else is artifact-gated.**
+
 
 > ## STATUS (current) — ADR-0153: F-14/A-8 threshold-citation sweep CLOSED
 >
