@@ -50,6 +50,7 @@ from collections.abc import Callable, Iterable
 from schedule_forensics.ai.backend import AIBackend
 from schedule_forensics.ai.citations import _TOKEN_RE, CitedStatement, figure_tokens
 from schedule_forensics.ai.derivation import RATIO_KINDS, Derivation, verify_derivation
+from schedule_forensics.engine.change_effects import compute_change_effects
 from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit
 from schedule_forensics.engine.forecast import ForecastSet, compute_finish_forecasts
@@ -428,6 +429,55 @@ def manipulation_forensics_facts(
                     (Citation(cur_label, target_uid, t_cur.name),),
                 )
             )
+
+    # Per-change counterfactual EFFECT on the target (ADR-0162): revert each detected change one
+    # at a time, re-run CPM, and state its isolated working-day effect on the target UID (or the
+    # last critical task). This is the engine-computed answer to "if logic on UID X had NOT been
+    # changed, what would the effect on UID Y have been?" — the path counterfactual above misses
+    # changes whose endpoints stay on the critical path (e.g. a removed predecessor link), so the
+    # AI, given only that, previously answered "zero effect" when the real effect is non-zero.
+    eff = compute_change_effects(prior, current, cur_cpm, target_uid=target_uid)
+    if eff is not None:
+        tgt_desc = f"UID {eff.target_uid} '{eff.target_name}'" + (
+            " (the last task on the critical path)" if eff.target_is_last_critical else ""
+        )
+        for e in eff.per_change:
+            eff_cites = tuple(
+                Citation(cur_label, u, current.tasks_by_id[u].name)
+                for u in e.citation_uids
+                if u in current.tasks_by_id
+            ) or (Citation(cur_label, eff.target_uid, eff.target_name),)
+            if e.target_finish_delta_days > 0:
+                verdict = (
+                    f"reverting it (i.e. if that change had NOT been made) moves the finish "
+                    f"{e.target_finish_delta_days:+d} working day(s) LATER — the change hid that "
+                    f"much slip"
+                )
+            elif e.target_finish_delta_days < 0:
+                verdict = (
+                    f"reverting it moves the finish {e.target_finish_delta_days:+d} working "
+                    f"day(s) (the change pushed the finish out)"
+                )
+            else:
+                verdict = "reverting it does not move the finish (no effect on this target)"
+            facts.append(
+                CitedStatement(
+                    f"Change effect on {tgt_desc}: {e.label} — {verdict}. Project finish effect "
+                    f"{e.project_finish_delta_days:+d} working day(s). Engine-computed by "
+                    f"reverting only this change and re-running CPM.",
+                    eff_cites,
+                )
+            )
+        agg_cite = (Citation(cur_label, eff.target_uid, eff.target_name),)
+        facts.append(
+            CitedStatement(
+                f"Aggregate change effect on {tgt_desc}: with EVERY detected change reverted "
+                f"together, the target finish moves {eff.aggregate_target_finish_delta_days:+d} "
+                f"working day(s) (currently {eff.actual_target_finish}) and the project finish "
+                f"moves {eff.aggregate_project_finish_delta_days:+d} working day(s).",
+                agg_cite,
+            )
+        )
     return tuple(facts)
 
 

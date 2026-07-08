@@ -354,17 +354,18 @@ def test_settings_persist_and_clamp_the_generation_timeout(client: TestClient) -
     assert 'value="30"' in client.get("/settings").text
 
 
-def test_generation_timeout_defaults_to_900_seconds() -> None:
-    """Operator order: the out-of-the-box generation timeout is 900s (15 min) so a big local
-    model finishes by default. Both the config default and the /settings form share it."""
+def test_generation_timeout_defaults_to_the_form_maximum() -> None:
+    """Operator order 2026-07-08 ("make the default the max"): the out-of-the-box generation
+    timeout is the form maximum 3600s (1 h) so a big, slow local model finishes a full answer by
+    default. Both the config default and the /settings form share it."""
     from schedule_forensics.ai.backend import AIConfig
 
-    assert AIConfig().gen_timeout == 900.0
+    assert AIConfig().gen_timeout == 3600.0
 
 
-def test_fresh_settings_page_shows_the_900s_default(client: TestClient) -> None:
+def test_fresh_settings_page_shows_the_max_default(client: TestClient) -> None:
     assert "name=gen_timeout" in client.get("/settings").text
-    assert 'value="900"' in client.get("/settings").text
+    assert 'value="3600"' in client.get("/settings").text
 
 
 def test_settings_page_wires_cross_check_model_autopopulate(client: TestClient) -> None:

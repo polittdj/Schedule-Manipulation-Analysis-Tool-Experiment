@@ -71,6 +71,7 @@ from schedule_forensics.engine import (
     recommend,
 )
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
+from schedule_forensics.engine.change_effects import compute_change_effects
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
 from schedule_forensics.engine.driving_path import (
@@ -3592,7 +3593,7 @@ def create_app(
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
         second_backend: str = Form("none"),
         second_model: str = Form(""),
-        gen_timeout: float = Form(900.0),
+        gen_timeout: float = Form(3600.0),
     ) -> RedirectResponse:
         st = session()
         try:
@@ -6233,6 +6234,45 @@ analysis for review, not an accusation: use the exception field to set aside aut
                 f"<td class=muted>{_e(f.course_of_action)}</td>"
                 f"<td class=cite>{_e(cites)}{_e(more)}</td></tr>"
             )
+        # Per-change effect (operator 2026-07-08): revert EACH detected change one at a time and
+        # re-run CPM to show its isolated working-day effect on the chosen target UID (or, when no
+        # target is set, the last task on the critical path). This catches changes the path
+        # counterfactual below misses — e.g. a removed predecessor link whose endpoints STAYED
+        # critical (the 188→187 case), which nonetheless moves the target's finish.
+        effects_html = ""
+        eff = compute_change_effects(prior, current, ccpm, target_uid=target_uid)
+        if eff is not None and eff.per_change:
+            tgt_label = f"UID {eff.target_uid} ({_e(eff.target_name)})" + (
+                " — the last task on the critical path" if eff.target_is_last_critical else ""
+            )
+            eff_rows = ""
+            for e in sorted(eff.per_change, key=lambda x: -abs(x.target_finish_delta_days)):
+                d = e.target_finish_delta_days
+                cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
+                effect_txt = (
+                    f"<b class={cls}>{d:+d} wd</b>" if d else "<span class=muted>no effect</span>"
+                )
+                cites = ", ".join(f"UID {u}" for u in e.citation_uids)
+                eff_rows += (
+                    f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
+                    f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
+                    f"{e.project_finish_delta_days} wd</td><td class=cite>{_e(cites)}</td></tr>"
+                )
+            agg = eff.aggregate_target_finish_delta_days
+            agg_txt = (
+                f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} working"
+                f" day(s)</b>"
+            )
+            effects_html = f"""
+<div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
+<p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
+and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change
+<b>hid</b> from the target's finish (restoring it would push the finish out that far); a
+<b class=ok>negative</b> value means the change pushed the finish out. With every change reverted
+together, {_e(eff.target_name)} would move {agg_txt} (currently {_e(eff.actual_target_finish)}).</p>
+<table class=integrity-table><tr><th scope=col>Change (reverted)</th>
+<th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
+<th scope=col>Citations</th></tr>{eff_rows}</table></div>"""
         cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
         cf_html = ""
         if cf is not None and cf.reverted:
@@ -6271,6 +6311,7 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
 <div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[i + 1])}</h2>
 {exc_note}
 {f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
+{effects_html}
 {cf_html}</div>""")
 
     if not sections:
@@ -10152,7 +10193,7 @@ def _settings_body(state: SessionState) -> str:
 <p>Model: {model_field}</p>
 <p>Generation timeout (seconds):
 <input name=gen_timeout type=number min=30 max=3600 step=10 value="{_e(int(cfg.gen_timeout))}"
- title="How long a single answer may take. Raise it for a big, slow model (e.g. llama3.1:70b) so it can finish."></p>
+ title="How long a single answer may take. Defaults to the maximum (3600 s = 1 hour) so a big, slow model (e.g. llama3.1:70b) can always finish; lower it if you prefer to cap it."> <span class=muted>(default = max, 3600 s)</span></p>
 <p>Ollama endpoint (loopback only):
 <input name=endpoint size=28 value="{_e(cfg.endpoint)}"
  title="Ollama defaults to http://127.0.0.1:11434"></p>
@@ -10206,8 +10247,9 @@ in <i>Model</i>, and click <b>Save</b>. The tool talks to Ollama only on
 (e.g. <code>ollama pull qwen2.5:14b</code>), set <i>Cross-check second model</i> to
 <i>Ollama (local)</i> — the model id auto-fills with the primary; change it to the second model
 so both answer every question and the engine compares their figures.</li>
-<li><b>If a big model runs slowly,</b> raise <i>Generation timeout</i> above (it defaults to
-900&nbsp;seconds). The full walk-through lives in <code>docs/CONNECT-A-BIGGER-AI-MODEL.md</code>.</li>
+<li><b>If a big model runs slowly,</b> the <i>Generation timeout</i> above already defaults to the
+maximum (3600&nbsp;seconds = 1 hour) so it can finish; lower it only if you want to cap answer time.
+The full walk-through lives in <code>docs/CONNECT-A-BIGGER-AI-MODEL.md</code>.</li>
 </ol>
 <p class=muted style="margin-top:10px"><b>About Ollama running:</b> this tool starts Ollama only
 when you turn the <i>Ollama (local)</i> backend on here, and when you close the tool it unloads the

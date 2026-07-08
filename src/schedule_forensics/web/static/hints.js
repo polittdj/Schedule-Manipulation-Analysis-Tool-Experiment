@@ -18,14 +18,23 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    // highlight the CURRENT page's link in the header ribbon (operator 2026-07-08)
+    // highlight the CURRENT page's link in the header ribbon (operator 2026-07-08). Pick ONE
+    // winner: an exact path match if there is one, else the SINGLE longest matching prefix — so
+    // "/briefing" no longer also lights up "/brief" (the operator's Diagnostic-Brief-on-Executive
+    // bug). A path segment boundary is required so "/brief" can't match "/briefing" as a prefix.
     var here = window.location.pathname;
-    document.querySelectorAll("header nav a[href]").forEach(function (a) {
+    var links = Array.prototype.slice.call(document.querySelectorAll("header nav a[href]"));
+    var winner = null;
+    var winnerLen = -1;
+    links.forEach(function (a) {
       var href = a.getAttribute("href");
-      if (href === here || (href !== "/" && here.indexOf(href) === 0)) {
-        a.classList.add("nav-active");
-      }
+      if (!href || href.charAt(0) !== "/") return;
+      var match =
+        href === here ||
+        (href !== "/" && (here === href || here.indexOf(href + "/") === 0));
+      if (match && href.length > winnerLen) { winner = a; winnerLen = href.length; }
     });
+    if (winner) winner.classList.add("nav-active");
 
     var seen = dismissed();
     document.querySelectorAll(".guide-tip[data-tip-id]").forEach(function (tip) {
