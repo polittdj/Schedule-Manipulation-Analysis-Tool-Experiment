@@ -1,6 +1,6 @@
 {
   "_source": "00_REFERENCE_INTAKE/ssi/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx \u2014 SSI Directional Path Tool export, focus UID 67 (Project5_TAMPERED.mpp, authoritative 4-stored-critical file, ADR-0112).",
-  "_note": "Golden SSI MS Project add-on DRIVING PATH (Driving Slack <= 0 d) by UniqueID for the authoritative Project5_TAMPERED, focus UID 67 'Pour roof slab'. SSI config (operator screenshots 2026-07-08): Path Direction=Predecessors; Dependency Range=Get dependencies with Driving Slack <= 0d; Output=Waterfall; Driving Slack Log=Number1 (Driving Slack); Trace Log=Text1 (Trace Log). All 20 Path-01 tasks carry Driving Slack = 0 days; SSI Drag per task is recorded for provenance (the engine does not compute drag \u2014 ungated). Retires the stale ssi_uid143 xfails (prior 37-critical file, ADR-0112): together with the ssi_uid145 all-dependencies golden, SSI parity on the authoritative file is now pinned by two independent exports. Non-CUI commercial-construction sample (ADR-0003/0005).",
+  "_note": "Golden SSI MS Project add-on DRIVING PATH (Driving Slack <= 0 d) by UniqueID for the authoritative Project5_TAMPERED, focus UID 67 'Pour roof slab'. SSI config (operator screenshots 2026-07-08): Path Direction=Predecessors; Dependency Range=Get dependencies with Driving Slack <= 0d; Output=Waterfall; Driving Slack Log=Number1 (Driving Slack); Trace Log=Text1 (Trace Log). All 20 Path-01 tasks carry Driving Slack = 0 days; SSI Drag per task is GATED: engine/drag.py reproduces all 20 values exactly (test_ssi_drag_exact). Retires the stale ssi_uid143 xfails (prior 37-critical file, ADR-0112): together with the ssi_uid145 all-dependencies golden, SSI parity on the authoritative file is now pinned by two independent exports. Non-CUI commercial-construction sample (ADR-0003/0005).",
   "project": "Project5",
   "focus_task_uid": 67,
   "focus_task_name": "Pour roof slab",
@@ -48,7 +48,7 @@
     "66": 0,
     "67": 0
   },
-  "ssi_drag_days_by_uid_provenance_only": {
+  "ssi_drag_days_by_uid": {
     "65": 0,
     "60": 0,
     "35": 16,

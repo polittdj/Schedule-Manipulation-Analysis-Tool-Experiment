@@ -666,3 +666,13 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .show-data .sr-only th, .show-data .sr-only td { padding: 3px 6px; font-size: 11px; }
 /* the current animation frame's dashed guide on a locked version axis */
 .sf-frame-guide { opacity: .8; }
+
+/* Schedule Quality Ribbon pass/warning/fail coloring (operator 2026-07-08): thresholded
+   measures only — green pass, yellow approaching (>=80% of threshold), red fail */
+td.rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); font-weight: 600; }
+td.rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); font-weight: 600; }
+td.rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); font-weight: 700; }
+.rib-legend span { padding: 1px 7px; border-radius: 4px; margin-left: 6px; font-size: 11px; }
+.rib-legend .rib-pass { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+.rib-legend .rib-warn { background: color-mix(in srgb, var(--warn) 20%, transparent); color: var(--warn); }
+.rib-legend .rib-fail { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }

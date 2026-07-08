@@ -118,6 +118,7 @@ from schedule_forensics.engine.metrics import (
     compute_wbs_breakdown,
 )
 from schedule_forensics.engine.metrics._common import (
+    CheckStatus,
     MetricResult,
     effective_total_float,
     is_effective_critical,
@@ -2199,7 +2200,7 @@ def create_app(
                 "<div class=panel>Load one or more schedules to see the "
                 "schedule-quality ribbon.</div>",
             )
-        rows: list[tuple[str, object]] = []
+        rows: list[tuple[str, object, dict[str, MetricResult]]] = []
         skipped: list[str] = []
         for key, sch in st.ordered_versions():
             try:
@@ -2207,7 +2208,13 @@ def create_app(
             except CPMError:
                 skipped.append(key)
                 continue
-            rows.append((key, compute_ribbon(sch, analysis.cpm, analysis.audit)))
+            rows.append(
+                (
+                    key,
+                    compute_ribbon(sch, analysis.cpm, analysis.audit),
+                    compute_schedule_quality(sch, analysis.cpm),
+                )
+            )
         note = _skipped_notice(skipped) if skipped else ""
         return _page(st, "Schedule Quality Ribbon", _ribbon_body(rows, note))
 
@@ -6165,9 +6172,45 @@ or press Auto-play to watch the actual curve climb (and lag) over time.</p>
 <script src="/static/scurve.js"></script>"""
 
 
-def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
+#: display convention (operator 2026-07-08): a thresholded measure that PASSES but sits at or
+#: above this fraction of its threshold shows as a YELLOW warning (approaching the limit).
+_RIBBON_WARN_FRACTION = 0.8
+
+#: ribbon columns whose color comes from a zero-tolerance DCMA threshold (any offender = fail)
+_RIBBON_ZERO_TOLERANCE = {"negative_float": "DCMA-07", "number_of_leads": "DCMA-02"}
+#: ribbon columns colored from the DCMA-05 5%-of-activities threshold
+_RIBBON_PCT5 = {"hard_constraints"}
+
+
+def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -> str:
+    """pass (green) / warning (yellow) / fail (red) for thresholded measures; '' = no threshold.
+
+    Thresholds come from the Bible-validated quality metrics where they exist; Negative Float
+    and Leads use the DCMA zero-tolerance rule; Hard Constraints uses the DCMA-05 5% rule.
+    The warning band (PASS but >= 80% of the threshold) is a display convention, not a metric.
+    """
+    q = quality.get(attr)
+    if q is not None and q.threshold is not None:
+        if q.status is CheckStatus.FAIL:
+            return "rib-fail"
+        if q.status is CheckStatus.PASS:
+            return "rib-warn" if q.value >= _RIBBON_WARN_FRACTION * q.threshold else "rib-pass"
+        return ""
+    count = getattr(r, attr, None)
+    if attr in _RIBBON_ZERO_TOLERANCE and isinstance(count, int):
+        return "rib-pass" if count == 0 else "rib-fail"
+    if attr in _RIBBON_PCT5 and isinstance(count, int) and q is not None and q.population:
+        pct = 100.0 * count / q.population
+        if pct > 5.0:
+            return "rib-fail"
+        return "rib-warn" if pct >= _RIBBON_WARN_FRACTION * 5.0 else "rib-pass"
+    return ""  # no published threshold — neutral
+
+
+def _ribbon_body(rows: list[tuple[str, object, dict[str, MetricResult]]], note: str) -> str:
     """The Acumen-Fuse-style Schedule Quality Ribbon: one row per loaded schedule, one column
-    per ribbon metric — the metrics validated against the operator's Fuse workbook export."""
+    per ribbon metric — the metrics validated against the operator's Fuse workbook export.
+    Thresholded measures are color-coded pass/warning/fail (operator 2026-07-08)."""
     cols = [
         ("Missing Logic", "missing_logic"),
         ("Logic Density™", "logic_density"),
@@ -6177,6 +6220,7 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
         ("Number of Lags", "number_of_lags"),
         ("Number of Leads", "number_of_leads"),
         ("Merge Hotspot", "merge_hotspot"),
+        ("Insufficient Detail™", "insufficient_detail"),
         ("Avg Float (d)", "avg_float_days"),
         ("Max Float (d)", "max_float_days"),
     ]
@@ -6187,8 +6231,15 @@ def _ribbon_body(rows: list[tuple[str, object]], note: str) -> str:
         for i, (label, attr) in enumerate(cols)
     )
     body = ""
-    for key, r in rows:
-        cells = "".join(f"<td>{_e(getattr(r, attr))}</td>" for _, attr in cols)
+    for key, r, quality in rows:
+        cells = ""
+        for _, attr in cols:
+            cls = _ribbon_cell_class(attr, r, quality)
+            cells += (
+                f'<td class="{cls}">{_e(getattr(r, attr))}</td>'
+                if cls
+                else f"<td>{_e(getattr(r, attr))}</td>"
+            )
         body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
     return f"""{note}
 <div class=panel><h2>Schedule Quality Ribbon</h2>
@@ -6199,9 +6250,12 @@ schedule. <b>Missing Logic</b> = activities missing a predecessor and/or success
 <b>Lags</b> / <b>Leads</b> = activities whose predecessors carry a positive / negative offset,
 counted across all statuses (planned, in-progress, or complete &mdash; unlike the
 incomplete-only DCMA-14 checks); <b>Hard Constraints</b> / <b>Negative Float</b> are the DCMA
-counts; <b>Merge Hotspot</b> = activities with more than two predecessors. These are validated
-against the reference schedule-quality export. <i>Insufficient Detail™ and Float Ratio™ are
-proprietary formulas and are omitted pending their exact definition.</i></p>
+counts; <b>Merge Hotspot</b> = activities with more than two predecessors. <b>Insufficient Detail™</b> = activities whose duration exceeds 10% of the
+project span (the NASA Acumen library formula, Fuse-validated). These are validated against the
+reference schedule-quality export. <i>Float Ratio™ is omitted pending its exact definition.</i>
+<span class=rib-legend><span class=rib-pass>pass</span> <span class=rib-warn>warning
+(&ge;80% of threshold)</span> <span class=rib-fail>fail</span> &mdash; colored where a
+published threshold exists; unthresholded measures stay neutral.</span></p>
 <table><tr>{head}</tr>{body}</table></div>"""
 
 
