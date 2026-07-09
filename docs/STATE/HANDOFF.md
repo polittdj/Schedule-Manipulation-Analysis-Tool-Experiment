@@ -1,4 +1,45 @@
-# Handoff — 2026-07-09 (SRA grid group-by → Gantt parity; highest ADR 0172)
+# Handoff — 2026-07-09 (Driving-tiers export fidelity fix; highest ADR 0174)
+
+> ## STATUS (current) — ADR-0174: driving-tiers Excel export honours the page trace options
+>
+> - **Fix from the ADR-0168..0172 adversarial self-review (HIGH).** The `/driving-path` tiers Excel
+>   export computed tier/slack on the STORED network while the on-screen panel used the OPTIONED
+>   re-solve — so with **Ignore constraints/leveling** active, the downloaded Excel diverged from
+>   the screen (Law-2 fidelity gap). Now `export_driving_tiers` accepts `ignore_constraints`/
+>   `ignore_leveling`, re-solves via `_optioned_versions` (no options → stored, untouched) and
+>   computes on that; `_driving_tiers_panel` embeds the flags, `driving_tiers.js` forwards them.
+>   Field columns stay from stored `analysis.activity_rows` (matching the on-screen `/api/analysis`),
+>   so the WHOLE table matches. Pinned by a per-UID panel-vs-export parity test.
+> - The review's **LOW** (deselecting a built-in column doesn't drop it from Excel) is left
+>   **by-design**: every drill export app-wide always emits identifying columns (self-identifying
+>   exhibit); documented in ADR-0174, not changed.
+> - `src/` changed (app.py + driving_tiers.js) → wheel + 9 installers rebuilt (lockstep).
+> - **Adversarial self-review result:** 4 reviewers over the session's merged changes (0168–0172);
+>   only these 2 driving-tiers findings survived verification (resources/sra-grouping/trend-split
+>   all clean). HIGH fixed here; LOW documented as by-design.
+
+
+
+> ## STATUS (current) — ADR-0173: Trend manipulation-signal task drill + focus finish-chart removal
+>
+> - **Signal drill.** On `/trend`, each Manipulation-trend signal with cited activities is now a
+>   **"view N tasks"** link → opens the tasks behind it (UID/name/duration/%/start/finish) with a
+>   Columns dropdown (std+custom, persisted), Filter box, and Excel export. Reuses
+>   `findings_drill.js`, **generalized** to a per-finding `file` (a signal cites its own version —
+>   deletions cite the prior, most others the current; falls back to the top-level `file` so the
+>   Integrity page is unchanged) with the `/api/analysis` response cached per file.
+>   `_trend_body` embeds `#findingsData` `{title,file,uids}` per signal + `#findingsDrill` +
+>   `findings_drill.js`.
+> - **Removed the pointless focus chart.** The per-focus "UID N — <name> finish (days vs first)"
+>   `trend.js` lineChart (collapsed to one point; duplicated the focus panel) is deleted; the
+>   project-level finish chart + the focus panel remain.
+> - Live-verified in Chromium (Hard_File pair): signal link → drill (correct Excel href, filter),
+>   focus chart gone with `?target=155`, zero console errors. Pinned by `test_trend_views.py` (+2).
+>   `src/` changed (app.py + trend.js + findings_drill.js) → wheel + 9 installers rebuilt (lockstep).
+> - **Backlog:** the operator's Gantt/UI work order (#67/#71/#72/#74/#80) stays fully closed; this
+>   was a fresh operator request on top.
+
+
 
 > ## STATUS (current) — ADR-0172: SRA editable grid group-by-any-field (#80 CLOSED — operator work order DONE)
 >

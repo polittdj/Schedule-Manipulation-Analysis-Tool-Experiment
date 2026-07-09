@@ -57,3 +57,60 @@ def test_driving_tiers_js_has_columns_filter_and_export() -> None:
     assert "SFChecklist" in js and "Columns" in js  # the add-columns dropdown
     assert "/export/xlsx/driving-tiers/" in js  # the Excel export
     assert "sf-driving-tiers-cols" in js  # localStorage-persisted column choice
+    # the export href forwards the active trace options so it matches the panel (ADR-0174)
+    assert "ignore_constraints=" in js and "ignore_leveling=" in js
+
+
+def _xlsx_rows(content: bytes) -> list[list[str]]:
+    """Read the first worksheet of a render_xlsx() workbook as rows of cell strings — std-lib only
+    (openpyxl is deliberately NOT a dependency; the tool writes xlsx with zipfile+xml, inline
+    strings, native numbers, no shared-string table)."""
+    import io
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        xml = zf.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    root = ET.fromstring(xml)
+    for el in root.iter():
+        el.tag = el.tag.rsplit("}", 1)[-1]  # strip the spreadsheetml namespace
+    rows: list[list[str]] = []
+    for row in root.iter("row"):
+        cells: list[str] = []
+        for c in row.iter("c"):
+            t = c.find("is/t")  # inline string
+            v = c.find("v")  # native number / value
+            cells.append(t.text or "" if t is not None else (v.text or "" if v is not None else ""))
+        rows.append(cells)
+    return rows
+
+
+def test_driving_tiers_export_honours_trace_options_matching_the_panel() -> None:
+    """ADR-0174: when 'Ignore constraints' is active, the tiers Excel export must be computed on the
+    SAME re-solved network the on-screen panel shows — not the stored network. Pins per-UID
+    tier+slack parity between the embedded panel rows and the exported rows."""
+    import json
+    import re
+
+    c = _client()
+    target = 155
+    # the panel embed (drivingTiersData) with the option active
+    page = c.get(f"/driving-path?target={target}&ignore_constraints=1").text
+    m = re.search(r"id=drivingTiersData>(.*?)</script>", page, re.S)
+    assert m, "panel embed present"
+    embed = json.loads(m.group(1).replace("\\u003c", "<"))
+    assert embed["ignore_constraints"] == 1
+    panel = {row["uid"]: round(float(row["slack"]), 1) for row in embed["rows"]}
+    file_label = embed["file"]
+
+    # the export with the SAME option
+    r = c.get(f"/export/xlsx/driving-tiers/{file_label}?target={target}&ignore_constraints=1")
+    assert r.status_code == 200
+    rows = _xlsx_rows(r.content)
+    header = rows[0]
+    ui, si = header.index("UID"), header.index("Slack (d)")
+    exported = {
+        int(row[ui]): round(float(row[si]), 1) for row in rows[1:] if row and row[ui].strip()
+    }
+    # same UID membership AND same slack per UID: export == panel under the trace option
+    assert exported == panel

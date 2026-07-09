@@ -1,11 +1,13 @@
-/* Schedule Forensics — Integrity finding citation drill.
+/* Schedule Forensics — finding / signal citation drill.
  *
- * Each integrity finding cites N activities; the table truncates to "(+66 more)". Clicking the
- * "view all N" link opens the FULL cited-activity list below the findings table (operator
- * 2026-07-08) in an organized chart with a Gantt-style Columns dropdown (add any standard or
- * custom field), a Filter box, and an Excel export of the selection. Fully local: the finding's
- * citation UIDs are embedded server-side (#findingsData); activity fields come from the
- * same-origin /api/analysis/<file> endpoint.
+ * Each finding cites N activities; the table truncates to "(+66 more)". Clicking the "view all N"
+ * link opens the FULL cited-activity list below the table (operator 2026-07-08) in an organized
+ * chart with a Gantt-style Columns dropdown (add any standard or custom field), a Filter box, and
+ * an Excel export of the selection. Fully local: the finding's citation UIDs are embedded
+ * server-side (#findingsData); activity fields come from the same-origin /api/analysis/<file>
+ * endpoint. Used by the Integrity findings table (one file for all findings) AND the Trend page's
+ * manipulation-signals table (each signal cites its OWN version — a finding may carry a per-finding
+ * `file`, which overrides the payload's top-level `file`).
  */
 "use strict";
 
@@ -33,7 +35,7 @@
     { key: "baseline_start", label: "Baseline start", on: false },
     { key: "baseline_finish", label: "Baseline finish", on: false },
   ];
-  var cols = null, filterText = "", selected = null, cache = null;
+  var cols = null, filterText = "", selected = null, cache = {}; // cache keyed by file
 
   function savedState() {
     try { return JSON.parse(localStorage.getItem(COLS_KEY) || "null"); } catch (e) { return null; }
@@ -75,15 +77,15 @@
     var s = String(v);
     return (window.SFGantt && SFGantt.fmtMDY(s)) || s;
   }
-  function loadAnalysis() {
-    if (cache) return Promise.resolve(cache);
-    return fetch("/api/analysis/" + encodeURIComponent(FILE))
+  function loadAnalysis(file) {
+    if (cache[file]) return Promise.resolve(cache[file]);
+    return fetch("/api/analysis/" + encodeURIComponent(file))
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (d) {
         var byUid = {};
         (d.activities || []).forEach(function (a) { byUid[a.unique_id] = a; });
-        cache = { byUid: byUid, customLabels: d.custom_field_labels || [] };
-        return cache;
+        cache[file] = { byUid: byUid, customLabels: d.custom_field_labels || [] };
+        return cache[file];
       });
   }
 
@@ -91,7 +93,8 @@
     if (selected === null) return;
     var finding = FINDINGS[selected];
     if (!finding) return;
-    loadAnalysis().then(function (an) {
+    var file = finding.file || FILE; // a signal cites its own version; findings fall back to FILE
+    loadAnalysis(file).then(function (an) {
       buildCols(an.customLabels);
       var fields = cols.filter(function (f) { return f.on; });
       var uids = finding.uids || [];
@@ -132,7 +135,7 @@
         return ["unique_id", "name", "duration_days", "percent_complete", "start", "finish"]
           .indexOf(f.key) < 0;
       }).map(function (f) { return f.key; });
-      var href = "/export/xlsx/activities/" + encodeURIComponent(FILE) +
+      var href = "/export/xlsx/activities/" + encodeURIComponent(file) +
         "?uids=" + encodeURIComponent(uids.join(",")) +
         (extra.length ? "&cols=" + encodeURIComponent(extra.join(",")) : "");
       bar.appendChild(el("a", { class: "btn-link", href: href, text: "Excel (these columns)" }));

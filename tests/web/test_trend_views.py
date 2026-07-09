@@ -135,6 +135,35 @@ def test_trend_page_has_quality_drilldown_and_animation_panel(client: TestClient
     assert "/static/trend_drill.js" in page
 
 
+def test_manipulation_signals_are_drillable_to_the_cited_tasks(client: TestClient) -> None:
+    """Operator 2026-07-09: each manipulation signal with cited activities is a 'view N tasks' link
+    that opens the tasks behind it (UID/name/duration/%/start/finish + add columns + Excel), reusing
+    findings_drill.js with a PER-FINDING file (a signal cites its own version)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/trend").text
+    assert "Manipulation-trend signals (consecutive versions)" in page
+    # the drill panel + script + embedded per-finding blob are present
+    assert "id=findingsDrill" in page and "/static/findings_drill.js" in page
+    assert "id=findingsData" in page
+    # at least one signal exposes a clickable "view N task(s)" citation link
+    assert "class=cite-more" in page and "view " in page
+    # findings_drill.js supports a per-finding file (the trend generalization) with a per-file cache
+    js = client.get("/static/findings_drill.js").text
+    assert "finding.file || FILE" in js
+    assert "cache[file]" in js  # analysis cached per file, not one global
+
+
+def test_focus_finish_days_vs_first_chart_is_removed(client: TestClient) -> None:
+    """Operator 2026-07-09: the per-focus 'UID N — <name> finish (days vs first)' trend chart was
+    pointless (collapsed to a single point; duplicated the focus panel) and is removed from
+    trend.js. The focus panel still shows the focus activity's finish movement."""
+    js = client.get("/static/trend.js").text
+    assert "finish (days vs first)" not in js
+    # the still-useful project-level finish chart stays
+    assert "Project finish (days vs first version)" in js
+
+
 def test_trend_js_has_combined_execution_index_chart(client: TestClient) -> None:
     """Handbook Fig. 7-21: the BEI/CEI/HMI execution indices are overlaid on one combined chart
     (the data — bei / cei_tasks / hmi_tasks — is already in the /api/trend payload per version)."""

@@ -4576,3 +4576,43 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - src/ changed (app.py + sra_grid.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
   Highest ADR = 0172. Backlog: #80 CLOSED. The #67/#71/#72/#74/#80 operator Gantt/UI work order is
   fully closed; no feature items remain open from it.
+
+### 2026-07-09 (cont. 4) — Trend manipulation-signal task drill + removed focus finish chart (ADR-0173)
+- Operator (2 screenshots of /trend): (1) make each Manipulation-trend signal drillable to the tasks
+  behind it with add-columns + Excel; (2) remove the per-focus "UID N — <name> finish (days vs first)"
+  chart ("its pointless").
+- Signal drill: each signal Finding already carries citations (file + UID + name; deletions cite the
+  prior version, most others the current). _trend_body now renders a "view N tasks" cite-more link per
+  signal with task citations and embeds #findingsData {title,file,uids} + #findingsDrill +
+  findings_drill.js. findings_drill.js GENERALIZED: per-finding `file` (finding.file || FILE, so the
+  Integrity page is unchanged) + /api/analysis response cached per file (cache map, not one global).
+  Drill shows UID/name/dur/%/start/finish + Columns (std+custom, persisted) + Filter + Excel via
+  /export/xlsx/activities/<file> (resolved by _find_schedule).
+- Removed the focus finish-delta lineChart block from trend.js (it collapsed to a single point and
+  duplicated the server focus panel); project-level "Project finish (days vs first version)" chart kept.
+- Live-verified in Chromium (Hard_File pair): signal "view N tasks" -> drill (UID/name/dur/%/start/
+  finish, correct Excel href /export/xlsx/activities/Hard_File.mpp.xml?uids=187,400, filter narrows);
+  with ?target=155 the focus finish chart is gone; useful charts remain; zero console errors. Pinned by
+  test_trend_views.py (+2: signal drill wiring, focus chart removed).
+- src/ changed (app.py + trend.js + findings_drill.js) -> wheel + 9 installers rebuilt (ADR-0148
+  lockstep). Highest ADR = 0173. Backlog: operator #67/#71/#72/#74/#80 tranche stays closed; this was
+  a fresh request on top.
+
+### 2026-07-09 (cont. 5) — driving-tiers export trace-option fidelity fix (ADR-0174; from self-review)
+- Ran an adversarial self-review (Workflow, 4 reviewers + skeptical verifiers) over the session's
+  merged changes (ADR-0168..0172). Only 2 findings survived verification, both in the driving-tiers
+  Excel export (#72/ADR-0169); resources, sra-grouping, and trend-split came back clean.
+- HIGH (fixed): the tiers Excel export computed tier/slack on the STORED network while the on-screen
+  panel used the OPTIONED re-solve, so with Ignore constraints/leveling active the download diverged
+  from the screen (silent Law-2 fidelity gap; the sibling driving-PATH export already threaded the
+  options). Fix: export_driving_tiers now accepts ignore_constraints/ignore_leveling and re-solves via
+  _optioned_versions before compute_driving_slack (no options -> stored, untouched); _driving_tiers_panel
+  embeds the flags in #drivingTiersData; driving_tiers.js forwards them in the export href. Field columns
+  stay from stored analysis.activity_rows (== on-screen /api/analysis), so the whole table matches.
+  Pinned by test_driving_tiers_drill.py::test_driving_tiers_export_honours_trace_options_matching_the_panel
+  (per-UID panel-vs-export parity) + a JS href assertion.
+- LOW (documented, not changed): deselecting a built-in column (Tier/UID/Activity/Slack) doesn't drop
+  it from the Excel. Left by-design — every drill export app-wide always emits identifying columns so a
+  court exhibit stays self-identifying; changing driving-tiers alone would be inconsistent (ADR-0174).
+- src/ changed (app.py + driving_tiers.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
+  Highest ADR = 0174.
