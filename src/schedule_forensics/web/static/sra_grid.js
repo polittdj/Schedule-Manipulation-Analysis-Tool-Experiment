@@ -116,6 +116,49 @@
     });
   }
 
+  // --- Group by ANY field (operator #80: match the Path Gantts) --------------------------------
+  var GRID_COLS = 7; // UID, Task, Rem d, Factor, BC d, WC d, Focus (the frozen data columns)
+  function groupSelect() { return document.getElementById("ssiGridGroupBy"); }
+  function groupBy() { var s = groupSelect(); return s ? s.value : ""; }
+  function groupKeyOf(r, key) {
+    if (key.indexOf("custom:") === 0) {
+      var lb = key.slice(7);
+      return (r.custom && r.custom[lb] != null && r.custom[lb] !== "" ? String(r.custom[lb]) : "(blank)");
+    }
+    var v = r[key];
+    if (v === true) return "Yes";
+    if (v === false) return "No";
+    return v === null || v === undefined || v === "" ? "(blank)" : String(v);
+  }
+  // group the (already-filtered) list into [label, members] pairs, preserving first-seen order
+  function groupList(list, key) {
+    var order = [], byVal = {};
+    list.forEach(function (r) {
+      var k = groupKeyOf(r, key);
+      if (!byVal[k]) { byVal[k] = []; order.push(k); }
+      byVal[k].push(r);
+    });
+    return order.map(function (k) { return [k, byVal[k]]; });
+  }
+  // one-time: append the loaded rows' custom-field labels as group-by options (like path.js)
+  function populateGroupCustom() {
+    var sel = groupSelect();
+    if (!sel) return;
+    var have = {};
+    Array.prototype.forEach.call(sel.options, function (o) { have[o.value] = true; });
+    var labels = {};
+    rows.forEach(function (r) {
+      if (r.custom) Object.keys(r.custom).forEach(function (lb) { labels[lb] = true; });
+    });
+    Object.keys(labels).sort().forEach(function (lb) {
+      if (have["custom:" + lb]) return;
+      var o = document.createElement("option");
+      o.value = "custom:" + lb;
+      o.textContent = lb + " (custom)";
+      sel.appendChild(o);
+    });
+  }
+
   // The scheduled bar (start -> finish, accurate) plus a translucent Best/Worst-case finish envelope
   // (start + BC..WC days, a calendar-day projection — an approximate hint; the authoritative figures
   // are the BC/WC day columns and the SSI run).
@@ -154,7 +197,7 @@
   function paintBody(tbody, axis, grid) {
     var list = rows.filter(rowMatchesFilters);
     tbody.innerHTML = "";
-    list.forEach(function (r) {
+    var paintOne = function (r) {
       var tr = el("tr");
       if (r.is_critical) tr.className = "crit";
       if (r.is_summary) tr.className = (tr.className + " sum").trim();
@@ -175,7 +218,21 @@
       }
       if (axis) tr.appendChild(timelineCell(r, axis, grid));
       tbody.appendChild(tr);
-    });
+    };
+    var gb = groupBy();
+    if (gb) {
+      // group rows under headers by any field (WBS, resources, critical, custom …), like path.js
+      groupList(list, gb).forEach(function (g) {
+        var bh = el("tr", { class: "sra-branch-head" });
+        var btd = el("td", { text: g[0] + "  (" + g[1].length + ")" });
+        btd.colSpan = axis ? GRID_COLS + 1 : GRID_COLS;
+        bh.appendChild(btd);
+        tbody.appendChild(bh);
+        g[1].forEach(paintOne);
+      });
+    } else {
+      list.forEach(paintOne);
+    }
     if (!list.length) {
       var empty = el("tr");
       empty.appendChild(el("td", { class: "muted", text: "No tasks match the filters." }));
@@ -241,6 +298,7 @@
         rows = res.j.rows || [];
         dataDate = res.j.data_date || null;
         pending = {};
+        populateGroupCustom();
         render();
         statusEl.textContent = rows.length + " tasks.";
       })
@@ -318,6 +376,8 @@
   var reloadBtn = document.getElementById("ssiGridReload");
   if (reloadBtn) reloadBtn.addEventListener("click", load);
   if (zoomEl) zoomEl.addEventListener("input", function () { forcedPx = null; if (rows.length) render(); });
+  var groupEl = groupSelect();
+  if (groupEl) groupEl.addEventListener("change", function () { if (rows.length) render(); });
   var fitBtn = document.getElementById("ssiGridFit");
   if (fitBtn) fitBtn.addEventListener("click", function () { if (rows.length) fitToProject(); });
   // the Timescale dialog's OK repaints the grid with the new tiers/size/shading

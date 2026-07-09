@@ -1,4 +1,22 @@
-# Handoff — 2026-07-09 (Resources day/week/month bucketing + drill; highest ADR 0171)
+# Handoff — 2026-07-09 (SRA grid group-by → Gantt parity; highest ADR 0172)
+
+> ## STATUS (current) — ADR-0172: SRA editable grid group-by-any-field (#80 CLOSED — operator work order DONE)
+>
+> - **#80 done — and it was the last item on the operator's Gantt/UI work order.** The `/sra`
+>   editable grid already had rows / fill-page / per-column filters / timescale; the only gap vs the
+>   Path Gantts was **grouping**. Added a **Group by** select (`#ssiGridGroupBy`: WBS / Resources /
+>   Critical / Milestone / Outline level + any **custom** field appended from the rows) that renders
+>   `.sra-branch-head` group headers (label + count) over the already-filtered rows, mirroring
+>   `path.js`. The grid stays fully editable + filterable within groups; `(none)` restores flat.
+> - Client-side only over `/api/sra/grid`; `sra_grid.js` + a toolbar control + `.sra-branch-head`
+>   CSS. Live-verified in Chromium (Hard_File): custom fields offered, Critical → `No (108)`/`Yes
+>   (34)`, inputs intact, zero console errors. Pinned by
+>   `test_sra_grid.py::test_grid_group_by_control_and_mechanics`. `src/` changed → wheel + 9
+>   installers rebuilt (lockstep).
+> - **Backlog: the #67/#71/#72/#74/#80 operator tranche is fully closed.** No feature items remain
+>   open from that work order.
+
+# (prior) Handoff — 2026-07-09 (Resources day/week/month bucketing + drill; highest ADR 0171)
 
 > ## STATUS (current) — ADR-0171: Resources bucketing + click-a-bar over-allocation drill (#74 CLOSED)
 >

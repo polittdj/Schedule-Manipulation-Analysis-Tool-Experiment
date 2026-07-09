@@ -328,6 +328,22 @@ def test_grid_supports_excel_column_paste_fill(client: TestClient) -> None:
     assert "Paste from Excel" in page
 
 
+def test_grid_group_by_control_and_mechanics(client: TestClient) -> None:
+    """#80: the editable SRA grid gains a Group-by control (like the Path Gantts) — WBS /
+    resources / critical / milestone / outline plus any custom field, rendering group headers
+    while the grid stays editable and filterable. The live grouping was verified in Chromium;
+    this pins the server control + the JS mechanics."""
+    page = client.get("/sra").text
+    assert "id=ssiGridGroupBy" in page
+    for opt in ("value=wbs", "value=resource_names", "value=is_critical", "value=outline_level"):
+        assert opt in page, opt
+    js = client.get("/static/sra_grid.js").text
+    assert "sra-branch-head" in js  # the group-header rows (same class family as path-branch-head)
+    assert "groupList" in js and "groupKeyOf" in js  # grouping helpers
+    assert "populateGroupCustom" in js  # custom fields appended as group-by options
+    assert 'key.indexOf("custom:")' in js  # custom-field grouping supported
+
+
 def test_sra_grid_js_is_air_gapped(client: TestClient) -> None:
     js = client.get("/static/sra_grid.js").text
     urls = [u for u in re.findall(r"https?://[^\s\"')]+", js) if "www.w3.org" not in u]
