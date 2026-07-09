@@ -4675,3 +4675,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   layout + Quality Trend split, Gantt standardization, Bow-Wave/S-Curve multi-UID, CP-volatility
   page (10 visuals), Driving-Path picker labels, Forecast per-field grouping, functionality sweep.
   Highest ADR = 0176.
+
+### 2026-07-09 (cont. 8) — UI work order part 1 (ADR-0177)
+- Operator merged PR #308 (the ADR-0176 Acumen alignment batch) mid-session; branch restarted
+  from the new origin/main per the merged-PR rule; part 1 of the UI work order ships on a new PR.
+- What-if gains "work added to the critical path": every entrant between the chosen A/B pair
+  with the engine's reason attribution (new / own duration/logic/constraint change / float
+  consumed by a NAMED slip), Columns+filter+Excel (/export/{fmt}/whatif-added); whatif.js
+  generalized (initTable x2, one include). Live-verified on updated2->updated3 (4 entrants:
+  2 duration_up, 2 slack_consumed).
+- Mission wall: Quality Offenders + Quality Trend moved into the ONE mosaic beside
+  Critical-Path Evolution (QC section + dead space removed); trend.js lifts each quality-trend
+  chart into its own tile on the wall (wallTile mount proxy; host tile hidden when emptied) —
+  one graph per visual; 29 tiles, zero console errors in Chromium.
+- Bow-Wave + S-Curve: tracked UIDs (<=20, _parse_track_uids cap) via ?uids= on /cei /scurve and
+  both APIs; engines gain track_uids + TrackedActivity (positions on the shared month axis,
+  name, % complete; absent = None); labeled animated markers (cei: green finished / blue
+  forecast dots; scurve: filled/hollow dot on the actual curve + gold baseline tick); the
+  primary Target UID stays optional and independent. Screenshot-verified with 155/187/411.
+- Driving-Path File picker fixed to real filenames (was N copies of the internal project name)
+  and the Excel trace link now resolves via the session key (was a latent project-name 404).
+- Full suite 1914 passed; wheel + 9 installers rebuilt (lockstep). Highest ADR = 0177.

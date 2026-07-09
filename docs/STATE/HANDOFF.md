@@ -1,6 +1,30 @@
-# Handoff — 2026-07-09 (Acumen alignment batch; highest ADR 0176)
+# Handoff — 2026-07-09 (UI work order part 1; highest ADR 0177)
 
-> ## STATUS (current) — ADR-0176: Acumen alignment — cumulative BEI, dual SPI(t),
+> ## STATUS (current) — ADR-0177: What-if CP additions, one-grid Mission wall, tracked UIDs,
+> ## Driving-Path picker fix
+>
+> - **What-if "work added to the critical path"** section (mirror of the reverted list) with
+>   reason attribution per entrant + Columns/filter/Excel (`/export/{fmt}/whatif-added`);
+>   whatif.js generalized to drive both tables.
+> - **Mission wall**: Quality Offenders + Quality Trend moved INTO the one mosaic next to
+>   Critical-Path Evolution (separate QC section removed — dead space gone); on the wall
+>   trend.js lifts every quality-trend chart into its OWN tile (one graph per visual, 29
+>   tiles verified in Chromium, zero console errors).
+> - **Bow-Wave + S-Curve tracked UIDs (≤20)** via `uids` (engine track_uids + TrackedActivity;
+>   Track UIDs control on both pages; labeled animated markers; primary Target UID stays
+>   optional and independent).
+> - **Driving-Path File picker** shows real filenames (was the identical internal project
+>   name N times) + the Excel trace link now uses the session key (was a project-name 404).
+> - NOTE: the operator merged PR #308 mid-stream (ADR-0176 batch); the branch was restarted
+>   from the new origin/main and part 1 ships on a NEW PR.
+> - **REMAINING (part 2, tasks #94/#96/#98/#99):** Gantt standardization everywhere (full
+>   option set, frozen header + always-visible bottom scrollbar); CP-volatility page (10
+>   researched visuals); Forecast per-field metric grouping (per-CAM etc. + NA group +
+>   no-completed-work handling); full clickable-functionality sweep.
+
+# (prior) Handoff — 2026-07-09 (Acumen alignment batch; highest ADR 0176)
+
+> ## STATUS (prior) — ADR-0176: Acumen alignment — cumulative BEI, dual SPI(t),
 > ## stored-date DCMA09, forensic change trackers, reschedule-artifact clustering
 >
 > - **Operator's item-by-item disposition of the discrepancy report, implemented and

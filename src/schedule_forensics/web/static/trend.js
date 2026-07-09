@@ -13,9 +13,79 @@
 "use strict";
 
 (function () {
-  var box = document.getElementById("trendCharts");
-  if (!box) return;
+  var hostBox = document.getElementById("trendCharts");
+  if (!hostBox) return;
   var NS = "http://www.w3.org/2000/svg";
+
+  /* Mission-wall tile splitting (operator 2026-07-09): on the wall, ONE tile hosting every
+   * quality-trend chart crammed ~15 visuals together. There, each chart mounts as its OWN
+   * mosaic tile (one graph per visual) inserted after the host "Quality Trend" tile, which is
+   * hidden once the first chart lands. Off the wall (/trend) nothing changes. `box` keeps the
+   * mount API (appendChild + dataset + closest) so every chart builder below is untouched. */
+  var wallGrid = document.getElementById("missionGrid");
+  var wallCursor = null; // last tile inserted — keeps the charts in render order
+
+  function wallTile(node) {
+    var hostTile = hostBox.closest ? hostBox.closest(".tile") : null;
+    if (!node.classList || !node.classList.contains("chart")) return; // skip section headings
+    var h = node.querySelector("h3");
+    var title = h ? h.textContent : "Quality Trend";
+    if (h) h.parentNode.removeChild(h); // the tile head carries the title
+    var tile = document.createElement("section");
+    tile.className = "tile panel";
+    var head = document.createElement("div");
+    head.className = "tile-head";
+    var h3 = document.createElement("h3");
+    h3.textContent = title;
+    var desc = node.querySelector(".chart-desc");
+    if (desc) { // the chart's description becomes the tile's hover explainer
+      h3.className = "viz-hint";
+      h3.setAttribute("data-sf-hint", desc.textContent);
+      desc.parentNode.removeChild(desc);
+    }
+    head.appendChild(h3);
+    var actions = document.createElement("span");
+    actions.className = "tile-actions";
+    function mkBtn(cls, text, tip) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = cls;
+      b.textContent = text;
+      if (tip) b.title = tip;
+      b.setAttribute("aria-pressed", "false");
+      actions.appendChild(b);
+      return b;
+    }
+    mkBtn("tile-expand", "\u2922 Enlarge", "Enlarge / shrink this tile");
+    mkBtn("tile-data", "\u25a6 Data");
+    var open = document.createElement("a");
+    open.href = "/trend";
+    open.className = "btn-link";
+    open.textContent = "Open \u2197";
+    actions.appendChild(open);
+    head.appendChild(actions);
+    tile.appendChild(head);
+    var chartHost = document.createElement("div");
+    chartHost.className = "chart-host";
+    chartHost.appendChild(node);
+    tile.appendChild(chartHost);
+    var after = wallCursor || hostTile;
+    if (after && after.parentNode === wallGrid) {
+      wallGrid.insertBefore(tile, after.nextSibling);
+    } else {
+      wallGrid.appendChild(tile);
+    }
+    wallCursor = tile;
+    if (hostTile && !hostTile.hidden) hostTile.hidden = true; // the empty host collapses away
+  }
+
+  var box = wallGrid
+    ? {
+        dataset: hostBox.dataset,
+        appendChild: wallTile,
+        closest: function (sel) { return hostBox.closest(sel); },
+      }
+    : hostBox;
 
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);
@@ -998,5 +1068,5 @@
       // master "Play all / Step all" for the whole Trends page (mission.js pattern)
       sfMasterBar();
     })
-    .catch(function () { box.textContent = "Failed to load trend data."; });
+    .catch(function () { hostBox.textContent = "Failed to load trend data."; });
 })();

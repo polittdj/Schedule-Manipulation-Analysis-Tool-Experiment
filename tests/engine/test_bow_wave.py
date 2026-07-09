@@ -323,3 +323,39 @@ def test_cei_credits_early_planned_finish_not_unplanned_one() -> None:
     assert p5.cei_planned == 2  # April's plan for May = UIDs 1 and 2 only
     assert p5.cei_finished == 1  # only UID 1 (early counts); UID 2 slipped, UID 3 not planned
     assert p5.cei == pytest.approx(0.5, abs=0.01)
+
+
+def test_tracked_uids_ride_the_wave_with_positions_and_absence() -> None:
+    """Operator 2026-07-09: up to 20 chosen UIDs are tracked per snapshot — each carries its
+    scheduled/actual finish month on the shared axis, its name and % complete; an activity
+    absent from a snapshot carries None positions and pct (never fabricated)."""
+    april = _snap(
+        "April",
+        "2026-04-30T17:00",
+        [
+            _t(1, finish="2026-05-20T17:00", baseline="2026-05-20T17:00"),
+            _t(2, finish="2026-06-25T17:00", baseline="2026-06-25T17:00"),
+        ],
+    )
+    may = _snap(
+        "May",
+        "2026-05-31T17:00",
+        [
+            _t(1, finish="2026-05-28T17:00", actual="2026-05-28T17:00", done=True),
+            # UID 2 was DELETED in May; UID 99 never existed
+        ],
+    )
+    wave = compute_bow_wave([april, may], track_uids=[1, 2, 99])
+    s0, s1 = wave.snapshots
+    by0 = {t.uid: t for t in s0.tracked}
+    by1 = {t.uid: t for t in s1.tracked}
+    assert set(by0) == set(by1) == {1, 2, 99}
+    months = list(wave.month_labels)
+    assert months[by0[1].scheduled_index] == "May-26"
+    assert by0[1].finished_index is None and by0[1].percent_complete == 0.0
+    # May: UID 1 finished (actual in May), UID 2 absent, UID 99 never existed
+    assert months[by1[1].finished_index] == "May-26"
+    assert by1[1].percent_complete == 100.0 and by1[1].name == "T1"
+    for absent in (by1[2], by0[99], by1[99]):
+        assert absent.scheduled_index is None and absent.finished_index is None
+        assert absent.percent_complete is None

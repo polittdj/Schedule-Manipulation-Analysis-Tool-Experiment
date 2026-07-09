@@ -163,3 +163,23 @@ def test_trend_labels_are_deoverlapped(client: TestClient) -> None:
     # identical filenames collapse to nothing after the prefix strip — the data date
     # (or version index) labels those instead of a bare "…"
     assert "status_date ||" in js
+
+
+def test_track_uids_control_payload_and_cap(client: TestClient) -> None:
+    """Operator 2026-07-09: the Bow-Wave page tracks up to 20 chosen UIDs — a Track UIDs
+    control, per-snapshot tracked marks in /api/cei, and a hard 20-UID cap."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/cei?uids=106,113").text
+    assert "id=ceiTrack" in page and 'value="106, 113"' in page
+    data = client.get("/api/cei?uids=106,113").json()
+    tracked = data["snapshots"][-1]["tracked"]
+    assert [t["uid"] for t in tracked] == [106, 113]
+    assert all("name" in t and "scheduled_index" in t and "pct" in t for t in tracked)
+    # the 21st UID is dropped (cap 20, first kept)
+    many = ",".join(str(u) for u in range(1, 30))
+    capped = client.get(f"/api/cei?uids={many}").json()["snapshots"][0]["tracked"]
+    assert len(capped) == 20 and capped[0]["uid"] == 1 and capped[-1]["uid"] == 20
+    # cei.js reads the control and draws the tracked marks
+    js = client.get("/static/cei.js").text
+    assert "ceiTrack" in js and "tracked" in js

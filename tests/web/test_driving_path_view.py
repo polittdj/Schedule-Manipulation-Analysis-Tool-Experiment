@@ -123,3 +123,27 @@ def test_corridor_gantt_absent_for_single_version(client: TestClient) -> None:
     page = client.get("/driving-path?source=131&target=143").text
     assert "id=dpChart" not in page
     assert "Driving path:" in page  # the textual corridor view is still there
+
+
+def test_file_picker_lists_real_filenames_and_export_uses_the_session_key(
+    client: TestClient,
+) -> None:
+    """Operator 2026-07-09: the File picker entries 'all say the same thing' — they rendered the
+    INTERNAL project name (identical across versions of the same project) instead of the
+    filename. Options now carry source_file, selecting one scopes the page, and the Excel trace
+    link uses the SESSION KEY (the old link used the project name and 404'd)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    uid = _last_uid()
+    page = client.get(f"/driving-path?target={uid}").text
+    assert ">Project2.mspdi.xml</option>" in page
+    assert ">Project5.mspdi.xml</option>" in page
+    # scoping by filename works (the banner names the chosen file)
+    scoped = client.get(f"/driving-path?target={uid}&file=Project2.mspdi.xml").text
+    assert "Driving path computed on <b>Project2.mspdi.xml</b>" in scoped
+    # the Excel trace link resolves (session key, not project name) — no 404
+    import re
+
+    m = re.search(r'href="(/export/xlsx/path/[^"]+)"', page)
+    assert m is not None
+    assert client.get(m.group(1).replace("&amp;", "&")).status_code == 200

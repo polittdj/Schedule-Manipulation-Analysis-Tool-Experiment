@@ -1303,6 +1303,16 @@ def _parse_uid_list(value: str | None) -> list[int]:
     return out
 
 
+#: Cap on the operator-tracked UIDs on the Bow-Wave / S-Curve charts (operator 2026-07-09:
+#: "max of 20 UIDs") — more markers than that turn the animation into noise.
+_MAX_TRACK_UIDS = 20
+
+
+def _parse_track_uids(value: str | None) -> list[int]:
+    """The Bow-Wave / S-Curve tracked-UID list: free-text UIDs, capped at 20 (first kept)."""
+    return _parse_uid_list(value)[:_MAX_TRACK_UIDS]
+
+
 def _to_float(value: str | None, default: float) -> float:
     """A float from form/query text — blank, non-numeric, or non-finite falls back to ``default``.
 
@@ -2180,7 +2190,7 @@ def create_app(
         return _page(st, "Resources", _resources_body(st, bucket))
 
     @app.get("/cei", response_class=HTMLResponse)
-    def cei_view(target: str | None = Query(None)) -> HTMLResponse:
+    def cei_view(target: str | None = Query(None), uids: str = Query("")) -> HTMLResponse:
         st = session()
         # focusing a target from this view sets the session-wide target (ADR-0061), so the
         # /api/cei fetch that draws the chart sees the same activity; a blank clears it.
@@ -2193,29 +2203,32 @@ def create_app(
                 "<div class=panel>Load at least two versions (monthly snapshots) to run the "
                 "bow-wave / CEI analysis.</div>",
             )
+        track = _parse_track_uids(uids)
         try:
-            wave = compute_bow_wave(st.ordered(), st.target_uid)
+            wave = compute_bow_wave(st.ordered(), st.target_uid, track_uids=track)
         except ValueError as exc:
             return _page(st, "Bow Wave / CEI", f"<div class=panel>{_e(exc)}</div>")
         return _page(
             st,
             "Bow Wave / CEI",
-            _export_bar("cei") + _sources_line(st.ordered()) + _cei_body(wave, st.target_uid),
+            _export_bar("cei")
+            + _sources_line(st.ordered())
+            + _cei_body(wave, st.target_uid, track_uids=track),
         )
 
     @app.get("/api/cei")
-    def cei_json() -> JSONResponse:
+    def cei_json(uids: str = Query("")) -> JSONResponse:
         st = session()
         if len(st.schedules) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
-            wave = compute_bow_wave(st.ordered(), st.target_uid)
+            wave = compute_bow_wave(st.ordered(), st.target_uid, track_uids=_parse_track_uids(uids))
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_cei_data(wave, st.target_uid))
 
     @app.get("/scurve", response_class=HTMLResponse)
-    def scurve_view() -> HTMLResponse:
+    def scurve_view(uids: str = Query("")) -> HTMLResponse:
         st = session()
         if not st.schedules:
             return _page(
@@ -2224,14 +2237,21 @@ def create_app(
                 "<div class=panel>Load a schedule to see the cumulative progress S-curve "
                 "(load several versions to animate it over time).</div>",
             )
+        track = _parse_track_uids(uids)
         try:
-            sc = compute_s_curve(st.ordered())
+            sc = compute_s_curve(st.ordered(), track_uids=track)
         except ValueError as exc:
             return _page(st, "S-Curve", f"<div class=panel>{_e(exc)}</div>")
-        return _page(st, "S-Curve", _scurve_body(sc, _scurve_filter_fields(st.ordered())))
+        return _page(
+            st,
+            "S-Curve",
+            _scurve_body(sc, _scurve_filter_fields(st.ordered()), track_uids=track),
+        )
 
     @app.get("/api/scurve")
-    def scurve_json(cf: list[str] = _CF_QUERY, cv: list[str] = _CV_QUERY) -> JSONResponse:
+    def scurve_json(
+        cf: list[str] = _CF_QUERY, cv: list[str] = _CV_QUERY, uids: str = Query("")
+    ) -> JSONResponse:
         st = session()
         if not st.schedules:
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
@@ -2246,7 +2266,7 @@ def create_app(
         if not versions:
             return JSONResponse({"months": [], "versions": []})
         try:
-            sc = compute_s_curve(versions)
+            sc = compute_s_curve(versions, track_uids=_parse_track_uids(uids))
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_scurve_data(sc))
@@ -2399,14 +2419,29 @@ def create_app(
             )
         # per-file scope (operator 2026-07-08): the driving path can differ between files, so
         # the operator picks WHICH loaded version to trace; default stays every version.
-        file_options = [s.name for s in schedules]
+        # Options are the FILENAMES (source_file), not the internal project name — every
+        # version of the same project carries the same name, so the picker read as N identical
+        # entries (operator 2026-07-09: "They all say the same thing").
+        file_options = [s.source_file or s.name for s in schedules]
         if file and file in file_options:
-            pair = next((s, c) for s, c in zip(schedules, cpms, strict=True) if s.name == file)
+            pair = next(
+                (s, c)
+                for s, c in zip(schedules, cpms, strict=True)
+                if (s.source_file or s.name) == file
+            )
             schedules, cpms = [pair[0]], [pair[1]]
         else:
             file = ""
         src = _parse_uid(source)
         tgt = _parse_uid(target)
+        # the session KEY of the last displayed version — the Excel trace export route looks
+        # schedules up by session key, NOT by internal project name (which the old link used
+        # and which 404'd whenever the filename-derived key differed from the project name)
+        last_label = schedules[-1].source_file or schedules[-1].name
+        export_key = next(
+            (k for k, s in st.ordered_versions() if (s.source_file or s.name) == last_label),
+            None,
+        )
         schedules, cpms, opt_banner = _optioned_versions(
             schedules,
             cpms,
@@ -2427,6 +2462,7 @@ def create_app(
                 ignore_leveling=bool(ignore_leveling),
                 file_options=file_options,
                 selected_file=file,
+                export_key=export_key,
             ),
         )
 
@@ -3004,6 +3040,55 @@ def create_app(
             (Table("Reverted changes", headers, rows),),
         )
         return _export_response(fmt, tableset, "whatif")
+
+    @app.get("/export/{fmt}/whatif-added")
+    def export_whatif_added(
+        fmt: str, a: str = Query(""), b: str = Query(""), cols: str = Query("")
+    ) -> Response:
+        """The 'What-if' work-ADDED-to-the-critical-path list for a chosen version pair, with any
+        extra columns the operator toggled on (operator 2026-07-09 — the mirror of /whatif)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        labels = [s.source_file or s.name for s in schedules]
+        if a not in labels or b not in labels:
+            return JSONResponse({"error": "unknown file(s)"}, status_code=404)
+        ia, ib = labels.index(a), labels.index(b)
+        prior_idx, cur_idx = (ia, ib) if ia < ib else (ib, ia)
+        st = session()
+        added = _whatif_added_rows(
+            schedules[prior_idx],
+            schedules[cur_idx],
+            cpms[prior_idx],
+            cpms[cur_idx],
+            st.target_uid,
+        )
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Activity", "Why it entered", "Detail", *extra)
+
+        def _cell(row: dict[str, object], key: str) -> str | int | float | None:
+            v = row.get(key)
+            if v is None:
+                custom = row.get("custom")
+                if isinstance(custom, dict):
+                    v = custom.get(key)
+            return v if isinstance(v, str | int | float) or v is None else str(v)
+
+        rows = tuple(
+            (
+                _cell(r, "unique_id"),
+                _cell(r, "name"),
+                _cell(r, "why_entered"),
+                _cell(r, "detail"),
+                *(_cell(r, c) for c in extra),
+            )
+            for r in added
+        )
+        tableset = TableSet(
+            f"What-if — work added to the critical path — {a} → {b}",
+            (Table("Added to the critical path", headers, rows),),
+        )
+        return _export_response(fmt, tableset, "whatif-added")
 
     @app.get("/export/{fmt}/integrity")
     def export_integrity(fmt: str, file: str = Query("")) -> Response:
@@ -4446,11 +4531,10 @@ def _mission_body(target_uid: int | None) -> str:
                 hint="WHAT: the driving path to the project finish (or your Target UID), version by version — which activities carry the schedule and how membership changes.\n\nEXAMPLE: the path ran through fabrication for four versions, then suddenly runs through software integration — either real progress or a logic change moved the drive.\n\nHOW TO READ: stable membership = a settled plan; churn every version = an unstable network; watch for activities that leave the path exactly when they start slipping (a manipulation signature).\n\nDECIDE: where management attention belongs now, and which path changes deserve a 'why did this change?' interrogation.",
                 controls=steps("prevEvo", "evoPlay", "nextEvo"),
             ),
-        ]
-    )
-    # operator 2026-07-08: the Quality Control visuals live in their OWN labeled section
-    qc_tiles = "".join(
-        [
+            # operator 2026-07-09: the Quality visuals sit NEXT TO Critical-Path Evolution in the
+            # same grid (the separate Quality Control section left a mostly-empty row of dead
+            # space). The Quality Trend tile is a HOST: on the wall, trend.js lifts each of its
+            # charts into its OWN tile (one graph per visual) right after this position.
             tile(
                 "Quality Offenders",
                 "/trend",
@@ -4464,7 +4548,7 @@ def _mission_body(target_uid: int | None) -> str:
                 "Quality Trend",
                 "/trend",
                 f'<div id=trendCharts data-target="{target}"></div>',
-                hint="WHAT: the DCMA-14 / schedule-quality metric scores tracked across every loaded version.\n\nEXAMPLE: missing-logic count falls from 40 to 5 in one update with no matching activity changes — links were bulk-added to pass the audit; verify they are real logic.\n\nHOW TO READ: gradual improvement is normal cleanup; step changes right before reviews are audit-chasing; deteriorating trends flag eroding schedule discipline.\n\nDECIDE: whether schedule quality is genuinely improving and which metric family to audit in depth.",
+                hint="WHAT: the DCMA-14 / schedule-quality metric scores tracked across every loaded version — on this wall each metric renders as its own tile below.\n\nEXAMPLE: missing-logic count falls from 40 to 5 in one update with no matching activity changes — links were bulk-added to pass the audit; verify they are real logic.\n\nHOW TO READ: gradual improvement is normal cleanup; step changes right before reviews are audit-chasing; deteriorating trends flag eroding schedule discipline.\n\nDECIDE: whether schedule quality is genuinely improving and which metric family to audit in depth.",
             ),
         ]
     )
@@ -4479,13 +4563,8 @@ Offenders, and Critical-Path Evolution &mdash; in lockstep. The session <b>Targe
 <button id=missionPlay type=button>&#9654; Play all</button>
 <button id=missionStep type=button>&#9197; Step all</button>
 </div></div>
-<h2 class=mission-section>Performance &amp; Paths</h2>
 <div id=missionGrid class=mosaic>
 {perf_tiles}
-</div>
-<h2 class=mission-section>Quality Control</h2>
-<div id=missionQcGrid class=mosaic>
-{qc_tiles}
 </div>
 <script src="/static/timeaxis.js"></script>
 <script src="/static/scurve.js"></script>
@@ -7071,7 +7150,9 @@ def _trend_data(
     return {"target": focus, "versions": version_rows, "quality": quality}
 
 
-def _cei_body(wave: BowWave, target_uid: int | None = None) -> str:
+def _cei_body(
+    wave: BowWave, target_uid: int | None = None, track_uids: list[int] | None = None
+) -> str:
     """The Bow Wave / CEI view: per-snapshot animated chart + the CEI summary table."""
     rows = "".join(
         f"<tr><td>{_e(s.label)}</td><td>{_e(s.cei_period or '—')}</td>"
@@ -7082,16 +7163,22 @@ def _cei_body(wave: BowWave, target_uid: int | None = None) -> str:
         f"{f'{s.cei:.2f}' if s.cei is not None else '—'}</b></td></tr>"
         for s in wave.snapshots
     )
+    track_txt = ", ".join(str(u) for u in (track_uids or []))
     return f"""
 <div class=panel><h2>Bow Wave &mdash; Activity Finishes by month</h2>
 <p class=muted>Gold = baselined to finish, blue = scheduled to finish, green = actually
 finished; the dashed line is the snapshot's data date. Work that keeps sliding right shows
 as a swelling wave of blue just past each data date. Step through the snapshots or press
 Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
-and focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot.</p>
+focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot, and
+<b>Track UIDs</b> (up to 20, comma-separated) to watch specific activities ride the wave.</p>
 <form method=get action=/cei class=viz-controls>
 <label>Target UID <input name=target type=number min=1 value="{target_uid if target_uid is not None else ""}"
-placeholder="UID"></label> <button type=submit>Focus</button>
+placeholder="UID"></label>
+<label>Track UIDs <input id=ceiTrack name=uids data-no-i18n value="{_e(track_txt)}"
+placeholder="e.g. 155, 187, 411" size=28
+title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of the animation — independent of the primary target"></label>
+<button type=submit>Focus</button>
 {'<a class=btn-link href="/cei?target=">clear focus</a>' if target_uid is not None else ""}</form>
 <div class=viz-controls>
 <button id=prevSnap type=button>&#9664; Prev</button>
@@ -7194,11 +7281,14 @@ def _scurve_interpretation(sc: SCurve) -> str:
     )
 
 
-def _scurve_body(sc: SCurve, fields: dict[str, list[str]]) -> str:
+def _scurve_body(
+    sc: SCurve, fields: dict[str, list[str]], track_uids: list[int] | None = None
+) -> str:
     """The animated S-curve view: cumulative planned vs actual/forecast progress per version,
     with a per-chart up-to-5-field filter over the parent file's fields."""
     # escape "<" so a field value can never break out of the inline <script> embed
     fields_json = json.dumps(fields).replace("<", "\\u003c")
+    track_txt = ", ".join(str(u) for u in (track_uids or []))
     return f"""
 <div class=panel><h2>S-Curve &mdash; cumulative progress</h2>
 <p class=muted>Each version's cumulative progress on a fixed 0&ndash;100% scale: <b>gold</b> =
@@ -7206,9 +7296,15 @@ planned (share of activities the baseline had finishing by each month), <b>blue<
 actual / forecast (share whose actual or scheduled finish lands by each month). The dashed
 line is that version's data date &mdash; actuals to its left, forecast to its right; the blue
 curve sitting below the gold at the data date is work behind plan. Step through the versions
-or press Auto-play to watch the actual curve climb (and lag) over time.</p>
+or press Auto-play to watch the actual curve climb (and lag) over time. <b>Track UIDs</b>
+(up to 20) marks those activities' finish months on every animated frame.</p>
 <div class=viz-controls id=scurveFilterBar><span class=muted>Filter this chart by up to
-{MAX_FIELDS} field(s) of the parent file:</span> <span id=scurveFilter></span></div>
+{MAX_FIELDS} field(s) of the parent file:</span> <span id=scurveFilter></span>
+<form method=get action=/scurve style="display:inline">
+<label>Track UIDs <input id=scurveTrack name=uids data-no-i18n value="{_e(track_txt)}"
+placeholder="e.g. 155, 187, 411" size=28
+title="Up to 20 UniqueIDs (comma/space separated) marked on every frame of the animation"></label>
+<button type=submit>Track</button></form></div>
 <div class=viz-controls>
 <label id=scurveVersionWrap style="display:none">File <select id=scurveVersion data-no-i18n>
 <option value=all>All files (chronological)</option>
@@ -7346,6 +7442,16 @@ def _scurve_data(sc: SCurve) -> dict[str, object]:
                 "activities": v.activities,
                 "planned": list(v.planned),
                 "actual": list(v.actual),
+                "tracked": [
+                    {
+                        "uid": t.uid,
+                        "name": t.name,
+                        "finish_index": t.finish_index,
+                        "baseline_index": t.baseline_index,
+                        "pct": t.percent_complete,
+                    }
+                    for t in v.tracked
+                ],
             }
             for v in sc.versions
         ],
@@ -7378,6 +7484,16 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
                 "cei_finished": s.cei_finished,
                 "target_scheduled_index": s.target_scheduled_index,
                 "target_finished_index": s.target_finished_index,
+                "tracked": [
+                    {
+                        "uid": t.uid,
+                        "name": t.name,
+                        "scheduled_index": t.scheduled_index,
+                        "finished_index": t.finished_index,
+                        "pct": t.percent_complete,
+                    }
+                    for t in s.tracked
+                ],
             }
             for s in wave.snapshots
         ],
@@ -9253,6 +9369,7 @@ def _driving_path_body(
     ignore_leveling: bool = False,
     file_options: list[str] | None = None,
     selected_file: str = "",
+    export_key: str | None = None,
 ) -> str:
     """Server-rendered Driving Path view: the controlling logic corridor between two chosen
     UniqueIDs, and how it changes across every loaded version (oldest first by data date) — or
@@ -9274,11 +9391,12 @@ def _driving_path_body(
             f"{opts}</select></label> "
         )
     export_link = ""
-    if target is not None and schedules:
-        last = schedules[-1]
+    if target is not None and schedules and export_key:
+        # the export route looks the schedule up by SESSION KEY (filename-derived), never the
+        # internal project name — the old link used last.name and 404'd (fixed 2026-07-09)
         opts = f"&ignore_constraints={int(ignore_constraints)}&ignore_leveling={int(ignore_leveling)}&drag=1"
         export_link = (
-            f'<a class=btn-link href="/export/xlsx/path/{_e(last.name)}?target={target}{opts}">'
+            f'<a class=btn-link href="/export/xlsx/path/{_e(export_key)}?target={target}{opts}">'
             "&#11015; Excel (full trace to target, latest version, incl. Drag)</a>"
         )
     form = f"""
@@ -10196,13 +10314,63 @@ def _counterfactual_panel(
                 )
             enriched.append(row)
     custom_labels = sorted(current.custom_field_labels)
+    added_rows = _whatif_added_rows(
+        schedules[prior_idx], current, cpms[prior_idx], cpms[cur_idx], target
+    )
     return _render_counterfactual(
         pc,
         picker=picker,
         pair=(labels[prior_idx], labels[cur_idx]),
         enriched_rows=enriched,
         custom_labels=custom_labels,
+        added_rows=added_rows,
     )
+
+
+def _whatif_added_rows(
+    prior: Schedule,
+    current: Schedule,
+    prior_cpm: CPMResult,
+    current_cpm: CPMResult,
+    target: int | None,
+) -> list[dict[str, object]]:
+    """Activities ADDED to the critical path between the chosen pair (operator 2026-07-09),
+    with the engine's per-activity reason attribution (path_evolution's classifier — new task,
+    own duration/logic/constraint change, or float consumed by a NAMED slip elsewhere) plus the
+    current-version fields so the client table can add columns / filter / export."""
+    try:
+        ev = compute_path_evolution([prior, current], [prior_cpm, current_cpm], target_uid=target)
+    except (CPMError, ValueError, KeyError) as exc:
+        logging.getLogger("schedule_forensics").warning("what-if added-path failed: %s", exc)
+        return []
+    snap = ev.snapshots[-1]
+    by_id = current.tasks_by_id
+    per_day = current.calendar.working_minutes_per_day or 480
+    rows: list[dict[str, object]] = []
+    for ch in snap.entered_changes:
+        row: dict[str, object] = {
+            "unique_id": ch.uid,
+            "name": ch.name,
+            "why_entered": ch.reason,
+            "detail": ch.detail,
+        }
+        t = by_id.get(ch.uid)
+        if t is not None:
+            row.update(
+                {
+                    "duration_days": round(
+                        t.duration_minutes / (1440 if t.duration_is_elapsed else per_day), 1
+                    ),
+                    "percent_complete": t.percent_complete,
+                    "start": _iso_date(t.start),
+                    "finish": _iso_date(t.finish),
+                    "wbs": t.wbs or "",
+                    "resource_names": ", ".join(t.resource_names),
+                    "custom": dict(t.custom_field_map),
+                }
+            )
+        rows.append(row)
+    return rows
 
 
 def _render_counterfactual(
@@ -10212,6 +10380,7 @@ def _render_counterfactual(
     pair: tuple[str, str] | None = None,
     enriched_rows: list[dict[str, object]] | None = None,
     custom_labels: list[str] | None = None,
+    added_rows: list[dict[str, object]] | None = None,
 ) -> str:
     """Render the counterfactual panel from a computed result (split out for direct testing)."""
     pair_txt = (
@@ -10219,6 +10388,29 @@ def _render_counterfactual(
         if pair
         else "between the two chosen versions"
     )
+    # Work ADDED to the critical path (operator 2026-07-09) — the mirror of the reverted list:
+    # every activity that ENTERED the path between the pair, with the engine's reason attribution.
+    added_html = ""
+    if added_rows is not None:
+        a_attr = _e(pair[0]) if pair else ""
+        b_attr = _e(pair[1]) if pair else ""
+        added_blob = json.dumps({"rows": added_rows, "customLabels": custom_labels or []}).replace(
+            "<", "\\u003c"
+        )
+        added_body = (
+            f'<div id=whatifAddedTable data-a="{a_attr}" data-b="{b_attr}"></div>'
+            f'<script type="application/json" id=whatifAddedData>{added_blob}</script>'
+            if added_rows
+            else f"<p class=muted>No activity entered the critical path {pair_txt}.</p>"
+        )
+        added_html = f"""
+<div class=panel><h2>What-if: work added to the critical path</h2>
+<p class=muted>The mirror of the list above: activities that <b>entered</b> the critical (driving)
+path {pair_txt}. Each carries the engine's reason — a <b>new</b> activity, its <b>own</b> duration
+/ logic / constraint change, or <b>float consumed</b> by a named slip elsewhere. Work joining the
+path is where the schedule's risk is moving: a path that churns member activities version over
+version is unstable even when the finish date holds.</p>
+{added_body}</div>"""
     intro = f"""
 <div class=panel><h2>What-if: work removed from the critical path</h2>
 <p class=muted>This runs on the <b>one pair you pick</b> {pair_txt} — not lumped across the whole
@@ -10235,6 +10427,8 @@ reverted to their prior values and the schedule re-run &mdash; the gap is schedu
             intro + f"<p class=muted>No non-completed activity left the critical path {pair_txt} "
             "&mdash; nothing to revert. Pick a wider pair (e.g. the first vs the latest version) "
             "to see cumulative change.</p></div>"
+            + added_html
+            + '<script src="/static/whatif.js"></script>'
         )
 
     def _delta(days: int) -> str:
@@ -10269,7 +10463,6 @@ reverted to their prior values and the schedule re-run &mdash; the gap is schedu
     table_html = (
         f'<div id=whatifTable data-a="{a_attr}" data-b="{b_attr}"></div>'
         f'<script type="application/json" id=whatifData>{whatif_blob}</script>'
-        '<script src="/static/whatif.js"></script>'
     )
     body = [intro]
     if pc.reverted:
@@ -10305,6 +10498,8 @@ reverted to their prior values and the schedule re-run &mdash; the gap is schedu
             "not because the activity itself was altered.</p>"
         )
     body.append("</div>")
+    body.append(added_html)
+    body.append('<script src="/static/whatif.js"></script>')
     return "".join(body)
 
 

@@ -51,6 +51,19 @@ _MAX_MONTHS = 48
 
 
 @dataclass(frozen=True)
+class TrackedActivity:
+    """Where ONE tracked activity lands on a snapshot's shared month axis (operator
+    2026-07-09: visualize up to 20 chosen UIDs riding the bow wave, beside the optional
+    primary target). ``None`` indices mean absent this snapshot or off-axis."""
+
+    uid: int
+    name: str
+    scheduled_index: int | None  # month index of its current (forecast/actual) finish
+    finished_index: int | None  # month index of its actual finish
+    percent_complete: float | None  # None when the activity is absent this snapshot
+
+
+@dataclass(frozen=True)
 class SnapshotProfile:
     """One snapshot's monthly finish profile over the shared month axis."""
 
@@ -68,6 +81,9 @@ class SnapshotProfile:
     # target, target absent this snapshot, or its finish is off-axis) — the chart marks the month.
     target_scheduled_index: int | None = None  # month index of the target's current finish
     target_finished_index: int | None = None  # month index of the target's actual finish
+    #: operator 2026-07-09: up to 20 operator-chosen activities tracked riding the wave,
+    #: independent of (and in addition to) the primary target above.
+    tracked: tuple[TrackedActivity, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,7 +94,11 @@ class BowWave:
     snapshots: tuple[SnapshotProfile, ...]
 
 
-def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = None) -> BowWave:
+def compute_bow_wave(
+    schedules: Sequence[Schedule],
+    target_uid: int | None = None,
+    track_uids: Sequence[int] = (),
+) -> BowWave:
     """Monthly finish profiles + CEI for ``schedules`` (given oldest → newest).
 
     Requires at least one schedule. The month axis is shared across snapshots (clamped to
@@ -89,6 +109,11 @@ def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = Non
     that activity's current (scheduled) finish and actual finish on the shared axis, so the
     chart can mark where the target lands and how it slides across snapshots. ``None`` (or an
     off-axis / absent target) leaves the indices ``None`` — purely additive, no metric change.
+
+    ``track_uids`` (operator 2026-07-09) marks up to 20 further chosen activities per
+    snapshot (``SnapshotProfile.tracked``) so the chart can visualize them riding — or
+    escaping — the bow wave, alongside the optional primary target. The caller caps the
+    count; unknown UIDs simply carry ``None`` positions (never fabricated).
     """
     if not schedules:
         raise ValueError("the bow-wave analysis needs at least one schedule version")
@@ -96,6 +121,7 @@ def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = Non
     per_snapshot: list[tuple[list[dt.datetime], list[dt.datetime], list[dt.datetime]]] = []
     sched_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> scheduled-finish month
     fin_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> actual-finish month
+    task_by_uid: list[dict[int, tuple[str, float]]] = []  # per snapshot: UID -> (name, pct)
     data_months: list[int] = []
     status_yms: list[int | None] = []
     for sch in schedules:
@@ -108,6 +134,7 @@ def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = Non
         fin_ym_by_uid.append(
             {t.unique_id: _ym(t.actual_finish) for t in tasks if t.actual_finish is not None}
         )
+        task_by_uid.append({t.unique_id: (t.name, t.percent_complete) for t in tasks})
         data_months.extend(_ym(d) for d in (*baselined, *scheduled, *finished))
         status_yms.append(_ym(sch.status_date) if sch.status_date is not None else None)
 
@@ -172,6 +199,20 @@ def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = Non
             fym = fin_ym_by_uid[k].get(target_uid)
             if fym is not None and lo <= fym <= hi:
                 tgt_fin = fym - lo
+
+        def _on_axis(ym: int | None) -> int | None:
+            return ym - lo if ym is not None and lo <= ym <= hi else None
+
+        tracked = tuple(
+            TrackedActivity(
+                uid=uid,
+                name=task_by_uid[k].get(uid, (f"UID {uid}", 0.0))[0],
+                scheduled_index=_on_axis(sched_ym_by_uid[k].get(uid)),
+                finished_index=_on_axis(fin_ym_by_uid[k].get(uid)),
+                percent_complete=(task_by_uid[k][uid][1] if uid in task_by_uid[k] else None),
+            )
+            for uid in track_uids
+        )
         profiles.append(
             SnapshotProfile(
                 label=sch.source_file or sch.name,
@@ -186,6 +227,7 @@ def compute_bow_wave(schedules: Sequence[Schedule], target_uid: int | None = Non
                 cei_finished=done,
                 target_scheduled_index=tgt_sched,
                 target_finished_index=tgt_fin,
+                tracked=tracked,
             )
         )
     return BowWave(

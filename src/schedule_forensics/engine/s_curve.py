@@ -32,6 +32,19 @@ _MAX_MONTHS = 60
 
 
 @dataclass(frozen=True)
+class TrackedActivity:
+    """Where ONE tracked activity's finishes land on the shared month axis for one version
+    (operator 2026-07-09: visualize up to 20 chosen UIDs on the animated S-curve, beside the
+    optional primary target). ``None`` indices mean absent this version or off-axis."""
+
+    uid: int
+    name: str
+    finish_index: int | None  # month index of the current (forecast/actual) finish
+    baseline_index: int | None  # month index of the baseline finish
+    percent_complete: float | None  # None when the activity is absent this version
+
+
+@dataclass(frozen=True)
 class SCurveVersion:
     """One version's cumulative planned / actual curves over the shared month axis (percent)."""
 
@@ -41,6 +54,8 @@ class SCurveVersion:
     activities: int  # the non-summary activity count this version is normalized against
     planned: tuple[float, ...]  # cumulative % with a baseline finish on/before each month
     actual: tuple[float, ...]  # cumulative % with an actual/forecast finish on/before each month
+    #: operator 2026-07-09: up to 20 operator-chosen activities marked on the curve.
+    tracked: tuple[TrackedActivity, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -68,11 +83,16 @@ def _cumulative_pct(dates: list[dt.datetime], lo: int, n: int, total: int) -> tu
     return tuple(out)
 
 
-def compute_s_curve(schedules: Sequence[Schedule]) -> SCurve:
+def compute_s_curve(schedules: Sequence[Schedule], track_uids: Sequence[int] = ()) -> SCurve:
     """Cumulative planned vs actual/forecast progress curves for ``schedules`` (oldest → newest).
 
     Requires at least one version with finish dates. The month axis is shared across versions so
     the per-version curves animate on one fixed scale.
+
+    ``track_uids`` (operator 2026-07-09) marks up to 20 chosen activities on each version's
+    curve (``SCurveVersion.tracked`` — the month of their current and baseline finishes), so
+    the animated chart can visualize specific work moving against the curve. The caller caps
+    the count; an unknown UID carries ``None`` positions (never fabricated).
     """
     if not schedules:
         raise ValueError("the S-curve needs at least one schedule version")
@@ -95,6 +115,24 @@ def compute_s_curve(schedules: Sequence[Schedule]) -> SCurve:
     versions: list[SCurveVersion] = []
     for sch, total, baseline, current in per:
         status = _ym(sch.status_date) if sch.status_date is not None else None
+
+        def _on_axis(d: dt.datetime | None) -> int | None:
+            if d is None:
+                return None
+            ym = _ym(d)
+            return ym - lo if lo <= ym <= hi else None
+
+        by_id = {t.unique_id: t for t in non_summary(sch)}
+        tracked = tuple(
+            TrackedActivity(
+                uid=uid,
+                name=by_id[uid].name if uid in by_id else f"UID {uid}",
+                finish_index=_on_axis(by_id[uid].finish) if uid in by_id else None,
+                baseline_index=_on_axis(by_id[uid].baseline_finish) if uid in by_id else None,
+                percent_complete=by_id[uid].percent_complete if uid in by_id else None,
+            )
+            for uid in track_uids
+        )
         versions.append(
             SCurveVersion(
                 label=sch.source_file or sch.name,
@@ -103,6 +141,7 @@ def compute_s_curve(schedules: Sequence[Schedule]) -> SCurve:
                 activities=total,
                 planned=_cumulative_pct(baseline, lo, n, total),
                 actual=_cumulative_pct(current, lo, n, total),
+                tracked=tracked,
             )
         )
     return SCurve(

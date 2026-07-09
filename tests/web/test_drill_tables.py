@@ -53,6 +53,25 @@ def test_whatif_table_and_export_route_are_wired() -> None:
     assert r.status_code == 200
 
 
+def test_whatif_added_to_critical_path_section_and_export() -> None:
+    """Operator 2026-07-09: the What-if panel also lists work ADDED to the critical path between
+    the chosen pair, with the engine's per-activity reason attribution, the same columns/filter/
+    Excel drill pattern, and its own export route."""
+    c = _client()
+    body = c.get("/evolution?cf_a=0&cf_b=2").text
+    assert "What-if: work added to the critical path" in body
+    assert "whatifAddedTable" in body and "whatifAddedData" in body
+    # exactly one script include drives both tables
+    assert body.count("/static/whatif.js") == 1
+    js = (STATIC / "whatif.js").read_text(encoding="utf-8")
+    assert "whatifAddedTable" in js and "/export/xlsx/whatif-added" in js
+    assert "why_entered" in js
+    r = c.get("/export/xlsx/whatif-added?a=Hard_File.mpp.xml&b=Project5.mpp.xml")
+    assert r.status_code == 200
+    r404 = c.get("/export/xlsx/whatif-added?a=nope&b=Project5.mpp.xml")
+    assert r404.status_code == 404
+
+
 def test_integrity_findings_expose_view_all_citations_drill() -> None:
     c = _client()
     # Hard_File -> Project5 produces findings with > 4 citations -> the "view all" link + drill
