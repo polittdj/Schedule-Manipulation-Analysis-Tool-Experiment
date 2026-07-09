@@ -4500,3 +4500,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   src/ change -> no wheel/installer lockstep rebuild. Highest ADR = 0168.
 - Backlog: #67 CLOSED. Still open: #71 Quality-Trend split, #72 Driving-Path tiers columns/Excel/
   banner, #74 Resources bucketing + overallocation drill, #80 SRA editable-grid Gantt.
+
+### 2026-07-09 (cont.) — Driving-Path tiers columns/filter/Excel + bold file banner (ADR-0169, closes #72)
+- Operator #72: the Driving-Path driving-tier activities need one organized chart the user can add
+  standard/custom columns to (set once), filter by any field, and export to Excel — plus a bold
+  banner naming the file the path was computed on (the path can differ between files; per-file
+  selector shipped ADR-0165).
+- _driving_tiers_panel: leads with a bold ".dp-file-banner" (Driving path computed on <file>), and
+  below the three at-a-glance buckets embeds an interactive table (all driving-tier activities) via
+  new static/driving_tiers.js: Tier + Slack(d) + UID/Name default columns, SFChecklist Columns
+  dropdown (std+custom, localStorage sf-driving-tiers-cols), Filter box, Excel of the chosen columns
+  (/export/xlsx/driving-tiers/{file}?target=&cols=). Tier+slack embedded server-side (same
+  driving-slack pass as the buckets); field columns from same-origin /api/analysis.
+- New export route export_driving_tiers: recomputes tiers on the stored network, emits
+  Tier/UID/Activity/Slack(d)+extra ordered driving->secondary->tertiary; unknown file/absent target
+  ->404, unsolvable ->422 (never 500). Resolves file by key OR display label (_find_schedule).
+- Live-verified in Chromium (Hard_File pair, target 155): banner names Hard_File_updated; 85 tier
+  rows render; filter "COMPLETE" -> 18; columns dropdown present + persisted; Excel href correct;
+  ZERO console errors. Pinned by tests/web/test_driving_tiers_drill.py (3).
+- src/ changed (app.py + driving_tiers.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148
+  lockstep). Highest ADR = 0169. Backlog: #72 CLOSED; still open #71 Quality-Trend split, #74
+  Resources bucketing + overallocation drill, #80 SRA editable-grid Gantt.

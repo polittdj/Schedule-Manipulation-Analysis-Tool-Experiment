@@ -1,4 +1,24 @@
-# Handoff — 2026-07-09 (SSI UID-155 driving-path golden pinned; highest ADR 0168)
+# Handoff — 2026-07-09 (Driving-Path tiers columns/filter/Excel + banner; highest ADR 0169)
+
+> ## STATUS (current) — ADR-0169: Driving-Path tiers add-columns / filter / Excel + file banner (#72 CLOSED)
+>
+> - **#72 done.** The Driving-Path page's driving-tier activities are now an interactive chart:
+>   one table across all three tiers with a **Tier** + **Slack (d)** column, a **Columns** dropdown
+>   (standard + custom, localStorage-persisted), a **Filter** box, and an **Excel** export of the
+>   chosen columns (`/export/xlsx/driving-tiers/{file}?target=&cols=`). Plus a **bold banner**
+>   naming the file the path was computed on (`.dp-file-banner`) — the per-file selector shipped in
+>   ADR-0165, this names the result.
+> - New `static/driving_tiers.js` (same drill pattern as ribbon/findings; tier+slack embedded
+>   server-side, fields from `/api/analysis`), export route, `.dp-file-banner` CSS. Export guards:
+>   unknown file/absent target → 404, unsolvable → 422.
+> - Live-verified in Chromium (Hard_File pair, target 155): banner names the file; 85 tier rows
+>   render, filter → 18 on "COMPLETE", columns dropdown + persisted, Excel 200, zero console
+>   errors. Pinned by `tests/web/test_driving_tiers_drill.py` (3). `src/` changed → wheel + 9
+>   installers rebuilt (lockstep).
+> - **Still open (larger features):** #71 Quality-Trend visual split; #74 Resources day/week/month
+>   bucketing + overallocation click-drill; #80 SRA editable-grid Gantt.
+
+
 
 > ## STATUS (current) — ADR-0168: SSI driving-path golden for Hard_File UID 155 (#67 CLOSED)
 >
