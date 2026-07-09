@@ -58,6 +58,37 @@ def test_resources_payload_is_valid_and_time_phased(client: TestClient) -> None:
     assert totals == sorted(totals, reverse=True)
 
 
+def test_resources_bucket_selector_and_drill_are_wired(client: TestClient) -> None:
+    """#74: a day/week/month bucket selector, a click-a-bar drill mount, and per-period task
+    contributors embedded in the payload for the drill."""
+    page = client.get("/resources?bucket=week").text
+    assert "name=bucket" in page  # the granularity selector
+    assert "id=resDrill" in page  # the click-a-bar drill mount
+    blob = page.split("id=resData>", 1)[1].split("</script>", 1)[0].replace("<\\/", "</")
+    payload = json.loads(blob)
+    assert payload["granularity"] == "week"
+    # every period carries its per-task contributors (the drill data), summing to the load
+    for r in payload["resources"]:
+        for p in r["series"]:
+            assert "tasks" in p
+            if p["tasks"]:
+                assert {"uid", "name", "days"} <= set(p["tasks"][0])
+                assert abs(sum(t["days"] for t in p["tasks"]) - p["load"]) < 0.05
+
+
+def test_resources_bucket_defaults_and_bad_value_is_month(client: TestClient) -> None:
+    for q in ("", "?bucket=month", "?bucket=nonsense"):
+        blob = (
+            client.get("/resources" + q)
+            .text.split("id=resData>", 1)[1]
+            .split("</script>", 1)[0]
+            .replace("<\\/", "</")
+        )
+        assert json.loads(blob)["granularity"] == "month"
+    js = client.get("/static/resources.js").text
+    assert "showDrill" in js and "hist-drill-table" in js  # the drill renderer
+
+
 def test_resources_js_is_air_gapped(client: TestClient) -> None:
     import re
 

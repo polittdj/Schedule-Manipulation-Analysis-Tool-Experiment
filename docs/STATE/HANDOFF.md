@@ -1,4 +1,23 @@
-# Handoff — 2026-07-09 (MEI/BEI/EPI/BRI trend chart split; highest ADR 0170)
+# Handoff — 2026-07-09 (Resources day/week/month bucketing + drill; highest ADR 0171)
+
+> ## STATUS (current) — ADR-0171: Resources bucketing + click-a-bar over-allocation drill (#74 CLOSED)
+>
+> - **#74 done.** The Resources loading histogram now supports **day / week / month** bucketing
+>   (`/resources?bucket=`, a Day/Week/Month selector that auto-submits; the server recomputes since
+>   capacity scales with the working days in each bucket). **Clicking any bar** opens an
+>   over-allocation drill (`#resDrill`) listing the activities driving that bucket (UID / name /
+>   work-days), from per-period contributors embedded server-side.
+> - Engine (`engine/resources.py`): `compute_resource_loading(…, granularity="month")` +
+>   `_bucket_key` (day `YYYY-MM-DD` / week ISO `YYYY-Www` / month `YYYY-MM`); each `ResourcePeriod`
+>   carries `contributors` (uid → minutes, summing to the bucket load). Total work is invariant to
+>   the bucket; unknown granularity → month. Parity-isolated, std-lib only.
+> - Live-verified in Chromium (Hard_File): month 4 → week 15 → day 68 bars (monotonic); selector
+>   switches; bar-click drill caught a real over-allocation (18.19 d / 18 d cap) with its 3 tasks;
+>   zero console errors. Pinned by `test_resources.py` (+3) and `test_resources_view.py` (+2).
+>   `src/` changed → wheel + 9 installers rebuilt (lockstep).
+> - **Still open (last work-order item):** #80 SRA editable-grid Gantt matched to the other Gantts.
+
+
 
 > ## STATUS (current) — ADR-0170: split the MEI/BEI/EPI/BRI trend chart into per-index visuals (#71 CLOSED)
 >
