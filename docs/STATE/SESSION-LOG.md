@@ -4481,3 +4481,58 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   framing was WRONG — ADR-0152 already accepted the in-repo binaries; the real defect was the stale
   CLAUDE.md, now fixed. #67 re-labeled ACTIONABLE (SSI UID-155 exports verified present via
   git ls-files), not blocked. Highest ADR unchanged = 0167.
+
+### 2026-07-09 — SSI driving-path golden for Hard_File UID 155 (ADR-0168, closes #67)
+- Consumed the two operator-delivered SSI Directional Path exports for focus UID 155
+  (00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155...xlsx + ..._Updated_...xlsx, base +
+  updated snapshots). These are "get all dependencies" runs — SSI buckets each predecessor into
+  Path NN by exact driving-slack value; Path 01 = strict 0-day driving path (9 tasks each).
+- Validated ENGINE==SSI BEFORE pinning (Law 2): the engine's zero-driving-slack set reproduces
+  SSI's Path 01 membership EXACTLY, UID-for-UID, on BOTH snapshots ({9,36,141,144,145,146,155,156,
+  411}); the engine's ordered chain filtered to those members matches SSI's Path 01 row order
+  exactly (141->156->36->9->144->145->146->411->155); every member DRIVING at 0 slack; focus 155
+  terminates the chain.
+- Gated the strict 0-day path (same basis as ssi_uid67/ssi_uid145), NOT the engine's broader
+  on_driving_path set (which flags sub-day-slack tasks per the ragged-minutes rule; SSI files those
+  under Path 02/03). SSI Drag column recorded provenance-only, ungated (ADR-0158).
+- New golden tests/fixtures/golden/ssi_hardfile_uid155/case.json (reuses fuse_hardfile gz fixtures,
+  no duplicate binaries) + tests/parity/test_ssi_hardfile_uid155.py (4 parity cases, green). No
+  src/ change -> no wheel/installer lockstep rebuild. Highest ADR = 0168.
+- Backlog: #67 CLOSED. Still open: #71 Quality-Trend split, #72 Driving-Path tiers columns/Excel/
+  banner, #74 Resources bucketing + overallocation drill, #80 SRA editable-grid Gantt.
+
+### 2026-07-09 (cont.) — Driving-Path tiers columns/filter/Excel + bold file banner (ADR-0169, closes #72)
+- Operator #72: the Driving-Path driving-tier activities need one organized chart the user can add
+  standard/custom columns to (set once), filter by any field, and export to Excel — plus a bold
+  banner naming the file the path was computed on (the path can differ between files; per-file
+  selector shipped ADR-0165).
+- _driving_tiers_panel: leads with a bold ".dp-file-banner" (Driving path computed on <file>), and
+  below the three at-a-glance buckets embeds an interactive table (all driving-tier activities) via
+  new static/driving_tiers.js: Tier + Slack(d) + UID/Name default columns, SFChecklist Columns
+  dropdown (std+custom, localStorage sf-driving-tiers-cols), Filter box, Excel of the chosen columns
+  (/export/xlsx/driving-tiers/{file}?target=&cols=). Tier+slack embedded server-side (same
+  driving-slack pass as the buckets); field columns from same-origin /api/analysis.
+- New export route export_driving_tiers: recomputes tiers on the stored network, emits
+  Tier/UID/Activity/Slack(d)+extra ordered driving->secondary->tertiary; unknown file/absent target
+  ->404, unsolvable ->422 (never 500). Resolves file by key OR display label (_find_schedule).
+- Live-verified in Chromium (Hard_File pair, target 155): banner names Hard_File_updated; 85 tier
+  rows render; filter "COMPLETE" -> 18; columns dropdown present + persisted; Excel href correct;
+  ZERO console errors. Pinned by tests/web/test_driving_tiers_drill.py (3).
+- src/ changed (app.py + driving_tiers.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148
+  lockstep). Highest ADR = 0169. Backlog: #72 CLOSED; still open #71 Quality-Trend split, #74
+  Resources bucketing + overallocation drill, #80 SRA editable-grid Gantt.
+
+### 2026-07-09 (cont. 2) — split MEI/BEI/EPI/BRI trend chart into per-index visuals (ADR-0170, closes #71)
+- Operator disambiguated (2026-07-09, via AskUserQuestion): the "Quality Trend combined visual" =
+  the MEI/BEI/EPI/BRI chart on /trend (the page has several combined charts; one, BEI/CEI/HMI, is
+  intentionally combined per NASA handbook Fig 7-21 and stays that way).
+- trend.js: replaced the single multiLineChart("MEI / BEI / EPI / BRI across versions", ...) with a
+  loop emitting one single-series lineChart per index (MEI/BEI/EPI/BRI), each with its own title
+  ("<index> across versions"), color, per-index description, 2-dp value formatter, shown only when
+  that index has a value. multiLineChart helper unchanged (still backs BEI/CEI/HMI, FEI, HMI, CEI,
+  Float Ratio). Presentation-only; same data.versions[i].indices payload.
+- Live-verified in Chromium (Hard_File pair): combined chart gone; 4 per-index charts render;
+  BEI/CEI/HMI exec panel intact; zero console errors. Pinned by
+  test_trends_animation.py::test_health_indices_are_split_into_separate_charts.
+- src/ changed (trend.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep). Highest ADR = 0170.
+  Backlog: #71 CLOSED; still open #74 Resources bucketing + overallocation drill, #80 SRA grid Gantt.

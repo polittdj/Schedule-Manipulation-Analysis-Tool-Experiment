@@ -827,28 +827,28 @@
             "wd");
         }
 
-        var idxSeries = [
-          { key: "mei", label: "MEI", color: "var(--ok)" },
-          { key: "bei", label: "BEI", color: "var(--warn)" },
-          { key: "epi", label: "EPI", color: "var(--accent)" },
-          { key: "bri", label: "BRI", color: "var(--bad)" },
-        ].filter(function (s) {
-          return data.versions.some(function (v) {
-            return v.indices && v.indices[s.key] != null;
+        // Schedule-health indices — one chart PER index (operator #71). These four indices carry
+        // different scales/meanings, so a shared axis obscured each series; separate small charts
+        // keep every trend legible. (The BEI/CEI/HMI execution panel above stays combined by
+        // design — it mirrors the handbook's Fig 7-21 single-axis execution view.)
+        [
+          { key: "mei", label: "MEI (milestone execution)", color: "var(--ok)",
+            desc: "Milestone Execution Index per version: of the milestones baselined to finish by the data date, the share actually finished. Near or above 1.0 is on-plan." },
+          { key: "bei", label: "BEI (baseline execution)", color: "var(--warn)",
+            desc: "Baseline Execution Index per version: tasks completed vs the tasks the baseline placed on or before the data date. Near or above 1.0 is on-plan." },
+          { key: "epi", label: "EPI (execution performance)", color: "var(--accent)",
+            desc: "Execution Performance Index per version: how completed work is tracking against plan. Near or above 1.0 is on-plan." },
+          { key: "bri", label: "BRI (baseline realism)", color: "var(--bad)",
+            desc: "Baseline Realism Index per version: of what was baselined-due, how much actually finished. Near or above 1.0 means the baseline was realistic." },
+        ].forEach(function (s) {
+          var values = data.versions.map(function (v) {
+            return v.indices ? v.indices[s.key] : null;
           });
-        }).map(function (s) {
-          return {
-            label: s.label,
-            color: s.color,
-            values: data.versions.map(function (v) {
-              return v.indices ? v.indices[s.key] : null;
-            }),
-          };
+          if (values.some(function (v) { return v != null; })) {
+            lineChart(s.label + " across versions", labels, values,
+              function (v) { return v == null ? "—" : v.toFixed(2); }, s.color, s.desc, s.label);
+          }
         });
-        if (idxSeries.length) {
-          multiLineChart("MEI / BEI / EPI / BRI across versions", labels, idxSeries,
-            "Schedule-health indices per version: MEI (milestone execution), BEI (baseline execution), EPI (execution performance), BRI (baseline realism — of what was baselined-due, how much actually finished). Near or above 1.0 is on-plan.");
-        }
 
         var feiSeries = [
           { key: "fei_starts", label: "FEI (Starts)", color: "var(--accent)" },

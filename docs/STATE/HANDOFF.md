@@ -1,4 +1,65 @@
-# Handoff — 2026-07-08 (filter/columns/Excel drill tables; highest ADR 0167)
+# Handoff — 2026-07-09 (MEI/BEI/EPI/BRI trend chart split; highest ADR 0170)
+
+> ## STATUS (current) — ADR-0170: split the MEI/BEI/EPI/BRI trend chart into per-index visuals (#71 CLOSED)
+>
+> - **#71 done.** Operator disambiguated (2026-07-09): the "Quality Trend combined visual" = the
+>   **MEI / BEI / EPI / BRI** chart on `/trend`, which crammed four different-scale indices onto one
+>   axis. Now each index is its own single-series `lineChart` ("<index> across versions") with a
+>   per-index description + 2-dp values. The `multiLineChart` helper is unchanged and still backs the
+>   deliberately-combined charts — notably **BEI/CEI/HMI**, kept combined per NASA handbook Fig 7-21
+>   (confirmed out of scope).
+> - Presentation-only (`static/trend.js`); same `indices` payload. Live-verified in Chromium
+>   (Hard_File pair): combined chart gone, four per-index charts present, exec panel intact, zero
+>   console errors. Pinned by `test_trends_animation.py::test_health_indices_are_split_into_separate_charts`.
+>   `src/` changed → wheel + 9 installers rebuilt (lockstep).
+> - **Still open (larger features):** #74 Resources day/week/month bucketing + overallocation
+>   click-drill; #80 SRA editable-grid Gantt.
+
+
+
+> ## STATUS (current) — ADR-0169: Driving-Path tiers add-columns / filter / Excel + file banner (#72 CLOSED)
+>
+> - **#72 done.** The Driving-Path page's driving-tier activities are now an interactive chart:
+>   one table across all three tiers with a **Tier** + **Slack (d)** column, a **Columns** dropdown
+>   (standard + custom, localStorage-persisted), a **Filter** box, and an **Excel** export of the
+>   chosen columns (`/export/xlsx/driving-tiers/{file}?target=&cols=`). Plus a **bold banner**
+>   naming the file the path was computed on (`.dp-file-banner`) — the per-file selector shipped in
+>   ADR-0165, this names the result.
+> - New `static/driving_tiers.js` (same drill pattern as ribbon/findings; tier+slack embedded
+>   server-side, fields from `/api/analysis`), export route, `.dp-file-banner` CSS. Export guards:
+>   unknown file/absent target → 404, unsolvable → 422.
+> - Live-verified in Chromium (Hard_File pair, target 155): banner names the file; 85 tier rows
+>   render, filter → 18 on "COMPLETE", columns dropdown + persisted, Excel 200, zero console
+>   errors. Pinned by `tests/web/test_driving_tiers_drill.py` (3). `src/` changed → wheel + 9
+>   installers rebuilt (lockstep).
+> - **Still open (larger features):** #71 Quality-Trend visual split; #74 Resources day/week/month
+>   bucketing + overallocation click-drill; #80 SRA editable-grid Gantt.
+
+
+
+> ## STATUS (current) — ADR-0168: SSI driving-path golden for Hard_File UID 155 (#67 CLOSED)
+>
+> - **#67 is done.** The two operator-delivered SSI Directional Path exports for focus UID 155
+>   (`00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155...xlsx` + `..._Updated_...xlsx`, base +
+>   updated) were validated against the engine BEFORE pinning (Law 2). Result: the engine's
+>   **zero-driving-slack set reproduces SSI's Path 01 membership EXACTLY, UID-for-UID, on BOTH
+>   snapshots** (`{9, 36, 141, 144, 145, 146, 155, 156, 411}`), and the engine's ordered chain
+>   filtered to those members matches SSI's Path 01 **row order exactly**
+>   (`141→156→36→9→144→145→146→411→155`). Every member is DRIVING at 0 slack; focus 155 terminates
+>   the chain.
+> - These are "get all dependencies" exports (SSI buckets each predecessor into `Path NN` by exact
+>   driving-slack value; Path 01 = strict 0-day driving path). We gate the strict 0-day path — same
+>   basis as `ssi_uid67`/`ssi_uid145` — NOT the engine's broader `on_driving_path` set (which also
+>   flags sub-day-slack tasks per the documented ragged-minutes rule; SSI files those under Path
+>   02/03). SSI's Drag column is recorded provenance-only, ungated (ADR-0158).
+> - New golden `tests/fixtures/golden/ssi_hardfile_uid155/case.json` (reuses the `fuse_hardfile`
+>   gz fixtures, no duplicate binaries) + `tests/parity/test_ssi_hardfile_uid155.py` (4 parity
+>   cases, all green). **No `src/` change** → no wheel/installer lockstep rebuild.
+> - **Still open (larger features):** #72 Driving-Path tiers per-column add + Excel + bold banner;
+>   #71 Quality-Trend visual split; #74 Resources day/week/month bucketing + overallocation drill;
+>   #80 SRA editable-grid Gantt.
+
+
 
 > ## AUDIT (2026-07-08, end-of-session deep-dive — triple-verified findings)
 >

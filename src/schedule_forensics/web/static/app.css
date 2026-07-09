@@ -827,6 +827,15 @@ a.cite-more { color: var(--accent); cursor: pointer; white-space: nowrap; }
 .findings-drill h3 { margin: 8px 0 4px; }
 /* What-if reverted-changes interactive table shares the drill look. */
 #whatifTable { margin-top: 8px; }
+/* Driving-Path: bold banner naming the traced file (operator #72). */
+.dp-file-banner {
+  margin: 2px 0 6px;
+  font-size: 1.05em;
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+}
+.dp-file-banner b { color: var(--accent); }
+#drivingTiers { margin-top: 8px; }
 
 /* SSI Directional Path Tool options panel (operator 2026-07-08) */
 details.path-options { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 10px; background: var(--field-bg); font-size: 12px; }

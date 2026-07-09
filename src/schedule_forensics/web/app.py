@@ -2847,6 +2847,72 @@ def create_app(
         )
         return _export_response(fmt, tableset, "activities")
 
+    @app.get("/export/{fmt}/driving-tiers/{name}")
+    def export_driving_tiers(
+        fmt: str, name: str, target: int = Query(...), cols: str = Query("")
+    ) -> Response:
+        """Every activity driving ``target`` in one file, bucketed by driving-slack tier, with a
+        Tier + Slack(d) column and any extra fields the operator toggled on — the Driving-Path
+        tiers chart's Excel export (operator #72). Rows are ordered driving → secondary → tertiary,
+        then by slack then UID (matching the on-screen buckets)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        key, sch = _find_schedule(st, name)  # accept the session key OR the display label
+        if key is None or sch is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        if target not in sch.tasks_by_id:
+            return JSONResponse({"error": "target not in schedule"}, status_code=404)
+        try:
+            analysis = st.analysis_for(key, sch)
+            results = compute_driving_slack(sch, target, cpm_result=analysis.cpm)
+        except (CPMError, KeyError, ValueError):
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
+        tier_order = {"driving": 0, "secondary": 1, "tertiary": 2}
+        tier_title = {
+            "driving": "Critical / driving",
+            "secondary": "Secondary",
+            "tertiary": "Tertiary",
+        }
+        graded: list[tuple[int, int, float, str]] = []
+        for uid, r in results.items():
+            if uid == target:
+                continue
+            label = _EVO_TIER_LABEL.get(r.tier)
+            if label in tier_order:
+                graded.append((tier_order[label], uid, float(r.driving_slack_days), label))
+        graded.sort(key=lambda g: (g[0], g[2], g[1]))
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        by_row: dict[int, dict[str, object]] = {}
+        for a in analysis.activity_rows:
+            row_uid = a.get("unique_id")
+            if isinstance(row_uid, int):
+                by_row[row_uid] = a
+
+        def _cell(value: object) -> str | int | float | None:
+            return value if isinstance(value, str | int | float) or value is None else str(value)
+
+        headers = ("Tier", "UID", "Activity", "Slack (d)", *extra)
+        rows: list[tuple[str | int | float | None, ...]] = []
+        for _ord, uid, slack, label in graded:
+            a = by_row.get(uid, {})
+            custom_obj = a.get("custom")
+            custom: dict[str, object] = custom_obj if isinstance(custom_obj, dict) else {}
+            rows.append(
+                (
+                    tier_title[label],
+                    uid,
+                    _cell(a.get("name")),
+                    round(slack, 1),
+                    *(_cell(a.get(c, custom.get(c))) for c in extra),
+                )
+            )
+        tableset = TableSet(
+            f"{name} — driving tiers to {target}",
+            (Table(f"Driving tiers to {target}", headers, tuple(rows)),),
+        )
+        return _export_response(fmt, tableset, "driving-tiers")
+
     @app.get("/export/{fmt}/whatif")
     def export_whatif(
         fmt: str, a: str = Query(""), b: str = Query(""), cols: str = Query("")
@@ -8931,13 +8997,44 @@ def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], targe
         )
     focus = by_id.get(target)
     fname = _e(focus.name) if focus is not None else f"UID {target}"
+    # The file whose driving path this is (operator 2026-07-08: a bold banner naming the traced
+    # file, because the driving path can differ between files). Its display label doubles as the
+    # /api/analysis + export token, resolved by _find_schedule.
+    file_label = sch.source_file or sch.name
+    banner = f'<p class="dp-file-banner">Driving path computed on <b>{_e(file_label)}</b></p>'
+    # Interactive "all driving-tier activities" chart (operator #72): one table across the three
+    # tiers with a Tier + Slack(d) column, a Columns dropdown (any standard/custom field, set
+    # once), a Filter box, and an Excel export of the selection — the same drill pattern as the
+    # ribbon / finding-citation tables. Tier + slack are embedded here (from the same driving-slack
+    # pass the buckets use); the field columns come from same-origin /api/analysis.
+    tier_rows = [
+        {"uid": u, "tier": key, "slack": round(d, 1)}
+        for key, _title, _sub in cols
+        for u, _n, d in buckets[key]
+    ]
+    drill = ""
+    if tier_rows:
+        blob = json.dumps({"file": file_label, "target": target, "rows": tier_rows}).replace(
+            "<", "\\u003c"
+        )
+        drill = (
+            "<div class=panel><h2>All driving-tier activities</h2>"
+            "<p class=muted>Every activity driving this target, across all three tiers, in one "
+            "chart. Add any standard or custom field (set once), filter by any shown column, and "
+            "export exactly your columns to Excel.</p>"
+            "<div id=drivingTiers></div>"
+            f'<script type="application/json" id=drivingTiersData>{blob}</script>'
+            '<script src="/static/driving_tiers.js"></script></div>'
+        )
     return (
         f"<div class=panel><h2>Driving tiers to {target} &mdash; {fname}</h2>"
+        f"{banner}"
         "<p class=muted>Activities driving this target in the latest version, by their driving "
         "slack: <b>critical</b> (0 working days &mdash; the driving path), <b>secondary</b>, and "
         "<b>tertiary</b>. Fewer days = more control over the target (ADR-0011).</p>"
         '<div style="display:flex;gap:1em;align-items:flex-start;flex-wrap:wrap">'
         f"{''.join(blocks)}</div></div>"
+        f"{drill}"
     )
 
 

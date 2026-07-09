@@ -1,0 +1,22 @@
+{
+ "_source": "00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx and Hard_File_Path_Updated_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx — SSI Directional Path Tool exports (Get all dependencies), focus UID 155 'Customer Service Program Development COMPLETE', for Hard_File.mpp and Hard_File_updated.mpp (delivered by the operator 2026-07-08; closes backlog #67).",
+ "_note": "Golden SSI DRIVING PATH for focus UID 155. These are 'get all dependencies' exports: SSI lists every predecessor of the focus with its Driving Slack and buckets each into a Path number by exact driving-slack value — Path 01 is the strict 0-day driving path. The engine's zero-driving-slack set (driving_slack_minutes == 0) reproduces SSI's Path 01 membership EXACTLY, UID-for-UID, on BOTH the base and updated files, and the engine's ordered driving chain filtered to those members reproduces SSI's Path 01 row order exactly (141 -> 156 -> 36 -> 9 -> 144 -> 145 -> 146 -> 411 -> 155). The engine's broader on_driving_path set additionally flags sub-day-slack tasks as driving (the documented ragged-minutes rule, test_subday_slack_is_driving_like_ssi_displays_it); SSI puts those in Path 02/03. We therefore gate the STRICT 0-day driving path (same basis as the ssi_uid67 / ssi_uid145 goldens), not the broader near-path set. The Drag column is recorded for PROVENANCE ONLY and deliberately NOT gated (the engine does not compute drag; ADR-0158).",
+ "_schedule_fixtures": "reuses tests/fixtures/golden/fuse_hardfile/Hard_File.mspdi.xml.gz and Hard_File_updated.mspdi.xml.gz (MPXJ-converted MSPDI of the intake .mpp, non-CUI build inputs per CLAUDE.md / ADR-0159).",
+ "focus_task_uid": 155,
+ "Hard_File": {
+  "ssi_export": "Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+  "ssi_total_dependency_rows": 90,
+  "ssi_path_row_counts": {"Path 01": 9, "Path 02": 80, "Path 03": 1},
+  "driving_path_uids_ordered": [141, 156, 36, 9, 144, 145, 146, 411, 155],
+  "driving_slack_days_by_uid": {"141": 0, "156": 0, "36": 0, "9": 0, "144": 0, "145": 0, "146": 0, "411": 0, "155": 0},
+  "ssi_drag_days_by_uid_provenance_only": {"141": "3.5 days", "156": "0 days", "36": "0.5 day", "9": "0.5 day", "144": "0.5 day", "145": "0.5 day", "146": "2 days", "411": "0 days", "155": "0 days"}
+ },
+ "Hard_File_updated": {
+  "ssi_export": "Hard_File_Path_Updated_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+  "ssi_total_dependency_rows": 86,
+  "ssi_path_row_counts": {"Path 01": 9, "Path 02": 71, "Path 03": 6},
+  "driving_path_uids_ordered": [141, 156, 36, 9, 144, 145, 146, 411, 155],
+  "driving_slack_days_by_uid": {"141": 0, "156": 0, "36": 0, "9": 0, "144": 0, "145": 0, "146": 0, "411": 0, "155": 0},
+  "ssi_drag_days_by_uid_provenance_only": {"141": "3.5 days", "156": "0 days", "36": "0.5 day", "9": "0.5 day", "144": "0.5 day", "145": "0.5 day", "146": "2 days", "411": "0 days", "155": "0 days"}
+ }
+}
