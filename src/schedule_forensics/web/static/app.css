@@ -900,3 +900,17 @@ header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
 .evo-gantt .pv-name, .sra-grid-host .pv-name, .dp-gantt .pv-name {
   min-width: 280px; max-width: 460px; white-space: normal; word-break: break-word; }
 .pv-link { z-index: 2; }
+
+/* POLARIS masthead wordmark (ADR-0175) — NASA-worm-style SVG strokes in the worm's iconic red,
+   with a restrained glow that reads on the light, dark, and HUD headers alike. The backronym
+   tagline is tracked out beneath it, mission-patch style; it yields on narrow viewports. */
+.brand { display: flex; flex-direction: column; gap: 3px; margin: 0; }
+/* aspect-ratio + align-self keep the svg at its natural width: a column-flex child otherwise
+   STRETCHES to the h1 width and preserveAspectRatio centers the drawing inside it (an indent). */
+.brand-mark { height: 30px; width: auto; aspect-ratio: 344 / 72; align-self: flex-start;
+  display: block; overflow: visible; filter: drop-shadow(0 0 5px rgba(232, 67, 46, .35)); }
+.brand-strokes { stroke: #e8432e; }
+.brand-star { fill: #e8432e; }
+.brand-sub { font-size: 8px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; }
+@media (max-width: 1200px) { .brand-sub { display: none; } }

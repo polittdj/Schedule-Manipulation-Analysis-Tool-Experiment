@@ -275,7 +275,7 @@ _MAX_UPLOAD_BYTES = 500 * 1024 * 1024
 _LAYOUT = Template(
     """<!doctype html><html lang="{{ lang }}"><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1">
-<title>{{ title }} — Schedule Forensics</title>
+<title>{{ title }} — POLARIS</title>
 <link rel=icon href="/static/favicon.ico">
 <script>window.SF_LANG={{ lang_json }};window.SF_I18N={{ catalog_json }};</script>
 <script src="/static/theme.js"></script>
@@ -328,7 +328,26 @@ data. You remain responsible for confirming the actual sensitivity, markings, an
 statements of every file you load and every report you export.</p>
 </div>
 </details>
-<header><h1>&#9650; SCHEDULE FORENSICS</h1>
+<header><h1 class=brand data-no-i18n
+aria-label="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules"
+title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules">
+<!-- POLARIS wordmark (ADR-0175): hand-set NASA-worm-style letterforms drawn as SVG strokes —
+     no webfont, fully inline, so the air-gap CSP stays intact and it renders identically
+     on every machine. Uniform stroke, rounded joins, crossbar-less A, trailing north star. -->
+<svg class=brand-mark viewBox="0 0 344 72" aria-hidden=true focusable=false>
+<g class=brand-strokes fill=none stroke-width=13 stroke-linecap=round stroke-linejoin=round>
+<path d="M6 62 V10 H20 A13 13 0 0 1 20 36 H6"/>
+<rect x="54" y="10" width="28" height="52" rx="14"/>
+<path d="M102 10 V62 H128"/>
+<path d="M150 62 V28 A14 14 0 0 1 178 28 V62"/>
+<path d="M198 62 V10 H212 A13 13 0 0 1 212 36 H198 M212 36 L226 62"/>
+<path d="M248 10 V62"/>
+<path d="M299 12 H285 A12 12 0 0 0 285 36 H287 A12 12 0 0 1 287 60 H273"/>
+</g>
+<path class=brand-star d="M328 6 Q329.5 16.5 340 18 Q329.5 19.5 328 30 Q326.5 19.5 316 18 Q326.5 16.5 328 6 Z"/>
+</svg>
+<span class=brand-sub>Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules</span>
+</h1>
 <input type=checkbox id=navToggle class=nav-toggle aria-label="Toggle navigation menu">
 <label for=navToggle class=nav-burger title="Menu" data-no-i18n><span aria-hidden=true>&#9776;</span></label>
 <nav>
@@ -1430,7 +1449,7 @@ def create_app(
     **lazily** — only when the operator turns the Ollama backend on in AI Settings — and stopped
     on tool close, so the tool never spins Ollama up for a session that never uses the AI (ADR-0122).
     """
-    app = FastAPI(title="Schedule Forensics", docs_url=None, redoc_url=None)
+    app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
     app.state.auto_shutdown = auto_shutdown
     app.state.idle_grace = idle_grace
@@ -2581,7 +2600,7 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         quality = compute_schedule_quality(sch, analysis.cpm)
         tableset = TableSet(
-            f"Schedule Forensics - {sch.name}",
+            f"POLARIS - {sch.name}",
             (
                 schedule_summary_table(sch),
                 dcma_table(analysis.audit),

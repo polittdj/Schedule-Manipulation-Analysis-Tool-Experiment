@@ -4616,3 +4616,21 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   court exhibit stays self-identifying; changing driving-tiers alone would be inconsistent (ADR-0174).
 - src/ changed (app.py + driving_tiers.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
   Highest ADR = 0174.
+
+### 2026-07-09 (cont. 6) — POLARIS brand + NASA-worm masthead wordmark (ADR-0175)
+- Operator asked for a name + a bold NASA-style title at the top; offered five alternatives to
+  their AISMAT (POLARIS/SENTINEL/VERITAS/AEGIS/SIGMA); operator chose POLARIS — Program Oversight
+  & Logic Analysis for Risk & Integrity of Schedules — "with the typography plan cooked in."
+- Masthead h1 replaced with a hand-set inline-SVG wordmark in the NASA-worm idiom (uniform 13u
+  stroke, round caps/joins, capsule O, crossbar-less arch A, serpentine S, trailing 4-point north
+  star), worm red #e8432e + restrained glow; backronym tagline tracked out beneath (hidden <1200px);
+  h1 aria-label carries the full name; data-no-i18n. NO webfont/CDN — fully inline, air-gap CSP
+  intact. Page <title> -> "<page> — POLARIS"; FastAPI title + Word report title renamed; pip/CLI
+  name unchanged (deliberate).
+- Two render bugs caught by the Chromium screenshot loop: (1) unquoted rect rx=14/> swallowed the
+  slash (SVG parse error) -> quoted; (2) column-flex SVG stretched to the h1 width and
+  preserveAspectRatio centered the drawing (indent) -> aspect-ratio: 344/72 + align-self:flex-start.
+- Verified via screenshots in light/dark/HUD + a zoomed letterform proof (reviewed; sent to the
+  operator); zero console errors. Pinned by test_app.py::test_polaris_masthead_wordmark; air-gap +
+  a11y suites green. src/ changed (app.py layout + app.css) -> wheel + 9 installers rebuilt
+  (ADR-0148 lockstep). Highest ADR = 0175.

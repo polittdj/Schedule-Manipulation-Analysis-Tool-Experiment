@@ -197,7 +197,7 @@ def test_briefing_view_renders_cited_executive_summary(client: TestClient) -> No
     _upload(client, "Project2")
     _upload(client, "Project5")
     page = client.get("/briefing").text
-    assert "Schedule Forensics — Executive Briefing" in page
+    assert "POLARIS — Executive Briefing" in page
     assert "1. The Bottom Line" in page and "4. Schedule Health Dashboard" in page
     assert "3.1 What Changed Between the Versions" in page  # two versions: real then-vs-now
     assert "class=cite" in page  # citation tags rendered with statements/tables

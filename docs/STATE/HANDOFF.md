@@ -1,4 +1,21 @@
-# Handoff — 2026-07-09 (Driving-tiers export fidelity fix; highest ADR 0174)
+# Handoff — 2026-07-09 (POLARIS brand wordmark; highest ADR 0175)
+
+> ## STATUS (current) — ADR-0175: POLARIS brand + NASA-worm-style masthead wordmark
+>
+> - **The tool is now branded POLARIS** (operator chose it over AISMAT from five offered names):
+>   *Program Oversight & Logic Analysis for Risk & Integrity of Schedules*. Masthead, page
+>   `<title>` ("<page> — POLARIS"), FastAPI title, and the Word report title are renamed; the pip
+>   package / CLI (`schedule-forensics`) is deliberately unchanged.
+> - **Wordmark = hand-set inline SVG in the NASA-worm idiom** (uniform stroke, rounded joins,
+>   capsule O, crossbar-less A, serpentine S, trailing 4-point north star), worm red #e8432e with a
+>   subtle glow; backronym tagline tracked out beneath (hidden <1200px); `aria-label` carries the
+>   full name; `data-no-i18n`. NO webfont/CDN — air-gap CSP untouched. CSS gotcha pinned:
+>   column-flex SVG stretches + centers, fixed with `aspect-ratio: 344/72; align-self: flex-start`.
+> - Verified in Chromium screenshots (light/dark/HUD + zoom, reviewed + sent to operator), zero
+>   console errors. Pinned by `test_app.py::test_polaris_masthead_wordmark`; air-gap + a11y suites
+>   green. `src/` changed → wheel + 9 installers rebuilt (lockstep).
+
+# (prior) Handoff — 2026-07-09 (Driving-tiers export fidelity fix; highest ADR 0174)
 
 > ## STATUS (current) — ADR-0174: driving-tiers Excel export honours the page trace options
 >

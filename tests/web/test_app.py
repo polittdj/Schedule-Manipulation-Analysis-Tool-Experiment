@@ -25,8 +25,23 @@ def _upload(client: TestClient, name: str) -> None:
 
 def test_home_and_health(client: TestClient) -> None:
     assert client.get("/").status_code == 200
-    assert "SCHEDULE FORENSICS" in client.get("/").text
+    assert "POLARIS" in client.get("/").text  # the masthead wordmark (ADR-0175)
     assert client.get("/healthz").json() == {"status": "ok", "loaded": 0}
+
+
+def test_polaris_masthead_wordmark(client: TestClient) -> None:
+    """ADR-0175: the tool is branded POLARIS — a hand-set NASA-worm-style SVG wordmark in the
+    masthead (no webfont, fully inline so the air-gap CSP holds), the backronym tagline, and the
+    retitled page <title>. The brand block is data-no-i18n and carries the full name for a11y."""
+    body = client.get("/").text
+    assert "<title>Dashboard — POLARIS</title>" in body
+    assert "class=brand data-no-i18n" in body
+    assert "brand-mark" in body and "brand-strokes" in body and "brand-star" in body
+    # the letterforms are inline SVG paths — no font file, no external asset
+    assert 'viewBox="0 0 344 72"' in body
+    assert "Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules" in body
+    # the a11y name rides the h1 itself
+    assert 'aria-label="POLARIS' in body
 
 
 def test_help_lists_every_metric(client: TestClient) -> None:

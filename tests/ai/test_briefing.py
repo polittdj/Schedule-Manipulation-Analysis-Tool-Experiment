@@ -70,7 +70,7 @@ def test_every_table_row_is_cited(golden_project5) -> None:
 
 def test_header_metadata_banner_and_verdict(golden_project5) -> None:
     b = build_briefing([golden_project5], today=TODAY)
-    assert b.title == "Schedule Forensics — Executive Briefing"
+    assert b.title == "POLARIS — Executive Briefing"
     assert b.verdict in {"ON TRACK", "WATCH", "AT RISK"}
     meta_labels = [k for k, _ in b.meta_rows]
     assert meta_labels == [
@@ -151,7 +151,7 @@ def test_backend_rephrases_prose_but_keeps_citations(golden_project5) -> None:
 
 def test_to_text_renders_numbered_headings(golden_project5) -> None:
     text = build_briefing([golden_project5], today=TODAY).to_text()
-    assert text.startswith("# Schedule Forensics — Executive Briefing")
+    assert text.startswith("# POLARIS — Executive Briefing")
     assert "## 1. The Bottom Line" in text
     assert "### 7.1 Methodology" in text
     assert "Verdict:" in text

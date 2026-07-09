@@ -80,7 +80,7 @@ def build_brief(
         _how_to_verify_section(schedules),
     ]
     return DiagnosticBrief(
-        title="Schedule Forensics — Diagnostic Brief",
+        title="POLARIS — Diagnostic Brief",
         generated_on=generated,
         sections=tuple(sections),
     )
@@ -601,7 +601,7 @@ def brief_blocks(brief: DiagnosticBrief) -> list[object]:
         Heading(brief.title, level=0),
         Paragraph(f"Report generated on {brief.generated_on.strftime('%A, %B %d, %Y')}."),
         Paragraph(
-            "Generated locally by Schedule Forensics from the loaded schedule files; "
+            "Generated locally by POLARIS from the loaded schedule files; "
             "every claim cites the schedule, UniqueID, and activity that substantiate it.",
             italic=True,
         ),
