@@ -1,6 +1,28 @@
-# Handoff — 2026-07-09 (Forecast per-field grouping + Gantt sticky scrollbar; highest ADR 0180)
+# Handoff — 2026-07-09 (Re-audit triage: cap starves artifacts last; highest ADR 0181)
 
-> ## STATUS (current) — ADR-0179 Forecast per-field group metrics + ADR-0180 Gantt sticky scrollbar
+> ## STATUS (current) — ADR-0181 change-effects cap fix + adversarial re-audit triage
+>
+> - **Operator pasted an adversarial CM audit from another AI session** ("do we have an issue?
+>   verify then solve"). Every claim verified: ONE real engine issue found and fixed —
+>   `compute_change_effects`' 60-revert cap measured changes in detection order, so on
+>   Hard_File→updated3 (71 changes) it starved 11 changes including real edits and the page
+>   banner read "35 artifacts" vs the true 44 (the operator's confusion). Artifact-pattern
+>   constraint reverts now run LAST (cap starves statusing noise, never deliberate changes),
+>   `is_reschedule_artifact` additionally requires the task be incomplete, and capped artifacts
+>   are disclosed (`skipped_capped_artifacts`) with the cluster heading totaling all DETECTED
+>   artifacts — every pair ending at updated3 now reports 44. (ADR-0181.)
+> - **Claims verified FALSE:** RelationshipType tuple-sort TypeError (it's a StrEnum);
+>   banner nondeterminism / stale-build output ("35" = the capped first-vs-last pair).
+>   **Already closed:** the two `.aft` Bibles are mathematically identical (ADR-0176 #88).
+>   **Benign (verified):** the re-uploaded Hard_File(.updated).mpp binaries are
+>   schedule-content-identical to the parity goldens (only SSI trace-tool fingerprints +
+>   MPXJ RemainingOvertimeWork noise differ) — parity oracles remain valid.
+>   **Operator-machine hygiene:** delete the stale June clone; `git restore` the 8 locally
+>   deleted fixtures in the Documents clone.
+
+# (prior) Handoff — 2026-07-09 (Forecast per-field grouping + Gantt sticky scrollbar; ADR 0180)
+
+> ## STATUS (prior) — ADR-0179 Forecast per-field group metrics + ADR-0180 Gantt sticky scrollbar
 >
 > - **ADR-0179 Forecast per-field grouping.** `engine/metrics/field_forecast.py` groups every
 >   version's tasks by any standard/custom field (+ NA for unassigned) and scores each group

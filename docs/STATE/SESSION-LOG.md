@@ -4723,3 +4723,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Functionality sweep (#99): 23 pages load 200 with zero console errors/no empty selects
   (passive); 18 pages exercised 600+ buttons / 70+ selects / 200+ checkboxes with zero JS errors
   (active). The full 2026-07-09 operator work order (ADR-0176..0180) is complete. Highest ADR = 0180.
+
+### 2026-07-09 (cont. 11) — Adversarial re-audit triage; change-effects cap fix (ADR-0181)
+- Operator pasted a CM/chain-of-custody audit from another AI session and asked whether the
+  "35 MS Project reschedule artifact(s)" banner is accurate and whether any real issue exists.
+  Verified every claim. ONE real engine issue confirmed and fixed: the 60-revert measurement cap
+  ran in detection order, so Hard_File->updated3 (71 changes) starved 11 changes (incl. real
+  edits) and banner-counted 35 artifacts vs the true 44. Fix (ADR-0181): artifact-pattern
+  constraint reverts deferred to run LAST (cap starves statusing noise, never deliberate
+  changes); is_reschedule_artifact now also requires percent_complete < 100 (MS Project only
+  reschedules uncompleted work; behavior-neutral on all fixtures); new skipped_capped_artifacts
+  disclosure and the Integrity cluster heading totals DETECTED artifacts (44 on every pair
+  ending at updated3: 33 measured + 11 disclosed on HF->u3). Pinned by an engine cap test
+  (synthetic 65-change pair) + a web test on the real HF->u3 goldens.
+- Claims verified FALSE: RelationshipType tuple-sort TypeError (StrEnum — sorts fine);
+  nondeterminism/stale-build ("35" was the capped first-vs-last pair, and the banner string only
+  exists in >=#308 code). Already closed: the 20260708 vs 20260423 .aft Bibles are mathematically
+  identical (task #88); test_aft_formula_audit passes against the live file. COC-1 verified
+  benign: fresh MPXJ conversion of the re-uploaded Hard_File(.updated).mpp == parity goldens on
+  all 142 tasks/links/status dates (only SSI trace-tool custom fields + calendars and MPXJ
+  RemainingOvertimeWork noise differ). CM-3 is the ADR-0152 intake process; CM-1/CM-2 are
+  operator-machine hygiene (stale June clone; 8 uncommitted local fixture deletions —
+  git restore). Highest ADR = 0181.

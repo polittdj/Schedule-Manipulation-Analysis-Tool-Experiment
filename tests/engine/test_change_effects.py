@@ -137,8 +137,17 @@ def test_reschedule_artifact_constraints_are_flagged_and_date_only_moves_revert(
             _task(2, 5),  # ASAP → SNET@other date (deliberate)
             _cur_task(3, ConstraintType.SNET, MON),  # SNET date-only move → status (artifact)
             _task(4, 0, is_milestone=True),
+            _task(5, 5, percent_complete=100.0),  # COMPLETE: ASAP → SNET@status (NOT an artifact)
         ),
         relationships=tuple(rels),
+    )
+    complete_snet = Task(
+        unique_id=5,
+        name="T5",
+        duration_minutes=5 * DAY,
+        percent_complete=100.0,
+        constraint_type=ConstraintType.SNET,
+        constraint_date=status,
     )
     current = Schedule(
         name="S",
@@ -149,19 +158,73 @@ def test_reschedule_artifact_constraints_are_flagged_and_date_only_moves_revert(
             _cur_task(2, ConstraintType.SNET, dt.datetime(2025, 3, 10, 8, 0)),
             _cur_task(3, ConstraintType.SNET, status),
             _task(4, 0, is_milestone=True),
+            complete_snet,
         ),
         relationships=tuple(rels),
     )
     r = compute_change_effects(prior, current, target_uid=4)
     assert r is not None
     con = {e.citation_uids[0]: e for e in r.per_change if e.kind == "constraint_restored"}
-    assert set(con) == {1, 2, 3}  # the date-only move on UID 3 IS reverted
+    assert set(con) == {1, 2, 3, 5}  # the date-only move on UID 3 IS reverted
     assert con[1].is_reschedule_artifact is True
     assert con[2].is_reschedule_artifact is False  # deliberate date ≠ data date
     assert con[3].is_reschedule_artifact is True
+    # MS Project only reschedules UNCOMPLETED work: SNET@data-date on a 100%-complete task is a
+    # deliberate edit, never the statusing artifact.
+    assert con[5].is_reschedule_artifact is False
     # labels state direction plainly: now <current> → was <prior>
     assert "now SNET 2025-02-03 → was ASAP" in con[1].label
     assert "was SNET 2025-01-06" in con[3].label
+    # artifact reverts are measured LAST (deferred behind every real change)
+    kinds = [e.is_reschedule_artifact for e in r.per_change]
+    assert kinds == sorted(kinds)  # all False rows precede all True rows
+
+
+def test_measurement_cap_starves_artifacts_not_real_changes() -> None:
+    """The 2026-07-09 forensic re-audit's one confirmed engine issue: on a pair whose diff
+    exceeds ``_MAX_CHANGE_EFFECTS``, the cap previously starved whatever came last in detection
+    order — which could be DELIBERATE changes while zero-effect statusing artifacts consumed
+    slots (Hard_File→updated3 read '35 artifacts' instead of the true 44 while real edits went
+    unmeasured). Artifact reverts now run last: every genuine change is measured, only artifact
+    rows are capped, and the capped-artifact count is disclosed separately."""
+    from schedule_forensics.engine.change_effects import _MAX_CHANGE_EFFECTS
+    from schedule_forensics.model.task import ConstraintType
+
+    status = dt.datetime(2025, 2, 3, 17, 0)
+    n_genuine = 5
+    n_artifacts = _MAX_CHANGE_EFFECTS  # genuine + artifacts exceeds the cap by n_genuine
+
+    prior_tasks: list[Task] = []
+    cur_tasks: list[Task] = []
+    # UIDs 1..5: real duration changes, detected BEFORE the constraint sweep
+    for uid in range(1, n_genuine + 1):
+        prior_tasks.append(_task(uid, 10))
+        cur_tasks.append(_task(uid, 5))
+    # UIDs 101..160: artifact-pattern constraint stamps (ASAP → SNET at the data date, incomplete)
+    for uid in range(101, 101 + n_artifacts):
+        prior_tasks.append(_task(uid, 5))
+        cur_tasks.append(
+            Task(
+                unique_id=uid,
+                name=f"T{uid}",
+                duration_minutes=5 * DAY,
+                constraint_type=ConstraintType.SNET,
+                constraint_date=status,
+            )
+        )
+    prior = Schedule(name="S", project_start=MON, tasks=tuple(prior_tasks))
+    current = Schedule(name="S", project_start=MON, status_date=status, tasks=tuple(cur_tasks))
+    r = compute_change_effects(prior, current, target_uid=1)
+    assert r is not None
+    genuine = [e for e in r.per_change if not e.is_reschedule_artifact]
+    artifacts = [e for e in r.per_change if e.is_reschedule_artifact]
+    assert len(genuine) == n_genuine  # every real change measured — none starved
+    assert len(r.per_change) == _MAX_CHANGE_EFFECTS
+    assert len(artifacts) == _MAX_CHANGE_EFFECTS - n_genuine
+    assert r.skipped_capped == n_genuine  # the overflow is artifact rows only…
+    assert r.skipped_capped_artifacts == n_genuine  # …and disclosed as artifact-pattern
+    # the disclosed artifact total (measured + capped) is the true detected count
+    assert len(artifacts) + r.skipped_capped_artifacts == n_artifacts
 
 
 def test_relationship_type_is_preserved_in_the_key() -> None:
