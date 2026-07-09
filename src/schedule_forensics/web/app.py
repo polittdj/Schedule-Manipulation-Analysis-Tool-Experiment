@@ -134,6 +134,7 @@ from schedule_forensics.engine.metrics.evm import (
     compute_evm_indices,
     compute_schedule_variance,
 )
+from schedule_forensics.engine.metrics.field_forecast import compute_field_forecast
 from schedule_forensics.engine.metrics.float_erosion import compute_float_erosion
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
@@ -2597,7 +2598,7 @@ def create_app(
         return JSONResponse({"values": values[:500]})  # cap for a sane datalist
 
     @app.get("/forecast", response_class=HTMLResponse)
-    def forecast_view() -> HTMLResponse:
+    def forecast_view(group_field: str = Query("")) -> HTMLResponse:
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if not schedules:
@@ -2614,8 +2615,65 @@ def create_app(
             "Forecast",
             _export_bar("forecast")
             + _skipped_notice(skipped)
-            + _forecast_body(schedules, cpms, sets),
+            + _forecast_body(schedules, cpms, sets)
+            + _field_forecast_panel(schedules, group_field),
         )
+
+    @app.get("/export/{fmt}/field-forecast")
+    def export_field_forecast(fmt: str, field: str = Query(...)) -> Response:
+        """The per-field group execution metrics (ADR-0179) as a file."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, _cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "no analyzable schedule"}, status_code=422)
+        if field not in available_fields_union(schedules):
+            return JSONResponse({"error": "unknown field"}, status_code=404)
+        rows_data = compute_field_forecast(schedules, field)
+
+        def n(v: float | None) -> str | float:
+            return "N/A" if v is None else v
+
+        headers = (
+            field,
+            "Version",
+            "Activities",
+            "Completed",
+            "Started",
+            "To go",
+            "BEI",
+            "HMI (tasks)",
+            "CEI (Finish)",
+            "CEI (Start)",
+            "SPI(t) ES",
+            "SPI(t) Acumen",
+            "Start index (SEI)",
+            "No completed work",
+        )
+        rows = tuple(
+            (
+                g.group,
+                g.version,
+                g.activities,
+                g.completed,
+                g.started,
+                g.to_go,
+                n(g.bei),
+                n(g.hmi),
+                n(g.cei_finish),
+                n(g.cei_start),
+                n(g.spi_t),
+                n(g.spi_t_acumen),
+                n(g.sei),
+                "yes" if g.no_completed_work else "",
+            )
+            for g in rows_data
+        )
+        tableset = TableSet(
+            f"Execution metrics by {field}",
+            (Table(f"By {field}", headers, rows),),
+        )
+        return _export_response(fmt, tableset, "field-forecast")
 
     @app.get("/api/forecast")
     def forecast_json() -> JSONResponse:
@@ -4844,6 +4902,111 @@ figure here reuses the forecast above &mdash; nothing is recomputed.</p>
 timeline. The multi-version movement is animated in the stepper below when two or more
 versions are loaded.</p>
 {_forecast_ruler(fc)}</div>"""
+
+
+def _field_forecast_panel(schedules: list[Schedule], group_field: str) -> str:
+    """Per-field group execution metrics on /forecast (operator 2026-07-09, ADR-0179): pick
+    any standard or custom field (e.g. a CAM code) and every version's tasks are grouped by
+    its values (plus NA for unassigned), each group scored with the SAME engine functions the
+    schedule-wide figures use — BEI / HMI / CEI / both SPI(t)s — plus the start-basis leading
+    index for groups that have not completed work yet."""
+    fields = available_fields_union(schedules)
+    if group_field and group_field not in fields:
+        group_field = ""
+    opts = '<option value="">— pick a field —</option>' + "".join(
+        f'<option value="{_e(f)}"{" selected" if f == group_field else ""}>{_e(f)}</option>'
+        for f in fields
+    )
+    form = f"""
+<div class=panel><h2>Execution metrics by field group</h2>
+<p class=muted>Group every loaded version's activities by any <b>standard or custom field</b>
+(for example a CAM code) and score each group with the same engine metrics the schedule-wide
+figures use — <b>BEI</b>, <b>HMI</b>, <b>CEI (Finish / Start)</b>, and both <b>SPI(t)</b>
+methods — computed over <b>only that group's tasks</b>. Activities carrying no value for the
+field are grouped as <b>NA</b>.</p>
+<form method=get action=/forecast class=viz-controls>
+<label>Group by <select name=group_field data-no-i18n>{opts}</select></label>
+<button type=submit>Compute</button>
+{f'<a class=btn-link href="/export/xlsx/field-forecast?field={_e(group_field)}">&#11015; Excel</a>' if group_field else ""}
+</form>"""
+    if not group_field:
+        return form + "</div>"
+    rows_data = compute_field_forecast(schedules, group_field)
+
+    def cell(v: float | None, *, na_hint: str = "") -> str:
+        if v is None:
+            return (
+                f'<td class=muted title="{_e(na_hint)}">N/A</td>'
+                if na_hint
+                else ("<td class=muted>N/A</td>")
+            )
+        cls = "fail" if v < 0.95 else "pass"
+        return f'<td class="num {cls}">{v:g}</td>'
+
+    body_rows = ""
+    last_group = None
+    for g in rows_data:
+        group_cell = (
+            f"<th scope=row rowspan=1 data-no-i18n>{_e(g.group)}</th>"
+            if g.group != last_group
+            else "<th scope=row></th>"
+        )
+        last_group = g.group
+        note = ""
+        if g.activities and g.no_completed_work:
+            note = (
+                '<span class=exc-note title="No completed work in this group yet — the '
+                "finish-anchored indices are undefined (never imputed). Read the start "
+                'index (SEI) as the leading execution signal.">start-basis</span>'
+            )
+        sei_hint = (
+            "Start execution index — started ÷ baselined-to-start-by-the-data-date: the "
+            "leading indicator used when a group has no completions yet"
+        )
+        body_rows += (
+            f"<tr>{group_cell}<td data-no-i18n>{_e(g.version)}</td>"
+            f"<td class=num>{g.activities}</td><td class=num>{g.completed}</td>"
+            f"<td class=num>{g.started}</td><td class=num>{g.to_go}</td>"
+            f"{cell(g.bei)}{cell(g.hmi)}{cell(g.cei_finish)}{cell(g.cei_start)}"
+            f"{cell(g.spi_t)}{cell(g.spi_t_acumen)}"
+            f"{cell(g.sei, na_hint=sei_hint)}"
+            f"<td>{note}</td></tr>"
+        )
+    analysis = """
+<details class=explainer><summary><b>Groups without completed work — how these figures are
+derived (best-practice analysis)</b></summary>
+<div style="padding:8px 12px">
+<p><b>The problem.</b> BEI, HMI, CEI (Finish) and both SPI(t) methods are <i>finish-anchored</i>:
+they compare completed work against what was baselined or forecast to complete. A group (a CAM,
+a resource, a WBS leg) whose work has not completed anything yet gives these indices no
+qualifying data — the denominator or the earned set is empty.</p>
+<p><b>What published practice says.</b> The NDIA Planning &amp; Scheduling Excellence Guide's
+treatment of BEI-family indices and the DCMA construct are explicit that an index without
+qualifying data reads <b>N/A</b> — imputing a 0 (reads as catastrophic failure) or a 1 (reads
+as perfect execution) poisons any forecast built on it. The accepted practice is to switch to
+<b>leading, start-anchored indicators</b>: work must start before it can finish, so start
+execution predicts finish execution one period ahead (Acumen's own library carries the
+start-anchored twin as "BEI - Value Task Starts").</p>
+<p><b>What this table does.</b> (1) Finish-anchored indices are <b>never fabricated</b> — an
+undefined cell reads N/A. (2) Every group additionally carries the <b>start execution index
+(SEI)</b> = activities started &divide; activities baselined to start by the data date — defined
+as soon as anything is due to start, so a no-completions group still gets a real execution read.
+(3) The <b>Started / To-go</b> counts give the group's workoff burden. A group flagged
+<b>start-basis</b> with SEI &lt; 0.95 is already executing late even though no finish-based
+metric can say so yet — that is the earlier, more accurate forecast signal the grouping is for.
+(4) As soon as the group completes its first activity, the finish-anchored indices activate
+automatically on the same engine formulas as the schedule-wide figures.</p>
+</div></details>"""
+    table = f"""
+<div class=hist-drill-scroll style="max-height:560px">
+<table class=hist-drill-table>
+<tr><th scope=col data-no-i18n>{_e(group_field)}</th><th scope=col>Version</th>
+<th scope=col>Activities</th><th scope=col>Done</th><th scope=col>Started</th>
+<th scope=col>To go</th><th scope=col>BEI</th><th scope=col>HMI</th>
+<th scope=col>CEI (F)</th><th scope=col>CEI (S)</th><th scope=col>SPI(t) ES</th>
+<th scope=col>SPI(t) Acumen</th><th scope=col>SEI (start)</th><th scope=col></th></tr>
+{body_rows}</table></div>"""
+    return form + analysis + table + "</div>"
 
 
 def _forecast_body(

@@ -206,10 +206,97 @@ window.SFGantt = (function () {
     return acc;
   }
 
+  // Always-visible bottom scrollbar (operator 2026-07-09: "have the slider bar at the bottom
+  // visible while the user is using the gantt"). A tall Gantt scroll pane hides its native
+  // horizontal scrollbar at the very bottom of its content, so an analyst reading rows near
+  // the top has to scroll all the way down to reach it. This attaches a proxy horizontal
+  // scrollbar that sticks to the BOTTOM OF THE VIEWPORT while any part of the pane is on
+  // screen, mirroring (and driving) the pane's scrollLeft. Idempotent per pane; the proxy
+  // hides itself when the pane needs no horizontal scroll or is off-screen. Applied through
+  // the same SFGantt layer every page's Gantt already uses, so all of them inherit it.
+  function stickyScrollbar(pane) {
+    if (!pane || pane._sfSticky) return;
+    pane._sfSticky = true;
+    var bar = el("div", { class: "sf-sticky-xscroll" });
+    var inner = el("div", { class: "sf-sticky-xscroll-inner" });
+    bar.appendChild(inner);
+    document.body.appendChild(bar);
+    var syncing = false;
+    function measure() {
+      inner.style.width = pane.scrollWidth + "px";
+      bar.style.height = pane.scrollWidth > pane.clientWidth + 1 ? "" : "0";
+    }
+    function place() {
+      var rect = pane.getBoundingClientRect();
+      var vh = window.innerHeight || document.documentElement.clientHeight;
+      // show the proxy whenever the pane overflows horizontally and is on screen — the pane's
+      // own bottom scrollbar sits far below in a tall Gantt, so the proxy keeps a reachable
+      // slider at the viewport bottom "while the user is using the gantt" (operator ask). Hide
+      // only when there's nothing to scroll or the pane is entirely off screen.
+      var needs = pane.scrollWidth > pane.clientWidth + 1;
+      var onScreen = rect.top < vh - 15 && rect.bottom > 0;
+      if (!needs || !onScreen) { bar.style.display = "none"; return; }
+      bar.style.display = "block";
+      bar.style.left = rect.left + "px";
+      bar.style.width = Math.min(rect.width, (window.innerWidth || rect.width)) + "px";
+    }
+    function fromPane() {
+      if (syncing) return;
+      syncing = true; bar.scrollLeft = pane.scrollLeft; syncing = false;
+    }
+    function fromBar() {
+      if (syncing) return;
+      syncing = true; pane.scrollLeft = bar.scrollLeft; syncing = false;
+    }
+    pane.addEventListener("scroll", fromPane, { passive: true });
+    bar.addEventListener("scroll", fromBar, { passive: true });
+    window.addEventListener("scroll", place, { passive: true });
+    window.addEventListener("resize", function () { measure(); place(); }, { passive: true });
+    // re-measure when the pane's content changes size (zoom, filter, repaint)
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function () { measure(); place(); });
+      ro.observe(pane);
+      if (pane.firstElementChild) ro.observe(pane.firstElementChild);
+    }
+    measure();
+    place();
+    pane._sfStickyRefresh = function () { measure(); place(); };
+  }
+
+  // Attach the sticky scrollbar to every standard Gantt scroll pane on the page (called on load
+  // by app.js / the page scripts; safe to call repeatedly — each pane is decorated once).
+  function attachStickyScrollbars(root) {
+    var panes = (root || document).querySelectorAll(
+      "#grid, .gantt-scroll, .path-view, .sra-grid-scroll"
+    );
+    Array.prototype.forEach.call(panes, stickyScrollbar);
+  }
+
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
     freezeColumns: freezeColumns,
+    stickyScrollbar: stickyScrollbar, attachStickyScrollbars: attachStickyScrollbars,
   };
+})();
+
+// Auto-init the always-visible bottom scrollbar on every standard Gantt pane, including panes
+// the async page scripts build after load (a MutationObserver catches them). One decoration per
+// pane (idempotent), so every Gantt across the tool inherits it with no per-page wiring.
+(function () {
+  "use strict";
+  function boot() {
+    if (!window.SFGantt) return;
+    SFGantt.attachStickyScrollbars(document);
+    if (window.MutationObserver) {
+      var obs = new MutationObserver(function () { SFGantt.attachStickyScrollbars(document); });
+      obs.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
 })();

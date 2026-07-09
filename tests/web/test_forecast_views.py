@@ -158,3 +158,27 @@ def test_report_page_shows_float_bands_and_completion_panels(client: TestClient)
     assert data["float_bands"]["float_free_lt10"]["count"] == 73
     assert data["completion"]["avg_days_late"]["value"] == 39.2
     assert data["completion"]["mei"]["population"] == 0  # NA on the goldens — honest
+
+
+def test_field_group_metrics_panel_dropdown_table_and_export(client: TestClient) -> None:
+    """Operator 2026-07-09 (ADR-0179): the Forecast page groups every version's activities by
+    ANY standard or custom field (plus an NA group for unassigned tasks) and scores each group
+    with the same engine metrics as the schedule-wide figures — BEI / HMI / CEI / both SPI(t)s
+    — never imputing a finish index for a no-completions group (the start-basis SEI is the
+    documented leading substitute)."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/forecast").text
+    assert "Execution metrics by field group" in page
+    assert "name=group_field" in page
+    assert ">Resource</option>" in page  # standard fields offered in the dropdown
+    grouped = client.get("/forecast?group_field=Resource").text
+    for col in ("BEI", "HMI", "CEI (F)", "CEI (S)", "SPI(t) ES", "SPI(t) Acumen", "SEI (start)"):
+        assert col in grouped, col
+    assert "best-practice analysis" in grouped  # the no-completed-work explainer
+    assert "never fabricated" in grouped or "N/A" in grouped
+    # Excel export works for a valid field and 404s an unknown one
+    assert client.get("/export/xlsx/field-forecast?field=Resource").status_code == 200
+    assert client.get("/export/xlsx/field-forecast?field=Nope").status_code == 404
+    # an unknown group_field falls back to the picker (no 500)
+    assert client.get("/forecast?group_field=Nope").status_code == 200

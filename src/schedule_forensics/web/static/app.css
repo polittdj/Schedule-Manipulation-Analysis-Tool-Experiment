@@ -90,6 +90,14 @@
    a capped scroll pane so its sticky thead + frozen data columns behave exactly like #grid /
    .path-view. Completed rows read muted with the name struck through (the old flex-row look). */
 .gantt-scroll { overflow-x: auto; overflow-y: auto; max-height: 80vh; margin-top: 4px; }
+/* Always-visible bottom scrollbar (operator 2026-07-09): a proxy horizontal scrollbar pinned
+   to the viewport bottom, driven by SFGantt.stickyScrollbar, so the timeline is scrollable
+   without scrolling the tall pane to its own bottom edge. The inner spacer is sized to the
+   pane's scrollWidth in JS; only its scrollbar shows. */
+.sf-sticky-xscroll { position: fixed; bottom: 0; z-index: 40; overflow-x: auto; overflow-y: hidden;
+  height: 15px; background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-top: 1px solid var(--line); display: none; }
+.sf-sticky-xscroll-inner { height: 1px; }
 .trace-grid tr.done td { color: var(--muted); }
 .trace-grid tr.done td.name-cell { text-decoration: line-through; }
 .gantt-bar { position: absolute; height: 100%; border-radius: 3px; }
