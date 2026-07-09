@@ -4707,3 +4707,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   sums, and the pair-split set identities. Chromium-verified: 10 SVGs, 60 scoreboard rows,
   zero console errors. Operator's series: stability 78%; updated->updated2 is the rewired
   update (56% similarity, 22 joiners). Highest ADR = 0178.
+
+### 2026-07-09 (cont. 10) — Forecast per-field grouping + Gantt sticky scrollbar (ADR-0179/0180)
+- ADR-0179: engine/metrics/field_forecast.py groups every version's tasks by any standard/custom
+  field (+ NA group) and scores each group with the same engine functions (cumulative BEI, HMI,
+  CEI Finish/Start, both SPI(t)s). No-completed-work groups: finish indices read N/A (never
+  imputed — NDIA/DCMA practice) with a start-anchored SEI + workoff counts as the leading read.
+  /forecast gained the Group-by dropdown, per-group table, best-practice analysis panel, Excel
+  export. Verified on Hard_File-by-Resource (Trainer BEI 0.33/SEI 0.33; unstarted group N/A+SEI).
+- ADR-0180: shared SFGantt.stickyScrollbar primitive auto-attaches an always-visible bottom
+  horizontal slider to every Gantt pane (#grid/.gantt-scroll/.path-view/.sra-grid-scroll) via a
+  load hook + MutationObserver, synced two-way to the pane. Chromium-verified on the analysis
+  grid (7011px timeline, proxy shows + syncs, frozen header/columns hold). Closes the last
+  universal Gantt-standardization gap.
+- Functionality sweep (#99): 23 pages load 200 with zero console errors/no empty selects
+  (passive); 18 pages exercised 600+ buttons / 70+ selects / 200+ checkboxes with zero JS errors
+  (active). The full 2026-07-09 operator work order (ADR-0176..0180) is complete. Highest ADR = 0180.

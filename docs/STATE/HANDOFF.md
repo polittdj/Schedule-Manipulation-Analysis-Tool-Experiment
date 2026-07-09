@@ -1,6 +1,29 @@
-# Handoff — 2026-07-09 (CP Volatility page; highest ADR 0178)
+# Handoff — 2026-07-09 (Forecast per-field grouping + Gantt sticky scrollbar; highest ADR 0180)
 
-> ## STATUS (current) — ADR-0178: CP Volatility page (ten membership-churn visuals)
+> ## STATUS (current) — ADR-0179 Forecast per-field group metrics + ADR-0180 Gantt sticky scrollbar
+>
+> - **ADR-0179 Forecast per-field grouping.** `engine/metrics/field_forecast.py` groups every
+>   version's tasks by any standard/custom field (+ NA for unassigned) and scores each group
+>   with the SAME engine functions (cumulative BEI, HMI, CEI Finish/Start, both SPI(t)s). For
+>   groups with no completed work the finish-anchored indices read N/A (never imputed, per
+>   NDIA/DCMA practice) and a start-anchored **Start Execution Index (SEI)** + workoff counts
+>   give the leading read; the /forecast page gained the Group-by dropdown, per-group table,
+>   a best-practice analysis panel, and an Excel export.
+> - **ADR-0180 Gantt sticky scrollbar.** A shared `SFGantt.stickyScrollbar` primitive
+>   (auto-attached to #grid / .gantt-scroll / .path-view / .sra-grid-scroll via a load hook +
+>   MutationObserver) pins an always-visible horizontal slider at the viewport bottom, synced to
+>   the pane — closing the last universal Gantt-standardization gap (frozen header, frozen
+>   columns, tier timeline, timescale, zoom, fit, page-filling height were already shared).
+> - **Full functionality sweep (task #99).** All 23 pages load 200 with zero console errors /
+>   no empty dropdowns (passive); 18 interactive pages exercised 600+ buttons, 70+ selects,
+>   200+ checkboxes with zero JS errors (active). Chromium-verified.
+> - **The entire 2026-07-09 operator work order (ADR-0176..0180) is now complete.**
+> - NOTE: PRs #308/#309/#310 were merged mid-session; each remainder shipped on a fresh branch
+>   off the new main. This increment (0179/0180) ships on a new PR.
+
+# (prior) Handoff — 2026-07-09 (CP Volatility page; highest ADR 0178)
+
+> ## STATUS (prior) — ADR-0178: CP Volatility page (ten membership-churn visuals)
 >
 > - New `/volatility` page (nav: Assessment): one dataset (`_volatility_data` — per-version
 >   effective-critical sets → membership vectors + per-pair Jaccard/stayed/entered/left) drives
