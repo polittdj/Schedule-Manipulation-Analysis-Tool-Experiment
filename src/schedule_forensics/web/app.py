@@ -6812,14 +6812,40 @@ def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | 
     days = int(impact.value)
     cls, word = ("fail", "later") if days < 0 else ("pass", "earlier or unchanged")
     signal_rows: list[str] = []
+    # each signal's cited activities, embedded so the operator can drill into the tasks behind a
+    # finding (UID/name/duration/%/start/finish + add columns + Excel) — reuses findings_drill.js
+    # with a PER-FINDING file (a signal cites its own version: deletions cite the prior, most
+    # others cite the current).
+    signal_findings: list[dict[str, object]] = []
     for i in range(len(schedules) - 1):
         prior, current = schedules[i], schedules[i + 1]
-        step = f"{_e(prior.source_file or prior.name)} &rarr; {_e(current.source_file or current.name)}"
+        p_label = prior.source_file or prior.name
+        c_label = current.source_file or current.name
+        step = f"{_e(p_label)} &rarr; {_e(c_label)}"
         for f in detect_manipulation(current, prior, current_cpm=cpms[i + 1], prior_cpm=cpms[i]):
+            task_cites = [c for c in f.citations if c.unique_id > 0]
+            cite_file = next((c.source_file for c in task_cites if c.source_file), None)
+            signal_cell = _e(f.title)
+            if task_cites and cite_file:
+                fi = len(signal_findings)
+                signal_findings.append(
+                    {
+                        "title": f"{f.title} — {p_label} → {c_label}",
+                        "file": cite_file,
+                        "uids": [c.unique_id for c in task_cites],
+                    }
+                )
+                n = len(task_cites)
+                signal_cell = (
+                    f"{_e(f.title)} "
+                    f'<a class=cite-more data-finding="{fi}">'
+                    f"(view {n} task{'s' if n != 1 else ''})</a>"
+                )
             signal_rows.append(
                 f'<tr><td>{step}</td><td class="sev-{_e(f.severity)}">{_e(f.severity)}</td>'
-                f"<td>{_e(f.title)}</td><td class=muted>{_e(f.course_of_action)}</td></tr>"
+                f"<td>{signal_cell}</td><td class=muted>{_e(f.course_of_action)}</td></tr>"
             )
+    signals_blob = json.dumps({"findings": signal_findings}).replace("<", "\\u003c")
     focus_panel = _focus_panel(schedules, cpms, target) if target is not None else ""
     focus_form = f"""
 <div class=panel><form method=get action=/trend class=viz-controls>
@@ -6860,8 +6886,14 @@ list the exact activities behind its number in the current version (the drill-do
 <p class=muted>How each schedule-quality metric moves across the versions.</p>
 <ul>{quality_items}</ul></div>
 <div class=panel><h2>Manipulation-trend signals (consecutive versions)</h2>
+<p class=muted>Each signal with cited activities is a <b>view N tasks</b> link &mdash; click it to
+list the exact activities behind that finding (UID / name / duration / % complete / start /
+finish), add any standard or custom field, filter, and export to Excel.</p>
 <table><tr><th scope=col>Step</th><th scope=col>Severity</th><th scope=col>Signal</th><th scope=col>Course of action</th></tr>
-{"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table></div>
+{"".join(signal_rows) or "<tr><td colspan=4 class=muted>No manipulation signals detected across the series (honest progress).</td></tr>"}</table>
+<div id=findingsDrill class=findings-drill></div>
+<script type="application/json" id=findingsData>{signals_blob}</script>
+<script src="/static/findings_drill.js"></script></div>
 <div class=panel><h2>Schedule margin burndown</h2>
 <p class=muted>Tracks <b>total</b> vs <b>effective</b> margin &mdash; the buffer protecting the project
 finish &mdash; across submissions, so margin erosion (a buffer being spent or quietly removed) is

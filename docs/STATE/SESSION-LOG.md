@@ -4576,3 +4576,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - src/ changed (app.py + sra_grid.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
   Highest ADR = 0172. Backlog: #80 CLOSED. The #67/#71/#72/#74/#80 operator Gantt/UI work order is
   fully closed; no feature items remain open from it.
+
+### 2026-07-09 (cont. 4) — Trend manipulation-signal task drill + removed focus finish chart (ADR-0173)
+- Operator (2 screenshots of /trend): (1) make each Manipulation-trend signal drillable to the tasks
+  behind it with add-columns + Excel; (2) remove the per-focus "UID N — <name> finish (days vs first)"
+  chart ("its pointless").
+- Signal drill: each signal Finding already carries citations (file + UID + name; deletions cite the
+  prior version, most others the current). _trend_body now renders a "view N tasks" cite-more link per
+  signal with task citations and embeds #findingsData {title,file,uids} + #findingsDrill +
+  findings_drill.js. findings_drill.js GENERALIZED: per-finding `file` (finding.file || FILE, so the
+  Integrity page is unchanged) + /api/analysis response cached per file (cache map, not one global).
+  Drill shows UID/name/dur/%/start/finish + Columns (std+custom, persisted) + Filter + Excel via
+  /export/xlsx/activities/<file> (resolved by _find_schedule).
+- Removed the focus finish-delta lineChart block from trend.js (it collapsed to a single point and
+  duplicated the server focus panel); project-level "Project finish (days vs first version)" chart kept.
+- Live-verified in Chromium (Hard_File pair): signal "view N tasks" -> drill (UID/name/dur/%/start/
+  finish, correct Excel href /export/xlsx/activities/Hard_File.mpp.xml?uids=187,400, filter narrows);
+  with ?target=155 the focus finish chart is gone; useful charts remain; zero console errors. Pinned by
+  test_trend_views.py (+2: signal drill wiring, focus chart removed).
+- src/ changed (app.py + trend.js + findings_drill.js) -> wheel + 9 installers rebuilt (ADR-0148
+  lockstep). Highest ADR = 0173. Backlog: operator #67/#71/#72/#74/#80 tranche stays closed; this was
+  a fresh request on top.

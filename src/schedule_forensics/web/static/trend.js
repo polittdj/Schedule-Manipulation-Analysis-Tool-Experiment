@@ -702,21 +702,9 @@
         dates: data.versions.map(function (v) { return v.status_date || ""; }),
       };
 
-      // ── focus-activity finish movement ────────────────────────────────────────
-      if (data.target && data.target.finishes && data.target.finishes.some(function (f) { return f; })) {
-        var fin = data.target.finishes.map(function (f) { return f ? Date.parse(f) / 86400000 : null; });
-        var fbase = null;
-        fin.forEach(function (v) { if (fbase == null && v != null) fbase = v; });
-        lineChart(
-          "UID " + data.target.uid + (data.target.name ? " — " + data.target.name : "") + " finish (days vs first)",
-          labels,
-          fin.map(function (v) { return v == null ? null : v - fbase; }),
-          function (v, i) { return data.target.finishes[i] || "n/a"; },
-          "var(--focus)",
-          "The focus activity's computed finish across the versions, in days relative to the first version (0 = same as first; positive = later).",
-          "Focus finish (Δdays)"
-        );
-      }
+      // (The per-focus finish-delta chart was removed at the operator's request — it duplicated
+      // the server-side focus panel and collapsed to a single point when the focus finish did not
+      // move. The focus activity's finish movement is shown in that panel instead.)
 
       // ── PBIX p3 / existing: headline finish + quality ─────────────────────────
       sectionHead("Schedule progress");
