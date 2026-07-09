@@ -1,4 +1,24 @@
-# Handoff — 2026-07-09 (Trend signal drill + removed focus chart; highest ADR 0173)
+# Handoff — 2026-07-09 (Driving-tiers export fidelity fix; highest ADR 0174)
+
+> ## STATUS (current) — ADR-0174: driving-tiers Excel export honours the page trace options
+>
+> - **Fix from the ADR-0168..0172 adversarial self-review (HIGH).** The `/driving-path` tiers Excel
+>   export computed tier/slack on the STORED network while the on-screen panel used the OPTIONED
+>   re-solve — so with **Ignore constraints/leveling** active, the downloaded Excel diverged from
+>   the screen (Law-2 fidelity gap). Now `export_driving_tiers` accepts `ignore_constraints`/
+>   `ignore_leveling`, re-solves via `_optioned_versions` (no options → stored, untouched) and
+>   computes on that; `_driving_tiers_panel` embeds the flags, `driving_tiers.js` forwards them.
+>   Field columns stay from stored `analysis.activity_rows` (matching the on-screen `/api/analysis`),
+>   so the WHOLE table matches. Pinned by a per-UID panel-vs-export parity test.
+> - The review's **LOW** (deselecting a built-in column doesn't drop it from Excel) is left
+>   **by-design**: every drill export app-wide always emits identifying columns (self-identifying
+>   exhibit); documented in ADR-0174, not changed.
+> - `src/` changed (app.py + driving_tiers.js) → wheel + 9 installers rebuilt (lockstep).
+> - **Adversarial self-review result:** 4 reviewers over the session's merged changes (0168–0172);
+>   only these 2 driving-tiers findings survived verification (resources/sra-grouping/trend-split
+>   all clean). HIGH fixed here; LOW documented as by-design.
+
+
 
 > ## STATUS (current) — ADR-0173: Trend manipulation-signal task drill + focus finish-chart removal
 >

@@ -4597,3 +4597,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - src/ changed (app.py + trend.js + findings_drill.js) -> wheel + 9 installers rebuilt (ADR-0148
   lockstep). Highest ADR = 0173. Backlog: operator #67/#71/#72/#74/#80 tranche stays closed; this was
   a fresh request on top.
+
+### 2026-07-09 (cont. 5) — driving-tiers export trace-option fidelity fix (ADR-0174; from self-review)
+- Ran an adversarial self-review (Workflow, 4 reviewers + skeptical verifiers) over the session's
+  merged changes (ADR-0168..0172). Only 2 findings survived verification, both in the driving-tiers
+  Excel export (#72/ADR-0169); resources, sra-grouping, and trend-split came back clean.
+- HIGH (fixed): the tiers Excel export computed tier/slack on the STORED network while the on-screen
+  panel used the OPTIONED re-solve, so with Ignore constraints/leveling active the download diverged
+  from the screen (silent Law-2 fidelity gap; the sibling driving-PATH export already threaded the
+  options). Fix: export_driving_tiers now accepts ignore_constraints/ignore_leveling and re-solves via
+  _optioned_versions before compute_driving_slack (no options -> stored, untouched); _driving_tiers_panel
+  embeds the flags in #drivingTiersData; driving_tiers.js forwards them in the export href. Field columns
+  stay from stored analysis.activity_rows (== on-screen /api/analysis), so the whole table matches.
+  Pinned by test_driving_tiers_drill.py::test_driving_tiers_export_honours_trace_options_matching_the_panel
+  (per-UID panel-vs-export parity) + a JS href assertion.
+- LOW (documented, not changed): deselecting a built-in column (Tier/UID/Activity/Slack) doesn't drop
+  it from the Excel. Left by-design — every drill export app-wide always emits identifying columns so a
+  court exhibit stays self-identifying; changing driving-tiers alone would be inconsistent (ADR-0174).
+- src/ changed (app.py + driving_tiers.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
+  Highest ADR = 0174.

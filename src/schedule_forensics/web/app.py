@@ -2849,12 +2849,19 @@ def create_app(
 
     @app.get("/export/{fmt}/driving-tiers/{name}")
     def export_driving_tiers(
-        fmt: str, name: str, target: int = Query(...), cols: str = Query("")
+        fmt: str,
+        name: str,
+        target: int = Query(...),
+        cols: str = Query(""),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
     ) -> Response:
         """Every activity driving ``target`` in one file, bucketed by driving-slack tier, with a
         Tier + Slack(d) column and any extra fields the operator toggled on — the Driving-Path
         tiers chart's Excel export (operator #72). Rows are ordered driving → secondary → tertiary,
-        then by slack then UID (matching the on-screen buckets)."""
+        then by slack then UID (matching the on-screen buckets). The export honours the same
+        ``ignore_constraints`` / ``ignore_leveling`` trace options as the page, so the downloaded
+        tier membership + slack are computed on the SAME network the panel shows (ADR-0174)."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
@@ -2865,7 +2872,17 @@ def create_app(
             return JSONResponse({"error": "target not in schedule"}, status_code=404)
         try:
             analysis = st.analysis_for(key, sch)
-            results = compute_driving_slack(sch, target, cpm_result=analysis.cpm)
+            # re-solve with the active trace options (constraints stripped / dates cleared), exactly
+            # as _driving_tiers_panel does, so the exported tier/slack match the on-screen table
+            # rather than the stored network (ADR-0174). No options => the originals, untouched.
+            opt_scheds, opt_cpms, _banner = _optioned_versions(
+                [sch],
+                [analysis.cpm],
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+            )
+            osch, ocpm = opt_scheds[0], opt_cpms[0]
+            results = compute_driving_slack(osch, target, cpm_result=ocpm)
         except (CPMError, KeyError, ValueError):
             return JSONResponse({"error": "schedule does not solve"}, status_code=422)
         tier_order = {"driving": 0, "secondary": 1, "tertiary": 2}
@@ -8983,10 +9000,21 @@ def _driving_path_gantt(
     }
 
 
-def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) -> str:
+def _driving_tiers_panel(
+    schedules: list[Schedule],
+    cpms: list[CPMResult],
+    target: int,
+    *,
+    ignore_constraints: bool = False,
+    ignore_leveling: bool = False,
+) -> str:
     """Three columns of the activities driving ``target`` in the LATEST version, bucketed by
     driving-slack tier (ADR-0011): critical/driving (0 working days — the driving path), secondary
-    (<= 10 days), tertiary (<= 20 days). Fewer days = more control over the target."""
+    (<= 10 days), tertiary (<= 20 days). Fewer days = more control over the target.
+
+    ``ignore_constraints`` / ``ignore_leveling`` are the active page trace options (the caller has
+    already re-solved the schedules with them); they are embedded so the tiers Excel export runs on
+    the SAME network the panel shows (ADR-0174)."""
     sch, cpm = schedules[-1], cpms[-1]
     if target not in sch.tasks_by_id:
         return ""  # the corridor branch already reports a target absent from every version
@@ -9054,9 +9082,15 @@ def _driving_tiers_panel(schedules: list[Schedule], cpms: list[CPMResult], targe
     ]
     drill = ""
     if tier_rows:
-        blob = json.dumps({"file": file_label, "target": target, "rows": tier_rows}).replace(
-            "<", "\\u003c"
-        )
+        blob = json.dumps(
+            {
+                "file": file_label,
+                "target": target,
+                "rows": tier_rows,
+                "ignore_constraints": 1 if ignore_constraints else 0,
+                "ignore_leveling": 1 if ignore_leveling else 0,
+            }
+        ).replace("<", "\\u003c")
         drill = (
             "<div class=panel><h2>All driving-tier activities</h2>"
             "<p class=muted>Every activity driving this target, across all three tiers, in one "
@@ -9260,7 +9294,14 @@ but A does not <b>drive</b> B (the slack is reported instead). Trace it across e
 version to see the corridor shift.</p></div>"""
 
     tiers_html = (
-        _driving_tiers_panel(schedules, cpms, target) + _driving_tier_trend(schedules, cpms, target)
+        _driving_tiers_panel(
+            schedules,
+            cpms,
+            target,
+            ignore_constraints=ignore_constraints,
+            ignore_leveling=ignore_leveling,
+        )
+        + _driving_tier_trend(schedules, cpms, target)
         if target is not None
         else ""
     )

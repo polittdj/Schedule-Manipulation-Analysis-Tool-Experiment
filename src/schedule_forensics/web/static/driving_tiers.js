@@ -18,6 +18,10 @@
   var FILE = payload.file || "";
   var TARGET = payload.target;
   var ROWS = payload.rows || [];
+  // the active page trace options, so the Excel export runs on the SAME re-solved network the
+  // panel shows (ADR-0174) — otherwise a constrained schedule's export would diverge from screen
+  var IGNORE_CONSTRAINTS = payload.ignore_constraints ? 1 : 0;
+  var IGNORE_LEVELING = payload.ignore_leveling ? 1 : 0;
 
   var TIER_LABEL = { driving: "Critical / driving", secondary: "Secondary", tertiary: "Tertiary" };
   var COLS_KEY = "sf-driving-tiers-cols";
@@ -145,6 +149,8 @@
       });
       var href = "/export/xlsx/driving-tiers/" + encodeURIComponent(FILE) +
         "?target=" + encodeURIComponent(TARGET) +
+        "&ignore_constraints=" + IGNORE_CONSTRAINTS +
+        "&ignore_leveling=" + IGNORE_LEVELING +
         (extra.length ? "&cols=" + encodeURIComponent(extra.join(",")) : "");
       bar.appendChild(el("a", { class: "btn-link", href: href, text: "Excel (these columns)" }));
       mount.appendChild(bar);
