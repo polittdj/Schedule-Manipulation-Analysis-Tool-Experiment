@@ -250,8 +250,13 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA09": _doc(
         "DCMA09",
         "Invalid Dates",
-        "Actuals after the status date, or an incomplete forecast in the past.",
-        "count(invalid actual/forecast vs status) == 0",
+        "Actuals after the status date, or a stored forecast (early) date already in the past "
+        "without the matching actual — the Bible's Invalid Forecast Dates conditions, scored on "
+        "the file's OWN stored start/finish dates (Acumen basis, ADR-0176), with recomputed CPM "
+        "only as a fallback for files carrying no stored dates. Task-level count (Fuse's Metric "
+        "History counts fields, so its figure can be up to 2x this activity count).",
+        '((EarlyStart<Now)*(ActualStart="")) + ((EarlyFinish<Now)*(ActualFinish="")) '
+        "+ actuals after Now == 0",
         _DCMA,
         importance="Actual dates in the future or forecast (incomplete) work in the past are "
         "logically impossible and corrupt every downstream calculation.",
@@ -330,8 +335,11 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "DCMA14": _doc(
         "DCMA14",
         "BEI",
-        "Baseline Execution Index (BEI - Value Tasks; Normal activities only).",
-        "complete Normal tasks / Normal tasks baselined-to-finish-by-status >= 0.95",
+        "Baseline Execution Index (BEI - Value Tasks; Normal activities only). Cumulative: BOTH "
+        "terms score the same baselined-due population — tasks completed ahead of a baseline "
+        "finish that is not yet due do not inflate the numerator (ADR-0176; verified vs every "
+        "Acumen oracle incl. Hard_File_updated 0.27).",
+        "complete among baselined-due / Normal tasks baselined-to-finish-by-status >= 0.95",
         _DCMA,
         importance="BEI tracks throughput against the baseline: are activities being completed "
         "as fast as the plan said they would be?",
@@ -586,9 +594,32 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
     "spi_t": _doc(
         "spi_t",
         "SPI(t)",
-        "Time-based Earned-Schedule index (count-based; informational).",
+        "Time-based Earned-Schedule index (count-based; informational). Answers 'how far along "
+        "the baseline finish curve is the completed work vs the time actually elapsed' — it sees "
+        "stalled work (AT keeps growing while ES freezes). Reported alongside the Acumen "
+        "per-activity SPI(t) below; the two methods answer different questions and can "
+        "legitimately disagree in direction (ADR-0176).",
         "Earned Schedule / Actual Time",
         _EVM,
+    ),
+    "spi_t_acumen": _doc(
+        "spi_t_acumen",
+        "SPI(t) — Acumen",
+        "Acumen Fuse's per-activity SPI(t): the average duration-efficiency of STARTED "
+        "activities. Each completed activity contributes baselined span / actual span "
+        "(calendar); an in-progress activity contributes 0 until it finishes (the Fuse "
+        "formula's blank-ActualFinish term — faithfully reproduced); zero-span completions "
+        "(milestones) are excluded. >1 = completed work ran faster than baselined. Verified "
+        "EXACT vs the Fuse Metric History on Hard_File_updated/2/3 (0.80 / 1.14 / 1.25). "
+        "Only sees started work — read it together with the Earned-Schedule SPI(t) (ADR-0176).",
+        'AVERAGE(IF(Status="Complete", (BaselineFinish-BaselineStart)/(ActualFinish-'
+        "ActualStart), ((BaselineFinish-BaselineStart)-(Finish-ProjectTimeNow))/"
+        "(ActualFinish-ActualStart)))",
+        "NASA Acumen metric library (SPI(t)); Fuse v8.11.0 Metric History parity.",
+        threshold=">= 1.00",
+        example_ok="Two tasks ran to baseline (1.0, 1.0), average 1.0 -> on pace.",
+        example_fail="A 10-day-baselined task took 20 days (0.5): average 0.83 -> completed "
+        "work ran 17% slower than baselined.",
     ),
     # --- Schedule-Network change (§E) + HSD ---
     "SN01": _doc(

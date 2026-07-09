@@ -82,6 +82,62 @@ def test_fuse_hardfile_covers_elapsed_in_progress_activity() -> None:
     assert updated["normal_tasks_to_go_in_progress"] == 1
 
 
+@pytest.mark.parametrize(
+    "snapshot", ["Hard_File_updated", "Hard_File_updated2", "Hard_File_updated3"]
+)
+def test_fuse_hardfile_updated_series_uid_exact_and_values(snapshot: str) -> None:
+    """The 2026-07-09 delivery (ADR-0176): BEI + Acumen SPI(t) values and the Invalid-Forecast-
+    Dates / critical-path / negative-float UID SETS reproduce the Fuse Detailed Metric Report
+    activity-for-activity (not just count-for-count) on the updated2/updated3 snapshots, and
+    value-for-value across the whole updated series."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.engine.metrics.evm import compute_evm_indices
+    from schedule_forensics.engine.path_evolution import effective_critical_set
+
+    case = _case()
+    entry = case["snapshots"][snapshot]
+    sch = _schedule(snapshot)
+    cpm = compute_cpm(sch)
+    dcma = compute_dcma14(sch, cpm)
+    evm = compute_evm_indices(sch, cpm)
+    sets = entry["fuse_uid_sets"]
+
+    # scalar values from the Fuse Metric History
+    assert dcma["DCMA14"].value == entry["fuse_values"]["bei_value_tasks"]
+    assert evm["spi_t_acumen"].value == round(entry["fuse_values"]["spi_t"], 2)
+
+    # UID-exact: DCMA09's offenders == Fuse's Invalid Forecast Dates X-marked activities
+    assert sorted(dcma["DCMA09"].offender_uids or ()) == sets["invalid_forecast_dates"]
+
+    # UID-exact: the effective critical set == Fuse's Critical Path (Tasks & Milestones),
+    # including the milestone / normal-task split
+    crit = effective_critical_set(sch, cpm)
+    assert sorted(crit) == sets["critical_path_tasks_and_milestones"]
+    by = sch.tasks_by_id
+    assert sorted(u for u in crit if by[u].is_milestone) == sets["critical_path_milestones"]
+    assert sorted(u for u in crit if not by[u].is_milestone) == sets["critical_path_normal_tasks"]
+
+    if "negative_float" in sets:  # updated2/updated3 — UID-exact vs Fuse
+        quality = compute_schedule_quality(sch)
+        assert sorted(quality["negative_float"].offender_uids or ()) == sets["negative_float"]
+
+
+def test_fuse_hardfile_missing_logic_superset_divergence_is_exact() -> None:
+    """Missing Logic on updated2/updated3: the engine's offender set is a strict SUPERSET of
+    Fuse's (the extras are the COMPLETED open-ended activities 187/400/412, which Fuse's own
+    earlier exports counted — the inconsistency is Fuse-side; operator kept engine behavior)."""
+    case = _case()
+    div = case["_documented_divergences"]["missing_logic_updated23"]
+    for snapshot in ("Hard_File_updated2", "Hard_File_updated3"):
+        quality = compute_schedule_quality(_schedule(snapshot))
+        engine_uids = set(quality["missing_logic"].offender_uids or ())
+        fuse_uids = set(case["snapshots"][snapshot]["fuse_uid_sets"]["missing_logic"])
+        assert len(engine_uids) == div["engine"][snapshot]
+        assert len(fuse_uids) == div["fuse"][snapshot]
+        assert fuse_uids < engine_uids  # strict superset — same activities plus the completed
+        assert engine_uids - fuse_uids == {187, 400, 412}
+
+
 def test_fuse_hardfile_divergences_are_exact_not_papered_over() -> None:
     """The three documented divergences hold at their recorded engine values (Law 2: assert the
     difference exactly, never force a match). If any of these changes, the golden note and the
@@ -115,3 +171,48 @@ def test_fuse_hardfile_divergences_are_exact_not_papered_over() -> None:
             if not t.is_summary and not t.is_milestone and (t.duration_minutes or 0) == 0
         )
         assert zero_non_ms == div["activities_with_duration_0"]["engine"][name]
+
+
+@pytest.mark.parametrize(
+    "prior_name,current_name,key",
+    [
+        ("Hard_File_updated", "Hard_File_updated2", "Hard_File_updated->Hard_File_updated2"),
+        ("Hard_File_updated2", "Hard_File_updated3", "Hard_File_updated2->Hard_File_updated3"),
+    ],
+)
+def test_fuse_forensic_change_trackers_are_uid_exact(
+    prior_name: str, current_name: str, key: str
+) -> None:
+    """ADR-0176: the cross-version change trackers reproduce the Fuse Forensic Analysis Report
+    change sheets UID-for-UID (leaf activities; Fuse's extra summary rollup rows are derivative)
+    and the assignment tracker reproduces the 'Resources' sheet ROW-for-row — (task, resource)
+    pairs whose remaining work changed or whose booking appeared/disappeared."""
+    from schedule_forensics.engine.diff import diff_versions
+    from schedule_forensics.engine.manipulation import assignment_change_rows
+
+    case = _case()
+    oracle = case["forensic_changes"][key]
+    prior, current = _schedule(prior_name), _schedule(current_name)
+    diff = diff_versions(prior, current)
+    prior_by = {t.unique_id: t for t in prior.tasks if not t.is_summary}
+    cur_by = {t.unique_id: t for t in current.tasks if not t.is_summary}
+
+    def changed(field: str) -> list[int]:
+        return sorted(td.unique_id for td in diff.changed_tasks if td.changed(field) is not None)
+
+    assert changed("cost") == oracle["total_cost_uids"]
+    assert changed("actual_cost") == oracle["actual_cost_uids"]
+    assert changed("work_minutes") == oracle["total_work_uids"]
+    assert changed("actual_work_minutes") == oracle["actual_work_uids"]
+    # remaining cost is DERIVED (cost - actual cost) — the derived set matches Fuse's
+    # Remaining-Cost sheet exactly
+    rem = sorted(
+        u
+        for u in set(prior_by) & set(cur_by)
+        if ((prior_by[u].cost or 0) - (prior_by[u].actual_cost or 0))
+        != ((cur_by[u].cost or 0) - (cur_by[u].actual_cost or 0))
+    )
+    assert rem == oracle["remaining_cost_uids"]
+
+    rows = assignment_change_rows(prior, current)
+    assert sorted([r.task_uid, r.resource] for r in rows) == oracle["resource_rows"]

@@ -26,13 +26,478 @@
     "milestones_to_go": 24,
     "normal_tasks_to_go": 79,
     "normal_tasks_to_go_in_progress": 1
+   },
+   "fuse_values": {
+    "bei_value_tasks": 0.27,
+    "spi_t": 0.8
+   },
+   "fuse_uid_sets": {
+    "invalid_forecast_dates": [],
+    "critical_path_tasks_and_milestones": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     150,
+     155,
+     156,
+     228,
+     229,
+     241,
+     244,
+     249,
+     257,
+     258,
+     260,
+     264,
+     269,
+     270,
+     272,
+     274,
+     310,
+     389,
+     409,
+     410,
+     411
+    ],
+    "critical_path_milestones": [
+     150,
+     155,
+     156,
+     260,
+     410,
+     411
+    ],
+    "critical_path_normal_tasks": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     228,
+     229,
+     241,
+     244,
+     249,
+     257,
+     258,
+     264,
+     269,
+     270,
+     272,
+     274,
+     310,
+     389,
+     409
+    ]
+   }
+  },
+  "Hard_File_updated2": {
+   "status_date": "2026-09-10",
+   "fuse_values": {
+    "bei_value_tasks": 0.59,
+    "spi_t": 1.14
+   },
+   "fuse_uid_sets": {
+    "invalid_forecast_dates": [
+     178,
+     179,
+     180,
+     181,
+     188,
+     189,
+     321,
+     379,
+     381,
+     384,
+     385,
+     386,
+     387,
+     388,
+     396,
+     398,
+     402,
+     403,
+     404,
+     405,
+     408
+    ],
+    "critical_path_tasks_and_milestones": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     150,
+     155,
+     156,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     256,
+     257,
+     258,
+     260,
+     261,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     291,
+     292,
+     294,
+     295,
+     296,
+     297,
+     298,
+     302,
+     305,
+     307,
+     310,
+     389,
+     409,
+     410,
+     411
+    ],
+    "critical_path_milestones": [
+     150,
+     155,
+     156,
+     256,
+     260,
+     297,
+     298,
+     305,
+     410,
+     411
+    ],
+    "critical_path_normal_tasks": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     257,
+     258,
+     261,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     291,
+     292,
+     294,
+     295,
+     296,
+     302,
+     307,
+     310,
+     389,
+     409
+    ],
+    "negative_float": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     150,
+     155,
+     156,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     256,
+     257,
+     258,
+     260,
+     261,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     291,
+     292,
+     294,
+     295,
+     296,
+     297,
+     298,
+     302,
+     305,
+     307,
+     310,
+     389,
+     409,
+     410,
+     411
+    ],
+    "missing_logic": [
+     155,
+     388,
+     404,
+     405,
+     406,
+     407
+    ]
+   }
+  },
+  "Hard_File_updated3": {
+   "status_date": "2026-10-12",
+   "fuse_values": {
+    "bei_value_tasks": 0.47,
+    "spi_t": 1.25
+   },
+   "fuse_uid_sets": {
+    "invalid_forecast_dates": [],
+    "critical_path_tasks_and_milestones": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     150,
+     155,
+     156,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     256,
+     257,
+     258,
+     260,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     302,
+     305,
+     307,
+     310,
+     384,
+     385,
+     386,
+     387,
+     389,
+     409,
+     410,
+     411
+    ],
+    "critical_path_milestones": [
+     150,
+     155,
+     156,
+     256,
+     260,
+     305,
+     387,
+     410,
+     411
+    ],
+    "critical_path_normal_tasks": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     257,
+     258,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     302,
+     307,
+     310,
+     384,
+     385,
+     386,
+     389,
+     409
+    ],
+    "negative_float": [
+     7,
+     9,
+     13,
+     14,
+     34,
+     36,
+     49,
+     140,
+     141,
+     144,
+     145,
+     146,
+     150,
+     155,
+     156,
+     222,
+     223,
+     228,
+     229,
+     244,
+     253,
+     256,
+     257,
+     258,
+     260,
+     262,
+     264,
+     267,
+     269,
+     270,
+     272,
+     274,
+     275,
+     276,
+     278,
+     281,
+     289,
+     302,
+     305,
+     307,
+     310,
+     384,
+     385,
+     386,
+     387,
+     389,
+     409,
+     410,
+     411
+    ],
+    "missing_logic": [
+     155,
+     388,
+     404,
+     405,
+     406,
+     407
+    ]
    }
   }
  },
  "_documented_divergences": {
   "negative_float": {
-   "fuse": {"Hard_File": 0, "Hard_File_updated": 0},
-   "engine": {"Hard_File": 34, "Hard_File_updated": 33},
+   "fuse": {
+    "Hard_File": 0,
+    "Hard_File_updated": 0
+   },
+   "engine": {
+    "Hard_File": 34,
+    "Hard_File_updated": 33
+   },
    "cause": "Every engine offender carries the source tool's STORED Critical flag (stored_is_critical=True) but no stored TotalSlack: MPXJ's MSPDI conversion omits <TotalSlack> for these tasks (34/142 in Hard_File; UID 147 'Product Review COMPLETE' is a source-Critical milestone). The engine's effective_total_float (ADR-0010/0080) then falls back to the recomputed pure-logic CPM float, which reads negative on these constrained/leveled tasks where MS Project's stored slack (which Fuse reads) is 0. This is the documented stored-vs-recomputed CPM divergence, NOT a curve-fittable data typo: forcing a clamp to 0 would hide a genuine CPM-vs-MSProject difference. Recorded on the needs list for a deeper CPM-parity investigation (why the recompute diverges on these tasks — constraints/leveling/data-date)."
   },
   "missing_logic_updated": {
@@ -41,9 +506,369 @@
    "cause": "On Hard_File the engine matches Fuse exactly (7=7); on the updated snapshot the engine finds 10 open-ended tasks vs Fuse's 8. Fuse's own components on the updated file (Missing Predecessors 0 + Missing Successors 7) do not themselves sum to its Missing Logic 8, so Fuse applies a metric-definition nuance (likely an LOE/start-milestone exclusion) not published in the export. Not forced pending Fuse's exact Missing Logic definition."
   },
   "activities_with_duration_0": {
-   "fuse": {"Hard_File": 1, "Hard_File_updated": 1},
-   "engine": {"Hard_File": 0, "Hard_File_updated": 0},
+   "fuse": {
+    "Hard_File": 1,
+    "Hard_File_updated": 1
+   },
+   "engine": {
+    "Hard_File": 0,
+    "Hard_File_updated": 0
+   },
    "cause": "The raw MSPDI carries ZERO non-milestone zero-duration non-summary tasks (all 25 zero-duration tasks are flagged Milestone=1), so the engine counts 0 by MS Project's own milestone flag. Fuse reports 1 under a distinct internal classification of 'Activities with Duration=0' not derivable from the exported flags. A 1-count divergence on a minor metric; documented, not forced."
+  },
+  "missing_logic_updated23": {
+   "fuse": {
+    "Hard_File_updated2": 6,
+    "Hard_File_updated3": 6
+   },
+   "engine": {
+    "Hard_File_updated2": 9,
+    "Hard_File_updated3": 9
+   },
+   "cause": "The engine's offender set is a strict SUPERSET of Fuse's: the extra UIDs (187, 400, 412) are COMPLETED/finished activities that are genuinely open-ended in the file. The 2026-07-09 Detailed Metric Reports exclude completed activities from Missing Logic, but Fuse's own earlier exports (Project2/Project5, ADR-0151, and Hard_File base 7=7) COUNT completed open ends — an incomplete-only engine variant would break those pinned oracles (4!=6, 5!=7). Operator direction 2026-07-09: keep the engine behavior (open-endedness is a structural property; completion does not repair logic), document the Fuse-side inconsistency."
+  },
+  "invalid_forecast_dates_field_count": {
+   "cause": "Engine DCMA09 counts ACTIVITIES; Fuse's Metric History counts date FIELDS, so a task with both its start and finish in the past contributes 2 there (42 = these 21 activities x 2 on updated2). The Detailed Metric Report's per-activity X marks (what the engine is verified UID-exact against) confirm the activity set is identical."
+  }
+ },
+ "_source2": "Second delivery 2026-07-09: Hard_File_updated2.mpp / Hard_File_updated3.mpp + the Fuse v8.11.0 Detailed Metric Report workbooks in 00_REFERENCE_INTAKE/acumen_v8.11.0/ (repo-tracked, non-CUI). UID sets transcribed from the per-activity X marks of the Detailed Metric Reports; scalar values from the Metric History Report.",
+ "forensic_changes": {
+  "Hard_File_updated->Hard_File_updated2": {
+   "_source": "Fuse Forensic Analysis Report change sheets (Normal rows; Fuse additionally lists summary rollup rows, which the engine's leaf-level diff correctly excludes — rollups are derivative of the leaf changes)",
+   "total_cost_uids": [
+    98,
+    131,
+    157,
+    187,
+    188,
+    210,
+    211,
+    267
+   ],
+   "actual_cost_uids": [
+    94,
+    98,
+    99,
+    131,
+    157,
+    187,
+    199,
+    200,
+    210,
+    211,
+    241,
+    249,
+    251,
+    254,
+    255,
+    268,
+    282,
+    290,
+    301,
+    303
+   ],
+   "remaining_cost_uids": [
+    94,
+    98,
+    99,
+    131,
+    157,
+    187,
+    188,
+    199,
+    200,
+    210,
+    211,
+    241,
+    249,
+    251,
+    254,
+    255,
+    267,
+    268,
+    282,
+    290,
+    301,
+    303
+   ],
+   "total_work_uids": [
+    98,
+    131,
+    157,
+    187,
+    210,
+    211,
+    267
+   ],
+   "actual_work_uids": [
+    94,
+    98,
+    99,
+    131,
+    157,
+    187,
+    199,
+    200,
+    210,
+    211,
+    241,
+    249,
+    251,
+    254,
+    255,
+    268,
+    282,
+    290,
+    301,
+    303
+   ],
+   "resource_rows": [
+    [
+     94,
+     "Customer Service Team"
+    ],
+    [
+     98,
+     "Customer Service Lead"
+    ],
+    [
+     99,
+     "Customer Service Lead"
+    ],
+    [
+     131,
+     "Customer Service Lead"
+    ],
+    [
+     157,
+     "Customer Service Team"
+    ],
+    [
+     187,
+     "Customer Service Team"
+    ],
+    [
+     188,
+     "Content Developer"
+    ],
+    [
+     188,
+     "Customer Service Team"
+    ],
+    [
+     188,
+     "Trainer"
+    ],
+    [
+     199,
+     "Customer Service Lead"
+    ],
+    [
+     200,
+     "Content Developer"
+    ],
+    [
+     200,
+     "Customer Service Lead"
+    ],
+    [
+     210,
+     "AI Token Time"
+    ],
+    [
+     210,
+     "Cleaning"
+    ],
+    [
+     210,
+     "Content Developer"
+    ],
+    [
+     210,
+     "Logistics Apprentice"
+    ],
+    [
+     211,
+     "Cleaning"
+    ],
+    [
+     211,
+     "Content Developer"
+    ],
+    [
+     241,
+     "Content Developer"
+    ],
+    [
+     249,
+     "Content Developer"
+    ],
+    [
+     251,
+     "Customer Service Lead"
+    ],
+    [
+     254,
+     "Content Developer"
+    ],
+    [
+     255,
+     "Content Developer"
+    ],
+    [
+     267,
+     "Cleaning"
+    ],
+    [
+     267,
+     "Customer Service Lead"
+    ],
+    [
+     267,
+     "Logistics Apprentice"
+    ],
+    [
+     267,
+     "Trainer Apprentice"
+    ],
+    [
+     268,
+     "Customer Service Lead"
+    ],
+    [
+     282,
+     "Content Developer"
+    ],
+    [
+     290,
+     "Customer Service Lead"
+    ],
+    [
+     301,
+     "Content Developer"
+    ],
+    [
+     303,
+     "Content Developer"
+    ]
+   ]
+  },
+  "Hard_File_updated2->Hard_File_updated3": {
+   "_source": "Fuse Forensic Analysis Report change sheets (Normal rows; Fuse additionally lists summary rollup rows, which the engine's leaf-level diff correctly excludes — rollups are derivative of the leaf changes)",
+   "total_cost_uids": [
+    275,
+    290,
+    302,
+    385,
+    386
+   ],
+   "actual_cost_uids": [
+    261,
+    290,
+    291,
+    292,
+    294,
+    295,
+    296
+   ],
+   "remaining_cost_uids": [
+    261,
+    275,
+    291,
+    292,
+    294,
+    295,
+    296,
+    302,
+    385,
+    386
+   ],
+   "total_work_uids": [
+    275,
+    290,
+    302,
+    385,
+    386
+   ],
+   "actual_work_uids": [
+    261,
+    290,
+    291,
+    292,
+    294,
+    295,
+    296
+   ],
+   "resource_rows": [
+    [
+     261,
+     "Customer Service Lead"
+    ],
+    [
+     275,
+     "Customer Service Lead"
+    ],
+    [
+     291,
+     "Customer Service Lead"
+    ],
+    [
+     292,
+     "Customer Service Lead"
+    ],
+    [
+     292,
+     "Trainer"
+    ],
+    [
+     294,
+     "Customer Service Lead"
+    ],
+    [
+     295,
+     "Customer Service Lead"
+    ],
+    [
+     296,
+     "Customer Service Lead"
+    ],
+    [
+     302,
+     "AI Token Time"
+    ],
+    [
+     302,
+     "Cleaning"
+    ],
+    [
+     302,
+     "Customer Service Lead"
+    ],
+    [
+     302,
+     "Customer Service Team"
+    ],
+    [
+     385,
+     "AI Token Time"
+    ],
+    [
+     385,
+     "Cleaning"
+    ],
+    [
+     385,
+     "Customer Service Team"
+    ],
+    [
+     385,
+     "Logistics"
+    ],
+    [
+     386,
+     "Customer Service Team"
+    ]
+   ]
   }
  }
 }

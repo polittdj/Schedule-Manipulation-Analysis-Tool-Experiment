@@ -30,6 +30,14 @@ _TRACKED_FIELDS: tuple[tuple[str, str], ...] = (
     ("percent_complete", "% Complete"),
     ("constraint_type", "Constraint Type"),
     ("constraint_date", "Constraint Date"),
+    # cost / work / resource changes (operator 2026-07-09, ADR-0176) — the Fuse Forensic
+    # Analysis change sheets track these; leaf-level sets verified UID-exact vs Fuse on the
+    # Hard_File_updated series (summaries are rollups and are already excluded here)
+    ("cost", "Total Cost"),
+    ("actual_cost", "Actual Cost"),
+    ("work_minutes", "Total Work"),
+    ("actual_work_minutes", "Actual Work"),
+    ("resource_assignments", "Resource Assignments"),
     # deactivating a task removes it from the CPM network (ADR-0128) — functionally deletion
     # while the row stays visible, so the flip is tracked in its own right (audit F-13)
     ("is_active", "Active"),

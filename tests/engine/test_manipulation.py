@@ -32,20 +32,36 @@ def _chain(durations: dict[int, int], **task_kw: object) -> Schedule:
 def test_golden_p2_to_p5_surfaces_only_the_real_tamper_signals(
     golden_project2: Schedule, golden_project5: Schedule
 ) -> None:
-    # The authoritative (TAMPERED) Project5 vs Project2 (ADR-0112) carries exactly two real,
-    # cited signals — no benign false positives:
+    # The authoritative (TAMPERED) Project5 vs Project2 (ADR-0112) — every fired signal is a
+    # REAL, raw-verified file delta, and nothing else fires:
     #   1. MANIP_DELETED_LOGIC — 2 removed logic links (106→135, 113→138).
     #   2. MANIP_CONSTRAINT_ADDED — UID 131 "Set HVAC trim…" went ASAP→MSO (a hard constraint)
     #      on still-incomplete work that is now at 0 total float: the constraint-abuse vector the
     #      prior detector set missed (audit F-05 / ADR-0130). It fires ONLY because the new hard
     #      constraint is actually clamping (≤0 float), not on every constraint edit.
+    #   3. MANIP_ADDED_LOGIC (ADR-0176) — 3 relationships exist in P5 that P2 lacks
+    #      (48→41, 49→56, 131→142; verified against the raw MSPDI link sets).
+    #   4. MANIP_WORK_CHANGE (ADR-0176) — 8 still-incomplete activities had planned work raised
+    #      (e.g. UID 34 'Excavate elevator pit' 960→7200 min; raw-verified).
+    #   5. MANIP_RESOURCE_CHANGE (ADR-0176) — 11 bookings re-booked effort (membership unchanged).
     # Baselines unchanged, no deleted tasks, no edited actuals, no shortened durations, calendar
-    # unchanged — so nothing else fires.
+    # unchanged, no cost data in the goldens — so nothing else fires.
     findings = detect_manipulation(golden_project5, golden_project2)
     by_id = {f.metric_id: f for f in findings}
-    assert set(by_id) == {"MANIP_DELETED_LOGIC", "MANIP_CONSTRAINT_ADDED"}
+    assert set(by_id) == {
+        "MANIP_DELETED_LOGIC",
+        "MANIP_CONSTRAINT_ADDED",
+        "MANIP_ADDED_LOGIC",
+        "MANIP_WORK_CHANGE",
+        "MANIP_RESOURCE_CHANGE",
+    }
     constraint = by_id["MANIP_CONSTRAINT_ADDED"]
     assert [c.unique_id for c in constraint.citations] == [131]
+    assert "3 logic links added" in by_id["MANIP_ADDED_LOGIC"].title
+    work = by_id["MANIP_WORK_CHANGE"]
+    assert "8 incomplete activities" in work.title and "8 increased, 0 decreased" in work.detail
+    res = by_id["MANIP_RESOURCE_CHANGE"]
+    assert "11 re-booked effort" in res.detail and res.severity is Severity.MEDIUM
 
 
 def test_constraint_abuse_fires_only_when_a_new_hard_constraint_clamps_float() -> None:

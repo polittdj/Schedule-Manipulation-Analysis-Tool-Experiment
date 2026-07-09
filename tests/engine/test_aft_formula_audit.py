@@ -369,8 +369,21 @@ AUDIT: tuple[Row, ...] = (
         DRIFT,
         "ADR-0110: the tool's SPI(t) = Earned Schedule / Actual Time (count/time-based ES). "
         "Acumen's '.aft' SPI(t) is a per-activity duration-ratio average (baseline vs "
-        "actual/remaining duration) — a different metric of the same name. This is the documented "
-        "EVM2 residual (engine 0.27 vs Acumen 0.56); informs the value-based ES work.",
+        "actual/remaining duration) — a different metric of the same name, kept deliberately "
+        "(ADR-0176: both are now reported side by side; the Bible formula itself is implemented "
+        "verbatim as 'spi_t_acumen' below, closing the former EVM2 residual).",
+    ),
+    Row(
+        "spi_t_acumen",
+        "SPI(t)",
+        'AVERAGE(IF(ActivityStatus = "Complete", (BaselineFinish - BaselineStart) / '
+        "(ActualFinish - ActualStart), ((BaselineFinish - BaselineStart) - "
+        "(Finish - ProjectTimeNow)) / (ActualFinish - ActualStart)))",
+        MATCH,
+        "ADR-0176: the Bible formula implemented faithfully, including Acumen's evaluation "
+        "quirks proven against the Fuse Metric History (started-incomplete term = 0 via blank "
+        "ActualFinish; zero-span completions excluded). Parity EXACT on Hard_File_updated/2/3 "
+        "(0.80 / 1.14 / 1.25).",
     ),
     # --- Schedule-Network change (§E) + HSD ---
     Row("SN01", "", "", NOT_IN_BIBLE, "Cross-version network metric (count of activities)."),

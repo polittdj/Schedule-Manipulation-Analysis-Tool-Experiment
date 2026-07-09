@@ -200,10 +200,17 @@ def test_tp3_seeded_dcma_violations_register_with_the_seeded_counts() -> None:
     assert negative.count == 3  # the MFO-capped chain tail
     assert {c.unique_id for c in negative.citations} == {24, 28, 29}
     assert checks["High Duration"].count == 2  # 50-day and 60-day tasks
-    assert checks["Invalid Dates"].count == 4  # 31 (actual after DD) + 3 stale forecasts
-    # BEI is Acumen "BEI - Value Tasks" (ADR-0089): complete NORMAL tasks / NORMAL baselined-due —
-    # 8 of 12 = 0.67 (milestones AND summaries excluded by type; no baseline-duration filter)
-    assert checks["BEI"].value == 0.67
+    # 31 (actual finish after DD) + 4 stale stored forecasts (ADR-0176 Bible basis): 25/26/32
+    # never started with both stored dates past, plus 14 — IN PROGRESS with its stored forecast
+    # finish (02-27) two months behind the data date and no actual finish, which the old
+    # recomputed-CPM rule (actual-start-only) could not see.
+    assert checks["Invalid Dates"].count == 5
+    assert {c.unique_id for c in checks["Invalid Dates"].citations} == {14, 25, 26, 31, 32}
+    # BEI is Acumen "BEI - Value Tasks", cumulative (ADR-0176, corrects ADR-0089): complete AMONG
+    # the baselined-due NORMAL tasks / NORMAL baselined-due — 7 of 12 = 0.58 (the 8th completion
+    # is not yet baselined-due, so it no longer inflates the numerator; milestones AND summaries
+    # excluded by type; no baseline-duration filter)
+    assert checks["BEI"].value == 0.58
     assert checks["Missed Activities"].count == 7
 
 

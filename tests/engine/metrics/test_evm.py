@@ -362,3 +362,73 @@ def test_evm_cost_loaded_without_status_or_actuals_is_na() -> None:
     assert e["spi"].status is CheckStatus.NOT_APPLICABLE  # BCWS = 0
     assert e["cpi"].status is CheckStatus.NOT_APPLICABLE  # ACWP = 0
     assert e["tcpi"].status is CheckStatus.FAIL  # (BAC-BCWP)/(BAC-0) = 50/100 = 0.5
+
+
+def test_spi_t_acumen_rules_in_progress_zero_and_zero_span_excluded() -> None:
+    """ADR-0176 — the Acumen per-activity SPI(t) reverse-engineered rules, each proven against
+    the Fuse Metric History on the Hard_File series (parity-pinned in fuse_hardfile):
+    completed = baseline span / actual span (calendar); a STARTED-incomplete activity dilutes
+    the average with a 0 term (blank ActualFinish in the Fuse formula); a zero-span completion
+    (milestone) and a never-started activity contribute nothing."""
+    status = MON + dt.timedelta(days=20)
+    tasks = [
+        # completed on baseline pace: 5d baselined, 5d actual -> 1.0
+        Task(
+            unique_id=1,
+            name="on-pace",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+            actual_start=MON,
+            actual_finish=MON + dt.timedelta(days=5),
+            percent_complete=100.0,
+        ),
+        # completed at half pace: 5d baselined, 10d actual -> 0.5
+        Task(
+            unique_id=2,
+            name="half-pace",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+            actual_start=MON,
+            actual_finish=MON + dt.timedelta(days=10),
+            percent_complete=100.0,
+        ),
+        # started, incomplete -> contributes a 0 term (dilutes)
+        Task(
+            unique_id=3,
+            name="in-progress",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+            actual_start=MON + dt.timedelta(days=6),
+            percent_complete=40.0,
+        ),
+        # zero-span completion (milestone-like) -> EXCLUDED entirely
+        Task(
+            unique_id=4,
+            name="ms",
+            duration_minutes=0,
+            is_milestone=True,
+            baseline_start=MON,
+            baseline_finish=MON,
+            actual_start=MON,
+            actual_finish=MON,
+            percent_complete=100.0,
+        ),
+        # never started -> contributes nothing
+        Task(
+            unique_id=5,
+            name="future",
+            duration_minutes=5 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=5),
+        ),
+    ]
+    r = compute_evm_indices(_sched(tasks, status_date=status))["spi_t_acumen"]
+    # (1.0 + 0.5 + 0) / 3 = 0.5 — milestone and unstarted excluded
+    assert r.value == 0.5
+    assert r.population == 3
+    # without a status date the in-progress term cannot be assessed; completions still average
+    r2 = compute_evm_indices(_sched(tasks))["spi_t_acumen"]
+    assert r2.value == 0.75 and r2.population == 2

@@ -109,6 +109,61 @@ def test_current_cpm_is_reused_when_supplied() -> None:
     assert r is not None and r.per_change
 
 
+def test_reschedule_artifact_constraints_are_flagged_and_date_only_moves_revert() -> None:
+    """Operator 2026-07-09 (updated2→updated3 investigation): MS Project's 'reschedule
+    uncompleted work' stamps SNET-at-data-date constraints on pushed incomplete tasks. Those
+    reverts are REAL (still measured) but flagged is_reschedule_artifact so the UI clusters
+    them; a deliberate SNET at any other date is NOT flagged; and a DATE-only constraint move
+    (same type, new date) triggers a revert at all (it previously slipped through)."""
+    from schedule_forensics.model.task import ConstraintType
+
+    status = dt.datetime(2025, 2, 3, 17, 0)
+    rels = [Relationship(predecessor_id=1, successor_id=4)]
+
+    def _cur_task(uid: int, ctype: ConstraintType, cdate: dt.datetime | None) -> Task:
+        return Task(
+            unique_id=uid,
+            name=f"T{uid}",
+            duration_minutes=5 * DAY,
+            constraint_type=ctype,
+            constraint_date=cdate,
+        )
+
+    prior = Schedule(
+        name="S",
+        project_start=MON,
+        tasks=(
+            _task(1, 5),  # ASAP → SNET@status (artifact)
+            _task(2, 5),  # ASAP → SNET@other date (deliberate)
+            _cur_task(3, ConstraintType.SNET, MON),  # SNET date-only move → status (artifact)
+            _task(4, 0, is_milestone=True),
+        ),
+        relationships=tuple(rels),
+    )
+    current = Schedule(
+        name="S",
+        project_start=MON,
+        status_date=status,
+        tasks=(
+            _cur_task(1, ConstraintType.SNET, status),
+            _cur_task(2, ConstraintType.SNET, dt.datetime(2025, 3, 10, 8, 0)),
+            _cur_task(3, ConstraintType.SNET, status),
+            _task(4, 0, is_milestone=True),
+        ),
+        relationships=tuple(rels),
+    )
+    r = compute_change_effects(prior, current, target_uid=4)
+    assert r is not None
+    con = {e.citation_uids[0]: e for e in r.per_change if e.kind == "constraint_restored"}
+    assert set(con) == {1, 2, 3}  # the date-only move on UID 3 IS reverted
+    assert con[1].is_reschedule_artifact is True
+    assert con[2].is_reschedule_artifact is False  # deliberate date ≠ data date
+    assert con[3].is_reschedule_artifact is True
+    # labels state direction plainly: now <current> → was <prior>
+    assert "now SNET 2025-02-03 → was ASAP" in con[1].label
+    assert "was SNET 2025-01-06" in con[3].label
+
+
 def test_relationship_type_is_preserved_in_the_key() -> None:
     # an FF link removed must be restored as FF, not silently coerced to FS
     tasks = [_task(1, 10), _task(2, 10), _task(3, 0, is_milestone=True)]

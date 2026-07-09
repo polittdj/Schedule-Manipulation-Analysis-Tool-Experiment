@@ -180,8 +180,16 @@ def compute_dcma14(
         "DCMA08", "High Duration", len(high_dur), n_inc, "%", 5.0, Direction.LE, high_dur
     )
 
-    # DCMA-09 Invalid dates — actuals after the status date, or an incomplete activity
-    # whose forecast start is already in the past (vs the status date).
+    # DCMA-09 Invalid dates — actuals after the status date, or a forecast (early) date already
+    # in the past without the matching actual. The forecast side follows the Bible's Invalid
+    # Forecast Dates formula (ADR-0176): ((EarlyStart<ProjectTimeNow)*(ActualStart="")) +
+    # ((EarlyFinish<ProjectTimeNow)*(ActualFinish="")) — scored on the source tool's STORED
+    # start/finish fields (Acumen reads the file's own dates, which carry progress/reschedule
+    # state), NOT the pure-logic recomputed CPM early dates (which resurrect a pre-statusing
+    # picture and false-flag rescheduled work). Verified UID-exact vs Fuse on the operator's
+    # Hard_File_updated2 (21) / updated3 (0). Recomputed CPM remains the fallback when a file
+    # carries no stored dates. Task-level count (a task with both dates past counts once; Fuse's
+    # Metric History counts FIELDS, so its 42 = these 21 activities x 2 — documented divergence).
     invalid: list[int] = []
     status_dt = schedule.status_date
     for t in tasks:
@@ -191,8 +199,14 @@ def compute_dcma14(
                 bad = True
             if t.actual_finish is not None and t.actual_finish > status_dt:
                 bad = True
+            if t.actual_start is None and t.start is not None and t.start < status_dt:
+                bad = True
+            if t.actual_finish is None and t.finish is not None and t.finish < status_dt:
+                bad = True
         if (
-            is_incomplete(t)
+            t.start is None
+            and t.finish is None
+            and is_incomplete(t)
             and t.actual_start is None
             and status_off is not None
             and t.unique_id in result.timings
@@ -262,21 +276,25 @@ def compute_dcma14(
 
 
 def compute_bei(schedule: Schedule) -> MetricResult:
-    """DCMA-14 Baseline Execution Index — Acumen "BEI - Value Tasks" (ADR-0089, corrects ADR-0085):
+    """DCMA-14 Baseline Execution Index — Acumen "BEI - Value Tasks" (ADR-0176; corrects
+    ADR-0089/ADR-0085):
 
         countif(PercentComplete,"=100%") / SUM(IF(BaselineFinish<=ProjectTimeNow,1))
 
-    over the Normal-activity filter (Normal=true, Milestone=false, Summary=false) — i.e.
-    numerator = complete NORMAL tasks (non-summary, non-milestone); denominator = NORMAL tasks
-    baselined to finish by the data date. No baseline-duration filter and no missing-baseline term
-    (ADR-0085 added both; Acumen's real Large-File ribbon disproved them). Validated vs Acumen:
-    goldens 0.74 / 0.59 EXACT; Large-File denominator EXACT (1228), numerator within 2 of 632.
-    Early completions count (BEI can exceed 1.0). Pure counts — no CPM — so the grouping UI can
-    score it per group cheaply.
+    over the Normal-activity filter (Normal=true, Milestone=false, Summary=false), where BOTH
+    terms are scored on the SAME cumulative population — Normal tasks baselined to finish by
+    the data date. Numerator = complete among the baselined-due; denominator = the
+    baselined-due. ADR-0089 scored the numerator over ALL Normal tasks (complete-anywhere),
+    which coincidentally matched the goldens (no early out-of-window completions there) but
+    diverged on the operator's Hard_File_updated series (engine 0.55 vs Acumen 0.27): tasks
+    completed AHEAD of a not-yet-due baseline inflated the numerator. Complete-among-due
+    matches EVERY Acumen oracle: Project2 0.74, Project5 0.59, Hard_File_updated 0.27,
+    updated2 0.59, updated3 0.47 (and the Large-File ribbon). No baseline-duration filter and
+    no missing-baseline term (ADR-0085 added both; disproved). Pure counts — no CPM — so the
+    grouping UI can score it per group cheaply.
     """
     status_dt = schedule.status_date
     bei_normal = [t for t in non_summary(schedule) if not t.is_milestone]
-    bei_complete = sum(1 for t in bei_normal if t.percent_complete >= 100.0)
     bei_due = [
         t
         for t in bei_normal
@@ -284,6 +302,7 @@ def compute_bei(schedule: Schedule) -> MetricResult:
         and status_dt is not None
         and t.baseline_finish <= status_dt
     ]
+    bei_complete = sum(1 for t in bei_due if t.percent_complete >= 100.0)
     bei_den = len(bei_due)
     # the activities dragging BEI below 1.0 — baselined-due Normal tasks not finished (citable)
     bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)

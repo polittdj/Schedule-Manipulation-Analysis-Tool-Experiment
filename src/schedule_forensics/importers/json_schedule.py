@@ -170,6 +170,9 @@ def _task(raw: dict[str, Any]) -> Task:
     for key in ("cost", "actual_cost", "budgeted_cost"):
         if raw.get(key) is not None:
             fields[key] = float(raw[key])
+    for key in ("work_minutes", "actual_work_minutes"):
+        if raw.get(key) is not None:
+            fields[key] = _int(raw[key], key)
     for field in _DATE_FIELDS:
         if raw.get(field) is not None:
             fields[field] = _dt(raw[field])
@@ -185,6 +188,11 @@ def _task(raw: dict[str, Any]) -> Task:
                 resource_id=_int(a["resource_id"], "resource_id"),
                 work_minutes=_int(a.get("work_minutes", 0), "work_minutes"),
                 units=float(a.get("units", 1.0)),
+                remaining_work_minutes=(
+                    None
+                    if a.get("remaining_work_minutes") is None
+                    else _int(a["remaining_work_minutes"], "remaining_work_minutes")
+                ),
             )
             for a in raw["resource_assignments"]
             if isinstance(a, dict) and a.get("resource_id") is not None
@@ -368,6 +376,11 @@ def to_json_text(schedule: Schedule) -> str:
         if t.resource_assignments:
             task["resource_assignments"] = [
                 {"resource_id": a.resource_id, "work_minutes": a.work_minutes, "units": a.units}
+                | (
+                    {}
+                    if a.remaining_work_minutes is None
+                    else {"remaining_work_minutes": a.remaining_work_minutes}
+                )
                 for a in t.resource_assignments
             ]
         # every field the parser reads is written back: a Save .json round-trip must not
@@ -412,6 +425,10 @@ def to_json_text(schedule: Schedule) -> str:
             task["actual_cost"] = t.actual_cost
         if t.budgeted_cost:
             task["budgeted_cost"] = t.budgeted_cost
+        if t.work_minutes is not None:
+            task["work_minutes"] = t.work_minutes
+        if t.actual_work_minutes is not None:
+            task["actual_work_minutes"] = t.actual_work_minutes
         for field in _DATE_FIELDS:
             value = iso(getattr(t, field))
             if value is not None:
