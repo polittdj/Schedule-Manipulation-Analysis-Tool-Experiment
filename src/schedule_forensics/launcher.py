@@ -84,7 +84,7 @@ def main(
     browser = browser or webbrowser.open
     chosen_port = port if port is not None else find_free_port(host)
     url = f"http://{host}:{chosen_port}"
-    print(f"Schedule Forensics — serving the dashboard at {url}  (close the window to stop)")
+    print(f"POLARIS — serving the dashboard at {url}  (close the window to stop)")
 
     manager = ollama if ollama is not None else OllamaLauncher() if manage_ollama else None
     if manager is not None:
