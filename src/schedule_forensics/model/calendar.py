@@ -1,10 +1,13 @@
 """Working-time calendar — converts between wall-clock dates and working minutes.
 
 This slice models a single contiguous working block of ``working_minutes_per_day`` on
-each working weekday, minus ``holidays``. Multi-shift calendars, lunch breaks, and
-per-task calendars are deferred (the engine's CPM, M5, consumes this). The default is
-the standard 8-hour, Monday-Friday calendar (``working_minutes_per_day == 480``), which
-is also the canonical duration axis (see :mod:`schedule_forensics.model.units`).
+each working weekday, minus ``holidays``. Multi-shift calendars and lunch breaks are
+deferred (the engine's CPM, M5, consumes this). Per-task calendars are deferred for the
+base CPM pass but *are* honored where the source file carries them: the driving-slack
+path resolves a task's calendar from ``Schedule.calendars`` by ``uid`` (ADR-0118). The
+default is the standard 8-hour, Monday-Friday calendar (``working_minutes_per_day ==
+480``), which is also the canonical duration axis (see
+:mod:`schedule_forensics.model.units`).
 """
 
 from __future__ import annotations

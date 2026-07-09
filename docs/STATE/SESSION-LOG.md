@@ -4439,3 +4439,45 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
      partial, that the skipped changes are excluded.
 - +23-wd 188->187 result + "all N change(s)" honest aggregate preserved. New regression tests
   (reversed-diff guard, all-skipped disclosure, export guard). Full gate green; lockstep rebuild.
+
+### 2026-07-08 (cont. 15) — filter/columns/Excel drill tables (ADR-0167)
+- Operator (several screenshots): expand truncated citations into a full chart with add-columns +
+  Excel; filter the ribbon/what-if tables by any field; on the What-if, select any two files (the
+  latest-two-only default lumped a long history into a misleading "no change").
+- Evolution What-if: added a Baseline (A)/Comparison (B) two-file selector (cf_a/cf_b, default two
+  most recent, prior->current, out-of-range/collapse guarded). Intro now says it runs on the one
+  chosen pair, not lumped. Replaced the static reverted-changes table with an interactive one
+  (static/whatif.js): Columns dropdown (std+custom, localStorage), Filter box, Excel of the chosen
+  columns (/export/xlsx/whatif). Enriched rows carry each activity's current fields.
+- Ribbon drill (ribbon_drill.js): added a Filter box (new selection starts unfiltered; columns
+  persist).
+- Integrity findings: each "(+N more)" is now a "view all N" link -> findings_drill.js opens the
+  FULL cited-activity chart (UID/name/dur/%/start/finish default + Columns + Filter + Excel via
+  /export/xlsx/activities/{file}?uids=&cols=). No more truncation.
+- _find_schedule: resolve a file by session KEY or display label (source_file/cleaned name);
+  /api/analysis + /export/activities use it — fixed the citation drill returning no rows when the
+  cited label != the extension-stripped key.
+- Live-verified in Chromium (What-if selector runs the chosen pair; all three tables filter, add
+  persisted columns, export a 200 xlsx; "view all" lists all 17 cited activities). New tests
+  tests/web/test_drill_tables.py (5). Full suite green (1886 pre-test + 5). Lockstep rebuild.
+- STILL OPEN (larger, next session): #72 DP tiers per-column+Excel+banner, #71 Quality-Trend split,
+  #74 Resources bucketing+overallocation drill, #80 SRA grid Gantt. Variances: #67 SSI golden is
+  ACTIONABLE (the two UID-155 SSI exports ARE in the repo under 00_REFERENCE_INTAKE/ssi/); 3 Fuse
+  divergences are genuine tool-definition diffs.
+
+### 2026-07-08 (cont. 16) — end-of-session audit doc corrections (no new ADR; docs-only)
+- Deep-dive audit of the repo/docs (triple-verified) found three stale-docs defects and corrected
+  them; no code behavior changed except a calendar.py docstring (which forced a lockstep rebuild).
+- CLAUDE.md Law 1 + "Bible" section: reconciled with ADR-0152. The reference binaries under
+  00_REFERENCE_INTAKE/ (incl. the NASA .aft) are NOT git-ignored/out-of-repo — the operator chose
+  (ADR-0152, §43-44 formally supersedes the "keep binaries out of git" posture) to commit them to
+  main via the web UI. Doc now states they live in-repo, describes the guard's inherited_from_main
+  exception (byte-identical-to-origin/main passes; new/tampered CUI still blocked).
+- calendar.py docstring: the stale "per-task calendars are deferred" line contradicted the class'
+  own uid field (ADR-0118: per-task calendars ARE resolved from Schedule.calendars in the
+  driving-slack path). Qualified: deferred for the base CPM pass, honored where the source file
+  carries them. Wheel + 9 installers rebuilt (lockstep test compares packaged bytes).
+- HANDOFF audit note A1 corrected: the earlier "needs an operator decision / policy violation"
+  framing was WRONG — ADR-0152 already accepted the in-repo binaries; the real defect was the stale
+  CLAUDE.md, now fixed. #67 re-labeled ACTIONABLE (SSI UID-155 exports verified present via
+  git ls-files), not blocked. Highest ADR unchanged = 0167.

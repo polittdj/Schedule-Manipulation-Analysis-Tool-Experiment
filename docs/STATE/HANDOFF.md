@@ -1,6 +1,59 @@
-# Handoff — 2026-07-08 (integrity crash-fix + adversarial-review hardening; highest ADR 0166)
+# Handoff — 2026-07-08 (filter/columns/Excel drill tables; highest ADR 0167)
 
-> ## STATUS (current) — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
+> ## AUDIT (2026-07-08, end-of-session deep-dive — triple-verified findings)
+>
+> - **FINDING A1 (RESOLVED — was a stale-docs defect, not an open decision):** 60 reference binaries
+>   are tracked in git under `00_REFERENCE_INTAKE/` (real `.mpp` — Hard_File, Project2-5, Large Test
+>   File; Acumen Fuse `.xlsx`; SSI `.xlsx` exports; a `.docx` template). Verified 3 ways: (1)
+>   `.gitignore` lines 29-39 IGNORE `00_REFERENCE_INTAKE/*`; (2) they entered via the operator's
+>   GitHub **web-UI** "Add files via upload" commit (bypasses the local `.githooks` guard); (3)
+>   `.githooks/pre-commit:19` blocks exactly these extensions. These are operator-confirmed
+>   **NON-CUI** build/reference inputs, so this is NOT a data-sovereignty leak. **The initial
+>   framing of A1 as "needs an operator decision / policy violation" was WRONG:** ADR-0152 (accepted,
+>   operator-approved 2026-07-08) already recorded the decision to keep the intake suite in-repo and
+>   *formally supersedes* the "keep binaries out of git" defense-in-depth posture (ADR-0152 §43-44).
+>   The real defect was that **CLAUDE.md still described the binaries as git-ignored / out of the
+>   repo** (Law-1 block L14-25 and the "Bible" section L118-124) — contradicting ADR-0152. **FIXED
+>   this commit:** CLAUDE.md Law 1 and the Bible section now state the binaries live in-repo by
+>   ADR-0152, describe the `inherited_from_main` guard exception, and the calendar.py docstring's
+>   stale "per-task calendars are deferred" line is reconciled with ADR-0118. No deletion/history
+>   purge (would break the remote-build workflow + already-public history). The web-UI-upload guard
+>   gap is intentional per ADR-0152 (the inherited-blob exception exists precisely so already-public
+>   intake blobs don't wedge `git merge origin/main`); a NEW/tampered CUI blob is still blocked.
+> - **VERIFIED CLEAN:** runtime data-sovereignty intact — the net-egress / air-gap / CUI-guard /
+>   std-lib guard tests all pass (86 tests). ADR numbering 0130..0167 is contiguous (no gaps/dupes).
+>   Drift guard passes (0167 in HANDOFF + SESSION-LOG). Full gate green. Working tree matches the
+>   committed wheel (lockstep).
+
+> ## STATUS (current) — ADR-0167: filter / add-columns / Excel drill tables across the app
+>
+> - **Evolution "What-if" two-file selector** (`cf_a`/`cf_b`): the counterfactual runs on ONE chosen
+>   pair (default two most recent, out-of-range/collapse-guarded) so first-vs-last reveals cumulative
+>   change instead of the lumped "no change" the operator distrusted. Intro says "runs on the one
+>   pair you pick — not lumped across the whole history."
+> - **What-if reverted-changes table, ribbon metric drill, and Integrity finding "(+N more)"** are
+>   all interactive: a Columns dropdown (standard + custom, localStorage-persisted), a Filter box
+>   (text across shown columns), and an Excel export of the chosen columns. The finding "view all N"
+>   opens the FULL cited-activity chart (no more truncation) — `static/whatif.js`,
+>   `ribbon_drill.js` (filter added), `findings_drill.js`, routes `/export/xlsx/whatif`,
+>   `/export/xlsx/activities/{file}`.
+> - **`_find_schedule`** resolves a file by session key OR display label (source_file / cleaned
+>   name) — fixed the citation drill returning no rows when label ≠ key; `/api/analysis` +
+>   `/export/activities` use it.
+> - Live-verified in Chromium; pinned by `tests/web/test_drill_tables.py`; wheel + 9 installers
+>   rebuilt (lockstep).
+> - **STILL OPEN (larger features, next session):** #72 Driving-Path tiers per-column add + Excel +
+>   bold banner (the DP file selector already shipped, ADR-0165); #71 Quality-Trend visual split;
+>   #74 Resources day/week/month bucketing + overallocation click-drill; #80 SRA editable-grid Gantt
+>   matched to the other Gantts. **Variances:** #67 Hard_File UID-155 SSI driving-path golden is
+>   **ACTIONABLE, not blocked** — the two SSI exports ARE present in the repo
+>   (`00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx`
+>   and `..._Updated_...xlsx`, verified by `git ls-files`), so next session can parse them, validate
+>   the engine's UID-155 driving path, and pin the golden (this also lets the +23-wd 188→187
+>   counterfactual be SSI-cross-validated). The 3 Fuse divergences (ADR-0159) are genuine
+>   tool-definition differences pinned with root causes.
+
+> ## STATUS — ADR-0166: Integrity crash-fix hardening (adversarial-review findings)
 >
 > - Follow-up to ADR-0164 after an adversarial multi-agent review of the crash fix. Four confirmed
 >   findings fixed: (1) **HIGH/Law-2:** an out-of-range/negative baseline (`/integrity?b=0` or legacy

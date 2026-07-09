@@ -38,6 +38,7 @@
   var analysisCache = {}; // file -> {byUid, customLabels}
   var cols = null;        // [{key,label,on,custom}] built per available custom fields
   var selected = null;    // {file, metric}
+  var filterText = "";    // narrows the drilled rows by text across every shown column
 
   function savedState() {
     try { return JSON.parse(localStorage.getItem(COLS_KEY) || "null"); } catch (e) { return null; }
@@ -132,7 +133,21 @@
         "?metric=" + encodeURIComponent(metric) +
         (extra.length ? "&cols=" + encodeURIComponent(extra.join(",")) : "");
       bar.appendChild(el("a", { class: "btn-link", href: href, text: "Excel (this selection)" }));
+      // filter the drilled activities by text across every shown column (operator 2026-07-08)
+      var flt = el("input", { type: "search", placeholder: "Filter rows by any shown field" });
+      flt.value = filterText;
+      flt.addEventListener("input", function () { filterText = flt.value; render(); });
+      bar.appendChild(flt);
       drill.appendChild(bar);
+      var ql = filterText.trim().toLowerCase();
+      var rows = uids.map(function (uid) { return an.byUid[uid]; }).filter(function (a) {
+        if (!a) return false;
+        if (!ql) return true;
+        return fields.some(function (f) { return cellValue(a, f).toLowerCase().indexOf(ql) !== -1; });
+      });
+      bar.appendChild(el("span", {
+        class: "muted", text: rows.length + " / " + uids.length + " shown",
+      }));
       var scroller = el("div", { class: "hist-drill-scroll" });
       var table = el("table", { class: "hist-drill-table" });
       var thead = el("thead");
@@ -141,18 +156,18 @@
       thead.appendChild(hr);
       table.appendChild(thead);
       var tbody = el("tbody");
-      uids.forEach(function (uid) {
-        var a = an.byUid[uid];
-        if (!a) return;
+      rows.forEach(function (a) {
         var tr = el("tr");
         fields.forEach(function (f) { tr.appendChild(el("td", { text: cellValue(a, f) })); });
         tbody.appendChild(tr);
       });
-      if (!uids.length) {
+      if (!rows.length) {
         var tr0 = el("tr");
         tr0.appendChild(el("td", {
           class: "muted",
-          text: "No activities behind this figure — the measure counts nothing in this file.",
+          text: uids.length
+            ? "No rows match the filter."
+            : "No activities behind this figure — the measure counts nothing in this file.",
         }));
         tbody.appendChild(tr0);
       }
@@ -171,6 +186,7 @@
     });
     cell.classList.add("rib-selected");
     selected = { file: cell.getAttribute("data-file"), metric: cell.getAttribute("data-metric") };
+    filterText = "";  // a new selection starts unfiltered (columns persist; the filter is per-view)
     render();
   }
 
