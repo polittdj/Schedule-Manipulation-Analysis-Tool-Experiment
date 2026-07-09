@@ -8563,6 +8563,14 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
+<label>Group by <select id=ssiGridGroupBy data-no-i18n title="Group the grid rows under headers by any field — WBS, resources, critical, outline level, or any custom field (like the Path pages)">
+<option value="">(none)</option>
+<option value=wbs>WBS</option>
+<option value=resource_names>Resources</option>
+<option value=is_critical>Critical</option>
+<option value=is_milestone>Milestone</option>
+<option value=outline_level>Outline level</option>
+</select></label>
 <button id=ssiGridReload type=button>Refresh grid</button>
 <button id=ssiGridSave type=button>Save grid</button>
 <span id=ssiGridStatus class=muted aria-live=polite></span></div>

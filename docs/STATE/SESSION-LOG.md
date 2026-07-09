@@ -4557,3 +4557,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   granularity invariance, fallback, contributor sums) + tests/web/test_resources_view.py (+2).
 - src/ changed (resources.py + app.py + resources.js) -> wheel + 9 installers rebuilt (ADR-0148
   lockstep). Highest ADR = 0171. Backlog: #74 CLOSED; only #80 SRA editable-grid Gantt remains.
+
+### 2026-07-09 (cont. 3) — SRA editable grid group-by-any-field (ADR-0172, closes #80; work order done)
+- Operator #80: make the SRA editable-grid Gantt match the other Gantts (rows, fill page,
+  filters/grouping/timescale). Audit found the grid already had rows (SFGantt), fill-page
+  (fitToProject subtracts measured frozen-col width), MS-Project per-column checklist filters, and
+  the Timescale dialog. The ONLY gap vs the Path Gantts was grouping.
+- Added a Group-by control (#ssiGridGroupBy: WBS / Resources / Critical / Milestone / Outline level
+  + any custom field appended client-side from the loaded rows' custom maps, like path.js
+  populateGroupBy). sra_grid.js groups the already-filtered list (groupList/groupKeyOf; custom:
+  prefix; booleans -> Yes/No) and inserts .sra-branch-head header rows (label + count) before each
+  group, mirroring path.js .path-branch-head. Grid stays fully editable + filterable within groups;
+  (none) restores flat. Client-side only over /api/sra/grid.
+- Live-verified in Chromium (Hard_File): group-by offers standard + custom fields ("Invoice Status",
+  "Project Status Date"); Critical -> No (108)/Yes (34) = 142 rows; 330 editable inputs intact;
+  filter row present; (none) clears headers; zero console errors. Pinned by
+  test_sra_grid.py::test_grid_group_by_control_and_mechanics.
+- src/ changed (app.py + sra_grid.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148 lockstep).
+  Highest ADR = 0172. Backlog: #80 CLOSED. The #67/#71/#72/#74/#80 operator Gantt/UI work order is
+  fully closed; no feature items remain open from it.

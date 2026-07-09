@@ -846,6 +846,8 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
 .opt-group b { color: var(--muted); font-weight: 600; margin-right: 2px; }
 .pv-drag { color: var(--accent); font-weight: 700; }
 .path-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }
+/* SRA editable grid group-by headers — same look as the Path Gantt group headers (operator #80). */
+.sra-branch-head td { background: var(--field-bg); color: var(--accent); font-weight: 700; letter-spacing: .04em; }
 
 /* Schedule Integrity page (operator 2026-07-08): unmissable analyzed-file banner + tables */
 .integrity-file { font-size: 26px; font-weight: 800; letter-spacing: .06em; color: var(--accent);
