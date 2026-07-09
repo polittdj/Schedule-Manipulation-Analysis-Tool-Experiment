@@ -86,3 +86,39 @@ def test_s_curve_needs_a_finish_date() -> None:
         compute_s_curve([empty])
     with pytest.raises(ValueError, match="at least one"):
         compute_s_curve([])
+
+
+def test_tracked_uids_marked_on_the_curve() -> None:
+    """Operator 2026-07-09: tracked UIDs carry their current + baseline finish months per
+    version so the animated chart can mark specific activities; absent UIDs carry None."""
+    import datetime as dt
+
+    from schedule_forensics.model.task import Task
+
+    def t(uid: int, finish: str, baseline: str | None = None, pct: float = 0.0) -> Task:
+        return Task(
+            unique_id=uid,
+            name=f"T{uid}",
+            duration_minutes=480,
+            finish=dt.datetime.fromisoformat(finish),
+            baseline_finish=dt.datetime.fromisoformat(baseline) if baseline else None,
+            percent_complete=pct,
+        )
+
+    sch = Schedule(
+        name="v1",
+        project_start=dt.datetime(2026, 1, 5, 8),
+        status_date=dt.datetime(2026, 2, 28, 17),
+        tasks=(
+            t(1, "2026-02-10T17:00", "2026-01-20T17:00", pct=100.0),
+            t(2, "2026-04-15T17:00", "2026-03-15T17:00"),
+        ),
+    )
+    sc = compute_s_curve([sch], track_uids=[1, 2, 99])
+    tracked = {tr.uid: tr for tr in sc.versions[0].tracked}
+    months = list(sc.month_labels)
+    assert months[tracked[1].finish_index] == "Feb-26"
+    assert months[tracked[1].baseline_index] == "Jan-26"
+    assert tracked[1].percent_complete == 100.0
+    assert months[tracked[2].finish_index] == "Apr-26"
+    assert tracked[99].finish_index is None and tracked[99].percent_complete is None

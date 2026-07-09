@@ -103,6 +103,37 @@
     curve(svg, v.planned, GOLD, x, y, false);
     curve(svg, v.actual, BLUE, x, y, false);
 
+    // operator 2026-07-09: up to 20 tracked UIDs marked on every frame — a labeled dot on
+    // the actual curve at each activity's CURRENT finish month (filled = complete, hollow =
+    // incomplete) plus a small gold tick at its BASELINE finish month, so a slipping
+    // activity visibly walks right of its gold tick as the versions animate.
+    var tracked = v.tracked || [];
+    tracked.forEach(function (tr, k) {
+      if (tr.baseline_index != null) {
+        var bx = x(tr.baseline_index);
+        svg.appendChild(svgEl("line", { x1: bx, y1: y(0) - 8, x2: bx, y2: y(0), stroke: GOLD, "stroke-width": 2 }));
+      }
+      if (tr.finish_index == null) return;
+      var fx = x(tr.finish_index);
+      var fy = y(v.actual[tr.finish_index]);
+      var complete = tr.pct != null && tr.pct >= 100;
+      var dot = svgEl("circle", {
+        cx: fx, cy: fy, r: 5,
+        fill: complete ? BLUE : "var(--panel)",
+        stroke: BLUE, "stroke-width": 2,
+      });
+      var tip = document.createElementNS(NS, "title");
+      tip.textContent = "UID " + tr.uid + " — " + tr.name + " · finish " + months[tr.finish_index] +
+        (tr.pct != null ? " · " + tr.pct + "% complete" : "");
+      dot.appendChild(tip);
+      svg.appendChild(dot);
+      var lab2 = svgEl("text", {
+        x: fx + 7, y: fy - 4 - (k % 5) * 11, fill: BLUE, "font-size": 9, "font-weight": 600,
+      });
+      lab2.textContent = "UID " + tr.uid + (complete ? " ✓" : "");
+      svg.appendChild(lab2);
+    });
+
     // per-point hover call-outs: a transparent hit-strip per month over the plot so hovering
     // anywhere in a month's column shows that month's planned/actual values (shared chartframe tip)
     for (var hi = 0; hi < n; hi++) {
@@ -214,10 +245,16 @@
     return pairs.slice(0, MAX_ROWS);
   }
   function buildURL() {
-    var q = collectFilter().map(function (p) {
+    var parts = collectFilter().map(function (p) {
       return "cf=" + encodeURIComponent(p[0]) + "&cv=" + encodeURIComponent(p[1]);
-    }).join("&");
-    return "/api/scurve" + (q ? "?" + q : "");
+    });
+    // tracked UIDs (operator 2026-07-09): read the page control when present (absent on the
+    // Mission wall, where the chart tracks nothing extra)
+    var trackInput = document.getElementById("scurveTrack");
+    if (trackInput && trackInput.value.trim()) {
+      parts.push("uids=" + encodeURIComponent(trackInput.value.trim()));
+    }
+    return "/api/scurve" + (parts.length ? "?" + parts.join("&") : "");
   }
   function load() {
     stopAuto();

@@ -54,3 +54,20 @@ def test_api_scurve_returns_cumulative_curves(client: TestClient) -> None:
         assert v["planned"] == sorted(v["planned"]) and v["planned"][-1] <= 100.0
         assert v["actual"] == sorted(v["actual"]) and v["actual"][-1] <= 100.0
         assert "activities" in v
+
+
+def test_track_uids_control_payload_and_cap(client: TestClient) -> None:
+    """Operator 2026-07-09: the S-Curve tracks up to 20 chosen UIDs — a Track UIDs control,
+    per-version tracked marks in /api/scurve, and a hard 20-UID cap."""
+    _upload(client, "Project5")
+    page = client.get("/scurve?uids=106,113").text
+    assert "id=scurveTrack" in page and 'value="106, 113"' in page
+    data = client.get("/api/scurve?uids=106,113").json()
+    tracked = data["versions"][-1]["tracked"]
+    assert [t["uid"] for t in tracked] == [106, 113]
+    assert all("finish_index" in t and "baseline_index" in t and "pct" in t for t in tracked)
+    many = ",".join(str(u) for u in range(1, 30))
+    capped = client.get(f"/api/scurve?uids={many}").json()["versions"][0]["tracked"]
+    assert len(capped) == 20
+    js = client.get("/static/scurve.js").text
+    assert "scurveTrack" in js and "tracked" in js

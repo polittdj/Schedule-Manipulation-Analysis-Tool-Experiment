@@ -134,3 +134,24 @@ def test_mission_is_air_gapped(client: TestClient) -> None:
             if "127.0.0.1" not in u and "localhost" not in u and "www.w3.org" not in u
         ]
         assert not externals, (path, externals)
+
+
+def test_mission_quality_tiles_sit_in_the_main_grid_one_chart_per_visual(
+    client: TestClient,
+) -> None:
+    """Operator 2026-07-09: the separate 'Quality Control' section left a mostly-empty row of
+    dead space — Quality Offenders and Quality Trend now sit in the ONE mission grid next to
+    Critical-Path Evolution, and on the wall trend.js lifts each quality-trend chart into its
+    OWN tile (one graph per visual) instead of cramming ~15 charts into a single tile."""
+    page = client.get("/mission").text
+    assert "missionQcGrid" not in page
+    assert ">Quality Control</h2>" not in page
+    grid = page.split("id=missionGrid")[1]
+    evo = grid.index("Critical-Path Evolution")
+    offenders = grid.index("Quality Offenders")
+    trend = grid.index("Quality Trend")
+    assert evo < offenders < trend  # side by side, in order, in the same grid
+    js = client.get("/static/trend.js").text
+    assert "wallTile" in js  # the one-chart-per-tile splitter
+    assert 'classList.contains("chart")' in js  # section headings are skipped, charts lifted
+    assert "hostTile.hidden = true" in js  # the emptied host tile collapses away

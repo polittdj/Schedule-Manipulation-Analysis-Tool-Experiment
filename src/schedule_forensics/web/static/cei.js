@@ -149,6 +149,29 @@
       targetMark(snap.target_finished_index, GREEN, "finished", padT + 2);
     }
 
+    // operator 2026-07-09: up to 20 tracked UIDs ride the wave — one labeled dot per
+    // activity at its finish month this snapshot (green = actually finished, blue =
+    // still forecast), stacked so labels never collide. Distinct from the primary target.
+    var tracked = snap.tracked || [];
+    tracked.forEach(function (tr, k) {
+      var idx2 = tr.finished_index != null ? tr.finished_index : tr.scheduled_index;
+      if (idx2 == null) return;
+      var color = tr.finished_index != null ? GREEN : BLUE;
+      var mx2 = xc(idx2);
+      var myy = padT + 12 + (k % 10) * 13;
+      svg.appendChild(svgEl("line", {
+        x1: mx2, y1: myy, x2: mx2, y2: y(0), stroke: color, "stroke-width": 1, "stroke-dasharray": "1 3",
+      }));
+      svg.appendChild(svgEl("circle", { cx: mx2, cy: myy, r: 4, fill: color, stroke: "var(--panel)", "stroke-width": 1 }));
+      var tl = svgEl("text", { x: mx2 + 7, y: myy + 3, fill: color, "font-size": 9, "font-weight": 600 });
+      tl.textContent = "UID " + tr.uid + (tr.finished_index != null ? " ✓" : "");
+      var tip = document.createElementNS(NS, "title");
+      tip.textContent = "UID " + tr.uid + " — " + tr.name +
+        (tr.pct != null ? " (" + tr.pct + "% complete)" : " (absent this snapshot)");
+      tl.appendChild(tip);
+      svg.appendChild(tl);
+    });
+
     // legend
     var legend = [["Baselined to Finish", GOLD], ["Scheduled to Finish", BLUE], ["Finished", GREEN]];
     var lx = padL;
@@ -196,7 +219,13 @@
     timer = setInterval(function () { step(1); }, 1600);
   }
 
-  fetch("/api/cei")
+  // tracked UIDs (operator 2026-07-09): read the page control when present (absent on the
+  // Mission wall, where the chart tracks nothing extra)
+  var trackInput = document.getElementById("ceiTrack");
+  var trackQ = trackInput && trackInput.value.trim()
+    ? "?uids=" + encodeURIComponent(trackInput.value.trim())
+    : "";
+  fetch("/api/cei" + trackQ)
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (d) {
       data = d;
