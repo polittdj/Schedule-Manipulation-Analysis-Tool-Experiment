@@ -1,4 +1,28 @@
-# Handoff — 2026-07-08 (filter/columns/Excel drill tables; highest ADR 0167)
+# Handoff — 2026-07-09 (SSI UID-155 driving-path golden pinned; highest ADR 0168)
+
+> ## STATUS (current) — ADR-0168: SSI driving-path golden for Hard_File UID 155 (#67 CLOSED)
+>
+> - **#67 is done.** The two operator-delivered SSI Directional Path exports for focus UID 155
+>   (`00_REFERENCE_INTAKE/ssi/Hard_File_Path_Trace_UID_155...xlsx` + `..._Updated_...xlsx`, base +
+>   updated) were validated against the engine BEFORE pinning (Law 2). Result: the engine's
+>   **zero-driving-slack set reproduces SSI's Path 01 membership EXACTLY, UID-for-UID, on BOTH
+>   snapshots** (`{9, 36, 141, 144, 145, 146, 155, 156, 411}`), and the engine's ordered chain
+>   filtered to those members matches SSI's Path 01 **row order exactly**
+>   (`141→156→36→9→144→145→146→411→155`). Every member is DRIVING at 0 slack; focus 155 terminates
+>   the chain.
+> - These are "get all dependencies" exports (SSI buckets each predecessor into `Path NN` by exact
+>   driving-slack value; Path 01 = strict 0-day driving path). We gate the strict 0-day path — same
+>   basis as `ssi_uid67`/`ssi_uid145` — NOT the engine's broader `on_driving_path` set (which also
+>   flags sub-day-slack tasks per the documented ragged-minutes rule; SSI files those under Path
+>   02/03). SSI's Drag column is recorded provenance-only, ungated (ADR-0158).
+> - New golden `tests/fixtures/golden/ssi_hardfile_uid155/case.json` (reuses the `fuse_hardfile`
+>   gz fixtures, no duplicate binaries) + `tests/parity/test_ssi_hardfile_uid155.py` (4 parity
+>   cases, all green). **No `src/` change** → no wheel/installer lockstep rebuild.
+> - **Still open (larger features):** #72 Driving-Path tiers per-column add + Excel + bold banner;
+>   #71 Quality-Trend visual split; #74 Resources day/week/month bucketing + overallocation drill;
+>   #80 SRA editable-grid Gantt.
+
+
 
 > ## AUDIT (2026-07-08, end-of-session deep-dive — triple-verified findings)
 >
