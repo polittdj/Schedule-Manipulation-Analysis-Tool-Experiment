@@ -6899,10 +6899,18 @@ confirm the change was authorized.</p>
                     "reverting one alone reintroduces a logic cycle."
                 )
             if eff.skipped_capped:
-                notes.append(
+                cap_note = (
                     f"{eff.skipped_capped} further change(s) beyond the first {n_measured} were "
                     "not individually measured (large diff)."
                 )
+                if eff.skipped_capped_artifacts:
+                    cap_note += (
+                        f" {eff.skipped_capped_artifacts} of them match the MS Project "
+                        "reschedule-artifact pattern (SNET stamped at the data date on an "
+                        "incomplete task) — artifacts are measured last, so the cap starves "
+                        "statusing noise, not deliberate changes."
+                    )
+                notes.append(cap_note)
             skip_note = f"<p class=muted>{' '.join(_e(x) for x in notes)}</p>" if notes else ""
             if not eff.per_change:
                 # every detected revert was skipped — disclose it instead of hiding the panel
@@ -6941,10 +6949,11 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                 genuine = [e for e in eff.per_change if not e.is_reschedule_artifact]
                 eff_rows = _eff_rows(genuine)
                 artifact_html = ""
+                n_art_total = len(artifacts) + eff.skipped_capped_artifacts
                 if artifacts:
                     n_noeff = sum(1 for e in artifacts if not e.target_finish_delta_days)
                     art_note = (
-                        f"{len(artifacts)} constraint change(s) look like the MS Project "
+                        f"{n_art_total} constraint change(s) look like the MS Project "
                         "&ldquo;reschedule uncompleted work&rdquo; statusing artifact: the later "
                         "version carries a Start-No-Earlier-Than constraint stamped exactly at "
                         "its own data date. MS Project writes these automatically when "
@@ -6953,8 +6962,14 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                         "manual constraint edits. "
                         f"{n_noeff} of {len(artifacts)} have no effect on the target finish."
                     )
+                    if eff.skipped_capped_artifacts:
+                        art_note += (
+                            f" {eff.skipped_capped_artifacts} further artifact-pattern change(s) "
+                            "were detected but not individually measured (measurement cap; see "
+                            "the note above) and are not in the table below."
+                        )
                     artifact_html = f"""
-<details class=artifact-cluster><summary>&#9432; {len(artifacts)} MS Project reschedule
+<details class=artifact-cluster><summary>&#9432; {n_art_total} MS Project reschedule
 artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
 <p class=muted>{art_note}</p>
 <table class=integrity-table><tr><th scope=col>Change (reverted)</th>

@@ -96,6 +96,24 @@ def test_integrity_clusters_ms_project_reschedule_artifacts(client23: TestClient
     assert "was SNET 2026-07-31" in page
 
 
+def test_capped_pair_reports_the_full_artifact_total_and_starves_only_artifacts() -> None:
+    """2026-07-09 forensic re-audit: Hard_File→Hard_File_updated3 detects 71 changes — over the
+    60-revert measurement cap — and previously banner-counted only the 35 artifacts that won cap
+    slots (vs the true 44), while real changes went unmeasured. Artifacts are now measured last:
+    the banner totals all 44 detected artifacts (33 measured + 11 capped, disclosed), and every
+    genuine change gets a measured row."""
+    c = TestClient(create_app(SessionState()))
+    for name in ("Hard_File", "Hard_File_updated3"):
+        xml = gzip.decompress((GOLDEN / f"{name}.mspdi.xml.gz").read_bytes())
+        c.post("/upload", files={"files": (f"{name}.mpp.xml", xml, "text/xml")})
+    page = c.get("/integrity").text
+    assert "44 MS Project reschedule" in page  # the full detected total, not the measured subset
+    assert "44 constraint change(s) look like the MS Project" in page
+    assert "11 further artifact-pattern change(s)" in page  # capped remainder disclosed in-cluster
+    assert "11 of them match the MS Project reschedule-artifact pattern" in page  # and in the note
+    assert "33 of 33 have no effect on the target finish" in page
+
+
 def test_integrity_exception_field_is_removed(client23: TestClient) -> None:
     """Operator 2026-07-09: 'the Exception Field makes no sense. Remove it.'"""
     page = client23.get("/integrity").text

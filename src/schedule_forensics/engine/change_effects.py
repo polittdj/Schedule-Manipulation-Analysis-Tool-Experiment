@@ -52,6 +52,8 @@ class ChangeEffect:
 #: version diff (hundreds of changed links across two very different program versions) would
 #: otherwise run hundreds of CPM passes per pair and wedge the page; beyond the cap the extra
 #: changes are counted in ``skipped_capped`` and disclosed, never silently dropped (Law 2).
+#: Reschedule-ARTIFACT constraint reverts (statusing noise, almost always zero-effect) are
+#: measured LAST, so on a capped pair the cap starves the artifacts, not the real changes.
 _MAX_CHANGE_EFFECTS = 60
 
 
@@ -72,6 +74,10 @@ class ChangeEffectsReport:
     skipped_unsolvable: int = 0
     #: changes beyond ``_MAX_CHANGE_EFFECTS`` not individually measured (disclosed).
     skipped_capped: int = 0
+    #: of ``skipped_capped``, how many match the reschedule-artifact PATTERN (SNET stamped at
+    #: the data date on an incomplete task — detectable without a CPM pass), so the UI's
+    #: artifact cluster can disclose "N more detected but not measured" honestly.
+    skipped_capped_artifacts: int = 0
     #: False when even the acyclic-subset aggregate re-solve cycled; then the aggregate deltas
     #: are 0 and the UI omits the "all changes together" line rather than showing a wrong figure.
     aggregate_solved: bool = True
@@ -164,6 +170,7 @@ def compute_change_effects(
     effects: list[ChangeEffect] = []
     skipped_unsolvable = 0
     skipped_capped = 0
+    skipped_capped_artifacts = 0
 
     def _try_revert(
         kind: str,
@@ -182,9 +189,11 @@ def compute_change_effects(
         unchanged so one impossible counterfactual can neither crash the page nor corrupt the
         "all changes together" figure. Beyond the cap we stop measuring and just count the rest.
         """
-        nonlocal aggregate, skipped_unsolvable, skipped_capped
+        nonlocal aggregate, skipped_unsolvable, skipped_capped, skipped_capped_artifacts
         if len(effects) >= _MAX_CHANGE_EFFECTS:
             skipped_capped += 1
+            if is_artifact:
+                skipped_capped_artifacts += 1
             return aggregate
         try:
             cf_cpm = compute_cpm(cf_schedule)
@@ -237,7 +246,11 @@ def compute_change_effects(
             _with_link_dropped(aggregate, key),
         )
 
-    # 3. duration / constraint changes on activities present in both versions → restore prior value
+    # 3. duration / constraint changes on activities present in both versions → restore prior
+    # value. Reschedule-ARTIFACT constraint reverts are deferred to run AFTER every real change
+    # (see below): on a pair large enough to hit the measurement cap, the cap must starve the
+    # statusing noise, never a deliberate edit.
+    deferred_artifacts: list[tuple[int, str, dict[str, object]]] = []
     for td in diff.changed_tasks:
         uid = td.unique_id
         prior_t = prior_by_id.get(uid)
@@ -277,27 +290,44 @@ def compute_change_effects(
                 f"{_con_desc(prior_t.constraint_type, prior_t.constraint_date)})"
             )
             # MS Project "reschedule uncompleted work" artifact: the current version's constraint
-            # is an SNET stamped at its OWN data date — Project writes these automatically when
-            # incomplete work is pushed past the status date, so it is a statusing side effect,
-            # not a manual constraint edit. Flagged (never dropped) so the UI can cluster them.
+            # is an SNET stamped at its OWN data date on an INCOMPLETE task — Project writes
+            # these automatically when uncompleted work is pushed past the status date, so it is
+            # a statusing side effect, not a manual constraint edit. (A complete task can't be
+            # rescheduled, so SNET-at-data-date on one is NOT the artifact.) Flagged and measured
+            # LAST (never dropped) so the UI can cluster them and the cap can't starve real edits.
             is_artifact = (
                 cur_t.constraint_type is ConstraintType.SNET
                 and cur_t.constraint_date is not None
                 and current.status_date is not None
                 and cur_t.constraint_date.date() == current.status_date.date()
+                and cur_t.percent_complete < 100.0
             )
-            update = {
+            update: dict[str, object] = {
                 "constraint_type": prior_t.constraint_type,
                 "constraint_date": prior_t.constraint_date,
             }
-            aggregate = _try_revert(
-                "constraint_restored",
-                label,
-                (uid,),
-                _with_task_field(current, uid, update),
-                _with_task_field(aggregate, uid, update),
-                is_artifact=is_artifact,
-            )
+            if is_artifact:
+                deferred_artifacts.append((uid, label, update))
+            else:
+                aggregate = _try_revert(
+                    "constraint_restored",
+                    label,
+                    (uid,),
+                    _with_task_field(current, uid, update),
+                    _with_task_field(aggregate, uid, update),
+                )
+
+    # 4. the deferred reschedule-artifact constraint reverts — measured last, so on a capped pair
+    # the unmeasured remainder is the zero-effect statusing noise, not the deliberate changes.
+    for uid, label, update in deferred_artifacts:
+        aggregate = _try_revert(
+            "constraint_restored",
+            label,
+            (uid,),
+            _with_task_field(current, uid, update),
+            _with_task_field(aggregate, uid, update),
+            is_artifact=True,
+        )
 
     # Nothing to say ONLY when no change was detected at all. If changes WERE detected but every
     # isolated revert cycled (all in skipped_unsolvable), still return a report with empty
@@ -337,5 +367,6 @@ def compute_change_effects(
         aggregate_project_finish_delta_days=agg_project_delta,
         skipped_unsolvable=skipped_unsolvable,
         skipped_capped=skipped_capped,
+        skipped_capped_artifacts=skipped_capped_artifacts,
         aggregate_solved=aggregate_solved,
     )
