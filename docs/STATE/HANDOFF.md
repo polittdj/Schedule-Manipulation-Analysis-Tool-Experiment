@@ -1,6 +1,23 @@
-# Handoff — 2026-07-09 (UI work order part 1; highest ADR 0177)
+# Handoff — 2026-07-09 (CP Volatility page; highest ADR 0178)
 
-> ## STATUS (current) — ADR-0177: What-if CP additions, one-grid Mission wall, tracked UIDs,
+> ## STATUS (current) — ADR-0178: CP Volatility page (ten membership-churn visuals)
+>
+> - New `/volatility` page (nav: Assessment): one dataset (`_volatility_data` — per-version
+>   effective-critical sets → membership vectors + per-pair Jaccard/stayed/entered/left) drives
+>   ten dependency-free SVG visuals with a master animated stepper: stability gauge, churn
+>   timeline, entry/exit waterfall, composition area, membership heatmap, tenure + jumper
+>   leaderboards, dwell histogram, jumper strips, transition ribbons — plus a sortable
+>   scoreboard + Excel export. Framed to GAO SAG BP-6 / DCMA CP-test stability practice.
+> - Engine-true guard: dataset counts == the Fuse-pinned CP counts (33/53/49); membership
+>   column sums == per-version critical counts; pair-split set identities asserted.
+> - Operator's series reads: stability 78%; updated→updated2 is the rewired update (56%
+>   similarity, 22 joiners) — consistent with that pair's Integrity findings.
+> - **REMAINING (tasks #94/#98/#99):** Gantt standardization everywhere; Forecast per-field
+>   metric grouping; full clickable-functionality sweep.
+
+# (prior) Handoff — 2026-07-09 (UI work order part 1; highest ADR 0177)
+
+> ## STATUS (prior) — ADR-0177: What-if CP additions, one-grid Mission wall, tracked UIDs,
 > ## Driving-Path picker fix
 >
 > - **What-if "work added to the critical path"** section (mirror of the reverted list) with

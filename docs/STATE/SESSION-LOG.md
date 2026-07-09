@@ -4696,3 +4696,14 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Driving-Path File picker fixed to real filenames (was N copies of the internal project name)
   and the Excel trace link now resolves via the session key (was a latent project-name 404).
 - Full suite 1914 passed; wheel + 9 installers rebuilt (lockstep). Highest ADR = 0177.
+
+### 2026-07-09 (cont. 9) — CP Volatility page (ADR-0178)
+- New /volatility page: ten membership-churn visuals over the per-version effective-critical
+  sets (stability gauge / churn timeline (Jaccard) / entry-exit waterfall / composition area /
+  membership heatmap / tenure + jumper leaderboards / dwell histogram / jumper strips /
+  animated transition ribbons) + sortable scoreboard + /export/{fmt}/volatility. Master
+  Prev/Play/Next animates a shared version cursor. Framed to GAO SAG BP-6 / DCMA CP-test.
+- Engine-true test: dataset reproduces the Fuse-pinned CP counts (33/53/49), membership column
+  sums, and the pair-split set identities. Chromium-verified: 10 SVGs, 60 scoreboard rows,
+  zero console errors. Operator's series: stability 78%; updated->updated2 is the rewired
+  update (56% similarity, 22 joiners). Highest ADR = 0178.
