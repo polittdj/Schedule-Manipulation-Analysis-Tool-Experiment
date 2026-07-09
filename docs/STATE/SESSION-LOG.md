@@ -4536,3 +4536,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   test_trends_animation.py::test_health_indices_are_split_into_separate_charts.
 - src/ changed (trend.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep). Highest ADR = 0170.
   Backlog: #71 CLOSED; still open #74 Resources bucketing + overallocation drill, #80 SRA grid Gantt.
+
+### 2026-07-09 (cont. 3) — Resources day/week/month bucketing + click-a-bar drill (ADR-0171, closes #74)
+- Operator #74: the Resources loading histogram needed day/week/month bucketing and a click-a-bar
+  drill listing the activities driving an over-allocated bar.
+- engine/resources.py: compute_resource_loading(schedule, cpm, granularity="month"); _bucket_key
+  buckets a day into YYYY-MM-DD (day) / YYYY-Www (ISO week) / YYYY-MM (month). Capacity scales with
+  the working days in each bucket -> over-allocation consistent at every granularity; total work is
+  bucket-invariant; unknown granularity -> month. Each ResourcePeriod now carries contributors
+  (task uid -> booked minutes, summing to the load, ordered desc) computed in the same time-phasing
+  pass. ResourceLoading carries granularity. Parity-isolated, std-lib only.
+- web: /resources?bucket= drives a Day/Week/Month select that auto-submits (server recomputes).
+  _resource_loading_json embeds each period's tasks (uid, name, days); resources.js renders a
+  click-a-bar drill (#resDrill) listing the activities behind the clicked bucket, entirely
+  client-side/same-origin. Bars get a pointer + "click to drill" hint; x-labels thin out as buckets
+  multiply. Roster/cards/explainer reworded to the chosen unit.
+- Live-verified in Chromium (Hard_File): month 4 -> week 15 -> day 68 bars (monotonic); selector
+  switches bucket; bar-click drill caught a real over-allocation (18.19 d booked / 18 d capacity)
+  with its 3 contributing tasks; zero console errors. Pinned by tests/engine/test_resources.py (+3:
+  granularity invariance, fallback, contributor sums) + tests/web/test_resources_view.py (+2).
+- src/ changed (resources.py + app.py + resources.js) -> wheel + 9 installers rebuilt (ADR-0148
+  lockstep). Highest ADR = 0171. Backlog: #74 CLOSED; only #80 SRA editable-grid Gantt remains.

@@ -2156,9 +2156,9 @@ def create_app(
         return _page(st, "EVM", _evm_body(st))
 
     @app.get("/resources", response_class=HTMLResponse)
-    def resources_view() -> HTMLResponse:
+    def resources_view(bucket: str = Query("month")) -> HTMLResponse:
         st = session()
-        return _page(st, "Resources", _resources_body(st))
+        return _page(st, "Resources", _resources_body(st, bucket))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None)) -> HTMLResponse:
@@ -9487,11 +9487,15 @@ positive = late).</p>
 {_evm_explainer()}"""
 
 
-def _resource_loading_json(rl: ResourceLoading) -> str:
-    """The resource-loading payload for resources.js (load/capacity in working DAYS for display)."""
+def _resource_loading_json(rl: ResourceLoading, sch: Schedule) -> str:
+    """The resource-loading payload for resources.js (load/capacity in working DAYS for display).
+
+    Each period carries its per-task ``contributors`` (uid, name, days) so clicking a bar opens the
+    over-allocation drill entirely client-side (the work behind that bar), same-origin only."""
     mpd = rl.working_minutes_per_day or 480
+    by_id = sch.tasks_by_id
     payload = {
-        "working_days_per_month": None,
+        "granularity": rl.granularity,
         "resources": [
             {
                 "id": r.resource_id,
@@ -9506,6 +9510,14 @@ def _resource_loading_json(rl: ResourceLoading) -> str:
                         "load": round(p.load_minutes / mpd, 2),
                         "cap": round(p.capacity_minutes / mpd, 2),
                         "over": p.over_allocated,
+                        "tasks": [
+                            {
+                                "uid": uid,
+                                "name": (by_id[uid].name if uid in by_id else f"UID {uid}"),
+                                "days": round(mins / mpd, 2),
+                            }
+                            for uid, mins in p.contributors
+                        ],
                     }
                     for p in r.series
                 ],
@@ -9522,12 +9534,14 @@ def _resources_explainer() -> str:
 <details class=explainer><summary><b>What this shows &amp; how it's computed</b></summary>
 <p>Each task's assigned <b>work</b> (hours, from the schedule's resource assignments) is spread evenly
 across the <b>working days</b> of the task's span (its CPM early start &rarr; early finish) and totalled
-per <b>month</b>, per resource. A resource's monthly <b>capacity</b> is
-<code>max&nbsp;units &times; working&nbsp;hours/day &times; working&nbsp;days&nbsp;in&nbsp;the&nbsp;month</code>.</p>
-<p>A month where booked work <b>exceeds capacity</b> is <b class=res-over>over-allocated</b> (shown red)
+into the chosen <b>bucket</b> (day / week / month), per resource. A resource's per-bucket <b>capacity</b>
+is <code>max&nbsp;units &times; working&nbsp;hours/day &times; working&nbsp;days&nbsp;in&nbsp;the&nbsp;bucket</code>,
+so over-allocation is consistent at every granularity.</p>
+<p>A bucket where booked work <b>exceeds capacity</b> is <b class=res-over>over-allocated</b> (shown red)
 &mdash; the resource is asked to do more than its availability allows there, a signal to re-level,
-re-sequence, or add capacity. A schedule that records resource <i>names</i> but no <i>work</i> hours
-shows assignment counts only (no load bars).</p></details>
+re-sequence, or add capacity. <b>Click any bar</b> to see the exact activities driving that bucket's
+load. A schedule that records resource <i>names</i> but no <i>work</i> hours shows assignment counts
+only (no load bars).</p></details>
 <details class=explainer><summary><b>Pros &amp; cons of the even-spread method</b></summary>
 <p><b>Pro:</b> works on any schedule that carries assignment work, with no extra inputs, and gives a
 faithful monthly histogram. <b>Con:</b> it assumes work is spread evenly across the task (no front/back
@@ -9536,7 +9550,7 @@ within-task shape is an approximation.</p></details>
 </div>"""
 
 
-def _resources_body(st: SessionState) -> str:
+def _resources_body(st: SessionState, granularity: str = "month") -> str:
     """Resources page: per-resource loading histogram + over-allocation, and a roster table."""
     chosen = _latest_solvable(st)
     if chosen is None:
@@ -9545,7 +9559,8 @@ def _resources_body(st: SessionState) -> str:
             "over-allocation.</div>"
         )
     _key, sch, cpm = chosen
-    rl = compute_resource_loading(sch, cpm)
+    granularity = granularity if granularity in ("day", "week", "month") else "month"
+    rl = compute_resource_loading(sch, cpm, granularity)
     if not rl.resources:
         return (
             "<div class=panel><h2>Resources</h2><p class=muted>This schedule has no resource "
@@ -9555,12 +9570,13 @@ def _resources_body(st: SessionState) -> str:
     mpd = rl.working_minutes_per_day or 480
     over_count = sum(1 for r in rl.resources if r.over_allocated_periods)
     total_days = round(sum(r.total_work_minutes for r in rl.resources) / mpd, 1)
+    gran_label = {"day": "Days", "week": "Weeks", "month": "Months"}[granularity]
     cards = _stat_cards(
         [
             ("Resources loaded", str(len(rl.resources))),
             ("Total work (days)", f"{total_days:g}"),
             ("Over-allocated resources", str(over_count)),
-            ("Months covered", str(len(rl.periods))),
+            (f"{gran_label} covered", str(len(rl.periods))),
         ]
     )
     rows = "".join(
@@ -9571,10 +9587,11 @@ def _resources_body(st: SessionState) -> str:
         f"{len(r.over_allocated_periods) or ''}</td></tr>"
         for r in rl.resources
     )
+    unit = gran_label[:-1].lower()  # "day" / "week" / "month"
     roster = (
         "<table class=card-table><tr><th scope=col>Resource</th><th scope=col>Type</th>"
         "<th scope=col>Max units</th><th scope=col>Work (days)</th><th scope=col>Tasks</th>"
-        "<th scope=col>Peak month</th><th scope=col>Over-alloc months</th></tr>"
+        f"<th scope=col>Peak {unit}</th><th scope=col>Over-alloc {unit}s</th></tr>"
         f"{rows}</table>"
     )
     res_opts = "".join(
@@ -9582,27 +9599,41 @@ def _resources_body(st: SessionState) -> str:
         f"{' ⚠' if r.over_allocated_periods else ''}</option>"
         for r in rl.resources
     )
-    blob = _resource_loading_json(rl)
+    blob = _resource_loading_json(rl, sch)
+    # day/week/month bucket selector (operator #74) — a plain GET so the server recomputes capacity
+    # at the chosen granularity (capacity scales with the working days in each bucket).
+    bucket_opts = "".join(
+        f'<option value="{g}"{" selected" if g == granularity else ""}>{g.title()}</option>'
+        for g in ("day", "week", "month")
+    )
+    bucket_form = (
+        '<form method=get action=/resources class=viz-controls style="display:inline-flex">'
+        f'<label>Bucket <select name=bucket data-no-i18n onchange="this.form.submit()" '
+        f'title="Time-bucket the histogram by day, week or month">{bucket_opts}</select></label>'
+        "</form>"
+    )
     tip = _user_tip(
-        "Pick a resource to see its monthly <b>work vs capacity</b> histogram. Bars above the capacity "
-        "line (red) are <b>over-allocated</b> months &mdash; where that resource is booked beyond its "
-        "availability."
+        "Pick a resource to see its <b>work vs capacity</b> histogram at the chosen bucket "
+        "(day&nbsp;/&nbsp;week&nbsp;/&nbsp;month). Bars above the capacity line (red) are "
+        "<b>over-allocated</b> &mdash; where that resource is booked beyond its availability. "
+        "<b>Click any bar</b> to list the activities driving that bucket's load."
     )
     return f"""
 <div class=panel><h2>Resource loading &amp; over-allocation &mdash; {_e(sch.source_file or sch.name)}</h2>
-<p class=muted>Time-phased work per resource per month, against each resource's capacity. Over-allocated
-months are flagged.</p>
+<p class=muted>Time-phased work per resource per {unit}, against each resource's capacity. Over-allocated
+{unit}s are flagged.</p>
 {tip}
 {cards}</div>
 <div class=panel><h2>Loading histogram</h2>
 <div class=viz-controls><label>Resource <select id=resPick>{res_opts}</select></label>
-<span id=resStatus class=muted></span></div>
+{bucket_form}<span id=resStatus class=muted></span></div>
 <div id=resChart class=chart-host></div>
+<div id=resDrill></div>
 <script type="application/json" id=resData>{blob}</script>
 <script src="/static/resources.js"></script></div>
 <div class=panel><h2>Resource roster</h2>
-<p class=muted>Every resource that carries work, sorted by total work. Over-allocated months are the
-count of months booked beyond capacity.</p>
+<p class=muted>Every resource that carries work, sorted by total work. Over-allocated {unit}s are the
+count of {unit}s booked beyond capacity.</p>
 {roster}</div>
 {_resources_explainer()}"""
 
