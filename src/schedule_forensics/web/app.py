@@ -25,7 +25,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 from urllib.parse import quote, urlparse
 
 import uvicorn
@@ -352,7 +352,7 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 <label for=navToggle class=nav-burger title="Menu" data-no-i18n><span aria-hidden=true>&#9776;</span></label>
 <nav>
 <span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
-<span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a></span>
+<span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a><a href="/volatility">CP Volatility</a></span>
 <span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
 <span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a><a href="/integrity">Schedule Integrity</a></span>
 <span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
@@ -1059,6 +1059,17 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "Stable paths justify targeted recovery plans. Heavy churn is a red flag — either the "
         "plan is being re-baselined quietly or logic is being edited to mask slips; ask for "
         "the change log before accepting the update.",
+    ),
+    "CP Volatility": (
+        "How STABLE the critical path's membership is across the loaded versions: which "
+        "activities stayed on the controlling chain longest, and which jumped off and on.",
+        "Ten linked visuals over the same per-version critical sets — a stability gauge and "
+        "churn timeline (Jaccard similarity), entry/exit flows, a membership heatmap, tenure "
+        "and jumper leaderboards, dwell distribution, animated transition ribbons, and a "
+        "sortable per-activity scoreboard.",
+        "GAO/DCMA best practice expects a stable controlling chain. Heavy churn means the "
+        "network is being rewired between updates — cross-reference the worst update with "
+        "the Schedule Integrity findings and ask for the change log.",
     ),
     "Trend": (
         "Every metric family tracked ACROSS versions: quality counts, float, completion "
@@ -2302,6 +2313,69 @@ def create_app(
         return _page(
             st, "Schedule Quality Ribbon", _export_bar("ribbon") + _ribbon_body(rows, note, drill)
         )
+
+    @app.get("/volatility", response_class=HTMLResponse)
+    def volatility_view() -> HTMLResponse:
+        """Critical-Path Volatility (operator 2026-07-09): ten visualizations of how the
+        critical-path MEMBERSHIP churns across the loaded versions — which activities stayed
+        on the path longest, which jumped off and on, and how stable the controlling chain is
+        overall. Framed to the published best practice: GAO's Schedule Assessment Guide (Best
+        Practice 6 — a valid, stable critical path) and the DCMA 14-point construct (the CP
+        test / CPLI treat an erratic controlling chain as a health failure)."""
+        st = session()
+        schedules, cpms, skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return _page(
+                st,
+                "CP Volatility",
+                _skipped_notice(skipped)
+                + "<div class=panel>Load at least two analyzable versions — critical-path "
+                "volatility is a cross-version analysis (membership churn over time).</div>",
+            )
+        return _page(
+            st,
+            "CP Volatility",
+            _skipped_notice(skipped)
+            + _sources_line(st.ordered())
+            + _volatility_body(schedules, cpms),
+        )
+
+    @app.get("/export/{fmt}/volatility")
+    def export_volatility(fmt: str) -> Response:
+        """The per-activity volatility scoreboard (tenure / longest streak / flips) as a file."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two versions"}, status_code=422)
+        data = _volatility_data(schedules, cpms)
+        task_rows = cast(list[dict[str, Any]], data["tasks"])
+        headers = (
+            "UID",
+            "Activity",
+            "Versions on path",
+            "Longest streak",
+            "Jumps (on/off flips)",
+            "On path now",
+            "Membership (1 = on path, oldest first)",
+        )
+        rows = tuple(
+            (
+                t["uid"],
+                t["name"],
+                t["tenure"],
+                t["streak"],
+                t["flips"],
+                "yes" if t["member"][-1] else "no",
+                " ".join(str(m) for m in t["member"]),
+            )
+            for t in task_rows
+        )
+        tableset = TableSet(
+            "Critical-path volatility scoreboard",
+            (Table("CP volatility", headers, rows),),
+        )
+        return _export_response(fmt, tableset, "cp-volatility")
 
     @app.get("/evolution", response_class=HTMLResponse)
     def evolution_view(
@@ -10501,6 +10575,128 @@ reverted to their prior values and the schedule re-run &mdash; the gap is schedu
     body.append(added_html)
     body.append('<script src="/static/whatif.js"></script>')
     return "".join(body)
+
+
+def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[str, object]:
+    """The critical-path volatility dataset (operator 2026-07-09): per-version membership of
+    the effective critical set for every activity that was EVER on the path, plus the derived
+    stability measures the ten visuals draw — per-task tenure / longest streak / on-off flips,
+    per-pair Jaccard similarity and stayed/entered/left splits, and the overall stability
+    index (mean Jaccard). Everything derives from the loaded versions' critical sets — the
+    same effective-critical basis (stored Critical flag, CPM fallback) every other page uses."""
+    from schedule_forensics.engine.path_evolution import effective_critical_set
+
+    sets = [effective_critical_set(s, c) for s, c in zip(schedules, cpms, strict=True)]
+    labels = [s.source_file or s.name for s in schedules]
+    dates = [s.status_date.date().isoformat() if s.status_date else None for s in schedules]
+    ever: list[int] = []
+    seen: set[int] = set()
+    for cs in sets:
+        for uid in sorted(cs):
+            if uid not in seen:
+                seen.add(uid)
+                ever.append(uid)
+    # latest-known name per uid (newest version wins)
+    names: dict[int, str] = {}
+    for sch in schedules:
+        for t in sch.tasks:
+            if t.unique_id in seen:
+                names[t.unique_id] = t.name
+
+    tasks: list[dict[str, Any]] = []
+    for uid in ever:
+        member = [1 if uid in cs else 0 for cs in sets]
+        streak = best = 0
+        flips = 0
+        for i, m in enumerate(member):
+            streak = streak + 1 if m else 0
+            best = max(best, streak)
+            if i and m != member[i - 1]:
+                flips += 1
+        tasks.append(
+            {
+                "uid": uid,
+                "name": names.get(uid, f"UID {uid}"),
+                "member": member,
+                "tenure": sum(member),
+                "streak": best,
+                "flips": flips,
+            }
+        )
+    # most-tenured first, then fewest flips, then uid — the leaderboard/heatmap order
+    tasks.sort(key=lambda t: (-t["tenure"], t["flips"], t["uid"]))
+
+    pairs: list[dict[str, object]] = []
+    for i in range(1, len(sets)):
+        a, b = sets[i - 1], sets[i]
+        union = a | b
+        stayed, entered, left = len(a & b), len(b - a), len(a - b)
+        pairs.append(
+            {
+                "from": labels[i - 1],
+                "to": labels[i],
+                "jaccard": round(len(a & b) / len(union), 3) if union else None,
+                "stayed": stayed,
+                "entered": entered,
+                "left": left,
+            }
+        )
+    jaccards = [p["jaccard"] for p in pairs if p["jaccard"] is not None]
+    return {
+        "versions": [
+            {"label": lb, "status_date": d, "critical": len(cs)}
+            for lb, d, cs in zip(labels, dates, sets, strict=True)
+        ],
+        "tasks": tasks,
+        "pairs": pairs,
+        "stability": (
+            round(sum(jaccards) / len(jaccards), 3) if jaccards else None  # type: ignore[arg-type]
+        ),
+    }
+
+
+def _volatility_body(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+    """The CP Volatility page shell: intro framed to GAO/DCMA best practice, the master
+    stepper, ten chart mounts, the scoreboard, and the embedded dataset volatility.js reads."""
+    data = _volatility_data(schedules, cpms)
+    blob = json.dumps(data).replace("<", "\\u003c")
+    return f"""
+<div class=panel><h2>Critical-Path Volatility &mdash; membership churn across versions</h2>
+<p class=muted>The critical path should be <b>stable</b>: GAO's Schedule Assessment Guide (Best
+Practice 6 — maintain a valid critical path) and the DCMA 14-point construct (the critical-path
+test and CPLI) both treat an erratic controlling chain as a schedule-health failure. A path that
+churns member activities version over version means the network's logic is being rewired between
+updates — either real replanning that deserves a change log, or edits that quietly move the
+controlling chain away from slipping work. The ten visuals below answer two questions from the
+loaded files: <b>which activities stayed on the critical path longest</b>, and <b>which jumped
+off and on over time</b> (every figure derives from the same effective-critical sets the other
+pages use; nothing is fabricated).</p>
+<div class=viz-controls>
+<button id=volPrev type=button>&#9664; Prev</button>
+<span id=volLabel class=muted data-no-i18n></span>
+<button id=volNext type=button>Next &#9654;</button>
+<button id=volPlay type=button>&#9654; Play</button>
+<a class=btn-link href="/export/xlsx/volatility">&#11015; Excel (scoreboard)</a>
+</div></div>
+<div class=mosaic id=volGrid>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the overall stability index — the average Jaccard similarity of consecutive critical paths (100% = the same path every update).\n\nHOW TO READ: GAO/DCMA expect a largely stable controlling chain; below ~70% the network is being rewired between updates.\n\nDECIDE: whether to ask for the change log before accepting the latest update.">Stability gauge</h3></div><div class=chart-host id=volGauge></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: path similarity between each consecutive pair of versions (Jaccard %).\n\nHOW TO READ: dips are the updates where the controlling chain was rewired — cross-reference those updates with the Schedule Integrity findings.\n\nDECIDE: which update to interrogate for logic/duration edits.">Churn timeline (Jaccard %)</h3></div><div class=chart-host id=volChurn></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per update — how many activities stayed on, joined, and left the critical path.\n\nHOW TO READ: joined bars up, left bars down; a healthy schedule shows small bars (progress-driven turnover), not tall ones.\n\nDECIDE: which update churned the most members.">Entry / exit waterfall</h3></div><div class=chart-host id=volFlow></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the composition of each version's path — the share carried over vs newly joined.\n\nHOW TO READ: a mostly-'stayed' area is a settled plan; a growing 'entered' share is instability.\n\nDECIDE: whether the path is converging or churning over time.">Path composition (stayed vs entered)</h3></div><div class=chart-host id=volArea></div></section>
+<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the presence matrix — one row per activity ever on the critical path, one column per version; a filled cell = on the path that version. The stepper highlights the animated version.\n\nHOW TO READ: long unbroken rows are the stable backbone; gap-toothed rows are the jumpers.\n\nDECIDE: which rows deserve a 'why did this change?' interrogation.">Membership heatmap</h3></div><div class=chart-host id=volHeatmap></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the activities that spent the most versions on the critical path.\n\nHOW TO READ: these carry the schedule — the true backbone of the finish date.\n\nDECIDE: where sustained management attention belongs.">Tenure leaderboard</h3></div><div class=chart-host id=volTenure></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: how long activities typically stay on the path (distribution of versions-on-path).\n\nHOW TO READ: a healthy path skews long (stable membership); a spike at 1 version means most members blink on and off.\n\nDECIDE: whether churn is a few bad actors or systemic.">Dwell histogram</h3></div><div class=chart-host id=volDwell></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the biggest jumpers — activities ranked by on/off flips.\n\nHOW TO READ: an activity that repeatedly leaves and rejoins the controlling chain usually marks logic being toggled around it.\n\nDECIDE: exactly which activities' predecessors/durations to audit across updates.">Jumper leaderboard (on/off flips)</h3></div><div class=chart-host id=volJumpers></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: on-path intervals for the top jumpers as timeline strips (filled = on the path).\n\nHOW TO READ: aligned breaks across many strips point at ONE update that rewired the chain; scattered breaks are activity-level toggling.\n\nDECIDE: whether to investigate an update or an activity.">Jumper timelines</h3></div><div class=chart-host id=volStrips></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the animated stayed/entered/left transition between the stepper's current pair of versions, as proportional ribbons.\n\nHOW TO READ: a thick 'stayed' ribbon is continuity; thick 'entered'/'left' ribbons mark a rewired update.\n\nDECIDE: step through the pairs to find the update that moved the chain.">Transition flow (animated)</h3></div><div class=chart-host id=volRibbon></div></section>
+</div>
+<div class=panel><h2>Volatility scoreboard</h2>
+<p class=muted>Every activity that was ever on the critical path — versions on path, longest
+unbroken streak, and on/off flips (click a column header to sort; the Excel export carries the
+full membership vector).</p>
+<div id=volTable></div></div>
+<script type="application/json" id=volData>{blob}</script>
+<script src="/static/volatility.js"></script>"""
 
 
 def _evolution_data(
