@@ -313,6 +313,7 @@ def compute_evm_indices(
         direction=Direction.GE,
     )
     out["spi_t"] = _spi_t(schedule, tasks)
+    out["spi_t_acumen"] = _spi_t_acumen(schedule, tasks)
     return out
 
 
@@ -414,6 +415,66 @@ def _spi_t(schedule: Schedule, tasks: list[Task]) -> MetricResult:
         round(es.spi_t, 2),
         "ratio",
         evaluate(es.spi_t, 1.0, Direction.GE),
+        1.0,
+        Direction.GE,
+    )
+
+
+def _spi_t_acumen(schedule: Schedule, tasks: list[Task]) -> MetricResult:
+    """Acumen Fuse's per-activity SPI(t) — the Bible formula (ADR-0176):
+
+        AVERAGE(IF(ActivityStatus="Complete",
+                   (BaselineFinish-BaselineStart)/(ActualFinish-ActualStart),
+                   ((BaselineFinish-BaselineStart)-(Finish-ProjectTimeNow))
+                       /(ActualFinish-ActualStart)))
+
+    Reverse-engineered against the Fuse Metric History on the operator's Hard_File series
+    and EXACT on all three snapshots (0.80 / 1.14 / 1.25):
+
+    - population: STARTED, baselined activities (actual start + baseline start/finish);
+      never-started tasks contribute nothing (their IF term references blank actuals).
+    - complete: the baseline-vs-actual elapsed CALENDAR ratio (BF-BS)/(AF-AS); an activity
+      whose actual span is zero (instantaneous, e.g. a completed milestone) is excluded —
+      proven by updated2/updated3, whose 8/10 zero-span completions would otherwise drag
+      the average to 0.87/0.95 (Fuse says 1.14/1.25, the zero-span-excluded value).
+    - in progress: the denominator (ActualFinish-ActualStart) has a BLANK ActualFinish, which
+      Acumen's engine evaluates to a 0 term — the activity dilutes the average but adds no
+      earned ratio. Proven by `updated`: 6 completions average 0.93, Fuse says 0.80
+      = the same sum over 7 (6 completions + 1 in-progress). Faithfully reproduced.
+
+    A per-activity duration-efficiency average, NOT an Earned-Schedule index: it answers
+    "how efficiently do started activities burn their baselined span" (>1 = faster than
+    baselined), while :func:`_spi_t` answers "how far along the baseline curve is the work
+    front vs elapsed time". They can legitimately disagree in DIRECTION on the same file.
+    """
+    status_dt = schedule.status_date
+    ratios: list[float] = []
+    contributing: list[int] = []
+    for t in tasks:
+        if t.baseline_start is None or t.baseline_finish is None or t.actual_start is None:
+            continue
+        if t.percent_complete >= 100.0 and t.actual_finish is not None:
+            actual_span = (t.actual_finish - t.actual_start).total_seconds()
+            if actual_span <= 0:
+                continue  # zero-span completion (milestone) — excluded, proven vs Fuse
+            baseline_span = (t.baseline_finish - t.baseline_start).total_seconds()
+            ratios.append(baseline_span / actual_span)
+            contributing.append(t.unique_id)
+        elif status_dt is not None:
+            # started but incomplete: blank ActualFinish → Acumen evaluates the term to 0
+            ratios.append(0.0)
+            contributing.append(t.unique_id)
+    if not ratios:
+        return _na_index("spi_t_acumen", "SPI(t) — Acumen")
+    value = sum(ratios) / len(ratios)
+    return MetricResult(
+        "spi_t_acumen",
+        "SPI(t) — Acumen",
+        len(contributing),
+        len(ratios),
+        round(value, 2),
+        "ratio",
+        evaluate(value, 1.0, Direction.GE),
         1.0,
         Direction.GE,
     )

@@ -4634,3 +4634,44 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   operator); zero console errors. Pinned by test_app.py::test_polaris_masthead_wordmark; air-gap +
   a11y suites green. src/ changed (app.py layout + app.css) -> wheel + 9 installers rebuilt
   (ADR-0148 lockstep). Highest ADR = 0175.
+
+### 2026-07-09 (cont. 7) — Acumen alignment batch (ADR-0176)
+- Operator disposed of the 8-item Acumen-vs-POLARIS discrepancy report item by item; implemented
+  with every change oracle-verified against the new Hard_File_updated2/3 + Fuse v8.11.0 workbooks:
+  - BEI cumulative (complete-among-baselined-due) — matches ALL oracles (0.74/0.59/0.27/0.59/0.47).
+  - Dual SPI(t): ES-based stays; spi_t_acumen implements the Bible per-activity formula EXACT vs
+    Fuse (0.80/1.14/1.25) with its reverse-engineered evaluation quirks proven per-oracle
+    (started-incomplete contributes a 0 term — blank ActualFinish; zero-span completions excluded).
+    EVM page gained a dual-method callout (pros/cons + worked examples); .aft audit row for
+    spi_t_acumen = MATCH (closes the EVM2 drift residual).
+  - DCMA09 scores STORED forecast dates (Bible Invalid Forecast Dates) — UID-exact 0/21/0; TP3
+    seeded battery re-pinned (5: the new rule catches in-progress UID 14 with a stale forecast
+    finish; BEI 0.58 cumulative).
+  - Missing Logic: kept engine definition per operator; the new workbooks' exclusion of completed
+    open ends (187/400/412) is a Fuse-side inconsistency (breaks Fuse's own earlier oracles);
+    engine ⊃ Fuse asserted exactly in a new parity test.
+  - Model SCHEMA 2.5.0: Task.work_minutes/actual_work_minutes + Assignment.remaining_work_minutes;
+    MSPDI imports Work/ActualWork/RemainingWork; friendly JSON round-trips them (introspection
+    guard + maximal round-trip updated). diff tracks cost/actual-cost/work/actual-work/assignments.
+  - Forensic change trackers verified UID-exact vs the Fuse Forensic Analysis sheets (leaf rows;
+    Fuse's summary rollups are derivative): Total-Cost 8/5, Actual-Cost 20/7, Remaining-Cost
+    (derived) 22/10, Total-Work 7/5, Actual-Work 20/7; assignment_change_rows reproduces the
+    Resources sheet ROW-for-row (32/17; rule = remaining-work change or membership change,
+    project-summary excluded).
+  - Six new manipulation signals (cost / actual-cost-erased HIGH / work / actual-work-erased HIGH /
+    resource / added-logic LOW); on u2→u3 the HIGH pair catches the operator's seeded history
+    rewrites. P2→P5 golden re-pinned: every fired signal raw-verified as a real file delta.
+  - Counterfactual "phantom rows" root-caused: UID 411 'Post Launch Activities COMPLETE' IS in the
+    operator's files; the 44 SNET→ASAP reverts are REAL MS Project "reschedule uncompleted work"
+    artifacts (SNET stamped at updated3's own data date 2026-10-12). Fixes: date-only constraint
+    moves now revert (UID 189 was skipped), labels read "now X → was Y", artifact rows collapse
+    under an explanatory cluster (deliberate UID 261 SNET 2026-09-23 stays in the main table),
+    deterministic last-critical tie-break.
+  - Integrity page Exception field removed end-to-end (control, badges, export column).
+- New parity goldens: fuse_hardfile gains updated2/updated3 gzipped fixtures + case.json oracle
+  blocks (values, UID sets, forensic change sets) with UID-exact critical-path (incl. splits),
+  negative-float (53/49), IFD, BEI, SPI(t) assertions.
+- Remaining from the same work order (tasks #92–#99): What-if CP-additions section, dashboard
+  layout + Quality Trend split, Gantt standardization, Bow-Wave/S-Curve multi-UID, CP-volatility
+  page (10 visuals), Driving-Path picker labels, Forecast per-field grouping, functionality sweep.
+  Highest ADR = 0176.

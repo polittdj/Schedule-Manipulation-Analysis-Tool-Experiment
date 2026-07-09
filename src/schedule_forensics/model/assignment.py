@@ -25,3 +25,9 @@ class Assignment(StrictFrozenModel):
     resource_id: int
     work_minutes: int = Field(default=0, ge=0)  # working minutes of work (480 == one day)
     units: float = Field(default=1.0, ge=0.0)  # allocation ratio (1.0 == 100%)
+    #: working minutes of REMAINING work on this booking (0 == fully performed). ``None`` means
+    #: the source file records no per-assignment remaining work — never assume 0 (that would
+    #: read as "done"). Feeds the Fuse-parity assignment change tracker (ADR-0176): Acumen's
+    #: forensic 'Resources' sheet rows are exactly the (task, resource) pairs whose remaining
+    #: work changed or whose assignment appeared/disappeared between snapshots.
+    remaining_work_minutes: int | None = Field(default=None, ge=0)

@@ -252,9 +252,12 @@ def test_no_status_date_makes_invalid_dates_na() -> None:
     assert d["DCMA09"].status is CheckStatus.NOT_APPLICABLE
 
 
-def test_bei_counts_early_completions_beyond_the_due_set() -> None:
-    # DCMA's BEI numerator is ALL activities completed by the status date, not just the
-    # baselined-due set: one due-but-unfinished + one finished early = 1/1, not 0/1.
+def test_bei_numerator_is_cumulative_complete_among_the_due_set() -> None:
+    # ADR-0176 (corrects ADR-0089): BOTH BEI terms score the SAME cumulative baselined-due
+    # population. A task completed EARLY — ahead of a baseline finish that is not yet due —
+    # does NOT inflate the numerator (Acumen oracle: engine 0.55 vs Fuse 0.27 on
+    # Hard_File_updated came exactly from counting such tasks). One due-but-unfinished +
+    # one finished-early-not-yet-due = 0/1, not 1/1.
     status = MON + dt.timedelta(days=10)
     tasks = [
         Task(
@@ -278,5 +281,8 @@ def test_bei_counts_early_completions_beyond_the_due_set() -> None:
         ),
     ]
     bei = compute_dcma14(_sched(tasks, status_date=status))["DCMA14"]
-    assert bei.count == 1 and bei.population == 1 and bei.value == 1.0
+    assert bei.count == 0 and bei.population == 1 and bei.value == 0.0
     assert bei.offender_uids == (1,)  # the due-but-unfinished activity stays citable
+    # once the early completion's baseline finish comes DUE, it counts in both terms
+    later = compute_dcma14(_sched(tasks, status_date=MON + dt.timedelta(days=31)))["DCMA14"]
+    assert later.count == 1 and later.population == 2 and later.value == 0.5

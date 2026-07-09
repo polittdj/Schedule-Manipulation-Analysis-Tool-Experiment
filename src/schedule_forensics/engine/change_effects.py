@@ -19,6 +19,7 @@ pulled the finish IN (masked a slip). ``< 0`` means the change pushed the finish
 
 from __future__ import annotations
 
+import datetime as dt
 from collections.abc import Mapping
 from dataclasses import dataclass
 
@@ -27,6 +28,7 @@ from schedule_forensics.engine.diff import diff_versions
 from schedule_forensics.engine.path_evolution import effective_critical_set
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import ConstraintType
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,12 @@ class ChangeEffect:
     citation_uids: tuple[int, ...]  # the activities the change touches (for citation)
     target_finish_delta_days: int  # working days on the target (>0 = the change hid a slip)
     project_finish_delta_days: int  # working days on the whole project finish
+    #: True for the MS Project "reschedule uncompleted work" statusing artifact: the CURRENT
+    #: version carries an SNET constraint stamped exactly at its own data date. Project writes
+    #: these automatically when uncompleted work is rescheduled past the status date — they are
+    #: real file differences (never dropped), but the UI clusters them under an explanatory
+    #: label so dozens of tool-generated rows don't read as deliberate manual constraint edits.
+    is_reschedule_artifact: bool = False
 
 
 #: Cap on the number of changes reverted individually (each revert = one full CPM pass). A huge
@@ -76,8 +84,10 @@ def _last_critical_uid(schedule: Schedule, cpm: CPMResult) -> int | None:
     if not crit:
         # fall back to the max-early-finish scheduled task (drives the project finish)
         timings = cpm.timings
-        return max(timings, key=lambda u: timings[u].early_finish) if timings else None
-    return max(crit, key=lambda u: cpm.timings[u].early_finish if u in cpm.timings else -1)
+        return max(timings, key=lambda u: (timings[u].early_finish, u)) if timings else None
+    # several activities can TIE at the latest early finish (e.g. a finish milestone plus the
+    # tasks feeding it) — break the tie by UID so the choice is deterministic, not set-order
+    return max(crit, key=lambda u: (cpm.timings[u].early_finish if u in cpm.timings else -1, u))
 
 
 def _relationship_key(r: Relationship) -> tuple[int, int, RelationshipType, int]:
@@ -156,7 +166,13 @@ def compute_change_effects(
     skipped_capped = 0
 
     def _try_revert(
-        kind: str, label: str, uids: tuple[int, ...], cf_schedule: Schedule, agg_next: Schedule
+        kind: str,
+        label: str,
+        uids: tuple[int, ...],
+        cf_schedule: Schedule,
+        agg_next: Schedule,
+        *,
+        is_artifact: bool = False,
     ) -> Schedule:
         """Measure ONE reverted change; return the aggregate to carry forward.
 
@@ -186,6 +202,7 @@ def compute_change_effects(
                 project_finish_delta_days=round(
                     (cf_cpm.project_finish - base_cpm.project_finish) / per_day
                 ),
+                is_reschedule_artifact=is_artifact,
             )
         )
         return agg_next
@@ -242,14 +259,32 @@ def compute_change_effects(
                 _with_task_field(current, uid, upd),
                 _with_task_field(aggregate, uid, upd),
             )
-        con = td.changed("constraint_type")
+        # a DATE-only constraint move (same type, new date) is just as real as a type flip —
+        # e.g. MS Project re-stamping an existing SNET at a new data date — so trigger on either
+        con = td.changed("constraint_type") or td.changed("constraint_date")
         if con is not None and (prior_t.constraint_type, prior_t.constraint_date) != (
             cur_t.constraint_type,
             cur_t.constraint_date,
         ):
+
+            def _con_desc(ctype: ConstraintType, cdate: object) -> str:
+                date_txt = f" {cdate.date().isoformat()}" if isinstance(cdate, dt.datetime) else ""
+                return f"{ctype.value}{date_txt}"
+
             label = (
-                f"restore UID {uid} constraint "
-                f"({cur_t.constraint_type.value}→{prior_t.constraint_type.value})"
+                f"restore UID {uid} constraint (now "
+                f"{_con_desc(cur_t.constraint_type, cur_t.constraint_date)} → was "
+                f"{_con_desc(prior_t.constraint_type, prior_t.constraint_date)})"
+            )
+            # MS Project "reschedule uncompleted work" artifact: the current version's constraint
+            # is an SNET stamped at its OWN data date — Project writes these automatically when
+            # incomplete work is pushed past the status date, so it is a statusing side effect,
+            # not a manual constraint edit. Flagged (never dropped) so the UI can cluster them.
+            is_artifact = (
+                cur_t.constraint_type is ConstraintType.SNET
+                and cur_t.constraint_date is not None
+                and current.status_date is not None
+                and cur_t.constraint_date.date() == current.status_date.date()
             )
             update = {
                 "constraint_type": prior_t.constraint_type,
@@ -261,6 +296,7 @@ def compute_change_effects(
                 (uid,),
                 _with_task_field(current, uid, update),
                 _with_task_field(aggregate, uid, update),
+                is_artifact=is_artifact,
             )
 
     # Nothing to say ONLY when no change was detected at all. If changes WERE detected but every

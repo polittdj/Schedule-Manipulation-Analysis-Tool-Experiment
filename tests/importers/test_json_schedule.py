@@ -420,9 +420,13 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
         cost=-125.5,
         actual_cost=99.25,
         budgeted_cost=1000.0,
+        work_minutes=1920,
+        actual_work_minutes=840,
         resource_names=("Crane", "Crew A"),
         resource_ids=(21,),
-        resource_assignments=(Assignment(resource_id=21, work_minutes=960, units=0.5),),
+        resource_assignments=(
+            Assignment(resource_id=21, work_minutes=960, units=0.5, remaining_work_minutes=180),
+        ),
         custom_fields=(("CA-WBS", "X.1"), ("Text20", "note")),
     )
     other = Task(unique_id=12, name="Follow-on", duration_minutes=480)

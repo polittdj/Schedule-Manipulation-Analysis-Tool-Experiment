@@ -563,6 +563,8 @@ def _parse_task(
             cost=parse_float(_text(task_el, "Cost")),
             actual_cost=parse_float(_text(task_el, "ActualCost")),
             budgeted_cost=bl_cost,
+            work_minutes=_optional_minutes(task_el, "Work"),
+            actual_work_minutes=_optional_minutes(task_el, "ActualWork"),
             resource_names=assigned_names_by_task.get(uid, ()),
             resource_ids=assigned_uids_by_task.get(uid, ()),
             resource_assignments=assignments_by_task.get(uid, ()),
@@ -776,6 +778,7 @@ def _parse_assignments(
     names_by_task: dict[int, list[str]] = {}
     work_by_task_res: dict[int, dict[int, int]] = {}
     units_by_task_res: dict[int, dict[int, float]] = {}
+    remaining_by_task_res: dict[int, dict[int, int]] = {}
     assignments_el = root.find("Assignments")
     for assign_el in [] if assignments_el is None else assignments_el.findall("Assignment"):
         task_uid = _int(assign_el, "TaskUID")
@@ -797,15 +800,25 @@ def _parse_assignments(
         units_map = units_by_task_res.setdefault(task_uid, {})
         # keep the first/representative units booked for the pair (typically constant per pair)
         units_map.setdefault(resource_uid, 1.0 if units is None else max(0.0, units))
+        # per-assignment remaining work (None when the file omits it — distinct from 0 = done);
+        # summed like work when a pair carries several rows
+        rem = _text(assign_el, "RemainingWork")
+        if rem is not None:
+            rem_map = remaining_by_task_res.setdefault(task_uid, {})
+            rem_map[resource_uid] = rem_map.get(resource_uid, 0) + max(
+                0, iso_duration_to_minutes(rem)
+            )
     assignments_by_task: dict[int, tuple[Assignment, ...]] = {}
     for task_uid, uids in uids_by_task.items():
         work_map = work_by_task_res.get(task_uid, {})
         units_map = units_by_task_res.get(task_uid, {})
+        rem_map = remaining_by_task_res.get(task_uid, {})
         assignments_by_task[task_uid] = tuple(
             Assignment(
                 resource_id=ruid,
                 work_minutes=work_map.get(ruid, 0),
                 units=units_map.get(ruid, 1.0),
+                remaining_work_minutes=rem_map.get(ruid),
             )
             for ruid in uids
         )

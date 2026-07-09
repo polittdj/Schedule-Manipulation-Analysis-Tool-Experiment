@@ -67,6 +67,12 @@ class Task(StrictFrozenModel):
     #: the planner has not yet firmed up — a not-fully-developed estimate, flagged by the handbook.
     is_estimated_duration: bool = False
 
+    # --- work (effort, working minutes; distinct from duration — a 2-day task with two
+    # full-time resources carries 4 days of work). None = the source records no work; never
+    # assume 0. Tracked cross-version for the Fuse-parity work-change signals (ADR-0176).
+    work_minutes: int | None = Field(default=None, ge=0)  # total (planned) work
+    actual_work_minutes: int | None = Field(default=None, ge=0)  # work performed to date
+
     # --- classification ---
     is_milestone: bool = False
     is_summary: bool = False  # WBS rollup; excluded from the CPM network and DCMA denominators

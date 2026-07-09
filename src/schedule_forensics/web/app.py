@@ -71,7 +71,7 @@ from schedule_forensics.engine import (
     recommend,
 )
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
-from schedule_forensics.engine.change_effects import compute_change_effects
+from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
 from schedule_forensics.engine.driving_path import (
@@ -2331,15 +2331,14 @@ def create_app(
         a: int = Query(-1),
         b: int = Query(-1),
         file: str = Query(""),
-        exception_field: str = Query(""),
-        hide_excepted: int = Query(0),
     ) -> HTMLResponse:
         """Schedule Integrity & Change Forensics — the tool's namesake page (operator
-        2026-07-08): manipulation-pattern findings for one CHOSEN version pair, the counterfactual
-        "what the finish would have been without those changes", and a custom-field exception
-        filter (e.g. a BCR field) to set aside authorized changes. ``a``/``b`` are the baseline /
-        comparison file indices (operator: pick exactly two files to compare when more are
-        loaded); ``file`` is honored for back-compat (comparison label -> its predecessor)."""
+        2026-07-08): manipulation-pattern findings for one CHOSEN version pair and the
+        counterfactual "what the finish would have been without those changes". ``a``/``b`` are
+        the baseline / comparison file indices (operator: pick exactly two files to compare when
+        more are loaded); ``file`` is honored for back-compat (comparison label -> its
+        predecessor). The custom-field exception filter was removed (operator 2026-07-09: "the
+        Exception Field makes no sense")."""
         st = session()
         schedules, cpms, skipped = _solvable_versions()
         if len(schedules) < 2:
@@ -2367,8 +2366,6 @@ def create_app(
                 st.target_uid,
                 baseline_idx=a,
                 comparison_idx=b,
-                exception_field=exception_field,
-                hide_excepted=bool(hide_excepted),
             ),
         )
 
@@ -3009,11 +3006,8 @@ def create_app(
         return _export_response(fmt, tableset, "whatif")
 
     @app.get("/export/{fmt}/integrity")
-    def export_integrity(
-        fmt: str, file: str = Query(""), exception_field: str = Query("")
-    ) -> Response:
-        """Every integrity finding across the analyzed version pairs, with the exception-field
-        value carried per row so the authorized-change filter is auditable in Excel."""
+    def export_integrity(fmt: str, file: str = Query("")) -> Response:
+        """Every integrity finding across the analyzed version pairs."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         schedules, cpms, _skipped = _solvable_versions()
@@ -3031,7 +3025,6 @@ def create_app(
                 cites = "; ".join(
                     f"UID {c.unique_id} — {c.task_name}" for c in f.citations if c.unique_id
                 )
-                exc = "yes" if _finding_excepted(f, current, exception_field) else ""
                 body.append(
                     (
                         f"{labels[i]} → {labels[i + 1]}",
@@ -3041,7 +3034,6 @@ def create_app(
                         f.detail,
                         f.course_of_action,
                         cites,
-                        exc,
                     )
                 )
         headers = (
@@ -3052,7 +3044,6 @@ def create_app(
             "Detail",
             "Course of action",
             "Citations",
-            f"Excepted ({exception_field})" if exception_field else "Excepted",
         )
         tableset = TableSet(
             "Schedule Integrity findings",
@@ -6455,20 +6446,6 @@ def _driving_data(
     }
 
 
-def _finding_excepted(f: object, current: Schedule, exception_field: str) -> bool:
-    """True when any cited task carries a non-empty value in the exception field (e.g. a BCR
-    number) — the operator's 'this change was authorized' set-aside (expandable later)."""
-    if not exception_field:
-        return False
-    by_id = current.tasks_by_id
-    for c in f.citations:  # type: ignore[attr-defined]
-        if c.unique_id is not None and c.unique_id in by_id:
-            value = by_id[c.unique_id].custom_field(exception_field)
-            if value is not None and str(value).strip():
-                return True
-    return False
-
-
 def _integrity_body(
     schedules: list[Schedule],
     cpms: list[CPMResult],
@@ -6476,11 +6453,9 @@ def _integrity_body(
     *,
     baseline_idx: int,
     comparison_idx: int,
-    exception_field: str,
-    hide_excepted: bool,
 ) -> str:
     """Schedule Integrity & Change Forensics: cited manipulation findings for ONE chosen version
-    pair + the counterfactual finish, with a custom-field (BCR-style) exception filter.
+    pair + the counterfactual finish.
 
     The operator picks exactly TWO files to compare (baseline A vs comparison B) — previously the
     page diffed EVERY consecutive pair, which on many large files ran a counterfactual CPM sweep
@@ -6506,12 +6481,6 @@ def _integrity_body(
             for i, lb in enumerate(labels)
         )
 
-    all_custom = sorted({lb for sch in schedules for lb in sch.custom_field_labels})
-    field_opts = '<option value="">(none)</option>' + "".join(
-        f'<option value="{_e(lb)}"{" selected" if lb == exception_field else ""}>{_e(lb)}</option>'
-        for lb in all_custom
-    )
-    hx = " checked" if hide_excepted else ""
     banner_name = f"{labels[prior_idx]} → {labels[cur_idx]}"
     picker = (
         f"<label>Baseline (A) <select name=a>{_file_opts(prior_idx)}</select></label>"
@@ -6529,15 +6498,13 @@ def _integrity_body(
 <div class=panel><div class=integrity-file data-no-i18n>{_e(banner_name)}</div>
 <p class=muted>Every statement below is engine-computed and cited (file + UniqueID + task) —
 version-over-version changes and what each change did to the critical / driving path. This is
-analysis for review, not an accusation: use the exception field to set aside authorized changes
-(for example a <b>BCR</b> — Budget/Baseline Change Request — number carried on the task).</p>
+analysis for review, not an accusation: each finding's course of action asks the analyst to
+confirm the change was authorized.</p>
 {two_note}
 <form method=get action=/integrity class=viz-controls>
 {picker}
-<label>Exception field <select name=exception_field title="A finding whose cited task carries a value in this custom field (e.g. a BCR number) is treated as authorized">{field_opts}</select></label>
-<label><input type=checkbox name=hide_excepted value=1{hx}> hide excepted findings</label>
 <button type=submit>Apply</button>
-<a class=btn-link href="/export/xlsx/integrity?file={_e(labels[cur_idx])}&exception_field={_e(exception_field)}">&#11015; Excel (all findings)</a>
+<a class=btn-link href="/export/xlsx/integrity?file={_e(labels[cur_idx])}">&#11015; Excel (all findings)</a>
 </form></div>"""
 
     sections: list[str] = []
@@ -6551,17 +6518,9 @@ analysis for review, not an accusation: use the exception field to set aside aut
         except (CPMError, ValueError, KeyError) as exc:  # never 500 the page on one bad pair
             logging.getLogger("schedule_forensics").warning("integrity findings failed: %s", exc)
             findings = ()
-        shown = 0
-        excepted = 0
         rows = ""
         findings_data: list[dict[str, object]] = []  # per-finding full citation UIDs for the drill
         for f in findings:
-            is_exc = _finding_excepted(f, current, exception_field)
-            if is_exc:
-                excepted += 1
-                if hide_excepted:
-                    continue
-            shown += 1
             cites = "; ".join(
                 f"UID {c.unique_id} — {c.task_name}" for c in f.citations[:4] if c.unique_id
             )
@@ -6577,15 +6536,10 @@ analysis for review, not an accusation: use the exception field to set aside aut
                 if len(f.citations) > 4
                 else ""
             )
-            exc_badge = (
-                ' <span class=exc-badge title="A cited task carries the exception field">excepted</span>'
-                if is_exc
-                else ""
-            )
             rows += (
-                f'<tr class="{"row-excepted" if is_exc else ""}">'
+                f"<tr>"
                 f'<td class="sev-{_e(f.severity)}">{_e(f.severity)}</td>'
-                f"<td>{_e(f.title)}{exc_badge}</td>"
+                f"<td>{_e(f.title)}</td>"
                 f"<td>{_e(f.detail)}</td>"
                 f"<td class=muted>{_e(f.course_of_action)}</td>"
                 f"<td class=cite>{_e(cites)}{more}</td></tr>"
@@ -6643,21 +6597,53 @@ analysis for review, not an accusation: use the exception field to set aside aut
 measured individually — reverting any one alone reintroduces a logic cycle. (Currently
 {_e(eff.target_name)} finishes {_e(eff.actual_target_finish)}.)</p>{skip_note}</div>"""
             else:
-                eff_rows = ""
-                for e in sorted(eff.per_change, key=lambda x: -abs(x.target_finish_delta_days)):
-                    d = e.target_finish_delta_days
-                    cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
-                    effect_txt = (
-                        f"<b class={cls}>{d:+d} wd</b>"
-                        if d
-                        else "<span class=muted>no effect</span>"
+
+                def _eff_rows(changes: list[ChangeEffect]) -> str:
+                    out = ""
+                    for e in sorted(changes, key=lambda ce: -abs(ce.target_finish_delta_days)):
+                        d = e.target_finish_delta_days
+                        cls = "fail" if d > 0 else "ok" if d < 0 else "muted"
+                        effect_txt = (
+                            f"<b class={cls}>{d:+d} wd</b>"
+                            if d
+                            else "<span class=muted>no effect</span>"
+                        )
+                        cites = ", ".join(f"UID {u}" for u in e.citation_uids)
+                        out += (
+                            f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
+                            f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
+                            f"{e.project_finish_delta_days} wd</td>"
+                            f"<td class=cite>{_e(cites)}</td></tr>"
+                        )
+                    return out
+
+                # MS Project "reschedule uncompleted work" stamps an SNET constraint at the data
+                # date on every incomplete task it pushes — dozens of REAL (never hidden) but
+                # tool-generated constraint rows. Cluster them under an explanatory collapsible
+                # so they don't read as deliberate manual constraint edits (operator 2026-07-09).
+                artifacts = [e for e in eff.per_change if e.is_reschedule_artifact]
+                genuine = [e for e in eff.per_change if not e.is_reschedule_artifact]
+                eff_rows = _eff_rows(genuine)
+                artifact_html = ""
+                if artifacts:
+                    n_noeff = sum(1 for e in artifacts if not e.target_finish_delta_days)
+                    art_note = (
+                        f"{len(artifacts)} constraint change(s) look like the MS Project "
+                        "&ldquo;reschedule uncompleted work&rdquo; statusing artifact: the later "
+                        "version carries a Start-No-Earlier-Than constraint stamped exactly at "
+                        "its own data date. MS Project writes these automatically when "
+                        "incomplete work is pushed past the status date &mdash; they are real "
+                        "file differences, but usually a statusing side effect rather than "
+                        "manual constraint edits. "
+                        f"{n_noeff} of {len(artifacts)} have no effect on the target finish."
                     )
-                    cites = ", ".join(f"UID {u}" for u in e.citation_uids)
-                    eff_rows += (
-                        f"<tr><td>{_e(e.label)}</td><td>{effect_txt}</td>"
-                        f"<td>{'+' if e.project_finish_delta_days > 0 else ''}"
-                        f"{e.project_finish_delta_days} wd</td><td class=cite>{_e(cites)}</td></tr>"
-                    )
+                    artifact_html = f"""
+<details class=artifact-cluster><summary>&#9432; {len(artifacts)} MS Project reschedule
+artifact(s) &mdash; SNET stamped at the data date (click to expand)</summary>
+<p class=muted>{art_note}</p>
+<table class=integrity-table><tr><th scope=col>Change (reverted)</th>
+<th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
+<th scope=col>Citations</th></tr>{_eff_rows(artifacts)}</table></details>"""
                 agg = eff.aggregate_target_finish_delta_days
                 agg_txt = (
                     f"<b class={'fail' if agg > 0 else 'ok' if agg < 0 else 'muted'}>{agg:+d} "
@@ -6680,15 +6666,22 @@ measured individually — reverting any one alone reintroduces a logic cycle. (C
                     f"{_e(eff.actual_target_finish)}; reverting these changes together would "
                     "reintroduce a logic cycle, so only the per-change effects above are shown.)"
                 )
+                main_table = (
+                    "<table class=integrity-table><tr><th scope=col>Change (reverted)</th>"
+                    "<th scope=col>Effect on target finish</th>"
+                    "<th scope=col>Effect on project finish</th>"
+                    f"<th scope=col>Citations</th></tr>{eff_rows}</table>"
+                    if eff_rows
+                    else "<p class=muted>Every change between these versions is an MS Project "
+                    "reschedule artifact (see below).</p>"
+                )
                 effects_html = f"""
 <div class=change-effects><h4>Effect of each change on {tgt_label}</h4>
 <p class=muted>For each change below, the tool reverts <b>only that change</b> on the later version
 and re-runs CPM. A <b class=fail>positive</b> value is the working-day slip the change
 <b>hid</b> from the target's finish (restoring it would push the finish out that far); a
 <b class=ok>negative</b> value means the change pushed the finish out.{agg_line}</p>{skip_note}
-<table class=integrity-table><tr><th scope=col>Change (reverted)</th>
-<th scope=col>Effect on target finish</th><th scope=col>Effect on project finish</th>
-<th scope=col>Citations</th></tr>{eff_rows}</table></div>"""
+{main_table}{artifact_html}</div>"""
         cf_html = ""
         try:
             cf = compute_path_counterfactual(prior, current, pcpm, ccpm, target_uid=target_uid)
@@ -6721,15 +6714,8 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             if not rows
             else ""
         )
-        exc_note = (
-            f"<p class=muted>{excepted} finding(s) carry the exception field"
-            f"{' and are hidden' if hide_excepted else ' (badged below)'}.</p>"
-            if exception_field and excepted
-            else ""
-        )
         sections.append(f"""
 <div class=panel><h2>{_e(labels[i])} &rarr; {_e(labels[cur_i])}</h2>
-{exc_note}
 {f"<table class=integrity-table><tr><th scope=col>Severity</th><th scope=col>Finding</th><th scope=col>Detail</th><th scope=col>Course of action</th><th scope=col>Citations</th></tr>{rows}</table>" if rows else empty}
 {findings_drill}
 {effects_html}
@@ -9511,7 +9497,7 @@ def _evm_body(st: SessionState) -> str:
     # explicit str keys: newer mypy infers the comprehension key type as a Literal union,
     # which does not unify with _metric_scorecard_table's dict[str, MetricResult]
     sched_idx: dict[str, MetricResult] = {
-        k: indices[k] for k in ("spi_t", "cei_finish", "cei_start") if k in indices
+        k: indices[k] for k in ("spi_t", "spi_t_acumen", "cei_finish", "cei_start") if k in indices
     }
     cost_idx: dict[str, MetricResult] = {
         k: indices[k] for k in ("spi", "cpi", "tcpi") if k in indices
@@ -9520,6 +9506,7 @@ def _evm_body(st: SessionState) -> str:
     cards = _stat_cards(
         [
             ("SPI(t) — Earned Schedule", _evm_idx_str(indices.get("spi_t"))),
+            ("SPI(t) — Acumen", _evm_idx_str(indices.get("spi_t_acumen"))),
             ("SVt (working days)", _evm_days_str(sv.svt_days)),
             ("Earned Schedule (wd)", _evm_days_str(sv.es_days)),
             ("Actual Time (wd)", _evm_days_str(sv.at_days)),
@@ -9558,6 +9545,39 @@ def _evm_body(st: SessionState) -> str:
         "in a project where the classic cost-based SPI saturates at 1.0. A negative SVt (in working "
         "days) means the project is running behind the baseline plan."
     )
+    # Operator 2026-07-09: BOTH SPI(t) methods are reported, each explained with pros/cons and a
+    # worked example — they measure different things and can legitimately disagree in direction.
+    dual_spi = _user_tip(
+        "<b>Two SPI(t) methods are shown &mdash; they answer different questions and can "
+        "legitimately disagree.</b><br><br>"
+        "<b>SPI(t) &mdash; Earned Schedule</b> = ES &divide; AT: how far along the <i>baseline "
+        "finish curve</i> the completed work reaches (ES), divided by the working time actually "
+        "elapsed (AT). <i>Example:</i> 27 activities are complete; the baseline expected the "
+        "27th finish at working day 80, but 115 working days have elapsed &mdash; SPI(t) = "
+        "80 &divide; 115 = <b>0.70</b> (behind). "
+        "<i>Pros:</i> a true schedule-position index &mdash; it sees work that <u>has not "
+        "happened</u> (stalled work drags AT while ES freezes), follows the standard "
+        "Earned-Schedule literature, and feeds the IEAC(t) finish forecast. "
+        "<i>Cons:</i> count-based (a tiny task and a 6-month task each move ES one step) and it "
+        "needs a meaningful baseline finish sequence.<br><br>"
+        "<b>SPI(t) &mdash; Acumen</b> (the Fuse metric library formula) = the <i>average "
+        "duration-efficiency of started activities</i>: for each completed activity, baselined "
+        "span &divide; actual span; an in-progress activity contributes 0 until it finishes. "
+        "<i>Example:</i> two completed tasks ran exactly to baseline (1.0 each) and one task "
+        "baselined at 10 days took 20 (0.5) &mdash; average = <b>0.83</b>: completed work ran "
+        "17% slower than baselined. "
+        "<i>Pros:</i> per-activity and intuitive (&gt;1 = tasks finishing faster than their "
+        "baselined spans), matches Acumen Fuse exactly, unaffected by the plan's task "
+        "granularity ordering. "
+        "<i>Cons:</i> only sees <u>started</u> work &mdash; a schedule that is executing its "
+        "few started tasks efficiently but starting far too little scores well; each in-progress "
+        "activity dilutes the average toward 0 by design (the Fuse formula's blank-ActualFinish "
+        "term); and equal weight per activity lets many small on-pace tasks mask one huge "
+        "overrun. "
+        "<i>Read them together:</i> Earned-Schedule SPI(t) low + Acumen SPI(t) high means the "
+        "work being touched runs efficiently but the project is not progressing through the "
+        "baselined sequence &mdash; a classic under-resourced or logic-blocked pattern."
+    )
     return f"""
 <div class=panel><h2>Earned Value Management (EVM) &mdash; {_e(sch.source_file or sch.name)}</h2>
 <p class=muted>Performance against the baseline. The <b>schedule-based</b> metrics (Earned Schedule,
@@ -9566,8 +9586,9 @@ schedule and otherwise read N/A.</p>
 {tip}
 {cards}</div>
 <div class=panel><h2>Schedule performance</h2>
-<p class=muted>Earned-Schedule index and the baseline-anchored Current Execution Index
-(finish / start).</p>
+<p class=muted>Both SPI(t) methods (Earned-Schedule and Acumen per-activity) and the
+baseline-anchored Current Execution Index (finish / start).</p>
+{dual_spi}
 {_threshold_legend()}
 {_metric_scorecard_table(sched_idx)}</div>
 <div class=panel><h2>Cost performance</h2>

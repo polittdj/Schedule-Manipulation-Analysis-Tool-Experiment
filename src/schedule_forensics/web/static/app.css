@@ -854,9 +854,6 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
   text-transform: uppercase; margin: 2px 0 8px; }
 .integrity-table td { vertical-align: top; }
 .integrity-table td.cite { max-width: 340px; overflow-wrap: anywhere; }
-.row-excepted { opacity: .55; }
-.exc-badge { background: color-mix(in srgb, var(--warn) 25%, transparent); color: var(--warn);
-  border-radius: 4px; padding: 0 6px; font-size: 10px; font-weight: 700; }
 .counterfactual { border-left: 3px solid var(--bad); background: color-mix(in srgb, var(--bad) 7%, var(--panel));
   border-radius: 0 8px 8px 0; padding: 8px 12px; margin-top: 10px; }
 .counterfactual h4 { margin: 0 0 5px; color: var(--bad); }
@@ -867,6 +864,16 @@ details.path-options .viz-controls { padding: 4px 12px 9px; }
 .change-effects h4 { margin: 0 0 5px; color: var(--accent); }
 .change-effects table { margin-top: 6px; }
 .change-effects td.cite { overflow-wrap: break-word; }
+/* Reschedule-artifact cluster (operator 2026-07-09): MS Project's "reschedule uncompleted work"
+   stamps SNET-at-data-date constraints on every pushed incomplete task — real file changes, but
+   a statusing side effect, so they collapse under one explanatory row instead of flooding the
+   change table and reading as deliberate manual constraint edits. */
+.artifact-cluster { border: 1px dashed var(--line); border-radius: 8px; margin-top: 8px;
+  background: var(--field-bg); }
+.artifact-cluster > summary { cursor: pointer; padding: 6px 10px; color: var(--muted);
+  font-weight: 600; font-size: 12.5px; }
+.artifact-cluster > summary:hover { background: var(--hover); }
+.artifact-cluster > p, .artifact-cluster > table { margin: 4px 10px 10px; }
 
 /* operator 2026-07-08: no text under the chart toolbar — reserve the toolbar strip on the
    first (label) line of every chart host, and make the bar opaque for any straggler */

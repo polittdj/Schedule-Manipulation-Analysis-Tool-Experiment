@@ -1,6 +1,45 @@
-# Handoff — 2026-07-09 (POLARIS brand wordmark; highest ADR 0175)
+# Handoff — 2026-07-09 (Acumen alignment batch; highest ADR 0176)
 
-> ## STATUS (current) — ADR-0175: POLARIS brand + NASA-worm-style masthead wordmark
+> ## STATUS (current) — ADR-0176: Acumen alignment — cumulative BEI, dual SPI(t),
+> ## stored-date DCMA09, forensic change trackers, reschedule-artifact clustering
+>
+> - **Operator's item-by-item disposition of the discrepancy report, implemented and
+>   oracle-verified** (new `Hard_File_updated2/3` + Fuse v8.11.0 workbooks under
+>   `00_REFERENCE_INTAKE/acumen_v8.11.0/`):
+>   - **BEI cumulative** (numerator = complete among baselined-due) — matches ALL oracles
+>     (P2 0.74 / P5 0.59 / updated 0.27 / updated2 0.59 / updated3 0.47).
+>   - **Dual SPI(t):** the ES-based index stays; `spi_t_acumen` implements the Bible
+>     per-activity formula EXACT vs Fuse (0.80/1.14/1.25) incl. its reverse-engineered quirks
+>     (started-incomplete = 0 term; zero-span completions excluded). EVM page callout explains
+>     both methods with pros/cons + worked examples.
+>   - **DCMA09 on stored dates** (Bible Invalid Forecast Dates) — UID-exact 0/21/0; TP3 seeded
+>     battery re-pinned (5, catching an in-progress stale forecast the old rule missed).
+>   - **Missing Logic unchanged** (operator kept engine; Fuse-side inconsistency documented,
+>     engine ⊃ Fuse asserted exactly: extras are completed open ends 187/400/412).
+>   - **Change trackers:** Task work/actual-work + Assignment remaining-work fields
+>     (SCHEMA 2.5.0), MSPDI + JSON round-trip; diff tracks cost/actual-cost/work/actual-work/
+>     assignments — UID-exact vs the Fuse Forensic Analysis sheets; `assignment_change_rows`
+>     reproduces the Resources sheet row-for-row (32/17). Six new manipulation signals
+>     (MANIP_COST_CHANGE, MANIP_ACTUAL_COST_ERASED, MANIP_WORK_CHANGE,
+>     MANIP_ACTUAL_WORK_ERASED, MANIP_RESOURCE_CHANGE, MANIP_ADDED_LOGIC); the HIGH pair
+>     catches the operator's seeded history rewrites on u2→u3.
+>   - **Counterfactual root-cause (operator's "phantom rows"):** UID 411's name IS in the
+>     files; the 44 SNET→ASAP rows are REAL MS Project "reschedule uncompleted work" artifacts
+>     (SNET stamped at the data date) — now clustered under an explanatory collapsible;
+>     date-only constraint moves now revert too (the UID 189 gap); labels read
+>     "now X → was Y"; the last-critical tie-break is deterministic.
+>   - **Integrity page Exception field removed** (operator: "makes no sense").
+> - **REMAINING (same 2026-07-09 work order, tasks #92–#99):** What-if "added to the critical
+>   path" section; dashboard layout (Quality Offenders + Quality Trend beside Critical-Path
+>   Evolution; one metric per visual); Gantt standardization everywhere (full option set,
+>   frozen header + always-visible bottom scrollbar); Bow-Wave/S-Curve multi-UID (≤20) with
+>   optional primary target; CP-volatility page (10 researched visuals); Driving-Path
+>   file-picker real filenames; Forecast per-field metric grouping (per-CAM etc. + NA group +
+>   no-completed-work handling); full clickable-functionality sweep.
+
+# (prior) Handoff — 2026-07-09 (POLARIS brand wordmark; highest ADR 0175)
+
+> ## STATUS (prior) — ADR-0175: POLARIS brand + NASA-worm-style masthead wordmark
 >
 > - **The tool is now branded POLARIS** (operator chose it over AISMAT from five offered names):
 >   *Program Oversight & Logic Analysis for Risk & Integrity of Schedules*. Masthead, page
