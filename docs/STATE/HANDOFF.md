@@ -1,4 +1,21 @@
-# Handoff — 2026-07-09 (Driving-Path tiers columns/filter/Excel + banner; highest ADR 0169)
+# Handoff — 2026-07-09 (MEI/BEI/EPI/BRI trend chart split; highest ADR 0170)
+
+> ## STATUS (current) — ADR-0170: split the MEI/BEI/EPI/BRI trend chart into per-index visuals (#71 CLOSED)
+>
+> - **#71 done.** Operator disambiguated (2026-07-09): the "Quality Trend combined visual" = the
+>   **MEI / BEI / EPI / BRI** chart on `/trend`, which crammed four different-scale indices onto one
+>   axis. Now each index is its own single-series `lineChart` ("<index> across versions") with a
+>   per-index description + 2-dp values. The `multiLineChart` helper is unchanged and still backs the
+>   deliberately-combined charts — notably **BEI/CEI/HMI**, kept combined per NASA handbook Fig 7-21
+>   (confirmed out of scope).
+> - Presentation-only (`static/trend.js`); same `indices` payload. Live-verified in Chromium
+>   (Hard_File pair): combined chart gone, four per-index charts present, exec panel intact, zero
+>   console errors. Pinned by `test_trends_animation.py::test_health_indices_are_split_into_separate_charts`.
+>   `src/` changed → wheel + 9 installers rebuilt (lockstep).
+> - **Still open (larger features):** #74 Resources day/week/month bucketing + overallocation
+>   click-drill; #80 SRA editable-grid Gantt.
+
+
 
 > ## STATUS (current) — ADR-0169: Driving-Path tiers add-columns / filter / Excel + file banner (#72 CLOSED)
 >

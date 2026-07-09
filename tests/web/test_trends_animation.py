@@ -64,6 +64,28 @@ def test_trend_charts_gain_steppers_enlarge_and_provenance(client: TestClient) -
     assert '"Source: " + src' in js
 
 
+def test_health_indices_are_split_into_separate_charts(client: TestClient) -> None:
+    """#71: the MEI/BEI/EPI/BRI health indices no longer share one axis. Each index gets its own
+    lineChart (different scales made the combined view illegible). The BEI/CEI/HMI execution
+    panel stays combined by design (mirrors the handbook's Fig 7-21 single-axis view)."""
+    js = client.get("/static/trend.js").text
+    # the old combined chart title is gone, and it no longer feeds a multi-line chart
+    assert "MEI / BEI / EPI / BRI across versions" not in js
+    assert "idxSeries" not in js
+    # each index now labels its own chart (title built as label + " across versions"),
+    # emitted via the single-series lineChart rather than multiLineChart
+    for label in (
+        "MEI (milestone execution)",
+        "BEI (baseline execution)",
+        "EPI (execution performance)",
+        "BRI (baseline realism)",
+    ):
+        assert label in js, label
+    assert 's.label + " across versions", labels, values' in js  # per-index lineChart call
+    # the intentionally-combined execution panel is untouched
+    assert "Execution indices — BEI / CEI / HMI" in js
+
+
 def test_trend_page_master_play_all(client: TestClient) -> None:
     """trend.js wires a page-level master Play all / Step all (the mission.js pattern):
     one beat clicks every .sf-frame-next plus the quality drill-down's #qualNext."""

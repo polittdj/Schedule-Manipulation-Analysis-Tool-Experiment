@@ -4521,3 +4521,18 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - src/ changed (app.py + driving_tiers.js + app.css) -> wheel + 9 installers rebuilt (ADR-0148
   lockstep). Highest ADR = 0169. Backlog: #72 CLOSED; still open #71 Quality-Trend split, #74
   Resources bucketing + overallocation drill, #80 SRA editable-grid Gantt.
+
+### 2026-07-09 (cont. 2) — split MEI/BEI/EPI/BRI trend chart into per-index visuals (ADR-0170, closes #71)
+- Operator disambiguated (2026-07-09, via AskUserQuestion): the "Quality Trend combined visual" =
+  the MEI/BEI/EPI/BRI chart on /trend (the page has several combined charts; one, BEI/CEI/HMI, is
+  intentionally combined per NASA handbook Fig 7-21 and stays that way).
+- trend.js: replaced the single multiLineChart("MEI / BEI / EPI / BRI across versions", ...) with a
+  loop emitting one single-series lineChart per index (MEI/BEI/EPI/BRI), each with its own title
+  ("<index> across versions"), color, per-index description, 2-dp value formatter, shown only when
+  that index has a value. multiLineChart helper unchanged (still backs BEI/CEI/HMI, FEI, HMI, CEI,
+  Float Ratio). Presentation-only; same data.versions[i].indices payload.
+- Live-verified in Chromium (Hard_File pair): combined chart gone; 4 per-index charts render;
+  BEI/CEI/HMI exec panel intact; zero console errors. Pinned by
+  test_trends_animation.py::test_health_indices_are_split_into_separate_charts.
+- src/ changed (trend.js) -> wheel + 9 installers rebuilt (ADR-0148 lockstep). Highest ADR = 0170.
+  Backlog: #71 CLOSED; still open #74 Resources bucketing + overallocation drill, #80 SRA grid Gantt.
