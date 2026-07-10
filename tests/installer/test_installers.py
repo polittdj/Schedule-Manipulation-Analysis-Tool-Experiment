@@ -160,3 +160,19 @@ def test_embedded_wheel_is_in_lockstep_with_the_source_tree() -> None:
         "python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl`:\n"
         + "\n".join(stale[:20])
     )
+
+
+def test_ps1_find_python_survives_a_python_only_machine() -> None:
+    """Operator regression 2026-07-10: with only python.exe on PATH (no py launcher),
+    Find-Python's `return @($exe)` was unrolled by PowerShell into a bare string, so the
+    venv invocation `$py[0]` indexed the CHARACTER 'p' and the install died. The unary
+    comma keeps the 1-element array an array, and the call site re-wraps defensively
+    (ADR-0191). The windows-latest smoke re-runs tier1 with the py launcher masked."""
+    tpl = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
+    assert ",@($exe)" in tpl and ",@($exe, $flag)" in tpl
+    assert "$py = @($py)" in tpl
+    for tier in TIERS:  # the generated installers ship the same fix
+        ps1 = _read(tier, "ps1")
+        assert ",@($exe)" in ps1 and "$py = @($py)" in ps1
+    smoke = (ROOT / ".github" / "workflows" / "installer-smoke.yml").read_text(encoding="utf-8")
+    assert "py.cmd" in smoke  # CI masks the launcher to walk the operator's exact path

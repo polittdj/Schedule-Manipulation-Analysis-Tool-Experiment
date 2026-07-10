@@ -73,7 +73,9 @@ function Find-Python {
                 if ($flag) { $v = & $exe $flag -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null }
                 else       { $v = & $exe       -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null }
                 if ($v -and ([version]$v -ge [version]"3.11")) {
-                    if ($flag) { return @($exe, $flag) } else { return @($exe) }
+                    # unary comma: PowerShell unrolls a returned 1-element array into a bare
+                    # string, and then $py[0] indexes the first CHARACTER ("p" of "python")
+                    if ($flag) { return ,@($exe, $flag) } else { return ,@($exe) }
                 }
             } catch { }
         }
@@ -96,6 +98,7 @@ Ok ("Python found: " + ($py -join " "))
 # --- 3. the tool, into its own venv, from the wheel embedded below --------------------
 Step "Installing Schedule Forensics into its own environment"
 if (-not (Test-Path (Join-Path $VenvDir "Scripts\python.exe"))) {
+    $py = @($py)  # defensive: never let a bare string reach the indexed invocation below
     if ($py.Count -gt 1) { & $py[0] $py[1] -m venv $VenvDir } else { & $py[0] -m venv $VenvDir }
     Ok "Created venv"
 } else { Ok "venv already present (re-using)" }

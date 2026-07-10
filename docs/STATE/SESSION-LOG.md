@@ -4919,3 +4919,16 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   SVG <title> removed after caching, cf-tip singleton. Tests re-pinned (document-level
   wiring) + new de-dup test. Full gate green; lockstep wheel + 9 installers rebuilt.
   Highest ADR = 0190.
+
+### 2026-07-10 (cont.) — Windows installer dies on python-only machines (ADR-0191)
+- Operator's live tier1.ps1 install failed at venv creation: "The term 'p' is not
+  recognized" — Find-Python's `return @($exe)` unrolled (PowerShell 1-element array ->
+  bare string), so `$py[0]` indexed the character 'p' of "python". Only reproduces when
+  the py launcher is absent (the operator's machine); windows-latest CI runners always
+  have it, so the smoke never walked this branch.
+- template.ps1: unary comma on both returns (`return ,@($exe)` / `,@($exe, $flag)`),
+  defensive `$py = @($py)` before the indexed invocation; all three .ps1 installers
+  regenerated from the SAME wheel (no source change). installer-smoke.yml: second tier1
+  run with a failing py.cmd stub ahead of PATH (masks the launcher) + setup-python 3.12,
+  executing the python-only discovery branch end-to-end. Static regression pin added in
+  tests/installer. Highest ADR = 0191.
