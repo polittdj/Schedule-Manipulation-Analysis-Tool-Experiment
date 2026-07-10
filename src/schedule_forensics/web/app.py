@@ -10689,6 +10689,7 @@ visible.</p>
 <button id=evoPanL type=button title="pan earlier">&#9664;</button>
 <button id=evoPanR type=button title="pan later">&#9654;</button>
 <button id=evoZoomReset type=button title="Auto-scale to show the whole project">View entire project</button>
+<button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 </div>
 <div class=viz-controls>
 <label>Filter the path:

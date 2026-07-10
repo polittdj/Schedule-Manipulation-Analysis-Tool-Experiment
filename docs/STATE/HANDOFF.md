@@ -1,6 +1,28 @@
-# Handoff — 2026-07-10 (page memory + Reset view + Gantt unification; highest ADR 0186)
+# Handoff — 2026-07-10 (unlimited scroll + evolution table Gantt + expand fill; highest ADR 0187)
 
-> ## STATUS (current) — ADR-0186 page memory / universal Reset / Gantt unification
+> ## STATUS (current) — ADR-0187 scroll/evolution/expand/callout batch
+>
+> - **Unlimited right scroll**: `SFGantt.attachEdgeExtend` — every Gantt (Activities grid,
+>   trace, /path, corridor, SRA grid, evolution) extends its axis +60d when the pane hits its
+>   right edge, restoring scroll position; fill-to-page timelines are unaffected.
+> - **Reset view now position:fixed** (bottom-right) — the float version read as missing on
+>   /path, /driving-path, /evolution.
+> - **CP Evolution rebuilt as the standard table Gantt** (frozen UID/Name/%/Dur/Start/Finish/Why
+>   columns, shared tier timescale + Timescale… dialog, checklist filters, colresize/movers,
+>   sticky scrollbar, dates-on-bars, Task Info clicks, edge-extend) while keeping the locked
+>   cross-version axis, entered/stayed/left + ghost rows + reason chips, focus highlight, the
+>   four path filters, hide-done and the stepper. Zoom = px/day; pan scrolls; fit clears zoom.
+> - **Expanded charts contain-fit the viewport** (chartframe: FS_FONT_CAP removed) with a
+>   `.cf-title` (+ inherited explainer callout) shown in the expanded views.
+> - **Callout coverage**: ~40 new vizhints entries close the audited gaps (all 18 Trend charts,
+>   dead "finishes &" key, volatility/performance/what-if/OAT/variance/calendar/field-group,
+>   evolution sub-headings, Risks/Issues/Opportunities) + specific-before-broad reordering;
+>   chartframe call-outs now also read HTML title= (table-Gantt bars get instant callouts).
+>   Chromium-verified: 16 checks, zero console errors; 31/31 trend headings hinted.
+
+# (prior) Handoff — 2026-07-10 (page memory + Reset view + Gantt unification; ADR 0186)
+
+> ## STATUS — ADR-0186 page memory / universal Reset / Gantt unification
 >
 > - **Page memory (`static/persist.js`)**: every page remembers its selections per path —
 >   query-string selections replay on return via bare nav links (/groups excluded; session

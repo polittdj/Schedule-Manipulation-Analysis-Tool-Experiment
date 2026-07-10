@@ -17,8 +17,219 @@
   }
 
   // Matched by case-insensitive SUBSTRING against the heading text, first match wins — so
-  // dynamic headings ("Driving path: file", "EVM — file") still match on their stable part.
+  // dynamic headings ("Driving path: file", "EVM — file") still match on their stable part,
+  // and MORE-SPECIFIC keys must sit ABOVE the broader ones they would otherwise lose to
+  // (e.g. "finish-date confidence" above "s-curve"). 2026-07-10 coverage audit (ADR-0187):
+  // every chart/graph heading on every page now has an entry.
   var CATALOG = [
+    // ---- specific-before-broad (collision winners) ----
+    ["finish-date confidence", H(
+      "The risk-adjusted probability distribution of the project finish from the SRA runs, as a confidence S-curve.",
+      "P80 on 2027-03-14 = 80% of simulated futures finish on or before that date.",
+      "Read the date at your required confidence level; the gap between P50 and the deterministic date is optimism bias.",
+      "Lets you commit to a date with a stated confidence instead of a single hopeful number.")],
+    ["assign risk ranking factor", H(
+      "The input control that ranks a task's uncertainty 1-5 (or sets explicit Best/Worst days) to feed the simulation.",
+      "Ranking a 20-day task a 4 widens its simulated duration spread per the factor table.",
+      "0 = no uncertainty (remaining duration is used); 5 = the widest spread; explicit Best/Worst overrides win.",
+      "How you encode engineering judgement about which durations are shaky before running the SRA.")],
+    ["execution indices", H(
+      "BEI, CEI and HMI plotted together across versions — three views of whether the team executes what it plans.",
+      "BEI 0.97 with CEI 0.45 = the baseline volume is roughly held, but the near-term plan keeps not happening.",
+      "All three read 1.0 when execution matches plan; diverging lines tell you WHICH promise is failing (baseline, current plan, or period hits).",
+      "The one chart that separates long-run baseline drift from short-run execution failure.")],
+    ["left the critical path", H(
+      "Activities that were on the previous version's critical path but are not on this one — drawn as ghost bars at their prior position, each with the reason they left.",
+      "A task that left because 'logic removed' without completing deserves a question; one that left because 'completed' is healthy flow.",
+      "Dashed struck-through bars are the ghosts; hover the Why column for the change detail.",
+      "Path exits that aren't completions are the strongest manipulation tell — this lists every one, cited.")],
+    ["critical path —", H(
+      "This version's critical path drawn as a standard Gantt on a date axis locked across every version.",
+      "Green bars entered the path since the prior version; a ▲ marks a duration change on the path.",
+      "Step Prev/Next to watch the path extend as the finish slips; click any row for its full Task Information.",
+      "Watching WHERE the path changes version to version localizes what is really driving the finish.")],
+    // ---- Trend page charts ----
+    ["schedule progress", H(
+      "The section of trend charts tracking raw progress across versions: finish movement, completions, criticality and logic health.",
+      "Finish slipping while completions stay flat = promises moving without work landing.",
+      "Read the four charts together — each names the update where its line stepped.",
+      "The at-a-glance progress story across every loaded submittal.")],
+    ["cross file comparison", H(
+      "Side-by-side population comparisons across the loaded files: status, activity types, variances and execution indices per data date.",
+      "The 'complete' share barely moving between two files contradicts an on-plan narrative.",
+      "Each bar group is one file, captioned with its data date.",
+      "The quickest way to see what actually changed from one submittal to the next.")],
+    ["project finish (days", H(
+      "Each version's forecast project finish, in working days relative to the first loaded version.",
+      "+22 d on the third file = the promised finish has slipped a month of working days since the first submittal.",
+      "A rising staircase is steady slippage; a sudden drop without matching completed work deserves scrutiny.",
+      "The headline trend: what has each successive update promised, and which update moved it.")],
+    ["completed activities", H(
+      "The cumulative count of completed activities in each loaded version.",
+      "1,240 → 1,241 across a month-long update = essentially no work was finished that period.",
+      "The curve should climb steadily between updates; flat segments are stalled periods.",
+      "Verifies reported progress corresponds to actual completions, version over version.")],
+    ["critical (incomplete)", H(
+      "How many incomplete activities are critical in each version.",
+      "180 → 320 critical tasks after an update = the network tightened sharply (or float was consumed).",
+      "Growth means more of the remaining work has no margin; compare against the finish trend.",
+      "A swelling critical population predicts schedule fragility before the dates move.")],
+    ["missing logic (activities)", H(
+      "Activities with no predecessor or successor, per version (DCMA-01 population).",
+      "12 → 60 after an update = the update disconnected part of the network.",
+      "Any step up means new open ends — find which tasks in the Ribbon drill.",
+      "Open logic is where slips hide; this shows the update that introduced them.")],
+    ["activity status by data date", H(
+      "The population split (complete / in-progress / not started) at each version's data date.",
+      "A barely-moving 'complete' share across three updates contradicts an on-plan story.",
+      "Compare the shares version to version; the data-date caption names each file.",
+      "A quick reality check that status is actually advancing between submittals.")],
+    ["activity type by data date", H(
+      "The mix of tasks, milestones and summaries in each version.",
+      "A jump in milestone count without scope change may be re-classification, not new work.",
+      "Watch for composition changes between versions — they mark restructuring.",
+      "Restructuring context for every other trend on this page.")],
+    ["schedule variance (svt", H(
+      "The time-based schedule variance SV(t) across versions — how far execution runs behind the baseline in working days.",
+      "SV(t) −40 d means the program is earning its schedule six working weeks late.",
+      "More negative is worse; the slope shows whether the gap is widening.",
+      "The EVM-language slippage trend a customer analyst will compute from the same files.")],
+    ["mei (milestone", H(
+      "Milestone Execution Index per version: of the milestones due, how many were hit.",
+      "MEI 0.5 = half the milestones due to date have actually completed.",
+      "1.0 is on-plan; falling MEI with a steady finish date means the plan is being reshuffled.",
+      "Milestones are the contract's heartbeat — this is their hit rate over time.")],
+    ["bei (baseline execution", H(
+      "Baseline Execution Index per version: cumulative completions vs the baseline plan (DCMA-13).",
+      "BEI 0.87 = 87 tasks finished for every 100 the baseline said should be done by now.",
+      "Below ~0.95 is behind; the DCMA threshold treats <0.95 as a flag.",
+      "The standard, defendable 'are we executing the baseline' number, trended.")],
+    ["epi (execution", H(
+      "Execution Performance Index per version — near-term execution against the current plan.",
+      "EPI 0.7 = only 70% of the recently-planned work actually happened.",
+      "1.0 is on-plan; sustained low EPI means the current plan is aspirational.",
+      "Predicts next period's slip from demonstrated current-plan performance.")],
+    ["bri (baseline realism", H(
+      "Baseline Realism Index per version — how achievable the remaining baseline is given demonstrated performance.",
+      "BRI 0.6 says the remaining plan assumes a pace the team has never demonstrated.",
+      "Lower is less realistic; watch it after every re-baseline.",
+      "Flags a plan that only works on paper before it fails in execution.")],
+    ["forecast execution index", H(
+      "FEI per version: of the work the PREVIOUS update forecast for this period, how much executed.",
+      "FEI 0.4 = the last update's near-term forecast was 60% wrong.",
+      "1.0 means updates forecast honestly; persistently low FEI means each update over-promises.",
+      "Measures the credibility of each submittal's own near-term forecast.")],
+    ["hit or miss index", H(
+      "HMI per period: of the activities the baseline placed in this window, how many hit their dates.",
+      "HMI 0.62 = 38% of this period's baseline commitments were missed.",
+      "1.0 is on-plan; the period-over-period pattern matters more than one value.",
+      "The period-level scorecard of promise-keeping against the baseline.")],
+    ["float ratio", H(
+      "The ratio of total float to remaining duration across the incomplete population, per period.",
+      "A ratio falling toward 0 means remaining work is running out of room to absorb slips.",
+      "Falling = margin consumed faster than work retires; rising = healthy or re-padded.",
+      "An early-warning gauge of margin burn that single-file float counts can't show.")],
+    ["start-to-finish ratio", H(
+      "How many activities started vs finished in each version's window.",
+      "Starting 60 and finishing 15 per period grows work-in-progress fourfold.",
+      "A ratio far above 1 means work is being opened, not closed.",
+      "Chronic open-not-close is the flow problem behind most bow waves.")],
+    ["float sums by version", H(
+      "The total working days of float in the network, summed per version.",
+      "A 30% drop in one update = the network consumed (or someone removed) a third of its margin.",
+      "Watch step changes; gradual decline is normal consumption.",
+      "The program's total shock-absorber capacity, trended.")],
+    ["% total float by days", H(
+      "The share of activities with 0, <5 and <10 working days of total float, per version.",
+      "The 0-day share growing 8% → 25% = a quarter of the plan is now margin-less.",
+      "Growing low-float shares mean broad tightening, not one bad path.",
+      "Shows whether criticality is concentrated or spreading across the plan.")],
+    ["% free float by days", H(
+      "The share of activities with 0, <5 and <10 working days of FREE float, per version.",
+      "High zero-free-float share = most tasks immediately push their successors when they slip.",
+      "Free float is the local cushion; its erosion makes daily slips contagious.",
+      "Explains why small slips cascade — or why they don't.")],
+    // ---- other pages ----
+    ["actual vs baseline by month", H(
+      "Actual finishes vs baseline finishes bucketed by month.",
+      "20 baseline finishes in March vs 6 actuals = the March plan mostly didn't happen.",
+      "Bars behind the baseline profile show work sliding right into future months.",
+      "Shows the near-term realism of the plan month by month.")],
+    ["worst finish variances", H(
+      "The activities whose finishes moved furthest from baseline in this file, worst first.",
+      "'UID 412: +87 d' finished 87 working days late against baseline.",
+      "Scan the top rows — they usually share a cause (one supplier, one review board).",
+      "The biggest movers explain most of the slip; start root-cause here.")],
+    ["largest start variances", H(
+      "The activities whose actual starts moved furthest from their baseline starts.",
+      "A start +60 d late on a long task is tomorrow's finish slip announced today.",
+      "Late starts precede late finishes; compare against the finish-variance list.",
+      "Catches slips at the point they begin instead of when they land.")],
+    ["driving path:", H(
+      "The driving corridor between the chosen source and target activities, per version.",
+      "The chain from 'Award' to 'Ready to Ship' drawn with its every link, stepped across updates.",
+      "Step versions to watch the corridor shift; entered activities are outlined.",
+      "Shows how the route between two commitments evolved — useful in delay narratives.")],
+    ["all driving-tier activities", H(
+      "Every activity in the driving-slack tiers to the target, as a drillable table.",
+      "34 tasks within 10 d of driving = a broad near-critical front, not one thin path.",
+      "Add columns or filter; a fat secondary tier means small slips can re-route the path.",
+      "Sizes the management problem around your milestone: one path to watch, or a front.")],
+    ["critical-path volatility", H(
+      "How much the critical path's MEMBERSHIP churned across versions — entries, exits, tenure and stability.",
+      "A path that swaps a third of its members every update without finishing work is being steered.",
+      "The tiles below decompose the churn: who entered/left, how long tasks stay, who jumps on and off.",
+      "Path churn without completions is the strongest manipulation signature this tool computes.")],
+    ["volatility scoreboard", H(
+      "The headline churn numbers behind the volatility tiles: entries, exits, stability and tenure stats per transition.",
+      "'12 entered / 9 left' between two updates on a ~40-task path = ~25% membership turnover.",
+      "Read alongside the finish movement — churn that never improves the date is suspicious.",
+      "The citable numbers to quote when questioning path stability.")],
+    ["performance analysis summary", H(
+      "The IPMR-style performance wall: monthly census, bow wave, execution indices, workoff burden and duration-ratio views, per version.",
+      "Step the versions to watch the to-go census hump migrate right — the bow wave forming.",
+      "Each chart names its file and data date; the stepper animates all of them in lockstep.",
+      "The month-by-month realism check package, automated from the schedule metadata.")],
+    ["what-if: work added", H(
+      "Activities that JOINED the critical path between the two selected versions, with their dates and drivers.",
+      "A task added to the path with a new hard constraint explains a finish move no work caused.",
+      "Each row cites the joining activity; compare against the removed list.",
+      "Half of the answer to 'why did the path change?' — the other half is what left.")],
+    ["what-if: work removed", H(
+      "Activities that LEFT the critical path between the two selected versions, and what the finish would be had they stayed.",
+      "Removing a 40-day chain from the path 'recovered' three weeks — the counterfactual shows it.",
+      "The counterfactual finish quantifies how much of the improvement came from the removals.",
+      "Separates real recovery from path surgery, in working days.")],
+    ["execution metrics by field group", H(
+      "BEI / HMI / SPI-family execution metrics computed separately for each value of the chosen field (CAM, IPT, custom code …).",
+      "CAM 'Jones' at BEI 0.7 while the program reads 0.93 localizes the slip to one account.",
+      "Pick the grouping field; each row is that group's own execution scorecard.",
+      "Turns 'the program is behind' into 'THIS account is behind', with numbers.")],
+    ["working calendar", H(
+      "The schedule's working calendar: work weekdays, hours per day, and holidays the CPM respects.",
+      "A 4×10 calendar with July shutdowns explains why a '10-day' task spans three weeks.",
+      "Every duration and float figure on the site is computed in THESE working days.",
+      "Check this first when durations look wrong — the calendar is usually why.")],
+    ["one-at-a-time", H(
+      "Deterministic sensitivity: each duration is varied alone and the finish movement recorded.",
+      "'UID 88: +10 d input → +10 d finish' is fully driving; '+10 → +0' floats free.",
+      "1:1 responders are on the driving path; fractional response = partial leverage.",
+      "Finds the day-for-day tasks without running a full simulation.")],
+    ["issues (current", H(
+      "The engine's current concerns for the loaded files — problems that exist now, with citations.",
+      "'57 tasks with negative float' is an issue today, not a risk of one tomorrow.",
+      "Sort by severity; every claim links to the tasks that prove it.",
+      "The working list of what needs fixing in the schedule as it stands.")],
+    ["opportunities (", H(
+      "Findings where the schedule could realistically improve — early finishes, recoverable logic, unused margin.",
+      "A chain finishing 20 d early feeds float the plan isn't using downstream.",
+      "Each opportunity cites its tasks; weigh against the effort to capture it.",
+      "Recovery planning starts from these, not from wishful re-promising.")],
+    ["risks (", H(
+      "The engine's forward-looking schedule risks for the loaded files, with severity and citations.",
+      "'HIGH — merge point of 9 near-critical chains before integration' names the choke point.",
+      "Sort by severity; each risk lists the tasks behind it.",
+      "An evidence-backed risk register seeded straight from the schedule's own structure.")],
     ["dcma-14 checks", H(
       "The 14 DCMA schedule-health checks scored on this file, each with its measured value and a pass/fail stoplight.",
       "“Logic — 5% missing links: FAIL” means more than the allowed 5% of tasks have no predecessor or successor.",

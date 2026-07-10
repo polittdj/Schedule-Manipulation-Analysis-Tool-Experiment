@@ -187,8 +187,7 @@
   }
 
   function injectResetButton() {
-    var main = document.querySelector("main");
-    if (!main || document.getElementById("sfResetView")) return;
+    if (document.getElementById("sfResetView")) return;
     var btn = document.createElement("button");
     btn.id = "sfResetView";
     btn.type = "button";
@@ -203,7 +202,9 @@
     btn.appendChild(glyph);
     btn.appendChild(label);
     btn.addEventListener("click", resetPage);
-    main.insertBefore(btn, main.firstChild);
+    // fixed-position on <body> (operator 2026-07-10: the float version was easy to miss on
+    // busy pages like /path — the button must be unmissable on EVERY page and every Gantt)
+    document.body.appendChild(btn);
   }
 
   function boot() {

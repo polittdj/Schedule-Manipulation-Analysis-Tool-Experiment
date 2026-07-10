@@ -142,6 +142,17 @@
     drill.innerHTML = "";
     var h = document.createElement("h3");
     h.textContent = q.name + " — " + shortLabel(versions[current], current);
+    // the drill title is dynamic (metric × file), so it carries its own explainer callout
+    // instead of relying on the vizhints catalog (which matches stable substrings)
+    h.setAttribute("data-sf-hint",
+      "WHAT: The activities behind the \"" + q.name + "\" figure in the version shown — the " +
+      "exact population the metric counted.\n" +
+      "EXAMPLE: Clicking a Missing-Logic point lists every task with an open end in that file.\n" +
+      "HOW TO READ: Step the versions to watch this population change; add columns or export " +
+      "to Excel for the working list.\n" +
+      "PM USE: Turns a trend-line value into the concrete task list to fix or question.");
+    h.classList.add("viz-hint");
+    h.setAttribute("tabindex", "0");
     drill.appendChild(h);
     var meta = document.createElement("p");
     meta.className = "muted qual-meta";

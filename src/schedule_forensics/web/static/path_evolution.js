@@ -1,34 +1,30 @@
-/* Schedule Forensics — Critical-Path Evolution Gantt stepper (M18 item 7 + follow-up).
+/* Schedule Forensics — Critical-Path Evolution Gantt stepper (M18 item 7; table Gantt ADR-0187).
  *
- * Dependency-free SVG (no CDN — air-gap posture). A Prev/Next/Auto-play stepper over
- * /api/evolution: each frame draws one version's critical path as a Gantt on a LOCKED date
- * axis (held fixed across every version so the path visibly extends as the finish slips).
- * Activities that ENTERED the path are green, those that STAYED grey, and a ▲ marks a
- * duration change; activities that LEFT the path are drawn below as dashed/struck ghost bars
- * at their prior position. Every entered/left activity carries a reason chip explaining WHY
- * it moved (new task / duration change / logic change / constraint / slip / completed) — hover
- * for the detail.
+ * A Prev/Next/Auto-play stepper over /api/evolution: each frame draws one version's critical
+ * path as the SAME table-based Gantt every other page uses (operator 2026-07-10: "format the
+ * Critical Path Gantt chart like the other Gantt Charts") — frozen data columns (UID, Name, %,
+ * Dur, Start, Finish, Why), MS-Project tiered timescale + gridlines + non-working shading from
+ * SFGantt/SFTimescale, per-column checklist filters, drag-to-resize + movable columns, the
+ * sticky bottom scrollbar, dates-on-bars, and the shared Task Information dialog on row click.
  *
- * Each row also carries grid columns beside the bar — % complete, duration (working days),
- * start and finish — with the activity name wrapped small (no longer truncated). A
- * "hide completed" toggle drops finished activities, using the robust complete flag
- * (≥100% OR an actual finish — ADR-0051), so a real .mpp/.xer reporting 99.x% still hides.
+ * The date axis is LOCKED across every version (held fixed frame to frame so the path visibly
+ * extends as the finish slips). Activities that ENTERED the path are green, those that STAYED
+ * blue-grey, and a ▲ marks a duration change; activities that LEFT the path are drawn in a
+ * second table as dashed/struck ghost bars at their prior position. Every entered/left activity
+ * carries a reason chip explaining WHY it moved (new task / duration change / logic change /
+ * constraint / slip / completed) — hover for the detail.
  *
- * Zoom/pan controls scope the locked date axis (the window stays inside the full axis so bars
- * remain comparable across frames). A ?target=<uid> focus (data-target on #evoChart, echoed by
- * /api/evolution) highlights that activity's row in every frame and notes whether it is on the
- * current version's critical path.
- *
- * A "filter the path" selector switches between four scopes: the driving path to the focused
- * UID (its predecessors, from the server's path_to_target), one chosen version's critical path
- * tracked across every frame, an entered/left/stayed movement filter, and a name/UID search.
+ * Zoom buttons change the pixels-per-day scale (like the other Gantts); the pan arrows scroll
+ * the pane; "View entire project" re-fits the whole locked axis to the page; scrolling to the
+ * pane's right edge EXTENDS the axis (unlimited right scroll, ADR-0187). A ?target=<uid> focus
+ * highlights that activity's row in every frame. The "filter the path" selector keeps its four
+ * scopes (driving-to-focus / one version's path / movement / search). Dependency-free.
  */
 "use strict";
 
 (function () {
   var box = document.getElementById("evoChart");
-  if (!box) return;
-  var NS = "http://www.w3.org/2000/svg";
+  if (!box || !window.SFGantt) return;
   var DAY = 86400000;
 
   // reason code -> { short label, theme color }
@@ -45,52 +41,33 @@
     gained_float: { label: "gained float", color: "var(--muted)" },
   };
 
-  // lo/hi are the VISIBLE date window (zoom/pan move them inside the full [fullLo, fullHi]).
-  var data = null, index = 0, timer = null, lo = 0, hi = 1, fullLo = 0, fullHi = 1;
+  // the LOCKED full axis (fullLo..fullHi, padded) shared by every frame; extraRightDays grows
+  // when the pane is scrolled to its right edge (unlimited right scroll)
+  var data = null, index = 0, timer = null, fullLo = 0, fullHi = 1;
+  var extraRightDays = 0;
+  var pxZoom = null; // pixels/day set by the zoom buttons; null = fit the whole axis to the page
+  var lastFrozenWidth = 0; // measured frozen-column width (SFGantt.freezeColumns return)
   var hideDone = false, focusUid = null;
   // filter-by-path: switchable modes — none | driving | version | movement | search
   var filterMode = "none", filterVersion = 0, searchText = "";
   var moveSet = { entered: true, stayed: true, left: true };
+  var colFilters = {}; // per-column checklist filters (like every other Gantt); key -> Set|null
 
-  function svgEl(tag, attrs) {
-    var n = document.createElementNS(NS, tag);
-    for (var k in attrs) {
-      if ((k === "fill" || k === "stroke") && String(attrs[k]).indexOf("var(") === 0) {
-        n.style[k] = attrs[k];
-      } else n.setAttribute(k, attrs[k]);
-    }
-    return n;
-  }
   function el(tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
     if (text != null) n.textContent = text;
     return n;
   }
-  function clip(s, n) { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
-
-  // wrap a name into <=maxLines lines of <=perLine chars (word-aware; last line ellipsized)
-  function wrapName(name, perLine, maxLines) {
-    var words = String(name || "").split(/\s+/), lines = [], cur = "";
-    for (var i = 0; i < words.length; i++) {
-      var w = words[i];
-      if (!cur) cur = w;
-      else if ((cur + " " + w).length <= perLine) cur += " " + w;
-      else { lines.push(cur); cur = w; if (lines.length === maxLines - 1) break; }
-    }
-    if (cur && lines.length < maxLines) lines.push(cur);
-    // any words left after the line budget → ellipsize the final line
-    if (lines.length === maxLines) {
-      var consumed = lines.join(" ").length;
-      if (consumed < String(name || "").length) lines[maxLines - 1] = clip(lines[maxLines - 1] + " …", perLine);
-    }
-    return lines.length ? lines : [""];
-  }
   // dates read MM/DD/YYYY like every other Gantt (shared SFGantt.fmtMDY; data stays ISO)
   function fmtDate(iso) {
     if (!iso) return "—";
     var s = String(iso);
-    return (window.SFGantt && SFGantt.fmtMDY(s)) || s;
+    return SFGantt.fmtMDY(s) || s;
+  }
+  function barDatesOn() {
+    var cb = document.getElementById("evoBarDates");
+    return !!(cb && cb.checked);
   }
 
   function callout(snap) {
@@ -137,172 +114,207 @@
     return wrap;
   }
 
-  // column layout: a left grid (name + %/dur/start/finish), then the Gantt plot, then the chip
-  var COL = { name: 6, pct: 300, dur: 348, start: 360, finish: 432, plotL: 512 };
-
-  function barDatesOn() {
-    var cb = document.getElementById("evoBarDates");
-    return !!(cb && cb.checked);
+  // ---- the standard table Gantt (matches /path, /driving-path, the Activities grid) --------
+  var COLS = [
+    { key: "uid", label: "UID" },
+    { key: "name", label: "Name" },
+    { key: "percent_complete", label: "%" },
+    { key: "duration", label: "Dur" },
+    { key: "start", label: "Start" },
+    { key: "finish", label: "Finish" },
+    { key: "why", label: "Why" },
+  ];
+  function cellText(r, key) {
+    if (key === "percent_complete") return r.percent_complete == null ? "" : r.percent_complete + "%";
+    if (key === "start" || key === "finish") return fmtDate(r[key]);
+    if (key === "why") {
+      var rc = r.reason && REASON[r.reason];
+      return rc ? rc.label : (r.kind === "stayed" ? "" : r.kind || "");
+    }
+    var v = r[key];
+    return v == null ? "" : String(v);
+  }
+  function compareValues(a, b) {
+    var mdy = /^(\d\d)\/(\d\d)\/(\d{4})$/;
+    var ma = mdy.exec(a), mb = mdy.exec(b);
+    if (ma && mb) {
+      var ka = ma[3] + ma[1] + ma[2], kb = mb[3] + mb[1] + mb[2];
+      return ka < kb ? -1 : ka > kb ? 1 : 0;
+    }
+    var na = parseFloat(a), nb = parseFloat(b);
+    var bothNum = !isNaN(na) && !isNaN(nb) && /^-?\d/.test(a) && /^-?\d/.test(b);
+    return bothNum ? na - nb : a < b ? -1 : a > b ? 1 : 0;
+  }
+  function rowMatchesColumns(r) {
+    return COLS.every(function (c) {
+      var sel = colFilters[c.key];
+      return !sel || sel.has(cellText(r, c.key));
+    });
   }
 
-  // rows: [{uid, name, start, finish, kind, durBadge, reason, detail, percent_complete, duration, complete}]
-  // srcLabel = the schedule file these rows were read from (Task Information provenance);
-  // "left the path" ghost rows are drawn at their PRIOR-version position, so their caller
-  // passes the prior version's label.
-  function gantt(rows, srcLabel) {
-    var wrap = el("div", "evo-gantt");
-    if (!rows.length) { wrap.appendChild(el("p", "muted", "—")); return wrap; }
-    var W = 1180, rowH = 30, padT = 46, padB = 8, plotL = COL.plotL, plotR = W - 130;
-    var H = padT + rows.length * rowH + padB;
-    var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
-    if (window.SFA11y) SFA11y.label(svg, "Critical-path evolution — the critical path per version");
-    var x = function (ms) { return plotL + ((ms - lo) / (hi - lo)) * (plotR - plotL); };
+  function buildAxis() {
+    var t0 = fullLo, t1 = fullHi + extraRightDays * DAY;
+    var days = Math.max(1, (t1 - t0) / DAY);
+    var size = window.SFTimescale ? SFTimescale.sizeFactor() : 1;
+    if (!(size > 0)) size = 1;
+    var avail = Math.max(240, (box.clientWidth || 1100) - (lastFrozenWidth || 430) - 18);
+    var px = (pxZoom && pxZoom > 0 ? pxZoom : avail / days) * size;
+    var width = Math.max(120, Math.round(days * px));
+    return { t0: t0, t1: t1, width: width, x: function (ms) { return Math.round(((ms - t0) / DAY) * px); } };
+  }
 
-    function colText(xx, yy, s, opts) {
-      opts = opts || {};
-      var t = svgEl("text", { x: xx, y: yy, "font-size": opts.size || 10, fill: opts.fill || "var(--ink)" });
-      if (opts.anchor) t.setAttribute("text-anchor", opts.anchor);
-      t.textContent = s;
-      svg.appendChild(t);
-      return t;
-    }
+  // bar colour class: tier colours in all-tiers mode, else entered/stayed/left
+  var TIER_CLASS = { driving: "ev-t-driving", secondary: "ev-t-secondary", tertiary: "ev-t-tertiary" };
+  function barClass(r) {
+    if (data && data.tier === "all" && r.tier && TIER_CLASS[r.tier]) return TIER_CLASS[r.tier];
+    return r.kind === "entered" ? "ev-b-entered" : r.kind === "left" ? "ev-b-left" : "ev-b-stayed";
+  }
 
-    // header row: column titles + the locked axis gridlines/years
-    colText(COL.name, padT - 26, "Activity", { fill: "var(--muted)" });
-    colText(COL.pct, padT - 26, "%", { fill: "var(--muted)", anchor: "end" });
-    colText(COL.dur, padT - 26, "Dur", { fill: "var(--muted)", anchor: "end" });
-    colText(COL.start, padT - 26, "Start", { fill: "var(--muted)" });
-    colText(COL.finish, padT - 26, "Finish", { fill: "var(--muted)" });
-    // MS-Project-style stacked time axis: month (faint) / quarter (medium) / year (heavy)
-    // gridlines down the plot, with year and quarter labels in the header. Month and quarter
-    // lines are gated by zoom so a wide frame doesn't turn to mush.
-    var gridTop = padT - 6, gridBot = H - padB;
-    var monthPx = x(lo + 30 * DAY) - x(lo); // approx pixels per month at this zoom
-    function gline(ms, op) {
-      var tx = x(ms);
-      if (tx >= plotL && tx <= plotR) {
-        svg.appendChild(svgEl("line", { x1: tx, y1: gridTop, x2: tx, y2: gridBot,
-          stroke: "var(--line)", "stroke-width": 1, opacity: op }));
-      }
-    }
-    function bandLabel(s, e, yy, text, size, minW) {
-      var l = Math.max(plotL, x(s)), r = Math.min(plotR, x(e));
-      if (r - l < minW) return;
-      var t = svgEl("text", { x: (l + r) / 2, y: yy, "text-anchor": "middle", "font-size": size, fill: "var(--muted)" });
-      t.textContent = text;
-      svg.appendChild(t);
-    }
-    function eachPeriod(startOf, advance, fn) {
-      var dd = new Date(lo); startOf(dd); var guard = 0;
-      while (dd.getTime() <= hi && guard++ < 4000) {
-        var nd = new Date(dd); advance(nd); fn(dd.getTime(), nd.getTime(), dd); dd = nd;
-      }
-    }
-    if (monthPx >= 9) {
-      eachPeriod(function (dd) { dd.setUTCDate(1); dd.setUTCHours(0, 0, 0, 0); },
-        function (dd) { dd.setUTCMonth(dd.getUTCMonth() + 1); },
-        function (s) { gline(s, 0.16); });
-    }
-    eachPeriod(function (dd) { dd.setUTCMonth(Math.floor(dd.getUTCMonth() / 3) * 3, 1); dd.setUTCHours(0, 0, 0, 0); },
-      function (dd) { dd.setUTCMonth(dd.getUTCMonth() + 3); },
-      function (s, e, dd) { gline(s, 0.4); bandLabel(s, e, padT - 16, "Q" + (Math.floor(dd.getUTCMonth() / 3) + 1), 9, 22); });
-    eachPeriod(function (dd) { dd.setUTCMonth(0, 1); dd.setUTCHours(0, 0, 0, 0); },
-      function (dd) { dd.setUTCFullYear(dd.getUTCFullYear() + 1); },
-      function (s, e, dd) { gline(s, 0.8); bandLabel(s, e, padT - 30, String(dd.getUTCFullYear()), 11, 26); });
-    svg.appendChild(svgEl("line", { x1: COL.name, y1: padT - 8, x2: W, y2: padT - 8, stroke: "var(--line)", "stroke-width": 1 }));
+  var LABEL_W = 64;
+  function barLabel(track, axis, anchor, side, iso) {
+    if (!iso) return;
+    var lx = side === "s" ? anchor - LABEL_W : anchor;
+    lx = Math.max(0, Math.min(axis.width - LABEL_W, lx));
+    var d = el("div", "g-barlabel g-barlabel-" + side, SFGantt.fmtMDY(iso));
+    d.style.left = lx + "px";
+    d.style.width = LABEL_W + "px";
+    track.appendChild(d);
+  }
 
-    rows.forEach(function (r, i) {
-      var top = padT + i * rowH, cy = top + rowH / 2;
-      // highlight the focused activity's row across every frame
-      if (focusUid != null && r.uid === focusUid) {
-        svg.appendChild(svgEl("rect", {
-          x: COL.name - 2, y: top + 1, width: W - COL.name, height: rowH - 2,
-          rx: 3, fill: "var(--accent)", opacity: 0.14,
+  // rows: [{uid, name, start, finish, kind, durBadge, reason, detail, percent_complete,
+  // duration, complete}]. srcLabel = the schedule file these rows were read from (Task
+  // Information provenance); "left the path" ghost rows pass the PRIOR version's label.
+  function gantt(rows, srcLabel, statusDate) {
+    var scroll = el("div", "gantt-scroll");
+    if (!rows.length) { scroll.appendChild(el("p", "muted", "—")); return scroll; }
+    var axis = buildAxis();
+    var gridLns = SFGantt.gridLines(axis);
+    var showDates = barDatesOn();
+
+    var table = document.createElement("table");
+    table.className = "gantt-grid evo-grid";
+    var thead = document.createElement("thead");
+    var head = document.createElement("tr");
+    COLS.forEach(function (c) { head.appendChild(el("th", null, c.label)); });
+    var thTime = el("th", "g-head");
+    thTime.appendChild(SFGantt.buildTierScale(axis, "g-scale", statusDate));
+    head.appendChild(thTime);
+    thead.appendChild(head);
+    // per-column MS-Project checklist filters — the same component as every other Gantt
+    var filterRow = el("tr", "filter-row");
+    COLS.forEach(function (c) {
+      var td = document.createElement("td");
+      if (window.SFChecklist) {
+        var seen = {};
+        rows.forEach(function (r) { seen[cellText(r, c.key)] = true; });
+        td.appendChild(SFChecklist.filter({
+          values: Object.keys(seen).sort(compareValues),
+          selected: colFilters[c.key] || null,
+          label: "Filter",
+          title: "Filter " + c.label,
+          onChange: function (sel) { colFilters[c.key] = sel; render(); },
         }));
+        td.addEventListener("click", function (ev) { ev.stopPropagation(); });
       }
-      var labelColor = tierColor(r) || (r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--ink)");
+      filterRow.appendChild(td);
+    });
+    filterRow.appendChild(el("td", "muted"));
+    thead.appendChild(filterRow);
+    table.appendChild(thead);
 
-      // name wrapped to <=2 small lines, prefixed with the UID; struck through if it left
-      var lines = wrapName(r.name, 38, 2);
-      var nameTop = cy - (lines.length - 1) * 5 - 2;
-      var lab = svgEl("text", { x: COL.name, y: nameTop, "font-size": 10, fill: labelColor });
-      if (r.kind === "left") lab.setAttribute("text-decoration", "line-through");
-      lines.forEach(function (ln, li) {
-        var ts = svgEl("tspan", { x: COL.name, dy: li === 0 ? 0 : 11 });
-        ts.textContent = (li === 0 ? "U" + r.uid + " · " : "") + ln;
-        lab.appendChild(ts);
+    var tbody = document.createElement("tbody");
+    rows.filter(rowMatchesColumns).forEach(function (r) {
+      var tr = document.createElement("tr");
+      tr.setAttribute("data-uid", r.uid);
+      if (r.kind === "left") tr.className = "ev-row-left";
+      if (focusUid != null && r.uid === focusUid) tr.className = (tr.className + " ev-focus").trim();
+      // MS-Project Task Information on row click (shared dialog — ADR-0186), sourced from the
+      // file this frame's rows were read from
+      tr.addEventListener("click", function () {
+        if (window.SFTaskInfo) SFTaskInfo.openFrom(srcLabel, r.uid);
       });
-      // MS-Project Task Information on click (shared dialog — ADR-0186), sourced from the
-      // file these rows were read from so the figures match the frame on screen
-      if (srcLabel && window.SFTaskInfo) {
-        lab.style.cursor = "pointer";
-        lab.addEventListener("click", function () { SFTaskInfo.openFrom(srcLabel, r.uid); });
+      COLS.forEach(function (c) {
+        var td = document.createElement("td");
+        td.textContent = cellText(r, c.key);
+        if (c.key === "name") {
+          td.className = "name-cell";
+          if (r.kind === "left") td.style.textDecoration = "line-through";
+        }
+        if (c.key === "why" && r.reason && REASON[r.reason]) {
+          td.className = "evo-why";
+          td.style.color = REASON[r.reason].color;
+          if (r.detail) td.title = r.detail;
+        }
+        tr.appendChild(td);
+      });
+      var cell = el("td", "g-cell");
+      var track = el("div", "g-track");
+      track.style.width = axis.width + "px";
+      SFGantt.paintGrid(track, gridLns);
+      if (statusDate) {
+        var sd = Date.parse(statusDate);
+        if (!isNaN(sd)) {
+          var line = el("div", "g-status");
+          line.style.left = axis.x(sd) + "px";
+          track.appendChild(line);
+        }
       }
-      svg.appendChild(lab);
-
-      // grid columns: % complete, duration, start, finish
-      if (r.percent_complete != null) colText(COL.pct, cy + 3, r.percent_complete + "%", { anchor: "end", fill: "var(--muted)" });
-      if (r.duration) colText(COL.dur, cy + 3, r.duration, { anchor: "end", fill: "var(--muted)" });
-      colText(COL.start, cy + 3, fmtDate(r.start), { size: 9, fill: "var(--muted)" });
-      colText(COL.finish, cy + 3, fmtDate(r.finish), { size: 9, fill: "var(--muted)" });
-
       if (r.start && r.finish) {
-        var x1 = x(Date.parse(r.start)), x2 = x(Date.parse(r.finish));
-        var bw = Math.max(2, x2 - x1);
-        var barColor = tierColor(r) || (r.kind === "entered" ? "var(--ok)" : r.kind === "left" ? "var(--bad)" : "var(--accent)");
-        var rect = svgEl("rect", { x: x1, y: cy - 6, width: bw, height: 12, rx: 2, fill: barColor });
-        // hover call-out (chartframe tooltip + native SVG title) — same as the top tiles' charts
-        var bt = svgEl("title", {});
-        bt.textContent =
-          "U" + r.uid + " · " + r.name + " — " + (r.kind || "on path") +
+        var x1 = axis.x(Date.parse(r.start));
+        var w = Math.max(2, axis.x(Date.parse(r.finish)) - x1);
+        var bar = el("div", "g-bar " + barClass(r));
+        bar.style.left = x1 + "px";
+        bar.style.width = w + "px";
+        var rc = r.reason && REASON[r.reason];
+        bar.title = "U" + r.uid + " · " + r.name + " — " + (r.kind || "on path") +
           ", " + fmtDate(r.start) + " → " + fmtDate(r.finish) +
           (r.percent_complete != null ? ", " + r.percent_complete + "%" : "") +
-          (r.reason && REASON[r.reason] ? " (" + REASON[r.reason].label + ")" : "");
-        rect.appendChild(bt);
-        if (r.kind === "left") { rect.setAttribute("opacity", "0.45"); rect.setAttribute("stroke-dasharray", "3 2"); }
-        if (srcLabel && window.SFTaskInfo) {
-          rect.style.cursor = "pointer";
-          rect.addEventListener("click", function () { SFTaskInfo.openFrom(srcLabel, r.uid); });
+          (rc ? " (" + rc.label + (r.detail ? ": " + r.detail : "") + ")" : "");
+        track.appendChild(bar);
+        if (r.durBadge) {
+          var badge = el("span", "evo-durbadge", "▲");
+          badge.style.left = (x1 + w + 3) + "px";
+          badge.title = "duration changed in this version";
+          track.appendChild(badge);
         }
-        svg.appendChild(rect);
-        if (r.durBadge) colText(x2 + 3, cy + 4, "▲", { size: 11, fill: "var(--warn)" });
-        // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186): start
-        // left of the bar, finish right of it, clamped into the plot area
-        if (barDatesOn()) {
-          var sTxt = fmtDate(r.start), fTxt = fmtDate(r.finish);
-          if (x1 - 4 > plotL + 40) colText(x1 - 4, cy + 3, sTxt, { size: 8, anchor: "end", fill: "var(--muted)" });
-          if (x2 + 4 < plotR - 40) colText(x2 + 4, cy + 3, fTxt, { size: 8, fill: "var(--muted)" });
+        if (showDates) {
+          barLabel(track, axis, x1 - 3, "s", r.start);
+          barLabel(track, axis, x1 + w + (r.durBadge ? 14 : 3), "f", r.finish);
         }
       }
-
-      if (r.reason && REASON[r.reason]) {
-        var rc = REASON[r.reason];
-        var t = colText(plotR + 8, cy + 4, rc.label, { fill: rc.color });
-        if (r.detail) { var ti = svgEl("title", {}); ti.textContent = r.detail; t.appendChild(ti); }
-      }
+      cell.appendChild(track);
+      SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
+      tr.appendChild(cell);
+      tbody.appendChild(tr);
     });
-    wrap.appendChild(svg);
-    // underlying-data table (revealed by the tile's "Data" toggle / read by assistive tech) — the
-    // critical path in THIS version, so the bottom Evolution tile matches the top tiles' "Data" view
+    if (!tbody.children.length) {
+      var none = document.createElement("tr");
+      none.appendChild(el("td", "muted", "No activities match the filters."));
+      tbody.appendChild(none);
+    }
+    table.appendChild(tbody);
+    scroll.appendChild(table);
+    if (window.SFColResize) SFColResize.attach(table, "evolution"); // drag-to-resize columns
+    lastFrozenWidth = SFGantt.freezeColumns(table) || lastFrozenWidth; // frozen data columns
+    // scrolling to the pane's right edge extends the locked axis (unlimited right scroll)
+    SFGantt.attachEdgeExtend(scroll, function () { extraRightDays += 60; render(); });
+    // the a11y "Data" table mirrors the frame (assistive tech + the tile Data toggle)
     if (window.SFA11y) {
-      wrap.appendChild(
+      scroll.appendChild(
         SFA11y.table(
           "Critical path this version",
           ["UID", "Name", "Status", "Start", "Finish", "%"],
           rows.map(function (r) {
             return [
-              "U" + r.uid,
-              r.name,
-              r.kind || "on path",
-              fmtDate(r.start),
-              fmtDate(r.finish),
+              "U" + r.uid, r.name, r.kind || "on path",
+              fmtDate(r.start), fmtDate(r.finish),
               r.percent_complete != null ? r.percent_complete + "%" : "",
             ];
           })
         )
       );
     }
-    return wrap;
+    return scroll;
   }
 
   function carry(r, extra) {
@@ -313,11 +325,6 @@
     };
     for (var k in extra) o[k] = extra[k];
     return o;
-  }
-  // driving-slack tier colours (only used in the "all tiers" evolution mode)
-  var TIER_COLOR = { driving: "var(--bad)", secondary: "var(--warn)", tertiary: "var(--accent)" };
-  function tierColor(r) {
-    return (data && data.tier === "all" && r.tier) ? TIER_COLOR[r.tier] : null;
   }
   function currentRows(snap) {
     return snap.critical_rows.map(function (r) {
@@ -372,6 +379,7 @@
   }
 
   function render() {
+    if (window.SFChecklist) SFChecklist.close(); // rebuilding discards any open popup
     var snap = data.snapshots[index];
     document.getElementById("evoLabel").textContent =
       (index + 1) + " / " + data.snapshots.length + " — " + snap.label +
@@ -392,13 +400,13 @@
     var total = snap.critical_rows.length;
     box.appendChild(el("h3", null, "Critical path — " + crit.length +
       (crit.length !== total ? " of " + total : "") + " activities"));
-    box.appendChild(gantt(crit, snap.label));
+    box.appendChild(gantt(crit, snap.label, snap.status_date));
     var leftV = applyFilter(visible(leftRows(snap)), snap);
     if (leftV.length) {
       box.appendChild(el("h3", null, "Left the critical path (" + leftV.length + ") — where they were, and why"));
       // ghost rows are drawn at their PRIOR-version position — cite that version's file
       var priorLabel = index > 0 ? data.snapshots[index - 1].label : snap.label;
-      box.appendChild(gantt(leftV, priorLabel));
+      box.appendChild(gantt(leftV, priorLabel, snap.status_date));
     }
   }
 
@@ -407,30 +415,22 @@
     render();
   }
 
-  // zoom/pan keep the visible window inside the locked full axis so bars stay comparable
-  function clampView() {
-    if (hi - lo >= fullHi - fullLo) { lo = fullLo; hi = fullHi; return; }
-    if (lo < fullLo) { hi += fullLo - lo; lo = fullLo; }
-    if (hi > fullHi) { lo -= hi - fullHi; hi = fullHi; }
+  // zoom = pixels-per-day like every other Gantt; pan scrolls the pane; reset re-fits the page
+  function currentFitPx() {
+    var days = Math.max(1, (fullHi + extraRightDays * DAY - fullLo) / DAY);
+    var avail = Math.max(240, (box.clientWidth || 1100) - (lastFrozenWidth || 430) - 18);
+    return avail / days;
   }
   function zoom(factor) {
-    var c = (lo + hi) / 2, span = (hi - lo) * factor;
-    if (span < 7 * DAY) span = 7 * DAY;  // floor: never zoom past a week-wide window
-    lo = c - span / 2; hi = c + span / 2; clampView(); render();
+    var base = pxZoom && pxZoom > 0 ? pxZoom : currentFitPx();
+    pxZoom = Math.min(40, Math.max(0.02, base * factor));
+    render();
   }
   function pan(frac) {
-    // When fully zoomed out the window already spans the whole axis, so a plain pan is clamped
-    // straight back (the arrows looked dead). Make the first click responsive: jump to the half of
-    // the axis the arrow points at; subsequent clicks then slide the window by `frac`.
-    if (hi - lo >= fullHi - fullLo) {
-      var span = (fullHi - fullLo) / 2;
-      if (frac < 0) { lo = fullLo; hi = fullLo + span; }  // ◀ earlier half
-      else { lo = fullHi - span; hi = fullHi; }           // ▶ later half
-      clampView(); render(); return;
-    }
-    var d = (hi - lo) * frac; lo += d; hi += d; clampView(); render();
+    var pane = box.querySelector(".gantt-scroll");
+    if (pane) pane.scrollLeft += Math.round(pane.clientWidth * frac);
   }
-  function resetZoom() { lo = fullLo; hi = fullHi; render(); }
+  function resetZoom() { pxZoom = null; extraRightDays = 0; render(); }
   function stopAuto() {
     if (timer) { clearInterval(timer); timer = null; }
     document.getElementById("evoPlay").textContent = "▶ Auto-play";
@@ -453,28 +453,31 @@
     .then(function (d) {
       data = d;
       focusUid = (d.target == null) ? null : Number(d.target);
+      var lo = 0, hi = 1;
       if (d.axis && d.axis.min && d.axis.max) {
         lo = Date.parse(d.axis.min); hi = Date.parse(d.axis.max);
         if (!(hi > lo)) hi = lo + 30 * DAY;
         var pad = (hi - lo) * 0.04;
         lo -= pad; hi += pad;
       }
-      fullLo = lo; fullHi = hi;  // the locked full axis; zoom/pan move lo/hi within it
+      fullLo = lo; fullHi = hi;  // the locked full axis, identical in every frame
       render();
       function on(id, fn) { var n = document.getElementById(id); if (n) n.addEventListener("click", fn); }
       on("prevEvo", function () { stopAuto(); step(-1); });
       on("nextEvo", function () { stopAuto(); step(1); });
       on("evoPlay", toggleAuto);
-      on("evoZoomIn", function () { zoom(0.6); });
-      on("evoZoomOut", function () { zoom(1 / 0.6); });
-      on("evoPanL", function () { pan(-0.25); });
-      on("evoPanR", function () { pan(0.25); });
+      on("evoZoomIn", function () { zoom(1.6); });
+      on("evoZoomOut", function () { zoom(1 / 1.6); });
+      on("evoPanL", function () { pan(-0.5); });
+      on("evoPanR", function () { pan(0.5); });
       on("evoZoomReset", resetZoom);
       var hd = document.getElementById("evoHideDone");
       if (hd) hd.addEventListener("change", function () { hideDone = hd.checked; render(); });
       // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
       var bd = document.getElementById("evoBarDates");
       if (bd) bd.addEventListener("change", render);
+      // the Timescale dialog's OK repaints the frame with the new tiers/size/shading
+      window.addEventListener("sf-timescale", function () { if (data) render(); });
 
       // filter-by-path controls: a mode selector that toggles its sub-control
       var verSel = document.getElementById("evoFilterVersion");
