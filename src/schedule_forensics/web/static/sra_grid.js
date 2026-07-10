@@ -20,6 +20,7 @@
   var lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
 
   var forcedPx = null; // set by "View entire project"; cleared when the zoom slider is nudged
+  var extraRightDays = 0; // unlimited right scroll (ADR-0187): grows at the pane's right edge
   function pxPerDay() {
     // the Timescale dialog's Size % scales the timeline in BOTH modes (fit + slider), so Size
     // works even after "View entire project" fits the page.
@@ -60,7 +61,7 @@
       if (!isNaN(a) && t0 !== null && t1 !== null) { t0 = Math.min(t0, a); t1 = Math.max(t1, a); }
     }
     if (t0 === null || t1 === null) return null;
-    t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
+    t0 -= 2 * DAY_MS; t1 += (2 + extraRightDays) * DAY_MS; // right pad grows via edge-extend (ADR-0187)
     var width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
     return { t0: t0, t1: t1, width: width, x: function (ms) { return Math.round(((ms - t0) / DAY_MS) * px); } };
   }
@@ -420,6 +421,8 @@
   if (zoomEl) zoomEl.addEventListener("input", function () { forcedPx = null; if (rows.length) render(); });
   var groupEl = groupSelect();
   if (groupEl) groupEl.addEventListener("change", function () { if (rows.length) render(); });
+  // scrolling to the pane's right edge extends the axis (unlimited right scroll, ADR-0187)
+  SFGantt.attachEdgeExtend(host, function () { extraRightDays += 60; if (rows.length) render(); });
   var fitBtn = document.getElementById("ssiGridFit");
   if (fitBtn) fitBtn.addEventListener("click", function () { if (rows.length) fitToProject(); });
   // show-completed + dates-on-bars toggles (parity with the Activities Gantt — ADR-0186)

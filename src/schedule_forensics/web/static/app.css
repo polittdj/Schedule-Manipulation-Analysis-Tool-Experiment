@@ -555,12 +555,12 @@ th.metric-th { position: relative; }
 .cf-zoom { font-size: 11px; color: var(--muted); min-width: 36px; text-align: center; }
 .cf-scroll { overflow: auto; max-width: 100%; }
 .cf-frame:fullscreen { background: var(--bg); padding: 30px 18px 18px; overflow: auto; }
-.cf-frame:fullscreen .cf-scroll { height: 100%; }
+.cf-frame:fullscreen .cf-scroll, .cf-frame.cf-max .cf-scroll { height: 100%; }
 .cf-frame.cf-max { position: fixed; inset: 0; z-index: 9999; background: var(--bg);
   padding: 34px 20px 20px; overflow: auto; }
-/* Expanded charts REFORMAT rather than magnify (operator 2026-07-08): chartframe.js caps the
-   SVG's pixel width near its design size so fonts stay small; center the capped chart in the
-   leftover width so the expanded view reads as a page, not a blown-up thumbnail. */
+/* Expanded charts CONTAIN-FIT the viewport (operator 2026-07-10, ADR-0187): chartframe.js
+   sizes the SVG to the largest width that fits BOTH dimensions, so the chart genuinely uses
+   the page space without overflowing it; any leftover width is centered. */
 .cf-frame:fullscreen .cf-scroll svg, .cf-frame.cf-max .cf-scroll svg {
   display: block; margin-left: auto; margin-right: auto; }
 /* Shared hover call-out (chartframe.js) — styled, instant tooltip following the cursor on any
@@ -988,10 +988,30 @@ svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index
 .src-banner b { color: var(--fg); }
 
 /* ---- per-page memory + universal Reset view (ADR-0186) ---- */
-.sf-reset-view { float: right; margin: 2px 0 6px 12px; padding: 3px 12px; font-size: 12px;
-  color: var(--muted); background: var(--field-bg); border: 1px solid var(--line);
-  border-radius: 14px; cursor: pointer; }
+.sf-reset-view { position: fixed; right: 14px; bottom: 54px; z-index: 95;
+  padding: 4px 13px; font-size: 12px; color: var(--muted); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 14px; cursor: pointer;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
 .sf-reset-view:hover { color: var(--fg); border-color: var(--accent); }
 /* the Find-UID flash works on EVERY Gantt table, not just the Activities grid */
 tr.row-found td { background: #fff3b0; }
 tr.row-found td.sf-frozen-col { background: #fff3b0; }
+
+/* ---- expanded-chart title + fill-the-page policy (ADR-0187) ---- */
+.cf-title { display: none; font-weight: 600; font-size: 15px; padding: 6px 210px 2px 12px;
+  color: var(--fg); }
+.cf-frame:fullscreen .cf-title, .cf-frame.cf-max .cf-title { display: block; }
+
+/* ---- CP Evolution as the standard table Gantt (ADR-0187) ---- */
+.evo-grid .g-bar.ev-b-entered { background: var(--ok); }
+.evo-grid .g-bar.ev-b-stayed { background: var(--accent); }
+.evo-grid .g-bar.ev-b-left { background: var(--bad); opacity: 0.5; border: 1px dashed var(--bad); }
+.evo-grid .g-bar.ev-t-driving { background: var(--bad); }
+.evo-grid .g-bar.ev-t-secondary { background: var(--warn); }
+.evo-grid .g-bar.ev-t-tertiary { background: var(--accent); }
+.evo-grid tr.ev-focus td { background: var(--hover); }
+.evo-grid tr.ev-focus td:first-child { border-left: 3px solid var(--accent); }
+.evo-grid tr.ev-row-left td { color: var(--muted); }
+.evo-grid tbody tr { cursor: pointer; }
+.evo-durbadge { position: absolute; top: 1px; font-size: 11px; color: var(--warn); pointer-events: none; }
+.evo-why { font-size: 11px; white-space: nowrap; }

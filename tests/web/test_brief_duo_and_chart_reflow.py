@@ -45,7 +45,8 @@ def test_briefing_pairs_sections_6_and_7_in_a_half_page_duo(client: TestClient) 
 
 def test_chartframe_expand_reformats_instead_of_magnifying() -> None:
     js = (STATIC / "chartframe.js").read_text(encoding="utf-8")
-    assert "FS_FONT_CAP" in js  # expanded width capped near design size (no font blow-up)
+    # expanded charts CONTAIN-FIT the viewport (ADR-0187): as large as fits BOTH dimensions
+    assert "(availH * vbW) / vbH" in js and "fitW" in js
     assert "sf-reflow" in js  # reflow-aware charts are told to redraw at the new size
     # denied/absent Fullscreen API both fall back to the fixed maximize (headless/kiosk safety)
     assert "req.catch(maximize)" in js

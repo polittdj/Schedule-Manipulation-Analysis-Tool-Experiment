@@ -85,7 +85,7 @@ def test_evolution_tier_api_classifies_by_driving_slack(client: TestClient) -> N
 def test_path_evolution_js_wires_the_tier(client: TestClient) -> None:
     js = client.get("/static/path_evolution.js").text
     assert "data-tier" in js and "tier=" in js  # fetch includes the tier
-    assert "tierColor" in js and "TIER_COLOR" in js  # colour-by-tier in the "all" mode
+    assert "barClass" in js and "TIER_CLASS" in js  # colour-by-tier in the "all" mode
 
 
 def test_evolution_page_carries_the_counterfactual_panel(client: TestClient) -> None:
@@ -189,8 +189,8 @@ def test_evolution_page_has_hide_completed_toggle(client: TestClient) -> None:
     page = client.get("/evolution").text
     assert "id=evoHideDone" in page and "hide completed" in page
     js = client.get("/static/path_evolution.js").text
-    # the grid columns, the small wrapped names, and the robust hide-completed filter
-    assert "wrapName" in js and "hideDone" in js
+    # the standard table-Gantt columns (ADR-0187) and the robust hide-completed filter
+    assert "hideDone" in js
     assert '"Start"' in js and '"Finish"' in js  # column headers
     assert "r.complete" in js  # filter reads the robust complete flag
 
@@ -218,7 +218,8 @@ def test_evolution_has_zoom_controls_and_focus_js(client: TestClient) -> None:
         assert "id=" + cid in page, cid
     js = client.get("/static/path_evolution.js").text
     assert "function zoom(" in js and "function pan(" in js and "resetZoom" in js
-    assert "clampView" in js  # the window stays inside the locked full axis
+    # zoom is pixels-per-day on the LOCKED full axis (ADR-0187 table Gantt); pan scrolls
+    assert "fullLo" in js and "fullHi" in js and "attachEdgeExtend" in js
     assert "focusUid" in js and 'getAttribute("data-target")' in js  # focus highlight
 
 

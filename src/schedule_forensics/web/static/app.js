@@ -161,6 +161,9 @@
   let sortDesc = false;
   let maxOutline = 0; // MS-Project "show outline level N"; 0 = all levels
   let barDates = false; // MS-Project "dates on bars" — start/finish text at the bar ends
+  // unlimited right scroll (ADR-0187): grown when a Gantt pane hits its right edge, so the
+  // operator can keep scrolling into future time instead of stopping at the last bar
+  let extraRightDays = 0;
 
   // MS-Project-style "add/remove columns" dropdown (the same checklist component as the filters)
   function renderToggles() {
@@ -289,7 +292,9 @@
       if (!isNaN(a) && t0 !== null && t1 !== null) { t0 = Math.min(t0, a); t1 = Math.max(t1, a); }
     }
     if (t0 === null || t1 === null) return null;
-    t0 -= 1 * DAY_MS; t1 += 2 * DAY_MS; // small left pad: bars start close to the data columns
+    // small left pad (bars start close to the data columns); the right pad grows via the
+    // edge-extend scroll so the timeline is never a hard wall
+    t0 -= 1 * DAY_MS; t1 += (2 + extraRightDays) * DAY_MS;
     let width = Math.max(120, Math.round((t1 - t0) / DAY_MS) * px);
     // operator 2026-07-08: at Size 100% the timeline uses ALL available page space — when the
     // project span is narrower than the page, extend the axis past the finish to fill it. This
@@ -561,6 +566,14 @@
     renderBody(tbody, fields, axis, gridLns);
     grid.innerHTML = "";
     grid.appendChild(table);
+    // scrolling to the pane's right edge extends the axis (unlimited right scroll, ADR-0187)
+    if (window.SFGantt && SFGantt.attachEdgeExtend) {
+      SFGantt.attachEdgeExtend(grid, () => {
+        extraRightDays += 60;
+        renderGrid();
+        if (lastDriving) renderGantt(lastDriving);
+      });
+    }
     if (window.SFColResize) SFColResize.attach(table, "analysis"); // MS-Project drag-to-resize columns
     // lock the data columns so they stay visible as the wide timeline scrolls left↔right, and
     // record their measured width — the fill space fitToWidth subtracts from the page
@@ -738,6 +751,13 @@
     renderTraceRows(tbody, rows, axis, gridLns, driving);
     scroll.appendChild(table);
     box.appendChild(scroll);
+    if (window.SFGantt && SFGantt.attachEdgeExtend) {
+      SFGantt.attachEdgeExtend(scroll, () => {
+        extraRightDays += 60;
+        renderGrid();
+        if (lastDriving) renderGantt(lastDriving);
+      });
+    }
     if (window.SFColResize) SFColResize.attach(table, "trace"); // MS-Project drag-to-resize columns
     // lock the data columns so they stay visible as the wide timeline scrolls left↔right
     if (window.SFGantt && SFGantt.freezeColumns) SFGantt.freezeColumns(table);

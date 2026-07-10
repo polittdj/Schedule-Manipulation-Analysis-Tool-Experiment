@@ -119,7 +119,7 @@ def test_mission_bottom_charts_match_the_top_tiles(client: TestClient) -> None:
     # the Evolution tile now exposes an underlying-data table (Data toggle) — it had none before
     evo = client.get("/static/path_evolution.js").text
     assert "SFA11y.table(" in evo and "Critical path this version" in evo
-    assert 'svgEl("title"' in evo  # per-bar hover call-out
+    assert "bar.title = " in evo  # per-bar hover call-out (HTML title -> cf-tip, ADR-0187)
     # the Quality Trend tile's points now carry hover call-outs too (it had none before)
     trend = client.get("/static/trend.js").text
     assert 'svgEl("title"' in trend

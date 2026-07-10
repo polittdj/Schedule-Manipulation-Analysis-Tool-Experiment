@@ -49,9 +49,9 @@ def test_fit_to_project_logic_in_every_gantt_script(client: TestClient) -> None:
         assert button in js, name
     path_js = client.get("/static/path.js").text
     assert "function fitToProject" in path_js and "pathFit" in path_js
-    # the evolution SVG Gantt fits the whole project by snapping the view back to its full axis
+    # the evolution table Gantt (ADR-0187) fits the whole locked axis by clearing the px zoom
     evo = client.get("/static/path_evolution.js").text
-    assert "evoZoomReset" in evo and "lo = fullLo; hi = fullHi" in evo
+    assert "evoZoomReset" in evo and "pxZoom = null" in evo
 
 
 def test_freeze_columns_locks_data_columns_on_every_gantt(client: TestClient) -> None:

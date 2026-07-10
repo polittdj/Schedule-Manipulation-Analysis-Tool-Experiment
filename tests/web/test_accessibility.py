@@ -88,7 +88,13 @@ def test_charts_have_accessible_names_and_data_tables(client: TestClient) -> Non
     assert "window.SFA11y" in a11y.text and "aria-label" in a11y.text and "sr-only" in a11y.text
     assert "/static/a11y.js" in client.get("/curves").text  # shell-loaded, reaches every chart page
     for name in _CHART_JS:
-        assert "SFA11y.label" in client.get(f"/static/{name}").text, name  # named SVG
+        js = client.get(f"/static/{name}").text
+        if name == "path_evolution.js":
+            # ADR-0187: the evolution chart is a real HTML table Gantt — natively accessible,
+            # with the SFA11y data-table kept as the "Data" toggle mirror
+            assert "SFA11y.table" in js
+            continue
+        assert "SFA11y.label" in js, name  # named SVG
     for name in _DATA_TABLE_JS:
         assert "SFA11y.table" in client.get(f"/static/{name}").text, name  # data-table fallback
 

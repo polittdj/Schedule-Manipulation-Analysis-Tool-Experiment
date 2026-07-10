@@ -42,6 +42,7 @@
   var lastAxis = null, lastGrid = null, lastOn = null; // header built once; body repaints on filter
   var lastTable = null, lastScaleTh = null; // refs so a tier/zoom reflow rebuilds only the timeline
   var lastFrozenWidth = 0, refitting = false; // measured data-column width → the timeline fills the rest
+  var extraRightDays = 0; // unlimited right scroll (ADR-0187): grows at the pane's right edge
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -135,7 +136,8 @@
     if (t0 === null || t1 === null) return null;
     var span = Math.max(1, (t1 - t0) / DAY_MS);
     t0 -= 2 * DAY_MS; // bars sit close to the data columns
-    t1 += Math.max(4, Math.round(span * 0.04)) * DAY_MS; // breathing room past the data-date line
+    // breathing room past the data-date line + the edge-extend growth (ADR-0187)
+    t1 += (Math.max(4, Math.round(span * 0.04)) + extraRightDays) * DAY_MS;
     var spanDays = Math.max(1, (t1 - t0) / DAY_MS);
     var slider = Number($("pathZoom").value);
     // the Timescale dialog's Size % scales the timeline in BOTH modes: fitFill establishes the
@@ -615,6 +617,9 @@
   window.addEventListener("sf-timescale", function () { if (data) reflow(); });
   var pathFit = $("pathFit");
   if (pathFit) pathFit.addEventListener("click", fitToProject);
+  // scrolling to the pane's right edge extends the axis (unlimited right scroll, ADR-0187);
+  // fires only in fixed-zoom mode — a fill-to-page timeline has no scrollbar to extend
+  SFGantt.attachEdgeExtend(view, function () { extraRightDays += 60; if (data) reflow(); });
   // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
   if ($("pathBarDates")) $("pathBarDates").addEventListener("change", function () { if (data) paintRows(); });
   // MS-Project Find: jump the traced grid to a UniqueID, scroll it into view and flash it

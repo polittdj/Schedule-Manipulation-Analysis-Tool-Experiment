@@ -214,9 +214,9 @@ def test_shared_msproject_gantt_timeline_is_used_on_every_gantt_page(client: Tes
         assert "SFGantt.buildTierScale" in js or "buildTierScale(" in js, name
         assert "gridLines" in js, name
         assert "pv-tick" not in js, name  # single-tier month-tick header replaced
-    # the SVG path-evolution Gantt gains the same stacked tiers (quarter/year bands)
+    # the evolution table Gantt (ADR-0187) uses the SAME shared stacked tier scale
     evo = client.get("/static/path_evolution.js").text
-    assert "bandLabel" in evo and "Q" in evo
+    assert "buildTierScale" in evo and "gridLines" in evo
     # the tiered header + gridlines are styled
     css = client.get("/static/app.css").text
     assert ".g-scale-tiered" in css and ".g-tier-qtr" in css and ".g-grid-yr" in css

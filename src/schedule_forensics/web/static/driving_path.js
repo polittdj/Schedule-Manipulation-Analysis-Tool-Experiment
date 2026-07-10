@@ -52,6 +52,8 @@
   });
   if (t0 === null || t1 === null) return;
   t0 -= 2 * DAY_MS; t1 += 2 * DAY_MS;
+  // unlimited right scroll (ADR-0187): the pane's right edge extends the shared axis
+  SFGantt.attachEdgeExtend(mount, function () { t1 += 60 * DAY_MS; render(); });
   // pixels per calendar day: the "View entire project" fit overrides the zoom buttons until
   // nudged; the Timescale dialog's Size % scales the button zoom (the fit is already exact)
   function pxPerDay() {

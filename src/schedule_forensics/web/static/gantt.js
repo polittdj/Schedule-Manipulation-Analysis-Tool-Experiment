@@ -272,6 +272,32 @@ window.SFGantt = (function () {
     Array.prototype.forEach.call(panes, stickyScrollbar);
   }
 
+  /* -------- unlimited right scroll (operator 2026-07-10, ADR-0187) --------------------
+   * "Click the arrow on the right and have it continue to scroll — not be limited." When a
+   * Gantt pane is scrolled to its right edge, ask the page to EXTEND its time axis so the
+   * scrollbar keeps going into future time instead of stopping at the last bar. The page's
+   * callback grows its axis by some days and re-renders; the helper restores the scroll
+   * position so the view doesn't jump. Idempotent per pane. Fires only when the pane
+   * actually overflows (a fill-to-page Gantt has no scrollbar, so nothing to extend). */
+  function attachEdgeExtend(pane, onExtend) {
+    if (!pane || pane._sfEdgeExtend) return;
+    pane._sfEdgeExtend = true;
+    var busy = false;
+    pane.addEventListener("scroll", function () {
+      if (busy) return;
+      if (pane.scrollWidth <= pane.clientWidth + 2) return; // nothing scrollable
+      if (pane.scrollLeft + pane.clientWidth < pane.scrollWidth - 2) return; // not at the edge
+      busy = true;
+      var keep = pane.scrollLeft;
+      onExtend();
+      window.requestAnimationFrame(function () {
+        pane.scrollLeft = keep;
+        busy = false;
+        if (pane._sfStickyRefresh) pane._sfStickyRefresh(); // proxy scrollbar re-measures
+      });
+    }, { passive: true });
+  }
+
   /* -------- column mover (operator 2026-07-10): click a data-column header's grip and move
    * the column left/right. Works on EVERY .gantt-grid table with zero per-page wiring: the
    * grip dispatches a cancelable "sf-colmove" CustomEvent {index, dir} on the table so a page
@@ -352,6 +378,7 @@ window.SFGantt = (function () {
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
     freezeColumns: freezeColumns,
     stickyScrollbar: stickyScrollbar, attachStickyScrollbars: attachStickyScrollbars,
+    attachEdgeExtend: attachEdgeExtend,
     moveTableColumn: moveTableColumn, attachColumnMovers: attachColumnMovers,
   };
 })();

@@ -4835,3 +4835,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   9 installers rebuilt. Also: stop-hook root cause fixed (stale remote-tracking ref after
   GitHub auto-deletes the merged branch) - prune-restart rule added to CLAUDE.md; damage
   audit clean, no history rewrites, nothing lost. Highest ADR = 0186.
+
+### 2026-07-10 (cont.) — unlimited scroll, evolution table Gantt, expand fill, callouts (ADR-0187)
+- Operator (screenshots): Gantt right-scroll must never hit a wall; Reset button read as
+  missing on /path, /driving-path, /evolution; CP Evolution Gantt must match the standard
+  Gantt format; expanded charts rendered tiny in an empty page - must fill it, titles in all
+  views; what/how/example callouts on every chart.
+- SFGantt.attachEdgeExtend: at the pane's right edge every Gantt extends its axis +60d and
+  keeps the scroll position (app.js grid+trace, path.js, corridor, SRA grid, evolution).
+- Reset view now position:fixed bottom-right on <body> (unmissable on every page).
+- path_evolution.js rewritten: standard table gantt-grid (frozen UID/Name/%/Dur/Start/Finish/
+  Why + shared tier timescale + Timescale... button + checklist filters + colresize/movers +
+  sticky scrollbar + dates-on-bars + Task Info + edge-extend), keeping the locked axis,
+  entered/stayed/left + ghost rows + reason chips, focus, path filters, hide-done, stepper,
+  SFA11y data table. Zoom=px/day, pan scrolls, fit clears zoom.
+- chartframe: expanded SVGs contain-fit the viewport (FS_FONT_CAP removed); .cf-title mirrors
+  the nearest heading into the expanded view + inherits its data-sf-hint; callouts also read
+  HTML title= so table-Gantt bars get the instant styled callout.
+- vizhints: ~40 new entries per the coverage audit (18 Trend charts, dead "finishes &" key,
+  worst/largest variances, driving path:, driving-tier table, CP-volatility page+scoreboard,
+  performance summary, what-if x2, field-group metrics, working calendar, OAT, evolution
+  sub-headings, risks/issues/opportunities) + specific-before-broad reorders; trend drill
+  title carries its own inline hint. Chromium: 16 checks green, 31/31 trend headings hinted,
+  zero console errors. Stale pins re-pinned (accessibility/mission/visuals/gantt-consistency/
+  brief-reflow/evolution). Full gate green; lockstep wheel + 9 installers rebuilt.
+  Highest ADR = 0187.

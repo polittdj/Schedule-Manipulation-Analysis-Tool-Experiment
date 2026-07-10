@@ -16,12 +16,12 @@
   var ZOOM_STEP = 1.25;
   var ZOOM_MIN = 0.5;
   var ZOOM_MAX = 6;
-  // Full screen REFORMATS instead of magnifying (operator 2026-07-08): an expanded chart may
-  // render at most this multiple of its design (viewBox) size, so fonts/marks stay near their
-  // intended 10-12px instead of blowing up with the container. Reflow-aware charts (the SRA
-  // S-curve/tornados, progress S-curve) additionally redraw at 1:1 to the wider container via
-  // the "sf-reflow" event, genuinely using the extra space for plot area rather than for scale.
-  var FS_FONT_CAP = 1.25;
+  // Full screen CONTAIN-FITS the chart to the viewport (operator 2026-07-10: an expanded chart
+  // "looked tiny in a huge empty page — utilize the page space"): the SVG scales to the larger
+  // of its design size and the biggest size that still fits BOTH the available width and height,
+  // so it fills the page without overflowing it. The user's explicit −/＋ zoom multiplies on
+  // top. Reflow-aware charts (SRA S-curve/tornados, progress S-curve) additionally redraw at
+  // 1:1 to the wider container via the "sf-reflow" event, using the space for plot area.
 
   // ── shared hover call-out ───────────────────────────────────────────────────────────────────
   // One styled tooltip, reused by every framed chart. Hovering any SVG shape that carries a direct
@@ -45,6 +45,10 @@
       if (node.getAttribute) {
         var dc = node.getAttribute("data-callout");
         if (dc) return dc;
+        // an HTML title= attribute (the table-Gantt bars) gets the same instant call-out
+        // as an SVG <title> child — the native tooltip is slow and unstyled (ADR-0187)
+        var ta = node.getAttribute("title");
+        if (ta) return ta;
         var kids = node.childNodes;
         for (var j = 0; j < kids.length; j++) {
           var k = kids[j];
@@ -105,20 +109,71 @@
     wrap.appendChild(bar);
     wrap.appendChild(scroll);
 
+    // ── title in EVERY view (operator 2026-07-10) ─────────────────────────────────────
+    // Most chart titles are the panel h2/h3 that sits OUTSIDE the framed host, so the
+    // expanded view used to show an untitled chart. Mirror the nearest preceding heading
+    // into a .cf-title that CSS reveals in the expanded modes (the original heading still
+    // shows in the normal view — no duplicate). The heading's explainer callout
+    // (data-sf-hint, decorated later by vizhints.js) is mirrored on entry to fullscreen so
+    // the what/how-to-use/example call-out is available in the expanded view too.
+    function findTitleSource() {
+      var inner = host.querySelector("h2, h3");
+      if (inner) return inner; // the title lives inside the host — visible in all views
+      var node = wrap;
+      while (node && node !== document.body) {
+        var sib = node.previousElementSibling;
+        while (sib) {
+          if (/^H[23]$/.test(sib.tagName)) return sib;
+          var wrapped = sib.querySelector ? sib.querySelector("h2, h3") : null;
+          if (wrapped) return wrapped;
+          sib = sib.previousElementSibling;
+        }
+        node = node.parentNode;
+        if (node && node.classList && node.classList.contains("panel")) {
+          var h = node.querySelector("h2, h3");
+          return h || null;
+        }
+      }
+      return null;
+    }
+    var titleSrc = host.querySelector("h2, h3") ? null : findTitleSource();
+    var cfTitle = null;
+    if (titleSrc) {
+      cfTitle = document.createElement("div");
+      cfTitle.className = "cf-title";
+      cfTitle.textContent = titleSrc.textContent;
+      wrap.insertBefore(cfTitle, scroll);
+    }
+    function syncTitle() {
+      if (!cfTitle || !titleSrc) return;
+      cfTitle.textContent = titleSrc.textContent; // dynamic headings (steppers) stay current
+      var hint = titleSrc.getAttribute("data-sf-hint");
+      if (hint) {
+        cfTitle.setAttribute("data-sf-hint", hint);
+        cfTitle.classList.add("viz-hint");
+        cfTitle.setAttribute("tabindex", "0");
+      }
+    }
+
     function inFsMode() {
       return fsElement() === wrap || wrap.classList.contains("cf-max");
     }
     function applyZoom() {
       var svgs = host.querySelectorAll("svg");
       var fs = inFsMode();
-      var avail = scroll.clientWidth || host.clientWidth || 0;
+      var availW = scroll.clientWidth || host.clientWidth || 0;
+      var availH = scroll.clientHeight || 0;
       for (var i = 0; i < svgs.length; i++) {
         var svg = svgs[i];
-        var vb = svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal.width : 0;
-        if (fs && vb > 0 && avail > 0) {
-          // expanded: pixel-capped width (no font blow-up), centered by CSS; the user's explicit
-          // -/+ zoom still multiplies on top of the cap
-          svg.style.width = Math.round(Math.min(avail, vb * FS_FONT_CAP) * scale) + "px";
+        var vbObj = svg.viewBox && svg.viewBox.baseVal ? svg.viewBox.baseVal : null;
+        var vbW = vbObj ? vbObj.width : 0;
+        var vbH = vbObj ? vbObj.height : 0;
+        if (fs && vbW > 0 && availW > 0) {
+          // expanded: contain-fit — as large as fits BOTH dimensions (fills the page,
+          // never overflows it); the user's -/+ zoom multiplies on top
+          var fitW = availW;
+          if (vbH > 0 && availH > 0) fitW = Math.min(availW, (availH * vbW) / vbH);
+          svg.style.width = Math.round(fitW * scale) + "px";
         } else {
           svg.style.width = Math.round(100 * scale) + "%";
         }
@@ -156,6 +211,7 @@
     function reflowSoon() {
       // let the layout settle at the new size, then re-apply the width policy and tell the
       // reflow-aware charts to redraw to the resized container
+      syncTitle();
       window.requestAnimationFrame(function () {
         applyZoom();
         try { window.dispatchEvent(new CustomEvent("sf-reflow")); } catch (e) { /* very old engine */ }
