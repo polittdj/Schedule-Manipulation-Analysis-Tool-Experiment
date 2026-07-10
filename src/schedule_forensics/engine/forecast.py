@@ -233,6 +233,124 @@ def compute_carnac_summary(
     )
 
 
+@dataclass(frozen=True)
+class GroupRollup:
+    """The project forecast RECALCULATED bottom-up from per-group data points (ADR-0188).
+
+    Operator 2026-07-10: when the Forecast page groups the execution metrics by a field, the
+    per-group figures should roll BACK UP into a project-level forecast — the group data
+    points, weighted, re-answering "when will it really end?". Two recalculations, both with
+    their coverage disclosed (never silently extrapolated):
+
+    - **Group-weighted IEAC(t)** — each group's EXACT Earned-Schedule SPI(t) (the same
+      count-based machinery as the top-down forecast) weighted by the group's TO-GO activity
+      count, then the standard ``IEAC(t) = AT + (PD - ES) / SPI(t)`` re-run with the weighted
+      index. Weighting by to-go work makes the groups that still carry the remaining work
+      dominate the index — a hot group that is nearly finished stops masking a cold one that
+      owns the rest of the plan.
+    - **Bottleneck completion-rate finish** — each group's own throughput (completions per
+      month) extrapolates ITS to-go count; the project rolls up as the LATEST group finish
+      (a project is done when its slowest group is done). Groups with to-go work but no
+      completion history are honestly unforecastable and are listed, never imputed.
+    """
+
+    field: str
+    weight_basis: str  # plain-language weighting statement (shown verbatim in the UI)
+    groups_total: int  # groups with any to-go work
+    groups_used: int  # of those, groups contributing an SPI(t) to the weighted index
+    total_to_go: int
+    covered_to_go: int  # to-go activities inside the SPI-contributing groups
+    weighted_spi_t: float | None
+    ieac_finish: dt.date | None  # IEAC(t) re-run with the weighted SPI(t)
+    rate_finish: dt.date | None  # the bottleneck (latest) per-group rate extrapolation
+    rate_limiting_group: str | None  # the group that sets the bottleneck finish
+    unforecastable: tuple[str, ...]  # to-go work but no completions — rate undefined
+
+
+def compute_group_rollup(schedule: Schedule, field: str) -> GroupRollup | None:
+    """Recalculate the project forecast from ``field``'s group data points (see GroupRollup).
+
+    Returns ``None`` when the field yields no groups. Figures whose inputs are missing read
+    ``None`` inside the rollup — never fabricated."""
+    # late import: field_forecast imports metrics that import this module's neighbors
+    from schedule_forensics.engine.metrics.field_forecast import _groups, _sub_schedule
+
+    groups = _groups(schedule, field)
+    if not groups:
+        return None
+    status = schedule.status_date
+
+    per_group: list[tuple[str, int, int, float | None]] = []  # (name, completed, to_go, spi)
+    for name, uids in sorted(groups.items()):
+        sub = _sub_schedule(schedule, uids)
+        tasks = non_summary(sub)
+        completed = sum(1 for t in tasks if t.percent_complete >= 100.0)
+        to_go = len(tasks) - completed
+        es_g = earned_schedule(sub, tasks)
+        # the EXACT ratio (es/at), not the 2-dp display value — same rule as IEAC(t) itself
+        spi_g = (es_g.es_minutes / es_g.at_minutes) if es_g and es_g.at_minutes else None
+        per_group.append((name, completed, to_go, spi_g))
+
+    active = [g for g in per_group if g[2] > 0]
+    total_to_go = sum(g[2] for g in active)
+    spi_groups = [g for g in active if g[3] is not None and g[3] > 0]
+    covered_to_go = sum(g[2] for g in spi_groups)
+    weighted_spi: float | None = None
+    if covered_to_go > 0:
+        weighted_spi = sum(g[3] * g[2] for g in spi_groups if g[3] is not None) / covered_to_go
+
+    # group-weighted IEAC(t): the project PD/ES/AT with the weighted index
+    ieac_finish: dt.date | None = None
+    if weighted_spi is not None and weighted_spi > 0:
+        _spi_t, es, at = _earned_schedule(schedule)
+        planned_offsets = [
+            off
+            for t in non_summary(schedule)
+            if (off := to_offset(schedule, t.baseline_finish)) is not None
+        ]
+        if planned_offsets and es is not None and at is not None:
+            pd_off = max(planned_offsets)
+            ieac_off = round(at + max(0.0, pd_off - es) / weighted_spi)
+            ieac_finish = offset_to_datetime(
+                schedule.project_start, ieac_off, schedule.calendar
+            ).date()
+
+    # bottleneck completion-rate finish: each group extrapolates its own to-go at its own
+    # demonstrated rate; the project finishes when the SLOWEST group does
+    rate_finish: dt.date | None = None
+    rate_limiting: str | None = None
+    unforecastable: list[str] = []
+    if status is not None:
+        elapsed_months = (status.date() - schedule.project_start.date()).days / _DAYS_PER_MONTH
+        if elapsed_months > 0:
+            for name, completed, to_go, _spi in active:
+                if completed == 0:
+                    unforecastable.append(name)
+                    continue
+                rate_g = completed / elapsed_months
+                finish_g = status.date() + dt.timedelta(
+                    days=round((to_go / rate_g) * _DAYS_PER_MONTH)
+                )
+                if rate_finish is None or finish_g > rate_finish:
+                    rate_finish, rate_limiting = finish_g, name
+    else:
+        unforecastable = [g[0] for g in active if g[1] == 0]
+
+    return GroupRollup(
+        field=field,
+        weight_basis="each group's exact SPI(t) weighted by its to-go activity count",
+        groups_total=len(active),
+        groups_used=len(spi_groups),
+        total_to_go=total_to_go,
+        covered_to_go=covered_to_go,
+        weighted_spi_t=round(weighted_spi, 2) if weighted_spi is not None else None,
+        ieac_finish=ieac_finish,
+        rate_finish=rate_finish,
+        rate_limiting_group=rate_limiting,
+        unforecastable=tuple(unforecastable),
+    )
+
+
 def _earned_schedule(schedule: Schedule) -> tuple[float | None, float | None, float | None]:
     """(SPI(t), ES, AT) on the working-minute axis — delegates to the canonical
     count-based Earned-Schedule helper (``metrics.evm.earned_schedule``) so the forecast,

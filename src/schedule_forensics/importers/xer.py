@@ -199,6 +199,9 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             tasks=tuple(tasks),
             relationships=tuple(relationships),
             resources=tuple(resources),
+            # register the Activity-ID custom field (ADR-0185) as a selectable
+            # grouping/display field — grouping only resolves registered labels
+            custom_field_labels=(("Activity ID",) if any(t.custom_fields for t in tasks) else ()),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"XER does not form a valid schedule: {exc}") from exc
@@ -405,13 +408,17 @@ def _parse_task(
         constraint_type = ConstraintType.ASAP
         constraint_date = None
 
+    wbs_path = _wbs_path(_g(row, "wbs_id"), wbs_short, wbs_parent)
     try:
         return Task(
             # the stable Activity-ID identity when the file supports it (ADR-0185);
             # `uid_map` covers every in-scope row or is None — never a partial remap
             unique_id=uid_map[task_id] if uid_map is not None else task_id,
             name=name,
-            wbs=_wbs_path(_g(row, "wbs_id"), wbs_short, wbs_parent),
+            wbs=wbs_path,
+            # XER carries no MS-Project outline level; the WBS path depth IS the task's
+            # level in the P6 hierarchy (cosmetic — drives Gantt indentation, ADR-0188)
+            outline_level=(wbs_path.count(".") + 1) if wbs_path else 0,
             duration_minutes=hours_to_minutes(_g(row, "target_drtn_hr_cnt")),
             remaining_duration_minutes=_opt_hours(row, "remain_drtn_hr_cnt"),
             # P6's own progress-aware Total Float — the "stored float wins" Acumen-parity input

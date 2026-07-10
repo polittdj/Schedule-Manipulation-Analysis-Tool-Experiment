@@ -94,7 +94,10 @@ def test_persist_js_contract() -> None:
     assert '"/target"' in js and '"/language"' in js
 
 
-def test_reset_view_is_client_injected_not_server_marked(client: TestClient) -> None:
-    # the button is injected by persist.js on every page; the server HTML stays clean of it
+def test_reset_view_rides_in_the_frozen_header(client: TestClient) -> None:
+    # ADR-0188: the button is server-rendered in the sticky header nav (always visible);
+    # persist.js binds it (and only injects a floating fallback when the markup lacks it)
     _upload(client, "Project5")
-    assert "sfResetView" not in client.get("/").text
+    assert "sfResetView" in client.get("/").text
+    js = (STATIC / "persist.js").read_text(encoding="utf-8")
+    assert "_sfBound" in js and "sf-reset-float" in js

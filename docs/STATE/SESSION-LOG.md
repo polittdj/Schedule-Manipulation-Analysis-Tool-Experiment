@@ -4860,3 +4860,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   zero console errors. Stale pins re-pinned (accessibility/mission/visuals/gantt-consistency/
   brief-reflow/evolution). Full gate green; lockstep wheel + 9 installers rebuilt.
   Highest ADR = 0187.
+
+### 2026-07-10 (cont.) — frozen header, WBS hierarchy, forecast rollup, globe (ADR-0188)
+- Operator: summary bars + level indentation on the per-file Gantt (flat IPMR .mpp series);
+  Reset buttons "still" missing; forecast group-by must recalc the project Forecast Cards +
+  Finish Forecast from the weighted group data points; remove NASA from the globe + keep the
+  whole rocket arc in frame; move the globe up; freeze the title bar with the page selections.
+- header sticky (z110) + overlays raised to z220; Reset view server-rendered in the header
+  nav (root cause: the fixed chip sat under the JARVIS telemetry dock), persist.js binds it.
+- app.js WBS-derived hierarchy for flat files (no real summaries + uniform outline levels):
+  bold per-WBS-prefix rollup bands (member-span bars), WBS-depth indentation, segment-aware
+  ordering, on-page disclosure, no Task-Info/UID on synthetic bands, % blank (never computed
+  pseudo-progress); real-summary files untouched. XER importer: outline_level = WBS depth;
+  "Activity ID" registered in custom_field_labels (grouping resolved nothing before).
+- engine/forecast.compute_group_rollup + /forecast "Project rollup" panel: to-go-weighted
+  exact SPI(t) -> IEAC(t); per-group throughput -> bottleneck (latest) finish with the
+  limiting group named; coverage + unforecastable groups disclosed; vizhints entry added.
+- globe.js: wordmark span/CSS removed (AI-status glow now a canvas drop-shadow), R=0.31*size,
+  arc apogee 1.5R (entire arc in frame), host align-self:flex-start. Stale pins re-pinned
+  (nasa_theme wordmark, page_memory reset injection, ai-thinking CSS). Chromium: 9 checks +
+  overlay spot check green, zero console errors. Full gate: 1972+ passed, mypy/ruff/bandit/
+  node clean; lockstep wheel + 9 installers rebuilt. Highest ADR = 0188.

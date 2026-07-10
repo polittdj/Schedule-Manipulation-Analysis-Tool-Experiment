@@ -91,6 +91,7 @@ from schedule_forensics.engine.forecast import (
     ForecastSet,
     compute_carnac_summary,
     compute_finish_forecasts,
+    compute_group_rollup,
 )
 from schedule_forensics.engine.grouping import (
     MAX_FIELDS,
@@ -365,6 +366,8 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 <form action="/session/wipe" method=post class=navform
 onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
 <a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>
+<button id=sfResetView type=button class="linkbtn sf-reset-view" data-no-i18n
+title="Clear every selection you made on THIS page (inputs, filters, toggles, remembered view) and return to its default view">&#10226; Reset view</button>
 <form action="/target" method=post class="navform targetform"
 title="Focus every view on one activity (blank = clear)"
 data-sf-hint="Type an activity's Unique ID and press Set: every page then treats that activity as the schedule's endpoint — metrics, paths and charts all focus on what drives IT. Blank + Set clears the focus.">
@@ -384,7 +387,7 @@ title="Display language for the UI and AI results">
 onchange="this.form.submit()">{{ lang_options }}</select></label>
 </form>
 </nav>
-<span class="nasa-globe" data-no-i18n title="NASA"><canvas width="132" height="132" aria-hidden="true"></canvas><span class="nasa-globe-text">NASA</span></span>
+<span class="nasa-globe" data-no-i18n title="Local AI status: the globe spins up while the model is generating"><canvas width="132" height="132" aria-hidden="true"></canvas></span>
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
@@ -2803,7 +2806,8 @@ def create_app(
             _export_bar("forecast")
             + _skipped_notice(skipped)
             + _forecast_body(schedules, cpms, sets)
-            + _field_forecast_panel(schedules, group_field),
+            + _field_forecast_panel(schedules, group_field)
+            + (_group_rollup_panel(schedules[-1], sets[-1], group_field) if group_field else ""),
         )
 
     @app.get("/export/{fmt}/field-forecast")
@@ -5274,6 +5278,69 @@ automatically on the same engine formulas as the schedule-wide figures.</p>
 <th scope=col>SPI(t) Acumen</th><th scope=col>SEI (start)</th><th scope=col></th></tr>
 {body_rows}</table></div>"""
     return form + analysis + table + "</div>"
+
+
+def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -> str:
+    """The project forecast RECALCULATED from the group-weighted data points (ADR-0188).
+
+    Rendered under the per-group table when a group field is chosen: the groups' exact
+    SPI(t)s weighted by their to-go work re-run IEAC(t), and each group's own throughput
+    extrapolates its own backlog with the LATEST group finish as the project's bottleneck
+    answer. Coverage and unforecastable groups are disclosed — never silently imputed."""
+    rollup = compute_group_rollup(latest, field)
+    if rollup is None:
+        return ""
+    top = {f.method_id: f.finish for f in latest_set.forecasts}
+
+    def d(v: dt.date | None) -> str:
+        return _mdY(v) if v else "&mdash;"
+
+    spi_cell = f"{rollup.weighted_spi_t:g}" if rollup.weighted_spi_t is not None else "&mdash;"
+    top_spi = f"{latest_set.spi_t:g}" if latest_set.spi_t is not None else "&mdash;"
+    coverage = (
+        f"{rollup.groups_used} of {rollup.groups_total} groups with to-go work carry an SPI(t), "
+        f"covering {rollup.covered_to_go} of {rollup.total_to_go} to-go activities"
+    )
+    unforecastable = ""
+    if rollup.unforecastable:
+        names = ", ".join(_e(g) for g in rollup.unforecastable[:8])
+        more = (
+            f" (+{len(rollup.unforecastable) - 8} more)" if len(rollup.unforecastable) > 8 else ""
+        )
+        unforecastable = (
+            f"<p class=muted><b>Unforecastable by rate:</b> {names}{more} &mdash; to-go work but "
+            "no completion history yet, so a throughput extrapolation would be fabricated; these "
+            "groups are excluded from the bottleneck answer and flagged instead.</p>"
+        )
+    limiting = (
+        f" &mdash; limited by <b data-no-i18n>{_e(rollup.rate_limiting_group)}</b> (the project "
+        "finishes when its slowest group finishes)"
+        if rollup.rate_limiting_group
+        else ""
+    )
+    return f"""
+<div class=panel><h2>Project rollup &mdash; recalculated from the group-weighted data points</h2>
+<p class=muted>The per-group figures above, rolled BACK UP into a project-level forecast:
+each group's <b>exact SPI(t)</b> is weighted by its <b>to-go activity count</b> (the groups
+still carrying the remaining work dominate the index), and each group's own completion
+throughput extrapolates its own backlog with the <b>latest</b> group finish as the project's
+bottleneck answer. Compare against the top-down forecast &mdash; a gap means the remaining
+work sits in groups performing differently than the project-wide average suggests.</p>
+<table>
+<tr><th scope=col>Figure</th><th scope=col>Group-weighted rollup</th>
+<th scope=col>Top-down (whole project)</th><th scope=col>Basis</th></tr>
+<tr><th scope=row>SPI(t)</th><td class=num><b>{spi_cell}</b></td><td class=num>{top_spi}</td>
+<td class=muted>{_e(rollup.weight_basis)}; {coverage}</td></tr>
+<tr><th scope=row>Earned-schedule IEAC(t) finish</th><td><b>{d(rollup.ieac_finish)}</b></td>
+<td>{d(top.get("earned_schedule"))}</td>
+<td class=muted>IEAC(t) = AT + (PD &minus; ES) / <b>weighted</b> SPI(t)</td></tr>
+<tr><th scope=row>Completion-rate finish</th><td><b>{d(rollup.rate_finish)}</b></td>
+<td>{d(top.get("rate"))}</td>
+<td class=muted>each group's own throughput extrapolates its own to-go count{limiting}</td></tr>
+</table>
+{unforecastable}
+<p class=cite>Weighted over {rollup.groups_total} group(s) of &ldquo;{_e(field)}&rdquo; with
+to-go work &mdash; {_e(latest.source_file or latest.name)}</p></div>"""
 
 
 def _forecast_body(

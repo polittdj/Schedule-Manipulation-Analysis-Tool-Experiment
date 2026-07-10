@@ -1,6 +1,29 @@
-# Handoff — 2026-07-10 (unlimited scroll + evolution table Gantt + expand fill; highest ADR 0187)
+# Handoff — 2026-07-10 (frozen header + WBS hierarchy + forecast rollup + globe; highest ADR 0188)
 
-> ## STATUS (current) — ADR-0187 scroll/evolution/expand/callout batch
+> ## STATUS (current) — ADR-0188 header/hierarchy/rollup/globe batch
+>
+> - **Frozen title bar**: header position:sticky (z 110) — brand + full nav stay visible while
+>   scrolling; Task-Info/expanded-tile/load/colmove overlays raised above it (z 220). **Reset
+>   view now rides IN the header nav** (root cause of "still don't see it": the fixed chip sat
+>   under the JARVIS telemetry dock); persist.js binds it, floating chip only as fallback.
+> - **WBS-derived hierarchy** on the Activities Gantt: flat P6-exported .mpp files (no summary
+>   tasks, uniform outline levels, hierarchy only in WBS codes) now render bold WBS rollup
+>   bands (span = earliest start → latest finish of members) + WBS-depth indentation, honestly
+>   disclosed on-page; real-summary files untouched; sorting returns the flat list. XER
+>   importer sets outline_level from WBS path depth and registers "Activity ID" in
+>   custom_field_labels (it was un-groupable before).
+> - **Forecast group rollup** (`compute_group_rollup` + "Project rollup" panel): per-group
+>   exact SPI(t) weighted by to-go count re-runs IEAC(t); per-group throughput extrapolates
+>   each backlog with the LATEST group finish as the bottleneck answer; coverage +
+>   unforecastable groups disclosed; rendered beside the top-down figures.
+> - **Globe**: NASA wordmark removed (AI-status glow moved to a canvas drop-shadow); radius
+>   0.31·canvas + arc apogee 1.5R so the entire rocket arc stays in frame; globe rides at the
+>   top of the header row. Chromium: 9 checks + overlay-layering spot check, zero console
+>   errors.
+
+# (prior) Handoff — 2026-07-10 (unlimited scroll + evolution table Gantt + expand fill; ADR 0187)
+
+> ## STATUS — ADR-0187 scroll/evolution/expand/callout batch
 >
 > - **Unlimited right scroll**: `SFGantt.attachEdgeExtend` — every Gantt (Activities grid,
 >   trace, /path, corridor, SRA grid, evolution) extends its axis +60d when the pane hits its

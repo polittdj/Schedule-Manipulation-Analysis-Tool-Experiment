@@ -160,6 +160,80 @@
   let sortKey = "order"; // default = file/outline order (parents above children, MS-Project)
   let sortDesc = false;
   let maxOutline = 0; // MS-Project "show outline level N"; 0 = all levels
+  // WBS-derived hierarchy (operator 2026-07-10, ADR-0188): P6-exported .mpp/.xer files are
+  // often FLAT (no summary tasks, outline level 1 everywhere) with the hierarchy carried
+  // only in the WBS codes. When the file carries no real summaries, the grid derives the
+  // MS-Project view from the WBS: one bold rollup band per WBS prefix (span = earliest
+  // start -> latest finish of its activities — presentation only, clearly labeled) and
+  // detail rows indented by their WBS depth. Files WITH real summary tasks are untouched.
+  let hasRealSummaries = false;
+  let hasRealOutline = false;
+  function derivedMode() {
+    return !hasRealSummaries && !hasRealOutline && activities.some((a) => a.wbs);
+  }
+  function depthOf(act) {
+    if (act.__wbsRollup) return act.__depth;
+    if (!derivedMode()) return act.outline_level || 0;
+    return act.wbs ? String(act.wbs).split(".").length + 1 : 1;
+  }
+  function indentPx(act) {
+    return 6 + (derivedMode() ? Math.max(0, depthOf(act) - 1) : (act.outline_level || 0)) * 14;
+  }
+  // segment-aware WBS comparator (1.2 before 1.10) so bands group contiguously
+  function wbsCompare(a, b) {
+    const sa = String(a.wbs || "").split("."), sb = String(b.wbs || "").split(".");
+    const n = Math.max(sa.length, sb.length);
+    for (let i = 0; i < n; i++) {
+      if (sa[i] === undefined) return -1;
+      if (sb[i] === undefined) return 1;
+      const na = parseInt(sa[i], 10), nb = parseInt(sb[i], 10);
+      const bothNum = !isNaN(na) && !isNaN(nb) && /^\d/.test(sa[i]) && /^\d/.test(sb[i]);
+      const c = bothNum ? na - nb : sa[i] < sb[i] ? -1 : sa[i] > sb[i] ? 1 : 0;
+      if (c) return c;
+    }
+    return 0;
+  }
+  // interleave derived WBS rollup bands into the (already filtered) detail rows
+  function withWbsRollups(rows) {
+    const ordered = rows
+      .map((act, i) => [act, i])
+      .sort((x, y) => wbsCompare(x[0], y[0]) || x[1] - y[1])
+      .map((x) => x[0]);
+    const out = [];
+    const bands = {};
+    ordered.forEach((act) => {
+      const w = act.wbs ? String(act.wbs) : "";
+      if (w) {
+        const segs = w.split(".");
+        let prefix = "";
+        for (let d = 0; d < segs.length; d++) {
+          prefix = prefix ? prefix + "." + segs[d] : segs[d];
+          if (!bands[prefix]) {
+            bands[prefix] = {
+              __wbsRollup: true, __depth: d + 1, unique_id: "", name: "WBS " + prefix,
+              wbs: prefix, is_summary: true, start: null, finish: null,
+              percent_complete: null, outline_level: 0,
+            };
+            if (maxOutline === 0 || d + 1 <= maxOutline) out.push(bands[prefix]);
+          }
+        }
+      }
+      out.push(act);
+    });
+    ordered.forEach((act) => {
+      const w = act.wbs ? String(act.wbs) : "";
+      if (!w) return;
+      const segs = w.split(".");
+      let prefix = "";
+      for (let d = 0; d < segs.length; d++) {
+        prefix = prefix ? prefix + "." + segs[d] : segs[d];
+        const g = bands[prefix];
+        if (act.start && (!g.start || act.start < g.start)) g.start = act.start;
+        if (act.finish && (!g.finish || act.finish > g.finish)) g.finish = act.finish;
+      }
+    });
+    return out;
+  }
   let barDates = false; // MS-Project "dates on bars" — start/finish text at the bar ends
   // unlimited right scroll (ADR-0187): grown when a Gantt pane hits its right edge, so the
   // operator can keep scrolling into future time instead of stopping at the last bar
@@ -402,36 +476,44 @@
   // tasks are ALWAYS shown (they carry the WBS context) so the per-column filters only scope the
   // detail rows beneath them.
   function rowVisible(act, fields) {
-    if (maxOutline > 0 && (act.outline_level || 0) > maxOutline) return false;
+    if (maxOutline > 0 && (derivedMode() ? depthOf(act) : (act.outline_level || 0)) > maxOutline) return false;
     if (!includeCompleted() && (act.complete || (act.percent_complete || 0) >= 100)) return false;
     return act.is_summary || rowMatches(act, fields);
   }
 
   function renderBody(tbody, fields, axis, grid) {
-    const rows = activities
+    let rows = activities
       .filter((act) => rowVisible(act, fields))
       .sort((a, b) => {
         const x = valueOf(a, sortKey), y = valueOf(b, sortKey);
         const cmp = x < y ? -1 : x > y ? 1 : 0;
         return sortDesc ? -cmp : cmp;
       });
+    // flat file + default order -> derive the MS-Project hierarchy view from the WBS codes
+    if (derivedMode() && sortKey === "order") rows = withWbsRollups(rows);
     tbody.innerHTML = "";
     rows.forEach((act) => {
       const tr = el("tr");
-      tr.setAttribute("data-uid", act.unique_id); // Find-a-UID jumps to tr[data-uid]
-      if (act.is_critical) tr.className = "crit";
-      if (act.is_summary) tr.className = (tr.className + " sum").trim();
+      if (act.__wbsRollup) {
+        tr.className = "sum wbs-rollup";
+        tr.title = "Derived WBS rollup — this file carries no summary tasks; the band spans " +
+          "the earliest start to the latest finish of its activities (presentation only).";
+      } else {
+        tr.setAttribute("data-uid", act.unique_id); // Find-a-UID jumps to tr[data-uid]
+        if (act.is_critical) tr.className = "crit";
+        if (act.is_summary) tr.className = (tr.className + " sum").trim();
+      }
       fields.forEach((f) => {
         const td = el("td", { text: fmt(valueOf(act, f.key)) });
         if (f.key === "name") {
-          // MS-Project WBS indentation: each outline level indents the task name (any depth)
+          // MS-Project WBS indentation: outline level (or the derived WBS depth) indents
           td.className = "name-cell";
-          td.style.paddingLeft = 6 + (act.outline_level || 0) * 14 + "px";
+          td.style.paddingLeft = indentPx(act) + "px";
         }
         tr.appendChild(td);
       });
       if (axis) tr.appendChild(timelineCell(act, axis, grid));
-      tr.addEventListener("click", () => drill(act));
+      if (!act.__wbsRollup) tr.addEventListener("click", () => drill(act));
       tbody.appendChild(tr);
     });
     if (!rows.length) {
@@ -565,6 +647,14 @@
     table.appendChild(tbody);
     renderBody(tbody, fields, axis, gridLns);
     grid.innerHTML = "";
+    if (derivedMode() && sortKey === "order") {
+      const note = el("p", { class: "muted wbs-rollup-note" });
+      note.textContent = "Summary bars and indentation are derived from the WBS codes — this " +
+        "file carries no summary tasks or outline hierarchy of its own. Each bold band spans " +
+        "the earliest start to the latest finish of its activities (presentation only; no " +
+        "schedule data is invented). Sorting by a column returns the flat list.";
+      grid.appendChild(note);
+    }
     grid.appendChild(table);
     // scrolling to the pane's right edge extends the axis (unlimited right scroll, ADR-0187)
     if (window.SFGantt && SFGantt.attachEdgeExtend) {
@@ -795,7 +885,7 @@
     const sel = document.getElementById("gridOutline");
     if (!sel) return;
     let max = 0;
-    activities.forEach((a) => { if ((a.outline_level || 0) > max) max = a.outline_level || 0; });
+    activities.forEach((a) => { const d = derivedMode() ? depthOf(a) : (a.outline_level || 0); if (d > max) max = d; });
     sel.innerHTML = "";
     sel.appendChild(el("option", { value: "0", text: "All levels" }));
     for (let i = 1; i <= max; i++) sel.appendChild(el("option", { value: String(i), text: "Level " + i }));
@@ -806,6 +896,11 @@
     .then((data) => {
       activities = data.activities || [];
       statusDate = data.status_date || null;
+      hasRealSummaries = activities.some((a) => a.is_summary);
+      // outline data is "real" when it actually differentiates rows (a flat export writes
+      // the same level on every task, which carries no hierarchy)
+      const levels = new Set(activities.map((a) => a.outline_level || 0));
+      hasRealOutline = levels.size > 1;
       // the schedule's real calendars feed the Timescale dialog's Non-working-time tab
       if (window.SFTimescale) {
         const cals = [];
