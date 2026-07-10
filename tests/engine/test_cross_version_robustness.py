@@ -57,9 +57,12 @@ def test_xer_reads_stored_total_float_qc_d12() -> None:
         "%E\n"
     )
     sch = parse_xer_text(xer)
-    by_id = {t.unique_id: t for t in sch.tasks}
-    assert by_id[100].stored_total_float_minutes == 960  # 16 h * 60
-    assert by_id[101].stored_total_float_minutes is None  # absent stays None, never fabricated
+    # every task carries a unique task_code, so tasks are keyed by the stable
+    # Activity-ID identity (ADR-0185), not the renumbering-prone raw task_id
+    by_name = {t.name: t for t in sch.tasks}
+    assert by_name["Pour footings"].stored_total_float_minutes == 960  # 16 h * 60
+    # absent stays None, never fabricated
+    assert by_name["No float carried"].stored_total_float_minutes is None
 
 
 def test_logic_density_rounds_half_up_matching_the_ribbon_qc_d19() -> None:

@@ -1,6 +1,25 @@
-# Handoff — 2026-07-10 (UI interaction batch + CP-volatility exhibits layer; highest ADR 0184)
+# Handoff — 2026-07-10 (XER stable Activity-ID identity / CEI fix; highest ADR 0185)
 
-> ## STATUS (current) — ADR-0183 UI batch + ADR-0184 exhibits layer
+> ## STATUS (current) — ADR-0185 XER identity fix (CEI was flat 0.00 on XER series)
+>
+> - **Operator defect:** on a 7-file Primavera XER series the Trend page showed **CEI 0.00 in
+>   every period** while BEI/HMI read normal. Root cause: `importers/xer.py` keyed tasks by
+>   P6's internal `task_id`, which P6 **renumbers** on re-import/copy between monthly
+>   submittals — so CEI's prior→current `unique_id` join (the only cross-version headline
+>   index) missed every task and the genuine engine value was 0.00. This violated the identity
+>   law ("never the row id, which renumbers").
+> - **Fix (ADR-0185):** when every in-scope task carries a unique `task_code` (Activity ID —
+>   true of real P6 exports), `unique_id = CRC32(task_code) & 0x7FFFFFFF` (deterministic across
+>   exports); TASKPRED endpoints translate through the same map; all-or-nothing fallback to raw
+>   `task_id` on any missing/duplicate code or CRC collision (never mixed keying); every
+>   code-bearing task carries `("Activity ID", task_code)` in `custom_fields` for
+>   citations/grouping. Regression: CEI returns a real rate (with citable misses) across
+>   versions whose task_ids were renumbered; fixture pins re-derived via `_uid(task_code)`.
+>   Diffs/change-effects/trend joins on XER series align as a side benefit.
+
+# (prior) Handoff — 2026-07-10 (UI interaction batch + CP-volatility exhibits layer; ADR 0184)
+
+> ## STATUS — ADR-0183 UI batch + ADR-0184 exhibits layer
 >
 > - **ADR-0183 (operator work order):** show-completed toggle now scopes the whole Activities
 >   grid; MS-Project-style Task Information dialog on row click (Task.notes added — SCHEMA
