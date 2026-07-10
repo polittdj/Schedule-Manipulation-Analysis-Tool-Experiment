@@ -94,7 +94,6 @@ def test_nav_is_grouped_by_handbook_function(client: TestClient) -> None:
         "/cei",
         "/curves",
         "/scurve",
-        "/phases",
         "/forecast",
         "/risks",
         "/sra",

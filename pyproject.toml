@@ -51,6 +51,7 @@ Documentation = "https://github.com/polittdj/schedule-manipulation-analysis-tool
 [project.scripts]
 # One-command launcher: starts the local dashboard on 127.0.0.1 and opens the browser.
 schedule-forensics = "schedule_forensics.launcher:main"
+schedule-forensics-report = "schedule_forensics.exhibits.cli:main"
 
 [project.optional-dependencies]
 # live HUD telemetry enhancer (CPU%/temps on Windows/macOS); LOCAL reads only — never network

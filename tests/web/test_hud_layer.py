@@ -47,7 +47,6 @@ def test_every_major_page_carries_a_decision_explainer() -> None:
         "/cei",
         "/curves",
         "/scurve",
-        "/phases",
         "/forecast",
         "/evm",
         "/resources",

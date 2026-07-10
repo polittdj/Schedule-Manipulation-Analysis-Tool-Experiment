@@ -1,4 +1,26 @@
-# Handoff — 2026-07-10 (Performance Analysis Summary page; highest ADR 0182)
+# Handoff — 2026-07-10 (UI interaction batch + CP-volatility exhibits layer; highest ADR 0184)
+
+> ## STATUS (current) — ADR-0183 UI batch + ADR-0184 exhibits layer
+>
+> - **ADR-0183 (operator work order):** show-completed toggle now scopes the whole Activities
+>   grid; MS-Project-style Task Information dialog on row click (Task.notes added — SCHEMA
+>   2.6.0); dependency link lines + toggle; grid/timeline gridlines; column mover on every
+>   gantt-grid header; Year Phases page REMOVED; EVM gained the ADR-0179 per-field grouping
+>   panel; Resources drill gained persisted Columns + Excel; an always-on source-file banner
+>   on EVERY page + per-step file captions on animated visuals; Performance Summary animates
+>   through the loaded files at Mission-Control tile size; export routes for evm / scurve /
+>   resources / risks / mission close the exports-everywhere sweep.
+> - **ADR-0184 (SMAT master prompt):** new `exhibits/` package — pydantic payload contract
+>   (six-state cells, transitions, manifests), stdlib-SVG static pack EX-00…EX-08 (literal-hex
+>   palette, provenance footers, grayscale-safe barcode, rebaseline breaks, CIC-null gaps),
+>   per-exhibit CSVs, self-contained report.html, and the `schedule-forensics-report` headless
+>   CLI (exit codes 0/2/3/4/5, deterministic run_id, double-run byte-identical). CP-basis
+>   engine artifacts (CIC, τ-b, null model, recompute deltas) DO NOT EXIST YET → fixtures-first,
+>   live wiring PARKED in `audit/PARK-LIST.md` (P1–P4). Interactive volatility page: heatmap
+>   re-sorted by instability (was tenure — inverted purpose), gauge bands labeled operator-set
+>   guidance on the chart face. `audit/` carries SESSION-STATE / VERIFICATION-REPORT / PARK-LIST.
+
+# (prior) Handoff — 2026-07-10 (Performance Analysis Summary page; ADR 0182)
 
 > ## STATUS (current) — ADR-0182 Performance Analysis Summary (G1–G7 workbook recreation)
 >

@@ -550,6 +550,7 @@ def _parse_task(
             constraint_type=constraint_type,
             constraint_date=constraint_date,
             deadline=parse_datetime(_text(task_el, "Deadline")),
+            notes=_text(task_el, "Notes"),
             percent_complete=parse_percent(_text(task_el, "PercentComplete")),
             physical_percent_complete=clamped_percent_or_none(
                 _text(task_el, "PhysicalPercentComplete")

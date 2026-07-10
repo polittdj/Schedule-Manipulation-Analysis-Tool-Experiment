@@ -4770,3 +4770,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Chromium-verified on the 4-version Hard_File series: 14 charts paint, zero console errors,
   quad BEI 0.27/0.59/0.47 = Fuse-pinned; to-go ratios 1.0->3.09 with critical share .31->.72
   (the series' bow wave, quantified). Highest ADR = 0182.
+
+### 2026-07-10 (cont.) — UI interaction batch + CP-volatility exhibits layer (ADR-0183/0184)
+- ADR-0183: fixed the show-completed toggle (now scopes the whole Activities grid + Gantt);
+  MS-Project-style Task Information dialog on any row click (7 tabs, provenance footer;
+  Task.notes added to the model - MSPDI <Notes>, JSON round-trip, SCHEMA 2.5.0->2.6.0;
+  _activity_rows now carries actuals/constraints/work/cost/assignments/preds/succs); SVG
+  dependency link lines + "links" toggle; solid grid + dotted timeline row gridlines;
+  SFGantt.attachColumnMovers (hover grip -> move left/right, sf-colmove event, Activities
+  grid persists order); Year Phases page removed end to end; EVM gained the ADR-0179
+  per-field grouping panel; Resources drill gained a persisted Columns picker + Excel export
+  (/export/resource-drill); always-on source-file banner on EVERY page (+ per-step file
+  captions across animated visuals); Performance Summary: per-version series + master
+  Prev/Play/Next stepper (file captioned each step, quads ring the current file's dot) at
+  Mission-Control tile size; new export routes evm/scurve/resources/risks/mission.
+- ADR-0184 (operator's SMAT master prompt): new src/schedule_forensics/exhibits/ - pydantic
+  payload contract (six-state cells/transitions/manifest, loud validation, canonical
+  serialization, timestamp-free run_id), stdlib-SVG static pack EX-00..EX-08 (literal-hex
+  palette, provenance footer in every figure, grayscale-safe six-state barcode with <pattern>
+  hatching, rebaseline line-breaks, CIC-null gaps with reasons), per-exhibit CSV siblings,
+  zero-script report.html, schedule-forensics-report CLI (exit codes 0/2/3/4/5 tested,
+  double-run byte-identical). CP-basis engine artifacts absent at HEAD (verified) ->
+  fixtures-first, live wiring PARKED (audit/PARK-LIST.md P1-P4; --inputs runs exit 4
+  honestly). Interactive: heatmap re-sorted by instability (flips; tenure sort inverted the
+  exhibit), gauge honesty caveat on the chart face, SSI gate test for new code. exhibits/
+  coverage 96.6%. Chromium-verified the whole batch on the 4-version Hard_File series with
+  zero console errors. Highest ADR = 0184.

@@ -428,6 +428,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
             Assignment(resource_id=21, work_minutes=960, units=0.5, remaining_work_minutes=180),
         ),
         custom_fields=(("CA-WBS", "X.1"), ("Text20", "note")),
+        notes="Constraint added per CE direction 7/1; see change log.",
     )
     other = Task(unique_id=12, name="Follow-on", duration_minutes=480)
     # milestone/summary carriers: contradictory with the maximal task's flags, so they ride on

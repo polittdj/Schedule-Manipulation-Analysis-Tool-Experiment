@@ -148,12 +148,6 @@ from schedule_forensics.engine.metrics.performance_summary import (
     workoff_burden,
 )
 from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
-from schedule_forensics.engine.metrics.year_phases import (
-    YEAR_BASES,
-    YearPhaseRow,
-    YearPhases,
-    compute_year_phases,
-)
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
@@ -362,7 +356,7 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 <nav>
 <span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
 <span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a><a href="/volatility">CP Volatility</a><a href="/performance">Performance Summary</a></span>
-<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/phases">Year Phases</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
+<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
 <span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a><a href="/integrity">Schedule Integrity</a></span>
 <span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
 <span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
@@ -1115,13 +1109,6 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "Use the gap and its growth rate to justify (or refute) a recovery plan: a widening "
         "gap with a flat actual curve will not be closed by optimism.",
     ),
-    "Year Phases": (
-        "The schedule cut into calendar-year phases: how much work each year carries, per version.",
-        "Each band is a year's share of activities/duration. Watch weight shifting to later "
-        "years across versions — the classic sign of work being pushed right.",
-        "If next year keeps absorbing this year's work, capacity is oversubscribed: re-baseline "
-        "honestly or add capacity, and say so in the next review.",
-    ),
     "Forecast": (
         "Multiple engine-computed finish forecasts side by side: pure-logic CPM, the stored "
         "as-scheduled finish, and performance-adjusted projections.",
@@ -1240,6 +1227,29 @@ def _page_explainer(title: str) -> str:
     return _explain(*entry)
 
 
+def _global_sources_banner(state: SessionState) -> str:
+    """The ALWAYS-ON provenance banner every page carries (operator 2026-07-10: "NO MATTER
+    WHAT ... I want them to see clearly what file it is being pulled from"): the loaded
+    file(s), oldest first, under the page header. Single-file pages and per-visual captions
+    still name their specific file; animated visuals caption the file per step on top of this."""
+    try:
+        schedules = [s for _k, s in state.ordered_versions()]
+    except Exception:
+        return ""
+    if not schedules:
+        return ""
+    names = [_e(s.source_file or s.name) for s in schedules]
+    if len(names) == 1:
+        inner = f"All data on this page is computed from: <b>{names[0]}</b>"
+    else:
+        inner = (
+            f"Data on this page is computed from the {len(names)} loaded files "
+            "(oldest first): <b>" + "</b> &rarr; <b>".join(names) + "</b> — each visual/table "
+            "names its own file scope, and animated visuals caption the file shown at each step."
+        )
+    return f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
+
+
 def _page(
     state: SessionState,
     title: str,
@@ -1279,6 +1289,7 @@ def _page(
                 body=(
                     _filter_banner(state)
                     + _endpoint_banner(state)
+                    + _global_sources_banner(state)
                     + _page_explainer(title)
                     + body
                     + _ask_panel_html(state, ask_schedule)
@@ -1826,68 +1837,6 @@ def create_app(
             )
         )
 
-    @app.get("/phases", response_class=HTMLResponse)
-    def phases_view(name: str = Query(""), basis: str = Query("finish")) -> HTMLResponse:
-        st = session()
-        if not st.schedules:
-            return _page(
-                st,
-                "Year Phases",
-                "<div class=panel>Load a schedule to see the per-year phase view.</div>",
-            )
-        keys = [k for k, _ in st.ordered_versions()]
-        current = name if name in st.schedules else keys[-1]
-        yp = compute_year_phases(st.scope(st.schedules[current]), basis)
-        return _page(st, "Year Phases", _phases_body(keys, current, yp), ask_schedule=current)
-
-    @app.get("/api/phases")
-    def phases_json(basis: str = Query("finish")) -> JSONResponse:
-        """Per-version year-phase distribution on a LOCKED axis, for the animated stepper — every
-        loaded version (oldest first) binned on the same basis, aligned to the union of years."""
-        st = session()
-        if basis not in YEAR_BASES:
-            basis = "finish"
-        years: set[int] = set()
-        max_total = 1
-        per: list[tuple[str, str | None, int, dict[int, YearPhaseRow]]] = []
-        for _key, raw in st.ordered_versions():
-            yp = compute_year_phases(st.scope(raw), basis)
-            rows = {r.year: r for r in yp.rows}
-            years.update(rows)
-            for r in yp.rows:
-                max_total = max(max_total, r.total)
-            status = raw.status_date.date().isoformat() if raw.status_date else None
-            per.append((raw.source_file or raw.name, status, yp.undated, rows))
-        all_years = sorted(years)
-        versions = [
-            {
-                "label": label,
-                "status_date": status,
-                "undated": undated,
-                "rows": [
-                    {
-                        "year": y,
-                        "total": rows[y].total if y in rows else 0,
-                        "complete": rows[y].complete if y in rows else 0,
-                        "in_progress": rows[y].in_progress if y in rows else 0,
-                        "planned": rows[y].planned if y in rows else 0,
-                        "milestones": rows[y].milestones if y in rows else 0,
-                    }
-                    for y in all_years
-                ],
-            }
-            for (label, status, undated, rows) in per
-        ]
-        return JSONResponse(
-            {
-                "basis": basis,
-                "basis_label": YEAR_BASES[basis],
-                "years": all_years,
-                "max_total": max_total,
-                "versions": versions,
-            }
-        )
-
     @app.get("/mission", response_class=HTMLResponse)
     def mission_view() -> HTMLResponse:
         st = session()
@@ -1898,7 +1847,9 @@ def create_app(
                 "<div class=panel>Load a schedule to populate the visual wall.</div>",
             )
         return _page(
-            st, "Mission Control", _sources_line(st.ordered()) + _mission_body(st.target_uid)
+            st,
+            "Mission Control",
+            _export_bar("mission") + _sources_line(st.ordered()) + _mission_body(st.target_uid),
         )
 
     @app.get("/compare", response_class=HTMLResponse)
@@ -2200,14 +2151,21 @@ def create_app(
         )
 
     @app.get("/evm", response_class=HTMLResponse)
-    def evm_view() -> HTMLResponse:
+    def evm_view(group_field: str = Query("")) -> HTMLResponse:
         st = session()
-        return _page(st, "EVM", _evm_body(st))
+        # per-field metric grouping, same machinery as /forecast (operator 2026-07-10: the
+        # ADR-0179 forecast-calculation treatment applies to the EVM metrics too — per-group
+        # indices with honest N/A, never an imputed figure)
+        schedules, _cpms, _skipped = _solvable_versions()
+        panel = _field_forecast_panel(schedules, group_field, action="/evm") if schedules else ""
+        bar = _export_bar("evm") if schedules else ""
+        return _page(st, "EVM", bar + _evm_body(st) + panel)
 
     @app.get("/resources", response_class=HTMLResponse)
     def resources_view(bucket: str = Query("month")) -> HTMLResponse:
         st = session()
-        return _page(st, "Resources", _resources_body(st, bucket))
+        bar = _export_bar(f"resources?bucket={bucket}") if st.schedules else ""
+        return _page(st, "Resources", bar + _resources_body(st, bucket))
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None), uids: str = Query("")) -> HTMLResponse:
@@ -2265,7 +2223,8 @@ def create_app(
         return _page(
             st,
             "S-Curve",
-            _scurve_body(sc, _scurve_filter_fields(st.ordered()), track_uids=track),
+            _export_bar("scurve" + (f"?uids={uids}" if uids else ""))
+            + _scurve_body(sc, _scurve_filter_fields(st.ordered()), track_uids=track),
         )
 
     @app.get("/api/scurve")
@@ -2385,6 +2344,164 @@ def create_app(
             (Table("CP volatility", headers, rows),),
         )
         return _export_response(fmt, tableset, "cp-volatility")
+
+    @app.get("/export/{fmt}/evm")
+    def export_evm(fmt: str) -> Response:
+        """Every loaded version's EVM indices + schedule variance + baseline compliance
+        (operator 2026-07-10: every graph/table exports to Excel)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if not schedules:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        idx_keys = ("spi_t", "spi_t_acumen", "cei_finish", "cei_start", "spi", "cpi", "tcpi")
+        rows = []
+        for s, c in zip(schedules, cpms, strict=True):
+            indices = compute_evm_indices(s, c)
+            sv = compute_schedule_variance(s, non_summary(s))
+            rows.append(
+                (
+                    s.source_file or s.name,
+                    *(
+                        (indices[k].value if k in indices and indices[k].value is not None else "")
+                        for k in idx_keys
+                    ),
+                    sv.svt_days if sv.svt_days is not None else "",
+                    sv.es_days if sv.es_days is not None else "",
+                )
+            )
+        headers = ("File", *(k.upper() for k in idx_keys), "SVt (wd)", "ES (wd)")
+        tableset = TableSet("EVM indices per version", (Table("EVM", headers, tuple(rows)),))
+        return _export_response(fmt, tableset, "evm")
+
+    @app.get("/export/{fmt}/scurve")
+    def export_scurve(fmt: str, uids: str = Query("")) -> Response:
+        """The S-Curve dataset (per version x month cumulative planned/actual %) as a file."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        versions = st.ordered()
+        if not versions:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        try:
+            sc = compute_s_curve(versions, track_uids=_parse_track_uids(uids))
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        rows = []
+        for v in sc.versions:
+            for i, month in enumerate(sc.month_labels):
+                rows.append((v.label, month, v.planned[i], v.actual[i]))
+        tableset = TableSet(
+            "S-Curve — cumulative planned vs actual (%)",
+            (
+                Table(
+                    "S-Curve",
+                    ("File", "Month", "Planned cum %", "Actual/forecast cum %"),
+                    tuple(rows),
+                ),
+            ),
+        )
+        return _export_response(fmt, tableset, "scurve")
+
+    @app.get("/export/{fmt}/resources")
+    def export_resources(fmt: str, bucket: str = Query("month")) -> Response:
+        """The resource-loading dataset (per resource x period load/capacity/over) + roster."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        chosen = _latest_solvable(st)
+        if chosen is None:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        _key, sch, cpm = chosen
+        bucket = bucket if bucket in ("day", "week", "month") else "month"
+        rl = compute_resource_loading(sch, cpm, bucket)
+        mpd = rl.working_minutes_per_day or 480
+        series_rows = []
+        for r in rl.resources:
+            for per in r.series:
+                series_rows.append(
+                    (
+                        r.name,
+                        per.period,
+                        round(per.load_minutes / mpd, 2),
+                        round(per.capacity_minutes / mpd, 2),
+                        "yes" if per.over_allocated else "",
+                    )
+                )
+        roster_rows = tuple(
+            (
+                r.name,
+                r.type.title(),
+                r.max_units,
+                round(r.total_work_minutes / mpd, 1),
+                r.task_count,
+                r.peak_period or "",
+                len(r.over_allocated_periods),
+            )
+            for r in rl.resources
+        )
+        tableset = TableSet(
+            f"Resource loading — {sch.source_file or sch.name} ({bucket})",
+            (
+                Table(
+                    "Loading",
+                    ("Resource", "Period", "Load (d)", "Capacity (d)", "Over-allocated"),
+                    tuple(series_rows),
+                ),
+                Table(
+                    "Roster",
+                    (
+                        "Resource",
+                        "Type",
+                        "Max units",
+                        "Work (d)",
+                        "Tasks",
+                        "Peak period",
+                        "Over-allocated periods",
+                    ),
+                    roster_rows,
+                ),
+            ),
+        )
+        return _export_response(fmt, tableset, "resources")
+
+    @app.get("/export/{fmt}/risks")
+    def export_risks(fmt: str) -> Response:
+        """The Risks & Opportunities findings (severity / category / finding / citations)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        solv: list[tuple[str, Schedule, _Analysis]] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                continue
+            solv.append((key, st.scope(raw), a))
+        if not solv:
+            return JSONResponse({"error": "load an analyzable schedule first"}, status_code=422)
+        _key, current, cur_an = solv[-1]
+        prior = solv[-2][1] if len(solv) >= 2 else None
+        prior_cpm = solv[-2][2].cpm if len(solv) >= 2 else None
+        findings = recommend(
+            current, prior, current_cpm=cur_an.cpm, prior_cpm=prior_cpm, target_uid=st.target_uid
+        )
+        tableset = TableSet("Risks, issues & opportunities", (findings_table(findings),))
+        return _export_response(fmt, tableset, "risks")
+
+    @app.get("/export/{fmt}/mission")
+    def export_mission(fmt: str) -> Response:
+        """The Mission Control wall's underlying series: quality trend + critical-path
+        evolution (each tile's own page carries its full export too)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        schedules, cpms, _skipped = _solvable_versions()
+        if len(schedules) < 2:
+            return JSONResponse({"error": "need at least two versions"}, status_code=422)
+        tables: list[Table] = list(trend_tables(compute_quality_trend(schedules, cpms)))
+        tables.extend(path_evolution_tables(compute_path_evolution(schedules, cpms)))
+        tableset = TableSet("Mission Control — underlying series", tuple(tables))
+        return _export_response(fmt, tableset, "mission")
 
     @app.get("/performance", response_class=HTMLResponse)
     def performance_view(file: str = Query("")) -> HTMLResponse:
@@ -3048,6 +3165,77 @@ def create_app(
         )
         return _export_response(fmt, tableset, "ribbon-drill")
 
+    @app.get("/export/{fmt}/resource-drill")
+    def export_resource_drill(
+        fmt: str,
+        resource: int = Query(...),
+        period: str = Query(...),
+        bucket: str = Query("month"),
+        cols: str = Query(""),
+    ) -> Response:
+        """The activities behind one resource-loading bar (resource x period), with the
+        operator's extra drill columns — the Resources click-through's Excel export
+        (operator 2026-07-10)."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        chosen = _latest_solvable(st)
+        if chosen is None:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        _key, sch, cpm = chosen
+        bucket = bucket if bucket in ("day", "week", "month") else "month"
+        rl = compute_resource_loading(sch, cpm, bucket)
+        res = next((r for r in rl.resources if r.resource_id == resource), None)
+        if res is None:
+            return JSONResponse({"error": "unknown resource"}, status_code=422)
+        per = next((p for p in res.series if p.period == period), None)
+        if per is None:
+            return JSONResponse({"error": "unknown period"}, status_code=422)
+        mpd = rl.working_minutes_per_day or 480
+        analysis = st.analysis_for(_key, sch)
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = (
+            "UID",
+            "Name",
+            f"Work (d) this {bucket}",
+            "Duration (d)",
+            "% complete",
+            "Start",
+            "Finish",
+            *extra,
+        )
+
+        def _cell(value: object) -> str | int | float | None:
+            return value if isinstance(value, str | int | float) or value is None else str(value)
+
+        by_uid: dict[int, dict[str, Any]] = {}
+        for a in analysis.activity_rows:
+            uid_v = a.get("unique_id")
+            if isinstance(uid_v, int):
+                by_uid[uid_v] = cast(dict[str, Any], a)
+        body = []
+        for uid, mins in per.contributors:
+            a = by_uid.get(uid, {})
+            custom_obj = a.get("custom")
+            custom: dict[str, object] = custom_obj if isinstance(custom_obj, dict) else {}
+            body.append(
+                (
+                    uid,
+                    _cell(a.get("name", f"UID {uid}")),
+                    round(mins / mpd, 2),
+                    _cell(a.get("duration_days")),
+                    _cell(a.get("percent_complete")),
+                    _cell(a.get("start")),
+                    _cell(a.get("finish")),
+                    *(_cell(a.get(c, custom.get(c))) for c in extra),
+                )
+            )
+        tableset = TableSet(
+            f"{sch.source_file or sch.name} — {res.name} @ {period}",
+            (Table(f"Resource drill — {res.name} {period}", headers, tuple(body)),),
+        )
+        return _export_response(fmt, tableset, "resource-drill")
+
     @app.get("/export/{fmt}/activities/{name}")
     def export_activities(
         fmt: str, name: str, uids: str = Query(""), cols: str = Query("")
@@ -3502,7 +3690,11 @@ def create_app(
         # local-AI polish (when a model is active) is fetched asynchronously by ai_polish.js via
         # /api/ai/narrative and swapped in. The old synchronous per-statement generate on page load
         # made this page hang (effectively "won't open") on big workbooks with a slow local model.
-        body = _skipped_notice(skipped) + _risks_body(current, findings, cur_an.narrative, key)
+        body = (
+            _export_bar("risks")
+            + _skipped_notice(skipped)
+            + _risks_body(current, findings, cur_an.narrative, key)
+        )
         return _page(st, "Risks & Opportunities", body, ask_schedule=key)
 
     @app.get("/sra", response_class=HTMLResponse)
@@ -4972,7 +5164,9 @@ versions are loaded.</p>
 {_forecast_ruler(fc)}</div>"""
 
 
-def _field_forecast_panel(schedules: list[Schedule], group_field: str) -> str:
+def _field_forecast_panel(
+    schedules: list[Schedule], group_field: str, action: str = "/forecast"
+) -> str:
     """Per-field group execution metrics on /forecast (operator 2026-07-09, ADR-0179): pick
     any standard or custom field (e.g. a CAM code) and every version's tasks are grouped by
     its values (plus NA for unassigned), each group scored with the SAME engine functions the
@@ -4992,7 +5186,7 @@ def _field_forecast_panel(schedules: list[Schedule], group_field: str) -> str:
 figures use — <b>BEI</b>, <b>HMI</b>, <b>CEI (Finish / Start)</b>, and both <b>SPI(t)</b>
 methods — computed over <b>only that group's tasks</b>. Activities carrying no value for the
 field are grouped as <b>NA</b>.</p>
-<form method=get action=/forecast class=viz-controls>
+<form method=get action={action} class=viz-controls>
 <label>Group by <select name=group_field data-no-i18n>{opts}</select></label>
 <button type=submit>Compute</button>
 {f'<a class=btn-link href="/export/xlsx/field-forecast?field={_e(group_field)}">&#11015; Excel</a>' if group_field else ""}
@@ -6117,6 +6311,7 @@ secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
 <button id=ganttBtn type=button>Trace</button>
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
+<label><input id=showLinks type=checkbox checked> links</label>
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
 <label>Scale <input id=vizZoom type=range min=0.2 max=40 step=0.05 value=8 title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
 <button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
@@ -6439,53 +6634,6 @@ themselves are engine-computed and cited.</p></div>
     )
 
 
-def _phases_body(keys: list[str], current: str, yp: YearPhases) -> str:
-    """Year Trend / Phase: an animated stepper across versions (the presentation) + a per-version
-    detail table. The stepper (phases.js → /api/phases) animates the per-year makeup across every
-    loaded version on a locked axis; the table gives the picked version's exact numbers."""
-    sched_opts = "".join(
-        f'<option value="{_e(k)}"{" selected" if k == current else ""}>{_e(k)}</option>'
-        for k in keys
-    )
-    basis_opts = "".join(
-        f'<option value="{b}"{" selected" if b == yp.basis else ""}>{_e(label)}</option>'
-        for b, label in YEAR_BASES.items()
-    )
-    table_rows = "".join(
-        f"<tr><td>{r.year}</td><td>{r.total}</td><td>{r.complete}</td>"
-        f"<td>{r.in_progress}</td><td>{r.planned}</td><td>{r.milestones}</td></tr>"
-        for r in yp.rows
-    )
-    undated = (
-        f" &middot; {yp.undated} activit{'y' if yp.undated == 1 else 'ies'} have no "
-        f"{_e(YEAR_BASES[yp.basis]).lower()} date (not binned)"
-        if yp.undated
-        else ""
-    )
-    return f"""
-<div class=panel><h2>Year Trend / Phase &mdash; activities per calendar year</h2>
-<p class=muted>How the work spreads across the program's years (complete / in-progress / planned).
-<b>Play</b> the stepper to watch the distribution shift across every loaded version on a locked
-axis; <b>Bin by</b> keys each year on a different date &mdash; the right basis is a judgement call,
-so choose the one your analysis needs.</p>
-<form method=get action="/phases" class=viz-controls>
-<label>Detail schedule <select name=name onchange="this.form.submit()">{sched_opts}</select></label>
-<label>Bin by <select name=basis onchange="this.form.submit()">{basis_opts}</select></label>
-<noscript><button type=submit>Update</button></noscript>
-</form>
-<div class=mini-steps><button type=button id=phasesPrev>&#8249;</button>
-<button type=button id=phasesPlay>&#9654;</button>
-<button type=button id=phasesNext>&#8250;</button></div>
-<div id=phasesLabel class=muted></div>
-<div class=chart-host id=phasesChart data-basis="{_e(yp.basis)}"></div></div>
-<div class=panel><h3>Detail &mdash; {_e(current)}</h3>
-<p class=muted>Binned by <b>{_e(YEAR_BASES[yp.basis])}</b>{undated}.</p>
-<table><tr><th scope=col>Year</th><th scope=col>Activities</th><th scope=col>Complete</th>
-<th scope=col>In progress</th><th scope=col>Planned</th><th scope=col>Milestones</th></tr>
-{table_rows}</table></div>
-<script src="/static/phases.js"></script>"""
-
-
 def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
     """The per-view 'download as Excel / Word' links (local files only — Law 1)."""
     a = f' id="{xlsx_id}"' if xlsx_id else ""
@@ -6556,77 +6704,120 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     """Per-activity rows for the interactive grid + Gantt (float in days, citable metadata).
 
     Scheduled activities carry their CPM floats; WBS summary rows (which the CPM excludes)
-    are included too so the Gantt reads like the source plan, with null floats.
+    are included too so the Gantt reads like the source plan, with null floats. Every row also
+    carries the FULL Task-Information payload (operator 2026-07-10, ADR-0183): actuals,
+    constraint + deadline, work/cost, predecessors/successors with type + lag, resource
+    assignments with units/work, the task note, and the mode flags — everything MS Project's
+    Task Information dialog shows, so the row-click popup never has to guess.
     """
     by_id = sch.tasks_by_id
-    per_day = sch.calendar.working_minutes_per_day
+    per_day = sch.calendar.working_minutes_per_day or 480
+    res_by_id = {r.unique_id: r for r in sch.resources}
+    preds: dict[int, list[dict[str, object]]] = {}
+    succs: dict[int, list[dict[str, object]]] = {}
+    for rel in sch.relationships:
+        lag_days = round(rel.lag_minutes / per_day, 1)
+        p_t = by_id.get(rel.predecessor_id)
+        s_t = by_id.get(rel.successor_id)
+        preds.setdefault(rel.successor_id, []).append(
+            {
+                "uid": rel.predecessor_id,
+                "name": p_t.name if p_t else "",
+                "type": rel.type.value,
+                "lag_days": lag_days,
+            }
+        )
+        succs.setdefault(rel.predecessor_id, []).append(
+            {
+                "uid": rel.successor_id,
+                "name": s_t.name if s_t else "",
+                "type": rel.type.value,
+                "lag_days": lag_days,
+            }
+        )
     # file order (the task list order MS Project displays) so the Gantt nests parents above
     # their children regardless of UID numbering; the indent itself comes from outline_level.
     order = {t.unique_id: i for i, t in enumerate(sch.tasks)}
+
+    def _days(minutes: int | None) -> float | None:
+        return None if minutes is None else round(minutes / per_day, 2)
+
+    def _row(task: Task) -> dict[str, object]:
+        assignments = []
+        for a in task.resource_assignments:
+            res = res_by_id.get(a.resource_id)
+            assignments.append(
+                {
+                    "resource": res.name if res else f"Resource {a.resource_id}",
+                    "units": a.units,
+                    "work_days": _days(a.work_minutes),
+                    "remaining_work_days": _days(a.remaining_work_minutes),
+                }
+            )
+        return {
+            "unique_id": task.unique_id,
+            "name": task.name,
+            "wbs": task.wbs or "",
+            "start": _iso_date(task.start),
+            "finish": _iso_date(task.finish),
+            "baseline_start": _iso_date(task.baseline_start),
+            "baseline_finish": _iso_date(task.baseline_finish),
+            "actual_start": _iso_date(task.actual_start),
+            "actual_finish": _iso_date(task.actual_finish),
+            "deadline": _iso_date(task.deadline),
+            "constraint_type": task.constraint_type.value,
+            "constraint_date": _iso_date(task.constraint_date),
+            "duration_days": round(
+                task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
+            ),
+            "remaining_duration_days": _days(task.remaining_duration_minutes),
+            "baseline_duration_days": _days(task.baseline_duration_minutes),
+            "work_days": _days(task.work_minutes),
+            "actual_work_days": _days(task.actual_work_minutes),
+            "cost": task.cost,
+            "actual_cost": task.actual_cost,
+            "budgeted_cost": task.budgeted_cost,
+            "percent_complete": task.percent_complete,
+            "physical_percent_complete": task.physical_percent_complete,
+            "complete": task.is_complete or task.actual_finish is not None,
+            "is_milestone": task.is_milestone,
+            "is_summary": task.is_summary,
+            "is_manual": task.is_manual,
+            "is_active": task.is_active,
+            "is_estimated_duration": task.is_estimated_duration,
+            "duration_is_elapsed": task.duration_is_elapsed,
+            "outline_level": task.outline_level,
+            "order": order[task.unique_id],
+            "resource_names": ", ".join(task.resource_names),
+            "assignments": assignments,
+            "predecessors": preds.get(task.unique_id, []),
+            "successors": succs.get(task.unique_id, []),
+            "notes": task.notes,
+            "source_file": sch.source_file,
+            # mapped .mpp custom/extended fields populated on this task (label -> value); the
+            # grid offers each as an optional column (ADR-0088 mapping -> ADR-0093 display)
+            "custom": dict(task.custom_field_map),
+        }
+
     rows: list[dict[str, object]] = []
     for fr in analyze_floats(sch, cpm):
         task = by_id[fr.unique_id]
-        rows.append(
-            {
-                "unique_id": fr.unique_id,
-                "name": task.name,
-                "wbs": task.wbs or "",
-                "start": _iso_date(task.start),
-                "finish": _iso_date(task.finish),
-                "baseline_start": _iso_date(task.baseline_start),
-                "baseline_finish": _iso_date(task.baseline_finish),
-                "duration_days": round(
-                    task.duration_minutes / (1440 if task.duration_is_elapsed else per_day), 1
-                )
-                if per_day
-                else 0.0,
-                "total_float_days": float(fr.total_float_days),
-                "free_float_days": float(fr.free_float_days),
-                "percent_complete": task.percent_complete,
-                "complete": task.is_complete or task.actual_finish is not None,
-                # progress-aware effective critical (stored flag first, ADR-0150) — what MS
-                # Project shows; the pure-logic fr.is_critical collapses on a progressed file
-                "is_critical": is_effective_critical(
-                    task, float(fr.total_float_days) * (per_day or 480)
-                ),
-                "is_milestone": task.is_milestone,
-                "is_summary": False,
-                "outline_level": task.outline_level,
-                "order": order[fr.unique_id],
-                "resource_names": ", ".join(task.resource_names),
-                "source_file": sch.source_file,
-                # mapped .mpp custom/extended fields populated on this task (label -> value); the
-                # grid offers each as an optional column (ADR-0088 mapping -> ADR-0093 display)
-                "custom": dict(task.custom_field_map),
-            }
-        )
+        row = _row(task)
+        row["is_summary"] = False
+        row["total_float_days"] = float(fr.total_float_days)
+        row["free_float_days"] = float(fr.free_float_days)
+        # progress-aware effective critical (stored flag first, ADR-0150) — what MS Project
+        # shows; the pure-logic fr.is_critical collapses on a progressed file
+        row["is_critical"] = is_effective_critical(task, float(fr.total_float_days) * per_day)
+        rows.append(row)
     for task in sch.tasks:
         if not task.is_summary:
             continue
-        rows.append(
-            {
-                "unique_id": task.unique_id,
-                "name": task.name,
-                "wbs": task.wbs or "",
-                "start": _iso_date(task.start),
-                "finish": _iso_date(task.finish),
-                "baseline_start": _iso_date(task.baseline_start),
-                "baseline_finish": _iso_date(task.baseline_finish),
-                "duration_days": round(task.duration_minutes / per_day, 1) if per_day else 0.0,
-                "total_float_days": None,
-                "free_float_days": None,
-                "percent_complete": task.percent_complete,
-                "complete": task.is_complete or task.actual_finish is not None,
-                "is_critical": False,
-                "is_milestone": task.is_milestone,
-                "is_summary": True,
-                "outline_level": task.outline_level,
-                "order": order[task.unique_id],
-                "resource_names": ", ".join(task.resource_names),
-                "source_file": sch.source_file,
-                "custom": dict(task.custom_field_map),
-            }
-        )
+        row = _row(task)
+        row["total_float_days"] = None
+        row["free_float_days"] = None
+        row["is_critical"] = False
+        rows.append(row)
     rows.sort(key=lambda r: cast(int, r["order"]))
     return rows
 
@@ -10055,6 +10246,9 @@ def _resource_loading_json(rl: ResourceLoading, sch: Schedule) -> str:
     by_id = sch.tasks_by_id
     payload = {
         "granularity": rl.granularity,
+        # provenance + drill wiring (operator 2026-07-10): the drill fetches field data from
+        # /api/analysis/<source_file> and builds its Excel link against the same file
+        "source_file": sch.source_file or sch.name,
         "resources": [
             {
                 "id": r.resource_id,
@@ -10966,6 +11160,36 @@ def _performance_data(
     burden = workoff_burden(sch)
     drm = duration_ratio(sch)
 
+    # per-version G1-G5 series for the master stepper (operator 2026-07-10: "automate" the
+    # Performance visuals like the Mission wall) — each animation step redraws every chart
+    # from THIS version's series and captions its file name (provenance per iteration).
+    per_version: list[dict[str, object]] = []
+    for s_i, c_i in zip(schedules, cpms, strict=True):
+        crit_v = critical if s_i is sch else frozenset(effective_critical_set(s_i, c_i))
+        cen_v = work_to_go_census(s_i, crit_v)
+        flow_v = activity_flow(s_i)
+        bur_v = workoff_burden(s_i)
+        drm_v = duration_ratio(s_i)
+        per_version.append(
+            {
+                "label": s_i.source_file or s_i.name,
+                "status_date": s_i.status_date.date().isoformat() if s_i.status_date else None,
+                "status_month": flow_v.status_month,
+                "census": [asdict(m) for m in cen_v.months],
+                "flow": [asdict(m) for m in flow_v.months],
+                "burden": [asdict(m) for m in bur_v.months],
+                "drm": {
+                    "points": [asdict(pt) for pt in drm_v.points],
+                    "bins": [asdict(b) for b in drm_v.bins],
+                    "min": drm_v.drm_min,
+                    "avg": drm_v.drm_avg,
+                    "max": drm_v.drm_max,
+                    "n": drm_v.n,
+                    "excluded": drm_v.n_excluded,
+                },
+            }
+        )
+
     quads: list[dict[str, object]] = []
     for i, (s, c) in enumerate(zip(schedules, cpms, strict=True)):
         crit_i = critical if i == sel else frozenset(effective_critical_set(s, c))
@@ -11003,6 +11227,8 @@ def _performance_data(
     return {
         "version": labels[sel],
         "versions": labels,
+        "cursor": sel,
+        "per_version": per_version,
         "status_month": flow.status_month,
         "truncated": census.truncated or flow.truncated or burden.truncated,
         "census": [asdict(m) for m in census.months],
@@ -11069,17 +11295,25 @@ cited on the other pages.</p>{intro}{trunc_note}
 {opts}</select></label>
 <noscript><button type=submit>Apply</button></noscript>
 <a class=btn-link href="/export/xlsx/performance?file={_e(sel)}">&#11015; Excel (all datasets)</a>
-</form></div>
+</form>
+<div class=viz-controls>
+<button id=perfPrev type=button>&#9664; Prev</button>
+<span id=perfStep class=muted data-no-i18n></span>
+<button id=perfNext type=button>Next &#9654;</button>
+<button id=perfPlay type=button>&#9654; Play</button>
+<span class=muted>animates G1&ndash;G5 through every loaded file (the caption names the file
+shown at each step); the quads ring the current file's dot</span>
+</div></div>
 <div class=mosaic id=perfGrid>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per calendar month, the tasks &amp; milestones ACTIVE in that month (span overlaps it) — total, completed, and still to-go — plus how many sit on the longest path.\n\nHOW TO READ: the to-go area right of the data date is the remaining-work profile; a hump far right of the baseline plan is the bow wave. The longest-path line shows how much of each month's work controls the finish.\n\nDECIDE: which months are overloaded with remaining work and deserve resource/logic scrutiny.">G1 &mdash; Completed vs Work-to-Go (Tasks &amp; Milestones)</h3></div><div class=chart-host id=g1Census></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same census restricted to NORMAL tasks (no milestones): active, to-go, and longest-path counts per month.\n\nHOW TO READ: normal tasks carry the real work; a widening gap between the active line and the to-go line left of the data date is completed work, and the to-go line right of it is the workload still ahead.\n\nDECIDE: whether the remaining normal-task load is spread or spiking.">G1 &mdash; Work-to-Go (Normal Tasks)</h3></div><div class=chart-host id=g1Normal></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity STARTS per month — baselined vs scheduled/forecast vs actual (lines), with stacked bars for starts that happened late vs baseline (&le;30 / 31&ndash;60 / &gt;60 days).\n\nHOW TO READ: actuals tracking under the baseline line = starts falling behind; tall late-bars show how late. Right of the data date the scheduled line is the forecast start plan.\n\nDECIDE: whether work is being initiated on pace (a start bow-wave precedes a finish bow-wave).">G2 &mdash; Activity Starts (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Starts></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity FINISHES per month — baselined vs scheduled/forecast vs actual (lines) with late-finish buckets (&le;30 / 31&ndash;60 / &gt;60 days vs baseline).\n\nHOW TO READ: if starts are on pace but finishes lag, in-progress work is piling up (the classic bow wave); the late buckets show the severity distribution.\n\nDECIDE: whether completion (not initiation) is the constraint, and how much forecast finish work is stacked after the data date.">G2 &mdash; Activity Finishes (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Finishes></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: cumulative S-curves — baselined, scheduled and actual starts and finishes accumulated over time.\n\nHOW TO READ: the horizontal gap between the baseline curve and the actual curve is schedule slip in time units; a scheduled curve bending right of baseline is the re-planned (slipped) plan.\n\nDECIDE: how far behind the baseline the schedule is running and whether the recovery slope is credible.">G2 &mdash; Cumulative S-curves (starts &amp; finishes)</h3></div><div class=chart-host id=g2Cum></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: per calendar month, the tasks &amp; milestones ACTIVE in that month (span overlaps it) — total, completed, and still to-go — plus how many sit on the longest path.\n\nHOW TO READ: the to-go area right of the data date is the remaining-work profile; a hump far right of the baseline plan is the bow wave. The longest-path line shows how much of each month's work controls the finish.\n\nDECIDE: which months are overloaded with remaining work and deserve resource/logic scrutiny.">G1 &mdash; Completed vs Work-to-Go (Tasks &amp; Milestones)</h3></div><div class=chart-host id=g1Census></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same census restricted to NORMAL tasks (no milestones): active, to-go, and longest-path counts per month.\n\nHOW TO READ: normal tasks carry the real work; a widening gap between the active line and the to-go line left of the data date is completed work, and the to-go line right of it is the workload still ahead.\n\nDECIDE: whether the remaining normal-task load is spread or spiking.">G1 &mdash; Work-to-Go (Normal Tasks)</h3></div><div class=chart-host id=g1Normal></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity STARTS per month — baselined vs scheduled/forecast vs actual (lines), with stacked bars for starts that happened late vs baseline (&le;30 / 31&ndash;60 / &gt;60 days).\n\nHOW TO READ: actuals tracking under the baseline line = starts falling behind; tall late-bars show how late. Right of the data date the scheduled line is the forecast start plan.\n\nDECIDE: whether work is being initiated on pace (a start bow-wave precedes a finish bow-wave).">G2 &mdash; Activity Starts (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Starts></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: activity FINISHES per month — baselined vs scheduled/forecast vs actual (lines) with late-finish buckets (&le;30 / 31&ndash;60 / &gt;60 days vs baseline).\n\nHOW TO READ: if starts are on pace but finishes lag, in-progress work is piling up (the classic bow wave); the late buckets show the severity distribution.\n\nDECIDE: whether completion (not initiation) is the constraint, and how much forecast finish work is stacked after the data date.">G2 &mdash; Activity Finishes (baselined / scheduled / actual + late buckets)</h3></div><div class=chart-host id=g2Finishes></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: cumulative S-curves — baselined, scheduled and actual starts and finishes accumulated over time.\n\nHOW TO READ: the horizontal gap between the baseline curve and the actual curve is schedule slip in time units; a scheduled curve bending right of baseline is the re-planned (slipped) plan.\n\nDECIDE: how far behind the baseline the schedule is running and whether the recovery slope is credible.">G2 &mdash; Cumulative S-curves (starts &amp; finishes)</h3></div><div class=chart-host id=g2Cum></div></section>
 <section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: execution-index curves for STARTS — BEI-Starts (cumulative actual &divide; cumulative baselined) and the monthly HMI-Starts hit rate with its 3-month rolling average. Curves stop at the data date; nothing is projected.\n\nHOW TO READ: BEI &lt; 0.95 (DCMA practice band) = execution behind plan; HMI is the sharper month-by-month pulse.\n\nDECIDE: whether start execution is recovering or deteriorating.">G3 &mdash; Start execution indices (BEI / HMI)</h3></div><div class=chart-host id=g3Starts></div></section>
 <section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same indices for FINISHES — BEI-Finishes and monthly HMI-Finishes (+ 3-mo rolling average).\n\nHOW TO READ: finish indices below the start indices mean work is started but not being closed out — the in-progress pileup signature.\n\nDECIDE: whether completion discipline (not just starts) is holding.">G3 &mdash; Finish execution indices (BEI / HMI)</h3></div><div class=chart-host id=g3Finishes></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3></div><div class=chart-host id=g4Starts></div></section>
-<section class="tile panel tile-wide"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3></div><div class=chart-host id=g4Finishes></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: workoff burden for STARTS. Above the axis, each month's starts categorized: on-plan (baselined that month), early, workoff of a PAST-DUE baseline, past-due backlog now forecast here, and slipped future baseline. BELOW the axis, the same un-started work mirrored at the month its baseline promised it.\n\nHOW TO READ: below-axis bars are broken promises at their original month; the matching above-axis bars show where that work has been pushed — the further right, the bigger the bow wave.\n\nDECIDE: how much past-due work the forecast is carrying and where it has been re-stacked.">G4 &mdash; Workoff burden (starts)</h3></div><div class=chart-host id=g4Starts></div></section>
+<section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the same workoff-burden categorization for FINISHES — where past-due baseline finishes went, and the un-finished backlog mirrored below the axis at its baselined month.\n\nHOW TO READ: a tall past-due (workoff) stack just right of the data date = a recovery plan betting on immediate catch-up; spread far right = acknowledged slip.\n\nDECIDE: whether the finish workoff plan is credible or front-loaded hope.">G4 &mdash; Workoff burden (finishes)</h3></div><div class=chart-host id=g4Finishes></div></section>
 <section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: the Duration Ratio S-curve — every COMPLETED task's actual duration &divide; baseline duration (DRM), sorted ascending against cumulative probability.\n\nHOW TO READ: DRM 1.0 = took exactly as long as baselined. The curve's crossing of 1.0 tells you what share of completed work beat its baseline; a long right tail = chronic under-estimation.\n\nDECIDE: what growth factor history supports when judging the remaining durations (and any SRA).">G5 &mdash; Duration Ratio S-curve</h3></div><div class=chart-host id=g5Scurve></div></section>
 <section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: histogram of the MIDDLE 70% of completed-task duration ratios (the workbook's convention — the tails are excluded from the bars but included in the min/avg/max chips).\n\nHOW TO READ: a mode below 1.0 = durations typically beaten; mass above 1.0 = systematic overrun. The chips carry the full-population min / average / max and the excluded-count disclosure.\n\nDECIDE: the realistic duration growth factor for forecasts.">G5 &mdash; Duration Ratio histogram (middle 70%)</h3></div><div class=chart-host id=g5Hist></div><div id=g5Stats class=stat-row></div></section>
 <section class="tile panel"><div class=tile-head><h3 class=viz-hint data-sf-hint="WHAT: portfolio quad — HMI (tasks, latest period) vs CEI (finish) for EVERY loaded version; dashed guides at the 0.95 practice band used across this tool's index metrics.\n\nHOW TO READ: top-right = hitting current commitments AND closing out to plan; bottom-left = missing both. A version drifting left over time is losing period discipline.\n\nDECIDE: which version/update deserves the deep-dive first.">G3 quad &mdash; HMI vs CEI (per loaded version)</h3></div><div class=chart-host id=quadHmiCei></div></section>

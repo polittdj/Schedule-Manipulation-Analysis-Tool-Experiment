@@ -15,12 +15,28 @@
   if (!dataEl) return;
   var DATA = {};
   try { DATA = JSON.parse(dataEl.textContent || "{}"); } catch (e) { return; }
+  var PV = DATA.per_version || [];
+  var cursor = typeof DATA.cursor === "number" ? DATA.cursor : Math.max(0, PV.length - 1);
+  // the mutable current-version series (the master stepper reassigns these per step)
   var CENSUS = DATA.census || [];
   var FLOW = DATA.flow || [];
   var BURDEN = DATA.burden || [];
   var DRM = DATA.drm || { points: [], bins: [] };
   var QUADS = DATA.quads || [];
   var STATUS = DATA.status_month || null;
+  function setVersion(k) {
+    if (!PV.length) return;
+    cursor = (k + PV.length) % PV.length;
+    var v = PV[cursor];
+    CENSUS = v.census || [];
+    FLOW = v.flow || [];
+    BURDEN = v.burden || [];
+    DRM = v.drm || { points: [], bins: [] };
+    STATUS = v.status_month || null;
+    var lbl = document.getElementById("perfStep");
+    if (lbl) lbl.textContent = "file " + (cursor + 1) + " of " + PV.length + " — " + v.label +
+      (v.status_date ? " (data date " + v.status_date + ")" : "");
+  }
   var NS = "http://www.w3.org/2000/svg";
   var OK = "var(--ok)", BAD = "var(--bad)", WARN = "var(--warn)", ACC = "var(--accent)";
   var MUT = "var(--muted)";
@@ -148,7 +164,7 @@
     var months = CENSUS.map(function (m) { return m.month; });
     var maxv = 1;
     CENSUS.forEach(function (m) { maxv = Math.max(maxv, m[totalKey]); });
-    var f = monthFrame(id, months, 0, maxv * 1.08, 1240, 440, names.title);
+    var f = monthFrame(id, months, 0, maxv * 1.08, 640, 330, names.title);
     if (!f) return;
     area(f, CENSUS.map(function (m) { return m[togoKey]; }), WARN, 0.35, names.togo);
     line(f, CENSUS.map(function (m) { return m[totalKey]; }), ACC, null, names.total);
@@ -159,10 +175,12 @@
     items.push({ color: BAD, label: names.lp, dash: true });
     legend(f.svg, f.L + 4, f.T + 2, items);
   }
-  g1("g1Census", "tm_total", "tm_to_go", "lp_tm",
-    { title: "G1 completed vs work-to-go", total: "Active T&M", togo: "To-go", done: "Completed", lp: "Longest path" });
-  g1("g1Normal", "normal", "normal_to_go", "lp_normal",
-    { title: "G1 work-to-go normal tasks", total: "Active normal tasks", togo: "To-go", done: null, lp: "Longest path" });
+  function renderG1() {
+    g1("g1Census", "tm_total", "tm_to_go", "lp_tm",
+      { title: "G1 completed vs work-to-go", total: "Active T&M", togo: "To-go", done: "Completed", lp: "Longest path" });
+    g1("g1Normal", "normal", "normal_to_go", "lp_normal",
+      { title: "G1 work-to-go normal tasks", total: "Active normal tasks", togo: "To-go", done: null, lp: "Longest path" });
+  }
 
   /* ------------------------------------------------------------ G2 flow charts */
   function g2(id, pre, title) {
@@ -174,7 +192,7 @@
         + (m[pre === "starts" ? "started_late_60" : "finished_late_60"] || 0)
         + (m[pre === "starts" ? "started_late_over" : "finished_late_over"] || 0));
     });
-    var f = monthFrame(id, months, 0, maxv * 1.1, 1240, 440, title);
+    var f = monthFrame(id, months, 0, maxv * 1.1, 640, 330, title);
     if (!f) return;
     var lk = pre === "starts" ? ["started_late_30", "started_late_60", "started_late_over"]
       : ["finished_late_30", "finished_late_60", "finished_late_over"];
@@ -189,14 +207,17 @@
       { color: ACC, label: "31–60d", op: 0.9 }, { color: BAD, label: ">60d", op: 0.9 },
     ]);
   }
-  g2("g2Starts", "starts", "G2 activity starts");
-  g2("g2Finishes", "finishes", "G2 activity finishes");
+  function renderG2() {
+    g2("g2Starts", "starts", "G2 activity starts");
+    g2("g2Finishes", "finishes", "G2 activity finishes");
+    g2cum();
+  }
 
-  (function g2cum() {
+  function g2cum() {
     var months = FLOW.map(function (m) { return m.month; });
     var maxv = 1;
     FLOW.forEach(function (m) { maxv = Math.max(maxv, m.cum_baselined_starts, m.cum_scheduled_starts, m.cum_baselined_finishes, m.cum_scheduled_finishes); });
-    var f = monthFrame("g2Cum", months, 0, maxv * 1.06, 1240, 440, "G2 cumulative S-curves");
+    var f = monthFrame("g2Cum", months, 0, maxv * 1.06, 640, 330, "G2 cumulative S-curves");
     if (!f) return;
     line(f, FLOW.map(function (m) { return m.cum_baselined_starts; }), MUT, null, "Baselined starts (cum)");
     line(f, FLOW.map(function (m) { return m.cum_scheduled_starts; }), ACC, null, "Scheduled starts (cum)");
@@ -209,7 +230,7 @@
       { color: OK, label: "Actual starts", dash: "0" }, { color: MUT, label: "BL finishes", dash: "5 3" },
       { color: ACC, label: "Sched finishes", dash: "5 3" }, { color: OK, label: "Actual finishes", dash: "5 3" },
     ]);
-  })();
+  }
 
   /* ----------------------------------------------------------- G3 index curves */
   function g3(id, beiKey, hmiKey, rollKey, title) {
@@ -236,8 +257,10 @@
       { color: ACC, label: "BEI", dash: "0" }, { color: WARN, label: "HMI (monthly + 3-mo avg)", dash: "0" },
     ]);
   }
-  g3("g3Starts", "bei_starts", "hmi_starts", "hmi_starts_roll3", "G3 start indices");
-  g3("g3Finishes", "bei_finishes", "hmi_finishes", "hmi_finishes_roll3", "G3 finish indices");
+  function renderG3() {
+    g3("g3Starts", "bei_starts", "hmi_starts", "hmi_starts_roll3", "G3 start indices");
+    g3("g3Finishes", "bei_finishes", "hmi_finishes", "hmi_finishes_roll3", "G3 finish indices");
+  }
 
   /* ---------------------------------------------------------- G4 workoff burden */
   function g4(id, pre, title) {
@@ -250,7 +273,7 @@
       maxUp = Math.max(maxUp, s);
       maxDown = Math.min(maxDown, m[pre + "_backlog"] || 0);
     });
-    var f = monthFrame(id, months, maxDown * 1.15, maxUp * 1.1, 1240, 460, title);
+    var f = monthFrame(id, months, maxDown * 1.15, maxUp * 1.1, 640, 330, title);
     if (!f) return;
     var zero = f.y(0);
     f.svg.appendChild(svgEl("line", { x1: f.L, y1: zero, x2: f.R, y2: zero, stroke: MUT, "stroke-width": 0.8 }));
@@ -263,11 +286,13 @@
       { color: "#b58cff", label: "Future BL slipped", op: 0.9 }, { color: MUT, label: "Backlog (below axis)", op: 0.9 },
     ]);
   }
-  g4("g4Starts", "s", "G4 workoff burden starts");
-  g4("g4Finishes", "f", "G4 workoff burden finishes");
+  function renderG4() {
+    g4("g4Starts", "s", "G4 workoff burden starts");
+    g4("g4Finishes", "f", "G4 workoff burden finishes");
+  }
 
   /* -------------------------------------------------------- G5 duration ratio */
-  (function g5curve() {
+  function g5curve() {
     var pts = DRM.points || [];
     var svg = frame("g5Scurve", 620, 340, "G5 duration ratio S-curve");
     if (!svg) return;
@@ -301,9 +326,9 @@
       svg.appendChild(c);
     }
     txt(svg, R, B + 12, "DRM (actual ÷ baseline duration)" + (clamped ? " — " + clamped + " point(s) beyond axis cap " + xmax : ""), { anchor: "end", size: 8.5 });
-  })();
+  }
 
-  (function g5hist() {
+  function g5hist() {
     var bins = DRM.bins || [];
     var svg = frame("g5Hist", 620, 320, "G5 duration ratio histogram");
     if (svg) {
@@ -343,7 +368,7 @@
         stats.appendChild(chip);
       });
     }
-  })();
+  }
 
   /* ------------------------------------------------------------ portfolio quads */
   function quad(id, xKey, yKey, opts) {
@@ -374,10 +399,14 @@
       txt(svg, R - 2, gy - 3, opts.yGuideLabel, { anchor: "end", size: 8, fill: OK });
     }
     pts.forEach(function (p, i) {
-      var short = "V" + (QUADS.indexOf(p) + 1);
+      var qi = QUADS.indexOf(p);
+      var short = "V" + (qi + 1);
       var c = svgEl("circle", { cx: x(p[xKey]), cy: y(p[yKey]), r: 6, fill: ACC, opacity: 0.75, stroke: "var(--panel)", "stroke-width": 1 });
       tip(c, p.label + " — " + opts.xLabel + ": " + p[xKey] + ", " + opts.yLabel + ": " + p[yKey]);
       svg.appendChild(c);
+      if (qi === cursor) { // the stepper's current file, ringed (provenance per step)
+        svg.appendChild(svgEl("circle", { cx: x(p[xKey]), cy: y(p[yKey]), r: 10, fill: "none", stroke: WARN, "stroke-width": 2 }));
+      }
       txt(svg, x(p[xKey]) + 8, y(p[yKey]) + 3, short + " " + p.label.slice(0, 18), { size: 8.5 });
       void i;
     });
@@ -385,16 +414,16 @@
     txt(svg, L + 4, T + 9, opts.yLabel, { size: 9, weight: "bold" });
     if (skipped) txt(svg, L + 4, B - 4, skipped + " version(s) N/A (undefined measure) — not plotted", { size: 8 });
   }
-  quad("quadHmiCei", "hmi", "cei", {
-    title: "HMI vs CEI per version", xLabel: "HMI (tasks)", yLabel: "CEI (finish)",
-    xmax: 1.05, ymax: 1.05, xGuide: 0.95, xGuideLabel: "0.95", yGuide: 0.95, yGuideLabel: "0.95 practice band",
-  });
-  quad("quadRatio", "start_ratio", "finish_ratio", {
-    title: "To-go starts vs finishes ratio per version", xLabel: "To-go starts ÷ baseline remaining",
-    yLabel: "To-go finishes ÷ baseline remaining",
-    xmax: 2, ymax: 2, xGuide: 1, xGuideLabel: "1.0 = as planned", yGuide: 1, yGuideLabel: "1.0 = as planned",
-  });
-  (function () {
+  function renderQuads() {
+    quad("quadHmiCei", "hmi", "cei", {
+      title: "HMI vs CEI per version", xLabel: "HMI (tasks)", yLabel: "CEI (finish)",
+      xmax: 1.05, ymax: 1.05, xGuide: 0.95, xGuideLabel: "0.95", yGuide: 0.95, yGuideLabel: "0.95 practice band",
+    });
+    quad("quadRatio", "start_ratio", "finish_ratio", {
+      title: "To-go starts vs finishes ratio per version", xLabel: "To-go starts ÷ baseline remaining",
+      yLabel: "To-go finishes ÷ baseline remaining",
+      xmax: 2, ymax: 2, xGuide: 1, xGuideLabel: "1.0 = as planned", yGuide: 1, yGuideLabel: "1.0 = as planned",
+    });
     var shares = QUADS.map(function (q) { return q.cp_share; }).filter(function (v) { return v !== null && v !== undefined; }).sort(function (a, b) { return a - b; });
     var median = shares.length ? shares[Math.floor((shares.length - 1) / 2)] : null;
     quad("quadBeiCp", "bei", "cp_share", {
@@ -402,5 +431,39 @@
       xmax: 1.05, ymax: 1.0, xGuide: 0.95, xGuideLabel: "BEI 0.95 (DCMA)",
       yGuide: median, yGuideLabel: median === null ? "" : "portfolio median " + median,
     });
-  })();
+  }
+
+  /* ---- master stepper (operator 2026-07-10): animate G1-G5 through every loaded file,
+   * captioning the file shown at each step; the quads ring the current file's dot. ---- */
+  function renderAll() {
+    renderG1();
+    renderG2();
+    renderG3();
+    renderG4();
+    g5curve();
+    g5hist();
+    renderQuads();
+    if (window.SFChartFrame && SFChartFrame.scan) SFChartFrame.scan();
+  }
+  var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timer = null;
+  function step(k) { setVersion(k); renderAll(); }
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    var play = document.getElementById("perfPlay");
+    if (play) play.textContent = "▶ Play";
+  }
+  var prevB = document.getElementById("perfPrev");
+  var nextB = document.getElementById("perfNext");
+  var playB = document.getElementById("perfPlay");
+  if (prevB) prevB.addEventListener("click", function () { stop(); step(cursor - 1); });
+  if (nextB) nextB.addEventListener("click", function () { stop(); step(cursor + 1); });
+  if (playB) playB.addEventListener("click", function () {
+    if (timer) { stop(); return; }
+    step(cursor + 1);
+    if (REDUCED) return; // reduced motion: one frame per press
+    timer = setInterval(function () { step(cursor + 1); }, 1800);
+    playB.textContent = "⏸ Stop";
+  });
+  step(cursor); // initial render (also writes the file caption)
 })();

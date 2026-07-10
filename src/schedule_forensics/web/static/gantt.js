@@ -272,12 +272,87 @@ window.SFGantt = (function () {
     Array.prototype.forEach.call(panes, stickyScrollbar);
   }
 
+  /* -------- column mover (operator 2026-07-10): click a data-column header's grip and move
+   * the column left/right. Works on EVERY .gantt-grid table with zero per-page wiring: the
+   * grip dispatches a cancelable "sf-colmove" CustomEvent {index, dir} on the table so a page
+   * that owns a column model (the Activities grid's field list) can reorder its model and
+   * re-render; if nobody preventDefault()s, the cells are moved in the DOM directly.
+   * The timeline column (.g-head) never moves and columns never cross it. -------- */
+  function moveTableColumn(table, index, dir) {
+    var to = index + dir;
+    var rows = table.rows;
+    if (to < 0) return;
+    for (var r = 0; r < rows.length; r++) {
+      var cells = rows[r].cells;
+      if (index >= cells.length || to >= cells.length) continue;
+      var a = cells[index], b = cells[to];
+      if (!a || !b) continue;
+      if (a.classList.contains("g-head") || b.classList.contains("g-head")) return;
+      if (dir < 0) a.parentNode.insertBefore(a, b);
+      else a.parentNode.insertBefore(b, a);
+    }
+  }
+  function closeColMenu() {
+    var open = document.querySelector(".sf-colmove-menu");
+    if (open) open.parentNode.removeChild(open);
+  }
+  function openColMenu(th, table) {
+    closeColMenu();
+    var index = Array.prototype.indexOf.call(th.parentNode.cells, th);
+    var menu = el("div", { class: "sf-colmove-menu", role: "menu" });
+    [["◀ Move left", -1], ["Move right ▶", 1]].forEach(function (m) {
+      var btn = el("button", { type: "button", text: m[0] });
+      btn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var evt;
+        try {
+          evt = new CustomEvent("sf-colmove", {
+            bubbles: true, cancelable: true, detail: { index: index, dir: m[1], th: th },
+          });
+        } catch (e) { evt = null; }
+        var doDefault = !evt || table.dispatchEvent(evt);
+        if (doDefault) moveTableColumn(table, index, m[1]);
+        closeColMenu();
+      });
+      menu.appendChild(btn);
+    });
+    var rect = th.getBoundingClientRect();
+    menu.style.left = rect.left + window.scrollX + "px";
+    menu.style.top = rect.bottom + window.scrollY + 2 + "px";
+    document.body.appendChild(menu);
+    setTimeout(function () {
+      document.addEventListener("click", function once() {
+        closeColMenu();
+        document.removeEventListener("click", once);
+      });
+    }, 0);
+  }
+  function attachColumnMovers(root) {
+    var tables = (root || document).querySelectorAll("table.gantt-grid");
+    Array.prototype.forEach.call(tables, function (table) {
+      var head = table.tHead && table.tHead.rows[0];
+      if (!head) return;
+      Array.prototype.forEach.call(head.cells, function (th) {
+        if (th._sfColMove || th.classList.contains("g-head")) return;
+        th._sfColMove = true;
+        var grip = el("span", { class: "sf-colgrip", title: "Move this column left / right" });
+        grip.textContent = "↔";
+        grip.addEventListener("click", function (ev) {
+          ev.stopPropagation(); // never trigger the header's sort
+          openColMenu(th, table);
+        });
+        th.appendChild(grip);
+      });
+    });
+  }
+
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
     gridLines: gridLines, paintGrid: paintGrid, paintNonwork: paintNonwork,
     freezeColumns: freezeColumns,
     stickyScrollbar: stickyScrollbar, attachStickyScrollbars: attachStickyScrollbars,
+    moveTableColumn: moveTableColumn, attachColumnMovers: attachColumnMovers,
   };
 })();
 
@@ -289,8 +364,12 @@ window.SFGantt = (function () {
   function boot() {
     if (!window.SFGantt) return;
     SFGantt.attachStickyScrollbars(document);
+    SFGantt.attachColumnMovers(document);
     if (window.MutationObserver) {
-      var obs = new MutationObserver(function () { SFGantt.attachStickyScrollbars(document); });
+      var obs = new MutationObserver(function () {
+        SFGantt.attachStickyScrollbars(document);
+        SFGantt.attachColumnMovers(document);
+      });
       obs.observe(document.body, { childList: true, subtree: true });
     }
   }
