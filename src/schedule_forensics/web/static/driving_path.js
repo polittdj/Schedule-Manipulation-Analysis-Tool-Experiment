@@ -150,8 +150,25 @@
   function paintBody(tbody, v, acts, gridLns, width) {
     var list = acts.filter(rowMatchesFilters);
     tbody.innerHTML = "";
+    var barDates = $("dpBarDates") && $("dpBarDates").checked;
+    var LABEL_W = 64; // "MM/DD/YYYY" width estimate at the 9px label font (matches app.js)
+    function barLabel(track, anchor, side, iso) {
+      var lx = side === "s" ? anchor - LABEL_W : anchor;
+      lx = Math.max(0, Math.min(width - LABEL_W, lx));
+      track.appendChild(el("div", {
+        class: "g-barlabel g-barlabel-" + side,
+        style: "left:" + lx + "px;width:" + LABEL_W + "px",
+        text: SFGantt.fmtMDY(iso),
+      }));
+    }
     list.forEach(function (a) {
       var tr = el("tr");
+      tr.setAttribute("data-uid", a.uid); // Find-a-UID jump + Task Information join
+      // MS-Project Task Information on row click (shared dialog — ADR-0186), sourced from
+      // THIS VERSION's file so the figures match the frame on screen
+      tr.addEventListener("click", function () {
+        if (window.SFTaskInfo) SFTaskInfo.openFrom(v.label, a.uid);
+      });
       tr.appendChild(el("td", { text: String(a.uid) }));
       tr.appendChild(el("td", { class: "pv-name", text: a.name }));
       var cell = el("td", { class: "path-timeline" });
@@ -167,6 +184,7 @@
             class: "g-ms tier-DRIVING" + entered, style: "left:" + x(Date.parse(a.finish)) + "px",
             title: a.name + " (milestone) " + (SFGantt.fmtMDY(a.finish) || a.finish) + (a.entered ? " — entered" : ""),
           }));
+          if (barDates) barLabel(track, x(Date.parse(a.finish)) + 7, "f", a.finish);
         } else {
           var left = x(Date.parse(a.start));
           var w = Math.max(2, x(Date.parse(a.finish)) - left);
@@ -175,6 +193,10 @@
             style: "left:" + left + "px;width:" + w + "px",
             title: a.name + " — " + (SFGantt.fmtMDY(a.start) || a.start) + " → " + (SFGantt.fmtMDY(a.finish) || a.finish) + (a.entered ? " (entered)" : ""),
           }));
+          if (barDates) {
+            barLabel(track, left - 3, "s", a.start);
+            barLabel(track, left + w + 3, "f", a.finish);
+          }
         }
       }
       cell.appendChild(track);
@@ -212,6 +234,26 @@
   $("dpZoomOut").addEventListener("click", function () { forcedPx = null; px = Math.max(1, px - 2); render(); });
   var dpFit = $("dpFit");
   if (dpFit) dpFit.addEventListener("click", fitToProject);
+  // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
+  var dpBarDates = $("dpBarDates");
+  if (dpBarDates) dpBarDates.addEventListener("change", render);
+  // MS-Project Find: jump the corridor to a UniqueID, scroll it into view and flash it
+  var dpFind = $("dpFind");
+  if (dpFind) {
+    var goFind = function () {
+      var uid = parseInt(dpFind.value, 10);
+      var status = $("dpFindStatus");
+      if (!uid) return;
+      var row = mount.querySelector('tr[data-uid="' + uid + '"]');
+      if (!row) { if (status) status.textContent = "UID " + uid + " not in this version's corridor"; return; }
+      if (status) status.textContent = "";
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      mount.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
+      row.classList.add("row-found");
+    };
+    dpFind.addEventListener("change", goFind);
+    dpFind.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
+  }
   // the Timescale dialog's OK repaints the corridor with the new tiers/size/shading
   window.addEventListener("sf-timescale", render);
 

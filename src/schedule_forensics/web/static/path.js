@@ -400,8 +400,25 @@
       });
       groups = order.map(function (g) { return ["WBS " + g, byWbs[g]]; });
     }
+    var barDates = $("pathBarDates") && $("pathBarDates").checked;
+    var LABEL_W = 64; // "MM/DD/YYYY" width estimate at the 9px label font (matches app.js)
+    function barLabel(track, anchor, side, iso) {
+      var lx = side === "s" ? anchor - LABEL_W : anchor;
+      lx = Math.max(0, Math.min(width - LABEL_W, lx));
+      track.appendChild(el("div", {
+        class: "g-barlabel g-barlabel-" + side,
+        style: "left:" + lx + "px;width:" + LABEL_W + "px",
+        text: SFGantt.fmtMDY(iso),
+      }));
+    }
     var paintOne = function (r) {
       var tr = el("tr", { class: r.complete ? "done" : "" });
+      tr.setAttribute("data-uid", r.unique_id); // Find-a-UID jump + Task Information join
+      // MS-Project Task Information on row click (shared dialog — ADR-0186); the checklist
+      // dropdowns stopPropagation already, so plain cell clicks are the only trigger
+      tr.addEventListener("click", function () {
+        if (window.SFTaskInfo) SFTaskInfo.openFrom($("pathSchedule").value, r.unique_id);
+      });
       on.forEach(function (f) {
         if (f.key === "drives") {
           var links = (r.drives || []).map(function (lk) {
@@ -432,6 +449,8 @@
             class: "g-ms tier-" + r.tier, style: "left:" + x(Date.parse(r.finish)) + "px",
             title: r.name + " (milestone) — slack " + r.driving_slack_days + "d",
           }));
+          // MS-Project "dates on bars": a milestone shows its finish beside the diamond
+          if (barDates && r.finish) barLabel(track, x(Date.parse(r.finish)) + 7, "f", r.finish);
         } else {
           var left = x(Date.parse(r.start));
           var w = Math.max(2, x(Date.parse(r.finish)) - left);
@@ -446,6 +465,11 @@
             bar.appendChild(el("div", { class: "g-done", style: "width:" + r.percent_complete + "%" }));
           }
           track.appendChild(bar);
+          // MS-Project "dates on bars": start left of the bar, finish right of it
+          if (barDates) {
+            barLabel(track, left - 3, "s", r.start);
+            barLabel(track, left + w + 3, "f", r.finish);
+          }
         }
       }
       cell.appendChild(track);
@@ -591,5 +615,38 @@
   window.addEventListener("sf-timescale", function () { if (data) reflow(); });
   var pathFit = $("pathFit");
   if (pathFit) pathFit.addEventListener("click", fitToProject);
+  // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
+  if ($("pathBarDates")) $("pathBarDates").addEventListener("change", function () { if (data) paintRows(); });
+  // MS-Project Find: jump the traced grid to a UniqueID, scroll it into view and flash it
+  function findUid(uid) {
+    var status = $("pathFindStatus");
+    if (!uid) return;
+    var row = view.querySelector('tr[data-uid="' + uid + '"]');
+    if (!row) { if (status) status.textContent = "UID " + uid + " not in view"; return; }
+    if (status) status.textContent = "";
+    row.scrollIntoView({ block: "center", behavior: "smooth" });
+    view.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
+    row.classList.add("row-found");
+  }
+  var pathFind = $("pathFind");
+  if (pathFind) {
+    var goFind = function () { findUid(parseInt(pathFind.value, 10)); };
+    pathFind.addEventListener("change", goFind);
+    pathFind.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
+  }
+  // column-mover grip (SFGantt): reorder the FIELD MODEL so repaints keep the new order —
+  // without this the DOM fallback moved cells but the next paintRows() reset them (ADR-0186)
+  document.addEventListener("sf-colmove", function (ev) {
+    if (!view.contains(ev.target)) return;
+    var visible = FIELDS.filter(function (f) { return f.on; });
+    var i = ev.detail.index, j = i + ev.detail.dir;
+    if (i < 0 || i >= visible.length || j < 0 || j >= visible.length) return;
+    ev.preventDefault(); // re-render from the model instead of a raw DOM move
+    var a = FIELDS.indexOf(visible[i]), b = FIELDS.indexOf(visible[j]);
+    FIELDS[a] = visible[j]; FIELDS[b] = visible[i];
+    render();
+  });
+  // a remembered Target UID restored by persist.js (ADR-0186) arrives AFTER this boot ran
+  window.addEventListener("sf-restored", function () { if (!data && $("pathTarget").value) trace(); });
   if ($("pathTarget").value) trace(); // a session-wide target traces immediately
 })();

@@ -1,6 +1,27 @@
-# Handoff — 2026-07-10 (XER stable Activity-ID identity / CEI fix; highest ADR 0185)
+# Handoff — 2026-07-10 (page memory + Reset view + Gantt unification; highest ADR 0186)
 
-> ## STATUS (current) — ADR-0185 XER identity fix (CEI was flat 0.00 on XER series)
+> ## STATUS (current) — ADR-0186 page memory / universal Reset / Gantt unification
+>
+> - **Page memory (`static/persist.js`)**: every page remembers its selections per path —
+>   query-string selections replay on return via bare nav links (/groups excluded; session
+>   filter is server state) and every value-bearing control restores + re-fires its events
+>   (`sf-restored` lets boot-time readers like path.js re-trace a remembered Target UID).
+>   Checklist-popup selections (column filters/pickers) are a documented NOT-persisted
+>   limitation (future work).
+> - **Universal `⟲ Reset view`** injected on every page: clears the page's two memory layers +
+>   its persisted column-picker keys and loads the bare default view. Global prefs (theme,
+>   size, timescale) keep their own resets.
+> - **Gantt unification**: shared `static/taskinfo.js` (`SFTaskInfo.open/openFrom`) is now THE
+>   Task Information dialog on every Gantt — Activities, /path, /driving-path corridor (cites
+>   the stepped version's file), /sra grid (non-editable cells), and the CP Evolution SVG Gantt
+>   (ghost rows cite the prior version's file). Added where missing: Find-UID jump+flash,
+>   dates-on-bars, SRA show-completed, path column-move model listener. Link lines NOT added to
+>   corridor/evolution — no per-row logic data in those payloads; drawing them would fabricate
+>   logic (Law 2). Chromium-verified: 17 checks, zero console errors.
+
+# (prior) Handoff — 2026-07-10 (XER stable Activity-ID identity / CEI fix; ADR 0185)
+
+> ## STATUS — ADR-0185 XER identity fix (CEI was flat 0.00 on XER series)
 >
 > - **Operator defect:** on a 7-file Primavera XER series the Trend page showed **CEI 0.00 in
 >   every period** while BEI/HMI read normal. Root cause: `importers/xer.py` keyed tasks by

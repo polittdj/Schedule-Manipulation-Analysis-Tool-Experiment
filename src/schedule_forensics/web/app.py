@@ -286,6 +286,8 @@ _LAYOUT = Template(
 <script src="/static/gantt.js"></script>
 <script src="/static/timescale.js"></script>
 <script src="/static/colresize.js"></script>
+<script src="/static/taskinfo.js"></script>
+<script src="/static/persist.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css">
@@ -4806,6 +4808,9 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label><input id=pathHideDone type=checkbox> hide 100% complete</label>
 <label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
+<label>Find UID <input id=pathFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the traced grid"></label>
+<span id=pathFindStatus class=muted aria-live=polite></span>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=pathBarDates type=checkbox> dates on bars</label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <button id=pathFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
@@ -9243,6 +9248,10 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <div class=viz-controls>
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
+<label><input id=ssiShowDone type=checkbox checked> show completed tasks</label>
+<label>Find UID <input id=ssiFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<span id=ssiFindStatus class=muted aria-live=polite></span>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=ssiBarDates type=checkbox> dates on bars</label>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <label>Group by <select id=ssiGridGroupBy data-no-i18n title="Group the grid rows under headers by any field — WBS, resources, critical, outline level, or any custom field (like the Path pages)">
 <option value="">(none)</option>
@@ -9993,6 +10002,9 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
 <button id=dpZoomOut type=button title="zoom out">&minus;</button>
 <button id=dpZoomIn type=button title="zoom in">&plus;</button>
 <button id=dpFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
+<label>Find UID <input id=dpFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in this version's corridor"></label>
+<span id=dpFindStatus class=muted aria-live=polite></span>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=dpBarDates type=checkbox> dates on bars</label>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 </div>
 <div id=dpChart class=path-view></div></div>
@@ -10668,6 +10680,7 @@ visible.</p>
 <button id=nextEvo type=button>Next &#9654;</button>
 <button id=evoPlay type=button>&#9654; Auto-play</button>
 <label class=muted style="margin-left:1em"><input type=checkbox id=evoHideDone> hide completed</label>
+<label class=muted title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input type=checkbox id=evoBarDates> dates on bars</label>
 </div>
 <div class=viz-controls>
 <span class=muted>Zoom the date axis:</span>

@@ -140,8 +140,16 @@
   // column layout: a left grid (name + %/dur/start/finish), then the Gantt plot, then the chip
   var COL = { name: 6, pct: 300, dur: 348, start: 360, finish: 432, plotL: 512 };
 
+  function barDatesOn() {
+    var cb = document.getElementById("evoBarDates");
+    return !!(cb && cb.checked);
+  }
+
   // rows: [{uid, name, start, finish, kind, durBadge, reason, detail, percent_complete, duration, complete}]
-  function gantt(rows) {
+  // srcLabel = the schedule file these rows were read from (Task Information provenance);
+  // "left the path" ghost rows are drawn at their PRIOR-version position, so their caller
+  // passes the prior version's label.
+  function gantt(rows, srcLabel) {
     var wrap = el("div", "evo-gantt");
     if (!rows.length) { wrap.appendChild(el("p", "muted", "—")); return wrap; }
     var W = 1180, rowH = 30, padT = 46, padB = 8, plotL = COL.plotL, plotR = W - 130;
@@ -224,6 +232,12 @@
         ts.textContent = (li === 0 ? "U" + r.uid + " · " : "") + ln;
         lab.appendChild(ts);
       });
+      // MS-Project Task Information on click (shared dialog — ADR-0186), sourced from the
+      // file these rows were read from so the figures match the frame on screen
+      if (srcLabel && window.SFTaskInfo) {
+        lab.style.cursor = "pointer";
+        lab.addEventListener("click", function () { SFTaskInfo.openFrom(srcLabel, r.uid); });
+      }
       svg.appendChild(lab);
 
       // grid columns: % complete, duration, start, finish
@@ -246,8 +260,19 @@
           (r.reason && REASON[r.reason] ? " (" + REASON[r.reason].label + ")" : "");
         rect.appendChild(bt);
         if (r.kind === "left") { rect.setAttribute("opacity", "0.45"); rect.setAttribute("stroke-dasharray", "3 2"); }
+        if (srcLabel && window.SFTaskInfo) {
+          rect.style.cursor = "pointer";
+          rect.addEventListener("click", function () { SFTaskInfo.openFrom(srcLabel, r.uid); });
+        }
         svg.appendChild(rect);
         if (r.durBadge) colText(x2 + 3, cy + 4, "▲", { size: 11, fill: "var(--warn)" });
+        // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186): start
+        // left of the bar, finish right of it, clamped into the plot area
+        if (barDatesOn()) {
+          var sTxt = fmtDate(r.start), fTxt = fmtDate(r.finish);
+          if (x1 - 4 > plotL + 40) colText(x1 - 4, cy + 3, sTxt, { size: 8, anchor: "end", fill: "var(--muted)" });
+          if (x2 + 4 < plotR - 40) colText(x2 + 4, cy + 3, fTxt, { size: 8, fill: "var(--muted)" });
+        }
       }
 
       if (r.reason && REASON[r.reason]) {
@@ -367,11 +392,13 @@
     var total = snap.critical_rows.length;
     box.appendChild(el("h3", null, "Critical path — " + crit.length +
       (crit.length !== total ? " of " + total : "") + " activities"));
-    box.appendChild(gantt(crit));
+    box.appendChild(gantt(crit, snap.label));
     var leftV = applyFilter(visible(leftRows(snap)), snap);
     if (leftV.length) {
       box.appendChild(el("h3", null, "Left the critical path (" + leftV.length + ") — where they were, and why"));
-      box.appendChild(gantt(leftV));
+      // ghost rows are drawn at their PRIOR-version position — cite that version's file
+      var priorLabel = index > 0 ? data.snapshots[index - 1].label : snap.label;
+      box.appendChild(gantt(leftV, priorLabel));
     }
   }
 
@@ -445,6 +472,9 @@
       on("evoZoomReset", resetZoom);
       var hd = document.getElementById("evoHideDone");
       if (hd) hd.addEventListener("change", function () { hideDone = hd.checked; render(); });
+      // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
+      var bd = document.getElementById("evoBarDates");
+      if (bd) bd.addEventListener("change", render);
 
       // filter-by-path controls: a mode selector that toggles its sub-control
       var verSel = document.getElementById("evoFilterVersion");

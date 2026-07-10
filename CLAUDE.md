@@ -146,5 +146,13 @@ python -c "from schedule_forensics.web.help import render_dictionary_markdown as
   `main` goes stale between sessions; `git fetch origin` updates the remote-tracking refs *without*
   touching your working branches, so you branch/rebase onto the real latest `origin/main`
   (e.g. `git fetch origin && git switch -c <branch> origin/main`) instead of a stale local copy.
+- **After a squash-merge, restart the branch with `--prune`.** GitHub auto-deletes the merged head
+  branch, so the local remote-tracking ref goes stale — the stop hook then compares against it and
+  mis-reports GitHub's own squash commit (committer `noreply@github.com`, i.e. `origin/main`'s tip)
+  as an "unverified unpushed commit". Run
+  `git fetch --prune origin && git remote set-head origin -a && git checkout -B <branch> origin/main`.
+  **Never** amend/rebase that squash commit to satisfy the hook — it is published `origin/main`
+  history; rewriting it forks the branch from main and breaks the CUI guard's
+  `inherited_from_main` rule.
 - The `qc-checker` subagent (`.claude/agents/`) runs the full gate, triages real errors vs
   environment-gated skips / flakes, and fixes them — on demand or via a throttled SessionStart trigger.

@@ -115,6 +115,16 @@
       return !sel || sel.has(cellText(r, f.key));
     });
   }
+  // "show completed tasks" (parity with the Activities Gantt — ADR-0186): unchecked hides every
+  // 100%-complete row, including fully complete summaries (same rule as app.js rowVisible)
+  function includeCompleted() {
+    var cb = document.getElementById("ssiShowDone");
+    return !cb || cb.checked;
+  }
+  function rowVisible(r) {
+    if (!includeCompleted() && (r.complete || (r.percent_complete || 0) >= 100)) return false;
+    return rowMatchesFilters(r);
+  }
 
   // --- Group by ANY field (operator #80: match the Path Gantts) --------------------------------
   var GRID_COLS = 7; // UID, Task, Rem d, Factor, BC d, WC d, Focus (the frozen data columns)
@@ -159,6 +169,24 @@
     });
   }
 
+  // MS-Project "dates on bars" (ADR-0186): MM/DD/YYYY labels at the bar ends, clamped into
+  // the track (the same construction as app.js barLabel).
+  var LABEL_W = 64;
+  function barDatesOn() {
+    var cb = document.getElementById("ssiBarDates");
+    return !!(cb && cb.checked);
+  }
+  function barLabel(track, axis, anchor, side, iso) {
+    if (!iso) return;
+    var lx = side === "s" ? anchor - LABEL_W : anchor;
+    lx = Math.max(0, Math.min(axis.width - LABEL_W, lx));
+    track.appendChild(el("div", {
+      class: "g-barlabel g-barlabel-" + side,
+      style: "left:" + lx + "px;width:" + LABEL_W + "px",
+      text: SFGantt.fmtMDY(iso),
+    }));
+  }
+
   // The scheduled bar (start -> finish, accurate) plus a translucent Best/Worst-case finish envelope
   // (start + BC..WC days, a calendar-day projection — an approximate hint; the authoritative figures
   // are the BC/WC day columns and the SSI run).
@@ -171,6 +199,7 @@
     var f = r.finish ? Date.parse(r.finish) : null;
     if (r.is_milestone && s != null) {
       track.appendChild(el("div", { class: "g-ms", title: r.name + " (milestone) " + (SFGantt.fmtMDY(r.start) || r.start), style: "left:" + axis.x(s) + "px" }));
+      if (barDatesOn()) barLabel(track, axis, axis.x(s) + 7, "f", r.finish || r.start);
     } else if (s != null && f != null) {
       if (r.editable && r.bc_days != null && r.wc_days != null) {
         var bcEnd = s + r.bc_days * DAY_MS, wcEnd = s + r.wc_days * DAY_MS;
@@ -187,6 +216,11 @@
         bar.appendChild(el("div", { class: "g-done", style: "width:" + (r.complete ? 100 : Math.min(100, r.percent_complete)) + "%" }));
       }
       track.appendChild(bar);
+      // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
+      if (barDatesOn()) {
+        barLabel(track, axis, left - 3, "s", r.start);
+        barLabel(track, axis, left + width + 3, "f", r.finish);
+      }
     }
     cell.appendChild(track);
     SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
@@ -195,16 +229,24 @@
 
   // repaint only the body rows (a column-filter change keeps the open dropdown + header alive)
   function paintBody(tbody, axis, grid) {
-    var list = rows.filter(rowMatchesFilters);
+    var list = rows.filter(rowVisible);
     tbody.innerHTML = "";
     var paintOne = function (r) {
       var tr = el("tr");
+      tr.setAttribute("data-uid", String(r.unique_id)); // Find-a-UID jump
       if (r.is_critical) tr.className = "crit";
       if (r.is_summary) tr.className = (tr.className + " sum").trim();
       if (r.has_risk) tr.className = (tr.className + " sra-risk").trim();
-      tr.appendChild(el("td", { text: String(r.unique_id) }));
+      // MS-Project Task Information on the NON-editable cells (UID / name) — the shared
+      // dialog (ADR-0186); the grid rows already carry the full _activity_rows payload.
+      // Editable input cells keep plain click-to-edit (no dialog stealing the focus).
+      var uidTd = el("td", { text: String(r.unique_id) });
       var nm = el("td", { class: "name-cell", text: r.name });
       nm.style.paddingLeft = 6 + (r.outline_level || 0) * 14 + "px";
+      var openInfo = function () { if (window.SFTaskInfo) SFTaskInfo.open(r); };
+      uidTd.addEventListener("click", openInfo);
+      nm.addEventListener("click", openInfo);
+      tr.appendChild(uidTd);
       tr.appendChild(nm);
       tr.appendChild(el("td", { text: r.remaining_days == null ? "" : String(r.remaining_days) }));
       if (r.editable) {
@@ -380,6 +422,28 @@
   if (groupEl) groupEl.addEventListener("change", function () { if (rows.length) render(); });
   var fitBtn = document.getElementById("ssiGridFit");
   if (fitBtn) fitBtn.addEventListener("click", function () { if (rows.length) fitToProject(); });
+  // show-completed + dates-on-bars toggles (parity with the Activities Gantt — ADR-0186)
+  var showDoneEl = document.getElementById("ssiShowDone");
+  if (showDoneEl) showDoneEl.addEventListener("change", function () { if (rows.length) render(); });
+  var barDatesEl = document.getElementById("ssiBarDates");
+  if (barDatesEl) barDatesEl.addEventListener("change", function () { if (rows.length) render(); });
+  // MS-Project Find: jump the grid to a UniqueID, scroll it into view and flash it
+  var findEl = document.getElementById("ssiFind");
+  if (findEl) {
+    var goFind = function () {
+      var uid = parseInt(findEl.value, 10);
+      var status = document.getElementById("ssiFindStatus");
+      if (!uid) return;
+      var row = host.querySelector('tr[data-uid="' + uid + '"]');
+      if (!row) { if (status) status.textContent = "UID " + uid + " not in view"; return; }
+      if (status) status.textContent = "";
+      row.scrollIntoView({ block: "center", behavior: "smooth" });
+      host.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
+      row.classList.add("row-found");
+    };
+    findEl.addEventListener("change", goFind);
+    findEl.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
+  }
   // the Timescale dialog's OK repaints the grid with the new tiers/size/shading
   window.addEventListener("sf-timescale", function () { if (rows.length) render(); });
 
