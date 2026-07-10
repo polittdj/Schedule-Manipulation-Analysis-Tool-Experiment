@@ -4932,3 +4932,17 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   run with a failing py.cmd stub ahead of PATH (masks the launcher) + setup-python 3.12,
   executing the python-only discovery branch end-to-end. Static regression pin added in
   tests/installer. Highest ADR = 0191.
+
+### 2026-07-10 (cont.) — fully no-admin Windows install (ADR-0192)
+- Operator (no admin rights): winget OpenJDK MSI died at the UAC prompt (exit 1602) yet the
+  installer printed "[ok] Java 17 installed"; and `schedule-forensics` in the terminal ran a
+  stale miniforge-base shim -> ModuleNotFoundError although the venv install succeeded.
+- template.ps1 Java step rebuilt: Find-JavaNoAdmin mirrors the runtime discovery (PATH +
+  %LOCALAPPDATA%\Programs and %ProgramFiles% for Microsoft/Eclipse Adoptium/Java, >=17
+  folder-name gate); on consent downloads the Microsoft OpenJDK 17 PORTABLE zip
+  (aka.ms/download-jdk) into %LOCALAPPDATA%\Programs\Microsoft — user-writable and already
+  scanned by mpp_mpxj._find_java, so zero config/PATH/elevation; try/catch + re-verify,
+  honest warnings (never false [ok]). Python winget fallback --scope user. Post-install
+  stale-shim shadow warning (names the impostor path, points at the Desktop shortcut).
+  Runtime ImporterError hint updated to name the no-admin drop-in (wheel rebuilt).
+  Static pins in tests/installer. Highest ADR = 0192.

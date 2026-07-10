@@ -140,9 +140,10 @@ def _build_command(mpxj_home: Path, input_path: Path, output_path: Path) -> list
         raise ImporterError(
             "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, tools/jre, and the "
             "standard install folders) — native .mpp needs a JRE/JDK 17+. No admin rights? "
-            "Extract a portable JRE zip from adoptium.net into the tool's tools/jre folder "
-            "and restart. Otherwise install with 'winget install "
-            "EclipseAdoptium.Temurin.21.JRE', or set JAVA_HOME to a custom location."
+            "Extract a portable JDK/JRE zip (adoptium.net or aka.ms/download-jdk) into "
+            "%LOCALAPPDATA%\\Programs\\Microsoft (scanned automatically) or the tool's "
+            "tools/jre folder and restart — no PATH change needed. Otherwise install with "
+            "'winget install EclipseAdoptium.Temurin.21.JRE', or set JAVA_HOME."
         )
     classpath = os.pathsep.join([str(mpxj_home / "classes"), str(mpxj_home / "lib" / "*")])
     return [java, "-cp", classpath, "MpxjToMspdi", str(input_path), str(output_path)]

@@ -1,6 +1,21 @@
-# Handoff — 2026-07-10 (Windows installer python-only fix; highest ADR 0191)
+# Handoff — 2026-07-10 (fully no-admin Windows install; highest ADR 0192)
 
-> ## STATUS (current) — ADR-0191 installer array-unroll fix
+> ## STATUS (current) — ADR-0192 no-admin install
+>
+> - Operator has NO admin rights: the winget OpenJDK MSI died at the UAC prompt (1602) yet
+>   printed "[ok] Java 17 installed"; and `schedule-forensics` in the terminal ran a stale
+>   miniforge-base shim (ModuleNotFoundError) even though the venv install succeeded.
+> - Installer Java step rebuilt: `Find-JavaNoAdmin` detects existing JDKs like the runtime
+>   does (PATH + %LOCALAPPDATA%\Programs + %ProgramFiles% for Microsoft/Adoptium/Java,
+>   >=17 gate); on consent downloads the Microsoft OpenJDK 17 PORTABLE zip into
+>   %LOCALAPPDATA%\Programs\Microsoft (user-writable, already in the runtime java scan —
+>   zero config, zero elevation); try/catch + re-verify, honest warnings, never false [ok].
+>   Python winget fallback now --scope user. Stale-shim shadow warning added. Runtime
+>   ImporterError hint names the no-admin drop-in. Pins in tests/installer.
+
+# (prior) Handoff — 2026-07-10 (Windows installer python-only fix; ADR 0191)
+
+> ## STATUS — ADR-0191 installer array-unroll fix
 >
 > - Operator's live install of tier1.ps1 died at venv creation ("The term 'p' is not
 >   recognized"): on a machine with only python.exe (no py launcher), Find-Python's

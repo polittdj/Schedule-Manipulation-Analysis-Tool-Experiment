@@ -88,7 +88,7 @@ if (-not $py) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         throw "winget is not available. Install Python 3.12 manually from python.org, then re-run this installer."
     }
-    winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent
+    winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent --scope user
     $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
     $py = Find-Python
     if (-not $py) { throw "Python installed but not discoverable on PATH yet — open a NEW window and re-run this installer." }
@@ -115,20 +115,67 @@ Ok ("Installed " + "{{WHEEL_NAME}}")
 # optional HUD telemetry enhancer (CPU% / temps on Windows) — best-effort, never fatal
 try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
-# --- 4. Java 17+ (optional — native .mpp only) ----------------------------------------
-Step "Checking Java 17+ (optional — only needed to open native .mpp files)"
-$haveJava = $false
-if (Get-Command java -ErrorAction SilentlyContinue) {
-    $jv = (& java -version 2>&1 | Select-Object -First 1) -replace '.*"(\d+).*', '$1'
-    if ([int]$jv -ge 17) { $haveJava = $true }
+# a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)
+# can shadow this install in terminals and die with ModuleNotFoundError (operator hit this,
+# ADR-0192). The Desktop shortcut always launches the right venv; warn about the impostor.
+$shadow = Get-Command schedule-forensics -ErrorAction SilentlyContinue
+if ($shadow -and $shadow.Source -and -not $shadow.Source.StartsWith($InstallRoot)) {
+    Warn2 ("Typing 'schedule-forensics' in a terminal would run " + $shadow.Source)
+    Warn2 ("  — that is another Python's (possibly broken) copy, NOT this install. Use the")
+    Warn2 ("  Desktop shortcut, or delete that file to clear the confusion.")
 }
-if ($haveJava) { Ok "Java 17+ present" }
+
+# --- 4. Java 17+ (optional — native .mpp only; NO ADMIN required) ---------------------
+# ADR-0192: the old path ran the winget OpenJDK MSI, which pops a UAC prompt (operators on
+# locked-down machines cannot approve it) and its failure was mis-reported as success. Now:
+# detect existing JDKs the way the TOOL's runtime discovery does (including installs that
+# are not on PATH), and on consent download Microsoft's PORTABLE ZIP into
+# %LOCALAPPDATA%\Programs\Microsoft — user-writable, no elevation, no PATH edits, and
+# already one of the folders the runtime java scan searches automatically.
+Step "Checking Java 17+ (optional — only needed to open native .mpp files)"
+function Find-JavaNoAdmin {
+    if (Get-Command java -ErrorAction SilentlyContinue) {
+        $jv = (& java -version 2>&1 | Select-Object -First 1) -replace '.*"(\d+).*', '$1'
+        if (($jv -match '^\d+$') -and ([int]$jv -ge 17)) { return "java (on PATH)" }
+    }
+    $roots = @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Microsoft"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Eclipse Adoptium"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Java"),
+        (Join-Path $env:ProgramFiles "Microsoft"),
+        (Join-Path $env:ProgramFiles "Eclipse Adoptium"),
+        (Join-Path $env:ProgramFiles "Java")
+    )
+    foreach ($root in $roots) {
+        if (-not (Test-Path $root)) { continue }
+        $hit = Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
+            Where-Object { ($_.Name -match "(?:jdk|jre)-?(\d+)") -and ([int]$Matches[1] -ge 17) } |
+            Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") } |
+            Select-Object -First 1
+        if ($hit) { return (Join-Path $hit.FullName "bin\java.exe") }
+    }
+    return $null
+}
+$javaWhere = Find-JavaNoAdmin
+if ($javaWhere) { Ok "Java 17+ present: $javaWhere (the tool finds it automatically — no PATH change needed)" }
 elseif ($Smoke) { Warn2 "Smoke mode: skipping Java offer" }
 else {
-    $ans = Read-Host "    Java 17+ not found. Install it now for native .mpp support? [y/N]"
+    $ans = Read-Host "    Java 17+ not found. Download a portable copy now (no admin needed) for native .mpp support? [y/N]"
     if ($ans -match "^[Yy]") {
-        winget install --id Microsoft.OpenJDK.17 --exact --accept-source-agreements --accept-package-agreements --silent
-        Ok "Java 17 installed"
+        try {
+            $jdkRoot = Join-Path $env:LOCALAPPDATA "Programs\Microsoft"
+            New-Item -ItemType Directory -Force -Path $jdkRoot | Out-Null
+            $zip = Join-Path $InstallRoot "microsoft-jdk-17.zip"
+            Write-Host "    Downloading Microsoft OpenJDK 17 (portable zip, ~180 MB — no admin prompt)..."
+            Invoke-WebRequest -Uri "https://aka.ms/download-jdk/microsoft-jdk-17-windows-x64.zip" -OutFile $zip -UseBasicParsing
+            Expand-Archive -Path $zip -DestinationPath $jdkRoot -Force
+            Remove-Item -Force -ErrorAction SilentlyContinue $zip
+            $javaWhere = Find-JavaNoAdmin
+            if ($javaWhere) { Ok "Java 17 ready (no admin needed): $javaWhere" }
+            else { Warn2 "Downloaded but java.exe not found where expected — .mpp stays available via MSPDI XML export" }
+        } catch {
+            Warn2 ("Java download failed (" + $_.Exception.Message + ") — skipped; .mpp files can still be opened after exporting to MSPDI XML from MS Project")
+        }
     } else { Warn2 "Skipped — .mpp files can still be opened after exporting to MSPDI XML from MS Project" }
 }
 
