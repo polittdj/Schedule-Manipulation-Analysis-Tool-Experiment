@@ -19,7 +19,21 @@ def test_chartframe_wires_hover_callouts() -> None:
     assert "cf-tip" in js  # the shared tooltip element
     assert "data-callout" in js  # explicit rich-callout hook
     assert "calloutText" in js and "mousemove" in js  # reads <title>/data-callout, follows cursor
-    assert "wireCallouts(host)" in js  # applied to every framed chart
+    # ADR-0190: wired ONCE at document level (every page, framed or not), not per-host
+    assert 'document.addEventListener("mousemove"' in js and "wireCallouts()" in js
+
+
+def test_callout_never_doubles_with_the_native_tooltip() -> None:
+    """Operator (ADR-0190): only ONE call-out at a time — the styled cf-tip — never the browser's
+    own title-attribute tooltip popping up on top of it. chartframe moves the hovered element's
+    title= (and SVG <title> child) into data-cf-title, so the native tooltip can never fire again
+    for anything the styled call-out covers."""
+    js = (STATIC / "chartframe.js").read_text(encoding="utf-8")
+    assert 'setAttribute("data-cf-title"' in js  # the text survives on the element
+    assert 'removeAttribute("title")' in js  # HTML title= stripped -> no native tooltip
+    assert "removeChild(k)" in js  # SVG <title> child stripped -> no native tooltip
+    assert 'getAttribute("data-cf-title")' in js  # subsequent hovers read the moved text
+    assert 'addEventListener("scroll", hideTip, true)' in js  # no stale tip mid-scroll
 
 
 def test_callout_tooltip_is_styled() -> None:

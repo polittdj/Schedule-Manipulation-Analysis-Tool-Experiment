@@ -1,6 +1,20 @@
-# Handoff — 2026-07-10 (credibility-weighted no-history group estimates; highest ADR 0189)
+# Handoff — 2026-07-10 (one call-out at a time; highest ADR 0190)
 
-> ## STATUS (current) — ADR-0189 no-history group forecasting
+> ## STATUS (current) — ADR-0190 call-out de-duplication
+>
+> - Operator (screenshot, CP Evolution hover): the styled white call-out and the native
+>   browser tooltip overlapped with the same text — "only the one in white … applies to all
+>   callouts in the entire tool. Only one."
+> - chartframe.js: `calloutText` now MOVES `title=` into `data-cf-title` (and strips SVG
+>   `<title>` children after caching) so the native tooltip can never fire; the wiring moved
+>   from per-framed-host to ONE document-level listener, so every titled element on every
+>   page (framed or not — the standalone /evolution grid has no chart-host) gets the same
+>   instant styled call-out; capture-phase scroll hides the tip. Chromium-verified: 9 checks,
+>   zero console errors, title gone after hover, cf-tip singleton.
+
+# (prior) Handoff — 2026-07-10 (credibility-weighted no-history group estimates; ADR 0189)
+
+> ## STATUS — ADR-0189 no-history group forecasting
 >
 > - Operator: groups with remaining work but no completion history must no longer be flagged
 >   unforecastable — forecast them with quantified, labeled, best-practice estimation.

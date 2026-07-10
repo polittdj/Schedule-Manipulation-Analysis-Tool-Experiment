@@ -4902,3 +4902,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   full-coverage SPI(t) <= direct-only) + a no-data-date schedule still unforecastable.
   Full gate: 1974 tests, ruff/format/mypy/bandit/node clean; lockstep wheel + 9 installers
   rebuilt. Highest ADR = 0189.
+
+### 2026-07-10 (cont.) — one call-out at a time, tool-wide (ADR-0190)
+- Operator (screenshot: CP Evolution bar hover, two overlapping boxes with the same text —
+  the styled white call-out + the OS-dark native browser tooltip): "only the one in white …
+  applies to all callouts in the entire tool. Only one. Not multiple at the same time."
+- chartframe.js: calloutText MOVES title= into data-cf-title (SVG <title> children stripped
+  after caching the text the same way) so the browser has nothing left to pop a native
+  tooltip from; subsequent hovers read data-cf-title; re-set titles are re-stripped. The
+  wiring moved from per-framed-host to ONE document-level mousemove/mouseleave listener +
+  a capture-phase scroll hide — every titled element on every page gets the instant styled
+  call-out (the standalone /evolution grid has NO chart-host and previously got only the
+  slow native tooltip; dashboard tiles got both).
+- Chromium-verified (9 checks, zero console errors): exactly one styled cf-tip with verbatim
+  text, title attribute gone after hover (native impossible), second hover still works,
+  SVG <title> removed after caching, cf-tip singleton. Tests re-pinned (document-level
+  wiring) + new de-dup test. Full gate green; lockstep wheel + 9 installers rebuilt.
+  Highest ADR = 0190.
