@@ -797,7 +797,7 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 /* …and a standalone panel chart (curves / margin / scatter shells) lifts into a
    near-full-viewport overlay so it can actually get bigger than its panel */
 .sf-tilebox.tile-expanded {
-  position: fixed; inset: 4vh 3vw; z-index: 60; background: var(--panel);
+  position: fixed; inset: 4vh 3vw; z-index: 220; background: var(--panel);
   border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; overflow: auto;
   box-shadow: 0 18px 60px rgba(0, 0, 0, .45);
 }
@@ -945,7 +945,7 @@ header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
 .gantt-grid th .sf-colgrip { display: none; margin-left: 6px; cursor: pointer; color: var(--muted);
   font-size: 11px; user-select: none; }
 .gantt-grid th:hover .sf-colgrip { display: inline; }
-.sf-colmove-menu { position: absolute; z-index: 60; background: var(--panel, var(--field-bg));
+.sf-colmove-menu { position: absolute; z-index: 220; background: var(--panel, var(--field-bg));
   border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
   display: flex; flex-direction: column; }
 .sf-colmove-menu button { background: none; border: none; color: var(--fg); padding: 6px 12px;
@@ -958,7 +958,7 @@ svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index
 .g-link-arrow { fill: var(--gantt-link, #7a8699); opacity: .95; }
 
 /* ---- Task Information dialog (MS Project-style, ADR-0183) ---- */
-.ti-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 90;
+.ti-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 220;
   display: flex; align-items: center; justify-content: center; }
 .ti-dialog { background: var(--bg, #fff); color: var(--fg); border: 1px solid var(--line);
   border-radius: 10px; width: min(760px, 94vw); max-height: 86vh; display: flex;
@@ -988,11 +988,16 @@ svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index
 .src-banner b { color: var(--fg); }
 
 /* ---- per-page memory + universal Reset view (ADR-0186) ---- */
-.sf-reset-view { position: fixed; right: 14px; bottom: 54px; z-index: 95;
+/* the header-nav Reset view button (ADR-0188): rides in the FROZEN title bar so it is
+   always visible; the .sf-reset-float fallback covers markup predating the header button */
+header nav .sf-reset-view { background: none; border: 0; font: inherit; cursor: pointer;
+  color: rgba(255, 255, 255, 0.82); margin-right: 14px; padding: 0; }
+header nav .sf-reset-view:hover { color: #fff; }
+.sf-reset-float { position: fixed; right: 14px; top: 45%; z-index: 95;
   padding: 4px 13px; font-size: 12px; color: var(--muted); background: var(--panel);
   border: 1px solid var(--line); border-radius: 14px; cursor: pointer;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25); }
-.sf-reset-view:hover { color: var(--fg); border-color: var(--accent); }
+.sf-reset-float:hover { color: var(--fg); border-color: var(--accent); }
 /* the Find-UID flash works on EVERY Gantt table, not just the Activities grid */
 tr.row-found td { background: #fff3b0; }
 tr.row-found td.sf-frozen-col { background: #fff3b0; }

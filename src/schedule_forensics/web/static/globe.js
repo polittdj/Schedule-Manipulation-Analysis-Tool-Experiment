@@ -1,7 +1,9 @@
-/* Schedule Forensics — header insignia: a transparent 3D wireframe Earth that rotates around a
- * STATIONARY "NASA" wordmark (the planet spins, the word does not). Vendored, dependency-free and
- * air-gap-safe — pure <canvas>, no images, no CDN, no WebGL libraries. The far side of the globe is
- * drawn faded so you can see straight through it; the continents are coarse coastline outlines.
+/* Schedule Forensics — header insignia: a transparent 3D wireframe Earth (no wordmark —
+ * operator 2026-07-10, ADR-0188). Vendored, dependency-free and air-gap-safe — pure <canvas>,
+ * no images, no CDN, no WebGL libraries. The far side of the globe is drawn faded so you can
+ * see straight through it; the continents are coarse coastline outlines. The globe radius
+ * leaves headroom inside the canvas so the rocket arcs stay ENTIRELY in frame (they used to
+ * clip outside the canvas mid-flight and pop back on descent).
  *
  * It also doubles as the page-wide AI status light: ask.js toggles `.ai-thinking` (model is
  * generating → spin up + cyan glow) and briefly `.ai-error` (failed → red flash) on the host, so on
@@ -59,7 +61,10 @@
     size = cv.clientWidth || 130;
     cv.width = Math.round(size * dpr);
     cv.height = Math.round(size * dpr);
-    R = size * 0.46;
+    // 0.31: the rocket arcs climb to ~1.5R, so R*(1.5)+craft must stay inside size/2 —
+    // at 0.46 the arc apogee left the canvas (operator: "the rockets disappear ... I want
+    // to see the entire arc")
+    R = size * 0.31;
     cx = size / 2;
     cy = size / 2;
   }
@@ -187,9 +192,10 @@
       var base = project(pad[0], pad[1], rotNow);
       if (base.z <= 0.05) continue; // pad on the far side — hold until it rotates around
       var t = rk.t;
-      // arc: radially outward with an eastward curl, up to ~0.55R above the surface
+      // arc: radially outward with an eastward curl, up to ~0.5R above the surface — with
+      // R at 0.31·size the whole flight (apogee 1.5R + the craft dot) stays inside the frame
       var ang = Math.atan2(base.y - cy, base.x - cx);
-      var lift = R * 0.55 * t;
+      var lift = R * 0.5 * t;
       var curl = 0.9 * t; // radians of curl along the flight
       var px = cx + (R + lift) * Math.cos(ang - curl * 0.35);
       var py = cy + (R + lift) * Math.sin(ang - curl * 0.35);

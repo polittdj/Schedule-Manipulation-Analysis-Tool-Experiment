@@ -187,11 +187,22 @@
   }
 
   function injectResetButton() {
-    if (document.getElementById("sfResetView")) return;
+    // the button now lives in the FROZEN header nav (operator 2026-07-10, ADR-0188 — the
+    // fixed bottom-right chip sat exactly under the JARVIS telemetry dock and read as
+    // missing); persist.js just binds it. The injected fallback covers any page whose
+    // markup predates the header button.
+    var existing = document.getElementById("sfResetView");
+    if (existing) {
+      if (!existing._sfBound) {
+        existing._sfBound = true;
+        existing.addEventListener("click", resetPage);
+      }
+      return;
+    }
     var btn = document.createElement("button");
     btn.id = "sfResetView";
     btn.type = "button";
-    btn.className = "sf-reset-view";
+    btn.className = "sf-reset-view sf-reset-float";
     btn.title = "Clear every selection you made on this page (inputs, filters, toggles, remembered view) and return to the default view";
     var glyph = document.createElement("span");
     glyph.setAttribute("aria-hidden", "true");
@@ -202,8 +213,6 @@
     btn.appendChild(glyph);
     btn.appendChild(label);
     btn.addEventListener("click", resetPage);
-    // fixed-position on <body> (operator 2026-07-10: the float version was easy to miss on
-    // busy pages like /path — the button must be unmissable on EVERY page and every Gantt)
     document.body.appendChild(btn);
   }
 

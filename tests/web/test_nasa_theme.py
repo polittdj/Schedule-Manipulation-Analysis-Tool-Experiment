@@ -49,7 +49,8 @@ def test_rotating_globe_on_every_page(client: TestClient) -> None:
         page = client.get(path).text
         assert 'class="nasa-globe"' in page, path  # the 3D Earth insignia host
         assert "<canvas" in page, path
-        assert 'class="nasa-globe-text">NASA<' in page, path  # the STATIONARY wordmark
+        # ADR-0188: the wordmark was removed at the operator's request — canvas only
+        assert "nasa-globe-text" not in page, path
         assert "/static/globe.js" in page, path
 
 

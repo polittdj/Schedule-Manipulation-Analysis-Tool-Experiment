@@ -104,8 +104,6 @@ html[data-theme=jarvis] header h1{color:var(--accent);
 html[data-theme=jarvis] header nav a{color:#9fd6ef}
 html[data-theme=jarvis] header nav a:hover{color:var(--accent);text-shadow:0 0 9px rgba(25,211,255,.8)}
 html[data-theme=jarvis] header nav .nav-grp-label{color:var(--warn)}
-html[data-theme=jarvis] .nasa-globe-text{color:var(--accent);
-  text-shadow:0 0 8px rgba(25,211,255,.9),0 0 26px rgba(25,211,255,.5)}
 /* HUD panels: glassy, corner-bracketed, glowing */
 html[data-theme=jarvis] .panel{position:relative;background:var(--panel);
   border:1px solid rgba(25,211,255,.35);border-radius:4px;backdrop-filter:blur(4px);

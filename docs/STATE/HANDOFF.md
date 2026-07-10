@@ -1,6 +1,50 @@
-# Handoff — 2026-07-10 (unlimited scroll + evolution table Gantt + expand fill; highest ADR 0187)
+# Handoff — 2026-07-10 (credibility-weighted no-history group estimates; highest ADR 0189)
 
-> ## STATUS (current) — ADR-0187 scroll/evolution/expand/callout batch
+> ## STATUS (current) — ADR-0189 no-history group forecasting
+>
+> - Operator: groups with remaining work but no completion history must no longer be flagged
+>   unforecastable — forecast them with quantified, labeled, best-practice estimation.
+> - **Method** (`engine/forecast.py`, ADR-0189): Bühlmann credibility / partial pooling —
+>   zero own observations → Z = 0 → borrow the pooled project-wide per-activity throughput,
+>   discounted by the group's own start-execution index (penalize-only min(1, SEI), floor
+>   0.25, NDIA PASEG-style leading indicator), bracketed by the reference-class P75/P25 of
+>   the per-activity rates the groups WITH history demonstrated (Flyvbjerg outside view).
+>   `EstimatedGroupForecast` carries a full quantified `basis`; `GroupRollup` gains
+>   full-coverage `weighted_spi_t_all`/`ieac_finish_all` alongside the direct-only figures
+>   and `rate_finish_is_estimated` when an estimated group is the bottleneck.
+> - **/forecast panel**: 3-column comparison (direct only / full coverage / top-down),
+>   "Estimated groups" sub-table with per-group basis + methodology explainer, ESTIMATED
+>   badge on the bottleneck; vizhints updated. "Unforecastable" is reserved for the truly
+>   impossible (no data date / no completions anywhere).
+> - Gate green (ruff, format, mypy strict, bandit 0, 1974 tests, node --check), lockstep
+>   wheel + 9 installers rebuilt. Highest ADR = 0189.
+
+# (prior) Handoff — 2026-07-10 (frozen header + WBS hierarchy + forecast rollup + globe; ADR 0188)
+
+> ## STATUS — ADR-0188 header/hierarchy/rollup/globe batch
+>
+> - **Frozen title bar**: header position:sticky (z 110) — brand + full nav stay visible while
+>   scrolling; Task-Info/expanded-tile/load/colmove overlays raised above it (z 220). **Reset
+>   view now rides IN the header nav** (root cause of "still don't see it": the fixed chip sat
+>   under the JARVIS telemetry dock); persist.js binds it, floating chip only as fallback.
+> - **WBS-derived hierarchy** on the Activities Gantt: flat P6-exported .mpp files (no summary
+>   tasks, uniform outline levels, hierarchy only in WBS codes) now render bold WBS rollup
+>   bands (span = earliest start → latest finish of members) + WBS-depth indentation, honestly
+>   disclosed on-page; real-summary files untouched; sorting returns the flat list. XER
+>   importer sets outline_level from WBS path depth and registers "Activity ID" in
+>   custom_field_labels (it was un-groupable before).
+> - **Forecast group rollup** (`compute_group_rollup` + "Project rollup" panel): per-group
+>   exact SPI(t) weighted by to-go count re-runs IEAC(t); per-group throughput extrapolates
+>   each backlog with the LATEST group finish as the bottleneck answer; coverage +
+>   unforecastable groups disclosed; rendered beside the top-down figures.
+> - **Globe**: NASA wordmark removed (AI-status glow moved to a canvas drop-shadow); radius
+>   0.31·canvas + arc apogee 1.5R so the entire rocket arc stays in frame; globe rides at the
+>   top of the header row. Chromium: 9 checks + overlay-layering spot check, zero console
+>   errors.
+
+# (prior) Handoff — 2026-07-10 (unlimited scroll + evolution table Gantt + expand fill; ADR 0187)
+
+> ## STATUS — ADR-0187 scroll/evolution/expand/callout batch
 >
 > - **Unlimited right scroll**: `SFGantt.attachEdgeExtend` — every Gantt (Activities grid,
 >   trace, /path, corridor, SRA grid, evolution) extends its axis +60d when the pane hits its

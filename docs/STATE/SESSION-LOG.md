@@ -4860,3 +4860,45 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   zero console errors. Stale pins re-pinned (accessibility/mission/visuals/gantt-consistency/
   brief-reflow/evolution). Full gate green; lockstep wheel + 9 installers rebuilt.
   Highest ADR = 0187.
+
+### 2026-07-10 (cont.) — frozen header, WBS hierarchy, forecast rollup, globe (ADR-0188)
+- Operator: summary bars + level indentation on the per-file Gantt (flat IPMR .mpp series);
+  Reset buttons "still" missing; forecast group-by must recalc the project Forecast Cards +
+  Finish Forecast from the weighted group data points; remove NASA from the globe + keep the
+  whole rocket arc in frame; move the globe up; freeze the title bar with the page selections.
+- header sticky (z110) + overlays raised to z220; Reset view server-rendered in the header
+  nav (root cause: the fixed chip sat under the JARVIS telemetry dock), persist.js binds it.
+- app.js WBS-derived hierarchy for flat files (no real summaries + uniform outline levels):
+  bold per-WBS-prefix rollup bands (member-span bars), WBS-depth indentation, segment-aware
+  ordering, on-page disclosure, no Task-Info/UID on synthetic bands, % blank (never computed
+  pseudo-progress); real-summary files untouched. XER importer: outline_level = WBS depth;
+  "Activity ID" registered in custom_field_labels (grouping resolved nothing before).
+- engine/forecast.compute_group_rollup + /forecast "Project rollup" panel: to-go-weighted
+  exact SPI(t) -> IEAC(t); per-group throughput -> bottleneck (latest) finish with the
+  limiting group named; coverage + unforecastable groups disclosed; vizhints entry added.
+- globe.js: wordmark span/CSS removed (AI-status glow now a canvas drop-shadow), R=0.31*size,
+  arc apogee 1.5R (entire arc in frame), host align-self:flex-start. Stale pins re-pinned
+  (nasa_theme wordmark, page_memory reset injection, ai-thinking CSS). Chromium: 9 checks +
+  overlay spot check green, zero console errors. Full gate: 1972+ passed, mypy/ruff/bandit/
+  node clean; lockstep wheel + 9 installers rebuilt. Highest ADR = 0188.
+
+### 2026-07-10 (cont.) — credibility-weighted estimates for no-history groups (ADR-0189)
+- Operator: groups with remaining work but no completion history must not be flagged
+  unforecastable — forecast them with quantified, labeled estimation per industry/statistical
+  best practice.
+- engine/forecast.py: EstimatedGroupForecast + GroupRollup extended (weighted_spi_t_all,
+  ieac_finish_all, estimated, rate_finish_is_estimated). Method: Buhlmann credibility
+  Z = n/(n+k) = 0 with zero group completions -> borrow the pooled per-activity throughput
+  (total completions / (elapsed months x total activities) x group size), discounted by the
+  group's own SEI (penalize-only min(1, SEI), floor 0.25 — NDIA PASEG-style start leading
+  indicator), early/late bracketed by the reference-class P75/P25 of the history-groups'
+  per-activity rates (Flyvbjerg outside view). Every estimate carries a quantified basis
+  string; "unforecastable" reserved for no-data-date / no-completions-anywhere.
+- /forecast "Project rollup" panel: 3-column comparison (Rollup direct only / Rollup full
+  coverage / Top-down), "Estimated groups" sub-table (to-go, SEI, borrowed rate, discount,
+  finish, early->late, basis-on-hover) + methodology explainer, ESTIMATED badge on an
+  estimated bottleneck; vizhints callout updated.
+- Tests: Hot/Cold rollup asserts Cold is estimated (bounded discount, labeled basis,
+  full-coverage SPI(t) <= direct-only) + a no-data-date schedule still unforecastable.
+  Full gate: 1974 tests, ruff/format/mypy/bandit/node clean; lockstep wheel + 9 installers
+  rebuilt. Highest ADR = 0189.

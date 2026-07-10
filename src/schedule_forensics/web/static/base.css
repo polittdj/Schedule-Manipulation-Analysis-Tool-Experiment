@@ -27,7 +27,11 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
 font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
-padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}header h1{font-size:17px;margin:0;letter-spacing:.5px}
+padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+/* frozen title bar (operator 2026-07-10, ADR-0188): the nav with all the page selections stays
+   visible while the user scrolls; anything that must cover it (dialogs, expanded charts) already
+   sits above z-index 110 */
+position:sticky;top:0;z-index:110}header h1{font-size:17px;margin:0;letter-spacing:.5px}
 /* the report-page names are the primary navigation — render them larger + semibold so each page is
    easy to scan and identify (the operator asked for bigger, clearly identifiable page names) */
 header nav a{margin-right:14px;color:var(--ink);font-size:13px;font-weight:600}
@@ -71,7 +75,7 @@ transition:border-color .15s,background .15s;background:var(--dz-bg)}
 /* file-load indicator: a full-screen overlay shown the instant a file is dropped/picked (or the
    example is loaded), so the operator sees the tool is importing/analyzing and not stuck. It stays
    up until the upload POST navigates to the next page. */
-.load-overlay{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+.load-overlay{position:fixed;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;
   background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(2px)}
 .load-overlay[hidden]{display:none}
 .load-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px 30px;
@@ -189,16 +193,16 @@ header label{color:rgba(255,255,255,.9)}
    "NASA" wordmark — 3x the old meatball. It also doubles as the page-wide AI status light: ask.js
    adds .ai-thinking while the local model generates (the globe spins up + glows cyan) and .ai-error
    on failure (red flash), so every page shows whether the AI is working. */
+/* operator 2026-07-10 (ADR-0188): no wordmark on the globe, and the globe rides at the TOP of
+   the header row (align-self:flex-start + a slight raise) instead of centering low. */
 .nasa-globe{margin-left:auto;position:relative;width:132px;height:132px;flex:0 0 auto;
+  align-self:flex-start;margin-top:-6px;
   display:flex;align-items:center;justify-content:center}
 .nasa-globe canvas{position:absolute;inset:0;width:132px;height:132px;display:block}
-.nasa-globe-text{position:relative;z-index:2;font-weight:800;font-size:23px;letter-spacing:3px;
-  color:#fff;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-  text-shadow:0 0 5px rgba(0,0,0,.65),0 0 16px rgba(40,120,220,.85);transition:color .3s,text-shadow .3s}
-.nasa-globe.ai-thinking .nasa-globe-text{color:#dff2ff;
-  text-shadow:0 0 6px rgba(0,0,0,.6),0 0 22px rgba(120,210,255,.95)}
-.nasa-globe.ai-error .nasa-globe-text{color:#ffd9d9;
-  text-shadow:0 0 6px rgba(0,0,0,.6),0 0 18px rgba(252,61,33,.9)}
+/* the page-wide AI status light (the wordmark used to carry the glow; now the canvas does):
+   cyan while the local model generates, red flash on failure */
+.nasa-globe.ai-thinking canvas{filter:drop-shadow(0 0 10px rgba(120,210,255,.55))}
+.nasa-globe.ai-error canvas{filter:drop-shadow(0 0 10px rgba(252,61,33,.65))}
 
 .cui-banner{text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;
   text-transform:uppercase;padding:3px 10px;background:#1b1b1b;color:#fff}

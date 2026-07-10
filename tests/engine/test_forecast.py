@@ -172,3 +172,98 @@ def test_golden_pins(golden_project2: Schedule, golden_project5: Schedule) -> No
     # exact-ratio IEAC(t): dividing by the 2-decimal SPI(t) (0.47 vs 0.4651) read 9 days early
     assert by_id5["earned_schedule"].finish == dt.date(2029, 2, 1)
     assert p5.planned_finish == dt.date(2027, 7, 9)
+
+
+# --- group-weighted rollup (ADR-0188) -------------------------------------------------
+
+
+def _rollup_schedule() -> Schedule:
+    """Two custom-field groups: 'Hot' (2 done of 3) and 'Cold' (0 done of 2 — unforecastable
+    by rate). Data date after the completions so rates and ES are defined."""
+
+    def gt(uid: int, group: str, *, done: bool, baseline_day: int) -> Task:
+        # _task's day arithmetic is January-bound; build the baseline date directly
+        baseline = dt.datetime(2025, 1, 6, 17, 0) + dt.timedelta(days=baseline_day)
+        extra = (
+            {"percent_complete": 100.0, "actual_start": MON, "actual_finish": baseline}
+            if done
+            else {}
+        )
+        return Task(
+            unique_id=uid,
+            name=f"T{uid}",
+            duration_minutes=DAY,
+            baseline_finish=baseline,
+            custom_fields=(("CAM", group),),
+            **extra,  # type: ignore[arg-type]
+        )
+
+    tasks = (
+        gt(1, "Hot", done=True, baseline_day=1),
+        gt(2, "Hot", done=True, baseline_day=2),
+        gt(3, "Hot", done=False, baseline_day=60),
+        gt(4, "Cold", done=False, baseline_day=61),
+        gt(5, "Cold", done=False, baseline_day=62),
+    )
+    return Schedule(
+        name="Rollup",
+        project_start=MON,
+        status_date=dt.datetime(2025, 3, 3, 17, 0),
+        tasks=tasks,
+        custom_field_labels=("CAM",),  # grouping resolves custom fields via this registry
+    )
+
+
+def test_group_rollup_weights_disclose_and_bottleneck() -> None:
+    from schedule_forensics.engine.forecast import compute_group_rollup
+
+    sch = _rollup_schedule()
+    rollup = compute_group_rollup(sch, "CAM")
+    assert rollup is not None
+    assert rollup.field == "CAM"
+    # both groups carry to-go work; only Hot has completions (an SPI + a rate)
+    assert rollup.groups_total == 2
+    assert rollup.total_to_go == 3
+    # ADR-0189: Cold has no completions -> a QUANTIFIED credibility-weighted estimate
+    # (never silent, never plain-imputed): the pooled per-activity rate at Z = 0
+    assert rollup.unforecastable == ()
+    assert [e.group for e in rollup.estimated] == ["Cold"]
+    est = rollup.estimated[0]
+    assert est.to_go == 2
+    # pooled per-activity rate = 2 completed / (elapsed months x 5 activities), x 2 activities
+    assert est.pooled_rate_per_month > 0
+    assert 0.25 <= est.adjustment <= 1.0  # the start-index discount is bounded + floored
+    assert "ESTIMATE" in est.basis and "Z = 0" in est.basis  # quantified + labeled
+    assert est.finish > sch.status_date.date()
+    # the bottleneck considers BOTH groups; whichever is later wins, flagged if estimated
+    assert rollup.rate_limiting_group in ("Hot", "Cold")
+    assert rollup.rate_finish is not None
+    if rollup.rate_limiting_group == "Cold":
+        assert rollup.rate_finish_is_estimated
+    # full-coverage weighted SPI(t) now spans ALL the to-go work
+    assert rollup.covered_to_go <= rollup.total_to_go
+    if rollup.weighted_spi_t is not None:
+        assert rollup.weighted_spi_t > 0
+    if rollup.weighted_spi_t_all is not None and rollup.weighted_spi_t is not None:
+        # the estimated group's discount can only pull the full-coverage index DOWN or equal
+        assert rollup.weighted_spi_t_all <= rollup.weighted_spi_t + 0.01
+
+
+def test_group_rollup_truly_unforecastable_without_a_data_date() -> None:
+    from schedule_forensics.engine.forecast import compute_group_rollup
+
+    sch = _rollup_schedule().model_copy(update={"status_date": None})
+    rollup = compute_group_rollup(sch, "CAM")
+    assert rollup is not None
+    # no data date -> nothing to extrapolate FROM; estimating would be fabrication
+    assert "Cold" in rollup.unforecastable
+    assert rollup.estimated == ()
+
+
+def test_group_rollup_none_when_field_yields_no_groups() -> None:
+    from schedule_forensics.engine.forecast import compute_group_rollup
+
+    # None is reserved for a schedule with no tasks at all (an unknown field still
+    # yields the NA group, so a populated schedule never returns None)
+    empty = Schedule(name="E", project_start=MON, tasks=())
+    assert compute_group_rollup(empty, "CAM") is None
