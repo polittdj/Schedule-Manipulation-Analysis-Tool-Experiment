@@ -5281,12 +5281,13 @@ automatically on the same engine formulas as the schedule-wide figures.</p>
 
 
 def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -> str:
-    """The project forecast RECALCULATED from the group-weighted data points (ADR-0188).
+    """The project forecast RECALCULATED from the group-weighted data points (ADR-0188/0189).
 
     Rendered under the per-group table when a group field is chosen: the groups' exact
-    SPI(t)s weighted by their to-go work re-run IEAC(t), and each group's own throughput
-    extrapolates its own backlog with the LATEST group finish as the project's bottleneck
-    answer. Coverage and unforecastable groups are disclosed — never silently imputed."""
+    SPI(t)s weighted by their to-go work re-run IEAC(t) (direct-only AND full-coverage,
+    where no-history groups contribute credibility-weighted estimates), and each group's
+    throughput extrapolates its own backlog with the LATEST group finish as the project's
+    bottleneck answer. Estimates are quantified and labeled (ADR-0189) — never silent."""
     rollup = compute_group_rollup(latest, field)
     if rollup is None:
         return ""
@@ -5296,11 +5297,46 @@ def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -
         return _mdY(v) if v else "&mdash;"
 
     spi_cell = f"{rollup.weighted_spi_t:g}" if rollup.weighted_spi_t is not None else "&mdash;"
+    spi_all = (
+        f"{rollup.weighted_spi_t_all:g}" if rollup.weighted_spi_t_all is not None else "&mdash;"
+    )
     top_spi = f"{latest_set.spi_t:g}" if latest_set.spi_t is not None else "&mdash;"
     coverage = (
-        f"{rollup.groups_used} of {rollup.groups_total} groups with to-go work carry an SPI(t), "
-        f"covering {rollup.covered_to_go} of {rollup.total_to_go} to-go activities"
+        f"{rollup.groups_used} of {rollup.groups_total} groups with to-go work carry a DIRECT "
+        f"SPI(t), covering {rollup.covered_to_go} of {rollup.total_to_go} to-go activities; "
+        "the full-coverage figure adds the estimated groups below (credibility-weighted)"
     )
+    est_block = ""
+    if rollup.estimated:
+        rows = "".join(
+            f"<tr><th scope=row data-no-i18n>{_e(e.group)}</th><td class=num>{e.to_go}</td>"
+            f"<td class=num>{e.sei if e.sei is not None else '&mdash;'}</td>"
+            f"<td class=num>{e.pooled_rate_per_month:g}/mo</td>"
+            f"<td class=num>&times;{e.adjustment:g}</td>"
+            f"<td><b>{d(e.finish)}</b></td>"
+            f"<td class=muted>{d(e.finish_early)} &rarr; {d(e.finish_late)}</td>"
+            f'<td class=muted title="{_e(e.basis)}">hover for the full basis</td></tr>'
+            for e in rollup.estimated
+        )
+        est_block = f"""
+<h3>Estimated groups &mdash; no completion history yet (credibility-weighted)</h3>
+<p class=muted>These groups carry to-go work but have completed nothing, so a finish-anchored
+measure has no qualifying data. Instead of flagging them unforecastable, each gets a
+<b>quantified estimate</b> built on standard statistical practice: <b>partial pooling /
+credibility weighting</b> (B&uuml;hlmann; with zero group observations the credibility weight
+on the group's own history is Z&nbsp;=&nbsp;0, so the estimate borrows the <b>pooled
+per-activity throughput</b> of the whole project), <b>discounted by the group's own start
+execution index</b> (the NDIA PASEG-style start-anchored leading indicator &mdash; work must
+start before it can finish, so demonstrated late starting slows the borrowed rate; the
+discount only ever penalizes and is floored at &times;0.25), and <b>ranged by
+reference-class forecasting</b> (the P75&rarr;P25 per-activity rates the groups WITH history
+demonstrated &mdash; Flyvbjerg's outside view). Estimates are labeled everywhere they are
+used and are replaced by direct measures the moment the group completes its first
+activity.</p>
+<table><tr><th scope=col>Group</th><th scope=col>To go</th><th scope=col>SEI</th>
+<th scope=col>Borrowed rate</th><th scope=col>Discount</th><th scope=col>Estimated finish</th>
+<th scope=col>Early &rarr; late (reference class)</th><th scope=col>Basis</th></tr>
+{rows}</table>"""
     unforecastable = ""
     if rollup.unforecastable:
         names = ", ".join(_e(g) for g in rollup.unforecastable[:8])
@@ -5308,13 +5344,14 @@ def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -
             f" (+{len(rollup.unforecastable) - 8} more)" if len(rollup.unforecastable) > 8 else ""
         )
         unforecastable = (
-            f"<p class=muted><b>Unforecastable by rate:</b> {names}{more} &mdash; to-go work but "
-            "no completion history yet, so a throughput extrapolation would be fabricated; these "
-            "groups are excluded from the bottleneck answer and flagged instead.</p>"
+            f"<p class=muted><b>Unforecastable:</b> {names}{more} &mdash; no data date or no "
+            "completions anywhere in the file, so there is nothing to borrow from; estimating "
+            "here would be fabrication, not statistics.</p>"
         )
     limiting = (
-        f" &mdash; limited by <b data-no-i18n>{_e(rollup.rate_limiting_group)}</b> (the project "
-        "finishes when its slowest group finishes)"
+        f" &mdash; limited by <b data-no-i18n>{_e(rollup.rate_limiting_group)}</b>"
+        + (" <span class=exc-note>ESTIMATED</span>" if rollup.rate_finish_is_estimated else "")
+        + " (the project finishes when its slowest group finishes)"
         if rollup.rate_limiting_group
         else ""
     )
@@ -5324,20 +5361,27 @@ def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -
 each group's <b>exact SPI(t)</b> is weighted by its <b>to-go activity count</b> (the groups
 still carrying the remaining work dominate the index), and each group's own completion
 throughput extrapolates its own backlog with the <b>latest</b> group finish as the project's
-bottleneck answer. Compare against the top-down forecast &mdash; a gap means the remaining
-work sits in groups performing differently than the project-wide average suggests.</p>
+bottleneck answer. Groups without completion history contribute <b>credibility-weighted
+estimates</b> (detailed below) so the rollup covers ALL the remaining work. Compare against
+the top-down forecast &mdash; a gap means the remaining work sits in groups performing
+differently than the project-wide average suggests.</p>
 <table>
-<tr><th scope=col>Figure</th><th scope=col>Group-weighted rollup</th>
+<tr><th scope=col>Figure</th><th scope=col>Rollup (direct only)</th>
+<th scope=col>Rollup (full coverage)</th>
 <th scope=col>Top-down (whole project)</th><th scope=col>Basis</th></tr>
-<tr><th scope=row>SPI(t)</th><td class=num><b>{spi_cell}</b></td><td class=num>{top_spi}</td>
+<tr><th scope=row>SPI(t)</th><td class=num>{spi_cell}</td><td class=num><b>{spi_all}</b></td>
+<td class=num>{top_spi}</td>
 <td class=muted>{_e(rollup.weight_basis)}; {coverage}</td></tr>
-<tr><th scope=row>Earned-schedule IEAC(t) finish</th><td><b>{d(rollup.ieac_finish)}</b></td>
+<tr><th scope=row>Earned-schedule IEAC(t) finish</th><td>{d(rollup.ieac_finish)}</td>
+<td><b>{d(rollup.ieac_finish_all)}</b></td>
 <td>{d(top.get("earned_schedule"))}</td>
 <td class=muted>IEAC(t) = AT + (PD &minus; ES) / <b>weighted</b> SPI(t)</td></tr>
-<tr><th scope=row>Completion-rate finish</th><td><b>{d(rollup.rate_finish)}</b></td>
+<tr><th scope=row>Completion-rate finish</th><td colspan=2><b>{d(rollup.rate_finish)}</b></td>
 <td>{d(top.get("rate"))}</td>
-<td class=muted>each group's own throughput extrapolates its own to-go count{limiting}</td></tr>
+<td class=muted>each group's own throughput extrapolates its own to-go count; estimated
+groups use their credibility-weighted rate{limiting}</td></tr>
 </table>
+{est_block}
 {unforecastable}
 <p class=cite>Weighted over {rollup.groups_total} group(s) of &ldquo;{_e(field)}&rdquo; with
 to-go work &mdash; {_e(latest.source_file or latest.name)}</p></div>"""

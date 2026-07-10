@@ -224,15 +224,40 @@ def test_group_rollup_weights_disclose_and_bottleneck() -> None:
     # both groups carry to-go work; only Hot has completions (an SPI + a rate)
     assert rollup.groups_total == 2
     assert rollup.total_to_go == 3
-    # Cold has no completions -> honestly unforecastable by rate, never imputed
-    assert rollup.unforecastable == ("Cold",)
-    # the bottleneck rate answer comes from the only forecastable group
-    assert rollup.rate_limiting_group == "Hot"
-    assert rollup.rate_finish is not None and rollup.rate_finish > sch.status_date.date()
-    # weighted SPI(t) covers only the SPI-bearing groups' to-go work — disclosed
+    # ADR-0189: Cold has no completions -> a QUANTIFIED credibility-weighted estimate
+    # (never silent, never plain-imputed): the pooled per-activity rate at Z = 0
+    assert rollup.unforecastable == ()
+    assert [e.group for e in rollup.estimated] == ["Cold"]
+    est = rollup.estimated[0]
+    assert est.to_go == 2
+    # pooled per-activity rate = 2 completed / (elapsed months x 5 activities), x 2 activities
+    assert est.pooled_rate_per_month > 0
+    assert 0.25 <= est.adjustment <= 1.0  # the start-index discount is bounded + floored
+    assert "ESTIMATE" in est.basis and "Z = 0" in est.basis  # quantified + labeled
+    assert est.finish > sch.status_date.date()
+    # the bottleneck considers BOTH groups; whichever is later wins, flagged if estimated
+    assert rollup.rate_limiting_group in ("Hot", "Cold")
+    assert rollup.rate_finish is not None
+    if rollup.rate_limiting_group == "Cold":
+        assert rollup.rate_finish_is_estimated
+    # full-coverage weighted SPI(t) now spans ALL the to-go work
     assert rollup.covered_to_go <= rollup.total_to_go
     if rollup.weighted_spi_t is not None:
         assert rollup.weighted_spi_t > 0
+    if rollup.weighted_spi_t_all is not None and rollup.weighted_spi_t is not None:
+        # the estimated group's discount can only pull the full-coverage index DOWN or equal
+        assert rollup.weighted_spi_t_all <= rollup.weighted_spi_t + 0.01
+
+
+def test_group_rollup_truly_unforecastable_without_a_data_date() -> None:
+    from schedule_forensics.engine.forecast import compute_group_rollup
+
+    sch = _rollup_schedule().model_copy(update={"status_date": None})
+    rollup = compute_group_rollup(sch, "CAM")
+    assert rollup is not None
+    # no data date -> nothing to extrapolate FROM; estimating would be fabrication
+    assert "Cold" in rollup.unforecastable
+    assert rollup.estimated == ()
 
 
 def test_group_rollup_none_when_field_yields_no_groups() -> None:

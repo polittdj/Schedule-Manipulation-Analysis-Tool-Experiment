@@ -83,7 +83,7 @@ def test_forecast_group_rollup_panel_renders(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/forecast?group_field=WBS").text
     assert "Project rollup" in page
-    assert "Group-weighted rollup" in page and "Top-down (whole project)" in page
+    assert "Rollup (full coverage)" in page and "Top-down (whole project)" in page
     assert "weighted by its to-go activity count" in page  # the weighting basis is disclosed
     # without a grouping the rollup panel stays absent
     assert "Project rollup" not in client.get("/forecast").text

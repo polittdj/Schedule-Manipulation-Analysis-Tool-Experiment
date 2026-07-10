@@ -4881,3 +4881,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (nasa_theme wordmark, page_memory reset injection, ai-thinking CSS). Chromium: 9 checks +
   overlay spot check green, zero console errors. Full gate: 1972+ passed, mypy/ruff/bandit/
   node clean; lockstep wheel + 9 installers rebuilt. Highest ADR = 0188.
+
+### 2026-07-10 (cont.) — credibility-weighted estimates for no-history groups (ADR-0189)
+- Operator: groups with remaining work but no completion history must not be flagged
+  unforecastable — forecast them with quantified, labeled estimation per industry/statistical
+  best practice.
+- engine/forecast.py: EstimatedGroupForecast + GroupRollup extended (weighted_spi_t_all,
+  ieac_finish_all, estimated, rate_finish_is_estimated). Method: Buhlmann credibility
+  Z = n/(n+k) = 0 with zero group completions -> borrow the pooled per-activity throughput
+  (total completions / (elapsed months x total activities) x group size), discounted by the
+  group's own SEI (penalize-only min(1, SEI), floor 0.25 — NDIA PASEG-style start leading
+  indicator), early/late bracketed by the reference-class P75/P25 of the history-groups'
+  per-activity rates (Flyvbjerg outside view). Every estimate carries a quantified basis
+  string; "unforecastable" reserved for no-data-date / no-completions-anywhere.
+- /forecast "Project rollup" panel: 3-column comparison (Rollup direct only / Rollup full
+  coverage / Top-down), "Estimated groups" sub-table (to-go, SEI, borrowed rate, discount,
+  finish, early->late, basis-on-hover) + methodology explainer, ESTIMATED badge on an
+  estimated bottleneck; vizhints callout updated.
+- Tests: Hot/Cold rollup asserts Cold is estimated (bounded discount, labeled basis,
+  full-coverage SPI(t) <= direct-only) + a no-data-date schedule still unforecastable.
+  Full gate: 1974 tests, ruff/format/mypy/bandit/node clean; lockstep wheel + 9 installers
+  rebuilt. Highest ADR = 0189.

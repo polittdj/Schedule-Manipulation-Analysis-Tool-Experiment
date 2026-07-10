@@ -201,10 +201,10 @@
       "The counterfactual finish quantifies how much of the improvement came from the removals.",
       "Separates real recovery from path surgery, in working days.")],
     ["project rollup", H(
-      "The project forecast recalculated bottom-up: each group's exact SPI(t) weighted by its to-go work re-runs IEAC(t), and each group's own throughput extrapolates its own backlog (the latest group finish is the bottleneck answer).",
-      "A group-weighted IEAC(t) two months later than the top-down one = the remaining work sits in groups performing worse than the project average.",
-      "Compare the rollup column against the top-down column; coverage and unforecastable groups are disclosed under the table.",
-      "Catches the classic averaging trap: a healthy project-wide index hiding a struggling group that owns the rest of the plan.")],
+      "The project forecast recalculated bottom-up: each group's exact SPI(t) weighted by its to-go work re-runs IEAC(t), and each group's own throughput extrapolates its own backlog (the latest group finish is the bottleneck answer). Groups with no completion history contribute credibility-weighted estimates (partial pooling at Z=0, start-index discounted, reference-class ranged) so the rollup covers ALL remaining work.",
+      "A full-coverage IEAC(t) two months later than the top-down one = the remaining work sits in groups performing (or estimated to perform) worse than the project average.",
+      "Compare direct-only vs full-coverage vs top-down; every estimate's method, discount and early/late range is quantified in the Estimated-groups table beneath.",
+      "Catches the averaging trap AND the silent-gap trap: no group is dropped from the forecast just because it hasn't finished anything yet.")],
     ["execution metrics by field group", H(
       "BEI / HMI / SPI-family execution metrics computed separately for each value of the chosen field (CAM, IPT, custom code …).",
       "CAM 'Jones' at BEI 0.7 while the program reads 0.93 localizes the slip to one account.",

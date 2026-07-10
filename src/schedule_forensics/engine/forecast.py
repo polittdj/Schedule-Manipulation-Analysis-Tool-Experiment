@@ -234,53 +234,108 @@ def compute_carnac_summary(
 
 
 @dataclass(frozen=True)
+class EstimatedGroupForecast:
+    """A no-direct-history group's ESTIMATED finish (ADR-0189) — quantified, never silent.
+
+    Operator 2026-07-10: groups with remaining work but no completion history must still be
+    forecast, "even if you have to make some logical estimations and quantify them and note
+    them using best industry practices and statistical analysis best practices." The method
+    is standard partial pooling / credibility weighting (Bühlmann credibility, the
+    empirical-Bayes shrinkage family): with ZERO group observations the credibility weight on
+    the group's own history is Z = n/(n+k) = 0, so the estimate is the POOLED (project-wide)
+    per-activity throughput — then adjusted by the group's OWN observed leading indicator
+    (the start execution index, the NDIA PASEG-style start-anchored twin of BEI: work must
+    start before it can finish, so demonstrated late starting discounts the borrowed rate;
+    the adjustment only ever penalizes — undemonstrated speed is never credited). The
+    uncertainty band is reference-class forecasting (Flyvbjerg's outside view): the P25/P75
+    per-activity rates observed across the groups that DO have history bound the late/early
+    finishes. Every figure carries this provenance in ``basis``.
+    """
+
+    group: str
+    to_go: int
+    sei: float | None  # the group's start execution index (the leading indicator used)
+    pooled_rate_per_month: float  # borrowed per-group rate BEFORE the SEI adjustment
+    adjustment: float  # min(1, SEI) floored at 0.25 — the applied discount (1.0 = none)
+    finish: dt.date  # point estimate: to-go ÷ (pooled rate x adjustment)
+    finish_early: dt.date | None  # reference-class P75 rate (needs ≥2 history groups)
+    finish_late: dt.date | None  # reference-class P25 rate (needs ≥2 history groups)
+    basis: str  # the quantified estimation statement, shown verbatim in the UI
+
+
+@dataclass(frozen=True)
 class GroupRollup:
-    """The project forecast RECALCULATED bottom-up from per-group data points (ADR-0188).
+    """The project forecast RECALCULATED bottom-up from per-group data points (ADR-0188/0189).
 
     Operator 2026-07-10: when the Forecast page groups the execution metrics by a field, the
     per-group figures should roll BACK UP into a project-level forecast — the group data
-    points, weighted, re-answering "when will it really end?". Two recalculations, both with
-    their coverage disclosed (never silently extrapolated):
+    points, weighted, re-answering "when will it really end?". Recalculations, coverage
+    always disclosed:
 
     - **Group-weighted IEAC(t)** — each group's EXACT Earned-Schedule SPI(t) (the same
       count-based machinery as the top-down forecast) weighted by the group's TO-GO activity
       count, then the standard ``IEAC(t) = AT + (PD - ES) / SPI(t)`` re-run with the weighted
-      index. Weighting by to-go work makes the groups that still carry the remaining work
-      dominate the index — a hot group that is nearly finished stops masking a cold one that
-      owns the rest of the plan.
+      index. Two coverages are reported: ``weighted_spi_t``/``ieac_finish`` over the DIRECTLY
+      measured groups only, and ``weighted_spi_t_all``/``ieac_finish_all`` where no-history
+      groups additionally contribute a credibility-weighted estimate (pooled exact SPI(t) x
+      their start-index adjustment — ADR-0189, see :class:`EstimatedGroupForecast`).
     - **Bottleneck completion-rate finish** — each group's own throughput (completions per
-      month) extrapolates ITS to-go count; the project rolls up as the LATEST group finish
-      (a project is done when its slowest group is done). Groups with to-go work but no
-      completion history are honestly unforecastable and are listed, never imputed.
+      month) extrapolates ITS to-go count; no-history groups use their ESTIMATED rate; the
+      project rolls up as the LATEST group finish (a project is done when its slowest group
+      is done), flagged when the bottleneck comes from an estimated group.
+    - ``unforecastable`` now holds ONLY the truly impossible cases: no data date, or a file
+      with no completions anywhere (nothing to borrow from) — disclosed, never imputed.
     """
 
     field: str
     weight_basis: str  # plain-language weighting statement (shown verbatim in the UI)
     groups_total: int  # groups with any to-go work
-    groups_used: int  # of those, groups contributing an SPI(t) to the weighted index
+    groups_used: int  # of those, groups contributing a DIRECT SPI(t) to the weighted index
     total_to_go: int
-    covered_to_go: int  # to-go activities inside the SPI-contributing groups
-    weighted_spi_t: float | None
-    ieac_finish: dt.date | None  # IEAC(t) re-run with the weighted SPI(t)
+    covered_to_go: int  # to-go activities inside the directly-measured groups
+    weighted_spi_t: float | None  # direct groups only
+    weighted_spi_t_all: float | None  # direct + credibility-estimated groups (full coverage)
+    ieac_finish: dt.date | None  # IEAC(t) with the direct-only weighted SPI(t)
+    ieac_finish_all: dt.date | None  # IEAC(t) with the full-coverage weighted SPI(t)
     rate_finish: dt.date | None  # the bottleneck (latest) per-group rate extrapolation
     rate_limiting_group: str | None  # the group that sets the bottleneck finish
-    unforecastable: tuple[str, ...]  # to-go work but no completions — rate undefined
+    rate_finish_is_estimated: bool  # the bottleneck comes from an ESTIMATED group
+    estimated: tuple[EstimatedGroupForecast, ...]  # the quantified no-history estimates
+    unforecastable: tuple[str, ...]  # only the truly impossible (see class docstring)
+
+
+#: The floor on the start-index discount for estimated groups: a near-zero SEI must slow
+#: the borrowed rate, not stretch the forecast toward infinity (disclosed in the basis).
+_EST_ADJ_FLOOR = 0.25
+
+
+def _percentile(sorted_vals: list[float], q: float) -> float:
+    """Linear-interpolated percentile of an ascending list (q in [0, 1])."""
+    if len(sorted_vals) == 1:
+        return sorted_vals[0]
+    pos = q * (len(sorted_vals) - 1)
+    lo = int(pos)
+    hi = min(lo + 1, len(sorted_vals) - 1)
+    return sorted_vals[lo] + (sorted_vals[hi] - sorted_vals[lo]) * (pos - lo)
 
 
 def compute_group_rollup(schedule: Schedule, field: str) -> GroupRollup | None:
     """Recalculate the project forecast from ``field``'s group data points (see GroupRollup).
 
     Returns ``None`` when the field yields no groups. Figures whose inputs are missing read
-    ``None`` inside the rollup — never fabricated."""
+    ``None`` inside the rollup — direct measures are never fabricated, and the ADR-0189
+    no-history estimates are explicitly quantified and labeled (see
+    :class:`EstimatedGroupForecast`)."""
     # late import: field_forecast imports metrics that import this module's neighbors
-    from schedule_forensics.engine.metrics.field_forecast import _groups, _sub_schedule
+    from schedule_forensics.engine.metrics.field_forecast import _groups, _sei, _sub_schedule
 
     groups = _groups(schedule, field)
     if not groups:
         return None
     status = schedule.status_date
 
-    per_group: list[tuple[str, int, int, float | None]] = []  # (name, completed, to_go, spi)
+    # (name, activities, completed, to_go, exact spi | None, sei | None)
+    per_group: list[tuple[str, int, int, int, float | None, float | None]] = []
     for name, uids in sorted(groups.items()):
         sub = _sub_schedule(schedule, uids)
         tasks = non_summary(sub)
@@ -289,64 +344,149 @@ def compute_group_rollup(schedule: Schedule, field: str) -> GroupRollup | None:
         es_g = earned_schedule(sub, tasks)
         # the EXACT ratio (es/at), not the 2-dp display value — same rule as IEAC(t) itself
         spi_g = (es_g.es_minutes / es_g.at_minutes) if es_g and es_g.at_minutes else None
-        per_group.append((name, completed, to_go, spi_g))
+        per_group.append((name, len(tasks), completed, to_go, spi_g, _sei(sub)))
 
-    active = [g for g in per_group if g[2] > 0]
-    total_to_go = sum(g[2] for g in active)
-    spi_groups = [g for g in active if g[3] is not None and g[3] > 0]
-    covered_to_go = sum(g[2] for g in spi_groups)
+    active = [g for g in per_group if g[3] > 0]
+    total_to_go = sum(g[3] for g in active)
+    direct = [g for g in active if g[2] > 0 and g[4] is not None and g[4] > 0]
+    covered_to_go = sum(g[3] for g in direct)
     weighted_spi: float | None = None
     if covered_to_go > 0:
-        weighted_spi = sum(g[3] * g[2] for g in spi_groups if g[3] is not None) / covered_to_go
+        weighted_spi = sum(g[4] * g[3] for g in direct if g[4] is not None) / covered_to_go
 
-    # group-weighted IEAC(t): the project PD/ES/AT with the weighted index
-    ieac_finish: dt.date | None = None
-    if weighted_spi is not None and weighted_spi > 0:
+    # ---- shared pooled bases (the credibility Z=0 priors — ADR-0189) -------------------
+    elapsed_months: float | None = None
+    if status is not None:
+        em = (status.date() - schedule.project_start.date()).days / _DAYS_PER_MONTH
+        elapsed_months = em if em > 0 else None
+    all_tasks = non_summary(schedule)
+    total_activities = len(all_tasks)
+    total_completed = sum(1 for t in all_tasks if t.percent_complete >= 100.0)
+    pooled_per_activity_rate: float | None = None  # completions / (month x activity)
+    if elapsed_months is not None and total_completed > 0 and total_activities > 0:
+        pooled_per_activity_rate = total_completed / (elapsed_months * total_activities)
+    exact_pooled_spi, es_all, at_all = _earned_schedule(schedule)
+    pooled_spi = (es_all / at_all) if es_all is not None and at_all else None
+    # reference class (Flyvbjerg's outside view): the per-activity rates the groups WITH
+    # history actually demonstrated, bounding the estimates' late/early range
+    history_rates = sorted(
+        g[2] / (elapsed_months * g[1])
+        for g in per_group
+        if elapsed_months is not None and g[2] > 0 and g[1] > 0
+    )
+    del exact_pooled_spi  # display value; the exact ratio above is what the math uses
+
+    # ---- per-group rate finishes: direct where demonstrated, estimated where not -------
+    rate_finish: dt.date | None = None
+    rate_limiting: str | None = None
+    rate_is_estimated = False
+    estimated: list[EstimatedGroupForecast] = []
+    unforecastable: list[str] = []
+    spi_terms_all: list[tuple[float, int]] = [(g[4], g[3]) for g in direct if g[4] is not None]
+
+    def month_finish(months_to_go: float) -> dt.date:
+        # callers gate on elapsed_months, which implies a status date; the fallback keeps
+        # the type-checker honest without an assert (bandit B101)
+        anchor = status.date() if status is not None else schedule.project_start.date()
+        return anchor + dt.timedelta(days=round(months_to_go * _DAYS_PER_MONTH))
+
+    for name, activities, completed, to_go, _spi_g, sei_g in active:
+        finish_g: dt.date | None = None
+        is_est = False
+        if elapsed_months is not None and completed > 0:
+            rate_g = completed / elapsed_months
+            finish_g = month_finish(to_go / rate_g)
+        elif elapsed_months is not None and pooled_per_activity_rate is not None:
+            # ADR-0189 estimate: partial pooling (credibility Z = n/(n+k) = 0 with zero
+            # group completions → the pooled per-activity rate), discounted by the group's
+            # own demonstrated start index (penalize-only, floored — undemonstrated speed
+            # is never credited), ranged by the reference class of history groups.
+            is_est = True
+            adjustment = 1.0 if sei_g is None else max(_EST_ADJ_FLOOR, min(1.0, sei_g))
+            pooled_rate_g = pooled_per_activity_rate * activities
+            est_rate = pooled_rate_g * adjustment
+            finish_g = month_finish(to_go / est_rate)
+            early: dt.date | None = None
+            late: dt.date | None = None
+            if len(history_rates) >= 2:
+                hi_rate = _percentile(history_rates, 0.75) * activities * adjustment
+                lo_rate = _percentile(history_rates, 0.25) * activities * adjustment
+                if hi_rate > 0:
+                    early = month_finish(to_go / hi_rate)
+                if lo_rate > 0:
+                    late = month_finish(to_go / lo_rate)
+            sei_note = (
+                f"discounted by its start execution index {sei_g:.2f} "
+                f"(applied {adjustment:.2f}, floor {_EST_ADJ_FLOOR})"
+                if sei_g is not None
+                else "no start index observable — no discount applied"
+            )
+            estimated.append(
+                EstimatedGroupForecast(
+                    group=name,
+                    to_go=to_go,
+                    sei=round(sei_g, 2) if sei_g is not None else None,
+                    pooled_rate_per_month=round(pooled_rate_g, 3),
+                    adjustment=round(adjustment, 2),
+                    finish=finish_g,
+                    finish_early=early,
+                    finish_late=late,
+                    basis=(
+                        "ESTIMATE — no completions in this group yet: borrowed the pooled "
+                        f"per-activity throughput ({pooled_per_activity_rate:.3f}/activity-"
+                        f"month x {activities} activities; credibility weight on the group's "
+                        f"own history Z = 0), {sei_note}; the early/late range is the "
+                        "P75/P25 of the per-activity rates the groups WITH history "
+                        "demonstrated (reference-class bound)"
+                    ),
+                )
+            )
+            # the group also contributes an ESTIMATED SPI(t) term to the full-coverage
+            # weighted index: the pooled exact SPI(t) under the same discount
+            if pooled_spi is not None and pooled_spi > 0:
+                spi_terms_all.append((pooled_spi * adjustment, to_go))
+        else:
+            # truly impossible: no data date / no elapsed time / no completions anywhere
+            unforecastable.append(name)
+        if finish_g is not None and (rate_finish is None or finish_g > rate_finish):
+            rate_finish, rate_limiting, rate_is_estimated = finish_g, name, is_est
+
+    weighted_spi_all: float | None = None
+    to_go_all = sum(w for _v, w in spi_terms_all)
+    if to_go_all > 0:
+        weighted_spi_all = sum(v * w for v, w in spi_terms_all) / to_go_all
+
+    # group-weighted IEAC(t): the project PD/ES/AT with each weighted index
+    def ieac(spi: float | None) -> dt.date | None:
+        if spi is None or spi <= 0:
+            return None
         _spi_t, es, at = _earned_schedule(schedule)
         planned_offsets = [
             off
             for t in non_summary(schedule)
             if (off := to_offset(schedule, t.baseline_finish)) is not None
         ]
-        if planned_offsets and es is not None and at is not None:
-            pd_off = max(planned_offsets)
-            ieac_off = round(at + max(0.0, pd_off - es) / weighted_spi)
-            ieac_finish = offset_to_datetime(
-                schedule.project_start, ieac_off, schedule.calendar
-            ).date()
-
-    # bottleneck completion-rate finish: each group extrapolates its own to-go at its own
-    # demonstrated rate; the project finishes when the SLOWEST group does
-    rate_finish: dt.date | None = None
-    rate_limiting: str | None = None
-    unforecastable: list[str] = []
-    if status is not None:
-        elapsed_months = (status.date() - schedule.project_start.date()).days / _DAYS_PER_MONTH
-        if elapsed_months > 0:
-            for name, completed, to_go, _spi in active:
-                if completed == 0:
-                    unforecastable.append(name)
-                    continue
-                rate_g = completed / elapsed_months
-                finish_g = status.date() + dt.timedelta(
-                    days=round((to_go / rate_g) * _DAYS_PER_MONTH)
-                )
-                if rate_finish is None or finish_g > rate_finish:
-                    rate_finish, rate_limiting = finish_g, name
-    else:
-        unforecastable = [g[0] for g in active if g[1] == 0]
+        if not planned_offsets or es is None or at is None:
+            return None
+        pd_off = max(planned_offsets)
+        ieac_off = round(at + max(0.0, pd_off - es) / spi)
+        return offset_to_datetime(schedule.project_start, ieac_off, schedule.calendar).date()
 
     return GroupRollup(
         field=field,
         weight_basis="each group's exact SPI(t) weighted by its to-go activity count",
         groups_total=len(active),
-        groups_used=len(spi_groups),
+        groups_used=len(direct),
         total_to_go=total_to_go,
         covered_to_go=covered_to_go,
         weighted_spi_t=round(weighted_spi, 2) if weighted_spi is not None else None,
-        ieac_finish=ieac_finish,
+        weighted_spi_t_all=round(weighted_spi_all, 2) if weighted_spi_all is not None else None,
+        ieac_finish=ieac(weighted_spi),
+        ieac_finish_all=ieac(weighted_spi_all),
         rate_finish=rate_finish,
         rate_limiting_group=rate_limiting,
+        rate_finish_is_estimated=rate_is_estimated,
+        estimated=tuple(estimated),
         unforecastable=tuple(unforecastable),
     )
 

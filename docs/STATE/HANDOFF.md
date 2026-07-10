@@ -1,6 +1,27 @@
-# Handoff — 2026-07-10 (frozen header + WBS hierarchy + forecast rollup + globe; highest ADR 0188)
+# Handoff — 2026-07-10 (credibility-weighted no-history group estimates; highest ADR 0189)
 
-> ## STATUS (current) — ADR-0188 header/hierarchy/rollup/globe batch
+> ## STATUS (current) — ADR-0189 no-history group forecasting
+>
+> - Operator: groups with remaining work but no completion history must no longer be flagged
+>   unforecastable — forecast them with quantified, labeled, best-practice estimation.
+> - **Method** (`engine/forecast.py`, ADR-0189): Bühlmann credibility / partial pooling —
+>   zero own observations → Z = 0 → borrow the pooled project-wide per-activity throughput,
+>   discounted by the group's own start-execution index (penalize-only min(1, SEI), floor
+>   0.25, NDIA PASEG-style leading indicator), bracketed by the reference-class P75/P25 of
+>   the per-activity rates the groups WITH history demonstrated (Flyvbjerg outside view).
+>   `EstimatedGroupForecast` carries a full quantified `basis`; `GroupRollup` gains
+>   full-coverage `weighted_spi_t_all`/`ieac_finish_all` alongside the direct-only figures
+>   and `rate_finish_is_estimated` when an estimated group is the bottleneck.
+> - **/forecast panel**: 3-column comparison (direct only / full coverage / top-down),
+>   "Estimated groups" sub-table with per-group basis + methodology explainer, ESTIMATED
+>   badge on the bottleneck; vizhints updated. "Unforecastable" is reserved for the truly
+>   impossible (no data date / no completions anywhere).
+> - Gate green (ruff, format, mypy strict, bandit 0, 1974 tests, node --check), lockstep
+>   wheel + 9 installers rebuilt. Highest ADR = 0189.
+
+# (prior) Handoff — 2026-07-10 (frozen header + WBS hierarchy + forecast rollup + globe; ADR 0188)
+
+> ## STATUS — ADR-0188 header/hierarchy/rollup/globe batch
 >
 > - **Frozen title bar**: header position:sticky (z 110) — brand + full nav stay visible while
 >   scrolling; Task-Info/expanded-tile/load/colmove overlays raised above it (z 220). **Reset
