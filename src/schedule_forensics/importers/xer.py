@@ -7,12 +7,21 @@ each ``%R`` line is a data row (zipped positionally to the column names), and ``
 ends the file. Fields are read **by name**, never by position, so column reordering
 is harmless. Only the standard library is used (the CUI egress guard stays green).
 
-**UniqueID is the sole identity.** Tasks are keyed by ``task_id``; logic
-(``TASKPRED``) and assignments (``TASKRSRC``) reference tasks by ``task_id`` only.
-Links the selected project cannot resolve — dangling endpoints (filtered/partial
-exports), cross-project rows, self-references, duplicates — are valid real-world P6
-states and are dropped with a count logged (the same tolerance classes as the MSPDI
-importer; ALAP and dateless date-constraints likewise normalize to ASAP).
+**UniqueID is the sole identity — and it must survive re-import.** P6's ``task_id``
+is an internal database row id: re-importing or copying a project between monthly
+submittals renumbers it, which silently broke every cross-version UniqueID join
+(CEI read 0.00 forever, diffs saw all-added/all-removed). The stable operator-facing
+identity is the **Activity ID** (``task_code``), so when every in-scope task carries
+a unique ``task_code`` the model ``unique_id`` is ``CRC32(task_code)`` (31-bit) —
+deterministic, so the same activity gets the same UniqueID in every export
+(ADR-0185). The remap is all-or-nothing: any missing/duplicate code or hash
+collision falls the WHOLE file back to raw ``task_id`` (never mixed keying). Logic
+(``TASKPRED``) and assignments (``TASKRSRC``) reference tasks by raw ``task_id`` in
+the file and are translated through the same map. Links the selected project cannot
+resolve — dangling endpoints (filtered/partial exports), cross-project rows,
+self-references, duplicates — are valid real-world P6 states and are dropped with a
+count logged (the same tolerance classes as the MSPDI importer; ALAP and dateless
+date-constraints likewise normalize to ASAP).
 
 ``TASKRSRC`` quantities drive the ``CP_Units`` percent complete (actual ÷ at-completion
 units); ``TASKRSRC`` assignment costs + ``PROJCOST`` expenses roll up into the per-task
@@ -29,6 +38,7 @@ import datetime as dt
 import logging
 import os
 import re
+import zlib
 from collections import Counter
 from typing import NamedTuple
 
@@ -153,6 +163,7 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
     units_pct_by_task = _units_percent_by_task(tables.get("TASKRSRC", []))
     costs_by_task = _costs_by_task(tables.get("TASKRSRC", []), tables.get("PROJCOST", []))
 
+    uid_map = _stable_uid_map(task_rows)  # ADR-0185: Activity-ID identity, all-or-nothing
     tasks = [
         _parse_task(
             row,
@@ -162,15 +173,19 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
             names_by_task,
             units_pct_by_task,
             costs_by_task,
+            uid_map,
         )
         for row in task_rows
     ]
     # the cross-project id universe is built tolerantly: a non-integer task_id in a
     # non-selected/partial-export row must not sink the file (audit H3). In-scope rows were
-    # already validated loudly by `_parse_task` above.
+    # already validated loudly by `_parse_task` above. TASKPRED endpoints are raw task_ids,
+    # so scope membership is checked on raw ids and translated through `uid_map` at the end.
     all_task_ids = {i for t in all_tasks if (i := _drop_int(t, "task_id")) is not None}
-    in_scope_ids = {t.unique_id for t in tasks}
-    relationships = _parse_relationships(tables.get("TASKPRED", []), all_task_ids, in_scope_ids)
+    in_scope_ids = {i for t in task_rows if (i := _drop_int(t, "task_id")) is not None}
+    relationships = _parse_relationships(
+        tables.get("TASKPRED", []), all_task_ids, in_scope_ids, uid_map
+    )
 
     try:
         return Schedule(
@@ -323,6 +338,45 @@ def _wbs_path(
 # --- task -------------------------------------------------------------------------
 
 
+def _stable_uid_map(task_rows: list[Row]) -> dict[int, int] | None:
+    """Raw ``task_id`` → stable ``CRC32(task_code)`` UniqueID map, or ``None`` (ADR-0185).
+
+    P6 renumbers ``task_id`` whenever a project is re-imported/copied — the norm for
+    monthly contractor XER submittals — so keying tasks by it broke every cross-version
+    UniqueID join (CEI's prior→current lookup missed on all tasks and read a flat 0.00).
+    The Activity ID (``task_code``) is the identity P6 users actually maintain, so when
+    EVERY in-scope task carries a unique non-empty ``task_code`` and no two codes collide
+    in the 31-bit CRC32 space, tasks are keyed by ``CRC32(task_code) & 0x7FFFFFFF`` —
+    the same activity then gets the same UniqueID in every export of the project.
+
+    The remap is **all-or-nothing**: any row without a parseable ``task_id`` or a
+    ``task_code``, any duplicate code, or any CRC collision returns ``None`` and the
+    whole file keeps raw ``task_id`` keys — mixed keying could silently mis-join
+    versions, which is worse than honestly not joining at all.
+    """
+    mapping: dict[int, int] = {}
+    seen_codes: set[str] = set()
+    seen_uids: set[int] = set()
+    for row in task_rows:
+        task_id = _drop_int(row, "task_id")
+        code = _g(row, "task_code")
+        if task_id is None or code is None:
+            return None  # no universal Activity ID — raw task_id keys stay
+        uid = zlib.crc32(code.encode("utf-8")) & 0x7FFFFFFF
+        if code in seen_codes or uid in seen_uids:
+            # counts only, never the code text (a real Activity ID could be CUI-adjacent)
+            logger.warning(
+                "duplicate or CRC-colliding Activity ID among %d tasks; keeping raw task_id "
+                "keys (cross-version joins may not align if P6 renumbered them)",
+                len(task_rows),
+            )
+            return None
+        seen_codes.add(code)
+        seen_uids.add(uid)
+        mapping[task_id] = uid
+    return mapping or None
+
+
 def _parse_task(
     row: Row,
     wbs_short: dict[str, str],
@@ -331,13 +385,15 @@ def _parse_task(
     names_by_task: dict[int, tuple[str, ...]],
     units_pct_by_task: dict[int, float],
     costs_by_task: dict[int, _TaskCosts],
+    uid_map: dict[int, int] | None,
 ) -> Task:
     task_id = _req_int(row, "task_id")
     costs = costs_by_task.get(task_id, _NO_COSTS)
     task_type = _g(row, "task_type") or ""
     constraint = _g(row, "cstr_type")
     physical = _g(row, "phys_complete_pct")
-    name = _g(row, "task_name") or _g(row, "task_code") or f"Task {task_id}"
+    task_code = _g(row, "task_code")
+    name = _g(row, "task_name") or task_code or f"Task {task_id}"
     constraint_type = _CONSTRAINT_BY_XER.get(constraint or "", ConstraintType.ASAP)
     constraint_date = parse_datetime(_g(row, "cstr_date"))
     # the same real-world normalization the MSPDI importer applies (Law 2): ALAP is out of
@@ -351,7 +407,9 @@ def _parse_task(
 
     try:
         return Task(
-            unique_id=task_id,
+            # the stable Activity-ID identity when the file supports it (ADR-0185);
+            # `uid_map` covers every in-scope row or is None — never a partial remap
+            unique_id=uid_map[task_id] if uid_map is not None else task_id,
             name=name,
             wbs=_wbs_path(_g(row, "wbs_id"), wbs_short, wbs_parent),
             duration_minutes=hours_to_minutes(_g(row, "target_drtn_hr_cnt")),
@@ -385,6 +443,8 @@ def _parse_task(
             budgeted_cost=costs.budget if costs.budget is not None else 0.0,
             resource_names=names_by_task.get(task_id, ()),
             resource_ids=uids_by_task.get(task_id, ()),
+            # the human P6 handle rides along for citations/grouping/traceability
+            custom_fields=(("Activity ID", task_code),) if task_code is not None else (),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task task_id {task_id} is invalid: {exc}") from exc
@@ -422,11 +482,17 @@ def _percent_complete(row: Row, units_pct: float | None = None) -> float:
 
 
 def _parse_relationships(
-    pred_rows: list[Row], all_task_ids: set[int], in_scope_ids: set[int]
+    pred_rows: list[Row],
+    all_task_ids: set[int],
+    in_scope_ids: set[int],
+    uid_map: dict[int, int] | None,
 ) -> list[Relationship]:
     """``TASKPRED`` → :class:`Relationship` edges (UID-keyed).
 
-    Real exports (filtered or multi-project) carry rows this file cannot resolve:
+    ``TASKPRED`` endpoints are raw ``task_id`` values, so scope/dangling checks run on
+    raw ids; the kept endpoints are then translated through ``uid_map`` so the edges
+    reference the same (possibly Activity-ID-remapped, ADR-0185) UniqueIDs the tasks
+    carry. Real exports (filtered or multi-project) carry rows this file cannot resolve:
     endpoints absent from the file entirely (an external/partial-export link), links
     into another project, self-referential rows, and duplicates. All are *valid P6
     states*, not corruption — they are dropped and logged by count (no CUI — numbers
@@ -459,8 +525,8 @@ def _parse_relationships(
         try:
             relationships.append(
                 Relationship(
-                    predecessor_id=predecessor,
-                    successor_id=successor,
+                    predecessor_id=uid_map[predecessor] if uid_map is not None else predecessor,
+                    successor_id=uid_map[successor] if uid_map is not None else successor,
                     type=link_type,
                     lag_minutes=hours_to_minutes(_g(row, "lag_hr_cnt")),
                 )

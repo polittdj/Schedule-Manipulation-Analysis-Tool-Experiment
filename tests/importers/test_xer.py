@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import zlib
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,21 @@ from schedule_forensics.model import (
 FIXTURE = (
     Path(__file__).resolve().parent.parent / "fixtures" / "xer" / "commercial_construction.xer"
 )
+
+
+def _uid(task_code: str) -> int:
+    """The stable Activity-ID UniqueID the importer derives when every in-scope task
+    carries a unique ``task_code`` (ADR-0185) — CRC32 of the code, masked to 31 bits."""
+    return zlib.crc32(task_code.encode("utf-8")) & 0x7FFFFFFF
+
+
+# the curated fixture's Activity IDs (its TASK table carries task_code on every row,
+# so the importer keys tasks by the stable Activity-ID identity, not raw task_id)
+UID_SUMMARY = _uid("WBS-CC")  # raw task_id 2000
+UID_DESIGN = _uid("A1000")  # raw task_id 2001
+UID_PERMIT = _uid("A1010")  # raw task_id 2002
+UID_CONSTR = _uid("A1020")  # raw task_id 2003
+UID_MILESTONE = _uid("A1030")  # raw task_id 2004
 
 
 @pytest.fixture(scope="module")
@@ -42,14 +58,20 @@ def test_project_frame(schedule: Schedule) -> None:
     assert schedule.project_finish == dt.datetime(2025, 3, 31, 17, 0)
     assert schedule.status_date == dt.datetime(2025, 2, 1, 17, 0)
     assert schedule.baseline_finish is None  # P6 baseline is a separate project (deferred)
-    assert set(schedule.tasks_by_id) == {2000, 2001, 2002, 2003, 2004}
+    assert set(schedule.tasks_by_id) == {
+        UID_SUMMARY,
+        UID_DESIGN,
+        UID_PERMIT,
+        UID_CONSTR,
+        UID_MILESTONE,
+    }
 
 
 # --- the fully-populated task -----------------------------------------------------
 
 
 def test_fully_populated_task(schedule: Schedule) -> None:
-    t = schedule.task_by_id(2001)
+    t = schedule.task_by_id(UID_DESIGN)
     assert t.name == "Schematic Design"
     assert t.wbs == "CC.DESIGN"  # PROJWBS root->leaf path
     assert t.duration_minutes == 4800  # 80h * 60
@@ -72,7 +94,7 @@ def test_fully_populated_task(schedule: Schedule) -> None:
 
 
 def test_partial_progress_task(schedule: Schedule) -> None:
-    t = schedule.task_by_id(2002)
+    t = schedule.task_by_id(UID_PERMIT)
     assert t.wbs == "CC.DESIGN"
     assert t.constraint_type is ConstraintType.MSO  # CS_MSO
     assert t.duration_minutes == 2400  # 40h
@@ -85,7 +107,7 @@ def test_partial_progress_task(schedule: Schedule) -> None:
 
 
 def test_multi_resource_task(schedule: Schedule) -> None:
-    t = schedule.task_by_id(2003)
+    t = schedule.task_by_id(UID_CONSTR)
     assert t.wbs == "CC.CONSTR"
     assert t.constraint_type is ConstraintType.FNLT  # CS_MEOB
     assert t.duration_minutes == 9600  # 160h
@@ -96,10 +118,10 @@ def test_multi_resource_task(schedule: Schedule) -> None:
 
 
 def test_classification_flags(schedule: Schedule) -> None:
-    assert schedule.task_by_id(2004).is_milestone is True  # TT_FinMile
-    assert schedule.task_by_id(2004).constraint_type is ConstraintType.ASAP  # no cstr_type
-    assert schedule.task_by_id(2004).start == dt.datetime(2025, 3, 15, 17, 0)
-    summary = schedule.task_by_id(2000)
+    assert schedule.task_by_id(UID_MILESTONE).is_milestone is True  # TT_FinMile
+    assert schedule.task_by_id(UID_MILESTONE).constraint_type is ConstraintType.ASAP  # no cstr_type
+    assert schedule.task_by_id(UID_MILESTONE).start == dt.datetime(2025, 3, 15, 17, 0)
+    summary = schedule.task_by_id(UID_SUMMARY)
     assert summary.is_summary is True  # TT_WBS
     assert summary.wbs == "CC"  # root WBS node
 
@@ -109,20 +131,24 @@ def test_classification_flags(schedule: Schedule) -> None:
 
 def test_relationship_types_and_topology(schedule: Schedule) -> None:
     assert len(schedule.relationships) == 5
-    assert _rel(schedule, 2001, 2002) is RelationshipType.FS
-    assert _rel(schedule, 2002, 2003) is RelationshipType.SS
-    assert _rel(schedule, 2001, 2003) is RelationshipType.FF
-    assert _rel(schedule, 2003, 2004) is RelationshipType.FS
-    assert _rel(schedule, 2002, 2004) is RelationshipType.SF
+    assert _rel(schedule, UID_DESIGN, UID_PERMIT) is RelationshipType.FS
+    assert _rel(schedule, UID_PERMIT, UID_CONSTR) is RelationshipType.SS
+    assert _rel(schedule, UID_DESIGN, UID_CONSTR) is RelationshipType.FF
+    assert _rel(schedule, UID_CONSTR, UID_MILESTONE) is RelationshipType.FS
+    assert _rel(schedule, UID_PERMIT, UID_MILESTONE) is RelationshipType.SF
 
 
 def test_lag_and_lead(schedule: Schedule) -> None:
     fs = next(
-        r for r in schedule.relationships if (r.predecessor_id, r.successor_id) == (2001, 2002)
+        r
+        for r in schedule.relationships
+        if (r.predecessor_id, r.successor_id) == (UID_DESIGN, UID_PERMIT)
     )
     assert fs.lag_minutes == 480  # 8h lag
     lead = next(
-        r for r in schedule.relationships if (r.predecessor_id, r.successor_id) == (2003, 2004)
+        r
+        for r in schedule.relationships
+        if (r.predecessor_id, r.successor_id) == (UID_CONSTR, UID_MILESTONE)
     )
     assert lead.lag_minutes == -240  # -4h lead
     assert lead.is_lead is True
@@ -1101,7 +1127,7 @@ def test_cost_loaded_xer_drives_the_evm_indices() -> None:
 
 def test_fixture_without_cost_columns_stays_cost_free(schedule: Schedule) -> None:
     # the curated fixture's TASKRSRC has no cost columns — fields keep their defaults
-    t = schedule.task_by_id(2001)
+    t = schedule.task_by_id(UID_DESIGN)
     assert (t.cost, t.actual_cost, t.budgeted_cost) == (None, None, 0.0)
 
 
@@ -1151,3 +1177,152 @@ def test_non_integer_taskpred_endpoint_drops_the_link_not_the_file() -> None:
     sched = parse_xer_text(text)  # must not raise
     assert len(sched.relationships) == 1  # the 11->10 link kept; the BADPRED link dropped
     assert _rel(sched, 10, 11) is RelationshipType.FS
+
+
+# --- stable Activity-ID identity (ADR-0185) -----------------------------------------
+
+
+def _versioned_xer(recalc_date: str, task_rows: list[list[str]]) -> str:
+    """A minimal single-project XER snapshot with a data date and code-bearing tasks."""
+    return _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "last_recalc_date"],
+                [["1", "P1", "2025-01-06 08:00", recalc_date]],
+            ),
+            (
+                "TASK",
+                [
+                    "task_id",
+                    "proj_id",
+                    "task_code",
+                    "task_name",
+                    "task_type",
+                    "target_drtn_hr_cnt",
+                    "early_end_date",
+                    "act_start_date",
+                    "act_end_date",
+                ],
+                task_rows,
+            ),
+        ]
+    )
+
+
+def test_stable_identity_survives_task_id_renumbering() -> None:
+    # P6 renumbers task_id whenever a project is re-imported/copied between monthly
+    # submittals; the Activity ID (task_code) is the identity that survives, so the
+    # same activity must get the same UniqueID in both versions (ADR-0185)
+    v1 = _versioned_xer(
+        "2025-01-31 17:00",
+        [["10", "1", "A1000", "Pour", "TT_Task", "40", "2025-02-14 17:00", "", ""]],
+    )
+    v2 = _versioned_xer(
+        "2025-02-28 17:00",
+        [["77", "1", "A1000", "Pour", "TT_Task", "40", "2025-02-14 17:00", "", ""]],
+    )
+    s1, s2 = parse_xer_text(v1), parse_xer_text(v2)
+    assert set(s1.tasks_by_id) == set(s2.tasks_by_id) == {_uid("A1000")}
+    assert s1.task_by_id(_uid("A1000")).custom_field("Activity ID") == "A1000"
+
+
+def test_cei_computes_across_renumbered_xer_versions() -> None:
+    # THE user-visible defect this fixes: a multi-file XER series showed CEI flat 0.00
+    # across every period because each monthly submittal renumbered task_id, so CEI's
+    # prior->current UniqueID join missed every task (numerator 0 forever). With the
+    # Activity-ID identity the join lands and CEI reads the real execution rate.
+    from schedule_forensics.engine.metrics.cei import compute_cei
+
+    prior = parse_xer_text(
+        _versioned_xer(
+            "2025-01-31 17:00",
+            [
+                # both forecast to finish inside (Jan 31, Feb 28], neither complete yet
+                ["10", "1", "A1000", "Pour", "TT_Task", "40", "2025-02-14 17:00", "", ""],
+                ["11", "1", "A1010", "Frame", "TT_Task", "40", "2025-02-21 17:00", "", ""],
+            ],
+        )
+    )
+    current = parse_xer_text(
+        _versioned_xer(
+            "2025-02-28 17:00",
+            [
+                # task_ids renumbered by the re-import; A1000 actually finished in-period
+                [
+                    "70",
+                    "1",
+                    "A1000",
+                    "Pour",
+                    "TT_Task",
+                    "40",
+                    "2025-02-14 17:00",
+                    "2025-02-03 08:00",
+                    "2025-02-14 16:00",
+                ],
+                ["71", "1", "A1010", "Frame", "TT_Task", "40", "2025-03-14 17:00", "", ""],
+            ],
+        )
+    )
+    result = compute_cei(prior, current)["cei_tasks"]
+    assert result.population == 2  # both were forecast to finish in the period
+    assert result.count == 1  # A1000 landed; A1010 slipped
+    assert result.value == 0.5  # a real rate, not the phantom 0.00
+    assert result.offender_uids == (_uid("A1010"),)  # the miss is citable
+
+
+def test_missing_task_code_falls_back_to_raw_task_ids() -> None:
+    # one task without an Activity ID disables the remap for the WHOLE file (never
+    # mixed keying) — tasks keep raw task_id keys exactly as before ADR-0185
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type"],
+                [["10", "1", "A1000", "A", "TT_Task"], ["11", "1", "", "B", "TT_Task"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert set(sched.tasks_by_id) == {10, 11}
+    # the code-bearing task still carries its Activity ID for citations/grouping
+    assert sched.task_by_id(10).custom_field("Activity ID") == "A1000"
+
+
+def test_duplicate_task_code_falls_back_to_raw_task_ids() -> None:
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type"],
+                [["10", "1", "A1000", "A", "TT_Task"], ["11", "1", "A1000", "B", "TT_Task"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert set(sched.tasks_by_id) == {10, 11}
+
+
+def test_relationships_translate_through_the_stable_identity() -> None:
+    # TASKPRED references raw task_ids; the kept edge must come out keyed by the same
+    # stable UniqueIDs the tasks carry, or the logic graph would dangle after the remap
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_code", "task_name", "task_type"],
+                [["10", "1", "A1000", "A", "TT_Task"], ["11", "1", "A1010", "B", "TT_Task"]],
+            ),
+            (
+                "TASKPRED",
+                ["task_id", "pred_task_id", "pred_type", "lag_hr_cnt"],
+                [["11", "10", "PR_FS", "0"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert len(sched.relationships) == 1
+    assert _rel(sched, _uid("A1000"), _uid("A1010")) is RelationshipType.FS

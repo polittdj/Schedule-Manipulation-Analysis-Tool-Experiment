@@ -4796,3 +4796,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   exhibit), gauge honesty caveat on the chart face, SSI gate test for new code. exhibits/
   coverage 96.6%. Chromium-verified the whole batch on the 4-version Hard_File series with
   zero console errors. Highest ADR = 0184.
+
+### 2026-07-10 (cont.) — XER stable Activity-ID identity: CEI flat-0.00 root cause (ADR-0185)
+- Operator: 7-file JUICE UVS XER series showed CEI 0.00 every period (BEI 0.96-0.99, HMI
+  0.62-0.91 normal). Verified the chart/payload pass values honestly -> the zeros were real
+  engine output: CEI is the only headline index joining prior->current by unique_id, and
+  importers/xer.py set unique_id = task_id, P6's internal row id that renumbers on every
+  re-import/copy between monthly submittals. Every join missed; numerator 0 forever. Also
+  violated the repo identity law ("never the row id, which renumbers").
+- Fix: _stable_uid_map in the XER importer - when every in-scope task has a unique task_code
+  (Activity ID; true of real P6 exports), unique_id = CRC32(task_code) & 0x7FFFFFFF
+  (deterministic); TASKPRED endpoints translated through the map; all-or-nothing fallback to
+  raw task_id on any missing/duplicate code or CRC collision (logged by count, never the code
+  text); ("Activity ID", task_code) added to custom_fields for citations/grouping/drills.
+- Tests: CEI regression across renumbered task_ids (real 0.5 rate, miss citable as offender),
+  identity stability, both fallbacks, relationship translation; fixture pins re-derived via a
+  _uid(task_code) helper; stored-float QC test re-keyed by name. 1957 passed; mypy/ruff/bandit
+  clean; lockstep wheel + 9 installers rebuilt. Highest ADR = 0185.
