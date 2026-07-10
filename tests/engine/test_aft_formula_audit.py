@@ -655,6 +655,33 @@ AUDIT: tuple[Row, ...] = (
         "Derived normalisation (count / population) applied to a primary metric; standard ratio, "
         "not a literal .aft metric (ADR-0133).",
     ),
+    # --- Performance Analysis Summary (the operator's reference workbook, ADR-0182) ---
+    Row(
+        "duration_ratio",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "DRM = ActualDuration / BaselineDuration per completed task, from the operator's "
+        "PerformanceAnalysisSummary workbook (G5 'Duration Ratio (S-curve)'); the Bible has no "
+        "formula-bearing per-task duration-growth metric (ADR-0182).",
+    ),
+    Row(
+        "to_go_start_ratio",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "To-go starts / baseline's post-data-date remaining starts, from the operator's "
+        "PerformanceAnalysisSummary workbook (G6 'To-Go-Starts vs. To-Go-Finishes' quad); "
+        "no Bible counterpart (ADR-0182).",
+    ),
+    Row(
+        "to_go_finish_ratio",
+        "",
+        "",
+        NOT_IN_BIBLE,
+        "To-go finishes / baseline's post-data-date remaining finishes — the finish twin of "
+        "to_go_start_ratio, same workbook provenance; no Bible counterpart (ADR-0182).",
+    ),
 )
 
 

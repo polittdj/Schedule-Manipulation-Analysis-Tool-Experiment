@@ -1,4 +1,25 @@
-# Handoff — 2026-07-09 (Re-audit triage: cap starves artifacts last; highest ADR 0181)
+# Handoff — 2026-07-10 (Performance Analysis Summary page; highest ADR 0182)
+
+> ## STATUS (current) — ADR-0182 Performance Analysis Summary (G1–G7 workbook recreation)
+>
+> - **Operator uploaded `PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx`** (intake
+>   `references/`) and asked for every worksheet's visuals recreated + automated from schedule
+>   metadata. Deep-dived all 10 sheets / 19 charts → seven graph families, all now live on the
+>   new **/performance** page (nav: Assessment): G1 monthly work-to-go census (×2), G2 bow-wave
+>   starts/finishes + cumulative S-curves (×3), G3 BEI/HMI index curves that STOP at the data
+>   date (×2; the workbook's CEI rows are empty — cross-version, not fabricated), G4 workoff
+>   burden with the negative backlog mirror (×2), G5 duration-ratio S-curve + middle-70%
+>   histogram + stat chips, and the G3/G6/G7 portfolio quads (one dot per loaded version).
+>   New `engine/metrics/performance_summary.py` (census/flow/burden/DRM/to-go-snapshot);
+>   `duration_ratio` + `to_go_start_ratio` + `to_go_finish_ratio` added to help.py + the
+>   regenerated METRIC-DICTIONARY. Version picker scopes G1–G5; Excel export ships all five
+>   datasets. Chromium-verified on the 4-version Hard_File series: 14 charts, zero console
+>   errors; quad BEI 0.27/0.59/0.47 = the Fuse-pinned values.
+> - **Bug fix found wiring the quads:** `hmi.py` returns status NOT_APPLICABLE on BOTH branches
+>   by design (informational), so ADR-0179's field_forecast was rendering REAL HMI values as
+>   N/A — both consumers now gate on `population == 0` (regression-pinned).
+
+# (prior) Handoff — 2026-07-09 (Re-audit triage: cap starves artifacts last; ADR 0181)
 
 > ## STATUS (current) — ADR-0181 change-effects cap fix + adversarial re-audit triage
 >

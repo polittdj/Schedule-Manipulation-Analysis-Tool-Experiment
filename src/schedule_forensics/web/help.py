@@ -69,6 +69,7 @@ _PBIX = (
     "XPress9-compressed and unreadable (M15, ADR-0030)."
 )
 _HMI = "NASA metric library ('Bible') — extracted formula, ADR-0087."
+_PAS = "PerformanceAnalysisSummary reference workbook (operator intake, ADR-0182)."
 # On-time execution threshold basis (ADR-0161): the DCMA 14-Point Assessment sets the Baseline
 # Execution Index (BEI) and CPLI pass bar at 0.95, and GAO's Schedule Assessment Guide
 # (GAO-16-89G, Best Practice 9) holds a credible schedule to high on-time baseline performance.
@@ -854,6 +855,50 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
             "100%. A value > 1.0 means milestones are being met faster than baselined, not an "
             "error (audit M8)."
         ),
+    ),
+    "duration_ratio": _doc(
+        "duration_ratio",
+        "Duration Ratio (DRM)",
+        "Per COMPLETED normal task: actual duration divided by baseline duration (working "
+        "time). Rendered on the Performance Summary page as the ascending S-curve (DRM vs "
+        "cumulative probability) and a histogram of the middle 70% of values; tasks without a "
+        "positive baseline duration cannot form a ratio and are disclosed, never imputed.",
+        "ActualDuration / BaselineDuration, completed normal tasks (milestones excluded)",
+        _PAS,
+        importance="The realized duration-growth history: DRM 1.0 = the task took exactly as "
+        "long as baselined; the distribution tells you what growth factor history supports "
+        "when judging the remaining durations (and any SRA duration multipliers).",
+        indicates="A long right tail or a mode above 1.0 is chronic duration under-estimation; "
+        "a mode far below 1.0 can flag padded baselines or sloppy statusing (1-day actuals "
+        "against long baselines).",
+    ),
+    "to_go_start_ratio": _doc(
+        "to_go_start_ratio",
+        "To-Go Starts Ratio",
+        "Activities not yet started divided by the activities the BASELINE still had left to "
+        "start after the data date — how the remaining start workload compares with what the "
+        "plan said should remain. The finish twin is the To-Go Finishes Ratio.",
+        "count(actual start missing) / count(baseline start > data date)",
+        _PAS,
+        importance="Quantifies the bow wave: 1.0 = carrying exactly the to-go work the "
+        "baseline planned; above 1.0 = un-started work has piled up beyond the plan.",
+        indicates="A ratio well above 1.0 (especially with the finish ratio higher still) is "
+        "the classic bow-wave signature — work pushed ahead of the data date without "
+        "re-baselining. Undefined (N/A) when the baseline had nothing left to start.",
+    ),
+    "to_go_finish_ratio": _doc(
+        "to_go_finish_ratio",
+        "To-Go Finishes Ratio",
+        "Incomplete activities divided by the activities the BASELINE still had left to finish "
+        "after the data date — the finish-side twin of the To-Go Starts Ratio, plotted "
+        "together as the Performance Summary G6 quad (one dot per loaded version).",
+        "count(percent complete < 100) / count(baseline finish > data date)",
+        _PAS,
+        importance="With the starts ratio it separates an initiation problem from a completion "
+        "problem: starts on plan but finishes above 1.0 = in-progress work is accumulating.",
+        indicates="Both ratios above 1.0 = more to-go work than the baseline planned at this "
+        "point (the bow wave, quantified). Undefined (N/A) when the baseline had nothing left "
+        "to finish.",
     ),
     "hmi_tasks": _doc(
         "hmi_tasks",

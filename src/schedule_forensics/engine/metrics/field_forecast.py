@@ -157,6 +157,9 @@ def compute_field_forecast(schedules: Sequence[Schedule], field: str) -> tuple[G
                 per_version[vi - 1][0].status_date if vi > 0 else None
             )
             evm = compute_evm_indices(sub)
+            # HMI's MetricResult is informational — its status is ALWAYS NOT_APPLICABLE by
+            # design (no pass/fail bar), so _value() would discard REAL values; the genuine
+            # undefined case (no period / nothing baselined-due) is population == 0.
             hmi = compute_hmi(sub, prior_status)["hmi_tasks"]
             out.append(
                 GroupMetrics(
@@ -167,7 +170,7 @@ def compute_field_forecast(schedules: Sequence[Schedule], field: str) -> tuple[G
                     started=started,
                     to_go=len(tasks) - completed,
                     bei=_value(compute_bei(sub)),
-                    hmi=_value(hmi),
+                    hmi=None if hmi.population == 0 else hmi.value,
                     cei_finish=_value(evm["cei_finish"]),
                     cei_start=_value(evm["cei_start"]),
                     spi_t=_value(evm["spi_t"]),
