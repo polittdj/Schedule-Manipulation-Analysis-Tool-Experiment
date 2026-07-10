@@ -82,8 +82,11 @@
       return p;
     }
     // bands: <50% red, 50-70% amber, >70% green (churn heuristics around the GAO/DCMA
-    // stable-path expectation — the bands are display guidance, not a published threshold)
+    // stable-path expectation). §5.3 honesty: there is NO verified published numeric
+    // threshold, so the caveat is rendered ON the chart face, not just in this comment.
     arc(0, 0.5, BAD); arc(0.5, 0.7, WARN); arc(0.7, 1, OK);
+    txt(svg, cx, 212, "bands are operator-set display guidance — not a published threshold",
+      { anchor: "middle", size: 8.5 });
     if (s != null) {
       var a = Math.max(0, Math.min(1, s));
       var nx = cx + (R - 26) * Math.cos(Math.PI * (1 - a)), ny = cy - (R - 26) * Math.sin(Math.PI * (1 - a));
@@ -201,9 +204,15 @@
   }
 
   // ── 5. membership heatmap — rows = ever-critical activities, cols = versions ───────
-  var HEAT_ROWS = 40; // rows drawn (top by tenure); the rest disclosed below the chart
+  var HEAT_ROWS = 40; // rows drawn; the rest disclosed below the chart
   function drawHeatmap() {
-    var rows = TASKS.slice(0, HEAT_ROWS);
+    // §5.2 fix (operator 2026-07-10): sort by INSTABILITY (on/off flips, tenure tiebreak),
+    // not by tenure — top-by-tenure showed the most STABLE tasks, inverting the exhibit's
+    // purpose (the volatile flappers were buried). weighted_instability (entropy x remaining
+    // duration) is a parked engine artifact; flips is the real instability measure here.
+    var rows = TASKS.slice()
+      .sort(function (a, b) { return b.flips - a.flips || b.tenure - a.tenure; })
+      .slice(0, HEAT_ROWS);
     var W = 960, rowH = 13, padL = 250, padT = 34, padB = 8;
     var H = padT + rows.length * rowH + padB;
     var svg = frame("volHeatmap", W, H, "Critical-path membership heatmap");
@@ -235,7 +244,7 @@
     if (TASKS.length > rows.length) {
       var note = document.createElement("p");
       note.className = "muted";
-      note.textContent = "Top " + rows.length + " of " + TASKS.length + " ever-critical activities shown (by tenure) — the scoreboard below lists every one.";
+      note.textContent = "Top " + rows.length + " of " + TASKS.length + " ever-critical activities shown (by instability: on/off flips, tenure tiebreak) — the scoreboard below lists every one.";
       document.getElementById("volHeatmap").appendChild(note);
     }
   }

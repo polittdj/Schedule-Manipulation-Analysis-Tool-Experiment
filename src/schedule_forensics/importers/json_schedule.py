@@ -161,6 +161,8 @@ def _task(raw: dict[str, Any]) -> Task:
         fields["physical_percent_complete"] = float(raw["physical_percent_complete"])
     if raw.get("stored_is_critical") is not None:
         fields["stored_is_critical"] = bool(raw["stored_is_critical"])
+    if raw.get("notes") is not None:
+        fields["notes"] = str(raw["notes"])
     if isinstance(raw.get("custom_fields"), list):
         fields["custom_fields"] = tuple(
             (str(pair[0]), str(pair[1]))
@@ -415,6 +417,8 @@ def to_json_text(schedule: Schedule) -> str:
             task["stored_is_critical"] = t.stored_is_critical
         if t.custom_fields:
             task["custom_fields"] = [[k, v] for k, v in t.custom_fields]
+        if t.notes is not None:
+            task["notes"] = t.notes
         if t.remaining_duration_minutes is not None:
             task["remaining_duration_minutes"] = t.remaining_duration_minutes
         if t.baseline_duration_minutes is not None:

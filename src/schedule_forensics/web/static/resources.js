@@ -4,9 +4,11 @@
  * work-vs-capacity histogram at the chosen bucket (day / week / month): a bar per bucket (working
  * days of booked work), a capacity tick per bucket, and over-allocated buckets (load > capacity)
  * drawn red. Clicking a bar opens the over-allocation drill (#resDrill) listing the activities
- * driving that bucket's load, entirely from the embedded per-bucket contributors. Dependency-free
- * SVG, same-origin only (air-gap) — nothing leaves the machine. The shared chartframe (#resChart is
- * a .chart-host) adds zoom + the hover call-out.
+ * driving that bucket's load. The drill has a Columns dropdown (operator 2026-07-10): any
+ * standard or custom field can be ADDED to the table, the choice persists in localStorage and
+ * applies to every subsequent bar click, and the exact selection + columns export to Excel
+ * (/export/xlsx/resource-drill). Field data comes from the same-origin /api/analysis; the
+ * bucket's own work figures stay from the embedded payload. Dependency-free SVG, air-gap safe.
  */
 "use strict";
 
@@ -30,32 +32,135 @@
   var byId = {};
   (payload.resources || []).forEach(function (r) { byId[String(r.id)] = r; });
 
+  // ---- drill columns: standard fields + the file's custom fields, persisted set-once ----
+  var COLS_KEY = "sf-res-drill-cols";
+  var EXTRA_STANDARD = [
+    { key: "duration_days", label: "Duration (d)" },
+    { key: "percent_complete", label: "% complete" },
+    { key: "start", label: "Start" },
+    { key: "finish", label: "Finish" },
+    { key: "total_float_days", label: "Total float (d)" },
+    { key: "free_float_days", label: "Free float (d)" },
+    { key: "is_critical", label: "Critical" },
+    { key: "wbs", label: "WBS" },
+    { key: "baseline_start", label: "Baseline start" },
+    { key: "baseline_finish", label: "Baseline finish" },
+  ];
+  var byUid = null;      // uid -> activity row (from /api/analysis, fetched once)
+  var customLabels = []; // custom-field labels available on this file
+  var extraOn = (function () {
+    try { return new Set(JSON.parse(localStorage.getItem(COLS_KEY) || "[]")); }
+    catch (e) { return new Set(); }
+  })();
+  function saveCols() {
+    try { localStorage.setItem(COLS_KEY, JSON.stringify(Array.from(extraOn))); } catch (e) { /* ok */ }
+  }
+  function fetchFields(cb) {
+    if (byUid) { cb(); return; }
+    fetch("/api/analysis/" + encodeURIComponent(payload.source_file || ""))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        byUid = {};
+        (d.activities || []).forEach(function (a) { byUid[a.unique_id] = a; });
+        var seen = new Set();
+        (d.activities || []).forEach(function (a) {
+          Object.keys(a.custom || {}).forEach(function (k) { seen.add(k); });
+        });
+        customLabels = Array.from(seen).sort();
+        cb();
+      })
+      .catch(function () { byUid = {}; cb(); });
+  }
+  function extraCols() {
+    var std = EXTRA_STANDARD.filter(function (f) { return extraOn.has(f.label); });
+    var cus = customLabels.filter(function (k) { return extraOn.has(k); })
+      .map(function (k) { return { key: k, label: k, custom: true }; });
+    return std.concat(cus);
+  }
+  function cellValue(a, col) {
+    if (!a) return "";
+    var v = col.custom ? (a.custom || {})[col.key] : a[col.key];
+    if (v === null || v === undefined) return "";
+    if (v === true) return "yes";
+    if (v === false) return "no";
+    var mdy = window.SFGantt && SFGantt.fmtMDY ? SFGantt.fmtMDY(String(v)) : "";
+    return mdy || String(v);
+  }
+
   function showDrill(res, p) {
     if (!drill) return;
+    fetchFields(function () { renderDrill(res, p); });
+  }
+  function renderDrill(res, p) {
     drill.innerHTML = "";
     var tasks = p.tasks || [];
     var head = document.createElement("h3");
     head.textContent = res.name + " — " + p.period + ": " + p.load + " d booked / " +
       p.cap + " d capacity" + (p.over ? " (OVER-ALLOCATED)" : "");
     drill.appendChild(head);
+    var src = document.createElement("p");
+    src.className = "muted";
+    src.setAttribute("data-no-i18n", "");
+    src.textContent = "Source file: " + (payload.source_file || "loaded schedule");
+    drill.appendChild(src);
     if (!tasks.length) {
       drill.appendChild(document.createElement("p")).textContent =
         "No per-activity work recorded for this " + UNIT + ".";
       return;
     }
+    // controls: Columns picker (persists across bar clicks + sessions) + Excel export
+    var bar = document.createElement("div");
+    bar.className = "viz-controls";
+    if (window.SFChecklist) {
+      var labels = EXTRA_STANDARD.map(function (f) { return f.label; }).concat(customLabels);
+      bar.appendChild(SFChecklist.filter({
+        values: labels,
+        selected: new Set(labels.filter(function (l) { return extraOn.has(l); })),
+        label: "Columns",
+        title: "Add fields to the drill table (kept for every bar you click)",
+        onChange: function (sel) {
+          extraOn = sel ? new Set(Array.from(sel)) : new Set();
+          saveCols();
+          renderDrill(res, p);
+        },
+      }));
+    }
+    var cols = extraCols();
+    var href = "/export/xlsx/resource-drill?resource=" + encodeURIComponent(res.id) +
+      "&period=" + encodeURIComponent(p.period) + "&bucket=" + encodeURIComponent(GRAN) +
+      (cols.length ? "&cols=" + encodeURIComponent(cols.map(function (c) { return c.key; }).join(",")) : "");
+    var a = document.createElement("a");
+    a.className = "btn-link";
+    a.href = href;
+    a.textContent = "⬇ Excel (this selection)";
+    bar.appendChild(a);
+    drill.appendChild(bar);
+
     var scroller = document.createElement("div");
     scroller.className = "hist-drill-scroll";
     var table = document.createElement("table");
     table.className = "hist-drill-table";
-    table.innerHTML = "<thead><tr><th>UID</th><th>Activity</th><th>Work (days) this " +
-      UNIT + "</th></tr></thead>";
+    var headHtml = "<thead><tr><th>UID</th><th>Activity</th><th>Work (days) this " + UNIT + "</th>";
+    cols.forEach(function (c) { headHtml += "<th></th>"; });
+    headHtml += "</tr></thead>";
+    table.innerHTML = headHtml;
+    // fill the extra header labels via textContent (never trust labels as HTML)
+    var ths = table.querySelectorAll("th");
+    cols.forEach(function (c, i) { ths[3 + i].textContent = c.label; });
     var tb = document.createElement("tbody");
     tasks.forEach(function (t) {
       var tr = document.createElement("tr");
-      var td1 = document.createElement("td"); td1.textContent = t.uid;
-      var td2 = document.createElement("td"); td2.textContent = t.name;
-      var td3 = document.createElement("td"); td3.textContent = t.days;
-      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+      [t.uid, t.name, t.days].forEach(function (v) {
+        var td = document.createElement("td");
+        td.textContent = v;
+        tr.appendChild(td);
+      });
+      var act = byUid ? byUid[t.uid] : null;
+      cols.forEach(function (c) {
+        var td = document.createElement("td");
+        td.textContent = cellValue(act, c);
+        tr.appendChild(td);
+      });
       tb.appendChild(tr);
     });
     table.appendChild(tb);

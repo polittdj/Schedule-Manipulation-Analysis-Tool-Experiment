@@ -160,12 +160,6 @@ _TERMS: dict[str, dict[str, str]] = {
         "pt": "Fim e atraso",
     },
     "S-Curve": {"es": "Curva S", "fr": "Courbe en S", "de": "S-Kurve", "pt": "Curva S"},
-    "Year Phases": {
-        "es": "Fases anuales",
-        "fr": "Phases annuelles",
-        "de": "Jahresphasen",
-        "pt": "Fases anuais",
-    },
     "Quality Ribbon": {
         "es": "Cinta de calidad",
         "fr": "Ruban qualité",

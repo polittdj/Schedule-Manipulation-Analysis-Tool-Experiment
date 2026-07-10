@@ -385,11 +385,20 @@
     return Array.from(seen).sort(compareValues);
   }
 
+  // "show completed tasks" (toolbar checkbox) applies to the WHOLE Activities grid + Gantt,
+  // not just the driving-path trace: unchecked hides every 100%-complete row (a fully complete
+  // summary is hidden too — everything beneath it is complete by definition).
+  function includeCompleted() {
+    const cb = document.getElementById("showDone");
+    return !cb || cb.checked;
+  }
+
   // Row visibility: the MS-Project "show outline level N" collapses deeper tasks, and summary
   // tasks are ALWAYS shown (they carry the WBS context) so the per-column filters only scope the
   // detail rows beneath them.
   function rowVisible(act, fields) {
     if (maxOutline > 0 && (act.outline_level || 0) > maxOutline) return false;
+    if (!includeCompleted() && (act.complete || (act.percent_complete || 0) >= 100)) return false;
     return act.is_summary || rowMatches(act, fields);
   }
 
@@ -432,6 +441,74 @@
     if (tbl && tbl.isConnected && window.SFGantt && SFGantt.freezeColumns) {
       lastFrozenWidth = SFGantt.freezeColumns(tbl) || lastFrozenWidth;
     }
+    // dependency link lines (operator 2026-07-10): drawn once the rows have laid out
+    window.requestAnimationFrame(function () { drawLinks(tbody.parentNode); });
+  }
+
+  // MS-Project-style dependency link lines over the timeline: one SVG overlay inside the
+  // scroll pane (so it scrolls with the chart), an elbow per relationship between VISIBLE
+  // rows, arrowhead into the successor. The "links" toolbar checkbox shows/hides them.
+  function linksOn() {
+    const cb = document.getElementById("showLinks");
+    return !cb || cb.checked;
+  }
+  function drawLinks(table) {
+    const pane = document.getElementById("grid");
+    if (!pane || !table || !table.isConnected) return;
+    const old = pane.querySelector("svg.g-links");
+    if (old) old.parentNode.removeChild(old);
+    if (!linksOn()) return;
+    if (getComputedStyle(pane).position === "static") pane.style.position = "relative";
+    const anchors = {}; // uid -> {x1 (left), x2 (right), y (mid)} in pane content coords
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("class", "g-links");
+    svg.setAttribute("width", table.scrollWidth);
+    svg.setAttribute("height", table.offsetHeight);
+    pane.appendChild(svg);
+    const base = svg.getBoundingClientRect();
+    table.querySelectorAll("tbody tr[data-uid]").forEach(function (tr) {
+      const bar = tr.querySelector(".g-bar, .g-ms");
+      if (!bar) return;
+      const r = bar.getBoundingClientRect();
+      anchors[tr.getAttribute("data-uid")] = {
+        x1: r.left - base.left, x2: r.right - base.left, y: r.top - base.top + r.height / 2,
+      };
+    });
+    const frag = document.createDocumentFragment();
+    activities.forEach(function (act) {
+      const to = anchors[act.unique_id];
+      if (!to) return;
+      (act.predecessors || []).forEach(function (pr) {
+        const from = anchors[pr.uid];
+        if (!from) return;
+        // anchor points per dependency type (FS default): FS pred-right -> succ-left,
+        // SS pred-left -> succ-left, FF pred-right -> succ-right, SF pred-left -> succ-right
+        const tp = pr.type || "FS";
+        const sx = tp === "SS" || tp === "SF" ? from.x1 : from.x2;
+        const ex = tp === "FF" || tp === "SF" ? to.x2 + 4 : to.x1 - 4;
+        const sy = from.y, ey = to.y;
+        const stub = 7;
+        let d;
+        if (sx + stub <= ex) {
+          d = "M" + sx + " " + sy + " H" + (sx + stub) + " V" + ey + " H" + ex;
+        } else { // backward link: route around via a mid-row channel
+          const ymid = sy < ey ? ey - 9 : ey + 9;
+          d = "M" + sx + " " + sy + " H" + (sx + stub) + " V" + ymid + " H" + (ex - stub) + " V" + ey + " H" + ex;
+        }
+        const path = document.createElementNS(svgNS, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("class", "g-link");
+        frag.appendChild(path);
+        const arrow = document.createElementNS(svgNS, "polygon");
+        const dir = tp === "FF" || tp === "SF" ? -1 : 1; // arrow points INTO the successor bar
+        arrow.setAttribute("points",
+          ex + "," + ey + " " + (ex - 5 * dir) + "," + (ey - 3.2) + " " + (ex - 5 * dir) + "," + (ey + 3.2));
+        arrow.setAttribute("class", "g-link-arrow");
+        frag.appendChild(arrow);
+      });
+    });
+    svg.appendChild(frag);
   }
 
   function renderGrid() {
@@ -519,39 +596,146 @@
   // Populated fields only, core schedule fields first, custom fields in a collapsible group —
   // the old dump listed EVERY mapped custom field including blanks and raw PT#H durations
   // (operator: "makes no sense and provides no value").
-  function drill(act) {
-    const panel = document.getElementById("drill");
-    panel.innerHTML = "";
-    panel.className = "drill show";
-    panel.appendChild(el("h3", { text: "Activity " + act.unique_id + " — " + act.name }));
-    const core = el("dl");
-    ALL_FIELDS.forEach((f) => {
-      if (f.custom) return; // customs get their own populated-only group below
-      const v = drillValue(valueOf(act, f.key));
-      if (v === null) return;
-      core.appendChild(el("dt", { text: f.label }));
-      core.appendChild(el("dd", { text: v }));
+  // MS Project-style Task Information dialog (operator 2026-07-10, ADR-0183): click any
+  // task / summary / milestone row and get the tabbed popup MS Project shows — General,
+  // Predecessors, Successors, Resources, Advanced, Notes, Custom Fields — from the row's
+  // full server payload. Every value is the file's own data; nothing is derived client-side.
+  function tiClose() {
+    const ov = document.querySelector(".ti-overlay");
+    if (ov) ov.parentNode.removeChild(ov);
+    document.removeEventListener("keydown", tiEsc);
+  }
+  function tiEsc(ev) { if (ev.key === "Escape") tiClose(); }
+  function tiDL(pairs) {
+    const dl = el("dl");
+    pairs.forEach(function (pr) {
+      const v = pr[1];
+      if (v === null || v === undefined || v === "") return;
+      dl.appendChild(el("dt", { text: pr[0] }));
+      dl.appendChild(el("dd", { text: String(v) }));
     });
-    core.appendChild(el("dt", { text: "Citation" }));
-    core.appendChild(el("dd", { text: act.name + " (UID " + act.unique_id + ", " + (act.source_file || "schedule") + ")" }));
-    panel.appendChild(core);
-    const custom = act.custom || {};
-    const populated = Object.keys(custom).filter(function (k) {
-      return drillValue(custom[k]) !== null;
-    }).sort();
-    if (populated.length) {
-      const det = el("details");
-      const sum = el("summary", { text: "Custom fields (" + populated.length + " populated)" });
-      sum.className = "btn-link";
-      det.appendChild(sum);
-      const dl = el("dl");
-      populated.forEach(function (k) {
-        dl.appendChild(el("dt", { text: k }));
-        dl.appendChild(el("dd", { text: drillValue(custom[k]) }));
+    return dl;
+  }
+  function tiTable(headers, rows, emptyText) {
+    if (!rows.length) return el("p", { class: "muted", text: emptyText });
+    const tbl = el("table", { class: "ti-table" });
+    const tr0 = el("tr");
+    headers.forEach(function (h) { tr0.appendChild(el("th", { text: h })); });
+    tbl.appendChild(tr0);
+    rows.forEach(function (r) {
+      const tr = el("tr");
+      r.forEach(function (c) { tr.appendChild(el("td", { text: c === null || c === undefined ? "" : String(c) })); });
+      tbl.appendChild(tr);
+    });
+    return tbl;
+  }
+  function drill(act) {
+    tiClose();
+    const overlay = el("div", { class: "ti-overlay" });
+    overlay.addEventListener("click", function (ev) { if (ev.target === overlay) tiClose(); });
+    const dlg = el("div", { class: "ti-dialog", role: "dialog" });
+    const kind = act.is_summary ? "Summary" : act.is_milestone ? "Milestone" : "Task";
+    const head = el("div", { class: "ti-head" });
+    head.appendChild(el("h3", { text: "Task Information — " + kind + " " + act.unique_id + ": " + act.name }));
+    const close = el("button", { class: "ti-close", type: "button", text: "✕" });
+    close.addEventListener("click", tiClose);
+    head.appendChild(close);
+    dlg.appendChild(head);
+
+    const dur = function (v) { return v === null || v === undefined ? null : v + " d"; };
+    const money = function (v) { return v === null || v === undefined ? null : "$" + Number(v).toLocaleString(); };
+    const tabs = [];
+    tabs.push(["General", function () {
+      const box = el("div");
+      box.appendChild(tiDL([
+        ["Name", act.name], ["Unique ID", act.unique_id], ["WBS", act.wbs || null],
+        ["Outline level", act.outline_level],
+        ["Percent complete", (act.percent_complete || 0) + "%"],
+        ["Physical % complete", act.physical_percent_complete === null || act.physical_percent_complete === undefined ? null : act.physical_percent_complete + "%"],
+        ["Duration", dur(act.duration_days) + (act.is_estimated_duration ? " (estimated)" : "") + (act.duration_is_elapsed ? " (elapsed)" : "")],
+        ["Remaining duration", dur(act.remaining_duration_days)],
+        ["Baseline duration", dur(act.baseline_duration_days)],
+        ["Schedule mode", act.is_manual ? "Manually Scheduled" : "Auto Scheduled"],
+        ["Active", act.is_active === false ? "no (INACTIVE)" : "yes"],
+        ["Start", fmt(act.start)], ["Finish", fmt(act.finish)],
+        ["Actual start", fmt(act.actual_start)], ["Actual finish", fmt(act.actual_finish)],
+        ["Baseline start", fmt(act.baseline_start)], ["Baseline finish", fmt(act.baseline_finish)],
+        ["Total float", dur(act.total_float_days)], ["Free float", dur(act.free_float_days)],
+        ["Critical", act.is_critical ? "yes" : "no"],
+        ["Milestone", act.is_milestone ? "yes" : null],
+        ["Summary", act.is_summary ? "yes" : null],
+      ]));
+      return box;
+    }]);
+    tabs.push(["Predecessors", function () {
+      return tiTable(["UID", "Name", "Type", "Lag (d)"],
+        (act.predecessors || []).map(function (r) { return [r.uid, r.name, r.type, r.lag_days]; }),
+        "No predecessors.");
+    }]);
+    tabs.push(["Successors", function () {
+      return tiTable(["UID", "Name", "Type", "Lag (d)"],
+        (act.successors || []).map(function (r) { return [r.uid, r.name, r.type, r.lag_days]; }),
+        "No successors.");
+    }]);
+    tabs.push(["Resources", function () {
+      const a = act.assignments || [];
+      if (a.length) {
+        return tiTable(["Resource", "Units", "Work (d)", "Remaining work (d)"],
+          a.map(function (r) {
+            return [r.resource, Math.round((r.units || 0) * 100) + "%", r.work_days, r.remaining_work_days];
+          }), "");
+      }
+      return el("p", { class: "muted", text: act.resource_names ? "Assigned: " + act.resource_names + " (no per-assignment detail in the file)" : "No resources assigned." });
+    }]);
+    tabs.push(["Advanced", function () {
+      return tiDL([
+        ["Constraint type", act.constraint_type],
+        ["Constraint date", fmt(act.constraint_date)],
+        ["Deadline", fmt(act.deadline)],
+        ["Work", dur(act.work_days)], ["Actual work", dur(act.actual_work_days)],
+        ["Cost", money(act.cost)], ["Actual cost", money(act.actual_cost)],
+        ["Budgeted cost (BAC)", act.budgeted_cost ? money(act.budgeted_cost) : null],
+        ["Elapsed duration", act.duration_is_elapsed ? "yes" : null],
+        ["Estimated duration", act.is_estimated_duration ? "yes" : null],
+      ]);
+    }]);
+    tabs.push(["Notes", function () {
+      if (act.notes) {
+        const pre = el("div", { class: "ti-notes", text: act.notes });
+        return pre;
+      }
+      return el("p", { class: "muted", text: "No note recorded in the source file." });
+    }]);
+    tabs.push(["Custom Fields", function () {
+      const custom = act.custom || {};
+      const populated = Object.keys(custom).filter(function (k) {
+        return drillValue(custom[k]) !== null;
+      }).sort();
+      if (!populated.length) return el("p", { class: "muted", text: "No populated custom fields." });
+      return tiDL(populated.map(function (k) { return [k, drillValue(custom[k])]; }));
+    }]);
+
+    const bar = el("div", { class: "ti-tabs" });
+    const body = el("div", { class: "ti-body" });
+    tabs.forEach(function (tb, i) {
+      const btn = el("button", { type: "button", text: tb[0] });
+      if (i === 0) btn.className = "on";
+      btn.addEventListener("click", function () {
+        bar.querySelectorAll("button").forEach(function (b) { b.className = ""; });
+        btn.className = "on";
+        body.innerHTML = "";
+        body.appendChild(tb[1]());
       });
-      det.appendChild(dl);
-      panel.appendChild(det);
-    }
+      bar.appendChild(btn);
+    });
+    dlg.appendChild(bar);
+    body.appendChild(tabs[0][1]());
+    dlg.appendChild(body);
+    // provenance: the file every figure in this dialog came from (operator: always visible)
+    dlg.appendChild(el("div", { class: "ti-cite", text: "Source: " + (act.source_file || "loaded schedule") + " — UID " + act.unique_id + " \u201C" + act.name + "\u201D" }));
+    overlay.appendChild(dlg);
+    document.body.appendChild(overlay);
+    document.addEventListener("keydown", tiEsc);
   }
 
   let lastDriving = null; // re-render the trace when "show completed" / tier / zoom changes
@@ -789,7 +973,28 @@
 
   document.getElementById("ganttBtn").addEventListener("click", loadGantt);
   const showDone = document.getElementById("showDone");
-  if (showDone) showDone.addEventListener("change", () => { if (lastDriving) renderGantt(lastDriving); });
+  if (showDone) showDone.addEventListener("change", () => {
+    renderGrid(); // the toggle scopes the WHOLE Activities grid + Gantt (operator 2026-07-10)…
+    if (lastDriving) renderGantt(lastDriving); // …and still re-renders the trace
+  });
+  const showLinks = document.getElementById("showLinks");
+  if (showLinks) showLinks.addEventListener("change", () => renderGrid());
+  // persist header column moves (SFGantt grip) into the field model so re-renders keep the order
+  document.addEventListener("sf-colmove", (ev) => {
+    const grid = document.getElementById("grid");
+    if (!grid || !grid.contains(ev.target)) return;
+    const visible = ALL_FIELDS.filter((f) => f.on);
+    const i = ev.detail.index, j = i + ev.detail.dir;
+    if (i < 0 || i >= visible.length || j < 0 || j >= visible.length) return;
+    ev.preventDefault(); // we re-render from the model instead of a raw DOM move
+    const a = ALL_FIELDS.indexOf(visible[i]), b = ALL_FIELDS.indexOf(visible[j]);
+    ALL_FIELDS[a] = visible[j]; ALL_FIELDS[b] = visible[i];
+    renderGrid();
+  });
+  window.addEventListener("resize", () => {
+    const tbl = document.querySelector("#grid table.gantt-grid");
+    if (tbl) window.requestAnimationFrame(() => drawLinks(tbl));
+  }, { passive: true });
   const ganttTierMount = document.getElementById("ganttTier");
   if (ganttTierMount && window.SFChecklist) {
     ganttTierMount.appendChild(SFChecklist.filter({

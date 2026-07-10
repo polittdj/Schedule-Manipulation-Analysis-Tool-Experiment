@@ -124,6 +124,10 @@ class Task(StrictFrozenModel):
     # (engine/resources.py). Empty when the file records only names/UIDs (no work-phased loading).
     resource_assignments: tuple[Assignment, ...] = ()
 
+    #: Free-text task note (MSPDI <Notes>). Forensic content — surfaced verbatim in the Task
+    #: Information dialog's Notes tab; ``None`` = the source recorded no note (never "").
+    notes: str | None = None
+
     # --- custom / extended fields (MSPDI ExtendedAttributes: Text/Number/Flag/Date/Outline codes).
     # Stored as (label, value) pairs — label is the MS Project alias (e.g. "CA-WBS") when set, else
     # the field name (e.g. "Text20"). A tuple keeps the model frozen + hashable (like resources).

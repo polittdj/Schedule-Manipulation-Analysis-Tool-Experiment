@@ -934,3 +934,55 @@ header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
 .stat-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .stat-chip { background: var(--panel-2, rgba(127,127,127,0.12)); border: 1px solid var(--muted);
   border-radius: 12px; padding: 2px 10px; font-size: 0.85em; color: var(--fg); }
+
+/* ---- Gantt gridlines (operator 2026-07-10, ADR-0183): visible row + column lines on the
+   data grid, and a light dotted continuation of each row line across the timeline. ---- */
+.gantt-grid td, .gantt-grid th { border-right: 1px solid var(--line); }
+.gantt-grid tbody td { border-bottom: 1px solid var(--line); }
+.gantt-grid tbody td.g-cell { border-bottom: 1px dotted rgba(128, 128, 128, 0.45); border-right: none; }
+
+/* ---- column mover grip + menu (SFGantt.attachColumnMovers) ---- */
+.gantt-grid th .sf-colgrip { display: none; margin-left: 6px; cursor: pointer; color: var(--muted);
+  font-size: 11px; user-select: none; }
+.gantt-grid th:hover .sf-colgrip { display: inline; }
+.sf-colmove-menu { position: absolute; z-index: 60; background: var(--panel, var(--field-bg));
+  border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35);
+  display: flex; flex-direction: column; }
+.sf-colmove-menu button { background: none; border: none; color: var(--fg); padding: 6px 12px;
+  text-align: left; cursor: pointer; font-size: 12px; }
+.sf-colmove-menu button:hover { background: var(--field-bg); color: var(--accent); }
+
+/* ---- dependency link lines over the Gantt timeline ---- */
+svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }
+.g-link { fill: none; stroke: var(--gantt-link, #7a8699); stroke-width: 1.1; opacity: .85; }
+.g-link-arrow { fill: var(--gantt-link, #7a8699); opacity: .95; }
+
+/* ---- Task Information dialog (MS Project-style, ADR-0183) ---- */
+.ti-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 90;
+  display: flex; align-items: center; justify-content: center; }
+.ti-dialog { background: var(--bg, #fff); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 10px; width: min(760px, 94vw); max-height: 86vh; display: flex;
+  flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+.ti-head { display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.ti-head h3 { margin: 0; font-size: 14px; color: var(--accent); }
+.ti-close { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.ti-close:hover { color: var(--bad); }
+.ti-tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); }
+.ti-tabs button { background: none; border: 1px solid var(--line); border-bottom: none;
+  border-radius: 6px 6px 0 0; color: var(--muted); padding: 5px 10px; cursor: pointer; font-size: 12px; }
+.ti-tabs button.on { color: var(--accent); background: var(--field-bg); font-weight: 600; }
+.ti-body { padding: 12px 16px; overflow: auto; }
+.ti-body dl { display: grid; grid-template-columns: 200px 1fr; gap: 3px 14px; font-size: 13px; margin: 0; }
+.ti-body dt { color: var(--muted); }
+.ti-table { border-collapse: collapse; font-size: 13px; width: 100%; }
+.ti-table th, .ti-table td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
+.ti-table th { color: var(--muted); background: var(--field-bg); }
+.ti-notes { white-space: pre-wrap; font-size: 13px; }
+.ti-cite { padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* always-on data-provenance banner (operator 2026-07-10, ADR-0183) */
+.src-banner { margin: 8px 0 10px; padding: 6px 12px; border: 1px solid var(--line);
+  border-left: 3px solid var(--accent); border-radius: 6px; background: var(--field-bg);
+  font-size: 12px; color: var(--muted); }
+.src-banner b { color: var(--fg); }
