@@ -4813,3 +4813,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   identity stability, both fallbacks, relationship translation; fixture pins re-derived via a
   _uid(task_code) helper; stored-float QC test re-keyed by name. 1957 passed; mypy/ruff/bandit
   clean; lockstep wheel + 9 installers rebuilt. Highest ADR = 0185.
+
+### 2026-07-10 (cont.) — page memory + universal Reset + Gantt unification (ADR-0186)
+- Operator: selections on any page must survive switching pages (Target UID "or whatever",
+  plus the views); a Reset button on every page/Gantt back to the default view; ALL Gantts
+  (explicitly incl. Critical-Path Evolution) must match the dashboard per-file Gantt's
+  functionality - add missing features, no duplicates.
+- static/persist.js: two-layer per-path memory (query-string replay on bare nav return,
+  /groups + clear/apply excluded; control values restored + events re-fired, sf-restored
+  hook) + injected "Reset view" button clearing both layers + the page's column-picker keys.
+  Checklist-popup selections documented as not-yet-persisted (future work).
+- static/taskinfo.js: Task Information dialog extracted from app.js as SFTaskInfo
+  (open/openFrom with /api/analysis fetch-cache + honest miss dialog); wired into /path,
+  /driving-path corridor (per-stepped-version file), /sra grid (non-editable cells),
+  /evolution SVG Gantt (ghost rows cite the prior version). Added Find-UID, dates-on-bars,
+  SRA show-completed, path sf-colmove model listener. No link lines on corridor/evolution -
+  their payloads carry no per-row logic; drawing them would fabricate logic (Law 2).
+- Chromium end-to-end: 17 checks green, zero console errors (memory, reset, QS replay,
+  Task Info provenance on all four Gantts, SRA hide-completed 145->114, path auto-retrace).
+  Full gate: 1965+8 passed, mypy/ruff/bandit clean, node --check clean; lockstep wheel +
+  9 installers rebuilt. Also: stop-hook root cause fixed (stale remote-tracking ref after
+  GitHub auto-deletes the merged branch) - prune-restart rule added to CLAUDE.md; damage
+  audit clean, no history rewrites, nothing lost. Highest ADR = 0186.

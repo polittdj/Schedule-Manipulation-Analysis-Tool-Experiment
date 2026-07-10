@@ -254,6 +254,12 @@ _TERMS: dict[str, dict[str, str]] = {
         "pt": "Limpar sessão",
     },
     "Quit": {"es": "Salir", "fr": "Quitter", "de": "Beenden", "pt": "Sair"},
+    "Reset view": {
+        "es": "Restablecer vista",
+        "fr": "Réinitialiser la vue",
+        "de": "Ansicht zurücksetzen",
+        "pt": "Repor vista",
+    },
     "Theme": {"es": "Tema", "fr": "Thème", "de": "Design", "pt": "Tema"},
     "Language": {"es": "Idioma", "fr": "Langue", "de": "Sprache", "pt": "Idioma"},
     "Set": {"es": "Fijar", "fr": "Définir", "de": "Setzen", "pt": "Definir"},
