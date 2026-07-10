@@ -4745,3 +4745,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   RemainingOvertimeWork noise differ). CM-3 is the ADR-0152 intake process; CM-1/CM-2 are
   operator-machine hygiene (stale June clone; 8 uncommitted local fixture deletions —
   git restore). Highest ADR = 0181.
+
+### 2026-07-10 — Performance Analysis Summary page (ADR-0182)
+- Operator uploaded PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx and asked for each
+  worksheet's visuals recreated + automated from schedule metadata. Deep-dived the workbook
+  (10 sheets, 18 charts + 1 chartEx histogram; series refs + cached values reverse-engineered)
+  into seven graph families. New engine/metrics/performance_summary.py computes all of them
+  from Task metadata (std-lib only, 30-yr month-axis safety cap, disclosed truncation): G1
+  monthly census (active/completed/to-go/longest-path), G2 monthly baselined/scheduled/actual
+  starts+finishes with <=30/31-60/>60-day late buckets + cumulative curves, G3 monthly BEI +
+  HMI hit rates (+3-mo rolling; curves stop at the DD; no per-month CEI fabricated - the
+  workbook's own CEI rows are empty), G4 workoff burden (above-axis at actual/forecast month,
+  NEGATIVE backlog mirror at the baselined month), G5 DRM (completed tasks; S-curve + middle-70%
+  histogram; no-baseline tasks disclosed), to_go_snapshot (G6/G7 ratios + critical share).
+- New /performance page (nav: Assessment): 14 house-style SVG visuals with hover explainers,
+  legends, DD markers, honest N/A; version picker scopes G1-G5; portfolio quads plot one dot
+  per loaded version (HMI vs CEI, to-go starts vs finishes ratio, BEI vs critical share with
+  0.95/1.0/median guides); /export/{fmt}/performance ships all five datasets. Dataset embedded
+  (#perfData), static/performance.js dependency-free. help.py + METRIC-DICTIONARY gained
+  duration_ratio / to_go_start_ratio / to_go_finish_ratio.
+- Bug fix: hmi.py returns CheckStatus.NOT_APPLICABLE on BOTH branches by design, so ADR-0179's
+  field_forecast (Forecast page) rendered REAL HMI values as N/A - both consumers now gate on
+  population == 0 (regression test). cei_finish is a PERCENT - rescaled 0-1 for the quad.
+- Chromium-verified on the 4-version Hard_File series: 14 charts paint, zero console errors,
+  quad BEI 0.27/0.59/0.47 = Fuse-pinned; to-go ratios 1.0->3.09 with critical share .31->.72
+  (the series' bow wave, quantified). Highest ADR = 0182.

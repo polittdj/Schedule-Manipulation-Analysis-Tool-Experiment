@@ -95,6 +95,36 @@ def test_groups_by_custom_field_with_na_and_same_engine_formulas() -> None:
     assert na.group == NA_GROUP
 
 
+def test_hmi_real_value_surfaces_across_versions() -> None:
+    """HMI's MetricResult carries status NOT_APPLICABLE by DESIGN (informational, no pass/fail
+    bar), so filtering on status discarded REAL values — the ADR-0182 fix gates on the due
+    population instead. A group with a task baselined AND completed inside the status period
+    must show its actual hit rate, not N/A."""
+    d = dt.timedelta
+    status1 = MON + d(days=10)
+    status2 = MON + d(days=30)
+    v1 = _sched([_t(1, "Alpha", bl_start=MON, bl_finish=MON + d(days=15))], status1)
+    v2 = _sched(
+        [
+            _t(
+                1,
+                "Alpha",
+                pct=100.0,
+                bl_start=MON,
+                bl_finish=MON + d(days=15),  # baselined-due inside (status1, status2]
+                actual_start=MON,
+                actual_finish=MON + d(days=14),  # completed inside the period -> a HIT
+            )
+        ],
+        status2,
+    )
+    v2 = v2.model_copy(update={"source_file": "s2.mspdi.xml"})
+    rows = {(g.group, g.version): g for g in compute_field_forecast([v1, v2], "CAM")}
+    assert rows[("Alpha", "s2.mspdi.xml")].hmi == 1.0  # was N/A before the fix
+    # the first version has no prior data date -> the period is undefined -> honestly None
+    assert rows[("Alpha", "s.mspdi.xml")].hmi is None
+
+
 def test_group_union_across_versions_and_disappearing_group() -> None:
     status1 = MON + dt.timedelta(days=10)
     status2 = MON + dt.timedelta(days=40)
