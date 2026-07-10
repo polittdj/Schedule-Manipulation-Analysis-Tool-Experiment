@@ -55,6 +55,11 @@ def render_report(payload: ExhibitPayload) -> str:
         f"{dates[-1] if dates else '?'} · unmatched={m.unmatched_count} · "
         f"transitions n={len(payload.transitions)}"
     )
-    return _TEMPLATE.render(
-        title=f"Critical-Path Volatility Exhibits — run {m.run_id}", meta=meta, exhibits=exhibits
+    # str(...) — CI's mypy sees jinja2's render as Any (no type stubs); the render IS a str
+    return str(
+        _TEMPLATE.render(
+            title=f"Critical-Path Volatility Exhibits — run {m.run_id}",
+            meta=meta,
+            exhibits=exhibits,
+        )
     )
