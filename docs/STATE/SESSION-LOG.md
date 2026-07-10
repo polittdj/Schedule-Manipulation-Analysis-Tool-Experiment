@@ -4902,3 +4902,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   full-coverage SPI(t) <= direct-only) + a no-data-date schedule still unforecastable.
   Full gate: 1974 tests, ruff/format/mypy/bandit/node clean; lockstep wheel + 9 installers
   rebuilt. Highest ADR = 0189.
+
+### 2026-07-10 (cont.) — one call-out at a time, tool-wide (ADR-0190)
+- Operator (screenshot: CP Evolution bar hover, two overlapping boxes with the same text —
+  the styled white call-out + the OS-dark native browser tooltip): "only the one in white …
+  applies to all callouts in the entire tool. Only one. Not multiple at the same time."
+- chartframe.js: calloutText MOVES title= into data-cf-title (SVG <title> children stripped
+  after caching the text the same way) so the browser has nothing left to pop a native
+  tooltip from; subsequent hovers read data-cf-title; re-set titles are re-stripped. The
+  wiring moved from per-framed-host to ONE document-level mousemove/mouseleave listener +
+  a capture-phase scroll hide — every titled element on every page gets the instant styled
+  call-out (the standalone /evolution grid has NO chart-host and previously got only the
+  slow native tooltip; dashboard tiles got both).
+- Chromium-verified (9 checks, zero console errors): exactly one styled cf-tip with verbatim
+  text, title attribute gone after hover (native impossible), second hover still works,
+  SVG <title> removed after caching, cf-tip singleton. Tests re-pinned (document-level
+  wiring) + new de-dup test. Full gate green; lockstep wheel + 9 installers rebuilt.
+  Highest ADR = 0190.
+
+### 2026-07-10 (cont.) — Windows installer dies on python-only machines (ADR-0191)
+- Operator's live tier1.ps1 install failed at venv creation: "The term 'p' is not
+  recognized" — Find-Python's `return @($exe)` unrolled (PowerShell 1-element array ->
+  bare string), so `$py[0]` indexed the character 'p' of "python". Only reproduces when
+  the py launcher is absent (the operator's machine); windows-latest CI runners always
+  have it, so the smoke never walked this branch.
+- template.ps1: unary comma on both returns (`return ,@($exe)` / `,@($exe, $flag)`),
+  defensive `$py = @($py)` before the indexed invocation; all three .ps1 installers
+  regenerated from the SAME wheel (no source change). installer-smoke.yml: second tier1
+  run with a failing py.cmd stub ahead of PATH (masks the launcher) + setup-python 3.12,
+  executing the python-only discovery branch end-to-end. Static regression pin added in
+  tests/installer. Highest ADR = 0191.

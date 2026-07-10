@@ -24,11 +24,11 @@
   // 1:1 to the wider container via the "sf-reflow" event, using the space for plot area.
 
   // ── shared hover call-out ───────────────────────────────────────────────────────────────────
-  // One styled tooltip, reused by every framed chart. Hovering any SVG shape that carries a direct
-  // <title> child (the existing native-tooltip text used across the charts) — or an explicit
-  // data-callout attribute for richer text — shows an instant, styled call-out at the cursor. This
-  // upgrades EVERY chart's hover to a real call-out without touching each chart, and gives new
-  // charts a hook (data-callout=…) for multi-line detail.
+  // One styled tooltip for the WHOLE app. Hovering any element that carries a direct SVG <title>
+  // child, an HTML title= attribute, or an explicit data-callout attribute for richer text shows
+  // an instant, styled call-out at the cursor — and the native browser tooltip is suppressed so
+  // exactly ONE call-out is ever visible (ADR-0190). This upgrades every hover to a real call-out
+  // without touching each chart, and gives new charts a hook (data-callout=…) for detail.
   var tip = null;
   function ensureTip() {
     if (tip) return tip;
@@ -46,14 +46,27 @@
         var dc = node.getAttribute("data-callout");
         if (dc) return dc;
         // an HTML title= attribute (the table-Gantt bars) gets the same instant call-out
-        // as an SVG <title> child — the native tooltip is slow and unstyled (ADR-0187)
+        // as an SVG <title> child — the native tooltip is slow and unstyled (ADR-0187).
+        // The text is MOVED to data-cf-title on first hover so the browser's own tooltip
+        // can never pop up on top of the styled call-out (operator: "only one, not
+        // multiple at the same time" — ADR-0190); re-renders that set title= afresh are
+        // simply re-stripped on the next hover.
+        var cached = node.getAttribute("data-cf-title");
+        if (cached) return cached;
         var ta = node.getAttribute("title");
-        if (ta) return ta;
+        if (ta) {
+          node.setAttribute("data-cf-title", ta);
+          node.removeAttribute("title");
+          return ta;
+        }
         var kids = node.childNodes;
         for (var j = 0; j < kids.length; j++) {
           var k = kids[j];
           if (k.nodeName && k.nodeName.toLowerCase() === "title" && k.textContent) {
-            return k.textContent;
+            var tt = k.textContent;
+            node.setAttribute("data-cf-title", tt);
+            node.removeChild(k); // same de-duplication for SVG <title> native tooltips
+            return tt;
           }
         }
       }
@@ -61,9 +74,19 @@
     }
     return null;
   }
-  function wireCallouts(host) {
-    host.addEventListener("mousemove", function (e) {
-      var txt = calloutText(e.target, host);
+  function hideTip() {
+    if (tip) tip.style.display = "none";
+  }
+  // ── ONE call-out for the whole app (ADR-0190) ──────────────────────────────────────────
+  // A single document-level listener replaces the old per-framed-host wiring: ANY element
+  // carrying a title= / SVG <title> / data-callout — framed chart or not, on every page —
+  // gets the same styled cf-tip, and calloutText moves the text into data-cf-title so the
+  // browser's native tooltip can never pop a second, overlapping box on top of it
+  // (operator: "only the one in white, not both … applies to all callouts in the entire
+  // tool. Only one. Not multiple at the same time").
+  function wireCallouts() {
+    document.addEventListener("mousemove", function (e) {
+      var txt = calloutText(e.target, document);
       var t = ensureTip();
       if (!txt) { t.style.display = "none"; return; }
       t.textContent = txt;
@@ -75,8 +98,10 @@
       t.style.left = Math.max(0, x) + "px";
       t.style.top = Math.max(0, y) + "px";
     });
-    host.addEventListener("mouseleave", function () { if (tip) tip.style.display = "none"; });
+    document.addEventListener("mouseleave", hideTip);
+    document.addEventListener("scroll", hideTip, true); // don't let a stale tip float mid-scroll
   }
+  wireCallouts();
 
   function requestFs(el) {
     var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
@@ -247,7 +272,7 @@
     var obs = new MutationObserver(function () { applyZoom(); });
     obs.observe(host, { childList: true, subtree: true });
 
-    wireCallouts(host);  // styled hover call-outs for every chart in this frame
+    // hover call-outs are wired ONCE at document level (ADR-0190) — nothing per-frame
     applyZoom();
   }
 

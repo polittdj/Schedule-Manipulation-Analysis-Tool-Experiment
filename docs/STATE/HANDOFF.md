@@ -1,6 +1,35 @@
-# Handoff — 2026-07-10 (credibility-weighted no-history group estimates; highest ADR 0189)
+# Handoff — 2026-07-10 (Windows installer python-only fix; highest ADR 0191)
 
-> ## STATUS (current) — ADR-0189 no-history group forecasting
+> ## STATUS (current) — ADR-0191 installer array-unroll fix
+>
+> - Operator's live install of tier1.ps1 died at venv creation ("The term 'p' is not
+>   recognized"): on a machine with only python.exe (no py launcher), Find-Python's
+>   `return @($exe)` was unrolled by PowerShell to the bare string "python" and `$py[0]`
+>   indexed the character 'p'. CI never caught it — windows-latest runners always carry
+>   the py launcher (2-element array, not unrolled).
+> - Fix: unary comma on both returns (`return ,@($exe)`), defensive `$py = @($py)` at the
+>   call site; installers regenerated from the template (same wheel). CI smoke gained a
+>   second tier1 run with a failing py.cmd stub masking the launcher (+ setup-python 3.12)
+>   so the python-only discovery branch runs end-to-end; static regression pin in
+>   tests/installer. Operator just re-runs the fixed installer.
+
+# (prior) Handoff — 2026-07-10 (one call-out at a time; ADR 0190)
+
+> ## STATUS — ADR-0190 call-out de-duplication
+>
+> - Operator (screenshot, CP Evolution hover): the styled white call-out and the native
+>   browser tooltip overlapped with the same text — "only the one in white … applies to all
+>   callouts in the entire tool. Only one."
+> - chartframe.js: `calloutText` now MOVES `title=` into `data-cf-title` (and strips SVG
+>   `<title>` children after caching) so the native tooltip can never fire; the wiring moved
+>   from per-framed-host to ONE document-level listener, so every titled element on every
+>   page (framed or not — the standalone /evolution grid has no chart-host) gets the same
+>   instant styled call-out; capture-phase scroll hides the tip. Chromium-verified: 9 checks,
+>   zero console errors, title gone after hover, cf-tip singleton.
+
+# (prior) Handoff — 2026-07-10 (credibility-weighted no-history group estimates; ADR 0189)
+
+> ## STATUS — ADR-0189 no-history group forecasting
 >
 > - Operator: groups with remaining work but no completion history must no longer be flagged
 >   unforecastable — forecast them with quantified, labeled, best-practice estimation.

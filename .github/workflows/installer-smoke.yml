@@ -50,6 +50,27 @@ jobs:
           & $venvPy -c "import schedule_forensics; from schedule_forensics.launcher import main; print('deployed import OK')"
           & $venvPy -c "import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')"
 
+      - uses: actions/setup-python@v5  # a 3.12 python.exe first on PATH for the leg below
+        with:
+          python-version: "3.12"
+      - name: Smoke-run tier1 with only python.exe discoverable (no py launcher)
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          # Operator regression (ADR-0191): a machine WITHOUT the py launcher walks
+          # Find-Python's single-candidate branch, whose returned 1-element array
+          # PowerShell unrolled into a bare string ($py[0] -> the character 'p').
+          # A failing py stub ahead of PATH forces that exact discovery path here.
+          $stub = Join-Path $env:RUNNER_TEMP "pystub"
+          New-Item -ItemType Directory -Force -Path $stub | Out-Null
+          Set-Content -Path (Join-Path $stub "py.cmd") -Value "@exit /b 1"
+          $env:Path = "$stub;" + $env:Path
+          $env:SF_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP "SFSmoke2"
+          powershell -ExecutionPolicy Bypass -File installer/install-tier1.ps1
+          $venvPy = Join-Path $env:SF_INSTALL_ROOT "venv\Scripts\python.exe"
+          & $venvPy -c "import schedule_forensics; print('python-only discovery path OK')"
+
   linux:
     runs-on: ubuntu-latest
     timeout-minutes: 15
