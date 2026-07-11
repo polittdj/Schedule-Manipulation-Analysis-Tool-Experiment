@@ -87,3 +87,28 @@ def test_performance_export_and_empty_session_guards() -> None:
     empty = TestClient(create_app(SessionState()))
     assert "Load at least one analyzable schedule" in empty.get("/performance").text
     assert empty.get("/export/xlsx/performance").status_code == 422
+
+
+def test_performance_chapter_07_page_shell() -> None:
+    """ADR-0205 — chapter 07 "How we execute": the data-driven takeaway h1, the execution-quality
+    KPI strip, and the Baseline-pace / Duration-performance composition bars, all read from the
+    same throughput + duration-ratio functions the page charts. The G1-G7 scaffold survives."""
+    c = _client("Hard_File_updated3")  # a progressed version — exercises the BEI/pace path
+    page = c.get("/performance").text
+
+    # data-driven takeaway names execution: completion, BEI pace, duration ratio
+    assert 'class="page-takeaway"' in page
+    assert "activities" in page and "BEI" in page and "baseline pace" in page
+
+    # the six-KPI strip and both composition bars
+    assert 'class="ws-kpi"' in page
+    assert "BEI (throughput)" in page and "Duration ratio (avg)" in page
+    assert "Baseline pace" in page and "Duration performance" in page
+    assert 'class="stack-bar"' in page
+
+    # chapter chrome fires here (kicker + Continue -> chapter 08)
+    assert "CHAPTER 07 · HOW WE EXECUTE" in page
+    assert "Chapter 08" in page
+
+    # the performance scaffold is untouched beneath the header
+    assert "g1Census" in page and "quadBeiCp" in page
