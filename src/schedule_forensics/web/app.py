@@ -291,7 +291,7 @@ _LAYOUT = Template(
 <script src="/static/persist.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
-<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css">
+<link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"><link rel=stylesheet href="/static/sf-themes.css">
 <style>
 /* Density + containment overrides (operator request, ADR-0150): tighter spacing everywhere,
    and grid/table containment so wide tables scroll inside their card instead of overlapping
@@ -374,8 +374,15 @@ data-sf-hint="Type an activity's Unique ID and press Set: every page then treats
 <input type=hidden name=next_url value="/">
 <label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
 <button type=submit class=linkbtn>Set</button></form>
-<button id=themeToggle type=button class=linkbtn title="Cycle theme: Light, Dark, JARVIS HUD"
-data-sf-hint="Cycles the look: professional Light and Dark, plus the JARVIS heads-up display with live system telemetry.">Theme</button>
+<label class=ui-scale-ctl title="Choose the console view — four complete themes (ADR-0195)">View
+<select id=themeSelect data-no-i18n>
+<option value=console>CONSOLE — mission control</option>
+<option value=daylight>DAYLIGHT — clean light</option>
+<option value=apollo>APOLLO — retro CRT</option>
+<option value=jarvis>JARVIS — HUD</option>
+</select></label>
+<button id=themeToggle type=button class=linkbtn data-no-i18n title="Toggle daylight vs your last dark view"
+data-sf-hint="Flips between DAYLIGHT and the last dark view you used (Console, Apollo or JARVIS). Pick any of the four views from the View menu.">Theme</button>
 <label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size
 <select id=uiScale data-no-i18n>
 <option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option>

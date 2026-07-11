@@ -4994,3 +4994,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   locally. OPEN: origin/sandbox-export is safe to delete (git push origin --delete
   sandbox-export) — left pending explicit operator OK.
 - No new ADR (audit only); highest ADR remains 0194.
+
+### 2026-07-11 — Mission Ops redesign step 1: four-theme token system (ADR-0195)
+- Operator uploaded the Mission Ops UI-redesign handoff bundle (interactive prototype
+  `Mission Ops Redesign v2.dc.html`, README spec, DESIGN-GUIDE rulebook, sf-themes.css) —
+  a full presentation-layer redesign, integrated in the bundle's own phased order:
+  tokens -> global chrome -> page shells (one per PR) -> new panels. This session = tokens.
+- Shipped static/sf-themes.css (console = dark mission control, NEW DEFAULT; daylight;
+  apollo retro-CRT, new; jarvis HUD — hud.css keeps effects, sf-themes wins token ties by
+  loading last). Header chrome tokenized: --header-bg/-ink/-muted/-line/-shadow read by
+  base.css (classic blue banner stays as the :root no-JS fallback; slim-band geometry
+  byte-identical). theme.js rewritten: View select (4 views) + toggle remapped to
+  daylight<->last-dark; legacy saves migrate (light->daylight, dark/unknown->console),
+  written back pre-paint; uiScale/targetform wiring preserved. app.py header gains
+  <select id=themeSelect> (data-no-i18n, ui-scale-ctl pattern so mobile rows cover it);
+  i18n gains "View" (es/fr/de/pt). docs/DESIGN-SYSTEM.md adopted (CLAUDE.md points to it).
+- Tests: new node harness tests/web/js/theme_switch_harness.mjs EXECUTES the migration/
+  select/toggle round-trip (21 checks, sra_derive pattern); pins updated in
+  test_target_and_theme (console default + sf-themes coverage), test_accessibility (A10
+  rewritten for select+toggle), test_hud_layer (THEMES; sf-themes in air-gap scan),
+  test_nasa_theme (header reads tokens; gradient rides --header-bg), test_airgap +
+  test_static_cache lists. base.css :root/light blocks kept as fallback so legacy pins
+  (--border/--grid-line counts, light palette) hold unchanged.
+- Version 1.0.4 -> 1.0.5 (deployed installs cache-bust the changed assets, ADR-0148
+  precedent); wheel + 9 installers regenerated in the same commit (lockstep). Gantt
+  surfaces stay MS-Project-light in all views by design (app.css lock, test-pinned).
+- Highest ADR = 0195.

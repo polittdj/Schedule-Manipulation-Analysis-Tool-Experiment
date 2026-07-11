@@ -83,16 +83,16 @@ def test_hud_assets_are_wired_and_local() -> None:
         assert asset in text
         assert c.get(asset).status_code == 200
     # air-gap: no remote references in the new assets
-    for name in ("hud.css", "sysmon.js", "hints.js"):
+    for name in ("hud.css", "sysmon.js", "hints.js", "sf-themes.css"):
         content = (STATIC / name).read_text(encoding="utf-8")
         assert "http://" not in content.replace("http://127.0.0.1", "")
         assert "https://" not in content
         assert "cdn" not in content.lower()
 
 
-def test_jarvis_theme_exists_and_cycles() -> None:
+def test_jarvis_theme_exists_and_is_selectable() -> None:
     theme = (STATIC / "theme.js").read_text(encoding="utf-8")
-    assert '"jarvis"' in theme and "MODES" in theme
+    assert '"jarvis"' in theme and "THEMES" in theme  # one of the four views (ADR-0195)
     hud = (STATIC / "hud.css").read_text(encoding="utf-8")
     assert "html[data-theme=jarvis]" in hud
     # telemetry chips + hint + explainer styling all live in the shipped stylesheet

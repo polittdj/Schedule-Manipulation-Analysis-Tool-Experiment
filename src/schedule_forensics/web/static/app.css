@@ -991,8 +991,8 @@ svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index
 /* the header-nav Reset view button (ADR-0188): rides in the FROZEN title bar so it is
    always visible; the .sf-reset-float fallback covers markup predating the header button */
 header nav .sf-reset-view { background: none; border: 0; font: inherit; cursor: pointer;
-  color: rgba(255, 255, 255, 0.82); margin-right: 14px; padding: 0; }
-header nav .sf-reset-view:hover { color: #fff; }
+  color: var(--header-muted, rgba(255, 255, 255, 0.82)); margin-right: 14px; padding: 0; }
+header nav .sf-reset-view:hover { color: var(--header-ink, #fff); }
 .sf-reset-float { position: fixed; right: 14px; top: 45%; z-index: 95;
   padding: 4px 13px; font-size: 12px; color: var(--muted); background: var(--panel);
   border: 1px solid var(--line); border-radius: 14px; cursor: pointer;

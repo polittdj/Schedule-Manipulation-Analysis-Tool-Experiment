@@ -1,6 +1,29 @@
-# Handoff — 2026-07-11 (full-repo audit; green; highest ADR 0194)
+# Handoff — 2026-07-11 (Mission Ops redesign step 1: four-theme tokens; highest ADR 0195)
 
-> ## STATUS (current) — 2026-07-11 whole-repo audit
+> ## STATUS (current) — ADR-0195 four-theme token system
+>
+> - Operator uploaded the **Mission Ops UI-redesign handoff** (interactive prototype v2 +
+>   README spec + DESIGN-GUIDE + sf-themes.css). Integration is PHASED per the bundle:
+>   **tokens (this step, done) → global chrome → page shells one per PR → new panels.**
+> - **Shipped**: `static/sf-themes.css` — complete token blocks for `console` (dark mission
+>   control, NEW DEFAULT), `daylight` (light), `apollo` (retro CRT, new), `jarvis` (HUD;
+>   hud.css keeps its effects, sf-themes wins token ties by link order). Header chrome now
+>   reads `--header-bg/-ink/-muted/-line/-shadow` (classic blue banner = :root no-JS
+>   fallback). theme.js rewritten: View `<select id=themeSelect>` + ☀/☾ toggle remapped to
+>   daylight↔last-dark; legacy saves MIGRATE (light→daylight, dark/unknown→console),
+>   written back pre-paint. `docs/DESIGN-SYSTEM.md` adopted as the standing UI rulebook
+>   (CLAUDE.md points to it). Version 1.0.4→1.0.5 (cache-bust, ADR-0148 precedent).
+> - **Verified**: node harness EXECUTES the migration/select/toggle (21 checks,
+>   `tests/web/js/theme_switch_harness.mjs`); theme/header/airgap/cache test pins updated;
+>   Chromium-verified in all four views. Gantt surfaces stay MS-Project-light by design.
+> - **Next (redesign step 2, separate PR)**: global chrome — story nav (left rail dark /
+>   top bar daylight), Continue footers, global Analysis-Target selector, header regroup;
+>   fonts (Barlow/IBM Plex Mono) vendored locally. Then page shells per the bundle README's
+>   chapter specs. Prototype bundle is operator-held (not committed).
+
+# (prior) Handoff — 2026-07-11 (full-repo audit; green; highest ADR 0194)
+
+> ## STATUS — 2026-07-11 whole-repo audit
 >
 > Operator: "audit the repo, read/check/verify everything." Result: **clean and green.**
 > No new ADR (audit only) — highest ADR stays **0194**, present in both state docs.

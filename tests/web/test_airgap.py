@@ -72,6 +72,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/static/wbs.js",
         "/static/path_evolution.js",
         "/static/theme.js",
+        "/static/sf-themes.css",
         "/static/checklist.js",
         "/static/a11y.js",
         "/static/path.js",

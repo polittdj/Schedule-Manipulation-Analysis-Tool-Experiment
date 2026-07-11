@@ -130,6 +130,16 @@ it, so after editing `help.py` regenerate it (a test enforces sync):
 python -c "from schedule_forensics.web.help import render_dictionary_markdown as r; open('docs/METRIC-DICTIONARY.md','w',encoding='utf-8').write(r())"
 ```
 
+## Design system (web UI)
+
+Any change that touches the web UI must follow **`docs/DESIGN-SYSTEM.md`** (the Mission Ops
+rulebook, ADR-0195): color/type/radius come only from theme tokens (`sf-themes.css` — four
+views: console default / daylight / apollo / jarvis; verify in all four), every data visual
+honors the chart contract (takeaway headline, labeled axes, legend, DD line, hover callout,
+provenance chip, ▦ DATA / ⤓ EXCEL / ⛶ ENLARGE toolbar), and its Definition-of-Done checklist
+runs before every UI PR. The redesign integrates in phases — tokens (done) → global chrome →
+one page shell per PR → new panels; never big-bang, and never touch `engine/` for a UI change.
+
 ## Durable state & the drift guard
 
 - `docs/STATE/HANDOFF.md` — **read first**; single source of truth for "where we are / what's next."

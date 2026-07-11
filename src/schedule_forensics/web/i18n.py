@@ -261,6 +261,7 @@ _TERMS: dict[str, dict[str, str]] = {
         "pt": "Repor vista",
     },
     "Theme": {"es": "Tema", "fr": "Thème", "de": "Design", "pt": "Tema"},
+    "View": {"es": "Vista", "fr": "Vue", "de": "Ansicht", "pt": "Vista"},
     "Language": {"es": "Idioma", "fr": "Langue", "de": "Sprache", "pt": "Idioma"},
     "Set": {"es": "Fijar", "fr": "Définir", "de": "Setzen", "pt": "Definir"},
     "Target UID": {"es": "UID objetivo", "fr": "UID cible", "de": "Ziel-UID", "pt": "UID alvo"},

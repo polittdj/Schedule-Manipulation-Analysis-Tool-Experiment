@@ -1,7 +1,9 @@
-"""Session-wide target UID, light/dark theme toggle, and the 20-file batch cap."""
+"""Session-wide target UID, the four-view theme system (ADR-0195), and the 20-file batch cap."""
 
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -37,10 +39,14 @@ def _upload(client: TestClient, name: str) -> None:
 # ---- light / dark theme ----
 
 
-def test_every_page_carries_theme_toggle_and_script(client: TestClient) -> None:
+def test_every_page_carries_theme_controls_and_script(client: TestClient) -> None:
     page = client.get("/").text
     assert 'src="/static/theme.js?v=' in page  # cache-busted (ADR-0148)
+    assert 'href="/static/sf-themes.css?v=' in page  # the four-view tokens (ADR-0195)
     assert "id=themeToggle" in page
+    assert "id=themeSelect" in page  # the View dropdown
+    for view in ("console", "daylight", "apollo", "jarvis"):
+        assert f"<option value={view}>" in page, view
 
 
 def test_theme_js_persists_and_applies_data_theme(client: TestClient) -> None:
@@ -49,22 +55,50 @@ def test_theme_js_persists_and_applies_data_theme(client: TestClient) -> None:
     assert 'setAttribute("data-theme"' in js
 
 
-def test_light_is_the_default_theme(client: TestClient) -> None:
-    """Operator: the tool opens in Light mode by default; only an explicit toggle to dark sticks."""
+def test_console_is_the_default_view_and_legacy_saves_migrate(client: TestClient) -> None:
+    """ADR-0195: the tool opens in the CONSOLE view (dark mission control) by default.
+    Legacy saves migrate — "light" becomes "daylight", "dark" becomes "console" — and the
+    view NEVER follows the OS setting (an explicit operator choice, identical everywhere)."""
     js = client.get("/static/theme.js").text
-    # light is applied unless the saved choice is exactly "dark" (first visit -> light)
-    assert 'saved !== "dark"' in js
-    # the old behaviour (default dark / follow OS prefers-color-scheme) is gone
+    assert 'saved === "light"' in js and '"daylight"' in js  # light -> daylight
+    assert 'saved === "dark"' in js and '"console"' in js  # dark -> console
     assert "prefers-color-scheme" not in js
+
+
+def test_sf_themes_css_defines_all_four_views(client: TestClient) -> None:
+    """ADR-0195: sf-themes.css carries the complete token set for every view, including the
+    header chrome tokens the command banner reads (base.css keeps :root as no-JS fallback)."""
+    css = client.get("/static/sf-themes.css").text
+    for view in ("console", "daylight", "apollo", "jarvis"):
+        assert f"html[data-theme={view}]" in css, view
+    assert css.count("--header-bg:") >= 4
+    assert css.count("--header-ink:") >= 4
+    assert css.count("--header-line:") >= 4
+    assert css.count("--grid-dot:") >= 4  # the dotted chart reading grid re-themes too
 
 
 def test_base_css_defines_the_light_palette(client: TestClient) -> None:
     css = client.get("/static/base.css").text
-    assert "html[data-theme=light]" in css
+    assert "html[data-theme=light]" in css  # legacy fallback block (superseded by daylight)
     # no hard-coded page colors left outside the variable blocks: spot-check the
     # surfaces that used to be fixed-dark
     assert "background:var(--header-bg)" in css
     assert "color:var(--btn-ink)" in css
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
+def test_theme_switcher_migration_and_toggle_execute_under_node() -> None:
+    """ADR-0195: EXECUTE theme.js (not just substring-pin it) — the legacy-save migration,
+    the four-view select, and the daylight<->last-dark toggle round-trip."""
+    harness = Path(__file__).parent / "js" / "theme_switch_harness.mjs"
+    proc = subprocess.run(
+        [str(shutil.which("node")), str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert proc.returncode == 0, f"harness failed:\n{proc.stdout}\n{proc.stderr}"
 
 
 def test_svg_charts_route_theme_variables_via_style(client: TestClient) -> None:

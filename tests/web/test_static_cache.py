@@ -40,7 +40,7 @@ def test_home_js_specifically_is_busted() -> None:
 
 def test_static_responses_always_revalidate() -> None:
     c = _client()
-    for asset in ("home.js", "base.css", "app.js"):
+    for asset in ("home.js", "base.css", "app.js", "sf-themes.css"):
         r = c.get(f"/static/{asset}")
         assert r.status_code == 200
         assert r.headers.get("cache-control") == "no-cache", asset
