@@ -5020,3 +5020,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   precedent); wheel + 9 installers regenerated in the same commit (lockstep). Gantt
   surfaces stay MS-Project-light in all views by design (app.css lock, test-pinned).
 - Highest ADR = 0195.
+
+### 2026-07-11 — Mission Ops redesign step 2: story-spine global chrome (ADR-0196)
+- Operator chose "Full story spine now" (over the phased option) for the chrome step. Delivered in
+  ONE PR: nav restructured from six handbook-function groups into the three-act / twelve-chapter
+  Mission Ops story spine (LOAD 00 Import · OVERVIEW Mission Control · ACT I·SITUATION 01-02 ·
+  ACT II·DIAGNOSIS 03-08 · ACT III·OUTLOOK 09-12 · SETUP off-spine). Single source of truth =
+  _SPINE/_Chapter in app.py; each chapter folds its beat pages as sub-links so all 27 routes stay
+  reachable (no broken bookmarks; @analysis/@wbs sentinels resolve to the first loaded schedule).
+- Left rail on the three dark views (console/apollo/jarvis, >=761px) via html[data-theme] CSS that
+  repositions the existing <header> to a fixed column (main + CUI bars shift right) — no DOM
+  restructure; top bar on daylight and on mobile (the <=760px burger layout is untouched). Active
+  state: yellow pill on the top bar, panel-fill + keel-accent inset on the rail. Globe insignia
+  rides under the brand at the rail head.
+- Chapter kicker (CHAPTER NN · NAME) + Continue->next-chapter footer + STORY-SO-FAR progress dashes
+  injected centrally in the _page body assembly, keyed off title (zero per-route edits, mirrors the
+  _page_explainer pattern). New vendored story.js tints visited chapters from a cross-page
+  localStorage list (global, unlike per-path persist.js).
+- Global Analysis-Target selector: raw Target-UID number box -> milestone dropdown ("Measure to
+  …", built from is_milestone activities + Project finish + current-custom). set_target now drives
+  BOTH target_uid (endpoint scope -> forecast/briefing/driving/SRA-endpoint) AND sra_focus_uid, so
+  the header selector and the SRA/SSI focus never disagree; SRA in-panel focus remains an override.
+- Tests: test_app nav test rewritten for the spine (six-label -> act-label; 18-href no-broken-
+  bookmarks kept); new story-chrome + target-selector + set_target-unification tests; per-link nav
+  tests loosened to the durable href contract; test_responsive desktop-nav repointed to .nav-spine;
+  test_i18n Dashboard->Import. Label HTML-escaping fixed (& -> &amp;).
+- Chromium-verified all four views (rail on the three dark, top bar on daylight, mobile burger
+  intact at 700px, print reclaims the rail margin), zero console errors. Full gate green (1985
+  tests). Version 1.0.5 -> 1.0.6 (cache-bust); wheel + 9 installers rebuilt in lockstep.
+- Highest ADR = 0196.

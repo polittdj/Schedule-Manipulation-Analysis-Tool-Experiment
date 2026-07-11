@@ -121,7 +121,7 @@ def test_language_can_switch_back_and_forth(client: TestClient, state: SessionSt
         assert f'<html lang="{html_lang}"' in page
         assert f'<option value="{lang}" selected>' in page
         # the body is always rendered in English (source) — the client does the translating
-        assert ">Dashboard</a>" in page
+        assert ">Import</span>" in page  # chapter 00 nav label (ADR-0196), server-rendered English
 
 
 def test_translate_js_is_non_destructive_and_covers_attributes(client: TestClient) -> None:

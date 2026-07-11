@@ -32,7 +32,7 @@ def client() -> TestClient:
 
 
 def test_sra_in_nav(client: TestClient) -> None:
-    assert '<a href="/sra">Risk Analysis</a>' in client.get("/").text
+    assert 'href="/sra"' in client.get("/").text  # chapter 11 "What could go wrong" (ADR-0196)
 
 
 def test_sra_file_selector_is_at_the_top_and_governs_all_models(client: TestClient) -> None:

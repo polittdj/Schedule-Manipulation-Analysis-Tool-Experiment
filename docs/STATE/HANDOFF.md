@@ -1,6 +1,30 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 1: four-theme tokens; highest ADR 0195)
+# Handoff — 2026-07-11 (Mission Ops redesign step 2: story-spine chrome; highest ADR 0196)
 
-> ## STATUS (current) — ADR-0195 four-theme token system
+> ## STATUS (current) — ADR-0196 story-spine global chrome
+>
+> - Operator chose "Full story spine now" for the chrome step. Shipped in ONE PR: the whole nav is
+>   the three-act / twelve-chapter Mission Ops spine (LOAD 00 · OVERVIEW · ACT I 01–02 · ACT II
+>   03–08 · ACT III 09–12 · SETUP off-spine); each chapter folds its beat pages so all 27 routes
+>   stay reachable (no broken bookmarks). Single source of truth = `_SPINE`/`_Chapter` in app.py.
+> - **Left rail** on the three dark views (console/apollo/jarvis, ≥761px) — CSS repositions the
+>   existing `<header>` to a fixed column keyed on `html[data-theme]` (main + CUI bars shift right),
+>   NO DOM restructure; **top bar** on daylight + on mobile (burger layout untouched, ≤760px).
+> - **Chapter kicker + Continue→next footer + STORY-SO-FAR progress** injected centrally in the
+>   `_page` body assembly (keyed off `title`, zero per-route edits); `story.js` tints visited
+>   chapters from a cross-page localStorage list.
+> - **Global Analysis-Target selector**: the raw Target-UID box → a milestone dropdown ("Measure
+>   to …", built from `is_milestone` activities + Project finish + current-custom). `set_target`
+>   now drives BOTH the endpoint scope AND the SRA/SSI focus (`sra_focus_uid`) — one target, never
+>   two; the SRA in-panel focus stays as an override.
+> - **Verified**: Chromium in all four views (rail on the three dark, top bar on daylight, mobile
+>   burger intact, print reclaims the rail margin), zero console errors; full gate green (1985
+>   tests). Version 1.0.5→1.0.6, wheel + 9 installers rebuilt in lockstep. Highest ADR = 0196.
+> - **Next (step 3)**: per-chapter page shells one PR at a time (data-driven takeaway h1 + the
+>   panel toolbar contract), then the new analytics panels; vendor Barlow/IBM Plex Mono locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 1: four-theme tokens; highest ADR 0195)
+
+> ## STATUS — ADR-0195 four-theme token system
 >
 > - Operator uploaded the **Mission Ops UI-redesign handoff** (interactive prototype v2 +
 >   README spec + DESIGN-GUIDE + sf-themes.css). Integration is PHASED per the bundle:

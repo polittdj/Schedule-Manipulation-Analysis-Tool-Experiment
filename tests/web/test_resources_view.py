@@ -22,7 +22,7 @@ def client() -> TestClient:
 
 
 def test_resources_in_nav(client: TestClient) -> None:
-    assert '<a href="/resources">Resources</a>' in client.get("/").text
+    assert 'href="/resources"' in client.get("/").text  # chapter 08 "Who is overloaded" (ADR-0196)
 
 
 def test_resources_empty_session_prompts_load() -> None:

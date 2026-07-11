@@ -273,7 +273,7 @@ def test_dashboard_and_nav_link_evolution(client: TestClient) -> None:
     # nav links it unconditionally; the dashboard body row appears with >= 2 versions
     _upload(client, "Project2")
     home = client.get("/").text
-    assert 'href="/evolution">Critical-Path Evolution</a>' in home  # nav
+    assert 'href="/evolution"' in home  # nav — chapter 04 "How stable is the path" (ADR-0196)
     assert "Critical-path evolution &rarr;" not in home  # body row not yet (one version)
     _upload(client, "Project5")
     assert "Critical-path evolution &rarr;" in client.get("/").text
