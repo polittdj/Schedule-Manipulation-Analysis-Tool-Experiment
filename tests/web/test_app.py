@@ -144,6 +144,35 @@ def test_set_target_unifies_the_sra_focus() -> None:
     assert st.target_uid is None and st.sra_focus_uid is None
 
 
+def test_analysis_page_shell_where_we_stand(client: TestClient) -> None:
+    """ADR-0197 (step 3, chapter 01): the analysis report opens with the data-driven takeaway h1,
+    the 6-KPI strip, and the Activity-status-mix + Float-remaining composition bars — and the
+    chapter chrome (kicker + Continue footer) now fires on the dynamic-title /analysis page."""
+    _upload(client, "Project5")
+    page = client.get("/analysis/Project5").text
+    # takeaway + KPI strip + the two composition bars
+    assert 'class="page-takeaway"' in page and "% complete" in page and "computed finish" in page
+    assert 'class="ws-kpi"' in page and "stat-grid" in page
+    assert "Activity status mix" in page and "Float remaining" in page
+    assert "stack-bar" in page and "incomplete activities" in page
+    for kpi in ("Activities", "Earned complete", "Critical (incomplete)", "Data date"):
+        assert kpi in page, kpi
+    # chapter chrome now resolves via the explicit chapter (title is the schedule name)
+    assert "CHAPTER 01 · WHERE WE STAND" in page
+    assert "story-foot" in page and "Chapter 02" in page  # Continue → next chapter
+    # every prior section survives (no lost functionality)
+    for keep in (
+        "id=viz",
+        "DCMA-14 audit",
+        "AI narrative",
+        "Missed Activities",
+        "/export/xlsx/analysis/",
+        "id=floatHist",
+        "id=scatterChart",
+    ):
+        assert keep in page, keep
+
+
 def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

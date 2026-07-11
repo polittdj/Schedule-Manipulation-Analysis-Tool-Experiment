@@ -383,3 +383,22 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
   main,.cui-banner,.compliance-drawer{margin-left:0!important}
   .story-foot{display:none!important}
 }
+
+/* ── Chapter page shell — takeaway h1, KPI strip, composition bars (ADR-0197) ──────────────── */
+/* the data-driven takeaway: a sentence WITH a number, the redesign's page headline voice */
+.page-takeaway{font-size:22px;line-height:1.2;font-weight:700;color:var(--ink);
+  margin:6px 2px 14px;max-width:60ch}
+.ws-kpi{margin:0 0 12px}
+/* two composition bars side by side (Activity status mix · Float remaining); stack on narrow */
+.ws-bars{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 16px}
+@media (max-width:760px){.ws-bars{grid-template-columns:1fr}.page-takeaway{font-size:19px}}
+.status-stack h2{margin-bottom:2px}
+.stack-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);
+  margin:8px 0 10px;box-shadow:inset 0 0 0 1px var(--line)}
+.stack-seg{height:100%;min-width:2px}
+.stack-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 8px}
+.stack-key{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.stack-key b{color:var(--ink);font-weight:700}
+.stack-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.stack-foot{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted)}
