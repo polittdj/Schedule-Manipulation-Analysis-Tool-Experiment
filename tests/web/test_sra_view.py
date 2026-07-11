@@ -185,3 +185,57 @@ def test_sra_js_is_air_gapped(client: TestClient) -> None:
     assert not urls, f"external URL in sra.js: {urls}"
     # protocol-relative host references (//host) inside a string/paren — never present
     assert not re.findall(r"""["'(]//[^\s"'<>)]+""", js)
+
+
+def test_sra_page_carries_the_conclusions_hosts(client: TestClient) -> None:
+    """ADR-0201: both models carry a "what the results mean" host the JS fills after a run."""
+    page = client.get("/sra").text
+    assert "id=ssiConclusions" in page and "id=sraConclusions" in page
+    assert "What the results mean" in page
+    # both renderers are wired in the vendored JS (CSP-safe textContent/el rendering)
+    assert "renderConclusions" in client.get("/static/sra.js").text
+    assert "ssiConclusions" in client.get("/static/sra_ssi.js").text
+    css = client.get("/static/base.css").text
+    for cls in (".sra-conclusions", ".concl-card", ".concl-warn", ".concl-bad"):
+        assert cls in css, cls
+
+
+def test_api_sra_returns_plain_language_conclusions(client: TestClient) -> None:
+    """ADR-0201: the legacy payload explains itself — Hulett-style cards with evidence."""
+    d = client.get("/api/sra?iterations=300").json()
+    concl = d["conclusions"]
+    topics = [c["topic"] for c in concl]
+    for expected in (
+        "Planned-date realism",
+        "Commitment dates",
+        "Contingency needed",
+        "Predictability",
+        "Input quality",
+        "Sampling precision",
+    ):
+        assert expected in topics, expected
+    for c in concl:
+        assert c["severity"] in {"good", "info", "warn", "bad"}
+        assert c["finding"] and c["meaning"]
+        assert all(e["label"] and e["value"] for e in c["evidence"])
+
+
+def test_api_sra_ssi_returns_conclusions_and_is_honest_without_inputs(client: TestClient) -> None:
+    """With no Risk Ranking Factors / Best-Worst durations the SSI run has zero spread; the
+    conclusions must say "no uncertainty inputs" instead of quoting meaningless percentiles."""
+    d = client.get("/api/sra/ssi?iterations=300").json()
+    concl = d["conclusions"]
+    assert concl[0]["topic"] == "No uncertainty inputs" and concl[0]["severity"] == "warn"
+
+
+def test_export_xlsx_sra_leads_with_the_conclusions_table(client: TestClient) -> None:
+    """ADR-0201: the Excel hand-out opens with the plain-language conclusions."""
+    import io
+    import zipfile
+
+    r = client.get("/export/xlsx/sra")
+    assert r.status_code == 200 and r.content
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    blob = b"".join(z.read(n) for n in z.namelist())
+    assert b"What the results mean" in blob
+    assert b"Topic" in blob and b"Finding" in blob and b"What it means" in blob

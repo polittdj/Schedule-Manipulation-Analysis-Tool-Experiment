@@ -454,12 +454,44 @@
       });
   }
 
+  // ADR-0201: the plain-language "what the results mean" cards — deterministic template
+  // sentences from the server (engine/sra_conclusions.py), rendered with textContent (CSP-safe)
+  function renderConclusions(data) {
+    var host = document.getElementById("sraConclusions");
+    if (!host) return;
+    host.innerHTML = "";
+    (data.conclusions || []).forEach(function (c) {
+      var card = document.createElement("div");
+      card.className = "concl-card concl-" + (c.severity || "info");
+      var topic = document.createElement("div");
+      topic.className = "concl-topic";
+      topic.textContent = c.topic;
+      var finding = document.createElement("div");
+      finding.className = "concl-finding";
+      finding.textContent = c.finding;
+      var meaning = document.createElement("div");
+      meaning.className = "concl-meaning";
+      meaning.textContent = c.meaning;
+      var ev = document.createElement("div");
+      ev.className = "concl-evidence";
+      ev.textContent = (c.evidence || [])
+        .map(function (e) { return e.label + ": " + e.value; })
+        .join("  ·  ");
+      card.appendChild(topic);
+      card.appendChild(finding);
+      card.appendChild(meaning);
+      card.appendChild(ev);
+      host.appendChild(card);
+    });
+  }
+
   var lastData = null;
   function renderAll(data) {
     renderCdf(data);
     renderHist(data);
     renderSens(data);
     renderRiskDrivers(data);
+    renderConclusions(data);
   }
   // redraw at the new 1:1 width when the window resizes or a chart frame expands/collapses —
   // reformat to the available space instead of letting the SVG magnify (operator 2026-07-08)

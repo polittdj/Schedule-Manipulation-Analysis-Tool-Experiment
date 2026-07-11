@@ -312,6 +312,22 @@
       m.appendChild(
         chartHost(matrix("Opportunity Assessment Matrix", d.opportunity_matrix, true, d.risks)));
     }
+    // ADR-0201: the plain-language "what the results mean" cards — deterministic template
+    // sentences from the server (engine/sra_conclusions.py), rendered via el() (CSP-safe)
+    var concl = document.getElementById("ssiConclusions");
+    if (concl) {
+      concl.innerHTML = "";
+      (d.conclusions || []).forEach(function (c) {
+        var card = el("div", { class: "concl-card concl-" + (c.severity || "info") });
+        card.appendChild(el("div", { class: "concl-topic" }, c.topic));
+        card.appendChild(el("div", { class: "concl-finding" }, c.finding));
+        card.appendChild(el("div", { class: "concl-meaning" }, c.meaning));
+        card.appendChild(el("div", { class: "concl-evidence" },
+          (c.evidence || []).map(function (e) { return e.label + ": " + e.value; }).join("  ·  ")));
+        concl.appendChild(card);
+      });
+    }
+
     // frame the freshly-built charts/matrices: independent zoom + full screen + hover call-outs
     if (window.SFChartFrame) window.SFChartFrame.scan();
   }
