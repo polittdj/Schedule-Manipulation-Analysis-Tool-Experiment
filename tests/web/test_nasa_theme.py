@@ -99,3 +99,15 @@ def test_nasa_command_banner_header(client: TestClient) -> None:
     css = client.get("/static/base.css").text
     assert "--nasa-blue:#0b3d91" in css
     assert "header{background:linear-gradient(95deg,var(--nasa-blue)" in css
+
+
+def test_globe_rides_the_upper_right_corner_of_a_slim_banner(client: TestClient) -> None:
+    """Operator 2026-07-10 (ADR-0194): 'decrease the width of the banner and move the earth
+    up to the upper right corner' — with flex-wrap the 132px globe wrapped onto its own row
+    and the banner ballooned. The globe is now absolute in the header's top-right corner
+    (the sticky header is its containing block) and the header reserves right padding so
+    nav links never slide under it."""
+    css = client.get("/static/base.css").text
+    assert ".nasa-globe{position:absolute;top:4px;right:14px;width:96px;height:96px" in css
+    assert "padding:10px 116px 10px 24px" in css  # slim band + corner reserve
+    assert "align-self:flex-start" not in css.split(".nasa-globe{")[1][:200]  # out of the flow

@@ -4966,3 +4966,14 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   keeps Stop-ScheduleForensics.cmd in the install folder as a fallback (README updated).
 - Pins: _mpxj_home walk-up unit test (fake deployed tree) + installer static pins
   (mpxj copy in ps1/sh/command, single icon, legacy cleanup). Highest ADR = 0193.
+
+### 2026-07-11 — slim banner, globe to the upper-right corner (ADR-0194)
+- Operator: "decrease the width of the banner and move the earth up to the upper right
+  corner." The 132px globe sat in the header flex flow (margin-left:auto) and wrapped onto
+  its own row below the nav — a full globe-height of dead banner space.
+- base.css: .nasa-globe absolute (top:4px;right:14px), 96px (globe.js reads clientWidth so
+  the canvas + 0.31R arc geometry follow); header padding:10px 116px 10px 24px (slim band,
+  right padding reserves the corner so nav never slides under the globe); canvas markup
+  synced to 96. Chromium-verified at 1920px: header 171px, globe 96px at 4/14 insets, zero
+  nav overlap, sticky intact, zero console errors. Pinned in test_nasa_theme.
+  Highest ADR = 0194.

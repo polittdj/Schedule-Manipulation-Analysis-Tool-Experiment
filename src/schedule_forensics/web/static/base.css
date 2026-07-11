@@ -27,7 +27,10 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
 font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
-padding:14px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+/* slim band (operator 2026-07-10, ADR-0194): the globe is out of the flex flow (absolute,
+   top-right), so the header is only as tall as the brand + nav; the right padding reserves
+   the corner so nav links never slide under the globe */
+padding:10px 116px 10px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
 /* frozen title bar (operator 2026-07-10, ADR-0188): the nav with all the page selections stays
    visible while the user scrolls; anything that must cover it (dialogs, expanded charts) already
    sits above z-index 110 */
@@ -193,12 +196,13 @@ header label{color:rgba(255,255,255,.9)}
    "NASA" wordmark — 3x the old meatball. It also doubles as the page-wide AI status light: ask.js
    adds .ai-thinking while the local model generates (the globe spins up + glows cyan) and .ai-error
    on failure (red flash), so every page shows whether the AI is working. */
-/* operator 2026-07-10 (ADR-0188): no wordmark on the globe, and the globe rides at the TOP of
-   the header row (align-self:flex-start + a slight raise) instead of centering low. */
-.nasa-globe{margin-left:auto;position:relative;width:132px;height:132px;flex:0 0 auto;
-  align-self:flex-start;margin-top:-6px;
+/* operator 2026-07-10 (ADR-0188): no wordmark on the globe. ADR-0194: pinned to the UPPER
+   RIGHT CORNER, out of the flex flow — with flex-wrap the 132px globe used to wrap onto its
+   own row and the banner ballooned; absolute positioning lets the band collapse to the
+   brand + nav height (header is sticky, so it is the containing block). */
+.nasa-globe{position:absolute;top:4px;right:14px;width:96px;height:96px;
   display:flex;align-items:center;justify-content:center}
-.nasa-globe canvas{position:absolute;inset:0;width:132px;height:132px;display:block}
+.nasa-globe canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 /* the page-wide AI status light (the wordmark used to carry the glow; now the canvas does):
    cyan while the local model generates, red flash on failure */
 .nasa-globe.ai-thinking canvas{filter:drop-shadow(0 0 10px rgba(120,210,255,.55))}
