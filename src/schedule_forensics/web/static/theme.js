@@ -1,25 +1,69 @@
-/* Schedule Forensics — light/dark theme switch (fully local; preference in localStorage).
+/* Schedule Forensics — Mission Ops view switcher (fully local; preference in localStorage).
  *
- * Loaded synchronously in <head> so the saved theme applies before first paint (no flash
- * of the wrong theme). LIGHT is the default; "dark" is opted into via the header toggle.
- * Also stamps the header target-UID form with the current path so setting a target
- * returns you to the page you were on.
+ * Loaded synchronously in <head> so the saved view applies before first paint (no flash of
+ * the wrong theme). Four complete views (ADR-0195): CONSOLE (dark mission control — the
+ * default), DAYLIGHT (clean light), APOLLO (retro CRT) and JARVIS (the HUD skin, hud.css).
+ * Legacy saves migrate: "light" -> "daylight", "dark" or anything unknown -> "console".
+ * The header carries a View <select id=themeSelect>; the #themeToggle button round-trips
+ * daylight <-> the last dark view. Also stamps the header target-UID form with the current
+ * path so setting a target returns you to the page you were on.
  */
 "use strict";
 
 (function () {
   var KEY = "sf-theme";
-  var MODES = ["light", "dark", "jarvis"]; // cycle order; jarvis = the HUD skin (hud.css)
-  var saved = null;
-  try { saved = localStorage.getItem(KEY); } catch (e) { /* storage may be unavailable */ }
-  // Light is the default: apply it on a first visit and whenever the saved choice isn't one of
-  // the explicit non-light modes. "dark" leaves the document on the dark base theme; "jarvis"
-  // stamps data-theme=jarvis (which INHERITS the dark tokens, then hud.css re-skins them).
-  if (saved === "jarvis") {
-    document.documentElement.setAttribute("data-theme", "jarvis");
-  } else if (saved !== "dark") {
-    document.documentElement.setAttribute("data-theme", "light");
+  var DARK_KEY = "sf-theme-dark"; // the last non-daylight view, for the toggle round-trip
+  var THEMES = ["console", "daylight", "apollo", "jarvis"];
+
+  function stored(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
   }
+  function persist(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* keep the in-page switch */ }
+  }
+
+  // Migrate the legacy three-mode save, then default to CONSOLE (never the OS setting —
+  // the view is an explicit operator choice, applied identically on every machine).
+  var saved = stored(KEY);
+  var theme;
+  if (saved === "light") theme = "daylight";
+  else if (saved === "dark") theme = "console";
+  else theme = THEMES.indexOf(saved) >= 0 ? saved : "console";
+
+  function lastDark() {
+    var d = stored(DARK_KEY);
+    return THEMES.indexOf(d) >= 0 && d !== "daylight" ? d : "console";
+  }
+
+  function label(next) {
+    return next.charAt(0).toUpperCase() + next.slice(1);
+  }
+
+  function reflect() {
+    var sel = document.getElementById("themeSelect");
+    if (sel) sel.value = theme;
+    var btn = document.getElementById("themeToggle");
+    if (btn) {
+      // the button names the NEXT view: daylight <-> the last dark view
+      var next = theme === "daylight" ? lastDark() : "daylight";
+      btn.textContent = next === "daylight" ? "☀ Daylight" : "☾ " + label(next);
+      btn.setAttribute("aria-label", "Switch theme (next: " + next + ")");
+    }
+  }
+
+  function apply(next) {
+    theme = THEMES.indexOf(next) >= 0 ? next : "console";
+    document.documentElement.setAttribute("data-theme", theme);
+    persist(KEY, theme);
+    if (theme !== "daylight") persist(DARK_KEY, theme);
+    reflect();
+  }
+
+  // pre-paint stamp (this script loads before the stylesheets); persist the migrated value
+  // back so the saved choice is stable in the new four-view vocabulary
+  document.documentElement.setAttribute("data-theme", theme);
+  persist(KEY, theme);
+  if (theme !== "daylight") persist(DARK_KEY, theme);
 
   // Page scale (operator: "rescale the whole page"). Applied in <head> before first paint so a
   // saved zoom doesn't reflow-flash. CSS `zoom` scales text AND layout together — the layout is
@@ -30,30 +74,19 @@
     if (savedScale) document.documentElement.style.zoom = savedScale;
   } catch (e) { /* storage may be unavailable */ }
 
-  function mode() {
-    var t = document.documentElement.getAttribute("data-theme");
-    return t === "light" || t === "jarvis" ? t : "dark";
-  }
-
-  function label(btn) {
-    // the button names the NEXT theme in the cycle (Light -> Dark -> JARVIS -> Light)
-    var next = MODES[(MODES.indexOf(mode()) + 1) % MODES.length];
-    btn.textContent = next === "dark" ? "\u263e Dark mode"
-      : next === "jarvis" ? "\u2b21 JARVIS mode" : "\u2600 Light mode";
-    btn.setAttribute("aria-label", "Switch theme (next: " + next + ")");
-  }
-
   document.addEventListener("DOMContentLoaded", function () {
+    var sel = document.getElementById("themeSelect");
+    if (sel) {
+      sel.addEventListener("change", function () { apply(sel.value); });
+    }
     var btn = document.getElementById("themeToggle");
     if (btn) {
-      label(btn);
       btn.addEventListener("click", function () {
-        var next = MODES[(MODES.indexOf(mode()) + 1) % MODES.length];
-        document.documentElement.setAttribute("data-theme", next);
-        try { localStorage.setItem(KEY, next); } catch (e) { /* keep the in-page switch */ }
-        label(btn);
+        apply(theme === "daylight" ? lastDark() : "daylight");
       });
     }
+    reflect();
+
     // page-scale selector: reflect the saved zoom, apply + persist on change
     var scaleSel = document.getElementById("uiScale");
     if (scaleSel) {

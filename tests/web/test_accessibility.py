@@ -125,15 +125,17 @@ def test_table_headers_carry_scope(client: TestClient) -> None:
     assert "scope=col" in client.get("/help").text  # the metric dictionary table too
 
 
-def test_theme_toggle_announces_state_and_defaults_to_light(client: TestClient) -> None:
-    """A10: the theme control is a three-way CYCLE (Light -> Dark -> JARVIS, ADR-0146), so it
-    announces via aria-label naming the NEXT theme (aria-pressed is a two-state semantic and
-    would be wrong for a cycler). The tool still defaults to Light unless the saved choice is
-    explicitly dark or jarvis."""
+def test_theme_toggle_announces_state_and_defaults_to_console(client: TestClient) -> None:
+    """A10: the daylight<->dark toggle announces via aria-label naming the NEXT view
+    (aria-pressed is a two-state semantic and would be wrong — the dark side varies with
+    the last dark view used). The View select is a native <select> inside a <label>, so
+    it is keyboard-reachable and self-announcing. Default view: console (ADR-0195)."""
     js = client.get("/static/theme.js").text
     assert "aria-label" in js and "Switch theme" in js
-    assert '"jarvis"' in js  # the HUD theme is part of the cycle
-    assert 'saved !== "dark"' in js and 'setAttribute("data-theme"' in js
+    assert '"jarvis"' in js  # the HUD view is one of the four
+    assert '"console"' in js and 'setAttribute("data-theme"' in js
+    page = client.get("/").text
+    assert "<label class=ui-scale-ctl" in page and "id=themeSelect" in page
 
 
 def test_layout_reflows_on_narrow_viewports(client: TestClient) -> None:

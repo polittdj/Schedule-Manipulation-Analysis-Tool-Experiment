@@ -1,0 +1,76 @@
+/* Schedule Forensics — Mission Ops view tokens (ADR-0195).
+ * ─────────────────────────────────────────────────────────
+ * Four complete views mapped onto the EXISTING variable names in base.css:
+ *   console  — dark mission control (the default; replaces the old bare-:root dark)
+ *   daylight — clean light (replaces the legacy "light"; theme.js migrates saves)
+ *   apollo   — retro CRT phosphor (new)
+ *   jarvis   — refined HUD (tokens only; hud.css keeps the glow/scanline effects)
+ * Loaded AFTER hud.css so these token values win ties at html[data-theme=…]
+ * specificity while hud.css's non-token JARVIS effect rules stay in force.
+ * base.css keeps its :root (dark) and html[data-theme=light] blocks as the
+ * no-JS fallback — theme.js stamps one of the four views pre-paint on every
+ * real session. All values are plain CSS, no remote assets (air-gap safe).
+ * Header chrome reads --header-bg / --header-ink / --header-muted /
+ * --header-line (wired in base.css, ADR-0195). Fixed CUI-marking colors and
+ * the MS-Project white-canvas --gantt-* tokens stay theme-independent.
+ */
+
+/* ── CONSOLE — dark mission control ── */
+html[data-theme=console]{
+  --bg:#070B12;--panel:#0E1522;--ink:#E7EEF7;--muted:#8295AB;--accent:#4AA3FF;
+  --ok:#3FB950;--warn:#E0A62E;--bad:#FF5A52;--line:#203049;
+  --header-bg:linear-gradient(95deg,#0B3D91,#0A2D6E 55%,#071F4D);
+  --header-ink:#FFFFFF;--header-muted:rgba(255,255,255,.78);--header-line:#FC3D21;
+  --field-bg:#0A111D;--btn-ink:#051323;--hover:#131D2F;
+  --dz-bg:#0C1320;--dz-over:#10203A;--ok-bg:#0D2818;--bad-bg:#3A1D1D;
+  --sum-ink:#AAB6C4;--beyond:#3A4759;--beyond-ink:#6B7A8D;--done-overlay:rgba(255,255,255,.45);
+  --border:var(--line);--grid-line:rgba(130,149,171,.16);--grid-dot:rgba(140,162,192,.13);
+  --focus:#C792EA;
+}
+
+/* ── DAYLIGHT — clean light, editorial ── */
+html[data-theme=daylight]{
+  --bg:#F2F5F9;--panel:#FFFFFF;--ink:#16202E;--muted:#5B6A7E;--accent:#0B62C6;
+  --ok:#178039;--warn:#9A6B00;--bad:#CF222E;--line:#D9E1EC;
+  --header-bg:#FFFFFF;
+  --header-ink:#0B3D91;--header-muted:#4A5B72;--header-line:#E03C31;--header-shadow:none;
+  --field-bg:#EEF2F8;--btn-ink:#FFFFFF;--hover:#EEF2F7;
+  --dz-bg:#F6F9FC;--dz-over:#E3EDFA;--ok-bg:#E6F4EA;--bad-bg:#FDECEA;
+  --sum-ink:#5D6B7D;--beyond:#B9C4D0;--beyond-ink:#7D8B9B;--done-overlay:rgba(0,0,0,.25);
+  --border:var(--line);--grid-line:rgba(90,104,120,.15);--grid-dot:rgba(60,84,120,.10);
+  --focus:#8A3FC4;
+}
+
+/* ── APOLLO — retro CRT phosphor ── */
+html[data-theme=apollo]{
+  --bg:#080A06;--panel:#0C0F09;--ink:#A8F077;--muted:#6E8A57;--accent:#FFB000;
+  --ok:#7DE86B;--warn:#FFB000;--bad:#FF5533;--line:#2A3B20;
+  --header-bg:linear-gradient(180deg,#0E1209,#080A06);
+  --header-ink:#A8F077;--header-muted:#6E8A57;--header-line:#FFB000;
+  --field-bg:#0A0D07;--btn-ink:#0A0D07;--hover:#111509;
+  --dz-bg:#0A0D07;--dz-over:#141A0C;--ok-bg:#0F2410;--bad-bg:#2E140C;
+  --sum-ink:#8FB573;--beyond:#24371D;--beyond-ink:#557242;--done-overlay:rgba(200,255,160,.35);
+  --border:var(--line);--grid-line:rgba(168,240,119,.13);--grid-dot:rgba(168,240,119,.08);
+  --focus:#FFD24D;
+}
+/* Apollo chrome: square corners, mono type, scanline wash */
+html[data-theme=apollo] body{
+  font-family:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  background-image:repeating-linear-gradient(0deg,rgba(168,240,119,.03) 0 1px,transparent 1px 3px);
+}
+html[data-theme=apollo] .panel,html[data-theme=apollo] button,html[data-theme=apollo] .btn,
+html[data-theme=apollo] input,html[data-theme=apollo] select{border-radius:0}
+html[data-theme=apollo] h2,html[data-theme=apollo] th{text-transform:uppercase;letter-spacing:.09em}
+
+/* ── JARVIS — refined HUD (tokens only; keep hud.css effects) ── */
+html[data-theme=jarvis]{
+  --bg:#02070E;--panel:rgba(7,25,40,.80);--ink:#C4EAFF;--muted:#6291AC;--accent:#19D3FF;
+  --ok:#27F2A4;--warn:#FFC857;--bad:#FF4F66;--line:rgba(25,163,220,.35);
+  --header-bg:linear-gradient(95deg,#031320,#04202F 60%,#031320);
+  --header-ink:#19D3FF;--header-muted:#6FA9C4;--header-line:#19D3FF;
+  --field-bg:rgba(3,16,28,.9);--btn-ink:#032030;--hover:#07253B;
+  --dz-bg:rgba(4,18,30,.7);--dz-over:rgba(8,40,64,.8);--ok-bg:rgba(14,68,48,.5);--bad-bg:rgba(74,16,26,.55);
+  --sum-ink:#7FB0CC;--beyond:#123146;--beyond-ink:#3F6A86;--done-overlay:rgba(190,240,255,.35);
+  --border:rgba(25,163,220,.35);--grid-line:rgba(25,211,255,.13);--grid-dot:rgba(25,211,255,.09);
+  --focus:#FFC857;
+}

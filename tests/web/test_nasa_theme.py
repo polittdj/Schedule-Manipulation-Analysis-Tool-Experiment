@@ -96,9 +96,12 @@ def test_dotted_reading_grid_behind_charts(client: TestClient) -> None:
 
 
 def test_nasa_command_banner_header(client: TestClient) -> None:
+    """ADR-0195: the command banner reads theme tokens; the classic blue gradient rides in
+    the :root --header-bg fallback so the no-JS chrome is unchanged."""
     css = client.get("/static/base.css").text
     assert "--nasa-blue:#0b3d91" in css
-    assert "header{background:linear-gradient(95deg,var(--nasa-blue)" in css
+    assert "--header-bg:linear-gradient(95deg,var(--nasa-blue)" in css
+    assert "header{background:var(--header-bg);border-bottom:3px solid var(--header-line)}" in css
 
 
 def test_globe_rides_the_upper_right_corner_of_a_slim_banner(client: TestClient) -> None:

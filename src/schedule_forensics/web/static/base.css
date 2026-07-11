@@ -179,18 +179,23 @@ cursor:pointer;text-decoration:underline}
    CUI page-marking bars (NASA marking standard), and a light dotted reading grid behind charts.
    Every asset is vendored/local (air-gap). The rotation auto-stops under prefers-reduced-motion
    via the global media block above (animation-duration is forced to ~0). */
-:root{--nasa-blue:#0b3d91;--nasa-blue-2:#0a2d6e;--nasa-red:#fc3d21;--grid-dot:rgba(140,160,190,.16)}
+:root{--nasa-blue:#0b3d91;--nasa-blue-2:#0a2d6e;--nasa-red:#fc3d21;--grid-dot:rgba(140,160,190,.16);
+  /* Mission Ops (ADR-0195): the command banner reads THEME tokens now. These :root values keep
+     the classic blue banner as the no-JS fallback; sf-themes.css re-values them per view
+     (console / daylight / apollo / jarvis) — theme.js stamps a view before first paint. */
+  --header-bg:linear-gradient(95deg,var(--nasa-blue) 0%,var(--nasa-blue-2) 70%,#081f4d 100%);
+  --header-ink:#fff;--header-muted:rgba(255,255,255,.82);--header-line:var(--nasa-red);
+  --header-shadow:0 1px 2px rgba(0,0,0,.45)}
 html[data-theme=light]{--grid-dot:rgba(60,84,120,.14)}
 
-header{background:linear-gradient(95deg,var(--nasa-blue) 0%,var(--nasa-blue-2) 70%,#081f4d 100%);
-  border-bottom:2px solid var(--nasa-red)}
-header h1{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
-header nav a{color:rgba(255,255,255,.82)}
-header nav a:hover{color:#fff}
-header nav .navform button,header nav #themeToggle{color:rgba(255,255,255,.82)}
-header nav .navform button:hover,header nav #themeToggle:hover{color:#fff}
-header nav .linkbtn{color:#fff}
-header label{color:rgba(255,255,255,.9)}
+header{background:var(--header-bg);border-bottom:3px solid var(--header-line)}
+header h1{color:var(--header-ink);text-shadow:var(--header-shadow)}
+header nav a{color:var(--header-muted)}
+header nav a:hover{color:var(--header-ink)}
+header nav .navform button,header nav #themeToggle{color:var(--header-muted)}
+header nav .navform button:hover,header nav #themeToggle:hover{color:var(--header-ink)}
+header nav .linkbtn{color:var(--header-ink)}
+header label{color:var(--header-muted)}
 
 /* The header insignia is a transparent 3D wireframe Earth (globe.js) rotating around a STATIONARY
    "NASA" wordmark — 3x the old meatball. It also doubles as the page-wide AI status light: ask.js
