@@ -33,3 +33,19 @@ def test_ribbon_lists_metrics_per_schedule(client: TestClient) -> None:
     assert "Project2" in page and ">6<" in page and "2.79" in page
     # linked in the nav
     assert 'href="/ribbon"' in page
+
+
+def test_ribbon_page_shell_can_we_trust(client: TestClient) -> None:
+    """ADR-0198 (step 3, chapter 02): the Quality Ribbon opens with the data-driven takeaway,
+    a quality-KPI strip, and the DCMA-outcome + logic-completeness bars — and the chapter chrome
+    (kicker + Continue footer) fires (the title is registered to chapter 02)."""
+    data = (GOLD / "Project5.mspdi.xml").read_bytes()
+    client.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
+    page = client.get("/ribbon").text
+    assert 'class="page-takeaway"' in page and "DCMA-14 quality checks pass" in page
+    assert 'class="ws-kpi"' in page and "DCMA checks passed" in page
+    assert "DCMA-14 checks" in page and "Logic completeness" in page and "stack-bar" in page
+    assert "CHAPTER 02 · CAN WE TRUST THE PLAN?" in page
+    assert "story-foot" in page and "Chapter 03" in page  # Continue → next chapter
+    # the existing ribbon matrix survives
+    assert "Schedule Quality Ribbon" in page and "rib-cell" in page and "Missing Logic" in page

@@ -5076,3 +5076,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Version 1.0.6 -> 1.0.7 (cache-bust); wheel + 9 installers rebuilt in lockstep.
 - Next: the cross-cutting chart-contract toolbar (DATA/EXCEL/ENLARGE + provenance on every visual)
   as one dedicated PR; then chapters 02-12 page shells one per PR. Highest ADR = 0197.
+
+### 2026-07-11 — Mission Ops redesign step 3, chapter 02 "Can we trust the plan?" (ADR-0198)
+- Second page shell of step 3: applies the chapter-01 template to chapter 02 = the Schedule Quality
+  Ribbon (/ribbon). Presentation only; every figure read from the ribbon/audit already computed.
+  Chapter chrome (kicker + Continue footer) already fires because /ribbon's title "Schedule Quality
+  Ribbon" is registered to chapter 02 in the spine — so no chapter= binding, just the header.
+- _can_we_trust_header (anchored on the LATEST schedulable version, rows[-1]): a data-driven
+  takeaway ("X of Y DCMA-14 quality checks pass — <top structural weaknesses>", correct
+  singular/plural agreement, or "logic is complete..." when clean), a 6-KPI quality strip (DCMA
+  checks passed / Missing logic / Hard constraints / Negative float / Logic density / Insufficient
+  detail), and two _status_stack bars: DCMA-14 checks (Pass/Fail/N-A) and Logic completeness (logic
+  wired vs missing). Uses the existing RibbonMetrics + analysis.audit.checks via _status_class (no
+  enum import, no new threshold). Y = scored count (n/a excluded); em dash when nothing scorable.
+- Ribbon matrix, per-cell drill (rib-cell/ribbon_drill.js), export bar, skipped-version notice all
+  untouched (header is additive above them). No new CSS — reuses ADR-0197's page-takeaway/ws-kpi/
+  ws-bars/status-stack. RibbonMetrics added to the metrics import for typing.
+- Chromium-verified console + daylight, zero console errors; takeaway grammar correct and counts
+  match the matrix ("10 of 14 ... 7 activities miss logic, and 1 activity sits on a hard
+  constraint"). New test_ribbon_page_shell_can_we_trust pins it. Version 1.0.7 -> 1.0.8 (cache-bust);
+  wheel + 9 installers rebuilt in lockstep.
+- Next: chapters 03-12 page shells one per PR (03 = /path next in story order); cross-cutting
+  chart-contract toolbar as a dedicated PR. Highest ADR = 0198.

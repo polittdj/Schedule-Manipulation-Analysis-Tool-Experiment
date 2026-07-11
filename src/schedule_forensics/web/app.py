@@ -104,6 +104,7 @@ from schedule_forensics.engine.grouping import (
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.metrics import (
+    RibbonMetrics,
     WBSGroup,
     compute_activity_makeup,
     compute_baseline_compliance,
@@ -2616,8 +2617,17 @@ def create_app(
             )
             drill[key] = ribbon_offender_map(sch, analysis.cpm, analysis.audit)
         note = _skipped_notice(skipped) if skipped else ""
+        header = ""
+        if rows:  # the latest schedulable version anchors "Can we trust the plan?" (ADR-0198)
+            lkey, lribbon, _lq = rows[-1]
+            if isinstance(lribbon, RibbonMetrics):
+                header = _can_we_trust_header(
+                    st.schedules[lkey], st.analysis_for(lkey, st.schedules[lkey]), lribbon
+                )
         return _page(
-            st, "Schedule Quality Ribbon", _export_bar("ribbon") + _ribbon_body(rows, note, drill)
+            st,
+            "Schedule Quality Ribbon",
+            header + _export_bar("ribbon") + _ribbon_body(rows, note, drill),
         )
 
     @app.get("/volatility", response_class=HTMLResponse)
@@ -8453,6 +8463,74 @@ def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -
             return "rib-fail"
         return "rib-warn" if pct >= _RIBBON_WARN_FRACTION * 5.0 else "rib-pass"
     return ""  # no published threshold — neutral
+
+
+def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetrics) -> str:
+    """Chapter 02 "Can we trust the plan?" (ADR-0198): the data-driven takeaway + a quality-KPI
+    strip + the DCMA-outcome and logic-completeness bars, for the LATEST loaded version — every
+    figure read from the ribbon/audit the page already computed (no engine math; honest counts)."""
+    checks = analysis.audit.checks
+    passes = sum(1 for c in checks if _status_class(c.status) == "pass")
+    fails = sum(1 for c in checks if _status_class(c.status) == "fail")
+    na = sum(1 for c in checks if _status_class(c.status) == "na")
+    scored = passes + fails
+    total = compute_activity_makeup(sch).total
+
+    # takeaway — the top one/two structural weaknesses, stated as real counts with correct
+    # singular/plural agreement (or "clean" when there are none)
+    def _acts(n: int) -> str:
+        return "activity" if n == 1 else "activities"
+
+    phrases: list[str] = []
+    if ribbon.missing_logic:
+        n = ribbon.missing_logic
+        phrases.append(f"{n} {_acts(n)} {'misses' if n == 1 else 'miss'} logic")
+    if ribbon.negative_float:
+        n = ribbon.negative_float
+        phrases.append(f"{n} {_acts(n)} {'carries' if n == 1 else 'carry'} negative float")
+    if ribbon.hard_constraints:
+        n = ribbon.hard_constraints
+        con = "a hard constraint" if n == 1 else "hard constraints"
+        phrases.append(f"{n} {_acts(n)} {'sits' if n == 1 else 'sit'} on {con}")
+    if phrases:
+        weak = " — " + ", and ".join(phrases[:2]) + "."
+    else:
+        weak = " — logic is complete, with no negative float or hard constraints."
+    scored_txt = (
+        f"{passes} of {scored} DCMA-14 quality checks pass"
+        if scored
+        else ("the DCMA-14 checks don't apply to this file")
+    )
+    takeaway = f"{scored_txt}{weak}"
+
+    kpi = _stat_cards(
+        [
+            ("DCMA checks passed", f"{passes} / {scored}" if scored else "&mdash;"),
+            ("Missing logic", str(ribbon.missing_logic)),
+            ("Hard constraints", str(ribbon.hard_constraints)),
+            ("Negative float", str(ribbon.negative_float)),
+            ("Logic density", f"{ribbon.logic_density:g}"),
+            ("Insufficient detail", str(ribbon.insufficient_detail)),
+        ]
+    )
+    dcma_bar = _status_stack(
+        "DCMA-14 checks",
+        "The 14 DCMA schedule-quality checks by outcome (n/a where no threshold applies).",
+        [("Pass", passes, "--ok"), ("Fail", fails, "--bad"), ("N/A", na, "--muted")],
+        f"{len(checks)} checks",
+    )
+    wired = max(total - ribbon.missing_logic, 0)
+    logic_bar = _status_stack(
+        "Logic completeness",
+        "Activities wired with a predecessor and successor vs those missing logic.",
+        [("Logic wired", wired, "--ok"), ("Missing logic", ribbon.missing_logic, "--bad")],
+        f"{total} activities",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{dcma_bar}{logic_bar}</div>'
+    )
 
 
 def _ribbon_body(

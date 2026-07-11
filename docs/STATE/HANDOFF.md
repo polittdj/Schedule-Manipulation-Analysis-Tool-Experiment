@@ -1,6 +1,28 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 3, first page shell: chapter 01; highest ADR 0197)
+# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 02 page shell; highest ADR 0198)
 
-> ## STATUS (current) — ADR-0197 chapter 01 "Where we stand" page shell
+> ## STATUS (current) — ADR-0198 chapter 02 "Can we trust the plan?" page shell
+>
+> - Second page shell of step 3: applies the chapter-01 template to chapter 02 = the Schedule
+>   Quality Ribbon (`/ribbon`). Presentation only; figures read from the ribbon/audit already
+>   computed. Chapter chrome already fires here (title "Schedule Quality Ribbon" is registered to
+>   chapter 02) — so no `chapter=` binding needed, just the header.
+> - **`_can_we_trust_header`** (anchored on the latest schedulable version): a data-driven takeaway
+>   ("X of Y DCMA-14 quality checks pass — <top structural weaknesses, correct sing/plural>"), a
+>   6-KPI quality strip (DCMA passed / Missing logic / Hard constraints / Negative float / Logic
+>   density / Insufficient detail), and two `_status_stack` bars (DCMA-14 Pass/Fail/N-A; Logic
+>   completeness wired-vs-missing). Uses the existing `RibbonMetrics` + `analysis.audit.checks`
+>   (via `_status_class`), NO engine math; Y is the *scored* count (n/a excluded), em dash if none.
+> - Ribbon matrix, per-cell drill, export bar, skipped-notice untouched. No new CSS (reuses ADR-0197
+>   classes). Chromium-verified console + daylight, zero console errors, takeaway grammar + counts
+>   match the matrix. New test_ribbon_page_shell_can_we_trust pins it. Version 1.0.7→1.0.8, wheel +
+>   9 installers lockstep. Highest ADR = 0198.
+> - **Next**: chapters 03-12 page shells one per PR (03 "What drives the date" = /path is next in
+>   story order), using this takeaway/KPI/bars template; plus the cross-cutting chart-contract
+>   toolbar (▦ DATA / ⤓ EXCEL / ⛶ ENLARGE + provenance) as one dedicated PR; vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 3, first page shell: chapter 01; highest ADR 0197)
+
+> ## STATUS — ADR-0197 chapter 01 "Where we stand" page shell
 >
 > - Step 3 restyles each chapter's page CONTENT to the redesign spec, one chapter per PR. First =
 >   chapter 01 "Where we stand" = the Analysis report (`/analysis/{name}`); sets the template.
