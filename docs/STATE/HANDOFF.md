@@ -1,6 +1,33 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 03 page shell; highest ADR 0199)
+# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 04 page shell; highest ADR 0200)
 
-> ## STATUS (current) — ADR-0199 chapter 03 "What drives the date" page shell
+> ## STATUS (current) — ADR-0200 chapter 04 "How stable is the path" page shell
+>
+> - Fourth page shell of step 3: the template applied to chapter 04 = Critical-Path Evolution
+>   (`/evolution`). Presentation only. The route already builds
+>   `compute_path_evolution(schedules, cpms, target_uid=uid)` (per-version `CriticalSnapshot`s,
+>   scoped to any global target), so the headline reads from it with no new computation. The
+>   header only renders past the existing `len(schedules) < 2` guard, so snapshots are always ≥ 2.
+>   Chapter chrome already fires (title "Critical-Path Evolution" registered to chapter 04).
+> - **`_how_stable_header(ev)`**: takeaway "Across N versions the critical path <held steady /
+>   stayed largely stable / churned> — E activities entered it and L left<, and the finish slipped
+>   / pulled in D calendar days / while the finish held>." (honest net move, singular/plural
+>   agreement), a 6-KPI churn strip (Versions compared / Critical now / Entered all updates / Left
+>   all updates / Net finish move / Churn per update), and two `_status_stack` bars (Latest
+>   critical path = Entered vs Stayed; Total churn = Entered vs Left). Data: snapshots[-1]
+>   critical/entered/stayed/left + cumulative len(entered/left) over snaps[1:] +
+>   sum(finish_delta_days). NO engine math; no target UID needed (scoped evolution).
+> - Interactive scaffold (#prevEvo/#nextEvo/#evoPlay stepper, #evoChart, path_evolution.js, tier
+>   selector, counterfactual panel, filter modes, export bar) untouched; header additive. No new
+>   CSS. Chromium-verified console + daylight, zero console errors; counts consistent (Entered 1 +
+>   Stayed 3 = 4 "Critical now"; Entered 1 + Left 38 = churn 39; net +148d = golden P2→P5 slip).
+>   New test_evolution_chapter_04_page_shell pins it. Version 1.0.9→1.0.10, wheel + 9 installers
+>   lockstep. Highest ADR = 0200.
+> - **Next**: chapters 05-12 page shells one per PR (05 "How it moved" = /trend next); plus the
+>   cross-cutting chart-contract toolbar as one dedicated PR; vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 03 page shell; highest ADR 0199)
+
+> ## STATUS — ADR-0199 chapter 03 "What drives the date" page shell
 >
 > - Third page shell of step 3: the template applied to chapter 03 = Path Analysis (`/path`).
 >   Presentation only. `/path` is a client-side trace (path.js over /api/driving) so its body
