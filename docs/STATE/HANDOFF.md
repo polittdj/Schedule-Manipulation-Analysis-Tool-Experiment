@@ -1,6 +1,33 @@
-# Handoff — 2026-07-11 (Metric Workbench; highest ADR 0204)
+# Handoff — 2026-07-11 (Mission Ops step 3, chapter 07 page shell; highest ADR 0205)
 
-> ## STATUS (current) — ADR-0204 Metric Workbench (Acumen-style selectable library)
+> ## STATUS (current) — ADR-0205 chapter 07 "How we execute" page shell
+>
+> - Seventh page shell of step 3: template applied to chapter 07 = Performance Analysis Summary
+>   (/performance). Presentation only. The route already has the solvable versions and the
+>   execution functions (compute_bei / duration_ratio / compute_activity_makeup) are cheap pure
+>   counts, so the header adds no computation. Chapter chrome already fires (title "Performance
+>   Summary" registered to chapter 07); header renders past the no-solvable-schedule guard.
+> - **`_how_we_execute_header(sch)`** (latest version): takeaway "The project has finished N of M
+>   activities (P%); baselined-due work is finishing at BEI b.bb — <on/ahead|just behind|behind>
+>   the baseline pace, and completed work ran d.ddx its planned duration." (honest degradation:
+>   no baselined-due -> "no work is yet baselined-due to measure the pace"; no completed baseline
+>   -> duration clause dropped); 6-KPI strip (Activities complete / Complete% / BEI / Duration
+>   ratio avg / Missed the baseline / Still to go); two _status_stack bars (Baseline pace = Kept
+>   pace vs Missed over baselined-due; Duration performance = completed banded Under/On/Over
+>   baseline duration, n_excluded disclosed). Data: compute_bei (ADR-0176 basis) + duration_ratio
+>   + makeup. NO engine math.
+> - G1-G7 scaffold untouched; header additive; no new CSS. Chromium-verified console + daylight,
+>   zero console errors; golden figures (Project5 27/126, BEI 0.59, DRM 1.44x; Hard_File_updated3
+>   BEI 0.47 = ADR-0176 oracle; 0%-complete Hard_File degrades honestly). New
+>   test_performance_chapter_07_page_shell pins it. Version 1.0.14->1.0.15, wheel + 9 installers
+>   lockstep. Highest ADR = 0205.
+> - **Next**: chapters 08-12 one per PR (08 "Who is overloaded" = /resources next); Metric
+>   Workbench family expansion; advanced-SRA phase (issue #331); the audit fixes / Part-B insights
+>   from the operator report on request; chart-contract toolbar; vendor fonts.
+
+# (prior) Handoff — 2026-07-11 (Metric Workbench; highest ADR 0204)
+
+> ## STATUS — ADR-0204 Metric Workbench (Acumen-style selectable library)
 >
 > - Operator directive: a page to pick any Acumen-library metric and compute it for every schedule
 >   file "like Acumen" in a ribbon (metrics left, versions chronological columns), click a value to

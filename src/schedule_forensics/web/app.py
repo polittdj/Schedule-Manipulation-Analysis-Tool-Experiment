@@ -2894,7 +2894,8 @@ def create_app(
         return _page(
             st,
             "Performance Summary",
-            _skipped_notice(skipped)
+            _how_we_execute_header(schedules[-1])
+            + _skipped_notice(skipped)
             + _sources_line(st.ordered())
             + _performance_body(schedules, cpms, file),
         )
@@ -12506,6 +12507,87 @@ def _performance_data(
         },
         "quads": quads,
     }
+
+
+def _how_we_execute_header(sch: Schedule) -> str:
+    """Chapter 07 "How we execute" (ADR-0205): the data-driven takeaway + an execution-quality
+    KPI strip + the baseline-pace and duration-performance bars, from the same throughput and
+    duration-ratio functions the page charts (compute_bei / duration_ratio / activity makeup —
+    no new math). Anchored on the latest loaded version."""
+    makeup = compute_activity_makeup(sch)
+    total = makeup.total or 1
+    complete_pct = 100.0 * makeup.complete / total
+    bei = compute_bei(sch)
+    kept = bei.count  # completed among the baselined-due
+    missed = max(bei.population - bei.count, 0)  # due but not finished on the baseline
+    drm = duration_ratio(sch)
+
+    lead = (
+        f"The project has finished {makeup.complete} of {makeup.total} activities "
+        f"({complete_pct:.0f}%)"
+    )
+    if bei.population == 0:
+        takeaway = f"{lead}; no work is yet baselined-due to measure the execution pace."
+    else:
+        if bei.value >= 1.0:
+            pace = f"baselined-due work is finishing at BEI {bei.value:.2f} — on or ahead of the baseline pace"
+        elif bei.value >= 0.95:
+            pace = f"baselined-due work is finishing at BEI {bei.value:.2f} — just behind the baseline pace"
+        else:
+            pace = (
+                f"baselined-due work is finishing at BEI {bei.value:.2f} — behind the baseline pace"
+            )
+        if drm.drm_avg is None:
+            dur = ""
+        elif drm.drm_avg > 1.05:
+            dur = f", and completed work ran {drm.drm_avg:.2f}x its planned duration"
+        elif drm.drm_avg < 0.95:
+            dur = f", and completed work beat its plan at {drm.drm_avg:.2f}x planned duration"
+        else:
+            dur = f", and completed work ran close to plan ({drm.drm_avg:.2f}x planned duration)"
+        takeaway = f"{lead}; {pace}{dur}."
+
+    kpi = _stat_cards(
+        [
+            ("Activities complete", f"{makeup.complete} / {makeup.total}"),
+            ("Complete", f"{complete_pct:.0f}%"),
+            ("BEI (throughput)", f"{bei.value:.2f}" if bei.population else "&mdash;"),
+            (
+                "Duration ratio (avg)",
+                f"{drm.drm_avg:.2f}x" if drm.drm_avg is not None else "&mdash;",
+            ),
+            ("Missed the baseline", str(missed) if bei.population else "&mdash;"),
+            ("Still to go", str(makeup.total - makeup.complete)),
+        ]
+    )
+    pace_bar = _status_stack(
+        "Baseline pace (BEI)",
+        "Activities baselined to finish by the data date — kept pace vs missed the baseline.",
+        [("Kept pace", kept, "--ok"), ("Missed", missed, "--bad")],
+        f"BEI {bei.value:.2f} over {bei.population} baselined-due"
+        if bei.population
+        else "no baselined-due activities yet",
+    )
+    # completed-task duration bands: under (<0.95x) / on-target (0.95-1.05x) / over (>1.05x)
+    under = sum(1 for p in drm.points if p.drm < 0.95)
+    ontgt = sum(1 for p in drm.points if 0.95 <= p.drm <= 1.05)
+    over = sum(1 for p in drm.points if p.drm > 1.05)
+    dur_bar = _status_stack(
+        "Duration performance",
+        "Completed activities by how their actual duration compared to their baseline.",
+        [
+            ("Under plan", under, "--ok"),
+            ("On target", ontgt, "--muted"),
+            ("Over plan", over, "--bad"),
+        ],
+        f"{drm.n} completed with a baseline"
+        + (f"; {drm.n_excluded} lack one" if drm.n_excluded else ""),
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{pace_bar}{dur_bar}</div>'
+    )
 
 
 def _performance_body(schedules: list[Schedule], cpms: list[CPMResult], file: str) -> str:
