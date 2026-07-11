@@ -183,3 +183,26 @@ def test_track_uids_control_payload_and_cap(client: TestClient) -> None:
     # cei.js reads the control and draws the tracked marks
     js = client.get("/static/cei.js").text
     assert "ceiTrack" in js and "tracked" in js
+
+
+def test_cei_chapter_06_page_shell(client: TestClient) -> None:
+    """ADR-0203 — chapter 06 "Work piling up": the data-driven takeaway h1, the CEI KPI
+    strip, and the Latest-scored-month / Where-the-finishes-sit composition bars, all read
+    from the bow-wave dataset the page already computes. The scaffold survives beneath."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/cei").text
+
+    # data-driven takeaway carries the real CEI figures from the golden pair
+    assert 'class="page-takeaway"' in page
+    assert "CEI 1.00" in page and "3 of the 3 finishes" in page
+    assert "sit ahead of the data date" in page
+
+    # the six-KPI strip and both composition bars
+    assert 'class="ws-kpi"' in page and "Latest CEI" in page and "Months under plan" in page
+    assert "Latest scored month" in page and "Where the finishes sit" in page
+    assert 'class="stack-bar"' in page
+
+    # chapter chrome fires here (kicker + Continue -> chapter 07)
+    assert "CHAPTER 06 · WORK PILING UP" in page
+    assert "Chapter 07" in page
