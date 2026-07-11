@@ -417,3 +417,38 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .concl-finding{font-weight:600;margin-bottom:6px}
 .concl-meaning{font-size:.92em;margin-bottom:6px}
 .concl-evidence{font-size:.8em;color:var(--muted)}
+
+/* ── Metric Workbench (ADR-0204): Acumen-style library + ribbon + drill grid ── */
+.wb-layout{display:flex;gap:16px;align-items:flex-start;margin-top:10px}
+.wb-library{flex:0 0 230px;max-height:70vh;overflow:auto;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;background:var(--panel)}
+.wb-family{margin-bottom:10px}
+.wb-family-head{display:flex;align-items:center;gap:8px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);margin:4px 0}
+.wb-family-head .linkbtn{font-size:10px}
+.wb-metric{display:block;font-size:.9em;padding:2px 0;cursor:pointer}
+.wb-metric input{margin-right:6px}
+.wb-ribbon-wrap{flex:1 1 auto;overflow-x:auto}
+.wb-matrix{border-collapse:collapse;width:100%;font-size:.88em}
+.wb-matrix th,.wb-matrix td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+.wb-matrix thead th{position:sticky;top:0;background:var(--panel);text-align:center;z-index:1}
+.wb-matrix th[scope=row],.wb-matrix .wb-metric-name{text-align:left;position:sticky;left:0;
+  background:var(--panel);font-weight:600;z-index:1}
+.wb-ver-label{font-weight:700}.wb-ver-date{font-size:.8em;color:var(--muted)}
+.wb-fam-row th{text-align:left;background:var(--dz-bg);color:var(--muted);text-transform:uppercase;
+  font-size:10px;letter-spacing:.1em;font-weight:700}
+.wb-cell.wb-pass{color:var(--ok)}.wb-cell.wb-fail{color:var(--bad);font-weight:700}
+.wb-cell.wb-na{color:var(--muted)}
+.wb-clickable{cursor:pointer;text-decoration:underline dotted}
+.wb-clickable:hover,.wb-clickable:focus{background:var(--dz-over);outline:2px solid var(--accent)}
+.wb-drill{margin-top:14px}
+.wb-drill-bar{flex-wrap:wrap;gap:12px;align-items:end}
+.wb-grid-host{overflow-x:auto;margin-top:8px}
+.wb-count{margin:2px 0 6px}
+.wb-grid{border-collapse:collapse;width:100%;font-size:.85em}
+.wb-grid th,.wb-grid td{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.wb-grid thead th{background:var(--panel);position:sticky;top:0}
+.wb-sortable{cursor:pointer;white-space:nowrap}
+.wb-grid .wb-grp th{background:var(--dz-bg);color:var(--muted);font-weight:700}
+.wb-colx{margin-left:6px;color:var(--bad)}
+.wb-arrow{color:var(--accent)}

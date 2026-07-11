@@ -1,6 +1,38 @@
-# Handoff — 2026-07-11 (Mission Ops step 3, chapter 06 page shell; highest ADR 0203)
+# Handoff — 2026-07-11 (Metric Workbench; highest ADR 0204)
 
-> ## STATUS (current) — ADR-0203 chapter 06 "Work piling up" page shell
+> ## STATUS (current) — ADR-0204 Metric Workbench (Acumen-style selectable library)
+>
+> - Operator directive: a page to pick any Acumen-library metric and compute it for every schedule
+>   file "like Acumen" in a ribbon (metrics left, versions chronological columns), click a value to
+>   drill the underlying tasks below with filter/sort/group-by/add-columns, and export to Excel.
+> - Law-2 decision: the raw NASA .aft carries 1,403 Acumen-formula-language metrics; evaluating those
+>   would emit UNVALIDATED numbers (forbidden). So the Workbench library = the tool's VALIDATED metric
+>   set, presented Acumen-style, explicit in the UI. NEW engine/metric_catalog.py aggregates (no new
+>   math) the 16 DCMA audit checks (offenders = citations) + the ribbon Schedule-Quality/Float extras
+>   (Logic Density, Insufficient Detail, Merge Hotspot, Avg/Max Float) = 21 metrics, 3 families.
+>   evaluate_catalog(sch, cpm, audit=None) -> per-metric value/status/offender-uids; unscored splits
+>   are NA never a fabricated 0. Expandable (EVM/Completion/HMI/FEI register the same way).
+> - Web: /workbench (server-rendered library + ribbon/drill hosts), /api/workbench (matrix, versions
+>   oldest->newest, reuses cached _Analysis.audit), /api/workbench/drill?metric&file (offender rows +
+>   EVERY project field value per row for client-side group/column/sort/filter). workbench.js
+>   (vendored, CSP-safe): ribbon (colored pass/fail/NA, clickable offender cells) + drill grid (text
+>   filter, click-sort headers, group-by picker, add/remove columns, live Excel link). .wb-* CSS from
+>   theme tokens. Excel: /export/{fmt}/workbench (ribbon) + /export/{fmt}/workbench-drill/{file}.
+> - Chromium-verified console + daylight, zero console errors (High-Float cell = Acumen 44.44%/44
+>   offenders; drill groups by WBS). 11 new tests (catalog fidelity + page/API/drill/export); nav
+>   tests still green. Version 1.0.13->1.0.14, wheel + 9 installers lockstep. Highest ADR = 0204.
+> - **Also delivered this session**: a full engine metric-audit + external-insight research report,
+>   written as a re-feedable prompt (sent to the operator as AUDIT-AND-ROADMAP-PROMPT.md; NOT in the
+>   repo). PART A = 21 correctness fixes in 4 tiers (A1 TCPI-direction + A2 empty-population-PASS are
+>   confirmed bugs); PART B = 27 new health metrics (metadata / user-input / schedule-independent),
+>   each mapped to a story chapter with a source citation.
+> - **Next**: Mission Ops chapters 07-12 page shells (07 "How we execute" = /performance); the
+>   advanced-SRA phase (issue #331); begin the audit fixes / Part-B insights on operator request;
+>   expand the Workbench library families; chart-contract toolbar; vendor fonts.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops step 3, chapter 06 page shell; highest ADR 0203)
+
+> ## STATUS — ADR-0203 chapter 06 "Work piling up" page shell
 >
 > - Sixth page shell of step 3: the template applied to chapter 06 = Bow Wave / CEI (`/cei`).
 >   Presentation only. The route already computes compute_bow_wave (shared month axis +
