@@ -5177,3 +5177,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   + daylight, zero console errors. Version 1.0.10 -> 1.0.11; wheel + 9 installers lockstep.
 - Next: Mission Ops chapters 05-12 one per PR (05 = /trend); advanced-SRA phase per issue #331.
   Highest ADR = 0201.
+
+### 2026-07-11 — Mission Ops redesign step 3, chapter 05 "How it moved" (ADR-0202)
+- Fifth page shell of step 3: template applied to chapter 05 = the multi-version Trend (/trend).
+  Presentation only. The route already computes trend_across_versions (per-version TrendPoints:
+  CPM project_finish + completed/in-progress/critical counts); compute_activity_makeup (the ch01
+  precedent, already in the trend API's version rows) covers the latest version's status mix, so
+  the header adds no computation. Chapter chrome already fires (title "Trend" registered to
+  chapter 05); the header renders only past the existing < 2-versions guard.
+- _how_it_moved_header(schedules, cpms): takeaway "Across N versions the finish <slipped D
+  calendar days / pulled in D / held steady> — S of K updates slipped it — and the current
+  forecast finish is <date>." (number agreement; net move = first->last finish in calendar days,
+  the same basis as the evolution page); 6-KPI strip (Versions compared / Current finish / Net
+  finish move / Updates that slipped / Biggest single move / Critical now); two _status_stack
+  bars: Update behaviour (per-update deltas Slipped/Held/Improved) and Where the work stands
+  (latest Complete/In progress/Not started).
+- Trend scaffold (version table, quality-trend sentences, pairwise signals, focus form, trend.js
+  charts, export bar) untouched; header additive above it. No new CSS (ADR-0197 classes).
+- Chromium-verified console + daylight, zero console errors; counts consistent (Complete 27 +
+  In progress 2 + Not started 97 = 126 in scope; net +148d = the golden P2->P5 slip, agreeing
+  with chapter 04's takeaway). New test_trend_chapter_05_page_shell pins it. Version
+  1.0.11 -> 1.0.12 (cache-bust); wheel + 9 installers rebuilt in lockstep.
+- Next: chapters 06-12 one per PR (06 "Work piling up" = /cei next). Highest ADR = 0202.

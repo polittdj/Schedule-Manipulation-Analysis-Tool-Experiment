@@ -1,6 +1,30 @@
-# Handoff — 2026-07-11 (SRA plain-language conclusions + Excel; highest ADR 0201)
+# Handoff — 2026-07-11 (Mission Ops step 3, chapter 05 page shell; highest ADR 0202)
 
-> ## STATUS (current) — ADR-0201 SRA "what the results mean" conclusions layer
+> ## STATUS (current) — ADR-0202 chapter 05 "How it moved" page shell
+>
+> - Fifth page shell of step 3: the template applied to chapter 05 = the multi-version Trend
+>   (`/trend`). Presentation only. The route already computes trend_across_versions (per-version
+>   TrendPoints: CPM project_finish + completed/in-progress/critical) and compute_activity_makeup
+>   (ch01 precedent) covers the latest status mix — no new computation. Chapter chrome already
+>   fires (title "Trend" registered to chapter 05); header renders only past the < 2-versions
+>   guard.
+> - **`_how_it_moved_header(schedules, cpms)`**: takeaway "Across N versions the finish <slipped D
+>   calendar days / pulled in D / held steady> — S of K updates slipped it — and the current
+>   forecast finish is <date>."; 6-KPI strip (Versions compared / Current finish / Net finish
+>   move / Updates that slipped / Biggest single move / Critical now); two `_status_stack` bars
+>   (Update behaviour = per-update deltas Slipped/Held/Improved; Where the work stands = latest
+>   Complete/In progress/Not started). NO engine math.
+> - Trend scaffold (version table, quality sentences, pairwise signals, focus form, trend.js,
+>   export bar) untouched; header additive; no new CSS. Chromium-verified console + daylight,
+>   zero console errors; counts consistent (27+2+97=126 in scope; net +148d = golden P2→P5 slip,
+>   agreeing with ch04). New test_trend_chapter_05_page_shell pins it. Version 1.0.11→1.0.12,
+>   wheel + 9 installers lockstep. Highest ADR = 0202.
+> - **Next**: chapters 06-12 page shells one per PR (06 "Work piling up" = /cei next); the
+>   advanced-SRA phase per issue #331; chart-contract toolbar PR; vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (SRA plain-language conclusions + Excel; highest ADR 0201)
+
+> ## STATUS — ADR-0201 SRA "what the results mean" conclusions layer
 >
 > - Operator committed three reference docs to `00_REFERENCE_INTAKE/references/` and asked for a
 >   deep-dive + "draw conclusions about the results ... in simple and easy to understand verbiage
