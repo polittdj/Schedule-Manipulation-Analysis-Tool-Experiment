@@ -155,7 +155,7 @@ from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
     compute_path_counterfactual,
 )
-from schedule_forensics.engine.path_evolution import compute_path_evolution
+from schedule_forensics.engine.path_evolution import PathEvolution, compute_path_evolution
 from schedule_forensics.engine.path_trace import subschedule_to_target, topo_order
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
@@ -2952,10 +2952,12 @@ def create_app(
             ignore_leveling=bool(ignore_leveling),
             keep={"target": target or "", "tier": tier},
         )
+        header = _how_stable_header(compute_path_evolution(schedules, cpms, target_uid=uid))
         return _page(
             st,
             "Critical-Path Evolution",
-            _export_bar("evolution")
+            header
+            + _export_bar("evolution")
             + _skipped_notice(skipped)
             + opt_banner
             + opt_form
@@ -11362,6 +11364,72 @@ def _groups_body(
         "within a row are OR-ed."
     )
     return tip + form + summary + scorecard + breakdown_html
+
+
+def _how_stable_header(ev: PathEvolution) -> str:
+    """Chapter 04 "How stable is the path" (ADR-0200): the data-driven takeaway + a churn KPI strip
+    + the Latest-critical-path and Total-churn bars, from the per-version critical-path snapshots.
+    Every figure is read from the evolution the page already computed (no engine math)."""
+    snaps = ev.snapshots
+    n_ver = len(snaps)
+    updates = max(n_ver - 1, 1)
+    entered = sum(len(s.entered) for s in snaps[1:])
+    left = sum(len(s.left) for s in snaps[1:])
+    latest = snaps[-1]
+    crit_now = len(latest.critical)
+    moves = [s.finish_delta_days for s in snaps[1:] if s.finish_delta_days is not None]
+    net = sum(moves) if moves else None
+    churn = entered + left
+
+    def _acts(x: int) -> str:
+        return "activity" if x == 1 else "activities"
+
+    if churn == 0:
+        stability = "held completely steady"
+    elif churn <= updates:
+        stability = "stayed largely stable"
+    else:
+        stability = "churned"
+    if net is None:
+        fin = ""
+    elif net > 0:
+        fin = f", and the finish slipped {net} calendar day{'s' if net != 1 else ''}"
+    elif net < 0:
+        fin = f", and the finish pulled in {abs(net)} calendar day{'s' if net != -1 else ''}"
+    else:
+        fin = ", while the finish held"
+    takeaway = (
+        f"Across {n_ver} versions the critical path {stability} — {entered} {_acts(entered)} "
+        f"entered it and {left} left{fin}."
+    )
+
+    kpi = _stat_cards(
+        [
+            ("Versions compared", str(n_ver)),
+            ("Critical now", str(crit_now)),
+            ("Entered (all updates)", str(entered)),
+            ("Left (all updates)", str(left)),
+            ("Net finish move", f"{net:+d} d" if net is not None else "&mdash;"),
+            ("Churn per update", f"{churn / updates:.1f}"),
+        ]
+    )
+    latest_bar = _status_stack(
+        "Latest critical path",
+        f"How the newest version's path formed — {latest.label}.",
+        [("Entered", len(latest.entered), "--ok"), ("Stayed", len(latest.stayed), "--muted")],
+        f"{crit_now} on the path now; {len(latest.left)} left since the prior version",
+    )
+    churn_bar = _status_stack(
+        "Total churn",
+        "Activities that entered vs left the critical path across every update.",
+        [("Entered", entered, "--ok"), ("Left", left, "--bad")],
+        f"over {updates} update{'s' if updates != 1 else ''}",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{latest_bar}{churn_bar}</div>'
+    )
 
 
 def _evolution_body(

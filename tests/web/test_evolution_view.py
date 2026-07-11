@@ -269,6 +269,34 @@ def test_evolution_export_xlsx_and_docx(client: TestClient) -> None:
     assert client.get("/export/pdf/evolution").status_code == 404
 
 
+def test_evolution_chapter_04_page_shell(client: TestClient) -> None:
+    """ADR-0200 — chapter 04 "How stable is the path": the data-driven takeaway h1, the churn
+    KPI strip, and the Latest-critical-path / Total-churn composition bars, all read from the
+    evolution the page already computes. The interactive stepper/Gantt scaffold survives beneath."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/evolution").text
+
+    # data-driven takeaway names the critical path and carries the real churn/slip figures
+    assert 'class="page-takeaway"' in page
+    assert "critical path" in page
+    assert "1 activity entered it and 38 left" in page  # golden P2->P5 churn
+    assert "the finish slipped 148 calendar days" in page  # known P2->P5 slip
+
+    # the six-KPI strip and both composition bars
+    assert 'class="ws-kpi"' in page and "Versions compared" in page and "Critical now" in page
+    assert "Latest critical path" in page and "Total churn" in page
+    assert 'class="stack-bar"' in page
+
+    # chapter chrome fires here (kicker + Continue -> chapter 05)
+    assert "CHAPTER 04 · HOW STABLE IS THE PATH" in page
+    assert "Chapter 05" in page
+
+    # the interactive evolution scaffold is untouched beneath the header
+    assert "id=prevEvo" in page and "id=evoChart" in page
+    assert "/static/path_evolution.js" in page
+
+
 def test_dashboard_and_nav_link_evolution(client: TestClient) -> None:
     # nav links it unconditionally; the dashboard body row appears with >= 2 versions
     _upload(client, "Project2")

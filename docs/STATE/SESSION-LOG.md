@@ -5120,3 +5120,27 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   test_path_page_shell_what_drives_the_date pins it. Version 1.0.8 -> 1.0.9 (cache-bust); wheel +
   9 installers rebuilt in lockstep.
 - Next: chapters 04-12 page shells one per PR (04 = /evolution next). Highest ADR = 0199.
+
+### 2026-07-11 — Mission Ops redesign step 3, chapter 04 "How stable is the path" (ADR-0200)
+- Fourth page shell of step 3: template applied to chapter 04 = Critical-Path Evolution
+  (/evolution). Presentation only. The route already builds compute_path_evolution(schedules, cpms,
+  target_uid=uid) (per-version CriticalSnapshots, scoped to any global target), so the headline
+  reads from it with no new computation. The header renders only past the existing
+  len(schedules) < 2 guard, so snapshots are always >= 2. Chapter chrome already fires (title
+  "Critical-Path Evolution" registered to chapter 04).
+- _how_stable_header(ev): takeaway "Across N versions the critical path <held completely steady /
+  stayed largely stable / churned> — E activities entered it and L left<, and the finish slipped /
+  pulled in D calendar days / while the finish held>." (honest net finish move; singular/plural +
+  activity/activities agreement); 6-KPI churn strip (Versions compared / Critical now / Entered all
+  updates / Left all updates / Net finish move / Churn per update); two _status_stack bars: Latest
+  critical path (Entered vs Stayed) and Total churn (Entered vs Left). Data from snapshots[-1]
+  critical/entered/stayed/left + cumulative len(entered/left) over snaps[1:] +
+  sum(finish_delta_days). No engine math; no target UID needed (scoped evolution).
+- Interactive scaffold (#prevEvo/#nextEvo/#evoPlay stepper, #evoChart, path_evolution.js, tier
+  selector, counterfactual panel, filter modes, export bar) untouched; header additive above it.
+  No new CSS (reuses ADR-0197 classes).
+- Chromium-verified console + daylight, zero console errors; counts consistent (Entered 1 + Stayed
+  3 = 4 "Critical now"; Entered 1 + Left 38 = churn 39; net +148d = golden P2->P5 slip). New
+  test_evolution_chapter_04_page_shell pins it. Version 1.0.9 -> 1.0.10 (cache-bust); wheel + 9
+  installers rebuilt in lockstep.
+- Next: chapters 05-12 page shells one per PR (05 "How it moved" = /trend next). Highest ADR = 0200.
