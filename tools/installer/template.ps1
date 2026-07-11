@@ -115,6 +115,23 @@ Ok ("Installed " + "{{WHEEL_NAME}}")
 # optional HUD telemetry enhancer (CPU% / temps on Windows) — best-effort, never fatal
 try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
+# --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
+# The wheel is pure Python; the 17 MB Java converter (tools\mpxj) rides in the repository
+# next to this installer and is copied beside the venv, where the runtime's walk-up
+# discovery finds it automatically (ADR-0193). Without it every .mpp import fails with
+# "MPXJ runner not found".
+$repoMpxj = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"
+if (Test-Path (Join-Path $repoMpxj "classes\MpxjToMspdi.class")) {
+    $destMpxj = Join-Path $InstallRoot "tools\mpxj"
+    New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
+    Copy-Item -Recurse -Force -Path (Join-Path $repoMpxj "*") -Destination $destMpxj
+    Ok "MPXJ converter deployed (native .mpp import enabled)"
+} else {
+    Warn2 "tools\mpxj not found next to this installer — native .mpp import stays OFF"
+    Warn2 "  (run the installer from the repository checkout, or set SF_MPXJ_HOME;"
+    Warn2 "  .mpp files can still be opened after exporting to MSPDI XML from MS Project)"
+}
+
 # a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)
 # can shadow this install in terminals and die with ModuleNotFoundError (operator hit this,
 # ADR-0192). The Desktop shortcut always launches the right venv; warn about the impostor.
@@ -221,6 +238,7 @@ $uninst = Join-Path $InstallRoot "Uninstall-ScheduleForensics.ps1"
 & "$stopCmd" | Out-Null
 `$desk = [Environment]::GetFolderPath('Desktop')
 `$menu = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs\Schedule Forensics'
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Schedule Forensics.lnk')
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Start Schedule Forensics.lnk')
 Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Stop Schedule Forensics.lnk')
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue `$menu
@@ -231,10 +249,11 @@ Write-Host 'Schedule Forensics removed.'
 @"
 Schedule Forensics — first run
 ==============================
-Start:  double-click "Start Schedule Forensics" on the Desktop.
+Start:  double-click "Schedule Forensics" on the Desktop (the ONE icon).
         Your browser opens http://127.0.0.1:$AppPort — everything runs ON THIS MACHINE.
-Stop:   double-click "Stop Schedule Forensics" (closing the browser window also
-        stops it after a short idle delay).
+Stop:   just close the browser window / click Quit in the app — the server AND the
+        local AI shut themselves down. (Stop-ScheduleForensics.cmd in $InstallRoot
+        exists only as a troubleshooting fallback.)
 Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model installed: $OllamaModel).
 .mpp:   opening native .mpp needs Java 17+ (the installer offered it); otherwise
@@ -252,24 +271,32 @@ $shell = New-Object -ComObject WScript.Shell
 $desk  = [Environment]::GetFolderPath("Desktop")
 $menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Schedule Forensics"
 New-Item -ItemType Directory -Force -Path $menu | Out-Null
-foreach ($pair in @(@("Start Schedule Forensics", $startCmd), @("Stop Schedule Forensics", $stopCmd))) {
-    foreach ($dir in @($desk, $menu)) {
-        $lnk = $shell.CreateShortcut((Join-Path $dir ($pair[0] + ".lnk")))
-        $lnk.TargetPath = $pair[1]
-        $lnk.WorkingDirectory = $InstallRoot
-        $lnk.Description = $pair[0]
-        $lnk.Save()
-    }
+# ONE icon (operator, ADR-0193): the app stops ITSELF (and the local AI it manages) when
+# the browser window closes or Quit is clicked — a separate Stop icon only confused things.
+# The prior installs' Start/Stop desktop icons are removed; Stop-ScheduleForensics.cmd
+# stays in the install folder as a troubleshooting fallback.
+foreach ($old in @("Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk")) {
+    Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $desk $old)
+    Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $menu $old)
+}
+foreach ($dir in @($desk, $menu)) {
+    $lnk = $shell.CreateShortcut((Join-Path $dir "Schedule Forensics.lnk"))
+    $lnk.TargetPath = (Join-Path $VenvDir "Scripts\pythonw.exe")
+    $lnk.Arguments  = "-c `"from schedule_forensics.launcher import main; main(port=$AppPort)`""
+    $lnk.WorkingDirectory = $InstallRoot
+    $lnk.Description = "Schedule Forensics — starts the tool; closing the browser stops everything"
+    $lnk.Save()
 }
 $unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall Schedule Forensics.lnk"))
 $unlnk.TargetPath = "powershell.exe"
 $unlnk.Arguments  = "-ExecutionPolicy Bypass -File `"$uninst`""
 $unlnk.Save()
-Ok "Shortcuts on Desktop + Start Menu; uninstaller + README in $InstallRoot"
+Ok "ONE desktop icon: 'Schedule Forensics' (self-stopping); uninstaller + README in $InstallRoot"
 
 Stop-Transcript | Out-Null
 Write-Host ""
-Write-Host "DONE — double-click 'Start Schedule Forensics' on the Desktop to begin." -ForegroundColor Green
+Write-Host "DONE — double-click 'Schedule Forensics' on the Desktop to begin." -ForegroundColor Green
+Write-Host "(Close the browser window to stop everything, including the local AI.)"
 Write-Host "(Everything runs locally at http://127.0.0.1:$AppPort — no data leaves this machine.)"
 }
 

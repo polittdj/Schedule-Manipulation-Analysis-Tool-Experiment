@@ -4946,3 +4946,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   stale-shim shadow warning (names the impostor path, points at the Desktop shortcut).
   Runtime ImporterError hint updated to name the no-admin drop-in (wheel rebuilt).
   Static pins in tests/installer. Highest ADR = 0192.
+
+### 2026-07-10 (cont.) — deployed .mpp broken + one self-stopping icon (ADR-0193)
+- Operator screenshots: deployed tool failed every .mpp with "MPXJ runner not found under
+  ...venv\Lib\tools\mpxj"; three overlapping desktop icons (new Start/Stop pair + an older
+  "Schedule Forensics"); wants ONE icon and everything (incl. AI) to stop on close.
+- Root cause 1: the wheel is pure Python — the 17 MB Java converter (tools/mpxj) never
+  ships, and _mpxj_home()'s parents[3] lands INSIDE the deployed venv. Fix: walk-up
+  discovery over every enclosing folder (repo + deployed layouts; SF_MPXJ_HOME still
+  first) + all three installer families copy the repo's tools/mpxj to
+  <install root>/tools/mpxj with an honest stays-OFF warning outside a checkout.
+  Sandbox-verified: wheel-venv + copied mpxj parses Hard_File.mpp (142 tasks, the exact
+  operator-failing file); removing it reproduces the honest error; repo layout unchanged;
+  the REAL Linux installer smoke-run deploys it and its venv parses the same file.
+- Root cause 2 (icons): the app already self-stops (auto_shutdown on browser close) and
+  tears down the local AI in-process (ADR-0122 finally/atexit) — the icon pair was the
+  only problem. Installer now creates ONE "Schedule Forensics" desktop/menu icon targeting
+  venv pythonw directly, removes the old Start/Stop icons on upgrade + uninstall, and
+  keeps Stop-ScheduleForensics.cmd in the install folder as a fallback (README updated).
+- Pins: _mpxj_home walk-up unit test (fake deployed tree) + installer static pins
+  (mpxj copy in ps1/sh/command, single icon, legacy cleanup). Highest ADR = 0193.

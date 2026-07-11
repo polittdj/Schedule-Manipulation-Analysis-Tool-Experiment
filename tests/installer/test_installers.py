@@ -199,3 +199,27 @@ def test_ps1_java_and_python_install_need_no_admin() -> None:
         assert "Microsoft.OpenJDK.17" not in ps1
         assert "aka.ms/download-jdk/microsoft-jdk-17-windows-x64.zip" in ps1
         assert "Find-JavaNoAdmin" in ps1
+
+
+def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
+    """Operator 2026-07-10 (ADR-0193): (1) every deployed .mpp import failed — the wheel is
+    pure Python and the 17 MB Java converter never shipped; each installer now copies the
+    repo's tools/mpxj beside the venv, where the runtime walk-up discovery finds it, with an
+    honest warning when the installer is run outside the checkout. (2) One desktop icon:
+    'Schedule Forensics' launches pythonw directly (the app stops itself AND the local AI on
+    browser close / Quit — ADR-0122); the old Start/Stop desktop icons are removed on
+    upgrade and by the uninstaller."""
+    tpl_ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
+    assert 'Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"' in tpl_ps1
+    assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import stays OFF" in tpl_ps1
+    assert '"Schedule Forensics.lnk"' in tpl_ps1  # the ONE icon
+    assert "pythonw.exe" in tpl_ps1  # launched directly (self-stopping app, no console)
+    assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
+    for family in ("sh", "command"):
+        tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
+        assert 'cp -R "$REPO_MPXJ"' in tpl and "MpxjToMspdi.class" in tpl, family
+    for tier in TIERS:  # the generated installers carry all of it
+        ps1 = _read(tier, "ps1")
+        assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
+        for family in ("sh", "command"):
+            assert 'cp -R "$REPO_MPXJ"' in _read(tier, family), (tier, family)

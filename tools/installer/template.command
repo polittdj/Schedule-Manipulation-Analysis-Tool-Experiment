@@ -92,6 +92,21 @@ ok "Installed {{WHEEL_NAME}}"
 # optional HUD telemetry enhancer (CPU% / temps on macOS) — best-effort, never fatal
 "$VENV_DIR/bin/python" -m pip install --quiet psutil >/dev/null 2>&1 || true
 
+# --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
+# The wheel is pure Python; the Java converter (tools/mpxj) rides in the repository next
+# to this installer and is copied beside the venv, where the runtime's walk-up discovery
+# finds it automatically (ADR-0193). Without it every .mpp import fails.
+REPO_MPXJ="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/tools/mpxj"
+if [ -f "$REPO_MPXJ/classes/MpxjToMspdi.class" ]; then
+  mkdir -p "$INSTALL_ROOT/tools"
+  rm -rf "$INSTALL_ROOT/tools/mpxj"
+  cp -R "$REPO_MPXJ" "$INSTALL_ROOT/tools/mpxj"
+  ok "MPXJ converter deployed (native .mpp import enabled)"
+else
+  warn "tools/mpxj not found next to this installer — native .mpp import stays OFF"
+  warn "  (run the installer from the repository checkout, or set SF_MPXJ_HOME)"
+fi
+
 # --- 4. Ollama + this tier's local AI model -------------------------------------------
 step "Local AI ($OLLAMA_MODEL) — the tool runs fully without it (skippable)"
 if [ "$SMOKE" = "1" ]; then

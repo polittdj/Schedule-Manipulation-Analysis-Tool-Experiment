@@ -1,6 +1,23 @@
-# Handoff — 2026-07-10 (fully no-admin Windows install; highest ADR 0192)
+# Handoff — 2026-07-10 (MPXJ deployed beside the venv + one icon; highest ADR 0193)
 
-> ## STATUS (current) — ADR-0192 no-admin install
+> ## STATUS (current) — ADR-0193 deployed .mpp + single icon
+>
+> - Operator's deployed tool failed EVERY .mpp: "MPXJ runner not found under
+>   …venv\Lib\tools\mpxj" — the wheel is pure Python, the 17 MB Java converter never
+>   shipped, and `_mpxj_home()`'s parents[3] lands inside the venv. Fix: walk-up discovery
+>   (every enclosing folder, repo + deployed layouts, SF_MPXJ_HOME still first) + all three
+>   installer families copy the repo's tools/mpxj to <install root>/tools/mpxj (honest
+>   warning outside a checkout). Sandbox-verified end-to-end: wheel-venv + copied mpxj
+>   parses Hard_File.mpp (142 tasks); removing it reproduces the honest error; the REAL
+>   Linux installer smoke-run deploys it and its venv parses the same file.
+> - ONE desktop icon ("Schedule Forensics" → venv pythonw directly): the app already
+>   self-stops on browser close (auto_shutdown) and tears down the local AI in-process
+>   (ADR-0122), so the Start/Stop icon pair is gone (removed on upgrade + uninstall);
+>   Stop-ScheduleForensics.cmd stays in the install folder as a fallback.
+
+# (prior) Handoff — 2026-07-10 (fully no-admin Windows install; ADR 0192)
+
+> ## STATUS — ADR-0192 no-admin install
 >
 > - Operator has NO admin rights: the winget OpenJDK MSI died at the UAC prompt (1602) yet
 >   printed "[ok] Java 17 installed"; and `schedule-forensics` in the terminal ran a stale
