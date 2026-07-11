@@ -5221,3 +5221,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Operator directive in flight: full metric-engine audit + insight research -> prompt-formatted
   report (two background agents). Next: chapter 07 "How we execute" (/performance). Highest
   ADR = 0203.
+
+### 2026-07-11 — Metric Workbench: Acumen-style selectable metric library (ADR-0204)
+- Operator directive: pick any Acumen-library metric, compute it for every schedule file like Acumen
+  in a ribbon (metric list left, versions chronological columns), click a value to drill the
+  underlying tasks below with filter/sort/group-by/add-columns, export to Excel.
+- Law-2 decision: the raw NASA .aft library holds 1,403 Acumen-formula-language metrics; evaluating
+  those from scratch would emit UNVALIDATED numbers (forbidden). The Workbench library is therefore
+  the tool's VALIDATED metric set, presented Acumen-style, and the UI says so.
+- NEW engine/metric_catalog.py: aggregates (NO new math) the 16 DCMA-14 audit checks (offenders =
+  citations) + the ribbon Schedule-Quality/Float extras (Logic Density, Insufficient Detail, Merge
+  Hotspot, Avg/Max Float) = 21 metrics across 3 families. catalog_entries()/catalog_families() =
+  stable metadata; evaluate_catalog(sch, cpm, audit=None) -> CatalogRow per metric (value/unit/
+  status/offender_uids), reusing the cached audit when given. A metric the audit does not score is NA,
+  never a fabricated 0. Expandable (EVM/Completion/HMI/FEI register the same way — tracked follow-on).
+- Web: /workbench (server-rendered grouped library + ribbon/drill hosts); /api/workbench (full matrix,
+  versions oldest->newest via ordered_versions + cached _Analysis.audit, no re-audit); /api/workbench/
+  drill?metric&file (offender rows + every available project field value per row so the client does
+  group/column/sort/filter with no refetch). workbench.js (vendored, CSP-safe, DOM-built): ribbon
+  (metrics x versions, colored pass/fail/NA, clickable offender cells) + drill grid (text filter,
+  click-sort headers, group-by picker over project fields, add/remove-column picker, live Excel link).
+  .wb-* CSS from theme tokens (all four views). Excel: /export/{fmt}/workbench (ribbon matrix) +
+  /export/{fmt}/workbench-drill/{file}?metric&cols (one cell's activities + chosen columns).
+- Chromium-verified console + daylight, zero console errors; High-Float cell = Acumen 44.44%/44
+  offenders; drill groups by WBS. 11 new tests (catalog fidelity + page/API/drill/export); nav tests
+  still green. Version 1.0.13 -> 1.0.14; wheel + 9 installers lockstep.
+- Also delivered: a full engine metric-audit + insight-research report as a re-feedable prompt (sent
+  to the operator, NOT committed) — PART A 21 fixes in 4 tiers (A1 TCPI direction + A2 empty-pop PASS
+  confirmed bugs); PART B 27 new health metrics mapped to story chapters with citations.
+- Next: Mission Ops chapters 07-12 (07 = /performance); advanced-SRA phase (issue #331); audit fixes /
+  Part-B insights on request; expand Workbench families. Highest ADR = 0204.

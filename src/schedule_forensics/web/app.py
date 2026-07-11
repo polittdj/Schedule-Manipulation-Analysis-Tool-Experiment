@@ -99,10 +99,16 @@ from schedule_forensics.engine.grouping import (
     available_fields,
     available_fields_union,
     distinct_values,
+    field_value,
     filter_schedule,
     group_values,
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
+from schedule_forensics.engine.metric_catalog import (
+    catalog_entries,
+    catalog_families,
+    evaluate_catalog,
+)
 from schedule_forensics.engine.metrics import (
     RibbonMetrics,
     WBSGroup,
@@ -1396,6 +1402,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     (
         "SETUP",
         (
+            _Chapter("", "Metric Workbench", "/workbench", (), ("Metric Workbench",), ""),
             _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
             _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
             _Chapter("", "Metric Dictionary", "/help", (), ("Metric Dictionary",), ""),
@@ -3531,6 +3538,204 @@ def create_app(
             (Table(f"Ribbon drill — {metric}", headers, body),),
         )
         return _export_response(fmt, tableset, "ribbon-drill")
+
+    # ── Metric Workbench (ADR-0204): pick any library metric, computed per version like Acumen ──
+
+    def _workbench_versions() -> list[tuple[str, Schedule, CPMResult, _Analysis]]:
+        """Loaded solvable versions oldest→newest, each with its scoped schedule + cached analysis."""
+        st = session()
+        out: list[tuple[str, Schedule, CPMResult, _Analysis]] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                continue
+            out.append((key, st.scope(raw), a.cpm, a))
+        return out
+
+    @app.get("/workbench", response_class=HTMLResponse)
+    def workbench_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Metric Workbench",
+                "<div class=panel>Load one or more schedules to build the metric workbench.</div>",
+            )
+        return _page(st, "Metric Workbench", _workbench_body())
+
+    @app.get("/api/workbench")
+    def workbench_json() -> JSONResponse:
+        versions = _workbench_versions()
+        if not versions:
+            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+        entries = catalog_entries()
+        cells: dict[str, dict[str, object]] = {e.metric_id: {} for e in entries}
+        version_rows: list[dict[str, object]] = []
+        for key, sch, cpm, a in versions:
+            version_rows.append(
+                {
+                    "key": key,
+                    "label": sch.source_file or sch.name,
+                    "status": sch.status_date.date().isoformat() if sch.status_date else None,
+                }
+            )
+            rows = evaluate_catalog(sch, cpm, a.audit)
+            for e in entries:
+                r = rows[e.metric_id]
+                cells[e.metric_id][key] = {
+                    "value": r.value,
+                    "unit": r.unit,
+                    "status": r.status,
+                    "offenders": len(r.offender_uids),
+                }
+        return JSONResponse(
+            {
+                "versions": version_rows,
+                "families": list(catalog_families()),
+                "metrics": [
+                    {
+                        "id": e.metric_id,
+                        "name": e.name,
+                        "family": e.family,
+                        "unit": e.unit,
+                        "describe": e.describe,
+                        "threshold": e.threshold,
+                        "lower_is_better": e.lower_is_better,
+                    }
+                    for e in entries
+                ],
+                "cells": cells,
+            }
+        )
+
+    def _workbench_drill_rows(
+        sch: Schedule, a: _Analysis, uids: tuple[int, ...]
+    ) -> tuple[list[str], list[dict[str, object]]]:
+        """The offender activities as grid rows: the standard columns plus every available field
+        value (so the client can add-column / group-by / sort with no refetch). Offender order."""
+        fields = list(available_fields(sch))
+        by_uid = sch.tasks_by_id
+        wanted = {u: i for i, u in enumerate(uids)}
+        rows: list[dict[str, object]] = []
+        for act in a.activity_rows:
+            uid = act.get("unique_id")
+            if not isinstance(uid, int) or uid not in wanted:
+                continue
+            task = by_uid.get(uid)
+            field_map = {f: field_value(sch, task, f) for f in fields} if task is not None else {}
+            rows.append(
+                {
+                    "uid": uid,
+                    "Name": act.get("name"),
+                    "Duration (d)": act.get("duration_days"),
+                    "% complete": act.get("percent_complete"),
+                    "Start": act.get("start"),
+                    "Finish": act.get("finish"),
+                    "fields": field_map,
+                }
+            )
+        rows.sort(key=lambda r: wanted.get(cast("int", r["uid"]), 0))
+        return fields, rows
+
+    @app.get("/api/workbench/drill")
+    def workbench_drill_json(metric: str = Query(...), file: str = Query(...)) -> JSONResponse:
+        st = session()
+        raw = st.schedules.get(file)
+        if raw is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        try:
+            a = st.analysis_for(file, raw)
+        except CPMError:
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
+        sch = st.scope(raw)
+        rows = evaluate_catalog(sch, a.cpm, a.audit)
+        row = rows.get(metric)
+        if row is None:
+            return JSONResponse({"error": "unknown metric"}, status_code=422)
+        entry = next((e for e in catalog_entries() if e.metric_id == metric), None)
+        fields, drill = _workbench_drill_rows(sch, a, row.offender_uids)
+        return JSONResponse(
+            {
+                "metric": metric,
+                "metric_name": entry.name if entry else metric,
+                "file": file,
+                "label": sch.source_file or sch.name,
+                "columns": ["Name", "Duration (d)", "% complete", "Start", "Finish"],
+                "fields": fields,
+                "rows": drill,
+            }
+        )
+
+    @app.get("/export/{fmt}/workbench")
+    def export_workbench(fmt: str) -> Response:
+        """The whole workbench ribbon (metrics x versions) as one Excel/Word table."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        versions = _workbench_versions()
+        if not versions:
+            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+        labels = [sch.source_file or sch.name for _k, sch, _c, _a in versions]
+        per_version = [evaluate_catalog(sch, cpm, a.audit) for _k, sch, cpm, a in versions]
+        headers = ("Metric", "Family", "Unit", *labels)
+        body: list[tuple[Cell, ...]] = []
+        for e in catalog_entries():
+            cells: list[Cell] = []
+            for rows in per_version:
+                r = rows[e.metric_id]
+                cells.append(
+                    "NA" if r.status == "NA" and r.unit != "days" and r.value == 0 else r.value
+                )
+            body.append((e.name, e.family, e.unit, *cells))
+        tableset = TableSet(
+            "Metric Workbench",
+            (Table("Metric library vs versions (oldest first)", headers, tuple(body)),),
+        )
+        return _export_response(fmt, tableset, "metric-workbench")
+
+    @app.get("/export/{fmt}/workbench-drill/{name}")
+    def export_workbench_drill(
+        fmt: str, name: str, metric: str = Query(...), cols: str = Query("")
+    ) -> Response:
+        """The activities behind one workbench cell (file x metric) + any extra field columns."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        st = session()
+        raw = st.schedules.get(name)
+        if raw is None:
+            return JSONResponse({"error": "unknown schedule"}, status_code=404)
+        try:
+            a = st.analysis_for(name, raw)
+        except CPMError:
+            return JSONResponse({"error": "schedule does not solve"}, status_code=422)
+        sch = st.scope(raw)
+        row = evaluate_catalog(sch, a.cpm, a.audit).get(metric)
+        if row is None:
+            return JSONResponse({"error": "unknown metric"}, status_code=422)
+        _fields, drill = _workbench_drill_rows(sch, a, row.offender_uids)
+        extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        headers = ("UID", "Name", "Duration (d)", "% complete", "Start", "Finish", *extra)
+
+        def _cell(v: object) -> str | int | float | None:
+            return v if isinstance(v, str | int | float) or v is None else str(v)
+
+        body = tuple(
+            (
+                _cell(r["uid"]),
+                _cell(r["Name"]),
+                _cell(r["Duration (d)"]),
+                _cell(r["% complete"]),
+                _cell(r["Start"]),
+                _cell(r["Finish"]),
+                *(_cell(cast("dict[str, object]", r["fields"]).get(c)) for c in extra),
+            )
+            for r in drill
+        )
+        tableset = TableSet(
+            f"{name} — workbench {metric}",
+            (Table(f"Workbench drill — {metric}", headers, body),),
+        )
+        return _export_response(fmt, tableset, "workbench-drill")
 
     @app.get("/export/{fmt}/resource-drill")
     def export_resource_drill(
@@ -8773,6 +8978,52 @@ def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetri
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{dcma_bar}{logic_bar}</div>'
     )
+
+
+def _workbench_body() -> str:
+    """The Metric Workbench (ADR-0204): an Acumen-style page — the selectable metric library on
+    the left, the ribbon (chosen metrics x versions, oldest-first) on the right, and a
+    click-to-drill grid (filter / sort / group / add columns / Excel) below. The library is
+    server-rendered so it works before JS; ``workbench.js`` reads the checkboxes to draw the
+    ribbon and drill via ``/api/workbench`` + ``/api/workbench/drill``."""
+    families: dict[str, list[tuple[str, str, str]]] = {}
+    for e in catalog_entries():
+        families.setdefault(e.family, []).append((e.metric_id, e.name, e.describe))
+    groups = ""
+    for fam, metrics in families.items():
+        checks = "".join(
+            f'<label class=wb-metric title="{_e(desc)}">'
+            f'<input type=checkbox class=wb-pick value="{_e(mid)}" checked> {_e(name)}</label>'
+            for mid, name, desc in metrics
+        )
+        groups += (
+            f'<div class=wb-family data-family="{_e(fam)}">'
+            f"<div class=wb-family-head><b>{_e(fam)}</b>"
+            f'<button type=button class="linkbtn wb-fam-all" data-family="{_e(fam)}">all</button>'
+            f'<button type=button class="linkbtn wb-fam-none" data-family="{_e(fam)}">none</button>'
+            f"</div>{checks}</div>"
+        )
+    return f"""
+<div class=panel>
+<h2>Metric Workbench</h2>
+<p class=muted>Pick any metrics from the <b>validated library</b> on the left; each is computed for
+every loaded schedule <b>independently</b> and laid out oldest&rarr;newest, Acumen-style. Click any
+value to list the activities behind it &mdash; then filter, sort, group by a project field, add
+columns, and export. Every figure is the same gate-locked number the rest of the tool reports
+(no re-interpretation of raw formulas).</p>
+<div class=viz-controls>
+<button type=button id=wbAll class=linkbtn>Select all</button>
+<button type=button id=wbNone class=linkbtn>Clear</button>
+<a class=btn href="/export/xlsx/workbench">Export ribbon (Excel)</a>
+<a class=btn href="/export/docx/workbench">Ribbon (Word)</a>
+</div>
+<div class=wb-layout>
+<aside class=wb-library aria-label="Metric library">{groups}</aside>
+<div class=wb-ribbon-wrap><div id=wbRibbon class=wb-ribbon aria-live=polite></div></div>
+</div>
+<div id=wbDrill class=wb-drill></div>
+</div>
+<script src="/static/workbench.js"></script>"""
 
 
 def _ribbon_body(
