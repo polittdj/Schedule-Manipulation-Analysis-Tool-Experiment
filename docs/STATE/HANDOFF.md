@@ -1,6 +1,36 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 04 page shell; highest ADR 0200)
+# Handoff — 2026-07-11 (SRA plain-language conclusions + Excel; highest ADR 0201)
 
-> ## STATUS (current) — ADR-0200 chapter 04 "How stable is the path" page shell
+> ## STATUS (current) — ADR-0201 SRA "what the results mean" conclusions layer
+>
+> - Operator committed three reference docs to `00_REFERENCE_INTAKE/references/` and asked for a
+>   deep-dive + "draw conclusions about the results ... in simple and easy to understand verbiage
+>   ... downloadable to MS Excel": Hulett's "Advanced Project Schedule Risk Analysis" (Lisbon
+>   .ppt, 276 slides), INT-02 ICEAA 2015 (.pdf), and the SEER "SRA Concepts, Methods & Techniques"
+>   (.docx). Deep-dive verdict: the SRA engine already covers most of their content (3-point
+>   triangular/PERT on remaining, criticality index, Spearman tornado, the Hulett risk-driver
+>   method via RiskEvent, blanket correlation, constraint capping, P-dates/CDF/histogram) — what
+>   was missing was the interpretation layer. Remaining engine gaps (branching, correlation
+>   matrix + eigenvalue test, LHS, JCL/FICSM football, STAT/GAO scorecards, readiness gate,
+>   scenarios, buffer sizing) tracked in GitHub issue #331 as the dedicated advanced-SRA phase.
+> - **`engine/sra_conclusions.py`** (ADR-0201): deterministic template Conclusion cards (topic /
+>   severity / finding / meaning / evidence) — NO AI, no new statistics; a test enforces every
+>   digit in a finding is backed by that card's evidence. Cards: planned-date realism (Hulett
+>   tiers incl. "<15% likely"), commitment dates (manage P50 / promise P80), contingency needed,
+>   predictability window, hidden drivers (CI≥40% not plan-critical = merge bias), critical-path
+>   reliance, top duration drivers, costliest risks, hard constraints (results understate),
+>   input quality, sampling precision (2,500/10,000), correlation; SSI zero-spread run says "no
+>   uncertainty inputs" honestly instead of quoting meaningless percentiles.
+> - Wiring: `/api/sra` + `/api/sra/ssi` payloads carry `conclusions`; sra.js/sra_ssi.js render
+>   CSP-safe cards into #sraConclusions / #ssiConclusions; `/export/xlsx/sra` now OPENS with the
+>   "What the results mean" table (the operator's Excel deliverable). New .concl-* CSS uses theme
+>   tokens only. 12 engine + 4 web tests; Chromium-verified console + daylight, zero console
+>   errors. Version 1.0.10→1.0.11, wheel + 9 installers lockstep. Highest ADR = 0201.
+> - **Next**: Mission Ops chapters 05-12 page shells one per PR (05 "How it moved" = /trend);
+>   the advanced-SRA phase per issue #331; chart-contract toolbar PR; vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 04 page shell; highest ADR 0200)
+
+> ## STATUS — ADR-0200 chapter 04 "How stable is the path" page shell
 >
 > - Fourth page shell of step 3: the template applied to chapter 04 = Critical-Path Evolution
 >   (`/evolution`). Presentation only. The route already builds

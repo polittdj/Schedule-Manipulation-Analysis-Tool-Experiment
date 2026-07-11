@@ -180,6 +180,11 @@ from schedule_forensics.engine.sra import (
     compute_sra_ssi,
     factor_to_bc_wc,
 )
+from schedule_forensics.engine.sra_conclusions import (
+    conclusions_as_dicts,
+    conclusions_from_sra,
+    conclusions_from_ssi,
+)
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
     compute_float_ratio_trend,
@@ -4245,7 +4250,7 @@ def create_app(
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        return JSONResponse(_sra_data(st, sch, result))
+        return JSONResponse(_sra_data(st, sch, cpm, result))
 
     # --- SSI Schedule Risk & Opportunity Analysis (ADR-0123) -------------------------------
     @app.post("/sra/ssi-run-config")
@@ -9058,6 +9063,9 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         # dense plotting series (realigned dates): the cumulative S-curve + the finish-date histogram
         "s_curve": [{"date": d, "p": p} for d, p in result.s_curve],
         "finish_hist": [{"date": d, "count": c} for d, c in result.finish_hist],
+        # plain-language "what the results mean" cards (ADR-0201) — deterministic templates
+        # filled with the run's own figures; sra_ssi.js renders them under the result table
+        "conclusions": conclusions_as_dicts(conclusions_from_ssi(sch, result)),
     }
 
 
@@ -9279,8 +9287,23 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
 def _ssi_export_tables(
     st: SessionState, sch: Schedule, result: SSIResult, oat: Sequence[OATSensitivity]
 ) -> TableSet:
-    """The six-table SSI hand-out (ADR-0123): run setup, per-task durations, risk register,
-    focus-finish results, OAT sensitivity, and the two 5x5 matrices."""
+    """The SSI hand-out (ADR-0123): the plain-language conclusions (ADR-0201) lead, then run
+    setup, per-task durations, risk register, focus-finish results, OAT sensitivity, and the
+    two 5x5 matrices."""
+    conclusions = Table(
+        "What the results mean",
+        ("Topic", "Severity", "Finding", "What it means", "Evidence"),
+        tuple(
+            (
+                c.topic,
+                c.severity.upper(),
+                c.finding,
+                c.meaning,
+                "; ".join(f"{label}: {value}" for label, value in c.evidence),
+            )
+            for c in conclusions_from_ssi(sch, result)
+        ),
+    )
     mpd = sch.calendar.working_minutes_per_day or 480
     names = sch.tasks_by_id
     focus_name = (
@@ -9409,7 +9432,7 @@ def _ssi_export_tables(
     )
     return TableSet(
         f"Schedule Risk & Opportunity Analysis - {sch.name}",
-        (setup, durations, risks, results, sens, risk_matrix, opp_matrix),
+        (conclusions, setup, durations, risks, results, sens, risk_matrix, opp_matrix),
     )
 
 
@@ -10021,7 +10044,9 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <button id=ssiRun type=button>Run SRA</button>
 <button id=ssiOat type=button title="Deterministic one-at-a-time Best/Worst swing on the focus event (2xN CPM solves)">Run sensitivity</button></div>
 <p id=ssiStatus class=muted aria-live=polite></p>
-<div id=ssiResult></div><div id=ssiCharts class=ssi-charts></div>
+<div id=ssiResult></div>
+<div id=ssiConclusions class=sra-conclusions data-no-i18n></div>
+<div id=ssiCharts class=ssi-charts></div>
 <div id=ssiMatrices class=ssi-matrices></div>
 <p class=muted style="font-size:11px">Tip: each chart and matrix has its own toolbar (full screen, zoom in/out, reset) to enlarge or shrink it, and hovering any point, bar, or matrix cell calls out its values (a matrix cell lists the risks that land there).</p>
 <h3>Sensitivity — deterministic one-at-a-time (OAT)</h3>
@@ -10171,6 +10196,8 @@ def _sra_body(st: SessionState) -> str:
             "overrides). A duration-only run is a <i>schedule</i> confidence level &mdash; JCL "
             "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
         )
+    # B608 is bandit's SQL heuristic tripping on HTML ("<select ..." + "drawn from the latest
+    # run" in one f-string) — this is a server-rendered page template, no SQL anywhere.
     return f"""
 {top_file_panel}
 {_sra_explainers()}
@@ -10191,6 +10218,11 @@ below P50). Per-activity criticality and duration sensitivity drive the tornado.
 <button id=sraRun type=button>Run simulation</button>
 </div>
 <p id=sraStatus class=muted aria-live=polite></p></div>
+<div class=panel><h2>What the results mean</h2>
+<p class=muted>Plain-language conclusions drawn from the latest run &mdash; each card names the
+evidence figures behind it (nothing here is AI-generated; the sentences are templates filled with
+the run's own numbers). Refreshed on every run and included first in the Excel export.</p>
+<div id=sraConclusions class=sra-conclusions data-no-i18n></div></div>
 <div class=panel><h2>Risk inputs</h2>
 <p class=muted>These uncertainty ranges feed the next simulation run. The <b>global</b> triangular
 applies to every activity's <i>remaining</i> duration (the standard "Quick Risk" screening
@@ -10229,10 +10261,12 @@ markers and the deterministic CPM finish annotated with the percentile it sits a
 <p class=muted>The activities whose duration most drives the project finish (Spearman rank
 correlation), with each activity's Criticality Index and Schedule Sensitivity Index.</p>
 <div id=sraSens class=chart-host></div></div>
-<script src="/static/sra.js"></script>"""
+<script src="/static/sra.js"></script>"""  # nosec B608 (HTML, not SQL)
 
 
-def _sra_data(st: SessionState, sch: Schedule, result: SRAResult) -> dict[str, object]:
+def _sra_data(
+    st: SessionState, sch: Schedule, cpm: CPMResult, result: SRAResult
+) -> dict[str, object]:
     """The SRA results payload for ``sra.js`` — offsets resolved to ISO dates on the calendar."""
     cal = sch.calendar
     ps = sch.project_start
@@ -10288,6 +10322,9 @@ def _sra_data(st: SessionState, sch: Schedule, result: SRAResult) -> dict[str, o
             }
             for d in result.risk_drivers
         ],
+        # plain-language "what the results mean" cards (ADR-0201) — deterministic templates
+        # filled with the run's own figures; sra.js renders them under the run controls
+        "conclusions": conclusions_as_dicts(conclusions_from_sra(sch, cpm, result)),
     }
 
 

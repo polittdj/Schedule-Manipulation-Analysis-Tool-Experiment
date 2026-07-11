@@ -5144,3 +5144,36 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   test_evolution_chapter_04_page_shell pins it. Version 1.0.9 -> 1.0.10 (cache-bust); wheel + 9
   installers rebuilt in lockstep.
 - Next: chapters 05-12 page shells one per PR (05 "How it moved" = /trend next). Highest ADR = 0200.
+
+### 2026-07-11 — SRA plain-language conclusions + Excel export (ADR-0201)
+- Operator committed three reference docs to 00_REFERENCE_INTAKE/references/ and asked for a
+  deep-dive plus a conclusions layer "that tell(s) the user what the results mean in simple and
+  easy to understand verbiage that is all downloadable to MS Excel": Hulett "Advanced Project
+  Schedule Risk Analysis" (Lisbon .ppt, PPT97 records parsed directly — LibreOffice could not
+  load it), INT-02 ICEAA 2015 (.pdf), SEER "SRA Concepts, Methods & Techniques" (.docx).
+- Deep-dive verdict: the SRA engine already covers most of the three docs (3-point
+  triangular/Beta-PERT on remaining duration with completed work fixed = Hulett's statused rule;
+  criticality index = "risk criticality"; Spearman tornado; the Hulett risk-driver method via
+  RiskEvent probability x multiplicative impact = shared-driver correlation; blanket correlation;
+  hard-constraint capping; P10/50/80/90 + CDF/histogram). Remaining gaps (probabilistic +
+  conditional branching, correlation matrix + eigenvalue feasibility, Latin Hypercube, JCL/FICSM
+  football, NASA STAT + GAO scorecards, SRA-readiness gate, scenario comparison, buffer sizing)
+  recorded in GitHub issue #331 as the dedicated advanced-SRA phase.
+- NEW engine/sra_conclusions.py: frozen Conclusion cards (topic/severity/finding/meaning/
+  evidence), conclusions_from_sra + conclusions_from_ssi adapters. Deterministic templates
+  filled with the run's own figures — NO AI, no new statistics; test-enforced: every digit in a
+  finding is backed by that card's evidence pairs. Cards: planned-date realism (Hulett tiers),
+  commitment dates (manage P50/promise P80), contingency needed, predictability window, hidden
+  drivers (CI>=40% not plan-critical = merge bias / risk-critical path), critical-path reliance,
+  top duration drivers, costliest risks, hard constraints, input quality, sampling precision
+  (2,500/10,000 Hulett), correlation. SSI zero-spread run -> honest "No uncertainty inputs" card
+  instead of meaningless percentiles.
+- Wiring: /api/sra + /api/sra/ssi payloads carry conclusions; sra.js + sra_ssi.js render
+  CSP-safe cards (#sraConclusions panel, #ssiConclusions); /export/xlsx/sra now OPENS with the
+  "What the results mean" table (Topic/Severity/Finding/What it means/Evidence). New .concl-*
+  CSS from theme tokens only (all four views).
+- 12 engine tests (tiers, number agreement, degenerate-run honesty, figure-backing,
+  determinism) + 4 web tests (page hosts, both payloads, Excel table). Chromium-verified console
+  + daylight, zero console errors. Version 1.0.10 -> 1.0.11; wheel + 9 installers lockstep.
+- Next: Mission Ops chapters 05-12 one per PR (05 = /trend); advanced-SRA phase per issue #331.
+  Highest ADR = 0201.
