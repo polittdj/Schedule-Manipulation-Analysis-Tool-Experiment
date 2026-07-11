@@ -252,3 +252,22 @@ def test_mpxj_home_env_override(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.delenv("SF_MPXJ_HOME", raising=False)
     # Default points at the repo's vendored runner.
     assert mpp_mpxj._mpxj_home().name == "mpxj"
+
+
+def test_mpxj_home_walks_up_to_the_deployed_layout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Operator regression 2026-07-10 (ADR-0193): the deployed venv reported "MPXJ runner
+    not found under ...venv\\Lib\\tools\\mpxj" — the wheel is pure Python and parents[3]
+    lands inside the venv. The installer now copies tools/mpxj BESIDE the venv
+    (…/ScheduleForensics/tools/mpxj) and discovery walks every enclosing folder, so the
+    deployed layout is found with zero configuration."""
+    monkeypatch.delenv("SF_MPXJ_HOME", raising=False)
+    root = tmp_path / "ScheduleForensics"
+    fake_module = root / "venv" / "Lib" / "site-packages" / "schedule_forensics" / "importers"
+    fake_module.mkdir(parents=True)
+    runner = root / "tools" / "mpxj" / "classes"
+    runner.mkdir(parents=True)
+    (runner / "MpxjToMspdi.class").write_bytes(b"\xca\xfe\xba\xbe")
+    monkeypatch.setattr(mpp_mpxj, "__file__", str(fake_module / "mpp_mpxj.py"))
+    assert mpp_mpxj._mpxj_home() == root / "tools" / "mpxj"

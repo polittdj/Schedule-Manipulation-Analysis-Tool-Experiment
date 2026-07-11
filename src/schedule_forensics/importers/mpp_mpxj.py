@@ -125,12 +125,25 @@ def _find_java() -> str | None:
 
 
 def _mpxj_home() -> Path:
-    """Locate the vendored MPXJ runner: ``$SF_MPXJ_HOME`` or the repo's ``tools/mpxj``."""
+    """Locate the vendored MPXJ runner: ``$SF_MPXJ_HOME``, else walk up from this file.
+
+    In the repo checkout ``tools/mpxj`` sits at ``parents[3]`` (the repo root). In a
+    DEPLOYED install the wheel is pure Python and the installer copies the Java converter
+    beside the venv instead (``…\\ScheduleForensics\\tools\\mpxj`` — ADR-0193), which is a
+    couple of levels higher (…/venv/Lib/site-packages/…). Walking every enclosing folder
+    finds both layouts with zero configuration; the historical repo default is kept as the
+    fallback so the not-found error still names a concrete path.
+    """
     env = os.environ.get("SF_MPXJ_HOME")
     if env:
         return Path(env)
+    here = Path(__file__).resolve()
+    for base in here.parents:
+        candidate = base / "tools" / "mpxj"
+        if (candidate / "classes" / "MpxjToMspdi.class").is_file():
+            return candidate
     # src/schedule_forensics/importers/mpp_mpxj.py -> parents[3] == repo root.
-    return Path(__file__).resolve().parents[3] / "tools" / "mpxj"
+    return here.parents[3] / "tools" / "mpxj"
 
 
 def _build_command(mpxj_home: Path, input_path: Path, output_path: Path) -> list[str]:
