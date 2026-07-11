@@ -219,3 +219,29 @@ def test_dashboard_links_trend_and_briefing(client: TestClient) -> None:
     _upload(client, "Project5")
     home = client.get("/").text
     assert 'href="/trend"' in home and 'href="/compare"' in home
+
+
+def test_trend_chapter_05_page_shell(client: TestClient) -> None:
+    """ADR-0202 — chapter 05 "How it moved": the data-driven takeaway h1, the slippage KPI
+    strip, and the Update-behaviour / Where-the-work-stands composition bars, all read from
+    the trend the page already tabulates. The existing trend scaffold survives beneath."""
+    _upload(client, "Project2")
+    _upload(client, "Project5")
+    page = client.get("/trend").text
+
+    # data-driven takeaway carries the real net move (golden P2->P5 slip) and update count
+    assert 'class="page-takeaway"' in page
+    assert "the finish slipped 148 calendar days" in page
+    assert "1 of 1 update slipped it" in page
+
+    # the six-KPI strip and both composition bars
+    assert 'class="ws-kpi"' in page and "Versions compared" in page and "Current finish" in page
+    assert "Update behaviour" in page and "Where the work stands" in page
+    assert 'class="stack-bar"' in page
+
+    # chapter chrome fires here (kicker + Continue -> chapter 06)
+    assert "CHAPTER 05 · HOW IT MOVED" in page
+    assert "Chapter 06" in page
+
+    # the pre-existing trend scaffold is untouched beneath the header
+    assert "2 versions, oldest first" in page

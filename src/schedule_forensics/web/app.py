@@ -2454,7 +2454,8 @@ def create_app(
         return _page(
             st,
             "Trend",
-            _export_bar("trend")
+            _how_it_moved_header(schedules, cpms)
+            + _export_bar("trend")
             + _skipped_notice(skipped)
             + _sources_line(schedules)
             + _trend_body(schedules, cpms, uid),
@@ -8094,6 +8095,73 @@ def _focus_panel(schedules: list[Schedule], cpms: list[CPMResult], target: int) 
 (its movement is charted below).</p>
 <table><tr><th scope=col>Version</th><th scope=col>Computed finish</th><th scope=col>% complete</th></tr>{rows}</table>
 {movement}</div>"""
+
+
+def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> str:
+    """Chapter 05 "How it moved" (ADR-0202): the data-driven takeaway + a slippage KPI strip
+    + the update-behaviour and work-status bars, from the per-version trend the page already
+    tabulates (trend_across_versions) and the latest version's activity makeup (no new math)."""
+    points = trend_across_versions(schedules, cpms)
+    n_ver = len(points)
+    updates = n_ver - 1
+    moves = [
+        (points[i].project_finish.date() - points[i - 1].project_finish.date()).days
+        for i in range(1, n_ver)
+    ]
+    net = (points[-1].project_finish.date() - points[0].project_finish.date()).days
+    slipped = sum(1 for m in moves if m > 0)
+    improved = sum(1 for m in moves if m < 0)
+    held = updates - slipped - improved
+    biggest = max(moves, key=abs) if moves else 0
+    latest = points[-1]
+    makeup = compute_activity_makeup(schedules[-1])
+
+    def _cal(n: int) -> str:
+        return f"{abs(n)} calendar day" + ("" if abs(n) == 1 else "s")
+
+    if net > 0:
+        moved = f"slipped {_cal(net)}"
+    elif net < 0:
+        moved = f"pulled in {_cal(net)}"
+    else:
+        moved = "held steady"
+    upd = f"update{'s' if updates != 1 else ''}"
+    takeaway = (
+        f"Across {n_ver} versions the finish {moved} — {slipped} of {updates} {upd} slipped it "
+        f"— and the current forecast finish is {_mdY(latest.project_finish)}."
+    )
+
+    kpi = _stat_cards(
+        [
+            ("Versions compared", str(n_ver)),
+            ("Current finish", _mdY(latest.project_finish)),
+            ("Net finish move", f"{net:+d} d" if net else "0 d"),
+            ("Updates that slipped", f"{slipped} / {updates}"),
+            ("Biggest single move", f"{biggest:+d} d" if biggest else "0 d"),
+            ("Critical now", str(latest.critical)),
+        ]
+    )
+    behaviour = _status_stack(
+        "Update behaviour",
+        "How each update moved the forecast finish vs the version before it.",
+        [("Slipped", slipped, "--bad"), ("Held", held, "--muted"), ("Improved", improved, "--ok")],
+        f"over {updates} {upd}",
+    )
+    work = _status_stack(
+        "Where the work stands",
+        f"Activity status in the newest version — {latest.source_file or 'latest'}.",
+        [
+            ("Complete", makeup.complete, "--ok"),
+            ("In progress", makeup.in_progress, "--accent"),
+            ("Not started", makeup.planned, "--muted"),
+        ],
+        f"{makeup.total} activities in scope",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{behaviour}{work}</div>'
+    )
 
 
 def _trend_body(schedules: list[Schedule], cpms: list[CPMResult], target: int | None = None) -> str:
