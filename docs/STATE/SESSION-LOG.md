@@ -5049,3 +5049,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   intact at 700px, print reclaims the rail margin), zero console errors. Full gate green (1985
   tests). Version 1.0.5 -> 1.0.6 (cache-bust); wheel + 9 installers rebuilt in lockstep.
 - Highest ADR = 0196.
+
+### 2026-07-11 — Mission Ops redesign step 3, first page shell: chapter 01 "Where we stand" (ADR-0197)
+- Step 3 = restyle each chapter's page CONTENT to spec, one chapter per PR. First: chapter 01
+  "Where we stand" = the Analysis report (/analysis/{name}). Presentation only; no engine/importer/
+  ai change; every figure read from what the report already computed.
+- Fixed a step-2 gotcha: the chapter kicker + Continue footer never fired on /analysis because
+  chapter 01 has empty titles and the route passes the schedule NAME as the _page title. Added a
+  `chapter=` param to _page (+ _chapter_kicker/_story_footer overrides + _CHAPTER_BY_NUM); the
+  analysis route passes chapter 01, so CHAPTER 01 · WHERE WE STAND kicker + progress dash +
+  Continue -> Chapter 02 footer now render. General mechanism for later dynamic-title chapters.
+- New _where_we_stand_header prepends: data-driven takeaway h1 (a sentence with a number, clauses
+  omitted/em-dashed when a figure is absent), a 6-KPI strip (Activities / Earned% + plan-at-DD /
+  Critical(incomplete) / Computed finish / vs-baseline +-Nd / Data date), and two composition bars
+  via new _status_stack: Activity status mix (Complete/In-progress/Planned from
+  compute_activity_makeup) and Float remaining (0/1-4/5-9/10+ d bucketed from activity_rows
+  total_float_days over the incomplete population). Baseline variance from compute_finish_forecasts
+  handed the cached CPM (no re-solve); plan-at-DD from the forecast_to_be_finished ratio (honest
+  count-based proxy, labelled). Missing inputs -> em dash, never a fake 0.
+- The page-wide export bar moved from the route into the header (below the takeaway). All prior
+  sections intact: #viz/#gantt/#grid + control IDs, DCMA-14 board, #floatHist, #scatterChart,
+  findings, AI narrative, /export/xlsx/analysis/ link, target panel.
+- Verified in Chromium all four views (console rail / daylight top bar / apollo / jarvis); figures
+  internally consistent (status segments sum to activity total; float bands sum to incomplete
+  count); zero console errors. New test_analysis_page_shell_where_we_stand pins it. Full gate green.
+  Version 1.0.6 -> 1.0.7 (cache-bust); wheel + 9 installers rebuilt in lockstep.
+- Next: the cross-cutting chart-contract toolbar (DATA/EXCEL/ENLARGE + provenance on every visual)
+  as one dedicated PR; then chapters 02-12 page shells one per PR. Highest ADR = 0197.

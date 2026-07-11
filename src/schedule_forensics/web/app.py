@@ -1414,6 +1414,13 @@ def _build_title_map() -> dict[str, _Chapter]:
     return m
 
 
+# Chapters whose page carries a dynamic title (e.g. /analysis renders the schedule name) can't be
+# resolved from the title, so a route may name its chapter explicitly via _page(..., chapter=…).
+_CHAPTER_BY_NUM: dict[str, _Chapter] = {
+    ch.num: ch for _label, chapters in _SPINE for ch in chapters if ch.num
+}
+
+
 _TITLE_TO_CHAPTER: dict[str, _Chapter] = _build_title_map()
 
 
@@ -1534,18 +1541,20 @@ def _render_nav(state: SessionState) -> str:
     return f"<nav><div class=nav-spine>{sections}</div>{controls}</nav>"
 
 
-def _chapter_kicker(title: str) -> str:
-    """The slim chapter kicker above a page's content: ``CHAPTER NN · NAME`` (story position)."""
-    ch = _TITLE_TO_CHAPTER.get(title)
+def _chapter_kicker(title: str, chapter: _Chapter | None = None) -> str:
+    """The slim chapter kicker above a page's content: ``CHAPTER NN · NAME`` (story position).
+    ``chapter`` overrides title-based resolution for dynamic-title pages (e.g. /analysis)."""
+    ch = chapter if chapter is not None else _TITLE_TO_CHAPTER.get(title)
     if ch is None:
         return ""
     prefix = f"CHAPTER {ch.num} · " if ch.num else ""
     return f"<div class=chapter-kicker data-no-i18n>{prefix}{_e(ch.label.upper())}</div>"
 
 
-def _story_footer(state: SessionState, title: str) -> str:
-    """The Continue → next-chapter footer + the STORY-SO-FAR progress dashes, on every spine page."""
-    ch = _TITLE_TO_CHAPTER.get(title)
+def _story_footer(state: SessionState, title: str, chapter: _Chapter | None = None) -> str:
+    """The Continue → next-chapter footer + the STORY-SO-FAR progress dashes, on every spine page.
+    ``chapter`` overrides title-based resolution for dynamic-title pages (e.g. /analysis)."""
+    ch = chapter if chapter is not None else _TITLE_TO_CHAPTER.get(title)
     if ch is None:
         return ""
     try:
@@ -1586,6 +1595,7 @@ def _page(
     *,
     status_code: int = 200,
     ask_schedule: str | None = None,
+    chapter: _Chapter | None = None,
 ) -> HTMLResponse:
     lang = i18n.normalize(state.language)
     # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
@@ -1616,11 +1626,11 @@ def _page(
                     _filter_banner(state)
                     + _endpoint_banner(state)
                     + _global_sources_banner(state)
-                    + _chapter_kicker(title)
+                    + _chapter_kicker(title, chapter)
                     + _page_explainer(title)
                     + body
                     + _ask_panel_html(state, ask_schedule)
-                    + _story_footer(state, title)
+                    + _story_footer(state, title, chapter)
                 ),
                 lang=lang,
                 lang_json=json.dumps(lang),
@@ -2055,12 +2065,14 @@ def create_app(
         # model is active. The old synchronous per-statement generate here blocked the whole render
         # for minutes on a slow local model — a big .mpp landing on /analysis with a 72B Ollama active
         # looked exactly like "the file won't load" (the browser tab just kept spinning).
-        bar = _export_bar(f"analysis/{quote(name, safe='')}")
         return _page(
             st,
             name,
-            bar + _analysis_body(name, sch, analysis, st.target_uid, erosion_field=erosion_field),
+            _analysis_body(name, sch, analysis, st.target_uid, erosion_field=erosion_field),
             ask_schedule=name,
+            chapter=_CHAPTER_BY_NUM.get(
+                "01"
+            ),  # "Where we stand" (dynamic title → explicit chapter)
         )
 
     @app.get("/card/{name}", response_class=HTMLResponse)
@@ -6706,6 +6718,139 @@ def _dcma_count_cells(check: AuditCheck) -> str:
     return f"<td class=num>{check.count}</td><td class=num>{dash}</td>"
 
 
+def _status_stack(title: str, desc: str, segments: list[tuple[str, int, str]], foot: str) -> str:
+    """A single stacked bar with a legend of labelled counts — the redesign's composition visual
+    (Activity status mix; Float remaining). ``segments`` = (label, count, css-var color)."""
+    total = sum(c for _, c, _ in segments) or 1
+    bar = "".join(
+        f'<span class="stack-seg" style="width:{100.0 * c / total:.3f}%;background:var({color})" '
+        f'title="{_e(f"{label}: {c}")}"></span>'
+        for label, c, color in segments
+        if c > 0
+    )
+    legend = "".join(
+        f'<span class="stack-key"><span class="stack-dot" style="background:var({color})"></span>'
+        f"{_e(label)} <b>{c}</b></span>"
+        for label, c, color in segments
+    )
+    return (
+        f'<div class="panel status-stack"><h2>{_e(title)}</h2>'
+        f'<p class="muted">{_e(desc)}</p>'
+        f'<div class="stack-bar" role="img" aria-label="{_e(title)}">{bar}</div>'
+        f'<div class="stack-legend">{legend}</div>'
+        f'<div class="stack-foot">{_e(foot)}</div></div>'
+    )
+
+
+def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
+    """Chapter 01 "Where we stand" (ADR-0197): the data-driven takeaway h1 + the six-KPI strip +
+    the Activity-status-mix and Float-remaining bars — every figure read from what the report
+    already computed for this schedule (no CPM math added; missing inputs render as an em dash)."""
+    cpm = analysis.cpm
+    cal = sch.calendar
+    makeup = compute_activity_makeup(sch)
+    total = makeup.total or 1
+    complete_pct = 100.0 * makeup.complete / total
+
+    cpm_finish_dt = offset_to_datetime(sch.project_start, cpm.project_finish, cal)
+    cpm_finish_str = _mdY(cpm_finish_dt)
+
+    # vs-baseline finish variance — the existing forecast helper is handed the cached CPM, so no
+    # second solve; planned_finish is the latest baseline finish (None when the file carries none).
+    fset = compute_finish_forecasts(sch, cpm)
+    if fset.planned_finish is not None:
+        var_days = (cpm_finish_dt.date() - fset.planned_finish).days
+        if var_days > 0:
+            vs_base = f"+{var_days}d"
+            base_phrase = f"{var_days} day{'s' if var_days != 1 else ''} behind the baseline finish"
+        elif var_days < 0:
+            vs_base = f"{var_days}d"
+            n = -var_days
+            base_phrase = f"{n} day{'s' if n != 1 else ''} ahead of the baseline finish"
+        else:
+            vs_base = "0d"
+            base_phrase = "on the baseline finish"
+    else:
+        vs_base = "&mdash;"
+        base_phrase = "with no baseline finish to compare against"
+
+    # plan-at-DD proxy: the share of activities the baseline scheduled to be finished by the data
+    # date (compute_baseline_compliance's "Forecast to be Finished"); None when the population is 0.
+    plan = analysis.compliance.get("forecast_to_be_finished")
+    plan_at_dd = f"{plan.value:.0f}%" if plan is not None and plan.population else None
+
+    # critical (incomplete, progress-aware) — the same definition the schedule card uses
+    critical = sum(
+        1
+        for t in non_summary(sch)
+        if t.percent_complete < 100.0
+        and (tm := cpm.timings.get(t.unique_id)) is not None
+        and tm.total_float <= 0
+    )
+    data_date = _mdY(sch.status_date) if sch.status_date else "&mdash;"
+
+    # takeaway h1 — a sentence with a number; every clause is a real figure or is omitted
+    plan_clause = f" against a {plan_at_dd} baseline plan at the data date" if plan_at_dd else ""
+    takeaway = f"{complete_pct:.0f}% complete{plan_clause} — computed finish {cpm_finish_str}, "
+    # base_phrase / vs_base may carry an entity (&mdash;); keep the takeaway HTML-safe by escaping
+    # only the parts we build from user-independent computed values (all of the above are).
+
+    kpi = _stat_cards(
+        [
+            ("Activities", str(makeup.total)),
+            (
+                "Earned complete",
+                f"{complete_pct:.0f}%" + (f" · plan {plan_at_dd}" if plan_at_dd else ""),
+            ),
+            ("Critical (incomplete)", str(critical)),
+            ("Computed finish", cpm_finish_str),
+            ("vs baseline", vs_base),
+            ("Data date", data_date),
+        ]
+    )
+
+    status_bar = _status_stack(
+        "Activity status mix",
+        "Every activity by progress state, from the file's percent-complete.",
+        [
+            ("Complete", makeup.complete, "--ok"),
+            ("In progress", makeup.in_progress, "--warn"),
+            ("Planned", makeup.planned, "--accent"),
+        ],
+        f"{makeup.total} activities",
+    )
+
+    floats: list[float] = []
+    for r in analysis.activity_rows:
+        tf = r.get("total_float_days")
+        pc = r.get("percent_complete")
+        if isinstance(tf, int | float) and isinstance(pc, int | float) and pc < 100.0:
+            floats.append(float(tf))
+    b0 = sum(1 for tf in floats if tf <= 0)
+    b1 = sum(1 for tf in floats if 0 < tf <= 4)
+    b2 = sum(1 for tf in floats if 4 < tf <= 9)
+    b3 = sum(1 for tf in floats if tf > 9)
+    float_bar = _status_stack(
+        "Float remaining",
+        "Incomplete activities by total-float band — how much room before a slip hits the finish.",
+        [
+            ("0 days", b0, "--bad"),
+            ("1-4 days", b1, "--warn"),
+            ("5-9 days", b2, "--accent"),
+            ("10+ days", b3, "--muted"),
+        ],
+        f"{len(floats)} incomplete activities",
+    )
+
+    export_bar = _export_bar(f"analysis/{quote(key, safe='')}")
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}{base_phrase}.</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{status_bar}{float_bar}</div>'
+        f"{export_bar}"
+    )
+
+
 def _analysis_body(
     key: str,
     sch: Schedule,
@@ -6765,7 +6910,8 @@ metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
 </div></div>
 <script src="/static/app.js"></script>"""
-    return f"""{viz}
+    return f"""{_where_we_stand_header(key, sch, analysis)}
+{viz}
 {_scatter_panel(key, sch, analysis.cpm)}
 {_float_histogram_panel(key)}
 {_calendar_panel(sch)}

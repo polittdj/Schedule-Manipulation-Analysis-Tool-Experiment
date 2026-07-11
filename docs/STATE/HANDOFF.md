@@ -1,6 +1,32 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 2: story-spine chrome; highest ADR 0196)
+# Handoff — 2026-07-11 (Mission Ops redesign step 3, first page shell: chapter 01; highest ADR 0197)
 
-> ## STATUS (current) — ADR-0196 story-spine global chrome
+> ## STATUS (current) — ADR-0197 chapter 01 "Where we stand" page shell
+>
+> - Step 3 restyles each chapter's page CONTENT to the redesign spec, one chapter per PR. First =
+>   chapter 01 "Where we stand" = the Analysis report (`/analysis/{name}`); sets the template.
+> - **Explicit chapter binding**: `_page` gains a `chapter=` param (+ `_CHAPTER_BY_NUM`); the
+>   analysis route passes chapter 01, so the `CHAPTER 01 · WHERE WE STAND` kicker + STORY-SO-FAR
+>   dash + `Continue → Chapter 02` footer now fire on the dynamic-title /analysis page (they didn't
+>   before — chapter 01 has empty `titles`). General mechanism for later dynamic-title chapters.
+> - **`_where_we_stand_header`** prepends: a data-driven **takeaway h1** (a sentence with a number —
+>   "N% complete against an M% baseline plan at the data date — computed finish D, K days behind the
+>   baseline finish"; clauses omitted / em-dashed when a figure is absent), a **6-KPI strip**
+>   (Activities · Earned% + plan-at-DD · Critical · Computed finish · vs-baseline ±Nd · Data date),
+>   and two composition bars (**Activity status mix**; **Float remaining** 0/1-4/5-9/10+ d). New
+>   reusable `_status_stack`. All figures read from what the report already computed (makeup,
+>   compute_finish_forecasts on the cached CPM, forecast_to_be_finished proxy, activity_rows floats)
+>   — NO engine math; missing → em dash.
+> - Every prior section survives (viz/gantt/grid + IDs, DCMA board, floatHist, scatter, findings, AI
+>   narrative, export link, target panel). **Verified in Chromium all four views**, figures
+>   internally consistent (status sums to total; float sums to incomplete), zero console errors; full
+>   gate green. Version 1.0.6→1.0.7, wheel + 9 installers lockstep. Highest ADR = 0197.
+> - **Next**: the cross-cutting chart-contract toolbar (▦ DATA / ⤓ EXCEL / ⛶ ENLARGE + provenance on
+>   every visual) as one dedicated PR; then chapters 02-12 page shells, one per PR, using this
+>   takeaway/KPI/bars template. Vendor Barlow/IBM Plex Mono locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 2: story-spine chrome; highest ADR 0196)
+
+> ## STATUS — ADR-0196 story-spine global chrome
 >
 > - Operator chose "Full story spine now" for the chrome step. Shipped in ONE PR: the whole nav is
 >   the three-act / twelve-chapter Mission Ops spine (LOAD 00 · OVERVIEW · ACT I 01–02 · ACT II
