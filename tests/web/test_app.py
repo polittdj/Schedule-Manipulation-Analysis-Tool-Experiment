@@ -75,12 +75,19 @@ def test_analysis_shows_dcma_stoplight_board(client: TestClient) -> None:
     assert ".stoplight-board" in css and ".sl-fail" in css and ".sl-pass" in css
 
 
-def test_nav_is_grouped_by_handbook_function(client: TestClient) -> None:
-    """D9: the nav is regrouped into the handbook's sub-functions (plan section C) as labeled
-    clusters, with every existing route/link preserved (no broken bookmarks)."""
+def test_nav_is_the_story_spine(client: TestClient) -> None:
+    """ADR-0196: the nav is the three-act / twelve-chapter Mission Ops story spine (Load /
+    Overview / Act I-III / Setup), with every existing route preserved (no broken bookmarks)."""
     page = client.get("/").text
-    assert "nav-group" in page and "nav-grp-label" in page
-    for label in ("Overview", "Assessment", "Control", "Risks", "Reporting", "Setup"):
+    assert "nav-spine" in page and "nav-sect-label" in page
+    for label in (
+        "LOAD",
+        "OVERVIEW",
+        "ACT I · SITUATION",
+        "ACT II · DIAGNOSIS",
+        "ACT III · OUTLOOK",
+        "SETUP",
+    ):
         assert f">{label}</span>" in page, label
     # every original destination is still reachable from the nav (anchors unchanged)
     for href in (
@@ -105,7 +112,36 @@ def test_nav_is_grouped_by_handbook_function(client: TestClient) -> None:
     ):
         assert f'href="{href}"' in page, href
     css = client.get("/static/base.css").text
-    assert ".nav-group" in css and ".nav-grp-label" in css
+    assert ".nav-spine" in css and ".nav-sect-label" in css
+
+
+def test_story_chrome_kicker_footer_and_progress(client: TestClient) -> None:
+    """ADR-0196: every spine page carries a chapter kicker, the STORY-SO-FAR progress dashes, and a
+    Continue → next-chapter footer."""
+    page = client.get("/trend").text  # chapter 05 "How it moved"
+    assert "CHAPTER 05 · HOW IT MOVED" in page  # kicker
+    assert "story-foot" in page and "story-dash" in page and "STORY SO FAR" in page
+    assert "continue-btn" in page and "Chapter 06" in page and "Work piling up" in page
+    # a Setup page is off-spine — no story footer
+    assert "story-foot" not in client.get("/settings").text
+
+
+def test_global_target_selector_is_a_milestone_dropdown(client: TestClient) -> None:
+    """ADR-0196: the header Analysis-Target control is a milestone selector ("Measure to …"),
+    replacing the raw Target-UID box."""
+    page = client.get("/").text
+    assert "Measure to" in page and "name=uid" in page
+    assert "Project finish (whole schedule)" in page
+
+
+def test_set_target_unifies_the_sra_focus() -> None:
+    """ADR-0196: the one global Analysis Target drives both the endpoint scope and the SRA/SSI
+    focus, so the header selector and the SRA focus never disagree."""
+    st = SessionState()
+    st.set_target(143)
+    assert st.target_uid == 143 and st.sra_focus_uid == 143
+    st.set_target(None)
+    assert st.target_uid is None and st.sra_focus_uid is None
 
 
 def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: TestClient) -> None:

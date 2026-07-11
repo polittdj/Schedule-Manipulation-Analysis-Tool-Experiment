@@ -31,7 +31,7 @@ def client() -> TestClient:
 
 
 def test_mission_in_nav(client: TestClient) -> None:
-    assert '<a href="/mission">Mission Control</a>' in client.get("/").text
+    assert 'href="/mission"' in client.get("/").text  # Overview · Mission Control (ADR-0196)
 
 
 def test_mission_empty_session_prompts_load() -> None:

@@ -356,44 +356,7 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 </h1>
 <input type=checkbox id=navToggle class=nav-toggle aria-label="Toggle navigation menu">
 <label for=navToggle class=nav-burger title="Menu" data-no-i18n><span aria-hidden=true>&#9776;</span></label>
-<nav>
-<span class=nav-group><span class=nav-grp-label>Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
-<span class=nav-group><span class=nav-grp-label>Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a><a href="/volatility">CP Volatility</a><a href="/performance">Performance Summary</a></span>
-<span class=nav-group><span class=nav-grp-label>Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
-<span class=nav-group><span class=nav-grp-label>Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a><a href="/integrity">Schedule Integrity</a></span>
-<span class=nav-group><span class=nav-grp-label>Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
-<span class=nav-group><span class=nav-grp-label>Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
-<form action="/session/wipe" method=post class=navform
-onsubmit="return confirm('Wipe all loaded schedules?')"><button type=submit class=linkbtn>Wipe Session</button></form>
-<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>
-<button id=sfResetView type=button class="linkbtn sf-reset-view" data-no-i18n
-title="Clear every selection you made on THIS page (inputs, filters, toggles, remembered view) and return to its default view">&#10226; Reset view</button>
-<form action="/target" method=post class="navform targetform"
-title="Focus every view on one activity (blank = clear)"
-data-sf-hint="Type an activity's Unique ID and press Set: every page then treats that activity as the schedule's endpoint — metrics, paths and charts all focus on what drives IT. Blank + Set clears the focus.">
-<input type=hidden name=next_url value="/">
-<label>Target UID: <input name=uid type=number min=1 value="{{ target }}" placeholder="any"></label>
-<button type=submit class=linkbtn>Set</button></form>
-<label class=ui-scale-ctl title="Choose the console view — four complete themes (ADR-0195)">View
-<select id=themeSelect data-no-i18n>
-<option value=console>CONSOLE — mission control</option>
-<option value=daylight>DAYLIGHT — clean light</option>
-<option value=apollo>APOLLO — retro CRT</option>
-<option value=jarvis>JARVIS — HUD</option>
-</select></label>
-<button id=themeToggle type=button class=linkbtn data-no-i18n title="Toggle daylight vs your last dark view"
-data-sf-hint="Flips between DAYLIGHT and the last dark view you used (Console, Apollo or JARVIS). Pick any of the four views from the View menu.">Theme</button>
-<label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size
-<select id=uiScale data-no-i18n>
-<option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option>
-<option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option>
-</select></label>
-<form action="/language" method=post class="navform langform"
-title="Display language for the UI and AI results">
-<label>Language: <select name=lang data-no-i18n
-onchange="this.form.submit()">{{ lang_options }}</select></label>
-</form>
-</nav>
+{{ nav }}
 <span class="nasa-globe" data-no-i18n title="Local AI status: the globe spins up while the model is generating"><canvas width="96" height="96" aria-hidden="true"></canvas></span>
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
@@ -403,6 +366,7 @@ onchange="this.form.submit()">{{ lang_options }}</select></label>
 <script src="/static/sysmon.js"></script>
 <script src="/static/hints.js"></script>
 <script src="/static/vizhints.js"></script>
+<script src="/static/story.js"></script>
 <div class="cui-banner {{ cui_class }} bottom" data-no-i18n>{{ cui_text }}</div>
 </body></html>"""
 )
@@ -588,11 +552,14 @@ class SessionState:
             self.polished.clear()
 
     def set_target(self, uid: int | None) -> None:
-        """Set (or clear) the session-wide Target UID *endpoint* and invalidate the scope/analysis
-        caches so every metric, audit, and visual recomputes against the target's driving
-        sub-network (or the full schedule again when cleared)."""
+        """Set (or clear) the session-wide Analysis Target and invalidate the scope/analysis caches
+        so every metric, audit, and visual recomputes against the target's driving sub-network (or
+        the full schedule again when cleared). The one global target also drives the SRA/SSI focus
+        event (ADR-0196), so the header selector and the SRA focus never disagree; an analyst can
+        still override the SRA focus in-panel afterward."""
         with self._lock:
             self.target_uid = uid
+            self.sra_focus_uid = uid
             self._scoped.clear()
             self.analyses.clear()
             self.polished.clear()
@@ -1262,6 +1229,356 @@ def _global_sources_banner(state: SessionState) -> str:
     return f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
 
 
+# ── Mission Ops story spine (ADR-0196) ─────────────────────────────────────────────────────
+@dataclass(frozen=True)
+class _Chapter:
+    """One entry in the three-act / twelve-chapter story spine (the Mission Ops redesign).
+
+    ``route`` is where the nav link points; ``@analysis`` / ``@wbs`` resolve to the first loaded
+    schedule's report. ``beats`` are secondary pages folded under the chapter — kept in the nav so
+    nothing is orphaned. ``titles`` are the ``_page(...)`` title strings that resolve to this
+    chapter (drives the kicker / Continue footer / progress "you are here"); ``takeaway`` seeds the
+    Continue segue.
+    """
+
+    num: str
+    label: str
+    route: str
+    beats: tuple[tuple[str, str], ...] = ()
+    titles: tuple[str, ...] = ()
+    takeaway: str = ""
+
+
+_SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
+    (
+        "LOAD",
+        (
+            _Chapter(
+                "00",
+                "Import",
+                "/",
+                (),
+                ("Dashboard",),
+                "Load the mission — drop schedule files to begin.",
+            ),
+        ),
+    ),
+    (
+        "OVERVIEW",
+        (
+            _Chapter(
+                "",
+                "Mission Control",
+                "/mission",
+                (),
+                ("Mission Control",),
+                "The whole session on one wall.",
+            ),
+        ),
+    ),
+    (
+        "ACT I · SITUATION",
+        (
+            _Chapter(
+                "01",
+                "Where we stand",
+                "@analysis",
+                (),
+                (),
+                "Where the project stands at the data date.",
+            ),
+            _Chapter(
+                "02",
+                "Can we trust the plan?",
+                "/ribbon",
+                (("Schedule Integrity", "/integrity"),),
+                ("Schedule Quality Ribbon", "Schedule Integrity"),
+                "Whether the schedule is built soundly enough to trust its numbers.",
+            ),
+        ),
+    ),
+    (
+        "ACT II · DIAGNOSIS",
+        (
+            _Chapter(
+                "03",
+                "What drives the date",
+                "/path",
+                (("Driving Path", "/driving-path"),),
+                ("Path Analysis", "Driving Path"),
+                "The chain of work that controls the finish.",
+            ),
+            _Chapter(
+                "04",
+                "How stable is the path",
+                "/evolution",
+                (("CP Volatility", "/volatility"),),
+                ("Critical-Path Evolution", "CP Volatility"),
+                "Whether the critical path holds or thrashes between updates.",
+            ),
+            _Chapter(
+                "05",
+                "How it moved",
+                "/trend",
+                (("Finish & Slippage", "/curves"),),
+                ("Trend", "Finish & Slippage"),
+                "How the finish has moved, update over update.",
+            ),
+            _Chapter(
+                "06",
+                "Work piling up",
+                "/cei",
+                (),
+                ("Bow Wave / CEI",),
+                "Whether work is bow-waving into the future.",
+            ),
+            _Chapter(
+                "07",
+                "How we execute",
+                "/performance",
+                (("EVM", "/evm"), ("WBS", "@wbs")),
+                ("Performance Summary", "EVM"),
+                "How execution is actually tracking to plan.",
+            ),
+            _Chapter(
+                "08",
+                "Who is overloaded",
+                "/resources",
+                (),
+                ("Resources",),
+                "Where resource pressure concentrates.",
+            ),
+        ),
+    ),
+    (
+        "ACT III · OUTLOOK",
+        (
+            _Chapter(
+                "09",
+                "Where it lands",
+                "/forecast",
+                (("S-Curve", "/scurve"),),
+                ("Forecast", "S-Curve"),
+                "Where the finish is most likely to land.",
+            ),
+            _Chapter(
+                "10",
+                "What changed",
+                "/compare",
+                (),
+                ("Compare",),
+                "What actually changed between two versions.",
+            ),
+            _Chapter(
+                "11",
+                "What could go wrong",
+                "/sra",
+                (("Risks & Opportunities", "/risks"),),
+                ("Risk Analysis (SRA)", "Risks & Opportunities"),
+                "What could still bite the finish.",
+            ),
+            _Chapter(
+                "12",
+                "The briefing",
+                "/briefing",
+                (("Diagnostic Brief", "/brief"),),
+                ("Executive Briefing", "Diagnostic Brief"),
+                "The one-page verdict for leadership.",
+            ),
+        ),
+    ),
+    (
+        "SETUP",
+        (
+            _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
+            _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
+            _Chapter("", "Metric Dictionary", "/help", (), ("Metric Dictionary",), ""),
+        ),
+    ),
+)
+
+# Narrative order for the Continue footer + progress (Import → Mission Control → 01…12; Setup off-spine).
+_STORY_ORDER: tuple[_Chapter, ...] = tuple(
+    ch for label, chapters in _SPINE for ch in chapters if label != "SETUP"
+)
+# Numbered chapters only, for the progress dashes.
+_STORY_CHAPTERS: tuple[_Chapter, ...] = tuple(c for c in _STORY_ORDER if c.num)
+
+
+def _build_title_map() -> dict[str, _Chapter]:
+    m: dict[str, _Chapter] = {}
+    for _label, chapters in _SPINE:
+        for ch in chapters:
+            for t in ch.titles:
+                m.setdefault(t, ch)
+    return m
+
+
+_TITLE_TO_CHAPTER: dict[str, _Chapter] = _build_title_map()
+
+
+def _resolve_route(state: SessionState, route: str) -> str:
+    """Resolve a spine ``route`` to a real URL. ``@analysis`` / ``@wbs`` point at the first loaded
+    schedule's report (the dropzone when nothing is loaded)."""
+    if route in ("@analysis", "@wbs"):
+        first_key = next(iter(state.schedules), None)
+        if first_key is None:
+            return "/" if route == "@analysis" else ""
+        base = "/analysis/" if route == "@analysis" else "/wbs/"
+        return base + quote(first_key)
+    return route
+
+
+def _render_target_control(state: SessionState) -> str:
+    """The global Analysis-Target selector: pick the milestone every metric, path, forecast and the
+    briefing verdict is measured to (Project finish = the whole schedule). Built from the loaded
+    versions' milestone activities; posts to ``/target`` (which drives both the endpoint scope and
+    the SRA/SSI focus). A non-milestone target set elsewhere still shows as a selected custom option."""
+    seen: dict[int, str] = {}
+    for s in state.schedules.values():
+        for t in s.tasks:
+            if t.is_milestone and not t.is_summary and t.unique_id not in seen:
+                seen[t.unique_id] = t.name or f"UID {t.unique_id}"
+    cur = state.target_uid
+    opts = ['<option value="">Project finish (whole schedule)</option>']
+    for uid, name in seen.items():
+        sel = " selected" if uid == cur else ""
+        opts.append(f'<option value="{uid}"{sel}>{_e(f"{name} · UID {uid}")}</option>')
+    if cur is not None and cur not in seen:
+        opts.append(f'<option value="{cur}" selected>UID {cur} (custom)</option>')
+    options = "".join(opts)
+    return (
+        '<form action="/target" method=post class="navform targetform" '
+        'title="Measure every view to one milestone (Project finish = the whole schedule)" '
+        'data-sf-hint="Pick the milestone every metric, path, forecast and the briefing verdict is '
+        'measured to. Project finish uses the whole schedule.">'
+        '<input type=hidden name=next_url value="/">'
+        "<label>Measure to "
+        f'<select name=uid data-no-i18n onchange="this.form.submit()">{options}</select></label>'
+        "</form>"
+    )
+
+
+def _render_nav(state: SessionState) -> str:
+    """The story-spine navigation: three acts / twelve chapters (with folded beat links) plus the
+    off-spine Load / Overview / Setup rails, followed by the session controls. Rendered server-side
+    so the milestone target selector and the chapter-01 link can read the loaded session."""
+    lang = i18n.normalize(state.language)
+    lang_options = "".join(
+        f'<option value="{code}"{" selected" if code == lang else ""}>{_e(name)}</option>'
+        for code, name in i18n.LANGUAGES.items()
+    )
+
+    def _chapter_link(ch: _Chapter) -> str:
+        href = _resolve_route(state, ch.route) or "/"
+        num = f"<span class=ch-num>{ch.num}</span>" if ch.num else ""
+        beats = ""
+        beat_links = []
+        for lbl, route in ch.beats:
+            r = _resolve_route(state, route)
+            if r:
+                beat_links.append(f'<a href="{r}">{_e(lbl)}</a>')
+        if beat_links:
+            beats = "<span class=nav-beats>" + "".join(beat_links) + "</span>"
+        return (
+            f'<a class=nav-chapter href="{href}">{num}'
+            f"<span class=ch-label>{_e(ch.label)}</span></a>{beats}"
+        )
+
+    sections = ""
+    for sect_label, chapters in _SPINE:
+        links = "".join(_chapter_link(c) for c in chapters)
+        cls = "nav-sect setup" if sect_label == "SETUP" else "nav-sect"
+        sections += (
+            f'<div class="{cls}"><span class=nav-sect-label>{_e(sect_label)}</span>{links}</div>'
+        )
+
+    controls = (
+        "<div class=nav-controls>"
+        '<form action="/session/wipe" method=post class=navform '
+        "onsubmit=\"return confirm('Wipe all loaded schedules?')\">"
+        "<button type=submit class=linkbtn>Wipe Session</button></form>"
+        '<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>'
+        '<button id=sfResetView type=button class="linkbtn sf-reset-view" data-no-i18n '
+        'title="Clear every selection you made on THIS page (inputs, filters, toggles, remembered '
+        'view) and return to its default view">&#10226; Reset view</button>'
+        + _render_target_control(state)
+        # nosec B608 — this is HTML markup (a <select> control), not a SQL query; the B608
+        # heuristic false-matches the "select"/option keywords in the concatenated view picker.
+        + '<label class=ui-scale-ctl title="Choose the console view — four complete themes '  # nosec B608
+        '(ADR-0195)">View'
+        "<select id=themeSelect data-no-i18n>"
+        "<option value=console>CONSOLE — mission control</option>"
+        "<option value=daylight>DAYLIGHT — clean light</option>"
+        "<option value=apollo>APOLLO — retro CRT</option>"
+        "<option value=jarvis>JARVIS — HUD</option>"
+        "</select></label>"
+        "<button id=themeToggle type=button class=linkbtn data-no-i18n "
+        'title="Toggle daylight vs your last dark view" '
+        'data-sf-hint="Flips between DAYLIGHT and the last dark view you used (Console, Apollo or '
+        'JARVIS). Pick any of the four views from the View menu.">Theme</button>'
+        '<label class=ui-scale-ctl title="Rescale the whole page — text and layout together">Size'
+        "<select id=uiScale data-no-i18n>"
+        '<option value="0.9">90%</option><option value="1">100%</option>'
+        '<option value="1.1">110%</option>'
+        '<option value="1.25">125%</option><option value="1.5">150%</option>'
+        '<option value="1.75">175%</option>'
+        "</select></label>"
+        '<form action="/language" method=post class="navform langform" '
+        'title="Display language for the UI and AI results">'
+        "<label>Language: <select name=lang data-no-i18n "
+        f'onchange="this.form.submit()">{lang_options}</select></label>'
+        "</form>"
+        "</div>"
+    )
+    return f"<nav><div class=nav-spine>{sections}</div>{controls}</nav>"
+
+
+def _chapter_kicker(title: str) -> str:
+    """The slim chapter kicker above a page's content: ``CHAPTER NN · NAME`` (story position)."""
+    ch = _TITLE_TO_CHAPTER.get(title)
+    if ch is None:
+        return ""
+    prefix = f"CHAPTER {ch.num} · " if ch.num else ""
+    return f"<div class=chapter-kicker data-no-i18n>{prefix}{_e(ch.label.upper())}</div>"
+
+
+def _story_footer(state: SessionState, title: str) -> str:
+    """The Continue → next-chapter footer + the STORY-SO-FAR progress dashes, on every spine page."""
+    ch = _TITLE_TO_CHAPTER.get(title)
+    if ch is None:
+        return ""
+    try:
+        idx = _STORY_ORDER.index(ch)
+    except ValueError:
+        return ""
+    dashes = ""
+    for c in _STORY_CHAPTERS:
+        state_cls = " cur" if c is ch else ""
+        dashes += (
+            f'<span class="story-dash{state_cls}" data-route="{_resolve_route(state, c.route)}" '
+            f'title="{_e(c.num + " " + c.label)}"></span>'
+        )
+    progress = (
+        "<div class=story-progress data-no-i18n>"
+        "<span class=story-so-far>STORY SO FAR</span>"
+        f"<span class=story-dashes>{dashes}</span></div>"
+    )
+    cont = ""
+    if idx + 1 < len(_STORY_ORDER):
+        nxt = _STORY_ORDER[idx + 1]
+        href = _resolve_route(state, nxt.route)
+        if href:
+            label = f"Chapter {nxt.num} → {nxt.label}" if nxt.num else f"{nxt.label} →"
+            seg = _e(nxt.takeaway) if nxt.takeaway else ""
+            cont = (
+                "<div class=continue-foot data-no-i18n>"
+                f"<span class=continue-seg>{seg}</span>"
+                f'<a class="btn continue-btn" href="{href}">{_e(label)}</a></div>'
+            )
+    return f"<div class=story-foot>{progress}{cont}</div>"
+
+
 def _page(
     state: SessionState,
     title: str,
@@ -1271,10 +1588,6 @@ def _page(
     ask_schedule: str | None = None,
 ) -> HTMLResponse:
     lang = i18n.normalize(state.language)
-    lang_options = "".join(
-        f'<option value="{code}"{" selected" if code == lang else ""}>{_e(name)}</option>'
-        for code, name in i18n.LANGUAGES.items()
-    )
     # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
     # only the operator-asserted UNCLASSIFIED mode drops the CUI controls marking. Kept out of the
     # i18n pass (data-no-i18n) so the control marking stays in its required standard wording.
@@ -1297,21 +1610,22 @@ def _page(
                 # reflected-XSS in <title> (audit F-06 / ADR-0130). The CSP allows 'unsafe-inline', so
                 # escaping — not CSP — is the barrier; do NOT pass raw schedule-derived text as `title`.
                 title=_e(title),
+                nav=_render_nav(state),
                 banner=_banner_html(state),
                 body=(
                     _filter_banner(state)
                     + _endpoint_banner(state)
                     + _global_sources_banner(state)
+                    + _chapter_kicker(title)
                     + _page_explainer(title)
                     + body
                     + _ask_panel_html(state, ask_schedule)
+                    + _story_footer(state, title)
                 ),
-                target=state.target_uid if state.target_uid is not None else "",
                 lang=lang,
                 lang_json=json.dumps(lang),
                 # the catalog is only shipped to the client when not English (no payload for en)
                 catalog_json=json.dumps(i18n.catalog_for(lang)),
-                lang_options=lang_options,
                 cui_class=cui_class,
                 cui_text=cui_text,
             )

@@ -40,6 +40,6 @@ def test_mobile_css_collapses_nav_and_sizes_for_touch() -> None:
 
 
 def test_desktop_still_shows_the_full_nav() -> None:
-    """Outside the breakpoint the nav and its groups render inline as before (no burger)."""
+    """Outside the breakpoint the story-spine nav renders inline as before (no burger)."""
     page = _client().get("/").text
-    assert "nav-group" in page and "nav-grp-label" in page  # the full handbook nav is present
+    assert "nav-spine" in page and "nav-sect-label" in page  # the full story-spine nav is present

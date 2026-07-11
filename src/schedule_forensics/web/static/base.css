@@ -275,3 +275,111 @@ header label{color:var(--header-muted)}
 /* progressive local-AI polish (Risks / Executive Briefing) — a quiet status line above the
    content that gets upgraded in the background; never blocks the page */
 .ai-polish-status{font-size:12px;color:var(--accent);font-style:italic;margin:0 0 6px}
+
+/* ── Mission Ops story-spine navigation (ADR-0196) ───────────────────────────────────────────
+   The header nav is the three-act / twelve-chapter story spine. DEFAULT + daylight render it as a
+   horizontal top bar (grouped by act, chapter numbers in the keel-red accent); the three dark
+   views (console / apollo / jarvis) turn the whole header into a fixed LEFT RAIL. All colors are
+   header tokens (ADR-0195), so it re-skins per view. */
+header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 auto;min-width:0}
+.nav-spine{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;min-width:0}
+.nav-sect{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 9px}
+.nav-sect-label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--header-muted);white-space:nowrap}
+.nav-chapter{display:inline-flex;align-items:baseline;gap:5px;color:var(--header-ink);
+  font-size:12px;font-weight:600;white-space:nowrap;padding:1px 3px;border-radius:4px}
+.nav-chapter .ch-num{font-size:9px;font-weight:700;color:var(--header-line);letter-spacing:.03em;
+  font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace}
+.nav-chapter:hover{color:var(--header-ink);text-decoration:underline}
+.nav-beats{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.nav-beats a{font-size:10px;font-weight:500;color:var(--header-muted);white-space:nowrap}
+.nav-beats a:hover{color:var(--header-ink)}
+.nav-controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px}
+/* the always-present session controls keep their compact header look in either layout */
+.nav-controls .navform{display:inline;margin:0}
+
+/* ── LEFT RAIL — the three dark views, wide viewports only (mobile keeps the burger) ──────── */
+@media (min-width:761px){
+  html[data-theme=console] header,html[data-theme=apollo] header,html[data-theme=jarvis] header{
+    position:fixed;top:0;left:0;bottom:0;width:236px;flex-direction:column;align-items:stretch;
+    flex-wrap:nowrap;gap:8px;padding:16px 12px 12px;overflow-y:auto;overflow-x:hidden;z-index:110}
+  html[data-theme=console] header h1.brand,html[data-theme=apollo] header h1.brand,
+  html[data-theme=jarvis] header h1.brand{margin-bottom:2px}
+  html[data-theme=console] header nav,html[data-theme=apollo] header nav,
+  html[data-theme=jarvis] header nav{flex-direction:column;align-items:stretch;flex:1 1 auto;
+    flex-wrap:nowrap;gap:12px;min-height:0;order:3}
+  html[data-theme=console] .nav-spine,html[data-theme=apollo] .nav-spine,
+  html[data-theme=jarvis] .nav-spine{flex-direction:column;align-items:stretch;gap:11px;
+    flex:1 1 auto;flex-wrap:nowrap}
+  html[data-theme=console] .nav-sect,html[data-theme=apollo] .nav-sect,
+  html[data-theme=jarvis] .nav-sect{flex-direction:column;align-items:stretch;gap:1px}
+  html[data-theme=console] .nav-sect-label,html[data-theme=apollo] .nav-sect-label,
+  html[data-theme=jarvis] .nav-sect-label{margin-bottom:3px;opacity:.9}
+  html[data-theme=console] .nav-chapter,html[data-theme=apollo] .nav-chapter,
+  html[data-theme=jarvis] .nav-chapter{padding:4px 9px;border-radius:6px}
+  html[data-theme=console] .nav-chapter .ch-num,html[data-theme=apollo] .nav-chapter .ch-num,
+  html[data-theme=jarvis] .nav-chapter .ch-num{min-width:15px}
+  html[data-theme=console] .nav-beats,html[data-theme=apollo] .nav-beats,
+  html[data-theme=jarvis] .nav-beats{flex-direction:column;align-items:stretch;gap:1px;
+    padding:1px 0 2px 29px}
+  html[data-theme=console] .nav-beats a,html[data-theme=apollo] .nav-beats a,
+  html[data-theme=jarvis] .nav-beats a{padding:2px 0}
+  html[data-theme=console] .nav-controls,html[data-theme=apollo] .nav-controls,
+  html[data-theme=jarvis] .nav-controls{flex-direction:column;align-items:stretch;gap:7px;
+    border-top:1px solid var(--header-line);padding-top:9px;margin-top:2px}
+  html[data-theme=console] .nav-controls label.ui-scale-ctl,
+  html[data-theme=apollo] .nav-controls label.ui-scale-ctl,
+  html[data-theme=jarvis] .nav-controls label.ui-scale-ctl{display:flex;justify-content:space-between;
+    align-items:center;gap:6px}
+  html[data-theme=console] .nav-controls .targetform label,
+  html[data-theme=apollo] .nav-controls .targetform label,
+  html[data-theme=jarvis] .nav-controls .targetform label{display:flex;flex-direction:column;gap:3px}
+  html[data-theme=console] .nav-controls select,html[data-theme=apollo] .nav-controls select,
+  html[data-theme=jarvis] .nav-controls select{max-width:100%}
+  /* rail active state (redesign): panel-hover fill + a keel-accent inset bar. Overrides the
+     top-bar yellow pill (app.css) which is tuned for the horizontal blue header. */
+  html[data-theme=console] header nav a.nav-active,html[data-theme=apollo] header nav a.nav-active,
+  html[data-theme=jarvis] header nav a.nav-active{color:var(--header-ink)!important;
+    background:color-mix(in srgb,var(--header-ink) 12%,transparent)!important;border:0!important;
+    box-shadow:inset 2px 0 0 var(--header-line)!important;border-radius:4px!important;
+    font-weight:700}
+  /* the globe rides small at the rail foot instead of the banner corner (position:relative so its
+     inset:0 canvas fills THIS 66px span, not the fixed header it would otherwise anchor to) */
+  html[data-theme=console] .nasa-globe,html[data-theme=apollo] .nasa-globe,
+  html[data-theme=jarvis] .nasa-globe{position:relative;top:auto;right:auto;width:88px;height:88px;
+    margin:2px auto 4px;order:1;flex:0 0 auto}
+  html[data-theme=console] header .brand-sub,html[data-theme=apollo] header .brand-sub,
+  html[data-theme=jarvis] header .brand-sub{display:none}
+  /* push every body-level region clear of the fixed rail */
+  html[data-theme=console] main,html[data-theme=apollo] main,html[data-theme=jarvis] main,
+  html[data-theme=console] .cui-banner,html[data-theme=apollo] .cui-banner,
+  html[data-theme=jarvis] .cui-banner,
+  html[data-theme=console] .compliance-drawer,html[data-theme=apollo] .compliance-drawer,
+  html[data-theme=jarvis] .compliance-drawer{margin-left:236px}
+}
+
+/* ── chapter kicker + Continue footer + story progress ───────────────────────────────────── */
+.chapter-kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace;margin:2px 2px 10px}
+.story-foot{margin:22px 2px 6px;padding-top:14px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.story-progress{display:flex;align-items:center;gap:10px}
+.story-so-far{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted)}
+.story-dashes{display:inline-flex;gap:3px}
+.story-dash{width:16px;height:4px;border-radius:2px;background:var(--line)}
+.story-dash.visited{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.story-dash.cur{background:var(--accent)}
+.continue-foot{display:flex;align-items:center;gap:14px;margin-left:auto}
+.continue-seg{font-size:11px;color:var(--muted);max-width:44ch;text-align:right}
+.continue-btn{white-space:nowrap}
+@media (max-width:760px){
+  .story-foot{flex-direction:column;align-items:stretch}
+  .continue-foot{margin-left:0;flex-wrap:wrap}.continue-seg{text-align:left}
+}
+
+/* print: the rail is hidden (header{display:none} above) — reclaim the margin and drop nav chrome */
+@media print{
+  main,.cui-banner,.compliance-drawer{margin-left:0!important}
+  .story-foot{display:none!important}
+}
