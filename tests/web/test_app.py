@@ -173,6 +173,20 @@ def test_analysis_page_shell_where_we_stand(client: TestClient) -> None:
         assert keep in page, keep
 
 
+def test_path_page_shell_what_drives_the_date(client: TestClient) -> None:
+    """ADR-0199 (step 3, chapter 03): Path Analysis opens with the driving-path takeaway, a drivers
+    KPI strip, and the Critical-exposure + Path-composition bars; the interactive trace survives."""
+    _upload(client, "Project5")
+    page = client.get("/path").text
+    assert 'class="page-takeaway"' in page and "critical path of" in page
+    assert 'class="ws-kpi"' in page and "Critical-path activities" in page
+    assert "Critical exposure" in page and "Path composition" in page and "stack-bar" in page
+    assert "CHAPTER 03 · WHAT DRIVES THE DATE" in page
+    assert "story-foot" in page and "Chapter 04" in page  # Continue → next chapter
+    # the interactive trace scaffold survives
+    assert "id=pathControls" in page and "/static/path.js" in page and "id=pathView" in page
+
+
 def test_compare_two_versions_shows_trend_and_no_false_manipulation(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")
