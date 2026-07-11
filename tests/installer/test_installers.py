@@ -176,3 +176,26 @@ def test_ps1_find_python_survives_a_python_only_machine() -> None:
         assert ",@($exe)" in ps1 and "$py = @($py)" in ps1
     smoke = (ROOT / ".github" / "workflows" / "installer-smoke.yml").read_text(encoding="utf-8")
     assert "py.cmd" in smoke  # CI masks the launcher to walk the operator's exact path
+
+
+def test_ps1_java_and_python_install_need_no_admin() -> None:
+    """Operator 2026-07-10: no admin rights — the winget OpenJDK MSI died at the UAC prompt
+    and its failure was mis-reported as '[ok] Java 17 installed' (ADR-0192). The .ps1 now
+    (1) detects existing JDKs the way the runtime does (incl. not-on-PATH machine/user
+    installs), (2) on consent downloads Microsoft's PORTABLE zip into
+    %LOCALAPPDATA%\\Programs\\Microsoft (user-writable; already in the runtime java scan),
+    (3) reports failures honestly, (4) installs Python user-scope, and (5) warns when a
+    stale foreign 'schedule-forensics' shim shadows the venv in terminals."""
+    tpl = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
+    assert "Microsoft.OpenJDK.17" not in tpl  # the admin-gated MSI path is gone
+    assert "aka.ms/download-jdk/microsoft-jdk-17-windows-x64.zip" in tpl
+    assert "Expand-Archive" in tpl and 'Join-Path $env:LOCALAPPDATA "Programs\\Microsoft"' in tpl
+    assert "Find-JavaNoAdmin" in tpl  # detection mirrors the runtime (not just PATH)
+    assert "Java download failed" in tpl  # honest failure reporting, never a false [ok]
+    assert "--scope user" in tpl  # Python fallback installs without elevation too
+    assert "ModuleNotFoundError" in tpl  # the stale-shim shadow warning
+    for tier in TIERS:  # the generated installers ship the same behavior
+        ps1 = _read(tier, "ps1")
+        assert "Microsoft.OpenJDK.17" not in ps1
+        assert "aka.ms/download-jdk/microsoft-jdk-17-windows-x64.zip" in ps1
+        assert "Find-JavaNoAdmin" in ps1
