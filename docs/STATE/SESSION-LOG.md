@@ -5098,3 +5098,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   wheel + 9 installers rebuilt in lockstep.
 - Next: chapters 03-12 page shells one per PR (03 = /path next in story order); cross-cutting
   chart-contract toolbar as a dedicated PR. Highest ADR = 0198.
+
+### 2026-07-11 — Mission Ops redesign step 3, chapter 03 "What drives the date" (ADR-0199)
+- Third page shell of step 3: template applied to chapter 03 = Path Analysis (/path). Presentation
+  only. /path is a client-side trace (path.js over /api/driving) computing nothing server-side, but
+  analysis.cpm (server-side, already scoped to any global target) carries the critical path, so the
+  headline needs no new computation and no chosen target. Chapter chrome already fires (title
+  "Path Analysis" registered to chapter 03).
+- _what_drives_header (latest version): takeaway "The finish rides on a critical path of N
+  activities carrying <float phrase> — its longest single activity is <name> at D working days"
+  (0/negative float honest; N=0 -> "No critical path resolves"); 6-KPI drivers strip (Critical-path
+  activities / Path total float / Longest driver / On the critical path % / Computed finish /
+  Near-critical <=4d); two _status_stack bars: Critical exposure (float bands 0/1-4/5-9/10+ over
+  incomplete) and Path composition (critical path vs has slack). Data from cpm.critical_path +
+  cpm.timings.total_float + Task.duration_minutes + activity_rows floats + offset_to_datetime. No
+  engine math; no target UID needed (the scoped CPM already reflects the global target).
+- Interactive trace (#pathControls/path.js/#pathView, SSI directional-path options, drag analysis,
+  export bar) untouched; header additive above it. No new CSS (reuses ADR-0197 classes).
+- Chromium-verified console + daylight, zero console errors; counts consistent (4 critical + 122
+  slack = 126 activities; float bands 4+1+0+94 = 99 incomplete). New
+  test_path_page_shell_what_drives_the_date pins it. Version 1.0.8 -> 1.0.9 (cache-bust); wheel +
+  9 installers rebuilt in lockstep.
+- Next: chapters 04-12 page shells one per PR (04 = /evolution next). Highest ADR = 0199.

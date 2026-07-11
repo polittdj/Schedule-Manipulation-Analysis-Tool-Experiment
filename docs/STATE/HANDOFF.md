@@ -1,6 +1,30 @@
-# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 02 page shell; highest ADR 0198)
+# Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 03 page shell; highest ADR 0199)
 
-> ## STATUS (current) — ADR-0198 chapter 02 "Can we trust the plan?" page shell
+> ## STATUS (current) — ADR-0199 chapter 03 "What drives the date" page shell
+>
+> - Third page shell of step 3: the template applied to chapter 03 = Path Analysis (`/path`).
+>   Presentation only. `/path` is a client-side trace (path.js over /api/driving) so its body
+>   computes nothing server-side — but `analysis.cpm` (built server-side, already scoped to any
+>   global target) carries the critical path, so the headline needs no new computation or target.
+>   Chapter chrome already fires (title "Path Analysis" registered to chapter 03).
+> - **`_what_drives_header`** (latest version): takeaway "The finish rides on a critical path of N
+>   activities carrying <float phrase> — its longest single activity is <name> at D working days"
+>   (0/negative float honest; N=0 → "No critical path resolves"), a 6-KPI drivers strip
+>   (Critical-path activities / Path total float / Longest driver / On-critical-path % / Computed
+>   finish / Near-critical ≤4d), and two `_status_stack` bars (Critical exposure float bands;
+>   Path composition critical-vs-slack). Data: cpm.critical_path + cpm.timings.total_float +
+>   Task.duration_minutes + activity_rows floats. NO engine math; no target UID needed (scoped CPM).
+> - Interactive trace (#pathControls/path.js/#pathView, SSI options, drag, export) untouched;
+>   header additive. No new CSS. Chromium-verified console + daylight, zero console errors; counts
+>   consistent (4 critical + 122 slack = 126; float bands sum to 99 incomplete). New
+>   test_path_page_shell_what_drives_the_date pins it. Version 1.0.8→1.0.9, wheel + 9 installers
+>   lockstep. Highest ADR = 0199.
+> - **Next**: chapters 04-12 page shells one per PR (04 "How stable is the path" = /evolution next);
+>   plus the cross-cutting chart-contract toolbar as one dedicated PR; vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops redesign step 3, chapter 02 page shell; highest ADR 0198)
+
+> ## STATUS — ADR-0198 chapter 02 "Can we trust the plan?" page shell
 >
 > - Second page shell of step 3: applies the chapter-01 template to chapter 02 = the Schedule
 >   Quality Ribbon (`/ribbon`). Presentation only; figures read from the ribbon/audit already

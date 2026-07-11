@@ -2275,7 +2275,16 @@ def create_app(
                 "<div class=panel>Load a schedule to run the path analysis.</div>",
             )
         keys = [k for k, _ in st.ordered_versions()]
-        return _page(st, "Path Analysis", _path_body(keys, st.target_uid))
+        header = ""
+        if keys:  # anchor "What drives the date" on the latest version (ADR-0199)
+            lkey = keys[-1]
+            try:
+                header = _what_drives_header(
+                    st.schedules[lkey], st.analysis_for(lkey, st.schedules[lkey])
+                )
+            except CPMError:
+                header = ""
+        return _page(st, "Path Analysis", header + _path_body(keys, st.target_uid))
 
     def _ask_response(
         st: SessionState, facts: tuple[CitedStatement, ...], text: str
@@ -5120,6 +5129,88 @@ def _completion_panel(analysis: _Analysis) -> str:
 ahead / on-schedule / behind split, the days gained and lost, and actual-vs-baseline
 durations. Day variances are calendar days.</p>
 <table>{rows}</table></div>"""
+
+
+def _what_drives_header(sch: Schedule, analysis: _Analysis) -> str:
+    """Chapter 03 "What drives the date" (ADR-0199): the data-driven takeaway + a drivers KPI strip
+    + the Critical-exposure and Path-composition bars, for the latest version. The critical path
+    (``cpm.critical_path``) is already scoped to any global Analysis Target, so this respects it
+    automatically. Every figure is read from what the report already computed (no engine math)."""
+    cpm = analysis.cpm
+    chain = cpm.critical_path  # unique_ids with total_float <= 0, topo order
+    n = len(chain)
+    total = sum(1 for _ in non_summary(sch)) or 1
+
+    path_float_min = min((cpm.timings[u].total_float for u in chain if u in cpm.timings), default=0)
+    path_float_days = path_float_min / 480.0
+    longest_uid: int | None = None
+    longest_min = -1
+    for u in chain:
+        t = sch.tasks_by_id.get(u)
+        if t is not None and t.duration_minutes > longest_min:
+            longest_min, longest_uid = t.duration_minutes, u
+    longest_days = longest_min / 480.0 if longest_min >= 0 else 0.0
+    longest_name = sch.tasks_by_id[longest_uid].name if longest_uid is not None else "—"
+    cpm_finish = _mdY(offset_to_datetime(sch.project_start, cpm.project_finish, sch.calendar))
+
+    if path_float_days < 0:
+        float_phrase = f"{abs(path_float_days):g} days of negative float (already behind)"
+    elif path_float_days == 0:
+        float_phrase = "0 days of total float"
+    else:
+        float_phrase = f"{path_float_days:g} days of total float"
+    acts = "activity" if n == 1 else "activities"
+    if n:
+        takeaway = (
+            f"The finish rides on a critical path of {n} {acts} carrying {float_phrase} — "
+            f"its longest single activity is {_e(longest_name)} at {longest_days:g} working days."
+        )
+    else:
+        takeaway = "No critical path resolves for this version."
+
+    floats: list[float] = []
+    for r in analysis.activity_rows:
+        tf = r.get("total_float_days")
+        pc = r.get("percent_complete")
+        if isinstance(tf, int | float) and isinstance(pc, int | float) and pc < 100.0:
+            floats.append(float(tf))
+    b0 = sum(1 for f in floats if f <= 0)
+    b1 = sum(1 for f in floats if 0 < f <= 4)
+    b2 = sum(1 for f in floats if 4 < f <= 9)
+    b3 = sum(1 for f in floats if f > 9)
+
+    kpi = _stat_cards(
+        [
+            ("Critical-path activities", str(n)),
+            ("Path total float", f"{path_float_days:g} d"),
+            ("Longest driver", f"{longest_days:g} d"),
+            ("On the critical path", f"{100.0 * n / total:.0f}%"),
+            ("Computed finish", cpm_finish),
+            ("Near-critical (≤ 4d)", str(b0 + b1)),
+        ]
+    )
+    exposure = _status_stack(
+        "Critical exposure",
+        "Incomplete activities by total-float band — how many sit at or near the edge.",
+        [
+            ("0 days", b0, "--bad"),
+            ("1-4 days", b1, "--warn"),
+            ("5-9 days", b2, "--accent"),
+            ("10+ days", b3, "--muted"),
+        ],
+        f"{len(floats)} incomplete activities",
+    )
+    composition = _status_stack(
+        "Path composition",
+        "Activities that drive the finish (critical path) vs those carrying slack.",
+        [("Critical path", n, "--bad"), ("Has slack", max(total - n, 0), "--ok")],
+        f"{total} activities",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{exposure}{composition}</div>'
+    )
 
 
 def _path_body(keys: list[str], target_uid: int | None) -> str:
