@@ -1,6 +1,43 @@
-# Handoff — 2026-07-10 (slim banner + globe upper-right; highest ADR 0194)
+# Handoff — 2026-07-11 (full-repo audit; green; highest ADR 0194)
 
-> ## STATUS (current) — ADR-0194 slim banner
+> ## STATUS (current) — 2026-07-11 whole-repo audit
+>
+> Operator: "audit the repo, read/check/verify everything." Result: **clean and green.**
+> No new ADR (audit only) — highest ADR stays **0194**, present in both state docs.
+>
+> - **Gate all green** (in-container): ruff ✓ · ruff format (309 files) ✓ · mypy --strict
+>   (97 files) ✓ · bandit exit 0 ✓ · **pytest 1980 passed** ✓ · node --check (49 vendored JS)
+>   ✓ · drift guard (`test_state_docs`) ✓ · metric dictionary in sync with `help.py` ✓ ·
+>   embedded-wheel lockstep ✓. (Coverage 85/70 gates are CI-enforced, not local.)
+> - **Git**: on `main` = `a758436` (ADR-0194, PR #322), working tree clean, no unpushed
+>   commits. Production CI + installer-smoke **green** on the last four `main` commits
+>   (a758436, d5df778, 73eb677, 07d53e8).
+> - **CUI / hygiene**: no `.mpp/.xlsx/.aft/.xer/.docx` tracked outside `tests/fixtures/` +
+>   `00_REFERENCE_INTAKE/`; no `egg-info/`/`build/`/`dist/` committed (local build dirs are
+>   git-ignored). Pre-commit CUI guard active.
+> - **ADR ledger**: 195 ADRs on disk (0000–0194); 0194 is the max and appears in HANDOFF +
+>   SESSION-LOG (guard satisfied).
+> - **SMAT-SANDBOX sandbox mirror — DONE**: operator wanted an identical backup of the tool
+>   with a different desktop icon. Delivered as `polittdj/SMAT-SANDBOX` — `main` is now
+>   `7767ea3` (verified == the transport branch). The mirror is byte-identical app/engine/
+>   tests; the ONLY difference is sandbox-branded installers: icon **"SMAT Sandbox"**
+>   (custom `installer/assets/smat-sandbox.ico`), install dir `ScheduleForensicsSandbox`,
+>   port **8322** — so it installs/runs BESIDE production (Schedule Forensics / 8321) and its
+>   cleanup+uninstaller never touch production's icon. `SANDBOX.md` documents it. The push
+>   went via a transport branch because this session's git proxy is scoped to the production
+>   repo only (can't push to SMAT directly); the operator ran the final mirror push locally.
+> - **OPEN cleanup (needs operator OK)**: the throwaway transport branch
+>   `origin/sandbox-export` (= `7767ea3`) still exists on the PRODUCTION repo. It is safe to
+>   delete now that SMAT-SANDBOX `main` holds the same commit — `git push origin --delete
+>   sandbox-export`. Left in place pending explicit confirmation (do NOT auto-delete).
+> - **Parked (unchanged, all gated on the CP-basis engine)**: `audit/PARK-LIST.md` P1 live
+>   ExhibitPayload builder, P2 volData six-state migration, P3 full SSI rename, P4
+>   weighted_instability heatmap sort. None are regressions — they need `engine/cp_basis/`
+>   to exist first; fabricating those artifacts would violate the fidelity law.
+
+# (prior) Handoff — 2026-07-10 (slim banner + globe upper-right; ADR 0194)
+
+> ## STATUS — ADR-0194 slim banner
 >
 > - Operator: "decrease the width of the banner and move the earth up to the upper right
 >   corner." Root cause of the fat banner: the 132px globe sat in the header's flex flow

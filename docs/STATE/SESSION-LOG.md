@@ -4977,3 +4977,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   synced to 96. Chromium-verified at 1920px: header 171px, globe 96px at 4/14 insets, zero
   nav overlap, sticky intact, zero console errors. Pinned in test_nasa_theme.
   Highest ADR = 0194.
+
+### 2026-07-11 — whole-repo audit + SMAT-SANDBOX mirror (no ADR)
+- Operator: "audit the repo, read/check/verify everything, update handoff, give a
+  new-session prompt." Full gate re-run in-container: ruff / ruff format (309) / mypy
+  --strict (97) / bandit exit 0 / pytest 1980 passed / node --check (49 JS) / drift guard /
+  metric-dictionary sync / embedded-wheel lockstep — ALL GREEN. Git clean on main a758436
+  (ADR-0194, PR #322); production CI + installer-smoke green on the last four main commits.
+  No CUI-extension files tracked outside fixtures/00_REFERENCE_INTAKE; no build artifacts
+  committed. ADR ledger: 195 files (0000-0194), max 0194 in both state docs.
+- SMAT-SANDBOX mirror DONE: polittdj/SMAT-SANDBOX main == 7767ea3 (identical app/engine/
+  tests; only difference = sandbox-branded installers: "SMAT Sandbox" icon + custom .ico,
+  install dir ScheduleForensicsSandbox, port 8322, coexists with production; SANDBOX.md
+  documents it). Delivered via a transport branch (origin/sandbox-export) because the
+  session git proxy is scoped to the production repo only; operator ran the final push
+  locally. OPEN: origin/sandbox-export is safe to delete (git push origin --delete
+  sandbox-export) — left pending explicit operator OK.
+- No new ADR (audit only); highest ADR remains 0194.
