@@ -2543,7 +2543,8 @@ def create_app(
         return _page(
             st,
             "Bow Wave / CEI",
-            _export_bar("cei")
+            _work_piling_header(wave)
+            + _export_bar("cei")
             + _sources_line(st.ordered())
             + _cei_body(wave, st.target_uid, track_uids=track),
         )
@@ -8418,6 +8419,81 @@ def _trend_data(
             "offenders": offenders_per_version,
         }
     return {"target": focus, "versions": version_rows, "quality": quality}
+
+
+def _work_piling_header(wave: BowWave) -> str:
+    """Chapter 06 "Work piling up" (ADR-0203): the data-driven takeaway + a CEI KPI strip +
+    the latest-month plan-vs-done and finish-placement bars, from the bow-wave dataset the
+    page already computes (monthly profiles + CEI per snapshot — no new math, only sums)."""
+    snaps = wave.snapshots
+    n_ver = len(snaps)
+    latest = snaps[-1]
+    scored = [s.cei for s in snaps if s.cei is not None]
+    under = sum(1 for c in scored if c < 1.0)
+    cei = latest.cei
+    planned = latest.cei_planned or 0
+    finished = latest.cei_finished or 0
+
+    # the latest version's finish placement on the shared month axis, split at the data date
+    si = latest.status_index
+    if si is not None:
+        landed = sum(latest.scheduled[: si + 1])
+        ahead = sum(latest.scheduled[si + 1 :])
+    else:
+        landed, ahead = sum(latest.scheduled), 0
+
+    def _fin(x: int) -> str:
+        return f"{x} finish" if x == 1 else f"{x} finishes"
+
+    if cei is not None and latest.cei_period:
+        takeaway = (
+            f"In {latest.cei_period} the project completed {finished} of the {planned} "
+            f"finishes it had planned (CEI {cei:.2f}) — execution ran under plan in "
+            f"{under} of {len(scored)} scored month{'s' if len(scored) != 1 else ''}, "
+            f"and {_fin(ahead)} now sit ahead of the data date."
+        )
+    elif scored:
+        takeaway = (
+            f"Across {n_ver} versions execution ran under plan in {under} of {len(scored)} "
+            f"scored month{'s' if len(scored) != 1 else ''}, and {_fin(ahead)} now sit "
+            "ahead of the data date."
+        )
+    else:
+        takeaway = (
+            f"No month could be CEI-scored across the {n_ver} loaded versions — the files "
+            "carry no comparable month-over-month plan to measure execution against."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("Versions compared", str(n_ver)),
+            ("Latest CEI", f"{cei:.2f}" if cei is not None else "&mdash;"),
+            ("CEI month", latest.cei_period or "&mdash;"),
+            ("Planned that month", str(planned) if latest.cei_planned is not None else "&mdash;"),
+            (
+                "Finished that month",
+                str(finished) if latest.cei_finished is not None else "&mdash;",
+            ),
+            ("Months under plan", f"{under} / {len(scored)}" if scored else "&mdash;"),
+        ]
+    )
+    month_bar = _status_stack(
+        "Latest scored month",
+        f"Plan vs done in {latest.cei_period or 'the latest period'} — the CEI numerator and denominator.",
+        [("Finished", finished, "--ok"), ("Short of plan", max(planned - finished, 0), "--bad")],
+        f"{planned} planned in the month",
+    )
+    pile_bar = _status_stack(
+        "Where the finishes sit",
+        f"The newest version's finish months, split at the data date — {latest.label}.",
+        [("Landed by the data date", landed, "--ok"), ("Piled ahead of it", ahead, "--warn")],
+        f"{landed + ahead} finishes across {len(wave.month_labels)} months",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{month_bar}{pile_bar}</div>'
+    )
 
 
 def _cei_body(

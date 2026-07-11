@@ -5199,3 +5199,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   with chapter 04's takeaway). New test_trend_chapter_05_page_shell pins it. Version
   1.0.11 -> 1.0.12 (cache-bust); wheel + 9 installers rebuilt in lockstep.
 - Next: chapters 06-12 one per PR (06 "Work piling up" = /cei next). Highest ADR = 0202.
+
+### 2026-07-11 — Mission Ops redesign step 3, chapter 06 "Work piling up" (ADR-0203)
+- Sixth page shell of step 3: template applied to chapter 06 = Bow Wave / CEI (/cei).
+  Presentation only. The route already computes compute_bow_wave (shared month axis +
+  per-snapshot monthly baselined/scheduled/finished profiles + CEI with period and
+  numerator/denominator); the header only sums those series. Chapter chrome already fires
+  (title "Bow Wave / CEI" registered to chapter 06); header renders past the < 2-versions guard.
+- _work_piling_header(wave): takeaway "In <month> the project completed F of the P finishes it
+  had planned (CEI c.cc) — execution ran under plan in U of M scored months, and A finishes now
+  sit ahead of the data date." with honest degradation (no latest CEI -> cross-version sentence;
+  nothing scored -> says so); 6-KPI strip (Versions compared / Latest CEI / CEI month / Planned
+  that month / Finished that month / Months under plan); two _status_stack bars (Latest scored
+  month = Finished vs Short of plan; Where the finishes sit = Landed by the data date vs Piled
+  ahead — the literal bow wave).
+- Scaffold (animated bow-wave chart, stepper, tracked-UIDs form, CEI summary table, export bar)
+  untouched; header additive; no new CSS. Chromium-verified console + daylight, zero errors;
+  golden figures (Jun-26: 3/3 planned, CEI 1.00; 67 finishes ahead of the data date). New
+  test_cei_chapter_06_page_shell pins it. Version 1.0.12 -> 1.0.13; wheel + 9 installers
+  lockstep.
+- Operator directive in flight: full metric-engine audit + insight research -> prompt-formatted
+  report (two background agents). Next: chapter 07 "How we execute" (/performance). Highest
+  ADR = 0203.

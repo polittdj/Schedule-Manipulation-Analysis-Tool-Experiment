@@ -1,6 +1,31 @@
-# Handoff — 2026-07-11 (Mission Ops step 3, chapter 05 page shell; highest ADR 0202)
+# Handoff — 2026-07-11 (Mission Ops step 3, chapter 06 page shell; highest ADR 0203)
 
-> ## STATUS (current) — ADR-0202 chapter 05 "How it moved" page shell
+> ## STATUS (current) — ADR-0203 chapter 06 "Work piling up" page shell
+>
+> - Sixth page shell of step 3: the template applied to chapter 06 = Bow Wave / CEI (`/cei`).
+>   Presentation only. The route already computes compute_bow_wave (shared month axis +
+>   per-snapshot monthly baselined/scheduled/finished profiles + CEI with period and
+>   numerator/denominator) — the header only sums those series. Chapter chrome already fires
+>   (title "Bow Wave / CEI" registered to chapter 06); header renders past the < 2-versions guard.
+> - **`_work_piling_header(wave)`**: takeaway "In <month> the project completed F of the P
+>   finishes it had planned (CEI c.cc) — execution ran under plan in U of M scored months, and A
+>   finishes now sit ahead of the data date." (honest degradation when unscored); 6-KPI strip
+>   (Versions compared / Latest CEI / CEI month / Planned that month / Finished that month /
+>   Months under plan); two `_status_stack` bars (Latest scored month = Finished vs Short of
+>   plan; Where the finishes sit = Landed by the data date vs Piled ahead — the literal bow
+>   wave). NO engine math.
+> - Scaffold (animated chart, stepper, tracked-UIDs form, CEI table, export bar) untouched;
+>   header additive; no new CSS. Chromium-verified console + daylight, zero console errors;
+>   figures are the golden pair's real CEI (Jun-26: 3/3, CEI 1.00; 67 ahead of the data date).
+>   New test_cei_chapter_06_page_shell pins it. Version 1.0.12→1.0.13, wheel + 9 installers
+>   lockstep. Highest ADR = 0203.
+> - **In flight (operator directive)**: full metric-engine audit + external-insight research →
+>   a prompt-formatted report (two background agents running). Advanced-SRA phase stays issue
+>   #331. Next chapters: 07 "How we execute" = /performance, then 08-12.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops step 3, chapter 05 page shell; highest ADR 0202)
+
+> ## STATUS — ADR-0202 chapter 05 "How it moved" page shell
 >
 > - Fifth page shell of step 3: the template applied to chapter 05 = the multi-version Trend
 >   (`/trend`). Presentation only. The route already computes trend_across_versions (per-version
