@@ -34,11 +34,13 @@ function Install-Main {
 # SF_INSTALLER_SMOKE=1: non-interactive CI/self-test mode — temp install root, prompts skipped,
 # no shortcuts, no Ollama/Java. Used by the windows-latest smoke workflow; harmless for users.
 $Smoke = ($env:SF_INSTALLER_SMOKE -eq "1")
+# SANDBOX build: its own install root + port + desktop icon so it installs and runs BESIDE the
+# production "Schedule Forensics" tool without overwriting it or fighting over the port.
 if ($Smoke -and $env:SF_INSTALL_ROOT) { $InstallRoot = $env:SF_INSTALL_ROOT }
-elseif ($Smoke) { $InstallRoot = Join-Path ([IO.Path]::GetTempPath()) "SFSmoke\ScheduleForensics" }
-else { $InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensics" }
+elseif ($Smoke) { $InstallRoot = Join-Path ([IO.Path]::GetTempPath()) "SFSmoke\ScheduleForensicsSandbox" }
+else { $InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensicsSandbox" }
 $VenvDir     = Join-Path $InstallRoot "venv"
-$AppPort     = 8321
+$AppPort     = 8322
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 Start-Transcript -Path (Join-Path $InstallRoot "install.log") -Append | Out-Null
 
@@ -232,24 +234,26 @@ timeout /t 3 >nul
 
 $uninst = Join-Path $InstallRoot "Uninstall-ScheduleForensics.ps1"
 @"
-# Uninstall Schedule Forensics: removes the app folder + shortcuts.
-# Leaves Python / Java / Ollama in place (shared programs); remove the AI model with:
-#     ollama rm $OllamaModel
+# Uninstall SMAT Sandbox: removes ONLY the sandbox app folder + its own shortcuts.
+# Leaves Python / Java / Ollama AND the production 'Schedule Forensics' install untouched.
+#     ollama rm $OllamaModel   # (only if you also want to drop the shared AI model)
 & "$stopCmd" | Out-Null
 `$desk = [Environment]::GetFolderPath('Desktop')
-`$menu = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs\Schedule Forensics'
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Schedule Forensics.lnk')
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Start Schedule Forensics.lnk')
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Stop Schedule Forensics.lnk')
+`$menu = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs\SMAT Sandbox'
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'SMAT Sandbox.lnk')
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue `$menu
 Remove-Item -Recurse -Force '$InstallRoot'
-Write-Host 'Schedule Forensics removed.'
+Write-Host 'SMAT Sandbox removed (production Schedule Forensics left intact).'
 "@ | Set-Content -Path $uninst -Encoding UTF8
 
 @"
-Schedule Forensics — first run
-==============================
-Start:  double-click "Schedule Forensics" on the Desktop (the ONE icon).
+SMAT Sandbox — first run
+========================
+This is a SANDBOX copy of Schedule Forensics — identical in function, installed in its own
+folder ($InstallRoot) on port $AppPort so it runs BESIDE your production install without
+touching it. Use it to try changes safely.
+
+Start:  double-click "SMAT Sandbox" on the Desktop (the ONE icon).
         Your browser opens http://127.0.0.1:$AppPort — everything runs ON THIS MACHINE.
 Stop:   just close the browser window / click Quit in the app — the server AND the
         local AI shut themselves down. (Stop-ScheduleForensics.cmd in $InstallRoot
@@ -258,7 +262,7 @@ Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model installed: $OllamaModel).
 .mpp:   opening native .mpp needs Java 17+ (the installer offered it); otherwise
         save-as MSPDI XML in MS Project and open that.
-Remove: run Uninstall-ScheduleForensics.ps1 in $InstallRoot.
+Remove: run Uninstall-ScheduleForensics.ps1 in $InstallRoot (removes ONLY the sandbox).
 "@ | Set-Content -Path (Join-Path $InstallRoot "FIRST-RUN-README.txt") -Encoding UTF8
 
 if ($Smoke) {
@@ -269,33 +273,44 @@ if ($Smoke) {
 }
 $shell = New-Object -ComObject WScript.Shell
 $desk  = [Environment]::GetFolderPath("Desktop")
-$menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Schedule Forensics"
+$menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\SMAT Sandbox"
 New-Item -ItemType Directory -Force -Path $menu | Out-Null
-# ONE icon (operator, ADR-0193): the app stops ITSELF (and the local AI it manages) when
-# the browser window closes or Quit is clicked — a separate Stop icon only confused things.
-# The prior installs' Start/Stop desktop icons are removed; Stop-ScheduleForensics.cmd
-# stays in the install folder as a troubleshooting fallback.
-foreach ($old in @("Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk")) {
+# ONE self-stopping icon (ADR-0193): the app stops itself + the local AI on browser close.
+# SANDBOX: the icon is named "SMAT Sandbox" (NOT "Schedule Forensics") and carries its own
+# glyph, so it sits on the desktop beside the production icon and never overwrites or removes
+# it. Cleanup below only touches PRIOR SANDBOX icons — never the production "Schedule
+# Forensics.lnk". A repo-shipped .ico is copied in for a distinct look (falls back to a stock
+# Windows glyph if the asset is absent).
+foreach ($old in @("SMAT Sandbox.lnk", "Start SMAT Sandbox.lnk", "Stop SMAT Sandbox.lnk")) {
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $desk $old)
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $menu $old)
 }
+$iconRef = "$env:SystemRoot\System32\shell32.dll,43"  # distinct stock glyph fallback
+$repoIcon = Join-Path (Split-Path -Parent $PSScriptRoot) "installer\assets\smat-sandbox.ico"
+if (Test-Path $repoIcon) {
+    $iconDest = Join-Path $InstallRoot "smat-sandbox.ico"
+    Copy-Item -Force -Path $repoIcon -Destination $iconDest
+    $iconRef = "$iconDest,0"
+}
 foreach ($dir in @($desk, $menu)) {
-    $lnk = $shell.CreateShortcut((Join-Path $dir "Schedule Forensics.lnk"))
+    $lnk = $shell.CreateShortcut((Join-Path $dir "SMAT Sandbox.lnk"))
     $lnk.TargetPath = (Join-Path $VenvDir "Scripts\pythonw.exe")
     $lnk.Arguments  = "-c `"from schedule_forensics.launcher import main; main(port=$AppPort)`""
     $lnk.WorkingDirectory = $InstallRoot
-    $lnk.Description = "Schedule Forensics — starts the tool; closing the browser stops everything"
+    $lnk.IconLocation = $iconRef
+    $lnk.Description = "SMAT Sandbox — safe copy; starts the tool, closing the browser stops everything"
     $lnk.Save()
 }
-$unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall Schedule Forensics.lnk"))
+$unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall SMAT Sandbox.lnk"))
 $unlnk.TargetPath = "powershell.exe"
 $unlnk.Arguments  = "-ExecutionPolicy Bypass -File `"$uninst`""
 $unlnk.Save()
-Ok "ONE desktop icon: 'Schedule Forensics' (self-stopping); uninstaller + README in $InstallRoot"
+Ok "ONE desktop icon: 'SMAT Sandbox' (self-stopping, separate from production); README in $InstallRoot"
 
 Stop-Transcript | Out-Null
 Write-Host ""
-Write-Host "DONE — double-click 'Schedule Forensics' on the Desktop to begin." -ForegroundColor Green
+Write-Host "DONE — double-click 'SMAT Sandbox' on the Desktop to begin." -ForegroundColor Green
+Write-Host "(This is the SANDBOX copy — it runs beside your production 'Schedule Forensics'.)"
 Write-Host "(Close the browser window to stop everything, including the local AI.)"
 Write-Host "(Everything runs locally at http://127.0.0.1:$AppPort — no data leaves this machine.)"
 }

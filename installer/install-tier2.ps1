@@ -40,11 +40,13 @@ function Install-Main {
 # SF_INSTALLER_SMOKE=1: non-interactive CI/self-test mode — temp install root, prompts skipped,
 # no shortcuts, no Ollama/Java. Used by the windows-latest smoke workflow; harmless for users.
 $Smoke = ($env:SF_INSTALLER_SMOKE -eq "1")
+# SANDBOX build: its own install root + port + desktop icon so it installs and runs BESIDE the
+# production "Schedule Forensics" tool without overwriting it or fighting over the port.
 if ($Smoke -and $env:SF_INSTALL_ROOT) { $InstallRoot = $env:SF_INSTALL_ROOT }
-elseif ($Smoke) { $InstallRoot = Join-Path ([IO.Path]::GetTempPath()) "SFSmoke\ScheduleForensics" }
-else { $InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensics" }
+elseif ($Smoke) { $InstallRoot = Join-Path ([IO.Path]::GetTempPath()) "SFSmoke\ScheduleForensicsSandbox" }
+else { $InstallRoot = Join-Path $env:LOCALAPPDATA "ScheduleForensicsSandbox" }
 $VenvDir     = Join-Path $InstallRoot "venv"
-$AppPort     = 8321
+$AppPort     = 8322
 New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
 Start-Transcript -Path (Join-Path $InstallRoot "install.log") -Append | Out-Null
 
@@ -238,24 +240,26 @@ timeout /t 3 >nul
 
 $uninst = Join-Path $InstallRoot "Uninstall-ScheduleForensics.ps1"
 @"
-# Uninstall Schedule Forensics: removes the app folder + shortcuts.
-# Leaves Python / Java / Ollama in place (shared programs); remove the AI model with:
-#     ollama rm $OllamaModel
+# Uninstall SMAT Sandbox: removes ONLY the sandbox app folder + its own shortcuts.
+# Leaves Python / Java / Ollama AND the production 'Schedule Forensics' install untouched.
+#     ollama rm $OllamaModel   # (only if you also want to drop the shared AI model)
 & "$stopCmd" | Out-Null
 `$desk = [Environment]::GetFolderPath('Desktop')
-`$menu = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs\Schedule Forensics'
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Schedule Forensics.lnk')
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Start Schedule Forensics.lnk')
-Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'Stop Schedule Forensics.lnk')
+`$menu = Join-Path ([Environment]::GetFolderPath('StartMenu')) 'Programs\SMAT Sandbox'
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path `$desk 'SMAT Sandbox.lnk')
 Remove-Item -Recurse -Force -ErrorAction SilentlyContinue `$menu
 Remove-Item -Recurse -Force '$InstallRoot'
-Write-Host 'Schedule Forensics removed.'
+Write-Host 'SMAT Sandbox removed (production Schedule Forensics left intact).'
 "@ | Set-Content -Path $uninst -Encoding UTF8
 
 @"
-Schedule Forensics — first run
-==============================
-Start:  double-click "Schedule Forensics" on the Desktop (the ONE icon).
+SMAT Sandbox — first run
+========================
+This is a SANDBOX copy of Schedule Forensics — identical in function, installed in its own
+folder ($InstallRoot) on port $AppPort so it runs BESIDE your production install without
+touching it. Use it to try changes safely.
+
+Start:  double-click "SMAT Sandbox" on the Desktop (the ONE icon).
         Your browser opens http://127.0.0.1:$AppPort — everything runs ON THIS MACHINE.
 Stop:   just close the browser window / click Quit in the app — the server AND the
         local AI shut themselves down. (Stop-ScheduleForensics.cmd in $InstallRoot
@@ -264,7 +268,7 @@ Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model installed: $OllamaModel).
 .mpp:   opening native .mpp needs Java 17+ (the installer offered it); otherwise
         save-as MSPDI XML in MS Project and open that.
-Remove: run Uninstall-ScheduleForensics.ps1 in $InstallRoot.
+Remove: run Uninstall-ScheduleForensics.ps1 in $InstallRoot (removes ONLY the sandbox).
 "@ | Set-Content -Path (Join-Path $InstallRoot "FIRST-RUN-README.txt") -Encoding UTF8
 
 if ($Smoke) {
@@ -275,33 +279,44 @@ if ($Smoke) {
 }
 $shell = New-Object -ComObject WScript.Shell
 $desk  = [Environment]::GetFolderPath("Desktop")
-$menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\Schedule Forensics"
+$menu  = Join-Path ([Environment]::GetFolderPath("StartMenu")) "Programs\SMAT Sandbox"
 New-Item -ItemType Directory -Force -Path $menu | Out-Null
-# ONE icon (operator, ADR-0193): the app stops ITSELF (and the local AI it manages) when
-# the browser window closes or Quit is clicked — a separate Stop icon only confused things.
-# The prior installs' Start/Stop desktop icons are removed; Stop-ScheduleForensics.cmd
-# stays in the install folder as a troubleshooting fallback.
-foreach ($old in @("Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk")) {
+# ONE self-stopping icon (ADR-0193): the app stops itself + the local AI on browser close.
+# SANDBOX: the icon is named "SMAT Sandbox" (NOT "Schedule Forensics") and carries its own
+# glyph, so it sits on the desktop beside the production icon and never overwrites or removes
+# it. Cleanup below only touches PRIOR SANDBOX icons — never the production "Schedule
+# Forensics.lnk". A repo-shipped .ico is copied in for a distinct look (falls back to a stock
+# Windows glyph if the asset is absent).
+foreach ($old in @("SMAT Sandbox.lnk", "Start SMAT Sandbox.lnk", "Stop SMAT Sandbox.lnk")) {
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $desk $old)
     Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $menu $old)
 }
+$iconRef = "$env:SystemRoot\System32\shell32.dll,43"  # distinct stock glyph fallback
+$repoIcon = Join-Path (Split-Path -Parent $PSScriptRoot) "installer\assets\smat-sandbox.ico"
+if (Test-Path $repoIcon) {
+    $iconDest = Join-Path $InstallRoot "smat-sandbox.ico"
+    Copy-Item -Force -Path $repoIcon -Destination $iconDest
+    $iconRef = "$iconDest,0"
+}
 foreach ($dir in @($desk, $menu)) {
-    $lnk = $shell.CreateShortcut((Join-Path $dir "Schedule Forensics.lnk"))
+    $lnk = $shell.CreateShortcut((Join-Path $dir "SMAT Sandbox.lnk"))
     $lnk.TargetPath = (Join-Path $VenvDir "Scripts\pythonw.exe")
     $lnk.Arguments  = "-c `"from schedule_forensics.launcher import main; main(port=$AppPort)`""
     $lnk.WorkingDirectory = $InstallRoot
-    $lnk.Description = "Schedule Forensics — starts the tool; closing the browser stops everything"
+    $lnk.IconLocation = $iconRef
+    $lnk.Description = "SMAT Sandbox — safe copy; starts the tool, closing the browser stops everything"
     $lnk.Save()
 }
-$unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall Schedule Forensics.lnk"))
+$unlnk = $shell.CreateShortcut((Join-Path $menu "Uninstall SMAT Sandbox.lnk"))
 $unlnk.TargetPath = "powershell.exe"
 $unlnk.Arguments  = "-ExecutionPolicy Bypass -File `"$uninst`""
 $unlnk.Save()
-Ok "ONE desktop icon: 'Schedule Forensics' (self-stopping); uninstaller + README in $InstallRoot"
+Ok "ONE desktop icon: 'SMAT Sandbox' (self-stopping, separate from production); README in $InstallRoot"
 
 Stop-Transcript | Out-Null
 Write-Host ""
-Write-Host "DONE — double-click 'Schedule Forensics' on the Desktop to begin." -ForegroundColor Green
+Write-Host "DONE — double-click 'SMAT Sandbox' on the Desktop to begin." -ForegroundColor Green
+Write-Host "(This is the SANDBOX copy — it runs beside your production 'Schedule Forensics'.)"
 Write-Host "(Close the browser window to stop everything, including the local AI.)"
 Write-Host "(Everything runs locally at http://127.0.0.1:$AppPort — no data leaves this machine.)"
 }
@@ -9130,14 +9145,14 @@ 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
-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
+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
-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
+w+ueMn5nNcDqVAkOXBAG+Tw5PaaPO0HJglwuRQ44K42UC0YthvGtLze+4UjlcRENRVvGWTQu6wGdfcJ0voEuyP6kBSZNtI2TSv0BUEsDBBQAAAAIAM8S61wn
 +IZ65hAAAIsiAAArAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9NRVRBREFUQa1ZzXIbR5K+91NUyDGzAIzuJml7ZFMrbUAkaEEmSA4B
 2jvhmVAXugtAif3nrmqSmMOGTxux1919hZlXmPs+ip5kv8yqBiBSCu9hdRABdFVWVv58+WX2VFmZSSvDH1VjdFUei6Po6+BCFupYmHStsjZX4bJqVGl0aoLt
 qsPoAOtmbVHIZnMszqtU5kNxMZqNQrtWhcpEt2knRpYy3xhthK2qXPRObiahkUs1FNVymetS9aNg1Np11RyLmd8jzrqjxaLVeRac6xTfodxVU9WNhvbNRnz4
@@ -9186,12 +9201,12 @@ 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
-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
+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
-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
+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
-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
+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
@@ -9417,13 +9432,13 @@ AAAACADdoupc2Jmc5NYNAACxJgAALAAAAAAAAAAAAAAApIH3mgsAc2NoZWR1bGVfZm9yZW5zaWNzL3dl
 AAAACAAVtOpcgYh7tLtFAAD+xgAAKQAAAAAAAAAAAAAApIEXqQsAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvdml6aGludHMuanNQSwECFAMUAAAA
 CACnfepcTut/urMaAAD2WwAAKwAAAAAAAAAAAAAApIEZ7wsAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvdm9sYXRpbGl0eS5qc1BLAQIUAxQAAAAI
 AEsc1lxnaHOlQQkAAEMZAAAkAAAAAAAAAAAAAACkgRUKDABzY2hlZHVsZV9mb3JlbnNpY3Mvd2ViL3N0YXRpYy93YnMuanNQSwECFAMUAAAACAB5nulctJbm
-7VsJAACSGwAAJwAAAAAAAAAAAAAApIGYEwwAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvd2hhdGlmLmpzUEsBAhQDFAAAAAgA1AXrXBpsUKRaAgAA
-HQQAADMAAAAAAAAAAAAAAKSBOB0MAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGljZW5zZXMvTElDRU5TRVBLAQIUAxQAAAAIANQF61wn
-+IZ65hAAAIsiAAArAAAAAAAAAAAAAACkgeMfDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL01FVEFEQVRBUEsBAhQDFAAAAAgA1AXrXJmY
-f51bAAAAWwAAACgAAAAAAAAAAAAAAKSBEjEMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vV0hFRUxQSwECFAMUAAAACADUBetcAuHYnVQA
-AACJAAAAMwAAAAAAAAAAAAAApIGzMQwAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9lbnRyeV9wb2ludHMudHh0UEsBAhQDFAAAAAgA1AXr
+7VsJAACSGwAAJwAAAAAAAAAAAAAApIGYEwwAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvd2hhdGlmLmpzUEsBAhQDFAAAAAgAzxLrXBpsUKRaAgAA
+HQQAADMAAAAAAAAAAAAAAKSBOB0MAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGljZW5zZXMvTElDRU5TRVBLAQIUAxQAAAAIAM8S61wn
++IZ65hAAAIsiAAArAAAAAAAAAAAAAACkgeMfDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL01FVEFEQVRBUEsBAhQDFAAAAAgAzxLrXJmY
+f51bAAAAWwAAACgAAAAAAAAAAAAAAKSBEjEMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vV0hFRUxQSwECFAMUAAAACADPEutcAuHYnVQA
+AACJAAAAMwAAAAAAAAAAAAAApIGzMQwAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9lbnRyeV9wb2ludHMudHh0UEsBAhQDFAAAAAgAzxLr
 XDcqbL8VAAAAEwAAADAAAAAAAAAAAAAAAKSBWDIMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vdG9wX2xldmVsLnR4dFBLAQIUAxQAAAAI
-ANQF61yIsL8hxhwAAGI7AAApAAAAAAAAAAAAAAC0gbsyDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL1JFQ09SRFBLBQYAAAAAnQCdAKg0
+AM8S61yIsL8hxhwAAGI7AAApAAAAAAAAAAAAAAC0gbsyDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL1JFQ09SRFBLBQYAAAAAnQCdAKg0
 AADITwwAAAA=
 '@
 

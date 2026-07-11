@@ -35,13 +35,15 @@ MODEL_DISK_GB=2
 
 set -euo pipefail
 SMOKE="${SF_INSTALLER_SMOKE:-0}"
+# SANDBOX build: its own dir + port + app-menu entries so it installs and runs BESIDE the
+# production Schedule Forensics install without overwriting it.
 if [ "$SMOKE" = "1" ]; then
-  INSTALL_ROOT="${SF_INSTALL_ROOT:-$(mktemp -d)/ScheduleForensics}"
+  INSTALL_ROOT="${SF_INSTALL_ROOT:-$(mktemp -d)/ScheduleForensicsSandbox}"
 else
-  INSTALL_ROOT="${SF_INSTALL_ROOT:-$HOME/.local/share/ScheduleForensics}"
+  INSTALL_ROOT="${SF_INSTALL_ROOT:-$HOME/.local/share/ScheduleForensicsSandbox}"
 fi
 VENV_DIR="$INSTALL_ROOT/venv"
-APP_PORT=8321
+APP_PORT=8322
 mkdir -p "$INSTALL_ROOT"
 
 step() { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
@@ -174,24 +176,26 @@ chmod +x "$STOP_SH"
 UNINST="$INSTALL_ROOT/uninstall-schedule-forensics.sh"
 cat > "$UNINST" <<EOF
 #!/usr/bin/env bash
-# Uninstall Schedule Forensics: removes the app folder, launchers, desktop entries.
-# Leaves Python / Ollama in place (shared programs); remove the AI model with:
-#     ollama rm $OLLAMA_MODEL
+# Uninstall SMAT Sandbox: removes ONLY the sandbox folder, launchers, desktop entries.
+# Leaves Python / Ollama AND the production Schedule Forensics install untouched.
+#     ollama rm $OLLAMA_MODEL   # (only if you also want to drop the shared AI model)
 "$STOP_SH" || true
-rm -f "\$HOME/.local/bin/schedule-forensics-start" "\$HOME/.local/bin/schedule-forensics-stop"
-rm -f "\$HOME/.local/share/applications/schedule-forensics-start.desktop" \\
-      "\$HOME/.local/share/applications/schedule-forensics-stop.desktop"
+rm -f "\$HOME/.local/bin/smat-sandbox-start" "\$HOME/.local/bin/smat-sandbox-stop"
+rm -f "\$HOME/.local/share/applications/smat-sandbox-start.desktop" \\
+      "\$HOME/.local/share/applications/smat-sandbox-stop.desktop"
 rm -rf "$INSTALL_ROOT"
-echo "Schedule Forensics removed."
+echo "SMAT Sandbox removed (production Schedule Forensics left intact)."
 EOF
 chmod +x "$UNINST"
 
 cat > "$INSTALL_ROOT/FIRST-RUN-README.txt" <<EOF
-Schedule Forensics — first run
-==============================
-Start:  run "Start Schedule Forensics" from your app menu (or $START_SH).
+SMAT Sandbox — first run
+========================
+A SANDBOX copy of Schedule Forensics — identical in function, in its own folder on port
+$APP_PORT so it runs BESIDE your production install.
+Start:  run "SMAT Sandbox (Start)" from your app menu (or $START_SH).
         Your browser opens http://127.0.0.1:$APP_PORT — everything runs ON THIS MACHINE.
-Stop:   "Stop Schedule Forensics" (closing the browser also stops it after an idle delay).
+Stop:   "SMAT Sandbox (Stop)" (closing the browser also stops it after an idle delay).
 Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model: $OLLAMA_MODEL).
 Remove: $UNINST
@@ -199,20 +203,20 @@ EOF
 
 if [ "$SMOKE" != "1" ]; then
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-  ln -sf "$START_SH" "$HOME/.local/bin/schedule-forensics-start"
-  ln -sf "$STOP_SH"  "$HOME/.local/bin/schedule-forensics-stop"
-  cat > "$HOME/.local/share/applications/schedule-forensics-start.desktop" <<EOF
+  ln -sf "$START_SH" "$HOME/.local/bin/smat-sandbox-start"
+  ln -sf "$STOP_SH"  "$HOME/.local/bin/smat-sandbox-stop"
+  cat > "$HOME/.local/share/applications/smat-sandbox-start.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Start Schedule Forensics
+Name=SMAT Sandbox (Start)
 Exec=$START_SH
 Terminal=false
 Categories=Office;
 EOF
-  cat > "$HOME/.local/share/applications/schedule-forensics-stop.desktop" <<EOF
+  cat > "$HOME/.local/share/applications/smat-sandbox-stop.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Stop Schedule Forensics
+Name=SMAT Sandbox (Stop)
 Exec=$STOP_SH
 Terminal=false
 Categories=Office;
@@ -9051,14 +9055,14 @@ exit 0
 # u+4GH6XtNTOzRVOhtAUp7gT5bsmPtpJgh/cIr3WPy4AuCCH1ZkH/vkaKOrO437HNEep+/ZY9bB7ATcaEP30k776Q0ws2Ff722dRa372E0guTeaC9tTlo7uxz
 # Z3NFz7buxj1fUMufDu3tkM6aa9fKAGBFwu7h7tqyi8uR/TZ6LNTjyNJxYHUnGrP+s9+izL8vxF2eeq9an6/O3XuWfUfoP4fRK5gHfmptt34SZ5Wt7wox9R/3
 # vmRrlmvmTvejWp3vatd5FOyMyLybPpVv9Gtjiyzcz+nBHLP8EE4c1n+PGJq/R7hA2PXHh2c42rzEP+Ht5qX+CZdb4fY43gXoOkSIPtf5luL/VQgI+sNRx4cu
-# CtqL/QRSoXle+G/T9cFet28iyv//AlBLAwQUAAAACADUBetcGmxQpFoCAAAdBAAAMwAAAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGlj
+# CtqL/QRSoXle+G/T9cFet28iyv//AlBLAwQUAAAACADPEutcGmxQpFoCAAAdBAAAMwAAAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGlj
 # ZW5zZXMvTElDRU5TRY1TS64TMRDc+xS9I0HJBL0FiyexiJIIIoXMUz4Llo7dyVg47pHdExhWHIITchLazkc8VsxqPuXqquqa1XK2WG8X8PvnL3hZTWeLT/Vq
 # vtjAgAkOCEcXtHc/0A7Vh/+7lJpR20d3ahgGZghP757eVzD1Hsq7BBETxgvaSqld4/JzS8kxxR4MBdYuJOAGIVEXDco7KzIoggZPRvsRrKfb6VgQZ7T5A4bk
 # jEqmQdt5HGsR3CfhZSIvg68WwDsjQIRGJwjE0COLPwyQ0KPhImcf2Pk854YVEtNQEpAOVoScz44FCQ1GfFYK4C2sCU5RBwY63v3JqbO2+MqzjvjwDYe++DOP
 # mBryFmNVCOdU5EW0LnF0h45R0MJ5i4M6Tk4ScZm144Zi3g5guLhI4YyBxcjy80u92U3Xu7LWcvzuydAFY4Jtvd/MFjCr5wuo16svFSwZLGGCdb0bXf3qIEpG
 # 6upPh/5uJjPAPW+wmvUIWh2TyBAb7qLZXTCNymIjy01eXuilF4EjeS+4fTBep+SOTh6WQbZ4llMUYDDbL4fQRjKY0j2rxzK3nWnKQAlZBcw6ZHAJn/+p0iAh
 # QnVy7E5BOjIslgRyyuqDMCfy6PvbMlQhpW8B45tUaihCUzmj21ay0wexuq+2FXwsBDlomJQqgkiGlgTU50rX81p+nqjN12s9c58058TEkVgcPudSSav+KlXp
-# w+ueMn5nNcDqVAkOXBAG+Tw5PaaPO0HJglwuRQ44K42UC0YthvGtLze+4UjlcRENRVvGWTQu6wGdfcJ0voEuyP6kBSZNtI2TSv0BUEsDBBQAAAAIANQF61wn
+# w+ueMn5nNcDqVAkOXBAG+Tw5PaaPO0HJglwuRQ44K42UC0YthvGtLze+4UjlcRENRVvGWTQu6wGdfcJ0voEuyP6kBSZNtI2TSv0BUEsDBBQAAAAIAM8S61wn
 # +IZ65hAAAIsiAAArAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9NRVRBREFUQa1ZzXIbR5K+91NUyDGzAIzuJml7ZFMrbUAkaEEmSA4B
 # 2jvhmVAXugtAif3nrmqSmMOGTxux1919hZlXmPs+ip5kv8yqBiBSCu9hdRABdFVWVv58+WX2VFmZSSvDH1VjdFUei6Po6+BCFupYmHStsjZX4bJqVGl0aoLt
 # qsPoAOtmbVHIZnMszqtU5kNxMZqNQrtWhcpEt2knRpYy3xhthK2qXPRObiahkUs1FNVymetS9aNg1Np11RyLmd8jzrqjxaLVeRac6xTfodxVU9WNhvbNRnz4
@@ -9107,12 +9111,12 @@ exit 0
 # jy5ip6ozFIouJaofDtKbZ4JLmSq50AzKvev5tL+zo8wav1826VrTmwm0QMj6VJPHeASV0ovq3RbuQbYWom9Ys4JniYFBsYODd9fjs/H1+OJk/G5yMR/9MI5P
 # 4afZZB6+wc/brS7IdrPmWKxoFkZNMM94l9zurSrRQx6HwHSajA3FyQ3N7ulVHOiQT4U/upITBAm97ExgAf7AgCUtf6eXmyIEKQZMuV/cyDjxdJ3maNQi01iZ
 # eqlyRaQPherbb3435LE5gQy+Pz/4XX8YSH6FkXVvfVb8JiNx70UT59Bk++qTfiC41vzukHrukwn153sjXd6BD185bPIz2kATJe5mhmGuFw3SgBPLtcpiEl9y
-# D5uQy+m9WBIn/BI1iZVNI/cqz6FfN/ftWFXKfUejgu5N+1CcgdyMribUJSKSEMP+XfpQvOX35g4oH70nj4L/BVBLAwQUAAAACADUBetcmZh/nVsAAABbAAAA
+# D5uQy+m9WBIn/BI1iZVNI/cqz6FfN/ftWFXKfUejgu5N+1CcgdyMribUJSKSEMP+XfpQvOX35g4oH70nj4L/BVBLAwQUAAAACADPEutcmZh/nVsAAABbAAAA
 # KAAAAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vV0hFRUwFwTEKwzAMBdBdp9DYDjIuWYovULqFENrZhU8SMFKQ5SG373vfHWjygffDtPAj
-# ZXpB4TXMC3fEOMOsdb49p5RTvtNiFvLuMg9HO36FwwdorVvh85pETSFVL6I/UEsDBBQAAAAIANQF61wC4didVAAAAIkAAAAzAAAAc2NoZWR1bGVfZm9yZW5z
+# ZXpB4TXMC3fEOMOsdb49p5RTvtNiFvLuMg9HO36FwwdorVvh85pETSFVL6I/UEsDBBQAAAAIAM8S61wC4didVAAAAIkAAAAzAAAAc2NoZWR1bGVfZm9yZW5z
 # aWNzLTEuMC40LmRpc3QtaW5mby9lbnRyeV9wb2ludHMudHh0i07OzyvOz0mNL04uyiwoKY7lKk7OSE0pzUnVTcsvSs0rzkwuVrBVgAnGwwX1chJL84CiRVa5
-# iZl5WHTpFqUW5BeVYNecWpGRmZRZUqyXnJMJMQAAUEsDBBQAAAAIANQF61w3Kmy/FQAAABMAAAAwAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3Qt
-# aW5mby90b3BfbGV2ZWwudHh0K07OSE0pzUmNT8svSs0rzkwu5gIAUEsDBBQAAAAIANQF61yIsL8hxhwAAGI7AAApAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEu
+# iZl5WHTpFqUW5BeVYNecWpGRmZRZUqyXnJMJMQAAUEsDBBQAAAAIAM8S61w3Kmy/FQAAABMAAAAwAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3Qt
+# aW5mby90b3BfbGV2ZWwudHh0K07OSE0pzUmNT8svSs0rzkwu5gIAUEsDBBQAAAAIAM8S61yIsL8hxhwAAGI7AAApAAAAc2NoZWR1bGVfZm9yZW5zaWNzLTEu
 # MC40LmRpc3QtaW5mby9SRUNPUkSNe8mWm0rT7fx/Ful89M3gDkAgQAgJRCNgwqIH0Yoenv4i+9imfFQuT1yrylp7Q2bEjh2RqdZPwqDPQyeqmrBsU7/9n+Ok
 # Zdo5zj/1vGsTF0Kx/yeesqCNo2w5HrwJHoECC41KER/PTAstDTFSGVxOFw0GAHaHosD/tf9Fzd2+XP/abFBZGMoHCjXk042ZyXsNoyqWzuMFwXuau1UVL5ie
 # m6tjcGR3CEnib2GrOE7L2GnCwPW7tCo3+DgsPy9eF9BnnF/gu2yIbZeTxp2jvIVYnldXHU8LY41OpewIECXe4Zdh58S92wQb3PRq5hJMgsF8Zi8JwMjVFATA
@@ -9338,12 +9342,12 @@ exit 0
 # AAAACAAVtOpcgYh7tLtFAAD+xgAAKQAAAAAAAAAAAAAApIEXqQsAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvdml6aGludHMuanNQSwECFAMUAAAA
 # CACnfepcTut/urMaAAD2WwAAKwAAAAAAAAAAAAAApIEZ7wsAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvdm9sYXRpbGl0eS5qc1BLAQIUAxQAAAAI
 # AEsc1lxnaHOlQQkAAEMZAAAkAAAAAAAAAAAAAACkgRUKDABzY2hlZHVsZV9mb3JlbnNpY3Mvd2ViL3N0YXRpYy93YnMuanNQSwECFAMUAAAACAB5nulctJbm
-# 7VsJAACSGwAAJwAAAAAAAAAAAAAApIGYEwwAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvd2hhdGlmLmpzUEsBAhQDFAAAAAgA1AXrXBpsUKRaAgAA
-# HQQAADMAAAAAAAAAAAAAAKSBOB0MAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGljZW5zZXMvTElDRU5TRVBLAQIUAxQAAAAIANQF61wn
-# +IZ65hAAAIsiAAArAAAAAAAAAAAAAACkgeMfDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL01FVEFEQVRBUEsBAhQDFAAAAAgA1AXrXJmY
-# f51bAAAAWwAAACgAAAAAAAAAAAAAAKSBEjEMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vV0hFRUxQSwECFAMUAAAACADUBetcAuHYnVQA
-# AACJAAAAMwAAAAAAAAAAAAAApIGzMQwAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9lbnRyeV9wb2ludHMudHh0UEsBAhQDFAAAAAgA1AXr
+# 7VsJAACSGwAAJwAAAAAAAAAAAAAApIGYEwwAc2NoZWR1bGVfZm9yZW5zaWNzL3dlYi9zdGF0aWMvd2hhdGlmLmpzUEsBAhQDFAAAAAgAzxLrXBpsUKRaAgAA
+# HQQAADMAAAAAAAAAAAAAAKSBOB0MAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vbGljZW5zZXMvTElDRU5TRVBLAQIUAxQAAAAIAM8S61wn
+# +IZ65hAAAIsiAAArAAAAAAAAAAAAAACkgeMfDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL01FVEFEQVRBUEsBAhQDFAAAAAgAzxLrXJmY
+# f51bAAAAWwAAACgAAAAAAAAAAAAAAKSBEjEMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vV0hFRUxQSwECFAMUAAAACADPEutcAuHYnVQA
+# AACJAAAAMwAAAAAAAAAAAAAApIGzMQwAc2NoZWR1bGVfZm9yZW5zaWNzLTEuMC40LmRpc3QtaW5mby9lbnRyeV9wb2ludHMudHh0UEsBAhQDFAAAAAgAzxLr
 # XDcqbL8VAAAAEwAAADAAAAAAAAAAAAAAAKSBWDIMAHNjaGVkdWxlX2ZvcmVuc2ljcy0xLjAuNC5kaXN0LWluZm8vdG9wX2xldmVsLnR4dFBLAQIUAxQAAAAI
-# ANQF61yIsL8hxhwAAGI7AAApAAAAAAAAAAAAAAC0gbsyDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL1JFQ09SRFBLBQYAAAAAnQCdAKg0
+# AM8S61yIsL8hxhwAAGI7AAApAAAAAAAAAAAAAAC0gbsyDABzY2hlZHVsZV9mb3JlbnNpY3MtMS4wLjQuZGlzdC1pbmZvL1JFQ09SRFBLBQYAAAAAnQCdAKg0
 # AADITwwAAAA=
 # ===END WHEEL_B64===

@@ -205,21 +205,26 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     """Operator 2026-07-10 (ADR-0193): (1) every deployed .mpp import failed — the wheel is
     pure Python and the 17 MB Java converter never shipped; each installer now copies the
     repo's tools/mpxj beside the venv, where the runtime walk-up discovery finds it, with an
-    honest warning when the installer is run outside the checkout. (2) One desktop icon:
-    'Schedule Forensics' launches pythonw directly (the app stops itself AND the local AI on
-    browser close / Quit — ADR-0122); the old Start/Stop desktop icons are removed on
-    upgrade and by the uninstaller."""
+    honest warning when the installer is run outside the checkout. (2) One self-stopping icon:
+    it launches pythonw directly (the app stops itself AND the local AI on browser close /
+    Quit — ADR-0122). SANDBOX build: the icon is named 'SMAT Sandbox' (its own install dir +
+    port) so it coexists with production; its cleanup/uninstaller only touch the sandbox's own
+    shortcuts, never production's 'Schedule Forensics.lnk'."""
     tpl_ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
     assert 'Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"' in tpl_ps1
     assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import stays OFF" in tpl_ps1
-    assert '"Schedule Forensics.lnk"' in tpl_ps1  # the ONE icon
+    assert '"SMAT Sandbox.lnk"' in tpl_ps1  # the ONE icon (sandbox-named)
     assert "pythonw.exe" in tpl_ps1  # launched directly (self-stopping app, no console)
-    assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
+    # sandbox cleanup removes only its OWN prior icons — never production's
+    assert '"SMAT Sandbox.lnk", "Start SMAT Sandbox.lnk", "Stop SMAT Sandbox.lnk"' in tpl_ps1
+    assert "smat-sandbox.ico" in tpl_ps1  # distinct custom glyph
+    assert "ScheduleForensicsSandbox" in tpl_ps1 and "$AppPort     = 8322" in tpl_ps1
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
         assert 'cp -R "$REPO_MPXJ"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert "ScheduleForensicsSandbox" in tpl and "8322" in tpl, family
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
-        assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
+        assert "MpxjToMspdi.class" in ps1 and '"SMAT Sandbox.lnk"' in ps1
         for family in ("sh", "command"):
             assert 'cp -R "$REPO_MPXJ"' in _read(tier, family), (tier, family)

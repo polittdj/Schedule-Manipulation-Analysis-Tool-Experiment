@@ -29,13 +29,15 @@
 
 set -euo pipefail
 SMOKE="${SF_INSTALLER_SMOKE:-0}"
+# SANDBOX build: its own dir + port + app-menu entries so it installs and runs BESIDE the
+# production Schedule Forensics install without overwriting it.
 if [ "$SMOKE" = "1" ]; then
-  INSTALL_ROOT="${SF_INSTALL_ROOT:-$(mktemp -d)/ScheduleForensics}"
+  INSTALL_ROOT="${SF_INSTALL_ROOT:-$(mktemp -d)/ScheduleForensicsSandbox}"
 else
-  INSTALL_ROOT="${SF_INSTALL_ROOT:-$HOME/.local/share/ScheduleForensics}"
+  INSTALL_ROOT="${SF_INSTALL_ROOT:-$HOME/.local/share/ScheduleForensicsSandbox}"
 fi
 VENV_DIR="$INSTALL_ROOT/venv"
-APP_PORT=8321
+APP_PORT=8322
 mkdir -p "$INSTALL_ROOT"
 
 step() { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
@@ -168,24 +170,26 @@ chmod +x "$STOP_SH"
 UNINST="$INSTALL_ROOT/uninstall-schedule-forensics.sh"
 cat > "$UNINST" <<EOF
 #!/usr/bin/env bash
-# Uninstall Schedule Forensics: removes the app folder, launchers, desktop entries.
-# Leaves Python / Ollama in place (shared programs); remove the AI model with:
-#     ollama rm $OLLAMA_MODEL
+# Uninstall SMAT Sandbox: removes ONLY the sandbox folder, launchers, desktop entries.
+# Leaves Python / Ollama AND the production Schedule Forensics install untouched.
+#     ollama rm $OLLAMA_MODEL   # (only if you also want to drop the shared AI model)
 "$STOP_SH" || true
-rm -f "\$HOME/.local/bin/schedule-forensics-start" "\$HOME/.local/bin/schedule-forensics-stop"
-rm -f "\$HOME/.local/share/applications/schedule-forensics-start.desktop" \\
-      "\$HOME/.local/share/applications/schedule-forensics-stop.desktop"
+rm -f "\$HOME/.local/bin/smat-sandbox-start" "\$HOME/.local/bin/smat-sandbox-stop"
+rm -f "\$HOME/.local/share/applications/smat-sandbox-start.desktop" \\
+      "\$HOME/.local/share/applications/smat-sandbox-stop.desktop"
 rm -rf "$INSTALL_ROOT"
-echo "Schedule Forensics removed."
+echo "SMAT Sandbox removed (production Schedule Forensics left intact)."
 EOF
 chmod +x "$UNINST"
 
 cat > "$INSTALL_ROOT/FIRST-RUN-README.txt" <<EOF
-Schedule Forensics — first run
-==============================
-Start:  run "Start Schedule Forensics" from your app menu (or $START_SH).
+SMAT Sandbox — first run
+========================
+A SANDBOX copy of Schedule Forensics — identical in function, in its own folder on port
+$APP_PORT so it runs BESIDE your production install.
+Start:  run "SMAT Sandbox (Start)" from your app menu (or $START_SH).
         Your browser opens http://127.0.0.1:$APP_PORT — everything runs ON THIS MACHINE.
-Stop:   "Stop Schedule Forensics" (closing the browser also stops it after an idle delay).
+Stop:   "SMAT Sandbox (Stop)" (closing the browser also stops it after an idle delay).
 Data:   your schedule files NEVER leave this computer (loopback-only by design).
 AI:     enable it in AI Settings inside the app (model: $OLLAMA_MODEL).
 Remove: $UNINST
@@ -193,20 +197,20 @@ EOF
 
 if [ "$SMOKE" != "1" ]; then
   mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-  ln -sf "$START_SH" "$HOME/.local/bin/schedule-forensics-start"
-  ln -sf "$STOP_SH"  "$HOME/.local/bin/schedule-forensics-stop"
-  cat > "$HOME/.local/share/applications/schedule-forensics-start.desktop" <<EOF
+  ln -sf "$START_SH" "$HOME/.local/bin/smat-sandbox-start"
+  ln -sf "$STOP_SH"  "$HOME/.local/bin/smat-sandbox-stop"
+  cat > "$HOME/.local/share/applications/smat-sandbox-start.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Start Schedule Forensics
+Name=SMAT Sandbox (Start)
 Exec=$START_SH
 Terminal=false
 Categories=Office;
 EOF
-  cat > "$HOME/.local/share/applications/schedule-forensics-stop.desktop" <<EOF
+  cat > "$HOME/.local/share/applications/smat-sandbox-stop.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Stop Schedule Forensics
+Name=SMAT Sandbox (Stop)
 Exec=$STOP_SH
 Terminal=false
 Categories=Office;
