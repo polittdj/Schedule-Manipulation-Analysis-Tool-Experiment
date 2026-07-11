@@ -387,7 +387,7 @@ title="Display language for the UI and AI results">
 onchange="this.form.submit()">{{ lang_options }}</select></label>
 </form>
 </nav>
-<span class="nasa-globe" data-no-i18n title="Local AI status: the globe spins up while the model is generating"><canvas width="132" height="132" aria-hidden="true"></canvas></span>
+<span class="nasa-globe" data-no-i18n title="Local AI status: the globe spins up while the model is generating"><canvas width="96" height="96" aria-hidden="true"></canvas></span>
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>

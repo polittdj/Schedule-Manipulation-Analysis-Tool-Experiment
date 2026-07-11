@@ -1,6 +1,18 @@
-# Handoff — 2026-07-10 (MPXJ deployed beside the venv + one icon; highest ADR 0193)
+# Handoff — 2026-07-10 (slim banner + globe upper-right; highest ADR 0194)
 
-> ## STATUS (current) — ADR-0193 deployed .mpp + single icon
+> ## STATUS (current) — ADR-0194 slim banner
+>
+> - Operator: "decrease the width of the banner and move the earth up to the upper right
+>   corner." Root cause of the fat banner: the 132px globe sat in the header's flex flow
+>   (margin-left:auto) and wrapped onto its own row below the nav. Fix: .nasa-globe is
+>   absolute (top:4px;right:14px, 96px; globe.js reads clientWidth so the canvas follows),
+>   header slims to padding:10px 116px 10px 24px (right padding reserves the corner so nav
+>   never slides under the globe). Chromium-verified: header 171px, no overlap, sticky
+>   intact, zero console errors. Pinned in test_nasa_theme.
+
+# (prior) Handoff — 2026-07-10 (MPXJ deployed beside the venv + one icon; ADR 0193)
+
+> ## STATUS — ADR-0193 deployed .mpp + single icon
 >
 > - Operator's deployed tool failed EVERY .mpp: "MPXJ runner not found under
 >   …venv\Lib\tools\mpxj" — the wheel is pure Python, the 17 MB Java converter never
