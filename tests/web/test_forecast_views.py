@@ -182,3 +182,18 @@ def test_field_group_metrics_panel_dropdown_table_and_export(client: TestClient)
     assert client.get("/export/xlsx/field-forecast?field=Nope").status_code == 404
     # an unknown group_field falls back to the picker (no 500)
     assert client.get("/forecast?group_field=Nope").status_code == 200
+
+
+def test_forecast_chapter_09_page_shell(client: TestClient) -> None:
+    """ADR-0207 — chapter 09 "Where it lands": the data-driven takeaway h1, the forecast KPI
+    strip, and the Progress-to-finish / Method-agreement bars, from the finish-forecast set the
+    page already computes. The method-comparison scaffold survives beneath."""
+    _upload(client, "Project5")
+    page = client.get("/forecast").text
+    assert 'class="page-takeaway"' in page
+    assert "forecasting methods place the finish" in page or "No forecasting method" in page
+    assert 'class="ws-kpi"' in page and "Methods with a date" in page and "CPM finish" in page
+    assert "Progress to the finish" in page and "Method agreement" in page
+    assert 'class="stack-bar"' in page
+    assert "CHAPTER 09 · WHERE IT LANDS" in page
+    assert "Chapter 10" in page

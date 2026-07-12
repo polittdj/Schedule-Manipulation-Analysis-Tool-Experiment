@@ -95,3 +95,17 @@ def test_resources_js_is_air_gapped(client: TestClient) -> None:
     js = client.get("/static/resources.js").text
     externals = [u for u in re.findall(r"https?://[^\s\"'<>]+", js) if "www.w3.org" not in u]
     assert not externals, externals
+
+
+def test_resources_chapter_08_page_shell(client) -> None:  # type: ignore[no-untyped-def]
+    """ADR-0206 — chapter 08 "Who is overloaded": the data-driven takeaway h1, the allocation
+    KPI strip, and the Resource-allocation / Overload-concentration bars, from the same resource
+    loading the page charts. The roster/histogram scaffold survives beneath."""
+    page = client.get("/resources").text
+    assert 'class="page-takeaway"' in page
+    assert "resources are over-allocated" in page or "stay within capacity" in page
+    assert 'class="ws-kpi"' in page and "Over-allocated" in page and "Busiest resource" in page
+    assert "Resource allocation" in page and "Overload concentration" in page
+    assert 'class="stack-bar"' in page
+    assert "CHAPTER 08 · WHO IS OVERLOADED" in page
+    assert "Chapter 09" in page

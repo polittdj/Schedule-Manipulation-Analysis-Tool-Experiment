@@ -105,3 +105,19 @@ def test_briefing_tables_stay_readable(client: TestClient) -> None:
     page = client.get("/briefing").text
     assert "brief-scroll" in page  # every table is wrapped
     assert 'class="brief-card wide"' in page  # >=5-column tables take the full row
+
+
+def test_briefing_chapter_12_page_shell(client: TestClient) -> None:
+    """ADR-0210 — chapter 12 "The briefing": the verdict takeaway h1, the banner KPI strip, and
+    the Action-items / Quality-snapshot bars — the executive synthesis, from the briefing's own
+    verdict + banner + findings/audit. The cited briefing body survives beneath (outside the
+    AI-swapped region so the header is stable)."""
+    page = client.get("/briefing").text  # the fixture has loaded Project2 + Project5
+    assert 'class="page-takeaway"' in page
+    assert "Bottom line: the schedule is" in page
+    assert 'class="ws-kpi"' in page
+    assert "Action items by severity" in page and "Quality snapshot" in page
+    assert 'class="stack-bar"' in page
+    assert "CHAPTER 12 · THE BRIEFING" in page
+    # the header sits OUTSIDE the AI-swapped briefing body
+    assert page.index("page-takeaway") < page.index("id=briefingBody")

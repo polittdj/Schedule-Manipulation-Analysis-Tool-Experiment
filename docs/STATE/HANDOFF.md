@@ -1,6 +1,38 @@
-# Handoff — 2026-07-11 (Mission Ops step 3, chapter 07 page shell; highest ADR 0205)
+# Handoff — 2026-07-12 (Mission Ops step 3 COMPLETE, chapters 08-12; highest ADR 0210)
 
-> ## STATUS (current) — ADR-0205 chapter 07 "How we execute" page shell
+> ## STATUS (current) — ADR-0206..0210 chapters 08-12 page shells (step 3 complete)
+>
+> - Bundled PR: chapters 08-12 built back-to-back (operator: "continue 08-12 without stopping,
+>   approve them all at the end"). Five separate branches would collide on the version / installer /
+>   state-doc files, so they ship as ONE PR. Each chapter = its own header + test + ADR; single
+>   final version bump + lockstep rebuild + full gate.
+> - **08 "Who is overloaded"** (/resources, ADR-0206): `_who_is_overloaded_header` — over-allocation
+>   takeaway ("O of R resources over-allocated, worst is <name>"), KPIs, Resource-allocation +
+>   Overload-concentration bars, from compute_resource_loading. Empty when no resources.
+> - **09 "Where it lands"** (/forecast, ADR-0207): `_where_it_lands_header` — forecast-window
+>   takeaway ("N of M methods place the finish between X and Y; CPM lands on Z, D days vs baseline"),
+>   KPIs, Progress-to-finish + Method-agreement bars, from compute_finish_forecasts.
+> - **10 "What changed"** (/compare, ADR-0208): `_what_changed_header` — version-diff takeaway
+>   ("C changed, A added, D removed; L links added, R removed; finish moved X days"), KPIs,
+>   Activity-changes + Logic-changes bars, from diff_versions (added import).
+> - **11 "What could go wrong"** (/sra, ADR-0209): `_what_could_go_wrong_header` — DETERMINISTIC
+>   structural-risk takeaway (Monte-Carlo is client-side): "C drive the finish, N near-critical, R
+>   risks registered", KPIs, Float-exposure + Risk-flag bars, from cpm.timings + audit + sra_risks.
+> - **12 "The briefing"** (/briefing, ADR-0210): `_the_briefing_header` — verdict takeaway ("Bottom
+>   line: the schedule is AT RISK — SPI 0.470, forecast <date>, +142 wd slip"), KPI strip = the
+>   briefing banner, Action-items-by-severity + Quality-snapshot bars. Rendered OUTSIDE #briefingBody
+>   so it survives the AI swap. Completes the 12-chapter spine.
+> - All five: NO engine math (presentation of existing figures); Chromium-verified console + daylight,
+>   zero console errors, 6 KPIs + 2 bars each (12 = 5 banner KPIs). One new test per chapter. Version
+>   1.0.15 -> 1.0.16, wheel + 9 installers lockstep. Highest ADR = 0210. **Step 3 (page shells) is
+>   COMPLETE — all 12 chapters shelled.**
+> - **Next**: the cross-cutting chart-contract toolbar PR; Metric Workbench family expansion; the
+>   advanced-SRA phase (issue #331); the audit fixes / Part-B insights from the operator report
+>   (delivered as AUDIT-AND-ROADMAP-PROMPT, .md + .docx); vendor fonts locally.
+
+# (prior) Handoff — 2026-07-11 (Mission Ops step 3, chapter 07 page shell; highest ADR 0205)
+
+> ## STATUS — ADR-0205 chapter 07 "How we execute" page shell
 >
 > - Seventh page shell of step 3: template applied to chapter 07 = Performance Analysis Summary
 >   (/performance). Presentation only. The route already has the solvable versions and the

@@ -239,3 +239,20 @@ def test_export_xlsx_sra_leads_with_the_conclusions_table(client: TestClient) ->
     blob = b"".join(z.read(n) for n in z.namelist())
     assert b"What the results mean" in blob
     assert b"Topic" in blob and b"Finding" in blob and b"What it means" in blob
+
+
+def test_sra_chapter_11_page_shell(client: TestClient) -> None:
+    """ADR-0209 — chapter 11 "What could go wrong": the deterministic risk takeaway h1, the
+    risk-exposure KPI strip, and the Float-exposure / Risk-flag bars (the Monte-Carlo runs
+    client-side, so the header reports the structural risk of the SRA-selected file). The SRA
+    controls scaffold survives beneath."""
+    page = client.get("/sra").text
+    assert 'class="page-takeaway"' in page
+    assert "drive the finish" in page or "every activity is complete" in page.lower()
+    assert 'class="ws-kpi"' in page and "Critical activities" in page and "Registered risks" in page
+    assert "Float exposure" in page and "Risk flags" in page
+    assert 'class="stack-bar"' in page
+    assert "CHAPTER 11 · WHAT COULD GO WRONG" in page
+    assert "Chapter 12" in page
+    # the SRA controls scaffold is untouched beneath the header
+    assert "id=sraRun" in page
