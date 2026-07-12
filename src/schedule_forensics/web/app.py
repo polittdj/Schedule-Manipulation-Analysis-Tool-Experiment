@@ -243,6 +243,7 @@ from schedule_forensics.reports.tables import (
     wbs_breakdown_tables,
 )
 from schedule_forensics.reports.xlsx import render_xlsx
+from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
 from schedule_forensics.web import i18n
 from schedule_forensics.web.help import (
     METRIC_DICTIONARY,
@@ -521,6 +522,8 @@ class SessionState:
     sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
     sra_use_risk_register: bool = True
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
+    #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
+    sra_import_msg: str | None = None
     # Routes are sync `def` (Starlette threadpool = real concurrency); this reentrant lock makes
     # the scope/analysis caches and the filter/wipe invalidations atomic, so a render can never
     # iterate a dict another request is clearing (QC audit D18 — live-reproduced KeyError on
@@ -4798,6 +4801,82 @@ def create_app(
             tuple(t for t in full.tables if t.title in keep),
         )
         return _export_response(fmt, ts, "sra-risk-registry")
+
+    # ── SRA Excel round-trip templates (ADR-0211) ─────────────────────────────────────────────
+    # Export a fill-in workbook, edit it in Excel, re-import — no third-party parser (Law 1), and
+    # nothing fabricated on import: unmatched UIDs are dropped and counted, an inverted Best/Worst
+    # pair is skipped, and the operator sees a one-shot summary of exactly what landed (Law 2).
+    @app.get("/export/xlsx/risk-register-template")
+    def export_risk_register_template() -> Response:
+        """Download the risk-register fill-in template (current register or one example row + a
+        read-only task reference sheet). Re-import via ``POST /sra/import/risk-register``."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "need an analyzable schedule"}, status_code=400)
+        _key, sch, _cpm = chosen
+        return _export_response("xlsx", _risk_register_template(st, sch), "risk-register-template")
+
+    @app.get("/export/xlsx/task-risk-template")
+    def export_task_risk_template() -> Response:
+        """Download the per-task Best/Worst-Case + Risk-Ranking-Factor fill-in template (one row per
+        activity, pre-filled). Re-import via ``POST /sra/import/task-risk``."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "need an analyzable schedule"}, status_code=400)
+        _key, sch, _cpm = chosen
+        return _export_response("xlsx", _task_risk_template(st, sch), "task-risk-template")
+
+    @app.post("/sra/import/risk-register")
+    def sra_import_risk_register(file: UploadFile) -> RedirectResponse:
+        """Rebuild the session risk register from a filled-in template, then redirect to /sra with a
+        one-shot summary. A bad workbook (or no schedule loaded) is reported, never silently lost."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            st.sra_import_msg = "Load a schedule before importing a risk register."
+            return RedirectResponse(url="/sra", status_code=303)
+        _key, sch, _cpm = chosen
+        try:
+            sheets = read_xlsx(file.file.read())
+        except XlsxError as exc:
+            st.sra_import_msg = f"Could not read that file: {exc}"
+            return RedirectResponse(url="/sra", status_code=303)
+        summary = _import_risk_register(st, sch, sheets)
+        if "error" in summary:
+            st.sra_import_msg = f"Risk register not imported — {summary['error']}."
+        else:
+            st.sra_import_msg = (
+                f"Imported {summary['imported']} risk(s); skipped {summary['skipped']} incomplete "
+                f"row(s); dropped {summary['dropped_uids']} unmatched UID(s)."
+            )
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.post("/sra/import/task-risk")
+    def sra_import_task_risk(file: UploadFile) -> RedirectResponse:
+        """Apply per-task Risk Ranking Factors + Best/Worst-Case durations from a filled-in template,
+        then redirect to /sra with a one-shot summary."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            st.sra_import_msg = "Load a schedule before importing task risk inputs."
+            return RedirectResponse(url="/sra", status_code=303)
+        _key, sch, _cpm = chosen
+        try:
+            sheets = read_xlsx(file.file.read())
+        except XlsxError as exc:
+            st.sra_import_msg = f"Could not read that file: {exc}"
+            return RedirectResponse(url="/sra", status_code=303)
+        summary = _import_task_risk(st, sch, sheets)
+        if "error" in summary:
+            st.sra_import_msg = f"Task risk inputs not imported — {summary['error']}."
+        else:
+            st.sra_import_msg = (
+                f"Set {summary['factors']} Risk Ranking Factor(s) and {summary['bcwc']} Best/Worst "
+                f"duration pair(s); dropped {summary['dropped_uids']} unmatched UID(s)."
+            )
+        return RedirectResponse(url="/sra", status_code=303)
 
     @app.get("/export/{fmt}/brief")
     def export_brief(fmt: str) -> Response:
@@ -9562,6 +9641,255 @@ def _reconcile_magnitudes(
     return (days or 0.0), (pct or 0.0), dl, pl
 
 
+# ── SRA Excel round-trip templates (ADR-0211): export a fill-in workbook, reimport it ──────────
+# Headers are the contract between the exported template and the importer. The importer matches a
+# column by a case-insensitive substring of these labels, so the operator can reorder/rename
+# lightly and re-imports still bind — while a missing figure is skipped and reported, never guessed.
+_RR_HEADERS = (
+    "Risk ID",
+    "Risk name",
+    "Probability %",
+    "Impact (working days)",
+    "Consequence (1-5)",
+    "Affected UIDs (; separated)",
+)
+_TR_HEADERS = (
+    "UID",
+    "Task name",
+    "Remaining (days)",
+    "Risk Ranking Factor (0-5)",
+    "Best-Case (days)",
+    "Worst-Case (days)",
+)
+
+
+def _reference_tasks_table(sch: Schedule) -> Table:
+    """A read-only UID → name → remaining-days reference sheet so the operator maps valid UIDs."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    rows: list[tuple[Cell, ...]] = []
+    for t in non_summary(sch):
+        rem = (
+            t.remaining_duration_minutes
+            if t.remaining_duration_minutes is not None
+            else t.duration_minutes
+        )
+        rows.append((t.unique_id, t.name, round(rem / mpd, 1)))
+    return Table(
+        "Tasks (reference - do not edit)", ("UID", "Task name", "Remaining (days)"), tuple(rows)
+    )
+
+
+def _risk_register_template(st: SessionState, sch: Schedule) -> TableSet:
+    """The risk-register fill-in template: the current register (or one example row) + a task
+    reference sheet. Re-import via ``POST /sra/import/risk-register``."""
+    names = sch.tasks_by_id
+    rows: list[tuple[Cell, ...]] = []
+    for r in st.sra_risks:
+        rows.append(
+            (
+                r.id,
+                r.name,
+                round(r.probability * 100, 1),
+                round(r.impact_days, 2),
+                r.consequence_rating if r.consequence_rating is not None else "",
+                "; ".join(str(u) for u in r.affected),
+            )
+        )
+    if not rows:
+        example_uid = next((t.unique_id for t in non_summary(sch)), 0)
+        example_name = names[example_uid].name if example_uid in names else "some activity"
+        rows.append(
+            (
+                "EXAMPLE (delete this row)",
+                f"e.g. vendor delay to {example_name}",
+                30,
+                10,
+                3,
+                str(example_uid),
+            )
+        )
+    return TableSet(
+        "Risk Register Template",
+        (Table("Risk Register", _RR_HEADERS, tuple(rows)), _reference_tasks_table(sch)),
+    )
+
+
+def _task_risk_template(st: SessionState, sch: Schedule) -> TableSet:
+    """The per-task Best/Worst-Case + Risk-Ranking-Factor fill-in template, one row per activity,
+    pre-filled with any current values. Re-import via ``POST /sra/import/task-risk``."""
+    mpd = sch.calendar.working_minutes_per_day or 480
+
+    def _days(minutes: int | None) -> Cell:
+        return "" if minutes is None else round(minutes / mpd, 1)
+
+    rows: list[tuple[Cell, ...]] = []
+    for t in non_summary(sch):
+        u = t.unique_id
+        rem = (
+            t.remaining_duration_minutes
+            if t.remaining_duration_minutes is not None
+            else t.duration_minutes
+        )
+        bc, wc = st.sra_bcwc.get(u, (None, None))
+        rows.append(
+            (
+                u,
+                t.name,
+                round(rem / mpd, 1),
+                st.sra_factors.get(u, ""),
+                _days(bc),
+                _days(wc),
+            )
+        )
+    return TableSet("Task Risk Template", (Table("Task Risk Inputs", _TR_HEADERS, tuple(rows)),))
+
+
+def _first_sheet_rows(sheets: dict[str, list[list[str]]], *prefer: str) -> list[list[str]]:
+    """The rows of the first sheet whose name matches a preferred label (case-insensitive
+    substring), else the first non-empty sheet."""
+    for want in prefer:
+        for name, rows in sheets.items():
+            if want.lower() in name.lower() and rows:
+                return rows
+    for rows in sheets.values():
+        if rows:
+            return rows
+    return []
+
+
+def _header_columns(rows: list[list[str]], wanted: Sequence[str]) -> tuple[int, dict[str, int]]:
+    """Find the header row (the first row that matches >=2 wanted labels) and map each wanted label
+    to its column index by case-insensitive substring. Returns (header_row_index, {label: col})."""
+    for i, row in enumerate(rows[:5]):
+        cells = [c.strip().lower() for c in row]
+        found: dict[str, int] = {}
+        for label in wanted:
+            key = label.split(" (")[0].strip().lower()  # match on the label before any "( … )"
+            for col, cell in enumerate(cells):
+                if cell and (key in cell or cell in key):
+                    found[label] = col
+                    break
+        if len(found) >= 2:
+            return i, found
+    return -1, {}
+
+
+def _cell(row: list[str], col: int | None) -> str:
+    return row[col].strip() if col is not None and 0 <= col < len(row) else ""
+
+
+def _import_risk_register(
+    st: SessionState, sch: Schedule, sheets: dict[str, list[list[str]]]
+) -> dict[str, object]:
+    """Replace the session risk register from an uploaded template. Returns a summary
+    (imported / skipped-empty / dropped-uids) — nothing is fabricated; unmatched UIDs are dropped
+    and counted, a row with no name or no valid activity is skipped."""
+    rows = _first_sheet_rows(sheets, "risk register", "register", "risk")
+    hdr_i, cols = _header_columns(rows, _RR_HEADERS)
+    if hdr_i < 0:
+        return {
+            "error": "could not find a Risk Register header row (need Risk name + Affected UIDs)"
+        }
+    c_id = cols.get("Risk ID")
+    c_name = cols.get("Risk name")
+    c_prob = cols.get("Probability %")
+    c_days = cols.get("Impact (working days)")
+    c_cons = cols.get("Consequence (1-5)")
+    c_aff = cols.get("Affected UIDs (; separated)")
+    imported: list[UnifiedRisk] = []
+    skipped = dropped_uids = 0
+    seq = 0
+    for row in rows[hdr_i + 1 :]:
+        name = _cell(row, c_name)
+        rid_raw = _cell(row, c_id)
+        # the exported seed row carries the "EXAMPLE (delete this row)" marker in the ID column
+        # (its name is illustrative) — skip it whether or not the operator deleted it
+        if rid_raw.lower().startswith("example") or name.lower().startswith("example"):
+            continue
+        aff_raw = _cell(row, c_aff)
+        valid: list[int] = []
+        for u in _parse_uid_list(aff_raw):
+            task = sch.tasks_by_id.get(u)
+            if task is not None and not task.is_summary and u not in valid:
+                valid.append(u)
+            else:
+                dropped_uids += 1
+        if not name or not valid:
+            if name or aff_raw or _cell(row, c_days):
+                skipped += 1
+            continue
+        avg_rem = _affected_avg_remaining_days(sch, valid)
+        days, pct, dl, pl = _reconcile_magnitudes(_cell(row, c_days), "", True, False, avg_rem)
+        prob = _clamp_float(_cell(row, c_prob) or "0", 0.0, 1.0, 0.0, scale=0.01)
+        cons_raw = _cell(row, c_cons)
+        cons = min(5, max(1, int(float(cons_raw)))) if _is_number(cons_raw) else None
+        seq += 1
+        rid = rid_raw or f"R{seq}"
+        imported.append(
+            UnifiedRisk(
+                id=rid,
+                name=name,
+                probability=prob,
+                affected=tuple(valid),
+                impact_days=days,
+                impact_pct=pct,
+                days_locked=dl,
+                pct_locked=pl,
+                consequence_rating=cons,
+            )
+        )
+    st.sra_risks = imported
+    st.sra_use_risk_register = bool(imported)
+    return {"imported": len(imported), "skipped": skipped, "dropped_uids": dropped_uids}
+
+
+def _import_task_risk(
+    st: SessionState, sch: Schedule, sheets: dict[str, list[list[str]]]
+) -> dict[str, object]:
+    """Apply per-task Risk Ranking Factors and Best/Worst-Case durations from an uploaded template.
+    Days are converted to working minutes via the schedule calendar; unknown UIDs are dropped and
+    counted. A BC/WC pair only lands when BOTH cells are present (an incomplete pair is skipped)."""
+    rows = _first_sheet_rows(sheets, "task risk", "task", "risk inputs")
+    hdr_i, cols = _header_columns(rows, _TR_HEADERS)
+    if hdr_i < 0:
+        return {"error": "could not find a Task Risk header row (need UID + a factor or duration)"}
+    mpd = sch.calendar.working_minutes_per_day or 480
+    c_uid = cols.get("UID")
+    c_fac = cols.get("Risk Ranking Factor (0-5)")
+    c_bc = cols.get("Best-Case (days)")
+    c_wc = cols.get("Worst-Case (days)")
+    factors = dropped = bcwc = 0
+    for row in rows[hdr_i + 1 :]:
+        uid_raw = _cell(row, c_uid)
+        if not uid_raw or not _is_number(uid_raw):
+            continue
+        uid = int(float(uid_raw))
+        task = sch.tasks_by_id.get(uid)
+        if task is None or task.is_summary:
+            dropped += 1
+            continue
+        fac_raw = _cell(row, c_fac)
+        if _is_number(fac_raw):
+            st.sra_factors[uid] = min(5, max(0, int(float(fac_raw))))
+            factors += 1
+        bc_raw, wc_raw = _cell(row, c_bc), _cell(row, c_wc)
+        if _is_number(bc_raw) and _is_number(wc_raw):
+            bc_min = round(float(bc_raw) * mpd)
+            wc_min = round(float(wc_raw) * mpd)
+            if bc_min <= wc_min:  # BestCase must not exceed WorstCase (Law 2: no inverted range)
+                st.sra_bcwc[uid] = (bc_min, wc_min)
+                bcwc += 1
+    return {"factors": factors, "bcwc": bcwc, "dropped_uids": dropped}
+
+
+def _is_number(text: str) -> bool:
+    try:
+        float(text.replace("%", "").strip())
+        return True
+    except (ValueError, AttributeError):
+        return False
+
+
 def _ssi_matrix_counts(risks: Sequence[SSIRiskStat], *, opportunity: bool) -> list[list[int]]:
     """A 5x5 ``[consequence-1][probability-1]`` count grid for the risks (impact >= 0) or the
     opportunities (impact < 0) — the operator's Risk / Opportunity Assessment Matrix."""
@@ -10623,6 +10951,23 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <a class=btn href="/export/docx/sra" title="A full PM-level SRA report: summary, S-curve, distribution, sensitivity tornado, risk register, and the 5x5 matrices as embedded graphics.">Download SRA report (Word)</a>
 <a class=btn href="/export/xlsx/sra-registry">Download risk registry (Excel)</a>
 <a class=btn href="/export/docx/sra-registry">Risk registry (Word)</a></div>
+<h3>Excel fill-in templates (export &rarr; edit &rarr; re-import)</h3>
+<p class=muted>Download a pre-formatted Excel workbook, fill it in offline, and re-import it &mdash; a
+faster way to build the register or rank many tasks than the forms above. The <b>Risk Register</b>
+template carries a read-only task-reference sheet (valid UIDs + names); the <b>Task Risk</b> template
+has one row per activity. On re-import, unmatched UIDs are dropped and an inverted Best/Worst pair is
+skipped &mdash; nothing is fabricated, and you get a summary of exactly what landed.</p>
+{_user_tip("Re-importing the Risk Register REPLACES the whole register; re-importing Task Risk UPDATES only the rows you filled in (blank cells are left untouched). Both round-trip the same figures the forms above use.")}
+<div class=viz-controls>
+<a class=btn href="/export/xlsx/risk-register-template" download>Risk Register template (Excel)</a>
+<form action="/sra/import/risk-register" method=post enctype="multipart/form-data" style="display:inline">
+<label>Import filled register <input type=file name=file accept=".xlsx" required></label>
+<button type=submit>Import</button></form></div>
+<div class=viz-controls style="margin-top:6px">
+<a class=btn href="/export/xlsx/task-risk-template" download>Task Risk template (Excel)</a>
+<form action="/sra/import/task-risk" method=post enctype="multipart/form-data" style="display:inline">
+<label>Import filled task risk <input type=file name=file accept=".xlsx" required></label>
+<button type=submit>Import</button></form></div>
 <script>window.SF_FIELD_HELP = {field_help_json};</script>
 <script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
 <script src="/static/sra_grid.js"></script></div>"""
@@ -10825,6 +11170,11 @@ def _sra_body(st: SessionState) -> str:
         f"{_user_tip('Set your Risk Ranking Factors, Best/Worst-Case durations and risks once: they are shared by both the SSI model and the legacy Monte-Carlo, so you never re-enter them per model.')}"
         f"{file_selector}{active_note}</div>"
     )
+    # one-shot Excel round-trip import feedback (ADR-0211): shown once, then cleared
+    import_banner = ""
+    if st.sra_import_msg:
+        import_banner = f'<div class="notice ok" role=status>{_e(st.sra_import_msg)}</div>'
+        st.sra_import_msg = None
     low_pct = f"{st.sra_low * 100:g}"
     ml_pct = f"{st.sra_ml * 100:g}"
     high_pct = f"{st.sra_high * 100:g}"
@@ -10852,6 +11202,7 @@ def _sra_body(st: SessionState) -> str:
     # B608 is bandit's SQL heuristic tripping on HTML ("<select ..." + "drawn from the latest
     # run" in one f-string) — this is a server-rendered page template, no SQL anywhere.
     return f"""
+{import_banner}
 {top_file_panel}
 {_sra_explainers()}
 {_ssi_panel(st)}

@@ -6,6 +6,8 @@ import io
 import xml.etree.ElementTree as ET
 import zipfile
 
+import pytest
+
 from schedule_forensics.reports.docx import (
     DocTable,
     Heading,
@@ -242,3 +244,93 @@ def test_chart_docpr_ids_are_unique_across_multiple_drawings() -> None:
     )
     ids = re.findall(r'wp:docPr id="(\d+)"', document)
     assert len(ids) == 4 and len(set(ids)) == 4
+
+
+# ── xlsx_read: the import side of the round-trip templates (ADR-0211) ─────────────────────────
+
+
+def test_read_xlsx_round_trips_render_xlsx() -> None:
+    """render_xlsx (inline strings) → read_xlsx reproduces headers, string cells, numbers-as-text,
+    and empty cells as ``""`` — the contract the SRA template importer relies on."""
+    from schedule_forensics.reports.xlsx_read import read_xlsx
+
+    ts = TableSet(
+        "RT demo",
+        (
+            Table("Alpha", ("A", "B", "C"), (("x", 1, None), ("", -2.5, "z"))),
+            Table("Beta", ("UID", "Name"), ((7, "task seven"),)),
+        ),
+    )
+    sheets = read_xlsx(render_xlsx(ts))
+    assert list(sheets) == ["Alpha", "Beta"]
+    assert sheets["Alpha"][0] == ["A", "B", "C"]  # header row
+    # number kept verbatim; a TRAILING empty (None) is dropped from the row width (no <c> emitted)
+    assert sheets["Alpha"][1] == ["x", "1"]
+    # an INTERIOR/leading empty cell is preserved by column (a later cell fixes the width)
+    assert sheets["Alpha"][2] == ["", "-2.5", "z"]
+    assert sheets["Beta"][1] == ["7", "task seven"]
+
+
+def test_read_xlsx_reads_shared_strings() -> None:
+    """Excel rewrites files with a sharedStrings table (t="s"); the reader resolves the index."""
+    from schedule_forensics.reports.xlsx_read import read_xlsx
+
+    # Build a minimal workbook that uses a shared-strings table, the way Excel saves.
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(
+            "[Content_Types].xml",
+            '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/'
+            'package/2006/content-types"/>',
+        )
+        z.writestr(
+            "xl/_rels/workbook.xml.rels",
+            '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/'
+            'package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"'
+            ' Type="x"/></Relationships>',
+        )
+        z.writestr(
+            "xl/workbook.xml",
+            '<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/'
+            'spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/'
+            'officeDocument/2006/relationships"><sheets><sheet name="S" sheetId="1" '
+            'r:id="rId1"/></sheets></workbook>',
+        )
+        z.writestr(
+            "xl/sharedStrings.xml",
+            '<?xml version="1.0"?><sst xmlns="http://schemas.openxmlformats.org/'
+            'spreadsheetml/2006/main"><si><t>Hello</t></si><si><t>World</t></si></sst>',
+        )
+        z.writestr(
+            "xl/worksheets/sheet1.xml",
+            '<?xml version="1.0"?><worksheet xmlns="http://schemas.openxmlformats.org/'
+            'spreadsheetml/2006/main"><sheetData><row r="1">'
+            '<c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c>'
+            '<c r="C1"><v>42</v></c></row></sheetData></worksheet>',
+        )
+    sheets = read_xlsx(buf.getvalue())
+    assert sheets["S"][0] == ["Hello", "World", "42"]
+
+
+def test_read_xlsx_rejects_non_xlsx() -> None:
+    from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
+
+    with pytest.raises(XlsxError):
+        read_xlsx(b"this is not a zip file")
+
+
+def test_read_xlsx_rejects_dtd_bearing_part() -> None:
+    """XXE defense (same as the MSPDI importer): a workbook part carrying a DTD/entity declaration
+    is rejected before ElementTree ever parses it."""
+    from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(
+            "xl/workbook.xml",
+            '<?xml version="1.0"?><!DOCTYPE workbook [<!ENTITY x "y">]>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            "<sheets/></workbook>",
+        )
+    with pytest.raises(XlsxError, match="DTD or entity"):
+        read_xlsx(buf.getvalue())

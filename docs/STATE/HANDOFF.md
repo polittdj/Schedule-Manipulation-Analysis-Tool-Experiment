@@ -1,4 +1,35 @@
-# Handoff — 2026-07-12 (Mission Ops step 3 COMPLETE, chapters 08-12; highest ADR 0210)
+# Handoff — 2026-07-12 (SRA Excel round-trip templates; highest ADR 0211)
+
+> ## STATUS (current) — ADR-0211 Excel fill-in templates (export → edit → re-import)
+>
+> - Operator directive: "an MS Excel template for the risk registry that the user can export, fill
+>   out and reimport … and the same for the Best and Worst Case Durations and Risk Ranking Factors
+>   for tasks." Delivered as a full round-trip.
+> - **`reports/xlsx_read.py`** (NEW): a minimal **std-lib** `.xlsx` reader (`zipfile` + `xml.etree`),
+>   the import counterpart to `reports/xlsx.py`. `read_xlsx(bytes) -> {sheet: [[cell,…],…]}`, every
+>   cell a string; handles shared strings (`t="s"`, what Excel writes on re-save), inline strings,
+>   formula strings, and bare numbers; bad zip / no workbook → `XlsxError`. No third-party parser
+>   (Law 1).
+> - **Two templates** (built in `web/app.py`, exported via existing `render_xlsx`): **Risk Register**
+>   (`GET /export/xlsx/risk-register-template` — current register or one EXAMPLE seed row + a
+>   read-only UID/name/remaining reference sheet) and **Task Risk** (`GET
+>   /export/xlsx/task-risk-template` — one row per non-summary task, pre-filled factor + BC/WC days).
+> - **Re-import** (`POST /sra/import/risk-register`, `POST /sra/import/task-risk`): header matched by
+>   case-insensitive substring; register REPLACES `st.sra_risks`, task risk UPDATES `st.sra_factors`
+>   + `st.sra_bcwc` (days→minutes via calendar). Fidelity (Law 2, all counted in a one-shot banner via
+>   `SessionState.sra_import_msg`): EXAMPLE seed skipped (marker in the ID column), unmatched/summary
+>   UIDs dropped, inverted Best>Worst skipped, incomplete row skipped, factor clamped 0–5. Bad file →
+>   honest error, nothing mutated.
+> - **UI**: "Excel fill-in templates (export → edit → re-import)" block in the SSI panel (next to the
+>   existing registry exports); one-shot `notice ok` banner at the top of `_sra_body`.
+> - 13 new tests (reader round-trip / shared-strings / bad-file in `tests/reports/test_exports.py`;
+>   full export/import/summary/error matrix in `tests/web/test_sra_excel_templates.py`). Version
+>   1.0.16 → 1.0.17, wheel + 9 installers lockstep. Highest ADR = 0211.
+> - **Next**: the cross-cutting chart-contract toolbar PR; Metric Workbench family expansion; the
+>   advanced-SRA phase (issue #331); the audit fixes / Part-B insights (AUDIT-AND-ROADMAP-PROMPT);
+>   vendor fonts locally; a "download both templates" bundle + optional import column-mapping preview.
+
+# (prior) Handoff — 2026-07-12 (Mission Ops step 3 COMPLETE, chapters 08-12; highest ADR 0210)
 
 > ## STATUS (current) — ADR-0206..0210 chapters 08-12 page shells (step 3 complete)
 >
