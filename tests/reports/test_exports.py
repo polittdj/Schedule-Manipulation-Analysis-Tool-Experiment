@@ -317,3 +317,20 @@ def test_read_xlsx_rejects_non_xlsx() -> None:
 
     with pytest.raises(XlsxError):
         read_xlsx(b"this is not a zip file")
+
+
+def test_read_xlsx_rejects_dtd_bearing_part() -> None:
+    """XXE defense (same as the MSPDI importer): a workbook part carrying a DTD/entity declaration
+    is rejected before ElementTree ever parses it."""
+    from schedule_forensics.reports.xlsx_read import XlsxError, read_xlsx
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(
+            "xl/workbook.xml",
+            '<?xml version="1.0"?><!DOCTYPE workbook [<!ENTITY x "y">]>'
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            "<sheets/></workbook>",
+        )
+    with pytest.raises(XlsxError, match="DTD or entity"):
+        read_xlsx(buf.getvalue())

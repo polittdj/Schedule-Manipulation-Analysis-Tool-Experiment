@@ -29,7 +29,11 @@ silently coerced into a number.
   **shared strings** (`t="s"` → the `<v>` index into `sharedStrings.xml`, which our inline-string
   writer never uses but Excel always does), inline strings (`t="inlineStr"`), formula-result strings
   (`t="str"`), and bare numbers. A bad zip / missing `xl/workbook.xml` raises `XlsxError`. The reader
-  never guesses types — the caller maps header names to columns and coerces.
+  never guesses types — the caller maps header names to columns and coerces. **XXE-hardened the same
+  way the MSPDI importer is** (`_parse_xml`): a workbook part carrying a `<!DOCTYPE`/`<!ENTITY>`
+  declaration is rejected before ElementTree parses it, and a malformed part surfaces as `XlsxError`
+  rather than a raw `ParseError` — the two `xml.etree` bandit findings are `# nosec`-annotated at that
+  single hardened call site, matching `importers/mspdi.py`.
 - **Two fill-in templates** (built in `web/app.py`, exported as `TableSet` through the existing
   `render_xlsx`):
   - **Risk Register** (`GET /export/xlsx/risk-register-template`) — the current register (or one

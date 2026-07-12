@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import io
 import re
+import xml.etree.ElementTree as ET  # nosec B405  # hardened in _parse_xml (DTD/entity rejected)
 import zipfile
-from xml.etree import ElementTree as ET
 
 _MAIN = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
 _REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
@@ -31,6 +31,18 @@ _CELL_RE = re.compile(r"^([A-Z]+)(\d+)$")
 
 class XlsxError(ValueError):
     """The uploaded file is not a readable .xlsx workbook."""
+
+
+def _parse_xml(data: bytes) -> ET.Element:
+    """Parse one XML part of the workbook, hardened against XXE the same way the MSPDI importer is:
+    reject any document carrying a DTD or entity declaration before handing it to ElementTree, and
+    surface a malformed part as :class:`XlsxError` rather than a raw ``ParseError``."""
+    if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
+        raise XlsxError("xlsx part with a DTD or entity declaration is rejected (XXE defense)")
+    try:
+        return ET.fromstring(data)  # nosec B314  # DTD/entity decls rejected above
+    except ET.ParseError as exc:
+        raise XlsxError(f"malformed xlsx XML part: {exc}") from exc
 
 
 def _col_index(ref: str) -> int:
@@ -86,13 +98,13 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
     # shared strings (optional)
     shared: list[str] = []
     if "xl/sharedStrings.xml" in names:
-        sst = ET.fromstring(zf.read("xl/sharedStrings.xml"))
+        sst = _parse_xml(zf.read("xl/sharedStrings.xml"))
         shared = [_si_text(si) for si in sst.findall(f"{_MAIN}si")]
 
     # rId -> worksheet part path
     rel_target: dict[str, str] = {}
     if "xl/_rels/workbook.xml.rels" in names:
-        rels = ET.fromstring(zf.read("xl/_rels/workbook.xml.rels"))
+        rels = _parse_xml(zf.read("xl/_rels/workbook.xml.rels"))
         for rel in rels.findall(f"{_PKG_REL}Relationship"):
             rid, target = rel.get("Id"), rel.get("Target")
             if rid and target:
@@ -104,7 +116,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
             return target
         return f"xl/{target}"
 
-    wb = ET.fromstring(zf.read("xl/workbook.xml"))
+    wb = _parse_xml(zf.read("xl/workbook.xml"))
     out: dict[str, list[list[str]]] = {}
     sheets = wb.find(f"{_MAIN}sheets")
     for sheet in [] if sheets is None else list(sheets):
@@ -115,7 +127,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
         if path not in names:
             out[name] = []
             continue
-        out[name] = _read_sheet(ET.fromstring(zf.read(path)), shared)
+        out[name] = _read_sheet(_parse_xml(zf.read(path)), shared)
     return out
 
 
