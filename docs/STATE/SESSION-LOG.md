@@ -5299,3 +5299,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   installers lockstep. Highest ADR = 0210. Step 3 page shells COMPLETE.
 - Next: chart-contract toolbar; Workbench family expansion; advanced-SRA (issue #331); audit fixes /
   Part-B insights on request; vendor fonts.
+
+### 2026-07-12 — SRA Excel round-trip templates: export → fill in → re-import (ADR-0211)
+- Operator: "an MS Excel template for the risk registry that the user can export, fill out and
+  reimport … and the same for the Best and Worst Case Durations and Risk Ranking Factors for tasks."
+- `reports/xlsx_read.py` (NEW): minimal std-lib `.xlsx` reader (`zipfile` + `xml.etree`), the import
+  counterpart to `reports/xlsx.py`. `read_xlsx(bytes) -> {sheet: rows}`, every cell a string; handles
+  shared strings (`t="s"`, what Excel writes on re-save), inline/formula strings, bare numbers; bad
+  zip / no workbook -> `XlsxError`. No third-party parser enters the runtime (Law 1).
+- Two templates built in `web/app.py`, exported via the existing `render_xlsx`: Risk Register
+  (`GET /export/xlsx/risk-register-template`, current register or one EXAMPLE seed row + a read-only
+  UID/name/remaining reference sheet) and Task Risk (`GET /export/xlsx/task-risk-template`, one row
+  per non-summary task, pre-filled factor + BC/WC days).
+- Re-import (`POST /sra/import/risk-register`, `POST /sra/import/task-risk`): headers matched by
+  case-insensitive substring; register REPLACES st.sra_risks, task risk UPDATES st.sra_factors +
+  st.sra_bcwc (days->minutes via the schedule calendar). Fidelity, all counted in a one-shot banner
+  (SessionState.sra_import_msg): EXAMPLE seed skipped (marker lives in the ID column), unmatched/
+  summary UIDs dropped, inverted Best>Worst skipped, incomplete rows skipped, factor clamped 0-5; a
+  bad file gives an honest error and mutates nothing (Law 2).
+- UI: "Excel fill-in templates (export -> edit -> re-import)" block in the SSI panel; one-shot
+  `notice ok` banner rendered + cleared at the top of `_sra_body`.
+- 13 new tests (reader round-trip / shared-strings / bad-file in tests/reports/test_exports.py; full
+  template export/import/summary/error matrix in tests/web/test_sra_excel_templates.py). Version
+  1.0.16 -> 1.0.17; wheel + 9 installers lockstep. Highest ADR = 0211.
+- Next: chart-contract toolbar; Workbench family expansion; advanced-SRA (issue #331); audit fixes /
+  Part-B insights; vendor fonts; a "download both templates" bundle + import column-mapping preview.
