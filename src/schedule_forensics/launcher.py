@@ -100,6 +100,7 @@ def main(
     finally:
         if manager is not None:
             manager.shutdown()
+    print("POLARIS — dashboard stopped.")
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entrypoint

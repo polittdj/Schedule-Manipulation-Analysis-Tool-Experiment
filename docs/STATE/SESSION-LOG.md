@@ -5324,3 +5324,17 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   1.0.16 -> 1.0.17; wheel + 9 installers lockstep. Highest ADR = 0211.
 - Next: chart-contract toolbar; Workbench family expansion; advanced-SRA (issue #331); audit fixes /
   Part-B insights; vendor fonts; a "download both templates" bundle + import column-mapping preview.
+
+### 2026-07-12 — Fix: clean Ctrl+C shutdown of the desktop launcher (no traceback)
+- Operator hit an ugly Python traceback (asyncio CancelledError -> KeyboardInterrupt) every time
+  they stopped `schedule-forensics` on Windows + Python 3.13. Root cause: uvicorn 0.49 catches
+  SIGINT and shuts down gracefully, but Python 3.13's `asyncio.run` then RE-RAISES KeyboardInterrupt,
+  which escaped `web.app.serve` -> `launcher.main` -> `sys.exit(main())` and dumped a stack on a
+  perfectly clean stop (reads as a crash on a testimony-context tool).
+- Fix: `serve()` now wraps `server.run()` in `contextlib.suppress(KeyboardInterrupt)` (the Quit
+  control + browser-gone watchdog set `should_exit` and return normally, so they never reach it);
+  `launcher.main()` prints a bookending "POLARIS — dashboard stopped." after serve returns.
+- Test: `test_serve_swallows_keyboard_interrupt` (a fake server whose run() raises KeyboardInterrupt
+  must not propagate out of serve()). Verified end-to-end through launcher.main with the real serve.
+- No ADR (minor bugfix); highest ADR stays 0211. Version 1.0.17 -> 1.0.18; wheel + 9 installers
+  rebuilt in lockstep. Full gate green.
