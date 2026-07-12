@@ -14152,7 +14152,13 @@ def serve(
     app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
     if app.state.auto_shutdown:
         threading.Thread(target=_watchdog, args=(app,), daemon=True).start()
-    server.run()
+    # Ctrl+C in the terminal: uvicorn has already caught SIGINT and run its graceful shutdown, but
+    # Python 3.13's asyncio.run then RE-RAISES KeyboardInterrupt, which would dump a stack trace on a
+    # perfectly clean stop and read as a crash. Swallow it so a deliberate stop looks like a stop.
+    # The in-page Quit control and the browser-gone watchdog flip should_exit and return from run()
+    # normally — they never raise here.
+    with contextlib.suppress(KeyboardInterrupt):
+        server.run()
 
 
 def run(

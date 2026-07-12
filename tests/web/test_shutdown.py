@@ -106,3 +106,18 @@ def test_serve_refuses_non_loopback() -> None:
     bind_all = "0.0.0.0"  # a non-loopback host must be refused (negative test)
     with pytest.raises(ValueError, match="local-only"):
         serve(create_app(), bind_all, 1, server_factory=_FakeServer)
+
+
+def test_serve_swallows_keyboard_interrupt() -> None:
+    """Ctrl+C stops the tool cleanly: Python 3.13's asyncio.run re-raises KeyboardInterrupt out of
+    uvicorn's already-graceful shutdown, and serve() must not let that stack-trace escape."""
+
+    class _CtrlCServer(_FakeServer):
+        def run(self) -> None:
+            raise KeyboardInterrupt  # the terminal stop, after uvicorn's own graceful shutdown
+
+    def factory(config: uvicorn.Config) -> uvicorn.Server:
+        return _CtrlCServer(config)  # type: ignore[return-value]
+
+    # no exception propagates — a deliberate stop looks like a stop, not a crash
+    serve(create_app(), "127.0.0.1", 9998, server_factory=factory)
