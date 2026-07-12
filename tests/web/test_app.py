@@ -300,3 +300,28 @@ def test_to_float_rejects_non_finite_at_the_boundary() -> None:
     # ordinary finite values still parse
     assert _to_float("42.5", 0.0) == 42.5
     assert _to_float("", 7.0) == 7.0
+
+
+def test_compare_chapter_10_page_shell() -> None:
+    """ADR-0208 — chapter 10 "What changed": the data-driven takeaway h1, the change KPI strip,
+    and the Activity-changes / Logic-changes composition bars, from the UniqueID-matched version
+    diff the page already computes. The compare scaffold survives beneath."""
+    from pathlib import Path
+
+    golden = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+    c = TestClient(create_app(SessionState()))
+    for n in ("Project2", "Project5"):
+        c.post(
+            "/upload",
+            files={
+                "files": (f"{n}.mspdi.xml", (golden / f"{n}.mspdi.xml").read_bytes(), "text/xml")
+            },
+        )
+    page = c.get("/compare").text
+    assert 'class="page-takeaway"' in page
+    assert "activities changed" in page or "are identical" in page
+    assert 'class="ws-kpi"' in page and "Activities changed" in page and "Logic added" in page
+    assert "Activity changes" in page and "Logic changes" in page
+    assert 'class="stack-bar"' in page
+    assert "CHAPTER 10 · WHAT CHANGED" in page
+    assert "Chapter 11" in page

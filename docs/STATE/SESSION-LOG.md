@@ -5274,3 +5274,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   test_performance_chapter_07_page_shell pins it. Version 1.0.14 -> 1.0.15; wheel + 9 installers
   lockstep.
 - Next: chapters 08-12 one per PR (08 "Who is overloaded" = /resources). Highest ADR = 0205.
+
+### 2026-07-12 — Mission Ops step 3 COMPLETE: chapters 08-12 page shells (ADR-0206..0210)
+- Operator: "continue 08-12 without stopping, approve them all at the end." Bundled into ONE PR
+  (five branches would collide on version/installer/state-doc files). Each chapter = own header +
+  test + ADR; single final version bump + lockstep + gate.
+- 08 /resources (ADR-0206) _who_is_overloaded_header: over-allocation takeaway + KPIs + Resource-
+  allocation / Overload-concentration bars (compute_resource_loading; empty when no resources).
+- 09 /forecast (ADR-0207) _where_it_lands_header: forecast-window takeaway + KPIs + Progress-to-
+  finish / Method-agreement bars (compute_finish_forecasts; honest when no method places a date).
+- 10 /compare (ADR-0208) _what_changed_header: version-diff takeaway + KPIs + Activity-changes /
+  Logic-changes bars (diff_versions import added; finish move from the two CPM finishes).
+- 11 /sra (ADR-0209) _what_could_go_wrong_header: DETERMINISTIC structural-risk takeaway (the
+  Monte-Carlo is client-side) + KPIs + Float-exposure / Risk-flag bars (cpm.timings +
+  effective_total_float + cached audit DCMA05 + st.sra_risks).
+- 12 /briefing (ADR-0210) _the_briefing_header: verdict takeaway + banner KPI strip + Action-items-
+  by-severity / Quality-snapshot bars (build_briefing verdict+banner, recommend severities, audit
+  pass/fail/na). Rendered OUTSIDE #briefingBody so it survives the ai_polish swap. Last chapter, no
+  Continue link. Completes the 12-chapter spine.
+- All five: presentation only (no engine math); Chromium-verified console + daylight, zero console
+  errors, 6 KPIs + 2 bars each (ch12 = 5 banner KPIs); one new test each. Also delivered the
+  audit+roadmap report as a Word .docx (std-lib OOXML generator; soffice is broken in-container so
+  validated via XML well-formedness + package structure). Version 1.0.15 -> 1.0.16; wheel + 9
+  installers lockstep. Highest ADR = 0210. Step 3 page shells COMPLETE.
+- Next: chart-contract toolbar; Workbench family expansion; advanced-SRA (issue #331); audit fixes /
+  Part-B insights on request; vendor fonts.

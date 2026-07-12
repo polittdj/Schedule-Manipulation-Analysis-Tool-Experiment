@@ -74,6 +74,7 @@ from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
 from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
+from schedule_forensics.engine.diff import diff_versions
 from schedule_forensics.engine.driving_path import (
     DrivingPathEvolution,
     DrivingPathSnapshot,
@@ -2222,7 +2223,8 @@ def create_app(
             )
         prior, current = schedules[-2], schedules[-1]
         body = (
-            _export_bar("compare")
+            _what_changed_header(prior, current, cpms[-2], cpms[-1])
+            + _export_bar("compare")
             + _skipped_notice(skipped)
             + _sources_line([prior, current])
             + _compare_body(prior, current, cpms[-2], cpms[-1])
@@ -2526,7 +2528,11 @@ def create_app(
     def resources_view(bucket: str = Query("month")) -> HTMLResponse:
         st = session()
         bar = _export_bar(f"resources?bucket={bucket}") if st.schedules else ""
-        return _page(st, "Resources", bar + _resources_body(st, bucket))
+        return _page(
+            st,
+            "Resources",
+            _who_is_overloaded_header(st, bucket) + bar + _resources_body(st, bucket),
+        )
 
     @app.get("/cei", response_class=HTMLResponse)
     def cei_view(target: str | None = Query(None), uids: str = Query("")) -> HTMLResponse:
@@ -3172,7 +3178,8 @@ def create_app(
         return _page(
             st,
             "Forecast",
-            _export_bar("forecast")
+            _where_it_lands_header(schedules[-1], sets[-1])
+            + _export_bar("forecast")
             + _skipped_notice(skipped)
             + _forecast_body(schedules, cpms, sets)
             + _field_forecast_panel(schedules, group_field)
@@ -4287,7 +4294,7 @@ def create_app(
         # Render the controls + empty chart hosts IMMEDIATELY — the simulation (1000x CPM) is run
         # only when sra.js fetches /api/sra, never on page load (a synchronous run here would hang
         # the page on a large schedule, the prior Risks/Briefing bug).
-        return _page(st, "Risk Analysis (SRA)", _sra_body(st))
+        return _page(st, "Risk Analysis (SRA)", _what_could_go_wrong_header(st) + _sra_body(st))
 
     @app.post("/sra/risk")
     def sra_risk(
@@ -4861,7 +4868,8 @@ def create_app(
         # the background and swaps in the local-AI-polished version when a model is active.
         briefing = build_briefing(schedules, cpms=cpms)
         body = (
-            _skipped_notice(skipped)
+            _the_briefing_header(briefing, schedules[-1], cpms[-1])
+            + _skipped_notice(skipped)
             + '<div id=briefingBody data-ai-endpoint="/api/ai/briefing">'
             + _briefing_body(briefing)
             + '</div><script src="/static/ai_polish.js"></script>'
@@ -6034,6 +6042,85 @@ groups use their credibility-weighted rate{limiting}</td></tr>
 {unforecastable}
 <p class=cite>Weighted over {rollup.groups_total} group(s) of &ldquo;{_e(field)}&rdquo; with
 to-go work &mdash; {_e(latest.source_file or latest.name)}</p></div>"""
+
+
+def _where_it_lands_header(sch: Schedule, fset: ForecastSet) -> str:
+    """Chapter 09 "Where it lands" (ADR-0207): the data-driven takeaway + a forecast KPI strip +
+    the progress-to-finish and method-agreement bars, from the finish-forecast set the page
+    already computes (compute_finish_forecasts — no new math). Anchored on the latest version."""
+    dated = [f for f in fset.forecasts if f.finish is not None]
+    n_methods = len(fset.forecasts)
+    cpm_f = next((f for f in fset.forecasts if f.method_id == "cpm"), None)
+    cpm_date = cpm_f.finish if cpm_f is not None else None
+    dates: list[dt.date] = [f.finish for f in dated if f.finish is not None]
+    earliest = min(dates, default=None)
+    latest = max(dates, default=None)
+    spread = (latest - earliest).days if earliest is not None and latest is not None else None
+    var = (
+        (cpm_date - fset.planned_finish).days
+        if cpm_date is not None and fset.planned_finish is not None
+        else None
+    )
+
+    def _vs(days: int) -> str:
+        if days > 0:
+            return f"{days} day{'s' if days != 1 else ''} behind the baseline"
+        if days < 0:
+            n = -days
+            return f"{n} day{'s' if n != 1 else ''} ahead of the baseline"
+        return "on the baseline"
+
+    if not dated:
+        takeaway = (
+            "No forecasting method could place the finish — the loaded files carry neither a "
+            "computable network finish nor the progress history the rate methods need."
+        )
+    else:
+        window = (
+            f"between {_mdY(earliest)} and {_mdY(latest)}"
+            if spread and spread > 0
+            else f"at {_mdY(earliest)}"
+        )
+        cpm_clause = ""
+        if cpm_date is not None:
+            cpm_clause = f"; CPM logic lands on {_mdY(cpm_date)}"
+            if var is not None:
+                cpm_clause += f", {_vs(var)}"
+        takeaway = f"{len(dated)} of {n_methods} forecasting methods place the finish {window}{cpm_clause}."
+
+    kpi = _stat_cards(
+        [
+            ("Methods with a date", f"{len(dated)} / {n_methods}"),
+            ("CPM finish", _mdY(cpm_date) if cpm_date is not None else "&mdash;"),
+            ("Earliest", _mdY(earliest) if earliest is not None else "&mdash;"),
+            ("Latest", _mdY(latest) if latest is not None else "&mdash;"),
+            ("Spread (days)", str(spread) if spread is not None else "&mdash;"),
+            ("vs Baseline", f"{var:+d} d" if var is not None else "&mdash;"),
+        ]
+    )
+    progress_bar = _status_stack(
+        "Progress to the finish",
+        f"Activities complete vs still to go as of {_mdY(fset.as_of) if fset.as_of else 'the data date'}.",
+        [
+            ("Complete", fset.completed_count, "--ok"),
+            ("Still to go", fset.remaining_count, "--muted"),
+        ],
+        f"{fset.completed_count + fset.remaining_count} activities",
+    )
+    agree_bar = _status_stack(
+        "Method agreement",
+        "How many independent forecasting methods could place a finish date.",
+        [
+            ("Placed a date", len(dated), "--ok"),
+            ("Inputs missing", n_methods - len(dated), "--muted"),
+        ],
+        f"{spread}-day spread across the methods" if spread else "methods converge",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{progress_bar}{agree_bar}</div>'
+    )
 
 
 def _forecast_body(
@@ -8215,6 +8302,84 @@ finish would have been <b>{_e(cf.counterfactual_finish)}</b> instead of the repo
             "<div class=panel><p class=muted>No version pair matches the selected file.</p></div>"
         )
     return controls + "".join(sections)
+
+
+def _what_changed_header(
+    prior: Schedule, current: Schedule, prior_cpm: CPMResult, current_cpm: CPMResult
+) -> str:
+    """Chapter 10 "What changed" (ADR-0208): the data-driven takeaway + a change KPI strip + the
+    activity-change and logic-change bars, from the UniqueID-matched version diff the page already
+    computes (diff_versions — no new math). Compares the two latest loaded versions."""
+    diff = diff_versions(prior, current)
+    added = len(diff.added_tasks)
+    removed = len(diff.deleted_tasks)
+    changed = len(diff.changed_tasks)
+    links_added = len(diff.added_links)
+    links_removed = len(diff.removed_links)
+    total_current = compute_activity_makeup(current).total
+    in_both = max(total_current - added, 0)
+    unchanged = max(in_both - changed, 0)
+
+    prior_fin = offset_to_datetime(prior.project_start, prior_cpm.project_finish, prior.calendar)
+    cur_fin = offset_to_datetime(
+        current.project_start, current_cpm.project_finish, current.calendar
+    )
+    fin_delta = (cur_fin.date() - prior_fin.date()).days
+
+    def _acts(n: int) -> str:
+        return "activity" if n == 1 else "activities"
+
+    if fin_delta > 0:
+        fin = f"; the finish moved out {fin_delta} day{'s' if fin_delta != 1 else ''}"
+    elif fin_delta < 0:
+        n = -fin_delta
+        fin = f"; the finish pulled in {n} day{'s' if n != 1 else ''}"
+    else:
+        fin = "; the finish held"
+    if added + removed + changed + links_added + links_removed == 0:
+        takeaway = (
+            f"Nothing changed between {_e(prior.source_file or prior.name)} and "
+            f"{_e(current.source_file or current.name)} — the two versions are identical."
+        )
+    else:
+        takeaway = (
+            f"Between the two versions, {changed} {_acts(changed)} changed, {added} added and "
+            f"{removed} removed, with {links_added} logic links added and {links_removed} "
+            f"removed{fin}."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("Activities changed", str(changed)),
+            ("Added", str(added)),
+            ("Removed", str(removed)),
+            ("Logic added", str(links_added)),
+            ("Logic removed", str(links_removed)),
+            ("Finish move", f"{fin_delta:+d} d" if fin_delta else "0 d"),
+        ]
+    )
+    act_bar = _status_stack(
+        "Activity changes",
+        "How the activity list moved version-to-version, matched by unique id.",
+        [
+            ("Added", added, "--ok"),
+            ("Changed", changed, "--warn"),
+            ("Removed", removed, "--bad"),
+            ("Unchanged", unchanged, "--muted"),
+        ],
+        f"{total_current} activities in the newer version",
+    )
+    logic_bar = _status_stack(
+        "Logic changes",
+        "Predecessor/successor links added vs removed between the two versions.",
+        [("Links added", links_added, "--ok"), ("Links removed", links_removed, "--bad")],
+        f"{links_added + links_removed} link changes",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{act_bar}{logic_bar}</div>'
+    )
 
 
 def _compare_body(
@@ -10527,6 +10692,98 @@ section surfaces the cost indices; a full joint cost+schedule Monte-Carlo is a t
 </div>"""
 
 
+def _what_could_go_wrong_header(st: SessionState) -> str:
+    """Chapter 11 "What could go wrong" (ADR-0209): the data-driven takeaway + a risk-exposure
+    KPI strip + the float-exposure and risk-flag bars. The Monte-Carlo runs client-side on
+    demand, so the header reports the DETERMINISTic structural risk of the SRA-selected file
+    (float exposure + constraint/negative-float/registered-risk flags) — no simulation, no new
+    math; every figure comes from the cached analysis + the risk register."""
+    chosen = _sra_selected(st)
+    if chosen is None:
+        return ""
+    key, sch, cpm = chosen
+    try:
+        audit = st.analysis_for(key, st.schedules[key]).audit
+    except (CPMError, KeyError):
+        return ""
+    mpd = sch.calendar.working_minutes_per_day or 480
+    crit = near = comfy = incomplete = neg = 0
+    for task in non_summary(sch):
+        if task.is_complete:
+            continue
+        incomplete += 1
+        timing = cpm.timings.get(task.unique_id)
+        if timing is None:
+            continue
+        tf_days = effective_total_float(task, timing.total_float) / mpd
+        if tf_days < 0:
+            neg += 1
+        if tf_days <= 0:
+            crit += 1
+        elif tf_days <= 5:
+            near += 1
+        else:
+            comfy += 1
+
+    def _count(metric_id: str) -> int:
+        return next((c.count for c in audit.checks if c.metric_id == metric_id), 0)
+
+    hard = _count("DCMA05")
+    risks = len(st.sra_risks)
+
+    def _acts(n: int) -> str:
+        return "activity" if n == 1 else "activities"
+
+    if incomplete == 0:
+        takeaway = (
+            "Every activity is complete — there is no remaining work for the risk simulation to "
+            "put at risk."
+        )
+    else:
+        risk_clause = f", with {risks} risk{'s' if risks != 1 else ''} registered" if risks else ""
+        takeaway = (
+            f"{crit} {_acts(crit)} drive the finish and {near} more are near-critical "
+            f"(within 5 days of float){risk_clause} — run the Monte-Carlo below to quantify the "
+            "finish-date confidence."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("Critical activities", str(crit)),
+            ("Near-critical (≤5d)", str(near)),
+            ("Negative float", str(neg)),
+            ("Hard constraints", str(hard)),
+            ("Registered risks", str(risks)),
+            ("Incomplete activities", str(incomplete)),
+        ]
+    )
+    exposure_bar = _status_stack(
+        "Float exposure",
+        "Incomplete activities by how much total float protects them from driving the finish.",
+        [
+            ("Critical", crit, "--bad"),
+            ("Near-critical", near, "--warn"),
+            ("Comfortable", comfy, "--ok"),
+        ],
+        f"{incomplete} incomplete {_acts(incomplete)}",
+    )
+    flags_bar = _status_stack(
+        "Risk flags",
+        "The structural risk sources the simulation and register draw on.",
+        [
+            ("Negative float", neg, "--bad"),
+            ("Hard constraints", hard, "--warn"),
+            ("Registered risks", risks, "--accent"),
+        ],
+        "deterministic flags on the selected file",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{exposure_bar}{flags_bar}</div>'
+    )
+
+
 def _sra_body(st: SessionState) -> str:
     """The Schedule Risk Analysis (SRA) results page: risk-input panel + (empty) chart hosts.
 
@@ -11495,6 +11752,83 @@ faithful monthly histogram. <b>Con:</b> it assumes work is spread evenly across 
 loading) when the source file doesn't carry a time-phased contour &mdash; the totals are exact, the
 within-task shape is an approximation.</p></details>
 </div>"""
+
+
+def _who_is_overloaded_header(st: SessionState, granularity: str = "month") -> str:
+    """Chapter 08 "Who is overloaded" (ADR-0206): the data-driven takeaway + an allocation KPI
+    strip + the resource-allocation and overload-concentration bars, from the same resource
+    loading the page charts (compute_resource_loading — no new math). Empty when the schedule
+    carries no resources (the body renders its own notice)."""
+    chosen = _latest_solvable(st)
+    if chosen is None:
+        return ""
+    _key, sch, cpm = chosen
+    granularity = granularity if granularity in ("day", "week", "month") else "month"
+    rl = compute_resource_loading(sch, cpm, granularity)
+    if not rl.resources:
+        return ""
+    mpd = rl.working_minutes_per_day or 480
+    n_res = len(rl.resources)
+    over = [r for r in rl.resources if r.over_allocated_periods]
+    over_count = len(over)
+    within = n_res - over_count
+    total_days = round(sum(r.total_work_minutes for r in rl.resources) / mpd, 1)
+    unit = {"day": "day", "week": "week", "month": "month"}[granularity]
+    # the single worst resource by number of over-allocated periods
+    worst = max(rl.resources, key=lambda r: len(r.over_allocated_periods), default=None)
+    worst_over = len(worst.over_allocated_periods) if worst else 0
+
+    def _res(n: int) -> str:
+        return "resource" if n == 1 else "resources"
+
+    if over_count == 0:
+        takeaway = (
+            f"All {n_res} loaded {_res(n_res)} stay within capacity across the {len(rl.periods)} "
+            f"{unit}{'s' if len(rl.periods) != 1 else ''} covered — no over-allocation."
+        )
+    elif worst is not None and worst_over > 0:
+        takeaway = (
+            f"{over_count} of {n_res} {_res(n_res)} are over-allocated in at least one {unit} — "
+            f"the worst is {worst.name}, over capacity in {worst_over} {unit}"
+            f"{'s' if worst_over != 1 else ''}."
+        )
+    else:
+        takeaway = (
+            f"{over_count} of {n_res} {_res(n_res)} are over-allocated in at least one {unit}."
+        )
+
+    kpi = _stat_cards(
+        [
+            ("Resources loaded", str(n_res)),
+            ("Over-allocated", str(over_count)),
+            ("Within capacity", str(within)),
+            ("Total work (days)", f"{total_days:g}"),
+            ("Busiest resource", worst.name if worst else "&mdash;"),
+            (f"{unit.title()}s covered", str(len(rl.periods))),
+        ]
+    )
+    alloc_bar = _status_stack(
+        "Resource allocation",
+        f"Loaded resources within vs over their capacity, bucketed by {unit}.",
+        [("Within capacity", within, "--ok"), ("Over-allocated", over_count, "--bad")],
+        f"{n_res} {_res(n_res)} loaded",
+    )
+    if worst is not None and len(rl.periods) > 0:
+        w_over = len(worst.over_allocated_periods)
+        w_clear = max(len(rl.periods) - w_over, 0)
+        conc_bar = _status_stack(
+            "Overload concentration",
+            f"The busiest resource's timeline — {worst.name} — over vs within capacity per {unit}.",
+            [("Over capacity", w_over, "--bad"), ("Within", w_clear, "--muted")],
+            f"{w_over} of {len(rl.periods)} {unit}{'s' if len(rl.periods) != 1 else ''} over capacity",
+        )
+    else:
+        conc_bar = ""
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{alloc_bar}{conc_bar}</div>'
+    )
 
 
 def _resources_body(st: SessionState, granularity: str = "month") -> str:
@@ -13040,6 +13374,56 @@ def _briefing_table_html(section: BriefingSection) -> str:
     # .brief-scroll: a table whose column minimums exceed the card scrolls sideways inside it
     # instead of crushing its neighbours to a character a line (operator report 2026-07-08)
     return f"<div class=brief-scroll><table class=brief-table>{head}{body}</table></div>"
+
+
+def _the_briefing_header(briefing: ExecutiveBriefing, sch: Schedule, cpm: CPMResult) -> str:
+    """Chapter 12 "The briefing" (ADR-0210): the data-driven takeaway (the briefing's own
+    verdict + headline figures), a KPI strip from the briefing banner, and the action-items
+    and quality-snapshot bars — the executive synthesis. Every figure is one the briefing /
+    audit already computes (no new math)."""
+    banner = dict(briefing.banner)
+    spi = banner.get("SPI (duration-based)") or banner.get("SPI")
+    forecast = banner.get("Forecast finish")
+    slip = banner.get("Slip")
+    clauses = []
+    if spi:
+        clauses.append(f"SPI {spi}")
+    if forecast:
+        clauses.append(f"forecasting a finish of {forecast}")
+    if slip:
+        clauses.append(f"a {slip} slip from baseline")
+    tail = f" — {', '.join(clauses)}" if clauses else ""
+    takeaway = f"Bottom line: the schedule is {briefing.verdict}{tail}."
+
+    # KPI strip = the briefing's own banner headline figures (up to six)
+    kpi = _stat_cards([(label, value) for label, value in briefing.banner[:6]])
+
+    findings = recommend(sch, current_cpm=cpm)
+    high = sum(1 for f in findings if f.severity == Severity.HIGH)
+    med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
+    low = sum(1 for f in findings if f.severity == Severity.LOW)
+    audit = audit_schedule(sch, cpm)
+    passed = sum(1 for c in audit.checks if c.status is CheckStatus.PASS)
+    failed = sum(1 for c in audit.checks if c.status is CheckStatus.FAIL)
+    na = sum(1 for c in audit.checks if c.status is CheckStatus.NOT_APPLICABLE)
+
+    actions_bar = _status_stack(
+        "Action items by severity",
+        "The findings the briefing raises, ranked by severity.",
+        [("High", high, "--bad"), ("Medium", med, "--warn"), ("Low", low, "--muted")],
+        f"{len(findings)} finding{'s' if len(findings) != 1 else ''} in the briefing",
+    )
+    quality_bar = _status_stack(
+        "Quality snapshot",
+        "The DCMA-14 integrity checks behind the verdict.",
+        [("Pass", passed, "--ok"), ("Fail", failed, "--bad"), ("N/A", na, "--muted")],
+        f"{passed + failed} of {passed + failed + na} checks scored",
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+        f'<div class="ws-kpi">{kpi}</div>'
+        f'<div class="ws-bars">{actions_bar}{quality_bar}</div>'
+    )
 
 
 def _briefing_body(briefing: ExecutiveBriefing) -> str:
