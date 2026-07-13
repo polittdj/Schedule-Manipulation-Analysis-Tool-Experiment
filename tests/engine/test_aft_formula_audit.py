@@ -17,9 +17,12 @@ literal comparison is meaningless. Each row therefore carries a human verdict:
 * ``not_in_bible`` — no formula-bearing Bible counterpart (DCMA-standard / EVM-standard /
   SSI / reference-deck / cross-version / tool-proprietary). The note records provenance.
 
-The ``.aft`` is CUI-class intake and is **never committed**; the formula-pinning test
-therefore SKIPS when the Bible is absent (e.g. on CI — like the existing ``.mpp`` skips)
-and runs on an operator machine that has it under ``00_REFERENCE_INTAKE/``. See ADR-0110.
+The **non-CUI reference** ``.aft`` is **committed** under ``00_REFERENCE_INTAKE/``
+(ADR-0151/0152), so the formula-pinning test **runs** against it — on CI too, not only on an
+operator machine. The ``pytest.skip`` below is now just a defensive fallback for the case where
+that reference file is ever absent (mirroring the existing ``.mpp`` skips). A **real CUI** ``.aft``
+from a production machine is still never committed (the pre-commit guard blocks it). See ADR-0110
+(the pinned formula table) and ADR-0151/0152 (the committed non-CUI reference suite).
 """
 
 from __future__ import annotations
@@ -724,7 +727,7 @@ def _norm(formula: str) -> str:
 def live_bible() -> dict[str, set[str]]:
     path = _find_aft()
     if path is None:
-        pytest.skip("NASA Acumen .aft Bible not present (git-ignored CUI intake)")
+        pytest.skip("NASA Acumen .aft reference not present under 00_REFERENCE_INTAKE/")
     return _parse_aft(path)
 
 

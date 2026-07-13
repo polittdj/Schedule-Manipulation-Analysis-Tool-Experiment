@@ -1,15 +1,20 @@
 # Schedule Manipulation Analysis Tool
 
-> **Status: built (M1–M17 complete; M15 `.pbix` export is the one deferred item).** The tool runs
-> end-to-end: ingest → CPM/forensic analysis → interactive, locally-rendered report → cited local-AI
-> narrative. Current state always lives in [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md); the
-> finished-build summary is in [`docs/FINAL-REPORT.md`](./docs/FINAL-REPORT.md).
+> **Status: built (M1–M17 complete).** M15 `.pbix` enrichment is **done** (ADR-0030) — the deck's
+> measure families (float bands, completion performance, MEI, staleness, the three-method finish
+> forecast) enrich the dashboard; only its ambiguous DAX-dependent measures remain deferred pending a
+> DAX export. The tool runs end-to-end: ingest → CPM/forensic analysis → interactive, locally-rendered
+> report → cited local-AI narrative. Current state always lives in
+> [`docs/STATE/HANDOFF.md`](./docs/STATE/HANDOFF.md); the finished-build summary is in
+> [`docs/FINAL-REPORT.md`](./docs/FINAL-REPORT.md).
 
-A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native Microsoft
-Project / Primavera schedules, runs comparative and forensic analysis (CPM / driving slack, DCMA-14,
-Acumen Fuse v8.11.0 & SSI parity metrics, EVM, manipulation-trend detection), and produces
-interactive, locally-rendered reports with a cited local-AI narrative — **entirely on your machine**.
-Nothing about a schedule ever leaves the box.
+A local, NASA-themed **forensic schedule-analysis** desktop tool — branded **POLARIS** (*Program
+Oversight & Logic Analysis for Risk & Integrity of Schedules*) in the running UI. It ingests native
+Microsoft Project / Primavera schedules, runs comparative and forensic analysis (CPM / driving slack,
+DCMA-14, Acumen Fuse v8.11.0 & SSI parity metrics, EVM, manipulation-trend detection), and produces
+interactive, locally-rendered reports — organized as a **12-chapter "Mission Ops" story** across four
+selectable themes — with a cited local-AI narrative, **entirely on your machine**. Nothing about a
+schedule ever leaves the box.
 
 ## The two laws
 
@@ -53,10 +58,14 @@ dashboard. **Closing the last browser window turns the tool off** (the server's 
 after ~10 minutes with no heartbeat, so a backgrounded tab or a brief step-away keeps your session);
 the in-page **Quit** control stops it immediately.
 
+- **Headless reports:** the companion `schedule-forensics-report` console script renders a
+  **deterministic** exhibit pack (SVG/CSV/HTML) with no browser and no server, for scheduled/batch
+  generation (`schedule-forensics-report --help`; currently renders from a prebuilt `--payload`).
+
 ## Use
 
 1. **Open or import** on the landing page — drag a file onto the dropzone or click **choose a file…**
-   (`.json` / `.xml` / `.mspdi` / `.xer` / `.mpp` / `.mpt`, up to 20 at once), or **Load example** for
+   (`.json` / `.xml` / `.mspdi` / `.xer` / `.mpp` / `.mpt`, up to 100 at once), or **Load example** for
    the bundled sample. Files parse locally; the dashboard tells you exactly what loaded and what
    failed (no silent failures). Each schedule lists **Open report** and **Save .json**.
 2. **Analysis** — DCMA-14 audit (pass/fail vs threshold + suggested fix), severity-ordered
@@ -83,6 +92,19 @@ the in-page **Quit** control stops it immediately.
 8. **Compare** (≥2 versions) — the two most recent versions: CPM/progress trend and
    manipulation-trend signals (deleted logic, shortened durations, deleted tasks, baseline/actual
    edits) with the Net Finish Impact in calendar days. Honest progress raises no false flags.
+9. **Risk Analysis (SRA)** (`/sra`) — a Schedule Risk Analysis workspace: per-task Best/Worst-Case
+   durations + a 0–5 Risk Ranking Factor, a discrete-risk register, and a client-side Monte-Carlo
+   finish distribution (P10/P50/P80/P90 + contingency). Inputs/outputs round-trip through **Excel
+   fill-in templates** (export → edit → re-import; the std-lib reader adds no third-party dependency).
+10. **Metric Workbench** (`/workbench`) — an Acumen-style selectable metric library: any metric
+    evaluated across every loaded version in one sortable table, with offending activities and Excel
+    export.
+11. **Views/themes** — a header **View** dropdown switches between four themes — Console (dark
+    default), Daylight (light), Apollo (CRT), Jarvis (HUD) — persisted locally, applied to every page.
+
+The whole report is arranged as a **12-chapter Mission Ops story** (Import → Mission Control → Act I
+Situation → Act II Diagnosis → Act III Outlook), with a Setup rail (Workbench, Groups & Filters, AI
+Settings, Metric Dictionary) off the spine.
 
 See [`docs/USER-GUIDE.md`](./docs/USER-GUIDE.md) for the full walkthrough and
 [`docs/METRIC-DICTIONARY.md`](./docs/METRIC-DICTIONARY.md) (also at `/help`) for a definition + formula
@@ -105,8 +127,11 @@ Built autonomously across sessions `A1, A2, …`, one milestone each, with all s
   run SSI / Fuse side-by-side, and compare against the pinned expected values.
 - `docs/PLAN/` — build plan + requirements traceability (RTM) · `docs/adr/` — architecture decision
   records · `docs/risks.md` — risk register.
-- `00_REFERENCE_INTAKE/DEPOSIT-HERE.md` — where reference / golden-parity files go (git-ignored, CUI
-  defense).
+- `00_REFERENCE_INTAKE/` — the **non-CUI reference / golden-parity suite** (the NASA metric-library
+  `.aft`, the SSI/Acumen comparison exports, and the build `.mpp` inputs), committed per ADR-0152 so
+  the parity and formula-pinning tests run against real oracles. A **real CUI** production schedule is
+  never committed: the pre-commit guard blocks `.mpp`/`.xlsx`/`.aft`/`.xer`/`.docx` outside the
+  committed reference set and the `tests/fixtures/` synthetic allowlist.
 
 ## Quality
 

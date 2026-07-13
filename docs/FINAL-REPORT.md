@@ -16,7 +16,7 @@ green; the tool runs from a desktop icon, fully offline.
 |---|---|
 | All parsing/analysis/metrics/forensics in Python | `src/schedule_forensics/` (pure-Python engine); CI builds/tests on 3.11 + 3.13 |
 | Desktop icon → 100% local → opens in browser | `launcher.py` (`schedule-forensics`) + `packaging/` shortcuts; binds 127.0.0.1, refuses non-loopback (`tests/test_launcher.py`, 100% cov) |
-| Dark-mode, NASA-themed, intuitive UI | `web/app.py` dark theme; `tests/web/test_app.py` |
+| Dark-mode, NASA-themed, intuitive UI | `web/app.py` — four selectable themes (console dark default / daylight / apollo / jarvis, ADR-0195; the original single dark theme has since become the "console" default); `tests/web/test_app.py` |
 | Interactive Power-BI-style visuals; add/remove fields; drill into metadata; local assets (no CDN) | `web/static/{app.js,app.css}` (charts, drill-down grid, tiered Gantt); air-gap enforced by `tests/web/test_airgap.py` |
 | In-tool help: every metric defined w/ formula + supporting detail | `web/help.py` `/help` + `docs/METRIC-DICTIONARY.md`; coverage asserted by `tests/web/test_help.py` |
 | **`.pbix` enrichment (M15)** | ✔ **ADR-0030: deck read locally (Layout JSON; DAX is XPress9-compressed → measures reconstructed + documented). Adopted: float bands, completion performance, MEI, staleness, and the three-method finish forecast (`/forecast` + drift table); ambiguous measures deferred pending a DAX export.** |
@@ -25,14 +25,14 @@ green; the tool runs from a desktop icon, fully offline.
 | Requirement | Evidence |
 |---|---|
 | Parse ≤10 native `.mpp` at once, no conversion, all metadata | `importers/{mspdi,xer,mpp_mpxj,loader}.py`; Project2/5 → 144 activities UID 2–145; `tests/importers/*` |
-| Exact match to Acumen Fuse v8.11.0 **and** SSI; parity suite = gate | `tests/parity/test_parity_gate.py` (`pytest -m parity`, CI step); `docs/PARITY-REPORT.md` — SSI 107/107, Acumen §A/§B/§C/§E all reproduced exact; residuals documented + locked |
+| Exact match to Acumen Fuse v8.11.0 **and** SSI; parity suite = gate | `tests/parity/test_parity_gate.py` (`pytest -m parity`, CI step); `docs/PARITY-REPORT.md` — SSI **108/108** (focus UID 145; refreshed to the current golden per ADR-0115 / AUDIT-2026-07-13), Acumen §A/§B/§C/§E all reproduced exact; residuals documented + locked |
 | Cross-version matching by UniqueID only | `engine/diff.py`, `model/schedule.py` (UID-keyed); `tests/engine/test_diff.py` |
 
 ## §6.C — CPM, driving slack & path tracing (SSI parity)
 | Requirement | Evidence |
 |---|---|
 | Critical path fwd/bwd pass; total/free float; driving slack | `engine/{cpm,float_analysis,driving_slack,path_trace}.py`; ADR-0010/0011 |
-| Target UID → trace driving path → Driving Slack in days == MSP+SSI | `engine/driving_slack.py`; SSI parity 107/107 (Project5/UID 143); `tests/engine/test_driving_slack.py` |
+| Target UID → trace driving path → Driving Slack in days == MSP+SSI | `engine/driving_slack.py`; SSI parity **108/108** (Project5, focus UID 145 — the authoritative gate; the prior UID 143 / 107-of-107 export is a quarantined stale `xfail`, ADR-0112/0115); `tests/engine/test_driving_slack.py` |
 | User-set secondary/tertiary day thresholds | configurable tiers (defaults 10/20d); exposed in the dashboard Gantt controls + `/api/driving` |
 
 ## §6.D — Forensic & trend analysis
