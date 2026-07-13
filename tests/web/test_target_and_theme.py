@@ -127,6 +127,21 @@ def test_set_target_redirects_back_and_prefills_everywhere(client: TestClient) -
     assert "Focus activity UID 143" in page and "Computed finish moved" in page
 
 
+def test_measure_to_uid_box_focuses_any_activity(client: TestClient) -> None:
+    """Operator item 3: the header 'Measure to' control keeps the milestone dropdown and adds a
+    UID box that measures to ANY activity by UniqueID (a non-milestone, or a UID only in an older
+    version). The dropdown unions milestones across versions; the box covers everything else."""
+    _upload(client, "Project5")
+    home = client.get("/").text
+    # the UID box + Set button render on every page (via the header)
+    assert "sf-uid-form" in home and 'placeholder="any UID' in home and ">Set<" in home
+    # any UID absent from the milestone dropdown is still accepted, shown as a custom target
+    client.post("/target", data={"uid": "999999", "next_url": "/"})
+    assert 'value="999999" selected>UID 999999 (custom)' in client.get("/").text
+    # the milestone dropdown remains available (Project finish = the whole schedule)
+    assert "Project finish (whole schedule)" in home
+
+
 def test_target_form_returns_to_current_page_and_reaches_card_and_wbs(client: TestClient) -> None:
     """The header Target-UID form shipped next_url hardcoded to '/', so setting a target always
     bounced to the dashboard — looking like nothing changed. target.js now keeps you on the

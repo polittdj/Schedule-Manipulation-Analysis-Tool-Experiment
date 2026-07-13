@@ -5450,3 +5450,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Highest ADR stays 0212 (in HANDOFF + this log — drift guard green).
 - Remaining operator items ship as their own PRs off main: 3 (Measure-to all-UID + add-any-UID box),
   4 (Gantt frozen toolbar/slider + column drag). Both await operator steer on the flagged assumptions.
+
+### 2026-07-13 — Measure-to any-UID selection (operator batch item 3, choice 3A)
+- Operator asked to measure to any UniqueID, not just milestones — "show all milestones (UID + name)
+  in the latest schedule but also allow manually adding any UID from any schedule even if that
+  milestone was deleted in later versions." Chose 3A (milestone dropdown + add-any-UID box).
+- The header "Measure to" dropdown already listed name + UID and unioned milestones across ALL loaded
+  versions (so a milestone deleted in a later version is still selectable), and POST /target already
+  accepted any UID (set_target(_parse_uid(uid)); the existing tests even post 999999). So the only gap
+  was a UI affordance for non-milestone / older-version UIDs.
+- Change (presentation only): _render_target_control (web/app.py) now renders a second compact form —
+  an "or UID" number input + Set button (class sf-uid-form) — beside the milestone dropdown; base.css
+  adds .sf-uid-form (inline-flex) + .sf-uid-ctl input (6em). A non-milestone/absent UID is set and
+  shown as the "UID N (custom)" selected option. No engine change.
+- Verified: new test test_measure_to_uid_box_focuses_any_activity (box renders on every page; UID
+  999999 accepted + shown as custom; milestone dropdown intact). Chromium-checked daylight (inline) +
+  console rail (stacked "or UID [box] Set" below the dropdown); apollo/jarvis share the rail CSS.
+- No ADR (small UI feature). Version 1.0.21 -> 1.0.22; wheel + 9 installers rebuilt in lockstep.
+  Highest ADR stays 0212 (in HANDOFF + this log — drift guard green).
+- Remaining operator item: 4 (4A) — Gantt frozen toolbar/slider + left-button column drag (keep the
+  existing menu), its own PR off main after this merges.

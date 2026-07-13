@@ -1,6 +1,28 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: chart X-axis label overlap; v1.0.21; highest ADR 0212)
+# Handoff — 2026-07-13 (operator UI batch — PR: Measure-to any-UID box; v1.0.22; highest ADR 0212)
 
-> ## STATUS (current) — operator batch item 1 of 5: chart X-axis tick-label overlap
+> ## STATUS (current) — operator batch item 3 of 5: measure to any activity by UID
+>
+> - Items 5 (#342), docs sweep (#341), 2 (#343), 1 (#344) are **merged to `main`**. Operator confirmed
+>   **3A** and **4A** for the last two. This PR ships **item 3 (3A)**: the header **"Measure to"**
+>   selector was milestone-only in the dropdown; now it keeps the milestone dropdown (already unions
+>   milestones across every loaded version, so one deleted in a later version is still selectable) AND
+>   adds a compact **"or UID" box + Set** that measures to **any** activity by UniqueID — a non-milestone,
+>   or a UID that exists only in an older version. The `/target` route already accepted any UID
+>   (`set_target(_parse_uid(uid))`), so this is a small UI addition (`_render_target_control` +
+>   `base.css` `.sf-uid-form`/`.sf-uid-ctl`). New test `test_measure_to_uid_box_focuses_any_activity`
+>   (a UID absent from the dropdown, e.g. 999999, is accepted and shown as a custom target).
+>   Chromium-verified in daylight (inline) + console rail (stacked); functional flow confirmed. No engine
+>   change; no ADR (small UI feature). Version **1.0.21 → 1.0.22**; wheel + 9 installers rebuilt in
+>   lockstep. Highest ADR stays **ADR-0212**.
+> - **Remaining: item 4 (4A)** — Gantt **freeze** the zoom slider/toolbar + bottom scrollbar while the
+>   grid body scrolls, plus **left-button drag** column reorder (keep the existing ↔ Move-left/right
+>   menu as a fallback), applied to the table grids. Largest of the batch; its own PR off `main` after
+>   this merges. (`web/static/gantt.js` + `app.js`/`path.js`; `.viz-controls` sticky + a header-drag
+>   handler dispatching the existing `sf-colmove` event.)
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: chart X-axis label overlap; v1.0.21; highest ADR 0212) — merged as #344
+
+> ## STATUS — operator batch item 1 of 5: chart X-axis tick-label overlap
 >
 > - Items 5 (correctness, #342), docs sweep (#341), and 2 (console left-rail scroll, #343) are **merged
 >   to `main`**. This PR ships **operator item 1**: X-axis tick labels smeared into an unreadable band on

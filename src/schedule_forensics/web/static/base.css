@@ -297,6 +297,9 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .nav-controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px}
 /* the always-present session controls keep their compact header look in either layout */
 .nav-controls .navform{display:inline;margin:0}
+/* "or UID" measure-to box — a compact number input beside the milestone dropdown */
+.nav-controls .sf-uid-form{display:inline-flex;align-items:center;gap:5px}
+.sf-uid-ctl input{width:6em}
 
 /* ── LEFT RAIL — the three dark views, wide viewports only (mobile keeps the burger) ──────── */
 @media (min-width:761px){
