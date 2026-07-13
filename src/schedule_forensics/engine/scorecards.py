@@ -33,7 +33,8 @@ from schedule_forensics.model.schedule import Schedule
 
 #: Scorecard line status vocabulary (the UI maps these to the theme's pass/fail/neutral chips).
 #: ``INFO`` is an informational count with no numeric pass bar — it never affects the pass rate.
-PASS = "PASS"
+#: (These are chip labels, not secrets; bandit B105 reads the word "PASS" as a password.)
+PASS = "PASS"  # nosec B105
 FAIL = "FAIL"
 INFO = "INFO"
 NA = "NA"
