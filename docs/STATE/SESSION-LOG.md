@@ -5428,3 +5428,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   audit other axes), 3 (Measure-to all-UID + add-any-UID box), 4 (Gantt frozen toolbar/slider + column
   drag). Assumptions pending operator confirm: column reorder = left-button drag; measure-to =
   milestones + add-any-UID box.
+
+### 2026-07-13 — Chart X-axis tick-label overlap fix (operator batch item 1)
+- Operator: X-axis labels were unreadable / overlapping on some visuals ("format so they're always
+  readable and don't overlap"). Root cause isolated to web/static/drift.js (the forecast-drift
+  stepper): it hand-drew a horizontal label at EVERY date tick with no rotation and no width-based
+  thinning, so even the coarse year step emitted 100+ crammed labels when a runaway completion-rate
+  forecast (screenshot showed 09/24/2164) stretched the locked axis over ~137 years.
+- "All visuals" audit: every other chart already protects its x-axis — cei/trend/volatility/margin/
+  wbs/sra/trend_drill/resources rotate + thin; performance.js thins (step = ceil(n/(width/55)));
+  SFTimeAxis (curves/scurve) is minW-gated with single-letter months; SFGantt shortens by width;
+  scatter/histogram/sra_ssi use bounded or endpoint-only labels. drift.js was the sole offender.
+- Fix (presentation only, drift.js): collect the ticks, keep a grid line at each labeled tick, thin
+  labels to the available width (labStep = ceil(36 / slotPx)) and rotate them -30 deg (text-anchor
+  end) — the cei.js pattern. No engine/data change.
+- Verified by driving the REAL drift.js against a synthetic /api/forecast (Playwright route-intercept)
+  across three spans (8-month monthly, 9-year yearly, and the 2028->2164 extreme): 0 label overlaps,
+  0 clipping below the SVG; the 137-year case renders 24 readable rotated year labels instead of a
+  smear. Screenshot confirmed.
+- No ADR (presentation bugfix). Version 1.0.20 -> 1.0.21; wheel + 9 installers rebuilt in lockstep.
+  Highest ADR stays 0212 (in HANDOFF + this log — drift guard green).
+- Remaining operator items ship as their own PRs off main: 3 (Measure-to all-UID + add-any-UID box),
+  4 (Gantt frozen toolbar/slider + column drag). Both await operator steer on the flagged assumptions.
