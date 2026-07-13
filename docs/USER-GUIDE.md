@@ -1,10 +1,22 @@
-# Schedule Forensics — User Guide
+# POLARIS — User Guide
 
-A local, NASA-themed **forensic schedule-analysis** desktop tool. It ingests native Microsoft
-Project / Primavera schedules, runs comparative and forensic analysis (CPM / driving slack,
-DCMA-14, Acumen Fuse metrics, EVM, manipulation-trend detection, parity to Acumen Fuse v8.11.0
-and SSI), and renders interactive, locally-rendered reports with a local-AI narrative — **entirely
-on your machine**. No schedule data ever leaves the box (CUI-safe).
+> **Applies to v1.0.18 · updated 2026-07-13.**
+
+**POLARIS** — *Program Oversight & Logic Analysis for Risk & Integrity of Schedules* — is a local,
+NASA-themed **forensic schedule-analysis** desktop tool (the running app and its browser tab both
+carry the POLARIS mark). It ingests native Microsoft Project / Primavera schedules, runs comparative
+and forensic analysis (CPM / driving slack, DCMA-14, Acumen Fuse metrics, EVM, manipulation-trend
+detection, parity to Acumen Fuse v8.11.0 and SSI), and renders interactive, locally-rendered reports
+with a local-AI narrative — **entirely on your machine**. No schedule data ever leaves the box
+(CUI-safe).
+
+The report is organized as a **12-chapter "Mission Ops" story** you can walk end to end or jump
+around: an **Import** landing and a **Mission Control** wall, then **Act I · Situation** (01 Where we
+stand · 02 Can we trust the plan?), **Act II · Diagnosis** (03 What drives the date · 04 How stable is
+the path · 05 How it moved · 06 Work piling up · 07 How we execute · 08 Who is overloaded), and
+**Act III · Outlook** (09 Where it lands · 10 What changed · 11 What could go wrong · 12 The briefing);
+a **Setup** rail off the spine holds the Metric Workbench, Groups & Filters, AI Settings, and the
+Metric Dictionary. Each numbered section below maps to that spine.
 
 ## 1. Install (once)
 
@@ -39,10 +51,16 @@ pip install -e .                # installs the `schedule-forensics` launcher com
 The launcher picks a free **127.0.0.1** port, starts the server, and opens your browser at the
 dashboard. Stop it with `Ctrl-C`.
 
+- **Headless exhibit pack:** the companion `schedule-forensics-report` console script renders a
+  **deterministic** exhibit pack (SVG/CSV/HTML) with no browser and no server — for scheduled or
+  batch report generation. It currently renders from a prebuilt `--payload` (run
+  `schedule-forensics-report --help` for the options and exit codes; the `--inputs` path is parked
+  pending the CP-basis engine).
+
 ## 3. Use the dashboard
 
 1. **Open or import** a schedule from the landing page — drag a file onto the dropzone or click
-   **choose a file…** (`.json` `.xml`/`.mspdi` `.xer` `.mpp` `.mpt`, up to **20** at once), or click
+   **choose a file…** (`.json` `.xml`/`.mspdi` `.xer` `.mpp` `.mpt`, up to **100** at once), or click
    **Load example** to try the bundled sample project instantly. Files are parsed **locally**;
    nothing is uploaded anywhere. Imports honor the file's **project calendar** — work week, hours
    per day, and holidays drive every computed date, float, and day-based threshold (an unreadable
@@ -112,10 +130,13 @@ dashboard. Stop it with `Ctrl-C`.
    the **whole workbook** (cross-version facts: trend, manipulation signals, forecasts) or any
    single version — and type a question. Answers are grounded in the engine's computed, cited
    facts, which are always shown with the answer; with no local model active you get the
-   matching facts themselves. The default **interpretive** mode lets the model analyze and
-   derive figures grounded in those facts — the standing **"AI can err — verify against
-   citations"** disclaimer rides the panel and every answer; switch to **strict** mode in AI
-   Settings to discard any answer containing a figure the engine never computed.
+   matching facts themselves. Three **answer modes** (set in AI Settings) trade rigor for
+   latitude: **annotate** — the **default** — keeps the model's answer but **flags** any
+   AI-derived figure the engine never computed (a footer marks it); **strict** **discards** any
+   answer that contains such an unsourced figure; **interpretive** returns the model's text
+   verbatim and is the **only mode that is not figure-gated** (you deliberately opt into raw
+   analysis). The standing **"AI can err — verify against citations"** disclaimer rides the panel
+   and every answer in every mode.
 4. **Trend** (with ≥2 versions loaded, up to 10+): every version ordered by **data date** — the
    per-version headline table (finish / completed / in-progress / critical), the **Net Finish
    Impact across the series**, **trend charts** (project finish, completed, critical, missing
@@ -167,6 +188,16 @@ dashboard. Stop it with `Ctrl-C`.
    Auto-play, Bow-Wave-style) steps through the versions plotting the three forecasts on a
    **locked date axis** (held fixed across every version), so you watch the forecasts drift
    right with the prior version's markers left as a faint trail.
+6a. **Risk Analysis (SRA)** (the **Risk Analysis (SRA)** link, `/sra`; chapter 11 "What could go
+   wrong") — a **Schedule Risk Analysis** workspace: assign each task a **Best-Case / Worst-Case
+   duration** and a 0–5 **Risk Ranking Factor**, register discrete risks, and run a **client-side
+   Monte-Carlo** to see the finish-date distribution (P10 / P50 / P80 / P90), the contingency
+   window, and which activities most often drive the finish. Inputs and outputs round-trip through
+   **Excel fill-in templates** (ADR-0209/0211): **export** a pre-formatted `.xlsx` (a Risk Register
+   template and a per-task Best/Worst + Factor template), edit it in Excel, and **re-import** it —
+   nothing is fabricated (unmatched/summary UIDs, inverted Best>Worst, and incomplete rows are
+   skipped and reported in a one-shot banner). The reader is std-lib only; no schedule data leaves
+   the machine.
 7. **Executive Briefing** — a print-ready diagnostic briefing in the Acumen Fuse style: a workbook
    summary (versions, earliest start, latest completion), the cross-version **Trend Analysis**, a
    per-project summary (dates, % complete/in-progress/planned, milestones/summaries, baseline
@@ -180,8 +211,9 @@ dashboard. Stop it with `Ctrl-C`.
 9. **AI Settings** — choose the backend (local **Ollama**, any local **OpenAI-compatible**
    server such as LM Studio (`127.0.0.1:1234`) or llamafile (`127.0.0.1:8080`), or the offline
    Null), list/pull/select models, the project **classification**, and the **AI answer mode**
-   (interpretive — the default, model may analyze/derive with the standing disclaimer; or
-   strict — uncomputed figures discard the answer). Turn on the **cross-check second model**
+   (**annotate** — the default, keeps the answer but flags any AI-derived figure; **strict** —
+   an uncomputed figure discards the whole answer; **interpretive** — the model's text verbatim,
+   the only ungated mode). Turn on the **cross-check second model**
    (Ollama or OpenAI-compatible) and BOTH local models answer every question independently —
    the engine compares their figures deterministically and reports agreement or names the
    differing numbers. All model endpoints are **loopback-only** — a remote host is refused.
@@ -193,11 +225,20 @@ dashboard. Stop it with `Ctrl-C`.
    on it automatically, and **Compare** shows its computed-finish movement between versions. Leave
    the box blank and press Set (or **Wipe Session**) to clear it. A summary UID is named as such —
    pick one of its activities for a trace.
-11. **Light / dark mode** — the header's **theme button** (☀/☾) switches between the dark default
-    and a bright theme; the choice is stored locally in your browser (`localStorage`) and applies
-    to every page, charts included. Nothing about the preference leaves the machine.
+11. **View themes** — the header's **View** dropdown picks any of **four** complete themes
+    (ADR-0195): **Console** (the dark mission-control default), **Daylight** (clean light),
+    **Apollo** (retro CRT), and **Jarvis** (the HUD skin). A quick **☀/☾ toggle** beside it
+    round-trips between Daylight and the last dark view. The choice is stored locally in your
+    browser (`localStorage`) and applies to every page, charts included. Nothing about the
+    preference leaves the machine.
 12. **Metric Dictionary** (`/help`) — a plain-language definition + formula + source for **every**
     metric the tool emits (also in [`METRIC-DICTIONARY.md`](./METRIC-DICTIONARY.md)).
+12a. **Metric Workbench** (the **Metric Workbench** link, `/workbench`) — an Acumen-style,
+    **selectable metric library** (ADR-0204): pick any of the tool's metrics and see each one
+    evaluated **across every loaded version** in one sortable table, with each metric's
+    pass/fail-or-value and its offending activities, and a **⬇ Excel** export. It reuses the same
+    computed figures as the report — a fast way to scan one metric family across a whole schedule
+    set.
 13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).
 

@@ -5,8 +5,9 @@
 > interactive reference is the operator-held prototype (`Mission Ops Redesign v2.dc.html`
 > in the design handoff bundle — not committed; ask the operator when pixel truth is
 > needed); when this doc and the prototype disagree, the prototype wins. Integration is
-> phased (ADR-0195): **tokens (done) → global chrome → page shells, one per PR → new
-> analytics panels**. Never big-bang.
+> phased (ADR-0195): **tokens (done) → global chrome (done) → page shells, one per PR (done —
+> all 12 chapters shelled, through ADR-0210) → new analytics panels (in progress)**. Never
+> big-bang.
 
 ## 0. The two design laws
 1. **Nothing styles itself.** Every color, font, radius, and shadow comes from a CSS
@@ -102,7 +103,7 @@ marking (see the briefing .doc pattern).
 ## 7. Definition of Done for any new/edited page
 - [ ] Tokens only; renders correctly in all 4 themes + both densities + 90–125% scale
 - [ ] Chapter kicker, takeaway h1, context line, Continue segue, nav entry with takeaway
-      (applies once the story-chrome step lands; until then keep the current nav intact)
+      (the story-chrome and all 12 page shells have landed — the full spine applies)
 - [ ] Every visual: DD line, legend, read-me line, ▦/⤓/⛶ toolbar, options persist
 - [ ] CUI bars print; controls hidden in print (`data-noprint` / `.cf-bar` pattern)
 - [ ] Keyboard focus ring visible (`--focus`); reduced-motion kills animation/timers
