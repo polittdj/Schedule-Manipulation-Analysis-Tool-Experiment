@@ -3918,6 +3918,61 @@ def create_app(
         tableset = TableSet(f"Assessment scorecards — {label}", tables)
         return _export_response(fmt, tableset, "assessment-scorecards")
 
+    # ── Generic activity drill (shared): click any element carrying a UID set (a scorecard line,
+    # a churn-bar segment, …) → the activities behind it, with add-columns + Excel. Reuses
+    # `_workbench_drill_rows`; `_pick_scorecard_version` doubles as the version resolver (by key or
+    # label, else latest solvable). The UID set is server-computed and sanitized (_parse_uid_list). ──
+    _DRILL_BASE_COLS = ("Name", "Duration (d)", "% complete", "Start", "Finish")
+
+    @app.get("/api/activities/drill")
+    def activities_drill_json(
+        file: str = Query(""), uids: str = Query(""), title: str = Query("")
+    ) -> JSONResponse:
+        picked = _pick_scorecard_version(file)
+        if picked is None:
+            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+        key, sch, a = picked
+        fields, rows = _workbench_drill_rows(sch, a, tuple(_parse_uid_list(uids)))
+        return JSONResponse(
+            {
+                "title": title or "Activities",
+                "file": key,
+                "label": sch.source_file or sch.name,
+                "columns": list(_DRILL_BASE_COLS),
+                "fields": fields,
+                "rows": rows,
+            }
+        )
+
+    @app.get("/export/{fmt}/activities-drill")
+    def export_activities_drill(
+        fmt: str,
+        file: str = Query(""),
+        uids: str = Query(""),
+        cols: str = Query(""),
+        title: str = Query(""),
+    ) -> Response:
+        """The activities behind any drillable element (UID set) + chosen extra columns, as Excel/Word."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        picked = _pick_scorecard_version(file)
+        if picked is None:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        _key, sch, a = picked
+        fields, rows = _workbench_drill_rows(sch, a, tuple(_parse_uid_list(uids)))
+        extra = [c for c in cols.split(",") if c and c in fields]
+        headers = ("UID", *_DRILL_BASE_COLS, *extra)
+        body: list[tuple[Cell, ...]] = []
+        for r in rows:
+            fmap = cast("dict[str, object]", r.get("fields", {}))
+            cells: list[Cell] = [cast("Cell", r.get("uid"))]
+            cells += [cast("Cell", r.get(c)) for c in _DRILL_BASE_COLS]
+            cells += [cast("Cell", fmap.get(c)) for c in extra]
+            body.append(tuple(cells))
+        clean_title = title or "Activities"
+        tableset = TableSet(clean_title, (Table(clean_title, headers, tuple(body)),))
+        return _export_response(fmt, tableset, "activities-drill")
+
     @app.get("/export/{fmt}/resource-drill")
     def export_resource_drill(
         fmt: str,
@@ -7370,21 +7425,57 @@ def _dcma_count_cells(check: AuditCheck) -> str:
     return f"<td class=num>{check.count}</td><td class=num>{dash}</td>"
 
 
-def _status_stack(title: str, desc: str, segments: list[tuple[str, int, str]], foot: str) -> str:
+def _status_stack(
+    title: str,
+    desc: str,
+    segments: list[tuple[str, int, str]],
+    foot: str,
+    drill: list[tuple[tuple[int, ...], str]] | None = None,
+) -> str:
     """A single stacked bar with a legend of labelled counts — the redesign's composition visual
-    (Activity status mix; Float remaining). ``segments`` = (label, count, css-var color)."""
+    (Activity status mix; Float remaining). ``segments`` = (label, count, css-var color).
+
+    ``drill`` (optional, parallel to ``segments``) makes a segment CLICKABLE: entry ``i`` is
+    ``(activity_uids, file_key)``; a segment with a non-empty UID set + file gets the ``sf-drill``
+    hook (data-uids / data-file / data-title) that ``drilldown.js`` turns into a "list the
+    activities behind this segment + add columns + Excel" grid. Omit ``drill`` (default) and every
+    existing caller renders byte-for-byte as before."""
     total = sum(c for _, c, _ in segments) or 1
-    bar = "".join(
-        f'<span class="stack-seg" style="width:{100.0 * c / total:.3f}%;background:var({color})" '
-        f'title="{_e(f"{label}: {c}")}"></span>'
-        for label, c, color in segments
-        if c > 0
-    )
-    legend = "".join(
-        f'<span class="stack-key"><span class="stack-dot" style="background:var({color})"></span>'
-        f"{_e(label)} <b>{c}</b></span>"
-        for label, c, color in segments
-    )
+
+    def _drill_attrs(i: int, label: str) -> tuple[str, str]:
+        """(extra class, extra attributes) for segment/legend ``i`` when it is drillable."""
+        if not drill or i >= len(drill):
+            return "", ""
+        uids, fkey = drill[i]
+        if not uids or not fkey:
+            return "", ""
+        payload = ",".join(str(u) for u in uids)
+        attrs = (
+            f' data-uids="{_e(payload)}" data-file="{_e(fkey)}" '
+            f'data-title="{_e(f"{title} — {label}")}" role="button" tabindex="0"'
+        )
+        return " sf-drill", attrs
+
+    seg_html = []
+    for i, (label, c, color) in enumerate(segments):
+        if c <= 0:
+            continue
+        cls, attrs = _drill_attrs(i, label)
+        tip = f"{label}: {c}" + (" — click to list the activities" if cls else "")
+        seg_html.append(
+            f'<span class="stack-seg{cls}" style="width:{100.0 * c / total:.3f}%;'
+            f'background:var({color})" title="{_e(tip)}"{attrs}></span>'
+        )
+    bar = "".join(seg_html)
+    legend_html = []
+    for i, (label, c, color) in enumerate(segments):
+        cls, attrs = _drill_attrs(i, label)
+        legend_html.append(
+            f'<span class="stack-key{cls}"{attrs}>'
+            f'<span class="stack-dot" style="background:var({color})"></span>'
+            f"{_e(label)} <b>{c}</b></span>"
+        )
+    legend = "".join(legend_html)
     return (
         f'<div class="panel status-stack"><h2>{_e(title)}</h2>'
         f'<p class="muted">{_e(desc)}</p>'
@@ -8767,7 +8858,16 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
         "How each update moved the forecast finish vs the version before it.",
         [("Slipped", slipped, "--bad"), ("Held", held, "--muted"), ("Improved", improved, "--ok")],
         f"over {updates} {upd}",
+        # (no drill — these segments count version-to-version updates, not activities)
     )
+    # the "Where the work stands" segments DO map to activity sets — partition the latest version's
+    # non-summary tasks by percent-complete, exactly as compute_activity_makeup counts them.
+    latest_sch = schedules[-1]
+    ns = non_summary(latest_sch)
+    fkey = latest_sch.source_file or latest_sch.name
+    complete_uids = tuple(sorted(t.unique_id for t in ns if t.percent_complete >= 100.0))
+    inprog_uids = tuple(sorted(t.unique_id for t in ns if 0.0 < t.percent_complete < 100.0))
+    planned_uids = tuple(sorted(t.unique_id for t in ns if t.percent_complete <= 0.0))
     work = _status_stack(
         "Where the work stands",
         f"Activity status in the newest version — {latest.source_file or 'latest'}.",
@@ -8777,11 +8877,13 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
             ("Not started", makeup.planned, "--muted"),
         ],
         f"{makeup.total} activities in scope",
+        drill=[(complete_uids, fkey), (inprog_uids, fkey), (planned_uids, fkey)],
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{behaviour}{work}</div>'
+        '<div id=sfDrillMount></div><script src="/static/drilldown.js"></script>'
     )
 
 
@@ -9454,11 +9556,13 @@ def _scorecard_export_table(sc: Scorecard) -> Table:
     return Table(f"{sc.name} — {sc.framework}", ("Check", "Result", "Detail", "Source"), rows)
 
 
-def _scorecard_panel(sc: Scorecard) -> str:
+def _scorecard_panel(sc: Scorecard, file_key: str) -> str:
     """One assessment scorecard as a panel: a pass/fail/info chip ribbon over a detail table.
 
     Pure presentation over the validated :class:`Scorecard`; every chip's figure and the source it
-    is drawn from come straight from the engine (no re-scoring here)."""
+    is drawn from come straight from the engine (no re-scoring here). A check that cites offending
+    activities gets the ``sf-drill`` hook so clicking "(N activities)" lists them (add columns +
+    Excel) via ``drilldown.js`` against ``file_key``."""
     score = f"{sc.passed}/{sc.scored} scored checks pass" if sc.scored else "no scored checks"
     chips = "".join(
         f'<span class="sl-chip sl-{_sc_status_class(c.status)}" '
@@ -9468,11 +9572,15 @@ def _scorecard_panel(sc: Scorecard) -> str:
     )
     rows = ""
     for c in sc.checks:
-        drill = (
-            f" <span class=muted>({len(c.offender_uids)} activities)</span>"
-            if c.offender_uids
-            else ""
-        )
+        if c.offender_uids:
+            payload = ",".join(str(u) for u in c.offender_uids)
+            drill = (
+                f' <button type=button class="linkbtn sf-drill" data-uids="{_e(payload)}" '
+                f'data-file="{_e(file_key)}" data-title="{_e(c.label)}">'
+                f"{len(c.offender_uids)} activities</button>"
+            )
+        else:
+            drill = ""
         rows += (
             f"<tr><td>{_e(c.label)}</td>"
             f'<td><span class="sl-chip sl-{_sc_status_class(c.status)}">'
@@ -9539,12 +9647,19 @@ def _scorecards_body(
         "</form>"
         "<div id=reserveOut aria-live=polite></div></div>"
     )
+    panels = (
+        _scorecard_panel(stat, current_key)
+        + _scorecard_panel(gao, current_key)
+        + _scorecard_panel(ready, current_key)
+    )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
         f"{_sources_line([sch])}"
         f"{selector}"
-        f"{_scorecard_panel(stat)}{_scorecard_panel(gao)}{_scorecard_panel(ready)}"
+        f"{panels}"
         f"{reserve}"
+        "<div id=sfDrillMount></div>"
+        '<script src="/static/drilldown.js"></script>'
         '<script src="/static/scorecards.js"></script>'
     )
 
@@ -12809,22 +12924,29 @@ def _how_stable_header(ev: PathEvolution) -> str:
             ("Churn per update", f"{churn / updates:.1f}"),
         ]
     )
+    # the latest file resolves the segment activities (entered/left UIDs are matched against it)
+    fkey = latest.label
+    churn_entered_uids = tuple(sorted({u for s in snaps[1:] for u in s.entered}))
+    churn_left_uids = tuple(sorted({u for s in snaps[1:] for u in s.left}))
     latest_bar = _status_stack(
         "Latest critical path",
         f"How the newest version's path formed — {latest.label}.",
         [("Entered", len(latest.entered), "--ok"), ("Stayed", len(latest.stayed), "--muted")],
         f"{crit_now} on the path now; {len(latest.left)} left since the prior version",
+        drill=[(tuple(latest.entered), fkey), (tuple(latest.stayed), fkey)],
     )
     churn_bar = _status_stack(
         "Total churn",
         "Activities that entered vs left the critical path across every update.",
         [("Entered", entered, "--ok"), ("Left", left, "--bad")],
         f"over {updates} update{'s' if updates != 1 else ''}",
+        drill=[(churn_entered_uids, fkey), (churn_left_uids, fkey)],
     )
     return (
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{latest_bar}{churn_bar}</div>'
+        '<div id=sfDrillMount></div><script src="/static/drilldown.js"></script>'
     )
 
 

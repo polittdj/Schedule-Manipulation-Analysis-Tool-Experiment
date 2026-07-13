@@ -186,34 +186,48 @@
     location.assign(PATH); // the bare path IS the default view
   }
 
-  function injectResetButton() {
-    // the button now lives in the FROZEN header nav (operator 2026-07-10, ADR-0188 — the
-    // fixed bottom-right chip sat exactly under the JARVIS telemetry dock and read as
-    // missing); persist.js just binds it. The injected fallback covers any page whose
-    // markup predates the header button.
-    var existing = document.getElementById("sfResetView");
-    if (existing) {
-      if (!existing._sfBound) {
-        existing._sfBound = true;
-        existing.addEventListener("click", resetPage);
-      }
-      return;
-    }
+  function makeResetButton(cls, text) {
     var btn = document.createElement("button");
-    btn.id = "sfResetView";
     btn.type = "button";
-    btn.className = "sf-reset-view sf-reset-float";
+    btn.className = cls;
     btn.title = "Clear every selection you made on this page (inputs, filters, toggles, remembered view) and return to the default view";
     var glyph = document.createElement("span");
     glyph.setAttribute("aria-hidden", "true");
     glyph.setAttribute("data-no-i18n", "");
     glyph.textContent = "⟲ ";
     var label = document.createElement("span");
-    label.textContent = "Reset view"; // its own text node so the i18n layer can translate it
+    label.textContent = text; // its own text node so the i18n layer can translate it
     btn.appendChild(glyph);
     btn.appendChild(label);
     btn.addEventListener("click", resetPage);
-    document.body.appendChild(btn);
+    return btn;
+  }
+
+  function injectResetButton() {
+    // The global button lives in the FROZEN header nav (operator 2026-07-10, ADR-0188 — the fixed
+    // bottom-right chip sat under the JARVIS telemetry dock and read as missing); persist.js binds
+    // it. Operator 2026-07-13: ALSO restore a VISIBLE per-page ⟲ Reset in each page's toolbar(s)
+    // (the ADR-0186 button they remember), wired to the same resetPage(). One per .viz-controls so
+    // it sits beside the visual's own controls; the header/floating fallbacks remain for pages that
+    // have no toolbar.
+    var existing = document.getElementById("sfResetView");
+    if (existing && !existing._sfBound) {
+      existing._sfBound = true;
+      existing.addEventListener("click", resetPage);
+    }
+    var bars = document.querySelectorAll(".viz-controls");
+    var placed = 0;
+    for (var i = 0; i < bars.length; i++) {
+      if (bars[i].querySelector(".sf-reset-inline")) continue;
+      bars[i].appendChild(makeResetButton("sf-reset-view sf-reset-inline linkbtn", "Reset"));
+      placed++;
+    }
+    // no header button AND no toolbar on this page — fall back to the floating chip
+    if (!existing && !placed) {
+      var chip = makeResetButton("sf-reset-view sf-reset-float", "Reset view");
+      chip.id = "sfResetView";
+      document.body.appendChild(chip);
+    }
   }
 
   function boot() {

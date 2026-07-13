@@ -1,6 +1,46 @@
-# Handoff — 2026-07-13 (issue #331 — PR: Assessment scorecards + reserve sizing; v1.0.24; highest ADR 0213)
+# Handoff — 2026-07-13 (operator UI batch — PR: shared drill + Reset + nav fit; v1.0.25; highest ADR 0214)
 
-> ## STATUS (current) — issue #331 Advanced Schedule Analysis: assessment-scorecards slice (ADR-0213)
+> ## STATUS (current) — operator UI batch: shared activity drill, restored Reset, nav-rail fit (ADR-0214)
+>
+> - Operator, live-testing v1.0.24, asked for four fixes: (1) the left nav-rail controls bleed off the
+>   right edge — make them fit; (2) "add back my Reset buttons to each visual and page"; (3) make the
+>   segmented churn bars on `/evolution` ("How stable is the path") and `/trend` ("How it moved")
+>   clickable → list the activities with add-columns + Excel; (4) the same for the Assessment
+>   Scorecards rows.
+> - **Nav fit (CSS only):** the rail is a fixed 236px column with overflow-x:hidden; the "Measure to"
+>   / "View" selects are flex items whose `min-width:auto` refused to shrink below the widest option,
+>   defeating `max-width:100%`. Added `min-width:0`/`width:100%` to `.nav-controls select` + its flex
+>   containers (base.css). Verified: 0px overflow in all four themes.
+> - **Shared drill (the reusable part):** new `GET /api/activities/drill?file=&uids=&title=` (reuses
+>   `_workbench_drill_rows`) + `GET /export/{fmt}/activities-drill` + vendored `drilldown.js` — a modal
+>   grid (filter / add-remove columns / sort / Excel) that auto-wires ANY element with
+>   `class="sf-drill" data-uids data-file data-title` (delegated click). `_status_stack` gained an
+>   optional `drill=` arg (default None → the ~20 other callers unchanged); the evolution
+>   Latest/Total-churn bars + the trend "Where the work stands" bar opt in (the trend "Update
+>   behaviour" bar counts version-pairs, not activities → left inert). Each scorecard row with
+>   offenders renders its "(N activities)" as an `sf-drill` button. **No engine change, no new metric
+>   math (Law 2)** — the drill only lists already-computed activity sets; UID sets are server-computed
+>   + sanitized (`_parse_uid_list`).
+> - **Reset restored:** `persist.js` re-injects a visible `⟲ Reset` into each page's `.viz-controls`
+>   toolbar(s), wired to the existing `resetPage()` (ADR-0186 button that ADR-0188 consolidated into
+>   the nav). Header "Reset view" + floating fallback kept.
+> - **Verified in Chromium (all 4 themes):** scorecard row + churn-bar segment both open the modal
+>   grid; add-column works; Reset appears in toolbars; nav selects fit. Tests
+>   `tests/web/test_activity_drill.py` (API/export/hooks + `_status_stack` no-drill regression guard +
+>   reset injection + air-gap + nav-fit CSS). **ADR-0214.** Version **1.0.24 → 1.0.25**; wheel + 9
+>   installers rebuilt in lockstep.
+> - **Next (operator asks, NOT yet built — dedicated PRs):** (A) **CP Volatility page** (`/volatility`)
+>   — "MUCH BETTER visuals" + "fix all the visuals" (they break/bleed on Enlarge) + make its bars
+>   clickable. (B) **Executive Schedule Margin Management Dashboard** — a large NASA/DoD-style feature
+>   (margin burn-down vs planned, Program-Margin-vs-Contingency stacked bars, forecast extension, RAG
+>   bands, lifecycle timeline, KPI panel, exec narrative); deep-dive the operator's
+>   `MarginContingency_BurnDown_Template_20250513.xlsx` + the Margin Erosion / Margin Consumption
+>   references first. Law 2: schedule margin = ONLY activities explicitly DESIGNATED as margin on the
+>   driving path to a selected Target UID — never from float. This is its own validated build phase.
+
+# (prior) Handoff — 2026-07-13 (issue #331 — PR: Assessment scorecards + reserve sizing; v1.0.24; highest ADR 0213)
+
+> ## STATUS — issue #331 Advanced Schedule Analysis: assessment-scorecards slice (ADR-0213)
 >
 > - **Scope decision (honest, Law 2).** Issue #331 lists 7 ranked gaps + Hulett-deck sampling items.
 >   This PR ships the **lowest-fidelity-risk, highest-value slice**: gaps **#3 NASA STAT**, **#4 GAO
