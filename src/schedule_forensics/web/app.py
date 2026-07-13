@@ -1454,10 +1454,12 @@ def _resolve_route(state: SessionState, route: str) -> str:
 
 
 def _render_target_control(state: SessionState) -> str:
-    """The global Analysis-Target selector: pick the milestone every metric, path, forecast and the
-    briefing verdict is measured to (Project finish = the whole schedule). Built from the loaded
-    versions' milestone activities; posts to ``/target`` (which drives both the endpoint scope and
-    the SRA/SSI focus). A non-milestone target set elsewhere still shows as a selected custom option."""
+    """The global Analysis-Target selector: pick the activity every metric, path, forecast and the
+    briefing verdict is measured to (Project finish = the whole schedule). The dropdown lists the
+    **milestones** across every loaded version (so a milestone deleted in a later version is still
+    selectable); the **UID box** measures to ANY activity by UniqueID — a non-milestone, or a UID
+    that exists only in an older version. Both post to ``/target`` (which drives the endpoint scope
+    and the SRA/SSI focus). A non-milestone target still shows as a selected custom dropdown option."""
     seen: dict[int, str] = {}
     for s in state.schedules.values():
         for t in s.tasks:
@@ -1474,11 +1476,21 @@ def _render_target_control(state: SessionState) -> str:
     return (
         '<form action="/target" method=post class="navform targetform" '
         'title="Measure every view to one milestone (Project finish = the whole schedule)" '
-        'data-sf-hint="Pick the milestone every metric, path, forecast and the briefing verdict is '
-        'measured to. Project finish uses the whole schedule.">'
+        'data-sf-hint="Pick a milestone every metric, path, forecast and the briefing verdict is '
+        "measured to (Project finish uses the whole schedule), or enter any activity's UID at right.\">"
         '<input type=hidden name=next_url value="/">'
         "<label>Measure to "
         f'<select name=uid data-no-i18n onchange="this.form.submit()">{options}</select></label>'
+        "</form>"
+        '<form action="/target" method=post class="navform targetform sf-uid-form" '
+        'data-sf-hint="Measure to ANY activity by UniqueID — including a non-milestone or a milestone '
+        "that was deleted in a later version. The UID is matched across every loaded version; a blank "
+        'or unknown UID clears back to Project finish.">'
+        '<input type=hidden name=next_url value="/">'
+        "<label class=sf-uid-ctl>or UID "
+        '<input type=number name=uid min=1 step=1 inputmode=numeric placeholder="any UID…" '
+        'data-no-i18n aria-label="Measure to any activity by UniqueID"></label>'
+        "<button type=submit class=linkbtn data-no-i18n>Set</button>"
         "</form>"
     )
 
