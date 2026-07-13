@@ -120,9 +120,13 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
 ## Metric formulas come from "the Bible"
 
 Authoritative metric formulas are taken from the **NASA Acumen metric library**
-(`NASA_Metrics_Complete_*.aft`, an XML `<MetricLibraryFile>` of `<Metric>` Name/Formula) — a CUI intake
-file kept **outside the repo** (operator upload). When adding or auditing a metric, pull the formula
-verbatim from that `.aft` and validate against the operator's Acumen comparison exports. Each metric's
+(`NASA Metrics_Complete_*.aft`, an XML `<MetricLibraryFile>` of `<Metric>` Name/Formula). This
+reference `.aft` is **non-CUI** (operator-confirmed, see the Law-1 note above) and is **committed**
+under `00_REFERENCE_INTAKE/` per ADR-0151/0152, so the formula-pinning test
+(`tests/engine/test_aft_formula_audit.py`) runs against the real library (on CI too). A **real CUI**
+`.aft` from a production machine is still never committed — the pre-commit guard blocks it. When adding
+or auditing a metric, pull the formula verbatim from that `.aft` and validate against the operator's
+Acumen comparison exports. Each metric's
 definition + formula + source lives in `web/help.py`; `docs/METRIC-DICTIONARY.md` is **generated** from
 it, so after editing `help.py` regenerate it (a test enforces sync):
 

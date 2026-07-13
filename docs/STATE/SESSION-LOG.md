@@ -5355,6 +5355,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Dismissed after validation: pip-audit local warnings (ambient container packages, not the .[dev]
   closure — not a CI risk). No ADR (audit is read-only); highest ADR stays 0211.
 
+### 2026-07-13 — Audit remediation PR 1: docs-only sweep (H2/M9/M10/M12/M13/L11/L12/L13/N3)
+- First remediation PR off the AUDIT-2026-07-13 backlog, per docs/STATE/NEXT-SESSION-PROMPT.md:
+  the docs-only sweep (cheapest, zero code risk, clears a High). Branch
+  `claude/smat-audit-remediation-eeckdi`, restarted fresh from `origin/main` (`e8cd558`, the merged
+  audit #340) per the merged-PR rule.
+- Documentation-only + one test *docstring*. No runtime code, no metric math, no test logic, no
+  version bump, no installer rebuild; docs/METRIC-DICTIONARY.md not regenerated (help.py unchanged).
+- Findings cleared:
+  - **H2** — USER-GUIDE said the default Ask-the-AI mode was the *ungated* "interpretive"; the code
+    default is **annotate** (`web/app.py:5011 Form("annotate")`). Rewrote §3 + §9 to state the default
+    is annotate and describe all three modes (annotate flags AI-derived figures; strict discards them;
+    interpretive is the only ungated mode).
+  - **M9** — the non-CUI reference `.aft`/intake IS committed (ADR-0151/0152); corrected CLAUDE.md's
+    Bible section, README's `00_REFERENCE_INTAKE/` line, and the `test_aft_formula_audit.py`
+    docstring + skip message (the formula-pinning test runs, incl. CI; real CUI still blocked).
+  - **M10** — README + USER-GUIDE now cover the Metric Workbench (/workbench), the SRA page + Excel
+    round-trip (/sra), the 12-chapter Mission Ops nav, and the four themes; USER-GUIDE stamped v1.0.18.
+  - **M12** — FINAL-REPORT SSI parity updated to 108/108 focus UID 145 (prior 107/107 UID 143 noted as
+    stale xfail, ADR-0112/0115); "Dark-mode" → four selectable themes.
+  - **M13** — batch cap docs 20 → 100 (matches `loader.py:31 MAX_FILES = 100`).
+  - **L11** — README no longer calls `.pbix`/M15 "the one deferred item" (M15 done, ADR-0030).
+  - **L12** — USER-GUIDE describes the four View themes (console/daylight/apollo/jarvis) + ☀/☾ toggle.
+  - **L13** — DESIGN-SYSTEM phased-rollout marks chrome + all 12 page shells done.
+  - **N3** — introduced the POLARIS name/backronym and the `schedule-forensics-report` console script.
+- No ADR (docs sweep); highest ADR stays 0211 (present in HANDOFF + this log — drift guard green).
+  Full gate re-run green. Remaining backlog PRs 2–9 tracked in HANDOFF + AUDIT-2026-07-13.md.
+
 ### 2026-07-13 — Path-evolution robust completeness (ADR-0212); operator hands-on batch, item 5
 - Operator (using the running tool) filed 5 items; this entry ships item 5, the correctness one:
   "verify 'Completed on the path — version to version' is correct." Verified via parallel deep-read;

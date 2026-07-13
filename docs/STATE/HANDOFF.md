@@ -30,6 +30,33 @@
 > - Also in flight, unrelated: the **AUDIT-2026-07-13 docs-only sweep** is draft **PR #341** on
 >   `claude/smat-audit-remediation-eeckdi` (H2/M9/M10/M12/M13/L11/L12/L13/N3) — separate branch.
 
+# (prior) Handoff — 2026-07-13 (audit remediation PR 1: docs-only sweep; v1.0.18; highest ADR 0211) — merged as #341
+
+> ## STATUS (current) — PR 1 of the AUDIT-2026-07-13 remediation: docs-only sweep
+>
+> - **This PR is documentation-only** (plus one test *docstring*): no runtime code, no metric math,
+>   no test logic, no version bump, no installer rebuild. Branch `claude/smat-audit-remediation-eeckdi`,
+>   restarted fresh from `origin/main` (`e8cd558`, the merged audit #340) per the merged-PR rule.
+> - **Findings cleared (9):** **H2** (USER-GUIDE said the default Q&A mode was the *ungated*
+>   "interpretive"; it is **annotate** — now describes all three modes), **M9** (the non-CUI reference
+>   `.aft`/intake **is committed** per ADR-0152 — corrected CLAUDE.md's Bible section, README's
+>   intake line, and `tests/engine/test_aft_formula_audit.py`'s docstring/skip message), **M10** (README
+>   + USER-GUIDE now cover the Metric Workbench, the SRA page + Excel round-trip, the 12-chapter Mission
+>   Ops nav, and the four themes; USER-GUIDE stamped v1.0.18), **M12** (FINAL-REPORT SSI parity → 108/108
+>   focus UID 145, four themes), **M13** (batch cap docs 20 → **100**), **L11** (M15 `.pbix` is done, not
+>   "the one deferred item"), **L12** (four View themes, not a light/dark toggle), **L13** (DESIGN-SYSTEM
+>   rollout: chrome + all 12 page shells marked done), **N3** (introduced the POLARIS name/backronym +
+>   the `schedule-forensics-report` console script).
+> - **No new ADR** (docs sweep). Highest ADR stays **ADR-0211**; the `test_state_docs.py` drift guard
+>   stays green (0211 present in both this HANDOFF and SESSION-LOG). METRIC-DICTIONARY not regenerated
+>   (no `help.py` change).
+> - **Remaining remediation backlog** (each its own PR, branched fresh from `main` after this merges,
+>   per `docs/STATE/AUDIT-2026-07-13.md` + `NEXT-SESSION-PROMPT.md`): PR 2 presentation bugs
+>   (M2/L1/L2/L10), PR 3 chapter-01 Critical basis (M3), PR 4 `sra_conclusions._wd` calendar (M1),
+>   PR 5 24-hour calendar parse (H3, +L8), PR 6 AI figure-gate hardening (H1/M4/M5 — highest care),
+>   PR 7 wire the dead CUI defenses (M6/L3, +L4), PR 8 JS test harnesses (M7/M8), PR 9 low/nit cleanup
+>   (L5/L6/L7/L8/L9/N1/N2 + the durable M11 version-sync guard).
+
 # (prior) Handoff — 2026-07-13 (full read-only audit; v1.0.18; highest ADR 0211)
 
 > ## STATUS — AUDIT-2026-07-13 complete; remediation queued, nothing fixed yet
