@@ -36,8 +36,9 @@
     });
     return row;
   }
-  function statusBar(mix) {
+  function statusBar(mix, uids, fileKey) {
     mix = mix || {};
+    uids = uids || {};
     var total = (mix.complete || 0) + (mix.in_progress || 0) + (mix.planned || 0);
     var bar = el("div", "dash-bar");
     if (total) {
@@ -48,7 +49,11 @@
           var seg = el("span", "dash-seg");
           seg.style.width = (100 * v / total) + "%";
           seg.style.background = s[1];
-          seg.title = s[0].replace("_", " ") + ": " + v;
+          var label = s[0].replace("_", " ");
+          seg.title = label + ": " + v;
+          // click the segment to list its activities (the shared handler preventDefaults, so the
+          // click does NOT also follow the card's <a> link)
+          if (window.SFDrill) SFDrill.mark(seg, uids[s[0]], fileKey, "Status: " + label);
           bar.appendChild(seg);
         });
     }
@@ -88,7 +93,7 @@
 
         card.appendChild(el("p", "chart-desc",
           "Activity status mix — share of activities complete / in progress / planned (not started)."));
-        card.appendChild(statusBar(c.status_mix));
+        card.appendChild(statusBar(c.status_mix, c.status_mix_uids, c.key));
         card.appendChild(legend([
           { label: "Complete", color: "var(--ok)" },
           { label: "In progress", color: "var(--warn)" },

@@ -5618,3 +5618,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   bandit/node/pytest).
 - **ADR-0216** (in HANDOFF + this log — drift guard green). Version 1.0.26 -> 1.0.27; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-13 — operator UI batch: click-to-drill on the categorical count bars (ADR-0217)
+
+- **Session:** operator "all other bars in the tool" — the count/composition bars. This PR wires 3 of 5
+  families (dashboard, WBS, trend). **Next:** Performance G2/G4 + CEI (engine-accumulator work).
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (restarted from origin/main
+  after #350 merged).
+- For each family, embed the per-segment activity-ID list in the chart payload (same predicate as the
+  count) + tag each rect with SFDrill.mark:
+  - Dashboard status bar: status_mix_uids (complete/in-progress/planned from non_summary(scoped) by pct);
+    data-file=card.key; the seg is inside the card <a> but the shared handler preventDefaults -> drill
+    opens, no link nav.
+  - WBS SPI bars: added a uids field to WBSGroup (from the group's tasks); _wbs_data emits it; wbs.js
+    marks the bar with data-file = page schedule key.
+  - Trend version bars (stacked status/type/completion + grouped total/free float): status/type UIDs via
+    the compute_activity_makeup predicates; completion + float UIDs from offender_uids; added a resolvable
+    per-version "file". Generic stacked/grouped builders read d[key+"_uids"] + d.file.
+- Chromium: 8 dashboard status segs, 53 trend drill rects (click opens the grid), 5 WBS SPI bars; no
+  page errors.
+- No metric change (Law 2): each UID list uses the same predicate as its count (asserted equal). Only
+  engine touch = additive uids field on WBSGroup (counts unchanged). Test test_categorical_bar_drill.py.
+  Gate green (ruff/format/mypy/bandit/node/pytest).
+- **ADR-0217** (in HANDOFF + this log — drift guard green). Version 1.0.27 -> 1.0.28; wheel + 9
+  installers rebuilt in lockstep.

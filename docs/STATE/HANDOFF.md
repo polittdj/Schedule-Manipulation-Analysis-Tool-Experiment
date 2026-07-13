@@ -1,6 +1,39 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: drill on per-activity bar charts; v1.0.27; highest ADR 0216)
+# Handoff — 2026-07-13 (operator UI batch — PR: drill on categorical count bars; v1.0.28; highest ADR 0217)
 
-> ## STATUS (current) — operator UI batch: click-to-drill on the per-activity bar charts (ADR-0216)
+> ## STATUS (current) — operator UI batch: click-to-drill on the categorical count bars (ADR-0217)
+>
+> - Operator: extend the bar drill (ADR-0216) to "all other bars in the tool" — the count/composition
+>   bars where a segment = a SET of activities. This PR wires **3 of the 5** such families (the
+>   highest-value, lowest-risk); Performance G2/G4 + CEI are the next PR (engine-accumulator work).
+> - For each family: embed the **activity-ID list behind each segment** in the chart payload (matching
+>   the existing count predicate exactly, so counts never diverge from UID lists), then tag each bar
+>   rect with `SFDrill.mark`.
+>   - **Dashboard status bar** (`_dashboard_data` → dashboard.js): `status_mix_uids`
+>     (complete/in-progress/planned from `non_summary(scoped)` by pct). `data-file=card.key`. The seg is
+>     inside the card `<a>`, but the shared handler `preventDefault`s the click — opens the drill, no
+>     link nav; no extra code.
+>   - **WBS SPI bars** (`WBSGroup` gains a `uids` field → `_wbs_data` → wbs.js): from the group's own
+>     `tasks`. `data-file` = page schedule key.
+>   - **Trend version bars** (`_trend_data` → trend.js stacked+grouped): status-split/type-makeup UIDs
+>     via the `compute_activity_makeup` predicates; completion-perf + float-band UIDs from the metrics'
+>     `offender_uids`. Added a resolvable per-version `file` (label may be a synthetic `v3`). The generic
+>     chart builders read `d[key+"_uids"]` and `d.file`.
+> - Chromium-verified: 8 dashboard status segs, 53 trend drill rects (live click-through opens the grid),
+>   5 WBS SPI bars; no page errors.
+> - No metric change (Law 2): every UID list uses the SAME predicate as the count it accompanies (asserted
+>   equal in the test). The only engine touch is an additive `uids` field on `WBSGroup` (counts unchanged).
+> - Test `tests/web/test_categorical_bar_drill.py`. **ADR-0217.** Version **1.0.27 → 1.0.28**; wheel + 9
+>   installers rebuilt in lockstep.
+> - **Next PR (the last 2 count-bar families):** Performance G2/G4 lateness/burden — new UID accumulators
+>   on `FlowMonth`/`BurdenMonth` (performance_summary.py; the burden `acc`-dict helper `_place` needs a
+>   parallel UID acc); tag the shared `stackedBars` (performance.js:161, `drill()` helper already there;
+>   data-file `PV[cursor].label`). CEI monthly — `_bucket` (bow_wave.py:165) discards UIDs, so a new
+>   per-(month,series) UID partition through the frozen `SnapshotProfile` → `_cei_data` → cei.js (only
+>   the grouped-bar mode; running-totals draws polylines; runs UNSCOPED vs the scoped drill).
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: drill on per-activity bar charts; v1.0.27; highest ADR 0216)
+
+> ## STATUS — operator UI batch: click-to-drill on the per-activity bar charts (ADR-0216)
 >
 > - Operator (live-testing v1.0.26), pointing at the CP-Volatility Tenure leaderboard: "click any of
 >   these bars … see the underlying data … add columns … export to excel … applied the same way to all
