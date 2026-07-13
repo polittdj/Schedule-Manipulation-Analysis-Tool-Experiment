@@ -188,6 +188,17 @@ dashboard. Stop it with `Ctrl-C`.
    Auto-play, Bow-Wave-style) steps through the versions plotting the three forecasts on a
    **locked date axis** (held fixed across every version), so you watch the forecasts drift
    right with the prior version's markers left as a faint trail.
+5b. **Assessment Scorecards** (the **Assessment Scorecards** link, `/scorecards`; chapter 2 "Can we
+   trust the plan?") — three named assessment frameworks beside DCMA-14: the **NASA STAT**
+   construction checks, the **GAO Schedule Assessment Guide's ten best practices**, and an
+   **SRA-readiness gate** (is the file fit for a defensible risk analysis?). Each line is a pass /
+   fail / info chip whose figure is drawn **straight from the tool's already-validated metrics** —
+   the gate-locked DCMA-14 audit, the logic-integrity checks, and deterministic model scans; nothing
+   is re-scored, and a framework line with no numeric pass bar reads as an informational count, never
+   a fabricated pass/fail. A **Reserve / buffer sizing** card runs the SRA Monte-Carlo on demand and
+   says how much schedule reserve protects a **committed finish date** at P50 / P70 / P80 / P90, plus
+   the confidence the committed date is met today. Pick any loaded version to assess; ⬇ Excel / ⬇
+   Word export all three scorecards.
 6a. **Risk Analysis (SRA)** (the **Risk Analysis (SRA)** link, `/sra`; chapter 11 "What could go
    wrong") — a **Schedule Risk Analysis** workspace: assign each task a **Best-Case / Worst-Case
    duration** and a 0–5 **Risk Ranking Factor**, register discrete risks, and run a **client-side

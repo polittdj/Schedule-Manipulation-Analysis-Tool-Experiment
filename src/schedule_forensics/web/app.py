@@ -72,7 +72,12 @@ from schedule_forensics.engine import (
 )
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
-from schedule_forensics.engine.cpm import CPMError, CPMResult, offset_to_datetime
+from schedule_forensics.engine.cpm import (
+    CPMError,
+    CPMResult,
+    datetime_to_offset,
+    offset_to_datetime,
+)
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
 from schedule_forensics.engine.diff import diff_versions
 from schedule_forensics.engine.driving_path import (
@@ -172,6 +177,11 @@ from schedule_forensics.engine.recommendations import (
 )
 from schedule_forensics.engine.resources import ResourceLoading, compute_resource_loading
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
+from schedule_forensics.engine.scorecards import (
+    Scorecard,
+    compute_scorecards,
+    reserve_recommendation,
+)
 from schedule_forensics.engine.sra import (
     ActivityRisk,
     OATSensitivity,
@@ -1030,6 +1040,18 @@ _EXPLAINERS: dict[str, tuple[str, str, str]] = {
         "A failing chip tells you exactly which structural repair to schedule next — fix "
         "missing logic before trusting any critical-path or float number downstream.",
     ),
+    "Assessment Scorecards": (
+        "Three named assessment frameworks beside DCMA-14: the NASA STAT construction checks, the "
+        "GAO Schedule Assessment Guide's ten best practices, and an SRA-readiness gate — plus a "
+        "reserve-sizing card that says how much buffer protects a committed date at P70/P80.",
+        "Each line is a chip (green pass / red fail / grey info) whose figure is drawn straight "
+        "from the tool's already-validated metrics — the gate-locked DCMA-14 audit, the "
+        "logic-integrity checks, and deterministic model scans; nothing is re-scored here. Pick a "
+        "version to assess, and enter a committed date to size the schedule reserve.",
+        "Use it to answer 'is this schedule fit for a defensible risk analysis, and does it meet "
+        "the GAO/NASA construction bar?' in one view — and to justify the contingency you carry "
+        "against the committed finish, at a confidence you can defend in testimony.",
+    ),
     "Path Analysis": (
         "The activity network laid out on a time axis: the critical path plus every driving "
         "and near-driving chain, with float per activity.",
@@ -1307,8 +1329,11 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
                 "02",
                 "Can we trust the plan?",
                 "/ribbon",
-                (("Schedule Integrity", "/integrity"),),
-                ("Schedule Quality Ribbon", "Schedule Integrity"),
+                (
+                    ("Schedule Integrity", "/integrity"),
+                    ("Assessment Scorecards", "/scorecards"),
+                ),
+                ("Schedule Quality Ribbon", "Schedule Integrity", "Assessment Scorecards"),
                 "Whether the schedule is built soundly enough to trust its numbers.",
             ),
         ),
@@ -1784,6 +1809,17 @@ def _sources_line(schedules: Sequence[Schedule]) -> str:
         + "</b>, <b>".join(names)
         + "</b></p>"
     )
+
+
+def _parse_committed_date(value: str | None) -> dt.datetime | None:
+    """A committed finish date from an ``YYYY-MM-DD`` form value (midnight), or ``None``."""
+    if not value:
+        return None
+    try:
+        d = dt.date.fromisoformat(value.strip()[:10])
+    except ValueError:
+        return None
+    return dt.datetime(d.year, d.month, d.day)
 
 
 def _expandable_more(shown_html: str, hidden_items: list[str]) -> str:
@@ -3759,6 +3795,128 @@ def create_app(
             (Table(f"Workbench drill — {metric}", headers, body),),
         )
         return _export_response(fmt, tableset, "workbench-drill")
+
+    # ── Assessment Scorecards (issue #331): NASA STAT / GAO-10 / SRA-readiness + reserve sizing.
+    # A consolidation of already-validated metrics into three named frameworks
+    # (engine/scorecards.py) — no new metric math (Law 2). The reserve card runs the existing
+    # seeded SRA Monte-Carlo on demand (off the page-load path). ──
+
+    def _scorecard_versions() -> list[tuple[str, Schedule, _Analysis]]:
+        """Loaded solvable versions oldest→newest, each scoped + with its cached analysis."""
+        st = session()
+        out: list[tuple[str, Schedule, _Analysis]] = []
+        for key, raw in st.ordered_versions():
+            try:
+                a = st.analysis_for(key, raw)
+            except CPMError:
+                continue
+            out.append((key, st.scope(raw), a))
+        return out
+
+    def _pick_scorecard_version(file: str) -> tuple[str, Schedule, _Analysis] | None:
+        """The chosen version by key/label, else the latest loaded solvable version."""
+        versions = _scorecard_versions()
+        if not versions:
+            return None
+        if file:
+            for key, sch, a in versions:
+                if key == file or (sch.source_file or sch.name) == file:
+                    return (key, sch, a)
+        return versions[-1]
+
+    @app.get("/scorecards", response_class=HTMLResponse)
+    def scorecards_view(file: str = Query("")) -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Assessment Scorecards",
+                "<div class=panel>Load a schedule to build the NASA STAT, GAO 10-practices and "
+                "SRA-readiness scorecards.</div>",
+            )
+        picked = _pick_scorecard_version(file)
+        if picked is None:
+            return _page(
+                st,
+                "Assessment Scorecards",
+                "<div class=panel>No loaded version could be solved for the network, so the "
+                "assessment scorecards cannot be built. Resolve the logic and re-import.</div>",
+            )
+        key, sch, a = picked
+        return _page(
+            st,
+            "Assessment Scorecards",
+            _scorecards_body(_scorecard_versions(), key, sch, a),
+        )
+
+    @app.get("/api/scorecards/buffer")
+    def scorecards_buffer_json(
+        file: str = Query(""),
+        committed: str = Query(""),
+        iterations: int = Query(1000),
+    ) -> JSONResponse:
+        """Size the reserve to hit a committed PROJECT finish date at P50/P70/P80/P90.
+
+        Runs the existing seeded SRA Monte-Carlo on demand, then reads the reserve off its finish
+        CDF (engine/scorecards.reserve_recommendation) — pure percentile arithmetic, no new stats.
+        """
+        picked = _pick_scorecard_version(file)
+        if picked is None:
+            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+        key, sch, a = picked
+        committed_dt = _parse_committed_date(committed)
+        if committed_dt is None:
+            return JSONResponse(
+                {"error": "a committed date (YYYY-MM-DD) is required"}, status_code=422
+            )
+        iters = max(100, min(5000, iterations))
+        sra = compute_sra(sch, a.cpm, config=SRAConfig(iterations=iters))
+        # a committed finish DATE means "finish by the end of that day", so map it to the start of
+        # the next day (strictly after any finish on the committed day) for the confidence/reserve.
+        end_of_day = committed_dt + dt.timedelta(days=1)
+        committed_offset = datetime_to_offset(sch.project_start, end_of_day, sch.calendar)
+        rec = reserve_recommendation(
+            sra.cdf,
+            committed_offset,
+            sch.project_start,
+            sch.calendar,
+            committed_date_display=committed_dt.date().isoformat(),
+        )
+        return JSONResponse(
+            {
+                "file": key,
+                "label": sch.source_file or sch.name,
+                "iterations": iters,
+                "committed_date": rec.committed_date,
+                "committed_confidence": rec.committed_confidence,
+                "deterministic_finish_date": sra.deterministic_finish_date,
+                "recommended_p70_days": rec.recommended_p70_days,
+                "recommended_p80_days": rec.recommended_p80_days,
+                "rows": [
+                    {
+                        "percentile": r.percentile,
+                        "finish_date": r.finish_date,
+                        "reserve_days": r.reserve_days,
+                    }
+                    for r in rec.rows
+                ],
+            }
+        )
+
+    @app.get("/export/{fmt}/scorecards")
+    def export_scorecards(fmt: str, file: str = Query("")) -> Response:
+        """The three scorecards (STAT / GAO / readiness) for the chosen version as one export."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        picked = _pick_scorecard_version(file)
+        if picked is None:
+            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+        _key, sch, a = picked
+        cards = compute_scorecards(sch, a.cpm, a.audit)
+        tables = tuple(_scorecard_export_table(c) for c in cards)
+        label = sch.source_file or sch.name
+        tableset = TableSet(f"Assessment scorecards — {label}", tables)
+        return _export_response(fmt, tableset, "assessment-scorecards")
 
     @app.get("/export/{fmt}/resource-drill")
     def export_resource_drill(
@@ -9281,6 +9439,114 @@ columns, and export. Every figure is the same gate-locked number the rest of the
 <div id=wbDrill class=wb-drill></div>
 </div>
 <script src="/static/workbench.js"></script>"""
+
+
+def _sc_status_class(status: str) -> str:
+    # class-name lookup (not a secret) — B105 is a false positive.
+    return {"PASS": "pass", "FAIL": "fail", "INFO": "info"}.get(status, "na")  # nosec B105
+
+
+def _scorecard_export_table(sc: Scorecard) -> Table:
+    """One assessment scorecard as an export table (Check / Result / Detail / Source)."""
+    rows: tuple[tuple[Cell, ...], ...] = tuple(
+        (c.label, c.status, c.detail, c.provenance) for c in sc.checks
+    )
+    return Table(f"{sc.name} — {sc.framework}", ("Check", "Result", "Detail", "Source"), rows)
+
+
+def _scorecard_panel(sc: Scorecard) -> str:
+    """One assessment scorecard as a panel: a pass/fail/info chip ribbon over a detail table.
+
+    Pure presentation over the validated :class:`Scorecard`; every chip's figure and the source it
+    is drawn from come straight from the engine (no re-scoring here)."""
+    score = f"{sc.passed}/{sc.scored} scored checks pass" if sc.scored else "no scored checks"
+    chips = "".join(
+        f'<span class="sl-chip sl-{_sc_status_class(c.status)}" '
+        f'title="{_e(c.label)}: {_e(c.detail)} — {_e(c.provenance)}">'
+        f"<span class=sl-name>{_e(c.label)}</span> <b>{_e(c.status)}</b></span>"
+        for c in sc.checks
+    )
+    rows = ""
+    for c in sc.checks:
+        drill = (
+            f" <span class=muted>({len(c.offender_uids)} activities)</span>"
+            if c.offender_uids
+            else ""
+        )
+        rows += (
+            f"<tr><td>{_e(c.label)}</td>"
+            f'<td><span class="sl-chip sl-{_sc_status_class(c.status)}">'
+            f"<b>{_e(c.status)}</b></span></td>"
+            f"<td>{_e(c.detail)}{drill}</td>"
+            f"<td class=muted>{_e(c.provenance)}</td></tr>"
+        )
+    return (
+        f'<div class=panel data-scorecard="{_e(sc.key)}">'
+        f"<h2>{_e(sc.name)}</h2>"
+        f"<p class=muted>{_e(sc.framework)}</p>"
+        f"<p><b>{score}</b> &middot; {sc.info} informational &middot; {sc.na} n/a</p>"
+        f'<div class=stoplight-board role=list aria-label="{_e(sc.name)} ribbon">{chips}</div>'
+        "<table class=scorecard-table><tr><th scope=col>Check</th>"
+        "<th scope=col>Result</th><th scope=col>Detail</th><th scope=col>Source</th></tr>"
+        f"{rows}</table></div>"
+    )
+
+
+def _scorecards_body(
+    versions: list[tuple[str, Schedule, _Analysis]],
+    current_key: str,
+    sch: Schedule,
+    a: _Analysis,
+) -> str:
+    """The Assessment Scorecards page (issue #331): NASA STAT + GAO-10 + SRA-readiness ribbons for
+    the chosen version, plus a reserve-sizing card fed by the on-demand SRA buffer API."""
+    stat, gao, ready = compute_scorecards(sch, a.cpm, a.audit)
+
+    def _clause(sc: Scorecard, noun: str) -> str:
+        return f"{sc.passed}/{sc.scored} {noun}" if sc.scored else f"no scored {noun}"
+
+    takeaway = (
+        f"GAO {_clause(gao, 'best practices met')} &middot; "
+        f"NASA STAT {_clause(stat, 'structural checks pass')} &middot; "
+        f"SRA-readiness {_clause(ready, 'gates green')}."
+    )
+    opts = ""
+    for key, vsch, _va in versions:
+        label = vsch.source_file or vsch.name
+        status = f" · {vsch.status_date.date().isoformat()}" if vsch.status_date is not None else ""
+        sel = " selected" if key == current_key else ""
+        opts += f'<option value="{_e(key)}"{sel}>{_e(label)}{_e(status)}</option>'
+    selector = (
+        "<form method=get action=/scorecards class=viz-controls>"
+        "<label>Assess version <select name=file data-no-i18n "
+        f'onchange="this.form.submit()">{opts}</select></label>'
+        f'<a class=btn href="/export/xlsx/scorecards?file={_e(current_key)}">Export (Excel)</a>'
+        f'<a class=btn href="/export/docx/scorecards?file={_e(current_key)}">Export (Word)</a>'
+        "</form>"
+    )
+    reserve = (
+        "<div class=panel>"
+        "<h2>Reserve / buffer sizing</h2>"
+        "<p class=muted>How much schedule reserve protects a committed <b>project finish</b> date "
+        "at a chosen confidence, read from the SRA Monte-Carlo finish distribution "
+        "(engine/sra.py). Enter the committed date and run — the simulation is off the page-load "
+        "path so it only runs when you ask.</p>"
+        f'<form id=reserveForm class=viz-controls data-file="{_e(current_key)}">'
+        "<label>Committed finish date <input type=date id=reserveDate></label>"
+        "<label>Iterations <input type=number id=reserveIters value=1000 min=100 max=5000 "
+        "step=100></label>"
+        "<button type=button id=reserveRun class=btn>Size the reserve</button>"
+        "</form>"
+        "<div id=reserveOut aria-live=polite></div></div>"
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+        f"{_sources_line([sch])}"
+        f"{selector}"
+        f"{_scorecard_panel(stat)}{_scorecard_panel(gao)}{_scorecard_panel(ready)}"
+        f"{reserve}"
+        '<script src="/static/scorecards.js"></script>'
+    )
 
 
 def _ribbon_body(

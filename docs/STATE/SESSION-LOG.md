@@ -5497,3 +5497,41 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - No ADR (UI). Version 1.0.22 -> 1.0.23; wheel + 9 installers rebuilt in lockstep. Highest ADR stays
   0212 (in HANDOFF + this log — drift guard green). The 5-item operator batch is COMPLETE (all merged
   or in review). Next: resume the AUDIT-2026-07-13 remediation backlog if desired.
+
+---
+
+## 2026-07-13 — issue #331: Assessment scorecards + reserve sizing (ADR-0213)
+
+- **Session:** issue #331 Advanced Schedule Analysis, slice 1. **Next:** the #331 statistical
+  follow-on (JCL/FICSM, correlation matrix + risk-driver UI, scenarios, LHS/branching, risk-critical
+  Gantt) as a dedicated reference-validated phase; or resume the AUDIT-2026-07-13 backlog.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (restarted fresh from
+  `origin/main` after #346 merged).
+- **Scope decision (Law 2):** issue #331 lists 7 ranked gaps + Hulett-deck sampling items. Shipped the
+  lowest-fidelity-risk, highest-value slice — gaps #3 NASA STAT, #4 GAO 10-practices, #5 SRA-readiness
+  gate, #7 buffer/target reserve sizing — all consolidation/synthesis of already-validated metrics +
+  exact percentile arithmetic (no new metric math). Deferred #1 JCL/FICSM (also cost-data-blocked),
+  #2 correlation-matrix / risk-driver UI, #6 scenario persistence, and the Hulett LHS / branching /
+  risk-critical Gantt to a dedicated validated phase (issue #331 stays open) — the sequencing the
+  issue itself recommends.
+- **Engine:** new `engine/scorecards.py`. `compute_nasa_stat` / `compute_gao_scorecard` /
+  `compute_sra_readiness` return frozen `Scorecard`/`ScorecardCheck`; every scored line's status is
+  taken verbatim from the gate-locked DCMA audit (`_audit_status`) or an unambiguous structural rule
+  (0-expected → PASS iff count 0). New lines are trivial deterministic model scans (missing-pred/succ
+  split, milestone/manual/estimated-duration counts, DCMA-09 actuals-after vs forecast-in-past split)
+  with cited offenders; no-pass-bar lines are INFO and excluded from the pass rate.
+  `reserve_recommendation` sizes reserve to a committed project finish at P50/P70/P80/P90 from the SRA
+  CDF (nearest-rank) — pure arithmetic, no new sim. A committed DATE is read as end-of-day so a
+  same-day finish counts.
+- **Web:** new `/scorecards` page (chapter-02 "Can we trust the plan?" secondary, beside Schedule
+  Integrity): three ribbons for a chosen version + a reserve card fed by on-demand
+  `/api/scorecards/buffer` (MC off the page-load path). Excel/Word export of the three scorecards;
+  vendored `scorecards.js` (reserve fetch only, air-gap safe); `.sl-info` theme-token chip + a
+  `.scorecard-table` style added to base.css.
+- **Tests:** `tests/engine/test_scorecards.py` (STAT missing-logic == validated DCMA-01; GAO maps to
+  DCMA-01/10/12; INFO never moves the pass rate; exact reserve arithmetic over a known CDF, incl.
+  committed-beats-P90 and committed-early cases) + `tests/web/test_scorecards_page.py`
+  (page/ribbons/reserve API/exports/nav/air-gap). Gate green (ruff, format, mypy strict, bandit, node,
+  pytest).
+- **ADR-0213** (in HANDOFF + this log — drift guard green). Version 1.0.23 -> 1.0.24; wheel + 9
+  installers rebuilt in lockstep.
