@@ -1,6 +1,42 @@
-# Handoff — 2026-07-13 (operator UI batch COMPLETE — PR: Gantt freeze + column drag; v1.0.23; highest ADR 0212)
+# Handoff — 2026-07-13 (issue #331 — PR: Assessment scorecards + reserve sizing; v1.0.24; highest ADR 0213)
 
-> ## STATUS (current) — operator batch item 4 of 5 (the LAST): Gantt freeze + column drag
+> ## STATUS (current) — issue #331 Advanced Schedule Analysis: assessment-scorecards slice (ADR-0213)
+>
+> - **Scope decision (honest, Law 2).** Issue #331 lists 7 ranked gaps + Hulett-deck sampling items.
+>   This PR ships the **lowest-fidelity-risk, highest-value slice**: gaps **#3 NASA STAT**, **#4 GAO
+>   10-practices**, **#5 SRA-readiness gate**, and **#7 buffer/target-date reserve sizing** — all
+>   *consolidation/synthesis of already-validated metrics* + exact percentile arithmetic, so no new
+>   metric math (Law 2). The heavier parity-gated statistical items — **#1 JCL/FICSM cost
+>   co-sampling** (also cost-data-blocked), **#2 correlation-matrix / risk-driver UI**, **#6 scenario
+>   persistence**, and the Hulett **LHS / probabilistic+conditional branching / risk-critical Gantt** —
+>   are **explicitly deferred** to a dedicated reference-validated phase (issue #331 stays open), which
+>   is exactly the sequencing the issue itself recommends ("build as a dedicated phase … parity-gated
+>   engine features, best not interleaved").
+> - **Engine:** new `engine/scorecards.py`. `compute_nasa_stat` / `compute_gao_scorecard` /
+>   `compute_sra_readiness` return frozen `Scorecard`/`ScorecardCheck`; **every scored line's status is
+>   taken verbatim from the gate-locked DCMA audit** (`_audit_status`, no re-scoring) or an unambiguous
+>   structural rule; new lines are trivial deterministic model scans (missing-pred/succ split, milestone
+>   / manual / estimated-duration counts, DCMA-09 actuals-after vs forecast-in-past split) with cited
+>   offenders; no-pass-bar lines are `INFO` (excluded from the pass rate). `reserve_recommendation`
+>   sizes the reserve to hit a committed project finish at P50/P70/P80/P90 from the SRA CDF
+>   (nearest-rank) — pure arithmetic, no new sim.
+> - **Web:** new `/scorecards` page (a **chapter-02** "Can we trust the plan?" secondary, beside
+>   Schedule Integrity) — three ribbons for a chosen version + a reserve card fed by on-demand
+>   `/api/scorecards/buffer` (MC off the page-load path). Excel/Word export; vendored `scorecards.js`
+>   (reserve fetch only, air-gap safe); `.sl-info` theme-token chip added.
+> - **Tests:** `tests/engine/test_scorecards.py` (STAT line == validated DCMA-01; GAO maps to
+>   DCMA-01/10/12; INFO never moves the pass rate; exact reserve arithmetic over a known CDF) +
+>   `tests/web/test_scorecards_page.py` (page/ribbons/reserve/exports/nav). **ADR-0213.** Version
+>   **1.0.23 → 1.0.24**; wheel + 9 installers rebuilt in lockstep.
+> - **Next:** the issue #331 statistical follow-on (JCL/FICSM, correlation matrix + risk-driver UI,
+>   scenarios, LHS/branching, risk-critical Gantt) as its own validated phase; or resume the
+>   AUDIT-2026-07-13 remediation backlog (M2/L1/L2/L10 presentation, M3 ch-01 Critical basis, M1
+>   `sra_conclusions._wd`, H3 24h calendar, H1/M4/M5 AI figure-gate, M6/L3 dead CUI defenses, M7/M8 JS
+>   harnesses, low/nit cleanup).
+
+# (prior) Handoff — 2026-07-13 (operator UI batch COMPLETE — PR: Gantt freeze + column drag; v1.0.23; highest ADR 0212)
+
+> ## STATUS — operator batch item 4 of 5 (the LAST): Gantt freeze + column drag
 >
 > - **The 5-item operator hands-on batch is now COMPLETE.** Merged: item 5 (#342), docs sweep (#341),
 >   item 2 (#343), item 1 (#344), item 3 (#345). This PR ships **item 4 (4A)** — the last one.
