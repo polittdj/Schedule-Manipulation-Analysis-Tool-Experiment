@@ -545,9 +545,13 @@ th.metric-th { position: relative; }
 
 /* Chart frame (operator request): full-screen + zoom toolbar on every chart (chartframe.js).
    The bar overlays the top-right corner of each .chart-host and fades in on hover/focus. */
+/* The toolbar is an IN-FLOW row (a DOM sibling above the chart), pushed to the right, so it can
+   NEVER rest over the plotted data — in any theme, at any font size, with no magic padding to tune
+   (operator 2026-07-13). The chart re-renders its innards inside .cf-scroll, never touching .cf-bar,
+   so zoom/frame state still survives a redraw. */
 .cf-frame { position: relative; }
-.cf-bar { position: absolute; top: 2px; right: 6px; z-index: 4; display: flex; align-items: center;
-  gap: 4px; opacity: 0.45; transition: opacity .15s; }
+.cf-bar { display: flex; align-items: center; gap: 4px; width: max-content; max-width: 100%;
+  margin: 0 6px 4px auto; z-index: 4; opacity: 0.85; transition: opacity .15s; }
 .cf-frame:hover .cf-bar, .cf-frame:focus-within .cf-bar { opacity: 1; }
 .cf-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 7px; cursor: pointer;
   background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; font-weight: 600; }

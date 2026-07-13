@@ -1,6 +1,35 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: shared drill + Reset + nav fit; v1.0.25; highest ADR 0214)
+# Handoff — 2026-07-13 (operator UI batch — PR: chart toolbar + label de-overlap + AI default; v1.0.26; highest ADR 0215)
 
-> ## STATUS (current) — operator UI batch: shared activity drill, restored Reset, nav-rail fit (ADR-0214)
+> ## STATUS (current) — operator UI batch: toolbar off data, label de-overlap, default CUI AI (ADR-0215)
+>
+> - Operator, live-testing v1.0.25, filed four fixes. **Three shipped in this PR; the fourth (drill on
+>   bars) is deferred to a "bars" PR** (see Next).
+> - **#1 Chart toolbar off the data** (`app.css` `.cf-bar`): the shared chart toolbar (⤢/−/＋/reset) was
+>   absolutely positioned over the plot's top-right. Made it an **in-flow** row (`margin:0 6px 4px auto`,
+>   `width:max-content`) — a DOM sibling above `.cf-scroll`, so it reserves its own height and can never
+>   overlap the data in any theme (a reserved-padding attempt still left ~2px). Chromium-verified 0/10
+>   overlapping frames on `/volatility`.
+> - **#3 Default CUI AI model** (`ai/backend.py`, `ai/ollama.py`, `app.py` settings form + setup guide):
+>   CLASSIFIED (CUI) + `backend=ollama` + loopback were ALREADY the defaults; changed the default
+>   **model** `llama3.1:8b → qwen2.5:7b-instruct`. `route_backend` still fails closed to Null if
+>   Ollama/the model is absent (Law 1). Updated `tests/web/test_ai_wiring.py` (it pinned the old default).
+> - **#4 Inline-label de-overlap** (`trend.js`): `multiLineChart` / `lineChart` / `varianceTrendChart`
+>   drew a value label at EVERY point → an unreadable stack on many-version schedules. Added a per-frame
+>   greedy `labelFits` guard: draw a label only if it clears the placed ones; a suppressed value stays on
+>   its hover `<title>` (added one to the variance markers). No "always-label-latest" bypass (it
+>   re-collided at the last point). Chromium-verified 0 line-chart label overlaps on `/trend`.
+> - No engine change, no new metric math (Law 2). Test `tests/web/test_chart_readability_and_defaults.py`.
+>   **ADR-0215.** Version **1.0.25 → 1.0.26**; wheel + 9 installers rebuilt in lockstep.
+> - **Next (the "bars" PR):** click-to-drill on the per-activity bar charts — volatility leaderboards
+>   (`volTenure`/`volJumpers`), dwell histogram, entry/exit waterfall (needs entered/left UID lists added
+>   to `_volatility_data`), the performance DRM histogram (`g5Hist`), and the SRA sensitivity tornado
+>   (`sraSens`) — via the shared `sf-drill` mechanism; PLUS bar-total label de-overlap
+>   (`stackedBarChart`/`groupedBarChart`). The bar-drill survey (drilldown.js matches `.sf-drill` on SVG
+>   via classList; multi-version bars must resolve `data-file` to a version holding the UIDs) is captured.
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: shared drill + Reset + nav fit; v1.0.25; highest ADR 0214)
+
+> ## STATUS — operator UI batch: shared activity drill, restored Reset, nav-rail fit (ADR-0214)
 >
 > - Operator, live-testing v1.0.24, asked for four fixes: (1) the left nav-rail controls bleed off the
 >   right edge — make them fit; (2) "add back my Reset buttons to each visual and page"; (3) make the

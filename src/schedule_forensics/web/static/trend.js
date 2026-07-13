@@ -364,6 +364,14 @@
     svg.appendChild(layer);
     function drawData(k) {
       while (layer.firstChild) layer.removeChild(layer.firstChild);
+      // de-overlap the inline value labels (see multiLineChart): a suppressed value stays on hover.
+      var placed = [];
+      function labelFits(lx, ly) {
+        for (var p = 0; p < placed.length; p++) {
+          if (Math.abs(placed[p][0] - lx) < 28 && Math.abs(placed[p][1] - ly) < 13) return false;
+        }
+        return true;
+      }
       var pts = [];
       values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
       layer.appendChild(svgEl("polyline", {
@@ -378,11 +386,15 @@
           labels[i] + " · " + (seriesLabel || title.split(" (")[0]) + ": " + valueText(v, i);
         dot.appendChild(dtt);
         layer.appendChild(dot);
-        var val = svgEl("text", {
-          x: x(i), y: y(v) - 9, "text-anchor": "middle", fill: "var(--ink)", "font-size": 12,
-        });
-        val.textContent = valueText(v, i);
-        layer.appendChild(val);
+        var ly = y(v) - 9;
+        if (labelFits(x(i), ly)) {
+          var val = svgEl("text", {
+            x: x(i), y: ly, "text-anchor": "middle", fill: "var(--ink)", "font-size": 12,
+          });
+          val.textContent = valueText(v, i);
+          layer.appendChild(val);
+          placed.push([x(i), ly]);
+        }
       });
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
@@ -437,6 +449,16 @@
     svg.appendChild(layer);
     function drawData(k) {
       while (layer.firstChild) layer.removeChild(layer.firstChild);
+      // Greedy de-overlap for the inline value labels: only draw a label if it clears the ones
+      // already placed this frame (operator 2026-07-13 — dense series stacked unreadable numbers).
+      // A suppressed value is never lost: every point keeps its hover call-out (the <title> below).
+      var placed = [];
+      function labelFits(lx, ly) {
+        for (var p = 0; p < placed.length; p++) {
+          if (Math.abs(placed[p][0] - lx) < 26 && Math.abs(placed[p][1] - ly) < 12) return false;
+        }
+        return true;
+      }
       series.forEach(function (s) {
         var pts = [];
         s.values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
@@ -449,15 +471,20 @@
         s.values.forEach(function (v, i) {
           if (v != null && i <= k) {
             var dot = svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: s.color });
-            var dtt = svgEl("title", {});  // hover call-out
+            var dtt = svgEl("title", {});  // hover call-out (always present — the value's home)
             dtt.textContent = labels[i] + " · " + s.label + ": " + v.toFixed(2);
             dot.appendChild(dtt);
             layer.appendChild(dot);
-            var val = svgEl("text", {
-              x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
-            });
-            val.textContent = v.toFixed(2);
-            layer.appendChild(val);
+            var ly = y(v) - 8;
+            // only draw the inline label when it clears the placed ones (else it's on hover)
+            if (labelFits(x(i), ly)) {
+              var val = svgEl("text", {
+                x: x(i), y: ly, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+              });
+              val.textContent = v.toFixed(2);
+              layer.appendChild(val);
+              placed.push([x(i), ly]);
+            }
           }
         });
       });
@@ -542,6 +569,13 @@
     svg.appendChild(layer);
     function drawData(k) {
       while (layer.firstChild) layer.removeChild(layer.firstChild);
+      var placed = [];
+      function labelFits(lx, ly) {
+        for (var p = 0; p < placed.length; p++) {
+          if (Math.abs(placed[p][0] - lx) < 30 && Math.abs(placed[p][1] - ly) < 13) return false;
+        }
+        return true;
+      }
       var pts = [];
       values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
       if (pts.length > 1) {
@@ -554,12 +588,20 @@
       values.forEach(function (v, i) {
         if (v == null || i > k) return;
         var color = v >= 0 ? "var(--ok)" : "var(--bad)";
-        layer.appendChild(svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: color }));
-        var val = svgEl("text", {
-          x: x(i), y: y(v) - 8, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
-        });
-        val.textContent = (v > 0 ? "+" : "") + v + suffix;
-        layer.appendChild(val);
+        var mark = svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: color });
+        var mtt = svgEl("title", {});  // hover call-out so a de-overlapped value is never lost
+        mtt.textContent = labels[i] + ": " + (v > 0 ? "+" : "") + v + suffix;
+        mark.appendChild(mtt);
+        layer.appendChild(mark);
+        var ly = y(v) - 8;
+        if (labelFits(x(i), ly)) {
+          var val = svgEl("text", {
+            x: x(i), y: ly, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+          });
+          val.textContent = (v > 0 ? "+" : "") + v + suffix;
+          layer.appendChild(val);
+          placed.push([x(i), ly]);
+        }
       });
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
