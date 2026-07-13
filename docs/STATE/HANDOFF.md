@@ -1,4 +1,36 @@
-# Handoff — 2026-07-13 (audit remediation PR 1: docs-only sweep; v1.0.18; highest ADR 0211)
+# Handoff — 2026-07-13 (operator UI/fidelity batch — PR: path-evolution robust completeness; v1.0.19; highest ADR 0212)
+
+> ## STATUS (current) — operator hands-on findings (5 items); shipping correctness fix first
+>
+> - The operator, while using the running tool, filed **5 items** (separate from the AUDIT-2026-07-13
+>   remediation backlog): (1) chart X-axis tick labels overlap/unreadable on some visuals; (2) the
+>   console/apollo/jarvis **left nav rail** clips its bottom controls and re-clips on every reload
+>   (CSS `flex:1 1 auto` + `min-height:0` on `nav`/`.nav-spine` defeats `overflow-y:auto` in
+>   `base.css:303-329` — no JS bug); (3) the **"Measure to"** dropdown is milestone-only (already
+>   unions all versions) — want all-UID selection incl. UIDs deleted in later versions; (4) **Gantt**
+>   toolbar/zoom-slider + bottom scrollbar scroll away — want them frozen while the body scrolls, plus
+>   column **drag** reorder, across all grids; (5) **verify** the "Completed on the path — version to
+>   version" burn-down is correct. Investigated all five with parallel deep-read agents.
+> - **This PR ships item 5 (the correctness fix), ADR-0212.** The burn-down was structurally sound but
+>   judged "complete" by the **strict** `percent >= 100` while the rest of the page/app uses the
+>   **robust** ADR-0051 rule (`>= 100` OR a stored actual finish) — so an activity that finishes with an
+>   actual-finish date but a stale sub-100% percent was shaded complete in the stepper yet **omitted**
+>   from the table (an undercount). Fixed **locally inside `compute_path_evolution`** (a
+>   `_effectively_complete` helper drops robust-complete tasks from each version's path and drives
+>   `completed_on_path` / `_classify_left`); the parity-locked shared `effective_critical_set` /
+>   `is_incomplete` are deliberately untouched. Goldens have **0** trigger tasks so every pin is
+>   unchanged (41/4 critical, 38 left, 3 stayed, entered 131, completed_on_path=4); Fuse parity
+>   unchanged. New regression `test_completed_on_path_counts_actual_finish_below_100pct`. Version
+>   **1.0.18 → 1.0.19**; wheel + 9 installers rebuilt in lockstep. Full gate green.
+> - **Remaining operator items (own PRs, branched fresh from `main`):** 2 (left-rail CSS), 1 (axis
+>   labels — fix `drift.js` + audit the other axes), 3 (measure-to all-UID + add-any-UID box), 4 (the
+>   Gantt freeze/slider/drag — largest, cross-cutting). Recommended order: usability (2) → axis (1) →
+>   measure-to (3) → Gantt (4). Assumptions pending operator confirm: column reorder = left-button drag
+>   (keep the ↔ menu); measure-to = milestones + add-any-UID box.
+> - Also in flight, unrelated: the **AUDIT-2026-07-13 docs-only sweep** is draft **PR #341** on
+>   `claude/smat-audit-remediation-eeckdi` (H2/M9/M10/M12/M13/L11/L12/L13/N3) — separate branch.
+
+# (prior) Handoff — 2026-07-13 (audit remediation PR 1: docs-only sweep; v1.0.18; highest ADR 0211) — merged as #341
 
 > ## STATUS (current) — PR 1 of the AUDIT-2026-07-13 remediation: docs-only sweep
 >

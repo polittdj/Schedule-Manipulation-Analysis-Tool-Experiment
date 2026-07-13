@@ -33,6 +33,23 @@ from schedule_forensics.engine.cpm import CPMResult, offset_to_datetime
 from schedule_forensics.engine.manipulation import detect_manipulation
 from schedule_forensics.engine.metrics._common import is_effective_critical, is_incomplete
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import Task
+
+
+def _effectively_complete(task: Task) -> bool:
+    """Robust completion (ADR-0051): 100% **or** a stored actual finish.
+
+    The version-to-version burn-down treats a task with a stored actual-finish date as
+    *done* even when the source left ``percent_complete`` below 100 — the exact status
+    desync this tool exists to surface. This matches the stepper's "complete" shading, the
+    hide-completed filter, and ``engine.sra``, so an on-path activity that finishes with an
+    actual date but a stale percent leaves the go-forward path and is *counted* in
+    ``completed_on_path`` instead of being silently dropped. Deliberately local to path
+    evolution: the shared, parity-locked ``effective_critical_set`` / ``is_incomplete`` keep
+    the strict ``percent >= 100`` basis, so this changes nothing on well-formed schedules
+    (where percent tracks the actual finish) and never perturbs the Acumen/SSI parity sets.
+    """
+    return task.is_complete or task.actual_finish is not None
 
 
 def effective_critical_set(schedule: Schedule, cpm: CPMResult) -> set[int]:
@@ -296,7 +313,9 @@ def _classify_left(
     per_day = cur.calendar.working_minutes_per_day
     if cur_t is None:
         return PathChange(uid, name, "removed", "Activity removed from the schedule.")
-    if cur_t.is_complete and not (prior_t is not None and prior_t.is_complete):
+    if _effectively_complete(cur_t) and not (
+        prior_t is not None and _effectively_complete(prior_t)
+    ):
         pct = round(cur_t.percent_complete)
         finished = (
             f", finished {cur_t.actual_finish.date().isoformat()}"
@@ -392,6 +411,14 @@ def compute_path_evolution(
             critical = _target_path_set(sch, cpm, target_uid)
         if critical is None:
             critical = effective_critical_set(sch, cpm)
+        # ADR-0051 robust completeness: a task carrying a stored actual finish is done, so it
+        # leaves the go-forward path here (and is reported in ``completed_on_path`` below) even
+        # when the source left percent < 100. No-op on well-formed files.
+        critical = {
+            uid
+            for uid in critical
+            if (t := sch.tasks_by_id.get(uid)) is not None and not _effectively_complete(t)
+        }
         finish = offset_to_datetime(sch.project_start, cpm.project_finish, sch.calendar).date()
 
         if i == 0:
@@ -448,7 +475,7 @@ def compute_path_evolution(
                 sorted(
                     uid
                     for uid in prior_critical
-                    if (t := sch.tasks_by_id.get(uid)) is not None and t.is_complete
+                    if (t := sch.tasks_by_id.get(uid)) is not None and _effectively_complete(t)
                 )
             )
 
