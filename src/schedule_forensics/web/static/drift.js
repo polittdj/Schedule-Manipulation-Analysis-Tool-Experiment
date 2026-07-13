@@ -55,18 +55,26 @@
     var d = new Date(lo); d.setDate(1); d.setHours(0, 0, 0, 0);
     if (stepMonths === 12) d.setMonth(0);
     else if (stepMonths === 3) d.setMonth(Math.floor(d.getMonth() / 3) * 3);
-    while (d.getTime() <= hi) {
-      var tx = x(d.getTime());
-      if (tx >= padL && tx <= W - padR) {
-        svg.appendChild(svgEl("line", { x1: tx, y1: padT, x2: tx, y2: H - padB, stroke: "var(--line)", "stroke-width": 1 }));
-        var lab = svgEl("text", { x: tx + 2, y: H - padB + 14, fill: "var(--muted)", "font-size": 10 });
-        lab.textContent = stepMonths === 12
-          ? String(d.getFullYear())
-          : MON[d.getMonth()] + " " + ("" + d.getFullYear()).slice(2);
-        svg.appendChild(lab);
-      }
-      d.setMonth(d.getMonth() + stepMonths);
-    }
+    var ticks = [];
+    while (d.getTime() <= hi) { ticks.push(new Date(d)); d.setMonth(d.getMonth() + stepMonths); }
+    // Thin the labels to the available width and rotate them, so they stay readable and never
+    // collide — even when a far-off forecast (e.g. a runaway completion-rate date decades out)
+    // stretches the locked axis and the coarse year step would still emit a hundred+ labels.
+    var slotPx = ticks.length > 1 ? (x(ticks[1].getTime()) - x(ticks[0].getTime())) : (W - padL - padR);
+    var labStep = Math.max(1, Math.ceil(36 / Math.max(1, slotPx)));
+    ticks.forEach(function (dt, i) {
+      if (i % labStep !== 0) return;
+      var tx = x(dt.getTime());
+      if (tx < padL || tx > W - padR) return;
+      svg.appendChild(svgEl("line", { x1: tx, y1: padT, x2: tx, y2: H - padB, stroke: "var(--line)", "stroke-width": 1 }));
+      var ly = H - padB + 13;
+      var lab = svgEl("text", { x: tx, y: ly, "text-anchor": "end", fill: "var(--muted)", "font-size": 10,
+        transform: "rotate(-30 " + tx + " " + ly + ")" });
+      lab.textContent = stepMonths === 12
+        ? String(dt.getFullYear())
+        : MON[dt.getMonth()] + " " + ("" + dt.getFullYear()).slice(2);
+      svg.appendChild(lab);
+    });
 
     // baseline planned finish — a fixed gold reference the forecasts drift past
     if (v.planned_finish) {

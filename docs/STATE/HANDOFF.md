@@ -1,6 +1,30 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: console left-rail scroll fix; v1.0.20; highest ADR 0212)
+# Handoff — 2026-07-13 (operator UI batch — PR: chart X-axis label overlap; v1.0.21; highest ADR 0212)
 
-> ## STATUS (current) — operator batch item 2 of 5: the console/apollo/jarvis left-nav-rail clip
+> ## STATUS (current) — operator batch item 1 of 5: chart X-axis tick-label overlap
+>
+> - Items 5 (correctness, #342), docs sweep (#341), and 2 (console left-rail scroll, #343) are **merged
+>   to `main`**. This PR ships **operator item 1**: X-axis tick labels smeared into an unreadable band on
+>   the **forecast-drift** chart (`web/static/drift.js`) — it hand-drew a horizontal label at every tick
+>   with no rotation/thinning, so a coarse year step still emitted 100+ labels when a runaway
+>   completion-rate forecast (e.g. `09/24/2164`) stretched the locked axis over decades.
+> - **Audit ("all visuals"):** every other chart was already safe — `cei/trend/volatility/margin/wbs/sra/
+>   trend_drill/resources` rotate + thin; `performance.js` thins (`step = ceil(n/(width/55))`);
+>   `SFTimeAxis` (curves/scurve) is `minW`-gated with single-letter months; `SFGantt` shortens by width;
+>   `scatter`/`histogram`/`sra_ssi` have bounded/endpoint labels. **`drift.js` was the sole offender.**
+> - **Fix (presentation only, `drift.js`):** collect the ticks, keep a grid line at each labeled tick,
+>   **thin labels to the available width** (`labStep = ceil(36 / slotPx)`) and **rotate them −30°**
+>   (`text-anchor:end`) — the `cei.js` pattern. Verified by driving the **real** `drift.js` against a
+>   synthetic `/api/forecast` (Playwright route-intercept) across three spans incl. the 2164 case:
+>   **0 label overlaps, 0 clipping** (137 year-labels → 24 readable rotated ones). No engine change.
+>   Version **1.0.20 → 1.0.21**; wheel + 9 installers rebuilt in lockstep. No ADR (presentation bugfix);
+>   highest ADR stays **ADR-0212**.
+> - **Remaining operator items (own PRs off `main`):** 3 (Measure-to all-UID + add-any-UID box), 4
+>   (Gantt frozen toolbar/slider + column drag — largest). Both await the operator's steer on the flagged
+>   assumptions: column reorder = left-button drag (keep the ↔ menu); measure-to = milestones + add-any-UID.
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: console left-rail scroll fix; v1.0.20; highest ADR 0212) — merged as #343
+
+> ## STATUS — operator batch item 2 of 5: the console/apollo/jarvis left-nav-rail clip
 >
 > - Item 5 (path-evolution robust completeness, ADR-0212, v1.0.19) **merged to `main`** as #342; the
 >   docs-only audit sweep merged as #341. This PR ships **operator item 2**: the fixed 236px left rail
