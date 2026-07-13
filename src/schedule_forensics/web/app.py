@@ -7270,6 +7270,7 @@ def _wbs_data(groups: tuple[WBSGroup, ...]) -> dict[str, object]:
                 "spi_t": g.spi_t,
                 "earned_schedule_days": g.earned_schedule_days,
                 "actual_time_days": g.actual_time_days,
+                "uids": list(g.uids),  # the group's activities, for the SPI-bar drill
             }
             for g in groups
         ],
@@ -9059,9 +9060,24 @@ def _trend_data(
         bri_r = compute_bri(sch)
         # SVt (Earned-Schedule time variance, working days) per version — the SV/SVt trend (D4)
         svt = compute_schedule_variance(sch, non_summary(sch)).svt_days
+        # the activity ids behind each stacked-bar segment, so the trend bars can drill (same
+        # predicates as compute_activity_makeup / completion_performance / the float bands)
+        ns = non_summary(sch)
+        status_uids = {
+            "complete_uids": [t.unique_id for t in ns if t.percent_complete >= 100.0],
+            "in_progress_uids": [t.unique_id for t in ns if 0.0 < t.percent_complete < 100.0],
+            "planned_uids": [t.unique_id for t in ns if t.percent_complete <= 0.0],
+        }
+        makeup_uids = {
+            "milestones_uids": [t.unique_id for t in ns if t.is_milestone],
+            "normal_uids": [t.unique_id for t in ns if not t.is_milestone],
+            "summaries_uids": [t.unique_id for t in sch.tasks if t.is_summary and t.unique_id != 0],
+        }
         version_rows.append(
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
+                # a resolvable schedule key for the bar drill (the label may be a synthetic "v3")
+                "file": sch.source_file or sch.name,
                 "status_date": p.status_date.date().isoformat() if p.status_date else None,
                 "finish": p.project_finish.date().isoformat(),
                 "completed": p.completed,
@@ -9074,16 +9090,21 @@ def _trend_data(
                     "milestones": makeup.milestones,
                     "normal": makeup.normal,
                     "summaries": makeup.summaries,
+                    **makeup_uids,
                 },
                 "status_split": {
                     "complete": makeup.complete,
                     "in_progress": makeup.in_progress,
                     "planned": makeup.planned,
+                    **status_uids,
                 },
                 "completion_perf": {
                     "ahead": cp["completed_ahead"].count,
                     "on_schedule": cp["completed_on_schedule"].count,
                     "behind": cp["completed_behind"].count,
+                    "ahead_uids": list(cp["completed_ahead"].offender_uids),
+                    "on_schedule_uids": list(cp["completed_on_schedule"].offender_uids),
+                    "behind_uids": list(cp["completed_behind"].offender_uids),
                 },
                 "indices": {
                     "mei": mei_r.value if mei_r.population else None,
@@ -9113,7 +9134,8 @@ def _trend_data(
                     "free_days": fs.free_days,
                 },
                 "float_bands": {
-                    k: {"count": v.count, "pct": round(v.value, 1)} for k, v in fb.items()
+                    k: {"count": v.count, "pct": round(v.value, 1), "uids": list(v.offender_uids)}
+                    for k, v in fb.items()
                 },
             }
         )
@@ -14071,6 +14093,14 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             continue
         makeup = compute_activity_makeup(scoped)
         total = makeup.complete + makeup.in_progress + makeup.planned
+        # the activity IDs behind each status segment, so the card's status bar can drill (same
+        # predicates as compute_activity_makeup — schedule_card.py)
+        ns_scoped = non_summary(scoped)
+        status_mix_uids = {
+            "complete": [t.unique_id for t in ns_scoped if t.percent_complete >= 100.0],
+            "in_progress": [t.unique_id for t in ns_scoped if 0.0 < t.percent_complete < 100.0],
+            "planned": [t.unique_id for t in ns_scoped if t.percent_complete <= 0.0],
+        }
         cpm_finish = offset_to_datetime(
             scoped.project_start, an.cpm.project_finish, scoped.calendar
         ).date()
@@ -14087,6 +14117,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                     "in_progress": makeup.in_progress,
                     "planned": makeup.planned,
                 },
+                "status_mix_uids": status_mix_uids,
                 "percent_complete": round(100 * makeup.complete / total, 1) if total else 0.0,
                 "critical_count": fb0.count,
                 "critical_pct": round(fb0.value, 1),

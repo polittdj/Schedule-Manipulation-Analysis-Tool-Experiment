@@ -60,6 +60,7 @@ class WBSGroup:
     spi_t: float | None  # Earned-Schedule SPI(t) for the group, else None
     earned_schedule_days: float | None  # ES in working days
     actual_time_days: float | None  # AT in working days (schedule-level basis)
+    uids: tuple[int, ...]  # the group's non-summary activity ids (for the SPI-bar drill)
 
 
 def _mean(values: list[float]) -> float | None:
@@ -112,6 +113,7 @@ def _group(schedule: Schedule, wbs: str, tasks: list[Task]) -> WBSGroup:
         spi_t=round(es.spi_t, 2) if es is not None else None,
         earned_schedule_days=round(es.es_minutes / per_day, 1) if es is not None else None,
         actual_time_days=round(es.at_minutes / per_day, 1) if es is not None else None,
+        uids=tuple(t.unique_id for t in tasks),
     )
 
 

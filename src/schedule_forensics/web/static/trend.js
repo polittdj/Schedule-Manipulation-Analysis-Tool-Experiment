@@ -628,6 +628,11 @@
   }
 
   // Stacked bar chart: segments is [{key, label, color}]; data is array of objects.
+  // tag a bar as a drill trigger for a UID set (no-op if SFDrill / the set is absent)
+  function drill(node, uids, file, title) {
+    if (window.SFDrill && uids && uids.length) SFDrill.mark(node, uids, file, title);
+  }
+
   function stackedBarChart(title, labels, data, segments, desc) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
     var maxTotal = 0;
@@ -682,9 +687,11 @@
           var v = d[s.key] || 0;
           if (!v) return;
           var bH = (v / maxTotal) * barH;
-          layer.appendChild(svgEl("rect", {
+          var rect = svgEl("rect", {
             x: cx - bw / 2, y: yBase - bH, width: bw, height: bH, fill: s.color,
-          }));
+          });
+          drill(rect, d[s.key + "_uids"], d.file, labels[i] + " · " + (s.label || s.key));
+          layer.appendChild(rect);
           yBase -= bH;
         });
       });
@@ -764,9 +771,11 @@
           var v = d[g.key] || 0;
           var bH = (v / maxVal) * barH;
           if (bH > 0) {
-            layer.appendChild(svgEl("rect", {
+            var rect = svgEl("rect", {
               x: gx0 + gi * bw, y: padT + barH - bH, width: bw - 1, height: bH, fill: g.color,
-            }));
+            });
+            drill(rect, d[g.key + "_uids"], d.file, labels[i] + " · " + (g.label || g.key));
+            layer.appendChild(rect);
           }
         });
       });
@@ -858,7 +867,7 @@
         stackedBarChart(
           "Activity Status by Data Date",
           labels,
-          data.versions.map(function (v) { return v.status_split || {}; }),
+          data.versions.map(function (v) { return Object.assign({ file: v.file }, v.status_split || {}); }),
           [
             { key: "complete",    label: "Complete",     color: "var(--ok)" },
             { key: "in_progress", label: "In Progress",  color: "var(--warn)" },
@@ -870,7 +879,7 @@
         stackedBarChart(
           "Activity Type by Data Date",
           labels,
-          data.versions.map(function (v) { return v.makeup || {}; }),
+          data.versions.map(function (v) { return Object.assign({ file: v.file }, v.makeup || {}); }),
           [
             { key: "milestones", label: "Milestone",  color: "var(--focus)" },
             { key: "normal",     label: "Normal",     color: "var(--accent)" },
@@ -882,7 +891,7 @@
         stackedBarChart(
           "Completion Performance by Data Date",
           labels,
-          data.versions.map(function (v) { return v.completion_perf || {}; }),
+          data.versions.map(function (v) { return Object.assign({ file: v.file }, v.completion_perf || {}); }),
           [
             { key: "ahead",       label: "Ahead",       color: "var(--ok)" },
             { key: "on_schedule", label: "On Schedule",  color: "var(--accent)" },
@@ -1074,9 +1083,13 @@
           data.versions.map(function (v) {
             var fb = v.float_bands || {};
             return {
+              file: v.file,
               t0:   (fb.float_total_0   || {}).pct || 0,
               t5:   (fb.float_total_lt5  || {}).pct || 0,
               t10:  (fb.float_total_lt10 || {}).pct || 0,
+              t0_uids:  (fb.float_total_0   || {}).uids || [],
+              t5_uids:  (fb.float_total_lt5  || {}).uids || [],
+              t10_uids: (fb.float_total_lt10 || {}).uids || [],
             };
           }),
           [
@@ -1093,9 +1106,13 @@
           data.versions.map(function (v) {
             var fb = v.float_bands || {};
             return {
+              file: v.file,
               f0:  (fb.float_free_0   || {}).pct || 0,
               f5:  (fb.float_free_lt5  || {}).pct || 0,
               f10: (fb.float_free_lt10 || {}).pct || 0,
+              f0_uids:  (fb.float_free_0   || {}).uids || [],
+              f5_uids:  (fb.float_free_lt5  || {}).uids || [],
+              f10_uids: (fb.float_free_lt10 || {}).uids || [],
             };
           }),
           [

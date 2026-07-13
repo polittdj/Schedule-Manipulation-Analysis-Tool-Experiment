@@ -77,10 +77,13 @@
         var cx = padL + i * slot + slot / 2;
         if (g.spi_t != null) {
           var h = yL(0) - yL(g.spi_t);
-          svg.appendChild(svgEl("rect", {
+          var wrect = svgEl("rect", {
             x: cx - barW / 2, y: yL(g.spi_t), width: barW, height: h,
             fill: g.spi_t >= 1.0 ? OK : BAD,
-          }));
+          });
+          // click the SPI bar to list the WBS group's activities
+          if (window.SFDrill) SFDrill.mark(wrect, g.uids, name, "WBS " + g.wbs);
+          svg.appendChild(wrect);
         }
         // x labels, thinned to avoid overlap
         var step = Math.max(1, Math.ceil(n / 24));
