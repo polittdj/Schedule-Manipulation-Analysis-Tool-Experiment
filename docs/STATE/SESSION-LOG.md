@@ -5338,3 +5338,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   must not propagate out of serve()). Verified end-to-end through launcher.main with the real serve.
 - No ADR (minor bugfix); highest ADR stays 0211. Version 1.0.17 -> 1.0.18; wheel + 9 installers
   rebuilt in lockstep. Full gate green.
+
+### 2026-07-13 — Full read-only repository audit (no code changed)
+- Operator: "Audit the entire repository and all project data. Read everything. Assume nothing.
+  Identify errors/oversights/improvements, validate each 4 ways, fix nothing, update the handoff +
+  write a next-session prompt with a forward plan."
+- Method: 7 parallel falsification-oriented deep-read agents (engine · new Mission-Ops UI ·
+  CUI/security/air-gap · AI figure-gate · test-quality · docs/state · importers) + operator
+  re-validation of every finding (each validated ≥4 ways, or dismissed). Gate green throughout
+  (2041 tests). No source/test/fixture/config touched.
+- Result: NO critical/egress defect (both laws survived falsification). Tally 3 High · 14 Medium ·
+  13 Low · 3 Nit. Full report: docs/STATE/AUDIT-2026-07-13.md. Highs = ungated translation path
+  (_ai_translate), USER-GUIDE mislabels default Q&A mode as ungated interpretive (is annotate),
+  24-hour calendars misparsed as 8h×7days. Prioritized remediation plan written into
+  docs/STATE/NEXT-SESSION-PROMPT.md; HANDOFF top block refreshed to v1.0.18 + audit summary.
+- Dismissed after validation: pip-audit local warnings (ambient container packages, not the .[dev]
+  closure — not a CI risk). No ADR (audit is read-only); highest ADR stays 0211.
