@@ -44,3 +44,27 @@ def test_gantt_pages_load_the_shared_gantt_primitive(client: TestClient) -> None
     """Every Gantt-bearing page includes gantt.js (which auto-attaches the sticky scrollbar)."""
     for path in ("/analysis/Hard_File_updated3", "/path?target=411", "/driving-path?target=411"):
         assert "/static/gantt.js" in client.get(path).text, path
+
+
+def test_column_drag_is_a_shared_gantt_primitive() -> None:
+    """Operator item 4: left-button column DRAG reorders any .gantt-grid by reusing the sf-colmove
+    plumbing with an absolute target index, auto-attached at boot like the other primitives."""
+    gantt = (STATIC / "gantt.js").read_text(encoding="utf-8")
+    assert "attachColumnDrag" in gantt and "moveTableColumnTo" in gantt
+    assert 'setAttribute("draggable"' in gantt and '"drop"' in gantt  # HTML5 drag on headers
+    assert "attachColumnDrag(document)" in gantt  # boot + MutationObserver, like the siblings
+    # the drag carries an absolute target `to`; both field-model handlers accept it (splice reorder)
+    for js in ("app.js", "path.js"):
+        handler = (STATIC / js).read_text(encoding="utf-8")
+        assert "detail.to" in handler and "splice" in handler, js
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert ".sf-col-drop" in css  # the drop-target hint
+
+
+def test_gantt_toolbars_are_frozen(client: TestClient) -> None:
+    """Operator item 4: the activity-grid and /path Gantt toolbars carry the sticky freeze class so
+    they stay visible while the grid body scrolls (with the sticky header + fixed bottom bar)."""
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    assert ".sf-freeze-bar" in css and "position: sticky" in css
+    assert "sf-freeze-bar" in client.get("/analysis/Hard_File_updated3").text
+    assert "sf-freeze-bar" in client.get("/path?target=411").text

@@ -951,6 +951,14 @@ header nav a.nav-active:hover { background: #ffe24d; color: #111 !important; }
 .sf-colmove-menu button { background: none; border: none; color: var(--fg); padding: 6px 12px;
   text-align: left; cursor: pointer; font-size: 12px; }
 .sf-colmove-menu button:hover { background: var(--field-bg); color: var(--accent); }
+/* left-button column DRAG (operator item 4): grab a header and drag it to reorder. The drop
+   target shows a keel-accent insert bar; the dragged column dims. Sort-on-click still works. */
+.gantt-grid th.sf-col-dragging { opacity: .45; cursor: grabbing; }
+.gantt-grid th.sf-col-drop { box-shadow: inset 3px 0 0 var(--accent); }
+/* freeze the Gantt/grid toolbar so it stays visible while the grid body scrolls (operator item 4):
+   the grid panes already scroll internally (max-height:80vh) with a sticky header row and the
+   fixed bottom scrollbar; sticky keeps the toolbar in view when the whole PAGE scrolls too. */
+.sf-freeze-bar { position: sticky; top: 0; z-index: 6; background: var(--bg); }
 
 /* ---- dependency link lines over the Gantt timeline ---- */
 svg.g-links { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; }

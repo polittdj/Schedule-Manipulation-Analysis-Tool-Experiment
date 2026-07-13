@@ -5550,7 +5550,7 @@ scoped to a <b>different</b> target, on the project&#8209;finish critical path (
 target and the project's critical path answer different questions. Turn on the <b>Drives &#8594;</b>
 column to see each activity's logic successors inside this trace (e.g. UID 8022 &#8594; UID 152);
 a <b>*</b> marks the successor that keeps the chain on the driving path.</p></details>
-<div class=viz-controls id=pathControls>
+<div class="viz-controls sf-freeze-bar" id=pathControls>
 <label>Schedule <select id=pathSchedule>{options}</select></label>
 <label>Target UID <input id=pathTarget type=number min=1 value="{target_uid if target_uid is not None else ""}" placeholder="UID"></label>
 <label>Secondary &le; <input id=pathSec type=number min=1 value=10 title="days of driving slack"> d</label>
@@ -7381,7 +7381,7 @@ def _analysis_body(
 <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f9a825"></span> late / warning &nbsp;
 <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c62828"></span> fail / missed &nbsp;
 <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9e9e9e"></span> not applicable</p>
-<div class=viz-controls>Driving path to target UID:
+<div class="viz-controls sf-freeze-bar" id=gridControls>Driving path to target UID:
 <input id=targetUid type=number min=1 placeholder="UID" value="{target if target is not None else ""}">
 secondary&le;<input id=secMax type=number value=10>d
 tertiary&le;<input id=terMax type=number value=20>d
