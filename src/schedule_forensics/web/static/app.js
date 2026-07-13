@@ -938,11 +938,15 @@
     const grid = document.getElementById("grid");
     if (!grid || !grid.contains(ev.target)) return;
     const visible = ALL_FIELDS.filter((f) => f.on);
-    const i = ev.detail.index, j = i + ev.detail.dir;
-    if (i < 0 || i >= visible.length || j < 0 || j >= visible.length) return;
+    const i = ev.detail.index;
+    // the ↔ menu sends a single step (dir); a header drag sends an absolute target (to)
+    const to = (ev.detail.to != null) ? ev.detail.to : i + ev.detail.dir;
+    if (i < 0 || i >= visible.length || to < 0 || to >= visible.length || i === to) return;
     ev.preventDefault(); // we re-render from the model instead of a raw DOM move
-    const a = ALL_FIELDS.indexOf(visible[i]), b = ALL_FIELDS.indexOf(visible[j]);
-    ALL_FIELDS[a] = visible[j]; ALL_FIELDS[b] = visible[i];
+    const order = visible.slice();
+    order.splice(to, 0, order.splice(i, 1)[0]); // move visible[i] to position `to`
+    let vi = 0; // write the new visible order back into the ON slots, leaving hidden fields put
+    for (let k = 0; k < ALL_FIELDS.length; k++) if (ALL_FIELDS[k].on) ALL_FIELDS[k] = order[vi++];
     renderGrid();
   });
   window.addEventListener("resize", () => {

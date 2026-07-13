@@ -5470,3 +5470,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Highest ADR stays 0212 (in HANDOFF + this log — drift guard green).
 - Remaining operator item: 4 (4A) — Gantt frozen toolbar/slider + left-button column drag (keep the
   existing menu), its own PR off main after this merges.
+
+### 2026-07-13 — Gantt freeze + left-button column drag (operator batch item 4, choice 4A) — batch COMPLETE
+- Last of the 5-item operator batch. Operator: on the Gantt pages the toolbar/zoom-slider and the
+  bottom scrollbar scrolled out of view; wanted the view to "freeze" so the grid body scrolls but the
+  header options + bottom slider remain, plus drag-to-reorder columns (chose 4A: left-button drag).
+- Freeze (presentation): added .sf-freeze-bar (position:sticky; top:0; background var(--bg)) to the
+  activity-grid toolbar (#gridControls, app.py) and the /path toolbar (#pathControls). The grid panes
+  already scroll internally (#grid/.gantt-scroll/.path-view max-height:80vh) with a sticky header row
+  (.gantt-grid thead) and a fixed bottom scrollbar (.sf-sticky-xscroll) — so top toolbar + header row +
+  bottom slider are all pinned while the body scrolls.
+- Column drag (gantt.js): new SFGantt.attachColumnDrag makes every .gantt-grid non-timeline <th>
+  draggable (HTML5 DnD). A drag dispatches the EXISTING sf-colmove CustomEvent but carries an absolute
+  target {index, to, dir}; app.js and path.js sf-colmove handlers now do a one-shot splice reorder of
+  their field model when detail.to is present (so a multi-column move is a single re-render), and fall
+  back to the old single-step swap for the ↔ menu. moveTableColumnTo is the DOM fallback for grids
+  without a model handler. The ↔ Move-left/right menu is kept; the timeline (.g-head) never moves.
+  Auto-attached at boot + MutationObserver, like attachColumnMovers/attachStickyScrollbars.
+- Verified in Chromium (real drag_and_drop + event dispatch): header#0->pos2 and drag Name->pos3
+  reorder and persist across re-render; #gridControls computed position:sticky and pins at top:0 after
+  scroll; .sf-sticky-xscroll display:block. Console + daylight screenshots. Drag hint = keel-accent
+  inset bar (.sf-col-drop) + dimmed source (.sf-col-dragging).
+- Tests: test_column_drag_is_a_shared_gantt_primitive (attachColumnDrag/moveTableColumnTo/draggable/
+  drop + detail.to+splice in app.js/path.js), test_gantt_toolbars_are_frozen (sf-freeze-bar on the
+  report + /path pages; position:sticky in css).
+- No ADR (UI). Version 1.0.22 -> 1.0.23; wheel + 9 installers rebuilt in lockstep. Highest ADR stays
+  0212 (in HANDOFF + this log — drift guard green). The 5-item operator batch is COMPLETE (all merged
+  or in review). Next: resume the AUDIT-2026-07-13 remediation backlog if desired.

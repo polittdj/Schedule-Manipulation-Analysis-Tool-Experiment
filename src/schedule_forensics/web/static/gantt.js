@@ -372,6 +372,75 @@ window.SFGantt = (function () {
     });
   }
 
+  /* -------- left-button column DRAG (operator item 4): grab a data-column header and drag it
+   * left/right to reorder. Reuses the same "sf-colmove" plumbing as the ↔ grip menu, but carries
+   * an absolute target index {index, to, dir} so a multi-column move is one event (one re-render);
+   * a page that owns a column model reorders + repaints, else the DOM cells are moved directly.
+   * The timeline column (.g-head) never moves and columns never cross it. The ↔ menu stays as a
+   * click fallback. Works on EVERY .gantt-grid with no per-page wiring. -------- */
+  function moveTableColumnTo(table, from, to) {
+    var dir = to > from ? 1 : -1, i = from;
+    while (i !== to) {
+      moveTableColumn(table, i, dir);
+      i += dir;
+    }
+  }
+  function clearDropHints(head) {
+    Array.prototype.forEach.call(head.cells, function (c) {
+      c.classList.remove("sf-col-drop");
+    });
+  }
+  function attachColumnDrag(root) {
+    var tables = (root || document).querySelectorAll("table.gantt-grid");
+    Array.prototype.forEach.call(tables, function (table) {
+      var head = table.tHead && table.tHead.rows[0];
+      if (!head) return;
+      Array.prototype.forEach.call(head.cells, function (th) {
+        if (th._sfColDrag || th.classList.contains("g-head")) return;
+        th._sfColDrag = true;
+        th.setAttribute("draggable", "true");
+        th.addEventListener("dragstart", function (ev) {
+          var idx = Array.prototype.indexOf.call(th.parentNode.cells, th);
+          if (ev.dataTransfer) {
+            ev.dataTransfer.setData("text/sf-col", String(idx));
+            ev.dataTransfer.effectAllowed = "move";
+          }
+          th.classList.add("sf-col-dragging");
+        });
+        th.addEventListener("dragend", function () {
+          th.classList.remove("sf-col-dragging");
+          clearDropHints(head);
+        });
+        th.addEventListener("dragover", function (ev) {
+          if (th.classList.contains("g-head")) return; // never drop onto the timeline
+          ev.preventDefault();
+          if (ev.dataTransfer) ev.dataTransfer.dropEffect = "move";
+          clearDropHints(head);
+          th.classList.add("sf-col-drop");
+        });
+        th.addEventListener("dragleave", function () {
+          th.classList.remove("sf-col-drop");
+        });
+        th.addEventListener("drop", function (ev) {
+          ev.preventDefault();
+          clearDropHints(head);
+          var from = ev.dataTransfer ? parseInt(ev.dataTransfer.getData("text/sf-col"), 10) : NaN;
+          var to = Array.prototype.indexOf.call(th.parentNode.cells, th);
+          if (isNaN(from) || from < 0 || from === to) return;
+          var evt = null;
+          try {
+            evt = new CustomEvent("sf-colmove", {
+              bubbles: true, cancelable: true,
+              detail: { index: from, to: to, dir: to > from ? 1 : -1, th: th },
+            });
+          } catch (e) { evt = null; }
+          var doDefault = !evt || table.dispatchEvent(evt);
+          if (doDefault) moveTableColumnTo(table, from, to);
+        });
+      });
+    });
+  }
+
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
@@ -379,7 +448,8 @@ window.SFGantt = (function () {
     freezeColumns: freezeColumns,
     stickyScrollbar: stickyScrollbar, attachStickyScrollbars: attachStickyScrollbars,
     attachEdgeExtend: attachEdgeExtend,
-    moveTableColumn: moveTableColumn, attachColumnMovers: attachColumnMovers,
+    moveTableColumn: moveTableColumn, moveTableColumnTo: moveTableColumnTo,
+    attachColumnMovers: attachColumnMovers, attachColumnDrag: attachColumnDrag,
   };
 })();
 
@@ -392,10 +462,12 @@ window.SFGantt = (function () {
     if (!window.SFGantt) return;
     SFGantt.attachStickyScrollbars(document);
     SFGantt.attachColumnMovers(document);
+    SFGantt.attachColumnDrag(document);
     if (window.MutationObserver) {
       var obs = new MutationObserver(function () {
         SFGantt.attachStickyScrollbars(document);
         SFGantt.attachColumnMovers(document);
+        SFGantt.attachColumnDrag(document);
       });
       obs.observe(document.body, { childList: true, subtree: true });
     }

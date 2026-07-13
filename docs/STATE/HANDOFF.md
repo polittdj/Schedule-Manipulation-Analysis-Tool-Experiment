@@ -1,6 +1,33 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: Measure-to any-UID box; v1.0.22; highest ADR 0212)
+# Handoff — 2026-07-13 (operator UI batch COMPLETE — PR: Gantt freeze + column drag; v1.0.23; highest ADR 0212)
 
-> ## STATUS (current) — operator batch item 3 of 5: measure to any activity by UID
+> ## STATUS (current) — operator batch item 4 of 5 (the LAST): Gantt freeze + column drag
+>
+> - **The 5-item operator hands-on batch is now COMPLETE.** Merged: item 5 (#342), docs sweep (#341),
+>   item 2 (#343), item 1 (#344), item 3 (#345). This PR ships **item 4 (4A)** — the last one.
+> - **Freeze:** the Gantt/grid toolbars (activity grid + `/path`) scrolled off the top on a long page.
+>   Added the `.sf-freeze-bar` class (`position:sticky; top:0`) to `#gridControls` (app.py) and
+>   `#pathControls`, so the zoom-slider/toolbar stays visible while the grid body scrolls. The grid
+>   panes already scroll internally (`max-height:80vh`) with a **sticky header row** and a **fixed
+>   bottom horizontal scrollbar** (`.sf-sticky-xscroll`), so all three edges are now pinned.
+> - **Left-button column drag:** new `SFGantt.attachColumnDrag` (gantt.js) makes every `.gantt-grid`
+>   data-column `<th>` draggable; a drag dispatches the EXISTING `sf-colmove` event but with an
+>   **absolute target index** `{index, to, dir}`, so `app.js` / `path.js` do a one-shot splice reorder
+>   of their field model (multi-column move = one re-render). The `↔ Move left/right` **menu is kept**
+>   as a click fallback; the timeline column never moves. Auto-attached at boot + via the
+>   MutationObserver, like the sibling primitives — every grid inherits it with no per-page wiring.
+> - **Verified in Chromium** (real HTML5 drag + event dispatch): a header drag reorders columns and
+>   persists across re-render (UID→pos 2, Name→pos 3); `#gridControls` is `position:sticky` and pins at
+>   `top:0` on scroll; `.sf-sticky-xscroll` shows. Console + daylight checked; drag-hint = keel-accent
+>   inset bar. Tests `test_column_drag_is_a_shared_gantt_primitive` + `test_gantt_toolbars_are_frozen`.
+>   No engine change; no ADR (UI). Version **1.0.22 → 1.0.23**; wheel + 9 installers rebuilt in lockstep.
+>   Highest ADR stays **ADR-0212**.
+> - **Next:** the operator batch is done. Back to the AUDIT-2026-07-13 remediation backlog if desired
+>   (presentation bugs M2/L1/L2/L10, ch-01 Critical basis M3, `sra_conclusions._wd` M1, 24h calendar H3,
+>   AI figure-gate H1/M4/M5, wire dead CUI defenses M6/L3, JS harnesses M7/M8, low/nit cleanup).
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: Measure-to any-UID box; v1.0.22; highest ADR 0212) — merged as #345
+
+> ## STATUS — operator batch item 3 of 5: measure to any activity by UID
 >
 > - Items 5 (#342), docs sweep (#341), 2 (#343), 1 (#344) are **merged to `main`**. Operator confirmed
 >   **3A** and **4A** for the last two. This PR ships **item 3 (3A)**: the header **"Measure to"**

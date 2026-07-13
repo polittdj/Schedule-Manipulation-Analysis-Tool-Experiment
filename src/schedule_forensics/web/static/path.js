@@ -644,11 +644,15 @@
   document.addEventListener("sf-colmove", function (ev) {
     if (!view.contains(ev.target)) return;
     var visible = FIELDS.filter(function (f) { return f.on; });
-    var i = ev.detail.index, j = i + ev.detail.dir;
-    if (i < 0 || i >= visible.length || j < 0 || j >= visible.length) return;
+    var i = ev.detail.index;
+    // the ↔ menu sends a single step (dir); a header drag sends an absolute target (to)
+    var to = (ev.detail.to != null) ? ev.detail.to : i + ev.detail.dir;
+    if (i < 0 || i >= visible.length || to < 0 || to >= visible.length || i === to) return;
     ev.preventDefault(); // re-render from the model instead of a raw DOM move
-    var a = FIELDS.indexOf(visible[i]), b = FIELDS.indexOf(visible[j]);
-    FIELDS[a] = visible[j]; FIELDS[b] = visible[i];
+    var order = visible.slice();
+    order.splice(to, 0, order.splice(i, 1)[0]); // move visible[i] to position `to`
+    var vi = 0; // write the new visible order back into the ON slots, leaving hidden fields put
+    for (var k = 0; k < FIELDS.length; k++) if (FIELDS[k].on) FIELDS[k] = order[vi++];
     render();
   });
   // a remembered Target UID restored by persist.js (ADR-0186) arrives AFTER this boot ran
