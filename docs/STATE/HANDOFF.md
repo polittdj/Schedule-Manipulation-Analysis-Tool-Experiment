@@ -1,6 +1,46 @@
-# Handoff — 2026-07-12 (SRA Excel round-trip templates; highest ADR 0211)
+# Handoff — 2026-07-13 (full read-only audit; v1.0.18; highest ADR 0211)
 
-> ## STATUS (current) — ADR-0211 Excel fill-in templates (export → edit → re-import)
+> ## STATUS (current) — AUDIT-2026-07-13 complete; remediation queued, nothing fixed yet
+>
+> - **Current true state:** HEAD `2c55769`, pyproject **1.0.18** (the #339 Ctrl+C launcher-shutdown
+>   bugfix shipped after ADR-0211 with **no ADR** — so highest ADR is still **0211**). Gate fully
+>   green: ruff / ruff format / mypy strict / bandit (exit 0) / **2041 tests** / doc-guards /
+>   metric-dictionary in sync / version-lockstep across 9 installers.
+> - **A full read-only, falsification-oriented audit was run** (7 parallel deep-read agents + operator
+>   re-validation of every finding, each validated ≥4 ways). Findings are in
+>   **`docs/STATE/AUDIT-2026-07-13.md`** (read it before remediating). **No code was changed** — the
+>   audit only wrote that report, this block, the SESSION-LOG entry, and the rewritten
+>   `NEXT-SESSION-PROMPT.md`.
+> - **No CRITICAL / active data-egress defect.** The two laws survived falsification (cloud unreachable,
+>   loopback-validated backends, global CSP, XXE rejected, parity UID-exact). Findings are fidelity,
+>   presentation, dead-defense-in-depth, test false-confidence, and doc drift.
+> - **Tally: 3 High · 14 Medium · 13 Low · 3 Nit.** The Highs:
+>   1. **Translation path is figure-ungated** (`web/app.py:875-899 _ai_translate`) — the only ungated
+>      `.generate()`; contradicts CLAUDE.md's "translation re-verifies every figure." Needs a live
+>      model + non-EN language to trigger (default Null returns nothing).
+>   2. **USER-GUIDE says the default Q&A mode is the ungated "interpretive"** — code default is the
+>      gated **annotate** (`app.py:5011`). Safety-relevant doc error.
+>   3. **24-hour calendars misparse as 8h×7days** (`_common.py:199 working_time_span("00:00","00:00")
+>      →None` → falls to 480). Corrupts CPM/float/DCMA on outage/turnaround files. Verify the .mpp/MPXJ
+>      path first (MPXJ may emit `24:00`, which parses fine).
+> - **Notable Mediums:** `sra_conclusions._wd` hardcodes 480 (wrong SRA contingency days on non-8h
+>   calendars — same as the already-fixed D13 bug); the **"&mdash;" KPI sentinel double-escapes** to
+>   literal text across 7 of 12 chapter headers (breaks the "missing = —" requirement); chapter-01
+>   "Critical" uses pure-CPM float while ch 02/11 use progress-aware (same file, different counts);
+>   number-words bypass the AI figure gate; `introduces_loaded_terms` denylist misses fabricated/
+>   doctored/misleading; CUI log-redaction is implemented+tested but **never wired at runtime**;
+>   chart-JS + workbench.js behavior is grep-tested only (and the untested workbench `fmt` shows a NA
+>   metric as "0.00" not "—"); several docs contradict the committed-`.aft` reality (ADR-0152).
+> - **Recommended remediation order is in the rewritten `docs/STATE/NEXT-SESSION-PROMPT.md`** — one PR
+>   per theme, fully gated, presentation/doc fixes first (cheap, high-value), then the engine/importer
+>   fidelity fixes with fixtures, then the AI-gate hardening.
+> - **Deferred backlog (unchanged, still valid):** chart-contract toolbar; Metric Workbench family
+>   expansion; advanced-SRA phase (issue #331); vendor fonts; the parked P1/P2/P3 (CP-basis engine
+>   artifacts, volData six-state, SSI rename) in `audit/PARK-LIST.md`.
+
+# (prior) Handoff — 2026-07-12 (SRA Excel round-trip templates; highest ADR 0211)
+
+> ## STATUS — ADR-0211 Excel fill-in templates (export → edit → re-import)
 >
 > - Operator directive: "an MS Excel template for the risk registry that the user can export, fill
 >   out and reimport … and the same for the Best and Worst Case Durations and Risk Ranking Factors
