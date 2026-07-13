@@ -5593,3 +5593,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   drill via sf-drill; volFlow needs entered/left UID lists in _volatility_data; plus bar-total label
   de-overlap. Survey captured (drilldown.js matches .sf-drill on SVG via classList; _workbench_drill_rows
   drops UIDs absent from the resolved version — resolve data-file to a version holding the UIDs).
+
+---
+
+## 2026-07-13 — operator UI batch: click-to-drill on the per-activity bar charts (ADR-0216)
+
+- **Session:** operator live-testing v1.0.26; the deferred "bars" item from ADR-0215. **Next:** more bar
+  coverage (categorical count bars) if the operator wants it, or whatever surfaces next.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (restarted from origin/main
+  after #349 merged).
+- **Global drill runtime:** drilldown.js moved into _LAYOUT (one script tag on every page); removed the
+  3 per-page includes (no double-registered listeners). SFDrill.mark(node, uids, file, title) stamps the
+  sf-drill contract on any element incl. an SVG <rect> (handler matches via classList).
+- **Tagged the per-activity bars:** volatility volTenure/volJumpers (single UID), dwell histogram
+  (tenure-bucket set), entry/exit waterfall (new server UID lists entered_uids/left_uids in
+  _volatility_data + a "latest" version key); performance DRM histogram g5Hist (DRM.points in bin, keyed
+  to the stepper version); SRA sensitivity tornado sraSens (single UID). Multi-version data-file resolves
+  to a version that holds the UIDs (else _workbench_drill_rows drops them).
+- Chromium: /volatility has 28 clickable bars; clicking opens the activity grid, add-column works, Excel
+  export present, no page errors.
+- Non-activity bars stay inert by design (SRA finish histogram, trend count/sum bars, risk tornado). The
+  trend stacked/grouped bars have no per-bar value labels -> no bar-total de-overlap needed.
+- No engine change, no new metric math (Law 2). Test test_bar_drill.py. Gate green (ruff/format/mypy/
+  bandit/node/pytest).
+- **ADR-0216** (in HANDOFF + this log — drift guard green). Version 1.0.26 -> 1.0.27; wheel + 9
+  installers rebuilt in lockstep.

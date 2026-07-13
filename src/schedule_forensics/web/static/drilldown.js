@@ -212,5 +212,23 @@
     if (t) { e.preventDefault(); fire(t); }
   });
 
-  window.SFDrill = { open: open, close: close };
+  // Tag any element (incl. an SVG <rect>/<g>) as a drill trigger for a UID set. Charts call this
+  // per bar so a click lists the activities behind it. `uids` is an array or comma string; a falsy
+  // / empty set leaves the node inert (no cursor, no class) so empty bars aren't clickable.
+  function mark(node, uids, file, title) {
+    if (!node) return node;
+    var ids = Array.isArray(uids) ? uids.filter(function (u) { return u != null; }).join(",") : (uids || "");
+    if (!ids) return node;
+    var cls = node.getAttribute("class") || "";
+    if (cls.split(/\s+/).indexOf("sf-drill") < 0) node.setAttribute("class", (cls + " sf-drill").trim());
+    node.setAttribute("data-uids", ids);
+    node.setAttribute("data-file", file == null ? "" : String(file));
+    node.setAttribute("data-title", title || "Activities");
+    node.setAttribute("role", "button");
+    node.setAttribute("tabindex", "0");
+    if (node.style) node.style.cursor = "pointer";
+    return node;
+  }
+
+  window.SFDrill = { open: open, close: close, mark: mark };
 })();

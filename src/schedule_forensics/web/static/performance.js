@@ -40,6 +40,10 @@
   var NS = "http://www.w3.org/2000/svg";
   var OK = "var(--ok)", BAD = "var(--bad)", WARN = "var(--warn)", ACC = "var(--accent)";
   var MUT = "var(--muted)";
+  // tag a bar as a drill trigger for a UID set (no-op if SFDrill / the set is absent)
+  function drill(node, uids, file, title) {
+    if (window.SFDrill && uids && uids.length) SFDrill.mark(node, uids, file, title);
+  }
 
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);
@@ -339,10 +343,16 @@
         bins.forEach(function (b) { maxc = Math.max(maxc, b.count); });
         svg.appendChild(svgEl("line", { x1: L, y1: B, x2: R, y2: B, stroke: MUT, "stroke-width": 0.6 }));
         var bw = (R - L) / bins.length;
+        var vlabel = (PV[cursor] || {}).label || "";
+        var lastHi = bins[bins.length - 1].hi;
         bins.forEach(function (b, i) {
           var hh = (B - T) * (b.count / maxc);
           var rect = svgEl("rect", { x: L + i * bw + 1, y: B - hh, width: Math.max(1, bw - 2), height: hh, fill: ACC, opacity: 0.8 });
           tip(rect, b.lo + " – " + b.hi + ": " + b.count + " task(s)");
+          var isLast = b.hi === lastHi;
+          drill(rect, DRM.points.filter(function (p) {
+            return p.drm >= b.lo && (isLast ? p.drm <= b.hi : p.drm < b.hi);
+          }).map(function (p) { return p.uid; }), vlabel, "Duration ratio " + b.lo + "–" + b.hi);
           svg.appendChild(rect);
           if (i % Math.max(1, Math.ceil(bins.length / 8)) === 0) {
             txt(svg, L + i * bw, B + 12, String(b.lo), { size: 8.5 });

@@ -17,6 +17,12 @@
   var V = DATA.versions || [];
   var TASKS = DATA.tasks || [];
   var PAIRS = DATA.pairs || [];
+  var LATEST = DATA.latest || "";  // the newest version's key — the drill's data-file for the
+  //                                  "ever on the path" leaderboard/dwell bars
+  // tag a bar as a drill trigger for a UID set (no-op if SFDrill / the set is absent)
+  function drill(node, uids, file, title) {
+    if (window.SFDrill && uids && uids.length) SFDrill.mark(node, uids, file, title);
+  }
   var N = V.length;
   if (N < 2) return;
   var NS = "http://www.w3.org/2000/svg";
@@ -153,9 +159,11 @@
       var eh = p.entered * scale, lh = p.left * scale;
       var re = svgEl("rect", { x: x, y: mid - eh, width: bw, height: Math.max(eh, 0.5), fill: BAD });
       tip(re, p.to + ": " + p.entered + " joined the critical path");
+      drill(re, p.entered_uids, p.to, "Joined the critical path — " + p.to);
       svg.appendChild(re);
       var rl = svgEl("rect", { x: x, y: mid, width: bw, height: Math.max(lh, 0.5), fill: ACC });
       tip(rl, p.to + ": " + p.left + " left the critical path");
+      drill(rl, p.left_uids, p.from, "Left the critical path — " + p.from);
       svg.appendChild(rl);
       if (p.entered) txt(svg, x + bw / 2, mid - eh - 3, "+" + p.entered, { anchor: "middle", fill: BAD });
       if (p.left) txt(svg, x + bw / 2, mid + lh + 10, "−" + p.left, { anchor: "middle", fill: ACC });
@@ -264,6 +272,7 @@
       var bw = (it.value / most) * (W - padL - 46);
       var bar = svgEl("rect", { x: padL, y: y0 + 3, width: Math.max(bw, 1), height: rowH - 7, fill: color });
       tip(bar, it.label + " — " + it.value + " " + valueLabel);
+      drill(bar, it.uids, LATEST, it.title || it.label);
       svg.appendChild(bar);
       txt(svg, padL + bw + 4, y0 + 13, String(it.value), { size: 10, weight: 600, fill: "var(--ink)" });
     });
@@ -274,7 +283,9 @@
   function drawTenure() {
     leaderboard(
       "volTenure",
-      TASKS.slice(0, 12).map(function (t) { return { label: t.uid + " " + t.name, value: t.tenure }; }),
+      TASKS.slice(0, 12).map(function (t) {
+        return { label: t.uid + " " + t.name, value: t.tenure, uids: [t.uid], title: t.uid + " " + t.name };
+      }),
       OK, "version(s) on the path", "Critical-path tenure leaderboard"
     );
   }
@@ -293,6 +304,9 @@
       var bh = (cnt / most) * (H - padT - padB);
       var bar = svgEl("rect", { x: padL + i * bw + 2, y: H - padB - bh, width: Math.max(bw - 4, 1), height: Math.max(bh, cnt ? 1 : 0), fill: ACC });
       tip(bar, cnt + " activity(ies) spent " + (i + 1) + " version(s) on the critical path");
+      var bucket = i + 1;
+      drill(bar, TASKS.filter(function (t) { return t.tenure === bucket; }).map(function (t) { return t.uid; }),
+        LATEST, bucket + " version(s) on the critical path");
       svg.appendChild(bar);
       if (cnt) txt(svg, padL + i * bw + bw / 2, H - padB - bh - 3, String(cnt), { anchor: "middle" });
       txt(svg, padL + i * bw + bw / 2, H - padB + 12, String(i + 1), { anchor: "middle" });
@@ -306,7 +320,9 @@
       .slice().sort(function (a, b) { return b.flips - a.flips || b.tenure - a.tenure; });
   }
   function drawJumpers() {
-    var j = jumpers().slice(0, 12).map(function (t) { return { label: t.uid + " " + t.name, value: t.flips }; });
+    var j = jumpers().slice(0, 12).map(function (t) {
+      return { label: t.uid + " " + t.name, value: t.flips, uids: [t.uid], title: t.uid + " " + t.name };
+    });
     if (!j.length) {
       var h = host("volJumpers");
       if (h) { var p = document.createElement("p"); p.className = "muted"; p.textContent = "No activity left and re-joined the critical path — membership only ever changed once per activity (low volatility)."; h.appendChild(p); }
