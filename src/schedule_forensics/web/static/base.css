@@ -308,9 +308,12 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
   html[data-theme=console] header nav,html[data-theme=apollo] header nav,
   html[data-theme=jarvis] header nav{flex-direction:column;align-items:stretch;flex:1 1 auto;
     flex-wrap:nowrap;gap:12px;min-height:0;order:3}
+  /* the 12-chapter spine scrolls INSIDE the rail (min-height:0 unlocks flex overflow) so a short
+     viewport / zoomed UI can still reach the session controls pinned below it, instead of the whole
+     column shrinking and clipping its bottom (the fixed-rail clip bug). */
   html[data-theme=console] .nav-spine,html[data-theme=apollo] .nav-spine,
   html[data-theme=jarvis] .nav-spine{flex-direction:column;align-items:stretch;gap:11px;
-    flex:1 1 auto;flex-wrap:nowrap}
+    flex:1 1 auto;flex-wrap:nowrap;min-height:0;overflow-x:hidden;overflow-y:auto}
   html[data-theme=console] .nav-sect,html[data-theme=apollo] .nav-sect,
   html[data-theme=jarvis] .nav-sect{flex-direction:column;align-items:stretch;gap:1px}
   html[data-theme=console] .nav-sect-label,html[data-theme=apollo] .nav-sect-label,
@@ -324,9 +327,10 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
     padding:1px 0 2px 29px}
   html[data-theme=console] .nav-beats a,html[data-theme=apollo] .nav-beats a,
   html[data-theme=jarvis] .nav-beats a{padding:2px 0}
+  /* controls stay pinned at the rail foot (never shrink) while the spine above them scrolls */
   html[data-theme=console] .nav-controls,html[data-theme=apollo] .nav-controls,
   html[data-theme=jarvis] .nav-controls{flex-direction:column;align-items:stretch;gap:7px;
-    border-top:1px solid var(--header-line);padding-top:9px;margin-top:2px}
+    flex:0 0 auto;border-top:1px solid var(--header-line);padding-top:9px;margin-top:2px}
   html[data-theme=console] .nav-controls label.ui-scale-ctl,
   html[data-theme=apollo] .nav-controls label.ui-scale-ctl,
   html[data-theme=jarvis] .nav-controls label.ui-scale-ctl{display:flex;justify-content:space-between;

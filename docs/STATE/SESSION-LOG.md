@@ -5406,3 +5406,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Remaining operator items ship as their own PRs off main: 2 (console left-rail CSS clip),
   1 (chart X-axis label overlap — drift.js + audit other axes), 3 (Measure-to all-UID + add-any-UID),
   4 (Gantt frozen toolbar/slider + column drag). Unrelated docs-only sweep is draft PR #341.
+
+### 2026-07-13 — Console/apollo/jarvis left-nav-rail scroll fix (operator batch item 2)
+- Operator (using the running tool): the dark-theme left rail clipped its bottom session controls
+  (Measure-to / View / Size / Language) and they "disappeared and never came back" after any
+  selection. Root cause (base.css:303-329, no JS): the fixed 236px rail is a flex column with
+  `overflow-y:auto`, but `header nav` and `.nav-spine` used `flex:1 1 auto` + `min-height:0`, so they
+  SHRANK to the viewport height instead of overflowing — the rail never scrolled and the bottom
+  controls were clipped below the fold (re-clipped on every reload, incl. after `onchange` form
+  submits).
+- Fix (presentation only, web/static/base.css): the 12-chapter spine now scrolls INSIDE the rail
+  (`.nav-spine` gets `min-height:0; overflow-x:hidden; overflow-y:auto`) and the controls are pinned at
+  the rail foot (`.nav-controls` gets `flex:0 0 auto`) — always reachable. No engine/JS change.
+- Verified in Chromium (all 4 themes, executablePath /opt/pw-browsers/chromium) at a short 560px
+  viewport that previously clipped: console/apollo/jarvis spine `scrollHeight 824 > clientHeight ~94`
+  (overflowY auto), View select + Language now visible; daylight's horizontal top bar unchanged
+  (media query scopes the rail to the three dark views only).
+- No ADR (CSS bugfix, cf. #339). Version 1.0.19 -> 1.0.20; wheel + 9 installers rebuilt in lockstep.
+  Highest ADR stays 0212 (in HANDOFF + this log — drift guard green).
+- Remaining operator items ship as their own PRs off main: 1 (chart X-axis label overlap — drift.js +
+  audit other axes), 3 (Measure-to all-UID + add-any-UID box), 4 (Gantt frozen toolbar/slider + column
+  drag). Assumptions pending operator confirm: column reorder = left-button drag; measure-to =
+  milestones + add-any-UID box.
