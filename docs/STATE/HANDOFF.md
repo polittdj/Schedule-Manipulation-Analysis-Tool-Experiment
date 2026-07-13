@@ -1,6 +1,26 @@
-# Handoff — 2026-07-13 (operator UI/fidelity batch — PR: path-evolution robust completeness; v1.0.19; highest ADR 0212)
+# Handoff — 2026-07-13 (operator UI batch — PR: console left-rail scroll fix; v1.0.20; highest ADR 0212)
 
-> ## STATUS (current) — operator hands-on findings (5 items); shipping correctness fix first
+> ## STATUS (current) — operator batch item 2 of 5: the console/apollo/jarvis left-nav-rail clip
+>
+> - Item 5 (path-evolution robust completeness, ADR-0212, v1.0.19) **merged to `main`** as #342; the
+>   docs-only audit sweep merged as #341. This PR ships **operator item 2**: the fixed 236px left rail
+>   (console/apollo/jarvis, wide viewports) clipped its bottom **session controls** (Measure-to / View /
+>   Size / Language) and re-clipped on every reload — because `nav` + `.nav-spine` used `flex:1 1 auto`
+>   + `min-height:0`, shrinking to viewport height so `overflow-y:auto` on the rail never scrolled
+>   (`base.css:303-329`; no JS bug). **Fix (presentation only, `web/static/base.css`):** the 12-chapter
+>   **spine now scrolls internally** (`min-height:0; overflow:hidden auto`) and the **controls are pinned
+>   at the rail foot** (`flex:0 0 auto`) — always reachable. Chromium-verified in all four themes at a
+>   short 560px viewport (spine `scrollHeight 824 > clientHeight ~94`, View select + Language visible;
+>   daylight's horizontal bar unchanged). No engine/JS change; no ADR (CSS bugfix). Version
+>   **1.0.19 → 1.0.20**; wheel + 9 installers rebuilt in lockstep. Highest ADR stays **ADR-0212**.
+> - **Remaining operator items (own PRs off `main`, after this merges):** 1 (chart X-axis label overlap
+>   — fix `drift.js` + audit the other axes), 3 (Measure-to all-UID + add-any-UID box), 4 (Gantt frozen
+>   toolbar/slider + column drag — largest). Assumptions pending operator confirm: column reorder =
+>   left-button drag (keep the ↔ menu); measure-to = milestones + add-any-UID box.
+
+# (prior) Handoff — 2026-07-13 (operator UI/fidelity batch — PR: path-evolution robust completeness; v1.0.19; highest ADR 0212) — merged as #342
+
+> ## STATUS — operator hands-on findings (5 items); shipping correctness fix first
 >
 > - The operator, while using the running tool, filed **5 items** (separate from the AUDIT-2026-07-13
 >   remediation backlog): (1) chart X-axis tick labels overlap/unreadable on some visuals; (2) the
