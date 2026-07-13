@@ -249,6 +249,47 @@ def test_left_attribution_reasons() -> None:
     )
 
 
+def test_completed_on_path_counts_actual_finish_below_100pct() -> None:
+    """ADR-0051 robust completeness in the burn-down (regression for the strict-vs-robust
+    undercount). An on-path activity that finishes with a stored actual-finish date but a
+    stale sub-100% percent — the status desync this tool exists to catch — must LEAVE the
+    go-forward path and be counted in ``completed_on_path``, not treated as still-driving.
+    The strict ``percent >= 100`` basis (the prior behaviour) would silently drop it, so the
+    stepper shaded it complete while the 'Completed on the path' table omitted it."""
+    v1 = _chain([(1, 2), (2, 3), (3, 2)])  # 1->2->3, all critical & incomplete
+    # v2: same chain, but task 1 carries an actual finish while the source left it at 90%.
+    t1 = Task(
+        unique_id=1,
+        name="T1",
+        duration_minutes=2 * DAY,
+        percent_complete=90.0,
+        actual_start=MON,
+        actual_finish=MON + dt.timedelta(days=2),
+    )
+    v2 = _sched(
+        [
+            t1,
+            Task(unique_id=2, name="T2", duration_minutes=3 * DAY),
+            Task(unique_id=3, name="T3", duration_minutes=2 * DAY),
+        ],
+        [
+            Relationship(predecessor_id=1, successor_id=2),
+            Relationship(predecessor_id=2, successor_id=3),
+        ],
+    )
+    second = compute_path_evolution([v1, v2], [compute_cpm(v1), compute_cpm(v2)]).snapshots[1]
+    # strict-incomplete (90%) yet robust-complete (has an actual finish): it leaves the path,
+    assert 1 not in second.critical and 1 not in second.stayed
+    assert 1 in second.left
+    # and IS counted as completed on the path (strict percent-only would have missed it):
+    assert 1 in second.completed_on_path
+    assert {c.uid for c in second.left_changes if c.reason == "completed"} == set(
+        second.completed_on_path
+    )
+    # the still-incomplete downstream work stays on the path
+    assert 2 in second.critical and 3 in second.critical
+
+
 # --- ADR-0057: reason specificity (the chip-hover detail) ------------------------------------
 
 

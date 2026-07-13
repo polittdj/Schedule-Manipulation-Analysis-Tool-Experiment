@@ -5354,3 +5354,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   docs/STATE/NEXT-SESSION-PROMPT.md; HANDOFF top block refreshed to v1.0.18 + audit summary.
 - Dismissed after validation: pip-audit local warnings (ambient container packages, not the .[dev]
   closure — not a CI risk). No ADR (audit is read-only); highest ADR stays 0211.
+
+### 2026-07-13 — Path-evolution robust completeness (ADR-0212); operator hands-on batch, item 5
+- Operator (using the running tool) filed 5 items; this entry ships item 5, the correctness one:
+  "verify 'Completed on the path — version to version' is correct." Verified via parallel deep-read;
+  the burn-down was structurally sound (per-version path recomputed; UID-matched; membership N,
+  completion N+1) but judged "complete" with STRICT `percent >= 100` at the path-membership filters,
+  `completed_on_path`, and `_classify_left` — while the stepper/hide-completed/`/api/evolution`/
+  `engine.sra` all use the ROBUST ADR-0051 rule (`>= 100` OR a stored actual_finish). An activity
+  finishing with an actual-finish date but a stale <100% percent was shaded complete in the stepper
+  yet omitted from the table (undercount of the burn-down).
+- Fix (ADR-0212): a private `_effectively_complete` helper in `engine/path_evolution.py`; inside
+  `compute_path_evolution` each version's `critical` set drops robust-complete tasks, and
+  `completed_on_path` + `_classify_left` use robust completeness. The shared, parity-locked
+  `effective_critical_set` / `metrics/_common.is_incomplete` are deliberately untouched (they feed the
+  Fuse/SSI parity suite, briefing, brief, qa, counterfactual, change-effects) — zero parity blast
+  radius. Localized to the /evolution burn-down.
+- Verified: Project2/Project5 goldens have 0 tasks with the actual-finish-but-<100% desync, so every
+  `test_golden_pins` number is unchanged (41/4 critical, 38 left, 3 stayed, entered 131,
+  completed_on_path=4); `test_fuse_hardfile_parity` unchanged. New regression
+  `test_completed_on_path_counts_actual_finish_below_100pct` crafts the case the goldens don't exercise.
+- Version 1.0.18 -> 1.0.19; wheel + 9 installers rebuilt in lockstep. Full gate green
+  (ruff/format/mypy/bandit/2042 tests/node). Highest ADR = 0212 (in HANDOFF + this log).
+- Remaining operator items ship as their own PRs off main: 2 (console left-rail CSS clip),
+  1 (chart X-axis label overlap — drift.js + audit other axes), 3 (Measure-to all-UID + add-any-UID),
+  4 (Gantt frozen toolbar/slider + column drag). Unrelated docs-only sweep is draft PR #341.
