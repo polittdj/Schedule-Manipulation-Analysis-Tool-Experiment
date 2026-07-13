@@ -1,6 +1,35 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: chart toolbar + label de-overlap + AI default; v1.0.26; highest ADR 0215)
+# Handoff — 2026-07-13 (operator UI batch — PR: drill on per-activity bar charts; v1.0.27; highest ADR 0216)
 
-> ## STATUS (current) — operator UI batch: toolbar off data, label de-overlap, default CUI AI (ADR-0215)
+> ## STATUS (current) — operator UI batch: click-to-drill on the per-activity bar charts (ADR-0216)
+>
+> - Operator (live-testing v1.0.26), pointing at the CP-Volatility Tenure leaderboard: "click any of
+>   these bars … see the underlying data … add columns … export to excel … applied the same way to all
+>   other bars in the tool like those." This is the deferred item from the prior PR (ADR-0215).
+> - **Global drill runtime.** `drilldown.js` moved into `_LAYOUT` (one `<script>` on EVERY page); the
+>   three per-page includes removed so no page double-registers the delegated `sf-drill` listeners.
+>   `SFDrill` gained `mark(node, uids, file, title)` — stamps the sf-drill contract on any element incl.
+>   an SVG `<rect>` (the handler matches via `classList`); an empty UID set leaves the bar inert.
+> - **Tagged the per-activity bars** (each bar = an activity or activity-set): volatility `volTenure`/
+>   `volJumpers` (single UID), dwell histogram (tenure-bucket set), entry/exit waterfall (new server UID
+>   lists `entered_uids`/`left_uids` in `_volatility_data`); performance DRM histogram `g5Hist`
+>   (`DRM.points` in the bin); SRA sensitivity tornado `sraSens` (single UID). Multi-version `data-file`:
+>   leaderboards/dwell use the newest version key (`_volatility_data["latest"]`), waterfall the from/to
+>   version, DRM the stepper's current version — because `_workbench_drill_rows` drops UIDs absent from
+>   the resolved version.
+> - Chromium-verified on `/volatility`: **28 clickable bars** (tenure 12 / jumpers 8 / dwell 3 /
+>   waterfall 5); clicking opens the activity grid, add-column works, Excel export present, no errors.
+> - Genuinely non-activity bars stay inert by design (SRA finish histogram = sim outcomes; trend
+>   status/float bars = counts/sums; risk tornado = risks). The trend stacked/grouped bars carry no
+>   per-bar value labels, so no bar-total de-overlap was needed.
+> - No engine change, no new metric math (Law 2). Test `tests/web/test_bar_drill.py`. **ADR-0216.**
+>   Version **1.0.26 → 1.0.27**; wheel + 9 installers rebuilt in lockstep.
+> - **Next:** operator's call — more bar coverage if wanted (the categorical count bars: performance
+>   lateness/burden, wbs SPI, cei monthly, dashboard status-mix, trend version splits — each needs its
+>   embedded payload extended with per-bar UID lists), or whatever else surfaces in testing.
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: chart toolbar + label de-overlap + AI default; v1.0.26; highest ADR 0215)
+
+> ## STATUS — operator UI batch: toolbar off data, label de-overlap, default CUI AI (ADR-0215)
 >
 > - Operator, live-testing v1.0.25, filed four fixes. **Three shipped in this PR; the fourth (drill on
 >   bars) is deferred to a "bars" PR** (see Next).

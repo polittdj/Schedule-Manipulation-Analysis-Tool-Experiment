@@ -315,6 +315,7 @@ _LAYOUT = Template(
 <script src="/static/persist.js"></script>
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
+<script src="/static/drilldown.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"><link rel=stylesheet href="/static/sf-themes.css">
 <style>
 /* Density + containment overrides (operator request, ADR-0150): tighter spacing everywhere,
@@ -8883,7 +8884,7 @@ def _how_it_moved_header(schedules: list[Schedule], cpms: list[CPMResult]) -> st
         f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{behaviour}{work}</div>'
-        '<div id=sfDrillMount></div><script src="/static/drilldown.js"></script>'
+        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
     )
 
 
@@ -9658,8 +9659,7 @@ def _scorecards_body(
         f"{selector}"
         f"{panels}"
         f"{reserve}"
-        "<div id=sfDrillMount></div>"
-        '<script src="/static/drilldown.js"></script>'
+        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
         '<script src="/static/scorecards.js"></script>'
     )
 
@@ -12946,7 +12946,7 @@ def _how_stable_header(ev: PathEvolution) -> str:
         f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
         f'<div class="ws-kpi">{kpi}</div>'
         f'<div class="ws-bars">{latest_bar}{churn_bar}</div>'
-        '<div id=sfDrillMount></div><script src="/static/drilldown.js"></script>'
+        "<div id=sfDrillMount></div>"  # drilldown.js loaded globally in _LAYOUT
     )
 
 
@@ -13417,7 +13417,9 @@ def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[s
     for i in range(1, len(sets)):
         a, b = sets[i - 1], sets[i]
         union = a | b
-        stayed, entered, left = len(a & b), len(b - a), len(a - b)
+        entered_uids = sorted(b - a)  # newly on the path in version i (present in the "to" file)
+        left_uids = sorted(a - b)  # dropped off the path (present in the "from" file)
+        stayed, entered, left = len(a & b), len(entered_uids), len(left_uids)
         pairs.append(
             {
                 "from": labels[i - 1],
@@ -13426,6 +13428,9 @@ def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[s
                 "stayed": stayed,
                 "entered": entered,
                 "left": left,
+                # the activity IDs behind the entry/exit counts, so the waterfall bars can drill
+                "entered_uids": entered_uids,
+                "left_uids": left_uids,
             }
         )
     jaccards = [p["jaccard"] for p in pairs if p["jaccard"] is not None]
@@ -13436,6 +13441,9 @@ def _volatility_data(schedules: list[Schedule], cpms: list[CPMResult]) -> dict[s
         ],
         "tasks": tasks,
         "pairs": pairs,
+        # the newest version's label — the drill's data-file for the leaderboard/dwell bars (whose
+        # activities are "ever on the path"; those present in the latest version resolve there).
+        "latest": labels[-1] if labels else "",
         "stability": (
             round(sum(jaccards) / len(jaccards), 3) if jaccards else None  # type: ignore[arg-type]
         ),

@@ -245,6 +245,10 @@
         " · Criticality " + (Math.round(r.ci * 1000) / 10) +
         "% · Schedule Sensitivity Index " + r.ssi.toFixed(3);
       sbar.appendChild(stt);  // shared chartframe call-out
+      // click the bar to drill into the activity (empty file -> the latest solvable version)
+      if (window.SFDrill) {
+        SFDrill.mark(sbar, [r.uid], "", "UID " + r.uid + (r.name ? " — " + r.name : ""));
+      }
       svg.appendChild(sbar);
       // activity label (UID + truncated name) on the left
       var name = r.name ? (" " + r.name) : "";
