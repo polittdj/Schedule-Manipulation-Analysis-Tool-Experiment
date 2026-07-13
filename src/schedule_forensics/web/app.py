@@ -5232,7 +5232,7 @@ def create_app(
     def update_settings(
         classification: str = Form("CLASSIFIED"),
         backend: str = Form("ollama"),
-        model: str = Form("llama3.1:8b"),
+        model: str = Form("qwen2.5:7b-instruct"),
         qa_mode: str = Form("annotate"),
         endpoint: str = Form("http://127.0.0.1:11434"),
         openai_endpoint: str = Form("http://127.0.0.1:1234"),
@@ -14468,11 +14468,11 @@ ground truth.</p>
 <li><b>Install Ollama</b> (one time). In your browser, go to <code>ollama.com/download</code> and run
 the installer — Windows, macOS, or Linux. This is the only step that uses the internet.</li>
 <li><b>Download the standard model.</b> Open a terminal / command prompt and run:
-<br><code>ollama pull llama3.1:8b</code></li>
+<br><code>ollama pull qwen2.5:7b-instruct</code></li>
 <li><b>Pick a model that fits your computer's memory (RAM):</b>
 <ul>
 <li>8&nbsp;GB &rarr; <code>ollama pull llama3.2:3b</code> (small, quick)</li>
-<li>16&nbsp;GB &rarr; <code>ollama pull llama3.1:8b</code> (the tool's standard — balanced)</li>
+<li>16&nbsp;GB &rarr; <code>ollama pull qwen2.5:7b-instruct</code> (the tool's default — balanced)</li>
 <li>16&ndash;32&nbsp;GB &rarr; <code>ollama pull qwen2.5:14b</code> (noticeably smarter)</li>
 <li>32&nbsp;GB+ &rarr; <code>ollama pull qwen2.5:32b</code> &middot; 64&nbsp;GB+ &rarr;
 <code>ollama pull llama3.1:70b</code> (most powerful, slowest)</li>

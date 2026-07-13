@@ -318,7 +318,7 @@ def test_settings_model_field_is_a_dropdown_of_installed_models(
             return None
 
         def list_models(self) -> tuple[str, ...]:
-            return ("llama3.2:latest", "schedule-analyst:latest", "qwen2.5:7b-instruct")
+            return ("llama3.2:latest", "schedule-analyst:latest", "phi3:mini")
 
         def pull_model(self, model: str) -> None: ...
 
@@ -328,9 +328,9 @@ def test_settings_model_field_is_a_dropdown_of_installed_models(
     monkeypatch.setattr(app_module, "_ollama_or_none", lambda cfg: _Reachable())
     page = client.get("/settings").text
     assert "<select name=model id=primaryModel>" in page
-    assert "schedule-analyst:latest" in page and "qwen2.5:7b-instruct" in page
+    assert "schedule-analyst:latest" in page and "llama3.2:latest" in page
     # the default configured model isn't installed -> kept as an option, flagged, with a fix hint
-    assert "llama3.1:8b" in page and "not installed" in page
+    assert "qwen2.5:7b-instruct" in page and "not installed" in page
     assert "pick an installed model from the Model dropdown" in page
 
 
@@ -379,7 +379,7 @@ def test_settings_page_wires_cross_check_model_autopopulate(client: TestClient) 
 
 def test_settings_page_carries_the_local_model_setup_guide(client: TestClient) -> None:
     page = client.get("/settings").text
-    assert "ollama pull llama3.1:8b" in page
+    assert "ollama pull qwen2.5:7b-instruct" in page
     assert "How to download" in page
 
 

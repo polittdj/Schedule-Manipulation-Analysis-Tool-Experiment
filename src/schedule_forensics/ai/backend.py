@@ -51,7 +51,9 @@ class AIConfig:
 
     classification: Classification = Classification.CLASSIFIED
     backend: str = "ollama"  # "null" | "ollama" | "openai" | "cloud"
-    model: str = "llama3.1:8b"
+    # Default local model (operator 2026-07-13): the CUI AI comes up on Ollama with this model
+    # active by default. route_backend still fails closed to Null if Ollama/the model is absent.
+    model: str = "qwen2.5:7b-instruct"
     endpoint: str = "http://127.0.0.1:11434"
     #: Ask-the-AI answering mode (operator-selectable; ADR-0129). "annotate" (default) lets the
     #: model compute/explain beyond the fact sheet but FLAGS any figure the engine never computed

@@ -5566,3 +5566,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   timeline, KPI panel, exec narrative) — deep-dive MarginContingency_BurnDown_Template + Margin
   Erosion/Consumption refs; margin = designated margin activities on the driving path to a Target UID,
   NEVER float (Law 2).
+
+---
+
+## 2026-07-13 — operator UI batch: toolbar off data, label de-overlap, default CUI AI (ADR-0215)
+
+- **Session:** operator live-testing v1.0.25; four fixes filed, three shipped here. **Next:** the "bars"
+  PR — click-to-drill on per-activity bar charts + bar-total label de-overlap.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (restarted from origin/main
+  after #348 merged).
+- **#1 Chart toolbar off the data:** `.cf-bar` was absolute over the plot's top-right; made it an in-flow
+  row (`margin:0 6px 4px auto; width:max-content`) so it reserves its own height and never overlaps in
+  any theme (padding-reserve left ~2px). Chromium: 0/10 overlapping frames on /volatility.
+- **#3 Default CUI AI model:** CLASSIFIED + ollama + loopback were already default; changed default model
+  llama3.1:8b -> qwen2.5:7b-instruct (AIConfig.model, OllamaBackend.DEFAULT_MODEL, settings-form default,
+  setup guide). route_backend still fails closed to Null (Law 1). Updated test_ai_wiring.py.
+- **#4 Inline-label de-overlap:** trend.js multiLineChart/lineChart/varianceTrendChart drew a value label
+  at every point (unreadable pile on many-version files). Per-frame greedy labelFits: draw a label only
+  if it clears placed ones; suppressed values stay on the hover <title> (added to variance markers). No
+  always-label-latest bypass (re-collided at the last point). Chromium: 0 line-chart label overlaps.
+- No engine change, no new metric math (Law 2). Test test_chart_readability_and_defaults.py + updated
+  test_ai_wiring.py. Gate green (ruff/format/mypy/bandit/node/pytest).
+- **ADR-0215** (in HANDOFF + this log — drift guard green). Version 1.0.25 -> 1.0.26; wheel + 9
+  installers rebuilt in lockstep.
+- **#2 deferred (bars PR):** volatility leaderboards/dwell/waterfall + performance g5Hist + sra sraSens
+  drill via sf-drill; volFlow needs entered/left UID lists in _volatility_data; plus bar-total label
+  de-overlap. Survey captured (drilldown.js matches .sf-drill on SVG via classList; _workbench_drill_rows
+  drops UIDs absent from the resolved version — resolve data-file to a version holding the UIDs).

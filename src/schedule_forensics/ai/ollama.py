@@ -29,7 +29,7 @@ from schedule_forensics.net_guard import CUIEgressError, is_local_http_endpoint
 Opener = Callable[[str, bytes | None, float], str]
 
 DEFAULT_ENDPOINT = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "llama3.1:8b"
+DEFAULT_MODEL = "qwen2.5:7b-instruct"
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
