@@ -253,6 +253,27 @@ header label{color:var(--header-muted)}
 .scorecard-table{width:100%;border-collapse:collapse;margin:.5em 0}
 .scorecard-table th,.scorecard-table td{text-align:left;padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:top}
 .scorecard-table th{color:var(--muted);font-weight:600}
+/* Shared activity drill (issue #331): a clickable "(N activities)" trigger + clickable bar
+   segments/legend keys, and the modal grid they open. Theme-token only; air-gap safe. */
+button.sf-drill{border:0;background:none;padding:0;font:inherit;color:var(--accent);
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+button.sf-drill:hover,button.sf-drill:focus-visible{color:var(--ink)}
+.stack-seg.sf-drill,.stack-key.sf-drill{cursor:pointer}
+.stack-seg.sf-drill:hover,.stack-seg.sf-drill:focus-visible{outline:2px solid var(--ink);outline-offset:-1px}
+.stack-key.sf-drill{text-decoration:underline;text-underline-offset:2px}
+.stack-key.sf-drill:hover,.stack-key.sf-drill:focus-visible{color:var(--accent)}
+.sf-drill-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);
+  display:flex;align-items:flex-start;justify-content:center;padding:5vh 3vw;overflow:auto}
+.sf-drill-dialog{width:min(920px,96vw);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.sf-drill-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.sf-drill-head h3{margin:.1em 0}
+.sf-drill-close{font-size:16px;color:var(--muted)}
+.sf-drill-close:hover{color:var(--ink)}
+.sf-drill-grid-host{overflow-x:auto}
+.sf-drill-sortable{cursor:pointer;white-space:nowrap}
+/* the restored per-page ⟲ Reset button, sitting inline in each visual's toolbar (ADR-0186 revival) */
+.viz-controls .sf-reset-inline{color:var(--muted);cursor:pointer;margin-left:auto}
+.viz-controls .sf-reset-inline:hover,.viz-controls .sf-reset-inline:focus-visible{color:var(--accent)}
 .sl-legend{display:flex;gap:8px;flex-wrap:wrap;margin:.3em 0 .2em}
 .sl-key{padding:1px 9px;border-radius:10px;font-size:11px;font-weight:600}
 
@@ -343,12 +364,23 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
   html[data-theme=console] .nav-controls label.ui-scale-ctl,
   html[data-theme=apollo] .nav-controls label.ui-scale-ctl,
   html[data-theme=jarvis] .nav-controls label.ui-scale-ctl{display:flex;justify-content:space-between;
-    align-items:center;gap:6px}
+    align-items:center;gap:6px;min-width:0}
   html[data-theme=console] .nav-controls .targetform label,
   html[data-theme=apollo] .nav-controls .targetform label,
-  html[data-theme=jarvis] .nav-controls .targetform label{display:flex;flex-direction:column;gap:3px}
+  html[data-theme=jarvis] .nav-controls .targetform label{display:flex;flex-direction:column;gap:3px;
+    min-width:0}
+  /* the rail is a fixed 236px column with overflow-x:hidden, so flex controls MUST be allowed to
+     shrink below their widest <option>'s intrinsic width (min-width:0 releases the default
+     min-width:auto floor that otherwise defeats max-width and bleeds the select off the right). */
   html[data-theme=console] .nav-controls select,html[data-theme=apollo] .nav-controls select,
-  html[data-theme=jarvis] .nav-controls select{max-width:100%}
+  html[data-theme=jarvis] .nav-controls select{max-width:100%;min-width:0;width:100%;box-sizing:border-box}
+  html[data-theme=console] .nav-controls .ui-scale-ctl select,
+  html[data-theme=apollo] .nav-controls .ui-scale-ctl select,
+  html[data-theme=jarvis] .nav-controls .ui-scale-ctl select{margin-left:0;flex:1 1 0}
+  html[data-theme=console] .nav-controls .navform,html[data-theme=apollo] .nav-controls .navform,
+  html[data-theme=jarvis] .nav-controls .navform,
+  html[data-theme=console] .nav-controls .sf-uid-form,html[data-theme=apollo] .nav-controls .sf-uid-form,
+  html[data-theme=jarvis] .nav-controls .sf-uid-form{min-width:0;max-width:100%}
   /* rail active state (redesign): panel-hover fill + a keel-accent inset bar. Overrides the
      top-bar yellow pill (app.css) which is tuned for the horizontal blue header. */
   html[data-theme=console] header nav a.nav-active,html[data-theme=apollo] header nav a.nav-active,

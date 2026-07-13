@@ -5535,3 +5535,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   pytest).
 - **ADR-0213** (in HANDOFF + this log — drift guard green). Version 1.0.23 -> 1.0.24; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-13 — operator UI batch: shared activity drill + restored Reset + nav-rail fit (ADR-0214)
+
+- **Session:** operator live-testing v1.0.24 filed four fixes. Branch `claude/smat-audit-remediation-eeckdi`.
+- **Nav-rail fit (CSS only, base.css):** rail is fixed 236px + overflow-x:hidden; the "Measure to"/
+  "View" selects are flex items with min-width:auto, so they refused to shrink below the widest option
+  and bled off the right (max-width:100% was defeated). Added min-width:0/width:100% to
+  `.nav-controls select` + its flex containers. Chromium: 0px overflow in all four themes.
+- **Shared activity drill:** new `/api/activities/drill` (reuses `_workbench_drill_rows`) +
+  `/export/{fmt}/activities-drill` + vendored `drilldown.js` — a modal grid (filter / add-remove
+  columns / sort / Excel) auto-wiring any `class="sf-drill" data-uids data-file data-title` element
+  (delegated click). `_status_stack` gained optional `drill=` (default None keeps ~20 callers
+  byte-identical); evolution Latest/Total-churn bars + trend "Where the work stands" opt in (trend
+  "Update behaviour" counts version-pairs → inert). Scorecard rows render "(N activities)" as sf-drill
+  buttons. No engine change, no new metric math (Law 2); UID sets server-computed + sanitized.
+- **Reset restored:** persist.js re-injects a visible ⟲ Reset into each `.viz-controls` toolbar, wired
+  to the existing resetPage() (the ADR-0186 button ADR-0188 folded into the nav). Header + floating
+  fallback kept.
+- **Verified Chromium (4 themes):** scorecard-row + churn-segment open the modal grid; add-column
+  works; Reset in toolbars; nav fits. Tests tests/web/test_activity_drill.py (API/export/hooks +
+  _status_stack no-drill regression guard + reset + air-gap + nav CSS). Gate green.
+- **ADR-0214** (in HANDOFF + this log — drift guard green). Version 1.0.24 -> 1.0.25; wheel + 9
+  installers rebuilt in lockstep.
+- **Next (operator asks, deferred to dedicated PRs):** CP Volatility page visual overhaul + clickable
+  bars + fix Enlarge breakage; and the big Executive Schedule Margin Management Dashboard (margin
+  burn-down vs planned, Program-Margin-vs-Contingency stacked bars, forecast, RAG bands, lifecycle
+  timeline, KPI panel, exec narrative) — deep-dive MarginContingency_BurnDown_Template + Margin
+  Erosion/Consumption refs; margin = designated margin activities on the driving path to a Target UID,
+  NEVER float (Law 2).
