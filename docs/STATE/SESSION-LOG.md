@@ -5801,3 +5801,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   re-verified (planned tick + legend, no console errors). Full gate green (2116 passed).
 - **ADR-0222 (amended** — follow-ups now marked built; highest ADR still 0222, in HANDOFF + this log,
   drift guard green). Version 1.0.33 -> 1.0.34; wheel + 9 installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — read-only repository re-audit (docs only; nothing fixed)
+
+- **Session:** operator directive — audit the repo + all project files, record findings, FIX NOTHING,
+  then mark what's left / next step / current state in HANDOFF + NEXT-SESSION-PROMPT. No code, test,
+  fixture, config, or threshold changed. No new ADR (highest stays **ADR-0222**).
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (at origin/main, v1.0.34).
+- Method: 3 parallel read-only deep-read passes (prior-findings status re-verification; Law-2 fidelity
+  audit of the new engine code; CUI/air-gap + XSS + correctness of the new web/JS) + operator
+  re-validation of each material finding. Full findings: **docs/STATE/AUDIT-2026-07-14.md**.
+- Current state confirmed: v1.0.34, HEAD 869a8d0, ADRs 0000-0222 contiguous, gate fully green (2117
+  tests). Two laws hold; no CRITICAL/egress defect; new web surface CUI-clean + XSS-safe.
+- Findings: 16 of the 33 prior (2026-07-13) findings now resolved; 17 remain (15 unchanged + M8/M11
+  partial); 3 NEW findings (all verified) — NEW-1 (Medium fidelity: metric-catalog `applicable` flag
+  marks the empty-population float ribbon extras as real 0.0 — regression in the ADR-0219 L1 fix; do
+  first), NEW-2 (Low: margin-dashboard erosion fit mixes target/project-finish bases), NEW-3 (Low: air-
+  gap static scan omits the new /scorecards + /margin pages + 3 JS; runtime CSP still enforces).
+- Deliverables: AUDIT-2026-07-14.md (new), HANDOFF.md (audit STATUS block + remaining roadmap),
+  NEXT-SESSION-PROMPT.md (rewritten from the stale v1.0.18 prompt to the current v1.0.34 backlog).
+  Docs-only; gate/drift guard green; no version bump / wheel rebuild (no runtime surface changed).
