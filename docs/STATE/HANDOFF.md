@@ -1,6 +1,47 @@
-# Handoff — 2026-07-15 (SMAT v4 PR A: grouped ingestion + Portfolio; v1.0.37; highest ADR 0225)
+# Handoff — 2026-07-15 (SMAT v4 PR B: scale/RAM/cache + batch JVM; v1.0.38; highest ADR 0226)
 
-> ## STATUS (current) — SMAT v4 Feature 1 (ADR-0225). Grouped ingestion + Portfolio Manager. Code changed.
+> ## STATUS (current) — SMAT v4 Feature 2 (ADR-0226). Scale to thousands: SQLite cache + lazy summary tier + RAM estimate + persistent batch JVM. Code changed.
+>
+> - **The v4 build:** the operator's large "v4" spec — (1) group files into Projects, (2) **scale to
+>   thousands + explicit RAM mode**, (3) user-parameterized NASA margin, (4) role-selection front page.
+>   Delivery is **incremental, one PR per feature**: F1 ✓ → **F2 (this PR)** → F3a/b → F4 → F3c.
+> - **PR B = Feature 2 (this PR)** — the performance layer under F1, **no engine-math change, parity
+>   untouched**:
+>   - **SQLite parse+summary cache** (`engine/cache.py`, std-lib `sqlite3`): keyed by
+>     **(file content hash, auto-derived `engine_version`)** — any `importers`/`model`/`engine` source
+>     change invalidates it (Law 2, no manual bump). Blobs are `model_dump_json` (**not pickle**); every
+>     op **fails soft**; WAL + busy-timeout; DB **outside the repo** (`$SF_CACHE_DIR` else
+>     `~/.cache/schedule-forensics`), **cleared on wipe**. Upload consults it before parsing → a re-upload
+>     skips the JVM.
+>   - **Lazy summary tier** (`engine/summary.py`): a tiny `VersionSummary` (finish / effective margin /
+>     DCMA pass-fail / task count) cached in SQLite by content hash; `SessionState.summary_for` powers
+>     the Portfolio without a fresh CPM per row and survives a restart. **Scope-aware** (an active
+>     filter/target bypasses the on-disk cache) so a summary always **equals** the full row.
+>   - **RAM estimate + warning** (`engine/memory.py`): conservative estimate (base + per-task, calibrated
+>     ~5.4 KB/task) on the Portfolio page; a big ingest raises a **non-blocking** notice past the
+>     operator threshold (default 16 GB, `POST /session/ram-threshold`). **Warns, never blocks.**
+>   - **Persistent out-of-process batch JVM** (`tools/mpxj/MpxjToMspdi.java` `--server` +
+>     `importers/mpp_mpxj.py::mpxj_batch_session`): **one heap-capped JVM** (`-Xmx`, default 1g) converts
+>     a whole ingest over a tagged (`@@SF@@`) stdin/stdout protocol — still **no JPype**; a hung JVM
+>     can't block (reader-thread queue + per-request timeout); one bad file is reported, never fatal.
+>     **Transparent fallback** to the existing per-file one-shot on any trouble — identical result;
+>     `parse_mpp`'s default and all its tests unchanged.
+> - **State:** v**1.0.37 → 1.0.38**; wheel + 9 installers in lockstep. New **ADR-0226**. Gate green
+>   locally (ruff / format / mypy --strict / bandit exit 0 / pytest / **parity untouched** / node --check);
+>   the batch JVM + SQLite verified against the real `00_REFERENCE_INTAKE/mpp/` files (one JVM for many
+>   `.mpp`; cache hit == fresh compute). No UI page shell added (a small Portfolio Memory panel only).
+> - **NEXT STEP:** **PR C = Feature 3a/3b** (margin terminology + confirmed margin-task overlay + effective
+>   margin showing BOTH numbers + 50%-consumed corrective flag; extends `margin.py`/`margin_dashboard.py`).
+>   Then F4 (roles), F3c (expected margin on the schedule-only SRA). Operator to-do (from the plan): a
+>   sample **.xer** to verify the XER Title path; a JCL S-curve export if joint cost-schedule is wanted;
+>   confirm the **RAM warning threshold** (default 16 GB); NASA margin params are entered in-tool.
+> - **Deferred (documented in ADR-0226):** full schedules still materialize in RAM (the estimate/warning
+>   governs it); true summary-only eviction + re-materialization from the parse cache is the natural
+>   follow-up.
+
+# (prior) Handoff — 2026-07-15 (SMAT v4 PR A: grouped ingestion + Portfolio; v1.0.37; highest ADR 0225)
+
+> ## STATUS (prev) — SMAT v4 Feature 1 (ADR-0225). Grouped ingestion + Portfolio Manager. Code changed.
 >
 > - **The v4 build:** the operator handed a large feature spec ("v4") — (1) group files into Projects,
 >   (2) scale to thousands + explicit RAM mode, (3) user-parameterized NASA margin, (4) role-selection

@@ -271,3 +271,53 @@ def test_mpxj_home_walks_up_to_the_deployed_layout(
     (runner / "MpxjToMspdi.class").write_bytes(b"\xca\xfe\xba\xbe")
     monkeypatch.setattr(mpp_mpxj, "__file__", str(fake_module / "mpp_mpxj.py"))
     assert mpp_mpxj._mpxj_home() == root / "tools" / "mpxj"
+
+
+# --- persistent batch JVM (v4 Feature 2 scale) ------------------------------------
+
+
+def test_batch_falls_back_to_one_shot_when_the_server_is_disabled(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # a batch session is open but the persistent JVM is disabled → each .mpp must still convert,
+    # transparently, via the one-shot subprocess (faked here). The result is identical.
+    monkeypatch.setenv("SF_MPXJ_NO_SERVER", "1")
+    monkeypatch.setattr(mpp_mpxj.shutil, "which", _fake_java)
+    monkeypatch.setattr(mpp_mpxj.subprocess, "run", _writer_run(_MINIMAL_MSPDI))
+    sample = tmp_path / "s.mpp"
+    sample.write_bytes(b"dummy")
+    with mpp_mpxj.mpxj_batch_session():
+        s = parse_mpp(sample)
+    assert s.task_by_id(1).name == "Solo"  # produced by the one-shot fallback
+
+
+@needs_java
+@pytest.mark.skipif(
+    not (PROJECT2.is_file() and PROJECT5.is_file()),
+    reason="sample .mpp files not present (git-ignored CUI intake)",
+)
+def test_batch_session_reuses_one_jvm_for_many_mpp(monkeypatch: pytest.MonkeyPatch) -> None:
+    starts = {"n": 0}
+    real_start = mpp_mpxj._try_start_server
+
+    def counting(home: Path) -> object:
+        starts["n"] += 1
+        return real_start(home)
+
+    monkeypatch.setattr(mpp_mpxj, "_try_start_server", counting)
+    with mpp_mpxj.mpxj_batch_session():
+        s2 = parse_mpp(PROJECT2)
+        s5 = parse_mpp(PROJECT5)
+    assert s2.name == "Commercial Construction"
+    assert s5.name == "Commercial Construction"
+    assert starts["n"] == 1  # ONE heap-capped JVM booted for both files, not one per file
+    # the batch result equals the one-shot result (same parser, same output)
+    assert set(s2.tasks_by_id) == {0} | set(range(2, 146))
+
+
+@needs_java
+def test_batch_reports_an_unreadable_file_without_hanging(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.mpp"
+    bad.write_bytes(b"not a real mpp file")
+    with mpp_mpxj.mpxj_batch_session(), pytest.raises(ImporterError, match="could not"):
+        parse_mpp(bad)
