@@ -53,6 +53,10 @@ class CatalogRow:
     unit: str
     status: str  # CheckStatus value: "PASS" | "FAIL" | "NA"
     offender_uids: tuple[int, ...]
+    #: False only when ``value`` is a placeholder for an unmeasurable metric (the audit did not
+    #: emit it / no population), so the UI shows "—" instead of a fabricated number. The
+    #: informational ribbon extras (real value, no threshold) stay ``True`` — their value is real.
+    applicable: bool = True
 
 
 #: The DCMA-14 library entries, in check order. Metadata mirrors help.py / the audit; values come
@@ -168,7 +172,10 @@ def evaluate_catalog(
     for mid, _name, unit, _lib, _thr, _desc in _DCMA_ENTRIES:
         check = by_id.get(mid)
         if check is None:
-            rows[mid] = CatalogRow(mid, 0.0, unit, CheckStatus.NOT_APPLICABLE.value, ())
+            # the audit did not emit this metric for this file → 0.0 is a placeholder, not a value
+            rows[mid] = CatalogRow(
+                mid, 0.0, unit, CheckStatus.NOT_APPLICABLE.value, (), applicable=False
+            )
             continue
         rows[mid] = CatalogRow(
             mid,
@@ -176,6 +183,8 @@ def evaluate_catalog(
             check.unit,
             check.status.value,
             tuple(c.unique_id for c in check.citations),
+            # a scored check reporting NA (empty population) also has no real value to show
+            applicable=check.status is not CheckStatus.NOT_APPLICABLE,
         )
 
     ribbon = compute_ribbon(schedule, cpm, audit)

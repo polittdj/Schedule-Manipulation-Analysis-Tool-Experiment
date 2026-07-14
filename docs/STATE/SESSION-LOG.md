@@ -5675,3 +5675,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   /api/activities/drill; JS tagging pinned). Full gate green (ruff/format/mypy/bandit/node/pytest).
 - **ADR-0218** (in HANDOFF + this log — drift guard green). Version 1.0.28 -> 1.0.29; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — audit remediation PR 2: presentation-bug batch M2/L1/L2/L10 (ADR-0219)
+
+- **Session:** operator "continue" — with the bar-drill backlog done (#352) and the Margin Dashboard
+  blocked, resumed the AUDIT-2026-07-13 roadmap. PR 1 (docs sweep) merged as #341; this is theme 2.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (fresh from origin/main after
+  #352 merged). Four display-only defects, no metric math changes:
+  - M2: missing-KPI sentinel `"&mdash;"` fed through _e=html.escape -> `&amp;mdash;` (literal `&mdash;`)
+    on 7/12 chapter KPI strips. Fixed by using the literal "—" (U+2014) sentinel everywhere (both quote
+    styles; safe in escaped AND raw-HTML paths). Prose ` &mdash; ` separators untouched.
+  - L1: workbench cell always serialized r.value (0.0 for an audit-absent metric) -> grid "0.00" not
+    "—" (fmt's "—" branch was dead). Added explicit applicable:bool to CatalogRow, set in
+    evaluate_catalog (False for placeholder/scored-NA, True for informational extras w/ real values);
+    serializer sends it; fmt shows "—" on applicable===false; Excel export uses `not r.applicable`
+    instead of the value==0 heuristic (grid+export agree; a real-0 extra still shows 0).
+  - L2: _what_changed_header mixed populations (total from compute_activity_makeup = active-only vs
+    added/changed from diff_versions = incl inactive) -> Unchanged miscount w/ deactivated tasks. Fixed
+    total = sum(1 for t in current.tasks if not t.is_summary).
+  - L10: ch-01 Gantt legend hard-coded hex -> var(--ok/--warn/--bad/--muted).
+- Chromium verified in ALL FOUR themes: legend swatches recolor per theme (distinct RGB; before all
+  four = frozen #2e7d32); 6 workbench NA cells show "—"; no &amp;mdash;; no console errors.
+- Tests: catalog applicable split (test_metric_catalog.py); test_presentation_fixes.py (_stat_cards
+  sentinel + source guard, /api/workbench applicable contract, one-population What-changed, token
+  legend); node harness test_workbench_fmt_js.py executing the real fmt (L1 / partial M8). Full gate
+  green (ruff/format/mypy/bandit/node/pytest 2097+).
+- **ADR-0219** (in HANDOFF + this log — drift guard green). Version 1.0.29 -> 1.0.30; wheel + 9
+  installers rebuilt in lockstep.
