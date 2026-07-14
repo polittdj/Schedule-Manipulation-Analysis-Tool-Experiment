@@ -103,6 +103,7 @@ cursor:pointer;text-decoration:underline}
 .notice.ok{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok)}
 .notice.err{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
 .notice.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid var(--warn);color:var(--ink)}
+.notice.info{background:color-mix(in srgb,var(--muted) 12%,transparent);border:1px solid var(--muted);color:var(--ink)}
 
 /* A1 (WCAG 2.4.7): a visible, theme-aware keyboard-focus ring on every interactive element.
    :focus-visible keeps it keyboard-only (no ring on mouse click). The --focus token was

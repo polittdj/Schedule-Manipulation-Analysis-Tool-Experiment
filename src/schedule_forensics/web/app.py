@@ -174,6 +174,11 @@ from schedule_forensics.engine.path_counterfactual import (
 )
 from schedule_forensics.engine.path_evolution import PathEvolution, compute_path_evolution
 from schedule_forensics.engine.path_trace import subschedule_to_target, topo_order
+from schedule_forensics.engine.projects import (
+    IngestRecord,
+    Project,
+    group_into_projects,
+)
 from schedule_forensics.engine.recommendations import (
     SEVERITY_ORDER,
     Category,
@@ -215,7 +220,6 @@ from schedule_forensics.engine.trend import (
     order_versions,
 )
 from schedule_forensics.importers import (
-    MAX_FILES,
     ImporterError,
     decode_xer_bytes,
     load_schedule,
@@ -408,6 +412,9 @@ class _Flash:
 
     accepted: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    #: non-blocking grouping notices (v4): folders with disagreeing internal titles, files grouped
+    #: by filename needing attention, or a data-date tie broken by last-modified time.
+    notices: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -479,10 +486,14 @@ class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk persistence."""
 
     schedules: dict[str, Schedule] = field(default_factory=dict)
+    # ingestion origin per loaded key (v4 grouped ingestion): key -> (top folder name or None for a
+    # loose file, browser last-modified epoch-ms or None). Feeds engine.projects grouping; the
+    # Schedule itself carries the real document Title (``project_title``). Cleared on wipe.
+    file_meta: dict[str, tuple[str | None, float | None]] = field(default_factory=dict)
     ai_config: AIConfig = field(default_factory=AIConfig)
     flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
-    # under the same key recomputes. Bounded by the ≤MAX_FILES loaded schedules; cleared on wipe.
+    # under the same key recomputes. Bounded by the loaded-schedule count; cleared on wipe.
     analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
@@ -613,6 +624,27 @@ class SessionState:
             by_obj = {id(s): k for k, s in self.schedules.items()}
             return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
 
+    def projects(self) -> tuple[Project, ...]:
+        """Loaded files grouped into Projects (v4 grouped ingestion). Folder uploads → one Project
+        per top folder (all files beneath it, any depth, its versions); loose files → grouped by
+        their real document Title; a title-less loose file → its own needs-attention Project.
+        Derived from ``schedules`` + ``file_meta`` on each call — pure and cheap (no engine math)."""
+        with self._lock:
+            records = [
+                IngestRecord(
+                    key=key,
+                    project_title=sch.project_title,
+                    filename=sch.source_file or key,
+                    status_date_ordinal=(
+                        sch.status_date.timestamp() if sch.status_date is not None else None
+                    ),
+                    folder=self.file_meta.get(key, (None, None))[0],
+                    mtime=self.file_meta.get(key, (None, None))[1],
+                )
+                for key, sch in self.schedules.items()
+            ]
+            return group_into_projects(records)
+
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
         """The cached analysis for ``key`` over the active scope; recomputes when the schedule object
         or the filter changes (both reflected in the scoped object's identity)."""
@@ -732,6 +764,8 @@ def _flash_html(flash: _Flash | None) -> str:
         parts.append(f'<div class="notice ok">Loaded {len(flash.accepted)}: {names}</div>')
     for err in flash.errors:
         parts.append(f'<div class="notice err">Could not import {_e(err)}</div>')
+    for note in flash.notices:
+        parts.append(f'<div class="notice info">{_e(note)}</div>')
     return "".join(parts)
 
 
@@ -1310,6 +1344,14 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     (
         "OVERVIEW",
         (
+            _Chapter(
+                "",
+                "Portfolio",
+                "/portfolio",
+                (),
+                ("Portfolio",),
+                "Every project across the portfolio, at a glance.",
+            ),
             _Chapter(
                 "",
                 "Mission Control",
@@ -2010,18 +2052,23 @@ def create_app(
 <div class=panel>
   <div id=dropzone class=dropzone>
     <div class=dz-icon>&#8682;</div>
-    <p class=dz-title>Drop a schedule here, or
-      <button type=button class=linkbtn id=pickBtn>choose a file&hellip;</button></p>
+    <p class=dz-title>Drop schedules here, or
+      <button type=button class=linkbtn id=pickBtn>choose files&hellip;</button>
+      <span class=muted>&middot;</span>
+      <button type=button class=linkbtn id=pickFolderBtn>choose a folder&hellip;</button></p>
     <p class=muted>Microsoft Project <code>.mpp</code> / <code>.mpt</code>, MS Project XML
-      <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>
-      &mdash; up to {MAX_FILES} at once.</p>
+      <code>.xml</code>, Primavera <code>.xer</code>, or the tool's own <code>.json</code>.
+      Load any number of files, or a whole folder (nested sub-folders and all) &mdash; a folder is
+      one Project and every schedule inside it is a version.</p>
     <div class=dz-actions>
       <form id=exampleForm action="/example" method=post><button type=submit class=btn>Load example</button></form>
-      <span class=muted>or import your own file above</span>
+      <span class=muted>or import your own above</span>
     </div>
   </div>
   <form id=uploadForm action="/upload" method=post enctype="multipart/form-data" hidden>
     <input id=fileInput type=file name=files multiple accept="{_ACCEPT}">
+    <input id=folderInput type=file name=files multiple webkitdirectory>
+    <input id=fileMeta type=hidden name=file_meta value="">
   </form>
 </div>
 <div id=loadOverlay class=load-overlay hidden role=status aria-live=assertive aria-hidden=true>
@@ -2071,20 +2118,26 @@ def create_app(
         )
 
     @app.post("/upload")
-    def upload(files: list[UploadFile]) -> RedirectResponse:
+    def upload(files: list[UploadFile], file_meta: str = Form("")) -> RedirectResponse:
         # sync on purpose: parsing runs in the threadpool, so the event loop keeps serving
-        # heartbeats and pages while big native .mpp files import (Java subprocess each)
+        # heartbeats and pages while big native .mpp files import (Java subprocess each). No file
+        # count cap (v4 grouped ingestion): a whole recursive folder of a project's versions loads
+        # in one go. `file_meta` is the client's per-file companion JSON (webkitRelativePath +
+        # last-modified), aligned to the upload order — the folder/version-order signal the raw
+        # multipart cannot carry.
         st = session()
         accepted: list[str] = []
         errors: list[str] = []
-        if len(files) > MAX_FILES:
-            dropped = len(files) - MAX_FILES
-            errors.append(
-                f"{dropped} file(s) beyond the {MAX_FILES}-file batch cap "
-                "(load them in a second batch)"
-            )
-        for upload_file in files[:MAX_FILES]:
+        ignored = 0  # non-schedule files inside a folder upload (skipped, not errored)
+        upload_exts = {e.lower() for e in supported_extensions()}
+        meta = _parse_upload_meta(file_meta)  # per-file (top-folder or None, mtime or None)
+        for i, upload_file in enumerate(files):
             name = upload_file.filename or "schedule"
+            # a folder upload sweeps in every file; silently skip anything that isn't a schedule
+            # (the operator cares only about the schedule files) — checked before any read
+            if Path(name).suffix.lower() not in upload_exts:
+                ignored += 1
+                continue
             # read one byte past the cap: whole-file reads are memory-bound, so an oversized file
             # is rejected with a named reason instead of exhausting RAM (QC audit INFO; 500 MB
             # comfortably exceeds any real schedule export)
@@ -2104,16 +2157,24 @@ def create_app(
                 continue
             key = _unique_key(_clean_key(name), st.schedules)
             st.schedules[key] = schedule.model_copy(update={"source_file": name})
+            st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
             accepted.append(key)
+        notices = list(_grouping_notices(st.projects())) if accepted else []
+        if ignored:
+            plural = "file" if ignored == 1 else "files"
+            notices.append(f"Skipped {ignored} non-schedule {plural} in the selection.")
         logger.info(
-            "loaded %d schedule(s); %d rejected; total now %d",
+            "loaded %d schedule(s); %d rejected; %d non-schedule skipped; total now %d",
             len(accepted),
             len(errors),
+            ignored,
             len(st.schedules),
         )
-        st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors))
-        # a single clean open jumps straight to its report; otherwise back to the dashboard
-        if len(accepted) == 1 and not errors:
+        st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors), notices=tuple(notices))
+        # a single clean open jumps straight to its report (one file is unambiguous — a title-less
+        # loose file's needs-attention flag can wait for /portfolio); but a folder ingest that also
+        # skipped non-schedule files goes to the dashboard so its manifest is seen
+        if len(accepted) == 1 and not errors and not ignored:
             return RedirectResponse(url=f"/analysis/{quote(accepted[0])}", status_code=303)
         return RedirectResponse(url="/", status_code=303)
 
@@ -2246,6 +2307,18 @@ def create_app(
                 with_drag=bool(drag),
             )
         )
+
+    @app.get("/portfolio", response_class=HTMLResponse)
+    def portfolio() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Portfolio",
+                "<div class=panel>Load schedules, or a whole project folder, to see the portfolio "
+                "rollup &mdash; every project across the session at a glance.</div>",
+            )
+        return _page(st, "Portfolio", _portfolio_body(st))
 
     @app.get("/mission", response_class=HTMLResponse)
     def mission_view() -> HTMLResponse:
@@ -5485,6 +5558,7 @@ def create_app(
         st = session()
         with st._lock:  # atomic vs any in-flight render (QC audit D18)
             st.schedules.clear()
+            st.file_meta.clear()
             st.analyses.clear()
             st.polished.clear()
             st.set_filter(())  # drop the session-wide group/filter and its scope cache
@@ -5554,6 +5628,54 @@ def _unique_key(base: str, existing: dict[str, Schedule]) -> str:
     while f"{base} ({counter})" in existing:
         counter += 1
     return f"{base} ({counter})"
+
+
+def _parse_upload_meta(file_meta: str) -> list[tuple[str | None, float | None]]:
+    """Parse the client's per-file companion metadata into ``(top_folder | None, mtime | None)``.
+
+    The browser POSTs a JSON array aligned to the upload order, each entry
+    ``{"rel": webkitRelativePath, "mtime": lastModified_ms}``. A folder upload gives
+    ``rel = "TopFolder/2023/x.mpp"`` → folder ``"TopFolder"``; a loose (individually picked) file
+    gives an empty ``rel`` → folder ``None``. Malformed / absent input returns ``[]`` (every file is
+    then treated as loose — a missing companion field is never an error, only a lost grouping hint).
+    """
+    if not file_meta:
+        return []
+    try:
+        parsed = json.loads(file_meta)
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    out: list[tuple[str | None, float | None]] = []
+    for entry in parsed:
+        rel = (
+            str(entry.get("rel") or "").replace("\\", "/").strip("/")
+            if isinstance(entry, dict)
+            else ""
+        )
+        folder = rel.split("/", 1)[0] if "/" in rel else None
+        raw = entry.get("mtime") if isinstance(entry, dict) else None
+        mtime = float(raw) if isinstance(raw, int | float) and not isinstance(raw, bool) else None
+        out.append((folder, mtime))
+    return out
+
+
+def _grouping_notices(projects: tuple[Project, ...]) -> tuple[str, ...]:
+    """One concise manifest line per Project that carries a grouping notice (disagreeing folder
+    titles, a title-less needs-attention file, or a data-date tie broken by last-modified time),
+    prefixed with the Project title. Deduplicated and capped so a large ingest can't flood the
+    dashboard."""
+    lines: list[str] = []
+    for p in projects:
+        for note in p.notices:
+            line = f"{p.title}: {note}"
+            if line not in lines:
+                lines.append(line)
+    cap = 8
+    if len(lines) > cap:
+        lines = [*lines[:cap], f"(+{len(lines) - cap} more grouping notices)"]
+    return tuple(lines)
 
 
 def _parse_upload(name: str, data: bytes) -> Schedule:
@@ -5885,6 +6007,66 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <div id=pathStatus class=muted></div>
 <div id=pathView class=path-view></div></div>
 <script src="/static/path.js"></script>"""
+
+
+def _portfolio_body(st: SessionState) -> str:
+    """The Portfolio Manager rollup: one row per Project (grouped from the loaded files/folders),
+    each showing its latest-version headline — computed finish, effective schedule margin, DCMA-14
+    pass/fail — plus an expandable version history (each version links to its full report). Every
+    number traces to the engine's per-version analysis; a Project whose latest version won't solve
+    shows "—". No new engine math (reuses ``analysis_for`` + ``compute_margin``)."""
+    intro = (
+        "<div class=panel><h2>Portfolio</h2>"
+        "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
+        "Each row is one Project; the headline is its latest version by data date. Expand a row for "
+        "the version history, or open any version's full report.</p>"
+        "<table><tr>"
+        "<th scope=col>Project</th><th scope=col>Versions</th>"
+        "<th scope=col>Latest data date</th><th scope=col>Computed finish</th>"
+        "<th scope=col>Effective margin</th><th scope=col>DCMA-14</th></tr>"
+    )
+    em = "—"  # the literal U+2014 sentinel (ADR-0219 M2: never the &mdash; entity)
+    rows: list[str] = []
+    for p in st.projects():
+        latest = p.versions[-1]  # versions are oldest-first, so the last is the current version
+        sch = st.schedules.get(latest.key)
+        data_date = finish = margin = dcma = em
+        if sch is not None:
+            if sch.status_date is not None:
+                data_date = _mdY(sch.status_date)
+            try:
+                analysis = st.analysis_for(latest.key, sch)
+                finish = _mdY(
+                    offset_to_datetime(sch.project_start, analysis.cpm.project_finish, sch.calendar)
+                )
+                margin = f"{compute_margin(sch, analysis.cpm).effective_margin_days:g} d"
+                passes = sum(1 for c in analysis.audit.checks if _status_class(c.status) == "pass")
+                fails = sum(1 for c in analysis.audit.checks if _status_class(c.status) == "fail")
+                cls = "rib-pass" if fails == 0 else "rib-fail"
+                dcma = f'<span class="{cls}">{passes} pass / {fails} fail</span>'
+            except CPMError:
+                pass  # unsolvable version → the headline stays "—", never a 500
+        attn = " <span class=muted>(needs attention)</span>" if p.needs_attention else ""
+        versions_html = "".join(
+            '<li><a class=btn-link href="/analysis/{k}">{f}</a>{dd}</li>'.format(
+                k=quote(v.key),
+                f=_e(v.filename),
+                dd=(
+                    f" <span class=muted>&middot; data date {_mdY(vs.status_date)}</span>"
+                    if (vs := st.schedules.get(v.key)) is not None and vs.status_date is not None
+                    else ""
+                ),
+            )
+            for v in p.versions
+        )
+        notices = "".join(f'<div class="notice info">{_e(n)}</div>' for n in p.notices)
+        rows.append(
+            f"<tr><td><details><summary><b>{_e(p.title)}</b>{attn}</summary>"
+            f"<ul>{versions_html}</ul>{notices}</details></td>"
+            f"<td>{len(p.versions)}</td><td>{data_date}</td><td>{finish}</td>"
+            f"<td>{margin}</td><td>{dcma}</td></tr>"
+        )
+    return intro + "".join(rows) + "</table></div>"
 
 
 def _mission_body(target_uid: int | None) -> str:

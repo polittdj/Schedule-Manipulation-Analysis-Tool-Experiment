@@ -5896,3 +5896,39 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   closed here (documented in ADR-0224).
 - **ADR-0224** (highest ADR now 0224, in HANDOFF + this log). Version **1.0.35 → 1.0.36**; wheel + 9
   installers rebuilt in lockstep. Full gate green.
+
+---
+
+## 2026-07-15 — SMAT v4 Feature 1: grouped ingestion + Portfolio Manager (ADR-0225)
+
+- **Session:** operator handed a large "v4" feature spec (group files into Projects; scale/RAM; NASA
+  margin; roles). Paused the AUDIT-2026-07-14 roadmap. **Red-teamed the plan before building** at the
+  operator's request: 10 candidate faults, each verified ≥4 ways, the risky ones **sandbox-tested in
+  isolated worktrees** — key findings: (a) `<input webkitdirectory>` doesn't reliably carry the folder
+  path in the multipart filename, and multipart carries no mtime → send `webkitRelativePath` +
+  `lastModified` as an explicit companion field; (b) a strict CSP blocks inline scripts + `form.submit()`
+  drops appended FormData → put it in vendored `home.js` via a hidden input; (c) pydantic
+  `model_dump_json` round-trips a Schedule byte-deterministically with identical analysis (banked for
+  F2's cache); (d) an opt-in `margin_uids` override and an mtime tiebreak are behavior-preserving by
+  construction. Plan approved; delivery is incremental, one PR per feature.
+- **Model/mode:** Opus 4.8. Fresh branch off origin/main (`claude/smat-audit-remediation-eeckdi`).
+- **Delivered (Feature 1 / PR A):** `Schedule.project_title` (real document Title only) across model +
+  MSPDI/XER/JSON importers; new pure `engine/projects.py` (`group_into_projects`: loose files → by
+  Title; a folder of any nesting depth → one Project named by its top folder, every schedule beneath a
+  version; title-less loose → needs-attention; non-blocking notices for disagreeing folder titles + an
+  mtime-tiebreak used flag; ordering reuses the `order_versions` data-date contract + a no-op-when-absent
+  mtime tiebreak). Web: a folder picker (`webkitdirectory`) + `home.js` `file_meta` companion field;
+  `/upload` reads it (top path segment = folder/Title, lastModified = tiebreak), **removes the 100-file
+  cap**, skips non-schedule files, keeps per-file fault tolerance; `SessionState.file_meta` +
+  `SessionState.projects()`; new **/portfolio** Portfolio Manager view (per-Project rollup + version
+  drill) in the OVERVIEW spine.
+- **Tests:** engine grouping (8 cases) + `project_title` in all importers; web grouped-ingestion
+  (loose-by-title, folder-by-top-name, no-cap, non-schedule-skip, disagreeing-titles notice,
+  needs-attention) + Portfolio render; old batch-cap test replaced with a no-cap test; `/portfolio`
+  added to the air-gap scan. **Parity untouched** (project_title is additive; no engine math). 4-theme
+  Chromium verified. `test_egress` unaffected (no new dep).
+- **Scale caveat (documented):** F1 removes the cap + folder-ingests but still holds full schedules in
+  RAM and converts .mpp per-file; F2 (next) adds the single persistent JVM + lazy summary tier + SQLite
+  cache + explicit RAM-load for real thousands-scale.
+- **ADR-0225** (highest ADR now 0225, in HANDOFF + this log). Version **1.0.36 → 1.0.37**; wheel + 9
+  installers rebuilt in lockstep.

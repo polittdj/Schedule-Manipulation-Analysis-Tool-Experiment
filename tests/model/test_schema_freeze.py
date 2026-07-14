@@ -74,6 +74,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
     },
     Schedule: {
         "name",
+        "project_title",
         "source_file",
         "project_start",
         "project_finish",

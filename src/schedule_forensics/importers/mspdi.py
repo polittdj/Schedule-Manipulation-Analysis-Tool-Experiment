@@ -177,11 +177,15 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     project_finish = parse_datetime(_text(root, "FinishDate"))
     status_date = parse_datetime(_text(root, "StatusDate"))
     baseline_finish = _project_baseline_finish(root)
-    name = _text(root, "Title") or _text(root, "Name") or (source_file or "Untitled")
+    # the real document Title (for grouping files into Projects) — None when the file carries none,
+    # kept distinct from ``name`` which falls back to <Name>/filename
+    project_title = _text(root, "Title")
+    name = project_title or _text(root, "Name") or (source_file or "Untitled")
 
     try:
         return Schedule(
             name=name,
+            project_title=project_title,
             source_file=source_file,
             project_start=project_start,
             project_finish=project_finish,

@@ -625,6 +625,20 @@ def test_project_calendar_weekdays_minutes_and_holidays() -> None:
     )
 
 
+def test_project_title_reads_the_document_title_distinct_from_name() -> None:
+    """v4 grouped ingestion: ``project_title`` is the real MSPDI ``<Title>`` (None when absent),
+    distinct from ``name`` (which falls back to ``<Name>``/filename)."""
+    titled = _doc("<Title>Commercial Construction</Title><Name>proj.xml</Name>" + _TASK_A)
+    sch = parse_mspdi_text(titled)
+    assert sch.project_title == "Commercial Construction"
+    assert sch.name == "Commercial Construction"
+
+    # no <Title> → project_title is None, but name still falls back to <Name>
+    untitled = parse_mspdi_text(_doc("<Name>fallback-name</Name>" + _TASK_A))
+    assert untitled.project_title is None
+    assert untitled.name == "fallback-name"
+
+
 def test_project_calendar_reads_a_24_hour_continuous_day() -> None:
     """audit H3: a 24-hour continuous-ops ("24 Hours") calendar encodes each working day as a
     single 00:00 -> 00:00 span (finish == the next midnight). It must parse as 1440 working

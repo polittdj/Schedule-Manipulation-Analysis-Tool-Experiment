@@ -244,6 +244,24 @@ def test_dangling_relationship_is_dropped() -> None:
     assert sched.relationships == ()
 
 
+def test_project_title_is_the_project_short_name() -> None:
+    """v4 grouped ingestion: XER has no exact document Title, so ``project_title`` is the best-
+    available real project identity — ``proj_short_name`` (None when absent)."""
+    text = _xer(
+        [
+            _MIN_PROJECT,
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["10", "1", "A", "TT_Task", "8"]],
+            ),
+        ]
+    )
+    sched = parse_xer_text(text)
+    assert sched.project_title == "P1"
+    assert sched.name == "P1"
+
+
 def test_duplicate_task_id_raises() -> None:
     text = _xer(
         [

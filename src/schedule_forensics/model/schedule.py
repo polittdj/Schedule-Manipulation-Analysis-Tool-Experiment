@@ -29,6 +29,11 @@ class Schedule(StrictFrozenModel):
     """A complete project schedule at one status date."""
 
     name: str
+    #: The document/project **Title** exactly as the source file carries it (MSPDI ``<Title>``, XER
+    #: ``proj_short_name``), or ``None`` when the file has none. Distinct from ``name`` (which falls
+    #: back to ``<Name>``/filename): grouping files into Projects needs the real Title, and "no real
+    #: Title" must stay distinguishable from "titled by filename" (v4 grouped ingestion).
+    project_title: str | None = None
     source_file: str | None = None  # file name for citations (file + UID + task name)
     project_start: dt.datetime
     project_finish: dt.datetime | None = None

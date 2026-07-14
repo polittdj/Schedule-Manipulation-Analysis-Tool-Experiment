@@ -56,6 +56,7 @@ def test_no_external_references_anywhere(client: TestClient) -> None:
         "/scurve",
         "/sra",
         "/ribbon",
+        "/portfolio",
         "/briefing",
         "/settings",
         "/help",
