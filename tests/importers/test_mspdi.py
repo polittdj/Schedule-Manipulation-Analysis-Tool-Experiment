@@ -625,6 +625,48 @@ def test_project_calendar_weekdays_minutes_and_holidays() -> None:
     )
 
 
+def test_project_calendar_reads_a_24_hour_continuous_day() -> None:
+    """audit H3: a 24-hour continuous-ops ("24 Hours") calendar encodes each working day as a
+    single 00:00 -> 00:00 span (finish == the next midnight). It must parse as 1440 working
+    minutes/day across all seven days, not fall back to the 8h/day default. Verified against the
+    operator's real 'Hard_File_updated3 24 hour calendar.mpp' (MPXJ-converted): the '24 Hours'
+    base calendar there parses to 1440 min/day with this fix (was 480 before)."""
+    week = [_weekday(d, ("00:00:00", "00:00:00")) for d in range(1, 8)]
+    body = f"""
+<CalendarUID>10</CalendarUID>
+<Calendars><Calendar><UID>10</UID><Name>24 Hours</Name><IsBaseCalendar>1</IsBaseCalendar>
+<BaseCalendarUID>-1</BaseCalendarUID>
+<WeekDays>{"".join(week)}</WeekDays>
+</Calendar></Calendars>{_TASK_A}"""
+    cal = parse_mspdi_text(_doc(body)).calendar
+    assert cal.name == "24 Hours"
+    assert cal.working_minutes_per_day == 1440
+    assert cal.work_weekdays == (0, 1, 2, 3, 4, 5, 6)  # all seven days worked
+    assert cal.holidays == ()
+
+
+def test_real_24_hour_calendar_file_parses_to_full_days() -> None:
+    """End-to-end on the operator's real ``Hard_File_updated3 24 hour calendar.mpp`` (MPXJ-converted
+    to MSPDI, stored gzipped): the "24 Hours" base calendar the operator applied to four tasks (with
+    resource calendars ignored) parses to 1440 working minutes/day (audit H3). Before the
+    ``working_time_span`` fix this file's 24h calendar fell back to 480 (8h/day)."""
+    import gzip
+
+    golden = (
+        Path(__file__).resolve().parents[1]
+        / "fixtures"
+        / "golden"
+        / "fuse_hardfile"
+        / "Hard_File_updated3_24hr.mspdi.xml.gz"
+    )
+    sch = parse_mspdi_text(gzip.decompress(golden.read_bytes()).decode("utf-8-sig"))
+    cal = next((c for c in sch.calendars if c.uid == 10), None)
+    assert cal is not None and cal.name == "24 Hours"
+    assert cal.working_minutes_per_day == 1440  # the full continuous day, not the 8h fallback
+    # the operator applied the 24h calendar to exactly these four tasks
+    assert sorted(t.unique_id for t in sch.tasks if t.calendar_uid == 10) == [14, 302, 385, 389]
+
+
 def test_derived_project_calendar_inherits_base_week_and_collects_chain_exceptions() -> None:
     # the project calendar (UID 9) has no WeekDays of its own — its base (UID 1)
     # provides the week pattern, and exceptions on BOTH levels become holidays

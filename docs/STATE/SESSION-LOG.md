@@ -5859,3 +5859,40 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (**2123 passed**), doc-drift + metric-dictionary guards green.
 - **ADR-0223** (extends 0219; highest ADR now 0223, in HANDOFF + this log). Version **1.0.34 → 1.0.35**;
   wheel + 9 installers rebuilt in lockstep.
+- **PR #359 outcome:** merged (squash `60b0a40`), CI fully green. During CI a newly-published advisory
+  (PYSEC-2026-3447) hit setuptools 79.0.1 and turned the bare `pip-audit` gate red on every branch — the
+  exact latent flake AUDIT-2026-07-13 predicted. Remediated (not suppressed): pinned `setuptools>=83.0.0`
+  in the dev extras (build tool only, never a runtime dep; `pip-audit` stays fully active). Merged in the
+  same PR.
+
+---
+
+## 2026-07-14 — AUDIT-2026-07-14 remediation, theme 2: H3 + L8 24-hour calendar parse (ADR-0224)
+
+- **Session:** the last High on the roadmap. Operator supplied a real reference file mid-session
+  (`00_REFERENCE_INTAKE/mpp/Hard_File_updated3 24 hour calendar.mpp` — 24h calendar applied to 4 tasks,
+  resource calendars ignored) and asked "does this give you what you need?" — yes; used it to verify.
+- **Model/mode:** Opus 4.8. Fresh branch off origin/main (`claude/smat-audit-remediation-eeckdi`).
+- **Verify-first:** converted the .mpp through MPXJ and inspected the calendar encoding BEFORE touching
+  code — a full 24-hour day is written `<FromTime>00:00:00</FromTime><ToTime>00:00:00</ToTime>` (i.e.
+  `00:00 → 00:00`, NOT `00:00 → 24:00`), confirmed across all three 24h calendars in the file. As
+  shipped, the "24 Hours" calendar parsed to 480 min/day (8h); the 4 tasks on it ran on an 8-hour day.
+- **Finding (H3 + L8):** `importers/_common.py::working_time_span` rescued a midnight finish
+  (`to_min == 0 → 24:00`) only `if from_min > 0`, so `00:00 → 00:00` (from == to == 0) hit
+  `to_min <= from_min` and returned `None` → 0 working minutes → the calendar fell back to the 8h default.
+  The XER path (`_parse_clndr_data`, summing the same `working_span_minutes`) lost the P6 `s|00:00|f|00:00`
+  24h day identically — the shared root the audit flagged (H3 = MSPDI, L8 = XER sibling).
+- **Fix:** drop the `from_min > 0` guard — `if to_min == 0: to_min = 24*60`. `00:00 → 00:00` now yields
+  `(0, 1440)`; every other span unchanged; a real zero-length/inverted span is still `None`. One change
+  fixes both importers.
+- **Tests:** `working_time_span` unit (00:00→00:00 == (0,1440), plus unchanged/None cases); synthetic
+  MSPDI "24 Hours" calendar → 1440 across 7 days; synthetic XER `clndr_data` 24h day → 1440 with
+  `day_hr_cnt=8` (proving clndr_data wins over the fallback); and an end-to-end test on the operator's
+  real file, stored gzipped as `tests/fixtures/golden/fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz`
+  (24 Hours → 1440, tasks 14/302/385/389 on it). **Parity unchanged (36 passed)** — no committed golden
+  carries a 00:00→00:00 calendar, so this was a latent bug only a continuous-ops schedule triggers.
+- **Tracked remainder:** L8's *other* aspect (XER extra-working-day exceptions dropped) is unrelated to
+  the 24h root, parity-sensitive, and has no reference file — left as tracked XER under-modeling, not
+  closed here (documented in ADR-0224).
+- **ADR-0224** (highest ADR now 0224, in HANDOFF + this log). Version **1.0.35 → 1.0.36**; wheel + 9
+  installers rebuilt in lockstep. Full gate green.

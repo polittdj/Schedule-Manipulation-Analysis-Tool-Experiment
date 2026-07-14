@@ -1,6 +1,38 @@
-# Handoff — 2026-07-14 (AUDIT PR: NEW-1 float-extra applicability, all 3 surfaces; v1.0.35; highest ADR 0223)
+# Handoff — 2026-07-14 (AUDIT PR: H3+L8 24-hour calendar parse; v1.0.36; highest ADR 0224)
 
-> ## STATUS (current) — AUDIT-2026-07-14 remediation, theme 1: NEW-1 (ADR-0223). Fidelity fix, code changed.
+> ## STATUS (current) — AUDIT-2026-07-14 remediation, theme 2: H3 + L8 (ADR-0224). Fidelity fix, code changed.
+>
+> - **What shipped:** H3 + L8 (the last High) — a 24-hour continuous-ops calendar ("24 Hours" in MS
+>   Project, the P6 equivalent) encodes each working day as `00:00 → 00:00` (finish = next midnight).
+>   `importers/_common.py::working_time_span` collapsed that to `None` (the `to_min == 0` midnight rescue
+>   was gated on `from_min > 0`), so the whole calendar fell back to the 8h/day default (480) — every task
+>   on it was scheduled on an 8-hour day. Fix: drop the `from_min > 0` guard so `00:00 → 00:00` reads as
+>   the full `(0, 1440)` day; every other span is unchanged and a real zero-length/inverted span is still
+>   `None`. Both importers route per-day minutes through `working_time_span`/`working_span_minutes`, so the
+>   one change fixes H3 (MSPDI) and the 24h-day half of L8 (XER).
+> - **Verify-first, against the operator's real file:** operator committed `00_REFERENCE_INTAKE/mpp/
+>   Hard_File_updated3 24 hour calendar.mpp` (24h calendar on 4 tasks, resource cals ignored). MPXJ
+>   conversion confirmed the `00:00:00 → 00:00:00` encoding (NOT `00:00→24:00`) before any code change;
+>   the "24 Hours" calendar parsed to 480 as-shipped, 1440 after the fix.
+> - **State:** v**1.0.35 → 1.0.36**; wheel + 9 installers rebuilt in lockstep. New **ADR-0224**. Gate
+>   fully green (ruff / ruff format / mypy --strict / bandit exit 0 / full pytest / **parity 36 passed,
+>   unchanged** / doc-drift / metric-dictionary). Draft PR on branch
+>   `claude/smat-audit-remediation-eeckdi`.
+> - **Tests:** `working_time_span` unit (00:00→00:00 == (0,1440) + unchanged/None cases); synthetic MSPDI
+>   "24 Hours" → 1440 (7 days); synthetic XER `clndr_data` 24h → 1440 (day_hr_cnt=8 proves clndr_data
+>   wins); end-to-end on the operator's real file, stored gzipped at
+>   `tests/fixtures/golden/fuse_hardfile/Hard_File_updated3_24hr.mspdi.xml.gz`.
+> - **Tracked remainder:** L8's *other* aspect — XER extra-working-day exceptions dropped (unrelated to
+>   the 24h root, parity-sensitive, no reference file yet) — is NOT closed here; see ADR-0224.
+> - **NEXT STEP (operator's choice — wait for a 'continue'):** **PR 6 = H1 + M4 + M5** (AI figure-gate
+>   hardening; highest care, Law 2) — gate `_ai_translate` via `citations.preserves_figures`; extend
+>   `figure_tokens` with a number-word lexicon; extend `_LOADED_TERMS` + stem matching. Then PR 7
+>   (M6+L3+L4 dead CUI defenses) → PR 8 (M7+M8+L5/NEW-3+M11+NEW-2 test harnesses) → PR 9 (L6/L7/L9/N1/N2).
+>   Full backlog in **`docs/STATE/AUDIT-2026-07-14.md`**.
+
+# (prior) Handoff — 2026-07-14 (AUDIT PR: NEW-1 float-extra applicability, all 3 surfaces; v1.0.35; highest ADR 0223)
+
+> ## STATUS — AUDIT-2026-07-14 remediation, theme 1: NEW-1 (ADR-0223). Fidelity fix, code changed.
 >
 > - **What shipped:** NEW-1 — the two float ribbon extras `avg_float_days`/`max_float_days` are a
 >   mean/max over the incomplete-activity population; on a fully-progressed schedule that population is

@@ -189,14 +189,19 @@ def clock_minutes(value: str | None) -> int | None:
 def working_time_span(start: str | None, finish: str | None) -> tuple[int, int] | None:
     """One working-time block as ``(from, to)`` minutes-from-midnight, ``None`` when unusable.
 
-    A finish of ``00:00`` with a later start is the sources' end-of-day midnight (24:00) —
-    P6 and MS Project both write it for spans that run to midnight.
+    A finish of ``00:00`` is the sources' end-of-day midnight (24:00) — P6 and MS Project both
+    write it for any span that runs to midnight. That includes a **full 24-hour continuous day**,
+    which both tools encode as ``00:00`` → ``00:00`` (a continuous-ops / "24 Hours" base calendar);
+    it must read as the whole day (1440 min), not collapse to nothing — the earlier
+    ``from_min > 0`` guard dropped exactly this case, so a 24h calendar fell back to the 8h/day
+    default (audit H3/L8). A genuine zero-length or inverted span (``08:00`` → ``08:00``,
+    ``12:00`` → ``08:00``) still returns ``None``.
     """
     from_min = clock_minutes(start)
     to_min = clock_minutes(finish)
     if from_min is None or to_min is None:
         return None
-    if to_min == 0 and from_min > 0:
+    if to_min == 0:
         to_min = 24 * 60
     if to_min <= from_min:
         return None

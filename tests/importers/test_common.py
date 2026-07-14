@@ -139,6 +139,21 @@ def test_working_span_minutes_handles_midnight_end_and_garbage() -> None:
     assert working_span_minutes("08:00", "junk") == 0
 
 
+def test_working_time_span_reads_full_24_hour_day() -> None:
+    """audit H3/L8: MS Project and P6 both encode a full 24-hour continuous day as 00:00 -> 00:00
+    (finish == the *next* midnight). It must read as the whole 1440-minute day, not collapse to
+    nothing (which fell back to the 8h/day default). A zero-length/inverted span is still None."""
+    from schedule_forensics.importers._common import working_span_minutes, working_time_span
+
+    assert working_time_span("00:00:00", "00:00:00") == (0, 24 * 60)
+    assert working_span_minutes("00:00", "00:00") == 24 * 60  # a full 24h day
+    assert working_span_minutes("00:00:00", "00:00:00") == 24 * 60  # HH:MM:SS encoding
+    # partial spans that run to midnight are unchanged (start > 0)
+    assert working_span_minutes("08:00", "00:00") == 16 * 60
+    # a genuine zero-length span (both ends the same, non-midnight) is still noise
+    assert working_time_span("08:00", "08:00") is None
+
+
 def test_dominant_day_minutes_is_modal_with_larger_tiebreak() -> None:
     from schedule_forensics.importers._common import dominant_day_minutes
 
