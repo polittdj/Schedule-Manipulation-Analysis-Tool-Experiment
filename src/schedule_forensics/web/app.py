@@ -3777,6 +3777,57 @@ def create_app(
         )
         return _export_response(fmt, tableset, "metric-workbench")
 
+    @app.get("/export/{fmt}/margin")
+    def export_margin(fmt: str) -> Response:
+        """The margin/contingency burn-down + the erosion summary as one Excel/Word workbook."""
+        if (bad := _bad_format(fmt)) is not None:
+            return bad
+        d = _margin_dashboard_for(session())
+        headers = (
+            "Status date",
+            "Target",
+            "Planned margin (wd)",
+            "Margin (wd)",
+            "Consumed (wd)",
+            "Contingency (days)",
+            "Total available",
+            "NASA requirement (wd)",
+            "Days-to-go",
+            "% available",
+            "% effective",
+            "Trigger",
+        )
+        body: list[tuple[Cell, ...]] = [
+            (
+                m.status_date or "—",
+                m.target_name or "project finish",
+                m.planned_margin_wd if m.planned_margin_wd is not None else "—",
+                m.effective_margin_wd,
+                m.consumed_wd if m.consumed_wd is not None else "—",
+                m.contingency_wd,
+                m.total_available,
+                m.nasa_rqmt_wd,
+                m.days_to_go,
+                round(100 * m.pct_available, 1) if m.pct_available is not None else "—",
+                round(100 * m.pct_effective, 1) if m.pct_effective is not None else "—",
+                "trigger" if m.below_requirement else "ok",
+            )
+            for m in d.months
+        ]
+        erosion: tuple[tuple[Cell, ...], ...] = (
+            ("Erosion (work days / month)", d.erosion_wd_per_month),
+            ("Projected zero-margin date", d.zero_margin_date or "—"),
+            ("Trend fit R-squared", d.erosion_r2),
+        )
+        tableset = TableSet(
+            "Margin Dashboard",
+            (
+                Table("Margin & contingency burn-down (oldest first)", headers, tuple(body)),
+                Table("Margin erosion trend", ("Measure", "Value"), erosion),
+            ),
+        )
+        return _export_response(fmt, tableset, "margin-dashboard")
+
     @app.get("/export/{fmt}/workbench-drill/{name}")
     def export_workbench_drill(
         fmt: str, name: str, metric: str = Query(...), cols: str = Query("")
@@ -8031,6 +8082,8 @@ def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
                 "target_finish": m.target_finish,
                 "zero_margin_finish": m.zero_margin_finish,
                 "effective_margin_wd": m.effective_margin_wd,
+                "planned_margin_wd": m.planned_margin_wd,
+                "consumed_wd": m.consumed_wd,
                 "margin_cd": m.margin_cd,
                 "contingency_wd": m.contingency_wd,
                 "total_available": m.total_available,
@@ -8111,10 +8164,14 @@ def _margin_dashboard_body(st: SessionState) -> str:
     def _row(m: MarginMonth) -> str:
         pct = f"{100 * m.pct_available:.1f}%" if m.pct_available is not None else "—"
         sd = _mdY(m.status_date) if m.status_date else "—"
+        planned = f"{m.planned_margin_wd:g}" if m.planned_margin_wd is not None else "—"
+        consumed = f"{m.consumed_wd:g}" if m.consumed_wd is not None else "—"
         trig = "&#9888; trigger" if m.below_requirement else "ok"
         return (
             f"<tr{' class=below' if m.below_requirement else ''}><td>{_e(sd)}</td>"
+            f"<td class=num>{planned}</td>"
             f"<td class=num>{m.effective_margin_wd:g}</td>"
+            f"<td class=num>{consumed}</td>"
             f"<td class=num>{m.contingency_wd}</td>"
             f"<td class=num>{m.total_available:g}</td>"
             f"<td class=num>{m.nasa_rqmt_wd:g}</td>"
@@ -8140,11 +8197,12 @@ def _margin_dashboard_body(st: SessionState) -> str:
         "the honest linear read of the current trend, not a commitment.</p>"
         '<div class="chart-host" id="marginErosionChart"></div></div>'
         '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
-        "<table><tr><th scope=col>Status date</th><th scope=col>Margin (wd)</th>"
+        "<table><tr><th scope=col>Status date</th><th scope=col>Planned (wd)</th>"
+        "<th scope=col>Margin (wd)</th><th scope=col>Consumed</th>"
         "<th scope=col>Contingency</th><th scope=col>Total avail.</th>"
         "<th scope=col>NASA rqmt (wd)</th><th scope=col>Days-to-go</th>"
         "<th scope=col>% available</th><th scope=col>Trigger</th></tr>"
-        f"{rows or '<tr><td colspan=8 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
+        f"{rows or '<tr><td colspan=10 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
         f'<script type="application/json" id=marginDashData>{blob}</script>'
         '<script src="/static/margin_dashboard.js"></script>'
     )

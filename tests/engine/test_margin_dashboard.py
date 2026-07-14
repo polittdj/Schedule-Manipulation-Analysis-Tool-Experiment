@@ -111,6 +111,14 @@ def test_erosion_trend_projects_a_zero_margin_date() -> None:
     assert dt.date.fromisoformat(d.zero_margin_date) > dt.date(2026, 5, 29)
 
 
+def test_planned_margin_carries_the_prior_month_end_forward() -> None:
+    d = _dash(_MARGINS)
+    # workbook column F: this period's PLANNED start == the prior version's actual month-end margin
+    assert [m.planned_margin_wd for m in d.months] == [None, 40.0, 30.0, 20.0]
+    # consumed = planned - actual: 10 work days of margin burned each period (first has no prior)
+    assert [m.consumed_wd for m in d.months] == [None, 10.0, 10.0, 10.0]
+
+
 def test_flat_margin_has_no_zero_margin_date() -> None:
     d = _dash([("2026-02-27", 30), ("2026-03-31", 30), ("2026-04-30", 30)])
     assert d.erosion_wd_per_month == 0.0

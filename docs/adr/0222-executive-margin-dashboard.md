@@ -62,6 +62,8 @@ projected zero-margin marker), and the per-version table, all vendored/air-gappe
   `tests/web/test_margin_dashboard_view.py` (the page shell + the API contract + the empty state).
   Chromium-verified in all four themes (burn-down bars recolor red below the requirement; erosion
   trend + zero-margin marker draw; no console errors).
-- **Follow-ups (noted, not built):** an Excel export of the burn-down table, and the reference
-  workbook's separate month-start "planned" column (the tool tracks the actual per status date; the
-  NASA requirement line is the planned guideline).
+- **Follow-ups (built in a v1.0.34 increment):** the burn-down + erosion summary now export to
+  Excel/Word (`/export/{fmt}/margin`), and the workbook's month-start **planned** column is carried
+  forward per version (column F = the prior version's actual month-end margin), surfacing the margin
+  **consumed** each period (planned − actual). The planned level is drawn as a tick on each burn-down
+  bar. Both are additive; the effective-margin math is unchanged.

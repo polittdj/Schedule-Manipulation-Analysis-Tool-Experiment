@@ -5780,3 +5780,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   through MPXJ, inspect 00:00->00:00 vs 00:00->24:00 before fixing working_time_span). Detail in HANDOFF.
 - **ADR-0222** (in HANDOFF + this log — drift guard green). Version 1.0.32 -> 1.0.33; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — Margin Dashboard follow-ups: Excel export + month-start planned column (ADR-0222)
+
+- **Session:** operator picked follow-up option 2 — the two Margin-Dashboard items ADR-0222 noted but
+  did not build.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (fresh from origin/main after
+  #356 merged).
+- Excel/Word export: new /export/{fmt}/margin (the dashboard's export bar was dead until now) — the
+  burn-down table + an erosion-summary table (rate / zero-margin date / R²) via the standard TableSet +
+  _export_response machinery.
+- Month-start planned column (workbook F): MarginMonth.planned_margin_wd = the prior version's actual
+  month-end effective margin (carried forward via dataclasses.replace in compute_margin_dashboard);
+  .consumed_wd property = planned - actual. Surfaced in the API, the per-version table (Planned +
+  Consumed columns), and as a tick on each burn-down bar + legend entry in margin_dashboard.js.
+- Additive only; effective-margin math unchanged; no parity impact. Tests extended (engine
+  planned/consumed; web planned API + export returns real xlsx/docx + bad-format 404). Chromium
+  re-verified (planned tick + legend, no console errors). Full gate green (2116 passed).
+- **ADR-0222 (amended** — follow-ups now marked built; highest ADR still 0222, in HANDOFF + this log,
+  drift guard green). Version 1.0.33 -> 1.0.34; wheel + 9 installers rebuilt in lockstep.
