@@ -37,7 +37,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import non_summary
@@ -92,6 +92,16 @@ class MarginMonth:
     pct_available: float | None  # R — total available / days-to-go (0..1)
     pct_effective: float | None  # T — margin calendar days / days-to-go (0..1)
     below_requirement: bool  # trigger: effective margin < the NASA requirement line
+    #: F — planned margin at the month's START = the prior version's actual month-end margin
+    #: (carried forward). None for the first version (nothing precedes it).
+    planned_margin_wd: float | None = None
+
+    @property
+    def consumed_wd(self) -> float | None:
+        """Work-day margin consumed this period (planned month-start - actual month-end)."""
+        if self.planned_margin_wd is None:
+            return None
+        return round(self.planned_margin_wd - self.effective_margin_wd, 1)
 
 
 @dataclass(frozen=True)
@@ -209,10 +219,18 @@ def compute_margin_dashboard(
     and present in a version, else that version's project finish (operator choice 2026-07-14). The
     Gold-Rule requirement rate defaults to 30 work-days/year. ``have_margin_tasks`` is False when no
     loaded version carries an activity named "margin" (the burn-down would be all zeros)."""
-    months = tuple(
+    raw = [
         _margin_month(label, sch, cpm, target_uid, gold_rule_per_year)
         for label, sch, cpm in versions
-    )
+    ]
+    # carry each version's actual month-end margin forward as the NEXT version's planned month-start
+    # (workbook column F): this period's plan is where margin stood at the end of the last one.
+    filled: list[MarginMonth] = []
+    prev_eff: float | None = None
+    for m in raw:
+        filled.append(replace(m, planned_margin_wd=prev_eff))
+        prev_eff = m.effective_margin_wd
+    months = tuple(filled)
     have_margin = any(is_margin_task(t) for _label, sch, _cpm in versions for t in non_summary(sch))
     erosion_pm, zero_date, r2 = _erosion(months)
     return MarginDashboard(

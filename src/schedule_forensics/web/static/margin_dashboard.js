@@ -97,6 +97,13 @@
       var rCon = svgEl("rect", { x: x0, y: yc, width: bw, height: Math.max(0.5, hc), fill: ACC, opacity: 0.55 });
       tip(rCon, m.status_date + " — contingency " + m.contingency_wd + " days (total available " + m.total_available + ")");
       svg.appendChild(rCon);
+      // planned margin at the period START (prior month-end) — a tick showing what was consumed
+      if (m.planned_margin_wd != null) {
+        var yp = y(m.planned_margin_wd);
+        var tick = svgEl("line", { x1: x0 - 2, y1: yp, x2: x0 + bw + 2, y2: yp, stroke: MUT, "stroke-width": 1.6 });
+        tip(tick, m.status_date + " — planned (period start) " + m.planned_margin_wd + " wd; consumed " + m.consumed_wd + " wd this period");
+        svg.appendChild(tick);
+      }
       if (n <= 24) txt(svg, x(i), B + 12, shortDate(m.status_date), { anchor: "middle", size: 8 });
     });
     // NASA Gold-Rule requirement line (per month)
@@ -110,6 +117,7 @@
       { color: ACC, label: "Contingency (days)", op: 0.55 },
       { color: BAD, label: "Below requirement" },
       { color: WARN, label: "NASA requirement", dash: "5 3" },
+      { color: MUT, label: "Planned (period start)", dash: "0" },
     ]);
     txt(svg, R, B + 12, "status date", { anchor: "end", size: 8.5 });
   }

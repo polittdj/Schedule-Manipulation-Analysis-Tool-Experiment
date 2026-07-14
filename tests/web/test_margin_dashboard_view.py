@@ -82,6 +82,21 @@ def test_dashboard_api_carries_the_workbook_columns_and_erosion() -> None:
     assert dt.date.fromisoformat(d["zero_margin_date"]) > dt.date(2026, 5, 29)
 
 
+def test_dashboard_carries_planned_column_and_exports() -> None:
+    c = _client(_MARGINS)
+    d = c.get("/api/margin/dashboard").json()
+    # the month-start planned column (workbook F) + margin consumed per period
+    assert [m["planned_margin_wd"] for m in d["months"]] == [None, 40.0, 30.0, 20.0]
+    assert [m["consumed_wd"] for m in d["months"]] == [None, 10.0, 10.0, 10.0]
+    assert "Planned (wd)" in c.get("/margin").text
+    # the burn-down + erosion summary export as a real Excel / Word file
+    x = c.get("/export/xlsx/margin")
+    assert x.status_code == 200 and "spreadsheetml" in x.headers["content-type"]
+    assert len(x.content) > 0
+    assert c.get("/export/docx/margin").status_code == 200
+    assert c.get("/export/bogus/margin").status_code == 404
+
+
 def test_dashboard_empty_when_no_margin_activity() -> None:
     d = _client(_MARGINS, named=False).get("/api/margin/dashboard").json()
     assert d["have_margin_tasks"] is False

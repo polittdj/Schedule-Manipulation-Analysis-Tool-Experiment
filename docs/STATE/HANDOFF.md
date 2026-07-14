@@ -1,6 +1,31 @@
-# Handoff — 2026-07-14 (operator feature — Executive Margin Dashboard; v1.0.33; highest ADR 0222)
+# Handoff — 2026-07-14 (Margin Dashboard follow-ups — Excel export + planned column; v1.0.34; highest ADR 0222)
 
-> ## STATUS (current) — operator feature: Executive Margin Dashboard (ADR-0222)
+> ## STATUS (current) — Margin Dashboard follow-ups: Excel/Word export + month-start planned column (ADR-0222)
+>
+> - Operator picked follow-up option 2: the two Margin-Dashboard items noted (not built) in ADR-0222.
+> - **Excel/Word export** — new `/export/{fmt}/margin` (the export bar the dashboard already showed was
+>   dead until now): the burn-down table (status date, target, planned, margin, consumed, contingency,
+>   total available, NASA rqmt, days-to-go, %avail, %eff, trigger) + an erosion-summary table
+>   (rate / zero-margin date / R²), via the standard TableSet + _export_response machinery.
+> - **Month-start planned column (workbook F)** — `MarginMonth.planned_margin_wd` = the PRIOR version's
+>   actual month-end effective margin (carried forward via dataclasses.replace in
+>   compute_margin_dashboard); `.consumed_wd` property = planned - actual (margin burned this period).
+>   Surfaced in the API, the per-version table (Planned + Consumed columns), and as a tick on each
+>   burn-down bar (margin_dashboard.js) + a legend entry.
+> - Additive only — the effective-margin math is unchanged; no parity impact. Tests extended
+>   (test_margin_dashboard.py planned/consumed; test_margin_dashboard_view.py planned API + export
+>   returns real xlsx/docx + bad-format 404). Chromium re-verified (planned tick + legend render, no
+>   console errors). **ADR-0222 (amended).** Version **1.0.33 -> 1.0.34**; wheel + 9 installers in
+>   lockstep. Full gate green (2116 passed).
+> - **Next (operator's choice — wait for a 'continue'):** resume the audit roadmap at **PR 5 = the 24h
+>   `.mpp` calendar parse (H3 + L8)** — VERIFY-FIRST: convert a 24h `.mpp` through MPXJ, inspect
+>   `00:00->00:00` vs `00:00->24:00` before fixing `working_time_span`; add MSPDI 24h fixture + test;
+>   re-run parity; sibling XER L8. Then PRs 6-9 (AI figure-gate H1+M4+M5; dead-defense M6+L3+L4; test
+>   harnesses M7+M8; low/nit L5-L9,N1-N2). Detail in the audit doc + the PR-4 status block below.
+
+# (prior) Handoff — 2026-07-14 (operator feature — Executive Margin Dashboard; v1.0.33; highest ADR 0222)
+
+> ## STATUS — operator feature: Executive Margin Dashboard (ADR-0222)
 >
 > - Operator provided the NASA `MarginContingency_BurnDown` reference workbook + a Margin Erosion Trend
 >   (MET) reference and asked for the Executive Margin Dashboard (the last blocked live-testing item).
