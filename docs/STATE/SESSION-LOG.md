@@ -5823,3 +5823,39 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - Deliverables: AUDIT-2026-07-14.md (new), HANDOFF.md (audit STATUS block + remaining roadmap),
   NEXT-SESSION-PROMPT.md (rewritten from the stale v1.0.18 prompt to the current v1.0.34 backlog).
   Docs-only; gate/drift guard green; no version bump / wheel rebuild (no runtime surface changed).
+
+---
+
+## 2026-07-14 — AUDIT-2026-07-14 remediation, theme 1: NEW-1 float-extra applicability (ADR-0223)
+
+- **Session:** first remediation PR off the 2026-07-14 audit backlog — NEW-1 (Medium, fidelity; "do
+  first"). Fresh branch off origin/main (`claude/smat-audit-remediation-eeckdi`).
+- **Model/mode:** Opus 4.8.
+- **Finding (NEW-1):** ADR-0219 (audit L1) added `CatalogRow.applicable` so an unmeasurable Workbench
+  cell renders "—" not a fabricated 0, but left ALL ribbon extras `applicable=True`. The two float
+  extras `avg_float_days`/`max_float_days` are a mean/max over the incomplete-activity float population;
+  when that population is empty (a fully-progressed schedule, every non-summary activity 100% complete)
+  `compute_ribbon` degrades them to a placeholder `0.0` (`ribbon.py`: `... if floats else 0.0`), so the
+  Metric Workbench grid + Excel showed "Avg/Max Float 0.0 days" as a real mean/max — the exact
+  "placeholder 0 presented as real" class the flag was introduced to prevent.
+- **Scope widened by adversarial verification:** a 3-agent falsification pass (invariant / scope /
+  test-path) confirmed the fix's invariant is sound and the tests genuinely pin it, but found the SAME
+  placeholder-`0.0` leak on two surfaces the audit's NEW-1 did not name — the **`/ribbon` page**
+  (ADR-0067, the primary Fuse display of Avg/Max Float) and the **ribbon Excel export**. Operator chose
+  (AskUserQuestion) to close all three surfaces in this one PR.
+- **Fix:** one engine signal — add `RibbonMetrics.incomplete_float_count` (== `len(floats)`); every
+  consumer renders "—" when it is 0. Workbench: `metric_catalog.evaluate_catalog` sets `applicable`
+  from it (honored by `workbench.js` `fmt` + the `not r.applicable` Excel branch — no UI/JS change).
+  `/ribbon`: `_ribbon_body` emits a muted, non-clickable `td.rib-na` "—" (`color: var(--muted)` token;
+  no `data-metric`, so `ribbon_drill.js` leaves it un-drillable). `export_ribbon`: writes the "—" cell.
+  A genuine 0 (incomplete activity with 0 float) still shows 0 — a population test, not `value == 0`;
+  no metric math changed (the catalog + ribbon stay pure aggregators, Law 2).
+- **Tests:** engine — `incomplete_float_count` tracks the population (3 vs 0) + empty-case degrades
+  avg/max to 0.0; catalog — all-complete → both extras NA, in-progress → applicable, fully-critical
+  (real 0 float) → applicable (the population-not-value distinction), Project5 (99 incomplete) still
+  applicable; web — `/ribbon` renders two `rib-na` "—" cells with no `data-metric`, export writes two
+  `<t>—</t>` cells. **4-theme Chromium verified** (console/daylight/apollo/jarvis: "—" in each theme's
+  `--muted`, `cursor:default`, real-number row alongside, no console errors). Full gate green
+  (**2123 passed**), doc-drift + metric-dictionary guards green.
+- **ADR-0223** (extends 0219; highest ADR now 0223, in HANDOFF + this log). Version **1.0.34 → 1.0.35**;
+  wheel + 9 installers rebuilt in lockstep.

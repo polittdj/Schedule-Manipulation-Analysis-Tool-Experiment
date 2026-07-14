@@ -830,6 +830,9 @@ td.rib-cell { cursor: pointer; }
 td.rib-cell:hover { text-decoration: underline dotted; }
 td.rib-cell:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 td.rib-cell.rib-selected { outline: 2px solid var(--focus); outline-offset: -2px; }
+/* not-applicable float cell (empty incomplete-activity population): the "—" sentinel, muted and
+   non-interactive — nothing to drill, and never a fabricated 0 (audit NEW-1). */
+td.rib-na { color: var(--muted); cursor: default; }
 .ribbon-drill { margin-top: 14px; }
 .ribbon-drill h3 { margin: 8px 0 4px; }
 /* Integrity finding citation drill (operator 2026-07-08): the "(+N more — view all)" link opens
