@@ -71,6 +71,7 @@ from schedule_forensics.engine import (
     recommend,
 )
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
+from schedule_forensics.engine.cache import content_hash, get_default_cache
 from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
 from schedule_forensics.engine.cpm import (
     CPMError,
@@ -114,6 +115,11 @@ from schedule_forensics.engine.margin_dashboard import (
     MarginDashboard,
     MarginMonth,
     compute_margin_dashboard,
+)
+from schedule_forensics.engine.memory import (
+    DEFAULT_WARN_BYTES,
+    estimate_resident_bytes,
+    format_bytes,
 )
 from schedule_forensics.engine.metric_catalog import (
     catalog_entries,
@@ -212,6 +218,7 @@ from schedule_forensics.engine.sra_conclusions import (
     conclusions_from_sra,
     conclusions_from_ssi,
 )
+from schedule_forensics.engine.summary import VersionSummary, compute_summary
 from schedule_forensics.engine.trend import (
     compute_cei_trend,
     compute_float_ratio_trend,
@@ -230,6 +237,7 @@ from schedule_forensics.importers import (
     supported_extensions,
     to_json_text,
 )
+from schedule_forensics.importers.mpp_mpxj import mpxj_batch_session
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
@@ -495,6 +503,18 @@ class SessionState:
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
     # under the same key recomputes. Bounded by the loaded-schedule count; cleared on wipe.
     analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
+    # v4 Feature 2 lazy summary tier: the small per-version rollup (finish/margin/DCMA) the Portfolio
+    # needs, cached in-memory (key -> (scoped schedule, summary)) and — for uploads, keyed by the raw
+    # file content hash below — persisted in the SQLite cache so a portfolio of thousands renders from
+    # summaries, not a fresh CPM per row. Identity-checked and scope-aware like ``analyses``.
+    summaries: dict[str, tuple[Schedule, VersionSummary]] = field(default_factory=dict)
+    # key -> raw uploaded-file content hash (the SQLite summary/parse cache key). Only set for the
+    # /upload path; a schedule loaded another way simply has no on-disk summary (in-memory only).
+    content_hashes: dict[str, str] = field(default_factory=dict)
+    # v4 Feature 2: the loaded-schedule RAM estimate above which an ingest WARNS (never blocks). The
+    # tool keeps parsed schedules resident for instant comparative analysis; on a big folder of
+    # thousands this can be many GB. Operator-configurable (POST /session/ram-threshold).
+    ram_warn_bytes: int = DEFAULT_WARN_BYTES
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
@@ -592,6 +612,7 @@ class SessionState:
             self.active_filter = tuple(criteria)
             self._scoped.clear()
             self.analyses.clear()
+            self.summaries.clear()  # summaries are scope-aware too — recompute against the new scope
             self.polished.clear()
 
     def set_target(self, uid: int | None) -> None:
@@ -605,6 +626,7 @@ class SessionState:
             self.sra_focus_uid = uid
             self._scoped.clear()
             self.analyses.clear()
+            self.summaries.clear()  # the target truncates the network → summaries must recompute
             self.polished.clear()
 
     def ordered(self) -> list[Schedule]:
@@ -656,6 +678,37 @@ class SessionState:
             analysis = _compute_analysis(scoped)
             self.analyses[key] = (scoped, analysis)
             return analysis
+
+    def summary_for(self, key: str, sch: Schedule) -> VersionSummary:
+        """The cached rollup summary for ``key`` (v4 Feature 2 lazy tier) — the Portfolio's cheap
+        path: finish, effective margin, DCMA-14 pass/fail, without holding the full analysis.
+
+        In-memory first; then, only when the version is UNSCOPED (no active filter/target changes
+        the numbers, so ``scope`` returned the schedule unchanged), the on-disk SQLite summary keyed
+        by the file's content hash — surviving a session restart. A scoped version, or one with no
+        content hash (loaded outside /upload), computes fresh and is memoised for the session only.
+        A summary equals the fully-computed row (test-enforced), so this only ever changes speed."""
+        with self._lock:
+            scoped = self.scope(sch)
+            cached = self.summaries.get(key)
+            if cached is not None and cached[0] is scoped:
+                return cached[1]
+            on_disk = scoped is sch  # unscoped ⇒ the whole-file summary the SQLite cache holds
+            chash = self.content_hashes.get(key) if on_disk else None
+            summary: VersionSummary | None = None
+            if chash is not None:
+                blob = get_default_cache().get_summary(chash)
+                if blob is not None:
+                    try:
+                        summary = VersionSummary.from_json(blob)
+                    except (ValueError, KeyError, TypeError):
+                        summary = None  # a stale/corrupt blob is a miss, never an error
+            if summary is None:
+                summary = compute_summary(scoped)
+                if chash is not None:
+                    get_default_cache().put_summary(chash, summary.to_json())
+            self.summaries[key] = (scoped, summary)
+            return summary
 
 
 def _explain(what: str, read: str, decide: str) -> str:
@@ -2126,43 +2179,70 @@ def create_app(
         # last-modified), aligned to the upload order — the folder/version-order signal the raw
         # multipart cannot carry.
         st = session()
+        cache = get_default_cache()  # content-hash keyed parse cache (v4 Feature 2; fails soft)
         accepted: list[str] = []
         errors: list[str] = []
         ignored = 0  # non-schedule files inside a folder upload (skipped, not errored)
         upload_exts = {e.lower() for e in supported_extensions()}
         meta = _parse_upload_meta(file_meta)  # per-file (top-folder or None, mtime or None)
-        for i, upload_file in enumerate(files):
-            name = upload_file.filename or "schedule"
-            # a folder upload sweeps in every file; silently skip anything that isn't a schedule
-            # (the operator cares only about the schedule files) — checked before any read
-            if Path(name).suffix.lower() not in upload_exts:
-                ignored += 1
-                continue
-            # read one byte past the cap: whole-file reads are memory-bound, so an oversized file
-            # is rejected with a named reason instead of exhausting RAM (QC audit INFO; 500 MB
-            # comfortably exceeds any real schedule export)
-            data = upload_file.file.read(_MAX_UPLOAD_BYTES + 1)
-            if len(data) > _MAX_UPLOAD_BYTES:
-                errors.append(
-                    f"{name}: exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB per-file cap"
-                )
-                logger.warning("rejected oversized upload; ext=%s", Path(name).suffix)
-                continue
-            try:
-                schedule = _parse_upload(name, data)
-            except (ImporterError, ValueError, OSError) as exc:
-                reason = str(exc).splitlines()[0][:160] if str(exc) else "unreadable file"
-                errors.append(f"{name}: {reason}")
-                logger.warning("rejected upload; ext=%s bytes=%d", Path(name).suffix, len(data))
-                continue
-            key = _unique_key(_clean_key(name), st.schedules)
-            st.schedules[key] = schedule.model_copy(update={"source_file": name})
-            st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
-            accepted.append(key)
+        # one heap-capped JVM for every native .mpp in this ingest (v4 Feature 2) instead of a fresh
+        # java process per file — one boot for a whole folder, not thousands. Harmless for text
+        # formats (they never touch the JVM) and for a cache-hit re-upload (it never parses).
+        with mpxj_batch_session():
+            for i, upload_file in enumerate(files):
+                name = upload_file.filename or "schedule"
+                # a folder upload sweeps in every file; silently skip anything that isn't a schedule
+                # (the operator cares only about the schedule files) — checked before any read
+                if Path(name).suffix.lower() not in upload_exts:
+                    ignored += 1
+                    continue
+                # read one byte past the cap: whole-file reads are memory-bound, so an oversized file
+                # is rejected with a named reason instead of exhausting RAM (QC audit INFO; 500 MB
+                # comfortably exceeds any real schedule export)
+                data = upload_file.file.read(_MAX_UPLOAD_BYTES + 1)
+                if len(data) > _MAX_UPLOAD_BYTES:
+                    errors.append(
+                        f"{name}: exceeds the {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB per-file cap"
+                    )
+                    logger.warning("rejected oversized upload; ext=%s", Path(name).suffix)
+                    continue
+                # identical bytes under the same engine version skip the (possibly JVM-bound) parse:
+                # a cache hit returns the exact same parsed model, so re-uploading a folder of a
+                # project's versions is cheap. A cache miss / error just recomputes (fails soft).
+                chash = content_hash(data)
+                schedule = cache.get_schedule(chash)
+                if schedule is None:
+                    try:
+                        schedule = _parse_upload(name, data)
+                    except (ImporterError, ValueError, OSError) as exc:
+                        reason = str(exc).splitlines()[0][:160] if str(exc) else "unreadable file"
+                        errors.append(f"{name}: {reason}")
+                        logger.warning(
+                            "rejected upload; ext=%s bytes=%d", Path(name).suffix, len(data)
+                        )
+                        continue
+                    cache.put_schedule(chash, schedule)
+                key = _unique_key(_clean_key(name), st.schedules)
+                st.schedules[key] = schedule.model_copy(update={"source_file": name})
+                st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
+                # lets the Portfolio read this version's on-disk summary
+                st.content_hashes[key] = chash
+                accepted.append(key)
         notices = list(_grouping_notices(st.projects())) if accepted else []
         if ignored:
             plural = "file" if ignored == 1 else "files"
             notices.append(f"Skipped {ignored} non-schedule {plural} in the selection.")
+        # v4 Feature 2: a non-blocking RAM notice once the loaded set's estimate crosses the
+        # operator's threshold — the tool keeps schedules resident for comparative analysis, so a
+        # very large folder is worth flagging (never gating). Raise the threshold in Portfolio.
+        if accepted:
+            est = estimate_resident_bytes(st.schedules.values())
+            if est > st.ram_warn_bytes:
+                notices.append(
+                    f"Loaded schedules use an estimated {format_bytes(est)} of memory "
+                    f"(warn threshold {format_bytes(st.ram_warn_bytes)}). You can keep working; "
+                    f"adjust the threshold on the Portfolio page if this is expected."
+                )
         logger.info(
             "loaded %d schedule(s); %d rejected; %d non-schedule skipped; total now %d",
             len(accepted),
@@ -5559,11 +5639,16 @@ def create_app(
         with st._lock:  # atomic vs any in-flight render (QC audit D18)
             st.schedules.clear()
             st.file_meta.clear()
+            st.content_hashes.clear()
             st.analyses.clear()
+            st.summaries.clear()
             st.polished.clear()
             st.set_filter(())  # drop the session-wide group/filter and its scope cache
             st.flash = None
             st.target_uid = None
+        # a wipe clears the on-disk CUI cache too (parsed schedules + derived metrics), so nothing
+        # of the operator's data survives the reset (fails soft; outside the state lock — its own)
+        get_default_cache().clear()
         # reset the SRA manual inputs back to the screening defaults
         st.sra_low = 0.9
         st.sra_ml = 1.0
@@ -5582,6 +5667,15 @@ def create_app(
             threading.Thread(target=manager.shutdown, daemon=True).start()
         logger.info("session wiped")
         return RedirectResponse(url="/", status_code=303)
+
+    @app.post("/session/ram-threshold")
+    def ram_threshold(gb: float = Form(...)) -> RedirectResponse:
+        """Set the loaded-schedule RAM warn threshold, in GB (v4 Feature 2). A warning only — it
+        never blocks a load. Clamped to a sane floor so it can't be set to nag on every file."""
+        st = session()
+        st.ram_warn_bytes = max(1, int(gb * 1024**3))  # >=1 byte; 0/negative → 1 (warn always)
+        logger.info("ram warn threshold set to %.2f GB", gb)
+        return RedirectResponse(url="/portfolio", status_code=303)
 
     @app.get("/healthz")
     def healthz(request: Request) -> JSONResponse:
@@ -6009,12 +6103,37 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <script src="/static/path.js"></script>"""
 
 
+def _portfolio_memory_panel(st: SessionState) -> str:
+    """A compact resident-memory readout + the operator's warn-threshold control (v4 Feature 2).
+
+    Estimate only, and a warning only — the tool never blocks a load. Lets an operator loading a
+    folder of thousands see roughly how much RAM the loaded schedules occupy and tune when the tool
+    should flag it."""
+    est = estimate_resident_bytes(st.schedules.values())
+    warn = st.ram_warn_bytes
+    over = est > warn
+    cls = "notice warn" if over else "muted"
+    warn_gb = warn / 1024**3
+    tail = " — over your threshold; you can keep working" if over else ""
+    return (
+        f'<div class=panel><h3>Memory</h3><p class="{cls}">'
+        f"{len(st.schedules)} schedule(s) loaded &middot; estimated resident memory "
+        f"<b>{format_bytes(est)}</b> (warn at {format_bytes(warn)}){tail}.</p>"
+        "<form method=post action=/session/ram-threshold class=inline-form>"
+        "<label>Warn above <input type=number name=gb min=1 step=1 "
+        f'value="{warn_gb:g}" style="width:6em"> GB</label> '
+        "<button type=submit>Update</button></form>"
+        "<p class=muted>Schedules stay in memory for instant comparative analysis. This is an "
+        "estimate; on a large workstation even a big portfolio fits.</p></div>"
+    )
+
+
 def _portfolio_body(st: SessionState) -> str:
     """The Portfolio Manager rollup: one row per Project (grouped from the loaded files/folders),
     each showing its latest-version headline — computed finish, effective schedule margin, DCMA-14
     pass/fail — plus an expandable version history (each version links to its full report). Every
-    number traces to the engine's per-version analysis; a Project whose latest version won't solve
-    shows "—". No new engine math (reuses ``analysis_for`` + ``compute_margin``)."""
+    number traces to the engine's cached per-version summary (v4 Feature 2 lazy tier); a Project
+    whose latest version won't solve shows "—". No new engine math (reuses ``compute_summary``)."""
     intro = (
         "<div class=panel><h2>Portfolio</h2>"
         "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
@@ -6032,20 +6151,21 @@ def _portfolio_body(st: SessionState) -> str:
         sch = st.schedules.get(latest.key)
         data_date = finish = margin = dcma = em
         if sch is not None:
-            if sch.status_date is not None:
-                data_date = _mdY(sch.status_date)
-            try:
-                analysis = st.analysis_for(latest.key, sch)
-                finish = _mdY(
-                    offset_to_datetime(sch.project_start, analysis.cpm.project_finish, sch.calendar)
+            # the lazy summary tier (v4 Feature 2): finish/margin/DCMA without a fresh CPM per row —
+            # cached in-memory and, for uploads, on disk. Equals the fully-computed row (never a
+            # different number); an unsolvable version leaves the headline as "—", never a 500.
+            summary = st.summary_for(latest.key, sch)
+            if summary.status_date_iso is not None:
+                data_date = _mdY(summary.status_date_iso)
+            if not summary.unsolvable:
+                finish = _mdY(summary.finish_iso)
+                if summary.effective_margin_days is not None:
+                    margin = f"{summary.effective_margin_days:g} d"
+                cls = "rib-pass" if summary.dcma_fail == 0 else "rib-fail"
+                dcma = (
+                    f'<span class="{cls}">{summary.dcma_pass} pass / '
+                    f"{summary.dcma_fail} fail</span>"
                 )
-                margin = f"{compute_margin(sch, analysis.cpm).effective_margin_days:g} d"
-                passes = sum(1 for c in analysis.audit.checks if _status_class(c.status) == "pass")
-                fails = sum(1 for c in analysis.audit.checks if _status_class(c.status) == "fail")
-                cls = "rib-pass" if fails == 0 else "rib-fail"
-                dcma = f'<span class="{cls}">{passes} pass / {fails} fail</span>'
-            except CPMError:
-                pass  # unsolvable version → the headline stays "—", never a 500
         attn = " <span class=muted>(needs attention)</span>" if p.needs_attention else ""
         versions_html = "".join(
             '<li><a class=btn-link href="/analysis/{k}">{f}</a>{dd}</li>'.format(
@@ -6066,7 +6186,7 @@ def _portfolio_body(st: SessionState) -> str:
             f"<td>{len(p.versions)}</td><td>{data_date}</td><td>{finish}</td>"
             f"<td>{margin}</td><td>{dcma}</td></tr>"
         )
-    return intro + "".join(rows) + "</table></div>"
+    return intro + "".join(rows) + "</table></div>" + _portfolio_memory_panel(st)
 
 
 def _mission_body(target_uid: int | None) -> str:

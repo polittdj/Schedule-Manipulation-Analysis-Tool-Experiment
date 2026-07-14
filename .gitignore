@@ -99,3 +99,10 @@ tools/mpxj/lib/sqlite-jdbc*.jar
 
 # --- Portable drop-in JRE (no-admin machines): extracted locally, never committed ---
 tools/jre/
+
+# --- v4 Feature 2 local schedule cache (engine/cache.py). It defaults OUTSIDE the repo
+#     (~/.cache/schedule-forensics) and holds CUI-derived content, but if an operator ever
+#     points $SF_CACHE_DIR at a repo path, these must never be committed (defense-in-depth). ---
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

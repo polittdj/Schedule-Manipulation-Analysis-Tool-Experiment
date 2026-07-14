@@ -5932,3 +5932,48 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   cache + explicit RAM-load for real thousands-scale.
 - **ADR-0225** (highest ADR now 0225, in HANDOFF + this log). Version **1.0.36 → 1.0.37**; wheel + 9
   installers rebuilt in lockstep.
+
+## 2026-07-15 — SMAT v4 Feature 2: scale/RAM/cache + persistent batch JVM (ADR-0226)
+
+- **Session:** continued the incremental v4 build — Feature 2, the performance layer beneath F1's
+  cap-free folder ingest. Same branch (`claude/smat-audit-remediation-eeckdi`, off origin/main after F1
+  merged as #361). **No engine-math change; parity untouched.** Model/mode: Opus 4.8.
+- **Delivered (Feature 2 / PR B):**
+  - **`engine/cache.py`** — a std-lib `sqlite3` cache of parsed schedules + per-version summaries, keyed
+    by **(file content hash, auto-derived `engine_version`)**. `engine_version` = a content hash of the
+    `importers`/`model`/`engine` source, so any change that could move a number invalidates the cache
+    (Law 2; no manual bump). Blobs are pydantic `model_dump_json` (**not pickle** — bandit-clean, proven
+    byte-deterministic). Fails soft everywhere (missing/locked/corrupt → a miss); per-call connections
+    with WAL + busy-timeout; DB **outside the repo** (`$SF_CACHE_DIR` else `~/.cache/schedule-forensics`),
+    cleared on `/session/wipe`. `get_default_cache()` is a lazy singleton (honors the test isolation dir).
+    Wired into `/upload`: a re-uploaded file skips the (JVM-bound) parse.
+  - **`engine/summary.py`** — `VersionSummary` (finish / effective margin / DCMA pass-fail / task count /
+    status date), computed once and cached in SQLite by content hash. `SessionState.summary_for` reads
+    in-memory → on-disk before recomputing; the Portfolio now renders from summaries, not a CPM per row,
+    and survives a restart. **Scope-aware:** an active filter/target bypasses the on-disk cache and
+    computes over the scoped schedule, so a summary always equals the fully-computed row.
+  - **`engine/memory.py`** — a conservative resident-RAM estimate (base + per-task, calibrated ~5.4
+    KB/task on the goldens) surfaced on the Portfolio page; a big ingest raises a **non-blocking** notice
+    past the operator threshold (default 16 GB; `POST /session/ram-threshold`). Warns, never blocks
+    (per spec). No change to the SRA offload pickling.
+  - **Persistent batch JVM** — `tools/mpxj/MpxjToMspdi.java` gains a `--server` mode (recompiled with
+    `javac --release 17`, `.class` committed): one heap-capped JVM (`-Xmx`, default 1g, `SF_MPXJ_XMX`)
+    converts a whole ingest over a tagged (`@@SF@@`) stdin/stdout protocol — still **out-of-process, no
+    JPype**. `importers/mpp_mpxj.py` adds `_MpxjServer` (reader-thread queue → per-request timeout, so a
+    hung JVM can't block) + `mpxj_batch_session()` (a ContextVar the upload loop opens). **Transparent
+    fallback** to the existing one-shot subprocess on any server trouble; `parse_mpp`'s default path and
+    all its tests are unchanged. The `@@SF@@` tag makes the protocol robust to stray JVM/Log4j stdout.
+- **Verified against the real intake:** the batch server + SQLite validated end-to-end on
+  `00_REFERENCE_INTAKE/mpp/` (Project2/3/5.mpp, Large_Test_File.mpp) — ONE JVM converts many `.mpp`; the
+  9.7 MB large file converts under the 1g cap; cache hit == fresh compute (identical CPM finish + DCMA).
+- **Tests:** cache (hit==fresh, engine-version invalidation, corrupt/unwritable degrade-to-miss, summary
+  round-trip+clear); upload cache (re-upload is a cache hit; wipe clears on-disk; portfolio reads the
+  in-memory + cross-session summary cache); summary == full analysis + unsolvable network; memory estimate
+  monotonic + format + default threshold; RAM warning non-blocking + threshold configurable + floor +
+  Portfolio readout; batch JVM reuse + one-shot fallback + bad-file-no-hang + end-to-end folder upload
+  reuses one JVM. `tests/conftest.py` gains an autouse per-test cache-isolation fixture. **Parity
+  untouched**; `test_egress` unaffected (no new runtime dep; numpy not added).
+- **Deferred (in ADR-0226):** full schedules still materialize in RAM (the estimate/warning governs it);
+  true summary-only eviction + re-materialization from the parse cache is the natural follow-up.
+- **ADR-0226** (highest ADR now 0226, in HANDOFF + this log). Version **1.0.37 → 1.0.38**; wheel + 9
+  installers rebuilt in lockstep.
