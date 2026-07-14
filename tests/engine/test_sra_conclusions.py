@@ -20,6 +20,7 @@ from schedule_forensics.engine.sra_conclusions import (
     _constraints,
     _contingency,
     _correlation,
+    _days,
     _precision,
     _realism,
     _spread,
@@ -27,6 +28,7 @@ from schedule_forensics.engine.sra_conclusions import (
     conclusions_from_sra,
     conclusions_from_ssi,
 )
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -74,20 +76,56 @@ def test_realism_shortens_iso_datetimes_to_days() -> None:
 
 def test_contingency_positive_and_covered_with_number_agreement() -> None:
     # one working day beyond the plan -> singular "1 working day"
-    c = _contingency(det_finish=0, p80=DAY, p80_date="2025-01-07", det_date="2025-01-06")
+    c = _contingency(det_finish=0, p80=DAY, p80_date="2025-01-07", det_date="2025-01-06", wmpd=DAY)
     assert c.severity == "warn" and "1 working day " in c.finding + " "
     assert "1 working days" not in c.finding
-    covered = _contingency(det_finish=DAY, p80=0, p80_date="2025-01-06", det_date="2025-01-07")
+    covered = _contingency(
+        det_finish=DAY, p80=0, p80_date="2025-01-06", det_date="2025-01-07", wmpd=DAY
+    )
     assert covered.severity == "good" and "no added" in covered.finding
 
 
 def test_spread_commitment_and_precision_wording() -> None:
-    s = _spread(0, 10 * DAY, "2025-01-06", "2025-01-20")
+    s = _spread(0, 10 * DAY, "2025-01-06", "2025-01-20", wmpd=DAY)
     assert "10 working days" in s.finding and s.topic == "Predictability"
     m = _commitment("2025-03-01", "2025-04-01")
     assert "80% confidence" in m.finding and "2025-04-01" in m.finding
     assert _precision(1000).severity == "info" and "screening" in _precision(1000).finding
     assert _precision(2500).severity == "good"
+
+
+def test_wd_uses_the_schedule_calendar_not_a_fixed_480() -> None:
+    # audit M1: a true 20-working-day window at 600 min/day was reported as 25 (+25%) under a
+    # fixed 480. The window now converts on the schedule's own working-minutes/day.
+    minutes = 20 * 600
+    on_cal = _spread(0, minutes, "2025-01-06", "2025-02-10", wmpd=600)
+    assert "20 working days" in on_cal.finding
+    fixed_480 = _spread(0, minutes, "2025-01-06", "2025-02-10", wmpd=480)
+    assert "25 working days" in fixed_480.finding  # the old, wrong basis
+    # contingency shares the same _wd, so it reprices on the calendar too
+    cont = _contingency(
+        det_finish=0, p80=minutes, p80_date="2025-02-10", det_date="2025-01-06", wmpd=600
+    )
+    assert "20 working days" in cont.finding
+
+
+def test_conclusions_thread_the_schedule_calendar_into_day_counts() -> None:
+    # end-to-end: a 600-min/day (10-hour) schedule; the Predictability window must use 600, not 480.
+    sch = Schedule(
+        name="S",
+        project_start=MON,
+        calendar=Calendar(working_minutes_per_day=600),
+        tasks=(_task(1, 80), _task(2, 80), _task(3, 80)),
+        relationships=(_rel(1, 2), _rel(2, 3)),
+    )
+    cpm = compute_cpm(sch)
+    result = compute_sra(sch, cpm, config=SRAConfig(iterations=500, seed=7))
+    pred = next(c for c in conclusions_from_sra(sch, cpm, result) if c.topic == "Predictability")
+    window = dict(pred.evidence)["Window"]
+    diff = result.p90 - result.p10
+    assert round(diff / 600) != round(diff / 480)  # the two bases genuinely disagree here
+    assert window == _days(round(diff / 600))  # the card used the schedule's 600-min calendar…
+    assert window != _days(round(diff / 480))  # …not the old fixed 480
 
 
 def test_constraints_number_agreement() -> None:

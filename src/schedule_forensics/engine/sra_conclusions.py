@@ -27,7 +27,9 @@ from schedule_forensics.engine.metrics._common import is_effective_critical
 from schedule_forensics.engine.sra import SRAResult, SSIResult
 from schedule_forensics.model.schedule import Schedule
 
-#: Working minutes per displayed working day (the model-wide 8-hour convention).
+#: Working minutes per displayed working day (the model-wide 8-hour convention) — used ONLY as the
+#: fallback when a schedule's calendar reports 0 working minutes/day. Real day-counts convert on the
+#: schedule's own calendar (audit M1, mirroring the recommendations.py D13 fix).
 _MPD = 480
 
 #: Sampling-precision guidance (Hulett): 2,500 iterations suffice for decisions.
@@ -52,9 +54,11 @@ class Conclusion:
     evidence: tuple[tuple[str, str], ...]  # (label, value) figure pairs backing the finding
 
 
-def _wd(minutes: float) -> int:
-    """Working-minute offset difference -> whole working days (presentation rounding)."""
-    return round(minutes / _MPD)
+def _wd(minutes: float, wmpd: int) -> int:
+    """Working-minute offset difference -> whole working days (presentation rounding), on the
+    schedule's own calendar (``wmpd`` working minutes/day). A fixed 480 overstated a true 20-wd
+    window as 25 wd on a 10-hour calendar (audit M1); the caller passes ``wmpd`` (480 fallback)."""
+    return round(minutes / wmpd)
 
 
 def _pct(fraction: float) -> int:
@@ -141,9 +145,9 @@ def _commitment(p50_date: str, p80_date: str) -> Conclusion:
     )
 
 
-def _contingency(det_finish: int, p80: int, p80_date: str, det_date: str) -> Conclusion:
+def _contingency(det_finish: int, p80: int, p80_date: str, det_date: str, wmpd: int) -> Conclusion:
     p80_date, det_date = _day(p80_date), _day(det_date)
-    buffer_wd = _wd(p80 - det_finish)
+    buffer_wd = _wd(p80 - det_finish, wmpd)
     if buffer_wd > 0:
         return Conclusion(
             "Contingency needed",
@@ -169,9 +173,9 @@ def _contingency(det_finish: int, p80: int, p80_date: str, det_date: str) -> Con
     )
 
 
-def _spread(p10: int, p90: int, p10_date: str, p90_date: str) -> Conclusion:
+def _spread(p10: int, p90: int, p10_date: str, p90_date: str, wmpd: int) -> Conclusion:
     p10_date, p90_date = _day(p10_date), _day(p90_date)
-    spread_wd = _wd(p90 - p10)
+    spread_wd = _wd(p90 - p10, wmpd)
     return Conclusion(
         "Predictability",
         "info",
@@ -358,6 +362,7 @@ def conclusions_from_sra(
 ) -> tuple[Conclusion, ...]:
     """Conclusion cards for the legacy whole-project model (:func:`compute_sra`)."""
     names = sch.tasks_by_id
+    wmpd = sch.calendar.working_minutes_per_day or _MPD
     out: list[Conclusion] = [
         _realism(result.deterministic_finish_date, result.deterministic_percentile, "the project"),
         _commitment(result.p50_date, result.p80_date),
@@ -366,8 +371,9 @@ def conclusions_from_sra(
             result.p80,
             result.p80_date,
             result.deterministic_finish_date,
+            wmpd,
         ),
-        _spread(result.p10, result.p90, result.p10_date, result.p90_date),
+        _spread(result.p10, result.p90, result.p10_date, result.p90_date, wmpd),
     ]
     # risk-critical vs plan-critical (Hulett) — plan-critical on the tool's effective basis
     rows: list[tuple[str, float, bool]] = []
@@ -427,6 +433,7 @@ def conclusions_from_ssi(sch: Schedule, result: SSIResult) -> tuple[Conclusion, 
             ),
             _precision(result.iterations),
         )
+    wmpd = sch.calendar.working_minutes_per_day or _MPD
     out: list[Conclusion] = [
         _realism(result.deterministic_finish_date, result.deterministic_percentile, focus),
         _commitment(result.p50_date, result.p80_date),
@@ -435,8 +442,9 @@ def conclusions_from_ssi(sch: Schedule, result: SSIResult) -> tuple[Conclusion, 
             result.p80,
             result.p80_date,
             result.deterministic_finish_date,
+            wmpd,
         ),
-        _spread(result.p10, result.p90, result.p10_date, result.p90_date),
+        _spread(result.p10, result.p90, result.p10_date, result.p90_date, wmpd),
     ]
     if (
         risks := _discrete_risks(

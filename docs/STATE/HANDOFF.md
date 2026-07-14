@@ -1,6 +1,29 @@
-# Handoff — 2026-07-14 (audit remediation PR 3 — ch-01 Critical basis M3; v1.0.31; highest ADR 0220)
+# Handoff — 2026-07-14 (audit remediation PR 4 — SRA-conclusion calendar day-counts M1; v1.0.32; highest ADR 0221)
 
-> ## STATUS (current) — audit remediation PR 3: chapter-01 Critical basis (ADR-0220)
+> ## STATUS (current) — audit remediation PR 4: SRA-conclusion day-counts on the calendar (ADR-0221)
+>
+> - AUDIT-2026-07-13 theme 4 (M1) — engine fidelity, parity-safe. `sra_conclusions._wd` divided
+>   working-minute offsets by a hard-coded 480, so the **Contingency** (P80−det finish) and
+>   **Predictability** (P10→P90 window) cards mis-stated working days on any non-8h calendar (a true
+>   20-wd window read 25 on a 600-min/day file, +25%) — and the wrong number backs the finding AND its
+>   evidence, so it passes the digit-in-evidence gate. Same bug already fixed in recommendations.py (D13);
+>   the SRA page's discrete-risk day impacts already used the real wmpd, so two families disagreed.
+> - Fix (mirrors D13): `_wd(minutes, wmpd)`, `_contingency`/`_spread` forward `wmpd`, and both
+>   `conclusions_from_sra` / `conclusions_from_ssi` compute `wmpd = sch.calendar.working_minutes_per_day
+>   or _MPD` (480 fallback only for a 0-minute calendar) from the `sch` they already receive. Dates /
+>   percentiles were already correct; only the minutes→days rounding changed basis.
+> - Parity-safe: goldens are 8h/day → wmpd==480 → every validated number unchanged. Tests
+>   (test_sra_conclusions.py): unit pins the 20-vs-25 example; end-to-end on a 600-min/day schedule proves
+>   conclusions_from_sra threads the calendar (window uses 600, not 480, on a spread where they disagree).
+>   Updated the two existing helper tests to pass wmpd=DAY. **ADR-0221.** Version **1.0.31 → 1.0.32**;
+>   wheel + 9 installers rebuilt in lockstep.
+> - **Audit roadmap remaining:** PR 5 24h-calendar parse (H3 + L8); PR 6 AI figure-gate hardening
+>   (H1+M4+M5); PR 7 wire dead CUI defenses (M6+L3+L4); PR 8 test harnesses (M7 + M8 full); PR 9 low/nit
+>   cleanup (L5-L9, N1-N2). (Exec Margin Dashboard still blocked on operator reference files.)
+
+# (prior) Handoff — 2026-07-14 (audit remediation PR 3 — ch-01 Critical basis M3; v1.0.31; highest ADR 0220)
+
+> ## STATUS — audit remediation PR 3: chapter-01 Critical basis (ADR-0220)
 >
 > - AUDIT-2026-07-13 theme 3 (M3). Chapter 01 "Where we stand" counted **Critical (incomplete)** from
 >   raw pure-logic CPM float and banded float from `activity_rows` pure-logic `total_float_days`, while

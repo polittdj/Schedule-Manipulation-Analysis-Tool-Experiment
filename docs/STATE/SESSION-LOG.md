@@ -5728,3 +5728,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   golden; "0 days" band == effective-float population).
 - **ADR-0220** (in HANDOFF + this log — drift guard green). Version 1.0.30 -> 1.0.31; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — audit remediation PR 4: SRA-conclusion calendar day-counts M1 (ADR-0221)
+
+- **Session:** operator "continue" — next audit theme; first engine-fidelity fix of the roadmap.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (fresh from origin/main after
+  #354 merged).
+- M1: sra_conclusions._wd divided working-minute offsets by a hard-coded 480, so the Contingency
+  (P80-det finish) and Predictability (P10->P90 window) cards mis-stated working days on any non-8h
+  calendar (a true 20-wd window read 25 on a 600-min/day file, +25%). The wrong number backs the finding
+  AND its evidence, passing the digit-in-evidence gate. Same bug already fixed in recommendations.py
+  (D13); the SRA page discrete-risk day impacts already used the real wmpd, so two families disagreed.
+- Fix (mirrors D13, no metric/date/percentile change): _wd(minutes, wmpd); _contingency/_spread forward
+  wmpd; conclusions_from_sra + conclusions_from_ssi compute wmpd = sch.calendar.working_minutes_per_day
+  or _MPD from the sch they already receive (480 fallback only for a 0-minute calendar).
+- Parity-safe: goldens are 8h/day so wmpd==480 and every validated number is unchanged (parity gate
+  green). Tests: unit pins the 20-vs-25 example (_spread at 600 vs 480); end-to-end on a 600-min/day
+  schedule proves the calendar is threaded (Predictability window uses 600 not 480, on a spread where
+  they disagree). Updated the 2 existing helper tests to pass wmpd=DAY. Full gate green (2101 passed).
+- **ADR-0221** (in HANDOFF + this log — drift guard green). Version 1.0.31 -> 1.0.32; wheel + 9
+  installers rebuilt in lockstep.
