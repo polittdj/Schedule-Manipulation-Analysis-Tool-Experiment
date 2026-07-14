@@ -5644,3 +5644,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   Gate green (ruff/format/mypy/bandit/node/pytest).
 - **ADR-0217** (in HANDOFF + this log — drift guard green). Version 1.0.27 -> 1.0.28; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — operator UI batch: click-to-drill on the Performance G2/G4 + CEI monthly bars (ADR-0218)
+
+- **Session:** operator "continue with what is left" — the last 2 count-bar families ADR-0217 deferred
+  (they touch parity-relevant engine accumulators). After this, **every bar in the tool is drillable.**
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (restarted from origin/main
+  after #351 merged).
+- Same pattern: append a parallel UID accumulator in lockstep with each count increment (same
+  predicate/branch/index -> |count| == len), then tag each bar rect with SFDrill.mark:
+  - Performance G2 late buckets (FlowMonth -> activity_flow): 6 new started/finished_late_30/60/over_uids,
+    appended beside each late_s[b][i]/late_f[b][i].
+  - Performance G4 workoff burden (BurdenMonth -> workoff_burden): 12 new *_uids. Backlog is a NEGATIVE
+    count mirrored below the axis -> its list carries |count|. BurdenMonth now built field-by-field (a
+    **dict splat stopped type-checking once the dataclass mixes int+tuple fields).
+  - Both flow through the shared stackedBars in performance.js (reads r[key+"_uids"]; data-file =
+    PV[cursor].label, the version's own file).
+  - CEI monthly bars (SnapshotProfile -> compute_bow_wave): 3 new per-month baselined/scheduled/
+    finished_uids via a _bucket_uids helper mirroring month_axis.bucket exactly (out-of-window dates
+    dropped). _cei_data serializes them; cei.js tags each grouped monthly bar (data-file = snapshot label).
+    Running-totals mode draws polylines -> no bars, no drill.
+- No metric change (Law 2): each UID list uses the same predicate as its count. CEI parity (24/129, 1/6
+  EXACT) + G2/G4/G5 reference figures byte-identical (parity suite green). All new fields additive +
+  defaulted -> no existing constructor breaks (the CEI-view test's direct SnapshotProfile(...) still valid).
+- Tests: engine invariants in test_performance_summary.py + test_bow_wave.py (exact UIDs on the
+  hand-checkable fixtures, |count| for the negative backlog); web end-to-end in
+  test_categorical_bar_drill.py (perf blob + /api/cei carry the lists, resolve through
+  /api/activities/drill; JS tagging pinned). Full gate green (ruff/format/mypy/bandit/node/pytest).
+- **ADR-0218** (in HANDOFF + this log — drift guard green). Version 1.0.28 -> 1.0.29; wheel + 9
+  installers rebuilt in lockstep.

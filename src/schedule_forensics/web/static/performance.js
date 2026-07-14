@@ -146,7 +146,7 @@
     if (name) tip(p, name);
     f.svg.appendChild(p);
   }
-  function stackedBars(f, rows, keys, colors, labels, baseKeyNames) {
+  function stackedBars(f, rows, keys, colors, labels, vfile) {
     var bw = Math.max(1.5, Math.min(9, ((f.R - f.L) / f.n) * 0.55));
     rows.forEach(function (r, i) {
       var up = 0, down = 0;
@@ -157,7 +157,9 @@
         if (v > 0) { yv = f.y(up + v); hh = f.y(up) - yv; up += v; }
         else { yv = f.y(down); hh = f.y(down + v) - yv; down += v; }
         var rect = svgEl("rect", { x: x0, y: yv, width: bw, height: Math.max(0.6, hh), fill: colors[ki], opacity: 0.9 });
-        tip(rect, r.month + " — " + labels[ki] + ": " + v + (baseKeyNames ? "" : ""));
+        tip(rect, r.month + " — " + labels[ki] + ": " + v);
+        // each segment carries the UIDs behind its count (r[key + "_uids"]) — click to drill
+        drill(rect, r[k + "_uids"], vfile, r.month + " — " + labels[ki]);
         f.svg.appendChild(rect);
       });
     });
@@ -200,8 +202,9 @@
     if (!f) return;
     var lk = pre === "starts" ? ["started_late_30", "started_late_60", "started_late_over"]
       : ["finished_late_30", "finished_late_60", "finished_late_over"];
+    var vlabel = (PV[cursor] || {}).label || "";
     stackedBars(f, FLOW, lk, ["var(--warn)", "var(--accent)", "var(--bad)"],
-      ["late ≤30d", "late 31–60d", "late >60d"]);
+      ["late ≤30d", "late 31–60d", "late >60d"], vlabel);
     line(f, FLOW.map(function (m) { return m["baselined_" + pre]; }), MUT, "5 3", "Baselined");
     line(f, FLOW.map(function (m) { return m["scheduled_" + pre]; }), ACC, null, "Scheduled/forecast");
     line(f, FLOW.map(function (m) { return m["actual_" + pre]; }), OK, null, "Actual");
@@ -281,9 +284,10 @@
     if (!f) return;
     var zero = f.y(0);
     f.svg.appendChild(svgEl("line", { x1: f.L, y1: zero, x2: f.R, y2: zero, stroke: MUT, "stroke-width": 0.8 }));
+    var vlabel = (PV[cursor] || {}).label || "";
     stackedBars(f, BURDEN, upKeys.concat([pre + "_backlog"]),
       ["var(--ok)", "var(--accent)", "var(--warn)", "var(--bad)", "#b58cff", "var(--muted)"],
-      ["On plan", "Early", "Workoff (was past-due)", "Past-due, forecast here", "Future baseline, slipped here", "Backlog at its baselined month"]);
+      ["On plan", "Early", "Workoff (was past-due)", "Past-due, forecast here", "Future baseline, slipped here", "Backlog at its baselined month"], vlabel);
     legend(f.svg, f.L + 4, f.T + 2, [
       { color: OK, label: "On plan", op: 0.9 }, { color: ACC, label: "Early", op: 0.9 },
       { color: WARN, label: "Workoff done", op: 0.9 }, { color: BAD, label: "Past-due → forecast", op: 0.9 },

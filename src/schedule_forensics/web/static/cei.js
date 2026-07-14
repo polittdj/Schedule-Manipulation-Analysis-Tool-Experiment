@@ -19,6 +19,11 @@
   var NS = "http://www.w3.org/2000/svg";
   var GOLD = "var(--warn)", BLUE = "var(--accent)", GREEN = "var(--ok)";
 
+  // tag a bar as a drill trigger for a UID set (no-op if SFDrill / the set is absent)
+  function drill(node, uids, file, title) {
+    if (window.SFDrill && uids && uids.length) SFDrill.mark(node, uids, file, title);
+  }
+
   function svgEl(tag, attrs) {
     var node = document.createElementNS(NS, tag);
     for (var k in attrs) {
@@ -96,15 +101,18 @@
       for (var i = 0; i < n; i++) {
         var x0 = xc(i);
         var series = [
-          [snap.baselined[i], GOLD, -1.15],
-          [snap.scheduled[i], BLUE, 0],
-          [snap.finished[i], GREEN, 1.15],
+          [snap.baselined[i], GOLD, -1.15, "baselined"],
+          [snap.scheduled[i], BLUE, 0, "scheduled"],
+          [snap.finished[i], GREEN, 1.15, "finished"],
         ];
         series.forEach(function (sd) {
           var v = sd[0];
           if (!v) return;
           var bx = x0 + sd[2] * barW - barW / 2;
-          svg.appendChild(svgEl("rect", { x: bx, y: y(v), width: barW, height: y(0) - y(v), fill: sd[1] }));
+          var rect = svgEl("rect", { x: bx, y: y(v), width: barW, height: y(0) - y(v), fill: sd[1] });
+          // each bar carries the UIDs finishing in this month for this series — click to drill
+          drill(rect, (snap[sd[3] + "_uids"] || [])[i], snap.label, sd[3] + " to finish — " + months[i]);
+          svg.appendChild(rect);
           if (slot > 26) {
             var t = svgEl("text", { x: bx + barW / 2, y: y(v) - 3, "text-anchor": "middle", fill: "var(--ink)", "font-size": 9 });
             t.textContent = String(v);

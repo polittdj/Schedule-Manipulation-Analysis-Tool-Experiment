@@ -1,6 +1,37 @@
-# Handoff — 2026-07-13 (operator UI batch — PR: drill on categorical count bars; v1.0.28; highest ADR 0217)
+# Handoff — 2026-07-14 (operator UI batch — PR: drill on Performance G2/G4 + CEI monthly bars; v1.0.29; highest ADR 0218)
 
-> ## STATUS (current) — operator UI batch: click-to-drill on the categorical count bars (ADR-0217)
+> ## STATUS (current) — operator UI batch: click-to-drill on the Performance + CEI monthly bars (ADR-0218)
+>
+> - Operator: finish "all other bars in the tool" — the last 2 count-bar families ADR-0217 deferred
+>   because they touch parity-relevant engine accumulators. Same pattern: append a **parallel UID
+>   accumulator** in lockstep with each count increment (same predicate/branch/index, so |count| ==
+>   len), then tag each bar rect with `SFDrill.mark`.
+>   - **Performance G2 late buckets** (`FlowMonth` → `activity_flow`, performance_summary.py): 6 new
+>     `started/finished_late_30/60/over_uids`, appended beside each `late_s[b][i]`/`late_f[b][i]`.
+>   - **Performance G4 workoff burden** (`BurdenMonth` → `workoff_burden`): 12 new `*_uids`. Backlog is a
+>     NEGATIVE count mirrored below the axis → its UID list carries `|count|`. `BurdenMonth` is now built
+>     field-by-field (a `**dict` splat stopped type-checking once the dataclass mixes int+tuple fields).
+>   - Both surface through the shared `stackedBars` in performance.js (reads `r[key+"_uids"]`,
+>     `data-file` = the version's own label `PV[cursor].label`).
+>   - **CEI monthly bars** (`SnapshotProfile` → `compute_bow_wave`, bow_wave.py): 3 new per-month
+>     `baselined/scheduled/finished_uids` via a `_bucket_uids` helper mirroring `month_axis.bucket`
+>     exactly (out-of-window dates dropped). `_cei_data` serializes them; cei.js tags each grouped
+>     monthly bar (`data-file` = snapshot label). Running-totals mode draws polylines (no bars, no drill).
+> - No metric change (Law 2): every UID list uses the SAME predicate as its count; CEI parity
+>   (24/129, 1/6 EXACT) + G2/G4/G5 reference figures byte-identical (parity suite green). All new fields
+>   are additive + defaulted → no existing constructor breaks (the CEI-view test's direct
+>   `SnapshotProfile(...)` still valid).
+> - Tests: engine invariants in `test_performance_summary.py` + `test_bow_wave.py` (exact UIDs on the
+>   hand-checkable fixtures); web end-to-end in `test_categorical_bar_drill.py` (perf blob + `/api/cei`
+>   carry the lists, resolve through `/api/activities/drill`; JS tagging pinned). **ADR-0218.** Version
+>   **1.0.28 → 1.0.29**; wheel + 9 installers rebuilt in lockstep.
+> - **All bar families in the tool are now click-to-drill.** Remaining live-testing backlog item:
+>   the Executive Margin Dashboard (blocked on operator reference files — `MarginContingency_BurnDown_Template`
+>   + margin-erosion inputs).
+
+# (prior) Handoff — 2026-07-13 (operator UI batch — PR: drill on categorical count bars; v1.0.28; highest ADR 0217)
+
+> ## STATUS — operator UI batch: click-to-drill on the categorical count bars (ADR-0217)
 >
 > - Operator: extend the bar drill (ADR-0216) to "all other bars in the tool" — the count/composition
 >   bars where a segment = a SET of activities. This PR wires **3 of the 5** such families (the
