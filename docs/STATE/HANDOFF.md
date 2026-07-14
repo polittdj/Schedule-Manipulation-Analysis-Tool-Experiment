@@ -1,6 +1,28 @@
-# Handoff — 2026-07-14 (audit remediation PR 2 — presentation-bug batch M2/L1/L2/L10; v1.0.30; highest ADR 0219)
+# Handoff — 2026-07-14 (audit remediation PR 3 — ch-01 Critical basis M3; v1.0.31; highest ADR 0220)
 
-> ## STATUS (current) — audit remediation PR 2: presentation-bug batch (ADR-0219)
+> ## STATUS (current) — audit remediation PR 3: chapter-01 Critical basis (ADR-0220)
+>
+> - AUDIT-2026-07-13 theme 3 (M3). Chapter 01 "Where we stand" counted **Critical (incomplete)** from
+>   raw pure-logic CPM float and banded float from `activity_rows` pure-logic `total_float_days`, while
+>   the ribbon (ch 02) + ch 11 use the progress-aware **effective** basis (`is_effective_critical` /
+>   `effective_total_float` — stored Total Slack / Critical flag first, what Acumen reads). On a
+>   progressed file the landing chapter showed a DIFFERENT Critical count than every other chapter.
+> - Fix (presentation only, no engine/ change; both helpers already imported): the KPI now uses
+>   `pc<100 and is_effective_critical(t, cpm float|0)` (identical to `ribbon.py`); the float bands use
+>   `effective_total_float(t, cpm float)/per_day` over incomplete/in-timings/non-summary activities.
+> - Verified: ch 01 == ch 02 ribbon (Hard_File 34, updated3 49); the old pure-logic count was 90 on
+>   Hard_File, so the fix bites hard. Data-value change only (no JS/CSS/layout) → no 4-theme sweep.
+> - Test `tests/web/test_ch01_critical_basis.py` (rendered ch-01 Critical == ribbon, != pure-logic on a
+>   progressed golden; "0 days" band == effective-float population). **ADR-0220.** Version **1.0.30 →
+>   1.0.31**; wheel + 9 installers rebuilt in lockstep.
+> - **Audit roadmap remaining:** PR 4 `sra_conclusions._wd` calendar (M1); PR 5 24h-calendar parse
+>   (H3 + L8); PR 6 AI figure-gate hardening (H1+M4+M5); PR 7 wire dead CUI defenses (M6+L3+L4); PR 8
+>   test harnesses (M7 + M8 full); PR 9 low/nit cleanup (L5-L9, N1-N2). (Exec Margin Dashboard still
+>   blocked on operator reference files.)
+
+# (prior) Handoff — 2026-07-14 (audit remediation PR 2 — presentation-bug batch M2/L1/L2/L10; v1.0.30; highest ADR 0219)
+
+> ## STATUS — audit remediation PR 2: presentation-bug batch (ADR-0219)
 >
 > - AUDIT-2026-07-13 theme 2 (PR 1 = docs sweep #341). Four display-only defects that put a wrong /
 >   fabricated value in front of the analyst. No metric math changes.

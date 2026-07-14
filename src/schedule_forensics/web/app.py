@@ -7523,13 +7523,17 @@ def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
     plan = analysis.compliance.get("forecast_to_be_finished")
     plan_at_dd = f"{plan.value:.0f}%" if plan is not None and plan.population else None
 
-    # critical (incomplete, progress-aware) — the same definition the schedule card uses
+    # critical (incomplete) on the SAME progress-aware basis as the ribbon (ch 02) and ch 11:
+    # Acumen reads MS Project's STORED Critical flag, falling back to pure-logic CPM critical only
+    # when the file carries no flag (_common.is_effective_critical). Reading raw tm.total_float here
+    # made a progressed file show a different Critical count than every other chapter (audit M3).
     critical = sum(
         1
         for t in non_summary(sch)
         if t.percent_complete < 100.0
-        and (tm := cpm.timings.get(t.unique_id)) is not None
-        and tm.total_float <= 0
+        and is_effective_critical(
+            t, cpm.timings[t.unique_id].total_float if t.unique_id in cpm.timings else 0
+        )
     )
     data_date = _mdY(sch.status_date) if sch.status_date else "—"
 
@@ -7564,12 +7568,15 @@ def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
         f"{makeup.total} activities",
     )
 
-    floats: list[float] = []
-    for r in analysis.activity_rows:
-        tf = r.get("total_float_days")
-        pc = r.get("percent_complete")
-        if isinstance(tf, int | float) and isinstance(pc, int | float) and pc < 100.0:
-            floats.append(float(tf))
+    # incomplete-activity float bands on the SAME progress-aware basis as the ribbon/ch 11:
+    # effective total float (stored Total Slack first, else recomputed CPM float) in working days.
+    # analysis.activity_rows carries the PURE-LOGIC float, which diverges on a progressed file.
+    per_day = cal.working_minutes_per_day or 1
+    floats: list[float] = [
+        effective_total_float(t, cpm.timings[t.unique_id].total_float) / per_day
+        for t in non_summary(sch)
+        if t.percent_complete < 100.0 and t.unique_id in cpm.timings
+    ]
     b0 = sum(1 for tf in floats if tf <= 0)
     b1 = sum(1 for tf in floats if 0 < tf <= 4)
     b2 = sum(1 for tf in floats if 4 < tf <= 9)
