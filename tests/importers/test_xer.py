@@ -850,6 +850,36 @@ def test_project_calendar_from_clndr_data() -> None:
     assert cal.holidays == (dt.date(2025, 7, 14),)  # the changed-hours day is NOT one
 
 
+def test_project_calendar_reads_a_24_hour_day_from_clndr_data() -> None:
+    """audit L8 (same root as H3): P6 encodes a 24-hour continuous day as a single s|00:00|f|00:00
+    span. It must read as 1440 working minutes/day from clndr_data — not collapse to nothing and
+    fall back to the 8h day_hr_cnt. day_hr_cnt is deliberately 8 here to prove clndr_data wins."""
+    twenty_four = {d: [("00:00", "00:00")] for d in range(1, 8)}  # all 7 days, 24h each
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "100"]],
+            ),
+            (
+                "CALENDAR",
+                ["clndr_id", "default_flag", "clndr_name", "day_hr_cnt", "clndr_data"],
+                [["100", "Y", "24 Hour", "8", _clndr_data(twenty_four, [])]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "24"]],
+            ),
+        ]
+    )
+    cal = parse_xer_text(text).calendar
+    assert cal.name == "24 Hour"
+    assert cal.working_minutes_per_day == 1440  # the full day, not the 8h day_hr_cnt fallback
+    assert cal.work_weekdays == (0, 1, 2, 3, 4, 5, 6)
+
+
 def test_project_clndr_id_selects_among_calendars_with_default_flag_fallback() -> None:
     five_eights = {d: [("08:00", "12:00"), ("13:00", "17:00")] for d in (2, 3, 4, 5, 6)}
     rows = [
