@@ -5704,3 +5704,27 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   green (ruff/format/mypy/bandit/node/pytest 2097+).
 - **ADR-0219** (in HANDOFF + this log — drift guard green). Version 1.0.29 -> 1.0.30; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — audit remediation PR 3: chapter-01 Critical basis M3 (ADR-0220)
+
+- **Session:** operator "continue" — next audit theme. Chose fix direction 1 (align ch 01 to the
+  progress-aware basis the rest of the tool uses) after flagging the reconciliation choice.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (fresh from origin/main after
+  #353 merged).
+- M3: _where_we_stand_header counted Critical (incomplete) from raw pure-logic CPM float
+  (tm.total_float<=0) and banded float from activity_rows' pure-logic total_float_days, while the ribbon
+  (ch 02) + ch 11 use the effective basis (is_effective_critical / effective_total_float — MS Project's
+  stored Total Slack / Critical flag first, what Acumen reads). On a progressed file ch 01 disagreed
+  with every other chapter; the inline comment falsely claimed it was already progress-aware.
+- Fix (presentation only, no engine/ change; helpers already imported): KPI ->
+  `pc<100 and is_effective_critical(t, cpm float|0)` (mirrors ribbon.py exactly); float bands ->
+  `effective_total_float(t, cpm float)/per_day` over incomplete/in-timings/non-summary.
+- Verified: ch 01 Critical == ribbon (Hard_File 34, updated3 49); old pure-logic was 90 on Hard_File so
+  the fix bites hard. Data-value change only (no JS/CSS/layout), so no 4-theme sweep. Full gate green
+  (ruff/format/mypy/bandit/pytest 2099); parity unaffected (effective is the Acumen-validated basis).
+- Test tests/web/test_ch01_critical_basis.py (ch-01 Critical == ribbon and != pure-logic on a progressed
+  golden; "0 days" band == effective-float population).
+- **ADR-0220** (in HANDOFF + this log — drift guard green). Version 1.0.30 -> 1.0.31; wheel + 9
+  installers rebuilt in lockstep.
