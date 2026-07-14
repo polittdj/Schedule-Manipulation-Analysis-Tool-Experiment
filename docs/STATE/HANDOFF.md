@@ -1,6 +1,41 @@
-# Handoff — 2026-07-14 (Margin Dashboard follow-ups — Excel export + planned column; v1.0.34; highest ADR 0222)
+# Handoff — 2026-07-14 (READ-ONLY RE-AUDIT — findings recorded, nothing fixed; v1.0.34; highest ADR 0222)
 
-> ## STATUS (current) — Margin Dashboard follow-ups: Excel/Word export + month-start planned column (ADR-0222)
+> ## STATUS (current) — repository re-audit 2026-07-14 (docs/STATE/AUDIT-2026-07-14.md). No code changed.
+>
+> - Operator directive: audit the repo + all project files, record findings, **fix nothing**, then mark
+>   what's left / next step / current state here + in NEXT-SESSION-PROMPT.md. Full findings doc:
+>   **`docs/STATE/AUDIT-2026-07-14.md`** (3 parallel read-only passes + operator re-validation).
+> - **CURRENT STATE:** HEAD `869a8d0`, v**1.0.34**, ADRs 0000–0222 contiguous, gate FULLY GREEN
+>   (ruff/format/mypy/bandit exit 0 / **2117 tests** / doc-drift guard / metric-dictionary in sync).
+>   Branch `claude/smat-audit-remediation-eeckdi` sits at origin/main (all session PRs #341–#357 merged).
+>   The two laws hold; **no CRITICAL / egress defect**; the new web surface is CUI-clean (no external ref
+>   in any new JS; every schedule-derived string `_e`-escaped; drill UIDs correct).
+> - **FINDINGS:** the 2026-07-13 audit's **16 of 33** findings are now resolved (H2,M1,M2,M3,M9,M10,M12,
+>   M13,M14,L1,L2,L10,L11,L12,L13,N3). **17 remain** (15 unchanged + M8/M11 partial). **3 NEW** findings
+>   this window (2 in code written this session), all verified:
+>   - **NEW-1 (Medium, fidelity — DO FIRST):** the metric-catalog `applicable` flag (ADR-0219) marks the
+>     two float ribbon extras `avg_float_days`/`max_float_days` as a real value even when their population
+>     is empty → a fully-complete schedule shows "Avg/Max Float 0.0 days" instead of "—". Regression in
+>     the L1 fix. `metric_catalog.py:192-200` (defaults applicable=True) + `ribbon.py:216-217` (0.0 on
+>     empty). Fix: mark those two NA when the incomplete-float population is 0; all-complete fixture.
+>   - **NEW-2 (Low):** `margin_dashboard.py` erosion least-squares fit mixes bases when the target
+>     milestone is present in some versions and absent (project-finish fallback) in others → polluted
+>     slope/zero-margin date. Fit only over a consistent basis; disclose exclusions.
+>   - **NEW-3 (Low, extends L5):** `tests/web/test_airgap.py` static scan omits the new `/scorecards` +
+>     `/margin` pages + the 3 new JS files (runtime CSP still enforces the air-gap, so not live).
+> - **REMAINING PRIOR FINDINGS (the audit roadmap):** H1 (AI-translate figure gate), **H3+L8** (24h
+>   calendar — VERIFY-FIRST), M4/M5 (AI number-words + loaded-terms), M6/L3/L4 (dead CUI defenses),
+>   M7/M8 (test harnesses — M8 sort still untested), M11 (durable version-sync guard), L5/NEW-3
+>   (air-gap route enum), L6 (pre-commit archive ext), L7 (MSPDI decode ladder), L9 (XER baseline
+>   semantics — needs P6 ref + ADR), N1 (xlsx decompression cap), N2 (stored-slack ROUND_HALF_UP).
+> - **NEXT STEP (operator's choice — wait for a 'continue'):** the audit doc's recommended order is
+>   **(1) NEW-1** (Medium fidelity, small, do first) → **(2) PR 5 = H3+L8** 24h calendar (verify-first)
+>   → (3) PR 6 = H1+M4+M5 AI figure-gate → (4) PR 7 = M6+L3+L4 → (5) PR 8 = M7+M8+L5/NEW-3+M11+NEW-2 →
+>   (6) PR 9 = L6/L7/L9/N1/N2. Each: fresh from origin/main, full gate, new ADR, HANDOFF+SESSION-LOG.
+
+# (prior) Handoff — 2026-07-14 (Margin Dashboard follow-ups — Excel export + planned column; v1.0.34; highest ADR 0222)
+
+> ## STATUS — Margin Dashboard follow-ups: Excel/Word export + month-start planned column (ADR-0222)
 >
 > - Operator picked follow-up option 2: the two Margin-Dashboard items noted (not built) in ADR-0222.
 > - **Excel/Word export** — new `/export/{fmt}/margin` (the export bar the dashboard already showed was
