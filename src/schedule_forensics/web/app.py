@@ -110,6 +110,11 @@ from schedule_forensics.engine.grouping import (
     group_values,
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
+from schedule_forensics.engine.margin_dashboard import (
+    MarginDashboard,
+    MarginMonth,
+    compute_margin_dashboard,
+)
 from schedule_forensics.engine.metric_catalog import (
     catalog_entries,
     catalog_families,
@@ -1432,6 +1437,7 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     (
         "SETUP",
         (
+            _Chapter("", "Margin Dashboard", "/margin", (), ("Margin Dashboard",), ""),
             _Chapter("", "Metric Workbench", "/workbench", (), ("Metric Workbench",), ""),
             _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
             _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
@@ -2564,6 +2570,23 @@ def create_app(
                 ]
             }
         )
+
+    @app.get("/margin", response_class=HTMLResponse)
+    def margin_view() -> HTMLResponse:
+        st = session()
+        if not st.schedules:
+            return _page(
+                st,
+                "Margin Dashboard",
+                "<div class=panel>Load one or more monthly schedule versions to see the NASA "
+                "margin/contingency burn-down and the margin-erosion trend.</div>",
+            )
+        return _page(st, "Margin Dashboard", _margin_dashboard_body(st))
+
+    @app.get("/api/margin/dashboard")
+    def margin_dashboard_json() -> JSONResponse:
+        st = session()
+        return JSONResponse(_margin_dashboard_data(_margin_dashboard_for(st)))
 
     @app.get("/evm", response_class=HTMLResponse)
     def evm_view(group_field: str = Query("")) -> HTMLResponse:
@@ -7975,6 +7998,155 @@ def _export_bar(path: str, *, xlsx_id: str = "", docx_id: str = "") -> str:
     return (
         f'<div class="export-bar"><a{a} href="/export/xlsx/{path}">&#11015; Excel</a>'
         f'<a{b} href="/export/docx/{path}">&#11015; Word</a></div>'
+    )
+
+
+# ── Executive Margin Dashboard (NASA Margin/Contingency Burn-Down + Margin Erosion Trend) ──────
+
+
+def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
+    """Build the margin/contingency dashboard from the loaded versions (oldest -> newest), scoped to
+    the active group/filter, measured to the session target milestone (else the project finish)."""
+    versions: list[tuple[str, Schedule, CPMResult]] = []
+    for key, raw in st.ordered_versions():
+        try:
+            a = st.analysis_for(key, raw)
+        except CPMError:
+            continue
+        versions.append((raw.source_file or raw.name, st.scope(raw), a.cpm))
+    return compute_margin_dashboard(versions, target_uid=st.target_uid)
+
+
+def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
+    return {
+        "have_margin_tasks": d.have_margin_tasks,
+        "erosion_wd_per_month": d.erosion_wd_per_month,
+        "zero_margin_date": d.zero_margin_date,
+        "erosion_r2": d.erosion_r2,
+        "months": [
+            {
+                "label": m.label,
+                "status_date": m.status_date,
+                "target_name": m.target_name,
+                "target_finish": m.target_finish,
+                "zero_margin_finish": m.zero_margin_finish,
+                "effective_margin_wd": m.effective_margin_wd,
+                "margin_cd": m.margin_cd,
+                "contingency_wd": m.contingency_wd,
+                "total_available": m.total_available,
+                "days_to_go": m.days_to_go,
+                "nasa_rqmt_wd": m.nasa_rqmt_wd,
+                "pct_available": m.pct_available,
+                "pct_effective": m.pct_effective,
+                "below_requirement": m.below_requirement,
+            }
+            for m in d.months
+        ],
+    }
+
+
+def _margin_dashboard_header(d: MarginDashboard) -> str:
+    """The data-driven takeaway + KPI strip: latest effective margin vs the NASA requirement, the
+    trigger state, and the erosion projection. Every figure comes from the engine (no new math)."""
+    dated = [m for m in d.months if m.status_date is not None]
+    latest = dated[-1] if dated else None
+    if latest is None:
+        takeaway = (
+            "Load monthly schedule versions (each carrying a status date) to track how schedule "
+            "margin is being consumed against the plan."
+        )
+        return f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1>'
+
+    target = latest.target_name or "the project finish"
+    if not d.have_margin_tasks:
+        takeaway = (
+            f'No schedule-margin activity (an activity named "margin") was found in the loaded '
+            f"versions, so effective margin to {target} reads 0. Name the buffer activities "
+            '"…margin…" so the burn-down can measure the reserve protecting the date.'
+        )
+    elif latest.below_requirement:
+        takeaway = (
+            f"Effective margin to {target} is {latest.effective_margin_wd:g} work days as of "
+            f"{_mdY(latest.status_date)} — BELOW the NASA Gold-Rule requirement of "
+            f"{latest.nasa_rqmt_wd:g} — a trigger to enact contingency or buy back schedule."
+        )
+    else:
+        takeaway = (
+            f"Effective margin to {target} is {latest.effective_margin_wd:g} work days as of "
+            f"{_mdY(latest.status_date)} — at or above the {latest.nasa_rqmt_wd:g}-day NASA "
+            "Gold-Rule requirement."
+        )
+    if d.zero_margin_date is not None and d.erosion_wd_per_month:
+        takeaway += (
+            f" At the current erosion of {d.erosion_wd_per_month:g} work days per month, margin "
+            f"reaches zero around {_mdY(d.zero_margin_date)}."
+        )
+
+    trigger = "TRIGGERED" if latest.below_requirement else "OK"
+    kpi = _stat_cards(
+        [
+            ("Effective margin (wd)", f"{latest.effective_margin_wd:g}"),
+            ("NASA requirement (wd)", f"{latest.nasa_rqmt_wd:g}"),
+            ("Contingency (days)", str(latest.contingency_wd)),
+            (
+                "Erosion (wd/month)",
+                f"{d.erosion_wd_per_month:g}" if d.erosion_wd_per_month else "—",
+            ),
+            ("Zero-margin date", _mdY(d.zero_margin_date) if d.zero_margin_date else "—"),
+            ("Trigger for action", trigger),
+        ]
+    )
+    return (
+        f'<h1 class="page-takeaway" data-no-i18n>{_e(takeaway)}</h1><div class="ws-kpi">{kpi}</div>'
+    )
+
+
+def _margin_dashboard_body(st: SessionState) -> str:
+    """The Margin Dashboard page: the takeaway + KPI header, the two reference charts (burn-down +
+    erosion trend), the per-version table, and the embedded dataset margin_dashboard.js reads."""
+    d = _margin_dashboard_for(st)
+    data = _margin_dashboard_data(d)
+    blob = json.dumps(data).replace("<", "\\u003c")
+
+    def _row(m: MarginMonth) -> str:
+        pct = f"{100 * m.pct_available:.1f}%" if m.pct_available is not None else "—"
+        sd = _mdY(m.status_date) if m.status_date else "—"
+        trig = "&#9888; trigger" if m.below_requirement else "ok"
+        return (
+            f"<tr{' class=below' if m.below_requirement else ''}><td>{_e(sd)}</td>"
+            f"<td class=num>{m.effective_margin_wd:g}</td>"
+            f"<td class=num>{m.contingency_wd}</td>"
+            f"<td class=num>{m.total_available:g}</td>"
+            f"<td class=num>{m.nasa_rqmt_wd:g}</td>"
+            f"<td class=num>{m.days_to_go}</td>"
+            f"<td class=num>{pct}</td><td>{trig}</td></tr>"
+        )
+
+    rows = "".join(_row(m) for m in d.months)
+    r2 = d.erosion_r2
+    fit = f" (R&sup2; {r2:.2f})" if r2 is not None else ""
+    return (
+        _margin_dashboard_header(d)
+        + _export_bar("margin")
+        + '<div class="panel"><h2 data-no-i18n>Margin &amp; Contingency Burn-Down</h2>'
+        '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
+        "stacked with <b>contingency</b> (weekends + holidays to the target), against the NASA "
+        "Gold-Rule requirement line. A red bar is a month where margin has fallen below the "
+        "requirement &mdash; the trigger for action.</p>"
+        '<div class="chart-host" id="marginBurndownChart"></div></div>'
+        '<div class="panel"><h2 data-no-i18n>Margin Erosion Trend (MET)</h2>'
+        f'<p class="muted" data-no-i18n>Effective margin (work days) over the status dates with a '
+        f"least-squares erosion line extrapolated to zero{fit}. The projected zero-margin date is "
+        "the honest linear read of the current trend, not a commitment.</p>"
+        '<div class="chart-host" id="marginErosionChart"></div></div>'
+        '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
+        "<table><tr><th scope=col>Status date</th><th scope=col>Margin (wd)</th>"
+        "<th scope=col>Contingency</th><th scope=col>Total avail.</th>"
+        "<th scope=col>NASA rqmt (wd)</th><th scope=col>Days-to-go</th>"
+        "<th scope=col>% available</th><th scope=col>Trigger</th></tr>"
+        f"{rows or '<tr><td colspan=8 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
+        f'<script type="application/json" id=marginDashData>{blob}</script>'
+        '<script src="/static/margin_dashboard.js"></script>'
     )
 
 

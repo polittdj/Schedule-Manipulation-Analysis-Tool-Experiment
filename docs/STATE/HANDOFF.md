@@ -1,6 +1,40 @@
-# Handoff — 2026-07-14 (audit remediation PR 4 — SRA-conclusion calendar day-counts M1; v1.0.32; highest ADR 0221)
+# Handoff — 2026-07-14 (operator feature — Executive Margin Dashboard; v1.0.33; highest ADR 0222)
 
-> ## STATUS (current) — audit remediation PR 4: SRA-conclusion day-counts on the calendar (ADR-0221)
+> ## STATUS (current) — operator feature: Executive Margin Dashboard (ADR-0222)
+>
+> - Operator provided the NASA `MarginContingency_BurnDown` reference workbook + a Margin Erosion Trend
+>   (MET) reference and asked for the Executive Margin Dashboard (the last blocked live-testing item).
+> - The tool ALREADY computes effective margin (margin.py: zero every "margin"-named activity, re-run
+>   CPM, measure how far the finish pulls in = the workbook's NRO-SEM "Effective Margin Calculator").
+>   New `engine/margin_dashboard.py` composes it into the executive layer, per loaded version:
+>   - effective margin (I) re-anchored on the **target** finish; zero-margin finish (E); margin cal-days
+>     (G = D-E); contingency (J = schedule calendar non-working days status->target); NASA Gold-Rule
+>     requirement (O = days-to-go x 30/365); days-to-go (Q); % available (R=P/Q); % effective (T=G/Q);
+>     trigger = effective margin < requirement.
+>   - Margin Erosion Trend: least-squares of effective margin vs status date -> work-days/month + the
+>     extrapolated zero-margin date (R² disclosed; flat/growing -> no zero date).
+> - **Two operator scope choices (2026-07-14):** (1) margin measured to the session-selected target,
+>   else project finish; (2) contingency = calendar non-working days (weekends + holidays), not the
+>   workbook's weekends-only SUMPRODUCT.
+> - New off-spine `/margin` page (SETUP nav) + `/api/margin/dashboard` + `margin_dashboard.js` (2 SVG
+>   charts: burn-down stacked bars, red below the requirement line = trigger; erosion line + fit +
+>   zero-margin marker). Chromium-verified 4 themes (bars recolor red below rqmt; no console errors).
+> - No parity impact (margin.py unchanged, off the ribbon/dictionary like health_extra). Tests:
+>   test_margin_dashboard.py (engine) + test_margin_dashboard_view.py (page + API). **ADR-0222.** Version
+>   **1.0.32 -> 1.0.33**; wheel + 9 installers rebuilt in lockstep. Full gate green (2114 passed).
+> - **CUI:** the reference workbook/screenshots (program-specific values) were NOT committed; the ADR
+>   documents only the public NASA Handbook methodology. The tool computes from the operator's schedules.
+> - **Follow-ups noted (not built):** Excel export of the burn-down table; the workbook's month-start
+>   "planned" column (tool tracks actual per status date; the NASA line is the planned guideline).
+> - **PARKED (operator "come back later"): the 24h `.mpp` work = audit PR 5 (H3 + L8).** VERIFY-FIRST:
+>   convert a 24-hour `.mpp` through the vendored MPXJ path and inspect whether it emits `00:00->00:00`
+>   or `00:00->24:00` BEFORE fixing. If `00:00->00:00`, fix `working_time_span` to treat `from==0 and
+>   to==0` as `(0,1440)`; add an MSPDI 24h fixture + test; re-run parity; do the sibling XER fix (L8,
+>   shared `working_time_span`). Full detail in the audit doc (H3) + the roadmap list below.
+
+# (prior) Handoff — 2026-07-14 (audit remediation PR 4 — SRA-conclusion calendar day-counts M1; v1.0.32; highest ADR 0221)
+
+> ## STATUS — audit remediation PR 4: SRA-conclusion day-counts on the calendar (ADR-0221)
 >
 > - AUDIT-2026-07-13 theme 4 (M1) — engine fidelity, parity-safe. `sra_conclusions._wd` divided
 >   working-minute offsets by a hard-coded 480, so the **Contingency** (P80−det finish) and
