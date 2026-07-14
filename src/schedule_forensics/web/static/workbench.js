@@ -16,7 +16,9 @@
   }
 
   function fmt(cell, unit) {
-    if (cell == null || cell.value == null) return "—";
+    // "—" for a missing cell OR an unmeasurable metric (applicable === false → the value is a
+    // placeholder 0, not a real measurement); informational extras stay applicable.
+    if (cell == null || cell.value == null || cell.applicable === false) return "—";
     var v = cell.value;
     if (unit === "%") return v.toFixed(2) + "%";
     if (unit === "ratio") return v.toFixed(2);

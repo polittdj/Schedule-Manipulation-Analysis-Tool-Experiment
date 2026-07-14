@@ -1,6 +1,38 @@
-# Handoff — 2026-07-14 (operator UI batch — PR: drill on Performance G2/G4 + CEI monthly bars; v1.0.29; highest ADR 0218)
+# Handoff — 2026-07-14 (audit remediation PR 2 — presentation-bug batch M2/L1/L2/L10; v1.0.30; highest ADR 0219)
 
-> ## STATUS (current) — operator UI batch: click-to-drill on the Performance + CEI monthly bars (ADR-0218)
+> ## STATUS (current) — audit remediation PR 2: presentation-bug batch (ADR-0219)
+>
+> - AUDIT-2026-07-13 theme 2 (PR 1 = docs sweep #341). Four display-only defects that put a wrong /
+>   fabricated value in front of the analyst. No metric math changes.
+>   - **M2** — missing-KPI sentinel was `"&mdash;"` → `_e`=html.escape double-escaped it to
+>     `&amp;mdash;` (rendered literal `&mdash;`) on 7/12 chapter KPI strips. Fix: use the literal "—"
+>     (U+2014) as the sentinel value everywhere (safe in both the escaped and raw-HTML paths, so the
+>     whole bug class dies). Prose ` &mdash; ` separators left as-is.
+>   - **L1** — workbench serialized `r.value` (0.0 for an audit-absent metric) → grid showed "0.00", not
+>     "—" (the `fmt` "—" branch was dead). Fix: explicit `applicable: bool` on `CatalogRow`, set in
+>     `evaluate_catalog` (False for the placeholder/scored-NA, True for informational extras with real
+>     values); serializer sends it; `fmt` shows "—" when `applicable===false`; the Excel export drops its
+>     `value==0` heuristic for `not r.applicable` (grid+export now agree; a real 0 extra still shows 0).
+>   - **L2** — `_what_changed_header` mixed populations (total from `compute_activity_makeup` = active-
+>     only, added/changed from `diff_versions` = incl. inactive) → "Unchanged" miscounted with
+>     deactivated tasks. Fix: count total on the diff population (`sum(... if not t.is_summary)`).
+>   - **L10** — ch-01 Gantt legend hard-coded hex → `var(--ok/--warn/--bad/--muted)`.
+> - Chromium-verified in ALL FOUR themes: legend swatches recolor per theme (console/daylight/apollo/
+>   jarvis distinct RGB — before, all four were the frozen `#2e7d32`); 6 workbench NA cells show "—";
+>   no `&amp;mdash;`; no console errors.
+> - Tests: catalog `applicable` split (engine); `/api/workbench` cell contract + one-population "What
+>   changed" + token legend + `_stat_cards` sentinel + source guard (web); node harness executing the
+>   real `workbench.js` `fmt` (audit L1 / partial M8). **ADR-0219.** Version **1.0.29 → 1.0.30**; wheel
+>   + 9 installers rebuilt in lockstep.
+> - **Audit roadmap remaining** (each its own PR, most-value-per-risk): PR 3 ch-01 Critical basis (M3);
+>   PR 4 `sra_conclusions._wd` calendar (M1); PR 5 24h-calendar parse (H3 + L8); PR 6 AI figure-gate
+>   hardening (H1+M4+M5); PR 7 wire dead CUI defenses (M6+L3+L4); PR 8 test harnesses (M7+M8 full);
+>   PR 9 low/nit cleanup (L5-L9, N1-N2). (Live-testing bar-drill backlog is DONE through #352; Exec
+>   Margin Dashboard still blocked on operator reference files.)
+
+# (prior) Handoff — 2026-07-14 (operator UI batch — PR: drill on Performance G2/G4 + CEI monthly bars; v1.0.29; highest ADR 0218)
+
+> ## STATUS — operator UI batch: click-to-drill on the Performance + CEI monthly bars (ADR-0218)
 >
 > - Operator: finish "all other bars in the tool" — the last 2 count-bar families ADR-0217 deferred
 >   because they touch parity-relevant engine accumulators. Same pattern: append a **parallel UID

@@ -3647,6 +3647,7 @@ def create_app(
                     "value": r.value,
                     "unit": r.unit,
                     "status": r.status,
+                    "applicable": r.applicable,  # False → the cell renders "—", not a placeholder 0
                     "offenders": len(r.offender_uids),
                 }
         return JSONResponse(
@@ -3743,9 +3744,9 @@ def create_app(
             cells: list[Cell] = []
             for rows in per_version:
                 r = rows[e.metric_id]
-                cells.append(
-                    "NA" if r.status == "NA" and r.unit != "days" and r.value == 0 else r.value
-                )
+                # an unmeasurable metric exports as "NA", not a placeholder 0 (matches the grid);
+                # the informational extras stay applicable and export their real value
+                cells.append("NA" if not r.applicable else r.value)
             body.append((e.name, e.family, e.unit, *cells))
         tableset = TableSet(
             "Metric Workbench",
@@ -5625,10 +5626,10 @@ def _completion_panel(analysis: _Analysis) -> str:
     def fmt(mid: str) -> str:
         r = cp[mid]
         if r.unit == "%":
-            return f"{r.count} of {r.population} ({r.value:g}%)" if r.population else "&mdash;"
+            return f"{r.count} of {r.population} ({r.value:g}%)" if r.population else "—"
         if r.unit == "days":
-            return f"{r.value:g} days (over {r.count})" if r.count else "&mdash;"
-        return f"{r.value:g}" if r.population else "&mdash;"
+            return f"{r.value:g} days (over {r.count})" if r.count else "—"
+        return f"{r.value:g}" if r.population else "—"
 
     rows = "".join(
         f"<tr><th scope=col class=metric-th>{_metric_help_cell(label, mid)}</th>"
@@ -6256,13 +6257,11 @@ def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -
     top = {f.method_id: f.finish for f in latest_set.forecasts}
 
     def d(v: dt.date | None) -> str:
-        return _mdY(v) if v else "&mdash;"
+        return _mdY(v) if v else "—"
 
-    spi_cell = f"{rollup.weighted_spi_t:g}" if rollup.weighted_spi_t is not None else "&mdash;"
-    spi_all = (
-        f"{rollup.weighted_spi_t_all:g}" if rollup.weighted_spi_t_all is not None else "&mdash;"
-    )
-    top_spi = f"{latest_set.spi_t:g}" if latest_set.spi_t is not None else "&mdash;"
+    spi_cell = f"{rollup.weighted_spi_t:g}" if rollup.weighted_spi_t is not None else "—"
+    spi_all = f"{rollup.weighted_spi_t_all:g}" if rollup.weighted_spi_t_all is not None else "—"
+    top_spi = f"{latest_set.spi_t:g}" if latest_set.spi_t is not None else "—"
     coverage = (
         f"{rollup.groups_used} of {rollup.groups_total} groups with to-go work carry a DIRECT "
         f"SPI(t), covering {rollup.covered_to_go} of {rollup.total_to_go} to-go activities; "
@@ -6272,7 +6271,7 @@ def _group_rollup_panel(latest: Schedule, latest_set: ForecastSet, field: str) -
     if rollup.estimated:
         rows = "".join(
             f"<tr><th scope=row data-no-i18n>{_e(e.group)}</th><td class=num>{e.to_go}</td>"
-            f"<td class=num>{e.sei if e.sei is not None else '&mdash;'}</td>"
+            f"<td class=num>{e.sei if e.sei is not None else '—'}</td>"
             f"<td class=num>{e.pooled_rate_per_month:g}/mo</td>"
             f"<td class=num>&times;{e.adjustment:g}</td>"
             f"<td><b>{d(e.finish)}</b></td>"
@@ -6396,11 +6395,11 @@ def _where_it_lands_header(sch: Schedule, fset: ForecastSet) -> str:
     kpi = _stat_cards(
         [
             ("Methods with a date", f"{len(dated)} / {n_methods}"),
-            ("CPM finish", _mdY(cpm_date) if cpm_date is not None else "&mdash;"),
-            ("Earliest", _mdY(earliest) if earliest is not None else "&mdash;"),
-            ("Latest", _mdY(latest) if latest is not None else "&mdash;"),
-            ("Spread (days)", str(spread) if spread is not None else "&mdash;"),
-            ("vs Baseline", f"{var:+d} d" if var is not None else "&mdash;"),
+            ("CPM finish", _mdY(cpm_date) if cpm_date is not None else "—"),
+            ("Earliest", _mdY(earliest) if earliest is not None else "—"),
+            ("Latest", _mdY(latest) if latest is not None else "—"),
+            ("Spread (days)", str(spread) if spread is not None else "—"),
+            ("vs Baseline", f"{var:+d} d" if var is not None else "—"),
         ]
     )
     progress_bar = _status_stack(
@@ -6438,7 +6437,7 @@ def _forecast_body(
     by_id = latest_sch.tasks_by_id
     method_rows = "".join(
         f"<tr><th scope=col>{_e(f.name)}</th>"
-        f"<td><b>{_mdY(f.finish) if f.finish else '&mdash;'}</b></td>"
+        f"<td><b>{_mdY(f.finish) if f.finish else '—'}</b></td>"
         f"<td class=muted>{_e(f.basis)}</td></tr>"
         for f in latest.forecasts
     )
@@ -6470,7 +6469,7 @@ def _forecast_body(
         drift_rows = "".join(
             f"<tr><td>{_e(sch.source_file or sch.name)}</td>"
             f"<td>{_mdY(fs.as_of) if fs.as_of else '-'}</td>"
-            + "".join(f"<td>{_mdY(f.finish) if f.finish else '&mdash;'}</td>" for f in fs.forecasts)
+            + "".join(f"<td>{_mdY(f.finish) if f.finish else '—'}</td>" for f in fs.forecasts)
             + "</tr>"
             for sch, fs in zip(schedules, sets, strict=True)
         )
@@ -6497,14 +6496,14 @@ progresses. Faint markers are the prior version's forecasts.</p>
 <p class=muted>The reference deck's <i>Carnac</i> forecast KPIs (PBIX page 13): the project
 window, the forecast end dates, the completion rate, remaining and project duration,
 SPI(t), Earned Schedule, and the to-go activity count. A card with missing inputs shows
-"&mdash;" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
+"—" &mdash; never a fabricated value. Every figure reuses the forecast below.</p>
 {_user_tip("Independent methods (logic, the source schedule, throughput and performance) forecast the finish; where they disagree, the logic and the observed performance are telling different stories. A method whose inputs are missing shows a dash &mdash; never a fabricated date.")}
 {_carnac_cards(carnac)}</div>
 <div class=panel><h2>Finish forecast &mdash; {_e(latest_sch.name)}</h2>
 <p class=muted>Independent answers to "when will it really end": the schedule's own
 logic (CPM), the observed completion throughput, and earned-schedule performance
 (IEAC(t) = AT + (PD &minus; ES) / SPI(t)). Methods that disagree are themselves a finding.
-A method whose inputs are missing shows "&mdash;" &mdash; never a fabricated date.</p>
+A method whose inputs are missing shows "—" &mdash; never a fabricated date.</p>
 <table><tr><th scope=col>Method</th><th scope=col>Forecast finish</th><th scope=col>Basis</th></tr>{method_rows}</table>
 <h3>Inputs</h3><table>{inputs}</table>
 <p class=cite>Finish-controlling: {_e(cite)}</p></div>
@@ -7204,7 +7203,7 @@ headline KPI cards — every figure computed from this file and verifiable on th
 
 def _num(value: float | None, *, suffix: str = "") -> str:
     """Render an optional number for a table cell — em-dash when absent (never a fake 0)."""
-    return f"{value:g}{suffix}" if value is not None else "&mdash;"
+    return f"{value:g}{suffix}" if value is not None else "—"
 
 
 def _wbs_body(key: str, groups: tuple[WBSGroup, ...]) -> str:
@@ -7516,7 +7515,7 @@ def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
             vs_base = "0d"
             base_phrase = "on the baseline finish"
     else:
-        vs_base = "&mdash;"
+        vs_base = "—"
         base_phrase = "with no baseline finish to compare against"
 
     # plan-at-DD proxy: the share of activities the baseline scheduled to be finished by the data
@@ -7532,7 +7531,7 @@ def _where_we_stand_header(key: str, sch: Schedule, analysis: _Analysis) -> str:
         and (tm := cpm.timings.get(t.unique_id)) is not None
         and tm.total_float <= 0
     )
-    data_date = _mdY(sch.status_date) if sch.status_date else "&mdash;"
+    data_date = _mdY(sch.status_date) if sch.status_date else "—"
 
     # takeaway h1 — a sentence with a number; every clause is a real figure or is omitted
     plan_clause = f" against a {plan_at_dd} baseline plan at the data date" if plan_at_dd else ""
@@ -7628,10 +7627,10 @@ def _analysis_body(
 <div id=viz data-name="{_e(key)}">
 <div class="charts chart-host" id=charts></div>
 <p class=muted aria-label="chart color legend" style="margin:4px 0 8px">
-<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2e7d32"></span> pass / on time &nbsp;
-<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f9a825"></span> late / warning &nbsp;
-<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c62828"></span> fail / missed &nbsp;
-<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9e9e9e"></span> not applicable</p>
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--ok)"></span> pass / on time &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--warn)"></span> late / warning &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--bad)"></span> fail / missed &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--muted)"></span> not applicable</p>
 <div class="viz-controls sf-freeze-bar" id=gridControls>Driving path to target UID:
 <input id=targetUid type=number min=1 placeholder="UID" value="{target if target is not None else ""}">
 secondary&le;<input id=secMax type=number value=10>d
@@ -8658,7 +8657,10 @@ def _what_changed_header(
     changed = len(diff.changed_tasks)
     links_added = len(diff.added_links)
     links_removed = len(diff.removed_links)
-    total_current = compute_activity_makeup(current).total
+    # Count on the SAME population diff_versions uses (non-summary, INCLUDING inactive tasks —
+    # deactivation is a tracked change). compute_activity_makeup drops inactive tasks, so mixing it
+    # with the diff counts miscounts "Unchanged" whenever a version carries deactivated activities.
+    total_current = sum(1 for t in current.tasks if not t.is_summary)
     in_both = max(total_current - added, 0)
     unchanged = max(in_both - changed, 0)
 
@@ -9212,14 +9214,14 @@ def _work_piling_header(wave: BowWave) -> str:
     kpi = _stat_cards(
         [
             ("Versions compared", str(n_ver)),
-            ("Latest CEI", f"{cei:.2f}" if cei is not None else "&mdash;"),
-            ("CEI month", latest.cei_period or "&mdash;"),
-            ("Planned that month", str(planned) if latest.cei_planned is not None else "&mdash;"),
+            ("Latest CEI", f"{cei:.2f}" if cei is not None else "—"),
+            ("CEI month", latest.cei_period or "—"),
+            ("Planned that month", str(planned) if latest.cei_planned is not None else "—"),
             (
                 "Finished that month",
-                str(finished) if latest.cei_finished is not None else "&mdash;",
+                str(finished) if latest.cei_finished is not None else "—",
             ),
-            ("Months under plan", f"{under} / {len(scored)}" if scored else "&mdash;"),
+            ("Months under plan", f"{under} / {len(scored)}" if scored else "—"),
         ]
     )
     month_bar = _status_stack(
@@ -9492,7 +9494,7 @@ def _can_we_trust_header(sch: Schedule, analysis: _Analysis, ribbon: RibbonMetri
 
     kpi = _stat_cards(
         [
-            ("DCMA checks passed", f"{passes} / {scored}" if scored else "&mdash;"),
+            ("DCMA checks passed", f"{passes} / {scored}" if scored else "—"),
             ("Missing logic", str(ribbon.missing_logic)),
             ("Hard constraints", str(ribbon.hard_constraints)),
             ("Negative float", str(ribbon.negative_float)),
@@ -11578,7 +11580,7 @@ def _sra_body(st: SessionState) -> str:
     # The file pick governs EVERY model on the page (SSI, OAT, and the legacy Monte-Carlo all
     # resolve their schedule through _sra_selected), so it lives in one panel at the very top.
     active_note = (
-        f"<p class=muted>Active file: <b>{_e(selected_key) if selected_key else '&mdash;'}</b> "
+        f"<p class=muted>Active file: <b>{_e(selected_key) if selected_key else '—'}</b> "
         f"{'(latest solvable version)' if st.sra_file is None else ''}</p>"
     )
     top_file_panel = (
@@ -11974,7 +11976,7 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
     any_present = False
     for sch, cpm in zip(schedules, cpms, strict=True):
         label = sch.source_file or sch.name
-        dd = _mdY(sch.status_date) if sch.status_date else "&mdash;"
+        dd = _mdY(sch.status_date) if sch.status_date else "—"
         if target not in sch.tasks_by_id:
             rows.append((label, dd, None, None, None, None))
             continue
@@ -11996,7 +11998,7 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
         return ""
 
     def num(v: int | None) -> str:
-        return "&mdash;" if v is None else str(v)
+        return "—" if v is None else str(v)
 
     body = ""
     for label, dd, drv, sec, ter, delta in rows:
@@ -12573,7 +12575,7 @@ def _who_is_overloaded_header(st: SessionState, granularity: str = "month") -> s
             ("Over-allocated", str(over_count)),
             ("Within capacity", str(within)),
             ("Total work (days)", f"{total_days:g}"),
-            ("Busiest resource", worst.name if worst else "&mdash;"),
+            ("Busiest resource", worst.name if worst else "—"),
             (f"{unit.title()}s covered", str(len(rl.periods))),
         ]
     )
@@ -12802,12 +12804,12 @@ def _groups_per_file_table(versions: list[tuple[str, Schedule]], criteria: list[
         matched, total = len(non_summary(sub)), len(non_summary(s))
         grand_m += matched
         grand_t += total
-        pct = f"{100.0 * matched / total:.0f}%" if total else "&mdash;"
+        pct = f"{100.0 * matched / total:.0f}%" if total else "—"
         rows.append(
             f"<tr><td>{_e(s.source_file or s.name)}</td><td class=num>{matched}</td>"
             f"<td class=num>{total}</td><td class=num>{pct}</td></tr>"
         )
-    tpct = f"{100.0 * grand_m / grand_t:.0f}%" if grand_t else "&mdash;"
+    tpct = f"{100.0 * grand_m / grand_t:.0f}%" if grand_t else "—"
     return (
         f"<h3>Per file &mdash; {len(versions)} loaded</h3>"
         "<table class=card-table><tr><th scope=col>File</th><th scope=col>Matched</th>"
@@ -12946,7 +12948,7 @@ def _how_stable_header(ev: PathEvolution) -> str:
             ("Critical now", str(crit_now)),
             ("Entered (all updates)", str(entered)),
             ("Left (all updates)", str(left)),
-            ("Net finish move", f"{net:+d} d" if net is not None else "&mdash;"),
+            ("Net finish move", f"{net:+d} d" if net is not None else "—"),
             ("Churn per update", f"{churn / updates:.1f}"),
         ]
     )
@@ -13102,7 +13104,7 @@ def _completed_on_path_panel(
         by_id = schedules[i].tasks_by_id
         rows = "".join(
             f"<tr><td>{uid}</td><td>{_e(t.name if t else f'UID {uid}')}</td>"
-            f"<td>{_mdY(t.actual_finish) if t is not None else '&mdash;'}</td>"
+            f"<td>{_mdY(t.actual_finish) if t is not None else '—'}</td>"
             f"<td>{round(t.percent_complete) if t is not None else 0}%</td></tr>"
             for uid in snap.completed_on_path
             for t in (by_id.get(uid),)
@@ -13670,12 +13672,12 @@ def _how_we_execute_header(sch: Schedule) -> str:
         [
             ("Activities complete", f"{makeup.complete} / {makeup.total}"),
             ("Complete", f"{complete_pct:.0f}%"),
-            ("BEI (throughput)", f"{bei.value:.2f}" if bei.population else "&mdash;"),
+            ("BEI (throughput)", f"{bei.value:.2f}" if bei.population else "—"),
             (
                 "Duration ratio (avg)",
-                f"{drm.drm_avg:.2f}x" if drm.drm_avg is not None else "&mdash;",
+                f"{drm.drm_avg:.2f}x" if drm.drm_avg is not None else "—",
             ),
-            ("Missed the baseline", str(missed) if bei.population else "&mdash;"),
+            ("Missed the baseline", str(missed) if bei.population else "—"),
             ("Still to go", str(makeup.total - makeup.complete)),
         ]
     )
