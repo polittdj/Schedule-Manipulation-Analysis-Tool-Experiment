@@ -88,6 +88,36 @@ def test_monthly_buckets_and_cei_pair() -> None:
     assert wave.month_labels[m.status_index] == "May-26"
 
 
+def test_monthly_series_carry_the_uids_behind_each_bar() -> None:
+    # the grouped monthly bars are click-to-drill: each (month, series) bar carries the exact
+    # activity IDs finishing in that month, so the count and the drilled list never diverge.
+    april = _snap(
+        "April",
+        "2026-04-30T17:00",
+        [
+            _t(1, finish="2026-05-10T17:00", baseline="2026-05-08T17:00"),
+            _t(2, finish="2026-05-20T17:00", baseline="2026-05-15T17:00"),
+            _t(4, finish="2026-04-10T17:00", actual="2026-04-10T17:00", done=True),
+        ],
+    )
+    may = _snap(
+        "May",
+        "2026-05-31T17:00",
+        [_t(1, finish="2026-05-10T17:00", actual="2026-05-10T17:00", done=True)],
+    )
+    wave = compute_bow_wave([april, may])
+    may_i = wave.month_labels.index("May-26")
+    a = wave.snapshots[0]
+    assert a.scheduled[may_i] == 2  # April forecast UIDs 1 and 2 into May
+    assert set(a.scheduled_uids[may_i]) == {1, 2}  # …and the drill lists exactly those
+    # every snapshot, every month, every series: the UID list length equals the bar count
+    for s in wave.snapshots:
+        for i in range(len(wave.month_labels)):
+            assert len(s.baselined_uids[i]) == s.baselined[i]
+            assert len(s.scheduled_uids[i]) == s.scheduled[i]
+            assert len(s.finished_uids[i]) == s.finished[i]
+
+
 def test_axis_without_any_status_date_spans_the_raw_data_months() -> None:
     """When no loaded version carries a status date, ``statuses`` is empty so the axis is NOT
     clamped to a status window — it spans the raw data months as-is (bow_wave.py branch 120->123).

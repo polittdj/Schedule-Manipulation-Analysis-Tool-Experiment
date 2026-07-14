@@ -49,6 +49,21 @@ _MONTHS_AFTER_LAST_STATUS = 12
 #: period always stay on-axis.
 _MAX_MONTHS = 48
 
+#: (uid, finish-date) pairs for one series of one snapshot — carried alongside the bare-date
+#: lists so the monthly bars can be drilled to the activities behind each count.
+_Pairs = list[tuple[int, dt.datetime]]
+
+
+def _bucket_uids(pairs: _Pairs, lo: int, n: int) -> tuple[tuple[int, ...], ...]:
+    """UID lists per month bucket, mirroring :func:`month_axis.bucket` exactly (dates outside
+    ``[lo, lo+n)`` dropped) so each bucket's UID count equals the bar count it accompanies."""
+    buckets: list[list[int]] = [[] for _ in range(n)]
+    for uid, d in pairs:
+        i = _ym(d) - lo
+        if 0 <= i < n:
+            buckets[i].append(uid)
+    return tuple(tuple(b) for b in buckets)
+
 
 @dataclass(frozen=True)
 class TrackedActivity:
@@ -84,6 +99,10 @@ class SnapshotProfile:
     #: operator 2026-07-09: up to 20 operator-chosen activities tracked riding the wave,
     #: independent of (and in addition to) the primary target above.
     tracked: tuple[TrackedActivity, ...] = ()
+    #: per-month UID lists behind each monthly bar (drill; each list length == the bar count).
+    baselined_uids: tuple[tuple[int, ...], ...] = ()
+    scheduled_uids: tuple[tuple[int, ...], ...] = ()
+    finished_uids: tuple[tuple[int, ...], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -119,6 +138,7 @@ def compute_bow_wave(
         raise ValueError("the bow-wave analysis needs at least one schedule version")
 
     per_snapshot: list[tuple[list[dt.datetime], list[dt.datetime], list[dt.datetime]]] = []
+    per_snapshot_pairs: list[tuple[_Pairs, _Pairs, _Pairs]] = []  # (uid, date) behind each count
     sched_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> scheduled-finish month
     fin_ym_by_uid: list[dict[int, int]] = []  # per snapshot: UID -> actual-finish month
     task_by_uid: list[dict[int, tuple[str, float]]] = []  # per snapshot: UID -> (name, pct)
@@ -126,10 +146,14 @@ def compute_bow_wave(
     status_yms: list[int | None] = []
     for sch in schedules:
         tasks = non_summary(sch)
-        baselined = [t.baseline_finish for t in tasks if t.baseline_finish is not None]
-        scheduled = [t.finish for t in tasks if t.finish is not None]
-        finished = [t.actual_finish for t in tasks if t.actual_finish is not None]
+        bl_pairs: _Pairs = [(t.unique_id, t.baseline_finish) for t in tasks if t.baseline_finish]
+        sc_pairs: _Pairs = [(t.unique_id, t.finish) for t in tasks if t.finish]
+        fn_pairs: _Pairs = [(t.unique_id, t.actual_finish) for t in tasks if t.actual_finish]
+        baselined = [d for _, d in bl_pairs]
+        scheduled = [d for _, d in sc_pairs]
+        finished = [d for _, d in fn_pairs]
         per_snapshot.append((baselined, scheduled, finished))
+        per_snapshot_pairs.append((bl_pairs, sc_pairs, fn_pairs))
         sched_ym_by_uid.append({t.unique_id: _ym(t.finish) for t in tasks if t.finish is not None})
         fin_ym_by_uid.append(
             {t.unique_id: _ym(t.actual_finish) for t in tasks if t.actual_finish is not None}
@@ -163,6 +187,10 @@ def compute_bow_wave(
     for k, sch in enumerate(schedules):
         baselined, scheduled, finished = per_snapshot[k]
         b, s, f = (_bucket(d, lo, n) for d in (baselined, scheduled, finished))
+        bl_pairs, sc_pairs, fn_pairs = per_snapshot_pairs[k]
+        b_uids = _bucket_uids(bl_pairs, lo, n)
+        s_uids = _bucket_uids(sc_pairs, lo, n)
+        f_uids = _bucket_uids(fn_pairs, lo, n)
         cei: float | None = None
         cei_period: str | None = None
         planned: int | None = None
@@ -228,6 +256,9 @@ def compute_bow_wave(
                 target_scheduled_index=tgt_sched,
                 target_finished_index=tgt_fin,
                 tracked=tracked,
+                baselined_uids=b_uids,
+                scheduled_uids=s_uids,
+                finished_uids=f_uids,
             )
         )
     return BowWave(

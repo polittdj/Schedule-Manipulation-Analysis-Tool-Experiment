@@ -209,6 +209,13 @@ class FlowMonth:
     cum_baselined_finishes: int
     cum_scheduled_finishes: int
     cum_actual_finishes: int
+    # per-month UID lists behind the late-bucket BARS (drill; each list length == its count above)
+    started_late_30_uids: tuple[int, ...] = ()
+    started_late_60_uids: tuple[int, ...] = ()
+    started_late_over_uids: tuple[int, ...] = ()
+    finished_late_30_uids: tuple[int, ...] = ()
+    finished_late_60_uids: tuple[int, ...] = ()
+    finished_late_over_uids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -237,6 +244,10 @@ def activity_flow(schedule: Schedule) -> ActivityFlow:
     bl_f, sc_f, ac_f = list(z), list(z), list(z)
     late_s = [list(z), list(z), list(z)]
     late_f = [list(z), list(z), list(z)]
+    # parallel UID accumulators — appended in lockstep with the count increments below so the
+    # drill lists exactly the activities each late-bucket bar counts (never diverges).
+    late_s_uids: list[list[list[int]]] = [[[] for _ in range(n)] for _ in range(3)]
+    late_f_uids: list[list[list[int]]] = [[[] for _ in range(n)] for _ in range(3)]
     hmi_s_hit, hmi_s_due = list(z), list(z)
     hmi_f_hit, hmi_f_due = list(z), list(z)
 
@@ -263,10 +274,12 @@ def activity_flow(schedule: Schedule) -> ActivityFlow:
             b = _bucket_late((t.actual_start.date() - t.baseline_start.date()).days)
             if b is not None:
                 late_s[b][i_as] += 1
+                late_s_uids[b][i_as].append(t.unique_id)
         if t.actual_finish is not None and t.baseline_finish is not None and i_af is not None:
             b = _bucket_late((t.actual_finish.date() - t.baseline_finish.date()).days)
             if b is not None:
                 late_f[b][i_af] += 1
+                late_f_uids[b][i_af].append(t.unique_id)
         # HMI hit = the actual landed no later than the END of its baselined month
         if i_bls is not None:
             hmi_s_due[i_bls] += 1
@@ -325,6 +338,12 @@ def activity_flow(schedule: Schedule) -> ActivityFlow:
                 cum_baselined_finishes=cbf,
                 cum_scheduled_finishes=csf,
                 cum_actual_finishes=caf,
+                started_late_30_uids=tuple(late_s_uids[0][i]),
+                started_late_60_uids=tuple(late_s_uids[1][i]),
+                started_late_over_uids=tuple(late_s_uids[2][i]),
+                finished_late_30_uids=tuple(late_f_uids[0][i]),
+                finished_late_60_uids=tuple(late_f_uids[1][i]),
+                finished_late_over_uids=tuple(late_f_uids[2][i]),
             )
         )
     return ActivityFlow(
@@ -361,6 +380,20 @@ class BurdenMonth:
     f_past_due: int
     f_delayed: int
     f_backlog: int  # NEGATIVE
+    # per-month UID lists behind each category bar (drill; |count| == len). Backlog is a negative
+    # count mirrored below the axis; its UID list carries exactly that not-done work.
+    s_bl_plan_uids: tuple[int, ...] = ()
+    s_early_uids: tuple[int, ...] = ()
+    s_workoff_uids: tuple[int, ...] = ()
+    s_past_due_uids: tuple[int, ...] = ()
+    s_delayed_uids: tuple[int, ...] = ()
+    s_backlog_uids: tuple[int, ...] = ()
+    f_bl_plan_uids: tuple[int, ...] = ()
+    f_early_uids: tuple[int, ...] = ()
+    f_workoff_uids: tuple[int, ...] = ()
+    f_past_due_uids: tuple[int, ...] = ()
+    f_delayed_uids: tuple[int, ...] = ()
+    f_backlog_uids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -393,6 +426,9 @@ def workoff_burden(schedule: Schedule) -> WorkoffBurden:
         "f_backlog",
     )
     acc: dict[str, list[int]] = {k: [0] * n for k in keys}
+    # parallel UID accumulators — appended in lockstep with every count change below, so the
+    # drill lists exactly the activities each category bar counts (|count| == len for backlog).
+    acc_uids: dict[str, list[list[int]]] = {k: [[] for _ in range(n)] for k in keys}
     status = schedule.status_date
     dd_month = _month(status) if status is not None else None
 
@@ -401,6 +437,7 @@ def workoff_burden(schedule: Schedule) -> WorkoffBurden:
 
     def _one(
         prefix: str,
+        uid: int,
         baseline: dt.datetime | None,
         actual: dt.datetime | None,
         scheduled: dt.datetime | None,
@@ -415,9 +452,11 @@ def workoff_burden(schedule: Schedule) -> WorkoffBurden:
             bm, am = _month(baseline), _month(actual)
             kind = "bl_plan" if am == bm else "early" if am < bm else "workoff"
             acc[f"{prefix}_{kind}"][i_ac] += 1
+            acc_uids[f"{prefix}_{kind}"][i_ac].append(uid)
             return
         # not done yet: mirror the backlog at the baselined month…
         acc[f"{prefix}_backlog"][i_bl] -= 1
+        acc_uids[f"{prefix}_backlog"][i_bl].append(uid)
         # …and place the forecast above the axis where it now sits
         i_sc = _at(scheduled)
         if i_sc is None or scheduled is None:
@@ -425,17 +464,49 @@ def workoff_burden(schedule: Schedule) -> WorkoffBurden:
         bm, sm = _month(baseline), _month(scheduled)
         if dd_month is not None and bm <= dd_month:
             acc[f"{prefix}_past_due"][i_sc] += 1
+            acc_uids[f"{prefix}_past_due"][i_sc].append(uid)
         elif sm > bm:
             acc[f"{prefix}_delayed"][i_sc] += 1
+            acc_uids[f"{prefix}_delayed"][i_sc].append(uid)
         # future baseline still forecast on plan: no bar (nothing has deviated)
 
     for t in non_summary(schedule):
-        _one("s", t.baseline_start, t.actual_start, t.start)
-        _one("f", t.baseline_finish, t.actual_finish, t.finish)
+        _one("s", t.unique_id, t.baseline_start, t.actual_start, t.start)
+        _one("f", t.unique_id, t.baseline_finish, t.actual_finish, t.finish)
 
-    months = tuple(
-        BurdenMonth(month=_month_key(m), **{k: acc[k][i] for k in keys}) for i, m in enumerate(axis)
-    )
+    def _burden_month(i: int, m: dt.date) -> BurdenMonth:
+        # counts + parallel UID lists, one keyword per field (a `**dict` splat no longer
+        # type-checks now that the dataclass mixes int and tuple fields).
+        c = {k: acc[k][i] for k in keys}
+        return BurdenMonth(
+            month=_month_key(m),
+            s_bl_plan=c["s_bl_plan"],
+            s_early=c["s_early"],
+            s_workoff=c["s_workoff"],
+            s_past_due=c["s_past_due"],
+            s_delayed=c["s_delayed"],
+            s_backlog=c["s_backlog"],
+            f_bl_plan=c["f_bl_plan"],
+            f_early=c["f_early"],
+            f_workoff=c["f_workoff"],
+            f_past_due=c["f_past_due"],
+            f_delayed=c["f_delayed"],
+            f_backlog=c["f_backlog"],
+            s_bl_plan_uids=tuple(acc_uids["s_bl_plan"][i]),
+            s_early_uids=tuple(acc_uids["s_early"][i]),
+            s_workoff_uids=tuple(acc_uids["s_workoff"][i]),
+            s_past_due_uids=tuple(acc_uids["s_past_due"][i]),
+            s_delayed_uids=tuple(acc_uids["s_delayed"][i]),
+            s_backlog_uids=tuple(acc_uids["s_backlog"][i]),
+            f_bl_plan_uids=tuple(acc_uids["f_bl_plan"][i]),
+            f_early_uids=tuple(acc_uids["f_early"][i]),
+            f_workoff_uids=tuple(acc_uids["f_workoff"][i]),
+            f_past_due_uids=tuple(acc_uids["f_past_due"][i]),
+            f_delayed_uids=tuple(acc_uids["f_delayed"][i]),
+            f_backlog_uids=tuple(acc_uids["f_backlog"][i]),
+        )
+
+    months = tuple(_burden_month(i, m) for i, m in enumerate(axis))
     return WorkoffBurden(
         months=months,
         status_month=_month_key(dd_month) if dd_month is not None else None,

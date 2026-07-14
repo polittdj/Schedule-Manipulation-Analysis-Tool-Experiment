@@ -151,6 +151,60 @@ def test_g4_workoff_burden_categories_and_negative_backlog_mirror() -> None:
     assert mar.f_workoff == 1 and apr.f_past_due == 1 and apr.f_delayed == 1
 
 
+_LATE_KEYS = (
+    "started_late_30",
+    "started_late_60",
+    "started_late_over",
+    "finished_late_30",
+    "finished_late_60",
+    "finished_late_over",
+)
+
+
+def test_g2_late_bucket_uids_match_the_counts_they_accompany() -> None:
+    # the late-bucket BARS are click-to-drill: each carries the exact activity IDs it counts.
+    f = activity_flow(_sched())
+    rows = {m.month: m for m in f.months}
+    mar = rows["2025-03"]
+    # UID 2 is the only late activity (40+ days past its Feb baseline, landing in March)
+    assert mar.started_late_60_uids == (2,) and mar.finished_late_60_uids == (2,)
+    for m in f.months:
+        for k in _LATE_KEYS:
+            assert len(getattr(m, f"{k}_uids")) == getattr(m, k)
+
+
+_BURDEN_KEYS = (
+    "s_bl_plan",
+    "s_early",
+    "s_workoff",
+    "s_past_due",
+    "s_delayed",
+    "s_backlog",
+    "f_bl_plan",
+    "f_early",
+    "f_workoff",
+    "f_past_due",
+    "f_delayed",
+    "f_backlog",
+)
+
+
+def test_g4_burden_category_uids_match_the_counts_they_accompany() -> None:
+    # the workoff-burden BARS are click-to-drill: each category carries the activities it counts.
+    b = workoff_burden(_sched())
+    rows = {m.month: m for m in b.months}
+    jan, feb, mar, apr = (rows[k] for k in ("2025-01", "2025-02", "2025-03", "2025-04"))
+    assert jan.s_bl_plan_uids == (1,)  # UID 1 started in its baseline month
+    assert mar.s_workoff_uids == (2,)  # UID 2 burned its Feb baseline in March
+    assert apr.s_past_due_uids == (3,) and apr.s_delayed_uids == (4,)
+    # backlog is a NEGATIVE count mirrored below the axis; its UID list carries |count| activities
+    assert feb.s_backlog_uids == (3,) and mar.s_backlog_uids == (4,)
+    assert mar.f_workoff_uids == (2,)
+    for m in b.months:
+        for k in _BURDEN_KEYS:
+            assert len(getattr(m, f"{k}_uids")) == abs(getattr(m, k))
+
+
 def test_g5_duration_ratio_scurve_and_exclusions() -> None:
     d = duration_ratio(_sched())
     # completed normal tasks: UID 1 (5d actual vs 10d baseline → 0.5), UID 2 (5 vs 5 → 1.0)

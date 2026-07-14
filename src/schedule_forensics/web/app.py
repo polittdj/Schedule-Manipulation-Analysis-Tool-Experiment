@@ -9802,6 +9802,10 @@ def _cei_data(wave: BowWave, target_uid: int | None = None) -> dict[str, object]
                 "baselined": list(s.baselined),
                 "scheduled": list(s.scheduled),
                 "finished": list(s.finished),
+                # per-month UID lists behind each monthly bar (drill; matches the counts above)
+                "baselined_uids": [list(u) for u in s.baselined_uids],
+                "scheduled_uids": [list(u) for u in s.scheduled_uids],
+                "finished_uids": [list(u) for u in s.finished_uids],
                 "cei": s.cei,
                 "cei_period": s.cei_period,
                 "cei_planned": s.cei_planned,
