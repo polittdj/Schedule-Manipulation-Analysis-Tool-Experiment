@@ -5750,3 +5750,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   they disagree). Updated the 2 existing helper tests to pass wmpd=DAY. Full gate green (2101 passed).
 - **ADR-0221** (in HANDOFF + this log — drift guard green). Version 1.0.31 -> 1.0.32; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-14 — operator feature: Executive Margin Dashboard (ADR-0222)
+
+- **Session:** operator provided the NASA MarginContingency_BurnDown reference workbook + a Margin
+  Erosion Trend (MET) reference and asked to build the Executive Margin Dashboard (the last blocked
+  live-testing item). Paused the audit roadmap to build it.
+- **Model/mode:** Opus 4.8. Branch `claude/smat-audit-remediation-eeckdi` (fresh from origin/main after
+  #355 merged).
+- The tool already computes effective margin (margin.py: zero every "margin"-named activity, re-run
+  CPM, measure how far the finish pulls in = the workbook's NRO-SEM Effective Margin Calculator). New
+  engine/margin_dashboard.py composes it per version: effective margin (I) re-anchored on the TARGET;
+  zero-margin finish (E); margin cal-days (G=D-E); contingency (J=calendar non-working days
+  status->target); NASA Gold-Rule requirement (O=days-to-go x 30/365); days-to-go (Q); % avail (R=P/Q);
+  % effective (T=G/Q); trigger = eff margin < requirement. Margin Erosion Trend = least-squares of eff
+  margin vs status date -> wd/month + extrapolated zero-margin date (R² disclosed).
+- Two operator scope choices (2026-07-14): (1) margin to the session target, else project finish;
+  (2) contingency = calendar non-working days (weekends + holidays), not the workbook's weekends-only.
+- New off-spine /margin page (SETUP nav) + /api/margin/dashboard + margin_dashboard.js (2 SVG charts:
+  burn-down stacked bars going red below the requirement line = trigger; erosion line + fit + zero-
+  margin marker). Chromium 4-theme verified (bars recolor red below rqmt; no console errors).
+- No parity impact (margin.py unchanged, off the ribbon/dictionary). Tests: test_margin_dashboard.py
+  (engine, 9) + test_margin_dashboard_view.py (page + API, 4). Full gate green (2114 passed).
+- CUI: the reference workbook/screenshots (program-specific values) NOT committed; the ADR documents
+  only the public NASA Handbook methodology; the tool computes from the operator's own schedules.
+- PARKED per operator: the 24h .mpp work (audit PR 5 / H3 + L8) — VERIFY-FIRST (convert a 24h .mpp
+  through MPXJ, inspect 00:00->00:00 vs 00:00->24:00 before fixing working_time_span). Detail in HANDOFF.
+- **ADR-0222** (in HANDOFF + this log — drift guard green). Version 1.0.32 -> 1.0.33; wheel + 9
+  installers rebuilt in lockstep.

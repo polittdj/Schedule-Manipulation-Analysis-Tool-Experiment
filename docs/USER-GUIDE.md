@@ -250,6 +250,16 @@ dashboard. Stop it with `Ctrl-C`.
     pass/fail-or-value and its offending activities, and a **⬇ Excel** export. It reuses the same
     computed figures as the report — a fast way to scan one metric family across a whole schedule
     set.
+12b. **Margin Dashboard** (the **Margin Dashboard** link, `/margin`; ADR-0222) — the executive
+    **NASA Margin & Contingency Burn-Down** + **Margin Erosion Trend** across the loaded monthly
+    versions. It measures **effective schedule margin** (the buffer actually protecting the date —
+    zero every activity named "margin", re-run CPM, see how far the finish pulls in) to your selected
+    **target milestone** (else the project finish), stacks it with **contingency** (the calendar's
+    non-working days — weekends + holidays — to the target), and draws the **NASA Gold-Rule
+    requirement** line (30 work-days per program year). A bar turns **red** the month effective margin
+    falls below that line — the **trigger for action**. The erosion chart fits a least-squares line to
+    margin-vs-time and projects the **zero-margin date** (with R² shown — an honest trend read, not a
+    commitment). Name your buffer activities with the word "margin" so the tool can find them.
 13. **Wipe Session** — clears all loaded schedules and derivatives from memory (including the
     Target UID).
 
