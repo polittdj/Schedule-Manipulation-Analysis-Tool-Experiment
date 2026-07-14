@@ -230,12 +230,15 @@ def test_wipe_clears_the_target(client: TestClient) -> None:
     assert "Target activity" not in client.get("/analysis/Project2").text
 
 
-# ---- the 20-file batch cap ----
+# ---- no file-count cap (v4 grouped ingestion: a whole folder of versions loads at once) ----
 
 
-def test_upload_accepts_up_to_twenty_and_names_the_overflow(client: TestClient) -> None:
+def test_upload_has_no_file_count_cap(client: TestClient) -> None:
+    """The old 100-file batch cap is removed (v4): a project's whole version history — or a
+    recursive folder of them — loads in one go, never truncated or refused."""
     data = EXAMPLE.read_bytes()
-    files = [("files", (f"v{i}.json", data, "application/json")) for i in range(MAX_FILES + 1)]
+    n = MAX_FILES + 25  # comfortably past the old cap
+    files = [("files", (f"v{i}.json", data, "application/json")) for i in range(n)]
     page = client.post("/upload", files=files).text
-    assert f"1 file(s) beyond the {MAX_FILES}-file batch cap" in page
-    assert f"Loaded {MAX_FILES}:" in page
+    assert "batch cap" not in page  # the cap message is gone
+    assert f"Loaded {n}:" in page  # every file accepted

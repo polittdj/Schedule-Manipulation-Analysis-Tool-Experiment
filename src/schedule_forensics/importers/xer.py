@@ -187,9 +187,13 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
         tables.get("TASKPRED", []), all_task_ids, in_scope_ids, uid_map
     )
 
+    # XER has no exact document Title; the project short-name is the best available real project
+    # identity for grouping (None when absent), kept distinct from ``name``'s filename fallback
+    project_title = _g(project, "proj_short_name")
     try:
         return Schedule(
-            name=_g(project, "proj_short_name") or proj_id or (source_file or "Untitled"),
+            name=project_title or proj_id or (source_file or "Untitled"),
+            project_title=project_title,
             source_file=source_file,
             project_start=project_start,
             project_finish=parse_datetime(_g(project, "plan_end_date")),

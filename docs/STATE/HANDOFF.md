@@ -1,6 +1,36 @@
-# Handoff — 2026-07-14 (AUDIT PR: H3+L8 24-hour calendar parse; v1.0.36; highest ADR 0224)
+# Handoff — 2026-07-15 (SMAT v4 PR A: grouped ingestion + Portfolio; v1.0.37; highest ADR 0225)
 
-> ## STATUS (current) — AUDIT-2026-07-14 remediation, theme 2: H3 + L8 (ADR-0224). Fidelity fix, code changed.
+> ## STATUS (current) — SMAT v4 Feature 1 (ADR-0225). Grouped ingestion + Portfolio Manager. Code changed.
+>
+> - **The v4 build:** the operator handed a large feature spec ("v4") — (1) group files into Projects,
+>   (2) scale to thousands + explicit RAM mode, (3) user-parameterized NASA margin, (4) role-selection
+>   front page. This PAUSES the AUDIT-2026-07-14 remediation roadmap. The plan was **red-teamed before
+>   building** (10 faults, each verified ≥4 ways, risky ones sandbox-tested in worktrees) — see the
+>   approved plan. Delivery is **incremental, one PR per feature**: F1 → F2 → F3a/b → F4 → F3c.
+> - **PR A = Feature 1 (this PR):** `Schedule.project_title` (real Title only) across model + importers;
+>   `engine/projects.py` pure grouping (loose→by Title; **folder any-depth → one Project by top-folder
+>   name**; needs-attention + non-blocking notices; data-date + mtime-tiebreak ordering); **recursive
+>   folder upload** (webkitdirectory + a CSP-safe `home.js` `file_meta` companion field carrying
+>   webkitRelativePath + lastModified — the sandbox-verified fix); **MAX_FILES cap removed**; non-schedule
+>   files skipped; `SessionState.projects()`; new **/portfolio** Portfolio Manager view (per-Project
+>   rollup: version count, latest data date, finish, effective margin, DCMA-14 + version drill).
+> - **State:** v**1.0.36 → 1.0.37**; wheel + 9 installers in lockstep. New **ADR-0225**. Gate green
+>   (ruff / format / mypy --strict / bandit exit 0 / full pytest / **parity untouched** / node --check);
+>   **4-theme Chromium verified** (/portfolio in console/daylight/apollo/jarvis, no console errors).
+>   Draft PR on `claude/smat-audit-remediation-eeckdi`.
+> - **Scale caveat (by design):** F1 removes the cap + does folder ingest but still holds full schedules
+>   in RAM and converts `.mpp` per-file; **F2 (next PR)** delivers the single persistent JVM + lazy
+>   summary tier + SQLite cache + explicit "load into RAM" that make thousands cheap.
+> - **NEXT STEP:** **PR B = Feature 2** (scale/RAM/SQLite + persistent out-of-process JVM [operator-
+>   confirmed]; numpy NOT added — pure Python). Then F3a/b (margin overlay + terminology, extending
+>   `margin.py`/`margin_dashboard.py`), F4 (roles), F3c (expected margin on the confirmed schedule-only
+>   SRA). Operator to-do (from the plan): a sample **.xer** to verify the XER Title path; a JCL S-curve
+>   export if joint cost-schedule is wanted (else the tool labels its curve schedule-confidence); the RAM
+>   warning threshold; NASA margin params are entered in-tool.
+
+# (prior) Handoff — 2026-07-14 (AUDIT PR: H3+L8 24-hour calendar parse; v1.0.36; highest ADR 0224)
+
+> ## STATUS — AUDIT-2026-07-14 remediation, theme 2: H3 + L8 (ADR-0224). Fidelity fix, code changed.
 >
 > - **What shipped:** H3 + L8 (the last High) — a 24-hour continuous-ops calendar ("24 Hours" in MS
 >   Project, the P6 equivalent) encodes each working day as `00:00 → 00:00` (finish = next midnight).
