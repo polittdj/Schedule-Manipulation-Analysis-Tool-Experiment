@@ -626,6 +626,12 @@ def _project_baseline_finish(root: ET.Element) -> dt.datetime | None:
         # rollup baseline into the CPLI basis (audit M4).
         if _bool(task_el, "Summary", default=False) or _int(task_el, "UID") == 0:
             continue
+        # an INACTIVE task is out of the schedule (MS Project excludes it from every rollup, and
+        # so does the whole engine — CPM/metrics/driving-slack); a late baseline finish on an
+        # inactive row must not inflate the project baseline finish either (else the CPLI basis
+        # disagrees with the network the rest of the tool computes on).
+        if not _bool(task_el, "Active", default=True):
+            continue
         _, bl_finish, _, _ = _primary_baseline(task_el)
         if bl_finish is not None:
             finishes.append(bl_finish)

@@ -25,6 +25,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
+      # Some committed reference files under 00_REFERENCE_INTAKE/ssi/ have long names; under the
+      # runner's deep D:\a\<repo>\<repo>\ path they exceed Windows MAX_PATH (260), so `git checkout`
+      # fails with "Filename too long". core.longpaths makes git use the \\?\ long-path prefix.
+      # Must be set in the SYSTEM gitconfig (actions/checkout overrides HOME, bypassing --global)
+      # and BEFORE the checkout step.
+      - name: Enable Windows long paths for checkout
+        run: git config --system core.longpaths true
       - uses: actions/checkout@v4
       - name: Parse all three PowerShell installers (syntax gate)
         shell: pwsh
