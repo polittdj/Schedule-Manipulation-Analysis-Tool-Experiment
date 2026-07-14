@@ -62,6 +62,11 @@ class RibbonMetrics:
     avg_float_days: float
     max_float_days: float
     insufficient_detail: int
+    #: Size of the incomplete-activity float population ``avg_float_days`` / ``max_float_days`` are
+    #: computed over. ``0`` means that population is empty (a fully-progressed schedule, every
+    #: non-summary activity 100% complete) → both float figures degraded to a placeholder ``0.0``,
+    #: not a real mean/max. Consumers render "—"/NA instead of the fabricated number (audit NEW-1).
+    incomplete_float_count: int
 
 
 def _round_half_up(value: float, places: int = 2) -> float:
@@ -228,4 +233,5 @@ def compute_ribbon(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) -> 
         avg_float_days=avg_float,
         max_float_days=max_float,
         insufficient_detail=quality["insufficient_detail"].count,
+        incomplete_float_count=len(floats),
     )

@@ -3502,6 +3502,9 @@ def create_app(
             except CPMError:
                 continue
             r = compute_ribbon(sch, analysis.cpm, analysis.audit)
+            # Empty incomplete-activity population → avg/max float are a placeholder 0.0; export the
+            # "—" sentinel, not a fabricated mean/max, to match the grid and the Workbench (NEW-1).
+            na_floats = r.incomplete_float_count == 0
             body.append(
                 (
                     key,
@@ -3514,8 +3517,8 @@ def create_app(
                     r.number_of_leads,
                     r.merge_hotspot,
                     r.insufficient_detail,
-                    r.avg_float_days,
-                    r.max_float_days,
+                    "—" if na_floats else r.avg_float_days,
+                    "—" if na_floats else r.max_float_days,
                 )
             )
         if not body:
@@ -9664,6 +9667,9 @@ _RIBBON_WARN_FRACTION = 0.8
 _RIBBON_ZERO_TOLERANCE = {"negative_float": "DCMA-07", "number_of_leads": "DCMA-02"}
 #: ribbon columns colored from the DCMA-05 5%-of-activities threshold
 _RIBBON_PCT5 = {"hard_constraints"}
+#: ribbon float columns that are a mean/max of the incomplete-activity population — a placeholder
+#: 0.0 when that population is empty, so they render "—" not a fabricated figure (audit NEW-1)
+_RIBBON_FLOAT_EXTRAS = {"avg_float_days", "max_float_days"}
 
 
 def _ribbon_cell_class(attr: str, r: object, quality: dict[str, MetricResult]) -> str:
@@ -9958,7 +9964,17 @@ def _ribbon_body(
     body = ""
     for key, r, quality in rows:
         cells = ""
+        # A fully-progressed schedule has an empty incomplete-activity float population, so
+        # avg/max_float_days are a placeholder 0.0 — render "—" (not a fabricated mean/max), and
+        # make the cell non-clickable since there is nothing to drill (audit NEW-1).
+        na_floats = getattr(r, "incomplete_float_count", 0) == 0
         for _, attr in cols:
+            if attr in _RIBBON_FLOAT_EXTRAS and na_floats:
+                cells += (
+                    '<td class="rib-na" title="No incomplete activities — '
+                    'this measure is not applicable">—</td>'
+                )
+                continue
             cls = _ribbon_cell_class(attr, r, quality)
             cells += (
                 f'<td class="rib-cell {cls}" data-file="{_e(key)}" data-metric="{attr}" '

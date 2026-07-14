@@ -55,7 +55,9 @@ class CatalogRow:
     offender_uids: tuple[int, ...]
     #: False only when ``value`` is a placeholder for an unmeasurable metric (the audit did not
     #: emit it / no population), so the UI shows "—" instead of a fabricated number. The
-    #: informational ribbon extras (real value, no threshold) stay ``True`` — their value is real.
+    #: informational ribbon extras stay ``True`` when their value is real — except the two float
+    #: extras (``avg_float_days`` / ``max_float_days``), which go ``False`` when the incomplete-
+    #: activity population is empty and their 0.0 is a placeholder, not a real mean/max.
     applicable: bool = True
 
 
@@ -79,6 +81,16 @@ _DCMA_ENTRIES: tuple[tuple[str, str, str, bool | None, float | None, str], ...] 
     ("DCMA13", "CPLI", "ratio", False, 0.95, "Critical Path Length Index (finish realism)."),
     ("DCMA14", "BEI", "ratio", False, 0.95, "Baseline Execution Index (task throughput)."),
 )
+
+#: Ribbon float extras whose value is a mean/max of the **incomplete-activity float population**.
+#: When that population is empty (a fully-progressed schedule, every non-summary activity 100%
+#: complete) ``compute_ribbon`` degrades them to a placeholder ``0.0`` (``ribbon.py``: ``... if
+#: floats else 0.0``) and reports ``RibbonMetrics.incomplete_float_count == 0``. Mark those two NA
+#: so the Workbench shows "—", not a fabricated mean/max of an empty set (audit NEW-1) — the same
+#: signal the ``/ribbon`` page and the ribbon export honor. The other extras' 0 is a **real**
+#: measurement (``insufficient_detail`` / ``merge_hotspot`` are genuine counts; ``logic_density``
+#: only zeroes on an empty network), so those stay applicable.
+_FLOAT_EXTRAS_NA_WHEN_EMPTY: frozenset[str] = frozenset({"avg_float_days", "max_float_days"})
 
 #: Fuse Schedule-Quality / Float entries that are NOT DCMA-14 checks — pulled from the ribbon.
 #: (metric_id == the RibbonMetrics attribute; offenders from ribbon_offender_map).
@@ -189,13 +201,19 @@ def evaluate_catalog(
 
     ribbon = compute_ribbon(schedule, cpm, audit)
     offenders = ribbon_offender_map(schedule, cpm, audit)
+    float_population_empty = ribbon.incomplete_float_count == 0
     for mid, _name, _family, unit, _lib, _thr, _desc in _RIBBON_ENTRIES:
         value = float(getattr(ribbon, mid))
+        offender_uids = tuple(offenders.get(mid, ()))
+        # A float extra over an empty incomplete-activity population carries a placeholder 0.0
+        # (no mean/max exists) — mark it NA so the cell renders "—", never a fabricated number.
+        applicable = not (mid in _FLOAT_EXTRAS_NA_WHEN_EMPTY and float_population_empty)
         rows[mid] = CatalogRow(
             mid,
             value,
             unit,
             CheckStatus.NOT_APPLICABLE.value,  # the extras are informational (no threshold)
-            tuple(offenders.get(mid, ())),
+            offender_uids,
+            applicable=applicable,
         )
     return rows

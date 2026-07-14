@@ -1,6 +1,33 @@
-# Handoff — 2026-07-14 (READ-ONLY RE-AUDIT — findings recorded, nothing fixed; v1.0.34; highest ADR 0222)
+# Handoff — 2026-07-14 (AUDIT PR: NEW-1 float-extra applicability, all 3 surfaces; v1.0.35; highest ADR 0223)
 
-> ## STATUS (current) — repository re-audit 2026-07-14 (docs/STATE/AUDIT-2026-07-14.md). No code changed.
+> ## STATUS (current) — AUDIT-2026-07-14 remediation, theme 1: NEW-1 (ADR-0223). Fidelity fix, code changed.
+>
+> - **What shipped:** NEW-1 — the two float ribbon extras `avg_float_days`/`max_float_days` are a
+>   mean/max over the incomplete-activity population; on a fully-progressed schedule that population is
+>   empty and `compute_ribbon` degrades them to a placeholder `0.0` that was shown as a real value.
+>   **Adversarial verification widened the scope**: the leak lived on THREE surfaces, not just the
+>   Metric Workbench the audit named — also the **`/ribbon` page** (the primary Fuse display) and the
+>   **ribbon Excel export**. Operator chose to fix all three in one PR. Fix: one engine signal
+>   `RibbonMetrics.incomplete_float_count` (== `len(floats)`); every consumer renders "—" when it's 0 —
+>   Workbench (`metric_catalog.evaluate_catalog` `applicable`, honored by `workbench.js`/Excel), `/ribbon`
+>   (`_ribbon_body` → muted non-clickable `td.rib-na`), and `export_ribbon` (the "—" cell). A real 0
+>   (incomplete activity with 0 float) still shows 0 — it's a population test, not `value == 0`. No metric
+>   math changed.
+> - **State:** v**1.0.34 → 1.0.35**; wheel + 9 installers rebuilt in lockstep. New **ADR-0223**
+>   (extends 0219). Gate fully green (ruff / ruff format / mypy --strict / bandit exit 0 / **2123 tests**
+>   / doc-drift guard / metric-dictionary in sync). **4-theme Chromium verified** (console/daylight/
+>   apollo/jarvis: two muted "—" cells in the theme's `--muted`, non-clickable, a real-number row for
+>   contrast, no console errors). Draft PR on branch `claude/smat-audit-remediation-eeckdi`.
+> - **NEXT STEP (operator's choice — wait for a 'continue'):** resume the audit roadmap at **PR 5 =
+>   H3 + L8** (24h continuous-ops calendar). **VERIFY-FIRST:** convert a 24h `.mpp` through MPXJ and
+>   inspect `00:00→00:00` vs `00:00→24:00` before touching `working_time_span` (`importers/_common.py:189-203`);
+>   add an MSPDI 24h fixture + test; re-run parity; do the sibling XER fix (L8). Then PR 6 (H1+M4+M5 AI
+>   figure-gate) → PR 7 (M6+L3+L4) → PR 8 (M7+M8+L5/NEW-3+M11+NEW-2) → PR 9 (L6/L7/L9/N1/N2). Full
+>   backlog + fix directions in **`docs/STATE/AUDIT-2026-07-14.md`**.
+
+# (prior) Handoff — 2026-07-14 (READ-ONLY RE-AUDIT — findings recorded, nothing fixed; v1.0.34; highest ADR 0222)
+
+> ## STATUS — repository re-audit 2026-07-14 (docs/STATE/AUDIT-2026-07-14.md). No code changed.
 >
 > - Operator directive: audit the repo + all project files, record findings, **fix nothing**, then mark
 >   what's left / next step / current state here + in NEXT-SESSION-PROMPT.md. Full findings doc:

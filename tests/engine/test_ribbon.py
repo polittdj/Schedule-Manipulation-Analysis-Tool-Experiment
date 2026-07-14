@@ -11,7 +11,7 @@ import pytest
 
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.dcma_audit import audit_schedule
-from schedule_forensics.engine.metrics.ribbon import compute_ribbon
+from schedule_forensics.engine.metrics.ribbon import RibbonMetrics, compute_ribbon
 from schedule_forensics.importers.mspdi import parse_mspdi
 
 FIX = Path(__file__).resolve().parents[1] / "fixtures"
@@ -53,6 +53,52 @@ def test_ribbon_float_stats_are_present() -> None:
     cpm = compute_cpm(sch)
     r = compute_ribbon(sch, cpm, audit_schedule(sch, cpm))
     assert r.avg_float_days >= 0.0 and r.max_float_days >= r.avg_float_days
+
+
+def test_ribbon_incomplete_float_count_tracks_the_population() -> None:
+    """audit NEW-1: ``incomplete_float_count`` is the single signal all surfaces use to tell a real
+    Avg/Max Float from a placeholder 0.0. It equals the incomplete-activity float population size:
+    >0 on a progressed file with incomplete work, 0 when every non-summary activity is complete."""
+    import datetime as dt
+
+    from schedule_forensics.model.relationship import Relationship
+    from schedule_forensics.model.schedule import Schedule
+    from schedule_forensics.model.task import Task
+
+    mon, day = dt.datetime(2025, 1, 6, 8, 0), 480
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+
+    def _ribbon(sch: Schedule) -> RibbonMetrics:
+        cpm = compute_cpm(sch)
+        return compute_ribbon(sch, cpm, audit_schedule(sch, cpm))
+
+    incomplete = Schedule(
+        name="in-progress",
+        project_start=mon,
+        tasks=tuple(
+            Task(unique_id=i, name=chr(64 + i), duration_minutes=day, percent_complete=0.0)
+            for i in (1, 2, 3)
+        ),
+        relationships=rels,
+    )
+    assert _ribbon(incomplete).incomplete_float_count == 3
+
+    complete = Schedule(
+        name="all-complete",
+        project_start=mon,
+        tasks=tuple(
+            Task(unique_id=i, name=chr(64 + i), duration_minutes=day, percent_complete=100.0)
+            for i in (1, 2, 3)
+        ),
+        relationships=rels,
+    )
+    r_comp = _ribbon(complete)
+    assert r_comp.incomplete_float_count == 0
+    # …and both float figures degrade to the placeholder 0.0 in that empty-population case
+    assert r_comp.avg_float_days == 0.0 and r_comp.max_float_days == 0.0
 
 
 def test_ribbon_float_uses_stored_total_slack_not_recomputed_cpm() -> None:
