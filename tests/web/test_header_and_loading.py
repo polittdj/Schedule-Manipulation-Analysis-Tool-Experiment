@@ -34,7 +34,7 @@ def test_dashboard_shows_a_loading_indicator_on_import() -> None:
     assert ".load-spinner{animation:none}" in css  # prefers-reduced-motion safe
     # home.js reveals the overlay the instant an upload OR the example import is submitted
     js = c.get("/static/home.js").text
-    assert "showLoading" in js and "loadOverlay" in js
+    assert "overlay(true)" in js and "loadOverlay" in js  # the overlay is unhidden on import
     assert "exampleForm" in js
 
 
@@ -49,5 +49,5 @@ def test_loading_overlay_is_reset_when_the_page_is_reshown() -> None:
     """
     js = _client().get("/static/home.js").text
     assert "pageshow" in js  # the restore-aware event, not just DOMContentLoaded
-    assert "ov.hidden = true" in js  # the overlay is actively re-hidden
+    assert "overlay(false)" in js  # the overlay is actively re-hidden (ov.hidden = !show)
     assert "dz.classList.remove('busy')" in js  # the dropzone busy state is cleared too

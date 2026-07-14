@@ -30,14 +30,21 @@ def test_landing_is_a_professional_open_import_dashboard(client: TestClient) -> 
     assert ".mpp" in page and ".json" in page and ".xer" in page  # supported formats shown
 
 
-def test_dropzone_uses_native_form_submit_not_fetch(client: TestClient) -> None:
-    # W2 regression guard: a fetch() POST auto-follows the 303 on a hidden request, swallowing
-    # both the single-file jump to /analysis/... and the one-shot import flash. The dropzone must
-    # submit the real <form> so the browser follows the redirect itself.
+def test_dropzone_uploads_via_fetch_with_a_per_file_preread(client: TestClient) -> None:
+    # ADR-0227: the dropzone uploads via fetch (NOT a full-page form.submit) with a per-file
+    # arrayBuffer() pre-read, so a browser-side read failure (an un-hydrated OneDrive placeholder /
+    # a file open in MS Project) is caught and reported in-app instead of aborting the whole
+    # navigation to Chrome's ERR_ACCESS_DENIED. The flash + single-file jump still survive because
+    # the server answers the fetch (X-SF-Ajax) with a JSON {redirect} the client navigates to.
     assert "/static/home.js" in client.get("/").text  # dropzone logic is the served static file
     home_js = client.get("/static/home.js").text
-    assert "form.submit()" in home_js
-    assert "fetch('/upload'" not in home_js and 'fetch("/upload"' not in home_js
+    assert "fetch('/upload'" in home_js
+    assert "arrayBuffer" in home_js  # the catchable per-file read probe
+    assert "X-SF-Ajax" in home_js  # asks the server for a JSON redirect, not a swallowed 303
+    assert "window.location" in home_js  # the client navigates to the returned redirect itself
+    assert (
+        "form.submit()" not in home_js
+    )  # no full-page navigation POST (the ERR_ACCESS_DENIED case)
 
 
 def test_drag_drop_is_handled_window_wide_so_the_browser_does_not_open_the_file(
@@ -50,7 +57,7 @@ def test_drag_drop_is_handled_window_wide_so_the_browser_does_not_open_the_file(
     assert "window.addEventListener('dragover'" in home_js  # allow the drop anywhere
     assert "window.addEventListener('drop'" in home_js  # stop the browser opening the file
     assert "ev.preventDefault()" in home_js
-    assert "input.files = files" in home_js  # the dropped files go onto the real form input
+    assert "upload(" in home_js  # the dropped files are fed straight into the fetch upload path
 
 
 def test_load_example_opens_a_full_report(client: TestClient) -> None:

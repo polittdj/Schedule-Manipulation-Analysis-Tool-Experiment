@@ -2123,6 +2123,7 @@ def create_app(
     <input id=folderInput type=file name=files multiple webkitdirectory>
     <input id=fileMeta type=hidden name=file_meta value="">
   </form>
+  <div id=uploadNotice class="notice warn" hidden role=alert></div>
 </div>
 <div id=loadOverlay class=load-overlay hidden role=status aria-live=assertive aria-hidden=true>
   <div class=load-card>
@@ -2171,13 +2172,21 @@ def create_app(
         )
 
     @app.post("/upload")
-    def upload(files: list[UploadFile], file_meta: str = Form("")) -> RedirectResponse:
+    def upload(
+        request: Request,
+        files: list[UploadFile],
+        file_meta: str = Form(""),
+        skipped_files: str = Form(""),
+    ) -> Response:
         # sync on purpose: parsing runs in the threadpool, so the event loop keeps serving
         # heartbeats and pages while big native .mpp files import (Java subprocess each). No file
         # count cap (v4 grouped ingestion): a whole recursive folder of a project's versions loads
         # in one go. `file_meta` is the client's per-file companion JSON (webkitRelativePath +
         # last-modified), aligned to the upload order — the folder/version-order signal the raw
-        # multipart cannot carry.
+        # multipart cannot carry. `skipped_files` is the client's list of files it could NOT read
+        # (an un-hydrated OneDrive placeholder / a file open in MS Project): home.js pre-reads each
+        # file and drops the unreadable ones so one bad file no longer aborts the whole upload at the
+        # browser network layer (Chrome ERR_ACCESS_DENIED) — they are reported here instead.
         st = session()
         cache = get_default_cache()  # content-hash keyed parse cache (v4 Feature 2; fails soft)
         accepted: list[str] = []
@@ -2232,6 +2241,19 @@ def create_app(
         if ignored:
             plural = "file" if ignored == 1 else "files"
             notices.append(f"Skipped {ignored} non-schedule {plural} in the selection.")
+        # files the browser could not read (OneDrive cloud-only placeholder, or open in MS Project):
+        # reported, not silently lost, with the concrete self-service fix
+        client_skipped = _parse_skipped_files(skipped_files)
+        if client_skipped:
+            shown = ", ".join(client_skipped[:5])
+            more = f" (+{len(client_skipped) - 5} more)" if len(client_skipped) > 5 else ""
+            plural = "file" if len(client_skipped) == 1 else "files"
+            notices.append(
+                f"Could not read {len(client_skipped)} {plural}: {shown}{more}. "
+                "This usually means the file is online-only in OneDrive or open in Microsoft "
+                "Project. In File Explorer right-click it → 'Always keep on this device', close "
+                "Microsoft Project, then re-add it."
+            )
         # v4 Feature 2: a non-blocking RAM notice once the loaded set's estimate crosses the
         # operator's threshold — the tool keeps schedules resident for comparative analysis, so a
         # very large folder is worth flagging (never gating). Raise the threshold in Portfolio.
@@ -2253,10 +2275,25 @@ def create_app(
         st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors), notices=tuple(notices))
         # a single clean open jumps straight to its report (one file is unambiguous — a title-less
         # loose file's needs-attention flag can wait for /portfolio); but a folder ingest that also
-        # skipped non-schedule files goes to the dashboard so its manifest is seen
-        if len(accepted) == 1 and not errors and not ignored:
-            return RedirectResponse(url=f"/analysis/{quote(accepted[0])}", status_code=303)
-        return RedirectResponse(url="/", status_code=303)
+        # skipped non-schedule OR unreadable files goes to the dashboard so its manifest is seen
+        if len(accepted) == 1 and not errors and not ignored and not client_skipped:
+            dest = f"/analysis/{quote(accepted[0])}"
+        else:
+            dest = "/"
+        # home.js posts with X-SF-Ajax and navigates to `redirect` itself: a fetch (not a full-page
+        # form.submit) means a browser-side read failure surfaces as a catchable error in-app
+        # instead of nuking the page to Chrome's ERR_ACCESS_DENIED. The server-side flash still
+        # renders on the followed GET, so the single-open jump + import manifest both survive.
+        if request.headers.get("x-sf-ajax"):
+            return JSONResponse(
+                {
+                    "redirect": dest,
+                    "accepted": len(accepted),
+                    "errors": len(errors),
+                    "skipped_unreadable": len(client_skipped),
+                }
+            )
+        return RedirectResponse(url=dest, status_code=303)
 
     @app.get("/analysis/{name}", response_class=HTMLResponse)
     def analysis(name: str, erosion_field: str | None = Query(None)) -> HTMLResponse:
@@ -2372,9 +2409,14 @@ def create_app(
             cpm = st.analysis_for(name, sch).cpm
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
+        # pair the schedule with the SAME scope as its cpm: analysis_for computes cpm over
+        # st.scope(sch), so tracing the raw (unscoped) network against that scoped cpm would mix a
+        # filtered/target-truncated timing set onto the full task list (wrong path once a session
+        # Analysis Target or filter is active). scope(sch) is sch when neither is set (unchanged).
+        scoped = st.scope(sch)
         return JSONResponse(
             _driving_data(
-                sch,
+                scoped,
                 cpm,
                 target,
                 secondary,
@@ -2621,11 +2663,12 @@ def create_app(
             return JSONResponse({"error": "no schedule loaded"}, status_code=400)
         key = scope.strip()
         if key and key in st.schedules:
-            sch = st.schedules[key]
+            raw = st.schedules[key]
             try:
-                cpm = st.analysis_for(key, sch).cpm
+                cpm = st.analysis_for(key, raw).cpm
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
+            sch = st.scope(raw)  # pair with analysis_for's scoped cpm (see /api/driving)
         else:
             schedules, cpms, _skipped = _solvable_versions()
             if not schedules:
@@ -5755,6 +5798,31 @@ def _parse_upload_meta(file_meta: str) -> list[tuple[str | None, float | None]]:
     return out
 
 
+def _parse_skipped_files(skipped_files: str) -> list[str]:
+    """Parse the client's list of files it could not read into short ``"path (reason)"`` labels.
+
+    ``home.js`` pre-reads each picked file and posts a JSON array of ``{"path", "reason"}`` for the
+    ones whose read failed (an un-hydrated OneDrive placeholder, or a file open in MS Project — both
+    surface as a browser ``NotReadableError``). Malformed / absent input returns ``[]``. Bounded so a
+    huge selection can't flood the manifest; each label is escaped at render time by the caller."""
+    if not skipped_files:
+        return []
+    try:
+        parsed = json.loads(skipped_files)
+    except (ValueError, TypeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    out: list[str] = []
+    for entry in parsed[:200]:
+        if not isinstance(entry, dict):
+            continue
+        path = str(entry.get("path") or "").replace("\\", "/").strip() or "(unnamed file)"
+        reason = str(entry.get("reason") or "").strip()
+        out.append(f"{path} ({reason})" if reason else path)
+    return out
+
+
 def _grouping_notices(projects: tuple[Project, ...]) -> tuple[str, ...]:
     """One concise manifest line per Project that carries a grouping notice (disagreeing folder
     titles, a title-less needs-attention file, or a data-date tie broken by last-modified time),
@@ -6041,7 +6109,15 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
     All interaction is client-side (`static/path.js`) over `/api/driving` — field
     add/remove, filters (incl. hide-completed), tier day-bands, zoom, the data-date
     line. The grounded ask-the-AI panel is the page-shell one (`_ask_panel_html`)."""
-    options = "".join(f'<option value="{_e(k)}">{_e(k)}</option>' for k in keys)
+    # default the grid to the LATEST version (keys[-1]) — the same version the "What drives the
+    # date" header above is anchored on (ADR-0199). Without this the browser defaults to the first
+    # <option> (the OLDEST version), so the header described one file while the grid traced another
+    # — the operator's "critical path is mixing up information from the various files" report.
+    latest = keys[-1] if keys else None
+    options = "".join(
+        f'<option value="{_e(k)}"{" selected" if k == latest else ""}>{_e(k)}</option>'
+        for k in keys
+    )
     return f"""
 <div class=panel><h2>Path analysis &mdash; driving / secondary / tertiary to a target</h2>
 <p class=muted>Pick a schedule and a target UniqueID: the driving path (slack &le; 0) and the

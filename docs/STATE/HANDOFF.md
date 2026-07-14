@@ -1,6 +1,43 @@
-# Handoff — 2026-07-15 (SMAT v4 PR B: scale/RAM/cache + batch JVM; v1.0.38; highest ADR 0226)
+# Handoff — 2026-07-15 (Operator bug fixes: upload resilience + /path version agreement + SSI parity; v1.0.39; highest ADR 0227)
 
-> ## STATUS (current) — SMAT v4 Feature 2 (ADR-0226). Scale to thousands: SQLite cache + lazy summary tier + RAM estimate + persistent batch JVM. Code changed.
+> ## STATUS (current) — Operator bug cluster fixed (ADR-0227). Upload resilience + critical-path "mixing files" + driving-slack scope + inactive baseline + SSI leveled parity gate. Code changed.
+>
+> - **Operator report (multi-version load of the real master IMS, `Large Test File Leveled.mpp`, focus
+>   UID 152):** (1) folder upload → Chrome `ERR_ACCESS_DENIED`; (2) "critical path is incorrect… as if
+>   mixing up the information from the various files"; (3) a stored "Driving Slack" field in the later
+>   `.mpp` not showing on *What drives a date*; (4) active/inactive tasks must calculate correctly.
+> - **Investigation (3 parallel deep-dives + direct reproduction vs the operator's SSI exports):** the
+>   driving-slack / critical-path **ENGINE is correct** — it reproduces SSI's driving set to UID 152
+>   **783/783** (777 slacks exact) and **all 60** critical (Path-01) tasks at 0-day slack; loading a 2nd
+>   version does **not** change the 1st's path (caches + engine correctly keyed by unique_id/identity).
+>   The bugs were in the web/UI layer + one importer rollup.
+> - **Fixes (ADR-0227):**
+>   - **Upload:** `home.js` now uploads via `fetch()` with a per-file `arrayBuffer()` **pre-read** —
+>     readable files load; an unreadable one (un-hydrated **OneDrive** placeholder / file open in **MS
+>     Project**, the true `ERR_ACCESS_DENIED` cause — a browser-side read abort before the request is
+>     sent) is **skipped and named** with the self-service fix, instead of nuking the whole navigation.
+>     Server answers the fetch (`X-SF-Ajax`) with JSON `{redirect}`; plain POST still 303s (compat).
+>   - **`/path` version agreement:** the schedule `<select>` now defaults `selected` to the **latest**
+>     version (the one the header is anchored on) — the header and grid were describing different files
+>     (header=latest, grid=oldest). This also restores the later `.mpp`'s "Driving Slack" column.
+>   - **Driving-slack scope:** `/api/driving` + `/api/driving-path` pass `st.scope(sch)` so the traced
+>     network matches `analysis_for`'s scoped CPM (was raw-sch + scoped-cpm under an active target/filter).
+>   - **Inactive baseline:** `_project_baseline_finish` skips `<Active>0</Active>` tasks (was the one
+>     rollup that still counted inactive rows; CPM/metrics/driving already exclude them — ADR-0128).
+>   - **SSI leveled parity gate:** new `tests/engine/test_ssi_leveled_uid152.py` + gzipped MSPDI fixture
+>     pin the critical path to UID 152 (60/60) + full driving set (783/783) vs the operator's real file.
+> - **State:** v**1.0.38 → 1.0.39**; wheel + 9 installers in lockstep. New **ADR-0227**. Gate green
+>   (ruff / format / mypy --strict / bandit / pytest / parity / node --check); the new fetch upload was
+>   **Chromium-verified** end-to-end (upload → navigate → schedule loaded, no console errors).
+> - **NEXT (remaining from the operator's mandate, larger new features — separate PRs):** MS Project
+>   **saved filters/groups/highlighting** in Groups & Filters (MPXJ's MSPDI drops the filter/group
+>   *definitions* — needs a Java-side export first) + **A–Z** ordering; **Gantt click-to-highlight** a
+>   task across its fields + bar; then **F3a/3b** margin (terminology + confirmed overlay + dual numbers
+>   + 50% flag). Operator to-do still open: sample **.xer** for the XER Title path; RAM threshold confirm.
+
+# (prior) Handoff — 2026-07-15 (SMAT v4 PR B: scale/RAM/cache + batch JVM; v1.0.38; highest ADR 0226)
+
+> ## STATUS (prev) — SMAT v4 Feature 2 (ADR-0226). Scale to thousands: SQLite cache + lazy summary tier + RAM estimate + persistent batch JVM. Code changed.
 >
 > - **The v4 build:** the operator's large "v4" spec — (1) group files into Projects, (2) **scale to
 >   thousands + explicit RAM mode**, (3) user-parameterized NASA margin, (4) role-selection front page.

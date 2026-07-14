@@ -5977,3 +5977,42 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   true summary-only eviction + re-materialization from the parse cache is the natural follow-up.
 - **ADR-0226** (highest ADR now 0226, in HANDOFF + this log). Version **1.0.37 → 1.0.38**; wheel + 9
   installers rebuilt in lockstep.
+
+## 2026-07-15 — Operator bug cluster: upload resilience + /path version agreement + SSI leveled parity (ADR-0227)
+
+- **Session:** operator reported, against a multi-version load of the real master IMS (`Large Test
+  File Leveled.mpp`, focus UID 152): folder upload → Chrome `ERR_ACCESS_DENIED`; "critical path is
+  incorrect… mixing up information from the various files"; a stored "Driving Slack" field in the later
+  `.mpp` not showing on *What drives a date*; and active/inactive handling. Delivered the correctness/
+  robustness fixes as one PR (fresh branch `claude/smat-correctness-and-filters` off origin/main, which
+  now carries the operator's uploaded `Large Test File Leveled.mpp` + two SSI Directional Path exports +
+  a settings screenshot). Model: Opus 4.8.
+- **Investigation (3 parallel read-only deep-dives + direct reproduction vs the SSI exports):**
+  - The driving-slack / **critical-path ENGINE is correct**: it reproduces SSI's *get-all-dependencies*
+    driving set to UID 152 **UID-for-UID (783/783)** with 777 slacks exact, and **all 60** critical
+    (Path-01) tasks at 0-day driving slack, on the operator's real file. Loading a second version does
+    **not** change the first's path — the `SessionState` caches (`_scoped`/`analyses`/`summaries`) and
+    the whole engine are correctly keyed by `unique_id` / object identity (no cross-version leak).
+  - Root cause of "mixing files": the `/path` page anchors its *What drives the date* header on the
+    **latest** version but the grid's schedule `<select>` had **no `selected`** option, so the browser
+    defaulted to the **oldest** — one file's header over another file's path. Same wrong-version default
+    is why the later `.mpp`'s "Driving Slack" column was absent (the importer parses it fine — 723 tasks
+    carry it). Root cause of `ERR_ACCESS_DENIED`: a browser-side pre-network read abort (un-hydrated
+    OneDrive Files-On-Demand placeholder / file open in MS Project), not a server issue — hence it
+    reproduces only on the operator's Windows/OneDrive box, never on Linux with the same bytes.
+- **Fixes (ADR-0227):** resilient `fetch()` upload with a per-file `arrayBuffer()` pre-read that skips
+  and names unreadable files (+ a JSON `{redirect}` on `X-SF-Ajax` so the flash/single-open survive;
+  plain POST still 303s); `/path` `<select>` defaults to the latest version (header/grid agree, Driving
+  Slack restored); `/api/driving` + `/api/driving-path` pass `st.scope(sch)` to match the scoped CPM;
+  `_project_baseline_finish` excludes inactive tasks; new SSI leveled parity gate
+  (`tests/engine/test_ssi_leveled_uid152.py` + gzipped MSPDI fixture, 60 critical + 783 all-deps).
+- **Tests:** upload-resilience (AJAX JSON redirect, skipped-file manifest, 303 compat); /path
+  version-agreement (select defaults latest); inactive baseline exclusion; SSI leveled parity (2). Four
+  landing/loading tests that pinned the OLD form.submit upload were updated to the new fetch behavior
+  (intent preserved). Chromium end-to-end smoke test of the fetch upload (navigate + load, no console
+  errors). **Parity untouched** (goldens carry no inactive-with-late-baseline row); `test_egress` green.
+- **Deferred (remaining operator items, separate PRs):** MS Project saved filters/groups/highlighting +
+  A–Z (MPXJ's MSPDI drops the filter/group *definitions* — needs a Java-side export); Gantt
+  click-to-highlight; F3a/3b margin work.
+- **ADR-0227** (highest ADR now 0227, in HANDOFF + this log). Version **1.0.38 → 1.0.39**; wheel + 9
+  installers rebuilt in lockstep.
