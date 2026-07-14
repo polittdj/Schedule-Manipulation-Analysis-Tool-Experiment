@@ -68,6 +68,12 @@ dev = [
   # httpx backs starlette's TestClient (web route tests). DEV-ONLY — it is a forbidden
   # *runtime* distribution (egress guard), so it must never enter `dependencies`.
   "httpx>=0.27",
+  # Build/dev tool only (never a runtime dep — the shipped wheel is pure-Python and imports no
+  # setuptools). Pinned to the patched release so CI's `pip-audit` on the `.[dev]` venv stays green:
+  # setuptools < 83.0.0 carries PYSEC-2026-3447. This remediates the advisory (vs suppressing it) and
+  # is the reviewed pin AUDIT-2026-07-13 called for when it flagged CI's ignore-list-less pip-audit as
+  # a latent flake vector against `.[dev]` transitive deps.
+  "setuptools>=83.0.0",
 ]
 
 [tool.setuptools.packages.find]
