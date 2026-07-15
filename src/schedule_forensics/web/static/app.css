@@ -592,6 +592,14 @@ th.metric-th { position: relative; }
 .mosaic .tile.tile-wide .chart-host { height: 460px; }
 .mosaic .tile.tile-expanded { grid-column: 1 / -1; }
 .mosaic .tile.tile-expanded .chart-host { height: 74vh; }
+/* When a Mission-wall tile chart is enlarged via chartframe (⤢ full screen / maximize),
+   RELEASE the fixed tile-host height: chartframe contain-fits the SVG to the viewport, but the
+   340/460/74vh host height above would otherwise keep clamping it, clipping the fitted chart to a
+   tall top strip (the data-date spike shows, the low-value months fall below the fold — the "tiny
+   sliver" bug). The higher specificity (…tile .cf-frame[.cf-max|:fullscreen] .chart-host) beats
+   the clamps above; the cf-scroll still pans if the user zooms in past the fit. */
+.mosaic .tile .cf-frame:fullscreen .chart-host,
+.mosaic .tile .cf-frame.cf-max .chart-host { height: auto; max-height: none; overflow: visible; }
 /* the overview line charts "progress" in lockstep with the steppers: Play-all toggles .sf-draw on
    their host, re-drawing each solid line left-to-right (pathLength=1 normalizes any line length) */
 .mosaic .chart-host.sf-draw .sf-curve-line { stroke-dasharray: 1; animation: sf-draw 1.3s ease-out forwards; }

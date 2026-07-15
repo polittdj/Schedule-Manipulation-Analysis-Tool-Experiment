@@ -6016,3 +6016,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   click-to-highlight; F3a/3b margin work.
 - **ADR-0227** (highest ADR now 0227, in HANDOFF + this log). Version **1.0.38 → 1.0.39**; wheel + 9
   installers rebuilt in lockstep.
+
+---
+
+## 2026-07-15 — operator UI fix: enlarged Mission-wall charts release their fixed host height (ADR-0228)
+
+- **Session:** operator-reported live bug — on the Mission-wall pages every chart "enlarges incorrectly
+  the same way" (⤢ Enlarge collapses the chart into a tall right-edge sliver with the x-axis gone).
+  Presentation-only CSS fix. Prior PR #359 (NEW-1 + the CI setuptools pin) had squash-merged and the
+  branch was auto-deleted, so this restarts `claude/smat-audit-remediation-eeckdi` fresh off `origin/main`
+  (v1.0.39) as a NEW draft PR.
+- **Model/mode:** Opus 4.8.
+- **Diagnosis (reproduced headless in Chromium against the real chartframe.js + app.css):** Mission-wall
+  charts are `.mosaic .tile .chart-host` clamped to a fixed height (340/460/74vh) so the wall stays even.
+  chartframe.js contain-fits the SVG to the viewport on enlarge (~1900×980), but the host-height clamp
+  was still binding in the enlarged state, clipping the ~960px SVG to its top 340px — only the top
+  gridlines + the tall data-date spike showed, the low-value early months fell below the fold. Measured:
+  enlarged SVG `1472×759` inside `host height 340px` → clipped (`svg_clipped:true`); a non-mosaic chart
+  enlarged fine, isolating the clamp (not chartframe sizing) as the cause. Hits every chart on the page
+  because all are mosaic tiles.
+- **Fix (`app.css`):** `.mosaic .tile .cf-frame:fullscreen .chart-host, .mosaic .tile .cf-frame.cf-max
+  .chart-host { height: auto; max-height: none; overflow: visible; }` — release the host height in both
+  enlarge modes (real `:fullscreen` + the `.cf-max` maximize fallback), scoped so the normal wall is
+  unchanged and out-specifying/out-ordering the clamps. After fix: host grows 340→759, `svg_clipped`
+  false. CSS only — no color/radius/type token, so all four themes are identical; no `engine/` touch,
+  parity unaffected.
+- **Tests:** regression `tests/web/test_brief_duo_and_chart_reflow.py::
+  test_enlarged_mosaic_chart_releases_its_fixed_tile_height` (pins the release rule + that it
+  out-specifies/out-orders the clamps it overrides — the repo's CSS-presence guard). Full gate green.
+- **ADR-0228** (highest ADR now 0228, in HANDOFF + this log; drift guard green). Version **1.0.39 →
+  1.0.40**; wheel + 9 installers rebuilt in lockstep (a packaged static asset changed).
