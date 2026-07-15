@@ -1039,6 +1039,13 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .evo-grid .g-bar.ev-t-tertiary { background: var(--accent); }
 .evo-grid tr.ev-focus td { background: var(--hover); }
 .evo-grid tr.ev-focus td:first-child { border-left: 3px solid var(--accent); }
+/* Click-to-highlight a task on the Path Analysis grid (operator): the whole row of fields shades and
+   its Gantt bar/milestone outlines; clicking off clears it. Tokens-only, all 4 themes. The frozen
+   (sticky) data columns need the explicit override or their opaque background hides the row shade. */
+.path-grid tr.pv-selected td { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.path-grid tr.pv-selected td.sf-frozen-col { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.path-grid tr.pv-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.gantt-bar.pv-bar-selected, .g-ms.pv-bar-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
 .evo-grid tr.ev-row-left td { color: var(--muted); }
 .evo-grid tbody tr { cursor: pointer; }
 .evo-durbadge { position: absolute; top: 1px; font-size: 11px; color: var(--warn); pointer-events: none; }

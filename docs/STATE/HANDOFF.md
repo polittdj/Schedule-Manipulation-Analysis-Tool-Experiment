@@ -1,6 +1,35 @@
-# Handoff — 2026-07-15 (operator UI fix: enlarged Mission-wall charts no longer clip; v1.0.40; highest ADR 0228)
+# Handoff — 2026-07-15 (Path-grid click-to-highlight; v1.0.41; highest ADR 0229)
 
-> ## STATUS (current) — operator UI fix: enlarged mosaic-tile charts release their fixed host height (ADR-0228). CSS only.
+> ## STATUS (current) — Click-to-highlight a task on the Path Analysis grid (ADR-0229). UI interaction; code changed.
+>
+> - **Operator feature (#11 of the remaining mandate):** on the Path Analysis ("What drives a date")
+>   grid, a single click on a task (any field cell or its Gantt bar) highlights that task's whole row of
+>   fields AND its bar; clicking another task moves the highlight; clicking off clears it.
+> - **How:** `static/path.js` gains a module-level `selectedUid` re-applied in `paintOne` on every
+>   repaint (`.pv-selected` on the `<tr>`, `.pv-bar-selected` on its bar/milestone), so the highlight
+>   survives filter/zoom/tier/timescale rebuilds; a document-level click sets it from
+>   `closest('tr[data-uid]')` and clears on any off-row click. Single click no longer opens the
+>   full-screen Task Information overlay (it hid the highlight + blocked the next click) — **Task
+>   Information moved to double-click** on this grid (a `/path` user-tip documents it). CSS in
+>   `app.css` is tokens-only (`color-mix(var(--accent) 16%)` + the `.sf-frozen-col` override + a
+>   `var(--accent)` bar outline).
+> - **Scope:** the Path Analysis grid only (the surface the operator's driving-slack work lives on).
+>   The single-click Task Information on the other grids (Activity grid, evolution, driving-path, SRA)
+>   is unchanged; extending the same tokens-only pattern there is a noted follow-up.
+> - **State:** v**1.0.40 → 1.0.41**; wheel + 9 installers in lockstep. New **ADR-0229** (renumbered from
+>   0228 after the parallel-session enlarged-chart fix took 0228 on `main` via #365). Gate green;
+>   **Chromium-verified end-to-end in all four themes** (select → move → click-off clears; double-click
+>   opens details; no console errors) + served-asset unit tests. No engine change; parity untouched.
+>   Rebased onto `main` (which had advanced to #365 / v1.0.40) to clear the merge block that had #366 stuck.
+> - **NEXT (remaining mandate):** **#12 F3a/3b margin** (terminology + confirmed overlay + dual numbers
+>   + 50%-consumed flag) and the flagship **#10 Groups & Filters** (fully-faithful MS Project saved
+>   filters/groups via a Java-side export + a criteria evaluator, session-wide grouping, highlight mode,
+>   A–Z). Operator has now added real **.xer** files to the repo (verify the XER Title path against them).
+>   The durable **REPO-INVENTORY.md** landed (#364).
+
+# (prior) Handoff — 2026-07-15 (operator UI fix: enlarged Mission-wall charts no longer clip; v1.0.40; highest ADR 0228)
+
+> ## STATUS (prev) — operator UI fix: enlarged mosaic-tile charts release their fixed host height (ADR-0228). CSS only.
 >
 > - **Operator report:** on the Mission-wall pages (Performance Analysis Summary `#perfGrid` G1–G5, and
 >   every other `.mosaic` wall) the ⤢ **Enlarge** produced a broken layout — the chart collapsed into a
@@ -17,19 +46,14 @@
 >   { height: auto; max-height: none; overflow: visible; }`. Scoped to the enlarged states (normal wall
 >   unchanged), out-specifies + out-orders the clamps. After fix: host grows 340→759, `svg_clipped` false.
 >   CSS only — no color/radius/type token, so all four themes behave identically; no `engine/` touch.
-> - **State:** New **ADR-0228**. Regression test
+> - **State:** **ADR-0228**. Regression test
 >   `tests/web/test_brief_duo_and_chart_reflow.py::test_enlarged_mosaic_chart_releases_its_fixed_tile_height`.
 >   Version **1.0.39 → 1.0.40**; wheel + 9 installers rebuilt in lockstep (a packaged static asset
->   changed). Full gate green. Fresh branch off `origin/main` (`claude/smat-audit-remediation-eeckdi`;
->   the prior PR #359 already squash-merged, so this is a NEW draft PR).
-> - **NEXT STEP (operator's choice — wait for a 'continue'):** the AUDIT-2026-07-14 roadmap has advanced
->   on `main` (NEW-1/#359, H3+L8/#360 both merged); resume the remaining themes — PR 6 (H1+M4+M5 AI
->   figure-gate) → PR 7 (M6+L3+L4) → PR 8 (M7+M8+L5/NEW-3+M11+NEW-2) → PR 9 (L6/L7/L9/N1/N2). Full
->   backlog in **`docs/STATE/AUDIT-2026-07-14.md`**.
+>   changed). Full gate green. Merged as #365.
 
 # (prior) Handoff — 2026-07-15 (Operator bug fixes: upload resilience + /path version agreement + SSI parity; v1.0.39; highest ADR 0227)
 
-> ## STATUS — Operator bug cluster fixed (ADR-0227). Upload resilience + critical-path "mixing files" + driving-slack scope + inactive baseline + SSI leveled parity gate. Code changed.
+> ## STATUS (prev) — Operator bug cluster fixed (ADR-0227). Upload resilience + critical-path "mixing files" + driving-slack scope + inactive baseline + SSI leveled parity gate. Code changed.
 >
 > - **Operator report (multi-version load of the real master IMS, `Large Test File Leveled.mpp`, focus
 >   UID 152):** (1) folder upload → Chrome `ERR_ACCESS_DENIED`; (2) "critical path is incorrect… as if

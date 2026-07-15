@@ -43,6 +43,11 @@
   var lastTable = null, lastScaleTh = null; // refs so a tier/zoom reflow rebuilds only the timeline
   var lastFrozenWidth = 0, refitting = false; // measured data-column width → the timeline fills the rest
   var extraRightDays = 0; // unlimited right scroll (ADR-0187): grows at the pane's right edge
+  // Click-to-highlight (operator): clicking a task's row (any field) or its bar selects it — the whole
+  // row of fields AND its Gantt bar highlight; clicking another task moves the highlight; clicking off
+  // clears it. State-driven (a module var re-applied on every repaint) so it survives a filter, zoom,
+  // tier change, or timescale event that rebuilds the tbody. Kept as a STRING for a stable compare.
+  var selectedUid = null;
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -414,11 +419,15 @@
       }));
     }
     var paintOne = function (r) {
-      var tr = el("tr", { class: r.complete ? "done" : "" });
+      // re-apply the click-to-highlight selection on every repaint (survives filter/zoom/tier changes)
+      var selected = selectedUid !== null && String(r.unique_id) === selectedUid;
+      var tr = el("tr", { class: (r.complete ? "done" : "") + (selected ? " pv-selected" : "") });
       tr.setAttribute("data-uid", r.unique_id); // Find-a-UID jump + Task Information join
-      // MS-Project Task Information on row click (shared dialog — ADR-0186); the checklist
-      // dropdowns stopPropagation already, so plain cell clicks are the only trigger
-      tr.addEventListener("click", function () {
+      // On THIS grid a single click highlights the task (operator's click-to-highlight — the row of
+      // fields + its bar); the MS-Project Task Information dialog (shared, ADR-0186) moves to a
+      // DOUBLE click so its full-screen overlay doesn't cover the very highlight the single click
+      // creates (and doesn't block clicking the next task). The checklist dropdowns stopPropagation.
+      tr.addEventListener("dblclick", function () {
         if (window.SFTaskInfo) SFTaskInfo.openFrom($("pathSchedule").value, r.unique_id);
       });
       on.forEach(function (f) {
@@ -448,7 +457,8 @@
       if (r.start && r.finish) {
         if (r.is_milestone) {
           track.appendChild(el("div", {
-            class: "g-ms tier-" + r.tier, style: "left:" + x(Date.parse(r.finish)) + "px",
+            class: "g-ms tier-" + r.tier + (selected ? " pv-bar-selected" : ""),
+            style: "left:" + x(Date.parse(r.finish)) + "px",
             title: r.name + " (milestone) — slack " + r.driving_slack_days + "d",
           }));
           // MS-Project "dates on bars": a milestone shows its finish beside the diamond
@@ -457,7 +467,8 @@
           var left = x(Date.parse(r.start));
           var w = Math.max(2, x(Date.parse(r.finish)) - left);
           var bar = el("div", {
-            class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : ""),
+            class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : "") +
+              (selected ? " pv-bar-selected" : ""),
             style: "left:" + left + "px;width:" + w + "px",
             title: r.name + " — " + r.tier + ", slack " + r.driving_slack_days + "d, " +
               (SFGantt.fmtMDY(r.start) || r.start) + " → " + (SFGantt.fmtMDY(r.finish) || r.finish) +
@@ -583,6 +594,32 @@
       onChange: function (s) { pathTierSel = s; scopeAll = false; fitFill = true; reflow(); },
     }));
   }
+  // Click-to-highlight: re-skin the currently-selected row + its bar without a full repaint. A full
+  // paintRows() also re-applies the classes (paintOne reads selectedUid), so selection survives every
+  // rebuild; this just makes the immediate click feel instant.
+  function reskinSelection() {
+    var prev = view.querySelectorAll(".pv-selected, .pv-bar-selected");
+    for (var i = 0; i < prev.length; i++) prev[i].classList.remove("pv-selected", "pv-bar-selected");
+    if (selectedUid === null) return;
+    var tr = view.querySelector('tr[data-uid="' + selectedUid + '"]');
+    if (!tr) return;
+    tr.classList.add("pv-selected");
+    var bar = tr.querySelector(".gantt-bar, .g-ms");
+    if (bar) bar.classList.add("pv-bar-selected");
+  }
+  // one document-level listener: a click on a task row (any field cell, the track, or the bar — all
+  // live inside its <tr data-uid>) selects that task; a click ANYWHERE else — empty pane, a
+  // group-header row, or off the grid entirely (a heading, a control) — clears the selection, so
+  // "click off and the highlight goes away" holds everywhere. The checklist filter dropdowns
+  // stopPropagation, so tuning a column filter never clears the selection.
+  document.addEventListener("click", function (e) {
+    var inGrid = view.contains(e.target);
+    var row = inGrid && e.target.closest ? e.target.closest("tr[data-uid]") : null;
+    var uid = row ? row.getAttribute("data-uid") : null;
+    if (uid === selectedUid) return; // same task, or an off-click with nothing selected — no-op
+    selectedUid = uid;
+    reskinSelection();
+  });
   $("pathRun").addEventListener("click", trace);
   $("pathDrag").addEventListener("click", function () {
     dragOn = true;
