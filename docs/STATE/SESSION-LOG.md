@@ -6156,3 +6156,26 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   installers rebuilt in lockstep.
 - **NEXT (#10 increments):** PR-B Java export + ingest (+ MPXJ parity on the real file) → PR-C session-
   wide grouping + A–Z + highlight → PR-D /groups UI.
+
+---
+
+## 2026-07-15 — verify-everything audit + ground-truth preservation (docs only)
+
+- **Session:** operator directive — "deep dive of the session and audit it and the repo... assume nothing,
+  verify everything, inventory everything (skip nothing, read everything)... update the Handoff... write a
+  new-session prompt." Docs-only; no code/version/ADR change (highest stays 0231). Model: Opus 4.8.
+- **Verified green on `main` (v1.0.43 / #368 / ADR-0231), not assumed:** ruff / ruff format --check / mypy
+  --strict (109 files) / bandit (exit 0) / node --check (all vendored JS) / egress air-gap guard (23) /
+  **full pytest 2208 passed**. 232 ADRs, 0000-0231 **contiguous** (no gaps/dupes); state-docs drift guard +
+  installer lockstep + metric-dictionary sync all green.
+- **Session work audited:** #366 (Path-grid click-highlight, 0229), #367 (F3a/3b margin, 0230), #368 (#10
+  PR-A filter evaluator, 0231) — all merged and coherent. The #10 PR-A modules are correctly self-contained
+  (not yet UI-wired — PR-C/D's job). No half-built code, no TODO/FIXME in the new code.
+- **Ground truth preserved in-repo** (was scratchpad-only): `docs/STATE/MSP-FILTERS-SPEC.md`,
+  `docs/STATE/msp-views-leveled.json` (raw MPXJ dump of the operator's 10 real filters + 25 groups),
+  `docs/STATE/msp-filters-research/{01-operator-semantics-bytecode,02-field-resolver,03-plumbing-integration,04-test-matrix}.md`.
+- **`REPO-INVENTORY.md` refreshed** from v1.0.39/0227 to v1.0.43/0231 (margin F3a/3b, the #10 filter engine
+  `msp_filters`/`msp_field_resolver`, the `saved_view` model + the 3 new `Schedule` fields, SCHEMA_VERSION 2.7.0).
+- **NEXT:** #10 PR-B (Java-side filter/group export from `tools/mpxj` + ingest wiring + an MPXJ parity test on
+  the real file) → PR-C (session-wide grouping + A-Z + highlight) → PR-D (`/groups` UI). Then #13 XER per-task
+  calendars, F3c parameterized expected margin, and the roles front-end.

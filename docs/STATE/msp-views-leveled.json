@@ -1,0 +1,558 @@
+{
+  "taskFilters": [
+    {
+      "name": "All Tasks",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": null
+    },
+    {
+      "name": "All Resources",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": null
+    },
+    {
+      "name": "SVT-",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "CONTAINS",
+        "field": "Task Name",
+        "fieldEnum": "NAME",
+        "v0": "SVT-",
+        "v0type": "String"
+      }
+    },
+    {
+      "name": "No SVT-",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "DOES_NOT_CONTAIN",
+        "field": "Task Name",
+        "fieldEnum": "NAME",
+        "v0": "SVT-",
+        "v0type": "String"
+      }
+    },
+    {
+      "name": "SVT",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "CONTAINS",
+        "field": "Task Name",
+        "fieldEnum": "NAME",
+        "v0": "SVT",
+        "v0type": "String"
+      }
+    },
+    {
+      "name": "Date Range...",
+      "showRelatedSummaryRows": true,
+      "prompts": 2,
+      "criteria": {
+        "op": "AND",
+        "children": [
+          {
+            "op": "IS_GREATER_THAN_OR_EQUAL_TO",
+            "field": "Finish",
+            "fieldEnum": "FINISH",
+            "v0": "PROMPT(Show tasks that start or finish after:)",
+            "v0type": "GenericCriteriaPrompt"
+          },
+          {
+            "op": "IS_LESS_THAN_OR_EQUAL_TO",
+            "field": "Start",
+            "fieldEnum": "START",
+            "v0": "PROMPT(And before:)",
+            "v0type": "GenericCriteriaPrompt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CAM_Tasks",
+      "showRelatedSummaryRows": true,
+      "prompts": 0,
+      "criteria": {
+        "op": "AND",
+        "children": [
+          {
+            "op": "EQUALS",
+            "field": "Text9",
+            "fieldEnum": "TEXT9",
+            "v0": "ZIN",
+            "v0type": "String"
+          },
+          {
+            "op": "IS_LESS_THAN_OR_EQUAL_TO",
+            "field": "Start",
+            "fieldEnum": "START",
+            "v0": "2028-09-29T17:00",
+            "v0type": "LocalDateTime"
+          }
+        ]
+      }
+    },
+    {
+      "name": "_MCexportedTasks",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "EQUALS",
+        "field": "Flag6",
+        "fieldEnum": "FLAG6",
+        "v0": "true",
+        "v0type": "Boolean"
+      }
+    },
+    {
+      "name": "_MCTasks",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "AND",
+        "children": [
+          {
+            "op": "EQUALS",
+            "field": "Summary",
+            "fieldEnum": "SUMMARY",
+            "v0": "false",
+            "v0type": "Boolean"
+          },
+          {
+            "op": "IS_GREATER_THAN",
+            "field": "Duration9",
+            "fieldEnum": "DURATION9",
+            "v0": "Duration8",
+            "v0type": "TaskField"
+          },
+          {
+            "op": "IS_GREATER_THAN_OR_EQUAL_TO",
+            "field": "Duration8",
+            "fieldEnum": "DURATION8",
+            "v0": "0.0d",
+            "v0type": "Duration"
+          },
+          {
+            "op": "IS_GREATER_THAN_OR_EQUAL_TO",
+            "field": "Duration9",
+            "fieldEnum": "DURATION9",
+            "v0": "0.0d",
+            "v0type": "Duration"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Text19",
+            "fieldEnum": "TEXT19",
+            "v0": "",
+            "v0type": "String"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Actual Finish",
+            "fieldEnum": "ACTUAL_FINISH"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Active",
+            "fieldEnum": "ACTIVE",
+            "v0": "true",
+            "v0type": "Boolean"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Milestone",
+            "fieldEnum": "MILESTONE",
+            "v0": "false",
+            "v0type": "Boolean"
+          }
+        ]
+      }
+    },
+    {
+      "name": "_RiskRegTasks",
+      "showRelatedSummaryRows": false,
+      "prompts": 0,
+      "criteria": {
+        "op": "AND",
+        "children": [
+          {
+            "op": "EQUALS",
+            "field": "Summary",
+            "fieldEnum": "SUMMARY",
+            "v0": "false",
+            "v0type": "Boolean"
+          },
+          {
+            "op": "DOES_NOT_EQUAL",
+            "field": "Text19",
+            "fieldEnum": "TEXT19",
+            "v0": "",
+            "v0type": "String"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Actual Finish",
+            "fieldEnum": "ACTUAL_FINISH"
+          },
+          {
+            "op": "EQUALS",
+            "field": "Active",
+            "fieldEnum": "ACTIVE",
+            "v0": "true",
+            "v0type": "Boolean"
+          }
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "&No Group",
+      "showSummaryTasks": false,
+      "clauses": []
+    },
+    {
+      "name": "&No Group",
+      "showSummaryTasks": false,
+      "clauses": []
+    },
+    {
+      "name": "Mi&lestones",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Milestone",
+          "ascending": false,
+          "groupOn": 0,
+          "startAt": "false",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Milestone Update",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text30",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Complete and &Incomplete Tasks",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "% Complete",
+          "ascending": true,
+          "groupOn": 2,
+          "startAt": "0",
+          "interval": "0"
+        }
+      ]
+    },
+    {
+      "name": "C&ritical",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Critical",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "false",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "&Duration",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Duration",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "D&uration then Priority",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Duration",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        },
+        {
+          "field": "Priority",
+          "ascending": true,
+          "groupOn": 1,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "&Priority",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Priority",
+          "ascending": true,
+          "groupOn": 1,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Priority &Keeping Outline Structure",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Project",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        },
+        {
+          "field": "Outline Number",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        },
+        {
+          "field": "Priority",
+          "ascending": true,
+          "groupOn": 1,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Con&straint Type",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Constraint Type",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Status",
+      "showSummaryTasks": true,
+      "clauses": [
+        {
+          "field": "Status",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Auto Scheduled vs. Manually Scheduled",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Task Mode",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Resource",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Resource Names",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Active vs. Inactive",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Active",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "false",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Board Status",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Board Status",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Sprint",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Sprint",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "+SSI Driving Slack for 10-Path",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Number19",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "0.0",
+          "interval": "0.0"
+        }
+      ]
+    },
+    {
+      "name": "IPT",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text9",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Group 2",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text9",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "By CAM",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text21",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Group ",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text21",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "CA-WBS,OBS.CAM",
+      "showSummaryTasks": true,
+      "clauses": [
+        {
+          "field": "Text20",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        },
+        {
+          "field": "Text7",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        },
+        {
+          "field": "Text21",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "Work Package ID",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text30",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    },
+    {
+      "name": "SSI Path Analysis",
+      "showSummaryTasks": false,
+      "clauses": [
+        {
+          "field": "Text10",
+          "ascending": true,
+          "groupOn": 0,
+          "startAt": "null",
+          "interval": "null"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,13 @@
 # Handoff — 2026-07-15 (#10 PR-A: faithful MS Project filter evaluator + saved-view model; v1.0.43; highest ADR 0231)
 
+> ## AUDIT (2026-07-15, verify-everything sweep) — `main` @ **v1.0.43 / #368 / ADR-0231** is fully green and healthy.
+>
+> - **Gate verified green on `main` (not assumed):** ruff / ruff format --check / mypy --strict (109 files) / bandit (exit 0) / node --check (all vendored JS) / egress air-gap guard (23) / **full pytest 2208 passed**.
+> - **Structure verified:** 232 ADRs, **0000–0231 contiguous** (no gaps/dupes); state-docs drift guard passes (ADR-0231 in HANDOFF + SESSION-LOG); installer lockstep green; METRIC-DICTIONARY in sync.
+> - **Session work all merged + coherent:** #366 (Path-grid click-highlight, 0229), #367 (F3a/3b margin, 0230), #368 (#10 PR-A filter evaluator, 0231). The #10 PR-A modules (`model/saved_view.py`, `engine/msp_filters.py`, `engine/msp_field_resolver.py`) are present and **correctly self-contained** — referenced only by `json_schedule`/`schedule`/tests, **not yet wired into the UI/session** (that is PR-C/D's job, by design). No half-built code, no TODO/FIXME landmines.
+> - **Nothing lost:** the #10 ground truth (extracted from the operator's real `Large Test File Leveled.mpp`) is **preserved in the repo** — `docs/STATE/MSP-FILTERS-SPEC.md` (build plan + MPXJ API + the 10 filters + integration finding), `docs/STATE/msp-views-leveled.json` (raw MPXJ dump), `docs/STATE/msp-filters-research/` (the 4 bytecode-authoritative design deep-dives). `REPO-INVENTORY.md` refreshed to v1.0.43/0231.
+> - **Open PRs:** none (all merged). **Next work:** #10 PR-B (see NEXT below).
+>
 > ## STATUS (current) — #10 (Groups & Filters) PR-A (ADR-0231): the correctness-critical core of faithful MS Project filter reproduction — criteria model, raw-field resolver, evaluator. Pure Python, CI-tested. Parity untouched.
 >
 > - **Flagship feature #10** (operator: "Fully faithful: exact reproduction" + "session-wide grouping").
