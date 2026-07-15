@@ -1,6 +1,29 @@
-# Handoff — 2026-07-15 (F3a/3b NASA margin: terminology + confirmed overlay + dual numbers + 50% flag; v1.0.42; highest ADR 0230)
+# Handoff — 2026-07-15 (#10 PR-A: faithful MS Project filter evaluator + saved-view model; v1.0.43; highest ADR 0231)
 
-> ## STATUS (current) — F3a/3b schedule-margin (ADR-0230): cited MARGIN/CONTINGENCY/FLOAT terminology, an operator confirm/deny margin-task overlay, BOTH margin numbers, and the 50%-consumed corrective flag. Code changed; parity untouched.
+> ## STATUS (current) — #10 (Groups & Filters) PR-A (ADR-0231): the correctness-critical core of faithful MS Project filter reproduction — criteria model, raw-field resolver, evaluator. Pure Python, CI-tested. Parity untouched.
+>
+> - **Flagship feature #10** (operator: "Fully faithful: exact reproduction" + "session-wide grouping").
+>   A **design workflow** (4 parallel deep-dives → synthesis) grounded the build in ground truth: a
+>   read-only MPXJ probe extracted the **10 real task filters + 25 groups** from the operator's real
+>   `Large Test File Leveled.mpp`, and the operator semantics were taken from the **MPXJ 16.2.0 bytecode**
+>   (not guessed). Scratchpad: `MSP-FILTERS-SPEC.md`, `views_leveled.json`, `research_*.md`.
+> - **PR-A delivered (this):** `model/saved_view.py` (Criterion/Operand/SavedFilter/SavedGroup/GroupClause);
+>   `Schedule.custom_field_by_raw_name` (raw-name → label map, persisted by the MSPDI importer — the key
+>   integration bridge, since filters reference the raw `Text9` but tasks store by the label `IPT/ SUB`) +
+>   `saved_filters`/`saved_groups` (empty until PR-B); `engine/msp_field_resolver.py` (raw field → typed
+>   value); `engine/msp_filters.py` (the faithful evaluator — asymmetric LHS/RHS normalization, null-sorts-
+>   greater compare, three string regimes, field-to-field, prompts, recursive AND/OR). JSON round-trips the
+>   3 new fields (SCHEMA_VERSION 2.6.0 → 2.7.0). Tested vs the 10 real filters + per-operator + resolver.
+> - **State:** v**1.0.42 → 1.0.43**; wheel + 9 installers in lockstep. New **ADR-0231**. Full gate green;
+>   parity untouched (new modules + additive model fields). Branched fresh off `origin/main` after #367.
+> - **NEXT (remaining #10 increments):** **PR-B** Java-side filter/group export (`tools/mpxj`) + ingest
+>   wiring → real definitions loaded, MPXJ parity test on the real file; **PR-C** session-wide grouping +
+>   A–Z ordering + highlight mode (mark not drop); **PR-D** `/groups` UI (pickers, interactive prompts).
+>   Then **#13** XER per-task calendars, and F3c (parameterized expected margin) + roles.
+
+# (prior) Handoff — 2026-07-15 (F3a/3b NASA margin: terminology + confirmed overlay + dual numbers + 50% flag; v1.0.42; highest ADR 0230)
+
+> ## STATUS (prev) — F3a/3b schedule-margin (ADR-0230): cited MARGIN/CONTINGENCY/FLOAT terminology, an operator confirm/deny margin-task overlay, BOTH margin numbers, and the 50%-consumed corrective flag. Code changed; parity untouched.
 >
 > - **Operator feature (#12 of the remaining mandate):** on the margin panel + Margin Dashboard —
 >   (F3a) a cited MARGIN vs CONTINGENCY vs FLOAT glossary; (F3b) the operator ticks which activities
