@@ -16,6 +16,7 @@ from schedule_forensics.engine.metrics.margin import (
     compute_margin,
     compute_margin_trend,
     is_margin_task,
+    margin_candidates,
 )
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
@@ -165,3 +166,53 @@ def test_margin_trend_packs_a_point_per_version_in_order() -> None:
 
 def test_margin_trend_empty_input_is_empty() -> None:
     assert compute_margin_trend(()) == ()
+
+
+def test_margin_candidates_lists_primary_then_near_miss_with_context() -> None:
+    # UID 2 is a PRIMARY match (name has "margin"); UID 3 is a NEAR-MISS (handbook alias
+    # "contingency"); UID 4 is neither; UID 5 is a summary named "margin" (excluded).
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=5 * DAY),
+        Task(unique_id=2, name="Schedule MARGIN", duration_minutes=3 * DAY),
+        Task(unique_id=3, name="Contingency block", duration_minutes=2 * DAY),
+        Task(unique_id=4, name="ordinary work", duration_minutes=DAY),
+        Task(unique_id=5, name="Margin Rollup", duration_minutes=DAY, is_summary=True),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    cands = margin_candidates(_sched(tasks, rels), compute_cpm(_sched(tasks, rels)))
+    # UID 4 (no keyword) and UID 5 (summary) excluded; primaries first, then near-misses
+    assert [c.unique_id for c in cands] == [2, 3]
+    assert [c.tier for c in cands] == ["primary", "near-miss"]
+    assert [c.duration_days for c in cands] == [3.0, 2.0]
+    # context the operator decides on: total float + criticality are present per row
+    assert cands[0].on_critical is True  # UID 2 sits on the only chain to the sink
+    assert all(isinstance(c.total_float_days, float) for c in cands)
+
+
+def test_compute_margin_overlay_overrides_the_name_based_default() -> None:
+    # UID 3 ("Buffer", NOT named margin) is confirmed by the operator; UID 2 ("MARGIN") is not.
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=DAY),
+        Task(unique_id=2, name="Schedule MARGIN", duration_minutes=2 * DAY),
+        Task(unique_id=3, name="Buffer", duration_minutes=3 * DAY),
+        Task(unique_id=4, name="B", duration_minutes=DAY),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+        Relationship(predecessor_id=3, successor_id=4),
+    )
+    sch = _sched(tasks, rels)
+    cpm = compute_cpm(sch)
+    # name-based default → only the "MARGIN"-named UID 2 (2 wd)
+    assert compute_margin(sch, cpm).total_margin_days == 2.0
+    # overlay {3} → only UID 3 (3 wd); the name match is ignored in favor of the confirmed set
+    over = compute_margin(sch, cpm, margin_uids=frozenset({3}))
+    assert over.count == 1
+    assert over.tasks[0].unique_id == 3
+    assert over.total_margin_days == 3.0
+    # an explicitly EMPTY overlay is a deliberate "no margin", not a fallback to names
+    assert compute_margin(sch, cpm, margin_uids=frozenset()).count == 0

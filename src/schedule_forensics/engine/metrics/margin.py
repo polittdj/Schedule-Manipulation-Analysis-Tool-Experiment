@@ -31,6 +31,13 @@ from schedule_forensics.model.task import Task
 #: Operator convention: a margin activity's name contains this word (case-insensitive substring).
 MARGIN_KEYWORD = "margin"
 
+#: Handbook aliases a buffer activity may carry INSTEAD of "margin" — surfaced as *near-miss*
+#: candidates (never auto-counted) so the operator can confirm a reserve the naming convention
+#: would otherwise miss. "reserve" is the pre-NPR 7120.5 term for schedule margin; "contingency"
+#: and "integrated return" appear on some programs. Conservative: only the operator's confirm
+#: promotes one.
+NEAR_MISS_KEYWORDS = ("reserve", "contingency", "integrated return")
+
 
 def is_margin_task(task: Task) -> bool:
     """True iff ``task`` is a schedule-margin activity by the operator's naming convention.
@@ -39,6 +46,60 @@ def is_margin_task(task: Task) -> bool:
     (case-insensitive, substring). Summary rollups are excluded even when named "margin".
     """
     return not task.is_summary and MARGIN_KEYWORD in task.name.lower()
+
+
+@dataclass(frozen=True)
+class MarginCandidate:
+    """One activity the operator can confirm/deny as schedule margin, with the deciding context.
+
+    ``tier`` is ``"primary"`` when the name carries "margin" (the name-based default) or
+    ``"near-miss"`` when it carries only a handbook alias (:data:`NEAR_MISS_KEYWORDS`).
+    ``total_float_days`` is the CPM total float (``0`` ⇒ on the driving chain, so the buffer is
+    actually protecting the finish); ``on_critical`` is ``total_float <= 0``.
+    """
+
+    unique_id: int
+    name: str
+    duration_days: float
+    total_float_days: float
+    on_critical: bool
+    tier: str  # "primary" (name has "margin") | "near-miss" (a handbook alias only)
+
+
+def margin_candidates(schedule: Schedule, cpm: CPMResult) -> tuple[MarginCandidate, ...]:
+    """Every activity that could be schedule margin, for the operator's confirm/deny overlay UI.
+
+    Primary candidates are the name-based default (:func:`is_margin_task`). Near-miss candidates
+    carry a handbook alias (:data:`NEAR_MISS_KEYWORDS`) but NOT the word "margin", surfaced so the
+    operator can confirm a buffer the naming convention would miss (nothing is auto-counted from the
+    aliases).
+    Each row carries the deciding context: buffer size (days, elapsed-aware), CPM total float
+    (``0`` ⇒ on the driving chain), and whether it is currently critical. Primaries first, then
+    near-misses; within each, largest buffer first.
+    """
+    wmpd = schedule.calendar.working_minutes_per_day or 480
+    out: list[MarginCandidate] = []
+    for t in non_summary(schedule):
+        low = t.name.lower()
+        primary = MARGIN_KEYWORD in low
+        near = not primary and any(k in low for k in NEAR_MISS_KEYWORDS)
+        if not (primary or near):
+            continue
+        timing = cpm.timings.get(t.unique_id)
+        tf = timing.total_float if timing is not None else 0
+        axis = 1440 if t.duration_is_elapsed else wmpd
+        out.append(
+            MarginCandidate(
+                unique_id=t.unique_id,
+                name=t.name,
+                duration_days=round(t.duration_minutes / axis, 1),
+                total_float_days=round(tf / wmpd, 1),
+                on_critical=timing is not None and timing.total_float <= 0,
+                tier="primary" if primary else "near-miss",
+            )
+        )
+    out.sort(key=lambda c: (c.tier != "primary", -c.duration_days))
+    return tuple(out)
 
 
 @dataclass(frozen=True)
@@ -62,15 +123,32 @@ class MarginAnalysis:
     tasks: tuple[MarginTask, ...]
 
 
-def compute_margin(schedule: Schedule, cpm: CPMResult) -> MarginAnalysis:
+def _select_margin(schedule: Schedule, margin_uids: frozenset[int] | None) -> list[Task]:
+    """The margin activities: the operator's CONFIRMED overlay (``margin_uids``, per-version, set in
+    the UI) when supplied, else the name-based default (:func:`is_margin_task`). Summary rollups are
+    always excluded. ``margin_uids=None`` (the default) reproduces the name-based behavior exactly,
+    so threading the overlay through the engine is behavior-preserving until the operator confirms a
+    set.
+    """
+    if margin_uids is None:
+        return [t for t in non_summary(schedule) if is_margin_task(t)]
+    return [t for t in non_summary(schedule) if t.unique_id in margin_uids]
+
+
+def compute_margin(
+    schedule: Schedule, cpm: CPMResult, *, margin_uids: frozenset[int] | None = None
+) -> MarginAnalysis:
     """Compute the schedule-margin analysis for ``schedule`` (``cpm`` is the as-built network).
 
     ``total_margin_days`` sums the margin activities' durations. ``effective_margin_days`` re-runs
     CPM with every margin task's duration overridden to 0 and measures how far the project finish
     pulls in (clamped at 0) — the buffer actually protecting the finish (handbook "effective
     margin"). Both convert minutes to days on the schedule's calendar (480-min fallback).
+
+    ``margin_uids`` (optional) is the operator's confirmed margin-task set; ``None`` uses the
+    name-based default (:func:`is_margin_task`).
     """
-    margin = [t for t in non_summary(schedule) if is_margin_task(t)]
+    margin = _select_margin(schedule, margin_uids)
     if not margin:
         return MarginAnalysis(0, 0.0, 0.0, 0, ())
 
@@ -126,16 +204,21 @@ class MarginPoint:
 
 def compute_margin_trend(
     versions: Sequence[tuple[str, str | None, Schedule, CPMResult]],
+    *,
+    margin_uids: frozenset[int] | None = None,
 ) -> tuple[MarginPoint, ...]:
     """Pack a schedule-margin burndown across versions, in the order the caller supplies.
 
     Each element is ``(label, status_date, schedule, cpm)``; :func:`compute_margin` runs per version
     and the totals are packed into a :class:`MarginPoint`. The order is preserved exactly (the
     caller orders — typically oldest -> newest by data date), so margin erosion reads left to right.
+
+    ``margin_uids`` (optional) is the operator's confirmed margin-task set, applied to every version
+    (margin-task UniqueIDs are stable across versions of one project); ``None`` = name-based.
     """
     points: list[MarginPoint] = []
     for label, status_date, schedule, cpm in versions:
-        m = compute_margin(schedule, cpm)
+        m = compute_margin(schedule, cpm, margin_uids=margin_uids)
         points.append(
             MarginPoint(
                 label=label,

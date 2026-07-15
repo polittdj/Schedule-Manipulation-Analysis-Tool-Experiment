@@ -104,8 +104,29 @@
         tip(tick, m.status_date + " — planned (period start) " + m.planned_margin_wd + " wd; consumed " + m.consumed_wd + " wd this period");
         svg.appendChild(tick);
       }
+      // corrective-action flag: >=50% of the planned margin consumed this period — the NASA Schedule
+      // Management Handbook 50%-consumed corrective-action threshold. A caret above the stack.
+      if (m.corrective_action) {
+        var yt = y(m.total_available);
+        var mk = svgEl("path", { d: "M" + (x(i) - 5) + " " + (yt - 6) + " L" + (x(i) + 5) + " " + (yt - 6) + " L" + x(i) + " " + (yt - 14) + " Z", fill: WARN });
+        tip(mk, m.status_date + " — " + (m.consumed_pct != null ? Math.round(100 * m.consumed_pct) : "50+") + "% of planned margin consumed (>=50% NASA corrective-action threshold; Schedule Management Handbook 7.3.3.1.6 / 7.3.4)");
+        svg.appendChild(mk);
+      }
       if (n <= 24) txt(svg, x(i), B + 12, shortDate(m.status_date), { anchor: "middle", size: 8 });
     });
+    // planned-depletion line: connect each month's period-start planned margin (dashed), so the
+    // planned trajectory reads against the actual bars.
+    var pd = "", pstarted = false;
+    MONTHS.forEach(function (m, i) {
+      if (m.planned_margin_wd == null) return;
+      pd += (pstarted ? "L" : "M") + x(i).toFixed(1) + " " + y(m.planned_margin_wd).toFixed(1) + " ";
+      pstarted = true;
+    });
+    if (pd) {
+      var pline = svgEl("path", { d: pd, fill: "none", stroke: MUT, "stroke-width": 1.4, "stroke-dasharray": "2 2" });
+      tip(pline, "planned margin (period-start, carried forward)");
+      svg.appendChild(pline);
+    }
     // NASA Gold-Rule requirement line (per month)
     var d = "";
     MONTHS.forEach(function (m, i) { d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(m.nasa_rqmt_wd).toFixed(1) + " "; });
@@ -117,7 +138,8 @@
       { color: ACC, label: "Contingency (days)", op: 0.55 },
       { color: BAD, label: "Below requirement" },
       { color: WARN, label: "NASA requirement", dash: "5 3" },
-      { color: MUT, label: "Planned (period start)", dash: "0" },
+      { color: MUT, label: "Planned depletion", dash: "2 2" },
+      { color: WARN, label: "Corrective ≥ 50%" },
     ]);
     txt(svg, R, B + 12, "status date", { anchor: "end", size: 8.5 });
   }

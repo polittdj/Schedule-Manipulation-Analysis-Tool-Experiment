@@ -1,6 +1,34 @@
-# Handoff — 2026-07-15 (Path-grid click-to-highlight; v1.0.41; highest ADR 0229)
+# Handoff — 2026-07-15 (F3a/3b NASA margin: terminology + confirmed overlay + dual numbers + 50% flag; v1.0.42; highest ADR 0230)
 
-> ## STATUS (current) — Click-to-highlight a task on the Path Analysis grid (ADR-0229). UI interaction; code changed.
+> ## STATUS (current) — F3a/3b schedule-margin (ADR-0230): cited MARGIN/CONTINGENCY/FLOAT terminology, an operator confirm/deny margin-task overlay, BOTH margin numbers, and the 50%-consumed corrective flag. Code changed; parity untouched.
+>
+> - **Operator feature (#12 of the remaining mandate):** on the margin panel + Margin Dashboard —
+>   (F3a) a cited MARGIN vs CONTINGENCY vs FLOAT glossary; (F3b) the operator ticks which activities
+>   ARE margin (primary "margin"-named pre-ticked + near-miss aliases reserve/contingency/integrated
+>   return offered), persisted per version; BOTH cumulative **effective** margin and the **total**
+>   sum-of-durations are shown (stated to differ); and a **50%-consumed** corrective-action flag with a
+>   planned-depletion line.
+> - **Citations verified against ground truth:** extracted the committed handbook PDF
+>   (`00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip`) — §5.5.11
+>   (margin managed over float), and the verbatim "**The corrective action threshold is set where the
+>   margin is 50% consumed**" (§7.3.3.1.6 / §7.3.4). No section number invented.
+> - **How:** opt-in `margin_uids: frozenset[int] | None` threaded through all four engine selection
+>   sites (`compute_margin`, `compute_margin_trend`, `_margin_month`, `compute_margin_dashboard`),
+>   default `None` = today's name-based behavior (parity-safe by construction). `SessionState.
+>   margin_overlay: dict[key, frozenset]` + async `POST /margin/confirm`; cross-version dashboard/trend
+>   use the union (UIDs stable across a project's versions). New `MarginMonth.total_margin_wd` /
+>   `.consumed_pct` / `.corrective_action`; burn-down JS gains the planned line + corrective caret.
+> - **State:** v**1.0.41 → 1.0.42**; wheel + 9 installers in lockstep. New **ADR-0230**. Full gate
+>   green (ruff / format / mypy --strict / bandit exit 0 / pytest / node --check); parity untouched
+>   (margin stays off the Fuse ribbon). Branched fresh off `origin/main` after #366 merged.
+> - **NEXT (remaining mandate):** the flagship **#10 Groups & Filters** (fully-faithful MS Project
+>   saved filters/groups via a Java-side export + a criteria evaluator, session-wide grouping, highlight
+>   mode, A–Z), then **#13** XER per-task calendars, then F3c (parameterized expected margin) + roles.
+>   The real **.xer** files are in the repo; **REPO-INVENTORY.md** landed (#364).
+
+# (prior) Handoff — 2026-07-15 (Path-grid click-to-highlight; v1.0.41; highest ADR 0229)
+
+> ## STATUS (prev) — Click-to-highlight a task on the Path Analysis grid (ADR-0229). UI interaction; code changed.
 >
 > - **Operator feature (#11 of the remaining mandate):** on the Path Analysis ("What drives a date")
 >   grid, a single click on a task (any field cell or its Gantt bar) highlights that task's whole row of
