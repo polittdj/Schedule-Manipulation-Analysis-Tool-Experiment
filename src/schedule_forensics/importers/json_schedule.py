@@ -22,6 +22,7 @@ from schedule_forensics.model.assignment import Assignment
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.resource import Resource, ResourceType
+from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.task import ConstraintType, Task
 
 _DATE_FIELDS = (
@@ -275,6 +276,26 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
             schedule_kwargs[key] = _dt(data[key])
     if isinstance(data.get("custom_field_labels"), list):
         schedule_kwargs["custom_field_labels"] = tuple(str(x) for x in data["custom_field_labels"])
+    if isinstance(data.get("custom_field_by_raw_name"), list):
+        schedule_kwargs["custom_field_by_raw_name"] = tuple(
+            (str(p[0]), str(p[1]))
+            for p in data["custom_field_by_raw_name"]
+            if isinstance(p, list) and len(p) == 2
+        )
+    # strict=False so the saved-view JSON lists coerce back into the models' tuple fields (operands
+    # / children / clauses) — the frozen models are otherwise strict (no coercion) by construction.
+    if isinstance(data.get("saved_filters"), list):
+        schedule_kwargs["saved_filters"] = tuple(
+            SavedFilter.model_validate(f, strict=False)
+            for f in data["saved_filters"]
+            if isinstance(f, dict)
+        )
+    if isinstance(data.get("saved_groups"), list):
+        schedule_kwargs["saved_groups"] = tuple(
+            SavedGroup.model_validate(g, strict=False)
+            for g in data["saved_groups"]
+            if isinstance(g, dict)
+        )
     if isinstance(data.get("resources"), list):
         schedule_kwargs["resources"] = tuple(
             _resource(r) for r in data["resources"] if isinstance(r, dict)
@@ -354,6 +375,12 @@ def to_json_text(schedule: Schedule) -> str:
             out[finish_key] = finish_val.isoformat()
     if schedule.custom_field_labels:
         out["custom_field_labels"] = list(schedule.custom_field_labels)
+    if schedule.custom_field_by_raw_name:
+        out["custom_field_by_raw_name"] = [list(p) for p in schedule.custom_field_by_raw_name]
+    if schedule.saved_filters:
+        out["saved_filters"] = [f.model_dump(mode="json") for f in schedule.saved_filters]
+    if schedule.saved_groups:
+        out["saved_groups"] = [g.model_dump(mode="json") for g in schedule.saved_groups]
     if schedule.resources:
         out["resources"] = [
             {

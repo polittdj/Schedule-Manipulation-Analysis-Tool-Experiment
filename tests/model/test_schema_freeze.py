@@ -86,12 +86,15 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "relationships",
         "resources",
         "custom_field_labels",
+        "custom_field_by_raw_name",
+        "saved_filters",
+        "saved_groups",
     },
 }
 
 
 def test_schema_version() -> None:
-    assert model.SCHEMA_VERSION == "2.6.0"
+    assert model.SCHEMA_VERSION == "2.7.0"
 
 
 @pytest.mark.parametrize("cls", list(_EXPECTED_FIELDS))

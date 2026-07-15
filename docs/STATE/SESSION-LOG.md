@@ -6116,3 +6116,43 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   new fields; overlay reflects through `/api/margin/dashboard`). Full gate green.
 - **ADR-0230** (highest ADR now 0230, in HANDOFF + this log; drift guard green). Version **1.0.41 →
   1.0.42**; wheel + 9 installers rebuilt in lockstep.
+
+---
+
+## 2026-07-15 — #10 (Groups & Filters) PR-A: faithful MS Project filter evaluator + saved-view model (ADR-0231)
+
+- **Session:** first increment of the flagship feature #10 (operator: "Fully faithful: exact
+  reproduction" + "session-wide grouping"). Started after #367 (F3a/3b margin) merged. Model: Opus 4.8.
+- **Workflow + ground truth:** the operator asked for a workflow approach; a design workflow ran 4
+  parallel deep-dives (MPXJ operator semantics from bytecode, the raw-field resolver, the filter/group
+  plumbing, the test matrix) → synthesis (the synthesis agent hit a weekly limit; I synthesized from the
+  4 research outputs myself). A read-only MPXJ probe (Java 21 + MPXJ 16.2.0) extracted the **10 real task
+  filters + 25 groups** from the operator's `Large Test File Leveled.mpp` — the reproduction target.
+  Operator semantics were read from the **MPXJ bytecode** (`javap -c` on GenericCriteria/TestOperator),
+  not guessed. Artifacts in the scratchpad: MSP-FILTERS-SPEC.md, views_leveled.json, research_0..3.md.
+- **Delivered (correctness-critical core, pure Python):**
+  - `model/saved_view.py` — frozen Criterion (leaf + AND/OR branch), Operand (literal / field-ref /
+    prompt / null), SavedFilter, SavedGroup, GroupClause.
+  - `Schedule.custom_field_by_raw_name` — a (raw-name → label) map persisted by the MSPDI importer
+    (`_parse_extended_attribute_raw_names`). The key integration bridge: filters reference the RAW name
+    (`Text9`) but `Task.custom_fields` is keyed by the label (`IPT/ SUB`). Plus `saved_filters`/
+    `saved_groups` (empty until PR-B). All three round-trip through the JSON format (SCHEMA_VERSION
+    2.6.0 → 2.7.0; the frozen models read back with strict=False so JSON lists coerce to tuple fields).
+  - `engine/msp_field_resolver.py` — resolves a raw field (by MPXJ enum, else display name) to a typed
+    value + FieldKind: core scheduling fields (table, no coercion) + custom families via the two-hop
+    label lookup (Flag→bool, Duration→minutes, Date→datetime, Number/Cost→float). Source-absent fields
+    (Board Status/Sprint) + row ID → UNRESOLVED for graceful UI degradation.
+  - `engine/msp_filters.py` — the faithful evaluator: asymmetric LHS/RHS normalization (DATE day-truncate
+    on the field but not the literal; DURATION null→0; STRING null→""), null-sorts-greater compareTo,
+    the three string regimes (EQUALS cs-whole / CONTAINS ci-substring / CONTAINS_EXACTLY cs-substring),
+    inclusive/order-independent IS_WITHIN, field-to-field, prompts, recursive short-circuit AND/OR,
+    criteria=None match-all. Durations compare on the integer working-minute axis (exact).
+- **Tests:** 14 filter/resolver cases pinned to the 10 real filters + a hand-built population; the
+  raw-name-map importer test; updated schema-freeze (field set + SCHEMA_VERSION) and the json-writer
+  coverage/round-trip guards. Full gate green (ruff / format / mypy --strict / bandit / pytest / node).
+- **Fidelity/CUI:** no behavior change to existing surfaces (new modules + additive model fields);
+  parity untouched. A .mpp-driven MPXJ parity test is deferred to PR-B (which brings the Java export).
+- **ADR-0231** (highest ADR now 0231, in HANDOFF + this log). Version **1.0.42 → 1.0.43**; wheel + 9
+  installers rebuilt in lockstep.
+- **NEXT (#10 increments):** PR-B Java export + ingest (+ MPXJ parity on the real file) → PR-C session-
+  wide grouping + A–Z + highlight → PR-D /groups UI.

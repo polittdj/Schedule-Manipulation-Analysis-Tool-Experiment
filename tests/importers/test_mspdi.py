@@ -885,6 +885,21 @@ def test_custom_fields_are_mapped_by_alias() -> None:
     assert by[3].custom_field("CA-WBS") == "4.1.5.2"
 
 
+def test_raw_field_name_to_label_map_is_persisted_for_filter_evaluation() -> None:
+    # feature #10: MS Project filters reference the RAW field name (Text20), so the importer must
+    # persist raw-name -> label; an alias-free field maps raw == label. (ADR-0231)
+    s = parse_mspdi_text(_EXT_MSPDI)
+    assert s.custom_field_by_raw_name_map == {
+        "Text20": "CA-WBS",
+        "Text21": "CAM",
+        "Text1": "Text1",
+    }
+    # end-to-end: the resolver reaches the task value from the RAW name via the label indirection
+    from schedule_forensics.engine.msp_field_resolver import resolve_field
+
+    assert resolve_field(s, s.tasks_by_id[1], "Text20", field_enum="TEXT20").value == "4.1.4.1"
+
+
 def test_schedule_lists_only_populated_custom_fields_in_declared_order() -> None:
     s = parse_mspdi_text(_EXT_MSPDI)
     # Text1 is declared but never populated -> excluded; CA-WBS before CAM (declaration order)

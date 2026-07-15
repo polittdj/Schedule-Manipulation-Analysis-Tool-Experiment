@@ -1,11 +1,11 @@
 """Schedule model — a complete project at a single status date, keyed by UniqueID.
 
-A :class:`Schedule` is the trust-root container the engine consumes: tasks, logic,
-resources, and calendars, plus project-level metadata. Construction enforces
-referential integrity — unique task/resource UIDs and relationships whose endpoints
-exist — so an inconsistent schedule is *unconstructable*. Comparative forensic analysis
-orders multiple versions by absolute ``status_date`` (the Acumen/SSI ``ProjectTimeNow``
-pattern) and matches tasks across versions by ``unique_id`` only.
+A :class:`Schedule` is the trust-root container the engine consumes: tasks, logic, resources,
+and calendars, plus project-level metadata. Construction enforces referential integrity — unique
+task/resource UIDs and relationships whose endpoints exist — so an inconsistent schedule is
+*unconstructable*. Comparative forensic analysis orders multiple versions by absolute
+``status_date`` (the Acumen/SSI ``ProjectTimeNow`` pattern) and matches tasks across versions by
+``unique_id`` only.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from schedule_forensics.model._base import StrictFrozenModel
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.resource import Resource
+from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.task import Task
 
 
@@ -29,10 +30,11 @@ class Schedule(StrictFrozenModel):
     """A complete project schedule at one status date."""
 
     name: str
-    #: The document/project **Title** exactly as the source file carries it (MSPDI ``<Title>``, XER
-    #: ``proj_short_name``), or ``None`` when the file has none. Distinct from ``name`` (which falls
-    #: back to ``<Name>``/filename): grouping files into Projects needs the real Title, and "no real
-    #: Title" must stay distinguishable from "titled by filename" (v4 grouped ingestion).
+    #: The document/project **Title** exactly as the source file carries it (MSPDI ``<Title>``,
+    #: XER ``proj_short_name``), or ``None`` when the file has none. Distinct from ``name``
+    #: (which falls back to ``<Name>``/filename): grouping files into Projects needs the real
+    #: Title, and "no real Title" must stay distinguishable from "titled by filename" (v4
+    #: grouped ingestion).
     project_title: str | None = None
     source_file: str | None = None  # file name for citations (file + UID + task name)
     project_start: dt.datetime
@@ -44,9 +46,26 @@ class Schedule(StrictFrozenModel):
     tasks: tuple[Task, ...]
     relationships: tuple[Relationship, ...] = ()
     resources: tuple[Resource, ...] = ()
-    #: Labels of the custom/extended fields defined in the source file (alias when set, else field
-    #: name), in file order — the selectable grouping/display fields the importer mapped (ADR-0088).
+    #: Labels of the custom/extended fields defined in the source file (alias when set, else
+    #: field name), in file order — the selectable grouping/display fields the importer mapped
+    #: (ADR-0088).
     custom_field_labels: tuple[str, ...] = ()
+    #: ``(raw_field_name, label)`` per extended-attribute def, e.g. ``("Text9", "IPT/ SUB")`` —
+    #: the raw MS Project field name mapped to the stored label. MS Project filters/groups
+    #: reference the raw name (``Text9``), but :attr:`Task.custom_fields` is keyed by the label,
+    #: so faithful filter evaluation (#10) needs this indirection. Empty when the source carried
+    #: no defs; an alias-free field maps ``raw == label`` (ADR-0231).
+    custom_field_by_raw_name: tuple[tuple[str, str], ...] = ()
+    #: The source file's named MS Project **filters** (faithful criteria trees) and **groups**,
+    #: carried verbatim from the MPXJ export so the tool can filter/group exactly as MS Project
+    #: would (#10).
+    saved_filters: tuple[SavedFilter, ...] = ()
+    saved_groups: tuple[SavedGroup, ...] = ()
+
+    @property
+    def custom_field_by_raw_name_map(self) -> dict[str, str]:
+        """Raw MS Project field name → stored label (built on access; the model is frozen)."""
+        return dict(self.custom_field_by_raw_name)
 
     @model_validator(mode="after")
     def _check_referential_integrity(self) -> Self:
@@ -81,8 +100,8 @@ class Schedule(StrictFrozenModel):
 
         A ``MappingProxyType`` cannot pickle, and the SRA offload pickles the whole Schedule
         into its worker process — so a schedule whose ``tasks_by_id`` had ever been touched
-        (every analysis page touches it) failed every Monte-Carlo/sensitivity run with
-        "cannot pickle 'mappingproxy' object" (operator report, 2026-07-07). The caches
+        (every analysis page touches it) failed every Monte-Carlo/sensitivity run with "cannot
+        pickle 'mappingproxy' object" (operator report, 2026-07-07). The caches
         rebuild on first access in the worker; same key set as :meth:`model_copy`."""
         state = super().__getstate__()
         inner = state.get("__dict__")
@@ -99,8 +118,8 @@ class Schedule(StrictFrozenModel):
     def tasks_by_id(self) -> Mapping[int, Task]:
         """An immutable UniqueID → Task view (the canonical UID-keyed access).
 
-        Built once and cached: the model is frozen, so this mapping can never go stale,
-        and the engine hits it from many call sites per analysis.
+        Built once and cached: the model is frozen, so this mapping can never go stale, and the
+        engine hits it from many call sites per analysis.
         """
         return MappingProxyType({t.unique_id: t for t in self.tasks})
 
