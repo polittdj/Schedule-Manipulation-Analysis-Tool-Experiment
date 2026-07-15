@@ -119,6 +119,39 @@ def test_planned_margin_carries_the_prior_month_end_forward() -> None:
     assert [m.consumed_wd for m in d.months] == [None, 10.0, 10.0, 10.0]
 
 
+def test_total_margin_wd_is_the_sum_of_durations() -> None:
+    d = _dash(_MARGINS)
+    # one margin block per version = its duration; here it equals effective (all on the chain)
+    assert [m.total_margin_wd for m in d.months] == [40.0, 30.0, 20.0, 10.0]
+    assert [m.effective_margin_wd for m in d.months] == [40.0, 30.0, 20.0, 10.0]
+
+
+def test_corrective_action_flags_the_50pct_consumed_threshold() -> None:
+    d = _dash(_MARGINS)
+    # consumed_pct = consumed / planned: (None), 10/40, 10/30, 10/20
+    assert [m.consumed_pct for m in d.months] == [None, 0.25, round(10 / 30, 4), 0.5]
+    # the NASA corrective-action threshold trips only at >=50% consumed → the last version
+    assert [m.corrective_action for m in d.months] == [False, False, False, True]
+    # the first version has no plan to measure against → never corrective
+    assert d.months[0].consumed_pct is None and d.months[0].corrective_action is False
+
+
+def test_dashboard_overlay_confirms_an_unnamed_buffer() -> None:
+    versions = [
+        (v.source_file, v, compute_cpm(v))
+        for v in (_version(s, m, named_margin=False) for s, m in _MARGINS)
+    ]
+    # name-based: the buffer (UID 2) isn't named "margin" → no margin recognized, effective 0
+    base = compute_margin_dashboard(versions, target_uid=DELIVER_UID)
+    assert base.have_margin_tasks is False
+    assert all(m.effective_margin_wd == 0.0 for m in base.months)
+    # the operator confirms UID 2 as margin (stable across versions) → the buffer is now measured
+    over = compute_margin_dashboard(versions, target_uid=DELIVER_UID, margin_uids=frozenset({2}))
+    assert over.have_margin_tasks is True
+    assert [m.effective_margin_wd for m in over.months] == [40.0, 30.0, 20.0, 10.0]
+    assert [m.total_margin_wd for m in over.months] == [40.0, 30.0, 20.0, 10.0]
+
+
 def test_flat_margin_has_no_zero_margin_date() -> None:
     d = _dash([("2026-02-27", 30), ("2026-03-31", 30), ("2026-04-30", 30)])
     assert d.erosion_wd_per_month == 0.0

@@ -95,6 +95,10 @@ class MarginMonth:
     #: F — planned margin at the month's START = the prior version's actual month-end margin
     #: (carried forward). None for the first version (nothing precedes it).
     planned_margin_wd: float | None = None
+    #: Sum of the margin activities' durations (work days) — the nominal buffer IN the schedule,
+    #: distinct from effective margin (the buffer actually on the driving chain). The two differ
+    #: when margin sits on a path with slack; both are shown so the operator sees the gap.
+    total_margin_wd: float = 0.0
 
     @property
     def consumed_wd(self) -> float | None:
@@ -102,6 +106,23 @@ class MarginMonth:
         if self.planned_margin_wd is None:
             return None
         return round(self.planned_margin_wd - self.effective_margin_wd, 1)
+
+    @property
+    def consumed_pct(self) -> float | None:
+        """Fraction of the planned month-start margin consumed this period (0..1+), or None when
+        there is no plan to measure against or the plan was already zero (no margin to consume)."""
+        consumed = self.consumed_wd
+        if consumed is None or self.planned_margin_wd is None or self.planned_margin_wd <= 0:
+            return None
+        return round(consumed / self.planned_margin_wd, 4)
+
+    @property
+    def corrective_action(self) -> bool:
+        """Trigger the NASA Schedule Management Handbook corrective-action review: half or more of
+        the margin available at the period's start has been consumed. ``consumed_pct >= 0.5``; False
+        when there is no plan yet (first version) or the plan was zero."""
+        pct = self.consumed_pct
+        return pct is not None and pct >= 0.5
 
 
 @dataclass(frozen=True)
@@ -122,10 +143,22 @@ def _margin_month(
     cpm: CPMResult,
     target_uid: int | None,
     gold_rule_per_year: float,
+    margin_uids: frozenset[int] | None = None,
 ) -> MarginMonth:
     cal = schedule.calendar
     wmpd = cal.working_minutes_per_day or 480
-    margin_tasks = [t for t in non_summary(schedule) if is_margin_task(t)]
+    # the operator's confirmed margin overlay when supplied, else the name-based default (behavior-
+    # preserving when margin_uids is None) — the same selection compute_margin uses.
+    margin_tasks = [
+        t
+        for t in non_summary(schedule)
+        if (t.unique_id in margin_uids if margin_uids is not None else is_margin_task(t))
+    ]
+    # nominal buffer IN the schedule = sum of margin durations (elapsed-aware, like metrics.margin);
+    # distinct from effective margin below (the buffer actually on the driving chain).
+    total_margin_wd = round(
+        sum(t.duration_minutes / (1440 if t.duration_is_elapsed else wmpd) for t in margin_tasks), 1
+    )
 
     finish_asbuilt = _finish_offset(cpm, target_uid)
     if margin_tasks:
@@ -171,6 +204,7 @@ def _margin_month(
         pct_available=pct_available,
         pct_effective=pct_effective,
         below_requirement=status is not None and effective_margin_wd < nasa_rqmt_wd,
+        total_margin_wd=total_margin_wd,
     )
 
 
@@ -212,15 +246,23 @@ def compute_margin_dashboard(
     versions: Sequence[tuple[str, Schedule, CPMResult]],
     target_uid: int | None = None,
     gold_rule_per_year: float = _GOLD_RULE_DAYS_PER_YEAR,
+    *,
+    margin_uids: frozenset[int] | None = None,
 ) -> MarginDashboard:
     """Build the burn-down + erosion trend across ``versions`` (given oldest -> newest).
 
     Each element is ``(label, schedule, cpm)``. Margin is measured to ``target_uid`` when it is set
     and present in a version, else that version's project finish (operator choice 2026-07-14). The
     Gold-Rule requirement rate defaults to 30 work-days/year. ``have_margin_tasks`` is False when no
-    loaded version carries an activity named "margin" (the burn-down would be all zeros)."""
+    loaded version carries an activity named "margin" (the burn-down would be all zeros).
+
+    ``margin_uids`` (optional) is the operator's confirmed margin-task set, applied to every version
+    (margin-task UniqueIDs are stable across versions of one project); ``None`` = the name-based
+    default (:func:`is_margin_task`), so threading it through is behavior-preserving until
+    confirmed.
+    """
     raw = [
-        _margin_month(label, sch, cpm, target_uid, gold_rule_per_year)
+        _margin_month(label, sch, cpm, target_uid, gold_rule_per_year, margin_uids=margin_uids)
         for label, sch, cpm in versions
     ]
     # carry each version's actual month-end margin forward as the NEXT version's planned month-start
@@ -231,7 +273,14 @@ def compute_margin_dashboard(
         filled.append(replace(m, planned_margin_wd=prev_eff))
         prev_eff = m.effective_margin_wd
     months = tuple(filled)
-    have_margin = any(is_margin_task(t) for _label, sch, _cpm in versions for t in non_summary(sch))
+    if margin_uids is not None:
+        have_margin = any(
+            t.unique_id in margin_uids for _label, sch, _cpm in versions for t in non_summary(sch)
+        )
+    else:
+        have_margin = any(
+            is_margin_task(t) for _label, sch, _cpm in versions for t in non_summary(sch)
+        )
     erosion_pm, zero_date, r2 = _erosion(months)
     return MarginDashboard(
         months=months,

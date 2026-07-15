@@ -6077,3 +6077,42 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   #365, merged first; highest ADR now 0229, in HANDOFF + this log). Version **1.0.40 → 1.0.41**; wheel +
   9 installers rebuilt in lockstep. Rebased onto `main` (advanced to #365 / v1.0.40) to clear the merge
   block that had left #366 unmergeable.
+
+---
+
+## 2026-07-15 — F3a/3b NASA schedule-margin: terminology, confirmed overlay, dual numbers, 50%-consumed corrective flag (ADR-0230)
+
+- **Session:** operator feature #12 of the remaining mandate. Also fixed the operator's merge-blocked
+  PR #366 first (rebased it onto main after the parallel-session #365 took ADR-0228/v1.0.40; #366
+  merged as ADR-0229/v1.0.41), then branched fresh off that main for this margin work. Model: Opus 4.8.
+- **Verify-first (ground truth):** extracted the committed handbook PDF
+  (`00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip`) to cite real
+  sections — §5.5.11 Establish and Allocate Margin ("the handbook places emphasis on identifying and
+  managing schedule margin over float"), §7.3.3.1.6 Margin Consumption, §7.3.4 Corrective Action — and
+  the verbatim threshold "**The corrective action threshold is set where the margin is 50% consumed**".
+  No section number or figure invented. (Also noted Fig 5-30 margin-allocation standards for F3c later.)
+- **Delivered (F3a terminology):** a cited, collapsed MARGIN vs CONTINGENCY vs FLOAT glossary
+  (`_margin_terminology`) on the margin panel + the Margin Dashboard.
+- **Delivered (F3b overlay):** `engine/metrics/margin.py::margin_candidates` surfaces primary
+  ("margin"-named, pre-ticked) + near-miss (reserve/contingency/integrated-return, unticked) candidates
+  with context (duration, total float, criticality). `SessionState.margin_overlay: dict[key, frozenset]`
+  + async `POST /margin/confirm` (reads the multi-value `uid` checkboxes off the form body; an explicit
+  empty tick = deliberate "no margin", not a reset; cleared on wipe). Opt-in
+  `margin_uids: frozenset[int] | None` threaded through all four engine selection sites
+  (`compute_margin`, `compute_margin_trend`, `_margin_month`, `compute_margin_dashboard`), default
+  `None` = today's name-based behavior (parity-safe by construction). Cross-version dashboard/trend use
+  the union (`SessionState.confirmed_margin_union`); the per-version panel uses that key's own set.
+- **Delivered (dual numbers + 50% flag):** `MarginMonth.total_margin_wd` (sum of durations) shown
+  alongside effective margin on the panel cards, KPI strip, per-version table, and Excel/Word export.
+  `MarginMonth.consumed_pct` / `.corrective_action` (>=50% of the carried-forward planned margin
+  consumed) surface in the takeaway, KPI trigger, a "Corrective" column, a burn-down caret, and a
+  dashed planned-depletion line in `margin_dashboard.js`.
+- **Fidelity/CUI:** no engine-number change on the default name-based path — parity untouched (margin
+  stays off the Fuse ribbon / metric dictionary). The SQLite summary stays name-based (its key is the
+  file content hash, not session state); the overlay is a live analytical adjustment, documented.
+- **Tests:** engine (`margin_candidates` primary/near-miss + context; overlay overrides names + empty
+  set; `total_margin_wd`; `consumed_pct`/`corrective_action` at the 50% threshold; dashboard overlay)
+  and web (panel glossary + dual numbers + confirm/reset/empty/unknown-uid; dashboard API carries the
+  new fields; overlay reflects through `/api/margin/dashboard`). Full gate green.
+- **ADR-0230** (highest ADR now 0230, in HANDOFF + this log; drift guard green). Version **1.0.41 →
+  1.0.42**; wheel + 9 installers rebuilt in lockstep.

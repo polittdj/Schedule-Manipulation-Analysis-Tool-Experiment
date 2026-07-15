@@ -164,7 +164,12 @@ from schedule_forensics.engine.metrics.float_erosion import compute_float_erosio
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.hmi import compute_hmi
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
-from schedule_forensics.engine.metrics.margin import compute_margin, compute_margin_trend
+from schedule_forensics.engine.metrics.margin import (
+    MarginCandidate,
+    compute_margin,
+    compute_margin_trend,
+    margin_candidates,
+)
 from schedule_forensics.engine.metrics.performance_summary import (
     activity_flow,
     duration_ratio,
@@ -511,6 +516,12 @@ class SessionState:
     # key -> raw uploaded-file content hash (the SQLite summary/parse cache key). Only set for the
     # /upload path; a schedule loaded another way simply has no on-disk summary (in-memory only).
     content_hashes: dict[str, str] = field(default_factory=dict)
+    # F3a/3b confirmed schedule-margin overlay: key -> the operator-confirmed margin-task UniqueIDs
+    # for that loaded version (set on the analysis-page margin panel via POST /margin/confirm). When a
+    # key has an entry, every margin computation for it uses that set instead of the name-based default
+    # (is_margin_task); absent => name-based. Cleared on wipe. Margin-task UIDs are stable across a
+    # project's versions, so the cross-version dashboard/trend use the union (confirmed_margin_union).
+    margin_overlay: dict[str, frozenset[int]] = field(default_factory=dict)
     # v4 Feature 2: the loaded-schedule RAM estimate above which an ingest WARNS (never blocks). The
     # tool keeps parsed schedules resident for instant comparative analysis; on a big folder of
     # thousands this can be many GB. Operator-configurable (POST /session/ram-threshold).
@@ -628,6 +639,22 @@ class SessionState:
             self.analyses.clear()
             self.summaries.clear()  # the target truncates the network → summaries must recompute
             self.polished.clear()
+
+    def confirmed_margin_union(self) -> frozenset[int] | None:
+        """The union of every loaded version's operator-confirmed margin-task set, or ``None`` when no
+        version carries a confirmed overlay (⇒ the name-based default). Margin-task UniqueIDs are
+        stable across a project's versions, so a UID confirmed on any version is treated as margin
+        wherever it appears in the cross-version burn-down / trend (the per-version panel still uses
+        that key's own set). Once ANY overlay exists this returns a concrete frozenset — even the empty
+        set (operator unchecked everything) — so the dashboard honors a deliberate zero, never silently
+        reverting to name-based."""
+        with self._lock:
+            if not self.margin_overlay:
+                return None
+            union: set[int] = set()
+            for uids in self.margin_overlay.values():
+                union |= uids
+            return frozenset(union)
 
     def ordered(self) -> list[Schedule]:
         """Loaded schedules **scoped to the active filter**, ordered by data date (oldest first).
@@ -2318,7 +2345,14 @@ def create_app(
         return _page(
             st,
             name,
-            _analysis_body(name, sch, analysis, st.target_uid, erosion_field=erosion_field),
+            _analysis_body(
+                name,
+                sch,
+                analysis,
+                st.target_uid,
+                erosion_field=erosion_field,
+                margin_confirmed=st.margin_overlay.get(name),
+            ),
             ask_schedule=name,
             chapter=_CHAPTER_BY_NUM.get(
                 "01"
@@ -2752,7 +2786,7 @@ def create_app(
             rows.append((raw.source_file or raw.name, status, st.scope(raw), a.cpm))
         if not rows:
             return JSONResponse({"versions": []})
-        points = compute_margin_trend(rows)
+        points = compute_margin_trend(rows, margin_uids=st.confirmed_margin_union())
         return JSONResponse(
             {
                 "versions": [
@@ -2783,6 +2817,40 @@ def create_app(
     def margin_dashboard_json() -> JSONResponse:
         st = session()
         return JSONResponse(_margin_dashboard_data(_margin_dashboard_for(st)))
+
+    @app.post("/margin/confirm")
+    async def margin_confirm(request: Request) -> RedirectResponse:
+        """Persist (or reset) the operator's confirmed schedule-margin set for one loaded version (F3b).
+
+        ``action="reset"`` drops the overlay for ``key`` (revert to the name-based default);
+        ``action="confirm"`` stores the ticked UniqueIDs as this version's margin set — an explicitly
+        empty tick list is a deliberate "no margin" stored as an empty frozenset (NOT a reset), so the
+        dashboard honors it. Only real non-summary UIDs present in the version are kept; unknown /
+        summary UIDs are dropped. Redirects back to the version's analysis page (multi-value ``uid``
+        checkboxes are read straight off the form body, so there is no list default to worry about)."""
+        form = await request.form()
+        key = str(form.get("key", ""))
+        action = str(form.get("action", "confirm"))
+        back = str(form.get("back", ""))
+        raw_uids = form.getlist("uid")
+        st = session()
+        with st._lock:
+            sch = st.schedules.get(key)
+            if sch is not None:
+                if action == "reset":
+                    st.margin_overlay.pop(key, None)
+                else:
+                    valid: set[int] = set()
+                    for raw in raw_uids:
+                        u = _parse_uid(str(raw))
+                        if u is None:
+                            continue
+                        t = sch.tasks_by_id.get(u)
+                        if t is not None and not t.is_summary:
+                            valid.add(u)
+                    st.margin_overlay[key] = frozenset(valid)
+        dest = back if back.startswith("/analysis/") else f"/analysis/{quote(key, safe='')}"
+        return RedirectResponse(url=dest, status_code=303)
 
     @app.get("/evm", response_class=HTMLResponse)
     def evm_view(group_field: str = Query("")) -> HTMLResponse:
@@ -3986,7 +4054,8 @@ def create_app(
             "Status date",
             "Target",
             "Planned margin (wd)",
-            "Margin (wd)",
+            "Effective margin (wd)",
+            "Total margin (wd)",
             "Consumed (wd)",
             "Contingency (days)",
             "Total available",
@@ -3994,6 +4063,7 @@ def create_app(
             "Days-to-go",
             "% available",
             "% effective",
+            "Corrective (>=50% consumed)",
             "Trigger",
         )
         body: list[tuple[Cell, ...]] = [
@@ -4002,6 +4072,7 @@ def create_app(
                 m.target_name or "project finish",
                 m.planned_margin_wd if m.planned_margin_wd is not None else "—",
                 m.effective_margin_wd,
+                m.total_margin_wd,
                 m.consumed_wd if m.consumed_wd is not None else "—",
                 m.contingency_wd,
                 m.total_available,
@@ -4009,6 +4080,7 @@ def create_app(
                 m.days_to_go,
                 round(100 * m.pct_available, 1) if m.pct_available is not None else "—",
                 round(100 * m.pct_effective, 1) if m.pct_effective is not None else "—",
+                "yes" if m.corrective_action else "no",
                 "trigger" if m.below_requirement else "ok",
             )
             for m in d.months
@@ -5683,6 +5755,7 @@ def create_app(
             st.schedules.clear()
             st.file_meta.clear()
             st.content_hashes.clear()
+            st.margin_overlay.clear()  # drop the operator's confirmed schedule-margin overlay
             st.analyses.clear()
             st.summaries.clear()
             st.polished.clear()
@@ -7360,54 +7433,128 @@ def _logic_checks_panel(sch: Schedule) -> str:
     )
 
 
-def _margin_panel(sch: Schedule, cpm: CPMResult) -> str:
-    """Schedule-margin panel: total vs effective buffer, criticality, and the margin activities.
+# NASA Schedule Management Handbook citations — verified against the committed reference PDF
+# (00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip); the section
+# numbers and the 50%-consumed corrective threshold are quoted from that document, not invented.
+_HB = "NASA Schedule Management Handbook"
+_HB_MARGIN_SEC = "&sect;5.5.11, Establish and Allocate Margin"
+_HB_CONSUME_SEC = "&sect;7.3.3.1.6 Margin Consumption / &sect;7.3.4 Corrective Action"
 
-    Margin tasks are identified by the operator convention (name contains "margin"). "Effective
-    margin" is how far the finish would pull in if all margin were removed — the buffer actually
-    protecting the finish; margin sitting on a path with slack protects nothing."""
-    m = compute_margin(sch, cpm)
-    if m.count == 0:
+
+def _margin_terminology() -> str:
+    """A collapsed MARGIN vs CONTINGENCY vs FLOAT glossary, cited to the handbook — the three are
+    routinely conflated and the distinction is load-bearing for the burn-down (F3a)."""
+    return (
+        "<details class=explain><summary>MARGIN vs CONTINGENCY vs FLOAT &mdash; what each term means"
+        "</summary><div class=explain-body>"
+        f"<h4>Schedule margin</h4><p>A <b>separately-planned, visible buffer activity</b> the planner "
+        f"inserts before a committed milestone to absorb risk and uncertainty &mdash; it has a real "
+        f"working-day duration in the schedule. The {_HB} ({_HB_MARGIN_SEC}) manages margin as an "
+        f"explicit activity and &ldquo;places emphasis on identifying and managing schedule margin over "
+        f"float.&rdquo;</p>"
+        "<h4>Contingency</h4><p>Here, the schedule calendar&rsquo;s <b>non-working time</b> "
+        "(weekends + holidays) between the status date and the target &mdash; unplanned cushion in the "
+        "calendar, distinct from the work-day margin (no overlap).</p>"
+        "<h4>Float (slack)</h4><p>A <b>computed</b> CPM quantity: how long an activity can slip without "
+        "moving the finish. It is not planned buffer &mdash; the handbook manages margin <i>over</i> "
+        "float, because margin that sits on a path with float protects nothing.</p>"
+        "</div></details>"
+    )
+
+
+def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[int] | None) -> str:
+    """Schedule-margin panel: BOTH margin numbers, the MARGIN/CONTINGENCY/FLOAT glossary, and the
+    operator's confirm/deny overlay of the margin-task set (name-based by default).
+
+    ``confirmed`` is this version's operator-confirmed margin UniqueIDs (``None`` ⇒ the name-based
+    default). The two numbers may differ: **total margin** sums the margin activities' durations;
+    **effective margin** is how far the finish pulls in if all margin were removed — the buffer
+    actually on the driving chain. Margin sitting on a path with float counts toward total but not
+    effective (NASA Schedule Management Handbook)."""
+    candidates = margin_candidates(sch, cpm)
+    if not candidates:
         return (
             "<div class=panel><h2>Schedule margin</h2>"
-            "<p class=muted>No schedule-margin tasks found (none named &lsquo;margin&rsquo;). "
-            "Margin activities are identified by the operator convention: a non-summary activity "
-            "whose name contains the word &ldquo;margin&rdquo; (case-insensitive).</p></div>"
+            + _margin_terminology()
+            + "<p class=muted>No schedule-margin activities found &mdash; no non-summary activity is "
+            "named &ldquo;margin&rdquo; and none carries a handbook alias (reserve / contingency / "
+            f"integrated return). Margin is identified by name ({_HB} {_HB_MARGIN_SEC}); rename a "
+            "buffer activity to include &ldquo;margin&rdquo; (or confirm it here once it appears) so "
+            "the burn-down can measure the reserve.</p></div>"
         )
-    # plain text only — _stat_cards HTML-escapes the value, so an entity like &middot;
-    # renders literally (the operator saw "1 &middot; none on the critical path")
+    m = compute_margin(sch, cpm, margin_uids=confirmed)
+    using = (
+        "operator-confirmed set"
+        if confirmed is not None
+        else "name-based default (activities named &ldquo;margin&rdquo;)"
+    )
     plural = "activities" if m.count != 1 else "activity"
     crit_note = (
         f"{m.on_critical_count} of {m.count} on the critical path"
         if m.on_critical_count
-        else f"{m.count} margin {plural} found; 0 on the critical path"
+        else f"{m.count} margin {plural}; 0 on the critical path"
+    )
+    gap_note = (
+        " Here the two <b>differ</b>: margin sitting on a path with float counts toward total but "
+        "protects nothing, so effective is lower."
+        if m.total_margin_days != m.effective_margin_days
+        else " Here the two <b>agree</b>: all margin is on the driving chain."
     )
     cards = _stat_cards(
         [
-            ("Total margin", f"{m.total_margin_days:g} wd"),
-            ("Effective margin", f"{m.effective_margin_days:g} wd"),
+            ("Total margin (sum of durations)", f"{m.total_margin_days:g} wd"),
+            ("Effective margin (on driving chain)", f"{m.effective_margin_days:g} wd"),
             ("Margin activities", crit_note),
         ]
     )
-    rows = "".join(
-        f"<tr><td>{t.unique_id}</td><td>{_e(t.name)}</td><td>{t.duration_days:g}</td>"
-        f'<td class="rk-score {"rk-high" if t.on_critical else "rk-min"}">'
-        f"{'Yes' if t.on_critical else 'No'}</td></tr>"
-        for t in m.tasks
+
+    def _crow(c: MarginCandidate) -> str:
+        checked = (c.unique_id in confirmed) if confirmed is not None else (c.tier == "primary")
+        badge_cls = "rk-min" if c.tier == "primary" else "rk-high"
+        return (
+            "<tr>"
+            f'<td><input type=checkbox name=uid value="{c.unique_id}"'
+            f'{" checked" if checked else ""} aria-label="mark UID {c.unique_id} as schedule margin">'
+            "</td>"
+            f"<td>{c.unique_id}</td><td>{_e(c.name)}</td>"
+            f'<td><span class="rk-score {badge_cls}">{c.tier}</span></td>'
+            f"<td class=num>{c.duration_days:g}</td>"
+            f"<td class=num>{c.total_float_days:g}</td>"
+            f'<td class="rk-score {"rk-high" if c.on_critical else "rk-min"}">'
+            f"{'Yes' if c.on_critical else 'No'}</td></tr>"
+        )
+
+    rows = "".join(_crow(c) for c in candidates)
+    back = f"/analysis/{quote(key, safe='')}"
+    form = (
+        '<form method=post action="/margin/confirm">'
+        f'<input type=hidden name=key value="{_e(key)}">'
+        f'<input type=hidden name=back value="{_e(back)}">'
+        "<table><tr><th scope=col>Margin?</th><th scope=col>UID</th><th scope=col>Name</th>"
+        "<th scope=col>Match</th><th scope=col>Days</th><th scope=col>Total float (d)</th>"
+        "<th scope=col>On critical path?</th></tr>"
+        f"{rows}</table>"
+        '<div class=row-actions style="margin-top:8px">'
+        "<button type=submit name=action value=confirm>Confirm margin set</button> "
+        "<button type=submit name=action value=reset class=btn-link "
+        'title="Discard the confirmed set for this version and revert to the name-based default">'
+        "Reset to name-based</button></div></form>"
     )
     return (
         "<div class=panel><h2>Schedule margin</h2>"
-        "<p class=muted>Explicit buffer activities that protect the project finish "
-        "(NASA Schedule Management Handbook). <b>Total margin</b> is the sum of the margin "
-        "activities' durations; <b>effective margin</b> is how far the finish would pull in if "
-        "all margin were removed &mdash; the buffer actually protecting the finish (margin sitting "
-        "on a path with slack protects nothing and counts toward total but not effective).</p>"
-        f"{cards}"
-        "<table><tr><th scope=col>UID</th><th scope=col>Name</th>"
-        "<th scope=col>Days</th><th scope=col>On critical path?</th></tr>"
-        f"{rows}</table>"
-        "<p class=muted>Margin tasks are identified by the operator convention: a non-summary "
-        "activity whose name contains the word &ldquo;margin&rdquo; (case-insensitive).</p></div>"
+        + _margin_terminology()
+        + "<p class=muted>Explicit buffer activities that protect the project finish. "
+        "<b>Total margin</b> sums the margin activities&rsquo; durations; <b>effective margin</b> is "
+        "how far the finish would pull in if all margin were removed &mdash; the buffer actually "
+        "protecting the finish."
+        + gap_note
+        + f" ({_HB} {_HB_MARGIN_SEC}).</p>"
+        + cards
+        + f"<p class=muted>Currently measuring from the <b>{using}</b>. Tick the activities that ARE "
+        "schedule margin and <b>Confirm</b> to pin the set for this version (near-miss aliases are "
+        "listed but unticked until you confirm them); the burn-down and erosion trend then use your "
+        "confirmed set across the project&rsquo;s versions. <b>Reset</b> reverts to the name-based "
+        "default.</p>" + form + "</div>"
     )
 
 
@@ -8066,6 +8213,7 @@ def _analysis_body(
     target: int | None = None,
     narrative: Narrative | None = None,
     erosion_field: str | None = None,
+    margin_confirmed: frozenset[int] | None = None,
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
@@ -8131,7 +8279,7 @@ metadata)</span></h3>
 {_vertical_integration_panel(sch)}
 {_schedule_variance_panel(sch)}
 {_float_erosion_panel(sch, analysis.cpm, erosion_field)}
-{_margin_panel(sch, analysis.cpm)}
+{_margin_panel(key, sch, analysis.cpm, margin_confirmed)}
 <div class=panel><h2>{_e(sch.name)} &mdash; DCMA-14 audit</h2>
 <p class=muted>{audit.passed} passed &middot; {audit.failed} failed &middot; {audit.not_applicable} N/A.
 Each row shows the <b>count</b> and the <b>percentage</b> of its population,
@@ -8448,7 +8596,9 @@ def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
         except CPMError:
             continue
         versions.append((raw.source_file or raw.name, st.scope(raw), a.cpm))
-    return compute_margin_dashboard(versions, target_uid=st.target_uid)
+    return compute_margin_dashboard(
+        versions, target_uid=st.target_uid, margin_uids=st.confirmed_margin_union()
+    )
 
 
 def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
@@ -8465,8 +8615,11 @@ def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
                 "target_finish": m.target_finish,
                 "zero_margin_finish": m.zero_margin_finish,
                 "effective_margin_wd": m.effective_margin_wd,
+                "total_margin_wd": m.total_margin_wd,
                 "planned_margin_wd": m.planned_margin_wd,
                 "consumed_wd": m.consumed_wd,
+                "consumed_pct": m.consumed_pct,
+                "corrective_action": m.corrective_action,
                 "margin_cd": m.margin_cd,
                 "contingency_wd": m.contingency_wd,
                 "total_available": m.total_available,
@@ -8517,13 +8670,27 @@ def _margin_dashboard_header(d: MarginDashboard) -> str:
             f" At the current erosion of {d.erosion_wd_per_month:g} work days per month, margin "
             f"reaches zero around {_mdY(d.zero_margin_date)}."
         )
+    # 50%-consumed corrective-action trigger, quoted from the handbook: "The corrective action
+    # threshold is set where the margin is 50% consumed" (§7.3.3.1.6 Margin Consumption / §7.3.4).
+    if latest.corrective_action and latest.consumed_pct is not None:
+        takeaway += (
+            f" {round(100 * latest.consumed_pct)}% of the planned margin was consumed this period — "
+            "at or past the NASA 50%-consumed corrective-action threshold (Schedule Management "
+            "Handbook §7.3.3.1.6 / §7.3.4); enact a corrective action (watch / re-plan / "
+            "re-baseline)."
+        )
 
-    trigger = "TRIGGERED" if latest.below_requirement else "OK"
+    trigger = "TRIGGERED" if (latest.below_requirement or latest.corrective_action) else "OK"
+    consumed_txt = (
+        f"{round(100 * latest.consumed_pct)}%" if latest.consumed_pct is not None else "—"
+    )
     kpi = _stat_cards(
         [
             ("Effective margin (wd)", f"{latest.effective_margin_wd:g}"),
+            ("Total margin (wd)", f"{latest.total_margin_wd:g}"),
             ("NASA requirement (wd)", f"{latest.nasa_rqmt_wd:g}"),
             ("Contingency (days)", str(latest.contingency_wd)),
+            ("Consumed this period", consumed_txt),
             (
                 "Erosion (wd/month)",
                 f"{d.erosion_wd_per_month:g}" if d.erosion_wd_per_month else "—",
@@ -8550,16 +8717,18 @@ def _margin_dashboard_body(st: SessionState) -> str:
         planned = f"{m.planned_margin_wd:g}" if m.planned_margin_wd is not None else "—"
         consumed = f"{m.consumed_wd:g}" if m.consumed_wd is not None else "—"
         trig = "&#9888; trigger" if m.below_requirement else "ok"
+        corr = "&#9888; 50%+" if m.corrective_action else "—"
         return (
             f"<tr{' class=below' if m.below_requirement else ''}><td>{_e(sd)}</td>"
             f"<td class=num>{planned}</td>"
             f"<td class=num>{m.effective_margin_wd:g}</td>"
+            f"<td class=num>{m.total_margin_wd:g}</td>"
             f"<td class=num>{consumed}</td>"
             f"<td class=num>{m.contingency_wd}</td>"
             f"<td class=num>{m.total_available:g}</td>"
             f"<td class=num>{m.nasa_rqmt_wd:g}</td>"
             f"<td class=num>{m.days_to_go}</td>"
-            f"<td class=num>{pct}</td><td>{trig}</td></tr>"
+            f"<td class=num>{pct}</td><td>{corr}</td><td>{trig}</td></tr>"
         )
 
     rows = "".join(_row(m) for m in d.months)
@@ -8569,10 +8738,16 @@ def _margin_dashboard_body(st: SessionState) -> str:
         _margin_dashboard_header(d)
         + _export_bar("margin")
         + '<div class="panel"><h2 data-no-i18n>Margin &amp; Contingency Burn-Down</h2>'
-        '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
+        + _margin_terminology()
+        + '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
         "stacked with <b>contingency</b> (weekends + holidays to the target), against the NASA "
         "Gold-Rule requirement line. A red bar is a month where margin has fallen below the "
-        "requirement &mdash; the trigger for action.</p>"
+        "requirement &mdash; the trigger for action. The dashed <b>planned</b> line traces the "
+        "period-start margin carried forward; a &#9650; marker flags a month where half or more of "
+        "the planned margin was consumed (the NASA 50%-consumed corrective-action threshold, "
+        "Schedule Management Handbook &sect;7.3.3.1.6 / &sect;7.3.4). <b>Total margin</b> (sum of the "
+        "margin activities&rsquo; durations) and <b>effective margin</b> (the buffer on the driving "
+        "chain) can differ &mdash; both are reported.</p>"
         '<div class="chart-host" id="marginBurndownChart"></div></div>'
         '<div class="panel"><h2 data-no-i18n>Margin Erosion Trend (MET)</h2>'
         f'<p class="muted" data-no-i18n>Effective margin (work days) over the status dates with a '
@@ -8581,11 +8756,11 @@ def _margin_dashboard_body(st: SessionState) -> str:
         '<div class="chart-host" id="marginErosionChart"></div></div>'
         '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
         "<table><tr><th scope=col>Status date</th><th scope=col>Planned (wd)</th>"
-        "<th scope=col>Margin (wd)</th><th scope=col>Consumed</th>"
+        "<th scope=col>Effective (wd)</th><th scope=col>Total (wd)</th><th scope=col>Consumed</th>"
         "<th scope=col>Contingency</th><th scope=col>Total avail.</th>"
         "<th scope=col>NASA rqmt (wd)</th><th scope=col>Days-to-go</th>"
-        "<th scope=col>% available</th><th scope=col>Trigger</th></tr>"
-        f"{rows or '<tr><td colspan=10 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
+        "<th scope=col>% available</th><th scope=col>Corrective</th><th scope=col>Trigger</th></tr>"
+        f"{rows or '<tr><td colspan=12 class=muted>No dated versions loaded.</td></tr>'}</table></div>"
         f'<script type="application/json" id=marginDashData>{blob}</script>'
         '<script src="/static/margin_dashboard.js"></script>'
     )

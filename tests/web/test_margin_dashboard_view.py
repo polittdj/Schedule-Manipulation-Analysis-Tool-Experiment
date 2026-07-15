@@ -103,6 +103,40 @@ def test_dashboard_empty_when_no_margin_activity() -> None:
     assert all(m["effective_margin_wd"] == 0.0 for m in d["months"])
 
 
+def test_dashboard_api_carries_total_margin_and_corrective_flag() -> None:
+    d = _client(_MARGINS).get("/api/margin/dashboard").json()
+    # BOTH numbers per version (dual): total (sum of durations) alongside effective
+    assert [m["total_margin_wd"] for m in d["months"]] == [40.0, 30.0, 20.0, 10.0]
+    # the 50%-consumed corrective-action flag: consumed_pct + the boolean trip on the last version
+    assert [m["consumed_pct"] for m in d["months"]] == [None, 0.25, round(10 / 30, 4), 0.5]
+    assert [m["corrective_action"] for m in d["months"]] == [False, False, False, True]
+
+
+def test_dashboard_reflects_the_confirmed_margin_overlay() -> None:
+    st = SessionState()
+    for status, m in _MARGINS:
+        v = _version(status, m, named=False)  # the buffer is NOT named "margin"
+        st.schedules[v.source_file] = v
+    st.target_uid = DELIVER_UID
+    client = TestClient(create_app(st))
+    # name-based: nothing is recognized as margin
+    assert client.get("/api/margin/dashboard").json()["have_margin_tasks"] is False
+    # confirm the buffer (UID 2) on one version; the union applies it across the burn-down
+    client.post(
+        "/margin/confirm", data={"key": "2026-05-29.mpp", "action": "confirm", "uid": ["2"]}
+    )
+    d = client.get("/api/margin/dashboard").json()
+    assert d["have_margin_tasks"] is True
+    assert [m["effective_margin_wd"] for m in d["months"]] == [40.0, 30.0, 20.0, 10.0]
+
+
+def test_dashboard_page_shows_terminology_and_new_columns() -> None:
+    body = _client(_MARGINS).get("/margin").text
+    assert "MARGIN vs CONTINGENCY vs FLOAT" in body  # F3a cited glossary
+    assert "Corrective" in body  # the per-version corrective-action column
+    assert "Total (wd)" in body  # the dual-number (sum-of-durations) column
+
+
 def test_margin_page_empty_state_without_schedules() -> None:
     page = TestClient(create_app(SessionState())).get("/margin")
     assert page.status_code == 200
