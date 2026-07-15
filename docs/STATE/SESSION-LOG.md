@@ -6046,3 +6046,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   out-specifies/out-orders the clamps it overrides — the repo's CSS-presence guard). Full gate green.
 - **ADR-0228** (highest ADR now 0228, in HANDOFF + this log; drift guard green). Version **1.0.39 →
   1.0.40**; wheel + 9 installers rebuilt in lockstep (a packaged static asset changed).
+
+---
+
+## 2026-07-15 — Path Analysis grid: click-to-highlight a task (row fields + Gantt bar) (ADR-0229)
+
+- **Session:** operator feature #11 of the remaining mandate — "select a task on the gantt and click
+  the task name or another field and have it highlight all of the task fields and carry that over and
+  highlight the bar selected as well … when I click off … the highlights go away." Built on a fresh
+  branch off main. Model: Opus 4.8. No engine change.
+- **Investigation:** a read-only explore agent mapped every gantt surface; the Path Analysis grid
+  (`static/path.js`) is the richest fields+bars surface and the one the operator's driving-slack work
+  lives on. A Chromium repro confirmed the existing single-click Task Information overlay (`.ti-overlay`,
+  ADR-0186) COVERS the grid — so it can't coexist with a click-to-highlight (hides the highlight, blocks
+  the next click).
+- **Delivered:** module-level `selectedUid` re-applied in `paintOne` on every repaint (`.pv-selected`
+  row + `.pv-bar-selected` bar/milestone), so the highlight survives filter/zoom/tier/timescale
+  rebuilds; a document-level click sets it from `closest('tr[data-uid]')` and clears on any off-row
+  click (empty pane, group header, or off-grid). **Single click now highlights; Task Information moved
+  to double-click** on this grid, with a `/path` user-tip. CSS in `app.css` is tokens-only
+  (`color-mix(var(--accent) 16%)` + the `.sf-frozen-col` sticky-column override + `outline var(--accent)`
+  on the bar), beside the existing `.ev-focus`/`.dp-entered` idioms.
+- **Verified:** end-to-end in Chromium in all four themes (select → move highlight → click-off clears →
+  double-click opens details; token background resolves; **no console errors**); served-asset unit tests
+  (`tests/web/test_path_click_highlight.py`) assert the selection JS + tokens-only CSS incl. the frozen
+  override. Existing path/landing/loading tests green.
+- **Scope note:** Path Analysis grid only; the other grids' single-click Task Information is unchanged
+  (extending the pattern is a follow-up).
+- **ADR-0229** (renumbered from 0228: the parallel-session enlarged-chart fix took 0228 on `main` via
+  #365, merged first; highest ADR now 0229, in HANDOFF + this log). Version **1.0.40 → 1.0.41**; wheel +
+  9 installers rebuilt in lockstep. Rebased onto `main` (advanced to #365 / v1.0.40) to clear the merge
+  block that had left #366 unmergeable.

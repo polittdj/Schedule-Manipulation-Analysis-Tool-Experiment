@@ -6123,7 +6123,9 @@ def _path_body(keys: list[str], target_uid: int | None) -> str:
 <p class=muted>Pick a schedule and a target UniqueID: the driving path (slack &le; 0) and the
 secondary/tertiary tiers within your day-bands trace back from it — data on the
 left, a scalable timeline on the right with the gold data-date line. Add/remove columns,
-filter rows, and hide completed work.</p>
+filter rows, and hide completed work. <b>Click a row</b> to highlight that task's fields and its
+bar; click another task to move the highlight, or click off to clear it. <b>Double-click</b> a row
+for the full Task Information.</p>
 {_user_tip("Pick a tier such as <b>DRIVING</b> to fit the timeline to just that path so its bars fill the page; the data columns stay locked on the left as the timeline scrolls, and <b>View entire project</b> zooms back out to the whole trace.")}
 <details class=path-explainer><summary>Why an activity can show 0&#8209;day driving slack here but not on another view</summary>
 <p class=muted>This trace is <b>relative to the target UniqueID</b> you choose. An activity has
