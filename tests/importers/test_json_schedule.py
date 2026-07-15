@@ -375,6 +375,13 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
     from schedule_forensics.model.calendar import Calendar
     from schedule_forensics.model.relationship import Relationship
     from schedule_forensics.model.resource import Resource, ResourceType
+    from schedule_forensics.model.saved_view import (
+        Criterion,
+        GroupClause,
+        Operand,
+        SavedFilter,
+        SavedGroup,
+    )
     from schedule_forensics.model.schedule import Schedule
     from schedule_forensics.model.task import ConstraintType, Task
 
@@ -457,6 +464,36 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
             ),
         ),
         custom_field_labels=("CA-WBS", "Text20"),
+        custom_field_by_raw_name=(("Text20", "CA-WBS"), ("Text9", "IPT/ SUB")),
+        saved_filters=(
+            SavedFilter(
+                name="SVT-",
+                show_related_summary_rows=True,
+                criteria=Criterion(
+                    operator="AND",
+                    children=(
+                        Criterion(
+                            operator="CONTAINS",
+                            field="Task Name",
+                            field_enum="NAME",
+                            operands=(Operand(kind="literal", text="SVT-", value_type="String"),),
+                        ),
+                        Criterion(
+                            operator="EQUALS",
+                            field="Actual Finish",
+                            field_enum="ACTUAL_FINISH",
+                            operands=(Operand(kind="null"),),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+        saved_groups=(
+            SavedGroup(
+                name="By WBS",
+                clauses=(GroupClause(field="WBS", field_enum="WBS", ascending=True),),
+            ),
+        ),
     )
 
 

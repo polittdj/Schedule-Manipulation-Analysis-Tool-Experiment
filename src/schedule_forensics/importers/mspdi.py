@@ -149,6 +149,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
         root, resource_name_by_uid
     )
     ext_defs = _parse_extended_attribute_defs(root)
+    raw_name_map = _parse_extended_attribute_raw_names(root)
 
     tasks: list[Task] = []
     raw_links: list[tuple[int, ET.Element]] = []
@@ -197,6 +198,7 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
             relationships=tuple(relationships),
             resources=tuple(resources),
             custom_field_labels=custom_field_labels,
+            custom_field_by_raw_name=tuple(raw_name_map.items()),
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"MSPDI does not form a valid schedule: {exc}") from exc
@@ -480,6 +482,24 @@ def _parse_extended_attribute_defs(root: ET.Element) -> dict[str, str]:
             continue
         defs[field_id] = _text(ea, "Alias") or _text(ea, "FieldName") or field_id
     return defs
+
+
+def _parse_extended_attribute_raw_names(root: ET.Element) -> dict[str, str]:
+    """Map each custom field's raw ``FieldName`` (e.g. ``Text9``) → its stored label (``Alias`` when
+    set, else the raw name).
+
+    MS Project **filters/groups reference the raw name**, but each task stores custom values keyed
+    by the label, so faithful filter/group evaluation (#10) needs this raw-name → label indirection
+    (ADR-0231). Built from every declared extended-attribute def (not just the populated ones), so a
+    referenced-but-empty field resolves to "absent" rather than "unknown"."""
+    out: dict[str, str] = {}
+    container = root.find("ExtendedAttributes")
+    for ea in [] if container is None else container.findall("ExtendedAttribute"):
+        field_name = _text(ea, "FieldName")
+        if field_name is None:
+            continue
+        out[field_name] = _text(ea, "Alias") or field_name
+    return out
 
 
 def _task_custom_fields(
