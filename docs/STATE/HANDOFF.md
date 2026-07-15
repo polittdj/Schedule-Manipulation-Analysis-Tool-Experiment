@@ -1,6 +1,35 @@
-# Handoff — 2026-07-15 (Operator bug fixes: upload resilience + /path version agreement + SSI parity; v1.0.39; highest ADR 0227)
+# Handoff — 2026-07-15 (operator UI fix: enlarged Mission-wall charts no longer clip; v1.0.40; highest ADR 0228)
 
-> ## STATUS (current) — Operator bug cluster fixed (ADR-0227). Upload resilience + critical-path "mixing files" + driving-slack scope + inactive baseline + SSI leveled parity gate. Code changed.
+> ## STATUS (current) — operator UI fix: enlarged mosaic-tile charts release their fixed host height (ADR-0228). CSS only.
+>
+> - **Operator report:** on the Mission-wall pages (Performance Analysis Summary `#perfGrid` G1–G5, and
+>   every other `.mosaic` wall) the ⤢ **Enlarge** produced a broken layout — the chart collapsed into a
+>   tall right-edge sliver with the x-axis gone, "all visuals on this page enlarge the same wrong way."
+> - **Root cause (reproduced headless in Chromium with the real chartframe.js + app.css):** every wall
+>   chart is a `.mosaic .tile .chart-host` clamped to a fixed height (340/460/74vh) so the wall stays
+>   even. chartframe *contain-fits* the SVG to the viewport on enlarge (~1900×980), but the host height
+>   clamp was **still binding** in the enlarged state → the 960px-tall SVG was clipped to the top 340px
+>   (only the top gridlines + the tall data-date spike showed; the low-value early months fell below the
+>   fold). Measured: enlarged SVG `1472×759` inside `host height 340px` → clipped; a non-mosaic chart
+>   enlarged fine, isolating the clamp (not chartframe's sizing) as the cause.
+> - **Fix (`app.css`):** release the host height in BOTH enlarge modes —
+>   `.mosaic .tile .cf-frame:fullscreen .chart-host, .mosaic .tile .cf-frame.cf-max .chart-host
+>   { height: auto; max-height: none; overflow: visible; }`. Scoped to the enlarged states (normal wall
+>   unchanged), out-specifies + out-orders the clamps. After fix: host grows 340→759, `svg_clipped` false.
+>   CSS only — no color/radius/type token, so all four themes behave identically; no `engine/` touch.
+> - **State:** New **ADR-0228**. Regression test
+>   `tests/web/test_brief_duo_and_chart_reflow.py::test_enlarged_mosaic_chart_releases_its_fixed_tile_height`.
+>   Version **1.0.39 → 1.0.40**; wheel + 9 installers rebuilt in lockstep (a packaged static asset
+>   changed). Full gate green. Fresh branch off `origin/main` (`claude/smat-audit-remediation-eeckdi`;
+>   the prior PR #359 already squash-merged, so this is a NEW draft PR).
+> - **NEXT STEP (operator's choice — wait for a 'continue'):** the AUDIT-2026-07-14 roadmap has advanced
+>   on `main` (NEW-1/#359, H3+L8/#360 both merged); resume the remaining themes — PR 6 (H1+M4+M5 AI
+>   figure-gate) → PR 7 (M6+L3+L4) → PR 8 (M7+M8+L5/NEW-3+M11+NEW-2) → PR 9 (L6/L7/L9/N1/N2). Full
+>   backlog in **`docs/STATE/AUDIT-2026-07-14.md`**.
+
+# (prior) Handoff — 2026-07-15 (Operator bug fixes: upload resilience + /path version agreement + SSI parity; v1.0.39; highest ADR 0227)
+
+> ## STATUS — Operator bug cluster fixed (ADR-0227). Upload resilience + critical-path "mixing files" + driving-slack scope + inactive baseline + SSI leveled parity gate. Code changed.
 >
 > - **Operator report (multi-version load of the real master IMS, `Large Test File Leveled.mpp`, focus
 >   UID 152):** (1) folder upload → Chrome `ERR_ACCESS_DENIED`; (2) "critical path is incorrect… as if

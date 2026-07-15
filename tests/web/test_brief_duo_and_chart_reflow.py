@@ -52,6 +52,33 @@ def test_chartframe_expand_reformats_instead_of_magnifying() -> None:
     assert "req.catch(maximize)" in js
 
 
+def test_enlarged_mosaic_chart_releases_its_fixed_tile_height() -> None:
+    """Operator 2026-07-15: on the Mission-wall pages (perfGrid G1-G5, etc.) every chart is a
+    ``.mosaic .tile .chart-host`` clamped to a fixed 340/460/74vh height so the wall stays even.
+    chartframe's ⤢ Enlarge CONTAIN-FITS the SVG to the viewport, but that fixed host height kept
+    clamping it — the fitted (much taller) chart was clipped to a top strip, so only the tall
+    data-date spike showed and the low-value months fell below the fold (the "tiny sliver" bug).
+    The fix RELEASES the host height in both enlarge modes (real :fullscreen + the .cf-max
+    maximize fallback). Pins the release rule and that it out-specifies the clamps it overrides."""
+    css = (STATIC / "app.css").read_text(encoding="utf-8")
+    # the clamps we must override still exist (else this guard is testing nothing)
+    assert ".mosaic .tile .chart-host { height: 340px" in css
+    assert ".mosaic .tile.tile-wide .chart-host { height: 460px" in css
+    # both enlarge modes release the host height so the contain-fit SVG shows in full
+    for sel in (
+        ".mosaic .tile .cf-frame:fullscreen .chart-host",
+        ".mosaic .tile .cf-frame.cf-max .chart-host",
+    ):
+        assert sel in css, sel
+    release = css.split(".mosaic .tile .cf-frame:fullscreen .chart-host", 1)[1][:160]
+    assert "height: auto" in release and "overflow: visible" in release
+    # the release must come AFTER the clamps (equal-specificity tiebreak) AND out-specify them
+    # (…tile .cf-frame.cf-max .chart-host is one class deeper than …tile .chart-host)
+    assert css.index(".mosaic .tile .cf-frame.cf-max .chart-host") > css.index(
+        ".mosaic .tile .chart-host { height: 340px"
+    )
+
+
 def test_sra_and_progress_charts_render_one_to_one() -> None:
     sra = (STATIC / "sra.js").read_text(encoding="utf-8")
     # 1:1 pixel geometry: viewBox width == container px, so fonts stay design-size
