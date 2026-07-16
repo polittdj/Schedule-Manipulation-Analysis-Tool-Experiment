@@ -48,6 +48,11 @@
   // clears it. State-driven (a module var re-applied on every repaint) so it survives a filter, zoom,
   // tier change, or timescale event that rebuilds the tbody. Kept as a STRING for a stable compare.
   var selectedUid = null;
+  // Session HIGHLIGHT mode (feature #10): the /api/driving response carries highlight_uids — the
+  // session filter's matches for THIS file — when the operator chose "mark, don't drop". Painted
+  // in paintOne (so it survives every repaint) as pv-match/pv-bar-match, composing with the
+  // transient click selection above (a row can be both).
+  var matchSet = null; // null = no highlight; else an object used as a Set of String(uid)
 
   function el(tag, attrs, kids) {
     var node = document.createElement(tag);
@@ -421,7 +426,9 @@
     var paintOne = function (r) {
       // re-apply the click-to-highlight selection on every repaint (survives filter/zoom/tier changes)
       var selected = selectedUid !== null && String(r.unique_id) === selectedUid;
-      var tr = el("tr", { class: (r.complete ? "done" : "") + (selected ? " pv-selected" : "") });
+      var matched = matchSet !== null && matchSet[String(r.unique_id)] === 1;
+      var tr = el("tr", { class: (r.complete ? "done" : "") + (selected ? " pv-selected" : "") +
+        (matched ? " pv-match" : "") });
       tr.setAttribute("data-uid", r.unique_id); // Find-a-UID jump + Task Information join
       // On THIS grid a single click highlights the task (operator's click-to-highlight — the row of
       // fields + its bar); the MS-Project Task Information dialog (shared, ADR-0186) moves to a
@@ -457,7 +464,8 @@
       if (r.start && r.finish) {
         if (r.is_milestone) {
           track.appendChild(el("div", {
-            class: "g-ms tier-" + r.tier + (selected ? " pv-bar-selected" : ""),
+            class: "g-ms tier-" + r.tier + (selected ? " pv-bar-selected" : "") +
+              (matched ? " pv-bar-match" : ""),
             style: "left:" + x(Date.parse(r.finish)) + "px",
             title: r.name + " (milestone) — slack " + r.driving_slack_days + "d",
           }));
@@ -468,7 +476,7 @@
           var w = Math.max(2, x(Date.parse(r.finish)) - left);
           var bar = el("div", {
             class: "gantt-bar tier-" + r.tier + (r.complete ? " done" : "") +
-              (selected ? " pv-bar-selected" : ""),
+              (selected ? " pv-bar-selected" : "") + (matched ? " pv-bar-match" : ""),
             style: "left:" + left + "px;width:" + w + "px",
             title: r.name + " — " + r.tier + ", slack " + r.driving_slack_days + "d, " +
               (SFGantt.fmtMDY(r.start) || r.start) + " → " + (SFGantt.fmtMDY(r.finish) || r.finish) +
@@ -570,6 +578,12 @@
       .then(function (res) {
         if (!res.ok) { $("pathStatus").textContent = res.j.error || "Trace failed."; data = null; view.textContent = ""; return; }
         data = res.j;
+        // session HIGHLIGHT mode: mark the filter's matches on this grid (null = not highlighting)
+        matchSet = null;
+        if (data.highlight_uids && data.highlight_uids.length !== undefined) {
+          matchSet = {};
+          for (var mi = 0; mi < data.highlight_uids.length; mi++) matchSet[String(data.highlight_uids[mi])] = 1;
+        }
         syncCustomColumns();
         populateGroupBy();
         renderToggles();

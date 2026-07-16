@@ -1,4 +1,33 @@
-# Handoff — 2026-07-16 (#10 PR-C.2: Priority/Status/Project/Outline-Number group fidelity; v1.0.46; highest ADR 0234)
+# Handoff — 2026-07-16 (#10 PR-D: /groups saved-views UI — pickers, prompts, highlight; v1.0.47; highest ADR 0235)
+
+> ## STATUS (current) — #10 PR-D (ADR-0235): feature #10 is OPERATOR-COMPLETE — saved filters/groups are pickable, interactive prompts collect typed answers, highlight mode marks the Path grid, and the banner tells the truth about reach.
+>
+> - **/groups "MS Project saved views" panel:** saved-filter picker (A–Z display names, interactive
+>   ones labeled "…asks values"), Reduce/Highlight mode radios, saved-group picker; honest empty
+>   state when files carry no views. Field-row builder unchanged beside it (mutual exclusivity via
+>   the PR-C setters).
+> - **Interactive prompts:** picking "Date Range…" renders a prompt form and applies NOTHING until
+>   every prompt is answered (MSP's modal semantics). New `engine.msp_filters.coerce_prompt_answers`
+>   types each answer by its prompt's LEFT-FIELD kind (same coercion as a literal: dates untruncated,
+>   "3d" durations, plain numbers) — a prompted filter evaluates exactly like its literal twin.
+> - **Highlight on the Path grid via the data channel:** `/api/driving/{name}` carries
+>   `highlight_uids` (only when highlighting); `path.js` paints `pv-match`/`pv-bar-match` inside
+>   `paintOne` (survives every repaint, composes with click-selection); CSS mirrors the selection
+>   idiom with the `--ok` token (dashed outline = match ≠ selection), 4-theme tokens-only. The
+>   generic `highlight.js` DOM pass was deliberately NOT shipped — no server grid carries per-row
+>   `data-uid` yet (dead code); the idiom is documented in ADR-0235 and rides PR-U1's Gantt work.
+> - **Banner truth:** saved filter reduce = "every metric scoped"; highlight = "matches highlighted —
+>   metrics NOT scoped"; saved group = its own "ordering/banding only" line. /groups Active-scope
+>   panel mirrors it with live counts; grouped preview table (≤200 buckets, disclosed cap).
+> - **Chromium proof (real 2,126-task file):** `_MCTasks` highlight marks 422 of 783 traced rows +
+>   bars on UID-152's driving tree, population kept; /groups shot in all four themes.
+> - **State:** v**1.0.46 → 1.0.47**; wheel + 9 installers lockstep. New **ADR-0235**. Full gate green.
+> - **NEXT:** **PR-U1** operator UI directives (broken Gantt filter buttons, find-task-by-name on
+>   every Gantt, per-file selector on multi-file pages — adopt `pv-match` marks there too) →
+>   **PR-M1** `/standards` page + **PR-M2** SEM engine (verbatim goldens: P2/P5 + Large Test
+>   File/File2) → **PR-R1/R2/R3** remediation → **PR-P1** perf → #13 XER calendars → F3c → roles.
+
+# (prior) Handoff — 2026-07-16 (#10 PR-C.2: Priority/Status/Project/Outline-Number group fidelity; v1.0.46; highest ADR 0234)
 
 > ## STATUS (current) — #10 PR-C.2 (ADR-0234): the last resolvable saved groups now bucket faithfully; plus the operator's new-upload audit (3 agents) folded into the plan.
 >
