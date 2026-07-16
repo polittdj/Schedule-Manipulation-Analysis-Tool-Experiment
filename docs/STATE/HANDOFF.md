@@ -1,4 +1,38 @@
-# Handoff — 2026-07-15 (#10 PR-A: faithful MS Project filter evaluator + saved-view model; v1.0.43; highest ADR 0231)
+# Handoff — 2026-07-16 (#10 PR-B: MPXJ saved-views sidecar + filter parity oracle; v1.0.44; highest ADR 0232)
+
+> ## STATUS (current) — #10 PR-B (ADR-0232): `.mpp` saved filters/groups now actually LOAD, and the evaluator is gate-locked to MPXJ's own `evaluate()` on the real file — **9/9 exact-set parity over 2,126 tasks**.
+>
+> - **Java (`tools/mpxj/MpxjToMspdi.java`):** every conversion (one-shot AND `--server` batch) now also
+>   writes a `<output>.views.json` sidecar — all saved filters (name/flags/promptCount + the full
+>   recursive criteria tree with literal / field-to-field / prompt / null operands, literals carrying
+>   MPXJ's runtime type) and all 25 groups (clauses: field/ascending/groupOn/interval/startAt). The MPP
+>   reader's duplicated built-ins are deduped (type+name). New `--eval <in> <out.json>` mode = the
+>   **parity oracle**: per-filter matching UIDs via MPXJ's own `Filter.evaluate()`. Dependency-free JSON
+>   writer; still ONE vendored class file, recompiled `--release 17` (MSPDI XML itself cannot carry views
+>   — that's WHY the sidecar exists).
+> - **Python ingest:** new `importers/msp_views.py` (sidecar JSON → frozen `SavedFilter`/`SavedGroup`;
+>   a MALFORMED sidecar raises `ImporterError` — our own converter wrote it, so damage = suspect
+>   conversion, fail loud); `parse_mpp` reads the sidecar in the conversion tempdir and attaches views
+>   via `model_copy`. A MISSING sidecar = "no views" (older converter / test fakes) — documented, keeps
+>   every existing fake green. MSPDI/XER paths untouched (their formats define no views).
+> - **Proof (the point of PR-B):** `tests/importers/test_msp_views.py` — parser shapes incl. every
+>   operand kind, 7 malformation cases, fake-converter wiring (attach / no-sidecar / corrupt), real-file
+>   ingest (the 10 filters verbatim incl. "Date Range..." promptCount=2 and the 8-condition `_MCTasks`
+>   tree, 25 groups), and the **`parity`-marked oracle gate**: `select()` == MPXJ `evaluate()` for all
+>   **9 prompt-free saved task filters** on `Large Test File Leveled.mpp` (2,126 tasks; `_MCTasks` = 943
+>   matches; "Date Range..." is prompt-gated so it's pinned by PR-A unit tests instead). Java + the
+>   committed reference `.mpp` exist on CI → the oracle gate runs there too.
+> - **State:** v**1.0.43 → 1.0.44**; wheel + 9 installers in lockstep. New **ADR-0232**. Full gate green
+>   (ruff / format / mypy-strict / bandit 0 / node / full pytest incl. the new suite). Parity extended,
+>   never weakened. Branched fresh off `origin/main` after #369.
+> - **NEXT (remaining #10 increments):** **PR-C** session-wide grouping + A–Z ordering + highlight mode
+>   (mark not drop) — the integration design is already written: `docs/STATE/msp-filters-research/`
+>   `03-plumbing-integration.md` (SessionState fields, `scope()` rewrite, `filter_to_uids`,
+>   `highlight_uids`, banner, A–Z helpers); **PR-D** `/groups` UI (pickers A–Z, interactive prompt
+>   inputs, highlight toggle, 4-theme DoD). Then **#13** XER per-task calendars, F3c (parameterized
+>   expected margin), and the roles front-end.
+
+# (prior) Handoff — 2026-07-15 (#10 PR-A: faithful MS Project filter evaluator + saved-view model; v1.0.43; highest ADR 0231)
 
 > ## AUDIT (2026-07-15, verify-everything sweep) — `main` @ **v1.0.43 / #368 / ADR-0231** is fully green and healthy.
 >

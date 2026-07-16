@@ -29,6 +29,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from schedule_forensics.importers._common import ImporterError
+from schedule_forensics.importers.msp_views import parse_views_json_text
 from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.model import Schedule
 
@@ -403,5 +404,16 @@ def parse_mpp(path: str | os.PathLike[str]) -> Schedule:
         # subprocess — same result either way (see `_convert` / `mpxj_batch_session`).
         _convert(file_path, output_path, mpxj_home)
         mspdi_text = output_path.read_text(encoding="utf-8-sig", errors="replace")
+        # The converter also writes the saved VIEWS (filters/groups — feature #10) to a
+        # sidecar, since MSPDI XML cannot carry them. Absent = an older converter → no views.
+        sidecar = Path(str(output_path) + ".views.json")
+        views_text = sidecar.read_text(encoding="utf-8") if sidecar.is_file() else None
 
-    return parse_mspdi_text(mspdi_text, source_file=file_path.name)
+    schedule = parse_mspdi_text(mspdi_text, source_file=file_path.name)
+    if views_text is not None:
+        saved_filters, saved_groups = parse_views_json_text(views_text)
+        if saved_filters or saved_groups:
+            schedule = schedule.model_copy(
+                update={"saved_filters": saved_filters, "saved_groups": saved_groups}
+            )
+    return schedule
