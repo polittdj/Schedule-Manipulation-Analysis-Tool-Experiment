@@ -81,6 +81,9 @@ _CORE: dict[str, tuple[Callable[[Task], FieldValue], FieldKind]] = {
     "UNIQUE_ID": (lambda t: t.unique_id, FieldKind.NUMERIC),
     "WBS": (lambda t: t.wbs, FieldKind.STRING),
     "OUTLINE_LEVEL": (lambda t: t.outline_level, FieldKind.NUMERIC),
+    "OUTLINE_NUMBER": (lambda t: t.outline_number, FieldKind.STRING),
+    "PRIORITY": (lambda t: t.priority, FieldKind.NUMERIC),
+    "STOP": (lambda t: t.stop, FieldKind.DATE),
     "NOTES": (lambda t: t.notes, FieldKind.STRING),
     "DURATION": (lambda t: t.duration_minutes, FieldKind.DURATION_MINUTES),
     "REMAINING_DURATION": (lambda t: t.remaining_duration_minutes, FieldKind.DURATION_MINUTES),
@@ -141,6 +144,11 @@ _DISPLAY_TO_ENUM: dict[str, str] = {
     "Resource Names": "RESOURCE_NAMES",
     "Duration": "DURATION",
     "Task Mode": "TASK_MODE",
+    "Outline Number": "OUTLINE_NUMBER",
+    "Priority": "PRIORITY",
+    "Stop": "STOP",
+    "Status": "STATUS",
+    "Project": "PROJECT",
 }
 
 #: Fields the source cannot carry or the model drops by design → unresolvable (UI annotates).
@@ -173,6 +181,49 @@ _ENUM_FAMILY_TO_DISPLAY: dict[str, str] = {
     "START": "Start",
     "FINISH": "Finish",
 }
+
+
+#: Fields computed from the SCHEDULE (not just the task) — resolved by :func:`resolve_field`
+#: directly, since the ``_CORE`` accessors deliberately see only the task.
+_SCHEDULE_LEVEL_KINDS: dict[str, FieldKind] = {
+    "STATUS": FieldKind.STRING,
+    "PROJECT": FieldKind.STRING,
+}
+
+
+def _msp_status(schedule: Schedule, task: Task) -> str | None:
+    """MS Project's computed **Status** column, reproduced from its documented rule.
+
+    * **Complete** — the task is 100% complete.
+    * **Future Task** — the task starts after the status date.
+    * **On Schedule** — progress (the stored ``Stop`` date, the date actuals run through) reaches
+      at least the day before the status date.
+    * **Late** — progress does not reach the day before the status date (including a task that
+      should have started but records no progress at all).
+
+    ``None`` (a blank bucket) when the file carries no status date or the task no start — the
+    tool never fabricates "today" for a forensic artifact.
+    """
+    if task.percent_complete >= 100.0:
+        return "Complete"
+    status_date = schedule.status_date
+    if status_date is None or task.start is None:
+        return None
+    if task.start > status_date:
+        return "Future Task"
+    threshold = status_date.date() - dt.timedelta(days=1)
+    if task.stop is not None and task.stop.date() >= threshold:
+        return "On Schedule"
+    return "Late"
+
+
+def _project_name(schedule: Schedule) -> str | None:
+    """MS Project's per-task **Project** column: the source file's base name (as MSP and the
+    SSI exports show it), falling back to the schedule's display name."""
+    if schedule.source_file:
+        stem = schedule.source_file.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        return stem.rsplit(".", 1)[0] if "." in stem else stem
+    return schedule.name or None
 
 
 def _normalize_enum(field_enum: str | None) -> str | None:
@@ -228,6 +279,12 @@ def field_kind(raw_field: str, *, field_enum: str | None = None) -> FieldKind:
     field_enum = _normalize_enum(field_enum)
     if field_enum and field_enum in _UNRESOLVABLE_ENUMS:
         return FieldKind.UNRESOLVED
+    if field_enum and field_enum in _SCHEDULE_LEVEL_KINDS:
+        return _SCHEDULE_LEVEL_KINDS[field_enum]
+    if not field_enum and raw_field in _DISPLAY_TO_ENUM:
+        mapped = _DISPLAY_TO_ENUM[raw_field]
+        if mapped in _SCHEDULE_LEVEL_KINDS:
+            return _SCHEDULE_LEVEL_KINDS[mapped]
     if field_enum and field_enum in _CORE:
         return _CORE[field_enum][1]
     fam = _custom_family(raw_field, field_enum)
@@ -252,6 +309,14 @@ def resolve_field(
     field_enum = _normalize_enum(field_enum)
     if field_enum and field_enum in _UNRESOLVABLE_ENUMS:
         return ResolvedField(None, FieldKind.UNRESOLVED, resolvable=False)
+    # schedule-computed fields (Status / Project) — resolved here, where the schedule is in scope
+    schedule_enum = field_enum if field_enum in _SCHEDULE_LEVEL_KINDS else None
+    if schedule_enum is None and _DISPLAY_TO_ENUM.get(raw_field) in _SCHEDULE_LEVEL_KINDS:
+        schedule_enum = _DISPLAY_TO_ENUM[raw_field]
+    if schedule_enum == "STATUS":
+        return ResolvedField(_msp_status(schedule, task), FieldKind.STRING)
+    if schedule_enum == "PROJECT":
+        return ResolvedField(_project_name(schedule), FieldKind.STRING)
     # core field (by enum, then display alias, then a raw_field that is itself the enum)
     core_enum = None
     if field_enum and field_enum in _CORE:

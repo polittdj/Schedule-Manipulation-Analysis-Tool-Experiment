@@ -6230,3 +6230,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.44 → **1.0.45**; wheel + 9 installers lockstep; **ADR-0233**; HANDOFF refreshed.
 - **NEXT:** PR-C.2 (Priority/Status/Project/Outline-Number model fields) → PR-D `/groups` UI →
   `/standards` metrics page (+ `engine/metrics/sem.py`) → prior-audit remediation PRs.
+---
+
+## 2026-07-16 — #10 PR-C.2: Priority/Status/Project/Outline-Number group fidelity + new-upload audit (ADR-0234)
+
+- **Audit first (operator directive):** the 60-file upload drop was audited by 3 read-only agents —
+  NEXT-PROMPT direction doc (new UI directives → PR-U1; CoPilot perf validated → PR-P1), machine
+  manifests (provenance overlay, no new test obligations), and the parity corpus (SEM ground truth for
+  P2/P5 AND Large Test File/File2 verbatim; SRA S-curve/tornado/P10-P90 goldens now exist; 24h-calendar
+  SSI pair updated3 32d ↔ updated4 18d; Large Test File.mpp REPLACED — old bytes live in the underscore
+  variant). All folded into the plan file.
+- **PR-C.2 code:** `Task.priority`/`outline_number`/`stop` (SCHEMA 2.8.0), MSPDI wiring
+  (tolerant+clamped Priority; OutlineNumber; Stop), JSON round-trip, resolver rows + schedule-level
+  Status/Project resolution (`_msp_status` = MSP's documented Complete/Future/On-Schedule/Late rule
+  from `stop` vs day-before-status-date; blank when no status date). XER deliberately leaves the three
+  None (P6 axes differ; documented).
+- **Real-file proof:** Status → MSP's exact four buckets; Priority per-value; Priority-Keeping-Outline
+  → per-outline-row buckets. Board Status/Sprint honestly degrade (no source data).
+- **State:** v1.0.45 → **1.0.46**; wheel + 9 installers lockstep; **ADR-0234**; HANDOFF refreshed;
+  stale NEXT-SESSION-PROMPT.md + REPO-INVENTORY.md header fixed (delta-audit D-02/D-03).
+- **NEXT:** PR-D `/groups` UI → PR-U1 operator UI directives → PR-M1 `/standards` + PR-M2 SEM engine
+  (goldens above) → PR-R1/R2/R3 remediation → PR-P1 perf → #13 XER calendars → F3c → roles.

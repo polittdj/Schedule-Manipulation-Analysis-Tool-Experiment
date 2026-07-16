@@ -1,4 +1,36 @@
-# Handoff — 2026-07-16 (#10 PR-C: session-wide saved filter/group + highlight + audit group-fidelity; v1.0.45; highest ADR 0233)
+# Handoff — 2026-07-16 (#10 PR-C.2: Priority/Status/Project/Outline-Number group fidelity; v1.0.46; highest ADR 0234)
+
+> ## STATUS (current) — #10 PR-C.2 (ADR-0234): the last resolvable saved groups now bucket faithfully; plus the operator's new-upload audit (3 agents) folded into the plan.
+>
+> - **Model (SCHEMA 2.7.0 → 2.8.0):** `Task.priority` (0-1000, None = source absent), `Task.outline_number`
+>   (dotted string), `Task.stop` (progress-through date). MSPDI reads `<Priority>` (tolerant+clamped),
+>   `<OutlineNumber>`, `<Stop>`; XER leaves all three None (P6 priority_type is a 5-level enum on a
+>   different axis — mapping would invent numbers; outline analogue = the WBS path). JSON round-trips.
+> - **Resolver:** `PRIORITY`/`OUTLINE_NUMBER`/`STOP` core rows + display aliases; **Status + Project
+>   resolve at `resolve_field` level** (schedule in scope): `_msp_status` = MSP's documented rule
+>   (Complete / Future Task / On Schedule / Late via `stop` vs day-before-status-date; no status date →
+>   blank, never fabricate "today"); Project = source-file base name (matches the SSI exports).
+> - **Real-file proof:** `Status` → exactly {Complete, Future Task, Late, On Schedule}; `&Priority` →
+>   per-value; `Priority Keeping Outline Structure` → one bucket per outline row (MSP "keep outline"
+>   semantics). Only Board Status/Sprint (Agile add-in, no source data) still honestly degrade.
+> - **New-upload audit (operator's 60-file drop, 3 read-only agents, all sandbox-verified):**
+>   (1) NEXT-PROMPT docx = direction confirmed + NEW UI directives → PR-U1 (Gantt filter buttons broken,
+>   find-task-by-name on every Gantt, per-file selector on multi-file pages); CoPilot perf claims
+>   validated → PR-P1 (#3/#4/#8/#9/#10 real; #1/#5/#6/#7-race refuted). (2) Machine manifests = external
+>   provenance overlay, not test obligations (their oracle points back at our own golden fixtures).
+>   (3) Parity corpus: **SEM ground truth for TWO pairs** (P2/P5 + Large Test File/File2, verbatim SEM01-09
+>   rows) → PR-M2 goldens; **SRA ground truth now exists** (S-curve, tornado, P10/50/80/90 sra-ssi
+>   exports); **24h-calendar SSI golden pair** (updated3 slack 32d ↔ updated4 24h slack 18d, UID 155);
+>   `Large Test File.mpp` was REPLACED (tests must pin the underscore variant for old bytes).
+> - **State:** v**1.0.45 → 1.0.46**; wheel + 9 installers lockstep. New **ADR-0234**. Full gate green.
+>   Stale docs refreshed per delta-audit D-02/D-03 (NEXT-SESSION-PROMPT, REPO-INVENTORY header).
+> - **NEXT:** **PR-D** `/groups` UI (pickers A–Z, prompts, highlight toggle; design in
+>   `docs/STATE/msp-filters-research/03-plumbing-integration.md`) → **PR-U1** (operator UI directives) →
+>   `/standards` metrics page (PR-M1) + SEM engine (PR-M2, goldens above) → remediation PR-R1/R2/R3
+>   (AI figure-gate H1/M4/M5; dead Law-1 defenses M6/L3 + air-gap routes + version pin; erosion basis +
+>   24h golden + egress set) → PR-P1 perf → #13 XER calendars → F3c → roles.
+
+# (prior) Handoff — 2026-07-16 (#10 PR-C: session-wide saved filter/group + highlight + audit group-fidelity; v1.0.45; highest ADR 0233)
 
 > ## STATUS (current) — #10 PR-C (ADR-0233): a saved MS Project filter/group applies SESSION-WIDE through the one `scope()` chokepoint; a HIGHLIGHT (mark-don't-drop) mode; A–Z helpers; and a read-only tri-agent audit's group-fidelity fixes folded in before merge.
 >

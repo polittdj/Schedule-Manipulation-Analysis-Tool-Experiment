@@ -152,6 +152,78 @@ def test_resolver_field_kind_and_unresolvable() -> None:
     assert field_kind("Board Status", field_enum="BOARD_STATUS") is FieldKind.UNRESOLVED
 
 
+def test_resolver_priority_outline_number_stop() -> None:
+    sch = Schedule(
+        name="s",
+        source_file="Big Plan.mpp",
+        project_start=dt.datetime(2027, 1, 1, 8),
+        status_date=dt.datetime(2027, 2, 1, 8),
+        tasks=(
+            Task(
+                unique_id=1,
+                name="a",
+                duration_minutes=DAY,
+                priority=750,
+                outline_number="1.2.3",
+                stop=dt.datetime(2027, 1, 31, 17),
+            ),
+        ),
+    )
+    t1 = sch.tasks_by_id[1]
+    assert field_kind("Priority", field_enum="PRIORITY") is FieldKind.NUMERIC
+    assert resolve_field(sch, t1, "Priority", field_enum="PRIORITY").value == 750
+    assert resolve_field(sch, t1, "Outline Number", field_enum="OUTLINE_NUMBER").value == "1.2.3"
+    assert resolve_field(sch, t1, "Stop", field_enum="STOP").value == dt.datetime(2027, 1, 31, 17)
+    # Project = the source file's base name, exactly as MS Project / the SSI exports show it
+    assert field_kind("Project", field_enum="PROJECT") is FieldKind.STRING
+    assert resolve_field(sch, t1, "Project", field_enum="PROJECT").value == "Big Plan"
+
+
+def test_resolver_msp_status_rule() -> None:
+    """MS Project's computed Status: Complete / Future Task / On Schedule / Late — judged from
+    the stored Stop date vs the status date (progress through the day before = on schedule)."""
+    sd = dt.datetime(2027, 2, 1, 8)
+
+    def status(**kw: object) -> str | None:
+        sch = Schedule(
+            name="s",
+            project_start=dt.datetime(2027, 1, 1, 8),
+            status_date=sd,
+            tasks=(Task(unique_id=1, name="t", duration_minutes=DAY, **kw),),  # type: ignore[arg-type]
+        )
+        return resolve_field(sch, sch.tasks_by_id[1], "Status", field_enum="STATUS").value  # type: ignore[return-value]
+
+    assert status(percent_complete=100.0) == "Complete"
+    assert status(start=dt.datetime(2027, 3, 1, 8)) == "Future Task"  # starts after the DD
+    # progress recorded through the day before the status date → On Schedule
+    assert (
+        status(
+            start=dt.datetime(2027, 1, 4, 8),
+            percent_complete=50.0,
+            stop=dt.datetime(2027, 1, 31, 17),
+        )
+        == "On Schedule"
+    )
+    # progress stops short of the day before the status date → Late
+    assert (
+        status(
+            start=dt.datetime(2027, 1, 4, 8),
+            percent_complete=10.0,
+            stop=dt.datetime(2027, 1, 20, 17),
+        )
+        == "Late"
+    )
+    # should have started, no progress at all → Late
+    assert status(start=dt.datetime(2027, 1, 4, 8)) == "Late"
+    # no status date on the file → blank (never fabricate "today")
+    sch = Schedule(
+        name="s",
+        project_start=dt.datetime(2027, 1, 1, 8),
+        tasks=(Task(unique_id=1, name="t", duration_minutes=DAY, start=dt.datetime(2027, 1, 4)),),
+    )
+    assert resolve_field(sch, sch.tasks_by_id[1], "Status", field_enum="STATUS").value is None
+
+
 def test_resolver_strips_text_enum_suffix() -> None:
     sch = _population()
     t1 = sch.tasks_by_id[1]

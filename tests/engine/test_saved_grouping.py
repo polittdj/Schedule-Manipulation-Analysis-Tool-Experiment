@@ -157,6 +157,34 @@ def test_percent_complete_interval_zero_is_complete_incomplete_split() -> None:
     assert group_by_clauses(sch, grp) == [("Incomplete", (1, 2)), ("Complete", (3,))]
 
 
+def test_priority_and_status_groups_resolve() -> None:
+    # PR-C.2: the "Priority" (numeric each-value) and computed "Status" groups.
+    sch = Schedule(
+        name="s",
+        source_file="Plan.mpp",
+        project_start=dt.datetime(2027, 1, 1, 8),
+        status_date=dt.datetime(2027, 2, 1, 8),
+        tasks=(
+            Task(unique_id=1, name="done", duration_minutes=DAY, percent_complete=100.0,
+                 priority=500),
+            Task(unique_id=2, name="later", duration_minutes=DAY,
+                 start=dt.datetime(2027, 3, 1, 8), priority=750),
+            Task(unique_id=3, name="behind", duration_minutes=DAY,
+                 start=dt.datetime(2027, 1, 4, 8), priority=500),
+        ),
+    )  # fmt: skip
+    pri = SavedGroup(name="P", clauses=(_clause("Priority", "PRIORITY"),))
+    assert group_by_clauses(sch, pri) == [("500", (1, 3)), ("750", (2,))]
+    status = SavedGroup(name="S", clauses=(_clause("Status", "STATUS"),))
+    assert group_by_clauses(sch, status) == [
+        ("Complete", (1,)),
+        ("Future Task", (2,)),
+        ("Late", (3,)),
+    ]
+    proj = SavedGroup(name="Pr", clauses=(_clause("Project", "PROJECT"),))
+    assert group_by_clauses(sch, proj) == [("Plan", (1, 2, 3))]
+
+
 def test_task_mode_groups_auto_vs_manual() -> None:
     # the "Auto Scheduled vs. Manually Scheduled" group, derived from is_manual (audit F3).
     sch = _sch(_t(1, "a", is_manual=False), _t(2, "b", is_manual=True), _t(3, "c", is_manual=False))
