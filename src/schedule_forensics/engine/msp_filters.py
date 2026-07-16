@@ -276,3 +276,33 @@ def required_prompts(filt: SavedFilter) -> tuple[str, ...]:
 
     walk(filt.criteria)
     return tuple(labels)
+
+
+def coerce_prompt_answers(filt: SavedFilter, answers: dict[str, str]) -> PromptValues:
+    """The operator's typed prompt answers coerced onto each prompt's comparison axis.
+
+    MS Project types a prompt's answer by the field it is compared against ("Show tasks that
+    start or finish after:" against a DATE field expects a date). This walks the criteria tree,
+    finds each prompt operand's **left field kind**, and coerces the raw answer string with the
+    same rule a literal uses (:func:`_coerce_literal` — so a date stays untruncated, a duration
+    parses "3d", a number parses plainly). A label compared against several fields keeps the
+    first-seen kind (MS Project reuses one answer the same way); an unanswered label is simply
+    absent (the evaluator treats a missing prompt as a ``None`` operand)."""
+    kinds: dict[str, FieldKind] = {}
+
+    def walk(node: Criterion | None) -> None:
+        if node is None:
+            return
+        lhs_kind = field_kind(node.field or "", field_enum=node.field_enum)
+        for operand in node.operands:
+            if operand.kind == "prompt" and operand.text and operand.text not in kinds:
+                kinds[operand.text] = lhs_kind
+        for child in node.children:
+            walk(child)
+
+    walk(filt.criteria)
+    return {
+        label: _coerce_literal(text, kinds.get(label, FieldKind.UNRESOLVED))
+        for label, text in answers.items()
+        if text != ""
+    }

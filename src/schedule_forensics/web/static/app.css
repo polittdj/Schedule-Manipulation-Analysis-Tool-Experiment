@@ -1046,6 +1046,13 @@ tr.row-found td.sf-frozen-col { background: #fff3b0; }
 .path-grid tr.pv-selected td.sf-frozen-col { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .path-grid tr.pv-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .gantt-bar.pv-bar-selected, .g-ms.pv-bar-selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Session HIGHLIGHT mode (feature #10): the filter's MATCHES are marked (never dropped). Distinct
+   class + token from the transient click selection above so the two compose on one row (a task can
+   be selected AND a match). Tokens-only (--ok), all 4 themes. */
+.path-grid tr.pv-match td { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.path-grid tr.pv-match td.sf-frozen-col { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.path-grid tr.pv-match td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+.gantt-bar.pv-bar-match, .g-ms.pv-bar-match { outline: 2px dashed var(--ok); outline-offset: 1px; }
 .evo-grid tr.ev-row-left td { color: var(--muted); }
 .evo-grid tbody tr { cursor: pointer; }
 .evo-durbadge { position: absolute; top: 1px; font-size: 11px; color: var(--warn); pointer-events: none; }

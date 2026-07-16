@@ -6251,3 +6251,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   stale NEXT-SESSION-PROMPT.md + REPO-INVENTORY.md header fixed (delta-audit D-02/D-03).
 - **NEXT:** PR-D `/groups` UI → PR-U1 operator UI directives → PR-M1 `/standards` + PR-M2 SEM engine
   (goldens above) → PR-R1/R2/R3 remediation → PR-P1 perf → #13 XER calendars → F3c → roles.
+---
+
+## 2026-07-16 — #10 PR-D: /groups saved-views UI — pickers, interactive prompts, highlight (ADR-0235)
+
+- **The flagship #10 is operator-complete.** /groups gains the "MS Project saved views" panel
+  (saved-filter picker A–Z, Reduce/Highlight radios, saved-group picker); an interactive filter
+  renders a prompt form and applies nothing until every answer is in (MSP modal semantics); new
+  `coerce_prompt_answers` types each answer by its prompt's left-field kind (identical to literal
+  coercion). Banner now truth-tells per source and mode (reduce = scoped; highlight = marked, metrics
+  NOT scoped; group = ordering only); grouped preview via `group_by_clauses` (disclosed 200-cap).
+- **Highlight reaches the first real grid:** `/api/driving` carries `highlight_uids` when
+  highlighting; `path.js` paints `pv-match`/`pv-bar-match` in `paintOne` (repaint-proof, composes
+  with click-selection); `--ok`-token CSS, 4 themes. Generic DOM-pass deliberately not shipped (no
+  server grid has row `data-uid` yet — documented in ADR-0235, adopted per-grid starting with PR-U1).
+- **Proof:** Chromium on the real file — `_MCTasks` highlight = 422/783 rows+bars marked on UID-152's
+  driving tree, population kept; /groups in all four themes. 8 new UI tests + prompt-coercion tests;
+  77 existing filter/group tests green.
+- **State:** v1.0.46 → **1.0.47**; wheel + 9 installers lockstep; **ADR-0235**; HANDOFF refreshed.
+- **NEXT:** PR-U1 (operator UI directives) → PR-M1/M2 (/standards + SEM engine) → PR-R1/R2/R3 →
+  PR-P1 → #13 → F3c → roles.

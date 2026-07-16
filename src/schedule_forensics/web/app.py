@@ -183,6 +183,10 @@ from schedule_forensics.engine.metrics.performance_summary import (
 from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.msp_field_resolver import FieldValue
+from schedule_forensics.engine.msp_filters import (
+    coerce_prompt_answers,
+    required_prompts,
+)
 from schedule_forensics.engine.msp_filters import select as _select_saved
 from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
@@ -203,6 +207,13 @@ from schedule_forensics.engine.recommendations import (
 )
 from schedule_forensics.engine.resources import ResourceLoading, compute_resource_loading
 from schedule_forensics.engine.s_curve import SCurve, compute_s_curve
+from schedule_forensics.engine.saved_grouping import (
+    find_saved_filter,
+    find_saved_group,
+    group_by_clauses,
+    saved_filters_union,
+    saved_groups_union,
+)
 from schedule_forensics.engine.scorecards import (
     Scorecard,
     compute_scorecards,
@@ -248,6 +259,8 @@ from schedule_forensics.importers import (
     to_json_text,
 )
 from schedule_forensics.importers.mpp_mpxj import mpxj_batch_session
+from schedule_forensics.model.saved_view import Criterion as SavedCriterion
+from schedule_forensics.model.saved_view import Operand as SavedOperand
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
@@ -868,25 +881,58 @@ def _banner_html(state: SessionState) -> str:
 
 
 def _filter_banner(state: SessionState) -> str:
-    """A page-top notice, shown on EVERY page while a session-wide group/filter is active, so the
-    operator always knows the metrics are scoped — with one-click manage/clear (ADR-0104)."""
-    if not state.active_filter:
-        return ""
-    parts = []
-    for fld, value in state.active_filter:
-        vals = _criterion_value_list(value)
-        shown = (
-            "(populated)"
-            if not vals
-            else _expandable_more(_e(", ".join(vals[:3])), [_e(v) for v in vals[3:]])
+    """A page-top notice, shown on EVERY page while a session-wide filter/group is active, so the
+    operator always knows how the numbers are scoped — with one-click manage/clear (ADR-0104).
+    Branches on the active source (saved MS Project filter vs field rows) and states the MODE
+    honestly: reduce scopes every metric; highlight only marks (metrics stay whole-schedule)."""
+    lines: list[str] = []
+    if state.active_saved_filter is not None:
+        saved = state.active_saved_filter
+        tree = _e(_criteria_text(saved.criteria))
+        if state.filter_mode == "highlight":
+            reach = (
+                "matching tasks are <b>highlighted</b> on the grids &mdash; metrics are "
+                "<b>not</b> scoped (full schedules)"
+            )
+        else:
+            reach = "every metric on every page (all files) is <b>scoped</b> to its matches"
+        lines.append(
+            f"<b>Saved filter “{_e(saved.display_name)}”</b> &mdash; {reach}: "
+            f'<span class="dp-chip">{tree}</span>. <a href="/groups">manage</a> &middot; '
+            '<a href="/groups?clear=1">clear</a>'
         )
-        parts.append(f"{_e(fld)} = {shown}")
-    chips = " &middot; ".join(parts)
+    elif state.active_filter:
+        parts = []
+        for fld, value in state.active_filter:
+            vals = _criterion_value_list(value)
+            shown = (
+                "(populated)"
+                if not vals
+                else _expandable_more(_e(", ".join(vals[:3])), [_e(v) for v in vals[3:]])
+            )
+            parts.append(f"{_e(fld)} = {shown}")
+        chips = " &middot; ".join(parts)
+        mode_note = (
+            " (highlight mode &mdash; matches marked, metrics NOT scoped)"
+            if state.filter_mode == "highlight"
+            else ""
+        )
+        lines.append(
+            f"<b>Filter active</b>{mode_note} &mdash; every metric on every page (all files) is "
+            f'scoped to: {chips}. <a href="/groups">manage</a> &middot; '
+            '<a href="/groups?clear=1">clear filter</a>'
+        )
+    if state.active_saved_group is not None:
+        lines.append(
+            f"<b>Grouped by “{_e(state.active_saved_group.display_name)}”</b> &mdash; ordering/"
+            'banding only, metric populations unchanged. <a href="/groups">manage</a> &middot; '
+            '<a href="/groups?saved_group=">clear group</a>'
+        )
+    if not lines:
+        return ""
+    body = "<br>".join(lines)
     return (
-        '<div class="panel filter-active" style="border-left:4px solid var(--accent)">'
-        f"<b>Filter active</b> &mdash; every metric on every page (all files) is scoped to: "
-        f'{chips}. <a href="/groups">manage</a> &middot; '
-        '<a href="/groups?clear=1">clear filter</a></div>'
+        f'<div class="panel filter-active" style="border-left:4px solid var(--accent)">{body}</div>'
     )
 
 
@@ -2546,21 +2592,25 @@ def create_app(
         # filtered/target-truncated timing set onto the full task list (wrong path once a session
         # Analysis Target or filter is active). scope(sch) is sch when neither is set (unchanged).
         scoped = st.scope(sch)
-        return JSONResponse(
-            _driving_data(
-                scoped,
-                cpm,
-                target,
-                secondary,
-                tertiary,
-                direction=direction,
-                range_mode=range_mode,
-                range_days=range_days,
-                ignore_constraints=bool(ignore_constraints),
-                ignore_leveling=bool(ignore_leveling),
-                with_drag=bool(drag),
-            )
+        payload = _driving_data(
+            scoped,
+            cpm,
+            target,
+            secondary,
+            tertiary,
+            direction=direction,
+            range_mode=range_mode,
+            range_days=range_days,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+            with_drag=bool(drag),
         )
+        # HIGHLIGHT mode (feature #10): the session filter's match set for THIS file, so the grid
+        # marks matching rows/bars instead of dropping non-matches (None when not highlighting).
+        marked = st.highlight_uids(sch)
+        if marked is not None:
+            payload["highlight_uids"] = sorted(marked)
+        return JSONResponse(payload)
 
     @app.get("/portfolio", response_class=HTMLResponse)
     def portfolio() -> HTMLResponse:
@@ -3569,19 +3619,48 @@ def create_app(
             vals = qp.getlist(f"value{i}")
             param_criteria.append((f, vals if vals else (legacy[i] if i < len(legacy) else "")))
         param_criteria = param_criteria[:MAX_FIELDS]
+        # Filter MODE (feature #10): reduce = drop non-matches (default); highlight = keep the
+        # full population and only MARK the matches. Applies to BOTH filter sources.
+        if qp.get("mode") in ("reduce", "highlight"):
+            st.set_filter_mode(qp["mode"])
         # Apply / clear MUTATE the session-wide filter (ADR-0104) so it scopes every page and every
         # loaded file; without them a row selection just PREVIEWS here without persisting.
+        schedules = [s for _, s in versions]
+        prompt_form = ""
         if "clear" in qp:
             st.set_filter(())
+            st.set_saved_filter(None)
         elif "apply" in qp:
             st.set_filter(param_criteria)
+        elif (sf_name := qp.get("saved_filter")) is not None:
+            # the MS Project SAVED-filter picker: "" clears; a name applies (after its prompts)
+            if sf_name == "":
+                st.set_saved_filter(None)
+            else:
+                saved = find_saved_filter(schedules, sf_name)
+                if saved is not None:
+                    labels = required_prompts(saved)
+                    raw_answers = {
+                        label: qp.get(f"prompt_{i}", "") for i, label in enumerate(labels)
+                    }
+                    if labels and any(v == "" for v in raw_answers.values()):
+                        # interactive filter, unanswered → render the prompt form, do NOT apply
+                        # (mirrors MS Project's modal prompt)
+                        prompt_form = _saved_prompt_form(saved, raw_answers, st.filter_mode)
+                    else:
+                        st.set_saved_filter(saved, coerce_prompt_answers(saved, raw_answers))
+        if (sg_name := qp.get("saved_group")) is not None:
+            # the SAVED-group picker: "" clears; grouping is presentation-only (never a metric)
+            st.set_saved_group(find_saved_group(schedules, sg_name) if sg_name else None)
         # the page shows the URL preview when rows are present, else the live session filter
         criteria: list[Criterion] = param_criteria if fields else list(st.active_filter)
         applied = bool(st.active_filter) and criteria == list(st.active_filter)
         return _page(
             st,
             "Groups & Filters",
-            _groups_body(versions, version_key, sch, criteria, breakdown, applied),
+            _saved_views_panel(st, schedules)
+            + prompt_form
+            + _groups_body(versions, version_key, sch, criteria, breakdown, applied, st),
         )
 
     @app.get("/api/group-values")
@@ -13729,6 +13808,163 @@ def _groups_per_file_table(versions: list[tuple[str, Schedule]], criteria: list[
     )
 
 
+_OP_TEXT = {
+    "EQUALS": "=",
+    "DOES_NOT_EQUAL": "≠",
+    "IS_GREATER_THAN": ">",
+    "IS_LESS_THAN": "<",
+    "IS_GREATER_THAN_OR_EQUAL_TO": "≥",
+    "IS_LESS_THAN_OR_EQUAL_TO": "≤",
+    "CONTAINS": "contains",
+    "DOES_NOT_CONTAIN": "does not contain",
+    "CONTAINS_EXACTLY": "contains exactly",
+    "IS_WITHIN": "is within",
+    "IS_NOT_WITHIN": "is not within",
+    "IS_ANY_VALUE": "is any value",
+}
+
+
+def _criteria_text(node: SavedCriterion | None) -> str:
+    """A compact, human-readable rendering of a saved filter's criteria tree (for chips/banner)."""
+    if node is None:
+        return "all tasks"
+    if node.is_branch:
+        parts = [_criteria_text(c) for c in node.children]
+        joiner = " AND " if node.operator == "AND" else " OR "
+        return "(" + joiner.join(parts) + ")" if len(parts) > 1 else (parts[0] if parts else "all")
+
+    def operand_text(op: SavedOperand) -> str:
+        if op.kind == "null":
+            return "(none)"
+        if op.kind == "prompt":
+            return f"?[{op.text or 'prompt'}]"
+        if op.kind == "field":
+            return f"[{op.text}]"
+        return op.text or ""
+
+    ops = ", ".join(operand_text(o) for o in node.operands)
+    verb = _OP_TEXT.get(node.operator, node.operator)
+    return f"{node.field or '?'} {verb} {ops}".rstrip()
+
+
+def _saved_prompt_form(saved: SavedFilter, answers: dict[str, str], mode: str) -> str:
+    """MS Project's interactive-filter prompt, as a form: one input per prompt label; the filter is
+    applied only when every prompt is answered (the route re-renders this until then)."""
+    labels = required_prompts(saved)
+    rows = []
+    for i, label in enumerate(labels):
+        val = _e(answers.get(label, ""))
+        rows.append(
+            f"<label style='display:block;margin:.3em 0'>{_e(label)} "
+            f'<input type=text name="prompt_{i}" value="{val}" '
+            "placeholder='e.g. 2026-05-24 / 3d / 42'></label>"
+        )
+    return (
+        "<div class=panel><h2>Filter needs values</h2>"
+        f"<p class=muted>“{_e(saved.display_name)}” is an interactive filter — MS Project asks "
+        "for these values when it is applied. Dates accept ISO (2026-05-24), durations accept "
+        "3d / 16h, numbers plain.</p>"
+        "<form method=get action=/groups>"
+        f'<input type=hidden name=saved_filter value="{_e(saved.name)}">'
+        f'<input type=hidden name=mode value="{_e(mode)}">'
+        f"{''.join(rows)}"
+        "<button type=submit>Apply filter</button></form></div>"
+    )
+
+
+def _saved_views_panel(st: SessionState, schedules: list[Schedule]) -> str:
+    """Feature #10's saved-views controls: the MS Project saved FILTER picker (A-Z), the
+    reduce/highlight mode, and the saved GROUP picker (A-Z) — applied session-wide."""
+    filters = saved_filters_union(schedules)
+    groups = saved_groups_union(schedules)
+    if not filters and not groups:
+        return (
+            "<div class=panel><h2>MS Project saved views</h2><p class=muted>None of the loaded "
+            "files carries saved filters or groups (they load from native .mpp files; MSPDI/XER "
+            "formats do not define them).</p></div>"
+        )
+    active_f = st.active_saved_filter
+    fopts = ['<option value="">(no saved filter)</option>']
+    for f in filters:
+        marks = []
+        if f.is_interactive:
+            marks.append("…asks values")
+        if not f.is_task_filter:
+            marks.append("resource")
+        suffix = f" ({', '.join(marks)})" if marks else ""
+        sel = " selected" if active_f is not None and f.name == active_f.name else ""
+        fopts.append(f'<option value="{_e(f.name)}"{sel}>{_e(f.display_name)}{_e(suffix)}</option>')
+    gopts = ['<option value="">(no group — file order)</option>']
+    for g in groups:
+        gsel = (
+            " selected"
+            if st.active_saved_group is not None and g.name == st.active_saved_group.name
+            else ""
+        )
+        gopts.append(f'<option value="{_e(g.name)}"{gsel}>{_e(g.display_name)}</option>')
+    reduce_ck = " checked" if st.filter_mode != "highlight" else ""
+    hi_ck = " checked" if st.filter_mode == "highlight" else ""
+    active_bits = []
+    if active_f is not None:
+        answered = ""
+        if st.saved_filter_prompts:
+            answered = " — " + ", ".join(
+                f"{_e(k)} = {_e(str(v))}" for k, v in st.saved_filter_prompts.items()
+            )
+        active_bits.append(
+            f"<p class=muted>Active saved filter: <b>{_e(active_f.display_name)}</b> "
+            f"<span class=dp-chip>{_e(_criteria_text(active_f.criteria))}</span>{answered}</p>"
+        )
+    if st.active_saved_group is not None:
+        active_bits.append(
+            f"<p class=muted>Active group: <b>{_e(st.active_saved_group.display_name)}</b> "
+            "(ordering/banding only — metric populations never change).</p>"
+        )
+    return f"""
+<div class=panel><h2>MS Project saved views</h2>
+<p class=muted>The filters and groups saved INSIDE the loaded .mpp files, reproduced faithfully
+(A-Z). A saved filter scopes <b>every metric on every page</b> in <b>Reduce</b> mode; in
+<b>Highlight</b> mode it only marks the matching tasks and metrics stay whole-schedule.</p>
+<form method=get action=/groups class=viz-controls>
+<label>Saved filter: <select name=saved_filter data-no-i18n>{"".join(fopts)}</select></label>
+<span class=opt-group><b>Mode</b>
+<label><input type=radio name=mode value=reduce{reduce_ck}> Reduce (scope metrics)</label>
+<label><input type=radio name=mode value=highlight{hi_ck}> Highlight (mark only)</label></span>
+<label>Saved group: <select name=saved_group data-no-i18n>{"".join(gopts)}</select></label>
+<button type=submit>Apply saved views</button>
+</form>
+{"".join(active_bits)}</div>"""
+
+
+def _saved_group_table(sch: Schedule, group: SavedGroup) -> str:
+    """The active saved group realized on the preview file: one row per bucket (in the group's
+    own order), with the bucket's activity count and completion split. Presentation only."""
+    buckets = group_by_clauses(sch, group)
+    by_id = sch.tasks_by_id
+    rows = []
+    for label, uids in buckets[:200]:
+        tasks = [by_id[u] for u in uids if u in by_id]
+        n = len(tasks)
+        done = sum(1 for t in tasks if t.percent_complete >= 100.0)
+        rows.append(
+            f"<tr><td>{_e(label)}</td><td class=num>{n}</td>"
+            f"<td class=num>{done}</td><td class=num>{n - done}</td></tr>"
+        )
+    more = (
+        f"<p class=muted>… and {len(buckets) - 200} more buckets (showing the first 200).</p>"
+        if len(buckets) > 200
+        else ""
+    )
+    return (
+        f"<div class=panel><h2>Grouped preview — {_e(group.display_name)}</h2>"
+        "<p class=muted>Buckets in the group's own order (each clause's direction honored; "
+        "MS Project semantics). Grouping never changes a metric.</p>"
+        '<div style="overflow-x:auto"><table class=data-table><thead><tr><th>Group</th>'
+        "<th>Activities</th><th>Complete</th><th>Remaining</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table></div>{more}</div>"
+    )
+
+
 def _groups_body(
     versions: list[tuple[str, Schedule]],
     version_key: str,
@@ -13736,6 +13972,7 @@ def _groups_body(
     criteria: list[Criterion],
     breakdown: str,
     applied: bool = False,
+    st: SessionState | None = None,
 ) -> str:
     """The Groups & Filters view: build a filter that scopes EVERY metric on EVERY page across ALL
     loaded files (ADR-0104), see its reach per file, and preview the scorecard/breakdown on one
@@ -13767,6 +14004,27 @@ def _groups_body(
             "(logical AND across rows; values OR'd within a row).</p>"
             f"<p class=muted><b>{matched}</b> of {total} activities match in the preview file.</p>"
             f"{_groups_per_file_table(versions, criteria)}</div>"
+        )
+    elif st is not None and st.active_saved_filter is not None:
+        # a SAVED filter owns the session scope (mutual exclusivity with the field rows)
+        saved = st.active_saved_filter
+        matched_set = st.highlight_uids(sch) if st.filter_mode == "highlight" else None
+        if matched_set is None:
+            scoped_n = len(non_summary(st.scope(sch)))
+            reach = (
+                f"<b>{scoped_n}</b> of {len(non_summary(sch))} activities remain in the preview "
+                "file (Reduce mode — every metric on every page is scoped)."
+            )
+        else:
+            reach = (
+                f"<b>{len(matched_set)}</b> of {len(sch.tasks)} tasks match in the preview file "
+                "(Highlight mode — matches are only MARKED; metrics stay whole-schedule)."
+            )
+        summary = (
+            f"<div class=panel><h2>Active scope</h2><p>Saved filter "
+            f"<b>{_e(saved.display_name)}</b> "
+            f'<span class="dp-chip">{_e(_criteria_text(saved.criteria))}</span></p>'
+            f"<p class=muted>{reach}</p></div>"
         )
     else:
         summary = (
@@ -13806,12 +14064,16 @@ def _groups_body(
         if breakdown and breakdown in available_fields(sch)
         else ""
     )
+    # the session-wide SAVED group realized on the (scoped) preview file — presentation only
+    group_html = ""
+    if st is not None and st.active_saved_group is not None:
+        group_html = _saved_group_table(st.scope(sch), st.active_saved_group)
     tip = _user_tip(
         "Build a filter here and <b>Apply to all pages</b> to scope <b>every</b> metric on "
         "<b>every</b> page across all loaded files at once. Rows are AND-ed together; the values "
         "within a row are OR-ed."
     )
-    return tip + form + summary + scorecard + breakdown_html
+    return tip + form + summary + group_html + scorecard + breakdown_html
 
 
 def _how_stable_header(ev: PathEvolution) -> str:
