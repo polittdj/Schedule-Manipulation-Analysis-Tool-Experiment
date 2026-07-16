@@ -32,6 +32,7 @@ _DATE_FIELDS = (
     "actual_finish",
     "baseline_start",
     "baseline_finish",
+    "stop",
     "constraint_date",
     "deadline",
 )
@@ -154,6 +155,7 @@ def _task(raw: dict[str, Any]) -> Task:
         "baseline_duration_minutes",
         "calendar_uid",
         "outline_level",
+        "priority",
         "stored_total_float_minutes",
     ):
         if raw.get(key) is not None:
@@ -164,6 +166,8 @@ def _task(raw: dict[str, Any]) -> Task:
         fields["stored_is_critical"] = bool(raw["stored_is_critical"])
     if raw.get("notes") is not None:
         fields["notes"] = str(raw["notes"])
+    if raw.get("outline_number") is not None:
+        fields["outline_number"] = str(raw["outline_number"])
     if isinstance(raw.get("custom_fields"), list):
         fields["custom_fields"] = tuple(
             (str(pair[0]), str(pair[1]))
@@ -438,6 +442,10 @@ def to_json_text(schedule: Schedule) -> str:
             task["calendar_uid"] = t.calendar_uid
         if t.outline_level:
             task["outline_level"] = t.outline_level
+        if t.outline_number is not None:
+            task["outline_number"] = t.outline_number
+        if t.priority is not None:
+            task["priority"] = t.priority
         if t.physical_percent_complete is not None:
             task["physical_percent_complete"] = t.physical_percent_complete
         # stored, progress-aware Total Slack / Critical flag — preferred over recomputed CPM float

@@ -282,6 +282,12 @@ def test_real_file_groups_resolve_faithfully(leveled: Schedule) -> None:
         "Auto Scheduled",
         "Manually Scheduled",
     ]
+    # PR-C.2: Priority / Status / Project+Outline-Number now resolve on the real file.
+    assert labels("&Priority") == ["500"]  # every task carries the MSP default priority
+    assert set(labels("Status")) == {"Complete", "Future Task", "Late", "On Schedule"}
+    outline = buckets("Priority &Keeping Outline Structure")
+    assert len(outline) > 2000  # one bucket per outline row (Project / Outline Number / Priority)
+    assert outline[0][0].startswith("Large Test File Leveled / 0 / ")
     # custom text groups resolve via the two-hop label lookup.
     assert labels("IPT") != ["(ungrouped)"] and len(buckets("IPT")) > 1
     # every bucket partitions the population (no task lost or double-counted) for a resolved group.

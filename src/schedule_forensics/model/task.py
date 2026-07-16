@@ -55,6 +55,10 @@ class Task(StrictFrozenModel):
     #: top-level WBS, 2 = its child, and so on to any depth. Drives the Gantt's Microsoft-Project
     #: style name indentation; the value, not a fixed count, sets the indent (ADR-0119).
     outline_level: int = 0
+    #: MS Project's dotted outline position (MSPDI ``<OutlineNumber>``: "1.2.3"). Presentation /
+    #: grouping only — never an identity key (it renumbers when rows move). ``None`` = the source
+    #: did not carry it (e.g. XER, whose analogue is the WBS path already on :attr:`wbs`).
+    outline_number: str | None = None
 
     # --- duration (working minutes; 0 + is_milestone == instantaneous event) ---
     duration_minutes: int = Field(ge=0)
@@ -82,6 +86,11 @@ class Task(StrictFrozenModel):
     #: at its stored dates regardless of logic. The CPM engine honors this for unstarted
     #: tasks and reports the logic-vs-stored divergence as a cited finding (ADR-0034).
     is_manual: bool = False
+    #: MS Project Priority (MSPDI ``<Priority>``, 0-1000, MSP default 500) — drives resource
+    #: leveling and the saved "Priority" groupings. ``None`` = the source did not carry it
+    #: (P6's ``priority_type`` is a 5-level enum on a different axis; mapping it would invent
+    #: numbers, so XER leaves this unset).
+    priority: int | None = Field(default=None, ge=0, le=1000)
 
     # --- constraints ---
     constraint_type: ConstraintType = ConstraintType.ASAP
@@ -108,6 +117,10 @@ class Task(StrictFrozenModel):
     actual_finish: dt.datetime | None = None
     baseline_start: dt.datetime | None = None
     baseline_finish: dt.datetime | None = None
+    #: MS Project "Stop" (MSPDI ``<Stop>``): the date through which actual progress is recorded.
+    #: It is the stored input MS Project judges its computed *Status* column from (Complete /
+    #: On Schedule / Late / Future Task, against the status date); ``None`` = no progress yet.
+    stop: dt.datetime | None = None
 
     # --- cost / earned value ---
     # scheduled/actual cost may legitimately be negative in real exports (credits,

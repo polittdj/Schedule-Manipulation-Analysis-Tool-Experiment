@@ -561,6 +561,8 @@ def _parse_task(
             wbs=_text(task_el, "WBS"),
             calendar_uid=cal_uid,
             outline_level=_cosmetic_int(task_el, "OutlineLevel", 0),
+            outline_number=_text(task_el, "OutlineNumber"),
+            priority=_priority(task_el),
             duration_minutes=iso_duration_to_minutes(_text(task_el, "Duration")),
             duration_is_elapsed=_int(task_el, "DurationFormat") in _ELAPSED_DURATION_FORMATS,
             is_estimated_duration=_bool(task_el, "Estimated", default=False),
@@ -585,6 +587,7 @@ def _parse_task(
             actual_finish=parse_datetime(_text(task_el, "ActualFinish")),
             baseline_start=bl_start,
             baseline_finish=bl_finish,
+            stop=parse_datetime(_text(task_el, "Stop")),
             cost=parse_float(_text(task_el, "Cost")),
             actual_cost=parse_float(_text(task_el, "ActualCost")),
             budgeted_cost=bl_cost,
@@ -599,6 +602,21 @@ def _parse_task(
         )
     except pydantic.ValidationError as exc:
         raise ImporterError(f"task UID {uid} is invalid: {exc}") from exc
+
+
+def _priority(task_el: ET.Element) -> int | None:
+    """MS Project ``<Priority>`` (0-1000), or ``None`` when absent/garbled.
+
+    Cosmetic (grouping/leveling display) — a malformed value must never sink the file, and an
+    out-of-range one is clamped rather than refused (MSP itself clamps to the 0-1000 scale).
+    """
+    raw = _text(task_el, "Priority")
+    if raw is None:
+        return None
+    try:
+        return min(1000, max(0, int(raw)))
+    except ValueError:
+        return None
 
 
 def _optional_minutes(parent: ET.Element, tag: str) -> int | None:

@@ -192,6 +192,32 @@ def test_outline_level_is_read() -> None:
     assert sch.tasks_by_id[3].outline_level == 0  # absent element defaults to 0
 
 
+def test_priority_outline_number_and_stop_are_read() -> None:
+    """PR-C.2 group-fidelity fields: <Priority> (0-1000, clamped, tolerant), <OutlineNumber>
+    (dotted string), and <Stop> (the progress-through date MS Project's Status is judged from)."""
+    body = (
+        "<Tasks>"
+        "<Task><UID>1</UID><Name>A</Name><Priority>750</Priority>"
+        "<OutlineNumber>1.2.3</OutlineNumber><Stop>2025-01-10T17:00:00</Stop>"
+        "<Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>2</UID><Name>B</Name><Priority>9999</Priority>"
+        "<Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>3</UID><Name>C</Name><Priority>junk</Priority>"
+        "<Duration>PT8H0M0S</Duration></Task>"
+        "<Task><UID>4</UID><Name>D</Name><Duration>PT8H0M0S</Duration></Task>"
+        "</Tasks>"
+    )
+    sch = parse_mspdi_text(_doc(body))
+    t1 = sch.tasks_by_id[1]
+    assert t1.priority == 750
+    assert t1.outline_number == "1.2.3"
+    assert t1.stop == dt.datetime(2025, 1, 10, 17, 0)
+    assert sch.tasks_by_id[2].priority == 1000  # out-of-range clamps (MSP's own 0-1000 scale)
+    assert sch.tasks_by_id[3].priority is None  # garbled value never sinks the file
+    t4 = sch.tasks_by_id[4]
+    assert t4.priority is None and t4.outline_number is None and t4.stop is None
+
+
 def test_estimated_duration_flag_is_read() -> None:
     body = (
         "<Tasks>"
