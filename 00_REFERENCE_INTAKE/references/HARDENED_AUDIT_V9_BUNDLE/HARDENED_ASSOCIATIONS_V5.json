@@ -1,0 +1,3802 @@
+[
+  {
+    "oracle_file_id": "F0001",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0008",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project3.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-06-30T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project3",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0001",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0009",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project4.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-07-29T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project4",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0001",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0001",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0002",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0008",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project3.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-06-30T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project3",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0002",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0009",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project4.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-07-29T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project4",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0002",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0002",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0003",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0008",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project3.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-06-30T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0003",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0009",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project4.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-07-29T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project4"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0003",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0003",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0005",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0078",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0005",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0005",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0080",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large_Test_File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0006",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0078",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 770,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0006",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 770,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0006",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0080",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large_Test_File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 770,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0007",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0078",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0007",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0007",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/L12- Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0080",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large_Test_File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0011",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0021",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v2.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v2)",
+    "schedule_status_date": "2026-02-27T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0011",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0023",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v3.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v3)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v3",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0011",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0024",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v4.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v4)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v4",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0011",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0025",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v5.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v5)",
+    "schedule_status_date": "2026-05-29T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v5",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v5"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0011",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0012",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0021",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v2.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v2)",
+    "schedule_status_date": "2026-02-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0012",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0023",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v3.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v3)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0012",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0024",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v4.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v4)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v4"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0012",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0025",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v5.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v5)",
+    "schedule_status_date": "2026-05-29T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v5"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v5"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0012",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0013",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0021",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v2.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v2)",
+    "schedule_status_date": "2026-02-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0013",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0023",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v3.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v3)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0013",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0024",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v4.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v4)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v4"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v4"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0013",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0025",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/TP4_DataCenter_v5.mpp",
+    "schedule_title": "TP4 - Data Center Fit-Out (snapshot v5)",
+    "schedule_status_date": "2026-05-29T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp4 datacenter v5"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp4 datacenter v5"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0013",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0014",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP1 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0015",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP1 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0016",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP1 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0130",
+    "schedule_path": "ref1/TP1_Library_Progressed.mpp",
+    "schedule_title": "TP1 - Riverside Community Library (progressed, ragged actuals)",
+    "schedule_status_date": "2026-03-31T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp1 library progressed"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp1 library progressed"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0017",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0131",
+    "schedule_path": "ref1/TP2_Bridge_4x10_Calendar.mpp",
+    "schedule_title": "TP2 - Bridge Deck Rehabilitation (4x10 calendar + holidays)",
+    "schedule_status_date": "2026-04-06T07:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp2 bridge 4x10 calendar"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp2 bridge 4x10 calendar"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0017",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0132",
+    "schedule_path": "ref1/TP3_Outage_DCMA_Seeded.mpp",
+    "schedule_title": "TP3 - Coastal Plant Outage Turnaround (seeded DCMA violations)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp3 outage dcma seeded"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp3 outage dcma seeded"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0018",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0131",
+    "schedule_path": "ref1/TP2_Bridge_4x10_Calendar.mpp",
+    "schedule_title": "TP2 - Bridge Deck Rehabilitation (4x10 calendar + holidays)",
+    "schedule_status_date": "2026-04-06T07:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp2 bridge 4x10 calendar",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp2 bridge 4x10 calendar"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0018",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0132",
+    "schedule_path": "ref1/TP3_Outage_DCMA_Seeded.mpp",
+    "schedule_title": "TP3 - Coastal Plant Outage Turnaround (seeded DCMA violations)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp3 outage dcma seeded",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp3 outage dcma seeded"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0019",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0131",
+    "schedule_path": "ref1/TP2_Bridge_4x10_Calendar.mpp",
+    "schedule_title": "TP2 - Bridge Deck Rehabilitation (4x10 calendar + holidays)",
+    "schedule_status_date": "2026-04-06T07:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp2 bridge 4x10 calendar"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp2 bridge 4x10 calendar"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0019",
+    "oracle_path": "ref1/.mpp test files/2-3-4-5/TP23- Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0132",
+    "schedule_path": "ref1/TP3_Outage_DCMA_Seeded.mpp",
+    "schedule_title": "TP3 - Coastal Plant Outage Turnaround (seeded DCMA violations)",
+    "schedule_status_date": "2026-04-30T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: tp3 outage dcma seeded"
+    ],
+    "validation": {
+      "matched_labels": [
+        "tp3 outage dcma seeded"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0027",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm1",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm1"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0027",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0029",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references evm1.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "evm1",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0029",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references evm2.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "evm2",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0030",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM1 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm1"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm1"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0030",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM1 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0031",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM1- Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm1"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm1"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0031",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM1- Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0033",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM2 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm1"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm1"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0033",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM2 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0035",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM3- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0032",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM1.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-01T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm1"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm1"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0035",
+    "oracle_path": "ref1/.mpp test files/EVM/EVM3- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0034",
+    "schedule_path": "ref1/.mpp test files/EVM/EVM2.mpp",
+    "schedule_title": "Project Schedule",
+    "schedule_status_date": "2012-09-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: evm2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "evm2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0037",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Fuse Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0037",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Fuse Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0038",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0038",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0039",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0039",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0040",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Summary Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0040",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Fuse - Summary Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0042",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 90/90",
+      "start/finish exact 90/90"
+    ],
+    "validation": {
+      "rows": 90,
+      "uid_match": 90,
+      "name_match": 90,
+      "date_match": 90,
+      "date_comparable": 90
+    }
+  },
+  {
+    "oracle_file_id": "F0043",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_Path_Updated_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 86/86",
+      "start/finish exact 86/86"
+    ],
+    "validation": {
+      "rows": 86,
+      "uid_match": 86,
+      "name_match": 86,
+      "date_match": 86,
+      "date_comparable": 86
+    }
+  },
+  {
+    "oracle_file_id": "F0044",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0044",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0045",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0045",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0046",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Excel .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Workbook",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0046",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Excel .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Workbook",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0047",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0047",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0048",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Summary Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0048",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Summary Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0049",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file updated.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file updated",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0049",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update vs update2_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file updated2.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file updated2",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0050",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0050",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Analysis Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0051",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0051",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0052",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Excel .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Workbook",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0052",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Excel .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Workbook",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0053",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0053",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0054",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metrics Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0054",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metrics Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0055",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Summary Metrics Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0055",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Summary Metrics Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Summary Metrics Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0056",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file updated2.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file updated2",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0056",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file updated3.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file updated3",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0057",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_updated vs update 2_ Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0057",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_updated vs update 2_ Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0059",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2 vs update3 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0061",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-09-10T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated2"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0059",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_updated2 vs update3 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0063",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-10-12T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated3"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated3"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0066",
+    "oracle_path": "ref1/.mpp test files/Hard_File/Hard_File_updated_with_logic_reestablished_UID_155_Directional_Path_Analysis_2026-7-8-14-37-20.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0065",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated_with_logic_reestablished.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 900,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "UID+name exact 86/86",
+      "start/finish exact 86/86"
+    ],
+    "validation": {
+      "rows": 86,
+      "uid_match": 86,
+      "name_match": 86,
+      "date_match": 86,
+      "date_comparable": 86
+    }
+  },
+  {
+    "oracle_file_id": "F0067",
+    "oracle_path": "ref1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 770,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0069",
+    "oracle_path": "ref1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0071",
+    "oracle_path": "ref1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics1.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0072",
+    "oracle_path": "ref1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen- Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 770,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0073",
+    "oracle_path": "ref1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen1 - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 650,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 2
+    }
+  },
+  {
+    "oracle_file_id": "F0074",
+    "oracle_path": "ref1/.mpp test files/Large Test File/Large Test File Leveled All Dependencies with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-21-13.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0077",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 783/783",
+      "start/finish exact 783/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 783,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0076",
+    "oracle_path": "ref1/.mpp test files/Large Test File/Large Test File Leveled Critical - Secondary - Teritiary - with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-22-42.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0077",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 122/122",
+      "start/finish exact 122/122"
+    ],
+    "validation": {
+      "rows": 122,
+      "uid_match": 122,
+      "name_match": 122,
+      "date_match": 122,
+      "date_comparable": 122
+    }
+  },
+  {
+    "oracle_file_id": "F0084",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v51 - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 700,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0084",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v51 - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0085",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v52 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 700,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0085",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v52 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0086",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v53 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 700,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0086",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v53 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0087",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v54- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 700,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0087",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v54- Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0088",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v55 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 820,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0088",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/2v55 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0089",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project2v5 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 700,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0089",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project2v5 Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0091",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P-P5 - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0091",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P-P5 - Quick Add Metrics .xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0092",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0092",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0093",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0093",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Detailed Metric Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Detailed Metric Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0094",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 795,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0094",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Metric History Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Metric History Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 745,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2",
+      "embedded version date matches schedule status date"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0095",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 675,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0095",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5 - Quick Add Metrics.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Quick Add/Ribbon Export",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 625,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_path_best",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0096",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1075,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references project5 tampered.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project5 tampered",
+      "folder_prefix_depth": 3
+    }
+  },
+  {
+    "oracle_file_id": "F0096",
+    "oracle_path": "ref1/.mpp test files/Project2 - Project5/P2-P5.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 1025,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references project2.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project2",
+      "folder_prefix_depth": 1
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0008",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project3.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-06-30T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references project3.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project3",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0009",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project4.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-07-29T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references project4.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project4",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_name_equivalence_class",
+    "evidence": [
+      "AFW explicitly references project5 tampered.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project5 tampered",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_name_equivalence_class",
+    "evidence": [
+      "AFW explicitly references project5 tampered.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project5 tampered",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_name_equivalence_class",
+    "evidence": [
+      "AFW explicitly references project5 tampered.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project5 tampered",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0135",
+    "oracle_path": "ref2/2345.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references project2.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "project2",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0139",
+    "oracle_path": "ref2/Hard_File Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: hard file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0139",
+    "oracle_path": "ref2/Hard_File Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: hard file updated"
+    ],
+    "validation": {
+      "matched_labels": [
+        "hard file updated"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0140",
+    "oracle_path": "ref2/Hard_File_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0036",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-07-07T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0140",
+    "oracle_path": "ref2/Hard_File_Fuse.afw",
+    "vendor": "Acumen Fuse Workspace",
+    "report_type": "Acumen AFW Workspace",
+    "schedule_file_id": "F0058",
+    "schedule_path": "ref1/.mpp test files/Hard_File/Hard_File_updated.mpp",
+    "schedule_title": "Customer Service Ramp Up",
+    "schedule_status_date": "2026-08-11T17:00",
+    "score": 1000,
+    "confidence": "confirmed",
+    "source_resolution": "explicit_mpp_reference",
+    "evidence": [
+      "AFW explicitly references hard file updated.mpp"
+    ],
+    "validation": {
+      "explicit_reference_label": "hard file updated",
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0141",
+    "oracle_path": "ref2/Large Test File (OverAl Fixed) UID_152_Directional_Path_Analysis_2026-6-24-13-17-48.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0110",
+    "schedule_path": "ref1/Large Test File Leveled with Driving Slack Not Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 900,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "UID+name exact 783/783",
+      "start/finish exact 783/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 783,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0142",
+    "oracle_path": "ref2/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0078",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 76/76",
+      "start/finish exact 76/76"
+    ],
+    "validation": {
+      "rows": 76,
+      "uid_match": 76,
+      "name_match": 76,
+      "date_match": 76,
+      "date_comparable": 76
+    }
+  },
+  {
+    "oracle_file_id": "F0142",
+    "oracle_path": "ref2/Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0080",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large_Test_File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 76/76",
+      "start/finish exact 76/76"
+    ],
+    "validation": {
+      "rows": 76,
+      "uid_match": 76,
+      "name_match": 76,
+      "date_match": 76,
+      "date_comparable": 76
+    }
+  },
+  {
+    "oracle_file_id": "F0144",
+    "oracle_path": "ref2/Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0144",
+    "oracle_path": "ref2/Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0144",
+    "oracle_path": "ref2/Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: project5 tampered"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project5 tampered"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0144",
+    "oracle_path": "ref2/Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen Forensic Analysis Report",
+    "schedule_file_id": "F0102",
+    "schedule_path": "ref1/00_REFERENCE_INTAKEmppProject2.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-05-24T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: project2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "project2"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0145",
+    "oracle_path": "ref2/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 20/20",
+      "start/finish exact 20/20"
+    ],
+    "validation": {
+      "rows": 20,
+      "uid_match": 20,
+      "name_match": 20,
+      "date_match": 20,
+      "date_comparable": 20
+    }
+  },
+  {
+    "oracle_file_id": "F0145",
+    "oracle_path": "ref2/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 20/20",
+      "start/finish exact 20/20"
+    ],
+    "validation": {
+      "rows": 20,
+      "uid_match": 20,
+      "name_match": 20,
+      "date_match": 20,
+      "date_comparable": 20
+    }
+  },
+  {
+    "oracle_file_id": "F0145",
+    "oracle_path": "ref2/Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 20/20",
+      "start/finish exact 20/20"
+    ],
+    "validation": {
+      "rows": 20,
+      "uid_match": 20,
+      "name_match": 20,
+      "date_match": 20,
+      "date_comparable": 20
+    }
+  },
+  {
+    "oracle_file_id": "F0164",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0164",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0164",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0165",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 13/13",
+      "start/finish exact 13/13"
+    ],
+    "validation": {
+      "rows": 13,
+      "uid_match": 13,
+      "name_match": 13,
+      "date_match": 13,
+      "date_comparable": 13
+    }
+  },
+  {
+    "oracle_file_id": "F0165",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 13/13",
+      "start/finish exact 13/13"
+    ],
+    "validation": {
+      "rows": 13,
+      "uid_match": 13,
+      "name_match": 13,
+      "date_match": 13,
+      "date_comparable": 13
+    }
+  },
+  {
+    "oracle_file_id": "F0165",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 13/13",
+      "start/finish exact 13/13"
+    ],
+    "validation": {
+      "rows": 13,
+      "uid_match": 13,
+      "name_match": 13,
+      "date_match": 13,
+      "date_comparable": 13
+    }
+  },
+  {
+    "oracle_file_id": "F0166",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0010",
+    "schedule_path": "ref1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0166",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0082",
+    "schedule_path": "ref1/.mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0166",
+    "oracle_path": "ref2/UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0090",
+    "schedule_path": "ref1/.mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "schedule_title": "Commercial Construction",
+    "schedule_status_date": "2026-08-27T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "equivalence_class",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 108/108",
+      "start/finish exact 108/108"
+    ],
+    "validation": {
+      "rows": 108,
+      "uid_match": 108,
+      "name_match": 108,
+      "date_match": 108,
+      "date_comparable": 108
+    }
+  },
+  {
+    "oracle_file_id": "F0167",
+    "oracle_path": "ref2/UID_152_Directional_Path_Analysis_2026-6-23-12-46-44.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0110",
+    "schedule_path": "ref1/Large Test File Leveled with Driving Slack Not Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 900,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "UID+name exact 783/783",
+      "start/finish exact 783/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 783,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0169",
+    "oracle_path": "ref2/UID_152_Directional_Path_Analysis_ALL_2026-6-23-15-5-21.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0110",
+    "schedule_path": "ref1/Large Test File Leveled with Driving Slack Not Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 900,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "UID+name exact 783/783",
+      "start/finish exact 783/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 783,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0168",
+    "oracle_path": "ref2/UID_152_Directional_Path_Analysis_All Dependents Not Leveled_2026-6-23-20-30-55.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0111",
+    "schedule_path": "ref1/Large Test File Leveled with Driving Slack.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1150,
+    "confidence": "probable",
+    "source_resolution": "structural_only",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 783/783",
+      "start/finish >=95% 757/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 757,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0170",
+    "oracle_path": "ref2/UID_152_Directional_Path_Analysis_Leveled_All_Dependents_2026-6-23-20-28-26.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0077",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File Leveled.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 1150,
+    "confidence": "probable",
+    "source_resolution": "structural_only",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 783/783",
+      "start/finish >=95% 753/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 753,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0171",
+    "oracle_path": "ref2/UID_152_Directional_Path_Analysis_Resource_Level_2026-6-23-17-8-43.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0111",
+    "schedule_path": "ref1/Large Test File Leveled with Driving Slack.mpp",
+    "schedule_title": "USA OTB Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 900,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "UID+name exact 783/783",
+      "start/finish exact 783/783"
+    ],
+    "validation": {
+      "rows": 783,
+      "uid_match": 783,
+      "name_match": 783,
+      "date_match": 783,
+      "date_comparable": 783
+    }
+  },
+  {
+    "oracle_file_id": "F0172",
+    "oracle_path": "ref2/UID_4_Directional_Path_Analysis_2026-6-23-15-42-46.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0104",
+    "schedule_path": "ref1/5 Task Test File.mpp",
+    "schedule_title": "5 Task Test File",
+    "schedule_status_date": "2026-07-06T17:00",
+    "score": 800,
+    "confidence": "structural-only",
+    "source_resolution": "structural_only",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 4/4"
+    ],
+    "validation": {
+      "rows": 4,
+      "uid_match": 4,
+      "name_match": 4,
+      "date_match": 1,
+      "date_comparable": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0173",
+    "oracle_path": "ref2/UID_4_Directional_Path_Analysis_Progress_2026-6-23-16-0-6.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0104",
+    "schedule_path": "ref1/5 Task Test File.mpp",
+    "schedule_title": "5 Task Test File",
+    "schedule_status_date": "2026-07-06T17:00",
+    "score": 800,
+    "confidence": "structural-only",
+    "source_resolution": "structural_only",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 4/4"
+    ],
+    "validation": {
+      "rows": 4,
+      "uid_match": 4,
+      "name_match": 4,
+      "date_match": 1,
+      "date_comparable": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0174",
+    "oracle_path": "ref2/UID_4_Directional_Path_Analysis_Split_2026-6-23-16-31-24.xlsx",
+    "vendor": "SSI Tools",
+    "report_type": "SSI Directional Path Export",
+    "schedule_file_id": "F0104",
+    "schedule_path": "ref1/5 Task Test File.mpp",
+    "schedule_title": "5 Task Test File",
+    "schedule_status_date": "2026-07-06T17:00",
+    "score": 1300,
+    "confidence": "confirmed",
+    "source_resolution": "exact",
+    "evidence": [
+      "SSI Project column exact alias",
+      "UID+name exact 4/4",
+      "start/finish exact 4/4"
+    ],
+    "validation": {
+      "rows": 4,
+      "uid_match": 4,
+      "name_match": 4,
+      "date_match": 4,
+      "date_comparable": 4
+    }
+  },
+  {
+    "oracle_file_id": "F0175",
+    "oracle_path": "ref2/Workbook1 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0078",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0175",
+    "oracle_path": "ref2/Workbook1 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0079",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large Test File2.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-03-10T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: large test file2"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file2"
+      ],
+      "folder_prefix_depth": 0
+    }
+  },
+  {
+    "oracle_file_id": "F0175",
+    "oracle_path": "ref2/Workbook1 - DCMA Report.xlsx",
+    "vendor": "Acumen Fuse",
+    "report_type": "Acumen DCMA/Summary Report",
+    "schedule_file_id": "F0080",
+    "schedule_path": "ref1/.mpp test files/Large Test File/Large_Test_File.mpp",
+    "schedule_title": "Longstar Master IMS",
+    "schedule_status_date": "2025-02-07T17:00",
+    "score": 600,
+    "confidence": "confirmed",
+    "source_resolution": "exact_label_source_ambiguous",
+    "evidence": [
+      "Acumen embedded project/version label: large test file"
+    ],
+    "validation": {
+      "matched_labels": [
+        "large test file"
+      ],
+      "folder_prefix_depth": 0
+    }
+  }
+]
