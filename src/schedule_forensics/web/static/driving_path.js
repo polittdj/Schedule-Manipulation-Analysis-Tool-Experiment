@@ -242,17 +242,7 @@
   // MS-Project Find: jump the corridor to a UniqueID, scroll it into view and flash it
   var dpFind = $("dpFind");
   if (dpFind) {
-    var goFind = function () {
-      var uid = parseInt(dpFind.value, 10);
-      var status = $("dpFindStatus");
-      if (!uid) return;
-      var row = mount.querySelector('tr[data-uid="' + uid + '"]');
-      if (!row) { if (status) status.textContent = "UID " + uid + " not in this version's corridor"; return; }
-      if (status) status.textContent = "";
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
-      mount.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
-      row.classList.add("row-found");
-    };
+    var goFind = function () { SFGantt.findTask(mount, dpFind.value, $("dpFindStatus")); };
     dpFind.addEventListener("change", goFind);
     dpFind.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
   }

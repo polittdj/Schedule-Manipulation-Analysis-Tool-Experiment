@@ -29,6 +29,7 @@
   }
 
   var openPopup = null; // only one popup open at a time
+  var openedAt = 0; // when the current popup opened (see the grace window below)
   function closeOpen() {
     if (openPopup) { openPopup.style.display = "none"; openPopup = null; }
   }
@@ -36,14 +37,24 @@
   // position:fixed so it cannot follow a scroll — close it rather than let it drift). A scroll
   // INSIDE the popup (its option list scrolls at max-height 240px) must NOT close it, so the
   // capture-phase handler ignores events whose target lives in the open popup (operator bug:
-  // scrolling the value list slammed the dropdown shut).
+  // scrolling the value list slammed the dropdown shut). And opening must not close itself:
+  // on a Gantt the freeze-column/sticky-scrollbar layers (and the search box focus) fire
+  // scroll/resize events in the same beat the popup opens, which made the button look DEAD —
+  // the dropdown closed before it ever painted (operator: "the filter buttons don't work").
+  // A short grace window after opening ignores those self-inflicted events; a real user
+  // scroll still closes the popup as before.
+  var GRACE_MS = 400;
+  function closeUnlessJustOpened() {
+    if (Date.now() - openedAt < GRACE_MS) return;
+    closeOpen();
+  }
   document.addEventListener("click", closeOpen);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeOpen(); });
   window.addEventListener("scroll", function (ev) {
     if (openPopup && ev.target && openPopup.contains(ev.target)) return; // popup's own list
-    closeOpen();
+    closeUnlessJustOpened();
   }, true);
-  window.addEventListener("resize", closeOpen);
+  window.addEventListener("resize", closeUnlessJustOpened);
 
   function filter(opts) {
     var values = opts.values.slice();
@@ -123,9 +134,12 @@
       popup.style.left = Math.round(r.left) + "px";
       popup.style.display = "block";
       openPopup = popup;
+      openedAt = Date.now();
       search.value = "";
       rows.forEach(function (rr) { rr.lab.style.display = ""; });
-      search.focus();
+      // preventScroll: focusing the search box must not scroll it into view — that scroll is
+      // exactly the event the capture-phase close handler would hear (the dead-button bug)
+      try { search.focus({ preventScroll: true }); } catch (e) { search.focus(); }
     });
 
     refreshBtn();

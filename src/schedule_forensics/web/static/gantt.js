@@ -441,6 +441,36 @@ window.SFGantt = (function () {
     });
   }
 
+  // MS-Project "Find" shared by every Gantt grid (operator: "find a task by a name or a part
+  // of a name" on ALL Gantt charts). A pure-integer query jumps to that UniqueID first; any
+  // other text (or an unknown UID) is a case-insensitive NAME/row substring — every matching
+  // row is marked row-found, the first scrolls into view, and the status reports the count.
+  function findTask(container, query, statusEl) {
+    if (!container) return;
+    var q = String(query == null ? "" : query).trim();
+    container.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
+    if (!q) { if (statusEl) statusEl.textContent = ""; return; }
+    var hits = [];
+    if (/^\d+$/.test(q)) {
+      var byUid = container.querySelector('tr[data-uid="' + q + '"]');
+      if (byUid) hits = [byUid];
+    }
+    if (!hits.length) {
+      var ql = q.toLowerCase();
+      var rows = container.querySelectorAll("tr[data-uid]");
+      for (var i = 0; i < rows.length; i++) {
+        if ((rows[i].textContent || "").toLowerCase().indexOf(ql) >= 0) hits.push(rows[i]);
+      }
+    }
+    if (!hits.length) {
+      if (statusEl) statusEl.textContent = "no match for “" + q + "” in view";
+      return;
+    }
+    hits.forEach(function (r) { r.classList.add("row-found"); });
+    hits[0].scrollIntoView({ block: "center", behavior: "smooth" });
+    if (statusEl) statusEl.textContent = hits.length === 1 ? "" : hits.length + " matches";
+  }
+
   return {
     DAY_MS: DAY_MS, MONTHS: MONTHS, el: el, fmtMDY: fmtMDY,
     timeTiers: timeTiers, buildTierScale: buildTierScale,
@@ -450,6 +480,7 @@ window.SFGantt = (function () {
     attachEdgeExtend: attachEdgeExtend,
     moveTableColumn: moveTableColumn, moveTableColumnTo: moveTableColumnTo,
     attachColumnMovers: attachColumnMovers, attachColumnDrag: attachColumnDrag,
+    findTask: findTask,
   };
 })();
 
