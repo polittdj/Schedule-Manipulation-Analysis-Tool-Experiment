@@ -27,6 +27,17 @@ from __future__ import annotations
 
 from schedule_forensics.model._base import StrictFrozenModel
 
+
+def _strip_accelerator(name: str) -> str:
+    """Strip MS Project's ``&`` keyboard-accelerator markers from a saved view's name for display.
+
+    In MS Project a single ``&`` before a character marks the Alt-key accelerator (``Mi&lestones``
+    → *Milestones*, the ``l`` underlined), and a literal ampersand is escaped as ``&&``. Reverse
+    both: protect ``&&``, drop the remaining accelerator ``&``, then restore the literal ``&``.
+    """
+    return name.replace("&&", "\x00").replace("&", "").replace("\x00", "&")
+
+
 #: The ``org.mpxj.TestOperator`` leaf comparison names, verbatim — exactly the strings the MPXJ
 #: export emits for ``GenericCriteria.getOperator().name()`` (the ``AND``/``OR`` branch
 #: combiners are below).
@@ -109,6 +120,16 @@ class SavedFilter(StrictFrozenModel):
     show_related_summary_rows: bool = False
     prompt_count: int = 0
 
+    @property
+    def display_name(self) -> str:
+        """The name with MS Project ``&`` keyboard accelerators stripped (for menus / A-Z sort)."""
+        return _strip_accelerator(self.name)
+
+    @property
+    def is_interactive(self) -> bool:
+        """True when the filter asks the operator for at least one value at apply time."""
+        return self.prompt_count > 0
+
 
 class GroupClause(StrictFrozenModel):
     """One clause of a group definition: the field to bucket on + how to sort/interval it.
@@ -132,3 +153,8 @@ class SavedGroup(StrictFrozenModel):
     name: str
     show_summary_tasks: bool = True
     clauses: tuple[GroupClause, ...] = ()
+
+    @property
+    def display_name(self) -> str:
+        """The name with MS Project ``&`` keyboard accelerators stripped (for menus / A-Z sort)."""
+        return _strip_accelerator(self.name)

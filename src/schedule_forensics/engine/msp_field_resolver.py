@@ -93,6 +93,12 @@ _CORE: dict[str, tuple[Callable[[Task], FieldValue], FieldKind]] = {
     "MILESTONE": (lambda t: t.is_milestone, FieldKind.BOOLEAN),
     "ACTIVE": (lambda t: t.is_active, FieldKind.BOOLEAN),
     "CRITICAL": (lambda t: t.stored_is_critical, FieldKind.BOOLEAN),
+    # MS Project's "Task Mode" grouping ("Auto Scheduled vs. Manually Scheduled"); derived from the
+    # model's is_manual flag, phrased exactly as MS Project labels the two buckets.
+    "TASK_MODE": (
+        lambda t: "Manually Scheduled" if t.is_manual else "Auto Scheduled",
+        FieldKind.STRING,
+    ),
     "TOTAL_SLACK": (lambda t: t.stored_total_float_minutes, FieldKind.DURATION_MINUTES),
     "CONSTRAINT_TYPE": (
         lambda t: t.constraint_type.value if t.constraint_type else None,
@@ -133,6 +139,8 @@ _DISPLAY_TO_ENUM: dict[str, str] = {
     "Actual Work": "ACTUAL_WORK",
     "Actual Cost": "ACTUAL_COST",
     "Resource Names": "RESOURCE_NAMES",
+    "Duration": "DURATION",
+    "Task Mode": "TASK_MODE",
 }
 
 #: Fields the source cannot carry or the model drops by design → unresolvable (UI annotates).
@@ -165,6 +173,22 @@ _ENUM_FAMILY_TO_DISPLAY: dict[str, str] = {
     "START": "Start",
     "FINISH": "Finish",
 }
+
+
+def _normalize_enum(field_enum: str | None) -> str | None:
+    """Canonicalize a group/filter clause's MPXJ enum.
+
+    MS Project exposes some fields to a **group** clause by their *text* variant — the Duration
+    column arrives as ``DURATION_TEXT``, a custom duration as ``DURATION8_TEXT`` — which is the same
+    underlying value, just formatted. Strip a trailing ``_TEXT`` when the base names a real field
+    (a core enum or a custom family), so the value resolves instead of degrading to UNRESOLVED. A
+    genuinely unknown enum (``BOARD_STATUS``) is left untouched and still resolves to UNRESOLVED.
+    """
+    if field_enum and field_enum.endswith("_TEXT"):
+        base = field_enum[: -len("_TEXT")]
+        if base in _CORE or _CUSTOM_ENUM_RE.match(base):
+            return base
+    return field_enum
 
 
 def _custom_family(raw_field: str, field_enum: str | None) -> str | None:
@@ -201,6 +225,7 @@ def field_kind(raw_field: str, *, field_enum: str | None = None) -> FieldKind:
     """The comparison kind of a field **without a task** — lets the evaluator coerce a filter's
     literal
     right-hand value (``"0.0d"`` → minutes, ``"true"`` → bool, an ISO date) before comparing."""
+    field_enum = _normalize_enum(field_enum)
     if field_enum and field_enum in _UNRESOLVABLE_ENUMS:
         return FieldKind.UNRESOLVED
     if field_enum and field_enum in _CORE:
@@ -224,6 +249,7 @@ def resolve_field(
     the raw/display name): a core attribute, else a custom field via the two-hop label lookup,
     else
     :data:`FieldKind.UNRESOLVED`."""
+    field_enum = _normalize_enum(field_enum)
     if field_enum and field_enum in _UNRESOLVABLE_ENUMS:
         return ResolvedField(None, FieldKind.UNRESOLVED, resolvable=False)
     # core field (by enum, then display alias, then a raw_field that is itself the enum)

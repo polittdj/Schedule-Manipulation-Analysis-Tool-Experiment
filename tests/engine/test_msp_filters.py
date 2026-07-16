@@ -152,6 +152,20 @@ def test_resolver_field_kind_and_unresolvable() -> None:
     assert field_kind("Board Status", field_enum="BOARD_STATUS") is FieldKind.UNRESOLVED
 
 
+def test_resolver_strips_text_enum_suffix() -> None:
+    sch = _population()
+    t1 = sch.tasks_by_id[1]
+    # MPXJ names a group's Duration column DURATION_TEXT / a custom one DURATION8_TEXT (audit F1);
+    # both are the same underlying value and must resolve, not degrade to UNRESOLVED.
+    assert field_kind("Duration", field_enum="DURATION_TEXT") is FieldKind.DURATION_MINUTES
+    assert resolve_field(sch, t1, "Duration", field_enum="DURATION_TEXT").value == DAY
+    assert field_kind("Duration8", field_enum="DURATION8_TEXT") is FieldKind.DURATION_MINUTES
+    assert resolve_field(sch, t1, "Duration8", field_enum="DURATION8_TEXT").value == DAY
+    # Task Mode (Auto vs Manually Scheduled), derived from is_manual
+    assert field_kind("Task Mode", field_enum="TASK_MODE") is FieldKind.STRING
+    assert resolve_field(sch, t1, "Task Mode", field_enum="TASK_MODE").value == "Auto Scheduled"
+
+
 # --- operator semantics ------------------------------------------------------------------------
 def _match(
     sch: Schedule, uid: int, crit: Criterion, prompts: dict[str, object] | None = None

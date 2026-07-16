@@ -108,7 +108,10 @@ from schedule_forensics.engine.grouping import (
     distinct_values,
     field_value,
     filter_schedule,
+    filter_to_uids,
     group_values,
+    select,
+    with_ancestors,
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.margin_dashboard import (
@@ -179,6 +182,8 @@ from schedule_forensics.engine.metrics.performance_summary import (
 )
 from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
+from schedule_forensics.engine.msp_field_resolver import FieldValue
+from schedule_forensics.engine.msp_filters import select as _select_saved
 from schedule_forensics.engine.path_counterfactual import (
     PathCounterfactual,
     compute_path_counterfactual,
@@ -243,6 +248,7 @@ from schedule_forensics.importers import (
     to_json_text,
 )
 from schedule_forensics.importers.mpp_mpxj import mpxj_batch_session
+from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
@@ -550,6 +556,25 @@ class SessionState:
     # schedule keeps one identity across a request and the analysis cache below still hits. Cleared
     # whenever the filter changes (set_filter) or the session is wiped.
     _scoped: dict[int, tuple[Schedule, Schedule]] = field(default_factory=dict)
+    # --- feature #10: session-wide SAVED (MS Project) filters & groups + HIGHLIGHT mode ----------
+    # The session-wide SAVED FILTER — a faithful MS Project criteria tree (the reproduction
+    # counterpart of the flat, field-based `active_filter` above). MUTUALLY EXCLUSIVE with it:
+    # setting one clears the other (two ways to name one session scope). None = no saved filter.
+    active_saved_filter: SavedFilter | None = None
+    # Operator answers for an interactive saved filter ("Date Range..." → 2 prompts), keyed by the
+    # prompt label; passed straight to the evaluator. Empty until the operator answers.
+    saved_filter_prompts: dict[str, FieldValue] = field(default_factory=dict)
+    # Filter MODE, applying to BOTH filter sources. "reduce" = today's behaviour (drop non-matching
+    # tasks). "highlight" = keep the FULL population and only MARK the matches — scope() does not
+    # reduce; the match set is carried to grids/gantt via highlight_uids().
+    filter_mode: str = "reduce"
+    # The session-wide SAVED GROUP (multi-clause) — ordering/banding only, never a population change.
+    # None = file order.
+    active_saved_group: SavedGroup | None = None
+    # match-set memo, id(original) -> (original, matched-UIDs | None). None value = "no filter" for
+    # that object. Same identity-stability contract as `_scoped`; cleared by every filter setter +
+    # wipe (grouping does NOT clear it — grouping never changes the match set).
+    _matched: dict[int, tuple[Schedule, frozenset[int] | None]] = field(default_factory=dict)
     # SRA manual inputs (ADR-0106, manual path). The global triangular multipliers applied to every
     # activity's REMAINING duration when no per-activity override is set (defaults = the industry
     # "Quick Risk" screening values, Deltek Acumen "Realistic" 90/100/110).
@@ -588,43 +613,119 @@ class SessionState:
     # /trend under concurrent filter+render). Single-operator tool: contention is negligible.
     _lock: threading.RLock = field(default_factory=threading.RLock)
 
+    def _match_uids(self, sch: Schedule) -> frozenset[int] | None:
+        """The UIDs of ``sch`` matching the active filter — the faithful saved-filter tree OR the
+        flat field criteria — or ``None`` when no filter is set (⇒ every task). Memoised by the
+        original's identity (the tree walk can be called several times per request); invalidated by
+        every filter setter and by wipe. Callers hold ``self._lock``."""
+        cached = self._matched.get(id(sch))
+        if cached is not None and cached[0] is sch:
+            return cached[1]
+        matched: frozenset[int] | None
+        if self.active_saved_filter is not None:
+            matched = frozenset(
+                _select_saved(sch, self.active_saved_filter, self.saved_filter_prompts)
+            )
+        elif self.active_filter:
+            matched = frozenset(select(sch, self.active_filter))
+        else:
+            matched = None
+        self._matched[id(sch)] = (sch, matched)
+        return matched
+
     def scope(self, sch: Schedule) -> Schedule:
         """``sch`` reduced to the active filter AND truncated to the target endpoint — the single
         point every page funnels through.
 
-        Returns ``sch`` unchanged when neither a filter nor a target endpoint is set. Otherwise
-        applies the session filter, then (when a Target UID is set) restricts the result to that
-        activity plus everything that drives it (:func:`subschedule_to_target`), so every metric and
-        visual treats the target as the schedule's endpoint and omits work beyond it. A version that
-        does not contain the target keeps its (filtered) full population. The result is memoised by
-        the original's identity so repeated calls in one request share one object (keeping the
-        per-key analysis cache valid); the memo resets on :meth:`set_filter` / :meth:`set_target` /
-        wipe."""
+        Returns ``sch`` unchanged when nothing narrows the population. A filter narrows only in
+        **reduce** mode: in **highlight** mode the matches are merely marked (see
+        :meth:`highlight_uids`), so ``scope()`` leaves the population whole and only the Target UID
+        can still truncate it. In reduce mode the matching tasks (plus their summary ancestors when
+        the saved filter asks to "show related summary rows") are kept, then — when a Target UID is
+        set and present — the result is restricted to that activity plus everything that drives it
+        (:func:`subschedule_to_target`). A version that does not contain the target keeps its
+        (filtered) population. Memoised by the original's identity so repeated calls in one request
+        share one object (keeping the per-key analysis cache valid); the memo resets on the filter/
+        target setters and wipe."""
         with self._lock:
-            if not self.active_filter and self.target_uid is None:
-                return sch
+            matched = self._match_uids(sch)
+            reducing = matched is not None and self.filter_mode == "reduce"
+            if not reducing and self.target_uid is None:
+                return sch  # nothing changes the population
             cached = self._scoped.get(id(sch))
             if cached is not None and cached[0] is sch:
                 return cached[1]
-            scoped = filter_schedule(sch, self.active_filter) if self.active_filter else sch
+            if reducing and matched is not None:
+                kept = matched
+                if self.active_saved_filter is not None and (
+                    self.active_saved_filter.show_related_summary_rows
+                ):
+                    kept = with_ancestors(sch, kept)
+                scoped = filter_to_uids(sch, kept)
+            else:
+                scoped = sch
             if self.target_uid is not None and any(
                 t.unique_id == self.target_uid and not t.is_summary for t in scoped.tasks
             ):
-                # target present in this (filtered) version → truncate to it + its drivers; a
-                # version that doesn't contain the target keeps its full (filtered) population.
+                # target present in this version → truncate to it + its drivers; a version that
+                # doesn't contain the target keeps its full (filtered) population.
                 scoped = subschedule_to_target(scoped, self.target_uid)
             self._scoped[id(sch)] = (sch, scoped)
             return scoped
 
+    def highlight_uids(self, sch: Schedule) -> frozenset[int] | None:
+        """When a filter is active in **highlight** mode, the UIDs of ``sch``'s matching tasks (to
+        shade rows / outline bars). ``None`` when no filter is active or the mode is ``reduce`` —
+        reduce already dropped the non-matches, so there is nothing to mark."""
+        with self._lock:
+            if self.filter_mode != "highlight":
+                return None
+            return self._match_uids(sch)
+
+    def _invalidate_scope(self) -> None:
+        """Clear every scope-derived cache — the shared body of the filter setters + wipe."""
+        self._scoped.clear()
+        self._matched.clear()
+        self.analyses.clear()
+        self.summaries.clear()  # summaries are scope-aware too — recompute against the new scope
+        self.polished.clear()
+
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
-        """Set (or clear, with ``()``) the session-wide filter and invalidate the scope/analysis
-        caches so every page recomputes against the new scope."""
+        """Set (or clear, with ``()``) the session-wide FIELD filter and invalidate the scope/
+        analysis caches. Clears any active saved filter (mutual exclusivity — one scope at a time)."""
         with self._lock:
             self.active_filter = tuple(criteria)
-            self._scoped.clear()
-            self.analyses.clear()
-            self.summaries.clear()  # summaries are scope-aware too — recompute against the new scope
-            self.polished.clear()
+            self.active_saved_filter = None
+            self.saved_filter_prompts = {}
+            self._invalidate_scope()
+
+    def set_saved_filter(
+        self, saved: SavedFilter | None, prompts: dict[str, FieldValue] | None = None
+    ) -> None:
+        """Set (or clear) the session-wide SAVED (MS Project) filter. Clears any field filter (mutual
+        exclusivity). ``prompts`` supplies the operator's answers for an interactive filter."""
+        with self._lock:
+            self.active_saved_filter = saved
+            self.saved_filter_prompts = dict(prompts or {})
+            if saved is not None:
+                # mutual exclusivity applies only when actually SETTING a saved filter; clearing one
+                # (saved is None) must not also drop an unrelated active field filter.
+                self.active_filter = ()
+            self._invalidate_scope()
+
+    def set_filter_mode(self, mode: str) -> None:
+        """Switch the filter MODE between ``reduce`` and ``highlight``. Reduce↔highlight changes the
+        population, so the full scope cache is invalidated."""
+        with self._lock:
+            self.filter_mode = "highlight" if mode == "highlight" else "reduce"
+            self._invalidate_scope()
+
+    def set_saved_group(self, group: SavedGroup | None) -> None:
+        """Set (or clear) the session-wide SAVED group. Grouping is ordering/banding only — it does
+        NOT change any metric population, so it deliberately does not invalidate the analysis/summary
+        caches (a regroup stays cheap)."""
+        with self._lock:
+            self.active_saved_group = group
 
     def set_target(self, uid: int | None) -> None:
         """Set (or clear) the session-wide Analysis Target and invalidate the scope/analysis caches
@@ -635,10 +736,7 @@ class SessionState:
         with self._lock:
             self.target_uid = uid
             self.sra_focus_uid = uid
-            self._scoped.clear()
-            self.analyses.clear()
-            self.summaries.clear()  # the target truncates the network → summaries must recompute
-            self.polished.clear()
+            self._invalidate_scope()
 
     def confirmed_margin_union(self) -> frozenset[int] | None:
         """The union of every loaded version's operator-confirmed margin-task set, or ``None`` when no
@@ -5759,9 +5857,12 @@ def create_app(
             st.analyses.clear()
             st.summaries.clear()
             st.polished.clear()
-            st.set_filter(())  # drop the session-wide group/filter and its scope cache
+            st.set_filter(())  # drop the session-wide field filter and its scope cache
+            st.set_saved_group(None)  # drop the session-wide saved group
+            st.filter_mode = "reduce"  # back to the default (reduce) filter mode
             st.flash = None
             st.target_uid = None
+            st.sra_focus_uid = None  # target_uid + sra_focus_uid are coupled (see set_target)
         # a wipe clears the on-disk CUI cache too (parsed schedules + derived metrics), so nothing
         # of the operator's data survives the reset (fails soft; outside the state lock — its own)
         get_default_cache().clear()

@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.msp_filters import required_prompts, select
+from schedule_forensics.engine.saved_grouping import group_by_clauses
 from schedule_forensics.importers import ImporterError, mpp_mpxj, parse_mpp
 from schedule_forensics.importers.msp_views import parse_views_json_text
 from schedule_forensics.model.schedule import Schedule
@@ -252,6 +253,41 @@ def test_real_file_carries_the_10_filters_and_25_groups(leveled: Schedule) -> No
     assert mc.criteria is not None and len(mc.criteria.children) == 8
     kinds = [c.operands[0].kind for c in mc.criteria.children]
     assert "field" in kinds and "null" in kinds  # field-to-field + the null test survive
+
+
+@needs_java
+@needs_leveled
+def test_real_file_groups_resolve_faithfully(leveled: Schedule) -> None:
+    """The real file's saved groups must actually bucket, not collapse to a single ``(ungrouped)``
+    bin (audit F1/F2/F3). Pins the groups whose clause fields the tool can resolve; the ones that
+    reference data the model does not carry (Priority/Status — PR-C.2; Board Status/Sprint — Agile
+    add-in) are allowed to degrade, since grouping them faithfully needs source data we don't have.
+    """
+    by_name = {g.name: g for g in leveled.saved_groups}
+
+    def buckets(name: str) -> list[tuple[str, tuple[int, ...]]]:
+        return group_by_clauses(leveled, by_name[name])
+
+    def labels(name: str) -> list[str]:
+        return [b[0] for b in buckets(name)]
+
+    # F1: the Duration column arrives as DURATION_TEXT — it must group per value, not degrade.
+    assert labels("&Duration") != ["(ungrouped)"]
+    assert len(buckets("&Duration")) > 1
+    assert labels("D&uration then Priority") != ["(ungrouped)"]
+    # F2: "Complete and Incomplete Tasks" (% Complete, interval="0") → exactly the two-bucket split.
+    assert labels("Complete and &Incomplete Tasks") == ["Incomplete", "Complete"]
+    # F3: Task Mode → Auto vs Manually Scheduled.
+    assert labels("Auto Scheduled vs. Manually Scheduled") == [
+        "Auto Scheduled",
+        "Manually Scheduled",
+    ]
+    # custom text groups resolve via the two-hop label lookup.
+    assert labels("IPT") != ["(ungrouped)"] and len(buckets("IPT")) > 1
+    # every bucket partitions the population (no task lost or double-counted) for a resolved group.
+    all_uids = {t.unique_id for t in leveled.tasks}
+    grouped = [u for _, uids in buckets("&Duration") for u in uids]
+    assert sorted(grouped) == sorted(all_uids) and len(grouped) == len(all_uids)
 
 
 @needs_java

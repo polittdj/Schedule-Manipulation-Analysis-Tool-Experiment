@@ -124,19 +124,57 @@ def select(schedule: Schedule, criteria: Sequence[Criterion]) -> tuple[int, ...]
     )
 
 
-def filter_schedule(schedule: Schedule, criteria: Sequence[Criterion]) -> Schedule:
-    """A sub-schedule of the matching tasks and the relationships *among* them.
+def filter_to_uids(schedule: Schedule, kept: frozenset[int]) -> Schedule:
+    """A sub-schedule of the tasks whose UniqueID is in ``kept`` and the relationships *among* them.
 
-    Project frame (start/finish/status/calendar/custom-field labels) is preserved so the existing
-    engine analyses the subset unchanged; relationships to tasks outside the subset are dropped, so
-    logic checks reflect only the selected population. An empty selection yields a task-less copy.
+    The single reduction primitive shared by the field-based filter (:func:`filter_schedule`) and
+    the faithful saved-filter path (``web.app`` scope), so "reduce to these UIDs" means exactly one
+    thing. Project frame (start/finish/status/calendar/custom-field labels) is preserved so the
+    existing engine analyses the subset unchanged; relationships to tasks outside the subset are
+    dropped, so logic checks reflect only the selected population. An empty ``kept`` yields a
+    task-less copy.
     """
-    kept = {uid for uid in select(schedule, criteria)}
     tasks = tuple(t for t in schedule.tasks if t.unique_id in kept)
     rels = tuple(
         r for r in schedule.relationships if r.predecessor_id in kept and r.successor_id in kept
     )
     return schedule.model_copy(update={"tasks": tasks, "relationships": rels})
+
+
+def with_ancestors(schedule: Schedule, kept: frozenset[int]) -> frozenset[int]:
+    """``kept`` plus every matching task's summary ancestors (MS Project's "show related summary
+    rows").
+
+    Ancestry is by ``outline_level`` over file order: a task's parent is the nearest preceding task
+    with a strictly smaller outline level. Metrics are unaffected (the engine runs on non-summary
+    tasks anyway) — this only restores the WBS context rows a filtered MS Project view would keep.
+    """
+    if not kept:
+        return kept
+    tasks = list(schedule.tasks)
+    parent_of: dict[int, int | None] = {}
+    stack: list[Task] = []
+    for t in tasks:
+        while stack and (stack[-1].outline_level or 0) >= (t.outline_level or 0):
+            stack.pop()
+        parent_of[t.unique_id] = stack[-1].unique_id if stack else None
+        stack.append(t)
+    out = set(kept)
+    for uid in kept:
+        cur = parent_of.get(uid)
+        while cur is not None and cur not in out:
+            out.add(cur)
+            cur = parent_of.get(cur)
+    return frozenset(out)
+
+
+def filter_schedule(schedule: Schedule, criteria: Sequence[Criterion]) -> Schedule:
+    """A sub-schedule of the tasks matching all field ``criteria`` and the relationships among them.
+
+    Thin wrapper over :func:`filter_to_uids` on the field-selected UID set (so the field and
+    saved-filter reduce paths share one rule). An empty selection yields a task-less copy.
+    """
+    return filter_to_uids(schedule, frozenset(select(schedule, criteria)))
 
 
 def group_values(schedule: Schedule, field: str) -> dict[str, tuple[int, ...]]:
