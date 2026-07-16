@@ -1,0 +1,957 @@
+{
+  "audit_date": "2026-07-15",
+  "last_documented_green_commit": "2dc369678dfc294db189d1bc706eba4ab02b752a",
+  "current_head": "dcacbf4458f2049aeec01be345b32d1685dae27c",
+  "repo_binary_blobs": {
+    "00_REFERENCE_INTAKE/mpp/Hard_File_updated3.mpp": {
+      "prior": "1908d073c85b8bb3e29073015a5c5ff64c38accf",
+      "current": "248fb15b9b13b6899a7be8d4815e6642257a17f5",
+      "current_present_in_uploaded_archives": false
+    },
+    "00_REFERENCE_INTAKE/mpp/Hard_File_updated4 24 hour calendar.mpp": {
+      "prior_path": "00_REFERENCE_INTAKE/mpp/Hard_File_updated3 24 hour calendar.mpp",
+      "prior": "cab7ca96c30a8042c809aa7ae397903526ce4e6f",
+      "current": "bfbf3d40ffcc950f22e47a87b60f41a96b2a1374",
+      "prior_present_in_uploaded_archives": true,
+      "current_present_in_uploaded_archives": false
+    }
+  },
+  "archive_summary": {
+    "total_paths": 436,
+    "unique_payloads": 175,
+    "duplicate_paths": 261,
+    "source_counts": {
+      "reference_files_1": 228,
+      "reference_files_2": 208
+    },
+    "extension_counts": {
+      ".pdf": 11,
+      ".xlsx": 200,
+      ".ppt": 1,
+      ".mpp": 141,
+      ".docx": 17,
+      ".png": 2,
+      ".jpg": 3,
+      ".zip": 12,
+      ".afw": 14,
+      ".xml": 34,
+      ".json": 1
+    },
+    "largest": [
+      {
+        "source": "reference_files_1",
+        "path": "schedule-management-handbook-20240315-update.pdf",
+        "size": 27045411,
+        "sha256": "e6b25f83cde9aee1f81232b92b3fce21c04ed00c4eb19c2a900f853159996d83",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_2",
+        "path": "test files.zip",
+        "size": 14775366,
+        "sha256": "9e14c396cb0f22e5dfda142f162a3f82cb3b0ec99f2ce245ff43d2653d19ccb5",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "SP-20240014019.pdf",
+        "size": 14471540,
+        "sha256": "31360e10aa89bd28a6ebd02e1bb91fe9104fc6a25afb307b0b7d1025d712c775",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "pm-handbook-nasa-sp-2014-3705-2024jun.pdf",
+        "size": 11248846,
+        "sha256": "42c68ad040389875aabc9cb92a4155337f9c58d1571feb684c0c037022fd6e61",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Large Test File/Large Test File2.mpp",
+        "size": 10168320,
+        "sha256": "d180ea50c938c194eadcbad962cdfe5271906829bb0bd41f04bf2b1eb03e922e",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Large Test File/Large Test File Leveled.mpp",
+        "size": 9814016,
+        "sha256": "f5f1c59a3b6b7f609a380582abf4b9afd5a2dcd132cb48242fa45399e5992998",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Large Test File/Large Test File.mpp",
+        "size": 9737728,
+        "sha256": "705023123b6d490d0a06545062ec8aac31604350b0d1b5e26e4d6e3bcbe6425d",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Large Test File/Large_Test_File.mpp",
+        "size": 9737728,
+        "sha256": "767c9eccb95dcc49fe2d41b850945974d9ae41020fa269a42c9c5af4c44862ed",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "Large Test File Leveled with Driving Slack Not Leveled.mpp",
+        "size": 9442304,
+        "sha256": "d2ca2b80b1afdc25afc54129a68857b7d2ae2defbf677a0bc476964edec618db",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "Large Test File Leveled with Driving Slack.mpp",
+        "size": 9362944,
+        "sha256": "e112f6723e4d7486176f5117b1ddc28fff7c41b1a587a7fdc9746fb80a212c26",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "Large Test File Leveled (OVERALLOCATION FIXED).mpp",
+        "size": 9236480,
+        "sha256": "796541fce68dc887ef525bb692d1e195fcd3d5022d5c9b07ed3d8d5fd5a28172",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "SP-20240014326.pdf",
+        "size": 6669330,
+        "sha256": "4cd6b6d0afd1c0f21e1c4b3593319532ce1087522233be6036a484efae80aa11",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/2-3-4-5/2345.zip",
+        "size": 4603788,
+        "sha256": "c616c0f859e4ab88787d11a9828378b68cf72dba5efc7fee6b2252c68b252e6a",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "ppc-handbook-1-5-17.pdf",
+        "size": 4581125,
+        "sha256": "d36d9776cb1b2b4520b4dac449ad425d3ec3ebe7ffaa36054e5cf1d5dc7f3438",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "nasa-wbs-handbook.pdf",
+        "size": 4388576,
+        "sha256": "90f63f49ed287c059c5fce37788ff11cda2dd005d0c806b3a5040b0b49126db7",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "evmimplementationhandbook-1-1.pdf",
+        "size": 3215471,
+        "sha256": "6f7da7e5e099d2497a1569156bfb2005884ca2f0dc9e80fefec6c3f64b37ff22",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "nasa-ibr-handbook-5-1.pdf",
+        "size": 2694054,
+        "sha256": "fd1b310f4b4e3f45a982b627eac0faf06d240cbd063520c29406c794a039e7a9",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/2-3-4-5/TP4_DataCenter_v2.zip",
+        "size": 2329831,
+        "sha256": "b49b6e2561fb3f0bb02bf73bdfb5dcc7dff7f5beadf204cc8a7369f826a07f93",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2.zip",
+        "size": 2329831,
+        "sha256": "b49b6e2561fb3f0bb02bf73bdfb5dcc7dff7f5beadf204cc8a7369f826a07f93",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_2",
+        "path": "test files_unzipped/2345/TP4_DataCenter_v2.zip",
+        "size": 2329831,
+        "sha256": "b49b6e2561fb3f0bb02bf73bdfb5dcc7dff7f5beadf204cc8a7369f826a07f93",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_2",
+        "path": "test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report.zip",
+        "size": 1638271,
+        "sha256": "ea5f4fda8eba61f8deeea460802ecca811b59c7004e6bac2487f241d93a0d165",
+        "ext": ".zip"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File_updated2.mpp",
+        "size": 1469440,
+        "sha256": "27616c4618fc0b8d22ebed52d205fc8a10c48ca9fc8e0fa437219fed63e160dc",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "sopi_6.0_final.pdf",
+        "size": 1421384,
+        "sha256": "b9105a99df970143456239f94bf88ab81e8f1255675baf2417be681b2ba57f9a",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File_updated3 24 hour calendar.mpp",
+        "size": 1334272,
+        "sha256": "6719b69983c463662a7d797b6c9c8ededc4189abd11ee1c867fe300e35ab5780",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File_updated3.mpp",
+        "size": 1329152,
+        "sha256": "49c1f73f3bf1a2f9f5648689c25bac673b871d787680112d9cea36a6a152e34a",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File.mpp",
+        "size": 1300480,
+        "sha256": "fb3d87a121436fb0510520f027a8c34545df6f5c6f13a695edc09fe52c4c00df",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File_updated.mpp",
+        "size": 1292288,
+        "sha256": "62abbe6375888577d6f3d0d5f36d31f67458773e77df5ae2487f83f8b5b87a03",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": ".mpp test files/Hard_File/Hard_File_updated_with_logic_reestablished.mpp",
+        "size": 1243136,
+        "sha256": "184bd57e5c9e87a133cf98b26dd468d39c1027fc9a96160d46e393e663dbb598",
+        "ext": ".mpp"
+      },
+      {
+        "source": "reference_files_1",
+        "path": "srb-handbook-official-rev-c-202301243-final-v2.pdf",
+        "size": 1193319,
+        "sha256": "73c0a47635465b31be964a532be1ae150be982e9f5263fa188061d1fc046608f",
+        "ext": ".pdf"
+      },
+      {
+        "source": "reference_files_2",
+        "path": "Workbook1 - DCMA Report.xlsx",
+        "size": 1113854,
+        "sha256": "d156d2700fe03279ad2f85a1d7484798e50f053fe701c96c5f86170a68dc81c9",
+        "ext": ".xlsx"
+      }
+    ],
+    "duplicate_groups": [
+      {
+        "sha256": "2fcdad6143ab5ddfac592cf6bda3798c7733a78e8332e3c73357e6145cdf1cfd",
+        "size": 691712,
+        "files": [
+          "reference_files_1/00_REFERENCE_INTAKEmppProject2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/Project2.mpp",
+          "reference_files_1/.mpp test files/Project 1-5/Project2.mpp",
+          "reference_files_1/.mpp test files/Project2 - Project5/Project2.mpp",
+          "reference_files_1/.mpp test files/Project2 - Project5/2 vs 5/Project2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/Project2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/Project2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/Project2.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/Project2.mpp",
+          "reference_files_2/test files_unzipped/Project2.mpp",
+          "reference_files_2/test files_unzipped/2345/Project2.mpp",
+          "reference_files_2/test files_unzipped/Project2 - Project5/Project2.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/Project2.mpp",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/Project2.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/Project2.mpp"
+        ]
+      },
+      {
+        "sha256": "720f481ebc43182d4783080794eb263b263e9d772c4d882d336a380fb6fc7150",
+        "size": 478208,
+        "files": [
+          "reference_files_1/Project2(Duration Bomb).mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/Project2(Duration Bomb).mpp",
+          "reference_files_2/test files_unzipped/Project2(Duration Bomb).mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/Project2(Duration Bomb).mpp"
+        ]
+      },
+      {
+        "sha256": "56b11cd47c1e6c0bc0014ac4a87da1b35d373f7fac17232eb6b51ddbbe6e3c89",
+        "size": 311296,
+        "files": [
+          "reference_files_1/TP1_Library_Progressed.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP1_Library_Progressed.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP1_Library_Progressed.mpp"
+        ]
+      },
+      {
+        "sha256": "fe6530f3cc713138afcf081cb7a1a4d51c04320e7cf9a832d9c9cc98f8ad5f04",
+        "size": 295936,
+        "files": [
+          "reference_files_1/TP2_Bridge_4x10_Calendar.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP2_Bridge_4x10_Calendar.mpp",
+          "reference_files_2/test files_unzipped/TP2_Bridge_4x10_Calendar.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP2_Bridge_4x10_Calendar.mpp"
+        ]
+      },
+      {
+        "sha256": "9711f02d96be9ba52294089c5872a02110859b0b4f9ff83a6d4c78038d00aff4",
+        "size": 278528,
+        "files": [
+          "reference_files_1/TP3_Outage_DCMA_Seeded.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP3_Outage_DCMA_Seeded.mpp",
+          "reference_files_2/test files_unzipped/TP3_Outage_DCMA_Seeded.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP3_Outage_DCMA_Seeded.mpp"
+        ]
+      },
+      {
+        "sha256": "e71f0e78387cda41be11c0c917f6dd3e5debcbfa78fa38ac782a8f6859ecdf57",
+        "size": 629859,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/2345 - DCMA Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/2345 - DCMA Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/2345 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/2345 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/2345 - DCMA Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "ced819b404d9530b4e9a450a01470db62a0ae51a871766a6a90627fc7761a2e1",
+        "size": 25820,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/2345 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/2345 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/2345 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/2345 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/2345 - Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "2998180e0550ae931c41121a41ee777246a5a60260030de78bc13d5dcad2da3b",
+        "size": 60893,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/2345 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/2345 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/2345 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/2345 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/2345 - Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "c58d46a5468beb4f5f5bd12e4777de1a5f9d2a154fdf1468c34775dd0c3db08b",
+        "size": 965304,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/L12 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/L12 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/L12 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/L12 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/L12 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/L12 - Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "fe145d953535a2f15a3842646eeea1cadba7d52ef9dcd12b8b94f50762bf6177",
+        "size": 23222,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/L12- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/L12- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/L12- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/L12- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/L12- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/L12- Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "a95cd0b69894a6e3ab29063dacd56c37c74c9adff39d3ac0fa134bb9ad23d879",
+        "size": 81997,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/L12- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/L12- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/L12- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/L12- Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/L12- Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/L12- Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "66da8e7d58cb592b84b49b6245460c14a0122043ebce48654c0df289a16ab5bd",
+        "size": 691712,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/Project3.mpp",
+          "reference_files_1/.mpp test files/Project 1-5/Project3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/Project3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/Project3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/Project3.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/Project3.mpp",
+          "reference_files_2/test files_unzipped/Project3.mpp",
+          "reference_files_2/test files_unzipped/2345/Project3.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/Project3.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/Project3.mpp"
+        ]
+      },
+      {
+        "sha256": "0348c097889898b939fbff7c02fa98cdab1548622c5ace0bc7fb3f94e2c02baf",
+        "size": 692224,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/Project4.mpp",
+          "reference_files_1/.mpp test files/Project 1-5/Project4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/Project4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/Project4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/Project4.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/Project4.mpp",
+          "reference_files_2/test files_unzipped/Project4.mpp",
+          "reference_files_2/test files_unzipped/2345/Project4.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/Project4.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/Project4.mpp"
+        ]
+      },
+      {
+        "sha256": "5563d2e0492027ed6531de9b8284269abca39537da53cf10f30254f455a54337",
+        "size": 817152,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/Project5_TAMPERED.mpp",
+          "reference_files_1/.mpp test files/Project2 - Project5/Project5_TAMPERED.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/2345/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/Project2 - Project5/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/Project5_TAMPERED.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/Project5_TAMPERED.mpp"
+        ]
+      },
+      {
+        "sha256": "b28278de9f7b595b21d1082138e153ab39b6ba8699044fcd565945b39794d5b5",
+        "size": 26970,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP - Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "f3892e14d57bfd1179e671257e15dda7afc13fef5e68673d0e7a7796f247c15c",
+        "size": 33739,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP - Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "046d7bee6b19c976c1627894cdbfc1e47f1ab319ce17d010741c040f1b01e95b",
+        "size": 82283,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP- Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "70667e7b7c2e47424b614ef74828af72779cdf0b2377ed80987797b3af8b8998",
+        "size": 26919,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP1 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP1 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP1 - Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP1 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP1 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP1 - Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "57b72a4ad73b7fa43ba25840bf5c2a0d22cd886b7e67bfd052ad326d29666dec",
+        "size": 17424,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP1 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP1 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP1 - Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP1 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP1 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP1 - Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "b7ddae1ecbdf751b88173310c4e4320d2e81ac5ddf3a9407340c61dd435d2ce3",
+        "size": 24313,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP1 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP1 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP1 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP1 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP1 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP1 - Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "a6a915c261d36e58d19f13ed1d113834ac97fbeab5c3529e5039f2aaba23dcee",
+        "size": 39793,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP23- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP23- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP23- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP23- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP23- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP23- Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "cec52fa201d2de9038c300ae0ce14a491e89fdf29c4042ca5d33a5e47bff8782",
+        "size": 25257,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP23- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP23- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP23- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP23- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP23- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP23- Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "dd0b10b51703225667213b5de9efb3686e5e36a6f82bab1a72077c2c1271d7d4",
+        "size": 29540,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP23- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP23- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP23- Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP23- Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP23- Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP23- Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "45b38405ee1412263902fb30674e7b1f705a01f0eb416c8acca1e819a956b1c2",
+        "size": 265216,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v1.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v1.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v1.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v1.mpp"
+        ]
+      },
+      {
+        "sha256": "f33cb347a92264a120679b889e2f3b8221a449d8bdf07492e928140689fe0ba9",
+        "size": 265216,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v2.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v2.mpp"
+        ]
+      },
+      {
+        "sha256": "b49b6e2561fb3f0bb02bf73bdfb5dcc7dff7f5beadf204cc8a7369f826a07f93",
+        "size": 2329831,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2.zip",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2.zip",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2.zip"
+        ]
+      },
+      {
+        "sha256": "ad33b88d93e826b95486d3b8a7824ee536cb6f97cb7b67572936134330458a1a",
+        "size": 265216,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v3.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v3.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v3.mpp"
+        ]
+      },
+      {
+        "sha256": "06da4c11ade16773f97cf7e694402b1a999111101006dcc39b2c0bce1ed4c9bc",
+        "size": 266240,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v4.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v4.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v4.mpp"
+        ]
+      },
+      {
+        "sha256": "27c3895d28d74ed20fa8c7c3fa448c9c5a50a3a12ba8ce94e8ae8a4b112edaa8",
+        "size": 265728,
+        "files": [
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v5.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_1/.mpp test files/2-3-4-5/2345_unzipped/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v5.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v5.mpp",
+          "reference_files_2/test files_unzipped/2345/TP4_DataCenter_v2_unzipped/TP4_DataCenter_v5.mpp"
+        ]
+      },
+      {
+        "sha256": "bbeb75fc46805e9f20d64bb7060bfcf53f25643ea7b4feb80949f72feb83dc9f",
+        "size": 25224,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM - Quick Add Metrics.docx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM - Quick Add Metrics.docx",
+          "reference_files_2/test files_unzipped/EVM/EVM - Quick Add Metrics.docx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM - Quick Add Metrics.docx"
+        ]
+      },
+      {
+        "sha256": "ec750c76e1ddc44b2dd85f82de2ab4f0b13e95b183769c72864aeed42793cde9",
+        "size": 18647,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM- Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "28ec627aa95e62c85fc521166188209b91954b183062e40f191a0b0601195406",
+        "size": 646385,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report.zip",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report.zip"
+        ]
+      },
+      {
+        "sha256": "0ce58ab428e6c28eaed732840715a8e141d3efcde06609a6a423e5d205ce7735",
+        "size": 510023,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM.afw",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM.afw",
+          "reference_files_2/test files_unzipped/EVM/EVM.afw",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM.afw"
+        ]
+      },
+      {
+        "sha256": "ee90cc7071e8bfa470ecc7e7893d8b95c6a468b4c65cdc3312e207f97a50a84a",
+        "size": 50115,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM1 Forensic Analysis Report.xlsx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM1 Forensic Analysis Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM1 Forensic Analysis Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM1 Forensic Analysis Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "7b51398cb58bba21709d16da2de0c18b0c4135c49766f68361f4e726c25b235d",
+        "size": 11010,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM1- Quick Add Metrics .xlsx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM1- Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM1- Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM1- Quick Add Metrics .xlsx"
+        ]
+      },
+      {
+        "sha256": "d5534598e2069a3b75faca81a93689a14a9a5cb5538bae6c2092669e844e8b63",
+        "size": 377856,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM1.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/EVM1.mpp",
+          "reference_files_2/test files_unzipped/EVM1.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/EVM1.mpp"
+        ]
+      },
+      {
+        "sha256": "73a4a25be543be374dd095bdc02e44b74885f8778b177c9b46ed9a067c765d36",
+        "size": 11014,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM2 - Quick Add Metrics.xlsx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM2 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM2 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM2 - Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "d1c9018ad4f528841ffb5a4e2896f014e21453aa813de419a04c7b1cf7925c70",
+        "size": 380928,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM2.mpp",
+          "reference_files_2/TP1_Library_Progressed_unzipped/EVM2.mpp",
+          "reference_files_2/test files_unzipped/EVM2.mpp",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/EVM2.mpp"
+        ]
+      },
+      {
+        "sha256": "2500ec9eb6e047fbc72bacc56c4d95ed56028ff98adf5683b0124f7f939ceeb9",
+        "size": 34915,
+        "files": [
+          "reference_files_1/.mpp test files/EVM/EVM3- Detailed Metric Report.xlsx",
+          "reference_files_1/.mpp test files/EVM/EVM- Metric History Report_unzipped/EVM3- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM3- Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/EVM/EVM- Metric History Report_unzipped/EVM3- Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "8e39bccc52bbb0249f2e3bb3723a800660b6312614208f542cf3e9229317b79d",
+        "size": 18775,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.xlsx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - DCMA Report1.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - DCMA Report1.xlsx"
+        ]
+      },
+      {
+        "sha256": "7fa35cd67b0c65b1005e1c7c861d3559437ded5dc59fac6193a424b32fee1cc1",
+        "size": 194620,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.zip",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.zip"
+        ]
+      },
+      {
+        "sha256": "43b2d16a5937ddbcb75c525b288ea735cdea0bb8869a5648cc1bc1dbe7fd7403",
+        "size": 10221,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics .xlsx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics .xlsx"
+        ]
+      },
+      {
+        "sha256": "1968e659fd4ba51bd4e533e988e62ea621202477f168f0872c9a5c4249a67089",
+        "size": 22193,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics.docx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics.docx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics.docx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics.docx"
+        ]
+      },
+      {
+        "sha256": "b136c53c7d91367219fe78a8c42599f3fad5b4ad5cde345dde00302183ccd418",
+        "size": 118404,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics1.xlsx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics1.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - Quick Add Metrics1.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen - Quick Add Metrics1.xlsx"
+        ]
+      },
+      {
+        "sha256": "400128eee1fb5e1f1f45f799a94b82c17a5d53c05892cf9f2d1e6ae164b5273d",
+        "size": 18801,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen- Metric History Report.xlsx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen- Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen- Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "64bd9ee05d247bb5a219fb16d99e4f73b913d41a1ec9de3b65a90b3e982a7571",
+        "size": 10231,
+        "files": [
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen1 - Quick Add Metrics .xlsx",
+          "reference_files_1/.mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen1 - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen1 - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1_unzipped/Large Project2 Acumen1 - Quick Add Metrics .xlsx"
+        ]
+      },
+      {
+        "sha256": "e2c881f4890338c1817f01fe18d912c63c3b90aa80f1f0d3c3fa0361891b0ed7",
+        "size": 25916,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P-P5 - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P-P5 - Quick Add Metrics .xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P-P5 - Quick Add Metrics .xlsx"
+        ]
+      },
+      {
+        "sha256": "9b9deed4365c5717eea09ae12ce9d896bdfc1beb868f8839365a7f08f0f3cb5c",
+        "size": 603625,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P2-P5 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P2-P5 - DCMA Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "e9ecf008be4907a9c0a08829e8812551ebd9d9dbcb470291afef0a02bc362f9b",
+        "size": 99137,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P2-P5 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - Detailed Metric Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P2-P5 - Detailed Metric Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "a67a98878323401b99059e67ede3dafa95fb6d6c67b368986bcd5d1bd544b46b",
+        "size": 20217,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P2-P5 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - Metric History Report.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P2-P5 - Metric History Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "4c4609d8dc64e717550653aef10dccf58fdaab76a4b0e875de4367543340e893",
+        "size": 172439,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P2-P5 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - Quick Add Metrics.xlsx",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P2-P5 - Quick Add Metrics.xlsx"
+        ]
+      },
+      {
+        "sha256": "7b261545c752ba1043de51a3dd74ae3b62736b9ed106616b55b42a4a9b266ab3",
+        "size": 579170,
+        "files": [
+          "reference_files_1/.mpp test files/Project2 - Project5/P2-P5.afw",
+          "reference_files_1/.mpp test files/Project2 - Project5/~P-P5.afw",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5.afw",
+          "reference_files_2/test files_unzipped/Project2 - Project5/~P-P5.afw",
+          "reference_files_2/test files_unzipped/Project2 - Project5/P2-P5 - DCMA Report_unzipped/P2-P5.afw"
+        ]
+      },
+      {
+        "sha256": "b3f06cbde6ca9c3c280f729e10fba261d351b659187527304cbc41dab2804b26",
+        "size": 22199,
+        "files": [
+          "reference_files_2/TP4_DataCenter_v1.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v1.xml",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v1.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v1.xml"
+        ]
+      },
+      {
+        "sha256": "1fba86961cd91eb0dc059e5dee7645be5ca57704ac61be5f0cccf492f3e608c1",
+        "size": 22748,
+        "files": [
+          "reference_files_2/TP4_DataCenter_v2.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v2.xml",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v2.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v2.xml"
+        ]
+      },
+      {
+        "sha256": "55102caa93dd9c66738f795e9d0dada4514fa5ef1e5c0bdd46636b1362f2fbe9",
+        "size": 22966,
+        "files": [
+          "reference_files_2/TP4_DataCenter_v3.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v3.xml",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v3.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v3.xml"
+        ]
+      },
+      {
+        "sha256": "14b380d03d0348ada9ca4a674658dae4ca3a625b2473047fd203d970f5af5d89",
+        "size": 23296,
+        "files": [
+          "reference_files_2/TP4_DataCenter_v4.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v4.xml",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v4.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v4.xml"
+        ]
+      },
+      {
+        "sha256": "8625f98841cc37f6eef57c50633bfd98d2fdafe62de653d3898d897eaaf011da",
+        "size": 23404,
+        "files": [
+          "reference_files_2/TP4_DataCenter_v5.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP4_DataCenter_v5.xml",
+          "reference_files_2/test files_unzipped/TP4_DataCenter_v5.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP4_DataCenter_v5.xml"
+        ]
+      },
+      {
+        "sha256": "d156d2700fe03279ad2f85a1d7484798e50f053fe701c96c5f86170a68dc81c9",
+        "size": 1113854,
+        "files": [
+          "reference_files_2/Workbook1 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/Workbook1 - DCMA Report.xlsx",
+          "reference_files_2/test files_unzipped/Acumen/Workbook1 - DCMA Report.xlsx"
+        ]
+      },
+      {
+        "sha256": "3c19fcbf836944547cfe07c48f04b75f8cec939c09e0aedd6e03d58a6a6c87a1",
+        "size": 965752,
+        "files": [
+          "reference_files_2/TP1_Library_Progressed.zip",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed.zip"
+        ]
+      },
+      {
+        "sha256": "7711834145930d2379fd3d6f43ad05fa5d5f233f1b900cbbf4bf8982648149ac",
+        "size": 624571,
+        "files": [
+          "reference_files_2/2345.afw",
+          "reference_files_2/test files_unzipped/2345.afw"
+        ]
+      },
+      {
+        "sha256": "43470d9f8232549d53720256f27a2e38c967cabd055c17b800cb6be14c99182c",
+        "size": 35608,
+        "files": [
+          "reference_files_2/TP1_Library_Progressed.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP1_Library_Progressed.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP1_Library_Progressed.xml"
+        ]
+      },
+      {
+        "sha256": "8e6116bab150d6316f90dc0f0f3ecdb7a330a5a76fe3a61aaee3a1039a05ae48",
+        "size": 26503,
+        "files": [
+          "reference_files_2/TP2_Bridge_4x10_Calendar.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP2_Bridge_4x10_Calendar.xml",
+          "reference_files_2/test files_unzipped/TP2_Bridge_4x10_Calendar.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP2_Bridge_4x10_Calendar.xml"
+        ]
+      },
+      {
+        "sha256": "f29b7ef5a4d52ed771b8178d04e3d432322a0b87e45945711a61b455de6b911b",
+        "size": 32802,
+        "files": [
+          "reference_files_2/TP3_Outage_DCMA_Seeded.xml",
+          "reference_files_2/TP1_Library_Progressed_unzipped/TP3_Outage_DCMA_Seeded.xml",
+          "reference_files_2/test files_unzipped/TP3_Outage_DCMA_Seeded.xml",
+          "reference_files_2/test files_unzipped/TP1_Library_Progressed_unzipped/TP3_Outage_DCMA_Seeded.xml"
+        ]
+      }
+    ]
+  }
+}

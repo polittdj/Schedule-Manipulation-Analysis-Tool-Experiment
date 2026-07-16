@@ -1,0 +1,7590 @@
+[
+  {
+    "sha256": "e71f0e78387cda41be11c0c917f6dd3e5debcbfa78fa38ac782a8f6859ecdf57",
+    "ext": ".xlsx",
+    "size": 629859,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345 - DCMA Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 290535,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2974,
+    "calc_mode": null
+  },
+  {
+    "sha256": "ced819b404d9530b4e9a450a01470db62a0ae51a871766a6a90627fc7761a2e1",
+    "ext": ".xlsx",
+    "size": 25820,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345 - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 9937,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "2998180e0550ae931c41121a41ee777246a5a60260030de78bc13d5dcad2da3b",
+    "ext": ".xlsx",
+    "size": 60893,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345 - Quick Add Metrics.xlsx",
+    "zip_members": 33,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Project21",
+        "state": "visible"
+      },
+      {
+        "name": "Project32",
+        "state": "visible"
+      },
+      {
+        "name": "Project43",
+        "state": "visible"
+      },
+      {
+        "name": "Project5_TAMPERED4",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2027 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 24,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 29121,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c616c0f859e4ab88787d11a9828378b68cf72dba5efc7fee6b2252c68b252e6a",
+    "ext": ".zip",
+    "size": 4603788,
+    "aliases": 1,
+    "sample_path": ".mpp test files/2-3-4-5/2345.zip"
+  },
+  {
+    "sha256": "c58d46a5468beb4f5f5bd12e4777de1a5f9d2a154fdf1468c34775dd0c3db08b",
+    "ext": ".xlsx",
+    "size": 965304,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/L12 - Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Large-Test-File",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 453008,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "fe145d953535a2f15a3842646eeea1cadba7d52ef9dcd12b8b94f50762bf6177",
+    "ext": ".xlsx",
+    "size": 23222,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/L12- Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Large-Test-File",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "a95cd0b69894a6e3ab29063dacd56c37c74c9adff39d3ac0fa134bb9ad23d879",
+    "ext": ".xlsx",
+    "size": 81997,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/L12- Quick Add Metrics.xlsx",
+    "zip_members": 37,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File1",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File22",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-2028 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 28,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 31113,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "2fcdad6143ab5ddfac592cf6bda3798c7733a78e8332e3c73357e6145cdf1cfd",
+    "ext": ".mpp",
+    "size": 691712,
+    "aliases": 15,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/Project2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "66da8e7d58cb592b84b49b6245460c14a0122043ebce48654c0df289a16ab5bd",
+    "ext": ".mpp",
+    "size": 691712,
+    "aliases": 10,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/Project3.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "0348c097889898b939fbff7c02fa98cdab1548622c5ace0bc7fb3f94e2c02baf",
+    "ext": ".mpp",
+    "size": 692224,
+    "aliases": 10,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/Project4.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "5563d2e0492027ed6531de9b8284269abca39537da53cf10f30254f455a54337",
+    "ext": ".mpp",
+    "size": 817152,
+    "aliases": 12,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/Project5_TAMPERED.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "b28278de9f7b595b21d1082138e153ab39b6ba8699044fcd565945b39794d5b5",
+    "ext": ".xlsx",
+    "size": 26970,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP1_Library_Progressed",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 12211,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "f3892e14d57bfd1179e671257e15dda7afc13fef5e68673d0e7a7796f247c15c",
+    "ext": ".xlsx",
+    "size": 33739,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP - Quick Add Metrics.xlsx",
+    "zip_members": 24,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "TP1_Library_Progressed1",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v22",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v33",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v44",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v55",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 15,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 14228,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "046d7bee6b19c976c1627894cdbfc1e47f1ab319ce17d010741c040f1b01e95b",
+    "ext": ".xlsx",
+    "size": 82283,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP- Detailed Metric Report.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP1_Library_Progressed",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v2",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v3",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v4",
+        "state": "visible"
+      },
+      {
+        "name": "TP4_DataCenter_v5",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 5,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 33015,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 5,
+    "calc_mode": null
+  },
+  {
+    "sha256": "70667e7b7c2e47424b614ef74828af72779cdf0b2377ed80987797b3af8b8998",
+    "ext": ".xlsx",
+    "size": 26919,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP1 - Detailed Metric Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP1_Library_Progressed",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7473,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 1,
+    "calc_mode": null
+  },
+  {
+    "sha256": "57b72a4ad73b7fa43ba25840bf5c2a0d22cd886b7e67bfd052ad326d29666dec",
+    "ext": ".xlsx",
+    "size": 17424,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP1 - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP1_Library_Progressed",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 3115,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "b7ddae1ecbdf751b88173310c4e4320d2e81ac5ddf3a9407340c61dd435d2ce3",
+    "ext": ".xlsx",
+    "size": 24313,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP1 - Quick Add Metrics.xlsx",
+    "zip_members": 20,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "TP1_Library_Progressed1",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 11,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 9670,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "a6a915c261d36e58d19f13ed1d113834ac97fbeab5c3529e5039f2aaba23dcee",
+    "ext": ".xlsx",
+    "size": 39793,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP23- Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP2_Bridge_4x10_Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "TP3_Outage_DCMA_Seeded",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 13594,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "cec52fa201d2de9038c300ae0ce14a491e89fdf29c4042ca5d33a5e47bff8782",
+    "ext": ".xlsx",
+    "size": 25257,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP23- Metric History Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "TP2_Bridge_4x10_Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "TP3_Outage_DCMA_Seeded",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 6230,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "dd0b10b51703225667213b5de9efb3686e5e36a6f82bab1a72077c2c1271d7d4",
+    "ext": ".xlsx",
+    "size": 29540,
+    "aliases": 6,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP23- Quick Add Metrics.xlsx",
+    "zip_members": 21,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "TP2_Bridge_4x10_Calendar1",
+        "state": "visible"
+      },
+      {
+        "name": "TP3_Outage_DCMA_Seeded2",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 12,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 11939,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "45b38405ee1412263902fb30674e7b1f705a01f0eb416c8acca1e819a956b1c2",
+    "ext": ".mpp",
+    "size": 265216,
+    "aliases": 9,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v1.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "f33cb347a92264a120679b889e2f3b8221a449d8bdf07492e928140689fe0ba9",
+    "ext": ".mpp",
+    "size": 265216,
+    "aliases": 9,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "b49b6e2561fb3f0bb02bf73bdfb5dcc7dff7f5beadf204cc8a7369f826a07f93",
+    "ext": ".zip",
+    "size": 2329831,
+    "aliases": 3,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v2.zip"
+  },
+  {
+    "sha256": "ad33b88d93e826b95486d3b8a7824ee536cb6f97cb7b67572936134330458a1a",
+    "ext": ".mpp",
+    "size": 265216,
+    "aliases": 9,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v2__EXTRACTED/TP4_DataCenter_v3.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "06da4c11ade16773f97cf7e694402b1a999111101006dcc39b2c0bce1ed4c9bc",
+    "ext": ".mpp",
+    "size": 266240,
+    "aliases": 9,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v2__EXTRACTED/TP4_DataCenter_v4.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "27c3895d28d74ed20fa8c7c3fa448c9c5a50a3a12ba8ce94e8ae8a4b112edaa8",
+    "ext": ".mpp",
+    "size": 265728,
+    "aliases": 9,
+    "sample_path": ".mpp test files/2-3-4-5/2345__EXTRACTED/TP4_DataCenter_v2__EXTRACTED/TP4_DataCenter_v5.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "bbeb75fc46805e9f20d64bb7060bfcf53f25643ea7b4feb80949f72feb83dc9f",
+    "ext": ".docx",
+    "size": 25224,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM - Quick Add Metrics.docx",
+    "zip_members": 16,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 199,
+    "tables": 2,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 1
+  },
+  {
+    "sha256": "ec750c76e1ddc44b2dd85f82de2ab4f0b13e95b183769c72864aeed42793cde9",
+    "ext": ".xlsx",
+    "size": 18647,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "EVM1",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "28ec627aa95e62c85fc521166188209b91954b183062e40f191a0b0601195406",
+    "ext": ".zip",
+    "size": 646385,
+    "aliases": 2,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report.zip"
+  },
+  {
+    "sha256": "0ce58ab428e6c28eaed732840715a8e141d3efcde06609a6a423e5d205ce7735",
+    "ext": ".afw",
+    "size": 510023,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report__EXTRACTED/EVM.afw",
+    "magic": "1f8b0800000000000400ec9d093c54dd",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "ee90cc7071e8bfa470ecc7e7893d8b95c6a468b4c65cdc3312e207f97a50a84a",
+    "ext": ".xlsx",
+    "size": 50115,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report__EXTRACTED/EVM1 Forensic Analysis Report.xlsx",
+    "zip_members": 56,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Std-Deviation-Duration",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 49,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 4691,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "7b51398cb58bba21709d16da2de0c18b0c4135c49766f68361f4e726c25b235d",
+    "ext": ".xlsx",
+    "size": 11010,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report__EXTRACTED/EVM1- Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 806,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "73a4a25be543be374dd095bdc02e44b74885f8778b177c9b46ed9a067c765d36",
+    "ext": ".xlsx",
+    "size": 11014,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report__EXTRACTED/EVM2 - Quick Add Metrics.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 806,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "2500ec9eb6e047fbc72bacc56c4d95ed56028ff98adf5683b0124f7f939ceeb9",
+    "ext": ".xlsx",
+    "size": 34915,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM- Metric History Report__EXTRACTED/EVM3- Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "EVM1",
+        "state": "visible"
+      },
+      {
+        "name": "EVM2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 12053,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "d5534598e2069a3b75faca81a93689a14a9a5cb5538bae6c2092669e844e8b63",
+    "ext": ".mpp",
+    "size": 377856,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM1.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "d1c9018ad4f528841ffb5a4e2896f014e21453aa813de419a04c7b1cf7925c70",
+    "ext": ".mpp",
+    "size": 380928,
+    "aliases": 4,
+    "sample_path": ".mpp test files/EVM/EVM2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "fb3d87a121436fb0510520f027a8c34545df6f5c6f13a695edc09fe52c4c00df",
+    "ext": ".mpp",
+    "size": 1300480,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "5a4c4d3c88905a8a8229a2f3f11787b01796b64317f15356e63ab811c5186cff",
+    "ext": ".xlsx",
+    "size": 19702,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Fuse - Fuse Analysis Report.xlsx",
+    "zip_members": 14,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File1",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated2",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 5,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 3862,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "57dc60eee7f805c751e764b3afaf92eae44f64fbfbf731d3b88e222f7c83282d",
+    "ext": ".xlsx",
+    "size": 20284,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Fuse - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Hard_File",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "beec1ca535967185f795ab625dc11ad171d53e9d6d83b791f42d6fef038e160d",
+    "ext": ".xlsx",
+    "size": 12908,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Fuse - Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1598,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "be3d9e1de9ac12ec12d9c6ac76e10c41c3e8f2114d8a3e24efd25f25152d2475",
+    "ext": ".xlsx",
+    "size": 463274,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Fuse - Summary Metric Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 235996,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "a585df8219192ee059151f93eb2f4e953ab8fda80ed9955e84e1c49eb86bcc38",
+    "ext": ".xlsx",
+    "size": 16021,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Path_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 919,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "d6c5e48351b481be0de48a5fdf8d66e22d474aae5a0806ded580146f71ae9d86",
+    "ext": ".xlsx",
+    "size": 15801,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_Path_Updated_Trace_UID_155_Directional_Path_Analysis_2026-7-8-13-30-7.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 879,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "fe88956c01ea607e7026d8debae292b40b5ec73f01df864d7b9c4c318650b426",
+    "ext": ".xlsx",
+    "size": 10227,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_missing_logic.xlsx",
+    "zip_members": 10,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 154,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 1,
+    "calc_mode": null
+  },
+  {
+    "sha256": "0437c15d17214e567463ca6ccc20bb815767acd6269811d5282202f42511edc1",
+    "ext": ".xlsx",
+    "size": 24277,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Analysis Report.xlsx",
+    "zip_members": 14,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated1",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated22",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 5,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7346,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "b82425e3c294307db5a8fea35011293a2830a803e9aea8594d546e3a0f171e76",
+    "ext": ".xlsx",
+    "size": 90889,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Hard_File_updated",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 36314,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "e37a8a288e614e6ad7debdee715f098be61160347ceb29214944826055007225",
+    "ext": ".xlsx",
+    "size": 23658,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Excel .xlsx",
+    "zip_members": 14,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1598,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "8288f791c96334d97a32b0b692b3c2289dd785d1de6a9750fc7c9fe31d343bd8",
+    "ext": ".xlsx",
+    "size": 21750,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Hard_File_updated",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "12acd0f190e9ad520d504f31bd1047610f0ae474929dee6506df0ac9830d2a22",
+    "ext": ".xlsx",
+    "size": 488707,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse - Summary Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 252272,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "4d6a3b0faddd286b7af4303d928c18d2368903200ecef16ca1b36547412ab272",
+    "ext": ".afw",
+    "size": 563298,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update vs update2_Fuse.afw",
+    "magic": "1f8b0800000000000400ec5d095c4cdd",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "b9f55e48cffb2083029ca748735ef499f1551526e28acc18731325353019e46a",
+    "ext": ".xlsx",
+    "size": 90550,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Analysis Report.xlsx",
+    "zip_members": 19,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated21",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated32",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-2026 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 10,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 72168,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "f7fa1a55f6eedc9c5ed9a6ea105194b5e967afea04e4f3539d0e3ef1124adb81",
+    "ext": ".xlsx",
+    "size": 91312,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Hard_File_updated2",
+        "state": "visible"
+      },
+      {
+        "name": "Hard_File_updated3",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 37068,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "61349f33871f5e2d8c65c039c2ed560ef443c61c32fe63d7217e3ed01e3d39e1",
+    "ext": ".xlsx",
+    "size": 20269,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Excel .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 4082,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c1f327934e58ee27ddd1a8e84cdaaa4f530063a7ef258209f307f792a1696f96",
+    "ext": ".xlsx",
+    "size": 20617,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Hard_File_updated2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "5b61e6c02128de8e9702bb426ffae8c95566e51575d1b15a53aa6845984de0b8",
+    "ext": ".xlsx",
+    "size": 485705,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Metrics Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 256394,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c70401e516a2b78574a7a99d930a9a92155321e178c86bc71a871e2086bf8793",
+    "ext": ".xlsx",
+    "size": 485660,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse - Summary Metrics Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 256394,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "907911d8f16e766545fc9abbb7c38c51ecfac263085bebbec606b28784d30f76",
+    "ext": ".afw",
+    "size": 718625,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_update2 vs update3_Fuse.afw",
+    "magic": "1f8b0800000000000400ec5d093854df",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "8c5d423806295a0c51db47868693649ab9ed4df30d321c76e6bb4be42960ef5e",
+    "ext": ".xlsx",
+    "size": 113276,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated vs update 2_ Forensic Analysis Report.xlsx",
+    "zip_members": 79,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "ID",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Code",
+        "state": "visible"
+      },
+      {
+        "name": "Existence--",
+        "state": "visible"
+      },
+      {
+        "name": "Use-Cost-Uncertainty",
+        "state": "visible"
+      },
+      {
+        "name": "Cost-Uncertainty-Distribution",
+        "state": "visible"
+      },
+      {
+        "name": "Max-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Most-Likely-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Min-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Upper---Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Lower---Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Std-Deviation-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Use-Duration-Uncertainty",
+        "state": "visible"
+      },
+      {
+        "name": "Duration-Uncertainty-Distribut",
+        "state": "visible"
+      },
+      {
+        "name": "Max-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Most-Likely-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Min-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Upper---Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Lower---Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Std-Deviation-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Budget",
+        "state": "visible"
+      },
+      {
+        "name": "Task-Budget",
+        "state": "visible"
+      },
+      {
+        "name": "Driving-Slack",
+        "state": "visible"
+      },
+      {
+        "name": "Trace-Log-Field",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 72,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 28220,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "62abbe6375888577d6f3d0d5f36d31f67458773e77df5ae2487f83f8b5b87a03",
+    "ext": ".mpp",
+    "size": 1292288,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "d98d557ad55cbfe6db6b4ec0729a31eae5abf31e37ff059209010e50769308db",
+    "ext": ".xlsx",
+    "size": 100517,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated2 vs update3 Forensic Analysis Report.xlsx",
+    "zip_members": 79,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "ID",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Code",
+        "state": "visible"
+      },
+      {
+        "name": "Existence--",
+        "state": "visible"
+      },
+      {
+        "name": "Use-Cost-Uncertainty",
+        "state": "visible"
+      },
+      {
+        "name": "Cost-Uncertainty-Distribution",
+        "state": "visible"
+      },
+      {
+        "name": "Max-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Most-Likely-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Min-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Upper---Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Lower---Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Std-Deviation-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Use-Duration-Uncertainty",
+        "state": "visible"
+      },
+      {
+        "name": "Duration-Uncertainty-Distribut",
+        "state": "visible"
+      },
+      {
+        "name": "Max-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Most-Likely-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Min-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Upper---Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Lower---Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Mean-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Std-Deviation-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Budget",
+        "state": "visible"
+      },
+      {
+        "name": "Task-Budget",
+        "state": "visible"
+      },
+      {
+        "name": "Driving-Slack",
+        "state": "visible"
+      },
+      {
+        "name": "Trace-Log-Field",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 72,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 21788,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "f3e020f63968b032e45659fc37d66beca3386627919b5a2fb4ec805c28078720",
+    "ext": ".xml",
+    "size": 19156,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated2.fieldmap.xml",
+    "root_tag": "FieldMap",
+    "element_counts": {}
+  },
+  {
+    "sha256": "27616c4618fc0b8d22ebed52d205fc8a10c48ca9fc8e0fa437219fed63e160dc",
+    "ext": ".mpp",
+    "size": 1469440,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "6719b69983c463662a7d797b6c9c8ededc4189abd11ee1c867fe300e35ab5780",
+    "ext": ".mpp",
+    "size": 1334272,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated3 24 hour calendar.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "49c1f73f3bf1a2f9f5648689c25bac673b871d787680112d9cea36a6a152e34a",
+    "ext": ".mpp",
+    "size": 1329152,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated3.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "ac5cec0e540f846f138e187183a3cd74bdc31c518c3954ace595f1e21db9f65b",
+    "ext": ".xlsx",
+    "size": 20998,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated_missing_logic.xlsx",
+    "zip_members": 10,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Sheet1",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 2146,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 1,
+    "calc_mode": null
+  },
+  {
+    "sha256": "184bd57e5c9e87a133cf98b26dd468d39c1027fc9a96160d46e393e663dbb598",
+    "ext": ".mpp",
+    "size": 1243136,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated_with_logic_reestablished.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "e884a2b977e952722bda5be2b27ba100aeca4e0387bd70e5f67c7ec4877936c0",
+    "ext": ".xlsx",
+    "size": 15767,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Hard_File/Hard_File_updated_with_logic_reestablished_UID_155_Directional_Path_Analysis_2026-7-8-14-37-20.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 879,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "8e39bccc52bbb0249f2e3bb3723a800660b6312614208f542cf3e9229317b79d",
+    "ext": ".xlsx",
+    "size": 18775,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Large-Test-File2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 3115,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "7fa35cd67b0c65b1005e1c7c861d3559437ded5dc59fac6193a424b32fee1cc1",
+    "ext": ".zip",
+    "size": 194620,
+    "aliases": 2,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1.zip"
+  },
+  {
+    "sha256": "43b2d16a5937ddbcb75c525b288ea735cdea0bb8869a5648cc1bc1dbe7fd7403",
+    "ext": ".xlsx",
+    "size": 10221,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1__EXTRACTED/Large Project2 Acumen - Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1014,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "1968e659fd4ba51bd4e533e988e62ea621202477f168f0872c9a5c4249a67089",
+    "ext": ".docx",
+    "size": 22193,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1__EXTRACTED/Large Project2 Acumen - Quick Add Metrics.docx",
+    "zip_members": 16,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 107,
+    "tables": 2,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 1
+  },
+  {
+    "sha256": "b136c53c7d91367219fe78a8c42599f3fad5b4ad5cde345dde00302183ccd418",
+    "ext": ".xlsx",
+    "size": 118404,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1__EXTRACTED/Large Project2 Acumen - Quick Add Metrics1.xlsx",
+    "zip_members": 13,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File21",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 4,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 44204,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "400128eee1fb5e1f1f45f799a94b82c17a5d53c05892cf9f2d1e6ae164b5273d",
+    "ext": ".xlsx",
+    "size": 18801,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1__EXTRACTED/Large Project2 Acumen- Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Large-Test-File2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 3115,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "64bd9ee05d247bb5a219fb16d99e4f73b913d41a1ec9de3b65a90b3e982a7571",
+    "ext": ".xlsx",
+    "size": 10231,
+    "aliases": 4,
+    "sample_path": ".mpp test files/Large Project2 Acumen/Large Project2 Acumen - DCMA Report1__EXTRACTED/Large Project2 Acumen1 - Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1014,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "8da48082abc198fa3da70749a9c91abd8b762e3fc80bc08b1fa4c482c021b9d3",
+    "ext": ".xlsx",
+    "size": 68081,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File Leveled All Dependencies with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-21-13.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7849,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "211fe51989b8efd549ba4d382c3b694a11fbcc5839cc6052fdf261970c370bfb",
+    "ext": ".jpg",
+    "size": 80126,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File Leveled Critical - Secondary - Teritiary - with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-22-42 SSI Settings.jpg"
+  },
+  {
+    "sha256": "bdc74b4a276c7de10d77753c7bcf777050885d2c2cc68777bf9d5087e2bb0b6a",
+    "ext": ".xlsx",
+    "size": 19088,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File Leveled Critical - Secondary - Teritiary - with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-22-42.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1239,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "f5f1c59a3b6b7f609a380582abf4b9afd5a2dcd132cb48242fa45399e5992998",
+    "ext": ".mpp",
+    "size": 9814016,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File Leveled.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "705023123b6d490d0a06545062ec8aac31604350b0d1b5e26e4d6e3bcbe6425d",
+    "ext": ".mpp",
+    "size": 9737728,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "d180ea50c938c194eadcbad962cdfe5271906829bb0bd41f04bf2b1eb03e922e",
+    "ext": ".mpp",
+    "size": 10168320,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large Test File2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "767c9eccb95dcc49fe2d41b850945974d9ae41020fa269a42c9c5af4c44862ed",
+    "ext": ".mpp",
+    "size": 9737728,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Large Test File/Large_Test_File.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "0d1ab6f3b684143d5ca547afcd06f12ccbf3acab2fc9a0ee465a1a456252f818",
+    "ext": ".mpp",
+    "size": 817152,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project 1-5/Project5.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "b58d567b6b957ceb253213e8e021272a484fdb8191d695be5f691e0000798c30",
+    "ext": ".mpp",
+    "size": 817152,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project 1-5/Project5_TAMPERED.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "a51f3788971eb10a1f02c71b1be869fa47ec8c9a3fcccf33e44330bcb8326812",
+    "ext": ".docx",
+    "size": 31677,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v5 - Quick Add Metrics.docx",
+    "zip_members": 16,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 389,
+    "tables": 2,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 1
+  },
+  {
+    "sha256": "bc11dfd70530ce152ad4b1c0d91293bbcb3d9951e2c99f64fbe5a7dc670eeabc",
+    "ext": ".xlsx",
+    "size": 15223,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v51 - Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 3962,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "67139c19a86cc935c3b1e581c3aa88b87e21c3f644af3b39c2b86e4a7da6e942",
+    "ext": ".xlsx",
+    "size": 110177,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v52 - Quick Add Metrics.xlsx",
+    "zip_members": 33,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Project21",
+        "state": "visible"
+      },
+      {
+        "name": "Project5_TAMPERED2",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-2027 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 24,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 66267,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c6c91a48a2fd92b7597251e9e14947227a728437ca6c32fa37e1ebbc9a4f982a",
+    "ext": ".xlsx",
+    "size": 603626,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v53 - DCMA Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 287078,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "39ac8611464085145e7ea698cef061e6e44fa2b70fa9f25639a0fd1224be9012",
+    "ext": ".xlsx",
+    "size": 99029,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v54- Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project2",
+        "state": "visible"
+      },
+      {
+        "name": "Project5_TAMPERED",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 42270,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "02995800349535e19a0f0c5c41caed299ad5c6d6506e0f282fd12b8cd50d895f",
+    "ext": ".xlsx",
+    "size": 20238,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/2v55 - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c9646ab58c78b304f4132fcbe0a0ab958273d7be067aaf3cbd5503a6ddcc7e70",
+    "ext": ".xlsx",
+    "size": 81318,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/Project2v5 Forensic Analysis Report.xlsx",
+    "zip_members": 57,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "ID",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Code",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Name",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-WBS-Code",
+        "state": "visible"
+      },
+      {
+        "name": "Task-Planning-Level-ID",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 50,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 16429,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "f20d2fb2c2384441ca0490468373f353e4c18294e03fb911416d7a31a164bb28",
+    "ext": ".mpp",
+    "size": 817152,
+    "aliases": 1,
+    "sample_path": ".mpp test files/Project2 - Project5/2 vs 5/Project5_TAMPERED.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "e2c881f4890338c1817f01fe18d912c63c3b90aa80f1f0d3c3fa0361891b0ed7",
+    "ext": ".xlsx",
+    "size": 25916,
+    "aliases": 3,
+    "sample_path": ".mpp test files/Project2 - Project5/P-P5 - Quick Add Metrics .xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 3,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 35393,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "9b9deed4365c5717eea09ae12ce9d896bdfc1beb868f8839365a7f08f0f3cb5c",
+    "ext": ".xlsx",
+    "size": 603625,
+    "aliases": 3,
+    "sample_path": ".mpp test files/Project2 - Project5/P2-P5 - DCMA Report.xlsx",
+    "zip_members": 80,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Program-Summary",
+        "state": "visible"
+      },
+      {
+        "name": "Program-Summary-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Quick-Add-M",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Er",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Schedule-Wa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Critical-Pa",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-BEI---Incom",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Control-Mil",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Date",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Margin-Dura",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Status---Ch",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA_Quick-Library-Performance6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Status---Quality-8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo6",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo7",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo8",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perfo9",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf10",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf11",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf12",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf13",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf14",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf15",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf16",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf17",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Basel3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Hit-o3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Curre3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--3",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-DRM",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Track",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Margi2",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-Perf18",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--4",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Performance-BEI--5",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Errors",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Schedule-Warnings",
+        "state": "visible"
+      },
+      {
+        "name": "NASA-Metrics-Critical-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced",
+        "state": "visible"
+      },
+      {
+        "name": "Advanced-Baseline-Compliance",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Schedule-Ex",
+        "state": "visible"
+      },
+      {
+        "name": "Industry-Standards-Half-Step-D",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 73,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 287078,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2263,
+    "calc_mode": null
+  },
+  {
+    "sha256": "e9ecf008be4907a9c0a08829e8812551ebd9d9dbcb470291afef0a02bc362f9b",
+    "ext": ".xlsx",
+    "size": 99137,
+    "aliases": 3,
+    "sample_path": ".mpp test files/Project2 - Project5/P2-P5 - Detailed Metric Report.xlsx",
+    "zip_members": 9,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project2",
+        "state": "visible"
+      },
+      {
+        "name": "Project5_TAMPERED",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 42270,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 2,
+    "calc_mode": null
+  },
+  {
+    "sha256": "a67a98878323401b99059e67ede3dafa95fb6d6c67b368986bcd5d1bd544b46b",
+    "ext": ".xlsx",
+    "size": 20217,
+    "aliases": 3,
+    "sample_path": ".mpp test files/Project2 - Project5/P2-P5 - Metric History Report.xlsx",
+    "zip_members": 8,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project2",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 5389,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "4c4609d8dc64e717550653aef10dccf58fdaab76a4b0e875de4367543340e893",
+    "ext": ".xlsx",
+    "size": 172439,
+    "aliases": 3,
+    "sample_path": ".mpp test files/Project2 - Project5/P2-P5 - Quick Add Metrics.xlsx",
+    "zip_members": 95,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Project21",
+        "state": "visible"
+      },
+      {
+        "name": "Project5_TAMPERED2",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "3-1-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-15-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-22-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-29-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-12-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-19-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-26-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-3-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-10-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-17-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-24-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-31-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-7-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-14-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-21-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-28-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-5-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-12-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-19-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-26-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-2-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-9-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-16-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-23-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-30-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-13-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-20-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-27-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-4-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-11-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-18-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "10-25-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-1-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-8-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-15-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-22-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "11-29-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-6-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-13-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-20-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "12-27-2026 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-3-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-10-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-17-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-24-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "1-31-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-7-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-14-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-21-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "2-28-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-7-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-14-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-21-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "3-28-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-4-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-11-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-18-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "4-25-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-2-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-9-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-16-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-23-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "5-30-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-6-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-13-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-20-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "6-27-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-4-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-11-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-18-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "7-25-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-1-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-8-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-15-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-22-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "8-29-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-5-2027 Details",
+        "state": "visible"
+      },
+      {
+        "name": "9-12-2027 Details",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 86,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 86767,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "7b261545c752ba1043de51a3dd74ae3b62736b9ed106616b55b42a4a9b266ab3",
+    "ext": ".afw",
+    "size": 579170,
+    "aliases": 5,
+    "sample_path": ".mpp test files/Project2 - Project5/P2-P5.afw",
+    "magic": "1f8b0800000000000400ec9d095c4cdd",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "1a398e434924ba7b6a938c4d45754a678383039cc42dc99462df7ea056e5b546",
+    "ext": ".mpp",
+    "size": 310784,
+    "aliases": 1,
+    "sample_path": ".mpp test files/TP4 DataCenter/TP4_DataCenter_v1.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "f9204e6265c3aaf4c7c75c76e42836f2e4809aad542da9d92d7b0c1d70c92a74",
+    "ext": ".mpp",
+    "size": 310784,
+    "aliases": 1,
+    "sample_path": ".mpp test files/TP4 DataCenter/TP4_DataCenter_v2.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "1ee70f710f8dfe2202035c9ece5a7c3cefd3a500737ef0e17f70e6bb7e040ae1",
+    "ext": ".mpp",
+    "size": 310784,
+    "aliases": 1,
+    "sample_path": ".mpp test files/TP4 DataCenter/TP4_DataCenter_v3.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "df08a33bcfacae5c945624ece2b6cb4fe77e46b950268051570a4480c045de55",
+    "ext": ".mpp",
+    "size": 310272,
+    "aliases": 1,
+    "sample_path": ".mpp test files/TP4 DataCenter/TP4_DataCenter_v4.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "b2c11255fa112bec14f4c85121d2b90f0824ab203351eb9e8d5b0cccd02880e0",
+    "ext": ".mpp",
+    "size": 311296,
+    "aliases": 1,
+    "sample_path": ".mpp test files/TP4 DataCenter/TP4_DataCenter_v5.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "e87cb4a64a368109a35223eca74efba6ce8d3190827f279eef600529a6bb0ea4",
+    "ext": ".ppt",
+    "size": 875520,
+    "aliases": 1,
+    "sample_path": "106 Advanced Schedule RiskPresentation Lisbon.ppt",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true,
+    "zip": false
+  },
+  {
+    "sha256": "c1bab3dc86b67ab7b860f474319a2cc1299ee5a2508b2f9fe3f12d83742b3feb",
+    "ext": ".mpp",
+    "size": 300544,
+    "aliases": 1,
+    "sample_path": "5 Task Test File.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "03b585e63832979a90572998b3c71bb9be528e9cd7ebce89bb5e318462641073",
+    "ext": ".docx",
+    "size": 26148,
+    "aliases": 1,
+    "sample_path": "AIprompt_Margin&ContingencyBarChart (1).docx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 341,
+    "tables": 1,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "272662cf43015e28d4db365c9425b3daebc9acc7ac9a4a8533fe67035795d34c",
+    "ext": ".docx",
+    "size": 44316,
+    "aliases": 1,
+    "sample_path": "Concepts, Methods & Techniques.docx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 320,
+    "tables": 0,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "1eafe822ff106f7fe6d11f7edb8cea2ebfc8f4ddb049d5488202e1375d9807f5",
+    "ext": ".pdf",
+    "size": 806741,
+    "aliases": 1,
+    "sample_path": "INT-02-Advanced-Schedule-Analysis.pdf",
+    "pages": 46,
+    "encrypted": "no",
+    "title": "Advanced Schedule Analysis",
+    "text_chars": 26675,
+    "text_words": 4086
+  },
+  {
+    "sha256": "796541fce68dc887ef525bb692d1e195fcd3d5022d5c9b07ed3d8d5fd5a28172",
+    "ext": ".mpp",
+    "size": 9236480,
+    "aliases": 1,
+    "sample_path": "Large Test File Leveled (OVERALLOCATION FIXED).mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "d2ca2b80b1afdc25afc54129a68857b7d2ae2defbf677a0bc476964edec618db",
+    "ext": ".mpp",
+    "size": 9442304,
+    "aliases": 1,
+    "sample_path": "Large Test File Leveled with Driving Slack Not Leveled.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "e112f6723e4d7486176f5117b1ddc28fff7c41b1a587a7fdc9746fb80a212c26",
+    "ext": ".mpp",
+    "size": 9362944,
+    "aliases": 1,
+    "sample_path": "Large Test File Leveled with Driving Slack.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "546b72798ae7cc357d62dac0fc3faa4e5f2221f968341f4699f0d55e3ea000dd",
+    "ext": ".png",
+    "size": 176889,
+    "aliases": 1,
+    "sample_path": "Margin Consumption.png"
+  },
+  {
+    "sha256": "1c6015f16bc3570a712bea2592f1ec7fceb851d680db9118987970b670a7b875",
+    "ext": ".png",
+    "size": 90346,
+    "aliases": 1,
+    "sample_path": "Margin Erosion.png"
+  },
+  {
+    "sha256": "eb949aac5d49dd6d72f5f46b47a64c73f5083f3fd909057c7d1b78c68a04465b",
+    "ext": ".xlsx",
+    "size": 71412,
+    "aliases": 1,
+    "sample_path": "Margin&Contingency_BurnDown_Template_20250513.xlsx",
+    "zip_members": 46,
+    "external_links": 0,
+    "comments_parts": 2,
+    "custom_xml_parts": 9,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Margin Burn-Down",
+        "state": "visible"
+      },
+      {
+        "name": "Margin Burn-Down (2)",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 354,
+    "cell_count_xml": 2862,
+    "chart_parts": 2,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "720f481ebc43182d4783080794eb263b263e9d772c4d882d336a380fb6fc7150",
+    "ext": ".mpp",
+    "size": 478208,
+    "aliases": 4,
+    "sample_path": "Project2(Duration Bomb).mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "ded2e4d9b321e4c3f4ba2eb88ec7c9141ab3221fc006a1931b80f7286ac18e32",
+    "ext": ".mpp",
+    "size": 716288,
+    "aliases": 1,
+    "sample_path": "Project5_TAMPERED UI WBS Levels.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "31360e10aa89bd28a6ebd02e1bb91fe9104fc6a25afb307b0b7d1025d712c775",
+    "ext": ".pdf",
+    "size": 14471540,
+    "aliases": 1,
+    "sample_path": "SP-20240014019.pdf",
+    "pages": 303,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 771987,
+    "text_words": 112803
+  },
+  {
+    "sha256": "4cd6b6d0afd1c0f21e1c4b3593319532ce1087522233be6036a484efae80aa11",
+    "ext": ".pdf",
+    "size": 6669330,
+    "aliases": 1,
+    "sample_path": "SP-20240014326.pdf",
+    "pages": 89,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 200087,
+    "text_words": 29295
+  },
+  {
+    "sha256": "c23b9ad655a09d97bce0d9c18b7b003e820323db966a5238645fe8737146ed61",
+    "ext": ".mpp",
+    "size": 905728,
+    "aliases": 1,
+    "sample_path": "SRA Risk - Project5_TAMPERED.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "4c0bf07c6fbcd1c549726c69161c7178a477693ddeb814b361d53d85ec0ecf8e",
+    "ext": ".mpp",
+    "size": 885248,
+    "aliases": 1,
+    "sample_path": "SRA Risk - TEST FILE - Project5_TAMPERED.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "56b11cd47c1e6c0bc0014ac4a87da1b35d373f7fac17232eb6b51ddbbe6e3c89",
+    "ext": ".mpp",
+    "size": 311296,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "fe6530f3cc713138afcf081cb7a1a4d51c04320e7cf9a832d9c9cc98f8ad5f04",
+    "ext": ".mpp",
+    "size": 295936,
+    "aliases": 4,
+    "sample_path": "TP2_Bridge_4x10_Calendar.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "9711f02d96be9ba52294089c5872a02110859b0b4f9ff83a6d4c78038d00aff4",
+    "ext": ".mpp",
+    "size": 278528,
+    "aliases": 4,
+    "sample_path": "TP3_Outage_DCMA_Seeded.mpp",
+    "magic": "d0cf11e0a1b11ae10000000000000000",
+    "ole": true
+  },
+  {
+    "sha256": "ed9b29751ee797fd3541f3e23c4fcd092405d93d7dae7ce47b722b94b42fbb95",
+    "ext": ".jpg",
+    "size": 21994,
+    "aliases": 1,
+    "sample_path": "Visuals/Advanced Cost Uncertainty.jpg"
+  },
+  {
+    "sha256": "7f1bda010fc3ff46b26eb113b804cd4d4f8200544e777164f327390bbc334ca4",
+    "ext": ".jpg",
+    "size": 262872,
+    "aliases": 1,
+    "sample_path": "Visuals/HLS Risk Rigistry.jpg"
+  },
+  {
+    "sha256": "6f7da7e5e099d2497a1569156bfb2005884ca2f0dc9e80fefec6c3f64b37ff22",
+    "ext": ".pdf",
+    "size": 3215471,
+    "aliases": 1,
+    "sample_path": "evmimplementationhandbook-1-1.pdf",
+    "pages": 65,
+    "encrypted": "no",
+    "title": "Microsoft Word - EVMImplementationHandbook.docx",
+    "text_chars": 151586,
+    "text_words": 21576
+  },
+  {
+    "sha256": "33cf65f82f309d3d236f814262ff4e5d7ace782fc2eb40514620ee4bc748bea4",
+    "ext": ".docx",
+    "size": 42138,
+    "aliases": 1,
+    "sample_path": "mf MA-IMS.docx",
+    "zip_members": 29,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 12,
+    "has_vba": false,
+    "paragraphs": 74,
+    "tables": 0,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "fd1b310f4b4e3f45a982b627eac0faf06d240cbd063520c29406c794a039e7a9",
+    "ext": ".pdf",
+    "size": 2694054,
+    "aliases": 1,
+    "sample_path": "nasa-ibr-handbook-5-1.pdf",
+    "pages": 81,
+    "encrypted": "no",
+    "title": "Microsoft Word - NASA IBR Handbook.docx",
+    "text_chars": 169405,
+    "text_words": 24849
+  },
+  {
+    "sha256": "90f63f49ed287c059c5fce37788ff11cda2dd005d0c806b3a5040b0b49126db7",
+    "ext": ".pdf",
+    "size": 4388576,
+    "aliases": 1,
+    "sample_path": "nasa-wbs-handbook.pdf",
+    "pages": 65,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 112954,
+    "text_words": 16623
+  },
+  {
+    "sha256": "42c68ad040389875aabc9cb92a4155337f9c58d1571feb684c0c037022fd6e61",
+    "ext": ".pdf",
+    "size": 11248846,
+    "aliases": 1,
+    "sample_path": "pm-handbook-nasa-sp-2014-3705-2024jun.pdf",
+    "pages": 493,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 1235106,
+    "text_words": 177199
+  },
+  {
+    "sha256": "d36d9776cb1b2b4520b4dac449ad425d3ec3ebe7ffaa36054e5cf1d5dc7f3438",
+    "ext": ".pdf",
+    "size": 4581125,
+    "aliases": 1,
+    "sample_path": "ppc-handbook-1-5-17.pdf",
+    "pages": 342,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 804726,
+    "text_words": 117584
+  },
+  {
+    "sha256": "e6b25f83cde9aee1f81232b92b3fce21c04ed00c4eb19c2a900f853159996d83",
+    "ext": ".pdf",
+    "size": 27045411,
+    "aliases": 1,
+    "sample_path": "schedule-management-handbook-20240315-update.pdf",
+    "pages": 409,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 946977,
+    "text_words": 142039
+  },
+  {
+    "sha256": "b522a173071325ba189fe822b30e6e4607f7a9cf5608a8672052a73773add7ba",
+    "ext": ".docx",
+    "size": 44826,
+    "aliases": 1,
+    "sample_path": "smp-template-20200225.docx",
+    "zip_members": 15,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 292,
+    "tables": 1,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "b9105a99df970143456239f94bf88ab81e8f1255675baf2417be681b2ba57f9a",
+    "ext": ".pdf",
+    "size": 1421384,
+    "aliases": 1,
+    "sample_path": "sopi_6.0_final.pdf",
+    "pages": 59,
+    "encrypted": "no",
+    "title": null,
+    "text_chars": 146775,
+    "text_words": 21572
+  },
+  {
+    "sha256": "73c0a47635465b31be964a532be1ae150be982e9f5263fa188061d1fc046608f",
+    "ext": ".pdf",
+    "size": 1193319,
+    "aliases": 1,
+    "sample_path": "srb-handbook-official-rev-c-202301243-final-v2.pdf",
+    "pages": 105,
+    "encrypted": "no",
+    "title": "",
+    "text_chars": 244867,
+    "text_words": 35725
+  },
+  {
+    "sha256": "7711834145930d2379fd3d6f43ad05fa5d5f233f1b900cbbf4bf8982648149ac",
+    "ext": ".afw",
+    "size": 624571,
+    "aliases": 2,
+    "sample_path": "2345.afw",
+    "magic": "1f8b0800000000000400ec5d077c9345",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "cf973ce581fabbaf73e4b3a7fb790797fc9b5884886b23c4646f7f2e98483e28",
+    "ext": ".docx",
+    "size": 22047,
+    "aliases": 1,
+    "sample_path": "Ai Result Comparision.docx",
+    "zip_members": 11,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 245,
+    "tables": 0,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "250cff6a9bb9afcffbed97a4e5d21dc3e8e9c51d6017e3519c4d857574044f11",
+    "ext": ".docx",
+    "size": 25269,
+    "aliases": 1,
+    "sample_path": "Executive Summary Large Test File.docx",
+    "zip_members": 16,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 199,
+    "tables": 2,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 1
+  },
+  {
+    "sha256": "e9cff89caab9b24347694a322e7c8656d57af13d926dbc1b3b4e8fef3694485c",
+    "ext": ".xml",
+    "size": 12630,
+    "aliases": 1,
+    "sample_path": "Field Map.fieldmap.xml",
+    "root_tag": "FieldMap",
+    "element_counts": {}
+  },
+  {
+    "sha256": "808ece07db72c4a6c7aff20c57d8dbbf83b2ce074461ab046c3d23835534489c",
+    "ext": ".xlsx",
+    "size": 60214,
+    "aliases": 1,
+    "sample_path": "Hard_File Forensic Analysis Report.xlsx",
+    "zip_members": 56,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "ID",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Code",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 49,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 9362,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "9429ad1dc13fa7a70c94eb764cbee36b4279668ec3a12dc32932d402b4c0defa",
+    "ext": ".afw",
+    "size": 534284,
+    "aliases": 1,
+    "sample_path": "Hard_File_Fuse.afw",
+    "magic": "1f8b0800000000000400ec5d077c53c5",
+    "ole": false,
+    "zip": false
+  },
+  {
+    "sha256": "af12498ded27dba297863d8964d7bd21a78a17b80682a5f38aeb5eef803de54c",
+    "ext": ".xlsx",
+    "size": 68996,
+    "aliases": 1,
+    "sample_path": "Large Test File (OverAl Fixed) UID_152_Directional_Path_Analysis_2026-6-24-13-17-48.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7851,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "b67f02e49e5f94833eacd29203b41e9741c8492a50e00c4ab91b64d763d6d65e",
+    "ext": ".xlsx",
+    "size": 15140,
+    "aliases": 1,
+    "sample_path": "Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 779,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "14547256bf8c83b785a9f587c8c8436a311079fb89b44bf87088aa4ccab8fb3d",
+    "ext": ".xlsx",
+    "size": 848020,
+    "aliases": 1,
+    "sample_path": "PerformanceAnalysisSummary_Sample Metrics_2026APR.xlsx",
+    "zip_members": 140,
+    "external_links": 6,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Project -->",
+        "state": "visible"
+      },
+      {
+        "name": "G1_Characteristics_WorkToGo",
+        "state": "visible"
+      },
+      {
+        "name": "G2&G3_BowWave_2025MAR",
+        "state": "visible"
+      },
+      {
+        "name": "G2&G3_BowWave_2024SEP",
+        "state": "visible"
+      },
+      {
+        "name": "G4_Workoff Burden",
+        "state": "visible"
+      },
+      {
+        "name": "G5_DurationRatioS Curve_2025MAR",
+        "state": "visible"
+      },
+      {
+        "name": "Portfolio -->",
+        "state": "visible"
+      },
+      {
+        "name": "G3_Quad_HMI&CEI",
+        "state": "visible"
+      },
+      {
+        "name": "G6_Quad_S-ratioVsF-ratio",
+        "state": "visible"
+      },
+      {
+        "name": "G7_Quad_BEIvsCP%",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 10,
+    "hidden_sheets": 0,
+    "formula_count": 7244,
+    "cell_count_xml": 41262,
+    "chart_parts": 19,
+    "pivot_parts": 0,
+    "defined_names": 66,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c0aebbc7d2868821d09471a10d7c84a566f6826acf43324f4552303f90bba19c",
+    "ext": ".xlsx",
+    "size": 82315,
+    "aliases": 1,
+    "sample_path": "Project2 vs Project5_TAMPERED Forensic Analysis Report.xlsx",
+    "zip_members": 58,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Projects",
+        "state": "visible"
+      },
+      {
+        "name": "Activities",
+        "state": "visible"
+      },
+      {
+        "name": "Relationships",
+        "state": "visible"
+      },
+      {
+        "name": "Leads-Lags",
+        "state": "visible"
+      },
+      {
+        "name": "Resources",
+        "state": "visible"
+      },
+      {
+        "name": "Calendars",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar Exceptions",
+        "state": "visible"
+      },
+      {
+        "name": "ID",
+        "state": "visible"
+      },
+      {
+        "name": "Description",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Type",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Original-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Duration",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Free-Float",
+        "state": "visible"
+      },
+      {
+        "name": "Calendar",
+        "state": "visible"
+      },
+      {
+        "name": "Start",
+        "state": "visible"
+      },
+      {
+        "name": "Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Early-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Start",
+        "state": "visible"
+      },
+      {
+        "name": "Late-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Expected-Finish",
+        "state": "visible"
+      },
+      {
+        "name": "Suspend-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Resume-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Activity-Status",
+        "state": "visible"
+      },
+      {
+        "name": "Percent-Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Physical---Complete",
+        "state": "visible"
+      },
+      {
+        "name": "Critical",
+        "state": "visible"
+      },
+      {
+        "name": "Longest-Path",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint",
+        "state": "visible"
+      },
+      {
+        "name": "Primary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Secondary-Constraint-Date",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Work",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Budget-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Actual-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Remaining-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "Total-Cost",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Code",
+        "state": "visible"
+      },
+      {
+        "name": "WBS-Name",
+        "state": "visible"
+      },
+      {
+        "name": "Baseline-WBS-Code",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 51,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 16500,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "834e68133874ce73d67bf7d4edf58af5d54a03bf5136b8ed577981b9415210c3",
+    "ext": ".xlsx",
+    "size": 11423,
+    "aliases": 1,
+    "sample_path": "Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 219,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "bcc86d136d481d1f99e261aadfde754d0aef68f91a179b218840c34c7357360d",
+    "ext": ".xlsx",
+    "size": 17442,
+    "aliases": 1,
+    "sample_path": "SRA Risk - Project5_TAMPERED - SRA.xlsx",
+    "zip_members": 18,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Issue final request for payment",
+        "state": "visible"
+      },
+      {
+        "name": "Sheet1",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 159,
+    "chart_parts": 1,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "b77cc5ef833cfbc2bf0f0f59d6a58827e069e623bde989310310224d5f0eefaa",
+    "ext": ".xlsx",
+    "size": 13257,
+    "aliases": 1,
+    "sample_path": "SRA Sensitivity Analysis.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Sensitivity Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Sheet1",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 2,
+    "hidden_sheets": 0,
+    "formula_count": 38,
+    "cell_count_xml": 312,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "43470d9f8232549d53720256f27a2e38c967cabd055c17b800cb6be14c99182c",
+    "ext": ".xml",
+    "size": 35608,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 28,
+      "PredecessorLink": 30
+    }
+  },
+  {
+    "sha256": "3c19fcbf836944547cfe07c48f04b75f8cec939c09e0aedd6e03d58a6a6c87a1",
+    "ext": ".zip",
+    "size": 965752,
+    "aliases": 2,
+    "sample_path": "TP1_Library_Progressed.zip"
+  },
+  {
+    "sha256": "8e6116bab150d6316f90dc0f0f3ecdb7a330a5a76fe3a61aaee3a1039a05ae48",
+    "ext": ".xml",
+    "size": 26503,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP2_Bridge_4x10_Calendar.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 20,
+      "PredecessorLink": 21
+    }
+  },
+  {
+    "sha256": "f29b7ef5a4d52ed771b8178d04e3d432322a0b87e45945711a61b455de6b911b",
+    "ext": ".xml",
+    "size": 32802,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP3_Outage_DCMA_Seeded.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 25,
+      "PredecessorLink": 25
+    }
+  },
+  {
+    "sha256": "b3f06cbde6ca9c3c280f729e10fba261d351b659187527304cbc41dab2804b26",
+    "ext": ".xml",
+    "size": 22199,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP4_DataCenter_v1.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 16,
+      "PredecessorLink": 20
+    }
+  },
+  {
+    "sha256": "1fba86961cd91eb0dc059e5dee7645be5ca57704ac61be5f0cccf492f3e608c1",
+    "ext": ".xml",
+    "size": 22748,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP4_DataCenter_v2.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 16,
+      "PredecessorLink": 20
+    }
+  },
+  {
+    "sha256": "55102caa93dd9c66738f795e9d0dada4514fa5ef1e5c0bdd46636b1362f2fbe9",
+    "ext": ".xml",
+    "size": 22966,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP4_DataCenter_v3.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 16,
+      "PredecessorLink": 20
+    }
+  },
+  {
+    "sha256": "14b380d03d0348ada9ca4a674658dae4ca3a625b2473047fd203d970f5af5d89",
+    "ext": ".xml",
+    "size": 23296,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP4_DataCenter_v4.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 16,
+      "PredecessorLink": 20
+    }
+  },
+  {
+    "sha256": "8625f98841cc37f6eef57c50633bfd98d2fdafe62de653d3898d897eaaf011da",
+    "ext": ".xml",
+    "size": 23404,
+    "aliases": 4,
+    "sample_path": "TP1_Library_Progressed__EXTRACTED/TP4_DataCenter_v5.xml",
+    "root_tag": "Project",
+    "element_counts": {
+      "Project": 1,
+      "Calendar": 1,
+      "Task": 16,
+      "PredecessorLink": 20
+    }
+  },
+  {
+    "sha256": "3c0e7c35b0aba8a6d7c1240210819529f45aeba7d10d9e3bc5758632bfdb80b7",
+    "ext": ".xlsx",
+    "size": 17216,
+    "aliases": 1,
+    "sample_path": "UID_145_Directional_Path_Analysis_2026-6-22-11-35-10.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1100,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "c4a48fa436e9c3452cf4fbc70367d9962bf81bd16211f617229db643a05faba0",
+    "ext": ".xlsx",
+    "size": 11110,
+    "aliases": 1,
+    "sample_path": "UID_145_Directional_Path_Analysis_2026-6-23-12-28-46.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 150,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "bdeb7a0b6fa6b5fc9cb408c935a877ffe7448407e2457f692931111ef6e342a9",
+    "ext": ".xlsx",
+    "size": 17237,
+    "aliases": 1,
+    "sample_path": "UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1100,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "b123dea3ea9c196f3681aececdc8e79bf9d73bc0dd2a4b5239e7fa7b80b39f6d",
+    "ext": ".xlsx",
+    "size": 68885,
+    "aliases": 1,
+    "sample_path": "UID_152_Directional_Path_Analysis_2026-6-23-12-46-44.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7850,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "5d8e5654dc8876e600e58c352bbee8b84a8d659c9f5c3fa7f4e2a038c004ec6d",
+    "ext": ".xlsx",
+    "size": 68785,
+    "aliases": 1,
+    "sample_path": "UID_152_Directional_Path_Analysis_ALL_2026-6-23-15-5-21.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7851,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "ab37c22425175a8cf001c00386b241be460d0b183d6bfeedb98b60e8b2da14d6",
+    "ext": ".xlsx",
+    "size": 68675,
+    "aliases": 1,
+    "sample_path": "UID_152_Directional_Path_Analysis_All Dependents Not Leveled_2026-6-23-20-30-55.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7850,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "97de04ddb45c05e9d558a9bc472573cb02e8b5eade53128ced3b71bd4975ab57",
+    "ext": ".xlsx",
+    "size": 68812,
+    "aliases": 1,
+    "sample_path": "UID_152_Directional_Path_Analysis_Leveled_All_Dependents_2026-6-23-20-28-26.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7850,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "268d9f01dec32ec249c98466263bc37e2dcfa034fe5890cca5843bbb6d90e794",
+    "ext": ".xlsx",
+    "size": 68890,
+    "aliases": 1,
+    "sample_path": "UID_152_Directional_Path_Analysis_Resource_Level_2026-6-23-17-8-43.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 7851,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "8bae99cf810bb5bbe47aaf1161fa70f9757210403028b79a85295509f7d82596",
+    "ext": ".xlsx",
+    "size": 10339,
+    "aliases": 1,
+    "sample_path": "UID_4_Directional_Path_Analysis_2026-6-23-15-42-46.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 60,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "0dd1282533eba1085cec8bb9158a461e9860d16c00c451e26754d04e67c48a53",
+    "ext": ".xlsx",
+    "size": 10387,
+    "aliases": 1,
+    "sample_path": "UID_4_Directional_Path_Analysis_Progress_2026-6-23-16-0-6.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 61,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "13685f9cf58f9a960bde95523e81b637c6ce49496c8732c178331cd910390431",
+    "ext": ".xlsx",
+    "size": 10387,
+    "aliases": 1,
+    "sample_path": "UID_4_Directional_Path_Analysis_Split_2026-6-23-16-31-24.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Directional Path Export",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 1,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 61,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "d156d2700fe03279ad2f85a1d7484798e50f053fe701c96c5f86170a68dc81c9",
+    "ext": ".xlsx",
+    "size": 1113854,
+    "aliases": 3,
+    "sample_path": "Workbook1 - DCMA Report.xlsx",
+    "zip_members": 14,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Ribbon View",
+        "state": "visible"
+      },
+      {
+        "name": "Ribbon Analysis",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File1",
+        "state": "visible"
+      },
+      {
+        "name": "Large-Test-File22",
+        "state": "visible"
+      },
+      {
+        "name": "Phase Analysis",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 5,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 661354,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "822b17053f23b57023cbeb1b73e46b25a5e63378eaa6eb841f075501fe76f85b",
+    "ext": ".docx",
+    "size": 9589,
+    "aliases": 1,
+    "sample_path": "sra-report January 2026.docx",
+    "zip_members": 6,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 341,
+    "tables": 9,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "f07bddab86cc90fb25a48f143da968e8b8a3e00c34af50244bff612d8f911948",
+    "ext": ".docx",
+    "size": 30045,
+    "aliases": 1,
+    "sample_path": "sra-report.docx",
+    "zip_members": 6,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "paragraphs": 1911,
+    "tables": 9,
+    "tracked_insertions": 0,
+    "tracked_deletions": 0,
+    "images": 0
+  },
+  {
+    "sha256": "601acf54af1dd9b3f6f9b1e52a1aa7c5c12c991e7a9d7e078a40fdd9ae7fe6ba",
+    "ext": ".xlsx",
+    "size": 6499,
+    "aliases": 1,
+    "sample_path": "sra-ssi (January 2026).xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Run setup",
+        "state": "visible"
+      },
+      {
+        "name": "Per-task durations",
+        "state": "visible"
+      },
+      {
+        "name": "Risk register",
+        "state": "visible"
+      },
+      {
+        "name": "Focus-finish results",
+        "state": "visible"
+      },
+      {
+        "name": "OAT sensitivity",
+        "state": "visible"
+      },
+      {
+        "name": "Risk matrix",
+        "state": "visible"
+      },
+      {
+        "name": "Opportunity matrix",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 7,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 267,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "0a7701cbe02a3411e60d631c2a2ce2567f2e6fa44db90798de469df8bb56dcd6",
+    "ext": ".json",
+    "size": 46285,
+    "aliases": 1,
+    "sample_path": "sra-ssi-setup.json",
+    "json_type": "dict",
+    "top_keys": [
+      "setup_version",
+      "focus_uid",
+      "occurrence_mode",
+      "use_risk_register",
+      "correlation",
+      "factor_table",
+      "factors",
+      "bcwc_minutes",
+      "risks"
+    ]
+  },
+  {
+    "sha256": "b05c62921daa901eecb33de885a32a0e104e143cbc219e225fa53b862b31c223",
+    "ext": ".xlsx",
+    "size": 17054,
+    "aliases": 1,
+    "sample_path": "sra-ssi.xlsx",
+    "zip_members": 12,
+    "external_links": 0,
+    "comments_parts": 0,
+    "custom_xml_parts": 0,
+    "has_vba": false,
+    "sheets": [
+      {
+        "name": "Run setup",
+        "state": "visible"
+      },
+      {
+        "name": "Per-task durations",
+        "state": "visible"
+      },
+      {
+        "name": "Risk register",
+        "state": "visible"
+      },
+      {
+        "name": "Focus-finish results",
+        "state": "visible"
+      },
+      {
+        "name": "OAT sensitivity",
+        "state": "visible"
+      },
+      {
+        "name": "Risk matrix",
+        "state": "visible"
+      },
+      {
+        "name": "Opportunity matrix",
+        "state": "visible"
+      }
+    ],
+    "sheet_count": 7,
+    "hidden_sheets": 0,
+    "formula_count": 0,
+    "cell_count_xml": 1807,
+    "chart_parts": 0,
+    "pivot_parts": 0,
+    "defined_names": 0,
+    "calc_mode": null
+  },
+  {
+    "sha256": "9e14c396cb0f22e5dfda142f162a3f82cb3b0ec99f2ce245ff43d2653d19ccb5",
+    "ext": ".zip",
+    "size": 14775366,
+    "aliases": 1,
+    "sample_path": "test files.zip"
+  },
+  {
+    "sha256": "ea5f4fda8eba61f8deeea460802ecca811b59c7004e6bac2487f241d93a0d165",
+    "ext": ".zip",
+    "size": 1638271,
+    "aliases": 1,
+    "sample_path": "test files__EXTRACTED/Project2 - Project5/P2-P5 - DCMA Report.zip"
+  }
+]
