@@ -1,4 +1,40 @@
-# Handoff — 2026-07-16 (#10 PR-B: MPXJ saved-views sidecar + filter parity oracle; v1.0.44; highest ADR 0232)
+# Handoff — 2026-07-16 (#10 PR-C: session-wide saved filter/group + highlight + audit group-fidelity; v1.0.45; highest ADR 0233)
+
+> ## STATUS (current) — #10 PR-C (ADR-0233): a saved MS Project filter/group applies SESSION-WIDE through the one `scope()` chokepoint; a HIGHLIGHT (mark-don't-drop) mode; A–Z helpers; and a read-only tri-agent audit's group-fidelity fixes folded in before merge.
+>
+> - **State layer (`web/app.py` `SessionState`):** new `active_saved_filter` (+ `saved_filter_prompts`),
+>   `filter_mode` (`reduce`|`highlight`), `active_saved_group`, `_matched` memo. `_match_uids` resolves
+>   whichever of the saved-tree / flat-field source is active; `scope()` rewritten to reduce via the
+>   shared `grouping.filter_to_uids` (so field + saved reduce mean ONE thing), with
+>   `grouping.with_ancestors` for "show related summary rows"; `highlight_uids()` exposes the match set
+>   without reducing. Setters `set_saved_filter`/`set_filter_mode`/`set_saved_group`; `set_filter` clears
+>   any saved filter (mutual exclusivity); `_invalidate_scope` extracted; `wipe` resets it all. Grouping
+>   is metric-preserving (its setter skips analysis-cache invalidation). Behaviour is byte-identical when
+>   nothing is set (existing filter/scope/group/target suite green).
+> - **Engine:** `engine/saved_grouping.py` (NEW) — `group_by_clauses` (multi-clause ordered buckets:
+>   ascending honored, clauses nested, `groupOn==2` banding, raw-field two-hop, unresolvable-first-clause
+>   → `(ungrouped)`), `group_first_field`, `saved_filters_union`/`saved_groups_union` (dedup + A–Z by
+>   `display_name.casefold()`), `find_saved_filter`/`find_saved_group`. `grouping.filter_to_uids` +
+>   `with_ancestors` extracted. `SavedFilter`/`SavedGroup` gain a `display_name` property (strips MS
+>   Project `&` accelerators) — properties only, no schema change.
+> - **Audit group-fidelity fixes (folded in before merge; verified on the real 2,126-task file):** MPXJ
+>   names a group's Duration column `DURATION_TEXT` → resolver now strips a trailing `_TEXT` (fixes
+>   `&Duration` / `Duration then Priority`); `% Complete` `groupOn==2 interval="0"` = MS Project's
+>   "Complete and Incomplete Tasks" two-bucket split at 100% (not 77 per-value buckets); `Task Mode`
+>   resolves from `is_manual`. `set_saved_filter(None)` no longer drops a field filter; `wipe` clears
+>   `sra_focus_uid`. Of the 25 real groups, only `Priority`/`Status` (→ **PR-C.2**, need model fields) and
+>   `Board Status`/`Sprint` (Agile add-in, no source data → honest degrade) still `(ungrouped)`.
+> - **State:** v**1.0.44 → 1.0.45**; wheel + 9 installers lockstep. New **ADR-0233**. Full gate green
+>   (ruff/format/mypy-strict/bandit 0/node/full pytest incl. new suites; parity extended not weakened).
+> - **NEXT:** **PR-C.2** (small): `Priority`/`Status`/`Project`/`Outline Number` model fields + MSPDI/XER
+>   wiring + schema 2.8.0 + resolver rows → the last resolvable real groups group faithfully. Then
+>   **PR-D** `/groups` UI (pickers A–Z, prompt inputs, highlight toggle + `highlight.js` + banner; 4-theme
+>   DoD). Then the **`/standards` metrics page** (DCMA-14 + NASA/Acumen-Fuse indices re-projection +
+>   `engine/metrics/sem.py` for the 9 unbuilt Schedule-Execution-Metrics) and the validated prior-audit
+>   remediation PRs (AI figure-gate H1/M4/M5; dead Law-1 defenses M6/L3; NEW-2 erosion basis; …). Full
+>   plan: `/root/.claude/plans/continue-but-write-a-glittery-sunset.md`.
+
+# (prior) Handoff — 2026-07-16 (#10 PR-B: MPXJ saved-views sidecar + filter parity oracle; v1.0.44; highest ADR 0232)
 
 > ## STATUS (current) — #10 PR-B (ADR-0232): `.mpp` saved filters/groups now actually LOAD, and the evaluator is gate-locked to MPXJ's own `evaluate()` on the real file — **9/9 exact-set parity over 2,126 tasks**.
 >

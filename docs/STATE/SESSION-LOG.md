@@ -6204,3 +6204,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** #10 PR-C (session-wide grouping + A–Z + highlight; design in
   `docs/STATE/msp-filters-research/03-plumbing-integration.md`) → PR-D (`/groups` UI). Then #13 XER
   per-task calendars, F3c parameterized expected margin, roles front-end.
+---
+
+## 2026-07-16 — #10 PR-C: session-wide saved filter/group + highlight mode + audit group-fidelity (ADR-0233)
+
+- **Session:** continued #10; also ran (operator directive) a read-only tri-agent deep audit of every
+  new file + all three prior AI audits' claims + the metrics library, sandbox-validating each. Findings
+  and the full plan forward are in `/root/.claude/plans/continue-but-write-a-glittery-sunset.md`.
+- **PR-C code:** wired the PR-A/B saved filters/groups into the session so one filter/group applies
+  everywhere via `scope()`; added a HIGHLIGHT (mark-don't-drop) mode; A–Z union/display-name helpers;
+  `engine/saved_grouping.py` (`group_by_clauses` + unions); extracted `grouping.filter_to_uids` /
+  `with_ancestors`. Grouping is metric-preserving; behaviour unchanged when nothing is set.
+- **Audit fixes folded in before merge (verified on the real `Large Test File Leveled.mpp`, 2,126
+  tasks):** F1 `DURATION_TEXT` (+ any `*_TEXT`) enum alias in the resolver → Duration groups resolve;
+  F2 `% Complete` `interval="0"` → MS Project "Complete and Incomplete" two-bucket split (not 77);
+  F3 `Task Mode` from `is_manual`; F5 `set_saved_filter(None)` keeps a field filter; F6 `wipe` clears
+  `sra_focus_uid`. Remaining `(ungrouped)`: Priority/Status (→ PR-C.2, need model fields), Board
+  Status/Sprint (Agile add-in, honest degrade). New tests incl. a Java-gated real-file group-fidelity
+  test + the audit's missing-coverage cases.
+- **Audit verdicts (for the record):** #10 evaluator is byte-faithful (live MPXJ parity 9/9, 2,126
+  tasks) — the only defects were the grouping-presentation ones fixed here. Prior audits accurate;
+  06-25 fully closed; VALID-AND-OPEN survivors = AI figure-gate H1/M4/M5, dead Law-1 defenses M6/L3,
+  air-gap route-list L5/NEW-3, margin-erosion basis NEW-2, version-drift guard M11, egress set L4. SEM
+  metrics group = 10 metrics, only BRI-Cumulative built. All scheduled into the plan's later phases.
+- **State:** v1.0.44 → **1.0.45**; wheel + 9 installers lockstep; **ADR-0233**; HANDOFF refreshed.
+- **NEXT:** PR-C.2 (Priority/Status/Project/Outline-Number model fields) → PR-D `/groups` UI →
+  `/standards` metrics page (+ `engine/metrics/sem.py`) → prior-audit remediation PRs.
