@@ -6179,3 +6179,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** #10 PR-B (Java-side filter/group export from `tools/mpxj` + ingest wiring + an MPXJ parity test on
   the real file) → PR-C (session-wide grouping + A-Z + highlight) → PR-D (`/groups` UI). Then #13 XER per-task
   calendars, F3c parameterized expected margin, and the roles front-end.
+---
+
+## 2026-07-16 — #10 PR-B: MPXJ saved-views sidecar export + ingest + the filter parity oracle (ADR-0232)
+
+- **Session:** continuation of the #10 mandate ("fully faithful: exact reproduction"). PR-A left
+  `Schedule.saved_filters`/`saved_groups` empty (no ingest path); this PR makes them real.
+- **Java (`tools/mpxj/MpxjToMspdi.java`):** every successful conversion (one-shot + `--server` batch)
+  now ALSO writes `<output>.views.json` — the saved filters' full recursive criteria trees (operand
+  kinds literal / field-to-field / prompt / null, literals typed) + all groups' clauses. Deduped the
+  MPP reader's double-registered built-ins (type+name key). Added `--eval <in> <out.json>`: the parity
+  oracle dumping each prompt-free task filter's matching UIDs via MPXJ's own `Filter.evaluate()`.
+  Dependency-free JSON writer (no Jackson); still one class file; recompiled `--release 17`.
+  Rationale: MSPDI XML cannot carry view definitions — they exist only in the native `.mpp`.
+- **Python:** new `importers/msp_views.py` — sidecar → frozen `SavedFilter`/`SavedGroup`, one-to-one;
+  malformed sidecar → `ImporterError` (fail loud; our converter wrote it in the same conversion).
+  `parse_mpp` attaches views via `model_copy`; missing sidecar = "no views" (older converter / fakes).
+- **Proof:** end-to-end on the operator's real `Large Test File Leveled.mpp` (2,126 tasks): the 10
+  filters + 25 groups load verbatim, and `select()` == MPXJ `evaluate()` **exactly, 9/9 prompt-free
+  filters** (`_MCTasks` 943 matches incl. its field-to-field + null-test conditions) — first run, no
+  evaluator fix needed: the PR-A bytecode-derived semantics held against the reference implementation.
+  `tests/importers/test_msp_views.py` (14 tests; oracle gate marked `parity`, runs on CI too).
+- **State:** v1.0.43 → **1.0.44**; wheel + 9 installers lockstep; **ADR-0232**; HANDOFF refreshed.
+- **NEXT:** #10 PR-C (session-wide grouping + A–Z + highlight; design in
+  `docs/STATE/msp-filters-research/03-plumbing-integration.md`) → PR-D (`/groups` UI). Then #13 XER
+  per-task calendars, F3c parameterized expected margin, roles front-end.
