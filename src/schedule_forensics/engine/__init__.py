@@ -14,6 +14,7 @@ from schedule_forensics.engine.cpm import (
     TaskTiming,
     compute_cpm,
     datetime_to_offset,
+    off_project_calendars,
     offset_to_datetime,
 )
 from schedule_forensics.engine.dcma_audit import (
@@ -91,6 +92,7 @@ __all__ = [
     "detect_manipulation",
     "diff_versions",
     "driving_path",
+    "off_project_calendars",
     "offset_to_datetime",
     "order_versions",
     "recommend",

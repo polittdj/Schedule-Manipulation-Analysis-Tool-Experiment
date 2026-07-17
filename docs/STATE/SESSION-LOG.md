@@ -6740,3 +6740,40 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   full-trace export basis decision, drill columns) each as its own golden-revalidated PR; a true
   un-leveled SSI comparison, if ever wanted, is a NEW option against a NEW SSI export (ADR-0251),
   never a silent redefinition of the existing toggles.
+
+---
+
+## 2026-07-17 — base-CPM single-calendar fail-soft disclosure (#26, ADR-0252)
+
+- **Session:** continued from the ADR-0251 session on branch `claude/smat-adr-0250-decision-vpvwwa`
+  (reused after #390 squash-merged and the branch restarted fresh from origin/main).   **Model/mode:**
+  Opus 4.8.
+- **#13 parked, #26 taken instead.** Operator flagged that the real `.xer` files are owed and cannot
+  be uploaded today (the current JUICE files are `cals=0`, so they don't exercise per-task calendars
+  at all). Landing parity-relevant XER importer behavior with no real reference to validate would cut
+  against Law 2, so #13 stays parked pending the files; picked up the next unblocked, fidelity-safe
+  queue item (#26) instead.
+- **The gap (route/code-verified).** Base CPM (`engine/cpm.py`) solves on `schedule.calendar` and
+  references `calendar_uid` nowhere; per-task calendars are honored only by driving-slack (ADR-0118)
+  and Gantt shading (ADR-0243/0382). On a multi-calendar file the base-CPM dates/float/critical path
+  are a single-calendar approximation, and `_calendar_panel` showed only the project calendar with no
+  disclosure — reading as the whole time basis.
+- **What changed (additive disclosure + tests only; no behavior, no number moves).** New pure helper
+  `engine.cpm.off_project_calendars(schedule)` — the deduped, uid-sorted calendars carried by active,
+  non-summary tasks whose WORKING PATTERN materially differs from the project calendar (compares the
+  five pattern fields, order-independent; `uid`/`name` are identity so a same-pattern twin never cries
+  wolf; a `calendar_uid` absent from the registry is skipped, fail-soft). `web/app.py::_calendar_panel`
+  adds a `notice info` when non-empty: names the off-project calendars and states the single-calendar
+  base (ADR-0028) vs the per-task SSI/Path path (ADR-0118); silent on single-calendar files. Exported
+  via `engine/__init__`.
+- **Verified against real data (Law 2).** Leveled Large Test File → discloses and names "ZIN Project
+  Calendar" (project "Dynetics Standard", a different holiday set); single-calendar Project5 → silent.
+  Pins: `tests/engine/test_off_project_calendars.py` (7 — synthetic edge cases + real Leveled/Project5
+  anchors) + `tests/web/test_calendar_disclosure.py` (3). 4-theme Chromium check green
+  (console/daylight/apollo/jarvis).
+- **State:** v1.0.60 → **1.0.61**; wheel + 9 installers rebuilt in lockstep; **ADR-0252**; full gate
+  green (ruff / ruff format --check / mypy --strict / bandit exit 0 / node --check / full pytest 2343
+  passed incl. `parity`). HANDOFF moved/replaced + this SESSION-LOG entry in the same commit.
+- **NEXT:** #13 XER per-task calendars (PARKED — needs the owed `.xer` files) → F3c parameterized
+  expected margin → roles front-end (v4 F4); the queued family-B option-plumbing unify PRs from the
+  ADR-0251 verify are unchanged.

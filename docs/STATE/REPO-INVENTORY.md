@@ -1,6 +1,6 @@
 # Repository Inventory — POLARIS / schedule-forensics
 
-> **Version/ADR stamps refreshed 2026-07-17 (v1.0.60, ADR-0251; ignore-toggle copy truth + page-family alignment).** For
+> **Version/ADR stamps refreshed 2026-07-17 (v1.0.61, ADR-0252; base-CPM single-calendar fail-soft disclosure, #26).** For
 > the reference-intake catalog, `00_REFERENCE_INTAKE/INDEX.md` is now the authoritative per-file
 > map (what each file is, which tests it verifies, duplicates, reorganization rules).
 >

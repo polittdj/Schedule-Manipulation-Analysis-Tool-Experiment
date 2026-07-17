@@ -78,6 +78,7 @@ from schedule_forensics.engine.cpm import (
     CPMError,
     CPMResult,
     datetime_to_offset,
+    off_project_calendars,
     offset_to_datetime,
 )
 from schedule_forensics.engine.dcma_audit import AuditCheck, Citation, ScheduleAudit
@@ -8011,6 +8012,9 @@ def _calendar_panel(sch: Schedule) -> str:
 
     Every computed date, float, and day-denominated threshold rides this calendar, so the
     analyst must be able to verify the time basis (and spot a fail-soft default) on the page.
+    When the file assigns some activities their own calendar, the base CPM still models only the
+    single project calendar (ADR-0028), so this panel discloses that single-calendar basis rather
+    than letting the analyst read the project-calendar row as the whole story (#26).
     """
     cal = sch.calendar
     days = ", ".join(_WEEKDAY_NAMES[d] for d in cal.work_weekdays)
@@ -8022,11 +8026,31 @@ def _calendar_panel(sch: Schedule) -> str:
         )
     else:
         holidays = "none"
+    # Fail-soft disclosure (#26): the base CPM solves on this ONE project calendar; when the file
+    # carries per-task calendars with a different working pattern, its base-CPM dates/float are a
+    # single-calendar approximation for those activities (the SSI driving path honors each task's
+    # own calendar, ADR-0118). Silent on a single-calendar file (off is empty).
+    off = off_project_calendars(sch)
+    disclosure = ""
+    if off:
+        n = len(off)
+        cal_word = "calendar" if n == 1 else "calendars"
+        names = ", ".join(f"<b>{_e(c.name)}</b>" for c in off)
+        disclosure = (
+            f'<div class="notice info">Some activities run on {n} per-task {cal_word} whose working '
+            f"pattern differs from the project calendar <b>{_e(cal.name)}</b> ({names}). The engine's "
+            "base CPM models the single project calendar (ADR-0028), so a date or float it computes "
+            "(shown where the file carries no stored value of its own) is a single-calendar "
+            "approximation for those activities; the file's own stored dates and the Path Analysis / "
+            "Driving Path views honor each task's own calendar (ADR-0118)."
+            "</div>"
+        )
     return f"""
 <div class=panel><h2>Working calendar</h2>
 <p class=muted>The time basis behind every computed date, float, and day-denominated
 threshold — imported from the file's project calendar (the standard 8h/Mon-Fri default
 when the file carries none).</p>
+{disclosure}
 <table>
 <tr><th scope=col>Calendar</th><td>{_e(cal.name)}</td></tr>
 <tr><th scope=col>Working day</th><td>{_e(hours_text)}</td></tr>
