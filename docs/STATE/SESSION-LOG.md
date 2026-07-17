@@ -6385,3 +6385,44 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.51 → **1.0.52**; wheel + 9 installers lockstep; **ADR-0241**; full gate green.
 - **NEXT:** PR-R3 (erosion single-basis fit + XER worked weekends + egress-set additions + 24h
   MPXJ golden) → PR-P1 perf → #13 XER calendars → #26 disclosure → F3c → roles.
+
+## 2026-07-17 — PR-R2.1: fail-closed on missing metadata + startup-guard test hardening + census fix (ADR-0242)
+
+- **Adversarial re-review of the merged PR-R2 diff** (Fable-5 workflow: 3 reviewer lenses ×
+  per-finding skeptics; 15 raised, 14 survived skeptic refutation). Lead re-verified every finding
+  against the actual code/tests before actioning; the "review-integrity anomaly" survivor was the
+  review's OWN transient mutation of launcher.py (a verify agent applying then restoring a probe) —
+  not a defect, dropped.
+- **Regression closed (net_guard.py):** `runtime_requirement_names()` catches
+  `importlib.metadata.PackageNotFoundError` (absent dist metadata — a raw source checkout run
+  without `pip install`, or a frozen build without bundled metadata) and re-raises a
+  self-explaining `CUIEgressError`. PR-R2 had moved `assert_local_only()` onto every startup path,
+  so the bare exception would have crashed the launcher/`create_app`/report-CLI opaquely (silent
+  under the `pythonw` desktop icon). Fail-closed, legible; the shipped pip-installed wheel always
+  carries metadata so it never fires for a real install. New `tests/guards/test_egress.py` case pins it.
+- **Vacuous startup-guard tests fixed:** `configure_logging` installs a process-global handler, so
+  the "handler present after my entry point" assertions passed off a leftover from a prior test —
+  they'd pass even if the entry point's call were deleted. New shared `reset_redacting_logging`
+  fixture (`tests/conftest.py`) clears the `schedule_forensics` handlers/`propagate`/`_configured`
+  before each of `test_startup_guards` / `test_launcher` / `test_cli_guards` and restores after.
+  New `test_main_calls_its_own_law1_wiring_before_building_the_app` records the launcher's OWN two
+  calls (masked before because `main()` builds the app via `create_app`, which installs the same
+  handler) and asserts both run before `create_app`. Mutation-verified: deleting either entry
+  point's `configure_logging()` now fails a test.
+- **Air-gap hardening (`tests/web/test_airgap.py`):** `_MUST_ENUMERATE` now asserts against the
+  WALK OUTPUT of `_get_route_paths()` (which returns the route pattern too), not the raw route
+  table — mutation-verified: a lowercased `"get"` filter now fails the pin (before: green while the
+  walk scanned zero routes). Vendored-asset walk uses `rglob` (subdirectories, since StaticFiles
+  serves them). Loopback exemption parses the URL host and matches exactly (`_is_loopback_url`)
+  instead of substring-testing the whole URL (`http://127.0.0.1.evil.com/beacon` no longer exempt).
+- **Doc census (REPO-INVENTORY.md):** static assets 66 → 58 (54 JS + 4 CSS); `tests/web` 102 → 108
+  (+ `test_startup_guards.py`), `tests/exhibits` 2 → 3 (+ `test_cli_guards.py`).
+- **Gantt gray-band operator report investigated (not a code bug):** exhaustive Chromium repro +
+  DOM/gradient probes + a date-alignment test (0/18 mismatches at 8/34/35 px/day) proved the
+  weekend shading is CORRECT for the file's project calendar ("Standard", Mon-Fri, MPXJ-confirmed
+  project default) and matches MS Project's default. The operator (present) chose Option B: default
+  the Gantt's non-working shading to the schedule's GOVERNING calendar so a 24-hour schedule shows
+  no weekend gray — tracked as the next UI PR.
+- **State:** v1.0.52 → **1.0.53**; wheel + 9 installers lockstep; **ADR-0242**; full gate green.
+- **NEXT:** Gantt shading Option B (UI PR) → PR-R3 (erosion basis + XER weekends + egress set + 24h
+  golden) → PR-P1 perf → #13 → #26 → F3c → roles.

@@ -28,8 +28,11 @@ def test_cli_fails_closed_before_any_output_when_egress_guard_trips(
     assert not out.exists()  # the guard fired before the CLI touched the filesystem
 
 
-def test_cli_activates_redacting_logging_at_startup(tmp_path: Path) -> None:
-    # Any return path proves the point — the guards run before argument handling.
+def test_cli_activates_redacting_logging_at_startup(
+    tmp_path: Path, reset_redacting_logging: None
+) -> None:
+    # Any return path proves the point — the guards run before argument handling. The fixture
+    # clears any leftover handler first so this proves the CLI freshly installs it.
     ret = cli.main(["--payload", str(tmp_path / "absent.json"), "--out", str(tmp_path / "o")])
     assert ret == cli.EXIT_INGEST
     root = logging.getLogger("schedule_forensics")

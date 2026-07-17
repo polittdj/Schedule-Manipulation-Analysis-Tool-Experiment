@@ -74,15 +74,24 @@ def test_handoff_top_section_pins_the_current_pyproject_version() -> None:
     The ADR-token check alone once let a version ship past the guard: 1.0.18 was a
     bugfix with no ADR, so nothing forced a HANDOFF refresh and the "read first" doc
     presented 1.0.17 as current (audit M11). Pinning ``pyproject.toml``'s version
-    string into the section ABOVE the first ``# (prior)`` marker means any version
+    string into the section ABOVE the first ``# (prior)`` heading means any version
     bump must refresh the top of the handoff in the same change — an old version
     string lingering in the history sections can never satisfy this.
     """
     with PYPROJECT.open("rb") as fh:
         version = tomllib.load(fh)["project"]["version"]
-    top_section = HANDOFF.read_text(encoding="utf-8").split("# (prior)", 1)[0]
-    # Boundary-anchored: "1.0.5" must not silently satisfy a handoff that says "1.0.52".
-    pinned = re.search(rf"(?<![\d.]){re.escape(version)}(?![\d.])", top_section)
+    text = HANDOFF.read_text(encoding="utf-8")
+    # Split on the "# (prior)" HEADING (start of a markdown line), not any prose backtick
+    # mention of it inside the top block, so the checked region is the real current section.
+    marker = re.search(r"^# \(prior\)", text, re.MULTILINE)
+    assert marker, (
+        "docs/STATE/HANDOFF.md has no '# (prior)' section heading — its structure changed"
+    )
+    top_section = text[: marker.start()]
+    # Boundary-anchored: "1.0.5" must not satisfy a handoff that says "1.0.52", but a
+    # sentence-final period ("shipped 1.0.53.") must still count — reject only a digit or a
+    # dot-then-digit continuation, not a trailing period that ends a sentence.
+    pinned = re.search(rf"(?<![\d.]){re.escape(version)}(?!\d)(?!\.\d)", top_section)
     assert pinned, (
         f"docs/STATE/HANDOFF.md's top (current) section does not mention {version}, the "
         "version pyproject.toml ships. Refresh the handoff's STATUS block in the same "

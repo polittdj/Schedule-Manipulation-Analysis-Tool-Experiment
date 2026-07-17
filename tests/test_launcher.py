@@ -134,9 +134,10 @@ def test_main_hands_ollama_to_app_lazily_and_stops_it_on_shutdown() -> None:
     assert mgr.stopped is True  # shutdown() ran in the finally after serve returned
 
 
-def test_main_activates_redacting_logging_at_startup() -> None:
+def test_main_activates_redacting_logging_at_startup(reset_redacting_logging: None) -> None:
     # M6: the desktop entry point installs the CUI-redacting JSON handler before serving,
-    # so every schedule_forensics.* log record is redacted from process start.
+    # so every schedule_forensics.* log record is redacted from process start. The fixture
+    # clears any leftover handler first so this can't pass vacuously off a prior test.
     launcher.main(port=45678, open_browser=False, serve=lambda *a, **k: None)
     root = logging.getLogger("schedule_forensics")
     assert root.propagate is False
@@ -144,6 +145,30 @@ def test_main_activates_redacting_logging_at_startup() -> None:
     handler = root.handlers[0]
     assert isinstance(handler.formatter, CUIJsonFormatter)
     assert any(isinstance(f, CUIRedactingFilter) for f in handler.filters)
+
+
+def test_main_calls_its_own_law1_wiring_before_building_the_app(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The redaction-handler test above cannot detect removal of launcher.main's OWN
+    # configure_logging() call, because main() builds the app via create_app(), which installs
+    # the same handler — so the handler is present either way (audit re-review). Pin the
+    # launcher's own two calls directly by recording them at launcher's namespace: main() must
+    # invoke BOTH, and BOTH must run before create_app() builds anything (they cover the window
+    # between process start and app construction).
+    order: list[str] = []
+    monkeypatch.setattr(launcher, "configure_logging", lambda: order.append("configure_logging"))
+    monkeypatch.setattr(launcher, "assert_local_only", lambda: order.append("assert_local_only"))
+    real_create_app = launcher.create_app
+    monkeypatch.setattr(
+        launcher,
+        "create_app",
+        lambda *a, **k: order.append("create_app") or real_create_app(*a, **k),
+    )
+    launcher.main(port=45680, open_browser=False, serve=lambda *a, **k: None)
+    assert "configure_logging" in order and "assert_local_only" in order
+    assert order.index("configure_logging") < order.index("create_app")
+    assert order.index("assert_local_only") < order.index("create_app")
 
 
 def test_main_fails_closed_before_serving_when_egress_guard_trips(

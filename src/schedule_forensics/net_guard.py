@@ -114,7 +114,22 @@ def runtime_requirement_names() -> set[str]:
     only what the shipped tool actually installs at runtime is considered.
     """
     names: set[str] = set()
-    for raw in importlib.metadata.requires(DIST_NAME) or []:
+    try:
+        requires = importlib.metadata.requires(DIST_NAME)
+    except importlib.metadata.PackageNotFoundError as exc:
+        # No installed dist metadata → the declared runtime closure cannot be read. This is
+        # reachable off the shipped path (a raw source checkout run without `pip install`, or a
+        # frozen build that didn't bundle metadata). Fail CLOSED with a self-explaining error
+        # rather than let the bare PackageNotFoundError crash the entry point opaquely (silent
+        # under the pythonw desktop icon): a CUI tool that cannot verify its own dependency
+        # closure must refuse to start, not run unverified (Law 1). The shipped pip-installed
+        # wheel always carries metadata, so this never fires for a real install.
+        raise CUIEgressError(
+            f"cannot verify the runtime dependency closure — package metadata for {DIST_NAME!r} "
+            "is missing. Install the package (pip install), or bundle its metadata in a frozen "
+            "build. Refusing to start unverified (Law 1, fail closed)."
+        ) from exc
+    for raw in requires or []:
         spec, _, marker = raw.partition(";")
         if "extra" in marker:  # gated on an optional extra → not a base runtime dep
             continue

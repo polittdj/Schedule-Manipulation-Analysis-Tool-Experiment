@@ -75,6 +75,23 @@ def test_runtime_requirement_names_handles_no_metadata(
     assert net_guard.runtime_requirement_names() == set()
 
 
+def test_missing_dist_metadata_fails_closed_not_opaque_crash(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A raw source checkout run without `pip install`, or a frozen build without bundled
+    # metadata, makes importlib.metadata.requires() raise PackageNotFoundError. The guard must
+    # turn that into a self-explaining CUIEgressError (fail closed), NOT let the bare
+    # PackageNotFoundError propagate — under the pythonw desktop icon a bare crash is silent.
+    def _raise(_dist: str) -> list[str]:
+        raise net_guard.importlib.metadata.PackageNotFoundError(_dist)
+
+    monkeypatch.setattr(net_guard.importlib.metadata, "requires", _raise)
+    with pytest.raises(net_guard.CUIEgressError, match="dependency closure"):
+        net_guard.runtime_requirement_names()
+    with pytest.raises(net_guard.CUIEgressError, match="dependency closure"):
+        net_guard.assert_local_only()
+
+
 def test_importable_cloud_sdks_detects_present_module(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

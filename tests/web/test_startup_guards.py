@@ -18,12 +18,13 @@ from schedule_forensics.logging_redaction import CUIJsonFormatter, CUIRedactingF
 from schedule_forensics.web.app import create_app
 
 
-def test_create_app_installs_the_redacting_log_handler() -> None:
+def test_create_app_installs_the_redacting_log_handler(reset_redacting_logging: None) -> None:
     """M6: after create_app() the runtime logger carries the redacting JSON handler.
 
     Every ``schedule_forensics.*`` record now flows through the CUI-redacting
     formatter+filter instead of ``logging.lastResort`` (which would print the raw,
-    unredacted message to stderr).
+    unredacted message to stderr). ``reset_redacting_logging`` clears any leftover handler
+    first, so this proves create_app FRESHLY installs it (not a vacuous pass off a prior test).
     """
     create_app()
     root = logging.getLogger("schedule_forensics")
@@ -34,7 +35,9 @@ def test_create_app_installs_the_redacting_log_handler() -> None:
     assert any(isinstance(f, CUIRedactingFilter) for f in handler.filters)
 
 
-def test_the_installed_handler_actually_redacts_a_cui_file_name() -> None:
+def test_the_installed_handler_actually_redacts_a_cui_file_name(
+    reset_redacting_logging: None,
+) -> None:
     """Behavioral proof, not just structure: a schedule file name logged through the
     installed handler chain comes out as an inert token, never the real name."""
     create_app()

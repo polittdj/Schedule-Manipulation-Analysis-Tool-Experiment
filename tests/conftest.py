@@ -8,7 +8,8 @@ shared for the whole session. Use the ``golden`` callable for parametrized cases
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import logging
+from collections.abc import Callable, Iterator
 from functools import cache
 from pathlib import Path
 
@@ -18,6 +19,38 @@ from schedule_forensics.importers import parse_mspdi
 from schedule_forensics.model.schedule import Schedule
 
 _GOLDEN_DIR = Path(__file__).resolve().parent / "fixtures" / "golden" / "project2_5"
+
+
+@pytest.fixture
+def reset_redacting_logging() -> Iterator[None]:
+    """Return the ``schedule_forensics`` logger to its pristine, UNconfigured state around a test.
+
+    ``configure_logging`` installs a process-global handler on the ``schedule_forensics`` root and
+    is idempotent-by-replacement, so once ANY test (or entry point) has run, the handler lingers.
+    A startup-wiring test that then asserts "the handler is present after calling my entry point"
+    passes vacuously off that leftover — it would still pass if the entry point's
+    ``configure_logging()`` call were deleted (audit re-review, 2026-07-17). Requesting this fixture
+    clears the handlers + restores ``propagate`` + resets the module's ``_configured`` flag BEFORE
+    the test, so the entry point under test must freshly install the handler for the assertions to
+    hold; the prior state is restored AFTER so no cross-test leakage is introduced either way.
+    """
+    import schedule_forensics.logging_redaction as lr
+
+    root = logging.getLogger("schedule_forensics")
+    saved_handlers = root.handlers[:]
+    saved_propagate = root.propagate
+    saved_level = root.level
+    saved_configured = lr._configured
+    root.handlers.clear()
+    root.propagate = True
+    lr._configured = False
+    try:
+        yield
+    finally:
+        root.handlers[:] = saved_handlers
+        root.propagate = saved_propagate
+        root.setLevel(saved_level)
+        lr._configured = saved_configured
 
 
 @pytest.fixture(autouse=True)

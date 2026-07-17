@@ -1,4 +1,34 @@
-# Handoff — 2026-07-17 (PR-R2: dead Law-1 defenses wired — startup redaction+egress guard, enumerated air-gap, version pin; v1.0.52; highest ADR 0241)
+# Handoff — 2026-07-17 (PR-R2.1: fail-closed on missing metadata + startup-guard test hardening + census fix; v1.0.53; highest ADR 0242)
+
+> ## STATUS (current) — PR-R2.1 (ADR-0242): the lead-validated follow-ups to PR-R2 — a real robustness regression closed, PR-R2's own guard-tests made non-vacuous, doc census fixed.
+>
+> - **Adversarial re-review of the merged PR-R2 diff** (3 reviewer lenses × per-finding skeptics,
+>   lead re-verified every finding against code): 14 survivors, actioned the real ones.
+> - **Regression closed (net_guard):** `runtime_requirement_names()` now catches
+>   `PackageNotFoundError` (dist metadata absent — raw source run / frozen build) and re-raises a
+>   self-explaining `CUIEgressError` instead of letting the bare exception crash every startup path
+>   opaquely (silent under the `pythonw` icon). Fail-closed, legible. The shipped wheel always
+>   carries metadata, so it never fires for a real install.
+> - **Vacuous-pass killed:** shared `reset_redacting_logging` fixture (`tests/conftest.py`) clears
+>   the process-global `schedule_forensics` handler before each startup-guard test, so each proves
+>   ITS entry point freshly installs the redactor; new `test_launcher` case pins the launcher's OWN
+>   `configure_logging`/`assert_local_only` calls (both before `create_app`). Mutation-verified:
+>   deleting either entry point's wiring now fails a test (it didn't before).
+> - **Air-gap pin binds the WALK output** (mutation-verified: a lowercased GET filter now fails the
+>   `_MUST_ENUMERATE` pin); vendored-asset walk is `rglob` (subdirs); loopback exemption parses the
+>   URL host (no `127.0.0.1.evil.com` substring escape).
+> - **Census fixed:** REPO-INVENTORY static assets 66→58 (54 JS + 4 CSS); `tests/web` 102→108,
+>   `tests/exhibits` 2→3.
+> - **State:** v1.0.52 → **1.0.53**; wheel + 9 installers lockstep; **ADR-0242**; gate green.
+> - **NEXT:** **Gantt shading Option B** (operator-approved, separate UI PR) — default the Gantt's
+>   non-working-time shading to the schedule's GOVERNING calendar (24-hour → no weekend gray),
+>   not the nominal project default; verify 24h file (no shading) + Mon-Fri file (weekends still
+>   shaded), 4-theme Chromium. Then **PR-R3** (margin-erosion single-basis fit; XER worked-weekend
+>   exceptions; egress-set additions; 24h-calendar MPXJ golden — SSI pair updated3 UID-155 ↔
+>   updated4, files in `00_REFERENCE_INTAKE/`) → PR-P1 perf → #13 XER calendars → #26 disclosure →
+>   F3c → roles.
+
+# (prior) Handoff — 2026-07-17 (PR-R2: dead Law-1 defenses wired — startup redaction+egress guard, enumerated air-gap, version pin; v1.0.52; highest ADR 0241)
 
 > ## STATUS (current) — PR-R2 (ADR-0241): the two dead Law-1 defenses are LIVE at every entry path, and two hand-kept guards are now enumerated/pinned.
 >
