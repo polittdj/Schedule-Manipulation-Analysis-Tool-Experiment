@@ -4,6 +4,8 @@ and the per-page Excel exports."""
 
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 
 import pytest
@@ -97,3 +99,34 @@ def test_ribbon_shows_insufficient_detail_with_status_colors(client: TestClient)
     assert "Insufficient Detail" in page
     assert "rib-pass" in page  # at least one thresholded measure colors green on the goldens
     assert "rib-legend" in page  # the legend explains the three states
+
+
+def test_ignore_options_diverge_by_page_family_as_documented(client: TestClient) -> None:
+    """ADR-0251: the same-named toggles are two documented behaviors. Path Analysis /
+    the API (SSI-parity family) keep the stored-date trace — on a fully-dated file the
+    flags change NOTHING. The Driving Path page (counterfactual family) genuinely
+    re-solves via ``_optioned_versions`` and banners the divergence."""
+    # family A — /api/driving: byte-identical rows with any flag combination
+    base = client.get("/api/driving/Project5?target=67").json()["rows"]
+    for extra in (
+        "&ignore_constraints=1",
+        "&ignore_leveling=1",
+        "&ignore_constraints=1&ignore_leveling=1",
+    ):
+        assert client.get("/api/driving/Project5?target=67" + extra).json()["rows"] == base, extra
+
+    # family B — /driving-path tiers panel: the re-solve genuinely moves the driving tier
+    def tier_uids(extra: str = "") -> set[int]:
+        html = client.get("/driving-path?target=67&file=Project5.mspdi.xml" + extra).text
+        m = re.search(r"id=drivingTiersData>(.*?)</script>", html, re.S)
+        assert m is not None
+        blob = json.loads(m.group(1).replace("\\u003c", "<"))
+        return {r["uid"] for r in blob["rows"] if r["tier"] == "driving"}
+
+    assert tier_uids("&ignore_constraints=1&ignore_leveling=1") != tier_uids()
+    # and the active-options banner names the divergence from the source tools
+    page = client.get("/driving-path?target=67&file=Project5.mspdi.xml&ignore_leveling=1").text
+    assert "counterfactual view" in page and "will not match those tools" in page
+    # the mixed-basis disclosures (ADR-0251 verify): drill field columns + full-trace export
+    assert "added field columns (dates, floats" in page
+    assert "Exports the SSI-parity stored-date trace" in page

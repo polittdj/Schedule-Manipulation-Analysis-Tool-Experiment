@@ -1,6 +1,6 @@
 # Repository Inventory — POLARIS / schedule-forensics
 
-> **Version/ADR stamps refreshed 2026-07-17 (v1.0.59, ADR-0250; ADR-0250 deep-audit remediation).** For
+> **Version/ADR stamps refreshed 2026-07-17 (v1.0.60, ADR-0251; ignore-toggle copy truth + page-family alignment).** For
 > the reference-intake catalog, `00_REFERENCE_INTAKE/INDEX.md` is now the authoritative per-file
 > map (what each file is, which tests it verifies, duplicates, reorganization rules).
 >
@@ -516,7 +516,7 @@ Generated from `schedule_forensics.web.help.METRIC_DICTIONARY` (regeneration one
 
 ---
 
-### `docs/adr/` — 251 files (ADR-0000 through ADR-0250), no separate index
+### `docs/adr/` — 252 files (ADR-0000 through ADR-0251), no separate index
 
 Every ADR follows a `# ADR-NNNN: title` / Status / Date / Context / Decision format (Status typically "Accepted", many "operator-approved"). Rather than an index, the sequence numbers self-document the build's chronology. The **arc of key decisions, by theme:**
 

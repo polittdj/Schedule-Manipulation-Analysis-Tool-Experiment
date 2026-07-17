@@ -175,8 +175,12 @@ def _whole_days(slack_minutes: int, minutes_per_day: int) -> int:
 def strip_constraints(schedule: Schedule) -> Schedule:
     """A copy of ``schedule`` with every task constraint removed (ASAP, no date).
 
-    Powers the SSI-style "Ignore constraints" trace option: the CPM recomputed on this copy
-    shows the pure-logic network with no date pins. The original schedule is never mutated."""
+    Powers the "Ignore constraints" trace options. What the strip changes depends on the
+    caller (ADR-0251): :func:`compute_driving_slack` runs its stored-date-first trace over
+    this copy, so the strip reaches only the CPM fallback for undated tasks (SSI-parity);
+    the web layer's ``_optioned_versions`` additionally clears stored dates, so ITS CPM
+    re-solve genuinely shows the un-pinned pure-logic network (a labeled counterfactual).
+    The original schedule is never mutated."""
     from schedule_forensics.model.task import ConstraintType
 
     tasks = tuple(
@@ -209,12 +213,19 @@ def compute_driving_slack(
     Raises ``KeyError`` if ``target_uid`` is not a scheduled task, or ``ValueError`` on a
     cycle in the trace.
 
-    ``ignore_constraints`` re-traces on a constraint-stripped copy (pure logic, no date pins);
-    ``ignore_leveling_delay`` traces on the RECOMPUTED CPM dates instead of the stored ones —
-    the recomputed network contains no resource-leveling delays (SSI: "pretend that all
-    activities have a 0 day leveling delay"), so both options measure the un-pinned logic.
-    Either option implies pure-CPM date arithmetic; the default trace keeps honoring the
-    source tool's stored dates (the parity-validated behavior).
+    ``ignore_constraints`` / ``ignore_leveling_delay`` mirror SSI's same-named Directional
+    Path options — which, like this trace, still honor the source tool's **stored dates**
+    wherever the file carries them (ADR-0251). The flags do NOT discard stored dates and
+    re-solve pure CPM: ``ignore_constraints`` strips constraint pins from the copy whose CPM
+    forward pass backfills **undated** tasks, and ``ignore_leveling_delay`` measures every
+    endpoint on the project-calendar :func:`date_basis` axis (itself stored-date-first)
+    instead of each task's own calendar. On a fully-dated single-calendar file both flags
+    are therefore a **no-op by design** — validated against SSI's own options-ON export
+    (``test_ssi_leveled_uid152``: 60/60 critical, 777/783 slacks exact), where genuinely
+    clearing dates and re-solving diverges wildly (58/60 SSI-critical tasks lost, slack off
+    by up to ~922 d — ADR-0251). A caller wanting that counterfactual pure-logic re-solve
+    must clear the stored dates itself (the web layer's ``_optioned_versions`` does, and
+    labels the result as divergent from the source tools).
     """
     if ignore_constraints:
         stripped = strip_constraints(schedule)
@@ -223,9 +234,10 @@ def compute_driving_slack(
             target_uid,
             secondary_max_days=secondary_max_days,
             tertiary_max_days=tertiary_max_days,
-            cpm_result=None,  # the stripped network needs its own CPM
+            cpm_result=None,  # the stripped copy's CPM fallback must be re-solved un-pinned
             direction=direction,
-            ignore_leveling_delay=True,  # stored dates carry the pins — must use pure CPM
+            # date_basis axis: stored-date-first, CPM (now un-pinned) only for undated tasks
+            ignore_leveling_delay=True,
         )
         return inner
     if direction is PathDirection.BOTH:
@@ -272,8 +284,10 @@ def compute_driving_slack(
         """Offset of a task's start/finish on ``cal``: the stored datetime measured on that
         calendar when present (so a non-project successor calendar is honored), else the
         project-calendar offset from ``date_basis`` (the CPM fallback for undated tasks).
-        In ``ignore_leveling_delay`` mode the stored dates are skipped entirely — the trace
-        runs on the recomputed pure-logic CPM offsets (no leveling delay, no pins)."""
+        In ``ignore_leveling_delay`` mode only the per-task-calendar measurement is skipped:
+        every endpoint comes from ``date_basis`` — which itself still prefers the stored
+        dates (on the project calendar) and recomputes CPM only for undated tasks, so a
+        dated task's endpoints do NOT change to pure-logic offsets (ADR-0251)."""
         if not ignore_leveling_delay:
             when = tasks_by_id[uid].finish if finish else tasks_by_id[uid].start
             if when is not None:
