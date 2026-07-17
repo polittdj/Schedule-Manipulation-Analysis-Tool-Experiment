@@ -1,4 +1,33 @@
-# Handoff — 2026-07-17 (Gantt per-task-calendar shading — operator Option B; v1.0.54; highest ADR 0243)
+# Handoff — 2026-07-17 (PR-R3: data-fidelity residue — erosion basis, XER worked weekends, egress set, 24h SSI golden; v1.0.55; highest ADR 0244)
+
+> ## STATUS (current) — PR-R3 (ADR-0244): the four queued data-fidelity items all shipped in one change; each verified, the 24h golden's engine parity confirmed cell-for-cell before pinning.
+>
+> - **Item 1 — margin-erosion single-basis fit:** `MarginMonth.basis_wmpd` records each version's
+>   work-day basis; `compute_margin_dashboard` SUPPRESSES the erosion fit (rate/zero-date/R² → None)
+>   and discloses `erosion_mixed_basis` when the dated versions don't share one basis (e.g. 480 →
+>   1440 min/day across a calendar change), rather than fitting one slope through mixed units. The
+>   `/margin` takeaway + Excel/Word export state the basis change ("8h/day vs 24h/day"). Consistent
+>   basis (the norm) is byte-identical. New engine + view tests.
+> - **Item 2 — XER worked weekends:** `_parse_clndr_data` returns worked-exception dates too;
+>   `_project_calendar` keeps those on a non-working weekday as `Calendar.working_days` (the
+>   MSPDI `DayWorking=1` analogue; a changed-hours exception on a working day is still dropped).
+>   Synthetic-fixture test (real `.xer` end-to-end waits on the operator re-adding one).
+> - **Item 3 — egress set (audit L4):** modern LLM clients/gateways (google-genai, groq, together,
+>   litellm, langchain*, ollama) + telemetry (sentry, posthog, datadog, ddtrace, otel) added to the
+>   forbidden distributions; the LLM clients + `sentry_sdk` also to the import-check set (each
+>   verified absent from the dev venv → false-positive-free). Regression test pins them.
+> - **Item 4 — 24h SSI driving-slack golden:** new `tests/fixtures/golden/ssi_hardfile_24h_uid155/`
+>   (gzipped MSPDI fixtures + `case.json` read straight from the SSI exports). The engine ALREADY
+>   reproduces both exports cell-for-cell — **0 mismatches across all 100 rows** of each, fractional
+>   and negative slacks included — so the golden pins the ADR-0118 per-task-calendar effect (32-day
+>   8h ↔ 18-day 24h driving slack for UID 379/321/381). No engine change was needed.
+> - **State:** v1.0.54 → **1.0.55**; wheel + 9 installers lockstep; **ADR-0244**; gate green.
+> - **NEXT:** **PR-P1** validated perf items (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic
+>   edge guard; the refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them) → #13 XER
+>   per-task calendars → base-CPM single-calendar disclosure (#26) → F3c parameterized expected
+>   margin → roles front-end (v4 F4).
+
+# (prior) Handoff — 2026-07-17 (Gantt per-task-calendar shading — operator Option B; v1.0.54; highest ADR 0243)
 
 > ## STATUS (current) — ADR-0243: the Gantt shades each row's non-working time per THAT task's own calendar, so a 24-hour task shows no weekend gray while Mon-Fri tasks keep it.
 >

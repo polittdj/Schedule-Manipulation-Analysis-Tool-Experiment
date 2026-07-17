@@ -6459,3 +6459,35 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.53 → **1.0.54**; wheel + 9 installers lockstep; **ADR-0243**; full gate green.
 - **NEXT:** PR-R3 (erosion basis + XER weekends + egress set + 24h golden) → PR-P1 perf → #13 →
   #26 → F3c → roles.
+
+## 2026-07-17 — PR-R3: data-fidelity residue (erosion basis, XER worked weekends, egress set, 24h SSI golden) (ADR-0244)
+
+- **Item 1 — margin-erosion single-basis fit:** `margin_dashboard._erosion` fit `effective_margin_wd`
+  across versions, but each version computed that with its OWN `working_minutes_per_day`, so a
+  calendar change (480 → 1440 min/day) conflated two day-length units into one slope. `MarginMonth`
+  now records `basis_wmpd`; `compute_margin_dashboard` suppresses the fit (rate/zero-date/R² → None)
+  and exposes `erosion_mixed_basis` + `erosion_basis_wmpd` when the dated versions disagree. The
+  `/margin` takeaway and Excel/Word export disclose the basis change instead of a fabricated rate
+  (Law 2). Per-version displayed margin unchanged; consistent-basis behaviour byte-identical.
+- **Item 2 — XER worked-weekend exceptions:** `_parse_clndr_data` returned only (weekdays, totals,
+  holidays) and SKIPPED every exception carrying a working span, dropping worked weekends. It now
+  also returns the worked-exception dates; `_project_calendar` keeps those on a non-working weekday
+  as `Calendar.working_days` (MSPDI `DayWorking=1` analogue; a changed-hours exception on a working
+  weekday is still dropped, out of the single-block model). New synthetic-fixture test.
+- **Item 3 — egress forbidden-set additions (audit L4):** added the 2024-2026 LLM clients/gateways
+  (google-genai, groq, together, litellm, langchain{,-core,-community,-openai}, llama-index, ollama)
+  and phone-home telemetry (sentry-sdk, posthog, datadog, ddtrace, opentelemetry-*) to
+  `FORBIDDEN_RUNTIME_DISTRIBUTIONS`; the LLM clients + `sentry_sdk` also to `FORBIDDEN_CLOUD_MODULES`
+  (each verified absent from the dev toolchain venv → import check stays false-positive-free). New
+  regression test pins them.
+- **Item 4 — 24h-calendar SSI driving-slack golden:** new `tests/fixtures/golden/ssi_hardfile_24h_uid155/`
+  — gzipped MSPDI fixtures for `Hard_File_updated3` (Standard 8h) and `Hard_File_updated4_24h`, and a
+  `case.json` whose driving-slack-days-by-UID map is read straight from the SSI Directional-Path
+  exports (no hand-transcription). Verified at build time: `compute_driving_slack` reproduces ALL 100
+  rows of BOTH exports within 0.01 day — 0 mismatches, fractional (0.865, 13.6, 60.625) and negative
+  (−12.635) slacks included. The pair locks the ADR-0118 per-successor-calendar effect (the SAME
+  predecessors carry 32 days of driving slack on the 8h file, 18 days on the 24h file). No engine
+  change needed — the engine already matched.
+- **State:** v1.0.54 → **1.0.55**; wheel + 9 installers lockstep; **ADR-0244**; full gate green.
+- **NEXT:** PR-P1 perf (validated CoPilot items + audit-E guard) → #13 XER per-task calendars → #26
+  base-CPM disclosure → F3c → roles.

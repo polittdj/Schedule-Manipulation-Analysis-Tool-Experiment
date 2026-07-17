@@ -4343,10 +4343,19 @@ def create_app(
             )
             for m in d.months
         ]
+        basis_note = (
+            "mixed — " + " vs ".join(_wmpd_label(w) for w in d.erosion_mixed_basis)
+            if d.erosion_mixed_basis
+            else (_wmpd_label(d.erosion_basis_wmpd) if d.erosion_basis_wmpd else "—")
+        )
         erosion: tuple[tuple[Cell, ...], ...] = (
-            ("Erosion (work days / month)", d.erosion_wd_per_month),
+            (
+                "Erosion (work days / month)",
+                d.erosion_wd_per_month if not d.erosion_mixed_basis else "—",
+            ),
             ("Projected zero-margin date", d.zero_margin_date or "—"),
             ("Trend fit R-squared", d.erosion_r2),
+            ("Work-day basis", basis_note),
         )
         tableset = TableSet(
             "Margin Dashboard",
@@ -8868,6 +8877,8 @@ def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
         "erosion_wd_per_month": d.erosion_wd_per_month,
         "zero_margin_date": d.zero_margin_date,
         "erosion_r2": d.erosion_r2,
+        "erosion_basis_wmpd": d.erosion_basis_wmpd,
+        "erosion_mixed_basis": list(d.erosion_mixed_basis),
         "months": [
             {
                 "label": m.label,
@@ -8893,6 +8904,13 @@ def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
             for m in d.months
         ],
     }
+
+
+def _wmpd_label(wmpd: int) -> str:
+    """Human label for a working-minutes-per-day basis (480 -> '8h/day', 1440 -> '24h/day')."""
+    if wmpd % 60 == 0:
+        return f"{wmpd // 60}h/day"
+    return f"{wmpd}-min/day"
 
 
 def _margin_dashboard_header(d: MarginDashboard) -> str:
@@ -8926,7 +8944,14 @@ def _margin_dashboard_header(d: MarginDashboard) -> str:
             f"{_mdY(latest.status_date)} — at or above the {latest.nasa_rqmt_wd:g}-day NASA "
             "Gold-Rule requirement."
         )
-    if d.zero_margin_date is not None and d.erosion_wd_per_month:
+    if d.erosion_mixed_basis:
+        bases = " vs ".join(_wmpd_label(w) for w in d.erosion_mixed_basis)
+        takeaway += (
+            f" The margin-erosion trend is not shown: the loaded versions express margin in "
+            f"different work-day bases ({bases}) because the schedule calendar changed, so a "
+            "single erosion rate would conflate the two — compare margin within one calendar basis."
+        )
+    elif d.zero_margin_date is not None and d.erosion_wd_per_month:
         takeaway += (
             f" At the current erosion of {d.erosion_wd_per_month:g} work days per month, margin "
             f"reaches zero around {_mdY(d.zero_margin_date)}."

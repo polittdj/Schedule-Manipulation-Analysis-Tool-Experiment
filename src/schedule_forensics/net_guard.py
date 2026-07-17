@@ -65,6 +65,7 @@ FORBIDDEN_RUNTIME_DISTRIBUTIONS: frozenset[str] = frozenset(
         "mistralai",
         "replicate",
         "google-generativeai",
+        "google-genai",  # the newer unified Google GenAI SDK (supersedes google-generativeai)
         "google-cloud-aiplatform",
         "vertexai",
         "boto3",
@@ -72,13 +73,36 @@ FORBIDDEN_RUNTIME_DISTRIBUTIONS: frozenset[str] = frozenset(
         "azure-ai-inference",
         "azure-identity",
         "huggingface-hub",
+        # modern LLM clients / gateways (2024-2026 vintage) — all remote by construction
+        "groq",
+        "together",
+        "litellm",
+        "langchain",
+        "langchain-core",
+        "langchain-community",
+        "langchain-openai",
+        "llama-index",
+        "ollama",  # the pip ollama client (remote-capable HTTP); the tool talks to Ollama via
+        # the std-lib loopback client, NEVER this package, so it must not enter the runtime
+        # telemetry / observability SDKs that phone home (a CUI beacon path, audit L4)
+        "sentry-sdk",
+        "posthog",
+        "datadog",
+        "ddtrace",
+        "opentelemetry-sdk",
+        "opentelemetry-api",
+        "opentelemetry-exporter-otlp",
     }
 )
 
 #: Cloud-provider SDK *top-level modules*. These are never transitive
 #: dependencies of the build toolchain (ruff/mypy/pytest/bandit/pip-audit), so
 #: asserting they are not importable is a meaningful, false-positive-free check
-#: that nobody installed a cloud backend into the runtime environment.
+#: that nobody installed a cloud backend into the runtime environment. Only modules
+#: that can NEVER be a toolchain transitive dep belong here — LLM clients and the one
+#: telemetry SDK (``sentry_sdk``) that qualifies; the broader observability packages
+#: (otel/datadog/posthog) stay in the distribution list above, which checks the shipped
+#: tool's *declared* runtime deps and so is free of import-check false positives.
 FORBIDDEN_CLOUD_MODULES: frozenset[str] = frozenset(
     {
         "openai",
@@ -90,7 +114,13 @@ FORBIDDEN_CLOUD_MODULES: frozenset[str] = frozenset(
         "botocore",
         "vertexai",
         "google.generativeai",
+        "google.genai",
         "google.cloud.aiplatform",
+        "groq",
+        "together",
+        "litellm",
+        "langchain",
+        "sentry_sdk",
     }
 )
 

@@ -109,6 +109,50 @@ def test_erosion_trend_projects_a_zero_margin_date() -> None:
     # the projected zero-margin date is real and beyond the last status date
     assert d.zero_margin_date is not None
     assert dt.date.fromisoformat(d.zero_margin_date) > dt.date(2026, 5, 29)
+    # a consistent basis is disclosed (8h days), and NOT flagged as mixed
+    assert d.erosion_basis_wmpd == DAY and d.erosion_mixed_basis == ()
+
+
+def _version_cal(status: str, margin_days: float, wmpd: int) -> Schedule:
+    """A version whose schedule calendar uses ``wmpd`` working minutes/day (a 1440 = 24-hour day
+    changes the work-day BASIS the margin is expressed in)."""
+    weekdays = tuple(range(7)) if wmpd >= 1440 else (0, 1, 2, 3, 4)
+    cal = Calendar(working_minutes_per_day=wmpd, work_weekdays=weekdays)
+    margin = Task(
+        unique_id=2,
+        name="Schedule MARGIN: pre-delivery",
+        duration_minutes=int(margin_days * wmpd),
+    )
+    tasks = (_t(1, "Work", 500), margin, _t(DELIVER_UID, "Deliver SV1", 0, is_milestone=True))
+    return Schedule(
+        name=status,
+        source_file=f"{status}.mpp",
+        project_start=START,
+        status_date=dt.datetime.fromisoformat(status),
+        calendar=cal,
+        tasks=tasks,
+        relationships=(_r(1, 2), _r(2, 3)),
+    )
+
+
+def test_erosion_is_suppressed_and_disclosed_when_the_margin_basis_changes() -> None:
+    # updated3-style Standard (8h) then updated4-style 24-hour (24h): the two versions express
+    # "work days" in different units, so a single erosion slope would conflate them. The fit is
+    # suppressed and the distinct bases disclosed instead of a fabricated rate (Law 2, PR-R3).
+    versions = [
+        (v.source_file, v, compute_cpm(v))
+        for v in (
+            _version_cal("2026-02-27", 40, 480),
+            _version_cal("2026-03-31", 30, 1440),
+        )
+    ]
+    d = compute_margin_dashboard(versions, target_uid=DELIVER_UID)
+    assert d.erosion_wd_per_month is None
+    assert d.zero_margin_date is None and d.erosion_r2 is None
+    assert d.erosion_mixed_basis == (480, 1440)
+    assert d.erosion_basis_wmpd is None
+    # each version still reports its OWN effective margin in its own basis (unchanged display)
+    assert d.months[0].basis_wmpd == 480 and d.months[1].basis_wmpd == 1440
 
 
 def test_planned_margin_carries_the_prior_month_end_forward() -> None:
