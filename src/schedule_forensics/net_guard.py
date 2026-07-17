@@ -9,8 +9,11 @@ module is the fail-closed guard behind that guarantee:
   purpose is to move data to a remote host.
 * :func:`assert_local_only` raises :class:`CUIEgressError` if any forbidden
   distribution is a declared runtime dependency, or if any forbidden cloud SDK
-  is importable in the current interpreter. Application entry points call it on
-  startup; ``tests/guards/test_egress.py`` is the §7 acceptance check.
+  is importable in the current interpreter. Every entry path calls it at
+  startup — ``launcher.main()``, ``web.app.create_app()``, and the
+  ``exhibits.cli.main()`` report generator — so the tool fails closed before
+  anything is served or written; ``tests/guards/test_egress.py`` is the §7
+  acceptance check.
 
 The check is deliberately scoped to the package's *declared runtime
 dependencies*, not to "is module X importable in this venv". Build-time tools

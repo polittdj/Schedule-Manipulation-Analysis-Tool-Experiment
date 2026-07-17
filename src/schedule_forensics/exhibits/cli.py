@@ -30,6 +30,8 @@ from schedule_forensics.exhibits.csvout import CSV_WRITERS
 from schedule_forensics.exhibits.payload import canonical_json, load_payload
 from schedule_forensics.exhibits.render_svg import EXHIBITS
 from schedule_forensics.exhibits.report_html import render_report
+from schedule_forensics.logging_redaction import configure_logging
+from schedule_forensics.net_guard import assert_local_only
 
 EXIT_OK = 0
 EXIT_INGEST = 2
@@ -64,6 +66,12 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Law 1, same as the other entry points (launcher.main / create_app): redacting
+    # logging active before any library can log, and a fail-closed egress assertion —
+    # the report generator refuses to run at all with an egress-capable runtime
+    # (CUIEgressError propagates: loud, non-zero exit, nothing written).
+    configure_logging()
+    assert_local_only()
     args = _parser().parse_args(argv)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

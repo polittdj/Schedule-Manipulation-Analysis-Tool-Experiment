@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import socket
 from typing import Any
 
 import pytest
 
-from schedule_forensics import launcher
+from schedule_forensics import launcher, net_guard
+from schedule_forensics.logging_redaction import CUIJsonFormatter, CUIRedactingFilter
 
 
 class _ImmediateTimer:
@@ -130,6 +132,36 @@ def test_main_hands_ollama_to_app_lazily_and_stops_it_on_shutdown() -> None:
     assert mgr.started is False  # NOT started at launch — only when AI is turned on in settings
     assert served["app"].state.ollama is mgr  # the app got the manager for the lazy start
     assert mgr.stopped is True  # shutdown() ran in the finally after serve returned
+
+
+def test_main_activates_redacting_logging_at_startup() -> None:
+    # M6: the desktop entry point installs the CUI-redacting JSON handler before serving,
+    # so every schedule_forensics.* log record is redacted from process start.
+    launcher.main(port=45678, open_browser=False, serve=lambda *a, **k: None)
+    root = logging.getLogger("schedule_forensics")
+    assert root.propagate is False
+    assert len(root.handlers) == 1
+    handler = root.handlers[0]
+    assert isinstance(handler.formatter, CUIJsonFormatter)
+    assert any(isinstance(f, CUIRedactingFilter) for f in handler.filters)
+
+
+def test_main_fails_closed_before_serving_when_egress_guard_trips(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # L3: a forbidden runtime dependency aborts the launch — nothing is served, no
+    # browser opens. The guard runs through the REAL assert_local_only chain.
+    monkeypatch.setattr(net_guard, "runtime_requirement_names", lambda: {"requests"})
+    served: list[Any] = []
+    opened: list[str] = []
+    with pytest.raises(net_guard.CUIEgressError, match="requests"):
+        launcher.main(
+            port=45679,
+            serve=lambda *a, **k: served.append(a),
+            browser=lambda url: opened.append(url) or True,
+            timer=_ImmediateTimer,
+        )
+    assert served == [] and opened == []  # fail closed: refused before any side effect
 
 
 def test_main_can_skip_ollama_management() -> None:

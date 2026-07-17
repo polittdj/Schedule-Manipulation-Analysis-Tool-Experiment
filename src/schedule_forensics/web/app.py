@@ -262,12 +262,17 @@ from schedule_forensics.importers import (
     to_json_text,
 )
 from schedule_forensics.importers.mpp_mpxj import mpxj_batch_session
+from schedule_forensics.logging_redaction import configure_logging
 from schedule_forensics.model.saved_view import Criterion as SavedCriterion
 from schedule_forensics.model.saved_view import Operand as SavedOperand
 from schedule_forensics.model.saved_view import SavedFilter, SavedGroup
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
-from schedule_forensics.net_guard import is_local_http_endpoint, is_loopback_host
+from schedule_forensics.net_guard import (
+    assert_local_only,
+    is_local_http_endpoint,
+    is_loopback_host,
+)
 from schedule_forensics.reports.docx import (
     Block,
     Chart,
@@ -2204,6 +2209,12 @@ def create_app(
     **lazily** — only when the operator turns the Ollama backend on in AI Settings — and stopped
     on tool close, so the tool never spins Ollama up for a session that never uses the AI (ADR-0122).
     """
+    # Law 1, at every construction path (desktop launcher, `run()`, tests, embedding):
+    # activate the CUI-redacting JSON log handler on the `schedule_forensics` namespace
+    # (idempotent), then fail closed if a forbidden egress-capable dependency or cloud SDK
+    # reached the runtime — the app refuses to build rather than serve with a leak path.
+    configure_logging()
+    assert_local_only()
     app = FastAPI(title="POLARIS", docs_url=None, redoc_url=None)
     app.state.session = state if state is not None else SessionState()
     app.state.auto_shutdown = auto_shutdown
