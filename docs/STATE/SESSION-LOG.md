@@ -6631,3 +6631,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   pytest incl. `parity`).
 - **NEXT:** deferred PR-P1 items (audit-F harness first) → #13 XER calendars → #26 disclosure → F3c
   → roles.
+
+---
+
+## 2026-07-17 — audit-F: deterministic perf/memory-regression harness (ADR-0249)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-resume-main-6tpt62` (restarted
+  fresh from `origin/main` after the ADR-0248 PR #387 squash-merge). Operator chose the audit-F
+  harness as the next step (over jumping to a HIGH-risk perf item or #13).
+- Closes audit finding F (no perf-regression gate) with `tests/perf/test_perf_regression.py` —
+  **deterministic** assertions only (operation counts, cache residency, a relative tracemalloc
+  direction), NEVER wall-clock latency, so it is stable across the CI Python matrix and never flakes.
+- **Gates the perf properties ADR-0248 shipped:** (audit-C) spies `_average_ranks` — `N` activities ⇒
+  exactly `N+1` calls, not `2N` (un-hoisting fails it); (#4) after `3×cap` versions,
+  `len(analyses) <= _ANALYSIS_CACHE_MAX` and the newest stays resident (reverting the LRU to a dict
+  fails it); (#4 memory) a bounded cache traces a lower `tracemalloc` peak than an unbounded one over
+  the same workload (a direction, not an absolute ceiling).
+- **Excluded (documented):** wall-clock CPM/SRA/filter latency gates (need a warm-up benchmark +
+  machine baseline — flaky for a unit gate) and the deferred-feature memory items (import peak rides
+  #9, AI-cancellation rides #10), each gated by its own PR when that work lands.
+- **State:** v1.0.58 unchanged — **test-only** (one test module + ADR), no `src/` change → wheel + 9
+  installers stay in lockstep (no rebuild); **ADR-0249**; full gate green (ruff / format / mypy
+  --strict / bandit exit 0 / node --check / full pytest incl. `parity`; harness verified deterministic
+  across repeated runs).
+- **NEXT:** the deferred PR-P1 items, now with a regression baseline — #8.1 compiled CPM topology / #9
+  MSPDI iterparse / #10 cancellable AI job API / #3 path-adjacency memo, each its OWN PR with a
+  byte-identical/parity proof (all HIGH parity risk or premature) → #13 XER calendars → #26 disclosure
+  → F3c → roles.
