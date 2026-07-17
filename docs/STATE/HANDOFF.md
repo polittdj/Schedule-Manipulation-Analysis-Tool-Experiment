@@ -1,4 +1,21 @@
-# Handoff — 2026-07-16 (PR-U1: operator UI — Gantt filter fix, find-by-name, file switcher; v1.0.48; highest ADR 0236)
+# Handoff — 2026-07-17 (PR-M1: /standards Standards & Execution Indices page; v1.0.49; highest ADR 0237)
+
+> ## STATUS (current) — PR-M1 (ADR-0237): the operator-requested metrics-library page is live.
+>
+> - **/standards** (SETUP nav): three formula-first sections — DCMA-14 (16 rows, from the cached
+>   audit), NASA/Acumen-Fuse execution indices (HMI/CEI/FEI/BRI/Float-Ratio/MEI/SPI(t)-Acumen —
+>   the /performance engine calls, single-file forms; CEI states it needs a prior version), and
+>   the Bible SEM family (10 rows verbatim; BRI-Cumulative live, the 9 unbuilt read "—" with an
+>   explicit "not built — PR-M2" status — never a fabricated number). Columns: Value · Status ·
+>   Threshold · verbatim Formula · Source, all from the help.py dictionary the formula-audit test
+>   pins to the .aft. Latest-file basis stated on-page. 4-theme Chromium verified.
+> - **State:** v1.0.48 → **1.0.49**; wheel + 9 installers lockstep; **ADR-0237**; gate green.
+> - **NEXT:** **PR-M2** `engine/metrics/sem.py` — the 9 SEM metrics with MetricDocs + AUDIT rows,
+>   parity vs the committed Fuse SEM goldens (P2/P5 + Large Test File/File2 verbatim rows in the
+>   corpus), reconcile SEM-vs-DCMA BEI-Cumulative (ADR-0176 dual-metric precedent), + the
+>   /standards Excel/Word export. Then PR-R1/R2/R3 remediation → PR-P1 perf → #13 → F3c → roles.
+
+# (prior) Handoff — 2026-07-16 (PR-U1: operator UI — Gantt filter fix, find-by-name, file switcher; v1.0.48; highest ADR 0236)
 
 > ## STATUS (current) — PR-U1 (ADR-0236): the operator's three UI directives are live.
 >

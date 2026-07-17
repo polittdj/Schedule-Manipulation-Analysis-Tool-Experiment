@@ -156,6 +156,7 @@ from schedule_forensics.engine.metrics._common import (
     non_summary,
     percent,
 )
+from schedule_forensics.engine.metrics.cei import compute_cei
 from schedule_forensics.engine.metrics.constraint_health import compute_constraint_health
 from schedule_forensics.engine.metrics.evm import (
     ActivityVariance,
@@ -164,6 +165,7 @@ from schedule_forensics.engine.metrics.evm import (
 )
 from schedule_forensics.engine.metrics.field_forecast import compute_field_forecast
 from schedule_forensics.engine.metrics.float_erosion import compute_float_erosion
+from schedule_forensics.engine.metrics.float_ratio import compute_float_ratio
 from schedule_forensics.engine.metrics.health_extra import compute_health_checks
 from schedule_forensics.engine.metrics.hmi import compute_hmi
 from schedule_forensics.engine.metrics.logic_integrity import compute_logic_integrity
@@ -300,6 +302,7 @@ from schedule_forensics.web.help import (
     METRIC_DICTIONARY,
     field_help_payload,
     field_or_metric_doc,
+    metric_doc,
     reliability_dimension,
 )
 from schedule_forensics.web.offload import (
@@ -1725,6 +1728,14 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
         (
             _Chapter("", "Margin Dashboard", "/margin", (), ("Margin Dashboard",), ""),
             _Chapter("", "Metric Workbench", "/workbench", (), ("Metric Workbench",), ""),
+            _Chapter(
+                "",
+                "Standards & Execution",
+                "/standards",
+                (),
+                ("Standards & Execution Indices",),
+                "",
+            ),
             _Chapter("", "Groups & Filters", "/groups", (), ("Groups & Filters",), ""),
             _Chapter("", "AI Settings", "/settings", (), ("AI Settings",), ""),
             _Chapter("", "Metric Dictionary", "/help", (), ("Metric Dictionary",), ""),
@@ -2633,6 +2644,35 @@ def create_app(
         if marked is not None:
             payload["highlight_uids"] = sorted(marked)
         return JSONResponse(payload)
+
+    @app.get("/standards", response_class=HTMLResponse)
+    def standards_view() -> HTMLResponse:
+        """Standards & Execution Indices: DCMA-14, the NASA/Acumen-Fuse execution indices, and
+        the Schedule Execution Metrics (SEM) family — one formula-first row per metric."""
+        st = session()
+        versions = st.ordered_versions()
+        if not versions:
+            return _page(
+                st,
+                "Standards & Execution Indices",
+                "<div class=panel>Load a schedule to see the DCMA-14, NASA/Acumen-Fuse, and "
+                "Schedule Execution Metrics scorecards with their formulas and sources.</div>",
+            )
+        key, sch = versions[-1]  # the latest data date carries the current standing
+        prior = versions[-2][1] if len(versions) > 1 else None
+        try:
+            analysis = st.analysis_for(key, sch)
+        except CPMError as exc:
+            return _page(
+                st,
+                "Standards & Execution Indices",
+                f"<div class=panel>Network cannot be solved: {_e(exc)}</div>",
+            )
+        return _page(
+            st,
+            "Standards & Execution Indices",
+            _standards_body(st, key, sch, prior, analysis),
+        )
 
     @app.get("/portfolio", response_class=HTMLResponse)
     def portfolio() -> HTMLResponse:
@@ -13254,6 +13294,127 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
         )
 
     return form + tiers_html + header + gantt_html + "".join(rows)
+
+
+#: The Bible's "Industry Standards / Schedule Execution Metrics (SEM)" family, header names
+#: verbatim from the committed Fuse DCMA reports. Only BRI Cumulative is implemented today; the
+#: rest render "—" (never a fabricated number) until engine/metrics/sem.py lands with parity
+#: goldens (the committed P2/P5 and Large Test File/File2 SEM rows).
+_SEM_FAMILY: tuple[tuple[str, str | None], ...] = (
+    ("Completed Activities (1)", None),
+    ("Workoff Burden (SEM01)", None),
+    ("BRI Current (SEM02)", None),
+    ("BRI Cumulative (SEM03)", "bri_cumulative"),
+    ("BPI Current (SEM04)", None),
+    ("BEI Current (SEM05)", None),
+    ("BEI Cumulative (SEM06)", None),
+    ("TC-BEI (SEM07)", None),
+    ("FRI Current (SEM08)", None),
+    ("Delta (BEI vs TC-BEI) (SEM09)", None),
+)
+
+
+def _standards_value_cell(m: AuditCheck | MetricResult) -> str:
+    if m.unit == "ratio":
+        return f"{round(m.value, 2)}" if m.status is not CheckStatus.NOT_APPLICABLE else "—"
+    if m.population:
+        pct = m.value if m.unit == "%" else 100.0 * m.count / m.population
+        return f"{m.count} <span class=muted>of {m.population}</span> ({pct:.1f}%)"
+    return str(m.count) if m.status is not CheckStatus.NOT_APPLICABLE else "—"
+
+
+def _standards_rows(items: Sequence[tuple[AuditCheck | MetricResult | None, str, str]]) -> str:
+    """Rows of (metric-or-None, metric_id-for-docs, fallback-name): value + status pill +
+    threshold + verbatim formula + source, all from the single help.py dictionary (the same
+    entries the formula-audit test pins to the .aft Bible)."""
+    out = []
+    for m, mid, fallback_name in items:
+        doc = metric_doc(mid) if mid else None
+        # an explicit row label (the SEM family names) outranks the engine's internal name
+        name = _e(fallback_name or (m.name if m is not None else (doc.name if doc else mid)))
+        if m is None:
+            val, status_html = "—", "<td class=muted>not built — PR-M2</td>"
+        else:
+            val = _standards_value_cell(m)
+            status_html = f'<td class="{_status_class(m.status)}">{_e(m.status)}</td>'
+        thr = _e(doc.threshold) if doc and doc.threshold else "—"
+        formula = f"<code>{_e(doc.formula)}</code>" if doc and doc.formula else "—"
+        source = _e(doc.source) if doc and doc.source else "—"
+        out.append(
+            f"<tr><td>{name}</td><td class=num>{val}</td>{status_html}"
+            f"<td>{thr}</td><td class=std-formula>{formula}</td><td>{source}</td></tr>"
+        )
+    return "".join(out)
+
+
+def _standards_section(title: str, note: str, rows_html: str) -> str:
+    return (
+        f"<div class=panel><h2>{title}</h2><p class=muted>{note}</p>"
+        '<div style="overflow-x:auto"><table class=card-table>'
+        "<tr><th scope=col>Metric</th><th scope=col>Value</th><th scope=col>Status</th>"
+        "<th scope=col>Threshold</th><th scope=col>Formula</th><th scope=col>Source</th></tr>"
+        f"{rows_html}</table></div></div>"
+    )
+
+
+def _standards_body(
+    st: SessionState, key: str, sch: Schedule, prior: Schedule | None, analysis: _Analysis
+) -> str:
+    """The Standards & Execution Indices page: DCMA-14 + the NASA/Acumen-Fuse execution indices
+    + the SEM family, one formula-first row per metric, computed on the LATEST loaded file."""
+    fname = _e(sch.source_file or sch.name)
+    intro = (
+        f"<div class=panel><p>All values on this page are computed from the latest file, "
+        f"<b>{fname}</b> (period metrics use the prior file's data date"
+        f"{' — none loaded' if prior is None else ''}). Formulas and sources are the same "
+        "entries the metric dictionary pins to the NASA Acumen metric library; each family "
+        "below names its framework.</p></div>"
+    )
+    # §1 DCMA-14 — re-projected from the cached audit (no new math)
+    audit = analysis.audit
+    dcma_rows = _standards_rows([(c, c.metric_id, "") for c in audit.checks])
+    dcma = _standards_section(
+        "DCMA-14 point assessment",
+        f"{audit.passed} passed · {audit.failed} failed · {audit.not_applicable} N/A on {fname}.",
+        dcma_rows,
+    )
+    # §2 NASA / Acumen-Fuse execution indices (single-file forms; CEI needs a prior version)
+    idx: list[tuple[AuditCheck | MetricResult | None, str, str]] = []
+    hmi = compute_hmi(sch, prior.status_date if prior is not None else None)
+    idx += [(hmi[k], k, "") for k in ("hmi_tasks", "hmi_milestones")]
+    if prior is not None:
+        cei = compute_cei(prior, sch)
+        idx += [(cei[k], k, "") for k in sorted(cei)]
+    fei = compute_fei(sch)
+    idx += [(fei[k], k, "") for k in ("fei_starts", "fei_finish")]
+    idx.append((compute_bri(sch), "bri_cumulative", ""))
+    fr = compute_float_ratio(sch, analysis.cpm)
+    idx += [(fr[k], k, "") for k in ("float_ratio", "float_ratio_aggregate")]
+    completion = compute_completion_performance(sch)
+    if "mei" in completion:
+        idx.append((completion["mei"], "mei", ""))
+    evm = compute_evm_indices(sch, analysis.cpm)
+    if "spi_t_acumen" in evm:
+        idx.append((evm["spi_t_acumen"], "spi_t_acumen", ""))
+    cei_note = "" if prior is not None else " CEI needs ≥2 loaded versions — load a prior update."
+    fuse = _standards_section(
+        "NASA / Acumen-Fuse execution indices",
+        "Hit-or-Miss, Current/Baseline Execution, Forecast Execution, Float Ratio™, MEI and "
+        f"SPI(t) — the Fuse-parity forms the /performance trends chart over time.{cei_note}",
+        _standards_rows(idx),
+    )
+    # §3 Schedule Execution Metrics (SEM) — the Bible family; only BRI-Cumulative exists today
+    bri = compute_bri(sch)
+    sem_rows = _standards_rows(
+        [(bri if mid == "bri_cumulative" else None, mid or "", name) for name, mid in _SEM_FAMILY]
+    )
+    sem = _standards_section(
+        "Industry Standards — Schedule Execution Metrics (SEM)",
+        "The Bible's SEM family (SEM01-SEM09). Unbuilt metrics read “—”, never a fabricated "
+        "number; their engine math lands next (PR-M2) against the committed Fuse SEM goldens.",
+        sem_rows,
+    )
+    return intro + dcma + fuse + sem
 
 
 def _metric_scorecard_table(results: dict[str, MetricResult]) -> str:
