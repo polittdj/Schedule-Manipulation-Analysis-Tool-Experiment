@@ -189,3 +189,27 @@ def test_ai_translate_null_backend_returns_nothing() -> None:
     from schedule_forensics.ai.null import NullBackend
 
     assert _ai_translate(["Alpha"], "es", NullBackend()) == {}
+
+
+def test_ai_translation_altering_a_figure_is_discarded_audit_h1() -> None:
+    """Law 2 (audit H1): ``_ai_translate`` was the one ungated AI emission. A returned line that
+    alters (or drops/invents) a numeric figure of its source is discarded — the caller then keeps
+    the source text verbatim. Figure-clean lines still translate."""
+    from schedule_forensics.web.app import _ai_translate
+
+    class _FakeBackend:
+        name = "fake"
+
+        def generate(self, prompt: str, **_: object) -> str:
+            return (
+                "0\tTarea con 5 días de atraso\n"  # figures preserved → kept
+                "1\tTarea con 9 días de atraso\n"  # 3 became 9 → discarded (source kept)
+                "2\tHito 2026-03-02\n"  # date preserved whole → kept
+            )
+
+    texts = ["Task 5 days late", "Task 3 days late", "Milestone 2026-03-02"]
+    out = _ai_translate(texts, "es", _FakeBackend())  # type: ignore[arg-type]
+    assert out == {
+        "Task 5 days late": "Tarea con 5 días de atraso",
+        "Milestone 2026-03-02": "Hito 2026-03-02",
+    }

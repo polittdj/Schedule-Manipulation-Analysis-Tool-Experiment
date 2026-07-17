@@ -9,6 +9,7 @@ from schedule_forensics.ai.citations import (
     Narrative,
     UncitedStatementError,
     assert_all_cited,
+    figure_tokens,
     introduces_loaded_terms,
     preserves_figures,
     reattach,
@@ -153,3 +154,34 @@ def test_iso_dates_tokenize_whole_never_as_fragments_qc_d1() -> None:
 
     assert preserves_figures("finish 2028-01-25", "finish 2028-01-25 confirmed")
     assert not preserves_figures("finish 2028-01-25", "finish January 25, 2028")
+
+
+# --- PR-R1 hardening (ADR-0239): the validated prior-audit bypasses now fail closed ------------
+
+
+def test_number_words_are_figures_audit_m4() -> None:
+    # a spelled-out count is the SAME evidence as its digits: rephrase passes, invention fails
+    assert figure_tokens("Twelve activities slipped") == ["12"]
+    assert preserves_figures("12 activities slipped", "twelve activities slipped")
+    assert not preserves_figures("Several activities slipped", "Twelve activities slipped")
+    assert not preserves_figures("5 tasks finished", "five of the twenty tasks finished")
+    # dates still tokenize whole; "one" is deliberately excluded (bounded lexicon)
+    assert figure_tokens("one window: 2026-03-02") == ["2026-03-02"]
+
+
+def test_loaded_term_stems_audit_m5() -> None:
+    for word in (
+        "fabricated",
+        "doctored",
+        "misleading",
+        "gamed",
+        "rigged",
+        "cheated",
+        "misrepresented",
+        "deceived",
+    ):
+        assert introduces_loaded_terms("the float eroded", f"the float was {word}"), word
+    # ordinary domain words never match; source-present terms stay allowed
+    assert not introduces_loaded_terms("x", "the doctor visited the drilling rig for a game")
+    assert not introduces_loaded_terms("the manipulation report", "per the manipulation report")
+    assert not introduces_loaded_terms("data was fabricated", "the fabricated data")

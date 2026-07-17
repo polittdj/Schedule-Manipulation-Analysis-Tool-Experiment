@@ -6309,3 +6309,16 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - /standards SEM section live; 9 MetricDocs; dictionary regenerated; fixed the value-cell bug
   hiding NA-status informational values. v1.0.49 → **1.0.50**; **ADR-0238**.
 - **NEXT:** PR-R1/R2/R3 remediation → PR-P1 → #13 → F3c → roles.
+---
+
+## 2026-07-17 — PR-R1: AI figure-gate hardening (ADR-0239)
+
+- Closed the three proven bypasses from the validated audits: H1 `_ai_translate` per-line
+  `preserves_figures` gate (discard → source kept verbatim); M4 bounded number-word lexicon in the
+  single `figure_tokens` tokenizer ("twelve" ≡ "12"; "one" excluded, documented); M5 accusation
+  stems in the loaded-terms guard (fabricated/doctored/misleading/gamed/rigged/cheated/
+  misrepresented now flag; "doctor"/"rig"/"game"/domain "manipulation" never do). The audit's
+  bypass probes are now adversarial regression tests.
+- **State:** v1.0.50 → **1.0.51**; wheel + 9 installers lockstep; **ADR-0239**.
+- **NEXT:** PR-R2 (dead Law-1 defenses + air-gap routes + version pin) → PR-R3 (erosion basis +
+  XER weekends + egress set + 24h golden) → PR-P1 → #13 → F3c → roles.
