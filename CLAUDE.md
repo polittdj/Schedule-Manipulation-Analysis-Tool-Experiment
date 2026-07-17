@@ -171,11 +171,22 @@ one page shell per PR → new panels; never big-bang, and never touch `engine/` 
 
 ## Durable state & the drift guard
 
-- `docs/STATE/HANDOFF.md` — **read first**; single source of truth for "where we are / what's next."
-- `docs/STATE/SESSION-LOG.md` — append-only per-session history.
+- `docs/STATE/HANDOFF.md` — **read first**; the live "where we are / what's next." Since ADR-0246 it
+  holds ONLY the current STATUS section plus a single `# (prior) handoffs — archived` pointer, and the
+  SessionStart hook (`.claude/hooks/session_start.sh`) **auto-injects that section into every session**
+  (startup + resume) so it is always read without relying on a manual `Read`. **Writing the next
+  handoff MOVES the current section to the TOP of `HANDOFF-ARCHIVE.md`** (demote its `# Handoff` →
+  `# (prior) Handoff`) **and REPLACES the section in `HANDOFF.md`** — never stack a new `# (prior)`
+  section in `HANDOFF.md`, or the size guard fails.
+- `docs/STATE/HANDOFF-ARCHIVE.md` — the older handoff sections (newest-first, verbatim), moved out so
+  the live handoff stays small enough to read in full in one pass.
+- `docs/STATE/SESSION-LOG.md` — append-only per-session history (the full running log; the archive is
+  handoff snapshots).
 - `docs/adr/NNNN-*.md` — one ADR per significant decision.
 - `tests/test_state_docs.py` **fails** unless the highest ADR number on disk appears in BOTH `HANDOFF.md`
-  and `SESSION-LOG.md` — so any change that adds an ADR must refresh both docs in the same commit.
+  and `SESSION-LOG.md` (so any change that adds an ADR must refresh both docs in the same commit) **and**
+  unless `HANDOFF.md` stays ≤64 KB with exactly one `# (prior)` heading (so it can never grow back past
+  one-pass readability).
 
 ## Workflow
 

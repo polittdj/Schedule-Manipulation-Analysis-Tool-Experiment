@@ -6533,3 +6533,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   break.
 - **State:** v1.0.55 → **1.0.56**; wheel + 9 installers lockstep; **ADR-0245**; full gate green.
 - **NEXT:** the five queued audit items above → PR-P1 perf → #13 → #26 → F3c → roles.
+
+---
+
+## 2026-07-17 — Session-start ritual: auto-inject the live HANDOFF + archive history (ADR-0246)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-resume-main-6tpt62` (restarted
+  fresh from `origin/main` after the ADR-0245 PR #384 squash-merge).
+- **Operator directive (mid-session):** "find a way to ALWAYS read the entire HANDOFF before starting
+  a session." Presented the trade-off; operator chose **auto-inject current + archive rest**.
+- **Auto-inject (guaranteed).** `.claude/hooks/session_start.sh` now prints HANDOFF.md's current
+  section — everything above the first `# (prior)` heading — into session context on startup + resume,
+  under the toolchain preflight. The current state + NEXT queue are always in front of the agent from
+  turn one, with no reliance on a manual `Read` (hook stdout is surfaced as context — the same channel
+  the preflight already uses).
+- **Archived.** The 76 prior handoff sections moved verbatim (newest-first) to
+  `docs/STATE/HANDOFF-ARCHIVE.md`; HANDOFF.md dropped 417 KB → ~4.5 KB, now trivially one-`Read`-able.
+  The full append-only per-session history still lives in this SESSION-LOG.
+- **New guard.** `tests/test_state_docs.py::test_handoff_stays_one_pass_readable` fails if HANDOFF.md
+  exceeds 64 KB or carries more than one `# (prior)` heading — enforces the small-file invariant so it
+  can't grow back. The single `# (prior)` archive pointer preserves the existing drift-guard boundary
+  marker (the version-pin split), so the rest of `test_state_docs.py` is unchanged and green.
+- **Convention (CLAUDE.md "Durable state").** The next handoff MOVES the current section to the TOP of
+  HANDOFF-ARCHIVE.md (demote `# Handoff` → `# (prior) Handoff`) and REPLACES the section in HANDOFF.md
+  — no more append-a-new-`# (prior)`-in-place.
+- **State:** v1.0.56 unchanged — docs + one hook + one test, **no `src/` change**, so the wheel + 9
+  installers stay in lockstep (no rebuild); **ADR-0246**; full gate green.
+- **NEXT:** the five queued ADR-0245 audit items (driving-path per-task shading + node harness;
+  `/margin` mixed-basis test; SRA-xlsx zip-bomb cap; `redact()` spaced-UNC leak) → PR-P1 perf →
+  #13 XER calendars → #26 disclosure → F3c → roles.

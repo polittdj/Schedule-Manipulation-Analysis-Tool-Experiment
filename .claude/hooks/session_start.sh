@@ -44,4 +44,20 @@ if [ -d .githooks ] && git rev-parse --git-dir >/dev/null 2>&1; then
 fi
 
 echo "---------------------------------------------------------------------"
+
+# Surface the live HANDOFF STATUS block (ADR-0246) as session context so the current
+# state + NEXT queue are ALWAYS in front of the agent at session start — no reliance on
+# a manual Read. Print only the current section (everything above the first "# (prior)"
+# heading); the older handoffs live in HANDOFF-ARCHIVE.md, the full per-session history in
+# SESSION-LOG.md. A size guard (tests/test_state_docs.py) keeps this small. Fail-soft:
+# skip quietly if the file is missing.
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
+HANDOFF="$ROOT/docs/STATE/HANDOFF.md"
+if [ -f "$HANDOFF" ]; then
+  echo ""
+  echo "== HANDOFF — current state (READ FIRST; full doc: docs/STATE/HANDOFF.md) =="
+  awk '/^# [(]prior[)]/{exit} {print}' "$HANDOFF"
+  echo "== end HANDOFF current state ============================================"
+fi
+
 exit 0
