@@ -16,7 +16,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "schedule-forensics"
-version = "1.0.58"
+version = "1.0.59"
 description = "Local, NASA-themed forensic schedule-analysis tool (CUI-safe, offline)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -40,8 +40,12 @@ dependencies = [
   "pydantic>=2",
   "fastapi>=0.110",
   "uvicorn>=0.29",
-  "jinja2>=3.1",
-  "python-multipart>=0.0.9",
+  # floors at the patched releases (audit ADR-0250) so a constraints-pinned / offline-mirror install
+  # cannot resolve a published-CVE version below what pip-audit would catch: jinja2 < 3.1.6
+  # (CVE-2024-56201/56326, CVE-2025-27516 sandbox escapes), python-multipart < 0.0.18
+  # (CVE-2024-53981 multipart-boundary DoS). Matches the setuptools>=83.0.0 remediation posture.
+  "jinja2>=3.1.6",
+  "python-multipart>=0.0.18",
 ]
 
 [project.urls]

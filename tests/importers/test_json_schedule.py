@@ -574,3 +574,17 @@ def test_parse_json_stamps_source_file_like_other_importers_qc_d24(tmp_path: Pat
         encoding="utf-8",
     )
     assert parse_json(p).source_file == "myplan.json"
+
+
+def test_malformed_day_segments_does_not_raise_indexerror() -> None:
+    """Audit ADR-0250: a day_segments entry of length != 2 (e.g. [[5]] or [[]]) previously raised a
+    RAW IndexError that escaped the module's ImporterError fail-loud contract. It is now
+    length-guarded — the malformed entries are dropped and the valid one survives, no IndexError."""
+    doc = {
+        "project_start": "2025-01-06T08:00:00",
+        "tasks": [{"unique_id": 1, "name": "A", "duration_minutes": 480}],
+        # two malformed segments (len 1 and len 0) + one valid pair
+        "calendars": [{"name": "cal", "day_segments": [[5], [], [480, 1020]]}],
+    }
+    sch = parse_json_text(json.dumps(doc))  # must NOT raise IndexError
+    assert sch.calendar.day_segments == ((480, 1020),)  # only the valid pair survives

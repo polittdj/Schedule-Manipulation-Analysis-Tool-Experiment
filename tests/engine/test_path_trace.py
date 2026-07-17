@@ -130,3 +130,26 @@ def test_subschedule_to_target_unknown_target_raises() -> None:
     s = _sched([1, 2], [(1, 2)])
     with pytest.raises(KeyError):
         subschedule_to_target(s, 999)
+
+
+def test_trace_excludes_inactive_tasks() -> None:
+    """Audit ADR-0250: inactive tasks (is_active=False) are dropped from the CPM network (ADR-0128),
+    so the driving-path trace must drop them too. In 1 -> 2(inactive) -> 3, the inactive middle task
+    and its links leave the network, so the chain does not bridge 1 to 3 (before the fix it did — a
+    Law-2 parity break, tracing a path SSI/MSP would not). Mirrors cpm._scheduled_tasks."""
+    tasks = (
+        Task(unique_id=1, name="A", duration_minutes=480),
+        Task(unique_id=2, name="B-inactive", duration_minutes=480, is_active=False),
+        Task(unique_id=3, name="C", duration_minutes=480),
+    )
+    rels = (
+        Relationship(predecessor_id=1, successor_id=2),
+        Relationship(predecessor_id=2, successor_id=3),
+    )
+    s = Schedule(name="s", project_start=MON, tasks=tasks, relationships=rels)
+    assert ancestors_of(s, 3) == frozenset()  # the inactive middle severs the chain to 1
+    assert descendants_of(s, 1) == frozenset()  # ...symmetrically forward
+    # an inactive TARGET is not in the network at all -> the documented KeyError (handled like a
+    # summary target by the web layer), never a silent trace over a non-network task
+    with pytest.raises(KeyError):
+        ancestors_of(s, 2)

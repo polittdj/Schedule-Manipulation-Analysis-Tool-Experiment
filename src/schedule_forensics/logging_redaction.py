@@ -103,9 +103,17 @@ _UNC_PATH_RE = re.compile(r"(?<![\w\\])\\\\[\w.\-]+(?:\\[\w.\-]+)+")
 # the emitted ``<path:ext#…>`` token is inert and :func:`redact` stays idempotent.
 _SPACED_FILE_PATH_RE = re.compile(
     r"(?<![\w:/\\])"
-    r"(?:\\\\[\w.\-]+(?:\\[\w.\-]+)*\\"  # UNC:     \\server\share\…\
-    r"|[A-Za-z]:\\(?:[\w.\-]+\\)*"  # Windows: C:\dir\…\
-    r"|/[\w.\-]+(?:/[\w.\-]+)*/)"  # POSIX:   /dir/…/
+    # Interior directory segments may THEMSELVES contain spaces — the common Windows-profile /
+    # OneDrive / UNC-share case (``C:\Users\John Smith\…``, ``\\server\CUI Share\…``,
+    # ``/mnt/My Projects/…``). The first cut (ADR-0247) allowed spaces only in the final file name,
+    # so a spaced intermediate directory broke the whole-path match and leaked the surname / share /
+    # project words in clear text (audit ADR-0250 — a real Law-1 leak). Each segment is
+    # separator-bounded and length-capped, and the branch still requires a real path plus a
+    # final sensitive-extension component, so a space-free path with no such file name falls through
+    # to the fallback path regexes below (trailing prose stays safe).
+    r"(?:\\\\[^\n\\/]{1,120}(?:\\[^\n\\/]{1,120})*\\"  # UNC:     \\server\…dirs…\
+    r"|[A-Za-z]:\\(?:[^\n\\/]{1,120}\\)*"  # Windows: C:\…dirs…\
+    r"|/[^\n\\/]{1,120}(?:/[^\n\\/]{1,120})*/)"  # POSIX:   /…dirs…/
     r"[^\n\\/]{1,160}?\.(?:" + "|".join(SENSITIVE_EXTENSIONS) + r")\b",
     re.IGNORECASE,
 )

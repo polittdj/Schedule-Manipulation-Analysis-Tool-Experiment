@@ -73,7 +73,14 @@ def parse_json(path: str | os.PathLike[str]) -> Schedule:
     """Parse a ``.json`` schedule file. ``source_file`` is stamped with the file's basename so
     citations carry the file label, exactly like the MSPDI/XER importers (QC audit D24)."""
     p = Path(os.fspath(path))
-    return parse_json_text(p.read_text(encoding="utf-8")).model_copy(update={"source_file": p.name})
+    try:
+        # wrap the read like the MSPDI/XER importers (audit ADR-0250): an unreadable file → a clean
+        # ImporterError, not a raw OSError; errors="replace" so a stray non-UTF-8 byte can't raise a
+        # bare UnicodeDecodeError past the importer contract.
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        raise ImporterError(f"cannot read JSON schedule file: {exc}") from exc
+    return parse_json_text(text).model_copy(update={"source_file": p.name})
 
 
 def parse_json_text(text: str) -> Schedule:
@@ -120,8 +127,13 @@ def _calendar(raw: dict[str, Any]) -> Calendar:
     if raw.get("working_days"):
         kwargs["working_days"] = tuple(dt.date.fromisoformat(str(d)) for d in raw["working_days"])
     if raw.get("day_segments"):
+        # length-guard as well as type-guard (audit ADR-0250) — a segment of length != 2 (e.g.
+        # ``[[5]]``) else raises a raw IndexError, bypassing the ImporterError contract; mirror
+        # the ``len(pair) == 2`` guard the custom-field parsing already uses.
         kwargs["day_segments"] = tuple(
-            (int(s[0]), int(s[1])) for s in raw["day_segments"] if isinstance(s, (list, tuple))
+            (int(s[0]), int(s[1]))
+            for s in raw["day_segments"]
+            if isinstance(s, (list, tuple)) and len(s) == 2
         )
     return Calendar(**kwargs)
 
