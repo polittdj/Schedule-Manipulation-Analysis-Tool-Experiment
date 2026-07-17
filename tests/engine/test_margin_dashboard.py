@@ -242,5 +242,36 @@ def test_single_version_has_no_trend() -> None:
     assert len(d.months) == 1  # the burn-down column still computes
 
 
+def test_gold_rule_rate_scales_the_requirement_and_is_carried() -> None:
+    # F3c: the NASA requirement line is days-to-go x rate / 365, so doubling the rate doubles the
+    # requirement (but for the independent 1-dp rounding of each month), a higher rate trips more
+    # triggers, and the dashboard carries the rate it was measured against.
+    versions = [(v.source_file, v, compute_cpm(v)) for v in (_version(s, m) for s, m in _MARGINS)]
+    d30 = compute_margin_dashboard(versions, target_uid=DELIVER_UID, gold_rule_per_year=30)
+    d60 = compute_margin_dashboard(versions, target_uid=DELIVER_UID, gold_rule_per_year=60)
+    assert d30.gold_rule_per_year == 30.0 and d60.gold_rule_per_year == 60.0
+    pairs = [
+        (a.nasa_rqmt_wd, b.nasa_rqmt_wd)
+        for a, b in zip(d30.months, d60.months, strict=True)
+        if a.nasa_rqmt_wd > 0
+    ]
+    assert pairs, "expected at least one month with a positive NASA requirement to compare"
+    for r30, r60 in pairs:
+        assert abs(r60 - 2 * r30) <= 0.15  # exact doubling but for each value's 1-dp rounding
+    # a higher requirement can only add triggers, never remove them
+    triggers_30 = sum(m.below_requirement for m in d30.months)
+    triggers_60 = sum(m.below_requirement for m in d60.months)
+    assert triggers_60 >= triggers_30
+
+
+def test_default_rate_reproduces_the_30_per_year_requirement_exactly() -> None:
+    # Omitting the rate is behaviour-preserving: the default is the 30/yr Gold Rule.
+    versions = [(v.source_file, v, compute_cpm(v)) for v in (_version(s, m) for s, m in _MARGINS)]
+    d_default = compute_margin_dashboard(versions, target_uid=DELIVER_UID)
+    d_thirty = compute_margin_dashboard(versions, target_uid=DELIVER_UID, gold_rule_per_year=30)
+    assert d_default.gold_rule_per_year == 30.0
+    assert [m.nasa_rqmt_wd for m in d_default.months] == [m.nasa_rqmt_wd for m in d_thirty.months]
+
+
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-q"])

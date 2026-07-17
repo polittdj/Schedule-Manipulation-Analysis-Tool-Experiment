@@ -117,6 +117,7 @@ from schedule_forensics.engine.grouping import (
 )
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.margin_dashboard import (
+    GOLD_RULE_DAYS_PER_YEAR,
     MarginDashboard,
     MarginMonth,
     compute_margin_dashboard,
@@ -601,6 +602,11 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
+    # F3c: operator-settable NASA Gold-Rule margin-requirement rate (work-days per program year) the
+    # dashboard measures effective margin against. 30/yr (the Schedule Management Handbook default) is
+    # the initial value; set via GET /margin?rate=. The burn-down requirement line, the per-version
+    # "NASA rqmt" column, the trigger flag, and the Excel/Word export all follow this one rate.
+    margin_rate: float = GOLD_RULE_DAYS_PER_YEAR
     # UI/AI display language (ADR-0099): "en" (source) or "es". Drives the layout's lang attribute
     # and the client translation pass; AI fallback translations are memoised in ``translations``.
     language: str = "en"
@@ -805,6 +811,16 @@ class SessionState:
             self.target_uid = uid
             self.sra_focus_uid = uid
             self._invalidate_scope()
+
+    def set_margin_rate(self, rate: float) -> None:
+        """Set the NASA Gold-Rule margin-requirement rate (work-days per program year) the margin
+        dashboard measures against (F3c). Accepted only in a sane ``(0, 365]`` band; anything else is
+        ignored, keeping the current rate (fail-soft — a bad query value never wipes the setting). The
+        rate feeds only the freshly-computed requirement line / trigger, not the analysis or summary
+        caches, so nothing needs invalidating."""
+        with self._lock:
+            if 0 < rate <= 365:
+                self.margin_rate = rate
 
     def confirmed_margin_union(self) -> frozenset[int] | None:
         """The union of every loaded version's operator-confirmed margin-task set, or ``None`` when no
@@ -3083,8 +3099,10 @@ def create_app(
         )
 
     @app.get("/margin", response_class=HTMLResponse)
-    def margin_view() -> HTMLResponse:
+    def margin_view(rate: float | None = Query(None)) -> HTMLResponse:
         st = session()
+        if rate is not None:
+            st.set_margin_rate(rate)  # F3c: operator-set Gold-Rule requirement rate (fail-soft)
         if not st.schedules:
             return _page(
                 st,
@@ -4403,6 +4421,7 @@ def create_app(
             else (_wmpd_label(d.erosion_basis_wmpd) if d.erosion_basis_wmpd else "—")
         )
         erosion: tuple[tuple[Cell, ...], ...] = (
+            ("NASA requirement rate (wd / program year)", d.gold_rule_per_year),
             (
                 "Erosion (work days / month)",
                 d.erosion_wd_per_month if not d.erosion_mixed_basis else "—",
@@ -8963,7 +8982,10 @@ def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
             continue
         versions.append((raw.source_file or raw.name, st.scope(raw), a.cpm))
     return compute_margin_dashboard(
-        versions, target_uid=st.target_uid, margin_uids=st.confirmed_margin_union()
+        versions,
+        target_uid=st.target_uid,
+        gold_rule_per_year=st.margin_rate,
+        margin_uids=st.confirmed_margin_union(),
     )
 
 
@@ -8975,6 +8997,7 @@ def _margin_dashboard_data(d: MarginDashboard) -> dict[str, object]:
         "erosion_r2": d.erosion_r2,
         "erosion_basis_wmpd": d.erosion_basis_wmpd,
         "erosion_mixed_basis": list(d.erosion_mixed_basis),
+        "gold_rule_per_year": d.gold_rule_per_year,
         "months": [
             {
                 "label": m.label,
@@ -9086,9 +9109,40 @@ def _margin_dashboard_header(d: MarginDashboard) -> str:
     )
 
 
+def _margin_rate_control(rate: float) -> str:
+    """F3c operator control: the NASA Gold-Rule margin-requirement rate (work-days per program year)
+    the dashboard measures effective margin against. 30/yr is the Schedule Management Handbook
+    default, but the handbook states margin as a program-managed guideline, so the rate is
+    operator-parameterized here — a GET form persists it on the session (fail-soft on a bad value),
+    and the requirement line, the per-version ``NASA rqmt`` column, the trigger, and the export all
+    follow it. The verbatim 50%-consumed corrective threshold stays fixed (it is not a guideline)."""
+    reset = (
+        ""
+        if rate == GOLD_RULE_DAYS_PER_YEAR
+        else f' <a class="btn-link" href="/margin?rate={GOLD_RULE_DAYS_PER_YEAR:g}" '
+        f"data-no-i18n>Reset to {GOLD_RULE_DAYS_PER_YEAR:g}</a>"
+    )
+    return (
+        '<div class="panel"><form method="get" action="/margin" class="viz-controls">'
+        "<label data-no-i18n>NASA Gold-Rule margin requirement: "
+        f'<input name="rate" type="number" min="1" max="365" step="0.5" value="{rate:g}" '
+        'title="Work-days of margin per program year the requirement expects '
+        '(days-to-go x rate / 365)"> work-days / program year</label> '
+        '<button type="submit">Apply</button>'
+        f"{reset}"
+        '<p class="muted" data-no-i18n style="margin:.4em 0 0;font-size:12px">The NASA requirement '
+        "line is <b>days-to-go &times; rate &divide; 365</b>. <b>30</b>/yr is the Schedule Management "
+        "Handbook &ldquo;Gold Rule&rdquo; default; a program may set a different guideline, so the "
+        "rate is parameterized here &mdash; the burn-down requirement line, the per-version "
+        "<i>NASA&nbsp;rqmt</i> column, the trigger flag, and the Excel/Word export all follow it.</p>"
+        "</form></div>"
+    )
+
+
 def _margin_dashboard_body(st: SessionState) -> str:
-    """The Margin Dashboard page: the takeaway + KPI header, the two reference charts (burn-down +
-    erosion trend), the per-version table, and the embedded dataset margin_dashboard.js reads."""
+    """The Margin Dashboard page: the takeaway + KPI header, the operator rate control (F3c), the two
+    reference charts (burn-down + erosion trend), the per-version table, and the embedded dataset
+    margin_dashboard.js reads."""
     d = _margin_dashboard_for(st)
     data = _margin_dashboard_data(d)
     blob = json.dumps(data).replace("<", "\\u003c")
@@ -9119,6 +9173,7 @@ def _margin_dashboard_body(st: SessionState) -> str:
     return (
         _margin_dashboard_header(d)
         + _export_bar("margin")
+        + _margin_rate_control(st.margin_rate)
         + '<div class="panel"><h2 data-no-i18n>Margin &amp; Contingency Burn-Down</h2>'
         + _margin_terminology()
         + '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '

@@ -205,3 +205,42 @@ def test_margin_view_and_export_disclose_mixed_basis_and_suppress_erosion() -> N
     ]
     assert erosion_rows and erosion_rows[0][1] == "—"  # suppression dash, not a fabricated number
     assert c.get("/export/docx/margin").status_code == 200
+
+
+def test_margin_rate_control_renders_with_the_current_rate() -> None:
+    # F3c: the operator can set the NASA Gold-Rule requirement rate on the dashboard.
+    body = _client(_MARGINS).get("/margin").text
+    assert 'name="rate"' in body  # the control input
+    assert "Gold-Rule margin requirement" in body
+    assert 'value="30"' in body  # defaults to the 30/yr Gold Rule
+
+
+def test_setting_the_rate_changes_the_requirement_and_persists() -> None:
+    c = _client(_MARGINS)
+    # setting rate=60 doubles the requirement line and is carried on the API + reflected on the page
+    d = c.get("/margin?rate=60").text
+    assert 'value="60"' in d  # the control now shows 60
+    j = c.get("/api/margin/dashboard").json()  # persisted on the session — no rate param here
+    assert j["gold_rule_per_year"] == 60.0
+    for m in j["months"]:
+        assert m["nasa_rqmt_wd"] == round(m["days_to_go"] * 60.0 / 365.0, 1)
+        assert m["below_requirement"] == (m["effective_margin_wd"] < m["nasa_rqmt_wd"])
+    # a later plain /margin GET keeps 60 (session-persisted, like the target)
+    assert 'value="60"' in c.get("/margin").text
+
+
+def test_invalid_margin_rate_is_failsoft() -> None:
+    c = _client(_MARGINS)
+    for bad in ("0", "-5", "9999", "abc"):
+        c.get(f"/margin?rate={bad}")  # 'abc' is rejected by FastAPI; the numeric ones by the setter
+        assert c.get("/api/margin/dashboard").json()["gold_rule_per_year"] == 30.0
+
+
+def test_export_states_the_nasa_requirement_rate() -> None:
+    c = _client(_MARGINS)
+    c.get("/margin?rate=45")  # set a non-default rate
+    x = c.get("/export/xlsx/margin")
+    assert x.status_code == 200
+    rows = [row for sheet in read_xlsx(x.content).values() for row in sheet]
+    rate_rows = [r for r in rows if r and r[0].startswith("NASA requirement rate")]
+    assert rate_rows and rate_rows[0][1] == "45.0"  # the export states the basis it was measured on

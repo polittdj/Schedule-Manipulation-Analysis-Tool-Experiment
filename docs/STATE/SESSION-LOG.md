@@ -6777,3 +6777,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** #13 XER per-task calendars (PARKED — needs the owed `.xer` files) → F3c parameterized
   expected margin → roles front-end (v4 F4); the queued family-B option-plumbing unify PRs from the
   ADR-0251 verify are unchanged.
+
+---
+
+## 2026-07-17 — F3c: user-parameterized NASA margin requirement rate (ADR-0253)
+
+- **Session:** continued on branch `claude/smat-adr-0250-decision-vpvwwa` (restarted fresh from
+  origin/main after #391 merged).   **Model/mode:** Opus 4.8.
+- **F3c = the last of the F3 margin feature.** F3a/3b (ADR-0230) delivered margin terminology, the
+  confirmed-margin overlay, dual numbers, and the 50%-consumed corrective flag. F3c makes the NASA
+  Gold-Rule requirement rate (work-days per program year) operator-settable.
+- **The gap.** The dashboard's requirement line is `days-to-go x rate / 365` (30 wd/program-year).
+  `compute_margin_dashboard` already accepted `gold_rule_per_year`, but no caller set it — every
+  render/export used 30. The Schedule Management Handbook states margin as a program-managed
+  guideline, so the rate is legitimately program-specific.
+- **What changed (session/UI/export wiring; engine math untouched).** `_GOLD_RULE_DAYS_PER_YEAR` →
+  public `GOLD_RULE_DAYS_PER_YEAR` (one source of truth). `SessionState.margin_rate` (default 30) +
+  `set_margin_rate` (fail-soft `(0, 365]`, no cache invalidation). `GET /margin?rate=` +
+  `_margin_rate_control` (a cited GET form: number input + Apply + a "Reset to 30" link off-default).
+  `_margin_dashboard_for` threads `st.margin_rate` in. `MarginDashboard.gold_rule_per_year` carries
+  the rate used → the `/api/margin/dashboard` JSON and the Excel/Word export both state the basis. The
+  verbatim 50%-consumed corrective threshold stays fixed (a cited NASA rule, not a guideline).
+- **Verified.** 6 new tests (2 engine + 4 web): the rate scales `nasa_rqmt_wd`, a higher rate only
+  adds triggers, no rate arg reproduces 30/yr exactly; the control renders/persists/changes the
+  requirement, an invalid rate is fail-soft (keeps 30), and the export states the rate. 4-theme
+  Chromium check green (console/daylight/apollo/jarvis).
+- **State:** v1.0.61 → **1.0.62**; wheel + 9 installers rebuilt in lockstep; **ADR-0253**; full gate
+  green (ruff / ruff format --check / mypy --strict / bandit exit 0 / node --check / full pytest 2349
+  passed incl. `parity`). HANDOFF moved/replaced + this entry in the same commit. F3 margin feature
+  COMPLETE.
+- **NEXT:** #13 XER per-task calendars (PARKED — needs the owed `.xer` files) → roles front-end
+  (v4 F4); the queued family-B option-plumbing unify PRs from the ADR-0251 verify are unchanged.
