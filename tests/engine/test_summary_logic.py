@@ -10,8 +10,12 @@ from __future__ import annotations
 
 import datetime as dt
 
-from schedule_forensics.engine.cpm import compute_cpm, datetime_to_offset
+import pytest
+
+from schedule_forensics.engine.cpm import CPMError, compute_cpm, datetime_to_offset
 from schedule_forensics.engine.summary_logic import (
+    SUMMARY_EDGE_CEILING,
+    SummaryLogicExplosion,
     lower_summary_relationships,
     summaries_with_logic,
     summary_leaf_descendants,
@@ -174,3 +178,51 @@ def test_datetime_offset_sanity() -> None:
     # guard the helper used above (one working day == DAY minutes on the default calendar)
     sch = _sched([_task(1, "1.1")], [])
     assert datetime_to_offset(sch.project_start, MON, sch.calendar) == 0
+
+
+# ── audit-E: summary-to-summary edge-explosion guard (ADR-0248) ────────────────────────
+
+
+def _summary_to_summary(leaves_each: int) -> Schedule:
+    """Two summaries (WBS "1" and "2"), each with ``leaves_each`` leaf children, joined by a single
+    summary->summary FS link. The lowering projects ``leaves_each ** 2`` leaf edges."""
+    tasks = [_task(1, "1", summary=True), _task(2, "2", summary=True)]
+    for i in range(1, leaves_each + 1):
+        tasks.append(_task(100 + i, f"1.{i}"))
+        tasks.append(_task(200 + i, f"2.{i}"))
+    rels = [Relationship(predecessor_id=1, successor_id=2, type=RelationshipType.FS, lag_minutes=0)]
+    return _sched(tasks, rels)
+
+
+def test_summary_edge_explosion_fails_loud_not_silently(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A projected fan-out past the ceiling RAISES (fail loud) rather than silently building — or,
+    worse, silently truncating — a dense network. Silent truncation would drop real logic edges and
+    change CPM dates (a Law-2 break), so the guard must refuse, never clip."""
+    monkeypatch.setattr("schedule_forensics.engine.summary_logic.SUMMARY_EDGE_CEILING", 4)
+    sch = _summary_to_summary(3)  # projects 3*3 = 9 edges > the patched ceiling of 4
+    with pytest.raises(SummaryLogicExplosion, match="pathologically dense"):
+        lower_summary_relationships(sch)
+    # engine.cpm re-raises it as a CPMError so the web layer degrades to a disclosed 422, not a 500
+    with pytest.raises(CPMError, match="pathologically dense"):
+        compute_cpm(sch)
+
+
+def test_summary_lowering_below_ceiling_is_the_full_unchanged_cross_product() -> None:
+    """Below the ceiling the guard is invisible: the lowering is the complete leaf cross-product,
+    byte-identical to pre-guard behavior (no edge dropped)."""
+    sch = _summary_to_summary(3)  # 9 edges, far below the real 250k ceiling
+    lowered = lower_summary_relationships(sch)
+    pred_leaves = {101, 102, 103}
+    succ_leaves = {201, 202, 203}
+    got = {(r.predecessor_id, r.successor_id) for r in lowered}
+    assert got == {(p, s) for p in pred_leaves for s in succ_leaves}  # full 3x3, nothing clipped
+    assert len(lowered) == 9  # no edge dropped/truncated
+
+
+def test_ceiling_sits_far_above_a_realistic_summary_schedule() -> None:
+    """The real ceiling must never clip a genuine schedule: even a large-but-plausible
+    summary-to-summary case (30x30 leaves = 900 edges) lowers without raising."""
+    sch = _summary_to_summary(30)  # 900 projected edges, three orders of magnitude under 250k
+    assert SUMMARY_EDGE_CEILING > 30 * 30
+    lowered = lower_summary_relationships(sch)  # must NOT raise
+    assert len(lowered) == 900

@@ -488,6 +488,11 @@ def _build_result(
     """Assemble the :class:`SRAResult` from the collected iteration series."""
     n = len(finishes)
     finishes_f = [float(f) for f in finishes]
+    # Spearman ranks the SAME finish series against every activity's sampled durations; the finish
+    # ranks are identical each time, so compute them ONCE here instead of re-ranking (sort) the
+    # finish vector per activity (audit-C — byte-identical: _pearson receives the same two rank
+    # lists it does today, just without the redundant N-1 re-sorts).
+    finish_ranks = _average_ranks(finishes_f)
     sorted_finishes = sorted(finishes)
     sorted_finishes_f = [float(f) for f in sorted_finishes]
     finish_sigma = statistics.pstdev(finishes_f) if n > 1 else 0.0
@@ -508,7 +513,9 @@ def _build_result(
         durs = sampled_durations[uid]
         ci = critical_counts[uid] / n
         durs_f = [float(d) for d in durs]
-        sensitivity = _spearman(durs_f, finishes_f)
+        sensitivity = _pearson(
+            _average_ranks(durs_f), finish_ranks
+        )  # Spearman; finish ranks hoisted
         dur_sigma = statistics.pstdev(durs_f) if n > 1 else 0.0
         ssi = (dur_sigma * ci) / finish_sigma if finish_sigma > 0.0 else 0.0
         activities.append(

@@ -30,6 +30,24 @@ from __future__ import annotations
 from schedule_forensics.model.relationship import Relationship
 from schedule_forensics.model.schedule import Schedule
 
+#: Defensive ceiling on the number of leaf edges a schedule's summary logic may lower to (audit-E).
+#: A summary-to-summary relationship expands to a leaf CROSS-PRODUCT, so a sparse source network can
+#: project a dense E'; past this ceiling the lowering is refused (fail loud) rather than silently
+#: building a multi-hundred-thousand-edge network (a DoS/OOM hazard on a hostile or malformed file).
+#: Set an order of magnitude above any realistic schedule — a test pins it above every committed
+#: fixture's projected fan-out, so it NEVER fires on a real plan. It is NEVER used to truncate the
+#: edge set (that would drop real logic and change CPM dates — a Law-2 break); it only refuses.
+SUMMARY_EDGE_CEILING = 250_000
+
+
+class SummaryLogicExplosion(ValueError):
+    """A schedule's summary-to-summary logic would lower to a pathologically dense leaf network.
+
+    Raised (not silently truncated) so the caller fails loud; ``engine.cpm`` re-raises it as a
+    :class:`~schedule_forensics.engine.cpm.CPMError` so the web layer degrades to a disclosed 422
+    rather than hanging, OOM-ing, or — worst of all — silently emitting a wrong-but-fast schedule.
+    """
+
 
 def _segments(wbs: str | None) -> list[str]:
     return [s for s in wbs.split(".")] if wbs else []
@@ -95,6 +113,19 @@ def lower_summary_relationships(schedule: Schedule) -> tuple[Relationship, ...]:
     def endpoints(uid: int) -> tuple[int, ...]:
         # a summary expands to its leaves; a leaf stands for itself
         return descendants[uid] if uid in summary_ids else (uid,)
+
+    # Defensive guard (audit-E): project the fan-out from LENGTHS only (no edge objects built) and
+    # FAIL LOUD past the ceiling instead of materializing — or silently truncating — a dense
+    # summary-to-summary cross-product. Never fires on a real schedule (ceiling >> any fixture).
+    projected = sum(
+        len(endpoints(r.predecessor_id)) * len(endpoints(r.successor_id))
+        for r in schedule.relationships
+    )
+    if projected > SUMMARY_EDGE_CEILING:
+        raise SummaryLogicExplosion(
+            f"summary logic would lower to ~{projected} leaf edges (> {SUMMARY_EDGE_CEILING}); "
+            "the schedule's summary-to-summary logic is pathologically dense — review the network"
+        )
 
     lowered: list[Relationship] = []
     seen: set[tuple[int, int, str, int]] = set()

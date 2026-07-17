@@ -44,7 +44,10 @@ from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from schedule_forensics.engine.summary_logic import lower_summary_relationships
+from schedule_forensics.engine.summary_logic import (
+    SummaryLogicExplosion,
+    lower_summary_relationships,
+)
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -435,8 +438,13 @@ def compute_cpm(
     id_set = set(task_ids)
     # Logic attached to a SUMMARY task is honored the way MS Project does it: lowered onto
     # the summary's leaf descendants (ADR-0043). A no-op for schedules without summary
-    # logic, so the leaf-only network — and parity — is unchanged.
-    relationships = lower_summary_relationships(schedule)
+    # logic, so the leaf-only network — and parity — is unchanged. A pathologically dense
+    # summary-to-summary cross-product fails loud (audit-E) as a CPMError so the web layer
+    # degrades to a disclosed 422 instead of hanging/OOM-ing.
+    try:
+        relationships = lower_summary_relationships(schedule)
+    except SummaryLogicExplosion as exc:
+        raise CPMError(str(exc)) from exc
     edges = [
         (r.predecessor_id, r.successor_id, r.type, r.lag_minutes)
         for r in relationships
