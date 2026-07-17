@@ -6874,3 +6874,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   moved/replaced + this entry in the same commit.
 - **NEXT:** #13 XER per-task calendars (PARKED) → ADR-0251 family-B option-plumbing PRs →
   zero-margin SRA toggle → deferred perf (ADR-0249).
+
+---
+
+## 2026-07-17 — session audit (ADR-0240) + fix PR: margin-risk date realignment & hardening (ADR-0256)
+
+- **Operator asked for the audit**; ran as the ADR-0240 protocol: 4 orchestrated auditors
+  (margin-panel / roles / state-docs / security-CUI, 201 tool calls), adversarial verification
+  of majors, lead re-validation with executable evidence before any fix.
+- **Clean (evidence-backed):** Fig 5-30 band arithmetic re-derived exactly at 9 probe dates;
+  CDF reads swept to bisect_right equality (duplicates, n=1, all-equal, n=2145); the (D,E)
+  bounds pinned == the SSI anchor in 5 configs incl. summary/absent margin uids; export ==
+  panel byte parity; cross-route covered-percentile pin; roles contract proven — nothing
+  hidden, role=None upload dest identical to pre-F4 across ALL 32 combinations incl. the ajax
+  branch, every interpolation _e()-escaped (live hostile-key probe), landing routes real.
+- **F1 (CONFIRMED major, fixed):** /api/margin/risk + the export printed D/E/percentile dates
+  on the raw pure-CPM axis on progressed schedules (months early) while /sra realigned the
+  same seeded run. Fix: additive `sra.stored_finish_correction` (the engine's own anchor
+  logic, exposed); `_margin_risk_data._iso` realigned; regression test pins risk-D ==
+  /api/sra/ssi's date == the stored finish, E == the stored predecessor finish, P50 == P50.
+- **Minors fixed:** F3 single-month band segment; F2 offsets comment; F4 docstring rounding
+  caveat; ROLES-1 notices gate the role landing (pinned; pre-F4 paths byte-untouched);
+  ROLES-2 partial (strip headings translatable); STATE-1 inventory lines; SEC-1 .gitattributes
+  `-text` guard for byte-identity-protected sets (verified dirties nothing).
+- **Deferred (queued, propose-then-build):** SEC-2 CSRF/Origin, SEC-3 Host allowlist.
+- **State:** v1.0.64 → **1.0.65**; wheel + 9 installers in lockstep; **ADR-0256**; HANDOFF
+  moved/replaced + this entry in the same commit. Next-session prompt delivered to the operator.

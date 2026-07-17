@@ -14,8 +14,16 @@ from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import _ROLES, SessionState, create_app
 
+# carries a project_title AND a status date so a clean ingest raises NO advisory notice (both
+# the no-title and the mtime-tiebreak notices gate the role landing — audit ROLES-1/ADR-0256 —
+# exercised by the dedicated test below)
 _SCH_JSON = (
-    '{"schema_version":"2.7.0","name":"X","project_start":"2026-01-05T08:00:00",'
+    '{"schema_version":"2.7.0","name":"X","project_title":"Program X",'
+    '"project_start":"2026-01-05T08:00:00","status_date":"2026-02-02T08:00:00",'
+    '"tasks":[{"unique_id":1,"name":"A","duration_minutes":480}],"relationships":[]}'
+)
+_SCH_JSON_UNTITLED = (
+    '{"schema_version":"2.7.0","name":"N","project_start":"2026-01-05T08:00:00",'
     '"tasks":[{"unique_id":1,"name":"A","duration_minutes":480}],"relationships":[]}'
 )
 
@@ -95,6 +103,21 @@ def test_clean_upload_lands_on_the_role_page_and_default_is_preserved() -> None:
         follow_redirects=False,
     )
     assert up3.headers["location"] == "/analysis/z"
+
+
+def test_advisory_notices_also_gate_the_role_landing() -> None:
+    # audit ROLES-1 (ADR-0256): notices render only on the dashboard flash, so a noticed ingest
+    # must not be whisked away to a role landing. The pre-F4 fallthrough (single clean file ->
+    # its /analysis report) is deliberately preserved — only the NEW role redirect is gated.
+    st, c = _client()
+    st.role = "pm"
+    up = c.post(
+        "/upload",
+        files={"files": ("n.json", _SCH_JSON_UNTITLED.encode(), "application/json")},
+        follow_redirects=False,
+    )
+    assert up.headers["location"] == "/analysis/n"  # not /portfolio — the notice held it back
+    assert st.flash is not None and any("no project title" in n for n in st.flash.notices)
 
 
 def test_errors_still_land_on_the_dashboard_despite_a_role() -> None:

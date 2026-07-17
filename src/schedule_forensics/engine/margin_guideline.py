@@ -238,8 +238,11 @@ def margin_risk_read(
 
     The covered percentile is ``100 x CDF(D)``; the verdict classifies it against the operator's
     Watch / Corrective-Action thresholds (>= watch: sufficient; >= corrective: watch; else
-    corrective). By construction ``covered(P) <=> finish_at(P) <= D <=> margin_needed(P) <=
-    margin_wd`` — internally consistent, tested. Degenerate distributions (a single CDF
+    corrective). By construction ``covered(P) <=> finish_at(P) <= D``, and on the UNROUNDED
+    minutes ``<=> margin_needed(P) <= D - E``; the DISPLAYED 1-dp ``margin_needed_wd`` /
+    ``margin_wd`` can round to equality on a not-covered row that overshoots D by under 0.05 wd
+    (audit F4 — the covered flag, computed on raw offsets, is authoritative). Degenerate
+    distributions (a single CDF
     breakpoint: every iteration identical — no uncertainty/risk inputs) return no verdict; the
     caller discloses instead of fabricating certainty. Raises ``ValueError`` on an empty CDF.
     """

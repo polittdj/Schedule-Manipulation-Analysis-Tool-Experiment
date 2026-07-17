@@ -108,8 +108,11 @@ class MarginMonth:
     #: different units, so fitting one slope through both would conflate them (PR-R3).
     basis_wmpd: int = 480
     #: The as-built target-finish / zero-margin-finish working-minute OFFSETS behind D and E —
-    #: already computed as locals in ``_margin_month``, carried (additively, F3c/ADR-0254) so the
-    #: expected-margin panel can read the margin window without a second solve. 0 = pre-F3c value.
+    #: already computed as locals in ``_margin_month``, carried additively (F3c/ADR-0254) as the
+    #: dashboard's own [E, D] window surface. NOTE (audit F2, ADR-0256): the risk-sufficiency
+    #: panel does NOT read these — it needs the SSI all-ML axis, so it solves via
+    #: ``sra.deterministic_margin_bounds`` instead; these stay the AS-BUILT axis, pinned by the
+    #: ``D - E == effective_margin_wd`` test. 0 = pre-F3c value.
     target_finish_offset: int = 0
     zero_margin_finish_offset: int = 0
 

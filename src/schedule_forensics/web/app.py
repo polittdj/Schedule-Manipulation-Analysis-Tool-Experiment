@@ -253,6 +253,7 @@ from schedule_forensics.engine.sra import (
     compute_sra_ssi,
     deterministic_margin_bounds,
     factor_to_bc_wc,
+    stored_finish_correction,
 )
 from schedule_forensics.engine.sra_conclusions import (
     conclusions_as_dicts,
@@ -1998,7 +1999,7 @@ def _role_strip(state: SessionState) -> str:
     pills = "".join(_pill(r.id, r.label, r.blurb, active is r) for r in _ROLES)
     pills += _pill("", "Show everything", "No role — the full console, unfiltered.", active is None)
     strip = (
-        "<div class=panel><h2 data-no-i18n>Who&rsquo;s analyzing today?</h2>"
+        "<div class=panel><h2>Who&rsquo;s analyzing today?</h2>"
         "<p class=muted>Pick a role to get a tailored <b>Start here</b> strip, highlighted "
         "chapters in the nav, and a role-matched landing page after an import. Nothing is hidden "
         "and no number changes &mdash; every page stays reachable under every role.</p>"
@@ -2017,7 +2018,7 @@ def _role_strip(state: SessionState) -> str:
         )
     return (
         strip
-        + f"<h3 data-no-i18n>Start here &mdash; {_e(active.label)}</h3>"
+        + f"<h3>Start here &mdash; {_e(active.label)}</h3>"
         + f"<p class=muted>{_e(active.blurb)}</p>"
         + f"<div class=start-strip>{cards}</div></div>"
     )
@@ -2781,11 +2782,15 @@ def create_app(
         # v4 F4 (ADR-0255): a CLEAN ingest lands on the active role's primary page when one is
         # set (e.g. Auditor → /standards, PM → /portfolio); any errors/skips still land on the
         # dashboard so the ingest manifest is always seen — disclosure outranks the role landing.
+        # Audit ROLES-1 (ADR-0256): advisory NOTICES (project-title grouping, the mtime
+        # version-order tiebreak, the RAM warning) render only on the dashboard flash, so they
+        # gate the role landing too — a noticed ingest is not "clean" for redirect purposes.
+        # The no-role paths below are untouched (pre-F4 byte-compatibility preserved).
         clean = bool(accepted) and not errors and not ignored and not client_skipped
         role_landing = (
             _ROLE_BY_ID[st.role].landing if st.role is not None and st.role in _ROLE_BY_ID else None
         )
-        if clean and role_landing:
+        if clean and role_landing and not notices:
             dest = role_landing
         elif len(accepted) == 1 and clean:
             dest = f"/analysis/{quote(accepted[0])}"
@@ -3471,9 +3476,19 @@ def create_app(
             corrective_pct=corrective,
         )
         cal = sch.calendar
+        # Audit F1 (ADR-0256): convert offsets on the SAME realigned date axis the SSI result
+        # itself uses — on a progressed schedule the naive conversion packs completed work at the
+        # project start and would print D/E/percentile dates months before the stored plan dates
+        # (while /sra shows the same seeded run realigned). The correction is the engine's own
+        # constant stored-finish shift; _iso(D) == result.deterministic_finish_date is pinned.
+        correction = stored_finish_correction(sch, cfg.target_uid, d_anchor)
 
         def _iso(offset: int) -> str:
-            return offset_to_datetime(sch.project_start, offset, cal).date().isoformat()
+            return (
+                (offset_to_datetime(sch.project_start, max(offset, 0), cal) + correction)
+                .date()
+                .isoformat()
+            )
 
         return {
             "file": key,
