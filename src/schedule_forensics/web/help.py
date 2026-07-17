@@ -1025,6 +1025,106 @@ METRIC_DICTIONARY: dict[str, MetricDoc] = {
         indicates="A low BRI means the baseline placed work to finish by now that did not — slip "
         "against the plan (validated EXACT vs the reference tool: 0.51, denominator 1228 EXACT).",
     ),
+    "sem_completed": _doc(
+        "sem_completed",
+        "Completed Activities (SEM)",
+        "Count of activities with an actual finish on or before the data date — the SEM family's "
+        "cumulative completion tally over the Normal (value-task) population.",
+        "SUM(IF((ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0))",
+        _HMI,
+        indicates="The raw executed-scope count the other SEM ratios normalize; validated exact "
+        "vs the reference exports (Project2 = 20, Project5_TAMPERED = 27).",
+    ),
+    "sem_workoff_burden": _doc(
+        "sem_workoff_burden",
+        "Workoff Burden (SEM01)",
+        "Activities finished in the last 30 days that the baseline had placed BEFORE that window "
+        "— late work being burned down this period (the workoff of accumulated debt).",
+        "SUM(IF((ActualFinish >= now-30d) * (ActualFinish <= now) * ISNUMBER(ActualFinish), "
+        "IF(BaselineFinish < now-30d, 1, 0), 0))",
+        _HMI,
+        indicates="A high burden means this period's completions are mostly overdue backlog, not "
+        "the planned current work (validated exact: 5 / 2 on the reference pair).",
+    ),
+    "sem_bri_current": _doc(
+        "sem_bri_current",
+        "BRI Current (SEM02)",
+        "Of the activities the baseline placed to finish in the last 30 days, the share that "
+        "actually finished inside that window — the current-period baseline realism.",
+        "ROUND(count(BaselineFinish in [now-30d, now] AND ActualFinish in window) / "
+        "count(BaselineFinish in [now-30d, now]), 2)",
+        _HMI,
+        indicates="0 means none of this window's baselined finishes landed in the window.",
+    ),
+    "sem_bpi_current": _doc(
+        "sem_bpi_current",
+        "BPI Current (SEM04)",
+        "Of the activities the baseline placed to finish in the last 30 days, the share finished "
+        "AT ALL by the data date (whether inside the window or earlier).",
+        "ROUND(count(BaselineFinish in [now-30d, now] AND ActualFinish <= now) / "
+        "count(BaselineFinish in [now-30d, now]), 2)",
+        _HMI,
+        indicates="Higher than BRI Current when this window's baselined work finished early.",
+    ),
+    "sem_bei_current": _doc(
+        "sem_bei_current",
+        "BEI Current (SEM05)",
+        "ALL actual finishes in the last 30 days over the count the baseline placed there — the "
+        "numerator is NOT restricted to the baselined set, so completing unbaselined or overdue "
+        "work pushes the index above 1.",
+        "ROUND(count(ActualFinish in [now-30d, now]) / count(BaselineFinish in [now-30d, now]), 2)",
+        _HMI,
+        indicates="Throughput vs the plan's period demand (validated exact: 1.25 = 5/4 on "
+        "Project2 — five finishes against four baselined).",
+    ),
+    "sem_bei_cumulative": _doc(
+        "sem_bei_cumulative",
+        "BEI Cumulative (SEM06)",
+        "ALL actual finishes to date over the activities baselined to finish by now. The SEM "
+        "actual-finish twin of the DCMA-14 BEI (which counts 100%-complete activities) — the two "
+        "are different metrics and both ship, separately labeled (ADR-0176 precedent).",
+        "ROUND(count(ActualFinish <= now) / count(BaselineFinish <= now), 2)",
+        _HMI,
+        indicates="Below 1: execution is running behind the baselined-due workload.",
+    ),
+    "sem_tc_bei": _doc(
+        "sem_tc_bei",
+        "TC-BEI (SEM07)",
+        "To-Complete BEI: forecast finishes still ahead over the baselined-to-go work not already "
+        "finished — the execution efficiency the remaining plan implies.",
+        "count(Finish >= now) / count(BaselineFinish >= now AND not finished before now)",
+        _HMI,
+        indicates="Above 1: more finishes are forecast to-go than the baseline placed there — "
+        "the bow wave the current plan must work off.",
+    ),
+    "sem_fri_current": _doc(
+        "sem_fri_current",
+        "FRI Current (SEM08)",
+        "Forecast Realism Index: of the activities the PRIOR version forecast to finish in the "
+        "last 30 days, the share that actually finished in it (PreviousFinish joined by UniqueID "
+        "to the preceding loaded version; N/A with no prior version, as the reference tool "
+        "prints).",
+        "ROUND(count(PreviousFinish in [now-30d, now] AND ActualFinish in window) / "
+        "count(PreviousFinish in [now-30d, now]), 2)",
+        _HMI,
+        indicates="Low FRI: even the LATEST forecast is not being executed — realism of the "
+        "current plan, not just the baseline.",
+    ),
+    "sem_delta": _doc(
+        "sem_delta",
+        "Delta (BEI vs TC-BEI) (SEM09)",
+        "Cumulative execution efficiency minus the simple to-complete term — how much efficiency "
+        "must CHANGE to hold the current forecast. Computed from its own Bible formula (the "
+        "to-complete term uses the simple baselined-to-go denominator, not TC-BEI's "
+        "not-yet-finished one), never as the difference of the two rounded siblings.",
+        "ROUND(count(ActualFinish <= now)/count(BaselineFinish <= now) - "
+        "count(Finish >= now)/count(BaselineFinish >= now), 2)",
+        _HMI,
+        indicates="Strongly negative: to-go demands far more efficiency than delivered to date. "
+        "(The reference export's Delta cells do not reproduce from the library formula on inputs "
+        "matching every sibling exactly — a vendor export artifact; the tool follows the pinned "
+        "formula.)",
+    ),
     "float_ratio": _doc(
         "float_ratio",
         "Float Ratio™",

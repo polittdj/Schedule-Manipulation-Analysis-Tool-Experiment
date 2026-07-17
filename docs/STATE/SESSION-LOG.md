@@ -6295,3 +6295,17 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.48 → **1.0.49**; wheel + 9 installers lockstep; **ADR-0237**; HANDOFF refreshed.
 - **NEXT:** PR-M2 (engine/metrics/sem.py + MetricDocs + AUDIT pins + SEM parity goldens + the
   /standards export) → PR-R1/R2/R3 → PR-P1 → #13 → F3c → roles.
+---
+
+## 2026-07-17 — PR-M2: the SEM engine family, Fuse-validated (ADR-0238)
+
+- `engine/metrics/sem.py`: the 9 unbuilt SEM metrics, formulas verbatim from the committed .aft
+  (formula-audit pins all nine). Fidelity subtleties honored: unrestricted BEI numerators (SEM
+  BEI-Cum ≠ DCMA BEI, both ship), TC-BEI unrounded/not-finished denominator, Delta from its own
+  formula, FRI via PreviousFinish UniqueID join to the prior version.
+- **Validated cell-for-cell on BOTH golden pairs:** P2/P5 (CI parity gate + granular n/d pins) and
+  Large Test File/File2 (17/17 exact incl. FRI 0.19). Vendor's exported Delta cells proven
+  irreproducible from its own formula (variant sweep) → documented export artifact.
+- /standards SEM section live; 9 MetricDocs; dictionary regenerated; fixed the value-cell bug
+  hiding NA-status informational values. v1.0.49 → **1.0.50**; **ADR-0238**.
+- **NEXT:** PR-R1/R2/R3 remediation → PR-P1 → #13 → F3c → roles.

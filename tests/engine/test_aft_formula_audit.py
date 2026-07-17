@@ -594,6 +594,104 @@ AUDIT: tuple[Row, ...] = (
         "Baselined-due-by-now that actually finished by now / baselined-due-by-now (ADR-0100, "
         "validated 0.51, denominator 1228 exact).",
     ),
+    # --- Schedule Execution Metrics (SEM) — the Bible's Industry-Standards family (ADR-0238);
+    # all formulas verbatim; validated vs the committed P2/P5 Fuse DCMA report SEM rows ---
+    Row(
+        "sem_completed",
+        "Completed Activities",
+        "SUM( IF( (ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish) ,1 ,0) )",
+        MATCH,
+        "Validated exact: Project2=20, Project5_TAMPERED=27.",
+    ),
+    Row(
+        "sem_workoff_burden",
+        "Workoff Burden",
+        "SUM( IF( (ActualFinish >= ProjectTimeNowMinus30Days) * (ActualFinish <= ProjectTimeNow)"
+        " * ISNUMBER(ActualFinish) , IF( (BaselineFinish < ProjectTimeNowMinus30Days), 1, 0) ,"
+        " 0) )",
+        MATCH,
+        "Validated exact: 5 / 2 on the reference pair.",
+    ),
+    Row(
+        "sem_bri_current",
+        "BRI Current",
+        "ROUND( IF(SUM(IF( (BaselineFinish >= ProjectTimeNowMinus30Days) * (BaselineFinish <= "
+        "ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( (BaselineFinish >= ProjectTimeNowMinus30Days) "
+        "* (BaselineFinish <= ProjectTimeNow) , IF( (ActualFinish >= ProjectTimeNowMinus30Days) "
+        "* (ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0) , 0) ) / SUM( IF( "
+        "(BaselineFinish >= ProjectTimeNowMinus30Days) * (BaselineFinish <= ProjectTimeNow) , 1 "
+        ", 0) ) ,0 ) ,2)",
+        MATCH,
+        "Window-restricted numerator (unlike BEI Current). Validated: 0 / 0 on the pair.",
+    ),
+    Row(
+        "sem_bpi_current",
+        "BPI Current",
+        "ROUND( IF(SUM(IF( (BaselineFinish >= ProjectTimeNowMinus30Days) * (BaselineFinish <= "
+        "ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( (BaselineFinish >= ProjectTimeNowMinus30Days) "
+        "* (BaselineFinish <= ProjectTimeNow) , IF( (ActualFinish <= ProjectTimeNow) * "
+        "ISNUMBER(ActualFinish), 1, 0) , 0) ) / SUM( IF( (BaselineFinish >= "
+        "ProjectTimeNowMinus30Days) * (BaselineFinish <= ProjectTimeNow) , 1 , 0) ) ,0 ) ,2)",
+        MATCH,
+        "Finished-at-all numerator over the window's baselined finishes.",
+    ),
+    Row(
+        "sem_bei_current",
+        "BEI Current",
+        "ROUND( IF(SUM(IF((BaselineFinish >= ProjectTimeNowMinus30Days) * (BaselineFinish <= "
+        "ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( (ActualFinish >= ProjectTimeNowMinus30Days) * "
+        "(ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0) ) / SUM( IF( "
+        "(BaselineFinish >= ProjectTimeNowMinus30Days) * (BaselineFinish <= ProjectTimeNow) , 1,"
+        " 0) ) ,0 ) ,2)",
+        MATCH,
+        "Numerator counts ALL window finishes (can exceed 1). Validated exact: 1.25 = 5/4.",
+    ),
+    Row(
+        "sem_bei_cumulative",
+        "BEI Cumulative",
+        "ROUND( IF(SUM(IF((BaselineFinish <= ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( "
+        "(ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0) ) / SUM( IF( "
+        "(BaselineFinish <= ProjectTimeNow) , 1 , 0) ) ,0 ) ,2)",
+        MATCH,
+        "Actual-finish twin of the DCMA %-complete BEI (both ship — ADR-0176 precedent). "
+        "Validated exact: 0.74 / 0.59.",
+    ),
+    Row(
+        "sem_tc_bei",
+        "TC-BEI",
+        "IF(SUM(IF( (BaselineFinish >= ProjectTimeNow), 1, 0)) > 0 , SUM( IF( (Finish >= "
+        "ProjectTimeNow), 1, 0) ) / SUM( IF( (BaselineFinish >= ProjectTimeNow) * (( "
+        "(ActualFinish >= ProjectTimeNow) + NOT(ISNUMBER(ActualFinish)) )=1) , 1, 0) ) , 0 )",
+        MATCH,
+        "No ROUND in the Bible (2-dp at display). Validated exact: 1.07 = 106/99, 1.24 = 99/80.",
+    ),
+    Row(
+        "sem_fri_current",
+        "FRI Current",
+        "ROUND( IF( SUM(IF( (PreviousFinish >= ProjectTimeNowMinus30Days) * (PreviousFinish <= "
+        "ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( (PreviousFinish >= ProjectTimeNowMinus30Days) "
+        "* (PreviousFinish <= ProjectTimeNow) , IF( (ActualFinish >= ProjectTimeNowMinus30Days) "
+        "* (ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0) , 0) ) / SUM( IF( "
+        "(PreviousFinish >= ProjectTimeNowMinus30Days) * (PreviousFinish <= ProjectTimeNow) , 1 "
+        ", 0) ) ,0 ) ,2)",
+        MATCH,
+        "PreviousFinish = the prior loaded version's forecast finish (UniqueID join); NA with "
+        "no prior, as the reference prints. Validated: 0 = 0/9 with Project2 as prior.",
+    ),
+    Row(
+        "sem_delta",
+        "Delta (BEI vs TC-BEI)",
+        "ROUND( IF(SUM(IF((BaselineFinish <= ProjectTimeNow) , 1 , 0)) > 0 , SUM( IF( "
+        "(ActualFinish <= ProjectTimeNow) * ISNUMBER(ActualFinish), 1, 0) ) / SUM( IF( "
+        "(BaselineFinish <= ProjectTimeNow) , 1 , 0) ) ,0 ) - IF(SUM(IF( (BaselineFinish >= "
+        "ProjectTimeNow), 1, 0)) > 0 , SUM(IF( (Finish >= ProjectTimeNow), 1, 0)) / SUM(IF( "
+        "(BaselineFinish >= ProjectTimeNow), 1, 0)) , 0 ) ,2)",
+        MATCH,
+        "Implemented verbatim (to-complete term = the SIMPLE baselined-to-go denominator). The "
+        "reference export's Delta cells (-0.34/-0.61) do not reproduce from this formula on "
+        "inputs matching every sibling exactly (formula-faithful: -0.33/-0.65) — a vendor "
+        "export artifact; the pinned formula wins.",
+    ),
     Row(
         "float_ratio",
         "Float Ratio™",

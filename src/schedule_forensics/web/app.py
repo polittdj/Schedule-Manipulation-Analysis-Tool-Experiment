@@ -182,6 +182,7 @@ from schedule_forensics.engine.metrics.performance_summary import (
     work_to_go_census,
     workoff_burden,
 )
+from schedule_forensics.engine.metrics.sem import compute_sem
 from schedule_forensics.engine.metrics.vertical_integration import compute_vertical_integration
 from schedule_forensics.engine.month_curves import MonthCurves, compute_month_curves
 from schedule_forensics.engine.msp_field_resolver import FieldValue
@@ -13296,27 +13297,14 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
     return form + tiers_html + header + gantt_html + "".join(rows)
 
 
-#: The Bible's "Industry Standards / Schedule Execution Metrics (SEM)" family, header names
-#: verbatim from the committed Fuse DCMA reports. Only BRI Cumulative is implemented today; the
-#: rest render "—" (never a fabricated number) until engine/metrics/sem.py lands with parity
-#: goldens (the committed P2/P5 and Large Test File/File2 SEM rows).
-_SEM_FAMILY: tuple[tuple[str, str | None], ...] = (
-    ("Completed Activities (1)", None),
-    ("Workoff Burden (SEM01)", None),
-    ("BRI Current (SEM02)", None),
-    ("BRI Cumulative (SEM03)", "bri_cumulative"),
-    ("BPI Current (SEM04)", None),
-    ("BEI Current (SEM05)", None),
-    ("BEI Cumulative (SEM06)", None),
-    ("TC-BEI (SEM07)", None),
-    ("FRI Current (SEM08)", None),
-    ("Delta (BEI vs TC-BEI) (SEM09)", None),
-)
-
-
 def _standards_value_cell(m: AuditCheck | MetricResult) -> str:
+    # NB: the informational indices (Fuse/SEM) carry NA *status* by design (no pass/fail
+    # threshold) while still computing a real value — so the display keys on whether a
+    # denominator/population exists, never on the status pill (a 0-denominator reads "—").
     if m.unit == "ratio":
-        return f"{round(m.value, 2)}" if m.status is not CheckStatus.NOT_APPLICABLE else "—"
+        return f"{round(m.value, 2)}" if m.population > 0 else "—"
+    if m.unit == "count":
+        return str(m.count) if m.population > 0 else "—"
     if m.population:
         pct = m.value if m.unit == "%" else 100.0 * m.count / m.population
         return f"{m.count} <span class=muted>of {m.population}</span> ({pct:.1f}%)"
@@ -13403,15 +13391,20 @@ def _standards_body(
         f"SPI(t) — the Fuse-parity forms the /performance trends chart over time.{cei_note}",
         _standards_rows(idx),
     )
-    # §3 Schedule Execution Metrics (SEM) — the Bible family; only BRI-Cumulative exists today
-    bri = compute_bri(sch)
-    sem_rows = _standards_rows(
-        [(bri if mid == "bri_cumulative" else None, mid or "", name) for name, mid in _SEM_FAMILY]
+    # §3 Schedule Execution Metrics (SEM) — the full Bible family (engine/metrics/sem.py),
+    # validated verbatim against the committed Fuse DCMA report SEM rows (ADR-0238)
+    sem_results = compute_sem(sch, prior)
+    sem_rows = _standards_rows([(m, mid, "") for mid, m in sem_results.items()])
+    fri_note = (
+        ""
+        if prior is not None
+        else " FRI Current needs a prior loaded version (its "
+        "PreviousFinish join) — it reads N/A here, as the reference tool prints."
     )
     sem = _standards_section(
         "Industry Standards — Schedule Execution Metrics (SEM)",
-        "The Bible's SEM family (SEM01-SEM09). Unbuilt metrics read “—”, never a fabricated "
-        "number; their engine math lands next (PR-M2) against the committed Fuse SEM goldens.",
+        "The Bible's SEM family (SEM01-SEM09), computed verbatim from the pinned library "
+        f"formulas and validated against the committed Fuse SEM exports.{fri_note}",
         sem_rows,
     )
     return intro + dcma + fuse + sem
