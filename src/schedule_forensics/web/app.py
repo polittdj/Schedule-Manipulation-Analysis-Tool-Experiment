@@ -9096,6 +9096,19 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     by_id = sch.tasks_by_id
     per_day = sch.calendar.working_minutes_per_day or 480
     res_by_id = {r.unique_id: r for r in sch.resources}
+    # Each task's GOVERNING calendar name, so the Gantt can shade non-working time per the
+    # calendar that task actually runs on (ADR-0243): a 24-hour task shows no weekend gray, a
+    # Mon-Fri task still does. A task with no own calendar inherits the project calendar (MSP
+    # semantics). The name matches one registered client-side by `SFTimescale.setCalendars`.
+    _cal_name_by_uid = {c.uid: c.name for c in sch.calendars}
+    _proj_cal_name = sch.calendar.name
+
+    def _task_calendar_name(task: Task) -> str:
+        uid = task.calendar_uid
+        if uid is not None and uid in _cal_name_by_uid:
+            return _cal_name_by_uid[uid]
+        return _proj_cal_name
+
     preds: dict[int, list[dict[str, object]]] = {}
     succs: dict[int, list[dict[str, object]]] = {}
     for rel in sch.relationships:
@@ -9171,6 +9184,7 @@ def _activity_rows(sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
             "duration_is_elapsed": task.duration_is_elapsed,
             "outline_level": task.outline_level,
             "order": order[task.unique_id],
+            "calendar": _task_calendar_name(task),
             "resource_names": ", ".join(task.resource_names),
             "assignments": assignments,
             "predecessors": preds.get(task.unique_id, []),
@@ -9230,6 +9244,9 @@ def _driving_data(
     parallel branches — so the client can render the SSI "Separate parallel paths" output.
     Defaults reproduce the original behavior byte-for-byte."""
     by_id = sch.tasks_by_id
+    # per-task governing calendar name for per-row non-working shading (ADR-0243)
+    _cal_name_by_uid = {c.uid: c.name for c in sch.calendars}
+    _proj_cal_name = sch.calendar.name
     if target not in by_id:
         return {
             "target_uid": target,
@@ -9320,6 +9337,11 @@ def _driving_data(
                 "tier": str(results[uid].tier),
                 "driving_slack_days": int(results[uid].driving_slack_days),
                 "on_driving_path": results[uid].on_driving_path,
+                "calendar": (
+                    _cal_name_by_uid.get(task.calendar_uid, _proj_cal_name)
+                    if task.calendar_uid is not None
+                    else _proj_cal_name
+                ),
                 "start_ord": start_ord,
                 "finish_ord": finish_ord,
                 "start": start_iso,

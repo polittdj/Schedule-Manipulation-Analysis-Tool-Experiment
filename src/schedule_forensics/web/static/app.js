@@ -442,7 +442,8 @@
       }
     }
     cell.appendChild(track);
-    SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
+    // shade per THIS task's own calendar (Auto): a 24-hour task shows no weekend gray (ADR-0243)
+    SFGantt.paintNonwork(cell, axis, act.calendar);
     return cell;
   }
 
@@ -740,7 +741,7 @@
       }
     }
     cell.appendChild(track);
-    SFGantt.paintNonwork(cell, axis); // continuous weekend/holiday shading over the full row
+    SFGantt.paintNonwork(cell, axis, r.calendar); // shade per this row's own task calendar (ADR-0243)
     return cell;
   }
 

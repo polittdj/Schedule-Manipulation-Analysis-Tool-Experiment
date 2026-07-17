@@ -153,8 +153,8 @@ window.SFGantt = (function () {
   // Non-working-time shading (the dialog's fourth tab): delegate to SFTimescale, which shades the
   // CELL (full row height) so the bands are continuous down the column — callers pass the <td>
   // cell (after appending the track), not the inner track. No-op when the module is absent/off.
-  function paintNonwork(cell, axis) {
-    if (window.SFTimescale) window.SFTimescale.decorateCell(cell, axis);
+  function paintNonwork(cell, axis, cellCal) {
+    if (window.SFTimescale) window.SFTimescale.decorateCell(cell, axis, cellCal);
   }
 
   // Append month/quarter/year gridline divs into a track element (small convenience used by the

@@ -202,7 +202,8 @@
         }
       }
       cell.appendChild(track);
-      SFGantt.paintNonwork(cell, { t0: t0, t1: t1, width: width, x: x }); // continuous shading
+      // shade per this row's own task calendar (Auto; ADR-0243)
+      SFGantt.paintNonwork(cell, { t0: t0, t1: t1, width: width, x: x }, a.calendar);
       tr.appendChild(cell);
       tbody.appendChild(tr);
     });
