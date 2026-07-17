@@ -1,6 +1,6 @@
 # Repository Inventory — POLARIS / schedule-forensics
 
-> **Version/ADR stamps refreshed 2026-07-17 (v1.0.62, ADR-0253; F3c user-parameterized NASA margin requirement rate).** For
+> **Version/ADR stamps refreshed 2026-07-17 (v1.0.63, ADR-0254; F3c-fuller expected-margin panel — Fig 5-30 band + SRA spread).** For
 > the reference-intake catalog, `00_REFERENCE_INTAKE/INDEX.md` is now the authoritative per-file
 > map (what each file is, which tests it verifies, duplicates, reorganization rules).
 >

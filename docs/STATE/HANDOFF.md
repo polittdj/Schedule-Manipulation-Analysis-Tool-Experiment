@@ -1,40 +1,50 @@
-# Handoff — 2026-07-17 (F3c: user-parameterized NASA margin requirement rate; v1.0.62; highest ADR 0253)
+# Handoff — 2026-07-17 (F3c-fuller: expected-margin panel — Fig 5-30 editable band + SRA percentile spread; v1.0.63; highest ADR 0254)
 
-> ## STATUS (current) — ADR-0253: the NASA Gold-Rule margin-requirement rate (work-days per program year) is now OPERATOR-SETTABLE on the Margin Dashboard — closing standing queue item **F3c** and completing the F3 margin feature (F3a/3b = ADR-0230). The engine already accepted the parameter; this is the session / UI / export wiring, engine math untouched. Version 1.0.61 → 1.0.62 (wheel + 9 installers in lockstep). Full gate green (2349 passed) incl. `parity`.
+> ## STATUS (current) — ADR-0254: the operator's VERBATIM F3c spec delivered — the "parameterized expected-margin panel — tier-a Fig 5-30 editable band + tier-b SRA percentile spread" (Thursday directive). ADR-0253's rate param was the narrower first cut; this is the full two-tier panel, designed by a Fable 5 Max deep dive and adversarially verified (4-agent workflow, quotes + code claims) before build. Includes a VERIFIED doc-truth citation correction to the 50%-consumed threshold. Version 1.0.62 → 1.0.63 (wheel + 9 installers in lockstep). Full gate green incl. `parity`.
 >
-> - **The gap.** The dashboard measures effective margin against the NASA Gold-Rule requirement
->   `days-to-go × rate / 365` (30 work-days per program year). `compute_margin_dashboard` already
->   took `gold_rule_per_year`, but no caller set it — every render/export used 30. The Schedule
->   Management Handbook states margin as a program-**managed** guideline (30/yr is the default, not a
->   fixed law), so different programs carry a different rate; F3c exposes it to the operator.
-> - **What changed (session/UI/export wiring; engine math untouched).** `_GOLD_RULE_DAYS_PER_YEAR` →
->   public `GOLD_RULE_DAYS_PER_YEAR` (one source of truth). `SessionState.margin_rate` (default 30) +
->   `set_margin_rate` — fail-soft, accepts `(0, 365]` else keeps the current rate; no cache
->   invalidation (the rate feeds only the freshly-computed requirement line, not the analysis/summary
->   caches). `GET /margin?rate=` applies it; `_margin_rate_control` renders a cited GET form (number
->   input + Apply + a "Reset to 30" link off-default). `_margin_dashboard_for` threads `st.margin_rate`
->   into the engine. `MarginDashboard.gold_rule_per_year` carries the rate used → the
->   `/api/margin/dashboard` JSON and the Excel/Word export both state the basis. The verbatim
->   50%-consumed corrective-action threshold stays FIXED (a cited NASA rule, not a guideline).
-> - **Verified.** Engine (`tests/engine/test_margin_dashboard.py`): doubling the rate doubles
->   `nasa_rqmt_wd` (but for each value's 1-dp rounding), a higher rate only adds triggers, and no rate
->   arg reproduces the 30/yr requirement exactly. Web (`tests/web/test_margin_dashboard_view.py`): the
->   control renders with the current rate, `?rate=` changes the requirement + persists on the session,
->   an invalid rate is fail-soft (keeps 30), and the export states the rate. 4-theme Chromium check
->   green (console/daylight/apollo/jarvis).
-> - **State:** v1.0.62; **ADR-0253**; wheel `dist/wheel/schedule_forensics-1.0.62-py3-none-any.whl`
->   rebuilt + all 9 installers regenerated (lockstep test green); full gate green (ruff / ruff format
->   --check / mypy --strict / bandit exit 0 / node --check / full pytest 2349 passed incl. `parity`).
->   **F3 margin feature COMPLETE** (F3a/3b ADR-0230 + F3c ADR-0253).
+> - **Tier-a — Fig 5-30 editable band** (`engine/margin_guideline.py`, pure + additive). Figure 5-30
+>   (SMH §5.5.11.2, printed p.120) is a three-row TABLE of per-phase margin rate ranges, each
+>   explicitly "Varies" → operator-editable with cited defaults ((30,60)/(60,75)/(30,84) wd/yr at the
+>   disclosed 1-month=30-wd Gold-Rule convention; row 3's three verbatim alternatives quoted beside
+>   the inputs). The stepped band (`edge(t) = Σ rate × overlap_days(phase ∩ [t,launch])/365`, the
+>   Fig 7-32 "stepped burndowns that mimic the margin guidelines" form) overlays the burn-down once
+>   the operator enters the four phase dates (never derived; fail-soft setters; cleared on wipe);
+>   below-band months get a hollow-diamond guideline-deviation marker (§7.3.3.1.6 Thresholds quote);
+>   verdicts suppressed on a mixed wd-basis (the erosion-fit refusal). `POST /margin/band`.
+> - **Tier-b — SRA percentile sufficiency** (§7.3.3.2.3's stochastic tracking). `margin_risk_read`
+>   consumes the EXISTING sra step-CDF — covered percentile = CDF(D), pinned equal to the engine's own
+>   `deterministic_percentile`; the margin window [E, D] is computed EXACTLY on the run's all-ML axis
+>   by the additive `sra.deterministic_margin_bounds` (pinned == compute_sra_ssi's anchor). Verdicts
+>   classify against operator-editable Watch/Corrective percentiles (70/50 prefilled AS the handbook's
+>   EXAMPLE values). `GET /api/margin/risk` — button-triggered, seeded-deterministic, offload-guarded,
+>   every parameter echoed. Fail-soft: no schedule / raised run / degenerate point-mass / no margin
+>   each disclose honestly, never a fabricated verdict. Disclosed caveat: margin rides in-network at
+>   plan (Fig 7-43's curves are zero-margin) — the zero-margin toggle is a documented follow-up.
+> - **Doc-truth citation correction (adversarially verified against the PDF).** "The corrective
+>   action threshold is set where the margin is 50% consumed" lives in **§7.3.3.2.3** (printed p.324),
+>   **example-framed** ("In this example case, the P/p has chosen…") — NOT §7.3.3.1.6 as ADR-0230
+>   recorded (its own Thresholds paragraph is deliberately non-numeric). Flag behavior unchanged; the
+>   takeaway/burn-down/JS copy now cite §7.3.3.2.3 as the handbook's example threshold. Also fixed:
+>   the burn-down requirement-line tooltip now states the operator-set rate (was hardcoded 30).
+> - **Export.** Three new margin-export tables: the per-status-date band read (or "not configured"),
+>   the band parameters (dates/rates/verbatim rows/conversion), and the seeded SRA sufficiency read
+>   with full provenance — byte-identical to the panel by determinism.
+> - **Verified.** `tests/engine/test_margin_guideline.py` (hand-computed band values incl. the
+>   67.3/118.4 CR sum, the two Law-2 equivalence pins, CDF breakpoint semantics, degenerate paths) +
+>   `tests/web/test_margin_band_and_risk.py` (verbatim rows render, POST persists/fail-soft/clear,
+>   band JSON gating + month classification, degenerate disclosure + determinism + provenance echo,
+>   the corrected citation, export statements) + the additive-offsets pin. 4-theme Chromium check
+>   green — both new visuals, zero console errors (incl. a genuinely light daylight render and a
+>   legend-wrap fix for the 7-item burn-down legend).
+> - **State:** v1.0.63; **ADR-0254**; wheel + 9 installers regenerated in lockstep; full gate green
+>   (ruff / ruff format --check / mypy --strict 113 files / bandit exit 0 / node --check / full
+>   pytest incl. `parity`).
 > - **NEXT — the standing queue:** **#13** XER per-task calendars (still PARKED — needs the operator's
->   owed `.xer` files; the current JUICE files are `cals=0`, can't be uploaded today) → **roles
->   front-end (v4 F4)**. Deferred perf (parked in ADR-0249's harness): import peak memory rides MSPDI
->   streaming, AI-cancellation rides its own PR — deterministic gates only, never wall-clock. From the
->   ADR-0251 verify (behavior, own PR each): unify family-B option plumbing — forward the toggles to
->   `/api/evolution`, decide the full-trace export's basis, option-solve or hide drill field columns
->   (each needs golden re-validation). Optional: extend per-task Gantt shading to the path-evolution +
->   SRA grids; extend the #26 base-CPM single-calendar disclosure to any new base-CPM-float surface.
->   Operator-side (no code): the `00_REFERENCE_INTAKE/INDEX.md` §3 reorg map via the GitHub web UI +
+>   owed `.xer` files) → **roles front-end (v4 F4)** — NO committed spec exists (searched all docs +
+>   the Thursday directive): the next session should propose a role list + Law-2-safe behavior for
+>   operator approval before building. Then: the ADR-0251 family-B option-plumbing unify PRs; the
+>   zero-margin SRA toggle (Fig 7-43 fidelity, via the existing three-point surface); deferred perf
+>   (ADR-0249 harness). Operator-side (no code): the `00_REFERENCE_INTAKE/INDEX.md` §3 reorg map +
 >   the §4 root-vs-mpp `Project5_TAMPERED.mpp` canonical-build decision.
 
 # (prior) handoffs — archived
