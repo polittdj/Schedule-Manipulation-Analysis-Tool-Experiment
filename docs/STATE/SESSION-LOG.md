@@ -6692,3 +6692,51 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   pytest incl. `parity`).
 - **NEXT:** the queued operator decision first → #13 XER calendars → #26 disclosure → F3c → roles;
   deferred perf items get deterministic gates when their owning PRs land.
+
+---
+
+## 2026-07-17 — ignore-toggle copy truth + page-family alignment: the ADR-0250 queued decision (ADR-0251)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-adr-0250-decision-vpvwwa` (fresh
+  off `origin/main` after PR #389 squash-merged). Task: resume, confirm #389 merged, then put the one
+  QUEUED ADR-0250 finding (`ignore-toggles-noop-on-dated`) to the operator and implement the choice.
+- **Lead verification BEFORE asking (READ/ASSUME-NOTHING/VERIFY):** reproduced the finding
+  empirically — engine flags are a stored-date no-op on fully-dated files (Project5 0/43 changed;
+  leveled Large Test File 6/783, calendar-basis only, driving path 61/61 byte-identical) — and ran
+  the option-(a) counter-experiment: clearing stored dates + re-solving CPM **breaks the SSI UID-152
+  anchor** (driving path 61→328, 58/60 SSI-critical tasks lost, slack error to ~922 d, exact
+  777/783→2/783). Decisive context: the operator's SSI export was captured with SSI's OWN ignore
+  options ON and matches the STORED-DATE trace — SSI never discards stored dates, so current engine
+  behavior is the correct semantics (Law 2). Also route-verified the two page families diverge:
+  `/path` + `/api/driving` + path export = SSI-parity stored-date trace (flags Δ0 on dated files);
+  `/driving-path` page/tiers/Excel + `/evolution` + corridor = `_optioned_versions` genuine re-solve
+  (leveled driving tier 60→1 under il, →327 under both), already bannered.
+- **OPERATOR DECISION (AskUserQuestion):** option 3 — **fix the copy + align the families; no
+  behavior change.**
+- **What changed (copy + tests only):** family-A truth copy (`engine/driving_slack.py`
+  `compute_driving_slack`/`strip_constraints`/`endpoint` docstrings + recursion comment;
+  `web/app.py` `/path` toggle titles + `_driving_data` docstring — flags mirror SSI's same-named
+  options, stored dates govern, only the undated-task CPM fallback + calendar basis move, fully-dated
+  file identical); family-B counterfactual copy (`_optioned_versions` docstring + "Trace options
+  active" banner, `_trace_options_form` + `_driving_path_body` titles — genuine pure-logic re-solve,
+  stronger than SSI's options, will NOT match SSI/MSP by design). Regression pins:
+  `test_ignore_flags_are_stored_date_noops_on_a_fully_dated_file` (engine) +
+  `test_ignore_options_diverge_by_page_family_as_documented` (routes). i18n catalog untouched (no
+  toggle strings in `_TERMS`).
+- **State:** v1.0.59 → **1.0.60** (src copy changed); wheel + 9 installers rebuilt in lockstep;
+  **ADR-0251**; `REPO-INVENTORY.md` stamp/census + `NEXT-SESSION-PROMPT.md` refreshed; full gate
+  green (ruff / format / mypy --strict / bandit exit 0 / node --check / full pytest incl. `parity`).
+- **Adversarial verify (ADR-0240, ultracode):** 7-agent workflow over the diff — 6 refuters
+  re-derived every claim from code + fixtures (0 refuted, all high-confidence; 58/60 / 921.95 d /
+  61→328 / 777/783 reproduced exactly); the completeness critic surfaced 4 pre-existing
+  mixed-basis surfaces (lead-confirmed in code): `/api/evolution` takes no option params (stepper
+  shows stored schedule under active toggles), `/driving-path` full-trace Excel is the family-A
+  stored-date route, `_completed_on_path_panel` docstring claimed stepper-parity, drill field
+  columns come from base `/api/analysis`. All four fixed as DISCLOSURES (scoped banner,
+  export-link title, docstring, drill caption); the behavior unification is queued per-PR.
+- **NEXT:** the standing queue unchanged — #13 XER per-task calendars → #26 base-CPM fail-soft
+  disclosure → F3c parameterized expected margin → roles front-end (v4 F4); new queued behavior
+  work from the verify: unify family-B option plumbing (forward toggles to `/api/evolution`, the
+  full-trace export basis decision, drill columns) each as its own golden-revalidated PR; a true
+  un-leveled SSI comparison, if ever wanted, is a NEW option against a NEW SSI export (ADR-0251),
+  never a silent redefinition of the existing toggles.

@@ -300,3 +300,27 @@ def test_subday_slack_is_driving_like_ssi_displays_it() -> None:
     # one day + ragged minutes floors to 1 day: SECONDARY, not driving
     assert results[3].driving_slack_minutes == DAY + 30
     assert results[3].tier is PathTier.SECONDARY and not results[3].on_driving_path
+
+
+def test_ignore_flags_are_stored_date_noops_on_a_fully_dated_file(
+    golden_project5: Schedule,
+) -> None:
+    """ADR-0251 (operator decision on the ADR-0250 queued finding): the ignore flags mirror
+    SSI's same-named options, which keep reporting against the stored dates — so on a
+    fully-dated single-calendar file the trace is IDENTICAL with or without them. This is
+    the parity-validated behavior (SSI's own options-ON UID-152 export matches the
+    stored-date trace); genuinely clearing dates and re-solving diverges wildly and is the
+    web layer's separate, banner-labeled ``_optioned_versions`` counterfactual."""
+    sch = golden_project5
+    assert all(  # the premise: every scheduled task carries stored dates
+        t.start is not None and t.finish is not None
+        for t in sch.tasks
+        if not t.is_summary and t.is_active
+    )
+    base = compute_driving_slack(sch, 67)
+    for flags in (
+        {"ignore_constraints": True},
+        {"ignore_leveling_delay": True},
+        {"ignore_constraints": True, "ignore_leveling_delay": True},
+    ):
+        assert compute_driving_slack(sch, 67, **flags) == base, flags

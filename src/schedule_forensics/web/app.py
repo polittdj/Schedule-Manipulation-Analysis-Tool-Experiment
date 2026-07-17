@@ -6579,8 +6579,8 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <input id=pathRangeDays type=number min=0 value=0 style="width:52px"> d</label>
 <label><input type=radio name=pathRange value=all checked> Get all dependencies</label></span>
 <span class=opt-group>
-<label><input id=pathIgnoreConstraints type=checkbox title="Re-trace on a constraint-stripped copy: pure logic, no date pins"> Ignore constraints</label>
-<label><input id=pathIgnoreLeveling type=checkbox title="Trace on the recomputed pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label></span>
+<label><input id=pathIgnoreConstraints type=checkbox title="SSI-parity option: strips constraint pins out of the CPM fallback that dates otherwise-undated tasks. Tasks with stored dates keep them — on a fully-dated file the trace is unchanged, matching SSI's own output with this option on (ADR-0251)"> Ignore constraints</label>
+<label><input id=pathIgnoreLeveling type=checkbox title="SSI-parity option: measures link gaps on the project-calendar date basis (stored dates first; CPM only for undated tasks). Stored leveled dates still govern — on a fully-dated file the trace is unchanged, matching SSI's own output with this option on (ADR-0251)"> Ignore leveling delay</label></span>
 <span class=opt-group><b>Output</b>
 <label><input type=radio name=pathOutput value=waterfall checked> &#8615; Waterfall</label>
 <label><input type=radio name=pathOutput value=summaries> With Summaries</label>
@@ -9335,7 +9335,9 @@ def _driving_data(
     SSI Directional Path Tool options (operator 2026-07-08): ``direction`` traces
     predecessors / successors / both; ``range_mode`` "slack" keeps only rows with driving
     slack <= ``range_days`` (SSI "Get dependencies with Driving Slack <= x"), "all" keeps the
-    full trace; ``ignore_constraints`` / ``ignore_leveling`` re-trace on the un-pinned logic;
+    full trace; ``ignore_constraints`` / ``ignore_leveling`` mirror SSI's same-named options —
+    stored dates still govern dated tasks (a fully-dated file traces identically; the flags
+    reach only the CPM fallback for undated tasks and the calendar basis — ADR-0251);
     ``with_drag`` adds Devaux DRAG (SSI-validated, test_ssi_drag_exact) per path activity.
     The payload always carries ``parallel_paths`` — the on-path set decomposed into its
     parallel branches — so the client can render the SSI "Separate parallel paths" output.
@@ -13166,7 +13168,15 @@ def _driving_tiers_panel(
             "<div class=panel><h2>All driving-tier activities</h2>"
             "<p class=muted>Every activity driving this target, across all three tiers, in one "
             "chart. Add any standard or custom field (set once), filter by any shown column, and "
-            "export exactly your columns to Excel.</p>"
+            "export exactly your columns to Excel."
+            + (
+                " <b>Trace options active:</b> Tier and Slack come from the re-solved "
+                "counterfactual network; added field columns (dates, floats, % complete, …) "
+                "re-read the stored schedule and do not apply the options (ADR-0251)."
+                if (ignore_constraints or ignore_leveling)
+                else ""
+            )
+            + "</p>"
             "<div id=drivingTiers></div>"
             f'<script type="application/json" id=drivingTiersData>{blob}</script>'
             '<script src="/static/driving_tiers.js"></script></div>'
@@ -13247,8 +13257,10 @@ def _driving_tier_trend(schedules: list[Schedule], cpms: list[CPMResult], target
 def _trace_options_form(
     action: str, *, ignore_constraints: bool, ignore_leveling: bool, keep: dict[str, str]
 ) -> str:
-    """The SSI trace-option toggles for the server-rendered path pages (operator 2026-07-08):
-    Ignore constraints / Ignore leveling delay re-solve every version's network un-pinned.
+    """The trace-option toggles for the server-rendered path pages (operator 2026-07-08):
+    Ignore constraints / Ignore leveling delay re-solve every version's network un-pinned —
+    a genuine counterfactual re-solve via ``_optioned_versions``, unlike the Path-Analysis
+    options of the same name, which keep SSI's stored-date parity (ADR-0251).
     Direction and dependency range live on Path Analysis, whose trace is target-relative;
     this corridor/evolution pair is directional by construction (A→B / to the finish)."""
     hidden = "".join(
@@ -13258,9 +13270,9 @@ def _trace_options_form(
     il = " checked" if ignore_leveling else ""
     return f"""<form method=get action="{action}" class="viz-controls trace-options">{hidden}
 <label><input type=checkbox name=ignore_constraints value=1{ic}
-title="Re-solve every version with all date constraints removed (pure logic)"> Ignore constraints</label>
+title="Counterfactual re-solve: every version recomputed with all date constraints removed (pure logic). Diverges from the stored schedule — and from SSI's same-named option, which keeps reporting on stored dates (ADR-0251)"> Ignore constraints</label>
 <label><input type=checkbox name=ignore_leveling value=1{il}
-title="Re-solve on pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label>
+title="Counterfactual re-solve: incomplete tasks' stored dates are cleared and the CPM recomputed (a 0-day leveling delay). Diverges from the stored schedule — and from SSI's same-named option, which keeps reporting on stored dates (ADR-0251)"> Ignore leveling delay</label>
 <button type=submit>Apply</button></form>"""
 
 
@@ -13271,13 +13283,18 @@ def _optioned_versions(
     ignore_constraints: bool,
     ignore_leveling: bool,
 ) -> tuple[list[Schedule], list[CPMResult], str]:
-    """Apply the SSI trace options to every loaded version (operator 2026-07-08).
+    """Apply the trace options to every loaded version (operator 2026-07-08).
 
     ``ignore_constraints`` re-solves each version on a constraint-stripped copy;
-    ``ignore_leveling`` additionally clears the stored dates so the corridor/evolution
-    engines (which honor stored dates) run on the pure-logic CPM ("0-day leveling delay").
-    Returns the possibly-substituted lists plus a banner describing any active option —
-    defaults return the originals untouched."""
+    ``ignore_leveling`` additionally clears incomplete tasks' stored dates so the
+    corridor/evolution engines (which honor stored dates) run on the pure-logic CPM
+    ("0-day leveling delay"). This is a genuine re-solve — a **counterfactual** view,
+    stronger than SSI's same-named Directional Path options, which keep reporting against
+    the stored (leveled/progressed) dates: SSI's own options-ON export is reproduced by
+    the stored-date trace, NOT by this transform (ADR-0251) — so paths here diverge from
+    SSI/MS Project output by design, and the banner says so. Returns the
+    possibly-substituted lists plus that banner — defaults return the originals
+    untouched."""
     if not ignore_constraints and not ignore_leveling:
         return schedules, cpms, ""
     from schedule_forensics.engine.driving_slack import strip_constraints
@@ -13303,8 +13320,12 @@ def _optioned_versions(
         if on
     ]
     banner = (
-        '<div class="notice">Trace options active: ' + ", ".join(opts) + " — the dates and "
-        "paths below come from the re-solved pure-logic network, not the stored schedule.</div>"
+        '<div class="notice">Trace options active: ' + ", ".join(opts) + " — the "
+        "server-rendered dates and paths below come from the re-solved pure-logic network, not "
+        "the stored schedule. This is a counterfactual view: SSI / MS Project report against "
+        "the stored dates even with their same-named options on, so these paths will not match "
+        "those tools' output (ADR-0251). Client-fetched sub-charts and drill-added field "
+        "columns re-read the stored schedule and do not apply these options.</div>"
     )
     return out_s, out_c, banner
 
@@ -13325,7 +13346,8 @@ def _driving_path_body(
     UniqueIDs, and how it changes across every loaded version (oldest first by data date) — or
     within ONE chosen file (operator 2026-07-08: the path can differ between files, so the File
     selector scopes the whole page, tiers and Gantt included, to that version).
-    The SSI trace options (ignore constraints / leveling) persist through the form; the page
+    The counterfactual trace options (ignore constraints / leveling — a genuine
+    ``_optioned_versions`` re-solve, ADR-0251) persist through the form; the page
     is directional by construction (A→B), so Path Direction lives on Path Analysis."""
     ic = " checked" if ignore_constraints else ""
     il = " checked" if ignore_leveling else ""
@@ -13345,8 +13367,13 @@ def _driving_path_body(
         # the export route looks the schedule up by SESSION KEY (filename-derived), never the
         # internal project name — the old link used last.name and 404'd (fixed 2026-07-09)
         opts = f"&ignore_constraints={int(ignore_constraints)}&ignore_leveling={int(ignore_leveling)}&drag=1"
+        # the full-trace export runs the Path-Analysis (SSI-parity, stored-date) trace — with the
+        # counterfactual options active it will NOT mirror the re-solved tiers above (ADR-0251)
         export_link = (
-            f'<a class=btn-link href="/export/xlsx/path/{_e(export_key)}?target={target}{opts}">'
+            f'<a class=btn-link href="/export/xlsx/path/{_e(export_key)}?target={target}{opts}" '
+            'title="Exports the SSI-parity stored-date trace (Path Analysis basis). With trace '
+            "options active it will not mirror the re-solved tiers above — stored dates still "
+            'govern dated tasks in this export (ADR-0251)">'
             "&#11015; Excel (full trace to target, latest version, incl. Drag)</a>"
         )
     form = f"""
@@ -13356,9 +13383,9 @@ value="{source if source is not None else ""}" placeholder="UID A"></label>
 <label>To (target UniqueID): <input name=target type=number min=1
 value="{target if target is not None else ""}" placeholder="UID B"></label>
 <label><input type=checkbox name=ignore_constraints value=1{ic}
-title="Re-solve every version with all date constraints removed (pure logic)"> Ignore constraints</label>
+title="Counterfactual re-solve: every version recomputed with all date constraints removed (pure logic). Diverges from the stored schedule — and from SSI's same-named option, which keeps reporting on stored dates (ADR-0251)"> Ignore constraints</label>
 <label><input type=checkbox name=ignore_leveling value=1{il}
-title="Re-solve on pure-logic CPM dates — as if every activity had a 0-day leveling delay"> Ignore leveling delay</label>
+title="Counterfactual re-solve: incomplete tasks' stored dates are cleared and the CPM recomputed (a 0-day leveling delay). Diverges from the stored schedule — and from SSI's same-named option, which keeps reporting on stored dates (ADR-0251)"> Ignore leveling delay</label>
 <button type=submit>Trace</button> {export_link}</form>
 <p class=muted style="margin:.4em 0 0">The <b>driving path</b> from A to B is the chain of
 activities controlling B's date that lie on a logic route from A &mdash; the work that, if it
@@ -14600,9 +14627,11 @@ def _completed_on_path_panel(
     schedules: list[Schedule], cpms: list[CPMResult], target: int | None
 ) -> str:
     """Version-to-version record of path activities that COMPLETED — the operator's "what got
-    done on the path month to month". Server-rendered from the same evolution snapshots the
-    stepper animates (ADR-0150): for each version pair, the prior version's path activities
-    that are complete in the newer version, with their actual finishes."""
+    done on the path month to month". Server-rendered from the page's evolution snapshots
+    (ADR-0150) — the OPTIONED versions when the ADR-0251 counterfactual trace options are
+    active, unlike the client-fetched stepper chart, which re-reads `/api/evolution` (no
+    option params — always the stored schedule): for each version pair, the prior version's
+    path activities that are complete in the newer version, with their actual finishes."""
     ev = compute_path_evolution(schedules, cpms, target_uid=target)
     basis = f"driving path to UID {target}" if target is not None else "effective critical path"
     sections: list[str] = []
