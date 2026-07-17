@@ -249,3 +249,23 @@ def test_import_needs_a_schedule() -> None:
     )
     assert st.sra_import_msg is not None
     assert "Load a schedule" in st.sra_import_msg
+
+
+@pytest.mark.parametrize("route", ["/sra/import/risk-register", "/sra/import/task-risk"])
+def test_import_rejects_oversized_upload(
+    client: TestClient, state: SessionState, monkeypatch: pytest.MonkeyPatch, route: str
+) -> None:
+    """The COMPRESSED upload is capped (parity with /upload) BEFORE read_xlsx, so an oversized file
+    is rejected with a message instead of being read whole into RAM. Mutation check: without the
+    call-site cap the file is read and parsed, so no 'exceeds ... cap' message is set."""
+    from schedule_forensics.web import app as app_mod
+
+    hdr = _RR_HEADERS if route.endswith("risk-register") else _TR_HEADERS
+    blob = render_xlsx(TableSet("t", (Table("t", hdr, ()),)))
+    # cap one byte below the blob so any real upload trips it (the read is bounded to cap+1 bytes)
+    monkeypatch.setattr(app_mod, "_MAX_UPLOAD_BYTES", len(blob) - 1)
+    r = client.post(route, files={"file": ("filled.xlsx", blob, _XLSX_CT)}, follow_redirects=False)
+    assert r.status_code == 303
+    assert state.sra_import_msg is not None
+    assert "exceeds" in state.sra_import_msg and "cap" in state.sra_import_msg
+    assert state.sra_risks == []  # bailed before importing anything

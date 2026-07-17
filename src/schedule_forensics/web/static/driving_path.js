@@ -18,6 +18,11 @@
   var versions = (payload && payload.versions) || [];
   if (!versions.length) return;
 
+  // register the file's calendars so paintNonwork can shade each row per its OWN task calendar
+  // (Auto; ADR-0243). Without this the corridor's per-row a.calendar name has no definition to
+  // resolve against and every row falls back to a flat Mon-Fri (Standard) shade (audit ADR-0247).
+  if (window.SFTimescale && payload.calendars) SFTimescale.setCalendars(payload.calendars);
+
   var idx = versions.length - 1; // start on the newest version
   var px = 6; // pixels per calendar day
   var forcedPx = null; // set by "View entire project"; cleared when a zoom button is pressed

@@ -33,6 +33,14 @@ class XlsxError(ValueError):
     """The uploaded file is not a readable .xlsx workbook."""
 
 
+#: Cap on the TOTAL decompressed bytes read from one workbook (every part summed). An ``.xlsx`` is a
+#: ZIP, and std-lib ``zipfile`` decompresses a member fully on ``read()`` with no bound — so a small
+#: upload can inflate to gigabytes (a "zip bomb") and exhaust RAM. This caps the DECOMPRESSED total
+#: (parity with the web layer's 500 MB compressed per-file upload cap); a real SRA round-trip
+#: template decompresses to well under a megabyte, so this never rejects a legitimate file.
+_MAX_XLSX_DECOMPRESSED_BYTES = 500 * 1024 * 1024
+
+
 def _parse_xml(data: bytes) -> ET.Element:
     """Parse one XML part of the workbook, hardened against XXE the same way the MSPDI importer is:
     reject any document carrying a DTD or entity declaration before handing it to ElementTree, and
@@ -91,6 +99,21 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
         zf = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as exc:
         raise XlsxError("not a valid .xlsx file (bad zip)") from exc
+
+    # Zip-bomb defense: decompress every member through one shared byte budget. ``zf.open(name)``
+    # streams, so reading ``remaining + 1`` bounds memory REGARDLESS of the member's declared size
+    # (a lying header can't inflate RAM), and the running total caps the whole workbook.
+    remaining = _MAX_XLSX_DECOMPRESSED_BYTES
+
+    def _read(name: str) -> bytes:
+        nonlocal remaining
+        with zf.open(name) as fh:
+            chunk = fh.read(remaining + 1)
+        if len(chunk) > remaining:
+            raise XlsxError("xlsx decompresses past the size cap (possible zip bomb)")
+        remaining -= len(chunk)
+        return chunk
+
     names = set(zf.namelist())
     if "xl/workbook.xml" not in names:
         raise XlsxError("not a valid .xlsx workbook (no xl/workbook.xml)")
@@ -98,13 +121,13 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
     # shared strings (optional)
     shared: list[str] = []
     if "xl/sharedStrings.xml" in names:
-        sst = _parse_xml(zf.read("xl/sharedStrings.xml"))
+        sst = _parse_xml(_read("xl/sharedStrings.xml"))
         shared = [_si_text(si) for si in sst.findall(f"{_MAIN}si")]
 
     # rId -> worksheet part path
     rel_target: dict[str, str] = {}
     if "xl/_rels/workbook.xml.rels" in names:
-        rels = _parse_xml(zf.read("xl/_rels/workbook.xml.rels"))
+        rels = _parse_xml(_read("xl/_rels/workbook.xml.rels"))
         for rel in rels.findall(f"{_PKG_REL}Relationship"):
             rid, target = rel.get("Id"), rel.get("Target")
             if rid and target:
@@ -116,7 +139,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
             return target
         return f"xl/{target}"
 
-    wb = _parse_xml(zf.read("xl/workbook.xml"))
+    wb = _parse_xml(_read("xl/workbook.xml"))
     out: dict[str, list[list[str]]] = {}
     sheets = wb.find(f"{_MAIN}sheets")
     for sheet in [] if sheets is None else list(sheets):
@@ -127,7 +150,7 @@ def read_xlsx(data: bytes) -> dict[str, list[list[str]]]:
         if path not in names:
             out[name] = []
             continue
-        out[name] = _read_sheet(_parse_xml(zf.read(path)), shared)
+        out[name] = _read_sheet(_parse_xml(_read(path)), shared)
     return out
 
 

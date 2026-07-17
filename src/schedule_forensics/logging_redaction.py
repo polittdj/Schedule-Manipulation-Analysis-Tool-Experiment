@@ -91,6 +91,25 @@ _POSIX_PATH_RE = re.compile(r"(?<![\w:/])(?:/[\w.\-]+){2,}")
 _WINDOWS_PATH_RE = re.compile(r"(?<![\w/])[A-Za-z]:\\[\w.\-\\]+")
 _UNC_PATH_RE = re.compile(r"(?<![\w\\])\\\\[\w.\-]+(?:\\[\w.\-]+)+")
 
+# A path whose FINAL component is a file name CONTAINING SPACES and terminating in a sensitive
+# (schedule/Office) extension — e.g. ``\\server\share\Site Alpha Rebaseline.mpp`` (UNC),
+# ``C:\dir\Site Alpha Rebaseline.xlsx`` (Windows drive), ``/mnt/cui/Site Alpha Rebaseline.xer``
+# (POSIX). The space-free path regexes above stop at the first space, so on their own they redact
+# only the directory prefix and the last word before the dot, leaving the file name's MIDDLE words
+# in clear text (audit: a real CUI leak). This runs FIRST and consumes the whole path + spaced name
+# as one match. The directory prefix must end in a separator, and the name run stops at a separator
+# / newline and is length-bounded, so ordinary prose after a space-free path
+# (``…\share\data to the archive``) is still never swallowed. Redacts via :func:`_redact_path`, so
+# the emitted ``<path:ext#…>`` token is inert and :func:`redact` stays idempotent.
+_SPACED_FILE_PATH_RE = re.compile(
+    r"(?<![\w:/\\])"
+    r"(?:\\\\[\w.\-]+(?:\\[\w.\-]+)*\\"  # UNC:     \\server\share\…\
+    r"|[A-Za-z]:\\(?:[\w.\-]+\\)*"  # Windows: C:\dir\…\
+    r"|/[\w.\-]+(?:/[\w.\-]+)*/)"  # POSIX:   /dir/…/
+    r"[^\n\\/]{1,160}?\.(?:" + "|".join(SENSITIVE_EXTENSIONS) + r")\b",
+    re.IGNORECASE,
+)
+
 # Standard LogRecord attributes — anything else in ``record.__dict__`` is an
 # operator-supplied ``extra`` field and is carried through (redacted).
 _RESERVED_RECORD_KEYS: frozenset[str] = frozenset(vars(logging.makeLogRecord({})))
@@ -130,6 +149,9 @@ def redact(text: str) -> str:
     whole = _WHOLE_SENSITIVE_FILE_RE.match(text.strip())
     if whole is not None:  # the string IS a file name (spaces and all)
         return f"<file:{whole.group('ext').lower()}#{_hash(text.strip())}>"
+    # path + SPACED sensitive file name first, so the space-free path regexes below can't fragment
+    # it and leak the file name's middle words (audit).
+    text = _SPACED_FILE_PATH_RE.sub(_redact_path, text)
     text = _UNC_PATH_RE.sub(_redact_path, text)
     text = _WINDOWS_PATH_RE.sub(_redact_path, text)
     text = _POSIX_PATH_RE.sub(_redact_path, text)
