@@ -19,7 +19,8 @@ import webbrowser
 from collections.abc import Callable
 
 from schedule_forensics.ai.ollama_process import OllamaLauncher
-from schedule_forensics.net_guard import is_loopback_host
+from schedule_forensics.logging_redaction import configure_logging
+from schedule_forensics.net_guard import assert_local_only, is_loopback_host
 from schedule_forensics.web.app import create_app
 from schedule_forensics.web.app import serve as serve_app
 
@@ -78,6 +79,12 @@ def main(
     ``serve``/``browser``/``timer``/``ollama`` are injectable for testing.
     """
     _ensure_streams()  # pythonw (the desktop icon) launches with stdout/stderr = None
+    # Law 1, before anything is served: install the CUI-redacting log handler (every later
+    # log call is redacted), then fail closed if any egress-capable dependency reached the
+    # runtime. create_app() repeats both — this earlier call keeps the window between
+    # process start and app construction covered too.
+    configure_logging()
+    assert_local_only()
     if not is_loopback_host(host):
         raise ValueError(f"refusing to bind non-loopback host {host!r} — the tool is local-only.")
     serve_fn = serve or serve_app

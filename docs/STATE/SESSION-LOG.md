@@ -6353,3 +6353,35 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   XER weekends + egress set + 24h golden) → PR-P1 → #13 → F3c → roles; operator applies the
   INDEX §3 reorg map + §4 TAMPERED-build decision via the web UI.
 ---
+
+## 2026-07-17 — PR-R2: wire the dead Law-1 defenses (ADR-0241)
+
+- **M6+L3 (dead defenses → live):** all THREE shipped entry points — `launcher.main()`,
+  `create_app()`, and the headless report CLI `exhibits.cli.main()` — now call
+  `configure_logging()` + `assert_local_only()` at startup. CUI-redacting JSON logging is active
+  from process start on the `schedule_forensics` namespace (`propagate=False`; no record reaches
+  `logging.lastResort` unredacted), and a forbidden egress-capable runtime dependency or cloud
+  SDK aborts construction with `CUIEgressError` — fail closed at every entry path (desktop icon,
+  `run()`, tests, embedding) before anything is served. Both module docstrings corrected to name
+  the actual wiring (they previously claimed a wiring that didn't exist — audit M6/L3).
+- **Startup-assertion tests:** new `tests/web/test_startup_guards.py` — handler structure
+  (CUIJsonFormatter + CUIRedactingFilter), a behavioral proof that a schedule file name logged
+  through the INSTALLED handler chain renders as an inert `<file:mpp#…>` token, and fail-closed
+  `create_app()` on a tripped guard. `tests/test_launcher.py` gains the launcher twins
+  (redaction active after `main()`; a tripped guard serves nothing and opens no browser), and
+  `tests/exhibits/test_cli_guards.py` the CLI twins (tripped guard ⇒ nothing written, not even
+  the output directory).
+- **L5 (air-gap scan enumerated):** `tests/web/test_airgap.py` replaced the two hand-kept lists:
+  the page walk iterates every GET route on the live `app.routes` table (98 routes — 32 HTML +
+  45 JSON scanned; 21 xlsx exports skipped by content-type; `{name}`/`{fmt}` filled from
+  `_PARAM_FILLERS`, an unknown parameter fails loudly) and the asset walk iterates every vendored
+  `.js`/`.css` in the static directory on disk (58 files). An HTML route that fails to render
+  200 (or any route that 5xxs) fails the walk — no more vacuous passes; `_MUST_ENUMERATE` pins
+  the known page set so the enumeration itself can't silently regress.
+- **M11 durable fix (version pin):** `tests/test_state_docs.py` gains
+  `test_handoff_top_section_pins_the_current_pyproject_version` — the `pyproject.toml` version
+  string must appear ABOVE the first `# (prior)` marker in HANDOFF, so an ADR-less version bump
+  (the 1.0.18 case) can never again ship a stale "read first" doc.
+- **State:** v1.0.51 → **1.0.52**; wheel + 9 installers lockstep; **ADR-0241**; full gate green.
+- **NEXT:** PR-R3 (erosion single-basis fit + XER worked weekends + egress-set additions + 24h
+  MPXJ golden) → PR-P1 perf → #13 XER calendars → #26 disclosure → F3c → roles.

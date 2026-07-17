@@ -18,6 +18,12 @@ the contents of a CUI schedule. This module provides:
 * :func:`configure_logging` / :func:`get_logger` — install the formatter+filter
   on a ``stderr`` handler (no log file is written by default, so no CUI ever
   lands on disk) and hand back a namespaced logger.
+
+At runtime the handler is installed at every entry path — ``launcher.main()``,
+``web.app.create_app()`` (idempotently), and ``exhibits.cli.main()`` — so every
+``schedule_forensics.*`` logger is redacting from process start and no record
+reaches ``logging.lastResort`` unredacted (``tests/web/test_startup_guards.py``
+asserts the wiring).
 """
 
 from __future__ import annotations

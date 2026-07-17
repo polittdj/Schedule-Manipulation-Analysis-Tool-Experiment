@@ -1,4 +1,34 @@
-# Handoff — 2026-07-17 (Governance: model/audit-protocol rule + intake INDEX + verify-everything doc-truth pass; v1.0.51; highest ADR 0240)
+# Handoff — 2026-07-17 (PR-R2: dead Law-1 defenses wired — startup redaction+egress guard, enumerated air-gap, version pin; v1.0.52; highest ADR 0241)
+
+> ## STATUS (current) — PR-R2 (ADR-0241): the two dead Law-1 defenses are LIVE at every entry path, and two hand-kept guards are now enumerated/pinned.
+>
+> - **M6+L3 wired at ALL THREE entry points:** `launcher.main()`, `create_app()`, and the
+>   headless report CLI `exhibits.cli.main()` each call `configure_logging()` +
+>   `assert_local_only()` at startup — CUI-redacting JSON logging is active from process start
+>   (no record reaches `logging.lastResort` unredacted) and a forbidden egress-capable runtime
+>   dependency / cloud SDK aborts startup (`CUIEgressError`, fail closed, before anything is
+>   served or written). Docstrings corrected to name the real wiring. New
+>   `tests/web/test_startup_guards.py` (handler structure + behavioral redaction proof through
+>   the installed chain + fail-closed construction), launcher twins (tripped guard ⇒ nothing
+>   served, no browser), and `tests/exhibits/test_cli_guards.py` (tripped guard ⇒ nothing
+>   written, not even the out dir).
+> - **L5 air-gap scan enumerated:** `tests/web/test_airgap.py` walks every GET route on the live
+>   `app.routes` (98 routes: 32 HTML + 45 JSON scanned, 21 xlsx exports content-type-skipped;
+>   params filled via `_PARAM_FILLERS`, unknown param fails loudly) and every vendored
+>   `.js`/`.css` on disk (58 assets). An HTML route that doesn't render 200 (or any 5xx) fails
+>   the walk; `_MUST_ENUMERATE` pins the known pages so enumeration can't regress silently.
+> - **M11 durable fix:** `tests/test_state_docs.py` now also pins the `pyproject.toml` version
+>   into HANDOFF's TOP (pre-`# (prior)`) section — an ADR-less bump can no longer ship a stale
+>   handoff.
+> - **State:** v1.0.51 → **1.0.52**; wheel + 9 installers lockstep; **ADR-0241**; gate green.
+> - **NEXT:** **PR-R3** (margin-erosion single-basis fit; XER worked-weekend exceptions;
+>   egress-set additions; 24h-calendar MPXJ golden — SSI pair updated3 UID-155 32d ↔ updated4
+>   18d, files in `00_REFERENCE_INTAKE/`, see INDEX.md) → PR-P1 perf (CoPilot #3/#4/#8/#9/#10 +
+>   audit-E guard; refuted claims documented, do NOT "fix") → #13 XER per-task calendars →
+>   base-CPM single-calendar disclosure (#26) → F3c → roles front-end. Operator-side: INDEX §3
+>   reorg map via web UI + §4 root-vs-mpp TAMPERED decision.
+
+# (prior) Handoff — 2026-07-17 (Governance: model/audit-protocol rule + intake INDEX + verify-everything doc-truth pass; v1.0.51; highest ADR 0240)
 
 > ## STATUS (current) — ADR-0240: the operator's standing rules are durable, the intake is cataloged, and every living doc matches the tree.
 >

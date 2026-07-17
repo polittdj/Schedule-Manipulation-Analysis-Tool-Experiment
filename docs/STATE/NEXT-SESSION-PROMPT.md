@@ -9,7 +9,7 @@ disagrees with HANDOFF, HANDOFF wins.)
 You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
 schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
 section is the current state and the NEXT queue. As of this file's last refresh that meant:
-`main` green at **v1.0.51**, highest ADR **0240**, full gate green (ruff / ruff format --check /
+`main` green at **v1.0.52**, highest ADR **0241**, full gate green (ruff / ruff format --check /
 mypy --strict / bandit exit 0 / node --check / full pytest incl. the `parity` gate).
 
 **Standing rules (CLAUDE.md — read them, they are binding):**
@@ -39,20 +39,17 @@ commit (drift guard) → commit with the required trailers → push → **draft 
 
 **The work queue (rationale + goldens in HANDOFF's NEXT section):**
 
-1. **PR-R2 — wire the dead Law-1 defenses:** call `configure_logging()` + `assert_local_only()`
-   at process start + a startup-assertion test; air-gap test enumerates `app.routes` instead of a
-   hard-coded page list; state-docs drift guard also pins the pyproject version into HANDOFF.
-2. **PR-R3 — data-fidelity residue:** margin-erosion fit restricted to a single margin basis (or
+1. **PR-R3 — data-fidelity residue:** margin-erosion fit restricted to a single margin basis (or
    an explicit mixed-basis warning); XER worked-weekend calendar exceptions; egress-guard set
    additions (modern LLM/telemetry hosts); commit the 24h-calendar MPXJ golden (SSI pair:
    `Hard_File_updated3` UID-155 slack 32d ↔ `Hard_File_updated4 24 hour calendar` 18d, same
    100-row path — files + Fuse fieldmap already in `00_REFERENCE_INTAKE/`, see its INDEX.md).
-3. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge
+2. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge
    guard; the refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them).
-4. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add
+3. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add
    real `.xer`) → **base-CPM single-calendar fail-soft disclosure** (task #26) → **F3c**
    parameterized expected margin → **roles front-end** (v4 F4).
-5. **Operator-side (no code):** apply the `00_REFERENCE_INTAKE/INDEX.md` §3 reorganization map
+4. **Operator-side (no code):** apply the `00_REFERENCE_INTAKE/INDEX.md` §3 reorganization map
    via the GitHub web UI when convenient (the CUI guard rightly blocks local renames), including
    the §4 root-vs-mpp `Project5_TAMPERED.mpp` canonical-build decision.
 
