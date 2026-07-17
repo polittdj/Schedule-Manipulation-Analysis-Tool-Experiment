@@ -371,12 +371,16 @@ window.SFTimescale = (function () {
   // phase-aligned to the axis so Saturday is Saturday at any scroll position, plus one absolute
   // div per calendar holiday. Skipped below ~1.25 px/day where a day is sub-pixel (matching MS
   // Project, which stops showing non-working shading when days are too small to see).
-  function nonworkStyle(axis) {
+  function nonworkStyle(axis, cellCal) {
     var nw = CFG.nonworking;
     if (nw.draw === "none") return null;
     var ppd = axis.x(axis.t0 + DAY_MS) - axis.x(axis.t0);
     if (!(ppd >= 1.25)) return null;
-    var cal = calendarByName(nw.calendar);
+    // Calendar precedence (ADR-0243): an explicit global pick in the dialog wins for every row;
+    // otherwise (Auto, the default) shade per the ROW's own task calendar so a 24-hour task shows
+    // no weekend gray while a Mon-Fri task still does; if no per-row calendar is supplied (a Gantt
+    // that doesn't pass one), fall back to the project calendar exactly as before.
+    var cal = calendarByName(nw.calendar || cellCal || "");
     var off = jsOffDays(cal);
     if (!off.length && !(cal.holidays || []).length) return null;
     var color = nw.color || "var(--nonwork, rgba(120,126,148,.16))";
@@ -419,9 +423,9 @@ window.SFTimescale = (function () {
   // the color bars ... between every line"). A full-height layer is appended to the cell:
   // "behind" sits under the bars (z-index 0), "in front" over them (pointer-transparent). The
   // cell must be position:relative (CSS .g-cell/.path-timeline) for the absolute layer to fill it.
-  function decorateCell(cell, axis) {
+  function decorateCell(cell, axis, cellCal) {
     if (!cell) return;
-    var s = nonworkStyle(axis);
+    var s = nonworkStyle(axis, cellCal);
     if (!s) return;
     var layer = el("div", { class: s.front ? "g-nonwork-front" : "g-nonwork-behind" });
     if (s.image !== "none") {
@@ -631,10 +635,13 @@ window.SFTimescale = (function () {
     var names = [];
     CALS.forEach(function (c) { if (names.indexOf(c.name) < 0) names.push(c.name); });
     if (!names.length) names.push(STANDARD.name);
+    // "Auto" (value "") is the default: shade each row per its OWN task calendar. Picking a
+    // named calendar forces that one for every row (the MS-Project-style uniform backdrop).
+    var calOpts = [{ value: "", text: "Auto — each task’s own calendar" }].concat(
+      names.map(function (n) { return { value: n, text: n }; }));
     row2.appendChild(field("Calendar:", select(
-      names.map(function (n) { return { value: n, text: n }; }),
-      nw.calendar || names[0], function (v) { nw.calendar = v; refresh(); }
-    ), "Which calendar's non-working days (weekends + holidays) to shade"));
+      calOpts, nw.calendar || "", function (v) { nw.calendar = v; refresh(); }
+    ), "Which calendar's non-working days to shade — Auto uses each task's own"));
     box.appendChild(row2);
     box.appendChild(el("p", { class: "muted ts-note",
       text: "Shading appears when the zoom is wide enough for a day to be visible (≥ ~1.25 px/day); holidays from the selected calendar are shaded individually." }));

@@ -1,4 +1,32 @@
-# Handoff — 2026-07-17 (PR-R2.1: fail-closed on missing metadata + startup-guard test hardening + census fix; v1.0.53; highest ADR 0242)
+# Handoff — 2026-07-17 (Gantt per-task-calendar shading — operator Option B; v1.0.54; highest ADR 0243)
+
+> ## STATUS (current) — ADR-0243: the Gantt shades each row's non-working time per THAT task's own calendar, so a 24-hour task shows no weekend gray while Mon-Fri tasks keep it.
+>
+> - **Operator report resolved (Option B).** Exhaustive Chromium/DOM investigation proved the old
+>   weekend shading was *correctly aligned* to the file's project calendar ("Standard" Mon-Fri,
+>   MPXJ-confirmed; 0/18 date mismatches) — but the file is MIXED: 105/110 tasks Mon-Fri, 4 on "24
+>   Hours", 1 on "Standard+Sat", and all 5 non-Standard tasks are CRITICAL (incl. UID 389 "Certify
+>   new resources" — the exact bar in the operator's screenshot). A weekend-working task drawn on
+>   gray non-work is the misleading bit.
+> - **Fix (per-task, the only correct realization):** activity + driving-trace rows now carry a
+>   `calendar` name (task's own calendar_uid → registered name; None → project calendar, MSP
+>   inheritance). `SFTimescale.nonworkStyle/decorateCell` + `SFGantt.paintNonwork` take an optional
+>   per-row calendar; precedence = explicit dialog pick (uniform backdrop) → Auto per-row (new
+>   default) → project fallback (unchanged for callers that pass none). Dialog gains "Auto — each
+>   task's own calendar". Wired: `/analysis` grid + its trace + `/driving-path`.
+> - **Verified:** Chromium per-row — 24-hour tasks (302/385/389/14) render CLEAR, Mon-Fri SHADED;
+>   Project5 (normal Mon-Fri) fully shaded = NO regression; 4-theme shots clean. Regression test
+>   `tests/web/test_gantt_calendar_shading.py` pins the payload (mixed-calendar + single-calendar).
+> - **State:** v1.0.53 → **1.0.54**; wheel + 9 installers lockstep; **ADR-0243**; gate green.
+> - **NEXT:** **PR-R3** (margin-erosion single-basis fit; XER worked-weekend calendar exceptions;
+>   egress-set additions; commit the 24h-calendar MPXJ golden — SSI pair `Hard_File_updated3`
+>   UID-155 ↔ `updated4 24 hour calendar`, files already in `00_REFERENCE_INTAKE/`) → PR-P1 perf
+>   (CoPilot #3/#4/#8/#9/#10 + audit-E guard; refuted claims documented) → #13 XER per-task
+>   calendars → base-CPM single-calendar disclosure (#26) → F3c → roles front-end. Operator-side:
+>   INDEX §3 reorg via web UI + §4 TAMPERED-build decision. Optional follow-up: extend per-task
+>   shading to the path-evolution + SRA grids (currently project-calendar fallback).
+
+# (prior) Handoff — 2026-07-17 (PR-R2.1: fail-closed on missing metadata + startup-guard test hardening + census fix; v1.0.53; highest ADR 0242)
 
 > ## STATUS (current) — PR-R2.1 (ADR-0242): the lead-validated follow-ups to PR-R2 — a real robustness regression closed, PR-R2's own guard-tests made non-vacuous, doc census fixed.
 >

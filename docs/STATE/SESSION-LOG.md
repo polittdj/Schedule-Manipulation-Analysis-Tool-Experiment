@@ -6426,3 +6426,36 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.52 → **1.0.53**; wheel + 9 installers lockstep; **ADR-0242**; full gate green.
 - **NEXT:** Gantt shading Option B (UI PR) → PR-R3 (erosion basis + XER weekends + egress set + 24h
   golden) → PR-P1 perf → #13 → #26 → F3c → roles.
+
+## 2026-07-17 — Gantt per-task-calendar non-working shading (operator Option B, ADR-0243)
+
+- **Operator report** ("the gray section on the Gantt is wrong — it should reflect non-work days
+  on the project calendar"): investigated exhaustively in headless Chromium with DOM/gradient
+  probes and a date-alignment test. Finding: the weekend shading was CORRECTLY aligned to real
+  Sat/Sun at every zoom (0/18 mismatches) for the file's project calendar, which POLARIS imports
+  as "Standard" (Mon-Fri, 480 min/day — MPXJ confirms it IS the project default), matching MS
+  Project's default. Not a misalignment bug.
+- **Root of the operator's concern:** the file is MIXED-calendar — 105/110 non-summary tasks run
+  Mon-Fri, 4 on "24 Hours", 1 on "Standard+Sat"; ALL 5 non-Standard tasks are critical, and one
+  (UID 389 "Certify new resources") is the exact red-hatched bar in the operator's screenshot. A
+  24-hour task that works weekends was drawn against gray "non-working" weekend shading.
+- **Operator chose Option B** (via AskUserQuestion): shade per the calendar the schedule actually
+  runs on. Because 105/110 tasks are Mon-Fri, a global switch would be wrong; the only correct
+  realization is PER-TASK.
+- **Implementation:** `_activity_rows` + the `_driving_data` trace rows now carry a `calendar`
+  name (task.calendar_uid → registered calendar name; None → project calendar). Shared shading API
+  extended: `SFTimescale.nonworkStyle(axis, cellCal)` / `decorateCell(cell, axis, cellCal)` /
+  `SFGantt.paintNonwork(cell, axis, cellCal)`. Precedence: explicit dialog calendar pick (uniform
+  backdrop for every row) → Auto per-row (new default) → project-calendar fallback (byte-identical
+  to before for any caller that passes no per-row calendar). Timescale dialog gains an "Auto —
+  each task's own calendar" option (default). Wired the `/analysis` activity grid, its
+  driving-path trace, and the standalone `/driving-path` page; path-evolution + SRA grids keep the
+  project-calendar fallback (no regression) as optional follow-up.
+- **Verified (Chromium, real 24h file):** per-row shading state — UID 302/385/389/14 (24 Hours) =
+  CLEAR, Mon-Fri tasks = SHADED; Project5 (normal Mon-Fri golden) = every row SHADED (no
+  regression); screenshots clean in all four themes (console/daylight/apollo/jarvis). New
+  `tests/web/test_gantt_calendar_shading.py` pins the payload for a mixed-calendar and a
+  single-calendar schedule.
+- **State:** v1.0.53 → **1.0.54**; wheel + 9 installers lockstep; **ADR-0243**; full gate green.
+- **NEXT:** PR-R3 (erosion basis + XER weekends + egress set + 24h golden) → PR-P1 perf → #13 →
+  #26 → F3c → roles.
