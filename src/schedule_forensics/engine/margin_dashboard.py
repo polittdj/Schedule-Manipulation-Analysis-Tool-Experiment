@@ -283,9 +283,17 @@ def compute_margin_dashboard(
     # (workbook column F): this period's plan is where margin stood at the end of the last one.
     filled: list[MarginMonth] = []
     prev_eff: float | None = None
+    prev_basis: int | None = None
     for m in raw:
-        filled.append(replace(m, planned_margin_wd=prev_eff))
+        # Carry the prior month-end margin forward as this month's plan ONLY when the two share a
+        # work-day basis. Across a calendar change (8h -> 24h) "consumed = plan - actual" would
+        # subtract 24h-days from 8h-days — the same mixed-basis error the erosion fit refuses — so
+        # leave planned None (consumed_wd/consumed_pct/corrective_action then read NA, not a
+        # fabricated consumption). Same-basis behaviour (the norm) is unchanged.
+        planned = prev_eff if prev_basis == m.basis_wmpd else None
+        filled.append(replace(m, planned_margin_wd=planned))
         prev_eff = m.effective_margin_wd
+        prev_basis = m.basis_wmpd
     months = tuple(filled)
     if margin_uids is not None:
         have_margin = any(

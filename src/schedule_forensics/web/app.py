@@ -3106,9 +3106,11 @@ def create_app(
     def cei_view(target: str | None = Query(None), uids: str = Query("")) -> HTMLResponse:
         st = session()
         # focusing a target from this view sets the session-wide target (ADR-0061), so the
-        # /api/cei fetch that draws the chart sees the same activity; a blank clears it.
+        # /api/cei fetch that draws the chart sees the same activity; a blank clears it. Go through
+        # set_target (NOT a raw assignment) so the scope/analysis caches invalidate and the SRA
+        # focus stays coupled — a raw write left every page scoped to the PREVIOUS target (audit).
         if target is not None:
-            st.target_uid = _parse_uid(target)
+            st.set_target(_parse_uid(target))
         if len(st.schedules) < 2:
             return _page(
                 st,

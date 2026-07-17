@@ -9,7 +9,7 @@ disagrees with HANDOFF, HANDOFF wins.)
 You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
 schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
 section is the current state and the NEXT queue. As of this file's last refresh that meant:
-`main` green at **v1.0.52**, highest ADR **0241**, full gate green (ruff / ruff format --check /
+`main` green at **v1.0.56**, highest ADR **0245**, full gate green (ruff / ruff format --check /
 mypy --strict / bandit exit 0 / node --check / full pytest incl. the `parity` gate).
 
 **Standing rules (CLAUDE.md — read them, they are binding):**
@@ -37,13 +37,17 @@ commit (drift guard) → commit with the required trailers → push → **draft 
 `subscribe_pr_activity`. After a merge, restart the branch fresh from `origin/main` with
 `--prune`. Never put the model id in any commit/PR/code.
 
-**The work queue (rationale + goldens in HANDOFF's NEXT section):**
+**The work queue (rationale + detail in HANDOFF's NEXT section):**
 
-1. **PR-R3 — data-fidelity residue:** margin-erosion fit restricted to a single margin basis (or
-   an explicit mixed-basis warning); XER worked-weekend calendar exceptions; egress-guard set
-   additions (modern LLM/telemetry hosts); commit the 24h-calendar MPXJ golden (SSI pair:
-   `Hard_File_updated3` UID-155 slack 32d ↔ `Hard_File_updated4 24 hour calendar` 18d, same
-   100-row path — files + Fuse fieldmap already in `00_REFERENCE_INTAKE/`, see its INDEX.md).
+1. **Audit remainder (ADR-0245 — the 5 queued findings, none a live leak/parity break):**
+   (a) the standalone `/driving-path` corridor Gantt is NOT per-task shaded — the #382 wiring gap:
+   `driving_path.js` reads a per-row `a.calendar` the server never emits (add the field + pass the
+   per-row calendar to the shading, OR drop the dead read and correct the #382/ADR-0243 "wired"
+   claim); (b) a Gantt-shading node harness (the #382 shading JS is behaviorally untested — model
+   on `tests/web/js/*.mjs`); (c) a `/margin` mixed-basis VIEW test (the erosion-suppression
+   disclosure text/export row is untested); (d) an SRA-xlsx zip-bomb size cap (the re-import route
+   fully decompresses with no cap — parity with `/upload`'s 500 MB limit); (e) a spaced-UNC-path
+   trailing-filename leak in `redact()` (a subtle lookbehind edge).
 2. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge
    guard; the refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them).
 3. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add

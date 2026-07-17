@@ -31,6 +31,29 @@ def test_cei_view_needs_two_versions(client: TestClient) -> None:
     assert client.get("/api/cei").status_code == 400
 
 
+def test_cei_target_change_invalidates_scope_and_couples_sra_focus(client: TestClient) -> None:
+    # Audit: /cei focused the session-wide target with a RAW `st.target_uid = ...` assignment,
+    # bypassing set_target — so `_invalidate_scope()` never ran (every page kept serving results
+    # scoped to the PREVIOUS target) and `sra_focus_uid` was left stale. Changing the target from
+    # one non-None UID to a different one must now go through set_target: caches invalidate and the
+    # SRA focus tracks the header target (ADR-0196).
+    _upload(client, "Project5")
+    _upload(client, "Project2")
+    st = client.app.state.session
+    sch = next(iter(st.schedules.values()))
+    uids = [t.unique_id for t in sch.tasks if not t.is_summary][:2]
+    a, b = uids[0], uids[1]
+
+    client.get(f"/cei?target={a}")
+    client.get(f"/cei?target={b}")
+
+    assert st.target_uid == b
+    # set_target couples the SRA focus to the target and invalidates the scope/analysis caches;
+    # the old raw `st.target_uid = ...` assignment left sra_focus_uid untouched (stale None here) —
+    # so this equality is the decisive proof the change now routes through set_target.
+    assert st.sra_focus_uid == b
+
+
 def test_cei_page_has_animation_controls_and_summary(client: TestClient) -> None:
     _upload(client, "Project2")
     _upload(client, "Project5")

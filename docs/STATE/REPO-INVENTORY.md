@@ -359,12 +359,12 @@ Test-file counts by area (files named `test_*.py`):
 
 | Area | Path | # files | Coverage |
 |---|---|---|---|
-| Engine (core) | `tests/engine/` | 61 | CPM solver, driving slack/path, drag, trend, diff, manipulation, recommendations, SRA, forecasting, float analysis/erosion, bow-wave, path evolution/counterfactual, scorecards, plus the reference/audit tests below |
+| Engine (core) | `tests/engine/` | 63 | CPM solver, driving slack/path, drag, trend, diff, manipulation, recommendations, SRA, forecasting, float analysis/erosion, bow-wave, path evolution/counterfactual, scorecards, plus the reference/audit tests below |
 | Engine metrics | `tests/engine/metrics/` | 17 | one file per metric family: `dcma14`, `cei`, `hmi`, `fei_bri`, `float_ratio`, `float_bands`, `schedule_quality`, `evm`, `completion_performance`, `margin`, `wbs_breakdown`, `change_metrics`, `field_forecast`, `derived`, `health_extra`, `performance_summary`, `schedule_card` |
-| Web/UI | `tests/web/` | 108 | the single-file FastAPI app (`web/app.py`) — every route/page/panel, chart contract, drill tables, i18n, air-gap/CSP (route+asset walk enumerated from `app.routes`/disk), startup Law-1 wiring (`test_startup_guards.py`), upload resilience & caching, single-compute chokepoint, accessibility, themes, SRA views, export endpoints; JS harnesses under `tests/web/js/*.mjs` run through `node` |
-| Importers | `tests/importers/` | 9 | `mspdi`, `xer`, `json_schedule`, common intake, MPXJ `.mpp` path, loader dispatch, inactive-baseline handling, golden parity-input parse |
+| Web/UI | `tests/web/` | 110 | the single-file FastAPI app (`web/app.py`) — every route/page/panel, chart contract, drill tables, i18n, air-gap/CSP (route+asset walk enumerated from `app.routes`/disk), startup Law-1 wiring (`test_startup_guards.py`), upload resilience & caching, single-compute chokepoint, accessibility, themes, SRA views, export endpoints; JS harnesses under `tests/web/js/*.mjs` run through `node` |
+| Importers | `tests/importers/` | 10 | `mspdi`, `xer`, `json_schedule`, common intake, MPXJ `.mpp` path, loader dispatch, inactive-baseline handling, golden parity-input parse |
 | AI | `tests/ai/` | 14 | `AIBackend` protocol + Null/Ollama/OpenAICompat backends, citation reattachment (figure-preservation gate), narrative/briefing/translation, Ask-the-AI Q&A modes (strict/annotate/interpretive), derivation, driving/manipulation facts, Ollama process mgmt |
-| Parity gate | `tests/parity/` | 4 | the `pytest -m parity` acceptance gate (details below) |
+| Parity gate | `tests/parity/` | 6 | the `pytest -m parity` acceptance gate (details below) |
 | Guards | `tests/guards/` | 3 | egress/local-only, endpoint-scheme, pre-commit CUI blocklist |
 | Installer | `tests/installer/` | 1 | the nine one-file installers + wheel lockstep (details below) |
 | Model | `tests/model/` | 7 | frozen pydantic `Task`/`Schedule`/`Calendar`/`Resource`/`Relationship`, schema-freeze, pickle round-trip |

@@ -1,4 +1,42 @@
-# Handoff — 2026-07-17 (PR-R3: data-fidelity residue — erosion basis, XER worked weekends, egress set, 24h SSI golden; v1.0.55; highest ADR 0244)
+# Handoff — 2026-07-17 (Orchestrated audit + remediation: DOM-XSS BLOCKER, /cei fidelity, margin carry-forward, log redaction; v1.0.56; highest ADR 0245)
+
+> ## STATUS (current) — ADR-0245: an ADR-0240 orchestrated audit (7 reviewers × adversarial verify, lead-validated) found 12 defects / 0 refuted on a green tree; the 2 HIGH/BLOCKER + 2 Law-relevant MEDs are fixed with regression tests, doc-drift corrected, the rest queued.
+>
+> - **BLOCKER fixed — stored DOM-XSS (`path.js`).** A malicious schedule's custom-field label /
+>   MSPDI `<Alias>` (attacker free text) flowed verbatim through `custom_field_labels` → the
+>   `/api/driving` JSON → `populateGroupBy`, which concatenated it into `<option>` HTML + assigned
+>   `innerHTML` — executing as first-party code (CUI exfil via `location=`; the skeptic reproduced
+>   it in real Chromium). Fix: build options via the file's `el()` helper (textContent / real
+>   attribute, never HTML). New node harness `path_groupby_xss_harness.mjs` (mutation-verified: it
+>   fails on the old sink). A full sweep confirmed `path.js` was the ONLY unescaped `innerHTML`
+>   sink — the AI-narrative `html` is `_e()`-escaped, `home.js` uses `esc()`, the rest are static.
+> - **HIGH fixed — `/cei` cache staleness (`app.py`).** The Bow Wave view set the target with a raw
+>   `st.target_uid = …`, bypassing `set_target()` → `_invalidate_scope()` never ran, so every page
+>   served metrics scoped to the PREVIOUS target under a contradictory banner (Law-2), and
+>   `sra_focus_uid` desynced. Fix: route through `set_target`; view test pins the coupling.
+> - **MED fixed — margin carry-forward basis (`margin_dashboard.py`).** Completes PR-R3: the
+>   `consumed`/`corrective-action` carry-forward now also refuses the 8h↔24h cross-basis subtraction
+>   (planned=None → NA, not a fabricated consumption). **MED fixed — log redaction:**
+>   `SENSITIVE_EXTENSIONS` gained `doc/docx/aft/pkl/pickle`; a test pins it ⊇ the pre-commit CUI set.
+> - **Doc-drift corrected:** REPO-INVENTORY census (engine 61→63, web 108→110, importers 9→10,
+>   parity 4→6); USER-GUIDE v1.0.51→1.0.56 + Gantt-shading note; NEXT-SESSION-PROMPT rewritten.
+> - **State:** v1.0.55 → **1.0.56**; wheel + 9 installers lockstep; **ADR-0245**; gate green.
+> - **MERGE / SESSION HANDOFF:** the ADR-0245 audit-remediation PR is being **squash-merged by
+>   the operator**, and that build session ended once the merge was detected (housekeeping done,
+>   no PR-P1 auto-start — the operator resumes in a fresh session). The NEXT session must
+>   **restart the branch fresh from `origin/main`** (`git fetch --prune origin` →
+>   `git checkout -B <branch> origin/main`) before doing anything, then resume from the NEXT queue.
+> - **NEXT (audit remainder, then the queue):** (1) `/driving-path` corridor Gantt not per-task
+>   shaded — the #382 wiring gap: `driving_path.js` reads an `a.calendar` the server never emits
+>   (add the field + pass the per-row calendar, OR drop the dead read and correct the #382 claim);
+>   (2) a Gantt-shading node harness (the #382 JS is behaviorally untested); (3) a `/margin`
+>   mixed-basis view test; (4) an SRA-xlsx zip-bomb size cap (parity with /upload's 500 MB cap);
+>   (5) a spaced-UNC-path trailing-filename leak in `redact()` (subtle regex edge). Then **PR-P1**
+>   validated perf items (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge guard; the
+>   refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them) → #13 XER per-task
+>   calendars → base-CPM single-calendar disclosure (#26) → F3c → roles front-end.
+
+# (prior) Handoff — 2026-07-17 (PR-R3: data-fidelity residue — erosion basis, XER worked weekends, egress set, 24h SSI golden; v1.0.55; highest ADR 0244)
 
 > ## STATUS (current) — PR-R3 (ADR-0244): the four queued data-fidelity items all shipped in one change; each verified, the 24h golden's engine parity confirmed cell-for-cell before pinning.
 >

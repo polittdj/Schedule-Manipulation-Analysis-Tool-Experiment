@@ -528,15 +528,19 @@
     var sel = $("pathGroupBy");
     if (!sel) return;
     var keep = sel.value;
-    var opts = ['<option value="">(none)</option>'];
+    // Build options via el() so every label goes through textContent / a real attribute value —
+    // a field label or custom-field Alias is attacker-controlled free text from an opposing-party
+    // schedule (MSPDI <Alias>), and string-concatenating it into innerHTML was a stored DOM-XSS
+    // (Law 1: it would run as first-party code in the CUI tool). el() never treats data as HTML.
+    sel.textContent = "";
+    sel.appendChild(el("option", { value: "", text: "(none)" }));
     FIELDS.forEach(function (f) {
       if (f.key === "drives" || f.key === "name") return;
-      opts.push('<option value="' + f.key + '">' + f.label + "</option>");
+      sel.appendChild(el("option", { value: f.key, text: f.label }));
     });
     ((data && data.custom_field_labels) || []).forEach(function (lb) {
-      opts.push('<option value="custom:' + lb + '">' + lb + " (custom)</option>");
+      sel.appendChild(el("option", { value: "custom:" + lb, text: lb + " (custom)" }));
     });
-    sel.innerHTML = opts.join("");
     sel.value = keep;
   }
   function groupKeyOf(r, key) {
