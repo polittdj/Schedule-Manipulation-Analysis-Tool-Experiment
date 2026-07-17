@@ -22,10 +22,11 @@ import re
 import tempfile
 import threading
 import time
+from collections import OrderedDict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeVar, cast
 from urllib.parse import quote, urlparse
 
 import uvicorn
@@ -522,6 +523,46 @@ class UnifiedRisk:
     consequence_rating: int | None = None  # 1..5 for the 5x5 matrix; None auto-derives from days
 
 
+_V = TypeVar("_V")
+
+#: Max full analyses / polished narratives kept resident before the least-recently-used is evicted
+#: (audit #4). A full ``_Analysis`` is heavy (~6 KiB/task; a portfolio of 100 large versions would
+#: otherwise pin >1 GiB); the summary tier (``summaries``) carries portfolio scale, so this cap
+#: applies only to the expensive detailed caches. Generous enough that any realistic multi-version
+#: comparison never evicts — an evicted entry simply recomputes byte-identically, so the cap only
+#: trades memory for occasional recompute and can never change a computed number.
+_ANALYSIS_CACHE_MAX = 48
+
+
+class _LRUCache(OrderedDict[str, _V]):
+    """A count-bounded, access-ordered LRU over string keys (std-lib only — no ``cachetools``).
+
+    Used ONLY for value caches whose entries recompute IDENTICALLY on a miss (the detailed
+    ``analyses`` / ``polished`` caches), so bounding memory never changes any computed output.
+    Plain dict operations still work (``__setitem__`` / ``in`` / ``clear`` / ``== {}``, which the
+    filter/wipe paths and tests rely on); production reads/writes go through :meth:`get_lru` /
+    :meth:`put` for the LRU discipline (most-recently-used survives, least-recently-used evicts).
+    """
+
+    def __init__(self, maxsize: int) -> None:
+        super().__init__()
+        self._maxsize = maxsize
+
+    def get_lru(self, key: str) -> _V | None:
+        """Return the cached value and mark it most-recently-used, or ``None`` on a miss."""
+        if key in self:
+            self.move_to_end(key)
+            return self[key]
+        return None
+
+    def put(self, key: str, value: _V) -> None:
+        """Insert/refresh ``key`` as most-recently-used, evicting the LRU entry over the cap."""
+        self[key] = value
+        self.move_to_end(key)
+        while len(self) > self._maxsize:
+            self.popitem(last=False)
+
+
 @dataclass
 class SessionState:
     """In-memory, local-only session: loaded schedules (by name) + AI config. No disk persistence."""
@@ -535,7 +576,9 @@ class SessionState:
     flash: _Flash | None = None  # transient import feedback, consumed on the next home() render
     # per-schedule analysis cache (key -> (schedule, analysis)); identity-checked so a re-upload
     # under the same key recomputes. Bounded by the loaded-schedule count; cleared on wipe.
-    analyses: dict[str, tuple[Schedule, _Analysis]] = field(default_factory=dict)
+    analyses: _LRUCache[tuple[Schedule, _Analysis]] = field(
+        default_factory=lambda: _LRUCache(_ANALYSIS_CACHE_MAX)
+    )
     # v4 Feature 2 lazy summary tier: the small per-version rollup (finish/margin/DCMA) the Portfolio
     # needs, cached in-memory (key -> (scoped schedule, summary)) and — for uploads, keyed by the raw
     # file content hash below — persisted in the SQLite cache so a portfolio of thousands renders from
@@ -568,7 +611,9 @@ class SessionState:
     backend_cache: tuple[AIConfig, float, AIBackend] | None = None
     # per-schedule narrative as polished by a real (non-null) backend:
     # key -> (schedule identity, "backend/model" stamp, narrative). Cleared on wipe.
-    polished: dict[str, tuple[Schedule, str, Narrative]] = field(default_factory=dict)
+    polished: _LRUCache[tuple[Schedule, str, Narrative]] = field(
+        default_factory=lambda: _LRUCache(_ANALYSIS_CACHE_MAX)
+    )
     # the cross-check second model, cached like backend_cache (None = off/unreachable).
     second_cache: tuple[AIConfig, float, AIBackend | None] | None = None
     # session-wide group/filter (ADR-0104): when set, EVERY metric on EVERY page — and every loaded
@@ -819,11 +864,11 @@ class SessionState:
         or the filter changes (both reflected in the scoped object's identity)."""
         with self._lock:
             scoped = self.scope(sch)
-            cached = self.analyses.get(key)
+            cached = self.analyses.get_lru(key)
             if cached is not None and cached[0] is scoped:
                 return cached[1]
             analysis = _compute_analysis(scoped)
-            self.analyses[key] = (scoped, analysis)
+            self.analyses.put(key, (scoped, analysis))
             return analysis
 
     def summary_for(self, key: str, sch: Schedule) -> VersionSummary:
@@ -1224,7 +1269,7 @@ def _polished_narrative(
     if backend.name == "null":
         return analysis.narrative
     stamp = f"{backend.name}/{getattr(backend, 'model', '')}"
-    cached = state.polished.get(key)
+    cached = state.polished.get_lru(key)
     if cached is not None and cached[0] is sch and cached[1] == stamp:
         return cached[2]
     sources = analysis.narrative.statements
@@ -1234,7 +1279,7 @@ def _polished_narrative(
         logger.warning("AI narrative generation failed; serving the deterministic narrative")
         return analysis.narrative
     narrative = Narrative(title=analysis.narrative.title, statements=reattach(polished, sources))
-    state.polished[key] = (sch, stamp, narrative)
+    state.polished.put(key, (sch, stamp, narrative))
     return narrative
 
 

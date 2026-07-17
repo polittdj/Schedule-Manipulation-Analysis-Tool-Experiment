@@ -23,6 +23,8 @@ from schedule_forensics.engine.sra import (
     ActivityRisk,
     RiskEvent,
     SRAConfig,
+    _average_ranks,
+    _pearson,
     _percentile,
     _sample_beta_pert,
     _sample_triangular,
@@ -504,3 +506,19 @@ def test_spearman_perfect_and_ties() -> None:
     # mismatched / empty lengths guard to 0.0
     assert _spearman([], []) == 0.0
     assert _spearman([1.0], [1.0, 2.0]) == 0.0
+
+
+def test_hoisted_finish_rank_equals_spearman() -> None:
+    """audit-C: _build_result now computes the finish ranks ONCE and calls
+    _pearson(_average_ranks(durations), finish_ranks) instead of _spearman(durations, finishes) per
+    activity. Prove the two forms are byte-identical (==, not approx) over several series — so the
+    optimization removes redundant sorts without moving any duration_sensitivity value."""
+    finishes = [10.0, 20.0, 20.0, 5.0, 30.0, 15.0]  # includes a tie, to exercise average ranks
+    finish_ranks = _average_ranks(finishes)
+    for durs in (
+        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+        [6.0, 6.0, 1.0, 1.0, 3.0, 3.0],  # ties on the duration side too
+        [30.0, 10.0, 20.0, 5.0, 25.0, 15.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # zero variance → 0.0 both ways
+    ):
+        assert _pearson(_average_ranks(durs), finish_ranks) == _spearman(durs, finishes)

@@ -6598,3 +6598,36 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   pytest incl. `parity`).
 - **NEXT:** PR-P1 validated perf items (CoPilot #3/#4/#8/#9/#10 + audit-E guard; refuted claims
   documented, do NOT "fix") → #13 XER calendars → #26 disclosure → F3c → roles.
+
+---
+
+## 2026-07-17 — PR-P1 safe increment: analysis-cache LRU, summary-edge guard, SRA finish-rank reuse (ADR-0248)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-resume-main-6tpt62` (restarted
+  fresh from `origin/main` after the ADR-0247 PR #386 squash-merge).
+- Ran a 6-agent parity-risk verification (one read-only agent per validated PR-P1 item, against HEAD
+  v1.0.57, lead-re-verified in code) over the committed `POLARIS_Independent_Audit_2026-07-15.md`.
+  Shipped the three provably-output-preserving items; deferred the parity-critical/large ones to
+  their own PRs, matching the audit's required-action-order.
+- **#4 analysis-cache LRU (`web/app.py`):** `analyses` + `polished` backed by a std-lib
+  `_LRUCache(OrderedDict)` (get_lru/put, cap `_ANALYSIS_CACHE_MAX`=48, under `_lock`); only the two
+  heavy caches capped, `schedules`/`summaries` untouched. Parity-risk NONE — evicted → recomputes
+  byte-identically (recompute-equivalence test pins CPM finish/critical-path/floats).
+- **audit-E summary-edge guard (`engine/summary_logic.py` + `cpm.py`):** project the fan-out from
+  lengths only; RAISE `SummaryLogicExplosion` past `SUMMARY_EDGE_CEILING`=250 000 (fail loud, NEVER
+  truncate — truncation would drop real logic and move CPM dates, Law 2). `compute_cpm` re-raises as
+  `CPMError` → disclosed 422, not a 500/hang/OOM. Below the ceiling byte-identical; goldens carry no
+  summary logic so the guard is never reached on parity files.
+- **audit-C SRA finish-rank hoist (`engine/sra.py`):** compute `_average_ranks(finishes_f)` ONCE and
+  call `_pearson(_average_ranks(durs_f), finish_ranks)` per activity (drops N−1 redundant finish-vector
+  sorts). Byte-identical — equivalence test asserts `==` vs the old `_spearman`, SRA determinism +
+  parity gates green.
+- **Deferred (own PRs):** #8.1 compiled CPM topology (HIGH parity risk), #9 MSPDI iterparse (HIGH,
+  large — DOM parser kept as fallback until parity proven + XXE tests), #10 cancellable AI job API
+  (large UX), #3 path-adjacency memo (premature; id-reuse staleness). Recommend the audit-F
+  perf/memory-regression harness as the enabling first step.
+- **State:** v1.0.57 → **1.0.58** (src changed); wheel + 9 installers rebuilt in lockstep;
+  **ADR-0248**; full gate green (ruff / format / mypy --strict / bandit exit 0 / node --check / 2322
+  pytest incl. `parity`).
+- **NEXT:** deferred PR-P1 items (audit-F harness first) → #13 XER calendars → #26 disclosure → F3c
+  → roles.
