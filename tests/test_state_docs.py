@@ -97,3 +97,29 @@ def test_handoff_top_section_pins_the_current_pyproject_version() -> None:
         "version pyproject.toml ships. Refresh the handoff's STATUS block in the same "
         "change as the version bump so a new session resumes from the shipped state."
     )
+
+
+def test_handoff_stays_one_pass_readable() -> None:
+    """ADR-0246: HANDOFF.md must stay small enough to read in full in one pass.
+
+    The handoff is the "read first" doc and, since ADR-0246, is auto-injected into every
+    session by the SessionStart hook. To keep that guaranteed and cheap, the file holds ONLY
+    the current STATUS section plus a single ``# (prior) handoffs — archived`` pointer; the
+    older sections live in ``HANDOFF-ARCHIVE.md``. This guard fails if the file grows back —
+    a new handoff stacked in place instead of moved to the archive — so "read the entire
+    HANDOFF" never again means reading hundreds of KB (it also stays under the 256 KB Read
+    limit, so no session ever has to chunk it).
+    """
+    text = HANDOFF.read_text(encoding="utf-8")
+    size = len(text.encode("utf-8"))
+    assert size <= 64 * 1024, (
+        f"docs/STATE/HANDOFF.md is {size} bytes (> 64 KB). Per ADR-0246 it must hold only the "
+        "current STATUS section + the archive pointer; move older handoffs to the TOP of "
+        "docs/STATE/HANDOFF-ARCHIVE.md (see CLAUDE.md 'Durable state')."
+    )
+    prior_headings = re.findall(r"^# \(prior\)", text, re.MULTILINE)
+    assert len(prior_headings) == 1, (
+        f"docs/STATE/HANDOFF.md has {len(prior_headings)} '# (prior)' heading(s); ADR-0246 "
+        "requires exactly one (the archive pointer). Move the previous current section to the "
+        "TOP of docs/STATE/HANDOFF-ARCHIVE.md instead of stacking a new '# (prior)' section here."
+    )
