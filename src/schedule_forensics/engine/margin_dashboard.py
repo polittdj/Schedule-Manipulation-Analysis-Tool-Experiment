@@ -46,7 +46,10 @@ from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.schedule import Schedule
 
 #: NASA Gold-Rule default: 30 margin work-days per program year (Schedule Management Handbook).
-_GOLD_RULE_DAYS_PER_YEAR = 30.0
+#: Public so the web layer's operator-settable requirement rate (F3c) shares one source of truth;
+#: the rate is a program-defined guideline (the handbook states 30/yr as the default), unlike the
+#: verbatim 50%-consumed corrective threshold, which stays fixed.
+GOLD_RULE_DAYS_PER_YEAR = 30.0
 _DAYS_PER_YEAR = 365.0
 #: Mean calendar days per month, for expressing the erosion slope "per month".
 _DAYS_PER_MONTH = 30.4368
@@ -148,6 +151,10 @@ class MarginDashboard:
     #: slope through mixed bases would be a fabricated number (Law 2), so the tool discloses the
     #: basis change instead. Empty when the basis is consistent (the normal case).
     erosion_mixed_basis: tuple[int, ...] = ()
+    #: The NASA Gold-Rule requirement rate (work-days per program year) the ``nasa_rqmt_wd`` column
+    #: and the trigger were measured against — carried so the page control and the export can state
+    #: the basis (F3c; operator-settable, 30/yr default).
+    gold_rule_per_year: float = GOLD_RULE_DAYS_PER_YEAR
 
 
 def _margin_month(
@@ -259,7 +266,7 @@ def _erosion(months: Sequence[MarginMonth]) -> tuple[float | None, str | None, f
 def compute_margin_dashboard(
     versions: Sequence[tuple[str, Schedule, CPMResult]],
     target_uid: int | None = None,
-    gold_rule_per_year: float = _GOLD_RULE_DAYS_PER_YEAR,
+    gold_rule_per_year: float = GOLD_RULE_DAYS_PER_YEAR,
     *,
     margin_uids: frozenset[int] | None = None,
 ) -> MarginDashboard:
@@ -325,4 +332,5 @@ def compute_margin_dashboard(
         erosion_r2=r2,
         erosion_basis_wmpd=basis,
         erosion_mixed_basis=mixed_basis,
+        gold_rule_per_year=gold_rule_per_year,
     )
