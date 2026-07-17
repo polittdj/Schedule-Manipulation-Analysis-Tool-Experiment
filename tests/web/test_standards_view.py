@@ -34,12 +34,14 @@ def test_standards_renders_three_families_with_formulas(client: TestClient) -> N
     assert "Project5" in page
 
 
-def test_standards_sem_unbuilt_rows_read_dash_and_bri_is_live(client: TestClient) -> None:
+def test_standards_sem_rows_are_live_with_golden_values(client: TestClient) -> None:
+    # PR-M2: the full SEM family computes live; spot-pin the Fuse-golden values for Project5
+    # (prior = Project2): Completed 27, BEI Current 0.67 = 2/3, TC-BEI 1.24, BEI Cumulative 0.59.
     page = client.get("/standards").text
     for label in ("Workoff Burden (SEM01)", "TC-BEI (SEM07)", "FRI Current (SEM08)"):
         assert label in page
-    assert page.count("not built") == 9  # exactly the nine unbuilt SEM metrics — never a fake 0
-    assert "BRI Cumulative" in page  # the one live SEM metric
+    assert "not built" not in page  # every SEM metric now computes
+    assert "0.67" in page and "1.24" in page and "0.59" in page
 
 
 def test_standards_includes_cei_with_two_versions_loaded(client: TestClient) -> None:

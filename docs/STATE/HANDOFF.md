@@ -1,4 +1,25 @@
-# Handoff — 2026-07-17 (PR-M1: /standards Standards & Execution Indices page; v1.0.49; highest ADR 0237)
+# Handoff — 2026-07-17 (PR-M2: the SEM engine family, Fuse-validated; v1.0.50; highest ADR 0238)
+
+> ## STATUS (current) — PR-M2 (ADR-0238): all ten Schedule Execution Metrics compute, verbatim from the pinned .aft formulas, validated cell-for-cell on BOTH golden pairs.
+>
+> - **engine/metrics/sem.py** `compute_sem(schedule, prior)` — the 9 new SEM metrics + reused
+>   BRI-Cumulative, Bible order. Verbatim formulas; the formula-audit test pins all nine strings.
+>   Key fidelity: BEI numerators count ALL actual finishes (can exceed 1; SEM BEI-Cum ≠ DCMA BEI,
+>   both ship — ADR-0176); TC-BEI unrounded w/ not-finished denominator; Delta from its own
+>   formula (simple to-go denominator); FRI = PreviousFinish join to the prior version (NA w/o).
+> - **Validation:** P2/P5 pair = CI parity gate (values + granular n/d pins: 1.25=5/4, 1.07=106/99,
+>   1.24=99/80, FRI 0/9); Large Test File/File2 = 17/17 exact incl. FRI 0.19 (sandbox, Java).
+>   Vendor's exported Delta cells (-0.34/-0.61) proven irreproducible from the vendor's own
+>   formula → export artifact, documented; formula-faithful -0.33/-0.65 pinned.
+> - **/standards** SEM section now live (9 MetricDocs added; METRIC-DICTIONARY regenerated);
+>   fixed the PR-M1 value-cell bug that hid informational NA-status index values. /standards
+>   export deferred to a polish PR (documented in ADR-0238).
+> - **State:** v1.0.49 → **1.0.50**; wheel + 9 installers lockstep; **ADR-0238**; gate green.
+> - **NEXT:** PR-R1 (AI figure-gate H1/M4/M5) → PR-R2 (dead Law-1 defenses + air-gap routes +
+>   version pin) → PR-R3 (erosion basis + XER weekends + egress set + 24h golden) → PR-P1 perf →
+>   #13 XER calendars → F3c → roles.
+
+# (prior) Handoff — 2026-07-17 (PR-M1: /standards Standards & Execution Indices page; v1.0.49; highest ADR 0237)
 
 > ## STATUS (current) — PR-M1 (ADR-0237): the operator-requested metrics-library page is live.
 >
