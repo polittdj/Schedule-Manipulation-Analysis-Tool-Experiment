@@ -1,5 +1,5 @@
 {
-  "_source": "00_REFERENCE_INTAKE/audit/ssi_uid145/ \u2014 SSI Directional Path Tool, 'Get all dependencies' export, focus UID 145 (Project5_TAMPERED.mpp).",
+  "_source": "00_REFERENCE_INTAKE/UID_145_Directional_Path_Analysis_All_Dependencies_2026-6-23-12-37-10.xlsx \u2014 SSI Directional Path Tool, 'Get all dependencies' export, focus UID 145 (Project5_TAMPERED.mpp).",
   "_note": "Golden SSI MS Project add-on Driving Slack (working days) by UniqueID for the authoritative Project5_TAMPERED, focus UID 145 'Issue final request for payment'. SSI Directional Path Tool config: Path Direction=Predecessors; Dependency Range=Get all dependencies; Near Paths off; Output=Waterfall; Driving Slack Log=Number1; Trace Log=Text1. The driving path (slack 0 d) is 144\u2192145; SSI also reports Drag=1 d on both Path-01 tasks (144,145). Non-CUI commercial-construction sample (ADR-0003/0005). Re-pins SSI driving-slack parity on the authoritative file (4 stored-critical, ADR-0112) for focus 145; the stale ssi_uid143 golden (prior 37-critical file, different focus) is left documented-stale per ADR-0112.",
   "project": "Project5",
   "focus_task_uid": 145,

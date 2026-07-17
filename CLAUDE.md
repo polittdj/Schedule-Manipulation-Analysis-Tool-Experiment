@@ -35,6 +35,31 @@ detection, and serves an interactive, locally-rendered report with a cited local
 2. **Fidelity over speed.** Numbers must match the reference tools on the same inputs; a fast wrong
    number is worthless in a testimony context. Parity is gate-locked (`pytest -m parity`).
 
+## Model & audit protocol (standing operator rule, ADR-0240)
+
+**Always read this rule and choose based off the prompt you are given for this project before
+starting to respond** (operator directive 2026-07-17; the original directive file is preserved at
+`00_REFERENCE_INTAKE/Use Fable 5 Ultracode.md`):
+
+- **Use Fable 5 Ultracode for the overall audit**: security, architecture, performance, tests,
+  documentation, dependencies, UI, data validation, and scheduling algorithms.
+- **Require one lead agent to reconcile conflicts and validate every major finding using code
+  evidence and executable tests** — no finding is reported until the lead has independently
+  re-verified it against the actual code/fixtures (audit findings have been wrong before; a
+  mistaken "fix" is worse than the drift it chases).
+- **Use Fable 5 Max afterward for targeted deep dives** into: CPM calculation correctness ·
+  schedule-forensics algorithms · performance bottlenecks · a disputed audit finding · a
+  difficult architectural decision.
+- **Other models may be used when it makes sense** (cheap mechanical sweeps, formatting,
+  broad read-only reconnaissance) **but never at the risk of error or inaccuracy** — anything
+  parity-, engine-, testimony-, or CUI-relevant stays on the strongest available model, and every
+  delegated result is re-validated by the lead before it lands (Law 2 always wins).
+
+"Fable 5 Ultracode" = the operator's label for the full multi-agent orchestrated audit;
+"Fable 5 Max" = the maximum-effort single-focus deep dive. Companion working rules that ride with
+this protocol: **READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING** — verify a finding is real
+(not your own mistake) before changing anything it touches.
+
 ## Commands
 
 Full gate — run before every commit. CI (Python 3.11 + 3.13) runs the Python steps plus pip-audit and enforces the coverage gates; the `node --check` step is local-only, and plain local `pytest -q` does NOT collect coverage (the 85/70 numbers are CI-enforced):

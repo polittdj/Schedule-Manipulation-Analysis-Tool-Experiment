@@ -6322,3 +6322,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.50 → **1.0.51**; wheel + 9 installers lockstep; **ADR-0239**.
 - **NEXT:** PR-R2 (dead Law-1 defenses + air-gap routes + version pin) → PR-R3 (erosion basis +
   XER weekends + egress set + 24h golden) → PR-P1 → #13 → F3c → roles.
+
+## 2026-07-17 — Governance: model/audit-protocol rule + intake INDEX + doc-truth pass (ADR-0240)
+
+- **Operator's standing rule made durable in CLAUDE.md** (from the attached directive file, now
+  preserved at `00_REFERENCE_INTAKE/Use Fable 5 Ultracode.md`): Fable 5 Ultracode for overall
+  audits — security/architecture/performance/tests/documentation/dependencies/UI/data-validation/
+  scheduling algorithms — with ONE lead agent reconciling conflicts and validating every major
+  finding via code evidence + executable tests; Fable 5 Max afterward for targeted deep dives
+  (CPM correctness, forensic algorithms, perf bottlenecks, disputed findings, hard architecture);
+  other models when it makes sense but never at the risk of error or inaccuracy.
+- **Read-everything audit (4 read-only agents, lead-validated): code GREEN** at v1.0.51 —
+  no unqueued defects; the PR-R2/R3 remediation queue re-confirmed accurate. Every doc-drift
+  finding was independently re-verified against the tree before editing (e.g. confirmed no test
+  reads golden `_source` strings; confirmed the live parity gate asserts UID-145 108/108 and Net
+  Finish Impact −148/−134 before touching RTM).
+- **`00_REFERENCE_INTAKE/INDEX.md` created** — authoritative catalog: logical groups, per-file
+  purpose, reverse test→file index, md5-verified duplicate/conflict table (root
+  `Project5_TAMPERED.mpp` 52e777c2 ≠ mpp/ 4078c854 — operator decision; `mpp/Project5.mpp` ==
+  `mpp/Project5_TAMPERED.mpp` intentional; 11 root handbooks byte-identical to references/
+  copies), and the §3 web-UI reorganization/rename map (local renames stay guard-blocked by
+  design). `.gitignore`: single `!00_REFERENCE_INTAKE/INDEX.md` exception.
+- **Doc-truth fixes:** NEXT-SESSION-PROMPT rewritten to v1.0.51/ADR-0240 + live queue;
+  REPO-INVENTORY (SCHEMA 2.8.0, stamps, sem.py + /standards entries, ADR count 241, RTM quote);
+  USER-GUIDE restamp + what's-new; RTM B2/C2 (ssi_uid143 → live goldens, 108/108, −148/−134);
+  ssi_uid145 `_source`; chain-test comment path; DEPOSIT-HERE + FILE-NAMES pointed at INDEX with
+  the ADR-0151/0152 tracked-suite truth.
+- **State:** v1.0.51 (docs/comments only — wheel untouched, still lockstep); **ADR-0240**.
+- **NEXT:** PR-R2 (dead Law-1 defenses + air-gap routes + version pin) → PR-R3 (erosion basis +
+  XER weekends + egress set + 24h golden) → PR-P1 → #13 → F3c → roles; operator applies the
+  INDEX §3 reorg map + §4 TAMPERED-build decision via the web UI.
+---

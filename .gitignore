@@ -29,6 +29,7 @@ docs/sources/*.mpp
 00_REFERENCE_INTAKE/*
 !00_REFERENCE_INTAKE/DEPOSIT-HERE.md
 !00_REFERENCE_INTAKE/FILE-NAMES.md
+!00_REFERENCE_INTAKE/INDEX.md
 !00_REFERENCE_INTAKE/.gitkeep
 # Tracked folder skeletons so the operator can browse into them on GitHub and
 # upload straight to the right place. The folders' CONTENTS stay ignored.

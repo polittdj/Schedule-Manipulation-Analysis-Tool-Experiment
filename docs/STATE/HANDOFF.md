@@ -1,4 +1,37 @@
-# Handoff — 2026-07-17 (PR-R1: AI figure-gate hardening — translate gate, number-words, stems; v1.0.51; highest ADR 0239)
+# Handoff — 2026-07-17 (Governance: model/audit-protocol rule + intake INDEX + verify-everything doc-truth pass; v1.0.51; highest ADR 0240)
+
+> ## STATUS (current) — ADR-0240: the operator's standing rules are durable, the intake is cataloged, and every living doc matches the tree.
+>
+> - **Model & audit protocol is now a CLAUDE.md rule** (operator directive 2026-07-17, file
+>   preserved at `00_REFERENCE_INTAKE/Use Fable 5 Ultracode.md`): Fable 5 Ultracode for overall
+>   audits (one lead agent validates every major finding with code evidence + executable tests),
+>   Fable 5 Max for targeted deep dives; other models when it makes sense but **never at the risk
+>   of error or inaccuracy**. READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING.
+> - **Read-everything audit verdict (4 read-only agents + lead cross-validation): code GREEN** —
+>   full gate passes; no unqueued BLOCKER/HIGH/MED (PR-R2/R3 queue re-confirmed accurate). All
+>   drift was in docs, each finding independently re-verified before editing.
+> - **`00_REFERENCE_INTAKE/INDEX.md`** — authoritative intake catalog: per-file purpose,
+>   which tests each file verifies, md5-verified duplicate/conflict table (root
+>   `Project5_TAMPERED.mpp` ≠ `mpp/` copy — operator to pick the canonical build; `Large Test
+>   File.mpp` vs `Large_Test_File.mpp` intentionally different), and a §3 reorganization/rename
+>   map to apply via the GitHub web UI (the CUI guard rightly blocks local renames — not
+>   weakened). `.gitignore` gains only `!00_REFERENCE_INTAKE/INDEX.md`.
+> - **Doc-truth fixes (all verified-then-fixed):** NEXT-SESSION-PROMPT rewritten (was v1.0.46 w/
+>   merged-PR queue); REPO-INVENTORY (SCHEMA 2.7.0→2.8.0, v1.0.51/ADR-0240 stamps, sem.py +
+>   /standards entries, ADR count, RTM quote); USER-GUIDE restamped w/ what's-new; RTM B2/C2
+>   (dead ssi_uid143 → live goldens, SSI 108/108 UID-145, Net Finish Impact −148/−134
+>   reconciled); ssi_uid145 `_source` dead path; chain-test comment path; DEPOSIT-HERE's
+>   false "never committed" claim (ADR-0151/0152 posture stated).
+> - **State:** v1.0.51 unchanged (docs/comments only — no src change, wheel stays in lockstep);
+>   **ADR-0240**; gate green.
+> - **NEXT:** **PR-R2** (wire dead Law-1 defenses: `configure_logging` + `assert_local_only` at
+>   startup + assertion test; air-gap test enumerates `app.routes`; state-docs guard pins the
+>   pyproject version) → **PR-R3** (margin-erosion single-basis fit; XER worked-weekend
+>   exceptions; egress-set additions; 24h-calendar MPXJ golden — SSI pair updated3 32d ↔
+>   updated4 18d) → PR-P1 perf → #13 XER calendars → F3c → roles. Operator-side: apply the
+>   INDEX §3 reorg map via the web UI + decide the root-vs-mpp TAMPERED build (§4).
+
+# (prior) Handoff — 2026-07-17 (PR-R1: AI figure-gate hardening — translate gate, number-words, stems; v1.0.51; highest ADR 0239)
 
 > ## STATUS (current) — PR-R1 (ADR-0239): the three proven AI-gate bypasses are closed, fail-closed.
 >

@@ -53,7 +53,7 @@ class Expected:
     missing_logic: int  # Missing Logic (incomplete-scoped, as the report reports it)
 
 
-# Verbatim from ``00_REFERENCE_INTAKE/audit/2345_bundle/2345 - Metric History Report.xlsx``.
+# Verbatim from ``00_REFERENCE_INTAKE/P2-P5 - Metric History Report.xlsx``.
 CHAIN: tuple[Expected, ...] = (
     Expected("Project2.mpp", dt.date(2026, 5, 24), 0.74, 20, 41, 44, 0, 0, 4),
     Expected("Project3.mpp", dt.date(2026, 6, 30), 0.67, 24, 40, 42, 0, 0, 4),
