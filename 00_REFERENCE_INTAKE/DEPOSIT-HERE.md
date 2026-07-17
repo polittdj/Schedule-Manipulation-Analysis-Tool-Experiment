@@ -1,9 +1,18 @@
 # 00_REFERENCE_INTAKE — Deposit reference & golden files here (Gate 1)
 
+> **Historical Gate-1 instructions — see `INDEX.md` for the current authoritative catalog.**
+> The posture described below ("git-ignored so it can never be committed") was superseded by
+> ADR-0151/0152: the operator confirmed the reference suite **non-CUI** and committed it to
+> `main` via the GitHub web UI, so these files **are tracked in the repo** now. `.gitignore`
+> still blocks *new local* deposits (first fence), and the pre-commit guard still blocks any
+> new/modified/renamed schedule binary — so a real CUI schedule from a build session can never
+> land in the repo. `INDEX.md` documents what is here, what each file verifies, and the
+> reorganization rules.
+
 This folder is the **only** place you put the reference materials the build needs.
 Everything you drop here (except this file and `.gitkeep`) is **git-ignored** so it
-can never be committed — see `.gitignore`. The build tool will read these files
-**locally only**; nothing here ever leaves this machine.
+can never be committed *locally* — see `.gitignore` and the note above. The build tool
+will read these files **locally only**; nothing here ever leaves this machine.
 
 > **STOP — read the CUI rule first.** Treat every schedule file and every export as
 > **Controlled Unclassified Information (CUI) by default.** Before you place an item

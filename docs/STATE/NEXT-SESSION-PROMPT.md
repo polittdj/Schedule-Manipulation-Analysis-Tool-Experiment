@@ -9,50 +9,52 @@ disagrees with HANDOFF, HANDOFF wins.)
 You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
 schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
 section is the current state and the NEXT queue. As of this file's last refresh that meant:
-`main` green at **v1.0.46**, highest ADR **0234**, full gate green (ruff / ruff format --check /
+`main` green at **v1.0.51**, highest ADR **0240**, full gate green (ruff / ruff format --check /
 mypy --strict / bandit exit 0 / node --check / full pytest incl. the `parity` gate).
 
-**Two non-negotiable laws (CLAUDE.md):** (1) **Data sovereignty (CUI)** — no schedule content or
-derived metric leaves the machine; AI loopback-only, fails closed; runtime I/O std-lib only; never
-commit a real CUI schedule (the pre-commit guard blocks blocked-extension files outside the
-allowlists). (2) **Fidelity over speed** — numbers must match the reference tools (Acumen Fuse
-v8.11.0 / SSI / MSP) on the same inputs; never fabricate (NA reads "—", never a placeholder 0);
-parity is gate-locked (`pytest -m parity`); never weaken a test or guard.
+**Standing rules (CLAUDE.md — read them, they are binding):**
+(1) **Data sovereignty (CUI)** — no schedule content or derived metric leaves the machine; AI
+loopback-only, fails closed; runtime I/O std-lib only; never commit a real CUI schedule (the
+pre-commit guard blocks blocked-extension files outside the allowlists, including renames).
+(2) **Fidelity over speed** — numbers must match the reference tools (Acumen Fuse v8.11.0 / SSI /
+MSP) on the same inputs; never fabricate (NA reads "—", never a placeholder 0); parity is
+gate-locked (`pytest -m parity`); never weaken a test or guard.
+(3) **Model & audit protocol (ADR-0240)** — read the CLAUDE.md rule and choose based off the
+prompt before starting: Fable 5 Ultracode for overall audits (one lead agent reconciles and
+validates every major finding with code evidence + executable tests), Fable 5 Max for targeted
+deep dives (CPM correctness, forensic algorithms, perf bottlenecks, disputed findings, hard
+architecture); other models only when it makes sense and never at the risk of error or
+inaccuracy. READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING.
 
 **Per-PR workflow:** fresh branch off `origin/main` (always `git fetch origin` first; squash-merges
 make stacked branches conflict) → make the change → full gate (ruff / ruff format --check / mypy
 --strict / bandit **exit code read directly** / `pytest -q` / `node --check` for JS) → 4-theme
-Chromium check for any UI change → bump `pyproject.toml` + rebuild the wheel
+Chromium check for any UI change → for src changes: bump `pyproject.toml` + rebuild the wheel
 (`python -m build --wheel --outdir dist/wheel`) + the 9 installers
-(`python tools/installer/build_installers.py dist/wheel/schedule_forensics-<v>-py3-none-any.whl`)
-→ new ADR + refresh `HANDOFF.md` and `SESSION-LOG.md` in the same commit (drift guard) → commit
-with the required trailers → push → **draft PR** → `subscribe_pr_activity`. After a merge, restart
-the branch fresh from `origin/main`. Never put the model id in any commit/PR/code.
+(`python tools/installer/build_installers.py dist/wheel/schedule_forensics-<v>-py3-none-any.whl`),
+rebuilt AFTER any reformat → new ADR + refresh `HANDOFF.md` and `SESSION-LOG.md` in the same
+commit (drift guard) → commit with the required trailers → push → **draft PR** →
+`subscribe_pr_activity`. After a merge, restart the branch fresh from `origin/main` with
+`--prune`. Never put the model id in any commit/PR/code.
 
-**The work queue (rationale + goldens in HANDOFF's NEXT section and the approved plan):**
+**The work queue (rationale + goldens in HANDOFF's NEXT section):**
 
-1. **#10 PR-D — `/groups` UI:** saved filter/group pickers (A–Z via `saved_*_union`), interactive
-   prompt inputs ("Date Range…"), highlight toggle + `data-highlight-uids` + `static/highlight.js`,
-   extended filter banner, per-page group banding. Design pre-written in
-   `docs/STATE/msp-filters-research/03-plumbing-integration.md`.
-2. **PR-U1 — operator UI directives (NEXT-PROMPT 07/16):** fix the non-working Gantt filter
-   buttons; find-task-by-name(/part) on every Gantt; a per-file/version selector on the
-   critical-path page, "Where We Stand," and other multi-file pages — never mix files' data.
-3. **PR-M1 — `/standards` metrics page** (DCMA-14 + NASA/Fuse indices re-projection, SEM rows
-   showing "—" until built) and **PR-M2 — `engine/metrics/sem.py`** (the 9 unbuilt Schedule
-   Execution Metrics; verbatim goldens exist for TWO pairs — P2/P5 and Large Test File/File2 —
-   in the Fuse DCMA reports' `Industry-Standards` sheets; each metric needs a MetricDoc + AUDIT
-   row, the 1:1 test enforces it).
-4. **PR-R1/R2/R3 — validated-audit remediation:** R1 AI figure-gate (gate `_ai_translate` with
-   `preserves_figures`; number-word lexicon in `figure_tokens`; stem matching in `_LOADED_TERMS`);
-   R2 wire the dead Law-1 defenses (`configure_logging` + `assert_local_only` at startup + test),
-   air-gap test enumerates `app.routes`, version-pin guard in state docs; R3 margin-erosion
-   single-basis fit, XER worked-weekend exceptions, egress-set additions, and the 24h-calendar
-   MPXJ golden (SSI pair: updated3 UID-155 slack 32d ↔ updated4 24h slack 18d).
-5. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + summary-logic edge guard; the
-   refuted claims #1/#5/#6/#7-race are documented, do not "fix" them).
-6. **#13** XER per-task calendars (operator will re-add real `.xer`) → **F3c** parameterized
-   expected margin → **roles front-end** (v4 F4).
+1. **PR-R2 — wire the dead Law-1 defenses:** call `configure_logging()` + `assert_local_only()`
+   at process start + a startup-assertion test; air-gap test enumerates `app.routes` instead of a
+   hard-coded page list; state-docs drift guard also pins the pyproject version into HANDOFF.
+2. **PR-R3 — data-fidelity residue:** margin-erosion fit restricted to a single margin basis (or
+   an explicit mixed-basis warning); XER worked-weekend calendar exceptions; egress-guard set
+   additions (modern LLM/telemetry hosts); commit the 24h-calendar MPXJ golden (SSI pair:
+   `Hard_File_updated3` UID-155 slack 32d ↔ `Hard_File_updated4 24 hour calendar` 18d, same
+   100-row path — files + Fuse fieldmap already in `00_REFERENCE_INTAKE/`, see its INDEX.md).
+3. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge
+   guard; the refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them).
+4. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add
+   real `.xer`) → **base-CPM single-calendar fail-soft disclosure** (task #26) → **F3c**
+   parameterized expected margin → **roles front-end** (v4 F4).
+5. **Operator-side (no code):** apply the `00_REFERENCE_INTAKE/INDEX.md` §3 reorganization map
+   via the GitHub web UI when convenient (the CUI guard rightly blocks local renames), including
+   the §4 root-vs-mpp `Project5_TAMPERED.mpp` canonical-build decision.
 
 Work autonomously: full gate before every commit, draft PR per increment, pause only for genuinely
 operator-only decisions.

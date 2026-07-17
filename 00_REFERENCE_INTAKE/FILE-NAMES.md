@@ -1,5 +1,8 @@
 # FILE-NAMES — exact upload names & destinations (copy-paste)
 
+> **Historical upload contract — `INDEX.md` is the current authoritative catalog** (what is
+> here now, what each file verifies, verified duplicates, and the reorganization map).
+
 Upload on GitHub by **browsing into the folder first**, then *Add file → Upload files*.
 Everything here is git-ignored for local commits; web uploads land tracked — that's fine
 (operator-confirmed non-CUI build inputs).
