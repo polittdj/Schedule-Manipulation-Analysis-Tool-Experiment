@@ -499,3 +499,18 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .wb-grid .wb-grp th{background:var(--dz-bg);color:var(--muted);font-weight:700}
 .wb-colx{margin-left:6px;color:var(--bad)}
 .wb-arrow{color:var(--accent)}
+
+/* --- v4 F4 role-selection front page (ADR-0255): pure emphasis, tokens only ------------- */
+.role-strip{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 2px}
+.roleform{display:inline}
+.role-card{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--dz-bg);
+  color:var(--ink);cursor:pointer;font-size:13px}
+.role-card:hover{border-color:var(--accent)}
+.role-card.active{border-color:var(--accent);color:var(--accent);font-weight:700;
+  box-shadow:inset 0 0 0 1px var(--accent)}
+.start-strip{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.start-card{flex:1 1 15em;min-width:14em;display:flex;flex-direction:column;gap:4px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+.start-card:hover{border-color:var(--accent)}
+.start-card .muted{font-size:12px}
+.nav-chapter.role-hl{border-left:2px solid var(--accent);padding-left:6px}

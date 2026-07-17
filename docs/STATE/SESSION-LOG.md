@@ -6852,3 +6852,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   moved/replaced + this entry in the same commit.
 - **NEXT:** #13 XER per-task calendars (PARKED — the owed `.xer` files) → roles front-end (v4 F4,
   propose-then-build) → ADR-0251 family-B option-plumbing unify PRs → the zero-margin SRA toggle.
+
+---
+
+## 2026-07-17 — v4 F4: role-selection front page (ADR-0255)
+
+- **Propose-then-build, as queued:** no committed F4 spec existed, so the session proposed the
+  design and the operator approved: **5 roles** (Scheduler/Planner, PM, Forensic Analyst,
+  Auditor DCMA/IG, Counsel/Testifying Expert) with **emphasis + role landing** (the deeper of
+  the two offered behavior depths).
+- **Contract:** a role = a curated entry point, never a mode — (1) home "Start here" strip from
+  the committed spine, (2) `role-hl` nav emphasis with every chapter still rendered, (3) clean
+  ingests land on the role's page while any errors/skips land on the dashboard (disclosure
+  outranks the landing). No role = pre-F4 behavior byte-for-byte. Fail-soft `set_role`; wipe
+  clears; static `_ROLES` table; no engine import — parity untouched by construction.
+- **Verified:** 6 new web tests (contract-on-page, persist/fail-soft/wipe, reachability under
+  emphasis, @analysis card gating, 3 landing pins, errors-outrank-landing); full gate green;
+  4-theme Chromium green (active pill given a doubled accent ring for JARVIS legibility).
+  Mid-session container restart absorbed (work re-verified from disk, gate re-run).
+- **State:** v1.0.63 → **1.0.64**; wheel + 9 installers in lockstep; **ADR-0255**; HANDOFF
+  moved/replaced + this entry in the same commit.
+- **NEXT:** #13 XER per-task calendars (PARKED) → ADR-0251 family-B option-plumbing PRs →
+  zero-margin SRA toggle → deferred perf (ADR-0249).

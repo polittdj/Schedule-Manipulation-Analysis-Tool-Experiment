@@ -1,6 +1,6 @@
 # Repository Inventory — POLARIS / schedule-forensics
 
-> **Version/ADR stamps refreshed 2026-07-17 (v1.0.63, ADR-0254; F3c-fuller expected-margin panel — Fig 5-30 band + SRA spread).** For
+> **Version/ADR stamps refreshed 2026-07-17 (v1.0.64, ADR-0255; v4 F4 role-selection front page).** For
 > the reference-intake catalog, `00_REFERENCE_INTAKE/INDEX.md` is now the authoritative per-file
 > map (what each file is, which tests it verifies, duplicates, reorganization rules).
 >

@@ -631,6 +631,10 @@ class SessionState:
     # Action) — the handbook's EXAMPLE values 70/50 prefilled, operator-editable (program-set per
     # the SMP, §7.3.3.1.6 Thresholds).
     margin_risk_pcts: tuple[float, float] = (DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
+    # v4 F4 (ADR-0255): the operator's selected audience role — a curated ENTRY POINT only
+    # (home "Start here" strip, nav highlight, post-upload landing). None = "Show everything",
+    # byte-identical to the pre-F4 behavior. Never hides a page, never touches a number.
+    role: str | None = None
     # UI/AI display language (ADR-0099): "en" (source) or "es". Drives the layout's lang attribute
     # and the client translation pass; AI fallback translations are memoised in ``translations``.
     language: str = "en"
@@ -873,6 +877,14 @@ class SessionState:
         with self._lock:
             if 0 < corrective < watch < 100:
                 self.margin_risk_pcts = (watch, corrective)
+
+    def set_role(self, role: str | None) -> None:
+        """Set (or clear) the audience role (v4 F4, ADR-0255). Fail-soft: an unknown role id is
+        ignored, keeping the current selection. Pure wayfinding — no cache is invalidated because
+        the role can never change a computed figure."""
+        with self._lock:
+            if role is None or role in _ROLE_BY_ID:
+                self.role = role
 
     def confirmed_margin_union(self) -> frozenset[int] | None:
         """The union of every loaded version's operator-confirmed margin-task set, or ``None`` when no
@@ -1876,6 +1888,141 @@ _SPINE: tuple[tuple[str, tuple[_Chapter, ...]], ...] = (
     ),
 )
 
+# ── Role-selection front page (v4 F4, ADR-0255) ────────────────────────────────────────────
+# Five audience roles, each a CURATED ENTRY POINT into pages that already exist. Selecting a
+# role is pure wayfinding: it reorders/emphasizes (a "Start here" strip on the home page, a
+# highlight on the role's chapters in the nav) and picks the post-upload landing page — it
+# NEVER hides a page, never changes a computation, a default parameter, or a number (Law 2:
+# every figure is identical under every role). The mapping is static, committed, and cited to
+# the spine's own pages; "Show everything" (no role) is byte-identical to the pre-F4 behavior.
+
+
+@dataclass(frozen=True)
+class _Role:
+    """One front-page audience role: a label, a one-line who-this-is-for, the post-upload
+    landing route (None = inherit the default upload destination), and the "Start here" cards
+    as (title, spine route, one-line why)."""
+
+    id: str
+    label: str
+    blurb: str
+    landing: str | None
+    cards: tuple[tuple[str, str, str], ...]
+
+
+_ROLES: tuple[_Role, ...] = (
+    _Role(
+        "scheduler",
+        "Scheduler / Planner",
+        "Builds and maintains the IMS — is the schedule sound enough to trust?",
+        "/ribbon",
+        (
+            ("Schedule Quality Ribbon", "/ribbon", "The Fuse-parity quality read at a glance."),
+            ("Schedule Integrity", "/integrity", "Logic, constraints, and structure health."),
+            ("Where we stand (DCMA-14)", "@analysis", "The full report with the DCMA-14 audit."),
+            ("Path Analysis", "/path", "What drives the finish, SSI-style."),
+            ("Groups & Filters", "/groups", "Scope every metric to the population you manage."),
+        ),
+    ),
+    _Role(
+        "pm",
+        "Program / Project Manager",
+        "Owns the decisions — margin, forecast, and the portfolio picture.",
+        "/portfolio",
+        (
+            ("Portfolio", "/portfolio", "Every project across the portfolio, at a glance."),
+            ("Mission Control", "/mission", "The whole session on one wall."),
+            ("Margin Dashboard", "/margin", "Burn-down, the Fig 5-30 band, and sufficiency."),
+            ("Forecast", "/forecast", "Every finish forecast side by side."),
+            ("Executive Briefing", "/briefing", "The cited story, ready to present."),
+        ),
+    ),
+    _Role(
+        "analyst",
+        "Forensic Analyst",
+        "Hunts manipulation — how the schedule moved and what changed it.",
+        None,  # inherit the default (the analysis report / dashboard) — today's behavior
+        (
+            ("Where we stand", "@analysis", "The full per-schedule forensic report."),
+            ("Trend", "/trend", "Every metric across every loaded version."),
+            ("Critical-Path Evolution", "/evolution", "Whether the path holds or thrashes."),
+            ("Bow Wave / CEI", "/cei", "Work pushed ahead of the data date."),
+            ("Compare", "/compare", "What changed between the two most recent versions."),
+        ),
+    ),
+    _Role(
+        "auditor",
+        "Auditor (DCMA / IG)",
+        "Checks compliance — the standards, the scorecards, the definitions.",
+        "/standards",
+        (
+            ("Standards & Execution Indices", "/standards", "SEM/SSI families, Fuse-validated."),
+            ("Schedule Quality Ribbon", "/ribbon", "DCMA-14 and the quality gates."),
+            ("Assessment Scorecards", "/scorecards", "The graded assessment rollup."),
+            ("Metric Dictionary", "/help", "Every metric's definition, formula, and source."),
+        ),
+    ),
+    _Role(
+        "counsel",
+        "Counsel / Testifying Expert",
+        "Builds the record — cited narrative, exhibits, and the delta story.",
+        "/briefing",
+        (
+            ("Executive Briefing", "/briefing", "The cited narrative, figure-gated."),
+            ("Diagnostic Brief", "/brief", "The engine's findings with citations."),
+            ("Compare", "/compare", "The version-to-version delta record."),
+            ("Path Analysis", "/path", "The driving chain behind the finish date."),
+        ),
+    ),
+)
+
+_ROLE_BY_ID: dict[str, _Role] = {r.id: r for r in _ROLES}
+
+
+def _role_strip(state: SessionState) -> str:
+    """The front-page "Who's analyzing today?" picker + the active role's Start-here strip
+    (v4 F4, ADR-0255). Emphasis only: everything stays reachable under every role, and the
+    "Show everything" pill (no role) reproduces the pre-F4 page exactly. Cards whose spine
+    route cannot resolve yet (``@analysis`` with nothing loaded) are skipped, not broken."""
+    active = _ROLE_BY_ID.get(state.role) if state.role else None
+
+    def _pill(rid: str, label: str, blurb: str, is_active: bool) -> str:
+        cls = "role-card active" if is_active else "role-card"
+        return (
+            f'<form method=post action="/role" class=roleform>'
+            f'<input type=hidden name=role value="{_e(rid)}">'
+            f'<button type=submit class="{cls}" aria-pressed={"true" if is_active else "false"} '
+            f'title="{_e(blurb)}">{_e(label)}</button></form>'
+        )
+
+    pills = "".join(_pill(r.id, r.label, r.blurb, active is r) for r in _ROLES)
+    pills += _pill("", "Show everything", "No role — the full console, unfiltered.", active is None)
+    strip = (
+        "<div class=panel><h2 data-no-i18n>Who&rsquo;s analyzing today?</h2>"
+        "<p class=muted>Pick a role to get a tailored <b>Start here</b> strip, highlighted "
+        "chapters in the nav, and a role-matched landing page after an import. Nothing is hidden "
+        "and no number changes &mdash; every page stays reachable under every role.</p>"
+        f"<div class=role-strip>{pills}</div>"
+    )
+    if active is None:
+        return strip + "</div>"
+    cards = ""
+    for title, route, why in active.cards:
+        href = _resolve_route(state, route)
+        if not href or (route == "@analysis" and not state.schedules):
+            continue  # unresolvable until a schedule is loaded — skipped, never a dead link
+        cards += (
+            f'<a class=start-card href="{href}"><b>{_e(title)}</b>'
+            f"<span class=muted>{_e(why)}</span></a>"
+        )
+    return (
+        strip
+        + f"<h3 data-no-i18n>Start here &mdash; {_e(active.label)}</h3>"
+        + f"<p class=muted>{_e(active.blurb)}</p>"
+        + f"<div class=start-strip>{cards}</div></div>"
+    )
+
+
 # Narrative order for the Continue footer + progress (Import → Mission Control → 01…12; Setup off-spine).
 _STORY_ORDER: tuple[_Chapter, ...] = tuple(
     ch for label, chapters in _SPINE for ch in chapters if label != "SETUP"
@@ -1967,6 +2114,13 @@ def _render_nav(state: SessionState) -> str:
         for code, name in i18n.LANGUAGES.items()
     )
 
+    # v4 F4 (ADR-0255): the active role's card routes get a nav HIGHLIGHT — emphasis only,
+    # every chapter stays rendered and reachable regardless of role.
+    role = _ROLE_BY_ID.get(state.role) if state.role else None
+    role_routes: frozenset[str] = (
+        frozenset(route for _t, route, _w in role.cards) if role else frozenset()
+    )
+
     def _chapter_link(ch: _Chapter) -> str:
         href = _resolve_route(state, ch.route) or "/"
         num = f"<span class=ch-num>{ch.num}</span>" if ch.num else ""
@@ -1978,8 +2132,13 @@ def _render_nav(state: SessionState) -> str:
                 beat_links.append(f'<a href="{r}">{_e(lbl)}</a>')
         if beat_links:
             beats = "<span class=nav-beats>" + "".join(beat_links) + "</span>"
+        hl = (
+            " role-hl"
+            if ch.route in role_routes or any(rt in role_routes for _lbl, rt in ch.beats)
+            else ""
+        )
         return (
-            f'<a class=nav-chapter href="{href}">{num}'
+            f'<a class="nav-chapter{hl}" href="{href}">{num}'
             f"<span class=ch-label>{_e(ch.label)}</span></a>{beats}"
         )
 
@@ -2444,6 +2603,7 @@ def create_app(
   schedule-quality&nbsp;&amp;&nbsp;schedule-risk metrics, driving-path and manipulation-trend analysis,
   and a cited AI narrative &mdash; nothing leaves this computer.</p>
 </section>
+{_role_strip(st)}
 <div class=panel>
   <div id=dropzone class=dropzone>
     <div class=dz-icon>&#8682;</div>
@@ -2617,8 +2777,17 @@ def create_app(
         st.flash = _Flash(accepted=tuple(accepted), errors=tuple(errors), notices=tuple(notices))
         # a single clean open jumps straight to its report (one file is unambiguous — a title-less
         # loose file's needs-attention flag can wait for /portfolio); but a folder ingest that also
-        # skipped non-schedule OR unreadable files goes to the dashboard so its manifest is seen
-        if len(accepted) == 1 and not errors and not ignored and not client_skipped:
+        # skipped non-schedule OR unreadable files goes to the dashboard so its manifest is seen.
+        # v4 F4 (ADR-0255): a CLEAN ingest lands on the active role's primary page when one is
+        # set (e.g. Auditor → /standards, PM → /portfolio); any errors/skips still land on the
+        # dashboard so the ingest manifest is always seen — disclosure outranks the role landing.
+        clean = bool(accepted) and not errors and not ignored and not client_skipped
+        role_landing = (
+            _ROLE_BY_ID[st.role].landing if st.role is not None and st.role in _ROLE_BY_ID else None
+        )
+        if clean and role_landing:
+            dest = role_landing
+        elif len(accepted) == 1 and clean:
             dest = f"/analysis/{quote(accepted[0])}"
         else:
             dest = "/"
@@ -6393,6 +6562,14 @@ def create_app(
         dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
 
+    @app.post("/role")
+    def set_role_route(role: str = Form("")) -> RedirectResponse:
+        """Set (or clear, via ``role=""``) the audience role (v4 F4, ADR-0255) — a curated entry
+        point only; fail-soft on an unknown id. Returns to the front page, where the Start-here
+        strip and nav highlight reflect the pick."""
+        session().set_role(role or None)
+        return RedirectResponse(url="/", status_code=303)
+
     @app.post("/language")
     def set_language(request: Request, lang: str = Form("en")) -> RedirectResponse:
         """Set the UI/AI display language (ADR-0099); returns to the page the user was on."""
@@ -6431,6 +6608,7 @@ def create_app(
             st.margin_band_dates = None  # drop the Fig 5-30 band phase dates (ADR-0254)
             st.margin_band_rates = FIG_5_30_DEFAULT_RATES
             st.margin_risk_pcts = (DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
+            st.role = None  # back to "Show everything" (ADR-0255)
             st.analyses.clear()
             st.summaries.clear()
             st.polished.clear()
