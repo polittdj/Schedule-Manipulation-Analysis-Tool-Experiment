@@ -1,4 +1,21 @@
-# Handoff — 2026-07-17 (PR-M2: the SEM engine family, Fuse-validated; v1.0.50; highest ADR 0238)
+# Handoff — 2026-07-17 (PR-R1: AI figure-gate hardening — translate gate, number-words, stems; v1.0.51; highest ADR 0239)
+
+> ## STATUS (current) — PR-R1 (ADR-0239): the three proven AI-gate bypasses are closed, fail-closed.
+>
+> - **H1:** `_ai_translate` (the ONE ungated `.generate()` emission) now discards any line failing
+>   `preserves_figures` — the source text is kept verbatim. **M4:** `figure_tokens` gains a bounded
+>   number-word lexicon ("twelve" ≡ "12"; "one" deliberately excluded — documented); one tokenizer
+>   feeds every gate. **M5:** loaded-terms guard adds accusation STEMS (fabricat-/mislead-/
+>   misrepresent-/doctored/rigged/gamed/cheat-/deceiv-); "manipulat-" absent by design (domain
+>   vocabulary; only INTRODUCED terms flag). Audit probes → adversarial regression tests.
+> - **State:** v1.0.50 → **1.0.51**; wheel + 9 installers lockstep; **ADR-0239**; gate green.
+> - **NEXT:** **PR-R2** (wire the dead Law-1 defenses: `configure_logging` + `assert_local_only` at
+>   startup + assertion test; air-gap test enumerates `app.routes`; state-docs guard pins the
+>   pyproject version) → **PR-R3** (margin-erosion single-basis fit; XER worked-weekend exceptions;
+>   egress-set additions; the 24h-calendar MPXJ golden — SSI pair updated3 32d ↔ updated4 18d) →
+>   PR-P1 perf → #13 XER calendars → F3c → roles.
+
+# (prior) Handoff — 2026-07-17 (PR-M2: the SEM engine family, Fuse-validated; v1.0.50; highest ADR 0238)
 
 > ## STATUS (current) — PR-M2 (ADR-0238): all ten Schedule Execution Metrics compute, verbatim from the pinned .aft formulas, validated cell-for-cell on BOTH golden pairs.
 >

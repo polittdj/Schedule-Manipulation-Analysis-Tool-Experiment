@@ -38,15 +38,40 @@ _FIGURE_RE = re.compile(r"-?\d+(?:\.\d+)?")
 _TOKEN_RE = re.compile(r"\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?)?|-?\d+(?:\.\d+)?")
 
 
+#: Bounded number-word lexicon (audit M4): a model spelling a count out ("Twelve activities")
+#: previously bypassed every figure gate (the tokenizer was digits-only). Each word tokenizes to
+#: its digit string, so "twelve" and "12" are the SAME evidence token — a legitimate rephrase
+#: ("12" -> "twelve") passes, an INTRODUCED spelled-out count fails, exactly like a digit.
+#: Deliberately bounded: single cardinal words two..ninety plus the scale words (and "zero");
+#: "one" is excluded — as a pronoun/article ("one of the tasks") it saturates ordinary prose and
+#: would force verbatim fallbacks on harmless rephrases, while a materially invented count of
+#: one is the least consequential possible figure. Compounds ("twenty-one") tokenize as their
+#: leading word ("20") — still a figure, still gated.
+_NUMBER_WORDS: dict[str, str] = {
+    "zero": "0", "two": "2", "three": "3", "four": "4", "five": "5", "six": "6",
+    "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11", "twelve": "12",
+    "thirteen": "13", "fourteen": "14", "fifteen": "15", "sixteen": "16", "seventeen": "17",
+    "eighteen": "18", "nineteen": "19", "twenty": "20", "thirty": "30", "forty": "40",
+    "fifty": "50", "sixty": "60", "seventy": "70", "eighty": "80", "ninety": "90",
+    "hundred": "100", "thousand": "1000", "million": "1000000", "billion": "1000000000",
+    "dozen": "12",
+}  # fmt: skip
+_NUMBER_WORD_RE = re.compile(
+    r"\b(" + "|".join(sorted(_NUMBER_WORDS, key=len, reverse=True)) + r")\b", re.IGNORECASE
+)
+
+
 def figure_tokens(text: str) -> list[str]:
     """The numeric-evidence tokens of ``text``, in order.
 
     ISO dates (and timestamps) are single whole tokens; every other number tokenizes exactly as
-    :data:`_FIGURE_RE` (sign-aware, audit M6). This is THE tokenizer for every figure gate —
+    :data:`_FIGURE_RE` (sign-aware, audit M6); spelled-out counts tokenize to their digit string
+    (:data:`_NUMBER_WORDS`, audit M4). This is THE tokenizer for every figure gate —
     ``preserves_figures``, the Ask-the-AI role gate, and the dual-model cross-check — so no gate
     can disagree with another about what counts as a figure.
     """
-    return _TOKEN_RE.findall(text)
+    normalized = _NUMBER_WORD_RE.sub(lambda m: f" {_NUMBER_WORDS[m.group(0).lower()]} ", text)
+    return _TOKEN_RE.findall(normalized)
 
 
 #: Accusatory / intent-attributing terms the engine never asserts. The engine reports *what*
@@ -87,7 +112,33 @@ _LOADED_TERMS = frozenset(
         "criminally",
     }
 )
-_WORD_RE = re.compile(r"[a-z]+")
+#: Accusation STEMS (audit M5): the exact-word denylist above is a treadmill — fabricated /
+#: doctored / misleading / gamed / rigged / cheated / misrepresented all slipped past it. A word
+#: is loaded when it IS a listed term or STARTS WITH one of these stems. Stems are chosen so no
+#: ordinary schedule-forensics word matches ("doctor"/"rig"/"game" alone stay legal; only their
+#: past/gerund accusation forms match). "manipulat-" is deliberately absent: manipulation is this
+#: tool's own domain vocabulary, present throughout engine prose, and only *introduced* terms are
+#: ever flagged.
+_LOADED_STEMS: tuple[str, ...] = (
+    "fabricat",
+    "mislead",
+    "misled",
+    "misrepresent",
+    "doctored",
+    "doctoring",
+    "rigged",
+    "rigging",
+    "gamed",
+    "cheat",
+    "deceiv",
+    "cover-up",
+    "coverup",
+)
+_WORD_RE = re.compile(r"[a-z]+(?:-[a-z]+)?")
+
+
+def _is_loaded(word: str) -> bool:
+    return word in _LOADED_TERMS or any(word.startswith(stem) for stem in _LOADED_STEMS)
 
 
 def introduces_loaded_terms(source: str, candidate: str) -> bool:
@@ -98,8 +149,7 @@ def introduces_loaded_terms(source: str, candidate: str) -> bool:
     """
     src_words = set(_WORD_RE.findall(source.lower()))
     return any(
-        word in _LOADED_TERMS and word not in src_words
-        for word in _WORD_RE.findall(candidate.lower())
+        _is_loaded(word) and word not in src_words for word in _WORD_RE.findall(candidate.lower())
     )
 
 

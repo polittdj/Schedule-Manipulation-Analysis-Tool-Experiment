@@ -52,7 +52,7 @@ from schedule_forensics.ai.briefing import (
     briefing_blocks,
     build_briefing,
 )
-from schedule_forensics.ai.citations import CitedStatement, Narrative
+from schedule_forensics.ai.citations import CitedStatement, Narrative, preserves_figures
 from schedule_forensics.ai.driving_facts import driving_path_facts, driving_path_summary
 from schedule_forensics.ai.narrative import build_narrative, clean_polish, polish_prompt
 from schedule_forensics.ai.ollama_process import OllamaLauncher
@@ -1173,7 +1173,14 @@ def _ai_translate(texts: list[str], lang: str, backend: AIBackend) -> dict[str, 
     for line in raw.splitlines():
         num, sep, es = line.partition("\t")
         if sep and num.strip().isdigit() and int(num.strip()) < len(texts) and es.strip():
-            out[texts[int(num.strip())]] = es.strip()
+            source = texts[int(num.strip())]
+            # Law 2 (audit H1): a translation that drops, invents, or alters ANY numeric figure
+            # of its source line is discarded — the caller then keeps the source text verbatim.
+            # This was the one AI emission without a figure gate; now every .generate() output
+            # that reaches the operator passes the same preserves_figures check.
+            if not preserves_figures(source, es.strip()):
+                continue
+            out[source] = es.strip()
     return out
 
 
