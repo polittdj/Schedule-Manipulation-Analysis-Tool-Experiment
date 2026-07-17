@@ -99,6 +99,11 @@ class MarginMonth:
     #: distinct from effective margin (the buffer actually on the driving chain). The two differ
     #: when margin sits on a path with slack; both are shown so the operator sees the gap.
     total_margin_wd: float = 0.0
+    #: Working minutes per day used to convert this version's margin minutes -> work days. The
+    #: erosion trend is only meaningful across versions that SHARE this basis: a project whose
+    #: calendar changed (e.g. 480-min Standard -> 1440-min 24-hour) expresses "work days" in two
+    #: different units, so fitting one slope through both would conflate them (PR-R3).
+    basis_wmpd: int = 480
 
     @property
     def consumed_wd(self) -> float | None:
@@ -135,6 +140,14 @@ class MarginDashboard:
     erosion_wd_per_month: float | None  # work days of margin lost per month (>0 = eroding)
     zero_margin_date: str | None  # projected date effective margin hits 0 (ISO), if eroding
     erosion_r2: float | None  # fit quality (disclosed), None when < 2 dated points
+    #: The single work-day basis (working minutes/day) the erosion trend is expressed in, or
+    #: None when the fit was suppressed. The UI states the unit ("work days" is basis-relative).
+    erosion_basis_wmpd: int | None = None
+    #: The DISTINCT margin bases (working minutes/day) across the dated versions when they do NOT
+    #: agree. Non-empty means the erosion fit is SUPPRESSED (its three fields are None): a single
+    #: slope through mixed bases would be a fabricated number (Law 2), so the tool discloses the
+    #: basis change instead. Empty when the basis is consistent (the normal case).
+    erosion_mixed_basis: tuple[int, ...] = ()
 
 
 def _margin_month(
@@ -205,6 +218,7 @@ def _margin_month(
         pct_effective=pct_effective,
         below_requirement=status is not None and effective_margin_wd < nasa_rqmt_wd,
         total_margin_wd=total_margin_wd,
+        basis_wmpd=int(wmpd),
     )
 
 
@@ -281,11 +295,26 @@ def compute_margin_dashboard(
         have_margin = any(
             is_margin_task(t) for _label, sch, _cpm in versions for t in non_summary(sch)
         )
-    erosion_pm, zero_date, r2 = _erosion(months)
+    # The erosion fit is only meaningful when every dated version expresses margin in the SAME
+    # work-day basis. If the project's calendar changed across versions (e.g. 480-min Standard ->
+    # 1440-min 24-hour), the "work days" axis means two different things and a single slope would
+    # conflate them — suppress the fit and disclose the distinct bases instead (Law 2). Consistent
+    # basis is the normal case and behaves exactly as before.
+    dated_bases = sorted({m.basis_wmpd for m in months if m.status_date is not None})
+    if len(dated_bases) > 1:
+        erosion_pm, zero_date, r2 = None, None, None
+        mixed_basis = tuple(dated_bases)
+        basis = None
+    else:
+        erosion_pm, zero_date, r2 = _erosion(months)
+        mixed_basis = ()
+        basis = dated_bases[0] if dated_bases else None
     return MarginDashboard(
         months=months,
         have_margin_tasks=have_margin,
         erosion_wd_per_month=erosion_pm,
         zero_margin_date=zero_date,
         erosion_r2=r2,
+        erosion_basis_wmpd=basis,
+        erosion_mixed_basis=mixed_basis,
     )

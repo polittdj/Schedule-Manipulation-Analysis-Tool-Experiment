@@ -603,9 +603,10 @@ def _project_calendar(tables: Tables, project: Row) -> Calendar:
     weekdays: set[int] = set()
     day_totals: list[int] = []
     holidays: set[dt.date] = set()
+    worked: set[dt.date] = set()
     while cursor is not None and (_g(cursor, "clndr_id") or "") not in seen:
         seen.add(_g(cursor, "clndr_id") or "")
-        weekdays, day_totals, holidays = _parse_clndr_data(cursor.get("clndr_data") or "")
+        weekdays, day_totals, holidays, worked = _parse_clndr_data(cursor.get("clndr_data") or "")
         if weekdays:
             break
         base_id = _g(cursor, "base_clndr_id")
@@ -628,18 +629,26 @@ def _project_calendar(tables: Tables, project: Row) -> Calendar:
         work_weekdays=tuple(sorted(weekdays)),
         # a weekend holiday is a no-op for the engine; keep the model lean
         holidays=tuple(sorted(h for h in holidays if h.weekday() in weekdays)),
+        # worked-weekend exceptions: a working-time exception on a normally-non-working weekday
+        # (an extra working day, MSPDI DayWorking=1 analogue). A working-time exception ON a
+        # working weekday is only a changed-hours day — outside the single-block model — so drop it.
+        working_days=tuple(sorted(d for d in worked if d.weekday() not in weekdays)),
     )
 
 
-def _parse_clndr_data(data: str) -> tuple[set[int], list[int], set[dt.date]]:
-    """P6's packed ``clndr_data`` → (work weekdays, per-day minute totals, holidays).
+def _parse_clndr_data(data: str) -> tuple[set[int], list[int], set[dt.date], set[dt.date]]:
+    """P6's packed ``clndr_data`` → (work weekdays, per-day minute totals, holidays, worked days).
 
     The format is a nested ``(0||key(params)(children))`` token tree; rather than a
     full grammar, anchored patterns read it positionally: day nodes ``(0||<1-7>()``
     own the ``s|HH:MM|f|HH:MM`` spans up to the next day node, and ``Exceptions``
-    entries ``(0||N(d|<serial>)`` with **no** working span are full days off
-    (holidays; a span means changed hours — outside the single-block model, skipped).
-    Tolerant by construction: anything unrecognized contributes nothing.
+    entries ``(0||N(d|<serial>)`` are per-date overrides — with **no** working span they
+    are full days off (holidays); **with** a working span they are working-time exceptions.
+    A working-time exception on a normally-NON-working weekday is a **worked weekend** (an
+    extra working day, P6's analogue of MSPDI ``DayWorking=1``); on a normally-working
+    weekday it is only a changed-hours day, outside the single-block model, so the caller
+    keeps just the worked-weekend ones. Tolerant by construction: anything unrecognized
+    contributes nothing.
     """
     exceptions_at = data.find("Exceptions")
     day_part = data if exceptions_at < 0 else data[:exceptions_at]
@@ -659,17 +668,21 @@ def _parse_clndr_data(data: str) -> tuple[set[int], list[int], set[dt.date]]:
         day_totals.append(minutes)
 
     holidays: set[dt.date] = set()
+    worked: set[dt.date] = set()
     exception_marks = list(_CLNDR_EXCEPTION_RE.finditer(exception_part))
     for i, mark in enumerate(exception_marks):
         end = (
             exception_marks[i + 1].start() if i + 1 < len(exception_marks) else len(exception_part)
         )
-        if _CLNDR_SPAN_RE.search(exception_part[mark.end() : end]):
-            continue  # changed working hours, not a day off
+        has_span = _CLNDR_SPAN_RE.search(exception_part[mark.end() : end]) is not None
         day = excel_serial_to_date(int(mark.group(1)))
-        if day is not None:
-            holidays.add(day)
-    return weekdays, day_totals, holidays
+        if day is None:
+            continue
+        if has_span:
+            worked.add(day)  # a working-time exception — a worked day (filtered by the caller)
+        else:
+            holidays.add(day)  # no working span — a full day off
+    return weekdays, day_totals, holidays, worked
 
 
 # --- resources & assignments ------------------------------------------------------

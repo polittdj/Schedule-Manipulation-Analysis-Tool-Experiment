@@ -866,6 +866,45 @@ def test_project_calendar_from_clndr_data() -> None:
     assert cal.working_minutes_per_day == 600
     assert cal.work_weekdays == (0, 1, 2, 3)  # Mon-Thu
     assert cal.holidays == (dt.date(2025, 7, 14),)  # the changed-hours day is NOT one
+    # the changed-hours exception fell on a WORKING weekday (Tue) — not a worked-weekend
+    assert cal.working_days == ()
+
+
+def test_project_calendar_reads_a_worked_weekend_exception() -> None:
+    # PR-R3: a P6 working-time exception on a normally-NON-working weekday is an extra working
+    # day (a worked Saturday, MSPDI DayWorking=1 analogue) — it must reach Calendar.working_days,
+    # not be silently dropped like a changed-hours exception on a working day.
+    worked_sat = dt.date(2025, 7, 19)  # a Saturday
+    off_monday = dt.date(2025, 7, 14)  # a full day off, for contrast
+
+    def serial(d: dt.date) -> int:
+        return (d - dt.date(1899, 12, 30)).days
+
+    data = _clndr_data(_FOUR_TENS, [(serial(off_monday), ""), (serial(worked_sat), "08:00-16:00")])
+    text = _xer(
+        [
+            (
+                "PROJECT",
+                ["proj_id", "proj_short_name", "plan_start_date", "clndr_id"],
+                [["1", "P1", "2025-01-06 08:00", "100"]],
+            ),
+            (
+                "CALENDAR",
+                ["clndr_id", "default_flag", "clndr_name", "day_hr_cnt", "clndr_data"],
+                [["100", "Y", "4x10+Sat", "10", data]],
+            ),
+            (
+                "TASK",
+                ["task_id", "proj_id", "task_name", "task_type", "target_drtn_hr_cnt"],
+                [["1", "1", "A", "TT_Task", "10"]],
+            ),
+        ]
+    )
+    cal = parse_xer_text(text).calendar
+    assert cal.work_weekdays == (0, 1, 2, 3)  # Sat is NOT a standing work weekday
+    assert cal.holidays == (off_monday,)
+    assert cal.working_days == (worked_sat,)  # the worked Saturday is the extra working day
+    assert cal.is_worked(worked_sat) and not cal.is_working_day(worked_sat)
 
 
 def test_project_calendar_reads_a_24_hour_day_from_clndr_data() -> None:

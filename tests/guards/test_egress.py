@@ -20,6 +20,30 @@ def test_no_cloud_sdks_importable() -> None:
     assert net_guard.importable_cloud_sdks() == set()
 
 
+def test_modern_llm_and_telemetry_sdks_are_forbidden() -> None:
+    # PR-R3 (audit L4): the forbidden-distribution set covers the 2024-2026 LLM clients,
+    # gateways, and phone-home telemetry SDKs, not just the first-wave provider SDKs. A
+    # regression that dropped one would silently reopen an egress path in a future pyproject.
+    dists = net_guard.FORBIDDEN_RUNTIME_DISTRIBUTIONS
+    for name in (
+        "google-genai",
+        "groq",
+        "together",
+        "litellm",
+        "langchain",
+        "ollama",
+        "sentry-sdk",
+        "posthog",
+        "datadog",
+        "ddtrace",
+        "opentelemetry-sdk",
+    ):
+        assert name in dists, name
+    # The import-check set only carries modules that can never be a toolchain transitive dep.
+    for name in ("groq", "together", "litellm", "langchain", "google.genai", "sentry_sdk"):
+        assert name in net_guard.FORBIDDEN_CLOUD_MODULES, name
+
+
 def test_assert_local_only_passes_in_clean_runtime() -> None:
     net_guard.assert_local_only()  # must not raise
 
