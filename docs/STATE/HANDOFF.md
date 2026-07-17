@@ -1,4 +1,21 @@
-# Handoff — 2026-07-16 (#10 PR-D: /groups saved-views UI — pickers, prompts, highlight; v1.0.47; highest ADR 0235)
+# Handoff — 2026-07-16 (PR-U1: operator UI — Gantt filter fix, find-by-name, file switcher; v1.0.48; highest ADR 0236)
+
+> ## STATUS (current) — PR-U1 (ADR-0236): the operator's three UI directives are live.
+>
+> - **Gantt filter buttons fixed:** root cause was checklist.js's capture-phase scroll/resize close
+>   handler racing the popup open (freeze/sticky layers + search focus fire scroll in the same
+>   beat) — NOT wiring, NOT CSP. Fix: 400ms grace window + focus({preventScroll}). Chromium-proven.
+> - **Find-by-name on every Gantt:** shared `SFGantt.findTask` — integer = UID jump, any text =
+>   case-insensitive substring; marks ALL matches (`row-found`), scrolls to first, reports count.
+>   gridFind/pathFind/dpFind now free-text "UID or name…" (/evolution already had name search).
+> - **"Where We Stand" file switcher:** `_page(focus_file=)` → per-file banner "This page shows ONE
+>   file … switch file: <select>" on /analysis; cross-version pages keep the aggregate wording
+>   (they compare via animation by design). Idiom ready for other per-file pages.
+> - **State:** v1.0.47 → **1.0.48**; wheel + 9 installers lockstep; **ADR-0236**; gate green.
+> - **NEXT:** PR-M1 `/standards` + PR-M2 SEM engine (verbatim corpus goldens: P2/P5 + Large Test
+>   File/File2) → PR-R1/R2/R3 remediation → PR-P1 perf → #13 XER calendars → F3c → roles.
+
+# (prior) Handoff — 2026-07-16 (#10 PR-D: /groups saved-views UI — pickers, prompts, highlight; v1.0.47; highest ADR 0235)
 
 > ## STATUS (current) — #10 PR-D (ADR-0235): feature #10 is OPERATOR-COMPLETE — saved filters/groups are pickable, interactive prompts collect typed answers, highlight mode marks the Path grid, and the banner tells the truth about reach.
 >

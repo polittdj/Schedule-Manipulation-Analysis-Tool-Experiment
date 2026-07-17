@@ -163,7 +163,11 @@ def test_main_grid_has_msproject_find_outline_and_bar_dates(client: TestClient) 
     for cid in ("id=gridFind", "id=gridOutline", "id=gridBarDates"):
         assert cid in page, cid
     js = client.get("/static/app.js").text
-    assert "function findUid" in js and "scrollIntoView" in js  # snap to the UID's row
+    # Find routes through the SHARED SFGantt.findTask (PR-U1): UID jump or name-substring
+    # mark-all; the snap-to-row scrollIntoView lives in the shared helper now.
+    assert "function findUid" in js and "SFGantt.findTask(" in js
+    gantt_js = client.get("/static/gantt.js").text
+    assert "function findTask" in gantt_js and "scrollIntoView" in gantt_js
     assert "function populateOutline" in js and "maxOutline" in js  # outline-level picker
     assert "barDates" in js and "SFGantt.fmtMDY(" in js  # dates on the bars (MM/DD/YYYY)
     assert 'tr.setAttribute("data-uid"' in js  # rows carry their UID for Find

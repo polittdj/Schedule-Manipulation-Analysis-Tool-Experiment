@@ -1508,7 +1508,7 @@ def _page_explainer(title: str) -> str:
     return _explain(*entry)
 
 
-def _global_sources_banner(state: SessionState) -> str:
+def _global_sources_banner(state: SessionState, focus_key: str | None = None) -> str:
     """The ALWAYS-ON provenance banner every page carries (operator 2026-07-10: "NO MATTER
     WHAT ... I want them to see clearly what file it is being pulled from"): the loaded
     file(s), oldest first, under the page header. Single-file pages and per-visual captions
@@ -1520,6 +1520,26 @@ def _global_sources_banner(state: SessionState) -> str:
     if not schedules:
         return ""
     names = [_e(s.source_file or s.name) for s in schedules]
+    # a per-file page (e.g. /analysis — "Where We Stand") names ITS file and offers a switcher
+    # instead of implying the numbers mix all loaded files (operator 2026-07-16)
+    if focus_key is not None:
+        pairs = state.ordered_versions()
+        cur = dict(pairs).get(focus_key)
+        cur_name = _e((cur.source_file or cur.name) if cur is not None else focus_key)
+        if len(pairs) <= 1:
+            inner = f"All data on this page is computed from: <b>{cur_name}</b>"
+        else:
+            opts = "".join(
+                f'<option value="/analysis/{quote(k, safe="")}"'
+                f"{' selected' if k == focus_key else ''}>{_e(s.source_file or s.name)}</option>"
+                for k, s in pairs
+            )
+            inner = (
+                f"This page shows ONE file: <b>{cur_name}</b> &mdash; switch file: "
+                f'<select onchange="location.href=this.value" data-no-i18n>{opts}</select> '
+                "(versions are compared on the Trend / Compare / Evolution pages, never mixed here)"
+            )
+        return f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
     if len(names) == 1:
         inner = f"All data on this page is computed from: <b>{names[0]}</b>"
     else:
@@ -1923,6 +1943,7 @@ def _page(
     status_code: int = 200,
     ask_schedule: str | None = None,
     chapter: _Chapter | None = None,
+    focus_file: str | None = None,
 ) -> HTMLResponse:
     lang = i18n.normalize(state.language)
     # NASA CUI page-marking (top + bottom banner on every page). Default CLASSIFIED → mark CUI;
@@ -1952,7 +1973,7 @@ def _page(
                 body=(
                     _filter_banner(state)
                     + _endpoint_banner(state)
-                    + _global_sources_banner(state)
+                    + _global_sources_banner(state, focus_file)
                     + _chapter_kicker(title, chapter)
                     + _page_explainer(title)
                     + body
@@ -2501,6 +2522,7 @@ def create_app(
             chapter=_CHAPTER_BY_NUM.get(
                 "01"
             ),  # "Where we stand" (dynamic title → explicit chapter)
+            focus_file=name,
         )
 
     @app.get("/card/{name}", response_class=HTMLResponse)
@@ -6399,7 +6421,7 @@ a <b>*</b> marks the successor that keeps the chain on the driving path.</p></de
 <label><input id=pathHideDone type=checkbox> hide 100% complete</label>
 <label>Tier <span id=pathTier class=tier-filter></span></label>
 <label>Filter <input id=pathFilter type=text placeholder="name / UID contains"></label>
-<label>Find UID <input id=pathFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the traced grid"></label>
+<label>Find <input id=pathFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every traced task whose row contains this text"></label>
 <span id=pathFindStatus class=muted aria-live=polite></span>
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=pathBarDates type=checkbox> dates on bars</label>
 <label>Zoom <input id=pathZoom type=range min=2 max=40 value=8 title="pixels per day"></label>
@@ -8434,7 +8456,7 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label>Scale <input id=vizZoom type=range min=0.2 max=40 step=0.05 value=8 title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
 <button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
-<label>Find UID <input id=gridFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<label>Find <input id=gridFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every task whose row contains this text"></label>
 <span id=gridFindStatus class=muted aria-live=polite></span>
 <label>Outline <select id=gridOutline title="Show tasks up to this outline level (like MS Project)"></select></label>
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=gridBarDates type=checkbox> dates on bars</label></div>
@@ -13201,7 +13223,7 @@ visibly shifts as the schedule slips. Step or play through the versions; activit
 <button id=dpZoomOut type=button title="zoom out">&minus;</button>
 <button id=dpZoomIn type=button title="zoom in">&plus;</button>
 <button id=dpFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
-<label>Find UID <input id=dpFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in this version's corridor"></label>
+<label>Find <input id=dpFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every corridor task whose row contains this text"></label>
 <span id=dpFindStatus class=muted aria-live=polite></span>
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=dpBarDates type=checkbox> dates on bars</label>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>

@@ -674,19 +674,10 @@
   // MS-Project "dates on bars" (parity with the Activities Gantt — ADR-0186)
   if ($("pathBarDates")) $("pathBarDates").addEventListener("change", function () { if (data) paintRows(); });
   // MS-Project Find: jump the traced grid to a UniqueID, scroll it into view and flash it
-  function findUid(uid) {
-    var status = $("pathFindStatus");
-    if (!uid) return;
-    var row = view.querySelector('tr[data-uid="' + uid + '"]');
-    if (!row) { if (status) status.textContent = "UID " + uid + " not in view"; return; }
-    if (status) status.textContent = "";
-    row.scrollIntoView({ block: "center", behavior: "smooth" });
-    view.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
-    row.classList.add("row-found");
-  }
+  function findUid(q) { SFGantt.findTask(view, q, $("pathFindStatus")); }
   var pathFind = $("pathFind");
   if (pathFind) {
-    var goFind = function () { findUid(parseInt(pathFind.value, 10)); };
+    var goFind = function () { findUid(pathFind.value); };
     pathFind.addEventListener("change", goFind);
     pathFind.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
   }

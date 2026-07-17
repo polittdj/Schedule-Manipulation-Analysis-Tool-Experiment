@@ -6271,3 +6271,15 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.46 → **1.0.47**; wheel + 9 installers lockstep; **ADR-0235**; HANDOFF refreshed.
 - **NEXT:** PR-U1 (operator UI directives) → PR-M1/M2 (/standards + SEM engine) → PR-R1/R2/R3 →
   PR-P1 → #13 → F3c → roles.
+---
+
+## 2026-07-16 — PR-U1: operator UI directives — Gantt filter fix, find-by-name, file switcher (ADR-0236)
+
+- **Filter buttons:** scout audit disproved the wiring/CSP theories; real cause = checklist.js
+  capture-phase scroll/resize close racing the popup open on Gantts. Grace window +
+  focus({preventScroll}); Chromium-verified (popup stays open, filters apply).
+- **Find:** shared `SFGantt.findTask` (UID jump or name-substring mark-all + count) wired into
+  gridFind/pathFind/dpFind; inputs now "UID or name…".
+- **File switcher:** `_page(focus_file=)` per-file banner + switch <select> on /analysis ("Where We
+  Stand"); cross-version pages keep honest aggregate wording. v1.0.47 → **1.0.48**; **ADR-0236**.
+- **NEXT:** PR-M1/M2 (/standards + SEM) → PR-R1/R2/R3 → PR-P1 → #13 → F3c → roles.

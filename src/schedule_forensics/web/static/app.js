@@ -864,20 +864,9 @@
       .catch(() => { document.getElementById("gantt").textContent = "No driving path for that UID."; });
   }
 
-  // MS-Project "find" — jump the grid to a UniqueID, scroll it into view and flash it.
-  function findUid(uid) {
-    const grid = document.getElementById("grid");
-    const status = document.getElementById("gridFindStatus");
-    if (!grid || !uid) return;
-    const row = grid.querySelector('tr[data-uid="' + uid + '"]');
-    if (!row) {
-      if (status) status.textContent = "UID " + uid + " not in view";
-      return;
-    }
-    if (status) status.textContent = "";
-    row.scrollIntoView({ block: "center", behavior: "smooth" });
-    grid.querySelectorAll("tr.row-found").forEach((r) => r.classList.remove("row-found"));
-    row.classList.add("row-found");
+  // MS-Project "find" — UID or name substring; shared marker (SFGantt.findTask).
+  function findUid(q) {
+    SFGantt.findTask(document.getElementById("grid"), q, document.getElementById("gridFindStatus"));
   }
 
   // Fill the MS-Project "show outline level" picker from the actual depth of the loaded plan.
@@ -980,7 +969,7 @@
   // MS-Project Find: jump to a UniqueID; Outline level: collapse to a depth; Dates on bars toggle
   const gridFind = document.getElementById("gridFind");
   if (gridFind) {
-    const go = () => findUid(parseInt(gridFind.value, 10));
+    const go = () => findUid(gridFind.value);
     gridFind.addEventListener("change", go);
     gridFind.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
   }
