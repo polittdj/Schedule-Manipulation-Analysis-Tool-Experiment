@@ -6283,3 +6283,15 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **File switcher:** `_page(focus_file=)` per-file banner + switch <select> on /analysis ("Where We
   Stand"); cross-version pages keep honest aggregate wording. v1.0.47 → **1.0.48**; **ADR-0236**.
 - **NEXT:** PR-M1/M2 (/standards + SEM) → PR-R1/R2/R3 → PR-P1 → #13 → F3c → roles.
+---
+
+## 2026-07-17 — PR-M1: /standards Standards & Execution Indices page (ADR-0237)
+
+- New SETUP page `/standards`: DCMA-14 + NASA/Acumen-Fuse indices + the Bible SEM family, one
+  formula-first row per metric (Value/Status/Threshold/verbatim Formula/Source from help.py).
+  Presentation-only re-projection of parity-validated engine calls; the 9 unbuilt SEM rows read
+  "—" ("not built — PR-M2"), never a fabricated number. Latest-file basis stated; CEI announces
+  when it needs a prior version. 5 new tests; 4-theme Chromium verified.
+- **State:** v1.0.48 → **1.0.49**; wheel + 9 installers lockstep; **ADR-0237**; HANDOFF refreshed.
+- **NEXT:** PR-M2 (engine/metrics/sem.py + MetricDocs + AUDIT pins + SEM parity goldens + the
+  /standards export) → PR-R1/R2/R3 → PR-P1 → #13 → F3c → roles.
