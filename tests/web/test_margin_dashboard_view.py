@@ -11,9 +11,11 @@ import datetime as dt
 
 from fastapi.testclient import TestClient
 
+from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
+from schedule_forensics.reports.xlsx_read import read_xlsx
 from schedule_forensics.web.app import SessionState, create_app
 
 DAY = 480
@@ -141,3 +143,65 @@ def test_margin_page_empty_state_without_schedules() -> None:
     page = TestClient(create_app(SessionState())).get("/margin")
     assert page.status_code == 200
     assert "Load one or more" in page.text
+
+
+def _version_cal(status: str, margin_days: float, wmpd: int) -> Schedule:
+    """A version whose calendar uses ``wmpd`` working minutes/day — a 1440 (24-hour) day changes the
+    work-day BASIS the margin is expressed in vs an 8h (480) day."""
+    weekdays = tuple(range(7)) if wmpd >= 1440 else (0, 1, 2, 3, 4)
+    return Schedule(
+        name=status,
+        source_file=f"{status}.mpp",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        status_date=dt.datetime.fromisoformat(status),
+        calendar=Calendar(working_minutes_per_day=wmpd, work_weekdays=weekdays),
+        tasks=(
+            _t(1, "Work", 500),
+            Task(
+                unique_id=2,
+                name="Schedule MARGIN: pre-delivery",
+                duration_minutes=int(margin_days * wmpd),
+            ),
+            _t(3, "Deliver SV1", 0, is_milestone=True),
+        ),
+        relationships=(_r(1, 2), _r(2, 3)),
+    )
+
+
+def test_margin_view_and_export_disclose_mixed_basis_and_suppress_erosion() -> None:
+    """Audit (ADR-0247): PR-R3 suppresses the erosion fit and discloses the basis change in the
+    ENGINE (tested in tests/engine/test_margin_dashboard.py), but the VIEW takeaway and the EXCEL
+    export row that surface it to the analyst were untested. An 8h→24h basis change must render the
+    disclosure prose on /margin and export a 'mixed — 8h/day vs 24h/day' basis row with '—' (never a
+    fabricated erosion rate, Law 2)."""
+    st = SessionState()
+    for v in (_version_cal("2026-02-27", 40, 480), _version_cal("2026-03-31", 30, 1440)):
+        st.schedules[v.source_file] = v
+    st.target_uid = DELIVER_UID
+    c = TestClient(create_app(st))
+
+    # 1. the API confirms the engine suppressed the fit and flagged the mixed basis
+    d = c.get("/api/margin/dashboard").json()
+    assert d["erosion_wd_per_month"] is None and d["zero_margin_date"] is None
+    assert d["erosion_mixed_basis"] == [480, 1440]
+
+    # 2. the on-screen takeaway DISCLOSES it (not a silent blank)
+    body = c.get("/margin").text
+    assert "not shown" in body
+    assert "different work-day bases" in body
+    assert "8h/day vs 24h/day" in body
+
+    # 3. the Excel export states the mixed basis and suppresses the erosion cell with '—' (not 0)
+    x = c.get("/export/xlsx/margin")
+    assert x.status_code == 200
+    sheets = read_xlsx(x.content)
+    cells = [cell for sheet in sheets.values() for row in sheet for cell in row]
+    assert "mixed — 8h/day vs 24h/day" in cells  # the "Work-day basis" value
+    erosion_rows = [
+        row
+        for sheet in sheets.values()
+        for row in sheet
+        if row and row[0] == "Erosion (work days / month)"
+    ]
+    assert erosion_rows and erosion_rows[0][1] == "—"  # suppression dash, not a fabricated number
+    assert c.get("/export/docx/margin").status_code == 200

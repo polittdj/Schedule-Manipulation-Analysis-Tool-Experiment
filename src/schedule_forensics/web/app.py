@@ -5679,8 +5679,17 @@ def create_app(
             st.sra_import_msg = "Load a schedule before importing a risk register."
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
+        # cap the COMPRESSED upload (parity with /upload's 500 MB per-file limit) before read_xlsx,
+        # whose own decompression cap then guards against a zip bomb (small file, huge inflation).
+        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
+        if len(data) > _MAX_UPLOAD_BYTES:
+            st.sra_import_msg = (
+                f"Risk register not imported — file exceeds the "
+                f"{_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
+            )
+            return RedirectResponse(url="/sra", status_code=303)
         try:
-            sheets = read_xlsx(file.file.read())
+            sheets = read_xlsx(data)
         except XlsxError as exc:
             st.sra_import_msg = f"Could not read that file: {exc}"
             return RedirectResponse(url="/sra", status_code=303)
@@ -5704,8 +5713,17 @@ def create_app(
             st.sra_import_msg = "Load a schedule before importing task risk inputs."
             return RedirectResponse(url="/sra", status_code=303)
         _key, sch, _cpm = chosen
+        # cap the COMPRESSED upload (parity with /upload's 500 MB per-file limit) before read_xlsx,
+        # whose own decompression cap then guards against a zip bomb (small file, huge inflation).
+        data = file.file.read(_MAX_UPLOAD_BYTES + 1)
+        if len(data) > _MAX_UPLOAD_BYTES:
+            st.sra_import_msg = (
+                f"Task risk inputs not imported — file exceeds the "
+                f"{_MAX_UPLOAD_BYTES // (1024 * 1024)} MB cap."
+            )
+            return RedirectResponse(url="/sra", status_code=303)
         try:
-            sheets = read_xlsx(file.file.read())
+            sheets = read_xlsx(data)
         except XlsxError as exc:
             st.sra_import_msg = f"Could not read that file: {exc}"
             return RedirectResponse(url="/sra", status_code=303)
@@ -12933,14 +12951,39 @@ def _driving_path_gantt(
     flag vs the prior version) so the JS can draw the bars on a date axis held fixed across every
     version, the corridor visibly shifting as the schedule slips."""
     version_data: list[dict[str, object]] = []
+    # Union of every calendar across all versions (name -> shading def), so the page can register
+    # them once with SFTimescale.setCalendars and resolve each row's per-task calendar name (#382
+    # shipped the JS read `a.calendar` but the server never emitted the field or the registry, so
+    # the corridor fell back to a flat project-calendar shade — audit ADR-0247 completes the wiring).
+    calendars: dict[str, dict[str, object]] = {}
     for sch, cpm, snap in zip(schedules, cpms, evo.snapshots, strict=True):
         basis_start, basis_finish = date_basis(sch, cpm)
         by_id = sch.tasks_by_id
         entered = set(snap.entered)
+        # each task's GOVERNING calendar name (ADR-0243), matching the /analysis grid's resolution:
+        # the task's own calendar_uid -> its registered name, else the project calendar (MSP inherit).
+        cal_name_by_uid = {c.uid: c.name for c in sch.calendars}
+        proj_cal_name = sch.calendar.name
+        for cal in (sch.calendar, *sch.calendars):
+            if cal is not None and cal.name:
+                calendars.setdefault(
+                    cal.name,
+                    {
+                        "name": cal.name,
+                        "work_weekdays": list(cal.work_weekdays),
+                        "holidays": [d.isoformat() for d in cal.holidays],
+                    },
+                )
         acts: list[dict[str, object]] = []
         for uid, name in zip(snap.between.path, snap.names, strict=True):
             start, finish = _task_iso_dates(sch, basis_start, basis_finish, uid)
             task = by_id.get(uid)
+            cal_name: str | None = None
+            if task is not None:
+                cuid = task.calendar_uid
+                cal_name = (
+                    cal_name_by_uid.get(cuid, proj_cal_name) if cuid is not None else proj_cal_name
+                )
             acts.append(
                 {
                     "uid": uid,
@@ -12949,6 +12992,7 @@ def _driving_path_gantt(
                     "finish": finish,
                     "is_milestone": task.is_milestone if task is not None else False,
                     "entered": uid in entered,
+                    "calendar": cal_name,
                 }
             )
         version_data.append(
@@ -12967,6 +13011,7 @@ def _driving_path_gantt(
         "source_name": a_name,
         "target_name": b_name,
         "versions": version_data,
+        "calendars": list(calendars.values()),
     }
 
 

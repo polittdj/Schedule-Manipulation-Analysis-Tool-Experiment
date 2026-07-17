@@ -6562,3 +6562,39 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** the five queued ADR-0245 audit items (driving-path per-task shading + node harness;
   `/margin` mixed-basis test; SRA-xlsx zip-bomb cap; `redact()` spaced-UNC leak) → PR-P1 perf →
   #13 XER calendars → #26 disclosure → F3c → roles.
+
+---
+
+## 2026-07-17 — Audit remainder (ADR-0245): driving-path shading, xlsx zip-bomb cap, redact() spaced-path leak (ADR-0247)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-resume-main-6tpt62` (restarted
+  fresh from `origin/main` after the ADR-0246 HANDOFF PR #385 squash-merge).
+- Cleared the five queued ADR-0245 audit-remainder findings, each lead-verified against the code and
+  fixed with a mutation-verified regression test. None was a live CUI leak or parity break.
+- **(a) `/driving-path` per-task shading (Option A).** `_driving_path_gantt` was doubly-dead: it
+  never emitted the per-row `calendar` `driving_path.js:206` read, and the page never called
+  `SFTimescale.setCalendars` (only `/analysis` did → empty `CALS` → every row flat Mon-Fri). Fix:
+  emit a per-activity governing-calendar name + a `calendars` union; `driving_path.js` registers it.
+  Server payload test (`test_gantt_calendar_shading.py`) + real-Chromium smoke (payload + registry +
+  3 shading layers render, 0 JS console errors) verify it end-to-end.
+- **(b) `tests/web/js/gantt_shading_harness.mjs` + `test_gantt_shading_js.py`.** Loads the vendored
+  `timescale.js`; pins `nonworkStyle` per calendar (Mon-Fri shades weekends, 24-hour does not, global
+  pick overrides per-row). Mutation-verified: dropping the per-row `cellCal` makes the 24-hour case
+  shade → the harness fails (confirmed against a mutant copy).
+- **(c) `/margin` mixed-basis view+export test** (`test_margin_dashboard_view.py`): an 8h→24h
+  schedule renders the disclosure prose on `/margin` and exports `mixed — 8h/day vs 24h/day` with `—`
+  for erosion (never a fabricated rate). The engine path was tested; the view/export was not.
+- **(d) SRA xlsx zip-bomb cap** (`reports/xlsx_read.py` + the two `/sra/import/*` routes): `read_xlsx`
+  decompresses every part through one shared byte budget (`_MAX_XLSX_DECOMPRESSED_BYTES` = 500 MB,
+  parity with `/upload`) via streamed capped reads — bounded regardless of a lying zip header; the
+  routes also cap the compressed upload before parsing. New `tests/reports/test_xlsx_zip_bomb.py`
+  (real small-compressed/huge-decompressed bomb) + route-cap tests, mutation-sound.
+- **(e) `redact()` spaced-path leak** (`logging_redaction.py`): `_SPACED_FILE_PATH_RE` runs first and
+  folds a path + spaced sensitive file name (UNC / Windows / POSIX) into one inert token, so
+  `\\srv\share\Site Alpha Rebaseline.mpp` no longer leaks its middle words. Prose after a space-free
+  path is still spared; `redact` stays idempotent. Empirically reproduced the leak before fixing.
+- **State:** v1.0.56 → **1.0.57** (src changed); wheel + 9 installers rebuilt in lockstep;
+  **ADR-0247**; full gate green (ruff / format / mypy --strict / bandit exit 0 / node --check / full
+  pytest incl. `parity`).
+- **NEXT:** PR-P1 validated perf items (CoPilot #3/#4/#8/#9/#10 + audit-E guard; refuted claims
+  documented, do NOT "fix") → #13 XER calendars → #26 disclosure → F3c → roles.

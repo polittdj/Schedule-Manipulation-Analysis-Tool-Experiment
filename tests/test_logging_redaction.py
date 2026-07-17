@@ -170,6 +170,39 @@ def test_redacts_unc_paths() -> None:
     assert "now" in out
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        r"opened \\fileserver\share\Site Alpha Rebaseline.mpp for parse",  # UNC
+        r"path C:\Users\ProgramData\Site Alpha Rebaseline.xlsx failed",  # Windows drive
+        r"read /mnt/cui/schedules/Site Alpha Rebaseline.xer done",  # POSIX
+        r"deep \\srv\a\b\c\Q3 Program Baseline Rev 2.mpp end",  # multi-word, deep dirs
+    ],
+)
+def test_spaced_path_filename_does_not_leak_middle_words(line: str) -> None:
+    r"""Audit: a path ending in a file name WITH SPACES leaked the name's middle words.
+
+    The space-free path regexes stop at the first space, so ``\\server\share\Site Alpha
+    Rebaseline.mpp`` was redacted to ``<path#…> Alpha <file:mpp#…>`` — the middle word ``Alpha``
+    (a CUI file-name token) survived in clear text. ``_SPACED_FILE_PATH_RE`` now consumes the whole
+    path + spaced name first. Mutation check: without it every case leaks ``Alpha`` / ``Baseline``.
+    """
+    out = lr.redact(line)
+    for leaked in ("Alpha", "Rebaseline", "Baseline", "Program", "Q3", "Rev"):
+        assert leaked not in out, f"CUI file-name token {leaked!r} leaked: {out}"
+    assert "<path:" in out  # whole path+name folded into one inert token, extension retained
+    assert lr.redact(out) == out  # idempotent
+
+
+def test_spaced_path_fix_still_spares_trailing_prose() -> None:
+    """The spaced-name catch must not swallow ordinary prose after a space-free path: a path with
+    no sensitive-extension file name still stops at the first space (the pre-existing guarantee)."""
+    out = lr.redact(r"copied \\server\share\data to the archive")
+    assert out == "copied <path#0e6bf4c8> to the archive" or (
+        "<path#" in out and out.endswith(" to the archive")
+    )
+
+
 def test_redacts_json_schedule_filenames() -> None:
     # "Save .json" writes the tool's own schedule format — those names are CUI too
     out = lr.redact("saved NSAT_deploy_rev3.json for review")
