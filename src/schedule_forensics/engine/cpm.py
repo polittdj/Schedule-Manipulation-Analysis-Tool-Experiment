@@ -281,6 +281,47 @@ def offset_to_datetime(start: dt.datetime, minutes: int, calendar: Calendar) -> 
     return day + dt.timedelta(minutes=intraday)
 
 
+def _working_pattern_key(cal: Calendar) -> tuple[object, ...]:
+    """The fields that make a calendar's working pattern materially distinct — everything the
+    date/float math consumes, and nothing cosmetic (``uid`` / ``name`` are identity, not pattern).
+    Order-independent, so two calendars listing the same holidays in a different order compare
+    equal (a purely re-ordered registry entry is not a real divergence)."""
+    return (
+        cal.working_minutes_per_day,
+        tuple(sorted(cal.work_weekdays)),
+        tuple(sorted(cal.holidays)),
+        tuple(sorted(cal.working_days)),
+        tuple(sorted(cal.day_segments)),
+    )
+
+
+def off_project_calendars(schedule: Schedule) -> tuple[Calendar, ...]:
+    """Calendars carried by active, non-summary tasks whose working pattern MATERIALLY differs
+    from the project calendar the base CPM solves on (ADR-0028).
+
+    The base CPM forward/backward pass models ONE schedule-level calendar (``schedule.calendar``)
+    and never consults a task's ``calendar_uid``. A non-empty result means the file assigns some
+    activities their own calendar, so the base-CPM dates/float for those activities are a
+    *single-calendar approximation* — the driving-slack / SSI path honors each task's own calendar
+    (ADR-0118), the base pass does not. This is a disclosure signal only; it changes no computed
+    number.
+
+    Deduplicated by ``uid`` and returned sorted by ``uid``. Fail-soft: a task whose ``calendar_uid``
+    is absent from ``schedule.calendars`` cannot be compared and is skipped (never over-claims a
+    divergence), and a task calendar whose pattern equals the project calendar is not reported.
+    """
+    project_key = _working_pattern_key(schedule.calendar)
+    by_uid = {c.uid: c for c in schedule.calendars}
+    out: dict[int, Calendar] = {}
+    for task in schedule.tasks:
+        if task.is_summary or not task.is_active or task.calendar_uid is None:
+            continue
+        cal = by_uid.get(task.calendar_uid)
+        if cal is not None and _working_pattern_key(cal) != project_key:
+            out.setdefault(cal.uid, cal)
+    return tuple(out[uid] for uid in sorted(out))
+
+
 def _topo_order(task_ids: list[int], edges: list[tuple[int, int]]) -> list[int]:
     """Kahn topological sort over precedence edges (pred -> succ). Raises on a cycle.
 
