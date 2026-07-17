@@ -1,1 +1,14 @@
 * text=auto
+
+# Byte-identity-protected files: NEVER EOL-normalize (audit SEC-1, ADR-0256). The CUI guard's
+# inherited_from_main rule requires staged blobs byte-identical to origin/main, and the installer
+# lockstep test requires generated artifacts byte-identical to the committed ones — a
+# renormalization pass over these would break both.
+*.aft -text
+*.xer -text
+*.mpp -text
+*.xlsx -text
+*.docx -text
+00_REFERENCE_INTAKE/** -text
+installer/** -text
+tests/fixtures/** -text

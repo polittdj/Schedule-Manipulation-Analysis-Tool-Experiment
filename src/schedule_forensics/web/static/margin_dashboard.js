@@ -99,15 +99,26 @@
     // band polygon UNDER the bars: top edge = high, bottom edge = low, at each month's x
     var bandPts = MONTHS.map(function (m, i) { return { i: i, b: bandByIso[m.status_date] }; })
       .filter(function (p) { return p.b; });
+    var bw = Math.max(3, Math.min(26, (R - L) / n * 0.5));
     if (bandPts.length >= 1) {
+      // a single dated month has no polygon width — draw a bar-width segment so the band the
+      // legend advertises is actually visible (audit F3, ADR-0256)
+      var xAt = function (i) { return bandPts.length === 1 ? [x(i) - bw, x(i) + bw] : [x(i), x(i)]; };
       var dPoly = "";
-      bandPts.forEach(function (p, k) { dPoly += (k ? "L" : "M") + x(p.i).toFixed(1) + " " + y(p.b.high_wd).toFixed(1) + " "; });
-      for (var k2 = bandPts.length - 1; k2 >= 0; k2--) dPoly += "L" + x(bandPts[k2].i).toFixed(1) + " " + y(bandPts[k2].b.low_wd).toFixed(1) + " ";
+      bandPts.forEach(function (p, k) {
+        var xs2 = xAt(p.i);
+        dPoly += (k ? "L" : "M") + xs2[0].toFixed(1) + " " + y(p.b.high_wd).toFixed(1) + " ";
+        if (bandPts.length === 1) dPoly += "L" + xs2[1].toFixed(1) + " " + y(p.b.high_wd).toFixed(1) + " ";
+      });
+      for (var k2 = bandPts.length - 1; k2 >= 0; k2--) {
+        var xs3 = xAt(bandPts[k2].i);
+        if (bandPts.length === 1) dPoly += "L" + xs3[1].toFixed(1) + " " + y(bandPts[k2].b.low_wd).toFixed(1) + " ";
+        dPoly += "L" + xs3[0].toFixed(1) + " " + y(bandPts[k2].b.low_wd).toFixed(1) + " ";
+      }
       var poly = svgEl("path", { d: dPoly + "Z", fill: ACC, opacity: 0.14, stroke: "none" });
       tip(poly, "Fig 5-30 guideline band (operator-set rates; SMH §5.5.11.2 / §7.3.3.1.6)");
       svg.appendChild(poly);
     }
-    var bw = Math.max(3, Math.min(26, (R - L) / n * 0.5));
     MONTHS.forEach(function (m, i) {
       var x0 = x(i) - bw / 2;
       // margin (work days) at the base — red when below the NASA requirement (the trigger)

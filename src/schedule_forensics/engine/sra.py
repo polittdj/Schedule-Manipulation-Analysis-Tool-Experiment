@@ -959,6 +959,32 @@ def _latest_finish(tasks: Sequence[Task]) -> _dt.datetime | None:
     return max(stored) if stored else None
 
 
+def stored_finish_correction(
+    schedule: Schedule, target_uid: int | None, deterministic: int
+) -> _dt.timedelta:
+    """The constant date-axis correction the SSI result applies to every displayed date.
+
+    Pure-CPM offsets pack completed work at the project start, so on a progressed schedule the
+    naive conversion of the all-ML deterministic finish lands months before the STORED plan
+    dates; ``_build_ssi_result`` realigns by the constant ``anchor - naive`` (the focus task's
+    stored finish, else the latest stored finish — see the comment at the ``ml_finish`` solve).
+    This additive helper exposes the SAME correction (same anchor selection, same naive
+    conversion) so a caller converting OTHER offsets from the same run — the margin-sufficiency
+    panel's zero-margin boundary E and threshold-percentile rows (audit F1, ADR-0256) — lands on
+    the identical date axis as the result's own ``*_date`` fields (pinned by test). Zero when
+    the schedule stores no finishes (an unprogressed pure-logic network needs no correction).
+    """
+    tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
+    focus = next((t for t in tasks if t.unique_id == target_uid), None)
+    anchor = (
+        focus.finish if focus is not None and focus.finish is not None else _latest_finish(tasks)
+    )
+    if anchor is None:
+        return _dt.timedelta(0)
+    naive = offset_to_datetime(schedule.project_start, max(deterministic, 0), schedule.calendar)
+    return anchor - naive
+
+
 def _build_ssi_result(
     schedule: Schedule,
     config: SRAConfig,

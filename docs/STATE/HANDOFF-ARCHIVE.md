@@ -5,6 +5,36 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-17 (v4 F4: role-selection front page; v1.0.64; highest ADR 0255)
+
+> ## STATUS (current) — ADR-0255: the ROLE-SELECTION FRONT PAGE is live — five audience roles (Scheduler/Planner, Program/Project Manager, Forensic Analyst, Auditor DCMA/IG, Counsel/Testifying Expert) as CURATED ENTRY POINTS, operator-approved design (5 roles + emphasis + role landing). A role is never a mode: it can't hide a page or change a number. Version 1.0.63 → 1.0.64 (wheel + 9 installers in lockstep). Full gate green incl. `parity`.
+>
+> - **What a role does (exactly three things).** (1) A home **"Start here" strip** — the role's
+>   4–5 primary pages as cards with one-line whys, from the committed `_SPINE` (an unresolvable
+>   `@analysis` card is skipped until a schedule loads — never a dead link). (2) **Nav emphasis** —
+>   `role-hl` accent on the role's chapters; EVERY chapter stays rendered under every role
+>   (pinned). (3) **Post-upload landing** — a CLEAN ingest lands on the role's page (Scheduler →
+>   /ribbon, PM → /portfolio, Auditor → /standards, Counsel → /briefing; Analyst inherits the
+>   default); any errors/skips still land on the dashboard — disclosure outranks the landing
+>   (pinned). "Show everything" (default) is byte-compatible with pre-F4 behavior (pinned).
+> - **Wiring.** `_Role`/`_ROLES` static table by the spine; `_role_strip`; `SessionState.role`
+>   (fail-soft `set_role`, cleared on wipe); `POST /role`; role-aware upload dest; `.role-card` /
+>   `.start-card` / `.nav-chapter.role-hl` CSS — theme tokens only, 4-theme verified (active pill
+>   carries a doubled accent ring so it reads in JARVIS where every button is outlined). No
+>   engine file touched — parity untouched by construction.
+> - **Verified.** `tests/web/test_roles_front_end.py` (6): picker renders all 5 + Show everything
+>   with the contract stated on-page; persist/fail-soft/wipe; strip + nav highlight with
+>   everything still reachable; @analysis gating; the three landing pins; errors-outrank-landing.
+>   4-theme Chromium green (console/daylight/apollo/jarvis).
+> - **State:** v1.0.64; **ADR-0255**; wheel + 9 installers in lockstep; full gate green.
+> - **NEXT — the standing queue:** **#13** XER per-task calendars (still PARKED — the operator's
+>   owed `.xer` files) → the ADR-0251 family-B option-plumbing unify PRs (forward toggles to
+>   /api/evolution; full-trace export basis; drill field columns — each needs golden
+>   re-validation) → the zero-margin SRA toggle (Fig 7-43 fidelity, via the existing three-point
+>   surface, ADR-0254's documented follow-up) → deferred perf (ADR-0249 harness). Operator-side
+>   (no code): the `00_REFERENCE_INTAKE/INDEX.md` §3 reorg map + the §4 root-vs-mpp
+>   `Project5_TAMPERED.mpp` canonical-build decision.
+
 # (prior) Handoff — 2026-07-17 (F3c-fuller: expected-margin panel — Fig 5-30 editable band + SRA percentile spread; v1.0.63; highest ADR 0254)
 
 > ## STATUS (current) — ADR-0254: the operator's VERBATIM F3c spec delivered — the "parameterized expected-margin panel — tier-a Fig 5-30 editable band + tier-b SRA percentile spread" (Thursday directive). ADR-0253's rate param was the narrower first cut; this is the full two-tier panel, designed by a Fable 5 Max deep dive and adversarially verified (4-agent workflow, quotes + code claims) before build. Includes a VERIFIED doc-truth citation correction to the 50%-consumed threshold. Version 1.0.62 → 1.0.63 (wheel + 9 installers in lockstep). Full gate green incl. `parity`.

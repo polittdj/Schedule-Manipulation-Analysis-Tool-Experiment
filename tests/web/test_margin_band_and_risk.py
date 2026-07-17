@@ -151,6 +151,55 @@ def test_corrected_50pct_citation_renders_as_example_not_7_3_3_1_6() -> None:
     )
 
 
+def test_risk_dates_realigned_to_the_stored_finish_axis_on_progressed_schedules() -> None:
+    # audit F1 (ADR-0256): on a progressed schedule the pure-CPM axis packs completed work at
+    # the project start; the SSI result realigns every displayed date to the stored finish.
+    # /api/margin/risk must print D on that SAME axis (== the /api/sra/ssi deterministic date),
+    # with E landing on the stored finish of the work that precedes the margin.
+    st = SessionState()
+    sch = Schedule(
+        name="prog",
+        source_file="prog.mpp",
+        project_start=dt.datetime(2026, 1, 5, 8, 0),
+        status_date=dt.datetime(2026, 4, 1),
+        tasks=(
+            Task(
+                unique_id=1,
+                name="Work A",
+                duration_minutes=100 * DAY,
+                percent_complete=50,
+                remaining_duration_minutes=50 * DAY,
+                finish=dt.datetime(2026, 8, 14, 17, 0),
+            ),
+            Task(
+                unique_id=2,
+                name="Schedule MARGIN",
+                duration_minutes=20 * DAY,
+                finish=dt.datetime(2026, 9, 11, 17, 0),
+            ),
+            Task(
+                unique_id=3,
+                name="Deliver",
+                duration_minutes=0,
+                is_milestone=True,
+                finish=dt.datetime(2026, 9, 11, 17, 0),
+            ),
+        ),
+        relationships=(_r(1, 2), _r(2, 3)),
+    )
+    st.schedules["prog.mpp"] = sch
+    st.sra_bcwc = {1: (40 * DAY, 70 * DAY)}  # genuine spread so the run is non-degenerate
+    c = TestClient(create_app(st))
+    risk = c.get("/api/margin/risk").json()
+    ssi = c.get("/api/sra/ssi").json()
+    assert risk["deterministic_finish_date"] == ssi["deterministic"]["date"] == "2026-09-11"
+    assert risk["zero_margin_finish_date"] == "2026-08-14"  # the stored Work finish
+    # every percentile row rides the same realigned axis (P50 matches the SRA page's P50)
+    p50_risk = next(r["finish_date"] for r in risk["rows"] if r["pct"] == 50.0)
+    p50_ssi = next(p["date"] for p in ssi["percentiles"] if p["label"] == "P50")
+    assert p50_risk == p50_ssi
+
+
 def test_export_states_band_and_sra_parameters() -> None:
     c = _client()
     c.post("/margin/band", data=_BAND_FORM, follow_redirects=False)
