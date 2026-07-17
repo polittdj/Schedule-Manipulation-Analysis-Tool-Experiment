@@ -6,15 +6,17 @@ relative paths are allowed — so the dashboard can never pull a CDN/script/styl
 remote host (no CUI-leaking beacon, no offline breakage).
 
 Coverage is ENUMERATED, not hand-listed (audit L5): the page walk iterates every GET route
-on the live ``app.routes`` table and the asset walk iterates every vendored file in the
-static directory on disk — a new page or asset is scanned the moment it exists, with no
-list to forget to update.
+on the live ``app.routes`` table and the asset walk iterates every vendored file (recursively)
+in the static directory on disk — a new page or asset is scanned the moment it exists, with no
+list to forget to update. The ``_MUST_ENUMERATE`` pin is asserted against the WALK OUTPUT, so a
+regression that made the walk itself go partial/empty fails loudly instead of scanning nothing.
 """
 
 from __future__ import annotations
 
 import re
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 from fastapi.datastructures import DefaultPlaceholder
@@ -29,7 +31,16 @@ GOLDEN = Path(__file__).resolve().parents[1] / "fixtures" / "golden"
 _ABSOLUTE_URL = re.compile(r"""\bhttps?://[^\s"'<>)]+""", re.IGNORECASE)
 _PROTOCOL_RELATIVE = re.compile(r"""["'(]//[^\s"'<>)]+""")
 _REMOTE_ASSET = re.compile(r"""(?:src|href)\s*=\s*["'](?!/|#|data:)[^"']*//""", re.IGNORECASE)
+#: Loopback HOSTS (matched against the parsed URL host, NOT as a substring of the whole URL —
+#: a substring test would exempt ``http://127.0.0.1.evil.com/beacon``; audit re-review 2026-07-17).
 _LOOPBACK = ("127.0.0.1", "localhost")
+
+
+def _is_loopback_url(url: str) -> bool:
+    """True iff ``url``'s HOST is exactly a loopback host — not merely contains one."""
+    host = (urlparse(url).hostname or "").lower()
+    return host in _LOOPBACK
+
 
 #: Fillers for path parameters when walking ``app.routes``. ``name`` is the schedule the
 #: fixture uploads; ``fmt`` exercises the export routes (binary responses are skipped by
@@ -94,20 +105,23 @@ def _external_refs(text: str) -> list[str]:
     found = [
         u
         for u in _ABSOLUTE_URL.findall(text)
-        if not any(h in u for h in _LOOPBACK) and not u.startswith("http://www.w3.org/")
+        if not _is_loopback_url(u) and not u.startswith("http://www.w3.org/")
     ]
     found += _PROTOCOL_RELATIVE.findall(text)
     found += _REMOTE_ASSET.findall(text)
     return found
 
 
-def _get_route_paths(client: TestClient) -> list[tuple[str, bool]]:
-    """Every GET route as (concrete path, declares-HTML) — params filled or fail loudly."""
-    walked: list[tuple[str, bool]] = []
+def _get_route_paths(client: TestClient) -> list[tuple[str, str, bool]]:
+    """Every GET route as (route pattern, concrete path, declares-HTML) — params filled or fail
+    loudly. The raw pattern is returned too so a caller can pin the WALK output itself, not the
+    route table it was derived from."""
+    walked: list[tuple[str, str, bool]] = []
     for route in client.app.routes:  # type: ignore[union-attr]
         if not isinstance(route, APIRoute) or "GET" not in route.methods:
             continue
-        path = route.path
+        pattern = route.path
+        path = pattern
         for param in re.findall(r"{(\w+)[^}]*}", path):
             filler = _PARAM_FILLERS.get(param)
             assert filler is not None, (
@@ -119,20 +133,24 @@ def _get_route_paths(client: TestClient) -> list[tuple[str, bool]]:
         is_html = not isinstance(declared, DefaultPlaceholder) and issubclass(
             declared, HTMLResponse
         )
-        walked.append((path, is_html))
+        walked.append((pattern, path, is_html))
     return walked
 
 
 def test_every_get_route_serves_no_external_reference(client: TestClient) -> None:
     """Walk the live route table: every GET response the browser would render is scanned."""
     routes = _get_route_paths(client)
-    enumerated = {r.path for r in client.app.routes if isinstance(r, APIRoute)}  # type: ignore[union-attr]
-    missing = _MUST_ENUMERATE - enumerated
-    assert not missing, f"route enumeration lost known pages: {sorted(missing)}"
+    # Pin the WALK OUTPUT (not the raw route table): if a regression inside _get_route_paths —
+    # a broken GET filter, an added skip, the list hardcoded back — made the walk come back empty
+    # or partial, this fails instead of silently scanning nothing. Binding the raw table here
+    # would leave that regression invisible (audit re-review, 2026-07-17).
+    walked_patterns = {pattern for pattern, _path, _html in routes}
+    missing = _MUST_ENUMERATE - walked_patterns
+    assert not missing, f"route walk lost known pages: {sorted(missing)}"
 
     offenders: dict[str, list[str]] = {}
     broken: dict[str, int] = {}
-    for path, is_html in routes:
+    for _pattern, path, is_html in routes:
         response = client.get(path)
         if response.status_code >= 500 or (is_html and response.status_code != 200):
             # A page that errors instead of rendering would "pass" the scan vacuously —
@@ -151,8 +169,14 @@ def test_every_get_route_serves_no_external_reference(client: TestClient) -> Non
 
 def test_every_vendored_static_asset_is_clean(client: TestClient) -> None:
     """Walk the static directory on disk: every vendored JS/CSS file must serve and scan
-    clean — including files no page happens to reference yet."""
-    assets = sorted(p.name for p in _STATIC_DIR.iterdir() if p.suffix in {".js", ".css"})
+    clean — including files no page happens to reference yet, and files in subdirectories
+    (StaticFiles serves subdirs, so ``rglob`` — not a top-level scan — is what mirrors what
+    the browser can actually fetch; audit re-review, 2026-07-17)."""
+    assets = sorted(
+        p.relative_to(_STATIC_DIR).as_posix()
+        for p in _STATIC_DIR.rglob("*")
+        if p.suffix in {".js", ".css"}
+    )
     assert len(assets) >= 50, f"static enumeration looks broken — only found {assets}"
     offenders: dict[str, list[str]] = {}
     for name in assets:
