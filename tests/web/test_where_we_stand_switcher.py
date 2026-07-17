@@ -27,7 +27,7 @@ def test_analysis_banner_names_one_file_and_offers_switch(client: TestClient) ->
     assert "switch file" in page and "never mixed here" in page
     # both files are offered; the current one is selected
     assert "Project2" in page and "Project5" in page
-    assert 'location.href=this.value' in page
+    assert "location.href=this.value" in page
 
 
 def test_other_pages_keep_the_multi_file_banner(client: TestClient) -> None:

@@ -1531,7 +1531,7 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
         else:
             opts = "".join(
                 f'<option value="/analysis/{quote(k, safe="")}"'
-                f'{" selected" if k == focus_key else ""}>{_e(s.source_file or s.name)}</option>'
+                f"{' selected' if k == focus_key else ''}>{_e(s.source_file or s.name)}</option>"
                 for k, s in pairs
             )
             inner = (
