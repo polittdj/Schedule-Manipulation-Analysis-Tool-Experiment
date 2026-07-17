@@ -153,6 +153,23 @@ def test_erosion_is_suppressed_and_disclosed_when_the_margin_basis_changes() -> 
     assert d.erosion_basis_wmpd is None
     # each version still reports its OWN effective margin in its own basis (unchanged display)
     assert d.months[0].basis_wmpd == 480 and d.months[1].basis_wmpd == 1440
+    # the consumed / corrective-action carry-forward must ALSO refuse the cross-basis subtraction
+    # (audit): the 24h month's plan comes from an 8h month, so plan-minus-actual is meaningless —
+    # planned_margin_wd is None -> consumed_wd / consumed_pct / corrective_action all read NA.
+    assert d.months[1].planned_margin_wd is None
+    assert d.months[1].consumed_wd is None and d.months[1].consumed_pct is None
+    assert d.months[1].corrective_action is False
+
+
+def test_consumed_carry_forward_holds_within_a_single_basis() -> None:
+    # Same-basis versions (the norm) still carry the prior month-end margin forward as the plan.
+    versions = [
+        (v.source_file, v, compute_cpm(v))
+        for v in (_version_cal("2026-02-27", 40, 480), _version_cal("2026-03-31", 25, 480))
+    ]
+    d = compute_margin_dashboard(versions, target_uid=DELIVER_UID)
+    assert d.months[1].planned_margin_wd == d.months[0].effective_margin_wd
+    assert d.months[1].consumed_wd is not None  # a real consumption is measured within one basis
 
 
 def test_planned_margin_carries_the_prior_month_end_forward() -> None:

@@ -1,12 +1,13 @@
 # POLARIS — User Guide
 
-> **Applies to v1.0.51 · updated 2026-07-17.** Written against the v1.0.18 UI; everything below
+> **Applies to v1.0.56 · updated 2026-07-17.** Written against the v1.0.18 UI; everything below
 > still works as described. Major additions since then (full guide refresh pending): **Groups &
 > Filters** (`/groups` — MS Project saved filters/groups picked A–Z, interactive prompts,
 > Reduce/Highlight modes, session-wide scope), the **`/standards`** Standards & Execution Indices
 > page (DCMA-14 + NASA/Acumen-Fuse indices + the ten Schedule Execution Metrics, each with its
-> verbatim library formula), find-task-by-name on every Gantt, and a per-file switcher on
-> single-file pages.
+> verbatim library formula), find-task-by-name on every Gantt, a per-file switcher on
+> single-file pages, and **per-task Gantt non-working-time shading** (ADR-0243 — each row shades
+> weekends/holidays per THAT task's own calendar, so a 24-hour task shows no weekend gray).
 
 **POLARIS** — *Program Oversight & Logic Analysis for Risk & Integrity of Schedules* — is a local,
 NASA-themed **forensic schedule-analysis** desktop tool (the running app and its browser tab both

@@ -36,7 +36,10 @@ import sys
 from typing import TextIO
 
 #: Schedule / Office / Power BI extensions whose *file names* are treated as CUI
-#: (``json`` included: "Save .json" writes the tool's own schedule format).
+#: (``json`` included: "Save .json" writes the tool's own schedule format). This set must
+#: cover every extension the pre-commit CUI guard blocks as a schedule/CUI file — ``doc``,
+#: ``docx`` (reference exports) and ``aft`` (the Acumen metric library) were missing, so a
+#: log line naming one leaked the file name (a test now pins the two sets together, audit).
 SENSITIVE_EXTENSIONS: tuple[str, ...] = (
     "mpp",
     "mpt",
@@ -50,6 +53,11 @@ SENSITIVE_EXTENSIONS: tuple[str, ...] = (
     "csv",
     "xml",
     "json",
+    "doc",
+    "docx",
+    "aft",
+    "pkl",
+    "pickle",
 )
 
 # A bare file name ending in a sensitive extension, anchored at a token boundary

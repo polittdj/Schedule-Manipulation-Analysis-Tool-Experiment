@@ -5,10 +5,14 @@ from __future__ import annotations
 import io
 import json
 import logging
+import re
+from pathlib import Path
 
 import pytest
 
 from schedule_forensics import logging_redaction as lr
+
+_PRECOMMIT = Path(__file__).resolve().parent.parent / ".githooks" / "pre-commit"
 
 
 def test_redacts_bare_schedule_filename() -> None:
@@ -17,6 +21,25 @@ def test_redacts_bare_schedule_filename() -> None:
     assert "<file:mpp#" in out  # extension retained for correlation
     assert "144" in out  # counts pass through untouched
     assert "loaded" in out and "tasks" in out  # surrounding prose preserved
+
+
+def test_sensitive_extensions_cover_every_precommit_cui_extension() -> None:
+    # Audit: the log redactor's SENSITIVE_EXTENSIONS omitted doc/docx/aft (and pkl/pickle), which
+    # the pre-commit CUI guard DOES treat as CUI — so those file names leaked through logs. Pin the
+    # two sets together: every extension the guard blocks as CUI must also be redacted in logs.
+    text = _PRECOMMIT.read_text(encoding="utf-8")
+    m = re.search(r"blocked_re='\\\.\(([^)]+)\)\$'", text)
+    assert m, "could not read blocked_re from .githooks/pre-commit"
+    blocked = set(m.group(1).split("|"))
+    missing = blocked - set(lr.SENSITIVE_EXTENSIONS)
+    assert not missing, f"log redactor omits CUI extensions the pre-commit guard blocks: {missing}"
+
+
+@pytest.mark.parametrize("name", ["NASA Metrics.aft", "Reference Export.docx", "schedule.pkl"])
+def test_redacts_the_newly_covered_cui_extensions(name: str) -> None:
+    out = lr.redact(f"import failed for '{name}'")
+    stem = name.rsplit(".", 1)[0]
+    assert stem not in out and "<file:" in out
 
 
 def test_redacts_posix_path_keeps_extension() -> None:

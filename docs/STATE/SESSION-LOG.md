@@ -6491,3 +6491,45 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.54 → **1.0.55**; wheel + 9 installers lockstep; **ADR-0244**; full gate green.
 - **NEXT:** PR-P1 perf (validated CoPilot items + audit-E guard) → #13 XER per-task calendars → #26
   base-CPM disclosure → F3c → roles.
+
+## 2026-07-17 — Orchestrated audit (ADR-0240) + remediation of the confirmed defects (ADR-0245)
+
+- **Operator-requested overall audit** run under the ADR-0240 protocol: 7 read-only reviewers
+  (CUI/Law-1, parity/Law-2, security, architecture, tests, docs-state, deps+UI+data-validation)
+  fanned out via the Workflow tool, each finding then adversarially verified by a skeptic before it
+  survived; the lead independently re-verified every one against code. Baseline green (2,292
+  pytest). **12 findings survived, 0 refuted.**
+- **BLOCKER fixed — stored DOM-XSS (`web/static/path.js`).** A custom-field label / MSPDI `<Alias>`
+  (attacker free text from an opposing-party schedule) flowed verbatim `custom_field_labels` →
+  `/api/driving` JSON → `populateGroupBy`, which string-concatenated it into `<option>` HTML and
+  assigned `innerHTML` — first-party code execution in the CUI tool (skeptic reproduced it in real
+  Chromium; CUI exfil via top-level `location=` since the CSP has no navigate-to directive). Fix:
+  build options via the file's `el()` helper (textContent + real attribute values, never HTML).
+  New `tests/web/js/path_groupby_xss_harness.mjs` + `test_path_groupby_xss.py`, mutation-verified
+  (fails on the restored old sink). Lead swept EVERY `innerHTML` sink in the vendored JS —
+  `path.js` was the only one carrying unescaped data (AI-narrative `html` is `_e()`-escaped,
+  `home.js` uses `esc()`, `sysmon`/`resources` are static/telemetry).
+- **HIGH fixed — `/cei` cache staleness (`web/app.py`).** The Bow Wave / CEI view set the
+  session-wide target with a raw `st.target_uid = _parse_uid(target)`, bypassing `set_target()` →
+  `_invalidate_scope()` never ran (every page kept serving metrics scoped to the PREVIOUS target
+  under a contradictory banner — Law-2) and `sra_focus_uid` desynced. Fix: route through
+  `st.set_target(...)`; `test_cei_views.py` pins target-change → `sra_focus_uid` coupling.
+- **MED fixed — margin carry-forward basis (`engine/margin_dashboard.py`).** Completes PR-R3's
+  erosion-basis suppression: the `consumed`/`planned`/`corrective-action` carry-forward now also
+  refuses the cross-basis subtraction — an 8h→24h month leaves `planned_margin_wd=None` so
+  consumed/consumed_pct/corrective_action read NA, not a fabricated consumption. Engine tests for
+  both the mixed- and single-basis paths.
+- **MED fixed — log redaction (`logging_redaction.py`).** `SENSITIVE_EXTENSIONS` gained
+  `doc/docx/aft/pkl/pickle` (the pre-commit CUI guard blocks them but the redactor omitted them, so
+  those names leaked through logs); a test now pins `SENSITIVE_EXTENSIONS ⊇` the pre-commit
+  `blocked_re` set so the two can never diverge.
+- **Doc-drift corrected:** REPO-INVENTORY census (engine 61→63, web 108→110, importers 9→10, parity
+  4→6); USER-GUIDE stamp v1.0.51→1.0.56 + per-task-Gantt-shading note; NEXT-SESSION-PROMPT rewritten
+  (PR-R3 was queued as "next" though already merged; stamps corrected to v1.0.56/ADR-0245).
+- **Queued (audit remainder):** `/driving-path` corridor not per-task shaded (#382 wiring gap —
+  `driving_path.js` reads an `a.calendar` the server never emits); a Gantt-shading node harness (the
+  #382 JS is behaviorally untested); a `/margin` mixed-basis view test; an SRA-xlsx zip-bomb size
+  cap; a spaced-UNC-path trailing-filename leak in `redact()`. None is a live CUI leak or parity
+  break.
+- **State:** v1.0.55 → **1.0.56**; wheel + 9 installers lockstep; **ADR-0245**; full gate green.
+- **NEXT:** the five queued audit items above → PR-P1 perf → #13 → #26 → F3c → roles.
