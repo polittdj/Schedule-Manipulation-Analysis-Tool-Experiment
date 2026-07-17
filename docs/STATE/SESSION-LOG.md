@@ -6808,3 +6808,47 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   COMPLETE.
 - **NEXT:** #13 XER per-task calendars (PARKED — needs the owed `.xer` files) → roles front-end
   (v4 F4); the queued family-B option-plumbing unify PRs from the ADR-0251 verify are unchanged.
+
+---
+
+## 2026-07-17 — F3c-fuller: expected-margin panel — Fig 5-30 editable band + SRA percentile spread (ADR-0254)
+
+- **Session:** continued on branch `claude/smat-adr-0250-decision-vpvwwa` (restarted fresh from
+  origin/main after #392 merged).   **Model/mode:** Fable 5 (design deep dive + build) per the
+  operator's directive; ADR-0240 protocol — a Fable 5 Max deep dive designed the panel, a 4-agent
+  adversarial workflow verified every handbook quote + code claim, the lead independently re-read
+  the primary PDF pages before build.
+- **Why F3c again:** the operator's Thursday directive spec'd F3c verbatim as the "parameterized
+  expected-margin panel — tier-a Fig 5-30 editable band + tier-b SRA percentile spread"; ADR-0253's
+  Gold-Rule rate param was the narrower first cut (its own ADR queued the per-phase table as future
+  work). Operator delegated the scope call ("choose for me") — the fuller panel was built; F4
+  (roles) stays queued behind it because NO committed spec exists (searched all docs + the
+  directive; the next session proposes a design for approval).
+- **Tier-a.** New pure `engine/margin_guideline.py`: verbatim `FIG_5_30_ROWS`, cited editable
+  defaults ((30,60)/(60,75)/(30,84) wd/yr; 1 month = 30 wd disclosed, row-3 alternatives quoted),
+  `GuidelineBandConfig` (four operator-entered phase dates — never derived), the stepped
+  `expected_margin_band` (Fig 7-32's "stepped burndowns that mimic the margin guidelines"),
+  `band_position`. `POST /margin/band` + a cited control; the band + below-band hollow-diamond
+  deviation markers render on the burn-down (legend wraps now); verdicts suppressed on a mixed
+  wd-basis. Session fields fail-soft + cleared on wipe.
+- **Tier-b.** `margin_risk_read` over the EXISTING sra step-CDF (no new sampling): covered pct =
+  CDF(D) pinned == `deterministic_percentile`; [E, D] computed exactly on the run's all-ML axis by
+  the additive `sra.deterministic_margin_bounds` (pinned == the SSI anchor); operator-editable
+  Watch/Corrective percentiles (70/50 prefilled AS the handbook's example values).
+  `GET /api/margin/risk` button-triggered, seeded, offload-guarded, parameters echoed; honest
+  disclosures for no-schedule / raised / degenerate / no-margin. Disclosed caveat: margin rides
+  in-network at plan (Fig 7-43 zero-margin fidelity = documented follow-up).
+- **Doc-truth correction (verified against the PDF):** the 50%-consumed corrective sentence is in
+  §7.3.3.2.3 (printed p.324), example-framed — NOT §7.3.3.1.6 as ADR-0230 recorded. Behavior
+  unchanged; the takeaway/burn-down/JS copy + `_HB_CONSUME_SEC` corrected. Also: the requirement-
+  line tooltip now states the operator-set rate (was hardcoded 30).
+- **Export:** three new tables (band read / band parameters / seeded SRA sufficiency), all
+  parameters stated, byte-identical to the panel by determinism.
+- **Verified:** 11 engine + 7 web new tests (incl. both Law-2 equivalence pins and the corrected-
+  citation pin) + the additive-offsets pin; margin ecosystem 89 green; full pytest **2367 passed**
+  (the 1 pre-finalization lockstep failure resolved by the wheel rebuild below); 4-theme Chromium
+  green, zero console errors (daylight verified genuinely light via a localStorage theme pin).
+- **State:** v1.0.62 → **1.0.63**; wheel + 9 installers rebuilt in lockstep; **ADR-0254**; HANDOFF
+  moved/replaced + this entry in the same commit.
+- **NEXT:** #13 XER per-task calendars (PARKED — the owed `.xer` files) → roles front-end (v4 F4,
+  propose-then-build) → ADR-0251 family-B option-plumbing unify PRs → the zero-margin SRA toggle.

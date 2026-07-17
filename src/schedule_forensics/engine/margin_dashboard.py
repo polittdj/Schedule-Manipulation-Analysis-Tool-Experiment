@@ -107,6 +107,11 @@ class MarginMonth:
     #: calendar changed (e.g. 480-min Standard -> 1440-min 24-hour) expresses "work days" in two
     #: different units, so fitting one slope through both would conflate them (PR-R3).
     basis_wmpd: int = 480
+    #: The as-built target-finish / zero-margin-finish working-minute OFFSETS behind D and E —
+    #: already computed as locals in ``_margin_month``, carried (additively, F3c/ADR-0254) so the
+    #: expected-margin panel can read the margin window without a second solve. 0 = pre-F3c value.
+    target_finish_offset: int = 0
+    zero_margin_finish_offset: int = 0
 
     @property
     def consumed_wd(self) -> float | None:
@@ -226,6 +231,8 @@ def _margin_month(
         below_requirement=status is not None and effective_margin_wd < nasa_rqmt_wd,
         total_margin_wd=total_margin_wd,
         basis_wmpd=int(wmpd),
+        target_finish_offset=finish_asbuilt,
+        zero_margin_finish_offset=finish_zeroed,
     )
 
 

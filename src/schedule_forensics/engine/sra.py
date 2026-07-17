@@ -771,6 +771,28 @@ def _finish_of(result: CPMResult, target_uid: int | None) -> int:
     return result.timings[target_uid].early_finish
 
 
+def deterministic_margin_bounds(
+    schedule: Schedule, target_uid: int | None, margin_uids: frozenset[int]
+) -> tuple[int, int]:
+    """``(D, E)``: the all-ML deterministic finish and the same solve with the margin zeroed.
+
+    ``D`` reproduces :func:`compute_sra_ssi`'s ``deterministic_finish`` exactly — the identical
+    ``{uid: _ml_minutes(t)}`` override map and :func:`_finish_of` read (the ADR-0106 all-ML
+    equivalence; pinned by test). ``E`` re-solves that SAME network with every ``margin_uids``
+    duration forced to 0, giving the zero-margin boundary of §7.3.3.2.3's stochastic margin
+    tracking on the run's own axis (no cross-basis subtraction). Purely additive: two reads
+    through the trusted CPM chokepoint; nothing existing calls or is changed by this (F3c,
+    ADR-0254). With no margin activities ``E == D``.
+    """
+    tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
+    ml = {t.unique_id: _ml_minutes(t) for t in tasks}
+    d = _finish_of(compute_cpm(schedule, duration_overrides=ml), target_uid)
+    zeroed = dict(ml)
+    zeroed.update({uid: 0 for uid in margin_uids if uid in ml})
+    e = _finish_of(compute_cpm(schedule, duration_overrides=zeroed), target_uid)
+    return d, e
+
+
 def _phi(z: float) -> float:
     """Standard-normal CDF Φ(z) via ``math.erf`` (std-lib) — the Gaussian-copula link function."""
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))

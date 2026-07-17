@@ -264,6 +264,16 @@ def test_gold_rule_rate_scales_the_requirement_and_is_carried() -> None:
     assert triggers_60 >= triggers_30
 
 
+def test_margin_month_carries_the_finish_offsets_additively() -> None:
+    # ADR-0254: the two additive offset fields expose the as-built/zero-margin solves already
+    # computed inside _margin_month — D - E in minutes must equal the effective margin in wd
+    # (the same arithmetic, so nothing new can drift), and every pre-existing figure is untouched.
+    d = _dash(_MARGINS)
+    for m in d.months:
+        gap_wd = (m.target_finish_offset - m.zero_margin_finish_offset) / m.basis_wmpd
+        assert round(max(0, gap_wd), 1) == m.effective_margin_wd
+
+
 def test_default_rate_reproduces_the_30_per_year_requirement_exactly() -> None:
     # Omitting the rate is behaviour-preserving: the default is the 30/yr Gold Rule.
     versions = [(v.source_file, v, compute_cpm(v)) for v in (_version(s, m) for s, m in _MARGINS)]

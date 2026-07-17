@@ -15,6 +15,7 @@ import contextlib
 import datetime as dt
 import html
 import importlib.metadata
+import itertools
 import json
 import logging
 import math
@@ -121,6 +122,18 @@ from schedule_forensics.engine.margin_dashboard import (
     MarginDashboard,
     MarginMonth,
     compute_margin_dashboard,
+)
+from schedule_forensics.engine.margin_guideline import (
+    DEFAULT_CORRECTIVE_PCT,
+    DEFAULT_WATCH_PCT,
+    FIG_5_30_DEFAULT_RATES,
+    FIG_5_30_ROWS,
+    MONTH_WORK_DAYS,
+    BandPoint,
+    GuidelineBandConfig,
+    band_position,
+    expected_margin_band,
+    margin_risk_read,
 )
 from schedule_forensics.engine.memory import (
     DEFAULT_WARN_BYTES,
@@ -238,6 +251,7 @@ from schedule_forensics.engine.sra import (
     compute_oat_sensitivity,
     compute_sra,
     compute_sra_ssi,
+    deterministic_margin_bounds,
     factor_to_bc_wc,
 )
 from schedule_forensics.engine.sra_conclusions import (
@@ -607,6 +621,16 @@ class SessionState:
     # the initial value; set via GET /margin?rate=. The burn-down requirement line, the per-version
     # "NASA rqmt" column, the trigger flag, and the Excel/Word export all follow this one rate.
     margin_rate: float = GOLD_RULE_DAYS_PER_YEAR
+    # F3c-fuller (ADR-0254): the operator's Fig 5-30 guideline band — four ISO phase-boundary
+    # dates (Confirmation Review, I&T start, delivery to launch site, launch; program facts the
+    # engine cannot derive — None until entered, the band simply absent) + the three (low, high)
+    # wd/yr rates prefilled from the cited Fig 5-30 defaults. Set via POST /margin/band.
+    margin_band_dates: tuple[str, str, str, str] | None = None
+    margin_band_rates: tuple[tuple[float, float], ...] = FIG_5_30_DEFAULT_RATES
+    # F3c-fuller: the §7.3.3.2.3 sufficiency-read percentile thresholds (Watch, Corrective
+    # Action) — the handbook's EXAMPLE values 70/50 prefilled, operator-editable (program-set per
+    # the SMP, §7.3.3.1.6 Thresholds).
+    margin_risk_pcts: tuple[float, float] = (DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
     # UI/AI display language (ADR-0099): "en" (source) or "es". Drives the layout's lang attribute
     # and the client translation pass; AI fallback translations are memoised in ``translations``.
     language: str = "en"
@@ -821,6 +845,34 @@ class SessionState:
         with self._lock:
             if 0 < rate <= 365:
                 self.margin_rate = rate
+
+    def set_margin_band(
+        self, dates: tuple[str, str, str, str] | None, rates: tuple[tuple[float, float], ...]
+    ) -> None:
+        """Set the operator's Fig 5-30 guideline band (F3c-fuller, ADR-0254) — fail-soft like
+        ``set_margin_rate``: dates must be four strictly-increasing ISO dates (or None to clear),
+        each rate ``0 < low <= high <= 365``; an invalid piece is IGNORED, keeping the current
+        value (a bad form value never wipes the setting). No cache invalidation — the band feeds
+        only the freshly-computed overlay, never the analysis/summary caches."""
+        with self._lock:
+            if dates is None:
+                self.margin_band_dates = None
+            else:
+                try:
+                    parsed = [dt.date.fromisoformat(s) for s in dates]
+                except ValueError:
+                    parsed = []
+                if len(parsed) == 4 and all(b > a for a, b in itertools.pairwise(parsed)):
+                    self.margin_band_dates = dates
+            if len(rates) == 3 and all(0 < lo <= hi <= 365 for lo, hi in rates):
+                self.margin_band_rates = rates
+
+    def set_margin_risk_pcts(self, watch: float, corrective: float) -> None:
+        """Set the §7.3.3.2.3 Watch / Corrective-Action percentile thresholds (fail-soft: must
+        satisfy ``0 < corrective < watch < 100``, else the current values are kept)."""
+        with self._lock:
+            if 0 < corrective < watch < 100:
+                self.margin_risk_pcts = (watch, corrective)
 
     def confirmed_margin_union(self) -> frozenset[int] | None:
         """The union of every loaded version's operator-confirmed margin-task set, or ``None`` when no
@@ -3115,7 +3167,10 @@ def create_app(
     @app.get("/api/margin/dashboard")
     def margin_dashboard_json() -> JSONResponse:
         st = session()
-        return JSONResponse(_margin_dashboard_data(_margin_dashboard_for(st)))
+        d = _margin_dashboard_for(st)
+        data = _margin_dashboard_data(d)
+        data["band"] = _band_payload(st, d)  # the Fig 5-30 overlay (None until dates entered)
+        return JSONResponse(data)
 
     @app.post("/margin/confirm")
     async def margin_confirm(request: Request) -> RedirectResponse:
@@ -3150,6 +3205,152 @@ def create_app(
                     st.margin_overlay[key] = frozenset(valid)
         dest = back if back.startswith("/analysis/") else f"/analysis/{quote(key, safe='')}"
         return RedirectResponse(url=dest, status_code=303)
+
+    @app.post("/margin/band")
+    async def margin_band(request: Request) -> RedirectResponse:
+        """Persist the operator's Fig 5-30 guideline band + sufficiency thresholds (ADR-0254).
+
+        ``action="clear"`` drops the phase dates (the band disappears; rates/thresholds reset to
+        the cited defaults). Otherwise the four phase dates, six band rates, and two percentile
+        thresholds are read off the form; each piece is validated fail-soft by the SessionState
+        setters — an invalid piece keeps the current value, it never wipes the setting."""
+        form = await request.form()
+        st = session()
+        if str(form.get("action", "apply")) == "clear":
+            st.set_margin_band(None, FIG_5_30_DEFAULT_RATES)
+            st.set_margin_risk_pcts(DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
+            return RedirectResponse(url="/margin", status_code=303)
+        dates: tuple[str, str, str, str] = (
+            str(form.get("phase0", "")).strip(),
+            str(form.get("phase1", "")).strip(),
+            str(form.get("phase2", "")).strip(),
+            str(form.get("phase3", "")).strip(),
+        )
+        rates: list[tuple[float, float]] = []
+        for i in range(3):
+            try:
+                rates.append(
+                    (float(str(form.get(f"low{i}", ""))), float(str(form.get(f"high{i}", ""))))
+                )
+            except ValueError:
+                rates.append((-1.0, -1.0))  # invalid row -> setter rejects the whole rate set
+        st.set_margin_band(
+            dates if all(dates) else None if not any(dates) else st.margin_band_dates,
+            tuple(rates),
+        )
+        with contextlib.suppress(ValueError):  # fail-soft: keep the current thresholds
+            st.set_margin_risk_pcts(
+                float(str(form.get("watch_pct", ""))), float(str(form.get("ca_pct", "")))
+            )
+        return RedirectResponse(url="/margin", status_code=303)
+
+    def _margin_risk_data(
+        st: SessionState, iterations: int = 1000, distribution: str = "triangular"
+    ) -> dict[str, object]:
+        """The §7.3.3.2.3 risk-based margin-sufficiency read (F3c tier-b, ADR-0254) — shared by
+        the API route and the Excel/Word export (identical results by seeded determinism).
+
+        Runs the seeded SSI SRA through the same path as ``/api/sra/ssi``, computes the
+        deterministic margin window ``[E, D]`` EXACTLY on the run's own all-ML axis via
+        ``sra.deterministic_margin_bounds`` (the confirmed margin overlay, else the name-based
+        default set), and reads the stored CDF against it. Every parameter is echoed for the
+        provenance chip and the export. Fail-soft: no schedule / a raised run / a degenerate
+        (point-mass) distribution each return an honest disclosure (an ``error`` or flagged
+        payload), never a fabricated verdict."""
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return {"error": "No analyzable schedule loaded."}
+        key, sch, _cpm = chosen
+        # the margin set: this version's confirmed overlay, else the cross-version union, else the
+        # name-based default — the same precedence the margin dashboard uses
+        confirmed = st.margin_overlay.get(key, st.confirmed_margin_union())
+        if confirmed is not None:
+            margin_uids = frozenset(confirmed)
+        else:
+            from schedule_forensics.engine.metrics.margin import is_margin_task
+
+            margin_uids = frozenset(t.unique_id for t in non_summary(sch) if is_margin_task(t))
+        cfg = SRAConfig(
+            iterations=max(100, min(10000, iterations)),
+            distribution="pert" if distribution == "pert" else "triangular",
+            target_uid=st.sra_focus_uid,
+            occurrence_mode=st.sra_occurrence_mode,
+            use_risk_register=st.sra_use_risk_register,
+            correlation=st.sra_correlation,
+        )
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
+        try:
+            result = run_maybe_offloaded(
+                heavy,
+                compute_sra_ssi,
+                sch,
+                config=cfg,
+                three_point=_ssi_three_point(st, sch),
+                risks=_schedule_risks(st),
+            )
+        except Exception as exc:
+            return {"error": str(exc)}
+        d_anchor, e_zero = deterministic_margin_bounds(sch, cfg.target_uid, margin_uids)
+        watch, corrective = st.margin_risk_pcts
+        wmpd = sch.calendar.working_minutes_per_day or 480
+        read = margin_risk_read(
+            result.cdf,
+            d_anchor,
+            e_zero,
+            wmpd=wmpd,
+            watch_pct=watch,
+            corrective_pct=corrective,
+        )
+        cal = sch.calendar
+
+        def _iso(offset: int) -> str:
+            return offset_to_datetime(sch.project_start, offset, cal).date().isoformat()
+
+        return {
+            "file": key,
+            "focus_uid": cfg.target_uid,
+            "iterations": cfg.iterations,
+            "seed": result.seed,
+            "distribution": cfg.distribution,
+            "occurrence_mode": cfg.occurrence_mode,
+            "use_risk_register": cfg.use_risk_register,
+            "correlation": cfg.correlation,
+            "margin_task_count": len(margin_uids),
+            "have_margin": bool(margin_uids) and d_anchor > e_zero,
+            "covered_pct": read.covered_pct,
+            "verdict": read.verdict,
+            "degenerate": read.degenerate,
+            "margin_wd": read.margin_wd,
+            "watch_pct": read.watch_pct,
+            "corrective_pct": read.corrective_pct,
+            "deterministic_finish": d_anchor,
+            "deterministic_finish_date": _iso(d_anchor),
+            "zero_margin_finish": e_zero,
+            "zero_margin_finish_date": _iso(e_zero),
+            "basis_wmpd": wmpd,
+            "rows": [
+                {
+                    "pct": r.pct,
+                    "finish_offset": r.finish_offset,
+                    "finish_date": _iso(r.finish_offset),
+                    "delta_vs_plan_wd": r.delta_vs_plan_wd,
+                    "margin_needed_wd": r.margin_needed_wd,
+                    "covered": r.covered,
+                }
+                for r in read.rows
+            ],
+        }
+
+    @app.get("/api/margin/risk")
+    def margin_risk_json(
+        iterations: int = Query(1000), distribution: str = Query("triangular")
+    ) -> JSONResponse:
+        """Button-triggered risk-based margin sufficiency (never on page load — SRA doctrine)."""
+        data = _margin_risk_data(session(), iterations, distribution)
+        if "error" in data:
+            code = 400 if data["error"] == "No analyzable schedule loaded." else 422
+            return JSONResponse(data, status_code=code)
+        return JSONResponse(data)
 
     @app.get("/evm", response_class=HTMLResponse)
     def evm_view(group_field: str = Query("")) -> HTMLResponse:
@@ -4430,11 +4631,123 @@ def create_app(
             ("Trend fit R-squared", d.erosion_r2),
             ("Work-day basis", basis_note),
         )
+        # Fig 5-30 guideline band (ADR-0254): the operator's parameters + the per-status-date
+        # expected/actual/position read — or the single not-configured row (the band is never
+        # derived). The convention and every rate are stated (export provenance, like the rate).
+        st = session()
+        band_rows: list[tuple[Cell, ...]] = []
+        if st.margin_band_dates is None:
+            band_rows = [("not configured (enter the phase dates on /margin)", "—", "—", "—", "—")]
+        else:
+            try:
+                cfg_band: GuidelineBandConfig | None = GuidelineBandConfig(
+                    phase_dates=(
+                        dt.date.fromisoformat(st.margin_band_dates[0]),
+                        dt.date.fromisoformat(st.margin_band_dates[1]),
+                        dt.date.fromisoformat(st.margin_band_dates[2]),
+                        dt.date.fromisoformat(st.margin_band_dates[3]),
+                    ),
+                    rates=st.margin_band_rates,
+                )
+            except ValueError:
+                cfg_band = None  # fail-soft: disclose, never render a wrong band
+            if cfg_band is None:
+                band_rows = [("stored band configuration invalid", "—", "—", "—", "—")]
+            else:
+                dated = [(m.status_date, m.effective_margin_wd) for m in d.months if m.status_date]
+                pts = {
+                    p.date.isoformat(): p
+                    for p in expected_margin_band(
+                        cfg_band, tuple(dt.date.fromisoformat(s) for s, _ in dated)
+                    )
+                }
+                mixed = bool(d.erosion_mixed_basis)
+                for iso, eff in dated:
+                    p = pts[iso]
+                    pos = (
+                        "— (mixed work-day basis)"
+                        if mixed
+                        else band_position(eff, p.low_wd, p.high_wd)
+                    )
+                    band_rows.append((iso, p.low_wd, p.high_wd, eff, pos))
+                if not band_rows:
+                    band_rows = [("no dated versions to compare", "—", "—", "—", "—")]
+        band_params: tuple[tuple[Cell, ...], ...] = (
+            (
+                "Phase dates (CR / I&T start / delivery / launch)",
+                ", ".join(st.margin_band_dates) if st.margin_band_dates else "—",
+            ),
+            *(
+                (
+                    f"Rate row {i + 1}: {frm} -> {to}",
+                    f"{st.margin_band_rates[i][0]:g}-{st.margin_band_rates[i][1]:g} wd/yr "
+                    f'(handbook: "{amount}")',
+                )
+                for i, (frm, to, amount) in enumerate(FIG_5_30_ROWS)
+            ),
+            ("Conversion convention", f"1 month = {MONTH_WORK_DAYS:g} work days (ADR-0230/0253)"),
+        )
+        # §7.3.3.2.3 risk-based sufficiency: the same seeded read the panel button runs
+        # (byte-identical by determinism); parameters stated; disclosures instead of fabrication.
+        risk = _margin_risk_data(st)
+        if "error" in risk:
+            risk_rows: tuple[tuple[Cell, ...], ...] = (("Status", str(risk["error"])),)
+        else:
+            verdict = (
+                "no verdict — every iteration identical (no uncertainty/risk inputs)"
+                if risk["degenerate"]
+                else str(risk["verdict"])
+            )
+            risk_pct_rows = [
+                (
+                    f"P{row['pct']:g} finish",
+                    f"{row['finish_date']}  (delta vs plan {row['delta_vs_plan_wd']:+g} wd; "
+                    f"margin needed {row['margin_needed_wd']:g} wd; "
+                    f"{'covered' if row['covered'] else 'NOT covered'})",
+                )
+                for row in cast("list[dict[str, object]]", risk["rows"])
+            ]
+            risk_rows = (
+                ("File", str(risk["file"])),
+                ("Covered percentile (CDF at deterministic finish)", f"{risk['covered_pct']}"),
+                ("Verdict", verdict),
+                ("Margin window (wd)", f"{risk['margin_wd']}"),
+                (
+                    "Watch / Corrective thresholds (%)",
+                    f"{risk['watch_pct']:g} / {risk['corrective_pct']:g} "
+                    "(handbook example values, operator-set)",
+                ),
+                ("Deterministic finish (D)", str(risk["deterministic_finish_date"])),
+                ("Zero-margin finish (E)", str(risk["zero_margin_finish_date"])),
+                (
+                    "Iterations / seed / distribution",
+                    f"{risk['iterations']} / {risk['seed']} / {risk['distribution']} "
+                    "(computed at export time; deterministic by seed)",
+                ),
+                *risk_pct_rows,
+            )
         tableset = TableSet(
             "Margin Dashboard",
             (
                 Table("Margin & contingency burn-down (oldest first)", headers, tuple(body)),
                 Table("Margin erosion trend", ("Measure", "Value"), erosion),
+                Table(
+                    "Figure 5-30 guideline band (operator-set; SMH §5.5.11.2 / §7.3.3.1.6)",
+                    (
+                        "Status date",
+                        "Expected low (wd)",
+                        "Expected high (wd)",
+                        "Actual effective (wd)",
+                        "Position",
+                    ),
+                    tuple(band_rows),
+                ),
+                Table("Figure 5-30 band parameters", ("Parameter", "Value"), band_params),
+                Table(
+                    "Risk-based margin sufficiency (SRA; SMH §7.3.3.2.3)",
+                    ("Measure", "Value"),
+                    risk_rows,
+                ),
             ),
         )
         return _export_response(fmt, tableset, "margin-dashboard")
@@ -6115,6 +6428,9 @@ def create_app(
             st.file_meta.clear()
             st.content_hashes.clear()
             st.margin_overlay.clear()  # drop the operator's confirmed schedule-margin overlay
+            st.margin_band_dates = None  # drop the Fig 5-30 band phase dates (ADR-0254)
+            st.margin_band_rates = FIG_5_30_DEFAULT_RATES
+            st.margin_risk_pcts = (DEFAULT_WATCH_PCT, DEFAULT_CORRECTIVE_PCT)
             st.analyses.clear()
             st.summaries.clear()
             st.polished.clear()
@@ -7798,9 +8114,15 @@ def _logic_checks_panel(sch: Schedule) -> str:
 # NASA Schedule Management Handbook citations — verified against the committed reference PDF
 # (00_REFERENCE_INTAKE/references/schedule-management-handbook-20240315-update.zip); the section
 # numbers and the 50%-consumed corrective threshold are quoted from that document, not invented.
+# CITATION CORRECTED (ADR-0254, verified against the PDF): the sentence "The corrective action
+# threshold is set where the margin is 50% consumed" lives in §7.3.3.2.3 "Sufficiency of Margin"
+# (printed p.324 / PDF p.325), NOT §7.3.3.1.6 as ADR-0230 recorded — and it is EXAMPLE-framed
+# there ("In this example case, the P/p has chosen..."). §7.3.3.1.6's own Thresholds paragraph is
+# deliberately non-numeric ("corrective action is required when significant margin is consumed");
+# the handbook's general rule is that thresholds are program-set in the SMP.
 _HB = "NASA Schedule Management Handbook"
 _HB_MARGIN_SEC = "&sect;5.5.11, Establish and Allocate Margin"
-_HB_CONSUME_SEC = "&sect;7.3.3.1.6 Margin Consumption / &sect;7.3.4 Corrective Action"
+_HB_CONSUME_SEC = "&sect;7.3.3.2.3 Sufficiency of Margin (the handbook's example threshold)"
 
 
 def _margin_terminology() -> str:
@@ -7916,7 +8238,13 @@ def _margin_panel(key: str, sch: Schedule, cpm: CPMResult, confirmed: frozenset[
         "schedule margin and <b>Confirm</b> to pin the set for this version (near-miss aliases are "
         "listed but unticked until you confirm them); the burn-down and erosion trend then use your "
         "confirmed set across the project&rsquo;s versions. <b>Reset</b> reverts to the name-based "
-        "default.</p>" + form + "</div>"
+        "default.</p>"
+        + form
+        # ADR-0254: the Fig 5-30 band + SRA sufficiency are inherently cross-version/time-series
+        # views, so they live on the Margin Dashboard — this per-version panel links, not embeds.
+        + '<p style="margin-top:10px"><a class=btn-link href="/margin">Compare against the '
+        "Figure 5-30 guideline band + risk-based sufficiency on the Margin Dashboard &rarr;</a></p>"
+        "</div>"
     )
 
 
@@ -9076,13 +9404,15 @@ def _margin_dashboard_header(d: MarginDashboard) -> str:
             f"reaches zero around {_mdY(d.zero_margin_date)}."
         )
     # 50%-consumed corrective-action trigger, quoted from the handbook: "The corrective action
-    # threshold is set where the margin is 50% consumed" (§7.3.3.1.6 Margin Consumption / §7.3.4).
+    # threshold is set where the margin is 50% consumed" — §7.3.3.2.3 Sufficiency of Margin
+    # (printed p.324), where it is the handbook's EXAMPLE-case threshold choice (citation
+    # corrected from ADR-0230's §7.3.3.1.6, ADR-0254; the flag's behavior is unchanged).
     if latest.corrective_action and latest.consumed_pct is not None:
         takeaway += (
             f" {round(100 * latest.consumed_pct)}% of the planned margin was consumed this period — "
-            "at or past the NASA 50%-consumed corrective-action threshold (Schedule Management "
-            "Handbook §7.3.3.1.6 / §7.3.4); enact a corrective action (watch / re-plan / "
-            "re-baseline)."
+            "at or past the 50%-consumed corrective-action threshold (the Schedule Management "
+            "Handbook's example threshold, §7.3.3.2.3); enact a corrective action (watch / "
+            "re-plan / re-baseline)."
         )
 
     trigger = "TRIGGERED" if (latest.below_requirement or latest.corrective_action) else "OK"
@@ -9139,12 +9469,134 @@ def _margin_rate_control(rate: float) -> str:
     )
 
 
+def _band_payload(st: SessionState, d: MarginDashboard) -> dict[str, object] | None:
+    """The Fig 5-30 guideline-band overlay for the burn-down chart + table (ADR-0254), or ``None``
+    when the operator has not entered the phase dates (the band is simply absent — never derived).
+
+    Evaluates the stepped band at every dated version's status date plus the phase boundaries;
+    classifies each dated month via :func:`band_position`. Month verdicts are SUPPRESSED (None)
+    when the versions mix work-day bases — comparing one band against two different "work day"
+    units would conflate them, the same refusal the erosion fit makes (disclosed, not fabricated).
+    """
+    if st.margin_band_dates is None:
+        return None
+    try:
+        cfg = GuidelineBandConfig(
+            phase_dates=(
+                dt.date.fromisoformat(st.margin_band_dates[0]),
+                dt.date.fromisoformat(st.margin_band_dates[1]),
+                dt.date.fromisoformat(st.margin_band_dates[2]),
+                dt.date.fromisoformat(st.margin_band_dates[3]),
+            ),
+            rates=st.margin_band_rates,
+        )
+    except ValueError:
+        return None  # fail-soft: a corrupted stored config renders no band, never a wrong one
+    dated = [(m.status_date, m.effective_margin_wd) for m in d.months if m.status_date]
+    points = expected_margin_band(cfg, tuple(dt.date.fromisoformat(s) for s, _ in dated))
+    by_date: dict[str, BandPoint] = {p.date.isoformat(): p for p in points}
+    mixed = bool(d.erosion_mixed_basis)
+    months = []
+    for iso, eff in dated:
+        p = by_date[iso]
+        months.append(
+            {
+                "date": iso,
+                "low_wd": p.low_wd,
+                "high_wd": p.high_wd,
+                "position": None if mixed else band_position(eff, p.low_wd, p.high_wd),
+            }
+        )
+    return {
+        "points": [
+            {"date": p.date.isoformat(), "low_wd": p.low_wd, "high_wd": p.high_wd} for p in points
+        ],
+        "months": months,
+        "mixed_basis": mixed,
+        "dates": list(st.margin_band_dates),
+        "rates": [list(r) for r in st.margin_band_rates],
+        "month_work_days": MONTH_WORK_DAYS,
+    }
+
+
+def _margin_band_control(st: SessionState) -> str:
+    """The Fig 5-30 guideline-band operator control (F3c-fuller, ADR-0254): the three verbatim
+    handbook rows beside editable (low, high) wd/yr rates, the four phase-boundary date inputs
+    (program facts — never auto-filled), and the §7.3.3.2.3 Watch / Corrective-Action percentile
+    thresholds. Every default is cited; the conversion convention is stated on the panel."""
+    dts = st.margin_band_dates or ("", "", "", "")
+    date_labels = (
+        "Confirmation Review",
+        "Start of Integration &amp; Test",
+        "Delivery to Launch Site",
+        "Launch",
+    )
+    date_inputs = " ".join(
+        f'<label data-no-i18n>{lbl} <input type=date name=phase{i} value="{_e(dts[i])}"></label>'
+        for i, lbl in enumerate(date_labels)
+    )
+    rate_rows = "".join(
+        f"<tr><td class=muted data-no-i18n>{_e(frm)} &rarr; {_e(to)}</td>"
+        f"<td class=muted data-no-i18n>&ldquo;{_e(amount)}&rdquo;</td>"
+        f'<td><input type=number name=low{i} min=1 max=365 step=0.5 value="{st.margin_band_rates[i][0]:g}" style="width:5em">'
+        f' &ndash; <input type=number name=high{i} min=1 max=365 step=0.5 value="{st.margin_band_rates[i][1]:g}" style="width:5em"> wd/yr</td></tr>'
+        for i, (frm, to, amount) in enumerate(FIG_5_30_ROWS)
+    )
+    watch, ca = st.margin_risk_pcts
+    return f"""
+<div class=panel><h2 data-no-i18n>Expected margin &mdash; Figure 5-30 guideline band</h2>
+<p class=muted data-no-i18n>The NASA SMH's "Established standards for margin allocation" (Figure 5-30,
+&sect;5.5.11.2) give per-phase margin <b>rate ranges</b> &mdash; each explicitly "Varies" (program-defined).
+Enter the program's phase-boundary dates to draw the stepped expected-margin band on the burn-down
+(&sect;7.3.3.1.6, Fig 7-32: "stepped burndowns that mimic the margin guidelines over time"). Rates are
+editable; the prefills convert the handbook ranges at the tool's disclosed convention
+<b>1 month = {MONTH_WORK_DAYS:g} work days</b> (the ADR-0230/0253 Gold-Rule reading; row 3 lists three
+alternatives &mdash; the prefill spans their extremes). A month below the band is flagged as a
+<b>guideline deviation</b> (&sect;7.3.3.1.6 Thresholds: deviations "trigger a requirement for either an
+explanation&hellip; or&hellip; activities to mitigate the trend" &mdash; thresholds themselves are program-set
+in the SMP).</p>
+<form method=post action="/margin/band" class=viz-controls>
+<table class=card-table><tr><th scope=col>Phase (Fig 5-30)</th><th scope=col>Handbook amount (verbatim)</th><th scope=col>Rate (wd / program year)</th></tr>
+{rate_rows}</table>
+<p style="margin:.5em 0 0">{date_inputs}</p>
+<p style="margin:.5em 0 0" data-no-i18n><label>Watch percentile <input type=number name=watch_pct min=1 max=99 step=1 value="{watch:g}" style="width:4em">%</label>
+<label>Corrective-Action percentile <input type=number name=ca_pct min=1 max=99 step=1 value="{ca:g}" style="width:4em">%</label>
+<span class=muted>(the handbook's <i>example</i> thresholds &mdash; Fig 7-45 prose / &sect;7.3.3.2.1; program-set per the SMP)</span></p>
+<p style="margin:.5em 0 0"><button type=submit name=action value=apply>Apply band</button>
+<button type=submit name=action value=clear>Clear</button></p>
+</form></div>"""
+
+
+def _margin_risk_panel(st: SessionState) -> str:
+    """The §7.3.3.2.3 risk-based margin-sufficiency panel shell (F3c tier-b, ADR-0254). The SRA
+    run is OFF the page-load path — clicking the button fetches ``/api/margin/risk`` (the repo's
+    SRA doctrine); the shell only carries the cited explanation and the result container."""
+    watch, ca = st.margin_risk_pcts
+    return f"""
+<div class=panel><h2 data-no-i18n>Risk-based margin sufficiency (SRA)</h2>
+<p class=muted data-no-i18n>&sect;7.3.3.2.3 (Sufficiency of Margin): "using a stochastic tracking curve
+takes the results from a routine SRA and plots the results against organizational margin
+requirements." Runs the seeded SSI SRA (same engine and inputs as the Risk Analysis page), then reads
+the finish distribution against the deterministic margin window &mdash; the all-ML finish <b>D</b> and
+the same solve with the margin activities zeroed <b>E</b>. The <b>covered percentile</b> is the fraction
+of simulated finishes the margin absorbs; it is classified against the operator thresholds
+(Watch {watch:g}% / Corrective {ca:g}% &mdash; the handbook's <i>example</i> values, editable above).
+Note: the simulation carries the margin activities in-network at their plan durations (the handbook's
+Fig 7-43 curves are "Current Plan, Zero Margin, With Risks" &mdash; a zero-margin run is a documented
+follow-up); duration uncertainty and risks come from the Risk Analysis page inputs.</p>
+<p><button type=button id=marginRiskRun>Run margin-sufficiency SRA</button>
+<span id=marginRiskStatus class=muted aria-live=polite></span></p>
+<div id=marginRisk></div></div>"""
+
+
 def _margin_dashboard_body(st: SessionState) -> str:
-    """The Margin Dashboard page: the takeaway + KPI header, the operator rate control (F3c), the two
-    reference charts (burn-down + erosion trend), the per-version table, and the embedded dataset
+    """The Margin Dashboard page: the takeaway + KPI header, the operator rate control (F3c), the
+    Fig 5-30 band control + risk-sufficiency panel (F3c-fuller, ADR-0254), the two reference charts
+    (burn-down + erosion trend), the per-version table, and the embedded dataset
     margin_dashboard.js reads."""
     d = _margin_dashboard_for(st)
     data = _margin_dashboard_data(d)
+    data["band"] = _band_payload(st, d)
     blob = json.dumps(data).replace("<", "\\u003c")
 
     def _row(m: MarginMonth) -> str:
@@ -9174,6 +9626,7 @@ def _margin_dashboard_body(st: SessionState) -> str:
         _margin_dashboard_header(d)
         + _export_bar("margin")
         + _margin_rate_control(st.margin_rate)
+        + _margin_band_control(st)
         + '<div class="panel"><h2 data-no-i18n>Margin &amp; Contingency Burn-Down</h2>'
         + _margin_terminology()
         + '<p class="muted" data-no-i18n>Per status date: effective schedule <b>margin</b> (work days) '
@@ -9181,8 +9634,9 @@ def _margin_dashboard_body(st: SessionState) -> str:
         "Gold-Rule requirement line. A red bar is a month where margin has fallen below the "
         "requirement &mdash; the trigger for action. The dashed <b>planned</b> line traces the "
         "period-start margin carried forward; a &#9650; marker flags a month where half or more of "
-        "the planned margin was consumed (the NASA 50%-consumed corrective-action threshold, "
-        "Schedule Management Handbook &sect;7.3.3.1.6 / &sect;7.3.4). <b>Total margin</b> (sum of the "
+        "the planned margin was consumed (the 50%-consumed corrective-action threshold &mdash; the "
+        "Schedule Management Handbook's <i>example</i> threshold, &sect;7.3.3.2.3; thresholds are "
+        "program-set in the SMP). <b>Total margin</b> (sum of the "
         "margin activities&rsquo; durations) and <b>effective margin</b> (the buffer on the driving "
         "chain) can differ &mdash; both are reported.</p>"
         '<div class="chart-host" id="marginBurndownChart"></div></div>'
@@ -9191,7 +9645,8 @@ def _margin_dashboard_body(st: SessionState) -> str:
         f"least-squares erosion line extrapolated to zero{fit}. The projected zero-margin date is "
         "the honest linear read of the current trend, not a commitment.</p>"
         '<div class="chart-host" id="marginErosionChart"></div></div>'
-        '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
+        + _margin_risk_panel(st)
+        + '<div class="panel"><h2 data-no-i18n>Per-version figures</h2>'
         "<table><tr><th scope=col>Status date</th><th scope=col>Planned (wd)</th>"
         "<th scope=col>Effective (wd)</th><th scope=col>Total (wd)</th><th scope=col>Consumed</th>"
         "<th scope=col>Contingency</th><th scope=col>Total avail.</th>"
