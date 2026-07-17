@@ -24,11 +24,11 @@ _WORKBOOK = (
 )
 
 
-def _xlsx(shared_strings: bytes) -> bytes:
-    """A minimal but structurally valid ``.xlsx`` with a chosen ``sharedStrings.xml`` body."""
+def _xlsx(shared_strings: bytes, workbook: str = _WORKBOOK) -> bytes:
+    """A minimal valid ``.xlsx`` with chosen ``sharedStrings.xml`` / workbook bodies."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("xl/workbook.xml", _WORKBOOK)
+        zf.writestr("xl/workbook.xml", workbook)
         zf.writestr("xl/sharedStrings.xml", shared_strings)
     return buf.getvalue()
 
@@ -53,10 +53,21 @@ def test_read_xlsx_rejects_a_decompression_bomb(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_read_xlsx_total_budget_spans_every_part(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The shared budget spans parts: individually-small parts still can't sum past the cap."""
-    # workbook.xml (~90 B) + sharedStrings (~1.2 KB) each fit under a 1 KB cap individually only
-    # loosely; together they exceed a tight total budget, proving the running total is enforced.
-    blob = _xlsx(b"<sst>" + b"B" * 1_200 + b"</sst>")
+    """The shared budget spans parts (audit ADR-0250): TWO parts each UNDER the cap, but
+    summing OVER it, must still be rejected — proving ``remaining`` accumulates across parts rather
+    than resetting per part. Mutation check: reset the budget per ``_read`` call and this passes on
+    each part alone, so no error is raised and this test fails; the single-part bomb tests above
+    would NOT catch that regression."""
+    # sharedStrings is read first (~601 B), then workbook.xml (~600 B). Under a 1000-byte cap each
+    # fits alone (601 < 1000, 600 < 1000) but the running total (601 leaves 399, then 600 > 399)
+    # trips on the SECOND part — only because the budget is shared. Padding is a highly compressible
+    # comment, so both parts decompress large while the .xlsx stays tiny.
+    shared = b"<sst>" + b"B" * 590 + b"</sst>"  # ~601 decompressed bytes
+    workbook = (
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        "<!--" + "A" * 540 + "--><sheets/></workbook>"
+    )  # ~600 decompressed bytes
+    blob = _xlsx(shared, workbook=workbook)
     monkeypatch.setattr(xlsx_read, "_MAX_XLSX_DECOMPRESSED_BYTES", 1_000)
     with pytest.raises(XlsxError, match=r"size cap|zip bomb"):
         read_xlsx(blob)

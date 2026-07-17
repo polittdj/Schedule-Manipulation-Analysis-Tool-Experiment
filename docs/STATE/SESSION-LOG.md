@@ -6658,3 +6658,37 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   MSPDI iterparse / #10 cancellable AI job API / #3 path-adjacency memo, each its OWN PR with a
   byte-identical/parity proof (all HIGH parity risk or premature) → #13 XER calendars → #26 disclosure
   → F3c → roles.
+
+---
+
+## 2026-07-17 — deep-audit remediation: CUI-log leak, DOM-XSS, cache lock, parity + fail-soft (ADR-0250)
+
+- **Model/mode:** Opus 4.8 + Ultracode.  **Branch:** `claude/smat-resume-main-6tpt62` (restarted
+  fresh from `origin/main` after the ADR-0249 PR #388 squash-merge). Operator directive: housekeeping,
+  then a full deep-dive orchestrated audit of the whole repo (read everything, verify everything,
+  assume nothing), fix verified findings, write the handoff + next-session prompt, close the session.
+- **Audit:** 10 dimensions (CUI/Law-1, parity/Law-2, CPM & forensics correctness, security,
+  perf/memory, data validation, AI figure-gate, web/UI, tests, docs/state-drift) fanned out over the
+  whole tree, each finding adversarially re-verified, then lead-reproduced against the actual
+  code/fixtures. 22 agents; **12 findings, 0 refuted.** Notably the ADR-0247 redaction fix was found
+  INCOMPLETE (a real Law-1 leak on my own recently-shipped code) — validating "verify your own last
+  change."
+- **10 fixes landed (with regression tests):** (1, HIGH Law-1) `logging_redaction.py` spaced
+  intermediate-directory leak — interior segments now space-tolerant (`[^\n\\/]{1,120}`); (2, DOM-XSS)
+  `web/app.py` `SF_RIBBON_DRILL` embed now `<`-escapes; (3, Law-2 parity) `path_trace.py`
+  `_scheduled_ids` excludes inactive tasks (byte-matches `cpm._scheduled_tasks`, ADR-0128); (4/5,
+  fail-soft) `json_schedule.py` `day_segments` `len==2` guard + `parse_json` OSError→ImporterError with
+  `errors="replace"`; (6, supply-chain) `pyproject.toml` `jinja2>=3.1.6` / `python-multipart>=0.0.18`;
+  (7, test-quality) `test_xlsx_zip_bomb.py` cross-part budget now genuinely exercised (2 parts);
+  (8, concurrency) `web/app.py` polished cache get/put/clear under `_lock`; (9/10, doc-truth)
+  `REPO-INVENTORY.md` census 241→251 / 25→24 jars / stamp v1.0.59 + floors, `NEXT-SESSION-PROMPT.md`
+  refreshed (old PR-R2/R3/P1 queue all merged).
+- **QUEUED (1, operator decision, NOT fixed):** `ignore-toggles-noop-on-dated` — the `/driving-path`
+  "Ignore constraints" / "Ignore leveling delay" toggles don't recompute CPM dates for dated tasks
+  while the docstring/UI implies they do. Product call: (a) recompute under the toggle (behavior change,
+  re-validate parity) vs (b) correct the docstring/UI. Parked in HANDOFF + NEXT-SESSION-PROMPT.
+- **State:** v1.0.58 → **1.0.59** (src changed); wheel + 9 installers rebuilt in lockstep;
+  **ADR-0250**; full gate green (ruff / format / mypy --strict / bandit exit 0 / node --check / full
+  pytest incl. `parity`).
+- **NEXT:** the queued operator decision first → #13 XER calendars → #26 disclosure → F3c → roles;
+  deferred perf items get deterministic gates when their owning PRs land.

@@ -15,8 +15,14 @@ from schedule_forensics.model.schedule import Schedule
 
 
 def _scheduled_ids(schedule: Schedule) -> set[int]:
-    """UniqueIDs of the real activities (summary rollups are not in the logic network)."""
-    return {t.unique_id for t in schedule.tasks if not t.is_summary}
+    """UniqueIDs of the real activities in the CPM network — the same population the solver uses.
+
+    Excludes summary rollups AND inactive tasks (``is_active=False``), mirroring
+    ``cpm._scheduled_tasks`` and ``driving_slack.date_basis`` (ADR-0128: MS Project / Acumen drop
+    inactive tasks from the network). Without the ``is_active`` guard, ancestors_of/descendants_of
+    traversed THROUGH inactive tasks, producing a driving path/slack SSI would not — a Law-2 parity
+    break — or a KeyError on an undated inactive task (audit ADR-0250)."""
+    return {t.unique_id for t in schedule.tasks if not t.is_summary and t.is_active}
 
 
 def ancestors_of(schedule: Schedule, target_uid: int) -> frozenset[int]:

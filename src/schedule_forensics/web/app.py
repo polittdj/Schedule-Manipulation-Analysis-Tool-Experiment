@@ -1269,7 +1269,12 @@ def _polished_narrative(
     if backend.name == "null":
         return analysis.narrative
     stamp = f"{backend.name}/{getattr(backend, 'model', '')}"
-    cached = state.polished.get_lru(key)
+    # the polished cache is guarded by the same _lock as its peer caches (audit ADR-0250): take it
+    # for each atomic get/put — NOT across the slow backend.generate below, which would serialize
+    # every narrative request — so a concurrent clear() (ai_off / _invalidate_scope) can never race
+    # the multi-step get_lru/put (the D18 KeyError hazard).
+    with state._lock:
+        cached = state.polished.get_lru(key)
     if cached is not None and cached[0] is sch and cached[1] == stamp:
         return cached[2]
     sources = analysis.narrative.statements
@@ -1279,7 +1284,8 @@ def _polished_narrative(
         logger.warning("AI narrative generation failed; serving the deterministic narrative")
         return analysis.narrative
     narrative = Narrative(title=analysis.narrative.title, statements=reattach(polished, sources))
-    state.polished.put(key, (sch, stamp, narrative))
+    with state._lock:
+        state.polished.put(key, (sch, stamp, narrative))
     return narrative
 
 
@@ -6008,7 +6014,8 @@ def create_app(
         st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
         st.backend_cache = None  # re-route to Null immediately
         st.second_cache = None
-        st.polished.clear()  # drop any model-polished narratives so pages show the engine read
+        with st._lock:  # guard the polished clear like its peer caches (audit ADR-0250)
+            st.polished.clear()  # drop any model-polished narratives so pages show the engine read
         manager = getattr(app.state, "ollama", None)
         if manager is not None:
             threading.Thread(
@@ -10911,12 +10918,16 @@ def _ribbon_body(
             )
         body += f"<tr><td>{_e(key)}</td>{cells}</tr>"
     labels = {attr: label for label, attr in cols}
+    # <-escape the inline-JSON embeds like every sibling embed (audit ADR-0250): a </script> in a
+    # schedule key can't currently arise (keys are Path.name, no slash) but the escape is the
+    # explicit barrier, not an implicit Path.name side effect, and keeps the pattern uniform.
     drill_json = json.dumps(
         {k: {m: list(u) for m, u in v.items()} for k, v in (drill or {}).items()}
-    )
+    ).replace("<", "\\u003c")
+    labels_json = json.dumps(labels).replace("<", "\\u003c")  # uniform <-escape (static labels)
     drill_script = (
         f"<script>window.SF_RIBBON_DRILL = {drill_json}; "
-        f"window.SF_RIBBON_LABELS = {json.dumps(labels)};</script>"
+        f"window.SF_RIBBON_LABELS = {labels_json};</script>"
         "<div id=ribbonDrill class=ribbon-drill></div>"
         '<script src="/static/ribbon_drill.js"></script>'
     )

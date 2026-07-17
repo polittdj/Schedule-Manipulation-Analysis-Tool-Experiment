@@ -8,9 +8,12 @@ disagrees with HANDOFF, HANDOFF wins.)
 
 You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
 schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
-section is the current state and the NEXT queue. As of this file's last refresh that meant:
-`main` green at **v1.0.56**, highest ADR **0245**, full gate green (ruff / ruff format --check /
-mypy --strict / bandit exit 0 / node --check / full pytest incl. the `parity` gate).
+section is the current state and the NEXT queue (the SessionStart hook auto-injects it, so it is
+already in front of you). As of this file's last refresh that meant: `main` green at **v1.0.59**,
+highest ADR **0250**, full gate green (ruff / ruff format --check / mypy --strict / bandit exit 0 /
+node --check / full pytest incl. the `parity` gate). PR #389 (ADR-0250, the deep-audit remediation)
+is the last landed work — **confirm it merged** before starting; if it is still open, get it green
+and squash-merged first.
 
 **Standing rules (CLAUDE.md — read them, they are binding):**
 (1) **Data sovereignty (CUI)** — no schedule content or derived metric leaves the machine; AI
@@ -30,7 +33,8 @@ inaccuracy. READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING.
 make stacked branches conflict) → make the change → full gate (ruff / ruff format --check / mypy
 --strict / bandit **exit code read directly** / `pytest -q` / `node --check` for JS) → 4-theme
 Chromium check for any UI change → for src changes: bump `pyproject.toml` + rebuild the wheel
-(`python -m build --wheel --outdir dist/wheel`) + the 9 installers
+(`pip wheel . --no-deps -w dist/wheel`, or `python -m build --wheel --outdir dist/wheel`) + the 9
+installers
 (`python tools/installer/build_installers.py dist/wheel/schedule_forensics-<v>-py3-none-any.whl`),
 rebuilt AFTER any reformat → new ADR + refresh `HANDOFF.md` and `SESSION-LOG.md` in the same
 commit (drift guard) → commit with the required trailers → push → **draft PR** →
@@ -39,23 +43,24 @@ commit (drift guard) → commit with the required trailers → push → **draft 
 
 **The work queue (rationale + detail in HANDOFF's NEXT section):**
 
-1. **Audit remainder (ADR-0245 — the 5 queued findings, none a live leak/parity break):**
-   (a) the standalone `/driving-path` corridor Gantt is NOT per-task shaded — the #382 wiring gap:
-   `driving_path.js` reads a per-row `a.calendar` the server never emits (add the field + pass the
-   per-row calendar to the shading, OR drop the dead read and correct the #382/ADR-0243 "wired"
-   claim); (b) a Gantt-shading node harness (the #382 shading JS is behaviorally untested — model
-   on `tests/web/js/*.mjs`); (c) a `/margin` mixed-basis VIEW test (the erosion-suppression
-   disclosure text/export row is untested); (d) an SRA-xlsx zip-bomb size cap (the re-import route
-   fully decompresses with no cap — parity with `/upload`'s 500 MB limit); (e) a spaced-UNC-path
-   trailing-filename leak in `redact()` (a subtle lookbehind edge).
-2. **PR-P1 — validated perf items** (CoPilot #3/#4/#8/#9/#10 + the audit-E summary-logic edge
-   guard; the refuted claims #1/#5/#6/#7-race are documented — do NOT "fix" them).
-3. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add
-   real `.xer`) → **base-CPM single-calendar fail-soft disclosure** (task #26) → **F3c**
-   parameterized expected margin → **roles front-end** (v4 F4).
-4. **Operator-side (no code):** apply the `00_REFERENCE_INTAKE/INDEX.md` §3 reorganization map
-   via the GitHub web UI when convenient (the CUI guard rightly blocks local renames), including
-   the §4 root-vs-mpp `Project5_TAMPERED.mpp` canonical-build decision.
+1. **OPERATOR DECISION first — the one ADR-0250 finding left unfixed (`ignore-toggles-noop-on-dated`):**
+   the `/driving-path` "Ignore constraints" / "Ignore leveling delay" trace options do NOT use
+   recomputed CPM dates for tasks that carry stored dates, so for a dated schedule the toggle is a
+   no-op while the docstring/UI implies it re-derives the path. Two honest resolutions, and the choice
+   is a product call: **(a)** change the trace to recompute dates under the toggle (a behavior change
+   with parity implications — must be re-validated against Acumen/SSI), or **(b)** correct the
+   docstring + UI copy to describe what the toggle actually does. Do NOT guess — ask the operator which,
+   then implement + regression-test.
+2. **#13** XER per-task calendars (real JUICE `.xer` files show `cals=0`; operator will re-add real
+   `.xer`) → **base-CPM single-calendar fail-soft disclosure** (task #26) → **F3c** parameterized
+   expected margin → **roles front-end** (v4 F4).
+3. **Deferred perf items (were parked in ADR-0249's audit-F harness):** import peak memory rides the
+   MSPDI-streaming work; AI-cancellation behavior rides its own PR — each gets a deterministic gate in
+   `tests/perf/test_perf_regression.py` when that work lands (do NOT add flaky wall-clock latency
+   gates).
+4. **Operator-side (no code):** apply the `00_REFERENCE_INTAKE/INDEX.md` §3 reorganization map via the
+   GitHub web UI when convenient (the CUI guard rightly blocks local renames), including the §4
+   root-vs-mpp `Project5_TAMPERED.mpp` canonical-build decision.
 
 Work autonomously: full gate before every commit, draft PR per increment, pause only for genuinely
-operator-only decisions.
+operator-only decisions (item 1 is one — ask before coding it).

@@ -203,6 +203,41 @@ def test_spaced_path_fix_still_spares_trailing_prose() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "line",
+    [
+        r"open C:\Users\John Smith\Site Alpha Rebaseline.mpp failed",  # Windows profile has a space
+        r"read \\server\CUI Share\Site Alpha\Rebaseline.mpp done",  # UNC share + dir with spaces
+        r"parse /mnt/My Projects/Site Alpha.mpp error",  # POSIX dir with a space
+        r"C:\Users\Jane Q. Public\OneDrive\Q3 Baseline Rev 2.xer",  # spaced dirs + spaced name
+    ],
+)
+def test_spaced_INTERMEDIATE_directory_does_not_leak(line: str) -> None:
+    r"""Audit ADR-0250: the ADR-0247 spaced-name catch only tolerated spaces in the FINAL file name,
+    so a spaced INTERMEDIATE directory (``C:\Users\John Smith\…``, ``\\server\CUI Share\…``) broke
+    whole-path match and leaked the surname / share / project words in clear — a real Law-1 leak
+    (a Windows profile path near-always has a space). ``_SPACED_FILE_PATH_RE`` now allows spaces in
+    interior segments. Mutation check: reverting the interior class to ``[\w.\-]+`` re-leaks these.
+    """
+    out = lr.redact(line)
+    for leaked in (
+        "Smith",
+        "Alpha",
+        "Rebaseline",
+        "Share",
+        "Projects",
+        "John",
+        "Jane",
+        "Public",
+        "OneDrive",
+        "Baseline",
+        "Q3",
+    ):
+        assert leaked not in out, f"CUI token {leaked!r} leaked from a spaced directory: {out}"
+    assert "<path:" in out or "<file:" in out  # folded into one inert token, extension retained
+    assert lr.redact(out) == out  # idempotent
+
+
 def test_redacts_json_schedule_filenames() -> None:
     # "Save .json" writes the tool's own schedule format — those names are CUI too
     out = lr.redact("saved NSAT_deploy_rev3.json for review")
