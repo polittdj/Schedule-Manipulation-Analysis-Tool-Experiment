@@ -171,3 +171,17 @@ def test_reset_is_registered_with_atexit_for_watchdog_exit() -> None:
 
 def _identity(x: int) -> int:
     return x
+
+
+def test_offloaded_call_times_out_instead_of_hanging_forever(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """ADR-0261 P5: a wedged worker can never hang a request forever — the call raises a clear,
+    actionable error at the ceiling, the pool is dropped, and the NEXT call works on a fresh
+    worker (recovery, not a dead server)."""
+    import time
+
+    monkeypatch.setattr(offload, "OFFLOAD_TIMEOUT_S", 0.4)
+    with pytest.raises(RuntimeError, match="exceeded"):
+        run_offloaded(time.sleep, 5)
+    monkeypatch.setattr(offload, "OFFLOAD_TIMEOUT_S", 1800.0)
+    assert run_offloaded(_square, 7) == 49  # fresh pool, normal service resumed
+    shutdown_offload()

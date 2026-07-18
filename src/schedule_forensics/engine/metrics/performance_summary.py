@@ -121,38 +121,81 @@ class WorkToGoCensus:
 def work_to_go_census(schedule: Schedule, critical_uids: frozenset[int]) -> WorkToGoCensus:
     """G1 — per month: activities whose current span overlaps the month, split by type,
     completion state (vs the data date) and longest-path membership (``critical_uids`` is the
-    effective-critical set the rest of the tool uses as the longest path)."""
+    effective-critical set the rest of the tool uses as the longest path).
+
+    Bucketed (ADR-0261 P3): the axis is contiguous first-of-month buckets, so a task's span maps
+    to a month-index range arithmetically; each task adds +1/-1 deltas at its range ends and one
+    prefix-sum pass builds every month — O(tasks + months), not O(months x tasks). Pure integer
+    re-ordering of the same additions: every count is identical to the per-month scan it
+    replaces (pinned by tests/engine/test_performance_summary_census.py's equivalence test)."""
     axis = month_axis(schedule)
-    spans: list[tuple[Task, dt.date, dt.date]] = []
+    n = len(axis)
+    status = schedule.status_date
+    if n == 0:
+        return WorkToGoCensus(
+            months=(),
+            status_month=_month_key(_month(status)) if status is not None else None,
+            truncated=False,
+        )
+    y0, m0 = axis[0].year, axis[0].month
+
+    def _idx(d: dt.date) -> int:
+        return (d.year - y0) * 12 + (d.month - m0)
+
+    # one delta array per counter; index len(axis) absorbs the -1 of ranges ending on the last month
+    counters = [[0] * (n + 1) for _ in range(8)]
+    (
+        d_normal,
+        d_milestones,
+        d_summaries,
+        d_completed,
+        d_to_go,
+        d_normal_to_go,
+        d_lp_tm,
+        d_lp_normal,
+    ) = counters
     for t in schedule.tasks:
         sp = _span(t)
-        if sp is not None:
-            spans.append((t, sp[0].date(), sp[1].date()))
+        if sp is None:
+            continue
+        lo = max(0, _idx(_month(sp[0].date())))
+        hi = min(n - 1, _idx(_month(sp[1].date())))
+        if lo > hi:  # entirely outside the (possibly truncated) axis
+            continue
+        if t.is_summary:
+            d_summaries[lo] += 1
+            d_summaries[hi + 1] -= 1
+            continue
+        if t.is_milestone:
+            d_milestones[lo] += 1
+            d_milestones[hi + 1] -= 1
+        else:
+            d_normal[lo] += 1
+            d_normal[hi + 1] -= 1
+        if t.is_complete:
+            d_completed[lo] += 1
+            d_completed[hi + 1] -= 1
+        else:
+            d_to_go[lo] += 1
+            d_to_go[hi + 1] -= 1
+            if not t.is_milestone:
+                d_normal_to_go[lo] += 1
+                d_normal_to_go[hi + 1] -= 1
+        if t.unique_id in critical_uids:
+            d_lp_tm[lo] += 1
+            d_lp_tm[hi + 1] -= 1
+            if not t.is_milestone:
+                d_lp_normal[lo] += 1
+                d_lp_normal[hi + 1] -= 1
+
     months: list[CensusMonth] = []
-    for m in axis:
-        m_end = _next_month(m) - dt.timedelta(days=1)
-        normal = milestones = summaries = tm_completed = tm_to_go = 0
-        normal_to_go = lp_tm = lp_normal = 0
-        for t, s, f in spans:
-            if s > m_end or f < m:
-                continue
-            if t.is_summary:
-                summaries += 1
-                continue
-            if t.is_milestone:
-                milestones += 1
-            else:
-                normal += 1
-            if t.is_complete:
-                tm_completed += 1
-            else:
-                tm_to_go += 1
-                if not t.is_milestone:
-                    normal_to_go += 1
-            if t.unique_id in critical_uids:
-                lp_tm += 1
-                if not t.is_milestone:
-                    lp_normal += 1
+    running = [0] * 8
+    for i, m in enumerate(axis):
+        for c in range(8):
+            running[c] += counters[c][i]
+        normal, milestones, summaries, tm_completed, tm_to_go, normal_to_go, lp_tm, lp_normal = (
+            running
+        )
         months.append(
             CensusMonth(
                 month=_month_key(m),
@@ -167,11 +210,10 @@ def work_to_go_census(schedule: Schedule, critical_uids: frozenset[int]) -> Work
                 lp_normal=lp_normal,
             )
         )
-    status = schedule.status_date
     return WorkToGoCensus(
         months=tuple(months),
         status_month=_month_key(_month(status)) if status is not None else None,
-        truncated=len(axis) == _MAX_MONTHS,
+        truncated=n == _MAX_MONTHS,
     )
 
 

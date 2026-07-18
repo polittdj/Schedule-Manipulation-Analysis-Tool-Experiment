@@ -112,16 +112,22 @@ def test_show_related_summary_rows_pulls_in_ancestors_on_reduce() -> None:
 
 def test_saved_group_setter_is_metric_preserving() -> None:
     st, sch = _state()
-    # prime the analysis cache, then set a saved group
-    st.analyses["s.mpp"] = (sch, object())  # type: ignore[assignment]
+    # prime the analysis cache through the real path, then set a saved group
+    baseline = st.analysis_for("s.mpp", sch)
     grp = SavedGroup(name="G")
     st.set_saved_group(grp)
     assert st.active_saved_group is grp
-    # grouping is presentation only → the analysis cache is NOT invalidated (cheap regroup)
-    assert "s.mpp" in st.analyses
-    # a saved filter, by contrast, DOES invalidate it
+    # grouping is presentation only → the same resident analysis keeps serving (cheap regroup)
+    assert st.analysis_for("s.mpp", sch) is baseline
+    # a saved filter, by contrast, changes the POPULATION — since ADR-0261 P1 that is a new
+    # cache EPOCH (a different key), never a stale hit; the old epoch stays resident for the
+    # way back instead of being cleared
     st.set_saved_filter(_svt_filter())
-    assert st.analyses == {}
+    filtered = st.analysis_for("s.mpp", sch)
+    assert filtered is not baseline
+    assert len(filtered.activity_rows) < len(baseline.activity_rows)  # SVT- rows only
+    st.set_saved_filter(None)
+    assert st.analysis_for("s.mpp", sch) is baseline  # the toggle-back is a resident hit
 
 
 def test_clearing_a_saved_filter_does_not_drop_an_active_field_filter() -> None:

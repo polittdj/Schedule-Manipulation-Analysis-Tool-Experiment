@@ -245,3 +245,123 @@ def test_g6_g7_to_go_snapshot_ratios_and_critical_share() -> None:
     # with no status date the remaining-baseline denominators are undefined → ratios None
     s2 = to_go_snapshot(_sched().model_copy(update={"status_date": None}), frozenset())
     assert s2.start_ratio is None and s2.finish_ratio is None
+
+
+# ── ADR-0261 P3: the bucketed census equals the per-month scan it replaced ─────────────────────
+
+
+def _census_reference(schedule: Schedule, critical_uids: frozenset[int]):
+    """The pre-ADR-0261 O(months x tasks) per-month scan, kept verbatim as the oracle."""
+    from schedule_forensics.engine.metrics.performance_summary import (
+        _MAX_MONTHS,
+        CensusMonth,
+        WorkToGoCensus,
+        _month,
+        _month_key,
+        _next_month,
+        _span,
+    )
+
+    axis = month_axis(schedule)
+    spans = []
+    for t in schedule.tasks:
+        sp = _span(t)
+        if sp is not None:
+            spans.append((t, sp[0].date(), sp[1].date()))
+    months = []
+    for m in axis:
+        m_end = _next_month(m) - dt.timedelta(days=1)
+        normal = milestones = summaries = tm_completed = tm_to_go = 0
+        normal_to_go = lp_tm = lp_normal = 0
+        for t, s, f in spans:
+            if s > m_end or f < m:
+                continue
+            if t.is_summary:
+                summaries += 1
+                continue
+            if t.is_milestone:
+                milestones += 1
+            else:
+                normal += 1
+            if t.is_complete:
+                tm_completed += 1
+            else:
+                tm_to_go += 1
+                if not t.is_milestone:
+                    normal_to_go += 1
+            if t.unique_id in critical_uids:
+                lp_tm += 1
+                if not t.is_milestone:
+                    lp_normal += 1
+        months.append(
+            CensusMonth(
+                month=_month_key(m),
+                normal=normal,
+                milestones=milestones,
+                summaries=summaries,
+                tm_total=normal + milestones,
+                tm_completed=tm_completed,
+                tm_to_go=tm_to_go,
+                normal_to_go=normal_to_go,
+                lp_tm=lp_tm,
+                lp_normal=lp_normal,
+            )
+        )
+    status = schedule.status_date
+    return WorkToGoCensus(
+        months=tuple(months),
+        status_month=_month_key(_month(status)) if status is not None else None,
+        truncated=len(axis) == _MAX_MONTHS,
+    )
+
+
+def test_bucketed_census_equals_the_per_month_scan_oracle() -> None:
+    """REGRESSION GATE (ADR-0261 P3): the O(tasks+months) diff-array census must produce the
+    EXACT WorkToGoCensus of the per-month scan it replaced — every month, every counter — across
+    the tricky shapes: mixed types/completion, a dateless task, baseline-only dates, a span far
+    beyond the axis cap (truncation clamp), and an empty critical set."""
+    base = _sched()
+    crit_cases = [frozenset(), frozenset({2, 3}), frozenset({1, 2, 3, 4, 5})]
+    for crit in crit_cases:
+        assert work_to_go_census(base, crit) == _census_reference(base, crit)
+
+    tricky = Schedule(
+        name="tricky",
+        project_start=JAN,
+        status_date=DD,
+        tasks=(
+            Task(unique_id=1, name="dateless", duration_minutes=DAY),
+            Task(  # baseline-only dates
+                unique_id=2,
+                name="baseline-only",
+                duration_minutes=2 * DAY,
+                baseline_start=FEB,
+                baseline_finish=MAR,
+            ),
+            Task(  # runs 40 years — forces the 360-month axis cap + range clamp
+                unique_id=3,
+                name="forever",
+                duration_minutes=DAY,
+                start=JAN,
+                finish=dt.datetime(2065, 1, 6, 17, 0),
+            ),
+            Task(
+                unique_id=4, name="ms", duration_minutes=0, is_milestone=True, start=MAR, finish=MAR
+            ),
+            Task(
+                unique_id=5, name="sum", duration_minutes=0, is_summary=True, start=JAN, finish=APR
+            ),
+            Task(
+                unique_id=6,
+                name="done",
+                duration_minutes=DAY,
+                percent_complete=100.0,
+                actual_start=JAN,
+                actual_finish=FEB,
+            ),
+        ),
+    )
+    for crit in (frozenset(), frozenset({3, 4}), frozenset({6})):
+        got = work_to_go_census(tricky, crit)
+        assert got == _census_reference(tricky, crit)
+    assert work_to_go_census(tricky, frozenset()).truncated is True  # the cap case was exercised
