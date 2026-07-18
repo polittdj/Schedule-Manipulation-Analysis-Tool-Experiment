@@ -489,6 +489,29 @@ _TERMS: dict[str, dict[str, str]] = {
         "Pfads zu sehen.",
         "pt": "Carregue pelo menos duas versões analisáveis para ver o caminho crítico evoluir.",
     },
+    # — Mission-wall tile degrade notes (ADR-0262) —
+    "Needs at least two loaded versions of the active project — load another schedule update "
+    "to activate this visual.": {
+        "es": "Necesita al menos dos versiones cargadas del proyecto activo: cargue otra "
+        "actualización del cronograma para activar este visual.",
+        "fr": "Nécessite au moins deux versions chargées du projet actif — chargez une autre "
+        "mise à jour du planning pour activer ce visuel.",
+        "de": "Benötigt mindestens zwei geladene Versionen des aktiven Projekts — laden Sie "
+        "eine weitere Terminplan-Aktualisierung, um diese Ansicht zu aktivieren.",
+        "pt": "Necessita de pelo menos duas versões carregadas do projeto ativo — carregue "
+        "outra atualização do cronograma para ativar este visual.",
+    },
+    "Needs at least two analyzable versions of the active project — load another schedule "
+    "update to activate this visual.": {
+        "es": "Necesita al menos dos versiones analizables del proyecto activo: cargue otra "
+        "actualización del cronograma para activar este visual.",
+        "fr": "Nécessite au moins deux versions analysables du projet actif — chargez une "
+        "autre mise à jour du planning pour activer ce visuel.",
+        "de": "Benötigt mindestens zwei auswertbare Versionen des aktiven Projekts — laden Sie "
+        "eine weitere Terminplan-Aktualisierung, um diese Ansicht zu aktivieren.",
+        "pt": "Necessita de pelo menos duas versões analisáveis do projeto ativo — carregue "
+        "outra atualização do cronograma para ativar este visual.",
+    },
     # — page chrome / common labels (operator: translate the whole UI, not just the nav) —
     "About": {"es": "Acerca de", "fr": "À propos", "de": "Über", "pt": "Sobre"},
     "Language:": {"es": "Idioma:", "fr": "Langue :", "de": "Sprache:", "pt": "Idioma:"},

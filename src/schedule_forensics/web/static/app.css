@@ -593,6 +593,9 @@ th.metric-th { position: relative; }
    scrolls in place); wide tiles (Gantts / trends) get a taller host. The per-tile Enlarge button
    grows a tile to the full wall width + a tall host, and shrinks it back. */
 .mosaic .tile .chart-host { height: 340px; overflow: auto; }
+/* ADR-0262: a degraded tile's note pad — the chart-host look (dot grid, same height)
+   without the chart-host CLASS, so chartframe.js never adds a dead zoom toolbar */
+.mosaic .tile .chart-note { height: 340px; overflow: auto; padding: 14px 12px; }
 .mosaic .tile.tile-wide .chart-host { height: 460px; }
 .mosaic .tile.tile-expanded { grid-column: 1 / -1; }
 .mosaic .tile.tile-expanded .chart-host { height: 74vh; }

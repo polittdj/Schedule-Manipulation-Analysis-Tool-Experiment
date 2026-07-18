@@ -7002,3 +7002,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.67 → **1.0.68**; wheel + 9 installers in lockstep; **ADR-0261**; HANDOFF
   moved/replaced + this entry in the same commit. Still owed: the operator's PowerShell log +
   large dataset for on-machine re-validation.
+
+## 2026-07-18b — full handoff-verification audit + remediation (ADR-0262 + ADR-0263; v1.0.69)
+
+- **Directive:** operator: read the handoff in its entirety, assume nothing, verify everything;
+  test every anomaly in the sandbox, hypothesis-test fixes, harden, implement; then work the
+  queue hardest-first, automated build cycle, fidelity above all.
+- **Audit:** ten-agent Ultracode sweep (ADR-0240; lead re-verified every major finding against
+  code + executed tests) over every ADR-0261/handoff claim. CONFIRMED: P1 epoch caches
+  (signature mirrors scope(), full-text keys, residency, highlight epoch, ADR-0258 interplay
+  safe), P2 tier, P3 memo + census bucketing pinned to its oracle, P5 offload/OAT bounds,
+  latency-gate determinism (measured relative margin >3900x), version/installer lockstep
+  (1.0.68 everywhere), state-docs guard, parity 44 green, AFT pinning live, ADR-0257 plan
+  fully executed-or-recorded. The Cowork-layer "pytest 2418" figure was exact on the clean
+  tree (2418 passed baseline).
+- **Confirmed defects → fixed (all reproduced with failing tests FIRST):** the NEXT-#1
+  /mission 1-version tile 4xx (plus the ADR-0258 residual session-scoped CEI guards — live
+  422 on two-project 1-version populations) → ADR-0262; the mixed-epoch pairing race whose
+  P3-memo poisoning REFUTED ADR-0261's "staleness structurally impossible" sub-claim; wipe
+  finality (post-wipe disk re-insert; unlocked wipe tail); /upload+/example D18 locking;
+  Portfolio summary margin ignoring the ADR-0230 confirmed overlay; \x1f key collisions;
+  uncovered OAT cap disclosure; single-snapshot-only AFT drift guard; __version__ "0.0.0"
+  → ADR-0263.
+- **Verification:** new suites test_mission_one_version.py (6) + test_session_consistency.py
+  (6, deterministic monkeypatch-forced races) + P2 epoch gate + OAT cap pair + all-Bibles AFT
+  guard; mission fixture re-targeted to two goldens (it pinned the defective 1-version wall);
+  full gate green; Chromium browser-verify: 1-version wall = 4 notes, ZERO console errors,
+  zero 4xx, four themes; 2-version wall whole.
+- **State:** v1.0.68 → **1.0.69**; **ADR-0262, ADR-0263**; wheel + 9 installers in lockstep;
+  HANDOFF rotated + this entry in the same commit. NEXT: SEC-2/SEC-3 → family-B unify →
+  zero-margin SRA toggle → roles i18n; operator still owes the PowerShell log, the large
+  dataset, and the Claude-Design prompt.

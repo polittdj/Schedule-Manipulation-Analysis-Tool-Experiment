@@ -109,9 +109,9 @@ def test_portfolio_reads_the_in_memory_summary_cache(
 
     calls = {"n": 0}
 
-    def counting(sch: object) -> object:
+    def counting(sch: object, **kw: object) -> object:
         calls["n"] += 1
-        return real(sch)
+        return real(sch, **kw)  # type: ignore[arg-type]
 
     monkeypatch.setattr(app_module, "compute_summary", counting)
     _st, client = sc

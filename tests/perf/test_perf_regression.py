@@ -6,8 +6,10 @@ performance-regression gate** — so a future change could silently undo a shipp
 reintroduce unbounded growth and nothing would fail.
 
 This harness closes that gap for the perf properties already shipped, using **deterministic**
-assertions only — operation counts and cache residency, never wall-clock latency (which flakes on
-CI machines) — so a genuine regression fails loudly while an equal-or-better implementation passes:
+assertions — operation counts and cache residency, plus (since ADR-0261) exactly one RELATIVE
+timing gate (an epoch cache hit vs the compute it replaces — never an absolute wall-clock
+threshold, which is what flakes on CI machines) — so a genuine regression fails loudly while an
+equal-or-better implementation passes:
 
 * **audit-C (SRA finish-rank reuse)** — ``_build_result`` must rank the finish vector ONCE, not once
   per activity. Gated by counting ``_average_ranks`` calls: ``N + 1`` for ``N``, not ``2N``.
@@ -17,7 +19,8 @@ CI machines) — so a genuine regression fails loudly while an equal-or-better i
 The remaining audit-F items are gated by their own PRs when the underlying work lands: import peak
 memory rides #9 (MSPDI streaming), AI-cancellation behavior rides #10, and CPM/SRA/filter *latency*
 gates need a benchmark harness with warm-up + a machine baseline (out of scope for a deterministic
-unit gate). This file deliberately avoids timing assertions so it never flakes.
+unit gate). This file deliberately avoids ABSOLUTE timing assertions so it never flakes; the one
+timing assertion it carries is relative (hit < miss, measured margin >1000x on a dev machine).
 """
 
 from __future__ import annotations
@@ -181,6 +184,35 @@ def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:
     assert counts == {"analysis": 0, "cpm": 4}  # solves only — the P2 point
     st.analysis_for("v0", versions["v0"])
     assert counts == {"analysis": 1, "cpm": 4}  # the full analysis REUSED v0's solve
+
+
+def test_p2_cpm_tier_is_epoch_keyed_and_resident(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """REGRESSION GATE (P2's epoch dimension, ADR-0263): each scope epoch solves once per
+    version, and toggling the filter back re-serves the RESIDENT solves — zero new solves.
+    The original P2 gate only exercised the default epoch; this closes the audit gap."""
+    import schedule_forensics.web.app as app_module
+
+    counts = {"cpm": 0}
+    real_cpm = app_module.compute_cpm
+
+    def counting_cpm(sch, **kw):  # type: ignore[no-untyped-def]
+        counts["cpm"] += 1
+        return real_cpm(sch, **kw)
+
+    monkeypatch.setattr(app_module, "compute_cpm", counting_cpm)
+    st = SessionState()
+    versions = {f"v{i}": _chain(6, f"v{i}") for i in range(3)}
+    for k, sch in versions.items():
+        st.cpm_for(k, sch)
+    assert counts["cpm"] == 3  # the default epoch: one solve per version
+    st.set_filter([("Task Name", "-2")])
+    for k, sch in versions.items():
+        st.cpm_for(k, sch)
+    assert counts["cpm"] == 6  # the filtered epoch: one solve per version, once
+    st.set_filter(())
+    for k, sch in versions.items():
+        st.cpm_for(k, sch)
+    assert counts["cpm"] == 6  # ← toggle-back is a resident epoch: ZERO new solves
 
 
 def test_p3_performance_dataset_is_memoised_per_epoch(monkeypatch) -> None:  # type: ignore[no-untyped-def]

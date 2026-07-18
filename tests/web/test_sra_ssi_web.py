@@ -106,6 +106,35 @@ def test_factor_then_auto_calc_then_oat(client: TestClient) -> None:
     assert [r["total"] for r in rows] == sorted((r["total"] for r in rows), reverse=True)
 
 
+def test_oat_cap_disclosure_is_never_a_silent_subset(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """ADR-0261 P5 / ADR-0263: above _OAT_MAX_ACTIVITIES the sweep keeps only the
+    largest-ML-remaining candidates and MUST disclose the cap in the payload note (the panel
+    renders it); the capped branch previously had zero test coverage."""
+    import schedule_forensics.web.app as app_module
+
+    client.post("/sra/factor", data={"uids": "5, 6 7", "factor": "5"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    monkeypatch.setattr(app_module, "_OAT_MAX_ACTIVITIES", 2)
+    o = client.get("/api/sra/oat")
+    assert o.status_code == 200
+    j = o.json()
+    assert "note" in j, "a capped sweep must disclose itself in the payload"
+    assert j["note"].startswith("Sensitivity swept the 2 largest-remaining of ")
+    assert "size cap" in j["note"]
+    # the vendored panel JS renders exactly this note (payload + panel, as the ADR promises)
+    js = client.get("/static/sra_ssi.js").text
+    assert "res.j.note" in js and "never a silent subset" in js
+
+
+def test_oat_below_the_cap_has_no_disclosure_note(client: TestClient) -> None:
+    """Below the cap the sweep is complete — no note (byte-identical to pre-cap payloads)."""
+    client.post("/sra/factor", data={"uids": "5, 6 7", "factor": "5"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    o = client.get("/api/sra/oat")
+    assert o.status_code == 200
+    assert "note" not in o.json()
+
+
 def test_risk_register_add_remove_and_matrix(client: TestClient) -> None:
     client.post(
         "/sra/risk-register",

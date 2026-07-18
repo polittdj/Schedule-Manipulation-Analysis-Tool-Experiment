@@ -14,19 +14,22 @@ from fastapi.testclient import TestClient
 
 from schedule_forensics.web.app import SessionState, create_app
 
-GOLDEN = (
-    Path(__file__).resolve().parents[1]
-    / "fixtures"
-    / "golden"
-    / "project2_5"
-    / "Project5.mspdi.xml"
-)
+_GOLDEN_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
 
 
 @pytest.fixture
 def client() -> TestClient:
+    """TWO versions of the one golden Project (ADR-0262): the full wall is the ≥2-version
+    rendering — below that the cross-version tiles degrade to a note instead of fetching
+    their ≥2-version APIs (pinned in test_mission_one_version.py)."""
     c = TestClient(create_app(SessionState()))
-    c.post("/upload", files={"files": ("Project5.mspdi.xml", GOLDEN.read_bytes(), "text/xml")})
+    c.post(
+        "/upload",
+        files=[
+            ("files", (name, (_GOLDEN_DIR / name).read_bytes(), "text/xml"))
+            for name in ("Project2.mspdi.xml", "Project5.mspdi.xml")
+        ],
+    )
     return c
 
 
