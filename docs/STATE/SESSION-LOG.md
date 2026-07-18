@@ -7107,3 +7107,5 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.72 → **1.0.73**; **ADR-0268**; wheel + 9 installers in lockstep; HANDOFF
   rotated + this entry in the same commit. The residual list is now empty; remaining work is
   all operator-owed inputs (PowerShell log, large dataset, Claude-Design prompt).
+
+- **Session close (2026-07-18f):** PR #403 merged (squash `43beddd`); branch restarted from the #403 squash, clean tree, no open PR. The 2026-07-18 automated cycle (#399→#400→#401→#402→#403; v1.0.68→1.0.73; ADR-0261 already on main plus ADR-0262 through ADR-0268) is COMPLETE. Both the feature queue and the recorded-residuals list are empty; all remaining work is operator-owed (PowerShell crash log, real large dataset, Claude-Design prompt) or PARKED (#13). Session stopped at operator request.
