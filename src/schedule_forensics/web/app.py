@@ -496,9 +496,12 @@ class _Analysis:
     activity_rows: list[dict[str, object]]
 
 
-def _compute_analysis(sch: Schedule) -> _Analysis:
-    """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere)."""
-    cpm = compute_cpm(sch)
+def _compute_analysis(sch: Schedule, cpm: CPMResult | None = None) -> _Analysis:
+    """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere).
+
+    ``cpm`` lets a caller hand in an already-cached solve of THIS exact schedule (the ADR-0261
+    P2 tier) so the network is never solved twice for one epoch — never a different input."""
+    cpm = cpm if cpm is not None else compute_cpm(sch)
     return _Analysis(
         cpm=cpm,
         audit=audit_schedule(sch, cpm),
@@ -556,6 +559,11 @@ _ANALYSIS_CACHE_MAX = 48
 #: (``folder:`` / ``title:`` / ``file:``).
 _UNTITLED_PID = "untitled:"
 
+#: ADR-0261 P5: cap on the OAT sensitivity sweep's candidate activities (2 CPM solves each).
+#: Far above any realistic schedule (sweeps below it are byte-identical to uncapped); above it
+#: the largest-remaining candidates are swept and the payload + panel disclose the cap.
+_OAT_MAX_ACTIVITIES = 1500
+
 
 class _LRUCache(OrderedDict[str, _V]):
     """A count-bounded, access-ordered LRU over string keys (std-lib only — no ``cachetools``).
@@ -607,6 +615,20 @@ class SessionState:
     # file content hash below — persisted in the SQLite cache so a portfolio of thousands renders from
     # summaries, not a fresh CPM per row. Identity-checked and scope-aware like ``analyses``.
     summaries: dict[str, tuple[Schedule, VersionSummary]] = field(default_factory=dict)
+    # ADR-0261 P2: the CPM-only tier — epoch-keyed like ``analyses`` ((key, scope-signature) →
+    # (raw schedule, solve)). The multi-version population pass needs only dates/float per
+    # version; this holds that solve without the heavy full analysis, and ``analysis_for``
+    # reuses it so a network is never solved twice for one epoch. Cleared on wipe.
+    cpms: dict[str, tuple[Schedule, CPMResult]] = field(default_factory=dict)
+    # ADR-0261 P3: per-version Performance-page memo, keyed by the SCOPED schedule's object
+    # identity (one scoped object per version per epoch, courtesy of the scope memo):
+    # id -> (scoped ref, effective-critical set, serialized G1-G5 block, truncated flag). The
+    # census/flow/burden/DRM passes are pure functions of the scoped version, so /performance
+    # stops recomputing every loaded version on every render. Identity-keyed ⇒ MUST die with
+    # the epoch: cleared alongside the scope memos and on wipe.
+    _perf_memo: dict[int, tuple[Schedule, frozenset[int], dict[str, object], bool]] = field(
+        default_factory=dict
+    )
     # key -> raw uploaded-file content hash (the SQLite summary/parse cache key). Only set for the
     # /upload path; a schedule loaded another way simply has no on-disk summary (in-memory only).
     content_hashes: dict[str, str] = field(default_factory=dict)
@@ -802,13 +824,54 @@ class SessionState:
                 return None
             return self._match_uids(sch)
 
+    def _scope_signature(self) -> str:
+        """Canonical token for everything that can change an analysis POPULATION (ADR-0261 P1).
+
+        ``""`` when nothing narrows — the default epoch, whose cache keys stay the bare session
+        key (byte-identical key shape to the pre-P1 cache for the common case). Mirrors
+        :meth:`scope`'s own branches exactly: a filter contributes only in **reduce** mode
+        (highlight marks rows, never narrows the population), via the saved filter's full
+        canonical dump + the operator's prompt answers, or the flat criteria tuple's repr; the
+        Target UID contributes whenever set. Always the FULL canonical text, never a hash — a
+        hash collision could serve a wrong number, so there is nothing to collide. Callers hold
+        ``self._lock``."""
+        parts: list[str] = []
+        if self.filter_mode == "reduce":
+            if self.active_saved_filter is not None:
+                parts.append("S=" + self.active_saved_filter.model_dump_json())
+                if self.saved_filter_prompts:
+                    prompts = sorted((k, repr(v)) for k, v in self.saved_filter_prompts.items())
+                    parts.append("P=" + repr(prompts))
+            elif self.active_filter:
+                parts.append("F=" + repr(self.active_filter))
+        if self.target_uid is not None:
+            parts.append(f"T={self.target_uid}")
+        return "\x1f".join(parts)
+
+    def scope_signature(self) -> str:
+        """The current scope signature (public, lock-taking) — for epoch-keyed caches that live
+        outside this class (the polished-narrative cache)."""
+        with self._lock:
+            return self._scope_signature()
+
+    def _cache_key(self, key: str, sig: str) -> str:
+        """The epoch-aware cache key: the bare session key in the default epoch (sig ``""``),
+        else ``key␟sig``. Callers hold ``self._lock`` (or pass a sig they took under it)."""
+        return key if not sig else f"{key}\x1f{sig}"
+
     def _invalidate_scope(self) -> None:
-        """Clear every scope-derived cache — the shared body of the filter setters + wipe."""
+        """Reset the scope MEMOS — the shared body of the filter/target setters.
+
+        ADR-0261 P1: this is now SURGICAL. Only the cheap identity memos (``_scoped`` /
+        ``_matched``) reset; the expensive ``analyses`` / ``summaries`` / ``polished`` caches are
+        keyed by ``(key, scope-signature)`` and simply stop being consulted for the old epoch —
+        so toggling a filter or target ON and back OFF returns to resident results instead of
+        recomputing every loaded version twice. Stale service is impossible by construction: a
+        different population ⇒ a different signature ⇒ a different cache key (proven by
+        tests/web/test_scope_epoch_cache.py). A wipe still clears everything explicitly."""
         self._scoped.clear()
         self._matched.clear()
-        self.analyses.clear()
-        self.summaries.clear()  # summaries are scope-aware too — recompute against the new scope
-        self.polished.clear()
+        self._perf_memo.clear()  # identity-keyed (P3): must never outlive the scope epoch
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide FIELD filter and invalidate the scope/
@@ -1079,47 +1142,89 @@ class SessionState:
             return group_into_projects(records)
 
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
-        """The cached analysis for ``key`` over the active scope; recomputes when the schedule object
-        or the filter changes (both reflected in the scoped object's identity)."""
+        """The cached analysis for ``key`` over the active scope.
+
+        ADR-0261 P1: keyed by ``(key, scope-signature)`` with the RAW schedule as the identity
+        anchor — toggling a filter/target flips between resident epochs (clearing a filter is a
+        cache hit again), while a re-upload under the same key still recomputes (new object).
+        ADR-0261 P4: the heavy engine compute runs OUTSIDE the session lock, so one long
+        analysis never serialises every other request; a concurrent duplicate compute of the
+        same epoch is deterministic (byte-identical result) and last-write-wins under the lock.
+        A wipe between unlock and store leaves at most one orphaned LRU entry that is never
+        consulted again (its key's schedule is gone) and is evicted normally."""
         with self._lock:
-            scoped = self.scope(sch)
-            cached = self.analyses.get_lru(key)
-            if cached is not None and cached[0] is scoped:
+            ck = self._cache_key(key, self._scope_signature())
+            cached = self.analyses.get_lru(ck)
+            if cached is not None and cached[0] is sch:
                 return cached[1]
-            analysis = _compute_analysis(scoped)
-            self.analyses.put(key, (scoped, analysis))
-            return analysis
+            scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
+            pre = self.cpms.get(ck)
+            cpm = pre[1] if pre is not None and pre[0] is sch else None
+        analysis = _compute_analysis(scoped, cpm=cpm)
+        with self._lock:
+            self.analyses.put(ck, (sch, analysis))
+            self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
+        return analysis
+
+    def cpm_for(self, key: str, sch: Schedule) -> CPMResult:
+        """Just the CPM solve for ``key`` over the active scope (ADR-0261 P2).
+
+        The multi-version population pass (``_solvable_versions``) needs only dates/float for
+        every version — building the full monolithic analysis (audit + baseline + float-bands +
+        completion + findings + narrative + activity grid) per version just to read ``.cpm`` was
+        the recorded P2 lag. Reuses a resident full analysis' solve when one exists; otherwise
+        solves the network alone (outside the lock, P4) and caches it — and a later
+        ``analysis_for`` reuses THIS solve instead of re-running it. Same epoch keying and
+        identity anchor as ``analysis_for``; a ``CPMError`` propagates exactly as before."""
+        with self._lock:
+            ck = self._cache_key(key, self._scope_signature())
+            pre = self.cpms.get(ck)
+            if pre is not None and pre[0] is sch:
+                return pre[1]
+            full = self.analyses.get_lru(ck)
+            if full is not None and full[0] is sch:
+                self.cpms[ck] = (sch, full[1].cpm)
+                return full[1].cpm
+            scoped = self.scope(sch)
+        cpm = compute_cpm(scoped)
+        with self._lock:
+            self.cpms[ck] = (sch, cpm)
+        return cpm
 
     def summary_for(self, key: str, sch: Schedule) -> VersionSummary:
         """The cached rollup summary for ``key`` (v4 Feature 2 lazy tier) — the Portfolio's cheap
         path: finish, effective margin, DCMA-14 pass/fail, without holding the full analysis.
 
-        In-memory first; then, only when the version is UNSCOPED (no active filter/target changes
-        the numbers, so ``scope`` returned the schedule unchanged), the on-disk SQLite summary keyed
-        by the file's content hash — surviving a session restart. A scoped version, or one with no
-        content hash (loaded outside /upload), computes fresh and is memoised for the session only.
-        A summary equals the fully-computed row (test-enforced), so this only ever changes speed."""
+        In-memory first (epoch-keyed like ``analysis_for`` — ADR-0261 P1); then, only when the
+        version is UNSCOPED (no active filter/target changes the numbers, so ``scope`` returned
+        the schedule unchanged), the on-disk SQLite summary keyed by the file's content hash —
+        surviving a session restart. A scoped version, or one with no content hash (loaded
+        outside /upload), computes fresh and is memoised for the session only. A summary equals
+        the fully-computed row (test-enforced), so this only ever changes speed. The compute and
+        the SQLite I/O run OUTSIDE the session lock (ADR-0261 P4)."""
         with self._lock:
-            scoped = self.scope(sch)
-            cached = self.summaries.get(key)
-            if cached is not None and cached[0] is scoped:
+            ck = self._cache_key(key, self._scope_signature())
+            cached = self.summaries.get(ck)
+            if cached is not None and cached[0] is sch:
                 return cached[1]
+            scoped = self.scope(sch)
             on_disk = scoped is sch  # unscoped ⇒ the whole-file summary the SQLite cache holds
             chash = self.content_hashes.get(key) if on_disk else None
-            summary: VersionSummary | None = None
+        summary: VersionSummary | None = None
+        if chash is not None:
+            blob = get_default_cache().get_summary(chash)
+            if blob is not None:
+                try:
+                    summary = VersionSummary.from_json(blob)
+                except (ValueError, KeyError, TypeError):
+                    summary = None  # a stale/corrupt blob is a miss, never an error
+        if summary is None:
+            summary = compute_summary(scoped)
             if chash is not None:
-                blob = get_default_cache().get_summary(chash)
-                if blob is not None:
-                    try:
-                        summary = VersionSummary.from_json(blob)
-                    except (ValueError, KeyError, TypeError):
-                        summary = None  # a stale/corrupt blob is a miss, never an error
-            if summary is None:
-                summary = compute_summary(scoped)
-                if chash is not None:
-                    get_default_cache().put_summary(chash, summary.to_json())
-            self.summaries[key] = (scoped, summary)
-            return summary
+                get_default_cache().put_summary(chash, summary.to_json())
+        with self._lock:
+            self.summaries[ck] = (sch, summary)
+        return summary
 
 
 def _explain(what: str, read: str, decide: str) -> str:
@@ -1492,10 +1597,14 @@ def _polished_narrative(
     if backend.name == "null":
         return analysis.narrative
     stamp = f"{backend.name}/{getattr(backend, 'model', '')}"
+    # ADR-0261 P1: epoch-keyed like the peer caches — a filter/target change switches the key,
+    # so a narrative polished against one population can never serve another (the entry was
+    # reattached/figure-verified against THAT epoch's analysis statements).
+    key = state._cache_key(key, state.scope_signature())
     # the polished cache is guarded by the same _lock as its peer caches (audit ADR-0250): take it
     # for each atomic get/put — NOT across the slow backend.generate below, which would serialize
-    # every narrative request — so a concurrent clear() (ai_off / _invalidate_scope) can never race
-    # the multi-step get_lru/put (the D18 KeyError hazard).
+    # every narrative request — so a concurrent clear() (ai_off / wipe) can never race the
+    # multi-step get_lru/put (the D18 KeyError hazard).
     with state._lock:
         cached = state.polished.get_lru(key)
     if cached is not None and cached[0] is sch and cached[1] == stamp:
@@ -3268,7 +3377,9 @@ def create_app(
         skipped: list[str] = []
         for key, sch in st.ordered_versions():
             try:
-                cpms.append(st.analysis_for(key, sch).cpm)
+                # ADR-0261 P2: only the solve — never the full monolithic analysis — is needed
+                # for the multi-version population pass; a resident full analysis is reused.
+                cpms.append(st.cpm_for(key, sch))
                 schedules.append(
                     st.scope(sch)
                 )  # the CPM is for the scoped schedule; keep them paired
@@ -4143,7 +4254,7 @@ def create_app(
             _how_we_execute_header(schedules[-1])
             + _skipped_notice(skipped)
             + _sources_line(st.ordered())
-            + _performance_body(schedules, cpms, file),
+            + _performance_body(st, schedules, cpms, file),
         )
 
     @app.get("/export/{fmt}/performance")
@@ -4154,7 +4265,7 @@ def create_app(
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "load a schedule first"}, status_code=422)
-        data = _performance_data(schedules, cpms, file)
+        data = _performance_data(session(), schedules, cpms, file)
         census = cast(list[dict[str, Any]], data["census"])
         flow = cast(list[dict[str, Any]], data["flow"])
         burden = cast(list[dict[str, Any]], data["burden"])
@@ -6208,6 +6319,17 @@ def create_app(
             if st.sra_use_risk_register
             else frozenset()
         )
+        three_point = _ssi_three_point(st, sch)
+        # ADR-0261 P5: the sweep is TWO CPM solves per candidate activity and was unbounded — a
+        # huge schedule could pin the worker for hours. Above the cap, sweep only the candidates
+        # with the LARGEST ML/remaining duration (the biggest possible swing; deterministic uid
+        # tiebreak) and DISCLOSE it in the payload + on the panel — never a silent subset. The
+        # engine itself is untouched; below the cap the sweep is byte-identical to before.
+        candidates = [u for u in three_point if u not in exclude]
+        capped = len(candidates) > _OAT_MAX_ACTIVITIES
+        if capped:
+            keep = sorted(candidates, key=lambda u: (-three_point[u][1], u))[:_OAT_MAX_ACTIVITIES]
+            three_point = {u: three_point[u] for u in keep}
         # the OAT sweep is one CPM solve per task — offload it on big schedules too
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
@@ -6215,7 +6337,7 @@ def create_app(
                 heavy,
                 compute_oat_sensitivity,
                 sch,
-                three_point=_ssi_three_point(st, sch),
+                three_point=three_point,
                 target_uid=st.sra_focus_uid,
                 exclude_uids=exclude,
             )
@@ -6223,23 +6345,28 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         names = sch.tasks_by_id
         mpd = sch.calendar.working_minutes_per_day or 480
-        return JSONResponse(
-            {
-                "rows": [
-                    {
-                        "uid": o.unique_id,
-                        "name": names[o.unique_id].name if o.unique_id in names else "",
-                        "bc_days": round(o.bc_minutes / mpd, 1),
-                        "wc_days": round(o.wc_minutes / mpd, 1),
-                        "ml_days": round(o.ml_minutes / mpd, 1),
-                        "opportunity": o.opportunity_days,
-                        "risk": o.risk_days,
-                        "total": o.total_days,
-                    }
-                    for o in oat[:40]
-                ]
-            }
-        )
+        payload: dict[str, object] = {
+            "rows": [
+                {
+                    "uid": o.unique_id,
+                    "name": names[o.unique_id].name if o.unique_id in names else "",
+                    "bc_days": round(o.bc_minutes / mpd, 1),
+                    "wc_days": round(o.wc_minutes / mpd, 1),
+                    "ml_days": round(o.ml_minutes / mpd, 1),
+                    "opportunity": o.opportunity_days,
+                    "risk": o.risk_days,
+                    "total": o.total_days,
+                }
+                for o in oat[:40]
+            ]
+        }
+        if capped:
+            payload["note"] = (
+                f"Sensitivity swept the {_OAT_MAX_ACTIVITIES} largest-remaining of "
+                f"{len(candidates)} candidate activities (size cap — narrow with a filter or "
+                "target for a full sweep of a smaller population)."
+            )
+        return JSONResponse(payload)
 
     @app.get("/api/sra/grid")
     def sra_grid_json() -> JSONResponse:
@@ -6864,6 +6991,8 @@ def create_app(
             st.role = None  # back to "Show everything" (ADR-0255)
             st.analyses.clear()
             st.summaries.clear()
+            st.cpms.clear()
+            st._perf_memo.clear()
             st.polished.clear()
             st.set_filter(())  # drop the session-wide field filter and its scope cache
             st.set_saved_group(None)  # drop the session-wide saved group
@@ -16104,60 +16233,78 @@ full membership vector).</p>
 <script src="/static/volatility.js"></script>"""
 
 
-def _performance_data(
-    schedules: list[Schedule], cpms: list[CPMResult], file: str
-) -> dict[str, object]:
-    """The Performance-Summary dataset (operator 2026-07-10): the per-version G1-G5 series for
-    the SELECTED file (default: the newest version) plus the G6/G7 portfolio quad points for
-    EVERY loaded version. Every figure comes from the engine's performance_summary /
-    bei / hmi / evm functions — the same single sources of truth the rest of the tool cites."""
+def _perf_version_block(
+    st: SessionState, s: Schedule, c: CPMResult
+) -> tuple[frozenset[int], dict[str, object], bool]:
+    """One version's G1-G5 Performance block — ``(critical set, serialized block, truncated)`` —
+    memoised per scoped-schedule identity (ADR-0261 P3). The census/flow/burden/DRM passes are
+    pure functions of the scoped version, so a /performance render (or its master stepper /
+    export) no longer recomputes every loaded version every time. The memo lives and dies with
+    the scope epoch (cleared by the scope setters and wipe), so identity can never go stale."""
     from dataclasses import asdict
 
     from schedule_forensics.engine.path_evolution import effective_critical_set
 
+    with st._lock:
+        hit = st._perf_memo.get(id(s))
+        if hit is not None and hit[0] is s:
+            return hit[1], hit[2], hit[3]
+    critical = frozenset(effective_critical_set(s, c))
+    cen_v = work_to_go_census(s, critical)
+    flow_v = activity_flow(s)
+    bur_v = workoff_burden(s)
+    drm_v = duration_ratio(s)
+    block: dict[str, object] = {
+        "label": s.source_file or s.name,
+        "status_date": s.status_date.date().isoformat() if s.status_date else None,
+        "status_month": flow_v.status_month,
+        "census": [asdict(m) for m in cen_v.months],
+        "flow": [asdict(m) for m in flow_v.months],
+        "burden": [asdict(m) for m in bur_v.months],
+        "drm": {
+            "points": [asdict(pt) for pt in drm_v.points],
+            "bins": [asdict(b) for b in drm_v.bins],
+            "min": drm_v.drm_min,
+            "avg": drm_v.drm_avg,
+            "max": drm_v.drm_max,
+            "n": drm_v.n,
+            "excluded": drm_v.n_excluded,
+        },
+    }
+    truncated = cen_v.truncated or flow_v.truncated or bur_v.truncated
+    with st._lock:
+        st._perf_memo[id(s)] = (s, critical, block, truncated)
+    return critical, block, truncated
+
+
+def _performance_data(
+    st: SessionState, schedules: list[Schedule], cpms: list[CPMResult], file: str
+) -> dict[str, object]:
+    """The Performance-Summary dataset (operator 2026-07-10): the per-version G1-G5 series for
+    the SELECTED file (default: the newest version) plus the G6/G7 portfolio quad points for
+    EVERY loaded version. Every figure comes from the engine's performance_summary /
+    bei / hmi / evm functions — the same single sources of truth the rest of the tool cites.
+    ADR-0261 P3: the per-version G1-G5 blocks are memoised per scope epoch
+    (:func:`_perf_version_block`); the quads recompute each render (cheap linear passes whose
+    HMI leg depends on the PRIOR version's status date, which memoising would have to track)."""
     labels = [s.source_file or s.name for s in schedules]
     sel = labels.index(file) if file in labels else len(schedules) - 1
-    sch, cpm = schedules[sel], cpms[sel]
-    critical = frozenset(effective_critical_set(sch, cpm))
-
-    census = work_to_go_census(sch, critical)
-    flow = activity_flow(sch)
-    burden = workoff_burden(sch)
-    drm = duration_ratio(sch)
 
     # per-version G1-G5 series for the master stepper (operator 2026-07-10: "automate" the
     # Performance visuals like the Mission wall) — each animation step redraws every chart
     # from THIS version's series and captions its file name (provenance per iteration).
+    criticals: list[frozenset[int]] = []
     per_version: list[dict[str, object]] = []
+    truncateds: list[bool] = []
     for s_i, c_i in zip(schedules, cpms, strict=True):
-        crit_v = critical if s_i is sch else frozenset(effective_critical_set(s_i, c_i))
-        cen_v = work_to_go_census(s_i, crit_v)
-        flow_v = activity_flow(s_i)
-        bur_v = workoff_burden(s_i)
-        drm_v = duration_ratio(s_i)
-        per_version.append(
-            {
-                "label": s_i.source_file or s_i.name,
-                "status_date": s_i.status_date.date().isoformat() if s_i.status_date else None,
-                "status_month": flow_v.status_month,
-                "census": [asdict(m) for m in cen_v.months],
-                "flow": [asdict(m) for m in flow_v.months],
-                "burden": [asdict(m) for m in bur_v.months],
-                "drm": {
-                    "points": [asdict(pt) for pt in drm_v.points],
-                    "bins": [asdict(b) for b in drm_v.bins],
-                    "min": drm_v.drm_min,
-                    "avg": drm_v.drm_avg,
-                    "max": drm_v.drm_max,
-                    "n": drm_v.n,
-                    "excluded": drm_v.n_excluded,
-                },
-            }
-        )
+        crit_v, block, trunc = _perf_version_block(st, s_i, c_i)
+        criticals.append(crit_v)
+        per_version.append(block)
+        truncateds.append(trunc)
 
     quads: list[dict[str, object]] = []
-    for i, (s, c) in enumerate(zip(schedules, cpms, strict=True)):
-        crit_i = critical if i == sel else frozenset(effective_critical_set(s, c))
+    for i, (s, _c) in enumerate(zip(schedules, cpms, strict=True)):
+        crit_i = criticals[i]
         snap = to_go_snapshot(s, crit_i)
         prior_status = schedules[i - 1].status_date if i > 0 else None
         # HMI is informational (its status is ALWAYS NOT_APPLICABLE by design) — the genuine
@@ -16189,25 +16336,20 @@ def _performance_data(
             }
         )
 
+    # the selected version's top-level series ARE its per_version block (identical values —
+    # previously the same dataclasses were serialized twice)
+    sel_block = per_version[sel]
     return {
         "version": labels[sel],
         "versions": labels,
         "cursor": sel,
         "per_version": per_version,
-        "status_month": flow.status_month,
-        "truncated": census.truncated or flow.truncated or burden.truncated,
-        "census": [asdict(m) for m in census.months],
-        "flow": [asdict(m) for m in flow.months],
-        "burden": [asdict(m) for m in burden.months],
-        "drm": {
-            "points": [asdict(p) for p in drm.points],
-            "bins": [asdict(b) for b in drm.bins],
-            "min": drm.drm_min,
-            "avg": drm.drm_avg,
-            "max": drm.drm_max,
-            "n": drm.n,
-            "excluded": drm.n_excluded,
-        },
+        "status_month": sel_block["status_month"],
+        "truncated": truncateds[sel],
+        "census": sel_block["census"],
+        "flow": sel_block["flow"],
+        "burden": sel_block["burden"],
+        "drm": sel_block["drm"],
         "quads": quads,
     }
 
@@ -16293,12 +16435,14 @@ def _how_we_execute_header(sch: Schedule) -> str:
     )
 
 
-def _performance_body(schedules: list[Schedule], cpms: list[CPMResult], file: str) -> str:
+def _performance_body(
+    st: SessionState, schedules: list[Schedule], cpms: list[CPMResult], file: str
+) -> str:
     """The Performance-Summary page shell: version picker, the thirteen chart mounts (G1-G7 of
     the operator's reference workbook), the DRM stat chips, and the embedded dataset
     performance.js reads. Every chart carries a hover explainer (viz-hint) like the rest of
     the tool."""
-    data = _performance_data(schedules, cpms, file)
+    data = _performance_data(st, schedules, cpms, file)
     blob = json.dumps(data).replace("<", "\\u003c")
     versions = cast(list[str], data["versions"])
     sel = cast(str, data["version"])

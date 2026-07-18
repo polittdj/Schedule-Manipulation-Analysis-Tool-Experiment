@@ -29,6 +29,7 @@ import atexit
 import threading
 from collections.abc import Callable
 from concurrent.futures import BrokenExecutor, ProcessPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from typing import Any, TypeVar
 
 T = TypeVar("T")
@@ -36,6 +37,14 @@ T = TypeVar("T")
 #: Below this task count an in-process run is sub-second, so the worker's spawn cost isn't worth it.
 #: Large schedules (the kind that actually froze the page) clear it and get offloaded.
 OFFLOAD_TASK_THRESHOLD = 300
+
+#: Hard ceiling on ONE offloaded compute (ADR-0261 P5). Generous on purpose — the point is that a
+#: wedged or runaway worker can never hang the page forever, not to police long runs (the biggest
+#: legitimate SRA/OAT runs finish well inside it). On expiry the pool is torn down (the child may
+#: be mid-CPM and cannot be interrupted cooperatively) and the caller gets a clear, actionable
+#: error instead of an endless spinner. The rare in-process FALLBACK path cannot be timed out
+#: (same interpreter); the size caps at the call sites bound that path instead.
+OFFLOAD_TIMEOUT_S = 1800.0
 
 _lock = threading.Lock()
 _pool: ProcessPoolExecutor | None = None
@@ -87,7 +96,18 @@ def run_offloaded(fn: Callable[..., T], *args: Any, **kwargs: Any) -> T:
     except Exception:  # pragma: no cover - submit rarely fails synchronously
         return fn(*args, **kwargs)
     try:
-        return future.result()
+        return future.result(timeout=OFFLOAD_TIMEOUT_S)
+    except FuturesTimeoutError:
+        # ADR-0261 P5: never hang forever. The worker may be wedged mid-solve — tear the pool
+        # down (a fresh one spawns lazily on the next call) and surface an actionable error;
+        # deliberately NOT the in-process fallback, which would just hang the server instead.
+        future.cancel()
+        _reset()
+        raise RuntimeError(
+            f"The computation exceeded {int(OFFLOAD_TIMEOUT_S // 60)} minutes and was stopped. "
+            "A smaller population (filter/target), fewer iterations, or excluding completed "
+            "activities will run faster."
+        ) from None
     except BrokenExecutor:
         # the pool itself died (worker crash / un-picklable arg), NOT the function's own error —
         # drop the broken pool and run this call in-process so the request still succeeds

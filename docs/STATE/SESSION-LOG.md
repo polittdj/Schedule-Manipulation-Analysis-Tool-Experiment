@@ -6974,3 +6974,31 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.66 → **1.0.67**; wheel + 9 installers in lockstep; **ADR-0258/0259/0260**;
   HANDOFF moved/replaced + this entry in the same commit. US map + site drill await the operator's
   Claude-Design prompt (§8 of the master prompt — still not provided).
+
+## 2026-07-18 — deep performance: epoch-keyed scope caches, CPM tier, census buckets, offload bounds (ADR-0261)
+
+- **Model/mode:** claude-fable-5 (ADR-0240 max-effort single-focus deep dive — performance
+  bottlenecks; lead-verified every step against a Law-2 instrument, no delegation).
+- **Branch:** `claude/portfolio-data-integrity-gantt-pf30ef` (restarted from the merged #397).
+- **Method:** built the instrument FIRST — a 160-hash battery (5 scope states × 32 pages/APIs on
+  the TP4 golden series; double-run to prove determinism) + a synthetic 5×1200-task timing set —
+  then landed P1→P2→P3→P5 with a zero-diff check after each step. `pytest -m parity` green.
+- **Did:** P1 `(key, scope-signature)` epoch caches (surgical `_invalidate_scope`; raw-schedule
+  identity anchor; highlight shares the unfiltered epoch; default-epoch keys unchanged);
+  P2 `cpm_for` tier (+`_compute_analysis(cpm=…)` reuse) for `_solvable_versions`;
+  P3 `_perf_version_block` per-epoch memo + `work_to_go_census` diff-array bucketing
+  (O(tasks+months), pinned equal to the verbatim oracle in-test);
+  P4 compute + SQLite I/O outside the session lock; P5 `OFFLOAD_TIMEOUT_S` (30 min, recovery
+  pinned) + OAT web-boundary cap (1500 largest-ML-remaining, disclosed in payload + panel).
+  Latency gates: deterministic P1/P2/P3 recompute-count gates + a relative epoch-hit timing gate.
+- **Measured (synthetic large set):** cold /performance 0.674s → 0.066s (~10×); warm halved; the
+  filter-set→render→clear→render sequence 0.417s → 0.079s (~5×). Hash battery: ZERO diffs at
+  every step — no computed number moved anywhere.
+- **New/updated tests:** `test_scope_epoch_cache.py` (6 identity/stale-proof pins),
+  census-vs-oracle equivalence (`test_performance_summary.py`), offload-timeout recovery
+  (`test_offload.py`), P1–P3 count gates + relative latency gate (`test_perf_regression.py`).
+- **Deliberately not done:** lazy `_Analysis` fields; a timeout on the in-process offload
+  fallback (both recorded with reasons in ADR-0261).
+- **State:** v1.0.67 → **1.0.68**; wheel + 9 installers in lockstep; **ADR-0261**; HANDOFF
+  moved/replaced + this entry in the same commit. Still owed: the operator's PowerShell log +
+  large dataset for on-machine re-validation.

@@ -121,3 +121,110 @@ def test_capping_the_cache_reduces_resident_memory() -> None:
     bounded = _peak(4, versions)  # keeps at most 4 analyses resident
     unbounded = _peak(versions, versions)  # keeps all 40 resident (the pre-fix behavior)
     assert bounded < unbounded  # the LRU demonstrably bounds resident memory
+
+
+# ── ADR-0261 (deep-perf P1-P3): deterministic count gates + a relative latency gate ──────────────
+
+
+def test_p1_scope_toggle_never_recomputes_resident_epochs(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """REGRESSION GATE (P1): setting a filter and clearing it again must NOT recompute the
+    original epoch — epoch-keyed caches make the toggle-back a resident hit. Reverting
+    _invalidate_scope to clear the analysis cache makes the final render recompute and fails."""
+    import schedule_forensics.web.app as app_module
+
+    calls = {"n": 0}
+    real = app_module._compute_analysis
+
+    def counting(sch, cpm=None):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return real(sch, cpm=cpm)
+
+    monkeypatch.setattr(app_module, "_compute_analysis", counting)
+    st = SessionState()
+    versions = {f"v{i}": _chain(6, f"v{i}") for i in range(3)}
+    for k, sch in versions.items():
+        st.analysis_for(k, sch)
+    assert calls["n"] == 3
+    st.set_filter([("Task Name", "v0-2")])
+    for k, sch in versions.items():
+        st.analysis_for(k, sch)
+    assert calls["n"] == 6  # the filtered epoch computes once per version
+    st.set_filter(())
+    for k, sch in versions.items():
+        st.analysis_for(k, sch)
+    assert calls["n"] == 6  # ← the P1 gate: toggling back recomputed NOTHING
+
+
+def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """REGRESSION GATE (P2): the CPM tier solves each version WITHOUT the monolithic analysis,
+    and a later full analysis REUSES that solve (no second compute_cpm for the epoch)."""
+    import schedule_forensics.web.app as app_module
+
+    counts = {"analysis": 0, "cpm": 0}
+    real_analysis = app_module._compute_analysis
+    real_cpm = app_module.compute_cpm
+
+    def counting_analysis(sch, cpm=None):  # type: ignore[no-untyped-def]
+        counts["analysis"] += 1
+        return real_analysis(sch, cpm=cpm)
+
+    def counting_cpm(sch, **kw):  # type: ignore[no-untyped-def]
+        counts["cpm"] += 1
+        return real_cpm(sch, **kw)
+
+    monkeypatch.setattr(app_module, "_compute_analysis", counting_analysis)
+    monkeypatch.setattr(app_module, "compute_cpm", counting_cpm)
+    st = SessionState()
+    versions = {f"v{i}": _chain(6, f"v{i}") for i in range(4)}
+    for k, sch in versions.items():
+        st.cpm_for(k, sch)
+    assert counts == {"analysis": 0, "cpm": 4}  # solves only — the P2 point
+    st.analysis_for("v0", versions["v0"])
+    assert counts == {"analysis": 1, "cpm": 4}  # the full analysis REUSED v0's solve
+
+
+def test_p3_performance_dataset_is_memoised_per_epoch(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """REGRESSION GATE (P3): a second /performance dataset build runs ZERO census passes — the
+    per-version blocks are memoised for the scope epoch (and recompute after a scope change)."""
+    import schedule_forensics.web.app as app_module
+
+    calls = {"n": 0}
+    real = app_module.work_to_go_census
+
+    def counting(sch, crit):  # type: ignore[no-untyped-def]
+        calls["n"] += 1
+        return real(sch, crit)
+
+    monkeypatch.setattr(app_module, "work_to_go_census", counting)
+    st = SessionState()
+    keys = [f"v{i}" for i in range(3)]
+    raw = {k: _chain(6, k) for k in keys}
+    schedules = [st.scope(raw[k]) for k in keys]
+    cpms = [st.cpm_for(k, raw[k]) for k in keys]
+    app_module._performance_data(st, schedules, cpms, "")
+    first = calls["n"]
+    assert first == 3  # one census per version
+    app_module._performance_data(st, schedules, cpms, "")
+    assert calls["n"] == first  # ← the P3 gate: the re-render computed NOTHING new
+
+
+def test_epoch_hit_is_cheaper_than_the_compute_it_replaces() -> None:
+    """RELATIVE latency gate (ADR-0257's ask; relative like the tracemalloc gate above, so it
+    never flakes on an absolute machine baseline): re-rendering after a filter toggle-back (a
+    resident epoch hit) must be strictly faster than the version's first full compute."""
+    import time
+
+    import schedule_forensics.web.app as app_module  # noqa: F401  (parity of import cost)
+
+    st = SessionState()
+    sch = _chain(400, "big")
+    t0 = time.perf_counter()
+    st.analysis_for("big", sch)
+    miss = time.perf_counter() - t0
+    st.set_filter([("Task Name", "big-7")])
+    st.analysis_for("big", sch)
+    st.set_filter(())
+    t0 = time.perf_counter()
+    st.analysis_for("big", sch)
+    hit = time.perf_counter() - t0
+    assert hit < miss  # a resident hit beats a full engine pass (in practice by >10x)

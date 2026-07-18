@@ -358,6 +358,10 @@
           out.textContent = "No ranked tasks — assign Risk Ranking Factors and calculate Best/Worst durations first.";
           return;
         }
+        if (res.j.note) {
+          // ADR-0261 P5: a capped sweep says so on the panel — never a silent subset
+          out.appendChild(el("div", { "class": "muted" }, res.j.note));
+        }
         var t = el("table");
         t.appendChild(headerRow([["UID", ""], ["Task", ""], ["BC d", "bc_duration"],
           ["WC d", "wc_duration"], ["ML d", "ml_duration"],
