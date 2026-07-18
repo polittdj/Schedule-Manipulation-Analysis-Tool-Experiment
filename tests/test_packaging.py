@@ -22,7 +22,13 @@ def test_os_shortcuts_present() -> None:
 
 def test_windows_installer_targets_pythonw_launcher() -> None:
     ps1 = (PKG / "windows" / "Install-Desktop-Shortcut.ps1").read_text()
-    assert "pythonw" in ps1 and "schedule_forensics.launcher" in ps1
+    assert "pythonw" in ps1 and "-m schedule_forensics" in ps1
+    # The shortcut ARGUMENTS must target the guarded package bootstrap `-m schedule_forensics`,
+    # NOT the unguarded `-m schedule_forensics.launcher` (a comment may still explain the switch,
+    # so assert against the actual assignment line rather than the whole file).
+    args_line = next(ln for ln in ps1.splitlines() if "$lnk.Arguments" in ln)
+    assert '"-m schedule_forensics"' in args_line
+    assert "schedule_forensics.launcher" not in args_line  # the unguarded target is retired
     assert "Desktop" in ps1 and ".ico" in ps1  # creates a Desktop shortcut with the icon
 
 

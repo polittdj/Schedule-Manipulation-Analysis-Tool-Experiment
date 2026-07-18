@@ -300,6 +300,7 @@
 
   let forcedPx = null; // set by the "Fit" button (whole project on screen); cleared by the slider
   let lastFrozenWidth = 0; // MEASURED frozen data-column width (SFGantt.freezeColumns return)
+  let lastAxis = null; // the axis from the most recent renderGrid (the initial-load scroll uses axis.x)
   // RAW pixels-per-day (slider value, or the Fit button's exact-fill px). The Timescale Size %
   // is applied SEPARATELY in buildAxis, AFTER the page-fill baseline, so Size scales the filled
   // timeline in both slider and Fit modes (earlier it was multiplied in here and then silently
@@ -321,6 +322,7 @@
   // frozen-column width (recorded each paint, like path.js). Falls back to whole-project fit
   // when the schedule carries no status date. The Scale slider then fine-tunes.
   const FIT_LEAD = 0.12; // fraction of the visible timeline kept ahead of the status date
+  const ONE_INCH_PX = 96; // ~1 inch at 96 CSS dpi — the initial-load data-date lead (operator 2026-07-17)
   function fitToWidth() {
     let t0 = null, t1 = null;
     activities.forEach((a) => {
@@ -346,6 +348,22 @@
       const trackX = ((sd - (t0 - 1 * DAY_MS)) / DAY_MS) * forcedPx; // buildAxis pads t0 by 1 day
       host.scrollLeft = Math.max(0, Math.round(trackX - FIT_LEAD * avail));
     }
+  }
+
+  // On the FIRST paint of a schedule, land the view on the data date: place the amber data-date
+  // line about one inch (ONE_INCH_PX) to the RIGHT of the frozen data columns — i.e. an inch into
+  // the timeline, just past the rightmost data-table column — so every schedule/zoom opens on its
+  // data date with the plan ahead in view (operator 2026-07-17). Only the initial load calls this;
+  // manual zoom / Fit / scroll are left alone thereafter. Uses the exact axis the grid just
+  // rendered with, so the scroll target matches the drawn DD line. The frozen columns are sticky,
+  // so scrollLeft is measured in track pixels: axis.x(sd) - ONE_INCH_PX seats the line one inch
+  // into the scrolled timeline.
+  function scrollToDataDate() {
+    const host = document.getElementById("grid");
+    if (!host || !statusDate || !lastAxis) return;
+    const sd = Date.parse(statusDate);
+    if (isNaN(sd)) return;
+    host.scrollLeft = Math.max(0, Math.round(lastAxis.x(sd) - ONE_INCH_PX));
   }
 
   // Build a horizontal time axis from rows carrying ISO `start`/`finish`, padded one day on the
@@ -383,7 +401,10 @@
     // and scrolls — a true zoom of the filled timeline (MS Project's Size behavior).
     const size = sizeFactor();
     px *= size;
-    width = Math.max(120, Math.round(width * size));
+    // + ~1 inch of empty track on the right so the data-date line / rightmost bar is never flush
+    // against the frame, and the initial-load scroll can seat the DD line an inch in from the edge
+    // (operator 2026-07-17). Bar/DD positions are unchanged — this only extends the scrollable span.
+    width = Math.max(120, Math.round(width * size)) + ONE_INCH_PX;
     return { t0, t1, width, x: (ms) => Math.round(((ms - t0) / DAY_MS) * px) };
   }
 
@@ -606,6 +627,7 @@
     // the axis spans ALL activities so the scale stays stable as filters/columns change
     const axis = buildAxis(activities);
     const gridLns = axis ? gridLines(axis) : null; // vertical month/quarter/year gridlines
+    lastAxis = axis; // remember the exact axis for the initial-load data-date scroll
     const table = el("table", { class: "gantt-grid" });
     const thead = el("thead");
     const head = el("tr");
@@ -910,6 +932,7 @@
       renderToggles();
       populateOutline();
       renderGrid();
+      scrollToDataDate(); // land on the data date (~1 inch in from the right) — initial load only
       // a session-wide target pre-fills the trace box — run the trace right away
       if (document.getElementById("targetUid").value) loadGantt();
     })
@@ -953,13 +976,25 @@
       onChange: (s) => { ganttTierSel = s; if (lastDriving) renderGantt(lastDriving); },
     }));
   }
-  // one page-level "pixels per day" zoom rescales BOTH the activity grid timeline and the trace
-  const vizZoom = document.getElementById("vizZoom");
-  if (vizZoom) vizZoom.addEventListener("input", () => {
-    forcedPx = null; // a manual zoom returns from "Fit" to the slider value
+  // one page-level "pixels per day" zoom rescales BOTH the activity grid timeline and the trace.
+  // The Scale control is a −/+ button pair (operator 2026-07-17, replacing the range slider); the
+  // current px/day lives in the hidden #vizZoom input that pxPerDay() reads, so Fit / Timescale and
+  // every other reader are unchanged. Stepping from the EFFECTIVE px (forcedPx after a Fit, else the
+  // stored value) means + zooms in from whatever is on screen, not from a stale slider position.
+  const ZOOM_STEP = 1.25;
+  function stepZoom(factor) {
+    const z = document.getElementById("vizZoom");
+    if (!z) return;
+    const cur = (forcedPx && forcedPx > 0) ? forcedPx : (Number(z.value) || 8);
+    z.value = String(Math.min(40, Math.max(0.2, cur * factor))); // clamp to the old slider's range
+    forcedPx = null; // a manual zoom leaves "Fit" mode, like the old slider
     renderGrid();
     if (lastDriving) renderGantt(lastDriving);
-  });
+  }
+  const zoomIn = document.getElementById("zoomIn");
+  const zoomOut = document.getElementById("zoomOut");
+  if (zoomIn) zoomIn.addEventListener("click", () => stepZoom(ZOOM_STEP));
+  if (zoomOut) zoomOut.addEventListener("click", () => stepZoom(1 / ZOOM_STEP));
   const fitBtn = document.getElementById("fitBtn");
   if (fitBtn) fitBtn.addEventListener("click", fitToWidth);
   // the Timescale dialog's OK repaints both timelines with the new tiers/size/shading

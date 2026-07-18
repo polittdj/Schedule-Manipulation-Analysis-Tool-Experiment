@@ -6900,3 +6900,39 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Deferred (queued, propose-then-build):** SEC-2 CSRF/Origin, SEC-3 Host allowlist.
 - **State:** v1.0.64 → **1.0.65**; wheel + 9 installers in lockstep; **ADR-0256**; HANDOFF
   moved/replaced + this entry in the same commit. Next-session prompt delivered to the operator.
+
+---
+
+## 2026-07-18 — operator UX pass: launcher self-diagnosis, Gantt, +/- zoom, group dropdowns, automate-crash guard; large-dataset role (ADR-0257)
+
+- **Model/mode:** Opus 4.8 (not "Fable 5" this session; followed the ADR-0240 discipline —
+  parallel recon agents mapping each area, lead re-verifying against code + executable/browser
+  evidence before every change).
+- **Branch:** `claude/program-shortcut-perf-ui-25bouq`.
+- **Operator report (verbatim intent preserved in ADR-0257):** desktop shortcut stopped opening
+  the tool; 5 loaded projects incl. a large file lagged badly ("forever when you select
+  something"); "automating a page" crashed; a PowerShell log with "weird stuff" was to be attached
+  (**never received — still owed**); Gantt bars invisible + no right-scroll; data-date line should
+  land ~1 inch right of the rightmost data column on every Gantt; dislikes the scale slider (wants
+  +/−) and the filters/groups selector (wants simple alphabetical dropdowns); add a large-dataset
+  performance/stability **role**; validate every control. Told to pick the order and go.
+- **Shipped (all browser-verified with Playwright):** (1) guarded `__main__.py` bootstrap — a
+  windowless (`pythonw`) startup failure now shows a Windows message box + repair recipe instead of
+  a silent dead port; catches import-time failures too; shortcuts retargeted `-m schedule_forensics`;
+  `.bat` `>/dev/null`→`>nul`. (2) Gantt bars + horizontal scroll fixed in shared `colresize.js`
+  (timeline column sized under `table-layout:fixed`); initial view lands on the data date ~1 inch
+  right of the frozen columns; ~1 inch right margin. (3) Scale slider → − / + buttons (hidden
+  `#vizZoom` px/day carrier). (4) Filters/groups → alphabetical field/breakdown + native value
+  `<select>` (single-value UI; backend OR preserved). (5) Performance "master stepper"
+  `setInterval`→`setTimeout`-chained + pause-when-hidden (the automate crash). (6) New ADR-0240
+  role: *Performance & Scalability / Large-Dataset Reliability Engineer*.
+- **Verified:** Playwright sweep of all 32 main pages = HTTP 200, zero pageerror/console.error;
+  changed controls exercised live. New/updated tests: `test_startup_bootstrap`, `test_packaging`,
+  `test_gantt_controls_fix`, `test_groups_view` (value-dropdown). Wheel + 9 installers regenerated.
+- **Recorded, NOT done (next session — parity-safe deep perf, re-validate each):** P1 cache nuked on
+  every selection (`web/app.py:788`); P2 full analysis when only CPM needed (`app.py:3046`/`:498`);
+  P3 uncached `_performance_data` + O(months×tasks) census (`app.py:15796`, `performance_summary.py:132`);
+  P4 lock across compute (`app.py:947`); P5 offload no timeout + unbounded OAT (`offload.py:90`,
+  `app.py:5996`); add a latency gate. Needs the owed PowerShell log + a large dataset.
+- **State:** v1.0.65 → **1.0.66**; wheel + 9 installers in lockstep; **ADR-0257**; HANDOFF
+  moved/replaced + this entry in the same commit.

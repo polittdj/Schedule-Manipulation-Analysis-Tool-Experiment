@@ -36,6 +36,20 @@ window.SFColResize = (function () {
     });
     table.style.tableLayout = "fixed";
     table.classList.add("col-resizable");
+    // Size the scalable timeline column (.g-head) to its own content. It is intentionally never
+    // PINNED in the `store` above — a stored width goes stale after zoom/Fit (the dead-scroll-space
+    // bug). But under table-layout:fixed an UNSIZED column does not grow to its content; it only
+    // gets leftover space, so the timeline collapses: the bars are clipped by the track's
+    // overflow:hidden (INVISIBLE) and the table never exceeds the pane (nothing to SCROLL right
+    // into). Set it FRESH here every attach (not in `store`) from the inner scale/track's own px
+    // width (zoom x span), so the column always matches the current zoom without persisting a
+    // stale value. Fixes every Gantt that routes through here (analysis / path / sra grid / …).
+    ths.forEach(function (th) {
+      if (!th.classList.contains("g-head")) return;
+      var inner = th.firstElementChild; // buildTierScale's .g-scale carries style width:<axis.width>px
+      var w = inner ? (parseFloat(inner.style.width) || inner.scrollWidth) : th.scrollWidth;
+      if (w > 0) { th.style.width = w + "px"; th.style.minWidth = w + "px"; th.style.maxWidth = w + "px"; }
+    });
 
     ths.forEach(function (th, i) {
       if (th.classList.contains("g-head")) return; // the timeline column keeps its scalable width

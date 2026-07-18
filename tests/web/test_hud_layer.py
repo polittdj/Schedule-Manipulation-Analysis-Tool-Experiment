@@ -211,16 +211,20 @@ def _safe_listdir(path: str) -> list[str]:
 
 
 def test_gantt_fit_and_scale_controls() -> None:
-    """Operator spec 2026-07-08: Fit anchors the status date FIT_LEAD in from the left and the
-    remaining project fills the page (past scrolls left); the Scale slider steps at 0.05 px/day;
-    the resizable-column module never pins the scalable timeline column (dead-scroll bug)."""
+    """Operator spec 2026-07-08 / 2026-07-17: Fit anchors the status date FIT_LEAD in from the left
+    and the remaining project fills the page (past scrolls left); the Scale control is a +/- button
+    pair that steps the zoom (clamped 0.2-40 px/day); the resizable-column module sizes but never
+    pins the scalable timeline column (dead-scroll bug)."""
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "FIT_LEAD" in js and "scrollLeft" in js.split("function fitToWidth")[1].split("\n  }")[0]
     c = TestClient(create_app(SessionState()))
     data = (GOLD / "Project5.mspdi.xml").read_bytes()
     c.post("/upload", files={"files": ("Project5.mspdi.xml", data, "text/xml")})
     page = c.get("/analysis/Project5").text
-    assert "min=0.2 max=40 step=0.05" in page
+    # Scale is a +/- button pair now (hidden #vizZoom carries px/day); zoom clamped 0.2-40
+    assert "id=zoomOut" in page and "id=zoomIn" in page and "id=vizZoom type=hidden" in page
+    assert "min=0.2 max=40 step=0.05" not in page  # the drag slider is retired
+    assert "Math.min(40, Math.max(0.2" in js  # stepZoom keeps the old zoom range
     colresize = (STATIC / "colresize.js").read_text(encoding="utf-8")
     pin_loop = colresize.split("ths.forEach(function (th, i) {")[1].split("});")[0]
     assert 'classList.contains("g-head")' in pin_loop  # timeline column exempt from pinning

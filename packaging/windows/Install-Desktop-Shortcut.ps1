@@ -4,7 +4,7 @@
   double-click — no console window — and opens it in your browser.
 
 .DESCRIPTION
-  The shortcut runs `pythonw.exe -m schedule_forensics.launcher` (pythonw = no console),
+  The shortcut runs `pythonw.exe -m schedule_forensics` (pythonw = no console),
   which starts the local dashboard on 127.0.0.1 and opens your browser. Closing the browser
   window stops the server automatically (the tool turns itself off). "Quit" in the app stops
   it immediately.
@@ -45,12 +45,25 @@ $lnkPath = Join-Path $desktop "Schedule Forensics.lnk"
 $shell = New-Object -ComObject WScript.Shell
 $lnk = $shell.CreateShortcut($lnkPath)
 $lnk.TargetPath = $pythonw
-$lnk.Arguments = "-m schedule_forensics.launcher"
+# `-m schedule_forensics` (the package bootstrap), NOT `-m schedule_forensics.launcher`: the
+# bootstrap wraps the import so a startup failure under pythonw (a rebuilt venv, a missing
+# dependency) shows a message box instead of dying silently on a dead port.
+$lnk.Arguments = "-m schedule_forensics"
 $lnk.WorkingDirectory = $HOME
 $lnk.Description = "Schedule Forensics - local forensic schedule analysis (offline)"
 if (Test-Path $icon) { $lnk.IconLocation = $icon }
 $lnk.Save()
 
+# Verify what we just created so a broken shortcut is caught here, not by a silent double-click.
+if (-not (Test-Path $lnkPath)) { throw "Failed to create the shortcut at $lnkPath." }
+if (-not (Test-Path $pythonw)) {
+    Write-Warning "The shortcut target '$pythonw' does not exist. Re-run this installer from the venv where you installed the tool."
+}
+
 Write-Host "Created desktop shortcut: $lnkPath"
-Write-Host "Target: $pythonw -m schedule_forensics.launcher"
+Write-Host "Target: $pythonw -m schedule_forensics"
 Write-Host "Double-click 'Schedule Forensics' on your Desktop to start. Close the window to stop."
+Write-Host ""
+Write-Host "If the icon ever stops opening the tool, re-run this installer from your venv:"
+Write-Host "    powershell -ExecutionPolicy Bypass -File packaging\windows\Install-Desktop-Shortcut.ps1"
+Write-Host "It re-points the icon at the current interpreter (a rebuilt or moved venv is the usual cause)."

@@ -9157,7 +9157,7 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label><input id=showDone type=checkbox checked> show completed tasks</label>
 <label><input id=showLinks type=checkbox checked> links</label>
 <label>Tier <span id=ganttTier class=tier-filter></span></label>
-<label>Scale <input id=vizZoom type=range min=0.2 max=40 step=0.05 value=8 title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
+<span class=zoom-controls>Scale <button id=zoomOut type=button class=zoom-btn title="Zoom out — fewer pixels per day">&minus;</button><button id=zoomIn type=button class=zoom-btn title="Zoom in — more pixels per day">+</button><input id=vizZoom type=hidden value=8></span>
 <button id=fitBtn type=button title="Zoom out so the entire project fits on screen">Fit project</button>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <label>Find <input id=gridFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every task whose row contains this text"></label>
@@ -9166,7 +9166,7 @@ tertiary&le;<input id=terMax type=number value=20>d
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=gridBarDates type=checkbox> dates on bars</label></div>
 <div id=gantt></div>
 <h3>Activities &amp; Gantt <span class=muted>(add/remove columns; the right-hand timeline is
-scalable — drag <b>Scale</b> to zoom (pixels/day) and scroll horizontally; red = critical,
+scalable — use the <b>Scale</b> &minus;/+ buttons to zoom (pixels/day) and scroll horizontally; red = critical,
 diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
 metadata)</span></h3>
 <div id=fieldToggles></div><div id=grid></div><div id=drill class=drill></div>
@@ -14802,7 +14802,7 @@ def _groups_form(
 ) -> str:
     """The scope controls: filter rows (applied session-wide to every file), a preview-version
     picker, and a breakdown field. Field options are the union across all loaded files."""
-    fields = available_fields_union([s for _, s in versions])
+    fields = sorted(available_fields_union([s for _, s in versions]), key=str.casefold)  # A-Z menu
     vsel = ""
     if len(versions) > 1:
         vopts = "".join(
@@ -14811,19 +14811,31 @@ def _groups_form(
             for k, s in versions
         )
         vsel = f"<label>Preview file: <select name=version>{vopts}</select></label> "
-    # MAX_FIELDS filter rows. groups.js mounts an MS-Project-style value checklist (SFChecklist)
-    # per row from the field's actual values; the chosen values are submitted as hidden value{i}
-    # inputs (rendered here too, so the current selection round-trips and works without JS).
+    # MAX_FIELDS filter rows, each a pair of simple alphabetical dropdowns (operator 2026-07-17,
+    # replacing the MS-Project checkbox popup): a FIELD <select> and a VALUE <select>. The value
+    # options are the field's distinct values (A-Z, union across files - the same source as
+    # /api/group-values); groups.js repopulates the value menu when the field or preview version
+    # changes. Server-rendered so the current selection round-trips and it works without JS.
     rows = []
+    all_schedules = [s for _, s in versions]
     for i in range(MAX_FIELDS):
         f, v = criteria[i] if i < len(criteria) else ("", "")
         selected = _criterion_value_list(v)
-        hidden = "".join(f'<input type=hidden name="value{i}" value="{_e(x)}">' for x in selected)
+        sel_val = selected[0] if selected else ""  # single-value dropdown
         data_sel = _e(json.dumps(selected))
+        value_opts = ['<option value="">(any value)</option>']
+        if f:
+            for x in distinct_values(all_schedules, f):
+                sv = " selected" if x == sel_val else ""
+                value_opts.append(f'<option value="{_e(x)}"{sv}>{_e(x)}</option>')
+        valsel = (
+            f'<select name="value{i}" class=gf-valsel aria-label="Filter value">'
+            f"{''.join(value_opts)}</select>"
+        )
         rows.append(
             f'<div class=group-row data-row="{i}" data-selected="{data_sel}">'
-            f"<select name=field class=gf-field>{_groups_field_options(fields, f)}</select> "
-            f"<span class=gf-values></span><span class=gf-hidden>{hidden}</span></div>"
+            f'<select name=field class=gf-field aria-label="Filter field">{_groups_field_options(fields, f)}</select> '
+            f"{valsel}</div>"
         )
     bsel = f"<select name=breakdown>{_groups_field_options(fields, breakdown)}</select>"
     return f"""
@@ -14836,12 +14848,11 @@ matching ALL rows (up to {MAX_FIELDS})</legend>
 <div class=viz-controls><button type=submit name=apply value=1>Apply to all pages</button>
 <a class=btn-link href="/groups?clear=1">clear filter</a></div>
 </form>
-<p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>), then
-choose its <b>values</b> from the dropdown (checkboxes with <b>All / None</b> and a search, like MS
-Project). <b>Apply</b> makes it the session-wide scope &mdash; <b>every</b> metric on <b>every</b> page,
-for <b>every</b> loaded file, then runs over the matching activities until you clear it. Within a field
-the chosen values are OR'd; combine up to {MAX_FIELDS} fields (AND). <b>Break down by</b> a field to
-score each of its values separately (one BEI per group) on the preview file below.</p></div>
+<p class=muted style="margin:.3em 0 0">Pick a field (standard or custom, e.g. <b>CA-WBS</b>) from the
+alphabetical menu, then choose a <b>value</b> from its dropdown. <b>Apply</b> makes it the session-wide
+scope &mdash; <b>every</b> metric on <b>every</b> page, for <b>every</b> loaded file, then runs over the
+matching activities until you clear it. Combine up to {MAX_FIELDS} fields (AND). <b>Break down by</b> a
+field to score each of its values separately (one BEI per group) on the preview file below.</p></div>
 <script src="/static/groups.js"></script>"""
 
 
@@ -15099,7 +15110,7 @@ def _groups_body(
         summary = (
             f"<div class=panel><h2>Active scope</h2><p>{chips}</p>"
             f"<p class=muted>{live}<b>every metric on every page</b>, for all loaded files "
-            "(logical AND across rows; values OR'd within a row).</p>"
+            "(logical AND across rows).</p>"
             f"<p class=muted><b>{matched}</b> of {total} activities match in the preview file.</p>"
             f"{_groups_per_file_table(versions, criteria)}</div>"
         )
@@ -15168,8 +15179,8 @@ def _groups_body(
         group_html = _saved_group_table(st.scope(sch), st.active_saved_group)
     tip = _user_tip(
         "Build a filter here and <b>Apply to all pages</b> to scope <b>every</b> metric on "
-        "<b>every</b> page across all loaded files at once. Rows are AND-ed together; the values "
-        "within a row are OR-ed."
+        "<b>every</b> page across all loaded files at once. Rows are AND-ed together "
+        "(one value per field)."
     )
     return tip + form + summary + group_html + scorecard + breakdown_html
 

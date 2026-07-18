@@ -1,85 +1,74 @@
-/* Schedule Forensics — /groups value picker.
+/* Schedule Forensics — /groups value dropdown.
  *
- * Progressive enhancement for the Groups & Filters page: when a filter row's FIELD is chosen, an
- * MS-Project-style value dropdown (SFChecklist — checkboxes with All / None + search) is mounted
- * from that field's actual distinct values (/api/group-values for the selected version). The
- * checked values are written into hidden value{i} inputs the form submits. The form still works
- * with JS disabled (the server-rendered hidden inputs round-trip the current selection).
+ * Progressive enhancement for the Groups & Filters page: each filter row is a simple alphabetical
+ * FIELD dropdown + VALUE dropdown (operator 2026-07-17, replacing the MS-Project checkbox popup).
+ * The server renders both selects (so the current selection round-trips and the form works with JS
+ * disabled); this script only repopulates the VALUE menu from the field's actual distinct values
+ * (/api/group-values, already A–Z) when the FIELD or the preview VERSION changes.
  * Dependency-free; nothing leaves the machine.
  */
 "use strict";
 
 (function () {
   var form = document.querySelector("form.group-form");
-  if (!form || !window.SFChecklist) return;
+  if (!form) return;
 
   function currentVersion() {
     var sel = form.querySelector("select[name=version]");
     return (sel && sel.value) || form.getAttribute("data-version") || "";
   }
 
-  function setHidden(box, i, values) {
-    box.textContent = "";
+  // Fill a value <select> with "(any value)" + the given values (A–Z from the API), keeping `chosen`
+  // selected if it is still one of them.
+  function fill(valsel, values, chosen) {
+    valsel.textContent = "";
+    var any = document.createElement("option");
+    any.value = "";
+    any.textContent = "(any value)";
+    valsel.appendChild(any);
     values.forEach(function (v) {
-      var inp = document.createElement("input");
-      inp.type = "hidden";
-      inp.name = "value" + i;
-      inp.value = v;
-      box.appendChild(inp);
+      var o = document.createElement("option");
+      o.value = v;
+      o.textContent = v;
+      if (v === chosen) o.selected = true;
+      valsel.appendChild(o);
     });
   }
 
-  function mountRow(row) {
-    var i = row.getAttribute("data-row");
-    var select = row.querySelector("select.gf-field");
-    var mount = row.querySelector(".gf-values");
-    var hidden = row.querySelector(".gf-hidden");
-    if (!select || !mount || !hidden) return;
-
-    function build(field, preselected) {
-      mount.textContent = "";
-      if (!field) { setHidden(hidden, i, []); return; }
-      var url = "/api/group-values?version=" + encodeURIComponent(currentVersion()) +
-        "&field=" + encodeURIComponent(field);
-      fetch(url)
-        .then(function (r) { return r.ok ? r.json() : { values: [] }; })
-        .then(function (j) {
-          var values = j.values || [];
-          // a subset preselection restores the saved filter; null/empty = all selected
-          var selectedSet = preselected && preselected.length ? new Set(preselected) : null;
-          function chosen(set) {
-            return set ? values.filter(function (v) { return set.has(v); }) : values.slice();
-          }
-          var node = window.SFChecklist.filter({
-            values: values,
-            selected: selectedSet,
-            label: "Values",
-            title: "Choose values to filter by",
-            onChange: function (set) { setHidden(hidden, i, chosen(set)); },
-          });
-          mount.appendChild(node);
-          setHidden(hidden, i, chosen(selectedSet)); // initialise to the current selection
-        })
-        .catch(function () { /* leave hidden inputs as server-rendered on fetch failure */ });
+  // Re-pull `field`'s values for the current version and repaint `valsel`. `keep` retains the
+  // current choice (version change); a fresh field starts at "(any value)".
+  function refill(field, valsel, keep) {
+    var f = field.value;
+    var want = keep ? valsel.value : "";
+    if (!f) {
+      fill(valsel, [], "");
+      return;
     }
-
-    var pre = [];
-    try { pre = JSON.parse(row.getAttribute("data-selected") || "[]"); } catch (e) { pre = []; }
-    if (select.value) build(select.value, pre);
-    // changing the field starts a fresh (all-selected) value list for that row
-    select.addEventListener("change", function () { build(select.value, []); });
+    var url = "/api/group-values?version=" + encodeURIComponent(currentVersion()) +
+      "&field=" + encodeURIComponent(f);
+    fetch(url)
+      .then(function (r) { return r.ok ? r.json() : { values: [] }; })
+      .then(function (j) { fill(valsel, j.values || [], want); })
+      .catch(function () { /* leave the server-rendered options on fetch failure */ });
   }
 
-  var rows = form.querySelectorAll(".group-row");
-  rows.forEach(mountRow);
+  var rows = Array.prototype.slice.call(form.querySelectorAll(".group-row"));
+  rows.forEach(function (row) {
+    var field = row.querySelector("select.gf-field");
+    var valsel = row.querySelector("select.gf-valsel");
+    if (!field || !valsel) return;
+    // the server already rendered the options for a pre-selected field; only refetch on change
+    field.addEventListener("change", function () { refill(field, valsel, false); });
+  });
 
-  // changing the version re-pulls every row's values for that version
+  // changing the preview version re-pulls every row's values for that version (keeping choices)
   var versionSel = form.querySelector("select[name=version]");
   if (versionSel) {
     versionSel.addEventListener("change", function () {
       rows.forEach(function (row) {
-        var s = row.querySelector("select.gf-field");
-        if (s && s.value) s.dispatchEvent(new Event("change"));
+        var field = row.querySelector("select.gf-field");
+        var valsel = row.querySelector("select.gf-valsel");
+        if (field && valsel && field.value) refill(field, valsel, true);
       });
     });
   }

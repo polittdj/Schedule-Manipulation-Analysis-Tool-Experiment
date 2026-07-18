@@ -2,6 +2,10 @@
 #viz { margin-top: 6px; }
 .viz-controls { margin: 9px 0; color: var(--muted); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .viz-controls input[type=number] { width: 74px; }
+/* Scale zoom: a −/+ button pair (replaces the range slider). Inherits the themed default button
+   (var(--accent)/var(--btn-ink)); just made compact and square so it reads as a stepper. */
+.zoom-controls { display: inline-flex; align-items: center; gap: 4px; }
+.zoom-controls .zoom-btn { min-width: 28px; padding: 2px 9px; font-size: 15px; font-weight: 700; line-height: 1.15; }
 .charts { display: flex; gap: 24px; flex-wrap: wrap; }
 .chart { flex: 1 1 320px; min-width: 280px; }
 .chart h3, #gantt h3 { font-size: 13px; color: var(--muted); margin: 6px 0; font-weight: 600; }

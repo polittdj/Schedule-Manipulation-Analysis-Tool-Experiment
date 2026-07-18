@@ -37,14 +37,17 @@ def test_renders_form_scorecard_and_nav(client: TestClient) -> None:
     assert "/groups" in client.get("/").text  # nav link
 
 
-def test_form_mounts_value_checklist(client: TestClient) -> None:
+def test_form_mounts_value_dropdowns(client: TestClient) -> None:
     _upload(client, "Project5")
     page = client.get("/groups").text
-    # each filter row carries a checklist mount + hidden-inputs box + its saved selection
-    assert "gf-values" in page and "gf-hidden" in page
-    assert "data-row=" in page and "data-selected=" in page
-    assert 'data-version="' in page
-    assert "/static/groups.js" in page  # mounts the SFChecklist value picker
+    # each row = a field <select> + a simple alphabetical value <select> (operator 2026-07-17)
+    assert "gf-field" in page and "gf-valsel" in page
+    assert "name=field" in page and 'name="value0"' in page
+    assert "(any value)" in page  # the value dropdown's default option
+    assert "data-row=" in page
+    assert "/static/groups.js" in page  # repopulates the value menu on field / version change
+    # the old MS-Project checkbox-popup mount is gone
+    assert "gf-values" not in page and "gf-hidden" not in page
 
 
 def test_multi_value_filter_ors_within_a_field(client: TestClient) -> None:
