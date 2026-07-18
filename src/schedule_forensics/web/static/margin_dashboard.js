@@ -350,6 +350,7 @@
       "; " + d.iterations + " iterations, seed " + d.seed + ", " + d.distribution +
       ", occurrence " + d.occurrence_mode + ", risk register " + (d.use_risk_register ? "on" : "off") +
       ", correlation " + d.correlation + "; margin tasks " + d.margin_task_count +
+      "; curve basis: " + d.curve_basis +
       ". Deterministic by seed — rerunning reproduces these figures exactly."));
   }
   var riskBtn = document.getElementById("marginRiskRun");
@@ -357,7 +358,11 @@
     var status = document.getElementById("marginRiskStatus");
     if (status) status.textContent = "running…";
     riskBtn.disabled = true;
-    fetch("/api/margin/risk").then(function (r) { return r.json(); }).then(function (d) {
+    // ADR-0266: the checkbox selects the Fig 7-43 zero-margin curve; the payload's
+    // curve_basis names whichever basis produced the figures (shown in the provenance line)
+    var zeroBox = document.getElementById("marginRiskZero");
+    var zero = zeroBox && zeroBox.checked ? 1 : 0;
+    fetch("/api/margin/risk?zero_margin=" + zero).then(function (r) { return r.json(); }).then(function (d) {
       if (status) status.textContent = "";
       riskBtn.disabled = false;
       renderRisk(d);

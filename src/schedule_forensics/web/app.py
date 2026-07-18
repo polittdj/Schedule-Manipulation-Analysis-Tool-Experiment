@@ -3895,7 +3895,10 @@ def create_app(
         return RedirectResponse(url="/margin", status_code=303)
 
     def _margin_risk_data(
-        st: SessionState, iterations: int = 1000, distribution: str = "triangular"
+        st: SessionState,
+        iterations: int = 1000,
+        distribution: str = "triangular",
+        zero_margin: bool = False,
     ) -> dict[str, object]:
         """The §7.3.3.2.3 risk-based margin-sufficiency read (F3c tier-b, ADR-0254) — shared by
         the API route and the Excel/Word export (identical results by seeded determinism).
@@ -3928,6 +3931,13 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
         )
+        three_point = _ssi_three_point(st, sch)
+        if zero_margin:
+            # ADR-0266 (Fig 7-43 "Current Plan, Zero Margin, With Risks"): every margin
+            # activity is carried at ZERO duration in every iteration — via the existing
+            # three-point surface, exactly as ADR-0254 queued. The [E, D] read window below
+            # is untouched; only the CURVE's basis moves, and the payload labels which one.
+            three_point = {**three_point, **dict.fromkeys(margin_uids, (0, 0, 0))}
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
             result = run_maybe_offloaded(
@@ -3935,7 +3945,7 @@ def create_app(
                 compute_sra_ssi,
                 sch,
                 config=cfg,
-                three_point=_ssi_three_point(st, sch),
+                three_point=three_point,
                 risks=_schedule_risks(st),
             )
         except Exception as exc:
@@ -3976,6 +3986,12 @@ def create_app(
             "use_risk_register": cfg.use_risk_register,
             "correlation": cfg.correlation,
             "margin_task_count": len(margin_uids),
+            "zero_margin": zero_margin,
+            "curve_basis": (
+                'zero-margin (Fig 7-43 "Current Plan, Zero Margin, With Risks")'
+                if zero_margin
+                else "in-network margin at plan durations"
+            ),
             "have_margin": bool(margin_uids) and d_anchor > e_zero,
             "covered_pct": read.covered_pct,
             "verdict": read.verdict,
@@ -4003,10 +4019,14 @@ def create_app(
 
     @app.get("/api/margin/risk")
     def margin_risk_json(
-        iterations: int = Query(1000), distribution: str = Query("triangular")
+        iterations: int = Query(1000),
+        distribution: str = Query("triangular"),
+        zero_margin: int = Query(0),
     ) -> JSONResponse:
-        """Button-triggered risk-based margin sufficiency (never on page load — SRA doctrine)."""
-        data = _margin_risk_data(session(), iterations, distribution)
+        """Button-triggered risk-based margin sufficiency (never on page load — SRA doctrine).
+        ``zero_margin=1`` (ADR-0266) runs the handbook-faithful Fig 7-43 curve: the margin
+        activities at zero duration, read against the SAME deterministic [E, D] window."""
+        data = _margin_risk_data(session(), iterations, distribution, bool(zero_margin))
         if "error" in data:
             code = 400 if data["error"] == "No analyzable schedule loaded." else 422
             return JSONResponse(data, status_code=code)
@@ -5414,6 +5434,7 @@ def create_app(
             ]
             risk_rows = (
                 ("File", str(risk["file"])),
+                ("Curve basis", str(risk["curve_basis"])),
                 ("Covered percentile (CDF at deterministic finish)", f"{risk['covered_pct']}"),
                 ("Verdict", verdict),
                 ("Margin window (wd)", f"{risk['margin_wd']}"),
@@ -10444,10 +10465,13 @@ the finish distribution against the deterministic margin window &mdash; the all-
 the same solve with the margin activities zeroed <b>E</b>. The <b>covered percentile</b> is the fraction
 of simulated finishes the margin absorbs; it is classified against the operator thresholds
 (Watch {watch:g}% / Corrective {ca:g}% &mdash; the handbook's <i>example</i> values, editable above).
-Note: the simulation carries the margin activities in-network at their plan durations (the handbook's
-Fig 7-43 curves are "Current Plan, Zero Margin, With Risks" &mdash; a zero-margin run is a documented
-follow-up); duration uncertainty and risks come from the Risk Analysis page inputs.</p>
+By default the simulation carries the margin activities in-network at their plan durations;
+<b>Zero-margin curve</b> (ADR-0266) instead runs them at zero duration in every iteration &mdash;
+the handbook's Fig 7-43 basis, "Current Plan, Zero Margin, With Risks" &mdash; read against the
+same [E, D] window. Duration uncertainty and risks come from the Risk Analysis page inputs.</p>
 <p><button type=button id=marginRiskRun>Run margin-sufficiency SRA</button>
+<label class=muted><input type=checkbox id=marginRiskZero value=1
+title="Run the handbook-faithful Fig 7-43 curve: every margin activity at zero duration in every iteration (ADR-0266). The margin window [E, D] and thresholds are unchanged — only the curve&#39;s basis moves, and the result names it."> Zero-margin curve (Fig 7-43)</label>
 <span id=marginRiskStatus class=muted aria-live=polite></span></p>
 <div id=marginRisk></div></div>"""
 
