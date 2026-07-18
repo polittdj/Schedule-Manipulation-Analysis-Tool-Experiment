@@ -7033,3 +7033,21 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   HANDOFF rotated + this entry in the same commit. NEXT: SEC-2/SEC-3 → family-B unify →
   zero-margin SRA toggle → roles i18n; operator still owes the PowerShell log, the large
   dataset, and the Claude-Design prompt.
+
+## 2026-07-18c — SEC-2/SEC-3 hardening (ADR-0264; v1.0.70)
+
+- **Cycle:** PR #399 (ADR-0262/0263) squash-merged at CI green (squash `01b1979`); branch
+  restarted from main per the post-squash rule; queue item SEC-2/SEC-3 executed next per the
+  operator's standing automated-build directive (authorization recorded in ADR-0264 — the
+  ADR-0256 record had asked for operator sign-off).
+- **Did:** Host allowlist (SEC-3, DNS-rebinding CUI read path closed; loopback + TestClient's
+  publicly-unresolvable `testserver`) + Origin gate on unsafe methods (SEC-2; foreign/null
+  Origin → 403 with no state change; absent Origin = non-browser local client passes; reads
+  never gated) — one check pair in `_liveness`, before any route logic, security headers on
+  rejections.
+- **Verified:** 6 new tests (test_sec_hardening.py); full web suite 919 green unchanged;
+  real-Chromium end-to-end clean under the gates (the browser's own same-origin POSTs pass
+  live). Residuals recorded: GET /cei?target side effect; CSP 'unsafe-inline' follow-up.
+- **State:** v1.0.69 → **1.0.70**; **ADR-0264**; wheel + 9 installers in lockstep; HANDOFF
+  rotated + this entry in the same commit. NEXT: ADR-0251 family-B unify → zero-margin SRA
+  toggle → roles i18n catalog.

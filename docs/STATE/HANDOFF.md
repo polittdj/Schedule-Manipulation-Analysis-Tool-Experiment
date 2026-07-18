@@ -1,39 +1,30 @@
-# Handoff — 2026-07-18b (full handoff-verification audit + remediation ADR-0262/0263: /mission tile degrade, epoch pairing, wipe finality, upload locking, summary-margin overlay; v1.0.69; highest ADR 0263)
+# Handoff — 2026-07-18c (SEC-2/SEC-3 hardening ADR-0264: Host allowlist + Origin gate; v1.0.70; highest ADR 0264)
 
-> ## STATUS (current) — operator-directed verify-everything session: a ten-agent Ultracode audit (ADR-0240 protocol, lead re-verified every major finding) checked EVERY ADR-0261/handoff claim against code + executed tests. The record held: P1 signatures/keys/residency, P2 tier, P3 memo + census-oracle equality, P5 bounds, latency-gate determinism, version/installer lockstep, parity (44 green), AFT pinning live — all CONFIRMED. The audit's confirmed defects were reproduced (failing tests first), fixed, hardened, and browser-verified; NEXT #1 (/mission tile degrade) shipped in the same PR. Version 1.0.68 → 1.0.69 (wheel + 9 installers in lockstep).
+> ## STATUS (current) — the automated build cycle continues: PR #399 (audit + remediation, ADR-0262/0263, v1.0.69) squash-merged after CI green; branch restarted from main; the standing queue's next item shipped — **ADR-0264 SEC-2/SEC-3 hardening** (closing the ADR-0256 recorded findings). Version 1.0.69 → 1.0.70 (wheel + 9 installers in lockstep).
 >
-> - **ADR-0262 (/mission + CEI guards):** cross-version tiles degrade server-side below their
->   OWN API's population threshold (CEI = 2 loaded; Evolution/Quality = 2 analyzable) — no
->   chart host ⇒ scripts early-return ⇒ zero console 4xx (Chromium-proven, 4 themes); the
->   /cei + /api/cei + /export cei guards now count st.ordered() (ADR-0258 residual: they
->   gated on the whole-session dict and 422'd on multi-project 1-version populations).
->   Correction: /api/scurve was never an offender (works with 1 version). i18n ×4 for the
->   two degrade notes; degraded tiles use .chart-note so chartframe adds no dead toolbar.
-> - **ADR-0263 (audit remediation):** (1) mixed-epoch pairing made UNREPRESENTABLE —
->   _Analysis.scoped + cpm_scoped_for return the (scoped, cpm) pair from ONE lock window;
->   ten call sites swapped (the P3-memo poisoning this closes was the audit's one REFUTED
->   ADR-0261 sub-claim). (2) wipe finality: wipe_gen + _scope_gen store guards; the on-disk
->   clear + SRA/AI resets now run INSIDE the wipe's lock; disk puts run under the lock —
->   "nothing survives the reset" now holds against in-flight computes. (3) /upload +
->   /example D18 locking (short windows; mid-upload wipe aborts LOUDLY). (4) Portfolio
->   summary margin now honors the ADR-0230 confirmed-margin overlay (dashboard precedence;
->   skip-disk like scoped versions; /margin/confirm clears the summaries tier). (5)
->   _clean_key strips control chars (\x1f epoch-key collision). (6) new gates: P2 per-EPOCH
->   solve counts, OAT cap disclosure (was uncovered), six deterministic race regressions
->   (test_session_consistency.py). (7) AFT drift guard audits EVERY committed .aft (the
->   newer v8.11.0 snapshot was unaudited; verified near-identical first); __version__ now
->   derives from distribution metadata (was hand-pinned "0.0.0" for 68 releases).
-> - **Deliberately NOT done (recorded in ADR-0263):** bounding cpms/summaries epoch growth
->   (an LRU would thrash the population pass on large portfolios; revisit on profiling
->   evidence); epoch-key reuse for scope-unchanged versions (missed reuse, never wrong);
->   the polished cache's scoped-object anchor (safe; wording drift only).
+> - **ADR-0264:** one check pair in the `_liveness` middleware, before any route logic —
+>   SEC-3 Host allowlist ({127.0.0.1, localhost, ::1, testserver} — the DNS-rebinding CUI
+>   read path is closed; `testserver` is TestClient's single-label, publicly-unresolvable
+>   default, no rebinding surface) + SEC-2 Origin gate on POST/PUT/PATCH/DELETE (a present
+>   foreign/`null` Origin = the cross-site signature → 403 and provably no state change; an
+>   ABSENT Origin = non-browser local client → passes; reads never gated — browsers omit
+>   Origin on same-origin GET navigations). Rejections carry the full security-header set.
+>   Authorization: the operator's standing 2026-07-18 automated-build directive, recorded in
+>   the ADR (ADR-0256 had asked for explicit sign-off; the change is small + revertible).
+> - **Verified:** tests/web/test_sec_hardening.py (6 — foreign/empty Host on pages/POSTs/
+>   static; all loopback host forms; foreign/null-Origin POST refused + state unchanged;
+>   loopback/absent-Origin POSTs work; reads ungated); full web suite 919 green unchanged;
+>   real-Chromium end-to-end (upload → mission → 4 themes) ALL SCENES CLEAN under the gates.
+> - **Known residuals (recorded in ADR-0264):** GET /cei?target=… query side effect
+>   (ADR-0061 design; Origin can't cover GETs); the CSP 'unsafe-inline' script follow-up.
 > - **Still OWED by the operator:** PowerShell crash log + the real large dataset (ADR-0261
 >   on-machine re-validation); the Claude-Design prompt (Portfolio US-map, ADR-0258).
-> - **State:** v1.0.69; **ADR-0263** highest; wheel + 9 installers in lockstep; branch
->   `claude/handoff-review-validation-ikldbf` (draft PR).
-> - **NEXT:** SEC-2/SEC-3 hardening (CSRF/Origin + Host allowlist — design + ADR) → ADR-0251
->   family-B unify → zero-margin SRA toggle → roles i18n catalog; #13 XER per-task calendars
->   stays PARKED; the two operator-blocked items above resume when their inputs arrive.
+> - **State:** v1.0.70; **ADR-0264** highest; wheel + 9 installers in lockstep; branch
+>   `claude/handoff-review-validation-ikldbf` (restarted from the #399 squash; draft PR).
+> - **NEXT:** ADR-0251 family-B unify (forward options to /api/evolution; decide the
+>   driving-path full-trace basis vs goldens; option-solve or hide the drill's added
+>   columns) → zero-margin SRA toggle (Fig 7-43, ADR-0254 follow-up) → roles i18n catalog;
+>   #13 XER per-task calendars stays PARKED; operator-blocked items resume on their inputs.
 
 # (prior) handoffs — archived
 
