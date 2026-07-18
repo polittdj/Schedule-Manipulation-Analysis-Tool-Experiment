@@ -28,7 +28,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypeVar, cast
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlparse, urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Form, Query, Request, UploadFile
@@ -2786,6 +2786,45 @@ _SECURITY_HEADERS: dict[str, str] = {
     "X-Frame-Options": "DENY",
 }
 
+#: SEC-3 (ADR-0264): the Host allowlist. The tool binds loopback only, but a DNS-rebinding
+#: page (an attacker domain the victim's browser re-resolves to 127.0.0.1) reaches it with the
+#: ATTACKER'S name in the Host header — on a production machine that is a read path to real
+#: CUI. Only genuine loopback names are served. "testserver" is Starlette TestClient's default
+#: base host: a single-label name public DNS cannot resolve, so admitting it adds no rebinding
+#: surface (rebinding needs an attacker-controlled RESOLVABLE domain riding in Host).
+_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})
+
+
+def _host_allowed(host_header: str) -> bool:
+    """True when the Host header names a loopback (or test) host — port ignored, IPv6 brackets
+    handled. An absent/unparseable Host is rejected (HTTP/1.1 requires one)."""
+    try:
+        hostname = urlsplit("//" + host_header.strip()).hostname
+    except ValueError:
+        return False
+    return hostname is not None and hostname in _ALLOWED_HOSTS
+
+
+def _origin_allowed(origin_header: str | None) -> bool:
+    """SEC-2 (ADR-0264): True when a state-mutating request's Origin is absent or loopback.
+
+    Browsers attach ``Origin`` to every cross-site POST (forms included), so a foreign or
+    ``null`` origin is exactly the CSRF signature — rejected. An ABSENT Origin is a
+    non-browser local client (curl, tests, the launcher's own probes), which is not the CSRF
+    vector, so it passes; a same-origin browser POST carries the loopback origin and passes."""
+    if origin_header is None:
+        return True
+    try:
+        parts = urlsplit(origin_header)
+    except ValueError:
+        return False
+    return parts.scheme in ("http", "https") and parts.hostname in _ALLOWED_HOSTS
+
+
+#: methods that can change session state — the only ones SEC-2 gates (Origin is not sent on
+#: same-origin GET navigations, so gating reads would break normal use without adding safety)
+_UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
 #: FastAPI defaults for the optional repeated-string query params (the S-curve per-chart filter's
 #: cf/cv). Each param needs its OWN ``Query`` instance: FastAPI binds the field's query key from the
 #: FieldInfo, so sharing one instance across two params silently aliases the second to the first's
@@ -2843,7 +2882,19 @@ def create_app(
         # operator is here: count it (the watchdog waits) and refresh the beat on completion.
         app.state.active_requests += 1
         try:
-            response: Response = await call_next(request)
+            response: Response
+            # ADR-0264 SEC-3: a non-loopback Host is a DNS-rebinding read attempt — refuse
+            # before ANY route logic runs (the rejection still carries the security headers).
+            if not _host_allowed(request.headers.get("host", "")):
+                response = JSONResponse({"error": "invalid host header"}, status_code=400)
+            # ADR-0264 SEC-2: a state-mutating request from a foreign/null Origin is the
+            # cross-site (CSRF) signature — refuse it; loopback and non-browser pass.
+            elif request.method in _UNSAFE_METHODS and not _origin_allowed(
+                request.headers.get("origin")
+            ):
+                response = JSONResponse({"error": "cross-site request refused"}, status_code=403)
+            else:
+                response = await call_next(request)
             for key, value in _SECURITY_HEADERS.items():
                 response.headers.setdefault(key, value)  # CSP/nosniff on every response (Law 1)
             if request.url.path.startswith("/static/"):
