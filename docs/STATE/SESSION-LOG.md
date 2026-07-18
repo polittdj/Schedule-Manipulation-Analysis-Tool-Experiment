@@ -7109,3 +7109,22 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   all operator-owed inputs (PowerShell log, large dataset, Claude-Design prompt).
 
 - **Session close (2026-07-18f):** PR #403 merged (squash `43beddd`); branch restarted from the #403 squash, clean tree, no open PR. The 2026-07-18 automated cycle (#399→#400→#401→#402→#403; v1.0.68→1.0.73; ADR-0261 already on main plus ADR-0262 through ADR-0268) is COMPLETE. Both the feature queue and the recorded-residuals list are empty; all remaining work is operator-owed (PowerShell crash log, real large dataset, Claude-Design prompt) or PARKED (#13). Session stopped at operator request.
+
+- **Session (2026-07-18g, verification-only):** Fresh session executed the ADR-0268 handoff's
+  NEXT directive — confirm state, do not invent work — and stopped there. Confirmed
+  `origin/main` tip `d324052` = the #403 squash `43beddd` plus only the #404 session-close
+  docs commit (verified docs-only: HANDOFF + SESSION-LOG, 2 files); working branch clean at
+  the tip; NO open PRs; only issue #331 (deferred Advanced-Schedule-Analysis backlog) open —
+  no new operator inputs have arrived. Full gate re-verified GREEN on `d324052` after
+  provisioning the fresh container with `pip install -e '.[dev]'` (a fresh remote container
+  ships without the dev toolchain — mypy/bandit/pytest are absent until installed): ruff
+  check, ruff format, mypy strict, bandit (zero exit), **pytest 2464 passed** (parity
+  included), node --check all green. Anomaly triaged: five stale June session branches
+  (`claude/clever-volta-wbnx0i`, `claude/elegant-thompson-7opMM`, `claude/festive-maxwell-zIB6D`,
+  `claude/intelligent-fermat-3MBqk`, `claude/intelligent-johnson-18yZD`) reappeared on the
+  remote — old already-squash-merged June work (M1/M2/M7-era and post-#225 SSI), evidently
+  auto-preserved when their idle containers were reclaimed; they only *look* disjoint from a
+  shallow clone (50-commit boundary). Inert (no PRs attached), safe for the operator to
+  delete at leisure. Still owed by the operator: PowerShell crash log + real large dataset
+  (ADR-0261 re-validation), Claude-Design prompt (ADR-0258); #13 XER per-task calendars
+  PARKED. No code, no version change; highest ADR remains **ADR-0268**.
