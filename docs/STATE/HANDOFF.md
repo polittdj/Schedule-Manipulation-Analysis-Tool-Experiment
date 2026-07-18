@@ -26,10 +26,14 @@
 > - **Still OWED by the operator (all remaining work):** PowerShell crash log + real large
 >   dataset (ADR-0261 on-machine re-validation; five-large-file stress); Claude-Design prompt
 >   (Portfolio US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
-> - **State:** v1.0.73; **ADR-0268** highest; wheel + 9 installers in lockstep; branch
->   `claude/handoff-review-validation-ikldbf` (restarted from the #402 squash; draft PR).
-> - **NEXT:** babysit the open PR to merge; then WAIT on operator inputs — the residual list
->   is now empty too. The 2026-07-18 cycle: #399→#400→#401→#402→this PR.
+> - **State:** v1.0.73; **ADR-0268** highest; wheel + 9 installers in lockstep. **PR #403
+>   MERGED** (squash `43beddd`); branch `claude/handoff-review-validation-ikldbf` restarted
+>   from the #403 squash, clean tree, NO open PR, nothing in flight. The full 2026-07-18
+>   automated cycle landed on `main`: #399→#400→#401→#402→#403.
+> - **NEXT:** nothing queued — the feature queue AND the recorded-residuals list are both
+>   empty. WAIT on operator inputs (the three OWED items above) before starting new work; a
+>   fresh session should confirm `origin/main` tip is `43beddd` and re-run the gate green if it
+>   intends to build. Do not invent work without direction.
 
 # (prior) handoffs — archived
 
