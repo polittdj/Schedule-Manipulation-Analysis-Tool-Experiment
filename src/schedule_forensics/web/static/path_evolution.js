@@ -447,7 +447,14 @@
 
   var tgt = box.getAttribute("data-target");
   var tierMode = box.getAttribute("data-tier") || "off";
+  // ADR-0265: the /evolution page embeds its active counterfactual trace options so this
+  // stepper reads the SAME re-solved network as the server-rendered panels (one basis per
+  // page). Absent attributes (the /mission wall) mean 0 — the stored-schedule default.
+  var ignoreConstraints = box.getAttribute("data-ignore-constraints") === "1" ? 1 : 0;
+  var ignoreLeveling = box.getAttribute("data-ignore-leveling") === "1" ? 1 : 0;
   fetch("/api/evolution?tier=" + encodeURIComponent(tierMode) +
+        "&ignore_constraints=" + ignoreConstraints +
+        "&ignore_leveling=" + ignoreLeveling +
         (tgt ? "&target=" + encodeURIComponent(tgt) : ""))
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
     .then(function (d) {

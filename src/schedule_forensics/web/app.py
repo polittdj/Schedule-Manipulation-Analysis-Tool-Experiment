@@ -2825,6 +2825,13 @@ def _origin_allowed(origin_header: str | None) -> bool:
 #: same-origin GET navigations, so gating reads would break normal use without adding safety)
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
+#: ADR-0265: driving-tiers drill columns whose values are SOLVED (stored-network dates/float/
+#: criticality) — dropped from the drill and its Excel while the counterfactual trace options
+#: are active, so a re-solved view never mixes in stored-basis figures. Labels as the drill
+#: sends them in ``cols``; the basis-independent INPUT columns (durations, %, WBS, resources,
+#: baselines, custom fields) always remain.
+_SOLVE_DEPENDENT_COLS = frozenset({"Start", "Finish", "Total float (d)", "Critical"})
+
 #: FastAPI defaults for the optional repeated-string query params (the S-curve per-chart filter's
 #: cf/cv). Each param needs its OWN ``Query`` instance: FastAPI binds the field's query key from the
 #: FieldInfo, so sharing one instance across two params silently aliases the second to the first's
@@ -4480,7 +4487,16 @@ def create_app(
             + opt_banner
             + opt_form
             + _sources_line(schedules)
-            + _evolution_body(schedules, cpms, uid, tier, cf_a=cf_a, cf_b=cf_b),
+            + _evolution_body(
+                schedules,
+                cpms,
+                uid,
+                tier,
+                cf_a=cf_a,
+                cf_b=cf_b,
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+            ),
         )
 
     @app.get("/integrity", response_class=HTMLResponse)
@@ -4527,12 +4543,27 @@ def create_app(
         )
 
     @app.get("/api/evolution")
-    def evolution_json(target: str | None = Query(None), tier: str = Query("off")) -> JSONResponse:
+    def evolution_json(
+        target: str | None = Query(None),
+        tier: str = Query("off"),
+        ignore_constraints: int = Query(0),
+        ignore_leveling: int = Query(0),
+    ) -> JSONResponse:
+        """The stepper's feed. ADR-0265 (closing the ADR-0251 disclosure): it accepts the SAME
+        counterfactual trace options as the /evolution page, so the client-fetched chart and
+        the server-rendered panels share ONE basis. Defaults reproduce the stored-schedule
+        payload byte-for-byte (the /mission wall passes no options)."""
         st = session()
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
             return JSONResponse({"error": "need at least two analyzable versions"}, status_code=400)
         uid = _parse_uid(target) if target is not None else st.target_uid
+        schedules, cpms, _banner = _optioned_versions(
+            schedules,
+            cpms,
+            ignore_constraints=bool(ignore_constraints),
+            ignore_leveling=bool(ignore_leveling),
+        )
         if tier in _EVO_TIER_SELECT:
             return JSONResponse(_evolution_tier_data(schedules, cpms, uid, tier))
         return JSONResponse(_evolution_data(schedules, cpms, uid))
@@ -4886,6 +4917,7 @@ def create_app(
         ignore_constraints: int = Query(0),
         ignore_leveling: int = Query(0),
         drag: int = Query(0),
+        basis: str = Query("stored"),
     ) -> Response:
         if (bad := _bad_format(fmt)) is not None:
             return bad
@@ -4897,6 +4929,20 @@ def create_app(
             cpm = st.analysis_for(name, sch).cpm
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
+        # ADR-0265: ``basis=resolve`` (the /driving-path page's link) runs this export on the
+        # page's COUNTERFACTUAL re-solved network — the same _optioned_versions transform the
+        # tiers panel shows — so the downloaded trace mirrors the screen. The trace's own
+        # family-A flags are then OFF (the transform already embodies them at the network
+        # level). Default ``stored`` keeps the SSI-parity stored-date trace byte-identical.
+        counterfactual = basis == "resolve" and bool(ignore_constraints or ignore_leveling)
+        if counterfactual:
+            opt_s, opt_c, _b = _optioned_versions(
+                [sch],
+                [cpm],
+                ignore_constraints=bool(ignore_constraints),
+                ignore_leveling=bool(ignore_leveling),
+            )
+            sch, cpm = opt_s[0], opt_c[0]
         data = _driving_data(
             sch,
             cpm,
@@ -4906,8 +4952,8 @@ def create_app(
             direction=direction,
             range_mode=range_mode,
             range_days=range_days,
-            ignore_constraints=bool(ignore_constraints),
-            ignore_leveling=bool(ignore_leveling),
+            ignore_constraints=bool(ignore_constraints) and not counterfactual,
+            ignore_leveling=bool(ignore_leveling) and not counterfactual,
             with_drag=bool(drag),
         )
         rows = data.get("rows") or []
@@ -4919,8 +4965,11 @@ def create_app(
         custom_labels = list(
             dict.fromkeys(c for c in (s.strip() for s in cols.split(",")) if c in valid)
         )
+        title = f"Path analysis - {sch.name}" + (
+            " (counterfactual re-solve basis - ADR-0265)" if counterfactual else ""
+        )
         tableset = TableSet(
-            f"Path analysis - {sch.name}",
+            title,
             (driving_table(rows, target, custom_labels),),  # type: ignore[arg-type]
         )
         return _export_response(fmt, tableset, f"{name}-path-uid{target}")
@@ -5804,6 +5853,12 @@ def create_app(
                 graded.append((tier_order[label], uid, float(r.driving_slack_days), label))
         graded.sort(key=lambda g: (g[0], g[2], g[1]))
         extra = [c for c in (s.strip() for s in cols.split(",")) if c]
+        if ignore_constraints or ignore_leveling:
+            # ADR-0265: the extra columns come from the BASE (stored-network) analysis rows —
+            # mixing them into a counterfactual export would put two bases in one file. The
+            # solve-dependent columns are dropped (the drill hides them too); input columns
+            # (durations, %, WBS, resources, baselines, custom fields) are basis-independent.
+            extra = [c for c in extra if c not in _SOLVE_DEPENDENT_COLS]
         by_row: dict[int, dict[str, object]] = {}
         for a in analysis.activity_rows:
             row_uid = a.get("unique_id")
@@ -14512,9 +14567,9 @@ def _driving_tiers_panel(
             "chart. Add any standard or custom field (set once), filter by any shown column, and "
             "export exactly your columns to Excel."
             + (
-                " <b>Trace options active:</b> Tier and Slack come from the re-solved "
-                "counterfactual network; added field columns (dates, floats, % complete, …) "
-                "re-read the stored schedule and do not apply the options (ADR-0251)."
+                " <b>Trace options active:</b> every column shown (and exported) shares the "
+                "re-solved counterfactual basis — stored-schedule date/float columns are "
+                "hidden until the options are off (ADR-0265)."
                 if (ignore_constraints or ignore_leveling)
                 else ""
             )
@@ -14662,12 +14717,13 @@ def _optioned_versions(
         if on
     ]
     banner = (
-        '<div class="notice">Trace options active: ' + ", ".join(opts) + " — the "
-        "server-rendered dates and paths below come from the re-solved pure-logic network, not "
-        "the stored schedule. This is a counterfactual view: SSI / MS Project report against "
-        "the stored dates even with their same-named options on, so these paths will not match "
-        "those tools' output (ADR-0251). Client-fetched sub-charts and drill-added field "
-        "columns re-read the stored schedule and do not apply these options.</div>"
+        '<div class="notice">Trace options active: ' + ", ".join(opts) + " — every date and "
+        "path on this page (including the animated stepper and the Excel exports) comes from "
+        "the re-solved pure-logic network, not the stored schedule (ADR-0265: one basis per "
+        "page). This is a counterfactual view: SSI / MS Project report against the stored "
+        "dates even with their same-named options on, so these paths will not match those "
+        "tools' output (ADR-0251). Stored-schedule date/float drill columns are hidden while "
+        "the options are active.</div>"
     )
     return out_s, out_c, banner
 
@@ -14708,14 +14764,19 @@ def _driving_path_body(
     if target is not None and schedules and export_key:
         # the export route looks the schedule up by SESSION KEY (filename-derived), never the
         # internal project name — the old link used last.name and 404'd (fixed 2026-07-09)
-        opts = f"&ignore_constraints={int(ignore_constraints)}&ignore_leveling={int(ignore_leveling)}&drag=1"
-        # the full-trace export runs the Path-Analysis (SSI-parity, stored-date) trace — with the
-        # counterfactual options active it will NOT mirror the re-solved tiers above (ADR-0251)
+        opts = (
+            f"&ignore_constraints={int(ignore_constraints)}"
+            f"&ignore_leveling={int(ignore_leveling)}&drag=1&basis=resolve"
+        )
+        # ADR-0265: the export carries basis=resolve, so with the counterfactual options
+        # active it runs on the SAME re-solved network as the tiers above (one basis per
+        # page); with no options active basis=resolve is a no-op and the download is the
+        # byte-identical stored-date trace. The /path page's export stays family A (stored).
         export_link = (
             f'<a class=btn-link href="/export/xlsx/path/{_e(export_key)}?target={target}{opts}" '
-            'title="Exports the SSI-parity stored-date trace (Path Analysis basis). With trace '
-            "options active it will not mirror the re-solved tiers above — stored dates still "
-            'govern dated tasks in this export (ADR-0251)">'
+            'title="Exports the full trace on THIS page&#39;s basis: with trace options active '
+            "it mirrors the re-solved tiers above (counterfactual network, ADR-0265); with no "
+            'options it is the stored-date Path Analysis trace">'
             "&#11015; Excel (full trace to target, latest version, incl. Drag)</a>"
         )
     form = f"""
@@ -15881,6 +15942,8 @@ def _evolution_body(
     *,
     cf_a: int = -1,
     cf_b: int = -1,
+    ignore_constraints: bool = False,
+    ignore_leveling: bool = False,
 ) -> str:
     """The Critical-Path Evolution view (M18 item 7): a Bow-Wave-style stepper over the
     versions, showing the critical path and how it enters/leaves between versions. ``target``
@@ -15969,7 +16032,8 @@ visible.</p>
 <b>duration</b> (working days), <b>start</b> and <b>finish</b> &mdash; beside the bar.
 Use <b>Focus</b> above to highlight one activity across every version.</p>
 <div id=evoChart data-target="{target if target is not None else ""}"
-data-tier="{tier}"></div></div>
+data-tier="{tier}" data-ignore-constraints="{int(ignore_constraints)}"
+data-ignore-leveling="{int(ignore_leveling)}"></div></div>
 <script src="/static/path_evolution.js"></script>"""
         + _completed_on_path_panel(schedules, cpms, target)
         + _counterfactual_panel(schedules, cpms, target, baseline_idx=cf_a, comparison_idx=cf_b)
@@ -15981,10 +16045,10 @@ def _completed_on_path_panel(
 ) -> str:
     """Version-to-version record of path activities that COMPLETED — the operator's "what got
     done on the path month to month". Server-rendered from the page's evolution snapshots
-    (ADR-0150) — the OPTIONED versions when the ADR-0251 counterfactual trace options are
-    active, unlike the client-fetched stepper chart, which re-reads `/api/evolution` (no
-    option params — always the stored schedule): for each version pair, the prior version's
-    path activities that are complete in the newer version, with their actual finishes."""
+    (ADR-0150) — the OPTIONED versions when the counterfactual trace options are active, the
+    SAME basis the client-fetched stepper now reads (`/api/evolution` forwards the options,
+    ADR-0265): for each version pair, the prior version's path activities that are complete
+    in the newer version, with their actual finishes."""
     ev = compute_path_evolution(schedules, cpms, target_uid=target)
     basis = f"driving path to UID {target}" if target is not None else "effective critical path"
     sections: list[str] = []
