@@ -1,30 +1,35 @@
-# Handoff — 2026-07-18e (zero-margin SRA toggle ADR-0266 + roles i18n catalog ADR-0267 — the standing queue's last unblocked items; v1.0.72; highest ADR 0267)
+# Handoff — 2026-07-18f (ADR-0268: strict script-src CSP + 4 residuals + a browser-surfaced SEC-2 correction; v1.0.73; highest ADR 0268)
 
-> ## STATUS (current) — the automated build cycle: PR #401 (family-B unification, ADR-0265, v1.0.71) squash-merged at CI green; branch restarted; the LAST two unblocked queue items shipped together — **ADR-0266 zero-margin SRA toggle** (Fig 7-43 fidelity) + **ADR-0267 roles i18n catalog** (ROLES-2 completion). Version 1.0.71 → 1.0.72 (wheel + 9 installers in lockstep). **The standing queue is now EMPTY of unblocked work** — everything remaining waits on operator inputs or is PARKED.
+> ## STATUS (current) — with the standing queue empty, cleared the recorded residuals in one PR (ADR-0268) — and the browser verification of the CSP change SURFACED A SERIOUS LATENT BUG in the already-merged ADR-0264 SEC-2 gate (every POST form was refused live) and fixed it. Version 1.0.72 → 1.0.73 (wheel + 9 installers in lockstep).
 >
-> - **ADR-0266:** `/api/margin/risk?zero_margin=1` (checkbox by the panel's Run button) runs
->   the seeded SRA with every margin activity's three-point at (0,0,0) — the handbook's
->   "Current Plan, Zero Margin, With Risks" curve via the existing three-point surface,
->   exactly as ADR-0254 queued. [E, D], thresholds, margin-set precedence, seed unchanged;
->   payload + provenance + export name the curve basis. Seed-independent proof: a fixture
->   whose ONLY uncertainty is the margin task collapses to a degenerate distribution landing
->   exactly on E (margin provably removed from the sampling). Browser-verified live (note:
->   Playwright wait_for_function was refused by our own CSP — the air-gap working).
-> - **ADR-0267:** the full role-strip vocabulary ×4 languages (~46 _TERMS entries): roles,
->   taglines, combined "Start here — {role}" headings (single text nodes), missing card
->   titles, all 24 why-lines, tooltips (translate.js walks title attrs). Product/standard
->   names stay untranslated by convention; the picker prose stays on the AI fallback.
-> - **Still OWED by the operator (the only remaining work):** the PowerShell crash log + the
->   real large dataset (ADR-0261 on-machine re-validation; five-large-file stress); the
->   Claude-Design prompt (Portfolio US-map/site drill, ADR-0258). #13 XER per-task calendars
->   stays PARKED. Smaller recorded residuals if idle: CSP 'unsafe-inline' script tightening
->   (ADR-0264 note), GET /cei?target side effect, /export/{fmt}/mission <2-version 422,
->   margin-export zero-margin snapshot (ADR-0266 note).
-> - **State:** v1.0.72; **ADR-0267** highest; wheel + 9 installers in lockstep; branch
->   `claude/handoff-review-validation-ikldbf` (restarted from the #401 squash; draft PR).
-> - **NEXT:** babysit the open PR to merge; then WAIT on operator inputs (or pick up the
->   residuals above if directed). The 2026-07-18 automated cycle shipped: #399 (audit +
->   ADR-0262/0263) → #400 (ADR-0264) → #401 (ADR-0265) → this PR (ADR-0266/0267).
+> - **Strict CSP:** `script-src 'self'` (dropped 'unsafe-inline'). Every inline handler →
+>   delegated in the new `chrome.js` via `data-sf-*` attrs (autosubmit / navselect /
+>   nexturl-submit / confirm / sfQuitLink); every `window.SF_*=` boot script → a
+>   non-executable `<script type="application/json">` block its consumer parses by id
+>   (sfI18nBoot/sfScurveFields/sfRibbonDrillData/sfRemainDays/sfFieldHelp). style-src keeps
+>   'unsafe-inline' (Gantt px widths). Defense in depth: injected inline JS can't execute.
+> - **SEC-2 CORRECTION (browser-surfaced MAJOR):** the ADR-0264 Origin-only gate refused
+>   EVERY real-browser POST *form* navigation — `Referrer-Policy: no-referrer` makes Chromium
+>   send `Origin: null` on those, read as cross-site. The #400 probe only did fetch POSTs
+>   (real Origin), so it never caught it. Gate now uses `Sec-Fetch-Site` (primary; a
+>   forbidden header no-referrer doesn't null, unforgeable cross-site) — same-origin/none
+>   pass, cross-site/same-site/cross-origin refused — with the Origin check as the
+>   absent-header fallback (OWASP Fetch-Metadata pattern). Proven live: the language POST
+>   form now applies (page renders in Spanish — also confirms ADR-0267).
+> - **Residuals cleared:** GET /cei?target side effect → POST /target (uids stays a display
+>   GET); /export mission degrades to a valid note workbook <2 versions (not a 422);
+>   /export margin?zero_margin=1 exports the Fig 7-43 snapshot (ADR-0266).
+> - **Verified:** test_csp_strict_scripts.py + test_residuals_268.py + expanded
+>   test_sec_hardening.py (Sec-Fetch-Site cases incl. the null-Origin-same-origin
+>   regression); re-targeted old-markup pins + the SRA-derive JS harness; Chromium sweep of
+>   10 pages ZERO CSP violations, forms work, Wipe confirm fires. Parity untouched.
+> - **Still OWED by the operator (all remaining work):** PowerShell crash log + real large
+>   dataset (ADR-0261 on-machine re-validation; five-large-file stress); Claude-Design prompt
+>   (Portfolio US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
+> - **State:** v1.0.73; **ADR-0268** highest; wheel + 9 installers in lockstep; branch
+>   `claude/handoff-review-validation-ikldbf` (restarted from the #402 squash; draft PR).
+> - **NEXT:** babysit the open PR to merge; then WAIT on operator inputs — the residual list
+>   is now empty too. The 2026-07-18 cycle: #399→#400→#401→#402→this PR.
 
 # (prior) handoffs — archived
 

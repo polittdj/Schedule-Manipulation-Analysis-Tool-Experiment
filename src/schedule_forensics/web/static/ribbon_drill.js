@@ -12,8 +12,11 @@
 
 (function () {
   var drill = document.getElementById("ribbonDrill");
-  var DATA = window.SF_RIBBON_DRILL || {};
-  var LABELS = window.SF_RIBBON_LABELS || {};
+  var _drillEl = document.getElementById("sfRibbonDrillData");
+  var _boot = {};
+  if (_drillEl) { try { _boot = JSON.parse(_drillEl.textContent || "{}"); } catch (e) { _boot = {}; } }
+  var DATA = _boot.drill || {};
+  var LABELS = _boot.labels || {};
   if (!drill) return;
 
   var COLS_KEY = "sf-ribbon-drill-cols"; // persisted set-once column choice (labels, on/off)

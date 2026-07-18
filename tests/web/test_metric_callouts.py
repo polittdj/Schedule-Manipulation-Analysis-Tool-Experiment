@@ -97,11 +97,11 @@ def test_sra_field_help_is_emitted_for_the_js_tables(client: TestClient) -> None
     """The SRA SSI run + OAT tables are built in JS, so the page ships a window.SF_FIELD_HELP map
     and sra_ssi.js renders the same hover call-out from it."""
     page = client.get("/sra").text
-    assert "window.SF_FIELD_HELP" in page
+    assert 'id=sfFieldHelp type="application/json"' in page
     assert "opportunity_accelerate" in page and "total_sensitivity" in page
     js = client.get("/static/sra_ssi.js").text
     assert "function helpTh(" in js and "function headerRow(" in js
-    assert "SF_FIELD_HELP" in js
+    assert "sfFieldHelp" in js
 
 
 def test_field_help_payload_shape() -> None:

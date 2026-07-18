@@ -374,8 +374,9 @@ _LAYOUT = Template(
 <meta name=viewport content="width=device-width,initial-scale=1">
 <title>{{ title }} — POLARIS</title>
 <link rel=icon href="/static/favicon.ico">
-<script>window.SF_LANG={{ lang_json }};window.SF_I18N={{ catalog_json }};</script>
+<script id=sfI18nBoot type="application/json">{{ i18n_boot_json }}</script>
 <script src="/static/theme.js"></script>
+<script src="/static/chrome.js"></script>
 <script src="/static/checklist.js"></script>
 <script src="/static/gantt.js"></script>
 <script src="/static/timescale.js"></script>
@@ -1989,9 +1990,7 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
                 # the app sends Referrer-Policy: no-referrer, so the CURRENT page rides an
                 # explicit next_url (validated server-side like /target's) — the switch returns
                 # to the page the operator was reading, not the dashboard
-                '<select name=pid onchange="this.form.next_url.value='
-                "location.pathname+location.search;"
-                f'this.form.submit()">{opts}</select></form>'
+                f"<select name=pid data-sf-nexturl-submit>{opts}</select></form>"
                 f" &middot; {len(pops)} Projects loaded &middot; "
                 f'<a class=btn-link href="/portfolio">Portfolio</a>{review}</div>'
             )
@@ -2014,7 +2013,7 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
             )
             inner = (
                 f"This page shows ONE file: <b>{cur_name}</b> &mdash; switch file: "
-                f'<select onchange="location.href=this.value" data-no-i18n>{opts}</select> '
+                f"<select data-sf-navselect data-no-i18n>{opts}</select> "
                 "(versions are compared on the Trend / Compare / Evolution pages, never mixed here)"
             )
         return strip + f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
@@ -2419,7 +2418,7 @@ def _render_target_control(state: SessionState) -> str:
         "measured to (Project finish uses the whole schedule), or enter any activity's UID at right.\">"
         '<input type=hidden name=next_url value="/">'
         "<label>Measure to "
-        f'<select name=uid data-no-i18n onchange="this.form.submit()">{options}</select></label>'
+        f"<select name=uid data-no-i18n data-sf-autosubmit>{options}</select></label>"
         "</form>"
         '<form action="/target" method=post class="navform targetform sf-uid-form" '
         'data-sf-hint="Measure to ANY activity by UniqueID — including a non-milestone or a milestone '
@@ -2483,9 +2482,9 @@ def _render_nav(state: SessionState) -> str:
     controls = (
         "<div class=nav-controls>"
         '<form action="/session/wipe" method=post class=navform '
-        "onsubmit=\"return confirm('Wipe all loaded schedules?')\">"
+        'data-sf-confirm="Wipe all loaded schedules?">'
         "<button type=submit class=linkbtn>Wipe Session</button></form>"
-        '<a href="#" onclick="return sfQuit()" title="Stop the local server and exit">Quit</a>'
+        '<a href="#" id=sfQuitLink title="Stop the local server and exit">Quit</a>'
         '<button id=sfResetView type=button class="linkbtn sf-reset-view" data-no-i18n '
         'title="Clear every selection you made on THIS page (inputs, filters, toggles, remembered '
         'view) and return to its default view">&#10226; Reset view</button>'
@@ -2514,7 +2513,7 @@ def _render_nav(state: SessionState) -> str:
         '<form action="/language" method=post class="navform langform" '
         'title="Display language for the UI and AI results">'
         "<label>Language: <select name=lang data-no-i18n "
-        f'onchange="this.form.submit()">{lang_options}</select></label>'
+        f"data-sf-autosubmit>{lang_options}</select></label>"
         "</form>"
         "</div>"
     )
@@ -2614,9 +2613,13 @@ def _page(
                     + _story_footer(state, title, chapter)
                 ),
                 lang=lang,
-                lang_json=json.dumps(lang),
-                # the catalog is only shipped to the client when not English (no payload for en)
-                catalog_json=json.dumps(i18n.catalog_for(lang)),
+                # ADR-0268: a non-executable JSON boot block (translate.js parses it) — the
+                # strict script-src CSP forbids the old inline `window.SF_*=` script. The
+                # catalog is only shipped when not English (no payload for en); "<" escaped
+                # so imported text can never close the block.
+                i18n_boot_json=json.dumps(
+                    {"lang": lang, "catalog": i18n.catalog_for(lang)}
+                ).replace("<", "\\u003c"),
                 cui_class=cui_class,
                 cui_text=cui_text,
             )
@@ -2767,15 +2770,18 @@ def _expandable_more(shown_html: str, hidden_items: list[str]) -> str:
 
 #: Content-Security-Policy that enforces the air-gap (Law 1) in EVERY browser at runtime, not
 #: just in the test: ``default-src``/``connect-src``/``img-src`` are ``'self'`` so the page can
-#: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``'unsafe-inline'``
-#: is allowed for style + script because the UI legitimately uses inline ``style=`` (the Gantt's
-#: px widths) and two inline handlers (Quit / wipe-confirm); that permits INLINE code but still
-#: forbids any REMOTE script/style, so the no-remote-asset guarantee holds. Tightening to a strict
-#: ``script-src 'self'`` (after moving the two handlers to addEventListener) is a tracked follow-up.
+#: never pull or beacon to a remote host (no CDN, no font, no exfil fetch). ``script-src`` is
+#: STRICT ``'self'`` (ADR-0268, closing the long-tracked follow-up): every former inline
+#: handler is delegated in ``chrome.js`` via ``data-sf-*`` attributes, and every boot payload
+#: is a non-executable ``<script type="application/json">`` block its consumer parses — so an
+#: injected inline script or ``on*=`` handler cannot execute even if markup escaping ever
+#: failed (defense in depth: the tool renders opposing-party file content). ``style-src`` keeps
+#: ``'unsafe-inline'`` for the UI's legitimate inline ``style=`` (the Gantt's px widths) —
+#: inline styles cannot execute code and remote styles stay forbidden.
 _CSP = (
     "default-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
     "connect-src 'self'; img-src 'self' data:; form-action 'self'; "
-    "style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'"
+    "style-src 'self' 'unsafe-inline'; script-src 'self'"
 )
 #: Security headers added to every response (CSP enforces the air-gap; nosniff/Referrer/Frame
 #: are free hardening for the CUI threat model — the operator analyzes opposing-party files).
@@ -2806,12 +2812,10 @@ def _host_allowed(host_header: str) -> bool:
 
 
 def _origin_allowed(origin_header: str | None) -> bool:
-    """SEC-2 (ADR-0264): True when a state-mutating request's Origin is absent or loopback.
-
-    Browsers attach ``Origin`` to every cross-site POST (forms included), so a foreign or
-    ``null`` origin is exactly the CSRF signature — rejected. An ABSENT Origin is a
-    non-browser local client (curl, tests, the launcher's own probes), which is not the CSRF
-    vector, so it passes; a same-origin browser POST carries the loopback origin and passes."""
+    """The FALLBACK CSRF check (used only when ``Sec-Fetch-Site`` is absent): True when the
+    Origin is absent or loopback. An ABSENT Origin is a non-browser local client (curl,
+    tests, the launcher's probes), not the CSRF vector, so it passes; a foreign or ``null``
+    Origin is rejected."""
     if origin_header is None:
         return True
     try:
@@ -2821,8 +2825,29 @@ def _origin_allowed(origin_header: str | None) -> bool:
     return parts.scheme in ("http", "https") and parts.hostname in _ALLOWED_HOSTS
 
 
-#: methods that can change session state — the only ones SEC-2 gates (Origin is not sent on
-#: same-origin GET navigations, so gating reads would break normal use without adding safety)
+def _csrf_safe(sec_fetch_site: str | None, origin_header: str | None) -> bool:
+    """SEC-2 (ADR-0264, corrected ADR-0268): is a state-mutating request non-cross-site?
+
+    The PRIMARY signal is ``Sec-Fetch-Site`` — a browser-set forbidden header a cross-site
+    page cannot forge, and (unlike ``Origin``) NOT nulled by the app's ``Referrer-Policy:
+    no-referrer`` on same-origin **form** navigations. ``same-origin`` (the tool's own
+    forms/fetches) and ``none`` (a user-initiated top-level navigation — address bar,
+    bookmark; not a CSRF vector) pass; ``cross-site`` / ``same-site`` / ``cross-origin`` are
+    the CSRF signatures and are refused. When the header is ABSENT (a non-browser client, or
+    a browser too old to send Fetch Metadata) we fall back to the Origin check, which passes
+    absent-Origin non-browser clients and loopback origins while refusing foreign ones.
+
+    Why the correction: the Origin-only gate refused EVERY real-browser POST **form**
+    navigation — ``no-referrer`` makes Chromium send ``Origin: null`` on those, which the old
+    gate read as cross-site (surfaced by ADR-0268's browser verification; the ADR-0264 probe
+    had only exercised ``fetch`` POSTs, which do carry a real Origin)."""
+    if sec_fetch_site is not None:
+        return sec_fetch_site in ("same-origin", "none")
+    return _origin_allowed(origin_header)
+
+
+#: methods that can change session state — the only ones SEC-2 gates (Sec-Fetch-Site/Origin
+#: are not sent on same-origin GET navigations, so gating reads would break normal use)
 _UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 #: ADR-0265: driving-tiers drill columns whose values are SOLVED (stored-network dates/float/
@@ -2894,10 +2919,12 @@ def create_app(
             # before ANY route logic runs (the rejection still carries the security headers).
             if not _host_allowed(request.headers.get("host", "")):
                 response = JSONResponse({"error": "invalid host header"}, status_code=400)
-            # ADR-0264 SEC-2: a state-mutating request from a foreign/null Origin is the
-            # cross-site (CSRF) signature — refuse it; loopback and non-browser pass.
-            elif request.method in _UNSAFE_METHODS and not _origin_allowed(
-                request.headers.get("origin")
+            # ADR-0264 SEC-2 (corrected ADR-0268): a cross-site state-mutating request is the
+            # CSRF signature — refuse it. Sec-Fetch-Site is the primary discriminator (Origin
+            # is nulled by no-referrer on same-origin form navigations); Origin is the
+            # fallback for pre-Fetch-Metadata clients.
+            elif request.method in _UNSAFE_METHODS and not _csrf_safe(
+                request.headers.get("sec-fetch-site"), request.headers.get("origin")
             ):
                 response = JSONResponse({"error": "cross-site request refused"}, status_code=403)
             else:
@@ -4054,14 +4081,12 @@ def create_app(
         )
 
     @app.get("/cei", response_class=HTMLResponse)
-    def cei_view(target: str | None = Query(None), uids: str = Query("")) -> HTMLResponse:
+    def cei_view(uids: str = Query("")) -> HTMLResponse:
         st = session()
-        # focusing a target from this view sets the session-wide target (ADR-0061), so the
-        # /api/cei fetch that draws the chart sees the same activity; a blank clears it. Go through
-        # set_target (NOT a raw assignment) so the scope/analysis caches invalidate and the SRA
-        # focus stays coupled — a raw write left every page scoped to the PREVIOUS target (audit).
-        if target is not None:
-            st.set_target(_parse_uid(target))
+        # ADR-0268: focusing a target is a STATE change, so it goes through POST /target now
+        # (the Focus form), not a GET side effect — a GET must never mutate the session (the
+        # ADR-0061 query-set was the recorded residual). ``uids`` stays a GET param: it is a
+        # display-only track set, it changes no session state.
         # ADR-0262: the guard counts the ACTIVE population (ADR-0258 — never another Project's
         # files), matching the population compute_bow_wave below actually receives.
         if len(st.ordered()) < 2:
@@ -4398,7 +4423,28 @@ def create_app(
             return bad
         schedules, cpms, _skipped = _solvable_versions()
         if len(schedules) < 2:
-            return JSONResponse({"error": "need at least two versions"}, status_code=422)
+            # ADR-0268: mirror the on-screen wall's ADR-0262 degrade — the wall's underlying
+            # series are cross-version (trend + critical-path evolution), so a one-version
+            # population has nothing to plot. Return a VALID workbook with a one-row note (the
+            # operator gets a real file explaining why), never a raw 422 the browser downloads
+            # as a broken document.
+            note = TableSet(
+                "Mission Control — underlying series",
+                (
+                    Table(
+                        "Needs at least two analyzable versions",
+                        ("Status",),
+                        (
+                            (
+                                "The Mission wall's underlying series (quality trend + "
+                                "critical-path evolution) are cross-version — load another "
+                                "analyzable version of the active project to populate them.",
+                            ),
+                        ),
+                    ),
+                ),
+            )
+            return _export_response(fmt, note, "mission")
         tables: list[Table] = list(trend_tables(compute_quality_trend(schedules, cpms)))
         tables.extend(path_evolution_tables(compute_path_evolution(schedules, cpms)))
         tableset = TableSet("Mission Control — underlying series", tuple(tables))
@@ -5301,8 +5347,11 @@ def create_app(
         return _export_response(fmt, tableset, "metric-workbench")
 
     @app.get("/export/{fmt}/margin")
-    def export_margin(fmt: str) -> Response:
-        """The margin/contingency burn-down + the erosion summary as one Excel/Word workbook."""
+    def export_margin(fmt: str, zero_margin: int = Query(0)) -> Response:
+        """The margin/contingency burn-down + the erosion summary as one Excel/Word workbook.
+        ADR-0268: ``zero_margin=1`` runs the §7.3.3.2.3 sufficiency read on the Fig 7-43
+        zero-margin curve (ADR-0266) so an operator can export the same snapshot the panel
+        toggle shows; the "Curve basis" row names which curve produced the figures."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
         d = _margin_dashboard_for(session())
@@ -5414,7 +5463,7 @@ def create_app(
         )
         # §7.3.3.2.3 risk-based sufficiency: the same seeded read the panel button runs
         # (byte-identical by determinism); parameters stated; disclosures instead of fabrication.
-        risk = _margin_risk_data(st)
+        risk = _margin_risk_data(st, zero_margin=bool(zero_margin))
         if "error" in risk:
             risk_rows: tuple[tuple[Cell, ...], ...] = (("Status", str(risk["error"])),)
         else:
@@ -8846,7 +8895,7 @@ def _float_erosion_panel(sch: Schedule, cpm: CPMResult, wbs_field: str | None = 
     picker = (
         '<form method=get class=viz-controls style="margin:.3em 0">'
         "<label>Group by field: "
-        f'<select name=erosion_field data-no-i18n onchange="this.form.submit()">{options}'
+        f"<select name=erosion_field data-no-i18n data-sf-autosubmit>{options}"
         "</select></label> "
         "<span class=muted>use a custom field (e.g. an outline code) if your WBS lives there</span>"
         "</form>"
@@ -11863,14 +11912,17 @@ as a swelling wave of blue just past each data date. Step through the snapshots 
 Auto-play to watch the wave move. Tick <b>Running totals</b> for the cumulative finish curves,
 focus a <b>Target UID</b> to mark where that activity lands (and slides) in each snapshot, and
 <b>Track UIDs</b> (up to 20, comma-separated) to watch specific activities ride the wave.</p>
-<form method=get action=/cei class=viz-controls>
-<label>Target UID <input name=target type=number min=1 value="{target_uid if target_uid is not None else ""}"
+<form method=post action=/target class=viz-controls>
+<input type=hidden name=next_url value="/cei{("?uids=" + quote(track_txt)) if track_txt else ""}">
+<label>Target UID <input name=uid type=number min=1 value="{target_uid if target_uid is not None else ""}"
 placeholder="UID"></label>
+<button type=submit>Focus</button>
+{'<button class=linkbtn type=submit name=uid value="">clear focus</button>' if target_uid is not None else ""}</form>
+<form method=get action=/cei class=viz-controls>
 <label>Track UIDs <input id=ceiTrack name=uids data-no-i18n value="{_e(track_txt)}"
 placeholder="e.g. 155, 187, 411" size=28
 title="Up to 20 UniqueIDs (comma/space separated) marked on every snapshot of the animation — independent of the primary target"></label>
-<button type=submit>Focus</button>
-{'<a class=btn-link href="/cei?target=">clear focus</a>' if target_uid is not None else ""}</form>
+<button type=submit>Track</button></form>
 <div class=viz-controls>
 <button id=prevSnap type=button>&#9664; Prev</button>
 <span id=snapLabel class=muted></span>
@@ -12012,7 +12064,7 @@ title="Up to 20 UniqueIDs (comma/space separated) marked on every frame of the a
 </div>
 <div id=scurveChart class=chart-host></div></div>
 {_scurve_interpretation(sc)}
-<script>window.SF_SCURVE_FIELDS = {fields_json};</script>
+<script id=sfScurveFields type="application/json">{fields_json}</script>
 <script src="/static/timeaxis.js"></script>
 <script src="/static/scurve.js"></script>"""
 
@@ -12253,7 +12305,7 @@ def _scorecards_body(
     selector = (
         "<form method=get action=/scorecards class=viz-controls>"
         "<label>Assess version <select name=file data-no-i18n "
-        f'onchange="this.form.submit()">{opts}</select></label>'
+        f"data-sf-autosubmit>{opts}</select></label>"
         f'<a class=btn href="/export/xlsx/scorecards?file={_e(current_key)}">Export (Excel)</a>'
         f'<a class=btn href="/export/docx/scorecards?file={_e(current_key)}">Export (Word)</a>'
         "</form>"
@@ -12349,8 +12401,8 @@ def _ribbon_body(
     ).replace("<", "\\u003c")
     labels_json = json.dumps(labels).replace("<", "\\u003c")  # uniform <-escape (static labels)
     drill_script = (
-        f"<script>window.SF_RIBBON_DRILL = {drill_json}; "
-        f"window.SF_RIBBON_LABELS = {labels_json};</script>"
+        f'<script id=sfRibbonDrillData type="application/json">'
+        f'{{"drill": {drill_json}, "labels": {labels_json}}}</script>'
         "<div id=ribbonDrill class=ribbon-drill></div>"
         '<script src="/static/ribbon_drill.js"></script>'
     )
@@ -12576,7 +12628,7 @@ locks {lock} and is used as-entered for that model). A negative value is an oppo
 <th scope=col></th></tr></thead><tbody>{rows}</tbody></table>
 <form action="/sra/risk-register" method=post class=navform style="margin-top:6px">
 <input type=hidden name=action value=clear><button type=submit>Clear all risks</button></form>
-<script>window.SF_REMAIN_DAYS={rem_json};</script>
+<script id=sfRemainDays type="application/json">{rem_json}</script>
 <script src="/static/sra_risk.js"></script>"""
 
 
@@ -14004,7 +14056,7 @@ skipped &mdash; nothing is fabricated, and you get a summary of exactly what lan
 <form action="/sra/import/task-risk" method=post enctype="multipart/form-data" style="display:inline">
 <label>Import filled task risk <input type=file name=file accept=".xlsx" required></label>
 <button type=submit>Import</button></form></div>
-<script>window.SF_FIELD_HELP = {field_help_json};</script>
+<script id=sfFieldHelp type="application/json">{field_help_json}</script>
 <script src="/static/gantt.js"></script><script src="/static/sra_ssi.js"></script>
 <script src="/static/sra_grid.js"></script></div>"""
 
@@ -15447,7 +15499,7 @@ def _resources_body(st: SessionState, granularity: str = "month") -> str:
     )
     bucket_form = (
         '<form method=get action=/resources class=viz-controls style="display:inline-flex">'
-        f'<label>Bucket <select name=bucket data-no-i18n onchange="this.form.submit()" '
+        f"<label>Bucket <select name=bucket data-no-i18n data-sf-autosubmit "
         f'title="Time-bucket the histogram by day, week or month">{bucket_opts}</select></label>'
         "</form>"
     )
@@ -15990,7 +16042,7 @@ Focus a specific activity across every version &mdash; UniqueID:
 placeholder="UID"> <button type=submit>Focus</button>
 {'<a class=btn-link href="/evolution?target=">clear focus</a>' if target is not None else ""}
 <label style="margin-left:1em">Path tier:
-<select name=tier data-no-i18n onchange="this.form.submit()">{tier_opts}</select></label>
+<select name=tier data-no-i18n data-sf-autosubmit>{tier_opts}</select></label>
 <span class=muted>critical / secondary / tertiary by driving slack to the focused UID (or the
 project finish).</span>
 </form></div>"""
@@ -16760,7 +16812,7 @@ def _performance_body(
 from the schedule's own dates, baseline, progress and logic, and matches the engine figures
 cited on the other pages.</p>{intro}{trunc_note}
 <form method=get action=/performance class=viz-controls>
-<label>Project graphs (G1&ndash;G5) use:&nbsp;<select name=file onchange="this.form.submit()">
+<label>Project graphs (G1&ndash;G5) use:&nbsp;<select name=file data-sf-autosubmit>
 {opts}</select></label>
 <noscript><button type=submit>Apply</button></noscript>
 <a class=btn-link href="/export/xlsx/performance?file={_e(sel)}">&#11015; Excel (all datasets)</a>

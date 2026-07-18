@@ -18,9 +18,14 @@
 "use strict";
 
 (function () {
-  var lang = window.SF_LANG || "en";
+  // ADR-0268: the boot payload rides a non-executable JSON block (the strict script-src CSP
+  // forbids the old inline `window.SF_*=` script); parse it here, fail-soft to English.
+  var boot = {};
+  var bootEl = document.getElementById("sfI18nBoot");
+  if (bootEl) { try { boot = JSON.parse(bootEl.textContent || "{}"); } catch (e) { boot = {}; } }
+  var lang = boot.lang || "en";
   if (lang === "en") return; // English is the source language — nothing to translate or reset
-  var dict = window.SF_I18N || {};
+  var dict = boot.catalog || {};
 
   // text nodes under these (or under data-no-i18n) are never translated
   var TEXT_SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, INPUT: 1, SELECT: 1, OPTION: 1, CODE: 1, PRE: 1 };

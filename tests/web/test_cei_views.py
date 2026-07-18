@@ -31,6 +31,16 @@ def test_cei_view_needs_two_versions(client: TestClient) -> None:
     assert client.get("/api/cei").status_code == 400
 
 
+def _post_target(client, uid) -> None:
+    """ADR-0268: the CEI Focus control POSTs the session target (a GET side effect was removed)."""
+    client.post(
+        "/target",
+        data={"uid": str(uid), "next_url": "/cei"},
+        headers={"origin": "http://127.0.0.1"},
+        follow_redirects=False,
+    )
+
+
 def test_cei_target_change_invalidates_scope_and_couples_sra_focus(client: TestClient) -> None:
     # Audit: /cei focused the session-wide target with a RAW `st.target_uid = ...` assignment,
     # bypassing set_target — so `_invalidate_scope()` never ran (every page kept serving results
@@ -44,8 +54,8 @@ def test_cei_target_change_invalidates_scope_and_couples_sra_focus(client: TestC
     uids = [t.unique_id for t in sch.tasks if not t.is_summary][:2]
     a, b = uids[0], uids[1]
 
-    client.get(f"/cei?target={a}")
-    client.get(f"/cei?target={b}")
+    _post_target(client, a)
+    _post_target(client, b)
 
     assert st.target_uid == b
     # set_target couples the SRA focus to the target and invalidates the scope/analysis caches;
@@ -107,7 +117,7 @@ def test_cei_page_has_running_totals_toggle_and_target_focus(client: TestClient)
     _upload(client, "Project5")
     page = client.get("/cei").text
     assert "id=ceiTotals" in page and "Running totals" in page
-    assert "name=target" in page and "Target UID" in page
+    assert "method=post action=/target" in page and "Target UID" in page
     js = client.get("/static/cei.js").text
     assert "cumulative" in js and "ceiTotals" in js  # the running-totals curves + toggle
     assert "targetMark" in js and "target_scheduled_index" in js  # the focus marker
@@ -118,15 +128,15 @@ def test_api_cei_carries_target_focus_indices(client: TestClient) -> None:
     lands (its scheduled / actual finish month index) per snapshot; clearing removes it."""
     _upload(client, "Project2")
     _upload(client, "Project5")
-    # focusing UID 6 (an on-axis activity) from the view persists it; the API carries its indices
-    client.get("/cei?target=6")
+    # focusing UID 6 (an on-axis activity) via POST persists it; the API carries its indices
+    _post_target(client, 6)
     data = client.get("/api/cei").json()
     assert data["target_uid"] == 6
     for s in data["snapshots"]:
         assert "target_scheduled_index" in s and "target_finished_index" in s
     assert any(s["target_scheduled_index"] is not None for s in data["snapshots"])
     # clearing the focus drops the target back to none
-    client.get("/cei?target=")
+    _post_target(client, "")
     assert client.get("/api/cei").json()["target_uid"] is None
 
 

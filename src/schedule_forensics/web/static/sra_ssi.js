@@ -25,7 +25,9 @@
   // Hover/focus call-out on a metric column header, from window.SF_FIELD_HELP (the server-rendered
   // glossary): definition + how it's calculated + a real-world use, reusing the shared DCMA tooltip
   // styling. An empty/unknown key falls back to a plain header.
-  var FIELD_HELP = window.SF_FIELD_HELP || {};
+  var _helpEl = document.getElementById("sfFieldHelp");
+  var FIELD_HELP = {};
+  if (_helpEl) { try { FIELD_HELP = JSON.parse(_helpEl.textContent || "{}"); } catch (e) { FIELD_HELP = {}; } }
   function tipPara(boldLabel, text) {
     var p = el("p");
     p.appendChild(el("b", null, boldLabel));
