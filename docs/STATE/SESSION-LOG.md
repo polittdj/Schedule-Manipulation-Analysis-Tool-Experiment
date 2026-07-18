@@ -7068,3 +7068,21 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   render, zero console errors). Family-A parity anchor untouched.
 - **State:** v1.0.70 → **1.0.71**; **ADR-0265**; wheel + 9 installers in lockstep; HANDOFF
   rotated + this entry in the same commit. NEXT: zero-margin SRA toggle → roles i18n.
+
+## 2026-07-18e — zero-margin SRA toggle + roles i18n catalog (ADR-0266 + ADR-0267; v1.0.72)
+
+- **Cycle:** PR #401 (ADR-0265) squash-merged at CI green (`5fc9ecf`); branch restarted; the
+  last two unblocked queue items shipped in one PR (the #397 multi-ADR precedent).
+- **ADR-0266:** zero_margin=1 on /api/margin/risk — margin activities at (0,0,0) via the
+  existing three-point surface = the Fig 7-43 "Current Plan, Zero Margin, With Risks" curve;
+  [E, D]/thresholds/precedence/seed unchanged; basis labeled in payload, provenance line, and
+  the margin export. Proof is seed-independent: margin-only-uncertainty fixture collapses to
+  a degenerate distribution exactly on E. 4 new tests + adjacent suites; browser-verified
+  (our own CSP refused Playwright's unsafe-eval waiter — polled instead).
+- **ADR-0267:** ~46 _TERMS entries ×4 languages for the ADR-0255 role strip (roles, taglines,
+  combined Start-here headings, missing card titles, 24 why-lines, tooltip blurbs); RUF001
+  noqa for the &rsquo; key; EN byte-identical. i18n + roles suites green.
+- **State:** v1.0.71 → **1.0.72**; **ADR-0266, ADR-0267**; wheel + 9 installers in lockstep;
+  HANDOFF rotated + this entry in the same commit. The standing queue is now empty of
+  unblocked work — remaining items wait on the operator's owed inputs (PowerShell log, large
+  dataset, Claude-Design prompt) or are PARKED (#13).

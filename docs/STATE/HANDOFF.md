@@ -1,30 +1,30 @@
-# Handoff — 2026-07-18d (family-B basis unification ADR-0265: stepper/export/drill share one counterfactual basis; v1.0.71; highest ADR 0265)
+# Handoff — 2026-07-18e (zero-margin SRA toggle ADR-0266 + roles i18n catalog ADR-0267 — the standing queue's last unblocked items; v1.0.72; highest ADR 0267)
 
-> ## STATUS (current) — the automated build cycle continues: PR #400 (SEC-2/SEC-3, ADR-0264, v1.0.70) squash-merged at CI green; branch restarted; the queue's next item shipped — **ADR-0265 family-B basis unification** (the behavior work ADR-0251 queued). Version 1.0.70 → 1.0.71 (wheel + 9 installers in lockstep).
+> ## STATUS (current) — the automated build cycle: PR #401 (family-B unification, ADR-0265, v1.0.71) squash-merged at CI green; branch restarted; the LAST two unblocked queue items shipped together — **ADR-0266 zero-margin SRA toggle** (Fig 7-43 fidelity) + **ADR-0267 roles i18n catalog** (ROLES-2 completion). Version 1.0.71 → 1.0.72 (wheel + 9 installers in lockstep). **The standing queue is now EMPTY of unblocked work** — everything remaining waits on operator inputs or is PARKED.
 >
-> - **ADR-0265 (one basis per counterfactual page):** (1) `/api/evolution` accepts the trace
->   options and applies `_optioned_versions`; `/evolution` embeds `data-ignore-*` attrs and
->   path_evolution.js forwards them — the stepper now reads the SAME re-solved network as
->   the panels (the /mission wall embeds nothing → stored basis, byte-identical). (2)
->   `/export/{fmt}/path/{name}` gains `basis` (default `stored` byte-identical, pinned);
->   /driving-path's link passes `basis=resolve` so the full-trace Excel mirrors the
->   re-solved tiers (workbook title carries the counterfactual marker; the /path page stays
->   family A). (3) the tiers drill + its Excel drop the solve-dependent columns
->   (Start/Finish/Total float/Critical — stored-basis figures) while options are active,
->   screen + server-side; input columns always remain. Banner/caption/docstrings updated to
->   the unified truth; the ADR-0251 divergence pin re-targeted.
-> - **Verified:** tests/web/test_family_b_unify.py (8) + the updated test_path_options pin;
->   adjacent suites (evolution/driving-path/tiers-drill/exports/mission) green;
->   browser-verified in Chromium (live stepper fetch carries the option; drill note; export
->   link basis; zero console errors). Family-A byte-identity pinned (stored default +
->   basis=resolve no-op equality); parity untouched.
-> - **Still OWED by the operator:** PowerShell crash log + the real large dataset (ADR-0261
->   on-machine re-validation); the Claude-Design prompt (Portfolio US-map, ADR-0258).
-> - **State:** v1.0.71; **ADR-0265** highest; wheel + 9 installers in lockstep; branch
->   `claude/handoff-review-validation-ikldbf` (restarted from the #400 squash; draft PR).
-> - **NEXT:** zero-margin SRA toggle (Fig 7-43 fidelity, ADR-0254 follow-up, via the
->   existing three-point surface) → roles i18n catalog; #13 XER per-task calendars stays
->   PARKED; operator-blocked items resume on their inputs.
+> - **ADR-0266:** `/api/margin/risk?zero_margin=1` (checkbox by the panel's Run button) runs
+>   the seeded SRA with every margin activity's three-point at (0,0,0) — the handbook's
+>   "Current Plan, Zero Margin, With Risks" curve via the existing three-point surface,
+>   exactly as ADR-0254 queued. [E, D], thresholds, margin-set precedence, seed unchanged;
+>   payload + provenance + export name the curve basis. Seed-independent proof: a fixture
+>   whose ONLY uncertainty is the margin task collapses to a degenerate distribution landing
+>   exactly on E (margin provably removed from the sampling). Browser-verified live (note:
+>   Playwright wait_for_function was refused by our own CSP — the air-gap working).
+> - **ADR-0267:** the full role-strip vocabulary ×4 languages (~46 _TERMS entries): roles,
+>   taglines, combined "Start here — {role}" headings (single text nodes), missing card
+>   titles, all 24 why-lines, tooltips (translate.js walks title attrs). Product/standard
+>   names stay untranslated by convention; the picker prose stays on the AI fallback.
+> - **Still OWED by the operator (the only remaining work):** the PowerShell crash log + the
+>   real large dataset (ADR-0261 on-machine re-validation; five-large-file stress); the
+>   Claude-Design prompt (Portfolio US-map/site drill, ADR-0258). #13 XER per-task calendars
+>   stays PARKED. Smaller recorded residuals if idle: CSP 'unsafe-inline' script tightening
+>   (ADR-0264 note), GET /cei?target side effect, /export/{fmt}/mission <2-version 422,
+>   margin-export zero-margin snapshot (ADR-0266 note).
+> - **State:** v1.0.72; **ADR-0267** highest; wheel + 9 installers in lockstep; branch
+>   `claude/handoff-review-validation-ikldbf` (restarted from the #401 squash; draft PR).
+> - **NEXT:** babysit the open PR to merge; then WAIT on operator inputs (or pick up the
+>   residuals above if directed). The 2026-07-18 automated cycle shipped: #399 (audit +
+>   ADR-0262/0263) → #400 (ADR-0264) → #401 (ADR-0265) → this PR (ADR-0266/0267).
 
 # (prior) handoffs — archived
 
