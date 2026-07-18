@@ -16,7 +16,9 @@
 (function () {
   var form = document.getElementById("riskForm");
   if (!form) return;
-  var rem = window.SF_REMAIN_DAYS || {};
+  var _remEl = document.getElementById("sfRemainDays");
+  var rem = {};
+  if (_remEl) { try { rem = JSON.parse(_remEl.textContent || "{}"); } catch (e) { rem = {}; } }
   var daysEl = document.getElementById("riskDays");
   var pctEl = document.getElementById("riskPct");
   var affEl = document.getElementById("riskAffected");

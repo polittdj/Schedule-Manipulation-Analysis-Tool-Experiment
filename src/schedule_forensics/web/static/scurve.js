@@ -225,7 +225,9 @@
   // ── per-chart filter: scope THIS S-curve by up to 5 (field, value) conditions over the parent
   // file's fields, independent of the page-wide Groups & Filters. Same-field rows OR; AND across
   // fields (engine filter_schedule semantics). Field values are embedded by the server. ──
-  var FIELDS = window.SF_SCURVE_FIELDS || {};
+  var _fieldsEl = document.getElementById("sfScurveFields");
+  var FIELDS = {};
+  if (_fieldsEl) { try { FIELDS = JSON.parse(_fieldsEl.textContent || "{}"); } catch (e) { FIELDS = {}; } }
   var MAX_ROWS = 5;
 
   function makeOption(value, text) {

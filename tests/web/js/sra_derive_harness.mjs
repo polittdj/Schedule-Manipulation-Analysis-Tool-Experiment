@@ -21,8 +21,10 @@ const els = {};
 for (const id of ["riskForm", "riskDays", "riskPct", "riskAffected", "riskDaysLocked", "riskPctLocked"])
   els[id] = stubEl(id);
 
+// ADR-0268: the boot payload is a non-executable JSON block sra_risk.js parses by id
+els.sfRemainDays = { id: "sfRemainDays", textContent: JSON.stringify({ "1": 10, "2": 20 }) }; // avg 15 days
 globalThis.document = { getElementById: (id) => els[id] || null };
-globalThis.window = { SF_REMAIN_DAYS: { "1": 10, "2": 20 } }; // avg over {1,2} = 15 days
+globalThis.window = {};
 
 new Function(src)(); // run the IIFE against the stub DOM
 

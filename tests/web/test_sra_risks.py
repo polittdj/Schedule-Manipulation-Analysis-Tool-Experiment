@@ -236,11 +236,11 @@ def test_unified_register_form_and_js_wiring(client: TestClient) -> None:
     assert 'action="/sra/risk-register"' in page
     assert "id=riskDays" in page and "id=riskPct" in page and "id=riskAffected" in page
     assert "id=riskDaysLocked" in page and "id=riskPctLocked" in page
-    assert "SF_REMAIN_DAYS" in page and "/static/sra_risk.js" in page
+    assert "sfRemainDays" in page and "/static/sra_risk.js" in page
     # the two old separate forms are gone
     assert "/sra/risk-event" not in page and "/sra/ssi-risk" not in page
     js = client.get("/static/sra_risk.js").text
-    assert "SF_REMAIN_DAYS" in js and "avgRemaining" in js  # the days<->% derive from avg remaining
+    assert "sfRemainDays" in js and "avgRemaining" in js  # the days<->% derive from avg remaining
     # air-gap: no external URLs in the vendored script
     import re
 

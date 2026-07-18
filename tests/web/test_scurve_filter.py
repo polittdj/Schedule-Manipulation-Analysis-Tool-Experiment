@@ -38,7 +38,7 @@ def _field_value(sch: Schedule) -> tuple[str, str]:
 
 def test_scurve_page_embeds_filter_fields_and_ui(client: TestClient) -> None:
     page = client.get("/scurve").text
-    assert "window.SF_SCURVE_FIELDS" in page
+    assert 'id=sfScurveFields type="application/json"' in page
     assert "id=scurveFilter" in page
     assert "Filter this chart by up to" in page
     assert "/static/scurve.js" in page
@@ -46,7 +46,7 @@ def test_scurve_page_embeds_filter_fields_and_ui(client: TestClient) -> None:
 
 def test_scurve_js_builds_the_filter(client: TestClient) -> None:
     js = client.get("/static/scurve.js").text
-    assert "SF_SCURVE_FIELDS" in js and "buildFilterUI" in js and "cf=" in js
+    assert "sfScurveFields" in js and "buildFilterUI" in js and "cf=" in js
 
 
 def test_scurve_api_unfiltered_has_versions(client: TestClient) -> None:

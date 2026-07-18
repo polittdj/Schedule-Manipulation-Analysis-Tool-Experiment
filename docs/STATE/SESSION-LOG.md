@@ -7086,3 +7086,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   HANDOFF rotated + this entry in the same commit. The standing queue is now empty of
   unblocked work — remaining items wait on the operator's owed inputs (PowerShell log, large
   dataset, Claude-Design prompt) or are PARKED (#13).
+
+## 2026-07-18f — strict CSP + residuals + SEC-2 Fetch-Metadata correction (ADR-0268; v1.0.73)
+
+- **Cycle:** PR #402 (ADR-0266/0267) merged (`7653a0d`); branch restarted; with the queue
+  empty, cleared the recorded residuals in one PR — and the CSP browser verification caught a
+  major latent SEC-2 bug.
+- **Strict CSP:** script-src 'self'; inline handlers → chrome.js delegation (data-sf-*);
+  window.SF_* boot scripts → application/json blocks parsed by id. style-src unchanged.
+- **SEC-2 correction (the important find):** ADR-0264's Origin-only gate refused every
+  real-browser POST *form* nav (no-referrer → Origin: null → read as cross-site; the #400
+  probe only exercised fetch POSTs). Gate now keys on Sec-Fetch-Site (primary, no-referrer
+  doesn't null it, cross-site-unforgeable) with the Origin check as absent-header fallback
+  (OWASP Fetch-Metadata). Browser-proven: POST forms work again (language switch applies).
+- **Residuals:** GET /cei?target → POST /target; mission export degrades to a note workbook;
+  margin export zero_margin=1 snapshot.
+- **Verified:** 3 new suites + expanded SEC tests (Sec-Fetch-Site incl. null-Origin-same-
+  origin regression); old-markup pins + JS harness re-targeted; Chromium sweep of 10 pages
+  ZERO CSP violations, forms functional. Parity untouched.
+- **State:** v1.0.72 → **1.0.73**; **ADR-0268**; wheel + 9 installers in lockstep; HANDOFF
+  rotated + this entry in the same commit. The residual list is now empty; remaining work is
+  all operator-owed inputs (PowerShell log, large dataset, Claude-Design prompt).
