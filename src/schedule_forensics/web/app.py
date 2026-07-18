@@ -216,6 +216,7 @@ from schedule_forensics.engine.path_trace import subschedule_to_target, topo_ord
 from schedule_forensics.engine.projects import (
     IngestRecord,
     Project,
+    ProjectVersion,
     group_into_projects,
 )
 from schedule_forensics.engine.recommendations import (
@@ -550,6 +551,11 @@ _V = TypeVar("_V")
 #: trades memory for occasional recompute and can never change a computed number.
 _ANALYSIS_CACHE_MAX = 48
 
+#: ADR-0258: sentinel population id for the pooled title-less loose files — stable, storable and
+#: selectable like a real Project pid, and never colliding with the engine's pid prefixes
+#: (``folder:`` / ``title:`` / ``file:``).
+_UNTITLED_PID = "untitled:"
+
 
 class _LRUCache(OrderedDict[str, _V]):
     """A count-bounded, access-ordered LRU over string keys (std-lib only — no ``cachetools``).
@@ -604,6 +610,17 @@ class SessionState:
     # key -> raw uploaded-file content hash (the SQLite summary/parse cache key). Only set for the
     # /upload path; a schedule loaded another way simply has no on-disk summary (in-memory only).
     content_hashes: dict[str, str] = field(default_factory=dict)
+    # ADR-0258 active-project scoping: the operator's selected Project (a stable ``Project.pid``
+    # from engine.projects). When MORE THAN ONE Project is loaded, the analysis populations
+    # (:meth:`ordered` / :meth:`ordered_versions`) restrict to the ACTIVE project's versions —
+    # no page but Portfolio ever mixes Projects. None = not explicitly chosen (resolution
+    # auto-heals to the most recently loaded file's Project). Population-only: the per-key
+    # analysis/summary caches stay valid across a switch. Cleared on wipe.
+    active_project: str | None = None
+    # ADR-0259 duplicate/revision review: session keys the operator EXCLUDED from analysis
+    # (the Portfolio toggle). Reversible, never deletes — an excluded version stays loaded and
+    # listed (badged) but leaves every analysis population. Cleared on wipe.
+    excluded_keys: set[str] = field(default_factory=set)
     # F3a/3b confirmed schedule-margin overlay: key -> the operator-confirmed margin-task UniqueIDs
     # for that loaded version (set on the analysis-page margin panel via POST /margin/confirm). When a
     # key has an entry, every margin computation for it uses that set instead of the name-based default
@@ -904,21 +921,139 @@ class SessionState:
             return frozenset(union)
 
     def ordered(self) -> list[Schedule]:
-        """Loaded schedules **scoped to the active filter**, ordered by data date (oldest first).
+        """ANALYSIS-population schedules — the ACTIVE project's versions (ADR-0258) minus
+        operator-EXCLUDED versions (ADR-0259), **scoped to the active filter**, ordered by data
+        date (oldest first). With a single Project loaded and nothing excluded this is every
+        loaded file — byte-identical to the pre-scoping behavior. Manifest views (home list,
+        Portfolio) use :meth:`all_versions` / :meth:`projects` instead.
 
         This is what the multi-version views that call engine functions directly (bow-wave, S-curve,
         month curves) iterate, so the filter reaches them too. Views that go through
         :meth:`analysis_for` pass the raw schedule from :meth:`ordered_versions` (it scopes)."""
         with self._lock:
-            return [self.scope(s) for s in order_versions(list(self.schedules.values()))]
+            keys = self._analysis_population()
+            pool = [s for k, s in self.schedules.items() if keys is None or k in keys]
+            return [self.scope(s) for s in order_versions(pool)]
 
     def ordered_versions(self) -> list[tuple[str, Schedule]]:
-        """(key, UNSCOPED schedule) pairs, oldest first. Callers either hand the schedule to
-        :meth:`analysis_for` (which scopes it) or, for the filter UI, need the full field/value set —
-        so this stays raw. Use :meth:`ordered` / :meth:`scope` when you need the filtered tasks."""
+        """(key, UNSCOPED schedule) pairs of the ANALYSIS population (active project only,
+        exclusions dropped — see :meth:`ordered`), oldest first. Callers either hand the schedule
+        to :meth:`analysis_for` (which scopes it) or, for the filter UI, need the full field/value
+        set — so this stays raw. Use :meth:`ordered` / :meth:`scope` when you need the filtered
+        tasks; use :meth:`all_versions` for the every-loaded-file manifest."""
+        with self._lock:
+            keys = self._analysis_population()
+            pool = [s for k, s in self.schedules.items() if keys is None or k in keys]
+            by_obj = {id(s): k for k, s in self.schedules.items()}
+            return [(by_obj[id(s)], s) for s in order_versions(pool)]
+
+    def all_versions(self) -> list[tuple[str, Schedule]]:
+        """EVERY loaded (key, UNSCOPED schedule) pair, oldest first — the session MANIFEST
+        (home's loaded-schedules list), which must keep showing every Project and excluded
+        versions. Analysis populations use :meth:`ordered` / :meth:`ordered_versions`."""
         with self._lock:
             by_obj = {id(s): k for k, s in self.schedules.items()}
             return [(by_obj[id(s)], s) for s in order_versions(list(self.schedules.values()))]
+
+    def populations(self) -> list[tuple[str, str, tuple[str, ...]]]:
+        """The ANALYSIS populations as ``(pid, display title, version keys)`` (ADR-0258).
+
+        Each IDENTIFIED Project (folder or document-title origin) is its own population —
+        identified Projects never mix. Title-less loose files carry no project-identity signal,
+        so ALL of them pool into one explicit ``(untitled files)`` population (Portfolio still
+        lists each individually as needs-attention per ADR-0225): the classic
+        drop-N-untitled-exports version-series workflow keeps working, loudly labeled, instead
+        of shattering into N single-file "projects". Callers hold ``self._lock``."""
+        pops: list[tuple[str, str, tuple[str, ...]]] = []
+        untitled: list[str] = []
+        for p in self.projects():
+            if p.origin == "filename":
+                untitled.extend(v.key for v in p.versions)
+            else:
+                pops.append((p.pid, p.title, tuple(v.key for v in p.versions)))
+        if untitled:
+            pops.append((_UNTITLED_PID, "(untitled files)", tuple(untitled)))
+        return pops
+
+    def _analysis_population(self) -> frozenset[str] | None:
+        """Session keys allowed into analysis populations, or ``None`` = no restriction.
+
+        Two narrowings, both population-only (per-key analysis/summary caches stay valid, nothing
+        is invalidated): operator-EXCLUDED versions always drop (ADR-0259); with more than one
+        population loaded, only the ACTIVE one's versions remain (ADR-0258 — no cross-project
+        mixing anywhere but Portfolio). With zero or one population and nothing excluded this
+        returns ``None`` — the fast path, and the proof single-project behavior is unchanged.
+        Callers hold ``self._lock``."""
+        pops = self.populations()
+        if len(pops) <= 1:
+            if not self.excluded_keys:
+                return None
+            return frozenset(k for k in self.schedules if k not in self.excluded_keys)
+        _pid, _title, keys = self._resolve_active(pops)
+        return frozenset(k for k in keys if k not in self.excluded_keys)
+
+    def _resolve_active(
+        self, pops: list[tuple[str, str, tuple[str, ...]]]
+    ) -> tuple[str, str, tuple[str, ...]]:
+        """The ACTIVE population resolved against the current grouping: the stored pid when it
+        still exists, else healed to the population holding the most recently loaded file
+        (upload order), else the last-listed one. A pure read — render paths never write
+        session state. Callers guarantee ``pops`` is non-empty."""
+        if self.active_project is not None:
+            for pop in pops:
+                if pop[0] == self.active_project:
+                    return pop
+        last_key = next(reversed(self.schedules), None)
+        if last_key is not None:
+            for pop in pops:
+                if last_key in pop[2]:
+                    return pop
+        return pops[-1]
+
+    def active_population(self) -> tuple[str, str, tuple[str, ...]] | None:
+        """The resolved ACTIVE ``(pid, title, keys)`` population (``None`` when nothing is
+        loaded) — what the banner and the project switcher display."""
+        with self._lock:
+            pops = self.populations()
+            if not pops:
+                return None
+            return self._resolve_active(pops)
+
+    def set_active_project(self, pid: str) -> bool:
+        """Select the ACTIVE population by its stable pid (ADR-0258; ``untitled:`` selects the
+        pooled title-less files). ``False`` for an unknown pid (a stale form) — state unchanged.
+        Selection changes WHICH keys analysis iterates; the per-key caches stay valid, so
+        nothing is invalidated. A session-wide Target UID that does not resolve inside the newly
+        selected population is cleared through :meth:`set_target` (so its scope memo resets); a
+        target that resolves is kept."""
+        with self._lock:
+            pop = next((p for p in self.populations() if p[0] == pid), None)
+            if pop is None:
+                return False
+            self.active_project = pid
+            if self.target_uid is not None:
+                present = any(
+                    t.unique_id == self.target_uid
+                    for key in pop[2]
+                    if (s := self.schedules.get(key)) is not None
+                    for t in s.tasks
+                )
+                if not present:
+                    self.set_target(None)
+            return True
+
+    def set_excluded(self, key: str, excluded: bool) -> bool:
+        """Mark/unmark one loaded version as EXCLUDED from analysis (ADR-0259) — the operator's
+        duplicate/revision resolution. Reversible, never deletes; Portfolio keeps listing it,
+        badged. Population-only (no cache invalidation). ``False`` for an unknown key."""
+        with self._lock:
+            if key not in self.schedules:
+                return False
+            if excluded:
+                self.excluded_keys.add(key)
+            else:
+                self.excluded_keys.discard(key)
+            return True
 
     def projects(self) -> tuple[Project, ...]:
         """Loaded files grouped into Projects (v4 grouped ingestion). Folder uploads → one Project
@@ -936,6 +1071,8 @@ class SessionState:
                     ),
                     folder=self.file_meta.get(key, (None, None))[0],
                     mtime=self.file_meta.get(key, (None, None))[1],
+                    content_hash=self.content_hashes.get(key),
+                    excluded=key in self.excluded_keys,
                 )
                 for key, sch in self.schedules.items()
             ]
@@ -1115,8 +1252,12 @@ def _endpoint_banner(state: SessionState) -> str:
 
 
 def _flash_html(flash: _Flash | None) -> str:
-    """Render one-shot import feedback (loaded N / per-file errors), or nothing."""
-    if flash is None or (not flash.accepted and not flash.errors):
+    """Render one-shot import feedback (loaded N / per-file errors / notices), or nothing.
+
+    Notices render even with nothing accepted and no errors — an upload where EVERY file was a
+    collapsed byte-identical duplicate (ADR-0259) or unreadable must still say so, never land
+    silently on an unchanged dashboard."""
+    if flash is None or (not flash.accepted and not flash.errors and not flash.notices):
         return ""
     parts: list[str] = []
     if flash.accepted:
@@ -1661,13 +1802,46 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
     """The ALWAYS-ON provenance banner every page carries (operator 2026-07-10: "NO MATTER
     WHAT ... I want them to see clearly what file it is being pulled from"): the loaded
     file(s), oldest first, under the page header. Single-file pages and per-visual captions
-    still name their specific file; animated visuals caption the file per step on top of this."""
+    still name their specific file; animated visuals caption the file per step on top of this.
+
+    With more than one Project loaded, a PROJECT strip leads (ADR-0258): analysis pages show
+    exactly ONE Project — the strip names it, offers the switch, links Portfolio (the only
+    cross-project page), and flags pending duplicate-review decisions (ADR-0259)."""
     try:
         schedules = [s for _k, s in state.ordered_versions()]
+        with state._lock:
+            pops = state.populations()
+        pending = sum(1 for p in state.projects() if p.pending_review)
     except Exception:
         return ""
+    strip = ""
+    if len(pops) > 1:
+        active = state.active_population()
+        if active is not None:
+            opts = "".join(
+                f'<option value="{_e(pid)}"{" selected" if pid == active[0] else ""}>'
+                f"{_e(title)} ({len(keys)})</option>"
+                for pid, title, keys in pops
+            )
+            review = (
+                f" &middot; <span class=rib-fail>{pending} pending review</span>" if pending else ""
+            )
+            strip = (
+                "<div class=src-banner data-no-i18n>&#128193; Project: "
+                f"<b>{_e(active[1])}</b> &mdash; switch: "
+                f'<form method=post action="/project/select" style="display:inline">'
+                '<input type=hidden name=next_url value="/">'
+                # the app sends Referrer-Policy: no-referrer, so the CURRENT page rides an
+                # explicit next_url (validated server-side like /target's) — the switch returns
+                # to the page the operator was reading, not the dashboard
+                '<select name=pid onchange="this.form.next_url.value='
+                "location.pathname+location.search;"
+                f'this.form.submit()">{opts}</select></form>'
+                f" &middot; {len(pops)} Projects loaded &middot; "
+                f'<a class=btn-link href="/portfolio">Portfolio</a>{review}</div>'
+            )
     if not schedules:
-        return ""
+        return strip
     names = [_e(s.source_file or s.name) for s in schedules]
     # a per-file page (e.g. /analysis — "Where We Stand") names ITS file and offers a switcher
     # instead of implying the numbers mix all loaded files (operator 2026-07-16)
@@ -1688,7 +1862,7 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
                 f'<select onchange="location.href=this.value" data-no-i18n>{opts}</select> '
                 "(versions are compared on the Trend / Compare / Evolution pages, never mixed here)"
             )
-        return f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
+        return strip + f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
     if len(names) == 1:
         inner = f"All data on this page is computed from: <b>{names[0]}</b>"
     else:
@@ -1697,7 +1871,7 @@ def _global_sources_banner(state: SessionState, focus_key: str | None = None) ->
             "(oldest first): <b>" + "</b> &rarr; <b>".join(names) + "</b> — each visual/table "
             "names its own file scope, and animated visuals caption the file shown at each step."
         )
-    return f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
+    return strip + f"<div class=src-banner data-no-i18n>&#128196; {inner}</div>"
 
 
 # ── Mission Ops story spine (ADR-0196) ─────────────────────────────────────────────────────
@@ -2566,7 +2740,7 @@ def create_app(
             f' &middot; <a href="/card/{quote(name)}">Card</a>'
             f' &middot; <a href="/wbs/{quote(name)}">WBS</a>'
             f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
-            for name, sch in st.ordered_versions()  # earliest -> latest data date
+            for name, sch in st.all_versions()  # every loaded file (manifest), oldest first
         )
         loaded = (
             "<div class=panel><h2>Schedule health</h2>"
@@ -2694,6 +2868,7 @@ def create_app(
         cache = get_default_cache()  # content-hash keyed parse cache (v4 Feature 2; fails soft)
         accepted: list[str] = []
         errors: list[str] = []
+        duplicate_notes: list[str] = []  # byte-identical uploads collapsed loudly (ADR-0259)
         ignored = 0  # non-schedule files inside a folder upload (skipped, not errored)
         upload_exts = {e.lower() for e in supported_extensions()}
         meta = _parse_upload_meta(file_meta)  # per-file (top-folder or None, mtime or None)
@@ -2722,6 +2897,27 @@ def create_app(
                 # a cache hit returns the exact same parsed model, so re-uploading a folder of a
                 # project's versions is cheap. A cache miss / error just recomputes (fails soft).
                 chash = content_hash(data)
+                # ADR-0259 hash-first dedup: a byte-identical file in the SAME grouping context
+                # (same top folder, or both loose) is the same version twice — load it once,
+                # loudly (notice + log, nothing silent). Identical bytes in a DIFFERENT context
+                # are kept: they can legitimately be a version of two different Projects.
+                folder_ctx = meta[i][0] if i < len(meta) else None
+                dup_key = next(
+                    (
+                        k
+                        for k, h in st.content_hashes.items()
+                        if h == chash and st.file_meta.get(k, (None, None))[0] == folder_ctx
+                    ),
+                    None,
+                )
+                if dup_key is not None:
+                    kept = st.schedules[dup_key].source_file or dup_key
+                    duplicate_notes.append(
+                        f"Skipped “{name}” — byte-identical to the already-loaded “{kept}” "
+                        "(the same file twice; nothing was lost)."
+                    )
+                    logger.info("skipped byte-identical upload; kept key=%s", dup_key)
+                    continue
                 schedule = cache.get_schedule(chash)
                 if schedule is None:
                     try:
@@ -2740,7 +2936,26 @@ def create_app(
                 # lets the Portfolio read this version's on-disk summary
                 st.content_hashes[key] = chash
                 accepted.append(key)
-        notices = list(_grouping_notices(st.projects())) if accepted else []
+        notices: list[str] = []
+        if accepted:
+            with st._lock:
+                pops = st.populations()
+            if len(pops) > 1:
+                # ADR-0258: the newest-loaded population becomes ACTIVE (auto-select — never
+                # block, nag, or ask); every analysis page now shows exactly one Project (or the
+                # pooled untitled files), and the banner offers the switch.
+                landed = next((pop for pop in pops if accepted[-1] in pop[2]), None)
+                if landed is not None:
+                    st.set_active_project(landed[0])
+                    others = len(pops) - 1
+                    notices.append(
+                        f"Now analyzing “{landed[1]}” ({len(landed[2])} "
+                        f"version{'s' if len(landed[2]) != 1 else ''}). "
+                        f"{others} other Project{'s' if others != 1 else ''} loaded — switch "
+                        "from the banner on any page, or in Portfolio."
+                    )
+            notices.extend(_grouping_notices(st.projects()))
+        notices.extend(duplicate_notes)
         if ignored:
             plural = "file" if ignored == 1 else "files"
             notices.append(f"Skipped {ignored} non-schedule {plural} in the selection.")
@@ -6577,6 +6792,27 @@ def create_app(
         dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
 
+    @app.post("/project/select")
+    def select_project(pid: str = Form(""), next_url: str = Form("/")) -> RedirectResponse:
+        """Set the session's ACTIVE project (ADR-0258) — the banner switcher and Portfolio's
+        "Analyze" action. Selection is population-only (per-key caches stay valid; nothing is
+        invalidated); an unknown/stale pid is ignored (fail-soft). Returns to the page the
+        operator was on, carried as an explicit ``next_url`` (the app sends
+        ``Referrer-Policy: no-referrer``, so the Referer header is never available)."""
+        if pid:
+            session().set_active_project(pid)
+        # local redirect only: a path on this app, never a scheme/host ("//host" included)
+        dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
+        return RedirectResponse(url=dest, status_code=303)
+
+    @app.post("/project/exclude")
+    def exclude_version(key: str = Form(""), excluded: str = Form("")) -> RedirectResponse:
+        """Portfolio's duplicate/revision resolution (ADR-0259): EXCLUDE one loaded version from
+        every analysis population, or RESTORE it. Reversible — the file stays loaded and listed
+        (badged); nothing is deleted or merged silently. Unknown keys are ignored (fail-soft)."""
+        session().set_excluded(key, excluded == "1")
+        return RedirectResponse(url="/portfolio", status_code=303)
+
     @app.post("/role")
     def set_role_route(role: str = Form("")) -> RedirectResponse:
         """Set (or clear, via ``role=""``) the audience role (v4 F4, ADR-0255) — a curated entry
@@ -6619,6 +6855,8 @@ def create_app(
             st.schedules.clear()
             st.file_meta.clear()
             st.content_hashes.clear()
+            st.active_project = None  # back to auto-resolution (ADR-0258)
+            st.excluded_keys.clear()  # duplicate-review excludes die with the session (ADR-0259)
             st.margin_overlay.clear()  # drop the operator's confirmed schedule-margin overlay
             st.margin_band_dates = None  # drop the Fig 5-30 band phase dates (ADR-0254)
             st.margin_band_rates = FIG_5_30_DEFAULT_RATES
@@ -7152,63 +7390,125 @@ def _portfolio_memory_panel(st: SessionState) -> str:
 
 def _portfolio_body(st: SessionState) -> str:
     """The Portfolio Manager rollup: one row per Project (grouped from the loaded files/folders),
-    each showing its latest-version headline — computed finish, effective schedule margin, DCMA-14
-    pass/fail — plus an expandable version history (each version links to its full report). Every
+    each showing its latest INCLUDED version's headline — computed finish, effective schedule
+    margin, DCMA-14 pass/fail — plus its Site/Company (ADR-0260) and an expandable version history
+    (each version links to its full report, with the ADR-0259 exclude/restore toggle). Every
     number traces to the engine's cached per-version summary (v4 Feature 2 lazy tier); a Project
-    whose latest version won't solve shows "—". No new engine math (reuses ``compute_summary``)."""
+    whose latest version won't solve shows "—". The ONLY cross-project page (ADR-0258): analysis
+    pages show one Project at a time — the "Analyze" action selects it. No new engine math
+    (reuses ``compute_summary``)."""
+    projs = st.projects()
+    active = st.active_population()
+    with st._lock:
+        n_pops = len(st.populations())
+    pending = sum(1 for p in projs if p.pending_review)
+    excluded_total = sum(1 for p in projs for v in p.versions if v.excluded)
+    head_notes = ""
+    if pending:
+        head_notes += (
+            f'<div class="notice info">{pending} Project'
+            f"{'s have' if pending != 1 else ' has'} an unresolved duplicate/revision decision "
+            "&mdash; expand the row and exclude one copy, or keep both as revisions.</div>"
+        )
+    if excluded_total:
+        head_notes += (
+            f'<div class="notice info">{excluded_total} version'
+            f"{'s are' if excluded_total != 1 else ' is'} excluded from analysis "
+            "(still loaded &mdash; restore any time).</div>"
+        )
     intro = (
         "<div class=panel><h2>Portfolio</h2>"
         "<p class=muted>Every project loaded in this session, grouped from your files and folders. "
-        "Each row is one Project; the headline is its latest version by data date. Expand a row for "
-        "the version history, or open any version's full report.</p>"
-        "<table><tr>"
-        "<th scope=col>Project</th><th scope=col>Versions</th>"
+        "Each row is one Project; the headline is its latest included version by data date. Expand "
+        "a row for the version history, or open any version's full report. Analysis pages show ONE "
+        "Project at a time &mdash; pick it here (Analyze) or from the banner.</p>"
+        + head_notes
+        + "<table><tr>"
+        "<th scope=col>Project</th><th scope=col>Site / Company</th><th scope=col>Versions</th>"
         "<th scope=col>Latest data date</th><th scope=col>Computed finish</th>"
         "<th scope=col>Effective margin</th><th scope=col>DCMA-14</th></tr>"
     )
     em = "—"  # the literal U+2014 sentinel (ADR-0219 M2: never the &mdash; entity)
     rows: list[str] = []
-    for p in st.projects():
-        latest = p.versions[-1]  # versions are oldest-first, so the last is the current version
-        sch = st.schedules.get(latest.key)
-        data_date = finish = margin = dcma = em
+    for p in projs:
+        # the headline version is the latest NON-excluded one — excluding a stray copy flips the
+        # row to the kept file (ADR-0259); a project with every version excluded shows "—"
+        latest = next((v for v in reversed(p.versions) if not v.excluded), None)
+        sch = st.schedules.get(latest.key) if latest is not None else None
+        data_date = finish = margin = dcma = site = em
         if sch is not None:
+            if sch.company:
+                site = _e(sch.company)
             # the lazy summary tier (v4 Feature 2): finish/margin/DCMA without a fresh CPM per row —
             # cached in-memory and, for uploads, on disk. Equals the fully-computed row (never a
             # different number); an unsolvable version leaves the headline as "—", never a 500.
-            summary = st.summary_for(latest.key, sch)
-            if summary.status_date_iso is not None:
-                data_date = _mdY(summary.status_date_iso)
-            if not summary.unsolvable:
-                finish = _mdY(summary.finish_iso)
-                if summary.effective_margin_days is not None:
-                    margin = f"{summary.effective_margin_days:g} d"
-                cls = "rib-pass" if summary.dcma_fail == 0 else "rib-fail"
-                dcma = (
-                    f'<span class="{cls}">{summary.dcma_pass} pass / '
-                    f"{summary.dcma_fail} fail</span>"
-                )
-        attn = " <span class=muted>(needs attention)</span>" if p.needs_attention else ""
-        versions_html = "".join(
-            '<li><a class=btn-link href="/analysis/{k}">{f}</a>{dd}</li>'.format(
-                k=quote(v.key),
-                f=_e(v.filename),
-                dd=(
-                    f" <span class=muted>&middot; data date {_mdY(vs.status_date)}</span>"
-                    if (vs := st.schedules.get(v.key)) is not None and vs.status_date is not None
-                    else ""
-                ),
-            )
-            for v in p.versions
+            summary = st.summary_for(latest.key, sch) if latest is not None else None
+            if summary is not None:
+                if summary.status_date_iso is not None:
+                    data_date = _mdY(summary.status_date_iso)
+                if not summary.unsolvable:
+                    finish = _mdY(summary.finish_iso)
+                    if summary.effective_margin_days is not None:
+                        margin = f"{summary.effective_margin_days:g} d"
+                    cls = "rib-pass" if summary.dcma_fail == 0 else "rib-fail"
+                    dcma = (
+                        f'<span class="{cls}">{summary.dcma_pass} pass / '
+                        f"{summary.dcma_fail} fail</span>"
+                    )
+        pooled = p.origin == "filename"  # title-less loose file: analyzed as the untitled pool
+        select_pid = _UNTITLED_PID if pooled else p.pid
+        chips = ""
+        if p.needs_attention:
+            chips += " <span class=muted>(needs attention)</span>"
+        if p.pending_review:
+            chips += " <span class=rib-fail>review</span>"
+        if active is not None and select_pid == active[0] and n_pops > 1:
+            chips += " <span class=muted>(analyzing)</span>"
+        analyze_label = "Analyze the untitled files together" if pooled else "Analyze this project"
+        analyze = (
+            '<form method=post action="/project/select" style="display:inline">'
+            f'<input type=hidden name=pid value="{_e(select_pid)}">'
+            '<input type=hidden name=next_url value="/portfolio">'
+            f"<button type=submit class=btn-link>{analyze_label} &#8599;</button></form>"
         )
+        included = sum(1 for v in p.versions if not v.excluded)
+        excluded_n = len(p.versions) - included
+        version_count = str(included) + (
+            f" <span class=muted>(+{excluded_n} excluded)</span>" if excluded_n else ""
+        )
+        versions_html = "".join(_portfolio_version_li(st, v) for v in p.versions)
         notices = "".join(f'<div class="notice info">{_e(n)}</div>' for n in p.notices)
         rows.append(
-            f"<tr><td><details><summary><b>{_e(p.title)}</b>{attn}</summary>"
-            f"<ul>{versions_html}</ul>{notices}</details></td>"
-            f"<td>{len(p.versions)}</td><td>{data_date}</td><td>{finish}</td>"
+            f"<tr><td><details><summary><b>{_e(p.title)}</b>{chips}</summary>"
+            f"<ul>{versions_html}</ul>{notices}{analyze}</details></td>"
+            f"<td>{site}</td><td>{version_count}</td><td>{data_date}</td><td>{finish}</td>"
             f"<td>{margin}</td><td>{dcma}</td></tr>"
         )
     return intro + "".join(rows) + "</table></div>" + _portfolio_memory_panel(st)
+
+
+def _portfolio_version_li(st: SessionState, v: ProjectVersion) -> str:
+    """One version row in a Portfolio project's expandable history: the report link, data date,
+    activity count (the differentiators a duplicate-review decision needs), the excluded badge,
+    and the ADR-0259 exclude/restore toggle (reversible, never deletes)."""
+    sch = st.schedules.get(v.key)
+    dd = tasks = ""
+    if sch is not None:
+        if sch.status_date is not None:
+            dd = f" <span class=muted>&middot; data date {_mdY(sch.status_date)}</span>"
+        tasks = f" <span class=muted>&middot; {len(non_summary(sch))} activities</span>"
+    badge = " <span class=rib-fail>excluded</span>" if v.excluded else ""
+    toggle = (
+        '<form method=post action="/project/exclude" style="display:inline">'
+        f'<input type=hidden name=key value="{_e(v.key)}">'
+        f'<input type=hidden name=excluded value="{0 if v.excluded else 1}">'
+        f"<button type=submit class=btn-link>{'Restore' if v.excluded else 'Exclude'}</button>"
+        "</form>"
+    )
+    return (
+        f'<li><a class=btn-link href="/analysis/{quote(v.key)}">{_e(v.filename)}</a>'
+        f"{dd}{tasks}{badge} &middot; {toggle}</li>"
+    )
 
 
 def _mission_body(target_uid: int | None) -> str:
@@ -13252,7 +13552,7 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <label>Zoom <input id=ssiGridZoom type=range min=0.4 max=6 step=0.2 value=1.4></label>
 <button id=ssiGridFit type=button class=linkbtn title="Auto-scale the timeline so the whole project fits">View entire project</button>
 <label><input id=ssiShowDone type=checkbox checked> show completed tasks</label>
-<label>Find UID <input id=ssiFind type=number min=1 placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<label>Find <input id=ssiFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every grid task whose row contains this text"></label>
 <span id=ssiFindStatus class=muted aria-live=polite></span>
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=ssiBarDates type=checkbox> dates on bars</label>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
@@ -16364,7 +16664,9 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
     exposure, computed finish vs baseline, and the DCMA-14 verdicts. Reuses the cached
     per-schedule analysis (one CPM each); an unschedulable file degrades to a flagged card."""
     cards: list[dict[str, object]] = []
-    for key, sch in st.ordered_versions():  # earliest -> latest data date
+    # the home dashboard is the session MANIFEST: one self-contained card per loaded file, every
+    # Project, excluded versions included — nothing here blends files (ADR-0258)
+    for key, sch in st.all_versions():  # earliest -> latest data date
         scoped = st.scope(sch)  # the active filter applies to the dashboard cards too
         card: dict[str, object] = {
             "key": key,

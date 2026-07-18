@@ -769,6 +769,34 @@ _TERMS: dict[str, dict[str, str]] = {
     "Possible": {"es": "Posible", "fr": "Possible", "de": "Möglich", "pt": "Possível"},
     "green": {"es": "verde", "fr": "vert", "de": "grün", "pt": "verde"},
     "red": {"es": "rojo", "fr": "rouge", "de": "rot", "pt": "vermelho"},
+    # — Portfolio: project grouping / duplicate review (ADR-0258/0259/0260) —
+    "Site / Company": {
+        "es": "Sitio / Compañía",
+        "fr": "Site / Société",
+        "de": "Standort / Firma",
+        "pt": "Local / Empresa",
+    },
+    "Exclude": {"es": "Excluir", "fr": "Exclure", "de": "Ausschließen", "pt": "Excluir"},
+    "Restore": {
+        "es": "Restaurar",
+        "fr": "Restaurer",
+        "de": "Wiederherstellen",
+        "pt": "Restaurar",
+    },
+    "excluded": {"es": "excluido", "fr": "exclu", "de": "ausgeschlossen", "pt": "excluído"},
+    "review": {"es": "revisar", "fr": "à vérifier", "de": "prüfen", "pt": "rever"},
+    "(analyzing)": {
+        "es": "(en análisis)",
+        "fr": "(en cours d'analyse)",
+        "de": "(in Analyse)",
+        "pt": "(em análise)",
+    },
+    "(needs attention)": {
+        "es": "(requiere atención)",
+        "fr": "(attention requise)",
+        "de": "(Prüfung nötig)",
+        "pt": "(requer atenção)",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

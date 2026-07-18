@@ -6936,3 +6936,41 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   `app.py:5996`); add a latency gate. Needs the owed PowerShell log + a large dataset.
 - **State:** v1.0.65 → **1.0.66**; wheel + 9 installers in lockstep; **ADR-0257**; HANDOFF
   moved/replaced + this entry in the same commit.
+
+## 2026-07-18 — portfolio data-integrity: active-project scoping, hash dedup + review excludes, Company→Site, Gantt find coverage (ADR-0258, ADR-0259, ADR-0260)
+
+- **Model/mode:** claude-fable-5 (remote session; ADR-0240 discipline — recon findings re-verified
+  by the lead against code + executable/browser evidence before every change; no multi-agent fan-out:
+  the operator declined subagents this session, so recon ran as direct targeted reads).
+- **Branch:** `claude/portfolio-data-integrity-gantt-pf30ef`.
+- **Input:** the Cowork "MASTER PROMPT — Portfolio View, Multi-File Data Integrity & Gantt Fixes"
+  (authored without repo access; its §10 UNVERIFIED list was the recon contract).
+- **Phase-0 recon verdict:** most of the prompt already shipped ~30 versions ago (ADR-0225/0226
+  grouped ingestion + /portfolio + content-hash cache + lazy summaries; ADR-0150/2026-07-16
+  provenance banner + per-file switcher; shared SFGantt.findTask on /analysis //path //driving-path;
+  #396 dropdowns Playwright-verified then). The REAL residual gaps: analysis populations blended
+  every project; byte-identical re-uploads doubled versions; no same-date review; no Company/site;
+  SRA find UID-only. Operator picked: full gap set, US map deferred; auto-select-newest UX.
+- **Did:** (1) ADR-0258 active-project scoping (`active_project` pid + `populations()` — with
+  title-less loose files pooled into one explicit "(untitled files)" population, a decision
+  forced by the full suite: per-file singleton scoping shattered the core untitled version-series
+  workflow — + `_analysis_population` +
+  `all_versions()` manifest split + banner strip + `/project/select` with validated `next_url` —
+  the app sends `Referrer-Policy: no-referrer`, so Referer returns were impossible). (2) ADR-0259
+  hash-first same-context collapse + `pending_review` (≥2 known hashes, one data date) + Portfolio
+  Exclude/Restore (`excluded_keys`, `/project/exclude`) + `_flash_html` notice-only fix.
+  (3) ADR-0260 `Schedule.company` ← MSPDI `<Company>` (XER: documented None) + Portfolio
+  "Site / Company" column. (4) SRA grid find upgraded to shared name-or-UID `SFGantt.findTask`;
+  find-coverage pins. (5) i18n `_TERMS` for the new fixed strings.
+- **Verified:** browser (Chromium at /opt/pw-browsers, uvicorn on 127.0.0.1): 29-page sweep
+  HTTP 200; dup-collapse + auto-select notices on the flash; banner switcher switches the
+  population with zero cross-project bleed; Portfolio site column + exclude/restore round-trip;
+  gridFind name search marks rows; #396 dropdowns work (NOT a regression). Zero failures, zero
+  new console errors. New/updated tests green: `test_projects` (pids, collisions, review,
+  excludes, §2.3 pins), `test_project_scope` (acceptance), `test_upload_cache` (collapse vs
+  cross-context), `test_grouped_ingestion`, `test_gantt_find_coverage`.
+- **Known pre-existing (not caused by this change; verified on an untouched single-file load):**
+  /mission multi-version tile APIs 4xx with a 1-version population — follow-up to degrade tiles.
+- **State:** v1.0.66 → **1.0.67**; wheel + 9 installers in lockstep; **ADR-0258/0259/0260**;
+  HANDOFF moved/replaced + this entry in the same commit. US map + site drill await the operator's
+  Claude-Design prompt (§8 of the master prompt — still not provided).

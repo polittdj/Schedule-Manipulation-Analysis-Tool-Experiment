@@ -235,10 +235,12 @@ def test_wipe_clears_the_target(client: TestClient) -> None:
 
 def test_upload_has_no_file_count_cap(client: TestClient) -> None:
     """The old 100-file batch cap is removed (v4): a project's whole version history — or a
-    recursive folder of them — loads in one go, never truncated or refused."""
+    recursive folder of them — loads in one go, never truncated or refused. Each file gets
+    byte-unique content (trailing newlines): identical bytes would (correctly, ADR-0259)
+    collapse to one loaded file, and this test needs n real files."""
     data = EXAMPLE.read_bytes()
     n = MAX_FILES + 25  # comfortably past the old cap
-    files = [("files", (f"v{i}.json", data, "application/json")) for i in range(n)]
+    files = [("files", (f"v{i}.json", data + b"\n" * i, "application/json")) for i in range(n)]
     page = client.post("/upload", files=files).text
     assert "batch cap" not in page  # the cap message is gone
     assert f"Loaded {n}:" in page  # every file accepted

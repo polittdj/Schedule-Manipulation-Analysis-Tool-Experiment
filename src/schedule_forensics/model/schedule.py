@@ -36,6 +36,10 @@ class Schedule(StrictFrozenModel):
     #: Title, and "no real Title" must stay distinguishable from "titled by filename" (v4
     #: grouped ingestion).
     project_title: str | None = None
+    #: The document **Company** exactly as the source carries it (MSPDI ``<Company>``), or
+    #: ``None`` when absent — the site/installation signal for the Portfolio rollup (ADR-0260).
+    #: XER/P6 exports carry no company-equivalent header field, so XER schedules are ``None``.
+    company: str | None = None
     source_file: str | None = None  # file name for citations (file + UID + task name)
     project_start: dt.datetime
     project_finish: dt.datetime | None = None

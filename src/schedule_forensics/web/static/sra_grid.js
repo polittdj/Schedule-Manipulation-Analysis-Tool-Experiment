@@ -430,19 +430,14 @@
   if (showDoneEl) showDoneEl.addEventListener("change", function () { if (rows.length) render(); });
   var barDatesEl = document.getElementById("ssiBarDates");
   if (barDatesEl) barDatesEl.addEventListener("change", function () { if (rows.length) render(); });
-  // MS-Project Find: jump the grid to a UniqueID, scroll it into view and flash it
+  // MS-Project Find, shared with every Gantt (SFGantt.findTask): a pure-integer query jumps to
+  // that UniqueID; any other text marks every row whose text contains it (find by NAME or part
+  // of a name — the same behavior as the Activities/Path/Driving-Path grids)
   var findEl = document.getElementById("ssiFind");
   if (findEl) {
     var goFind = function () {
-      var uid = parseInt(findEl.value, 10);
       var status = document.getElementById("ssiFindStatus");
-      if (!uid) return;
-      var row = host.querySelector('tr[data-uid="' + uid + '"]');
-      if (!row) { if (status) status.textContent = "UID " + uid + " not in view"; return; }
-      if (status) status.textContent = "";
-      row.scrollIntoView({ block: "center", behavior: "smooth" });
-      host.querySelectorAll("tr.row-found").forEach(function (r) { r.classList.remove("row-found"); });
-      row.classList.add("row-found");
+      if (window.SFGantt) SFGantt.findTask(host, findEl.value, status);
     };
     findEl.addEventListener("change", goFind);
     findEl.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goFind(); } });
