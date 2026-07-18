@@ -116,4 +116,18 @@ if __name__ == "__main__":  # pragma: no cover - manual entrypoint
     # Required before any worker process is spawned in a frozen (PyInstaller) build; a no-op
     # otherwise. The SRA Monte-Carlo offload (web/offload.py) spawns a worker on large schedules.
     multiprocessing.freeze_support()
-    main()
+    # A windowless launch (pythonw runs `-m schedule_forensics.launcher`) discards stdout/stderr,
+    # so a startup crash would otherwise be invisible — the browser just opens on a dead port.
+    # Route runtime failures through the shared reporter so the operator sees WHY (a native
+    # message box on Windows). Import-time failures can't be caught here (this module never
+    # loads); the desktop shortcuts target `-m schedule_forensics`, whose bootstrap wraps the
+    # import too.
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as _exc:  # last-resort visibility before exiting
+        from schedule_forensics.__main__ import _report_startup_failure
+
+        _report_startup_failure(_exc)
+        raise SystemExit(1) from _exc

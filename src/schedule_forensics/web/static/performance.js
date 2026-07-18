@@ -461,9 +461,26 @@
   }
   var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var timer = null;
+  var playing = false;
   function step(k) { setVersion(k); renderAll(); }
+  function clearTimer() { if (timer) { clearTimeout(timer); timer = null; } }
+  // Auto-advance is setTimeout-CHAINED (not setInterval) and pauses while the tab is hidden: the
+  // next advance is scheduled only AFTER the current render finishes, so a slow render on a large
+  // file can never queue faster than it completes. setInterval did — with 5 loaded files incl. a big
+  // one, the 13-chart redraw piled up faster than the webview could paint and the tool crashed
+  // ("automate a page", operator 2026-07-10 / 2026-07-17). Behaviour is unchanged when renders are fast.
+  function scheduleNext() {
+    clearTimer();
+    timer = setTimeout(function () {
+      if (!playing) return;
+      if (document.hidden) { scheduleNext(); return; } // hold while the tab is hidden; re-check next tick
+      step(cursor + 1);
+      scheduleNext();
+    }, 1800);
+  }
   function stop() {
-    if (timer) { clearInterval(timer); timer = null; }
+    playing = false;
+    clearTimer();
     var play = document.getElementById("perfPlay");
     if (play) play.textContent = "▶ Play";
   }
@@ -473,10 +490,11 @@
   if (prevB) prevB.addEventListener("click", function () { stop(); step(cursor - 1); });
   if (nextB) nextB.addEventListener("click", function () { stop(); step(cursor + 1); });
   if (playB) playB.addEventListener("click", function () {
-    if (timer) { stop(); return; }
+    if (playing) { stop(); return; }
     step(cursor + 1);
     if (REDUCED) return; // reduced motion: one frame per press
-    timer = setInterval(function () { step(cursor + 1); }, 1800);
+    playing = true;
+    scheduleNext();
     playB.textContent = "⏸ Stop";
   });
   step(cursor); // initial render (also writes the file caption)

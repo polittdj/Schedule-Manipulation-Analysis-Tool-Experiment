@@ -1,28 +1,47 @@
-# Handoff — 2026-07-17 (session audit: margin-risk date realignment + hardening; v1.0.65; highest ADR 0256)
+# Handoff — 2026-07-18 (operator UX pass: launcher self-diagnosis, Gantt visibility, +/- zoom, alphabetical group dropdowns, automate-crash guard; large-dataset role; v1.0.66; highest ADR 0257)
 
-> ## STATUS (current) — ADR-0256: the operator-requested ADR-0240 AUDIT of the day's work (ADR-0254 margin panel + ADR-0255 roles) ran as a 4-agent orchestrated sweep with adversarial verification + lead re-validation — outcome EXTENSIVELY CLEAN (band arithmetic re-derived exactly, CDF reads swept to bisect_right equality, roles contract proven incl. all-32-combination upload byte-compat, XSS probes negative) with ONE confirmed major, fixed: **F1 — /api/margin/risk + the margin export printed D/E/percentile DATES on the raw pure-CPM axis on progressed schedules** (months before the stored plan dates, while /sra realigned the same run). Fixed via additive `sra.stored_finish_correction` (the engine's own constant realignment, exposed; pinned vs /api/sra/ssi on a progressed fixture). Version 1.0.64 → 1.0.65.
+> ## STATUS (current) — ADR-0257: operator session — a real run (five projects loaded, one large) surfaced a cluster of UX + stability problems. Chose the order and shipped the concrete, **browser-verified** (Playwright) fixes; recorded the deep performance plan for next session (it is parity-/engine-sensitive and needs the operator's owed PowerShell crash log + their large dataset). Version 1.0.65 → 1.0.66 (wheel + 9 installers in lockstep).
 >
-> - **Minors fixed in the same PR:** single-month band polygon now renders (bar-width segment,
->   F3); MarginMonth-offsets comment corrected (F2); margin_risk_read docstring rounding caveat
->   (F4); **advisory notices now gate the role landing** (no-title / mtime-tiebreak / RAM notices
->   render only on the dashboard flash — disclosure outranks the landing; pre-F4 no-role paths
->   byte-untouched, both pinned); role-strip headings translatable (ROLES-2 partial — catalog
->   entries queued); REPO-INVENTORY stale body lines fixed (STATE-1); **.gitattributes hardening
->   (SEC-1)** — `-text` on `*.aft/*.xer/*.mpp/*.xlsx/*.docx`, `00_REFERENCE_INTAKE/**`,
->   `installer/**`, `tests/fixtures/**` so no renormalization can ever byte-rewrite the CUI
->   guard's inherited-from-main blobs or the lockstep installers (verified: dirties nothing).
-> - **Recorded, NOT fixed (needs own ADR + operator approval — queued):** SEC-2 CSRF/Origin
->   protection for state-mutating POSTs; SEC-3 Host allowlist (DNS-rebinding read vector —
->   CUI-relevant on a production machine). Both touch every route; propose-then-build.
-> - **State:** v1.0.65; **ADR-0256**; wheel + 9 installers in lockstep; full gate green incl.
->   `parity`; 111 affected-suite tests green incl. the two new regression pins.
-> - **NEXT — the standing queue:** **#13** XER per-task calendars (still PARKED — the operator's
->   owed `.xer` files) → **SEC-2/SEC-3 hardening proposal** (design + ADR for operator approval
->   BEFORE build) → the ADR-0251 family-B option-plumbing unify PRs (golden re-validation each) →
->   the zero-margin SRA toggle (Fig 7-43 fidelity, ADR-0254 follow-up) → roles i18n catalog
->   entries (ROLES-2 residual) → deferred perf (ADR-0249 harness). Operator-side (no code): the
->   `00_REFERENCE_INTAKE/INDEX.md` §3 reorg map + the §4 root-vs-mpp `Project5_TAMPERED.mpp`
->   canonical-build decision.
+> - **Shortcut now self-diagnoses.** `pythonw` discards output, so any pre-serve failure (rebuilt/moved
+>   venv, missing dep, half-applied edit) died silently → browser on a dead port. New
+>   `src/schedule_forensics/__main__.py` guarded bootstrap wraps the **import itself** → full traceback
+>   to a console, or a native **Windows message box + repair recipe** when windowless (writes nothing to
+>   disk). Shortcuts retargeted `-m schedule_forensics.launcher` → **`-m schedule_forensics`**; `.bat`
+>   `>/dev/null` → `>nul`. Re-running the installer re-points a stale icon (the usual real cause). The
+>   app builds+serves cleanly here, so the operator's failure is almost certainly environmental.
+> - **Gantt fixed:** bars were invisible + no right-scroll because `colresize.js` forces
+>   `table-layout:fixed` but never sized the timeline column (it collapses) — now sized to content in the
+>   **shared** colresize (fixes every Gantt). Initial view lands on the **data date ~1 inch right of the
+>   frozen columns** (`scrollToDataDate`); ~1 inch right margin added. **Scale slider → − / + buttons**
+>   (`#vizZoom` now a hidden px/day carrier; Fit/Timescale untouched).
+> - **Filters/Groups → simple alphabetical dropdowns:** field/breakdown A–Z; the checkbox popup replaced
+>   with a native alphabetical value `<select>` (single-value UI; backend still ORs repeated `value{i}`).
+> - **Automate-crash guarded:** Performance "master stepper" `setInterval(…,1800)` (redraws 13 charts,
+>   piled up on 5 large files → crash) → **`setTimeout`-chained + pause-when-hidden**. No numbers change.
+> - **Controls validation:** Playwright sweep of **all 32 main pages** = HTTP 200, **zero JS errors**;
+>   changed controls exercised live (Gantt +/−/Fit, group field→value dropdown + Apply, Performance
+>   play/stop). Exhaustive per-widget + 5-large-file stress continue next session.
+> - **New audit role (ADR-0240):** *Performance & Scalability / Large-Dataset Reliability Engineer* —
+>   owns not-bog-down/not-crash under many/large schedules; drives the deep-perf plan; re-validates every
+>   change against Law 2.
+> - **State:** v1.0.66; **ADR-0257**; wheel + 9 installers in lockstep; affected suites green
+>   (launcher/packaging/installer, gantt/visuals/ui-scale, groups/filters/global-filter, performance).
+>   Full gate to finish on the branch.
+> - **Two defaults to confirm with the operator (trivially adjustable):** the DD-line landing (an inch
+>   right of the frozen grid vs. an inch from the right edge); the single-value group dropdown (vs.
+>   restoring multi-value OR).
+> - **OWED by the operator:** the **PowerShell session log** ("weird stuff") — never received; needed to
+>   confirm the shortcut's real failure and the crash. Plus a **large dataset** to reproduce the lag/crash.
+> - **NEXT — deep performance (the "lag"), all parity-safe, re-validate each (ADR-0257 §"Recorded"):**
+>   P1 `_invalidate_scope` nukes the whole analysis cache on any filter/target/mode change
+>   (`web/app.py:788`) — make surgical / key by `(key, scope-signature)`. P2 `_solvable_versions`
+>   (`app.py:3046`) builds the full monolithic `_compute_analysis` (`app.py:498`) when only `.cpm` is
+>   needed — split lazy. P3 `_performance_data` (`app.py:15796`) + O(months×tasks) `work_to_go_census`
+>   (`performance_summary.py:132`) uncached — cache per (version, scope), bucket the census. P4 session
+>   `_lock` held across compute (`app.py:947`). P5 offload no timeout (`offload.py:90`), unbounded OAT
+>   sweep (`app.py:5996`). Add a latency regression gate. THEN the pre-existing queue: **#13** XER
+>   per-task calendars (PARKED) → SEC-2/SEC-3 hardening proposal → ADR-0251 family-B unify → zero-margin
+>   SRA toggle → roles i18n catalog.
 
 # (prior) handoffs — archived
 

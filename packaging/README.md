@@ -26,7 +26,7 @@ powershell -ExecutionPolicy Bypass -File packaging\windows\Install-Desktop-Short
 ```
 
 This creates **“Schedule Forensics”** on your Desktop (with the tool's own icon). Double-click it:
-the tool starts with **no console window** (it runs `pythonw.exe -m schedule_forensics.launcher`),
+the tool starts with **no console window** (it runs `pythonw.exe -m schedule_forensics`),
 opens your browser, and **stops automatically when you close the window**. No admin rights are
 needed — the shortcut lives in your own Desktop folder.
 
@@ -39,6 +39,20 @@ needed — the shortcut lives in your own Desktop folder.
 - Regenerate the icon (Windows `.ico`, Linux `.png`, web favicon — always in sync) with
   `python packaging\make_icon.py`.
 
+### If the icon does nothing (or the browser opens on a dead page)
+
+The shortcut runs `pythonw` (no console), so a startup failure has nowhere to print. The tool now
+surfaces those failures in a **message box** instead of dying silently. The usual cause is a
+**rebuilt or moved virtual environment** — the icon still points at the old interpreter, or the
+package is no longer installed there. Re-run the installer from your venv; it re-points the icon
+at the current interpreter and is safe to run repeatedly:
+
+```powershell
+.venv\Scripts\Activate.ps1
+pip install -e .
+powershell -ExecutionPolicy Bypass -File packaging\windows\Install-Desktop-Shortcut.ps1
+```
+
 ## Run (other ways / other OSes)
 
 - **Any OS (terminal):** `schedule-forensics`  (or `python -m schedule_forensics.launcher`)
@@ -47,8 +61,10 @@ needed — the shortcut lives in your own Desktop folder.
   `packaging/schedule-forensics.png` (absolute path) for the tool's mark.
 - **macOS:** double-click `schedule-forensics.command` (run `chmod +x` on it once).
 
-All paths call the same entry point (`schedule_forensics.launcher:main`). The server binds
-**127.0.0.1 only** and refuses any non-loopback host. You can also stop it with `Ctrl-C` in a
+All paths call the same entry point (`schedule_forensics.launcher:main`) — the windowless icon
+goes through the `schedule_forensics` package bootstrap, which wraps the import so a startup
+failure is reported rather than swallowed. The server binds **127.0.0.1 only** and refuses any
+non-loopback host. You can also stop it with `Ctrl-C` in a
 terminal, **Quit** in the app, or simply by closing the browser window.
 
 ## Local AI (optional)
