@@ -181,12 +181,16 @@ def parse_mspdi_text(text: str, *, source_file: str | None = None) -> Schedule:
     # the real document Title (for grouping files into Projects) — None when the file carries none,
     # kept distinct from ``name`` which falls back to <Name>/filename
     project_title = _text(root, "Title")
+    # the document Company (site/installation signal for the Portfolio rollup, ADR-0260) —
+    # None when absent, never guessed from any other field
+    company = _text(root, "Company")
     name = project_title or _text(root, "Name") or (source_file or "Untitled")
 
     try:
         return Schedule(
             name=name,
             project_title=project_title,
+            company=company,
             source_file=source_file,
             project_start=project_start,
             project_finish=project_finish,

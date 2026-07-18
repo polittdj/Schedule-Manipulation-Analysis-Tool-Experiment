@@ -188,7 +188,9 @@ def parse_xer_text(text: str, *, source_file: str | None = None) -> Schedule:
     )
 
     # XER has no exact document Title; the project short-name is the best available real project
-    # identity for grouping (None when absent), kept distinct from ``name``'s filename fallback
+    # identity for grouping (None when absent), kept distinct from ``name``'s filename fallback.
+    # XER/P6 also carries no company-equivalent header field (no MPP-style Company), so
+    # ``Schedule.company`` stays None for XER imports — documented, never guessed (ADR-0260).
     project_title = _g(project, "proj_short_name")
     try:
         return Schedule(

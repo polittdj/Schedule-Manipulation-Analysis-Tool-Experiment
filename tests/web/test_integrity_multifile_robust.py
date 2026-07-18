@@ -35,6 +35,9 @@ def _client_with(n: int) -> TestClient:
     c = TestClient(create_app(SessionState()), raise_server_exceptions=True)
     for i in range(n):
         xml = xml_a if i % 2 == 0 else xml_b
+        # a trailing per-copy XML comment keeps every upload byte-UNIQUE: identical bytes would
+        # (correctly, ADR-0259) collapse to one loaded file, and this fixture needs n real files
+        xml = xml + f"\n<!-- copy {i} -->".encode()
         c.post("/upload", files={"files": (f"v{i}.mpp.xml", xml, "text/xml")})
     return c
 

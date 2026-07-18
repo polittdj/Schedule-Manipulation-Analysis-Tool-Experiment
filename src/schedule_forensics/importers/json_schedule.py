@@ -285,6 +285,8 @@ def _from_friendly(data: dict[str, Any]) -> Schedule:
     }
     if data.get("project_title") not in (None, ""):
         schedule_kwargs["project_title"] = str(data["project_title"])
+    if data.get("company") not in (None, ""):
+        schedule_kwargs["company"] = str(data["company"])
     if data.get("status_date"):
         schedule_kwargs["status_date"] = _dt(data["status_date"])
     for key in ("project_finish", "baseline_finish"):
@@ -381,6 +383,8 @@ def to_json_text(schedule: Schedule) -> str:
     }
     if schedule.project_title is not None:
         out["project_title"] = schedule.project_title
+    if schedule.company is not None:
+        out["company"] = schedule.company
     if schedule.status_date is not None:
         out["status_date"] = schedule.status_date.isoformat()
     for finish_key, finish_val in (

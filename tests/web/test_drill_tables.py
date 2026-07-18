@@ -10,6 +10,7 @@ interactions were verified in Chromium.
 from __future__ import annotations
 
 import gzip
+import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -21,15 +22,27 @@ STATIC = Path(__file__).resolve().parents[2] / "src" / "schedule_forensics" / "w
 
 
 def _client(n_hardfile: int = 3) -> TestClient:
+    """Three files loaded as ONE project's version history (a folder upload).
+
+    The hard files and Project5 carry different document Titles, so loose they would be two
+    separate Projects — and comparing across Projects is exactly the mixing ADR-0258 outlaws.
+    The folder meta declares what this fixture always meant: one project, three versions."""
     hf = gzip.decompress((GOLDEN / "fuse_hardfile" / "Hard_File.mspdi.xml.gz").read_bytes())
     hfu = gzip.decompress(
         (GOLDEN / "fuse_hardfile" / "Hard_File_updated.mspdi.xml.gz").read_bytes()
     )
     p5 = (GOLDEN / "project2_5" / "Project5.mspdi.xml").read_bytes()
     c = TestClient(create_app(SessionState()))
-    c.post("/upload", files={"files": ("Hard_File.mpp.xml", hf, "text/xml")})
-    c.post("/upload", files={"files": ("Hard_File_updated.mpp.xml", hfu, "text/xml")})
-    c.post("/upload", files={"files": ("Project5.mpp.xml", p5, "text/xml")})
+    for name, data in (
+        ("Hard_File.mpp.xml", hf),
+        ("Hard_File_updated.mpp.xml", hfu),
+        ("Project5.mpp.xml", p5),
+    ):
+        c.post(
+            "/upload",
+            files={"files": (name, data, "text/xml")},
+            data={"file_meta": json.dumps([{"rel": f"History/{name}", "mtime": 1}])},
+        )
     return c
 
 

@@ -451,6 +451,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
     return Schedule(
         name="Maximal",
         project_title="Maximal Program Title",
+        company="NASA Langley Research Center",
         project_start=dt.datetime(2026, 7, 1, 8, 0),
         project_finish=dt.datetime(2026, 12, 1, 17, 0),
         status_date=dt.datetime(2026, 7, 15, 17, 0),
