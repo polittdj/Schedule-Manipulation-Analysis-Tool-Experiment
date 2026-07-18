@@ -3,9 +3,13 @@
 This is **not** a parity test; it is a *definitional* check. For every metric the tool
 documents in :mod:`schedule_forensics.web.help` we record the corresponding NASA Acumen
 metric (by ``Name``) and its **verbatim** ``Formula`` from ``NASA Metrics_Complete_*.aft``,
-classify the correspondence, and — when the git-ignored Bible is present on disk — assert
-the pinned NASA formula still matches the live file (a guard against silent Bible drift
-*and* the canonical record of which NASA formula each tool metric was built against).
+classify the correspondence, and assert the pinned NASA formula still matches EVERY
+committed Bible snapshot (a guard against silent Bible drift *and* the canonical record of
+which NASA formula each tool metric was built against). ADR-0263: the guard audits ALL
+``.aft`` files under ``00_REFERENCE_INTAKE/`` — auditing only ``sorted(...)[0]`` silently
+skipped the newer ``acumen_v8.11.0`` snapshot (verified near-identical: 759 metric names in
+both; one formula-set difference, 'Invalid Forecast Dates', which is a dropped duplicate
+entry differing only by outer parentheses and is not pinned here).
 
 Why a curated table rather than a string-normalised auto-match: ``help.py`` formulas are
 plain-language pseudocode while the ``.aft`` carries Acumen's own formula notation, so a
@@ -790,12 +794,12 @@ AUDIT: tuple[Row, ...] = (
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _find_aft() -> Path | None:
+def _find_afts() -> tuple[Path, ...]:
+    """EVERY committed Bible snapshot — each one is drift-audited (ADR-0263)."""
     base = _REPO_ROOT / "00_REFERENCE_INTAKE"
     if not base.exists():
-        return None
-    found = sorted(base.rglob("*.aft"))
-    return found[0] if found else None
+        return ()
+    return tuple(sorted(base.rglob("*.aft")))
 
 
 def _parse_aft(path: Path) -> dict[str, set[str]]:
@@ -822,11 +826,11 @@ def _norm(formula: str) -> str:
 
 
 @pytest.fixture(scope="module")
-def live_bible() -> dict[str, set[str]]:
-    path = _find_aft()
-    if path is None:
+def live_bibles() -> tuple[tuple[Path, dict[str, set[str]]], ...]:
+    paths = _find_afts()
+    if not paths:
         pytest.skip("NASA Acumen .aft reference not present under 00_REFERENCE_INTAKE/")
-    return _parse_aft(path)
+    return tuple((p, _parse_aft(p)) for p in paths)
 
 
 # =====================================================================================
@@ -878,19 +882,24 @@ def test_bible_sourced_metrics_map_to_a_bible_formula() -> None:
 # =====================================================================================
 # Test that DOES need the Bible on disk (skips when absent — like the .mpp skips).
 # =====================================================================================
-def test_pinned_nasa_formulas_match_the_live_bible(live_bible: dict[str, set[str]]) -> None:
-    """The pinned NASA formulas must still match the live ``.aft`` (Bible-drift guard)."""
+def test_pinned_nasa_formulas_match_every_live_bible(
+    live_bibles: tuple[tuple[Path, dict[str, set[str]]], ...],
+) -> None:
+    """The pinned NASA formulas must still match EVERY committed ``.aft`` (Bible-drift guard —
+    a snapshot whose formula moved must fail loudly, never sit unaudited)."""
     mismatches: list[str] = []
-    for r in AUDIT:
-        if r.verdict not in _HAS_FORMULA:
-            continue
-        if r.nasa_name not in live_bible:
-            mismatches.append(f"{r.tool_id}: NASA metric {r.nasa_name!r} not found in the Bible")
-            continue
-        live = {_norm(f) for f in live_bible[r.nasa_name]}
-        if _norm(r.nasa_formula) not in live:
-            mismatches.append(
-                f"{r.tool_id}: pinned formula for {r.nasa_name!r} no longer matches the live "
-                f"Bible.\n    pinned: {_norm(r.nasa_formula)}\n    live:   {sorted(live)}"
-            )
+    for path, live_bible in live_bibles:
+        label = path.name
+        for r in AUDIT:
+            if r.verdict not in _HAS_FORMULA:
+                continue
+            if r.nasa_name not in live_bible:
+                mismatches.append(f"{r.tool_id}: NASA metric {r.nasa_name!r} not found in {label}")
+                continue
+            live = {_norm(f) for f in live_bible[r.nasa_name]}
+            if _norm(r.nasa_formula) not in live:
+                mismatches.append(
+                    f"{r.tool_id}: pinned formula for {r.nasa_name!r} no longer matches "
+                    f"{label}.\n    pinned: {_norm(r.nasa_formula)}\n    live:   {sorted(live)}"
+                )
     assert not mismatches, "Bible drift / mapping errors:\n" + "\n".join(mismatches)

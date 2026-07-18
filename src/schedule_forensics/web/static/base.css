@@ -222,7 +222,7 @@ header label{color:var(--header-muted)}
 .cui-banner.bottom{border-top:1px solid rgba(255,255,255,.12)}
 
 /* light dotted reading grid behind every chart (chart-host wrappers + the trend per-chart cells) */
-.chart-host,.chart{background-image:radial-gradient(var(--grid-dot) 1.2px,transparent 1.3px);
+.chart-host,.chart,.chart-note{background-image:radial-gradient(var(--grid-dot) 1.2px,transparent 1.3px);
   background-size:22px 22px;background-position:6px 6px}
 
 /* ── Target-UID endpoint banner + Risks 5x5 matrix / ranking ──────────────────────────────── */

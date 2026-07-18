@@ -56,11 +56,16 @@ class VersionSummary:
         )
 
 
-def compute_summary(sch: Schedule) -> VersionSummary:
+def compute_summary(sch: Schedule, *, margin_uids: frozenset[int] | None = None) -> VersionSummary:
     """Compute a version's summary from its full schedule (a single CPM pass + margin + DCMA-14).
 
     Never raises: an unsolvable network yields a summary flagged ``unsolvable`` with no
     finish/margin, exactly as the Portfolio view renders "—" for such a version today.
+
+    ``margin_uids`` (ADR-0263) is the operator's CONFIRMED margin-activity set (ADR-0230
+    overlay): when given, the margin leg measures exactly those activities — the same set the
+    margin dashboard/trend/SRA use — so the Portfolio row can never silently disagree with
+    them. ``None`` keeps the name-based default (byte-identical to before).
     """
     status_iso = sch.status_date.date().isoformat() if sch.status_date is not None else None
     task_count = len(sch.tasks)
@@ -82,7 +87,9 @@ def compute_summary(sch: Schedule) -> VersionSummary:
     dcma_pass = sum(1 for c in audit.checks if c.status is CheckStatus.PASS)
     dcma_fail = sum(1 for c in audit.checks if c.status is CheckStatus.FAIL)
     try:
-        margin: float | None = compute_margin(sch, cpm).effective_margin_days
+        margin: float | None = compute_margin(
+            sch, cpm, margin_uids=margin_uids
+        ).effective_margin_days
     except CPMError:
         margin = None  # the zero-margin re-solve failed; the finish + DCMA rollup still stand
     return VersionSummary(

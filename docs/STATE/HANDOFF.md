@@ -1,39 +1,39 @@
-# Handoff — 2026-07-18 (deep performance ADR-0261: epoch-keyed scope caches, CPM tier, census buckets, offload bounds; v1.0.68; highest ADR 0261)
+# Handoff — 2026-07-18b (full handoff-verification audit + remediation ADR-0262/0263: /mission tile degrade, epoch pairing, wipe finality, upload locking, summary-margin overlay; v1.0.69; highest ADR 0263)
 
-> ## STATUS (current) — ADR-0261 executes ADR-0257 §"Recorded" (deep-perf P1–P5 + the latency gate), Law-2-proven: a 160-hash battery (5 scope states × 32 pages/APIs, TP4 goldens, instrument proven deterministic by double-run) stayed BYTE-IDENTICAL after every step; parity green throughout. Measured on the synthetic 5×1200-task set: cold /performance 0.674s → 0.066s (~10×), filter-toggle render sequence 0.417s → 0.079s (~5×). Version 1.0.67 → 1.0.68 (wheel + 9 installers in lockstep).
+> ## STATUS (current) — operator-directed verify-everything session: a ten-agent Ultracode audit (ADR-0240 protocol, lead re-verified every major finding) checked EVERY ADR-0261/handoff claim against code + executed tests. The record held: P1 signatures/keys/residency, P2 tier, P3 memo + census-oracle equality, P5 bounds, latency-gate determinism, version/installer lockstep, parity (44 green), AFT pinning live — all CONFIRMED. The audit's confirmed defects were reproduced (failing tests first), fixed, hardened, and browser-verified; NEXT #1 (/mission tile degrade) shipped in the same PR. Version 1.0.68 → 1.0.69 (wheel + 9 installers in lockstep).
 >
-> - **P1 surgical invalidation:** `_invalidate_scope` resets only the identity memos; analyses/
->   summaries/polished are keyed by `(key, scope-signature)` (full canonical text, never a hash)
->   with the RAW schedule as identity anchor — filter/target toggles flip between RESIDENT epochs
->   (identity-asserted in `tests/web/test_scope_epoch_cache.py`); highlight shares the unfiltered
->   epoch; a re-upload still recomputes; default-epoch keys are byte-identical to before.
-> - **P2 CPM tier:** `cpm_for` + `cpms` cache — `_solvable_versions` (every multi-version page)
->   obtains ONLY the solve per version; `_compute_analysis(sch, cpm=…)` reuses it later. One solve
->   per version per epoch (count-gated).
-> - **P3:** `_perf_version_block` memoises each version's G1–G5 block per scope epoch (a
->   /performance re-render runs ZERO census passes — count-gated); `work_to_go_census` bucketed to
->   O(tasks+months) via diff arrays + prefix sums, pinned EQUAL to the verbatim per-month-scan
->   oracle kept in the test (mixed types, dateless, baseline-only, 360-month truncation clamp).
-> - **P4:** engine compute + summary SQLite I/O now run OUTSIDE the session `_lock` (store under
->   it; D18 atomicity kept; duplicate computes deterministic, last-write-wins).
-> - **P5:** `OFFLOAD_TIMEOUT_S` (30 min) — a wedged worker can never hang a request forever (pool
->   torn down, actionable error, recovery test-pinned); OAT sweep capped at the WEB boundary
->   (`_OAT_MAX_ACTIVITIES` 1500, largest-ML-remaining, DISCLOSED in payload + panel; engine
->   untouched; below the cap byte-identical).
-> - **Latency gate (the ADR-0249 exclusion closed):** deterministic P1/P2/P3 recompute-count gates
->   + one RELATIVE timing gate (epoch hit < the compute it replaces) in
->   `tests/perf/test_perf_regression.py` — no absolute wall-clock, nothing to flake.
-> - **Deliberately NOT done:** lazy `_Analysis` fields (blast radius vs. gain once the population
->   pass stopped building full analyses — revisit only on profiling evidence); a timeout on the
->   rare in-process offload FALLBACK (uninterruptible same-interpreter; size caps bound it).
-> - **Still OWED by the operator:** the PowerShell crash log + their large dataset — re-validate
->   the lag fix on their machine (five projects, one large) when provided.
-> - **State:** v1.0.68; **ADR-0261** highest; wheel + 9 installers in lockstep; branch
->   `claude/portfolio-data-integrity-gantt-pf30ef` (restarted from the #397 squash; draft PR).
-> - **NEXT:** /mission 1-version tile degrade (ADR-0258 known pre-existing); Portfolio US-map/site
->   drill when the Claude-Design prompt arrives; exhaustive per-widget + five-large-file stress
->   with the operator's dataset; THEN the standing queue: #13 XER per-task calendars (PARKED) →
->   SEC-2/SEC-3 hardening → ADR-0251 family-B unify → zero-margin SRA toggle → roles i18n catalog.
+> - **ADR-0262 (/mission + CEI guards):** cross-version tiles degrade server-side below their
+>   OWN API's population threshold (CEI = 2 loaded; Evolution/Quality = 2 analyzable) — no
+>   chart host ⇒ scripts early-return ⇒ zero console 4xx (Chromium-proven, 4 themes); the
+>   /cei + /api/cei + /export cei guards now count st.ordered() (ADR-0258 residual: they
+>   gated on the whole-session dict and 422'd on multi-project 1-version populations).
+>   Correction: /api/scurve was never an offender (works with 1 version). i18n ×4 for the
+>   two degrade notes; degraded tiles use .chart-note so chartframe adds no dead toolbar.
+> - **ADR-0263 (audit remediation):** (1) mixed-epoch pairing made UNREPRESENTABLE —
+>   _Analysis.scoped + cpm_scoped_for return the (scoped, cpm) pair from ONE lock window;
+>   ten call sites swapped (the P3-memo poisoning this closes was the audit's one REFUTED
+>   ADR-0261 sub-claim). (2) wipe finality: wipe_gen + _scope_gen store guards; the on-disk
+>   clear + SRA/AI resets now run INSIDE the wipe's lock; disk puts run under the lock —
+>   "nothing survives the reset" now holds against in-flight computes. (3) /upload +
+>   /example D18 locking (short windows; mid-upload wipe aborts LOUDLY). (4) Portfolio
+>   summary margin now honors the ADR-0230 confirmed-margin overlay (dashboard precedence;
+>   skip-disk like scoped versions; /margin/confirm clears the summaries tier). (5)
+>   _clean_key strips control chars (\x1f epoch-key collision). (6) new gates: P2 per-EPOCH
+>   solve counts, OAT cap disclosure (was uncovered), six deterministic race regressions
+>   (test_session_consistency.py). (7) AFT drift guard audits EVERY committed .aft (the
+>   newer v8.11.0 snapshot was unaudited; verified near-identical first); __version__ now
+>   derives from distribution metadata (was hand-pinned "0.0.0" for 68 releases).
+> - **Deliberately NOT done (recorded in ADR-0263):** bounding cpms/summaries epoch growth
+>   (an LRU would thrash the population pass on large portfolios; revisit on profiling
+>   evidence); epoch-key reuse for scope-unchanged versions (missed reuse, never wrong);
+>   the polished cache's scoped-object anchor (safe; wording drift only).
+> - **Still OWED by the operator:** PowerShell crash log + the real large dataset (ADR-0261
+>   on-machine re-validation); the Claude-Design prompt (Portfolio US-map, ADR-0258).
+> - **State:** v1.0.69; **ADR-0263** highest; wheel + 9 installers in lockstep; branch
+>   `claude/handoff-review-validation-ikldbf` (draft PR).
+> - **NEXT:** SEC-2/SEC-3 hardening (CSRF/Origin + Host allowlist — design + ADR) → ADR-0251
+>   family-B unify → zero-margin SRA toggle → roles i18n catalog; #13 XER per-task calendars
+>   stays PARKED; the two operator-blocked items above resume when their inputs arrive.
 
 # (prior) handoffs — archived
 

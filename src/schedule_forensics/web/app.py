@@ -494,6 +494,11 @@ class _Analysis:
     findings: tuple[Finding, ...]
     narrative: Narrative
     activity_rows: list[dict[str, object]]
+    #: the exact (scoped) schedule every field above was computed FROM (ADR-0263): callers that
+    #: need the schedule paired with this analysis use THIS reference instead of re-resolving
+    #: st.scope(raw) in a second lock window — a concurrent filter/target change between the two
+    #: windows could otherwise pair an old-epoch analysis with a new-epoch population.
+    scoped: Schedule
 
 
 def _compute_analysis(sch: Schedule, cpm: CPMResult | None = None) -> _Analysis:
@@ -503,6 +508,7 @@ def _compute_analysis(sch: Schedule, cpm: CPMResult | None = None) -> _Analysis:
     P2 tier) so the network is never solved twice for one epoch — never a different input."""
     cpm = cpm if cpm is not None else compute_cpm(sch)
     return _Analysis(
+        scoped=sch,
         cpm=cpm,
         audit=audit_schedule(sch, cpm),
         compliance=compute_baseline_compliance(sch, cpm),
@@ -754,6 +760,15 @@ class SessionState:
     # iterate a dict another request is clearing (QC audit D18 — live-reproduced KeyError on
     # /trend under concurrent filter+render). Single-operator tool: contention is negligible.
     _lock: threading.RLock = field(default_factory=threading.RLock)
+    # ADR-0263 store guards. ``wipe_gen`` bumps on every wipe: a compute that started BEFORE the
+    # wipe must never store its result (in-memory OR into the on-disk CUI cache) AFTER it — the
+    # wipe's contract is "nothing of the operator's data survives the reset", and a late
+    # put_summary/put_schedule would silently re-insert derived operator data on disk.
+    # ``_scope_gen`` additionally bumps on every scope epoch change: the identity-keyed P3 memo
+    # must die with its epoch, so a store computed under an older epoch is skipped (a plain-dict
+    # orphan would otherwise pin the dead scoped schedule until the next flip/wipe).
+    wipe_gen: int = 0
+    _scope_gen: int = 0
 
     def _match_uids(self, sch: Schedule) -> frozenset[int] | None:
         """The UIDs of ``sch`` matching the active filter — the faithful saved-filter tree OR the
@@ -872,6 +887,7 @@ class SessionState:
         self._scoped.clear()
         self._matched.clear()
         self._perf_memo.clear()  # identity-keyed (P3): must never outlive the scope epoch
+        self._scope_gen += 1  # ADR-0263: a store computed under the old epoch must be skipped
 
     def set_filter(self, criteria: Sequence[Criterion]) -> None:
         """Set (or clear, with ``()``) the session-wide FIELD filter and invalidate the scope/
@@ -1154,6 +1170,7 @@ class SessionState:
         consulted again (its key's schedule is gone) and is evicted normally."""
         with self._lock:
             ck = self._cache_key(key, self._scope_signature())
+            gen = self.wipe_gen
             cached = self.analyses.get_lru(ck)
             if cached is not None and cached[0] is sch:
                 return cached[1]
@@ -1162,9 +1179,35 @@ class SessionState:
             cpm = pre[1] if pre is not None and pre[0] is sch else None
         analysis = _compute_analysis(scoped, cpm=cpm)
         with self._lock:
-            self.analyses.put(ck, (sch, analysis))
-            self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
+            if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                self.analyses.put(ck, (sch, analysis))
+                self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
         return analysis
+
+    def cpm_scoped_for(self, key: str, sch: Schedule) -> tuple[Schedule, CPMResult]:
+        """The ``(scoped schedule, CPM solve)`` pair for ``key``, captured CONSISTENTLY in one
+        lock window (ADR-0263). The pre-fix pattern — ``cpm_for(key, sch)`` then a separate
+        ``st.scope(sch)`` — left a gap between two lock windows where a concurrent filter/target
+        change could pair an old-epoch solve with a new-epoch population (and the P3 memo would
+        then re-serve that poisoned pairing for the rest of the epoch). Here the scoped object
+        is resolved in the SAME window that resolves the epoch key, and a cache-miss solve runs
+        on exactly that object, so an inconsistent pair is unrepresentable."""
+        with self._lock:
+            ck = self._cache_key(key, self._scope_signature())
+            gen = self.wipe_gen
+            scoped = self.scope(sch)
+            pre = self.cpms.get(ck)
+            if pre is not None and pre[0] is sch:
+                return scoped, pre[1]
+            full = self.analyses.get_lru(ck)
+            if full is not None and full[0] is sch:
+                self.cpms[ck] = (sch, full[1].cpm)
+                return scoped, full[1].cpm
+        cpm = compute_cpm(scoped)
+        with self._lock:
+            if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                self.cpms[ck] = (sch, cpm)
+        return scoped, cpm
 
     def cpm_for(self, key: str, sch: Schedule) -> CPMResult:
         """Just the CPM solve for ``key`` over the active scope (ADR-0261 P2).
@@ -1175,21 +1218,11 @@ class SessionState:
         the recorded P2 lag. Reuses a resident full analysis' solve when one exists; otherwise
         solves the network alone (outside the lock, P4) and caches it — and a later
         ``analysis_for`` reuses THIS solve instead of re-running it. Same epoch keying and
-        identity anchor as ``analysis_for``; a ``CPMError`` propagates exactly as before."""
-        with self._lock:
-            ck = self._cache_key(key, self._scope_signature())
-            pre = self.cpms.get(ck)
-            if pre is not None and pre[0] is sch:
-                return pre[1]
-            full = self.analyses.get_lru(ck)
-            if full is not None and full[0] is sch:
-                self.cpms[ck] = (sch, full[1].cpm)
-                return full[1].cpm
-            scoped = self.scope(sch)
-        cpm = compute_cpm(scoped)
-        with self._lock:
-            self.cpms[ck] = (sch, cpm)
-        return cpm
+        identity anchor as ``analysis_for``; a ``CPMError`` propagates exactly as before.
+        Callers that also need the schedule the solve was computed from MUST use
+        :meth:`cpm_scoped_for` (one consistent pair) instead of pairing this with a separate
+        ``scope()`` call."""
+        return self.cpm_scoped_for(key, sch)[1]
 
     def summary_for(self, key: str, sch: Schedule) -> VersionSummary:
         """The cached rollup summary for ``key`` (v4 Feature 2 lazy tier) — the Portfolio's cheap
@@ -1204,13 +1237,20 @@ class SessionState:
         the SQLite I/O run OUTSIDE the session lock (ADR-0261 P4)."""
         with self._lock:
             ck = self._cache_key(key, self._scope_signature())
+            gen = self.wipe_gen
             cached = self.summaries.get(ck)
             if cached is not None and cached[0] is sch:
                 return cached[1]
             scoped = self.scope(sch)
-            on_disk = scoped is sch  # unscoped ⇒ the whole-file summary the SQLite cache holds
+            # ADR-0263: the operator's confirmed margin set (ADR-0230 overlay; same
+            # per-version-else-union precedence as the margin dashboard/SRA) changes the margin
+            # number, so an overlaid version computes fresh — the content-hash disk blob holds
+            # the name-based default and must be neither consulted nor overwritten for it.
+            overlay = self.margin_overlay.get(key, self.confirmed_margin_union())
+            on_disk = scoped is sch and overlay is None  # whole-file, name-based default only
             chash = self.content_hashes.get(key) if on_disk else None
         summary: VersionSummary | None = None
+        computed = False
         if chash is not None:
             blob = get_default_cache().get_summary(chash)
             if blob is not None:
@@ -1219,11 +1259,17 @@ class SessionState:
                 except (ValueError, KeyError, TypeError):
                     summary = None  # a stale/corrupt blob is a miss, never an error
         if summary is None:
-            summary = compute_summary(scoped)
-            if chash is not None:
-                get_default_cache().put_summary(chash, summary.to_json())
+            summary = compute_summary(scoped, margin_uids=overlay)
+            computed = True
         with self._lock:
-            self.summaries[ck] = (sch, summary)
+            # ADR-0263: both stores (in-memory AND the on-disk CUI cache) are guarded by the
+            # wipe generation captured before the compute, and the disk put happens under the
+            # lock — so a wipe's clear() (which now also runs under this lock) can never be
+            # followed by a late re-insert of the operator's derived data.
+            if self.wipe_gen == gen:
+                self.summaries[ck] = (sch, summary)
+                if computed and chash is not None:
+                    get_default_cache().put_summary(chash, summary.to_json())
         return summary
 
 
@@ -2938,8 +2984,9 @@ def create_app(
     def load_example() -> RedirectResponse:
         st = session()
         schedule = parse_json(_EXAMPLE).model_copy(update={"source_file": "house_build.json"})
-        key = _unique_key(_clean_key(schedule.name), st.schedules)
-        st.schedules[key] = schedule
+        with st._lock:  # ADR-0263 (D18): key + store atomically vs concurrent locked readers
+            key = _unique_key(_clean_key(schedule.name), st.schedules)
+            st.schedules[key] = schedule
         logger.info("loaded bundled example schedule")
         return RedirectResponse(url=f"/analysis/{quote(key)}", status_code=303)
 
@@ -2984,6 +3031,13 @@ def create_app(
         # one heap-capped JVM for every native .mpp in this ingest (v4 Feature 2) instead of a fresh
         # java process per file — one boot for a whole folder, not thousands. Harmless for text
         # formats (they never touch the JVM) and for a cache-hit re-upload (it never parses).
+        # ADR-0263 (D18): every READ or WRITE of the shared session dicts happens under st._lock
+        # in short windows (the slow parse stays outside), so a concurrent locked render can never
+        # see a dict mutate mid-iteration; the wipe generation captured here makes a mid-upload
+        # wipe final — nothing parsed before it is stored (in memory or on disk) after it.
+        with st._lock:
+            upload_gen = st.wipe_gen
+        wiped_midway = False
         with mpxj_batch_session():
             for i, upload_file in enumerate(files):
                 name = upload_file.filename or "schedule"
@@ -3011,16 +3065,24 @@ def create_app(
                 # loudly (notice + log, nothing silent). Identical bytes in a DIFFERENT context
                 # are kept: they can legitimately be a version of two different Projects.
                 folder_ctx = meta[i][0] if i < len(meta) else None
-                dup_key = next(
-                    (
-                        k
-                        for k, h in st.content_hashes.items()
-                        if h == chash and st.file_meta.get(k, (None, None))[0] == folder_ctx
-                    ),
-                    None,
-                )
+                with st._lock:
+                    if st.wipe_gen != upload_gen:
+                        wiped_midway = True
+                        break
+                    dup_key = next(
+                        (
+                            k
+                            for k, h in st.content_hashes.items()
+                            if h == chash and st.file_meta.get(k, (None, None))[0] == folder_ctx
+                        ),
+                        None,
+                    )
+                    kept = (
+                        (st.schedules[dup_key].source_file or dup_key)
+                        if dup_key is not None
+                        else None
+                    )
                 if dup_key is not None:
-                    kept = st.schedules[dup_key].source_file or dup_key
                     duplicate_notes.append(
                         f"Skipped “{name}” — byte-identical to the already-loaded “{kept}” "
                         "(the same file twice; nothing was lost)."
@@ -3038,13 +3100,24 @@ def create_app(
                             "rejected upload; ext=%s bytes=%d", Path(name).suffix, len(data)
                         )
                         continue
-                    cache.put_schedule(chash, schedule)
-                key = _unique_key(_clean_key(name), st.schedules)
-                st.schedules[key] = schedule.model_copy(update={"source_file": name})
-                st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
-                # lets the Portfolio read this version's on-disk summary
-                st.content_hashes[key] = chash
+                    with st._lock:
+                        if st.wipe_gen == upload_gen:  # never re-populate a wiped disk cache
+                            cache.put_schedule(chash, schedule)
+                with st._lock:
+                    if st.wipe_gen != upload_gen:
+                        wiped_midway = True
+                        break
+                    key = _unique_key(_clean_key(name), st.schedules)
+                    st.schedules[key] = schedule.model_copy(update={"source_file": name})
+                    st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
+                    # lets the Portfolio read this version's on-disk summary
+                    st.content_hashes[key] = chash
                 accepted.append(key)
+        if wiped_midway:
+            errors.append(
+                "Session was wiped while this upload was in flight — the remaining files were "
+                "not loaded. Re-upload them if that was not intended."
+            )
         notices: list[str] = []
         if accepted:
             with st._lock:
@@ -3085,7 +3158,8 @@ def create_app(
         # operator's threshold — the tool keeps schedules resident for comparative analysis, so a
         # very large folder is worth flagging (never gating). Raise the threshold in Portfolio.
         if accepted:
-            est = estimate_resident_bytes(st.schedules.values())
+            with st._lock:  # snapshot; never iterate the live dict unlocked (D18)
+                est = estimate_resident_bytes(list(st.schedules.values()))
             if est > st.ram_warn_bytes:
                 notices.append(
                     f"Loaded schedules use an estimated {format_bytes(est)} of memory "
@@ -3254,14 +3328,15 @@ def create_app(
         if sch is None:
             return JSONResponse({"error": "not found"}, status_code=404)
         try:
-            cpm = st.analysis_for(name, sch).cpm
+            a = st.analysis_for(name, sch)
         except CPMError as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
-        # pair the schedule with the SAME scope as its cpm: analysis_for computes cpm over
-        # st.scope(sch), so tracing the raw (unscoped) network against that scoped cpm would mix a
-        # filtered/target-truncated timing set onto the full task list (wrong path once a session
-        # Analysis Target or filter is active). scope(sch) is sch when neither is set (unchanged).
-        scoped = st.scope(sch)
+        # pair the schedule with the SAME scope as its cpm: tracing the raw (unscoped) network
+        # against a scoped cpm would mix a filtered/target-truncated timing set onto the full
+        # task list. a.scoped IS the object the cpm was computed from (ADR-0263 — one source,
+        # no second lock window a concurrent scope change could slip between).
+        cpm = a.cpm
+        scoped = a.scoped
         payload = _driving_data(
             scoped,
             cpm,
@@ -3332,10 +3407,19 @@ def create_app(
                 "Mission Control",
                 "<div class=panel>Load a schedule to populate the visual wall.</div>",
             )
+        # ADR-0262: the cross-version tiles degrade to a "needs ≥2 versions" note below their
+        # population threshold, so their scripts never fetch the ≥2-version APIs (no console
+        # 4xx — the ADR-0258 known pre-existing defect). Counts are ACTIVE-population-scoped,
+        # the same truth the tile APIs serve; the solve pass is skipped entirely when even the
+        # loaded count is below two (nothing could be solvable either).
+        n_loaded = len(st.ordered())
+        n_solvable = len(_solvable_versions()[0]) if n_loaded >= 2 else 0
         return _page(
             st,
             "Mission Control",
-            _export_bar("mission") + _sources_line(st.ordered()) + _mission_body(st.target_uid),
+            _export_bar("mission")
+            + _sources_line(st.ordered())
+            + _mission_body(st.target_uid, n_loaded=n_loaded, n_solvable=n_solvable),
         )
 
     @app.get("/compare", response_class=HTMLResponse)
@@ -3379,10 +3463,11 @@ def create_app(
             try:
                 # ADR-0261 P2: only the solve — never the full monolithic analysis — is needed
                 # for the multi-version population pass; a resident full analysis is reused.
-                cpms.append(st.cpm_for(key, sch))
-                schedules.append(
-                    st.scope(sch)
-                )  # the CPM is for the scoped schedule; keep them paired
+                # ADR-0263: the (scoped, cpm) pair comes from ONE call so a concurrent scope
+                # change can never pair an old-epoch solve with a new-epoch population.
+                scoped, cpm = st.cpm_scoped_for(key, sch)
+                cpms.append(cpm)
+                schedules.append(scoped)
             except CPMError:
                 skipped.append(key)
         return schedules, cpms, skipped
@@ -3399,7 +3484,7 @@ def create_app(
         for key, sch in st.ordered_versions():
             try:
                 a = st.analysis_for(key, sch)
-                schedules.append(st.scope(sch))  # paired with a.cpm (both over the active scope)
+                schedules.append(a.scoped)  # the exact schedule a.cpm was computed from (ADR-0263)
                 cpms.append(a.cpm)
                 analyses.append(a)
             except CPMError:
@@ -3548,10 +3633,11 @@ def create_app(
         if key and key in st.schedules:
             raw = st.schedules[key]
             try:
-                cpm = st.analysis_for(key, raw).cpm
+                a = st.analysis_for(key, raw)
             except CPMError as exc:
                 return JSONResponse({"error": str(exc)}, status_code=422)
-            sch = st.scope(raw)  # pair with analysis_for's scoped cpm (see /api/driving)
+            cpm = a.cpm
+            sch = a.scoped  # the exact schedule the cpm was computed from (ADR-0263)
         else:
             schedules, cpms, _skipped = _solvable_versions()
             if not schedules:
@@ -3632,7 +3718,7 @@ def create_app(
             except CPMError:
                 continue
             status = raw.status_date.date().isoformat() if raw.status_date else None
-            rows.append((raw.source_file or raw.name, status, st.scope(raw), a.cpm))
+            rows.append((raw.source_file or raw.name, status, a.scoped, a.cpm))
         if not rows:
             return JSONResponse({"versions": []})
         points = compute_margin_trend(rows, margin_uids=st.confirmed_margin_union())
@@ -3703,6 +3789,12 @@ def create_app(
                         if t is not None and not t.is_summary:
                             valid.add(u)
                     st.margin_overlay[key] = frozenset(valid)
+                # ADR-0263: the confirmed set feeds the summary tier's margin now, and the
+                # UNION fallback means a confirm on ONE version can change every version's
+                # summary — drop the in-memory tier so the Portfolio recomputes against the
+                # new set (the disk blobs stay valid: they hold only the name-based default,
+                # which overlaid sessions no longer consult).
+                st.summaries.clear()
         dest = back if back.startswith("/analysis/") else f"/analysis/{quote(key, safe='')}"
         return RedirectResponse(url=dest, status_code=303)
 
@@ -3892,7 +3984,9 @@ def create_app(
         # focus stays coupled — a raw write left every page scoped to the PREVIOUS target (audit).
         if target is not None:
             st.set_target(_parse_uid(target))
-        if len(st.schedules) < 2:
+        # ADR-0262: the guard counts the ACTIVE population (ADR-0258 — never another Project's
+        # files), matching the population compute_bow_wave below actually receives.
+        if len(st.ordered()) < 2:
             return _page(
                 st,
                 "Bow Wave / CEI",
@@ -3916,7 +4010,8 @@ def create_app(
     @app.get("/api/cei")
     def cei_json(uids: str = Query("")) -> JSONResponse:
         st = session()
-        if len(st.schedules) < 2:
+        # ADR-0262: population-scoped guard — the wave itself is built from st.ordered()
+        if len(st.ordered()) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
             wave = compute_bow_wave(st.ordered(), st.target_uid, track_uids=_parse_track_uids(uids))
@@ -4205,7 +4300,7 @@ def create_app(
                 a = st.analysis_for(key, raw)
             except CPMError:
                 continue
-            solv.append((key, st.scope(raw), a))
+            solv.append((key, a.scoped, a))
         if not solv:
             return JSONResponse({"error": "load an analyzable schedule first"}, status_code=422)
         _key, current, cur_an = solv[-1]
@@ -4941,7 +5036,7 @@ def create_app(
                 a = st.analysis_for(key, raw)
             except CPMError:
                 continue
-            out.append((key, st.scope(raw), a.cpm, a))
+            out.append((key, a.scoped, a.cpm, a))
         return out
 
     @app.get("/workbench", response_class=HTMLResponse)
@@ -5040,7 +5135,7 @@ def create_app(
             a = st.analysis_for(file, raw)
         except CPMError:
             return JSONResponse({"error": "schedule does not solve"}, status_code=422)
-        sch = st.scope(raw)
+        sch = a.scoped
         rows = evaluate_catalog(sch, a.cpm, a.audit)
         row = rows.get(metric)
         if row is None:
@@ -5277,7 +5372,7 @@ def create_app(
             a = st.analysis_for(name, raw)
         except CPMError:
             return JSONResponse({"error": "schedule does not solve"}, status_code=422)
-        sch = st.scope(raw)
+        sch = a.scoped
         row = evaluate_catalog(sch, a.cpm, a.audit).get(metric)
         if row is None:
             return JSONResponse({"error": "unknown metric"}, status_code=422)
@@ -5320,7 +5415,7 @@ def create_app(
                 a = st.analysis_for(key, raw)
             except CPMError:
                 continue
-            out.append((key, st.scope(raw), a))
+            out.append((key, a.scoped, a))
         return out
 
     def _pick_scorecard_version(file: str) -> tuple[str, Schedule, _Analysis] | None:
@@ -5859,7 +5954,8 @@ def create_app(
         if (bad := _bad_format(fmt)) is not None:
             return bad
         st = session()
-        if len(st.schedules) < 2:
+        # ADR-0262: population-scoped guard — the wave itself is built from st.ordered()
+        if len(st.ordered()) < 2:
             return JSONResponse({"error": "need at least two versions"}, status_code=400)
         try:
             wave = compute_bow_wave(st.ordered(), st.target_uid)
@@ -5987,7 +6083,7 @@ def create_app(
             except CPMError:
                 skipped.append(key)
                 continue
-            solv.append((key, st.scope(raw), a))
+            solv.append((key, a.scoped, a))
         if not solv:
             return _page(
                 st,
@@ -6737,7 +6833,7 @@ def create_app(
             return JSONResponse({"polished": False})
         try:
             analysis = st.analysis_for(key, raw)
-            narrative = _polished_narrative(st, key, st.scope(raw), analysis)
+            narrative = _polished_narrative(st, key, analysis.scoped, analysis)
             polished = narrative is not analysis.narrative  # a real backend produced new prose
             html = "".join(f"<li>{_e(s.rendered())}</li>" for s in narrative.statements)
         except Exception:
@@ -7000,22 +7096,26 @@ def create_app(
             st.flash = None
             st.target_uid = None
             st.sra_focus_uid = None  # target_uid + sra_focus_uid are coupled (see set_target)
-        # a wipe clears the on-disk CUI cache too (parsed schedules + derived metrics), so nothing
-        # of the operator's data survives the reset (fails soft; outside the state lock — its own)
-        get_default_cache().clear()
-        # reset the SRA manual inputs back to the screening defaults
-        st.sra_low = 0.9
-        st.sra_ml = 1.0
-        st.sra_high = 1.10
-        st.sra_overrides.clear()
-        st.sra_risks.clear()
-        st.sra_risk_seq = 0
-        # A wipe is a full reset: turn the AI back off and stop any local model it is running, so a
-        # wiped session never leaves Ollama consuming RAM/CPU (operator report: Ollama survived a
-        # Wipe → Quit). Re-enabling is one click in AI Settings.
-        st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
-        st.backend_cache = None
-        st.second_cache = None
+            # ADR-0263: bump the wipe generation FIRST, then clear the on-disk CUI cache (parsed
+            # schedules + derived metrics) UNDER the same lock that gates every store — so an
+            # in-flight compute that started pre-wipe can never re-insert the operator's data
+            # (in memory or on disk) after this point. "Nothing survives the reset" holds.
+            st.wipe_gen += 1
+            get_default_cache().clear()
+            # reset the SRA manual inputs back to the screening defaults (ADR-0263: under the
+            # SAME lock — a reader iterating sra_overrides/sra_risks mid-clear is the D18 class)
+            st.sra_low = 0.9
+            st.sra_ml = 1.0
+            st.sra_high = 1.10
+            st.sra_overrides.clear()
+            st.sra_risks.clear()
+            st.sra_risk_seq = 0
+            # A wipe is a full reset: turn the AI back off and stop any local model it is
+            # running, so a wiped session never leaves Ollama consuming RAM/CPU (operator
+            # report: Ollama survived a Wipe → Quit). Re-enabling is one click in AI Settings.
+            st.ai_config = AIConfig(classification=st.ai_config.classification, backend="null")
+            st.backend_cache = None
+            st.second_cache = None
         manager = getattr(app.state, "ollama", None)
         if manager is not None:
             threading.Thread(target=manager.shutdown, daemon=True).start()
@@ -7044,9 +7144,15 @@ def _safe_filename(name: str) -> str:
 
 
 def _clean_key(name: str) -> str:
-    """A friendly schedule key: the filename with all supported extensions stripped."""
+    """A friendly schedule key: the filename with all supported extensions stripped.
+
+    Control characters are stripped too (ADR-0263): the epoch cache keys join
+    ``key␟scope-signature`` on ``\\x1f``, so a filename smuggling that byte could make one
+    session key collide with another key's epoch key. The identity anchor would still catch a
+    wrong-schedule hit, but the key space itself must be collision-free by construction."""
     exts = {e.lower() for e in supported_extensions()}
-    path = Path(Path(name).name)
+    cleaned = "".join(ch for ch in Path(name).name if ch >= " ")
+    path = Path(cleaned)
     while path.suffix.lower() in exts:
         path = path.with_suffix("")
     return path.name or "schedule"
@@ -7640,12 +7746,28 @@ def _portfolio_version_li(st: SessionState, v: ProjectVersion) -> str:
     )
 
 
-def _mission_body(target_uid: int | None) -> str:
+def _mission_body(target_uid: int | None, *, n_loaded: int, n_solvable: int) -> str:
     """Mission Control — every visual on one wall at small scale: expand any tile (⤢), reveal its
     underlying data table (▦ Data), and Play-all to step every animated chart in lockstep. Each
     tile hosts the SAME chart scripts/endpoints the dedicated pages use, so the session-wide
-    Target UID and Groups & Filters scope every tile automatically."""
+    Target UID and Groups & Filters scope every tile automatically.
+
+    ADR-0262: ``n_loaded`` / ``n_solvable`` are the ACTIVE population's loaded and analyzable
+    version counts. A cross-version tile below its threshold renders a degrade note INSTEAD of
+    its chart host, so its script early-returns and never fetches an API that would 400 — the
+    threshold mirrors each tile's own API: Bow Wave/CEI is a stored-date view (two LOADED
+    versions), Evolution and the two Quality tiles need two ANALYZABLE (CPM-solvable) versions."""
     target = target_uid if target_uid is not None else ""
+    need2_loaded = (
+        "Needs at least two loaded versions of the active project &mdash; "
+        "load another schedule update to activate this visual."
+    )
+    need2_solvable = (
+        "Needs at least two analyzable versions of the active project &mdash; "
+        "load another schedule update to activate this visual."
+    )
+    cei_note = need2_loaded if n_loaded < 2 else ""
+    solvable_note = need2_solvable if n_solvable < 2 else ""
 
     def tile(
         title: str,
@@ -7655,11 +7777,20 @@ def _mission_body(target_uid: int | None) -> str:
         controls: str = "",
         wide: bool = False,
         hint: str = "",
+        note: str = "",
     ) -> str:
         cls = "tile panel" + (" tile-wide" if wide else "")
         # operator 2026-07-08: every visual explains itself on hover over its NAME — what it
         # shows, an example, how to read it, and what to decide from it (sf-hint-wide callout)
         hint_attr = f' class=viz-hint data-sf-hint="{_e(hint)}"' if hint else ""
+        if note:
+            # degraded tile (ADR-0262): title + why + the Open link only — no chart host ids
+            # (the chart script early-returns), no steppers, no Data/Enlarge for a plain note.
+            # chart-note (NOT chart-host) so chartframe.js never adds a dead zoom toolbar.
+            return f"""<section class="{cls}">
+<div class=tile-head><h3{hint_attr}>{title}</h3>
+<span class=tile-actions><a href="{full_url}" class=btn-link>Open &#8599;</a></span></div>
+<div class=chart-note><p class=muted>{note}</p></div></section>"""
         return f"""<section class="{cls}">
 <div class=tile-head><h3{hint_attr}>{title}</h3>
 <span class=tile-actions>\
@@ -7692,6 +7823,7 @@ def _mission_body(target_uid: int | None) -> str:
                 "<div id=snapLabel class=muted></div><div id=ceiChart></div>",
                 hint="WHAT: where unfinished work piles up relative to each version's data date, stepped snapshot by snapshot, with the Current Execution Index (how much of the planned window's work was actually executed).\n\nEXAMPLE: each new version shows a taller hump of tasks packed just after the data date — work is being pushed ahead in a 'bow wave' instead of being finished.\n\nHOW TO READ: a stable, spread-out profile is healthy; a growing near-term hump that rolls forward version after version means replanning is deferring, not solving; CEI well below 1.0 means the team executes far less than each plan promises.\n\nDECIDE: whether the schedule is managed by slipping work windows (a classic health/manipulation red flag) and whether near-term commitments are credible.",
                 controls=steps("prevSnap", "autoPlay", "nextSnap"),
+                note=cei_note,
             ),
             tile(
                 "Forecast Drift",
@@ -7724,6 +7856,7 @@ def _mission_body(target_uid: int | None) -> str:
                 f'<div id=evoLabel class=muted></div><div id=evoChart data-target="{target}"></div>',
                 hint="WHAT: the driving path to the project finish (or your Target UID), version by version — which activities carry the schedule and how membership changes.\n\nEXAMPLE: the path ran through fabrication for four versions, then suddenly runs through software integration — either real progress or a logic change moved the drive.\n\nHOW TO READ: stable membership = a settled plan; churn every version = an unstable network; watch for activities that leave the path exactly when they start slipping (a manipulation signature).\n\nDECIDE: where management attention belongs now, and which path changes deserve a 'why did this change?' interrogation.",
                 controls=steps("prevEvo", "evoPlay", "nextEvo"),
+                note=solvable_note,
             ),
             # operator 2026-07-09: the Quality visuals sit NEXT TO Critical-Path Evolution in the
             # same grid (the separate Quality Control section left a mostly-empty row of dead
@@ -7737,12 +7870,14 @@ def _mission_body(target_uid: int | None) -> str:
                 "<label class=muted>Metric <select id=qualMetric></select></label>",
                 hint="WHAT: for the selected quality metric (missing logic, hard constraints, high float…), which specific activities offend, ranked, with a drill-down — across versions.\n\nEXAMPLE: 'Hard constraints' shows 12 offenders and the drill list is dominated by one subproject — that team is pinning dates instead of using logic.\n\nHOW TO READ: click a bar to list the offending activities (UIDs); recurring offenders across versions are structural, not accidental.\n\nDECIDE: exactly which activities to send back to the planner, and where quality problems concentrate.",
                 controls=steps("qualPrev", "qualPlay", "qualNext"),
+                note=solvable_note,
             ),
             tile(
                 "Quality Trend",
                 "/trend",
                 f'<div id=trendCharts data-target="{target}"></div>',
                 hint="WHAT: the DCMA-14 / schedule-quality metric scores tracked across every loaded version — on this wall each metric renders as its own tile below.\n\nEXAMPLE: missing-logic count falls from 40 to 5 in one update with no matching activity changes — links were bulk-added to pass the audit; verify they are real logic.\n\nHOW TO READ: gradual improvement is normal cleanup; step changes right before reviews are audit-chasing; deteriorating trends flag eroding schedule discipline.\n\nDECIDE: whether schedule quality is genuinely improving and which metric family to audit in depth.",
+                note=solvable_note,
             ),
         ]
     )
@@ -9930,7 +10065,7 @@ def _margin_dashboard_for(st: SessionState) -> MarginDashboard:
             a = st.analysis_for(key, raw)
         except CPMError:
             continue
-        versions.append((raw.source_file or raw.name, st.scope(raw), a.cpm))
+        versions.append((raw.source_file or raw.name, a.scoped, a.cpm))
     return compute_margin_dashboard(
         versions,
         target_uid=st.target_uid,
@@ -12193,7 +12328,7 @@ def _latest_solvable(st: SessionState) -> tuple[str, Schedule, CPMResult] | None
             analysis = st.analysis_for(key, raw)
         except CPMError:
             continue
-        chosen = (key, st.scope(raw), analysis.cpm)
+        chosen = (key, analysis.scoped, analysis.cpm)
     return chosen
 
 
@@ -12209,7 +12344,7 @@ def _sra_selected(st: SessionState) -> tuple[str, Schedule, CPMResult] | None:
         except CPMError:
             pass  # the chosen file no longer solves (e.g. filtered to nothing) -> fall back
         else:
-            return (key, st.scope(raw), analysis.cpm)
+            return (key, analysis.scoped, analysis.cpm)
     return _latest_solvable(st)
 
 
@@ -16249,6 +16384,7 @@ def _perf_version_block(
         hit = st._perf_memo.get(id(s))
         if hit is not None and hit[0] is s:
             return hit[1], hit[2], hit[3]
+        gen = (st._scope_gen, st.wipe_gen)
     critical = frozenset(effective_critical_set(s, c))
     cen_v = work_to_go_census(s, critical)
     flow_v = activity_flow(s)
@@ -16273,7 +16409,11 @@ def _perf_version_block(
     }
     truncated = cen_v.truncated or flow_v.truncated or bur_v.truncated
     with st._lock:
-        st._perf_memo[id(s)] = (s, critical, block, truncated)
+        # ADR-0263: the memo is identity-keyed, so it must die with its scope epoch — a store
+        # whose compute started under an older epoch (or before a wipe) is skipped; the result
+        # is still returned to ITS requester, but never memoised into the new epoch.
+        if (st._scope_gen, st.wipe_gen) == gen:
+            st._perf_memo[id(s)] = (s, critical, block, truncated)
     return critical, block, truncated
 
 

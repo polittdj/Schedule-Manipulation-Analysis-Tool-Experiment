@@ -92,7 +92,8 @@ def test_cui_marking_reflects_unclassified_mode() -> None:
 def test_dotted_reading_grid_behind_charts(client: TestClient) -> None:
     css = client.get("/static/base.css").text
     assert "--grid-dot" in css
-    assert ".chart-host,.chart{background-image:radial-gradient(" in css
+    # .chart-note added by ADR-0263: a degraded Mission tile keeps the same reading grid
+    assert ".chart-host,.chart,.chart-note{background-image:radial-gradient(" in css
 
 
 def test_nasa_command_banner_header(client: TestClient) -> None:

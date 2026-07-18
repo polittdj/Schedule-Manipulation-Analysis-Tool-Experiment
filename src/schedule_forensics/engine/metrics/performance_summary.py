@@ -127,7 +127,8 @@ def work_to_go_census(schedule: Schedule, critical_uids: frozenset[int]) -> Work
     to a month-index range arithmetically; each task adds +1/-1 deltas at its range ends and one
     prefix-sum pass builds every month — O(tasks + months), not O(months x tasks). Pure integer
     re-ordering of the same additions: every count is identical to the per-month scan it
-    replaces (pinned by tests/engine/test_performance_summary_census.py's equivalence test)."""
+    replaces (pinned by tests/engine/metrics/test_performance_summary.py::
+    test_bucketed_census_equals_the_per_month_scan_oracle)."""
     axis = month_axis(schedule)
     n = len(axis)
     status = schedule.status_date

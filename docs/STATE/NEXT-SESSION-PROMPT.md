@@ -9,8 +9,8 @@ disagrees with HANDOFF, HANDOFF wins.)
 You are resuming the **Schedule-Manipulation-Analysis-Tool** (a local, offline, CUI-safe forensic
 schedule-analysis tool; **POLARIS** in the UI). **Read `docs/STATE/HANDOFF.md` FIRST** — its top
 section is the current state and the NEXT queue (the SessionStart hook auto-injects it, so it is
-already in front of you). As of this file's last refresh that meant: `main` green at **v1.0.60**,
-highest ADR **0251**, full gate green (ruff / ruff format --check / mypy --strict / bandit exit 0 /
+already in front of you). As of this file's last refresh that meant: `main` green at **v1.0.69**,
+highest ADR **0263**, full gate green (ruff / ruff format --check / mypy --strict / bandit exit 0 /
 node --check / full pytest incl. the `parity` gate). The last landed work is the ADR-0251 PR
 (ignore-toggle copy truth + page-family alignment — the ADR-0250 queued operator decision,
 resolved as copy-only) — **confirm it merged** before starting; if it is still open, get it green
