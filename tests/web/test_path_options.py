@@ -127,6 +127,8 @@ def test_ignore_options_diverge_by_page_family_as_documented(client: TestClient)
     # and the active-options banner names the divergence from the source tools
     page = client.get("/driving-path?target=67&file=Project5.mspdi.xml&ignore_leveling=1").text
     assert "counterfactual view" in page and "will not match those tools" in page
-    # the mixed-basis disclosures (ADR-0251 verify): drill field columns + full-trace export
-    assert "added field columns (dates, floats" in page
-    assert "Exports the SSI-parity stored-date trace" in page
+    # ADR-0265 unified the bases the ADR-0251 disclosures used to describe: the drill hides
+    # the stored-basis columns, and the full-trace export mirrors the page (basis=resolve)
+    assert "hidden until the options are off" in page
+    assert "basis=resolve" in page
+    assert "mirrors the re-solved tiers" in page

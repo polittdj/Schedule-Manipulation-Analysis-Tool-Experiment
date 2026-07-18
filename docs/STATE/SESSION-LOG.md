@@ -7051,3 +7051,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **State:** v1.0.69 → **1.0.70**; **ADR-0264**; wheel + 9 installers in lockstep; HANDOFF
   rotated + this entry in the same commit. NEXT: ADR-0251 family-B unify → zero-margin SRA
   toggle → roles i18n catalog.
+
+## 2026-07-18d — family-B basis unification (ADR-0265; v1.0.71)
+
+- **Cycle:** PR #400 (ADR-0264) squash-merged at CI green (`8fce026`); branch restarted; the
+  ADR-0251-queued behavior work executed next.
+- **Did:** one basis per counterfactual page — /api/evolution honors the trace options (page
+  embeds data attrs, path_evolution.js forwards; /mission wall byte-identical);
+  /export/{fmt}/path gains basis=resolve (default stored byte-identical, pinned; the
+  /driving-path link mirrors the re-solved tiers, counterfactual-marked workbook title);
+  tiers drill + Excel drop solve-dependent columns under active options (screen JS filter +
+  note, server-side belt), input columns remain. Mixed-basis disclosures replaced by the
+  unified truth; ADR-0251 pin re-targeted.
+- **Verified:** failing tests first (5 gaps confirmed, 3 regression pins green), then 8/8 +
+  60 adjacent tests + updated pin; Chromium live-verified (fetch carries the option, notes
+  render, zero console errors). Family-A parity anchor untouched.
+- **State:** v1.0.70 → **1.0.71**; **ADR-0265**; wheel + 9 installers in lockstep; HANDOFF
+  rotated + this entry in the same commit. NEXT: zero-margin SRA toggle → roles i18n.

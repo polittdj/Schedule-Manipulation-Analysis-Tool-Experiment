@@ -54,8 +54,19 @@
     cols.forEach(function (f) { m[f.label] = f.on ? 1 : 0; });
     try { localStorage.setItem(COLS_KEY, JSON.stringify(m)); } catch (e) { /* n/a */ }
   }
+  // ADR-0265: these column values are SOLVED figures read from the BASE (stored-network)
+  // /api/analysis rows. With the counterfactual trace options active the panel's Tier/Slack
+  // come from a RE-SOLVED network, so offering these would mix two bases in one table —
+  // they are hidden until the options are off. Input columns (durations, %, WBS, resources,
+  // baselines, custom fields) are basis-independent and always remain.
+  var SOLVE_DEPENDENT = { "start": 1, "finish": 1, "total_float_days": 1, "is_critical": 1 };
+  var OPTIONED = !!(IGNORE_CONSTRAINTS || IGNORE_LEVELING);
+
   function buildCols(customLabels) {
-    cols = STANDARD.map(function (f) { return { key: f.key, label: f.label, on: f.on }; });
+    var standard = OPTIONED
+      ? STANDARD.filter(function (f) { return !SOLVE_DEPENDENT[f.key]; })
+      : STANDARD;
+    cols = standard.map(function (f) { return { key: f.key, label: f.label, on: f.on }; });
     (customLabels || []).forEach(function (lbl) {
       cols.push({ key: lbl, label: lbl, on: false, custom: true });
     });
@@ -135,6 +146,12 @@
         }));
       }
       bar.appendChild(colMount);
+      if (OPTIONED) {
+        bar.appendChild(el("span", {
+          class: "muted",
+          text: "Stored-schedule date/float columns are hidden while trace options are active — one basis per view (ADR-0265).",
+        }));
+      }
       var flt = el("input", { type: "search", placeholder: "Filter rows by any shown field" });
       flt.value = filterText;
       flt.addEventListener("input", function () { filterText = flt.value; render(); });
