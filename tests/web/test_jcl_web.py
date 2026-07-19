@@ -1,12 +1,14 @@
 """JCL panel + API (ADR-0269): the cost-loaded gate, honest 422, config persistence, the
-payload's joint statement, the SSI finish-marginal coherence at the web layer, and the SRA
-Excel export gaining the JCL sheets only when the file is cost-loaded."""
+payload's joint statement, the SSI finish-marginal coherence at the web layer, the SRA
+Excel export gaining the JCL sheets only when the file is cost-loaded, and the full
+import-path pipeline (a namespaced MSPDI file's costs open the gate and land exactly)."""
 
 from __future__ import annotations
 
 import datetime as dt
 import io
 import zipfile
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -161,3 +163,38 @@ def test_export_gains_jcl_sheets_only_when_cost_loaded() -> None:
     assert b"JCL joint sample" in blob
     bare = _export_blob(_client(costed=False))
     assert b"JCL - joint cost" not in bare  # a duration-only file exports no JCL figure
+
+
+# --- the real import path (fixture → /upload → importer → gate → JCL) -----------------
+
+MSPDI_COSTED = (
+    Path(__file__).resolve().parents[1] / "fixtures" / "mspdi" / "commercial_construction.xml"
+)
+
+
+def test_jcl_runs_through_the_real_mspdi_import_path() -> None:
+    """Full pipeline on the synthetic namespaced MSPDI fixture: /upload → the importer
+    lands Cost / ActualCost / Baseline-0 Cost on the model → the cost-loaded gate opens →
+    the JCL's deterministic EAC is the hand-summed figure. Per the fixture: UID 2 is
+    complete with actual cost 52,000 (its 50,000 baseline is superseded by the actual);
+    UID 4 is not started with an 800,000 baseline budget; every other task carries no
+    cost. EAC = 52,000 + 800,000 = 852,000 — no other value is acceptable (Law 2)."""
+    c = TestClient(create_app(SessionState()))
+    r = c.post(
+        "/upload",
+        files={"files": ("commercial_construction.xml", MSPDI_COSTED.read_bytes(), "text/xml")},
+    )
+    assert r.status_code in (200, 303)
+    page = c.get("/sra").text
+    assert "id=jclRun" in page  # the gate opened from IMPORTED costs alone
+    d = c.get("/api/sra/jcl?iterations=50").json()
+    assert d["deterministic"]["eac"] == 852000.0
+    assert d["provenance"]["sunk"] == 52000.0  # the completed task's recorded actual
+    assert d["provenance"]["completed"] == 1  # UID 2 (the only completed non-summary)
+    assert d["provenance"]["incomplete_costed"] == 1  # UID 4 carries the remaining budget
+    # the date axis is realigned to the stored plan finish (ADR-0123 realignment through
+    # the import path): the all-ML deterministic finish lands on the latest stored finish
+    assert d["deterministic"]["date"] == "2025-03-15"
+    # and the export carries the JCL sheets for this imported, cost-loaded file
+    blob = _export_blob(c)
+    assert b"JCL - joint cost" in blob
