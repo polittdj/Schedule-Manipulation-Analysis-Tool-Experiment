@@ -761,6 +761,11 @@ class SessionState:
     sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
     sra_use_risk_register: bool = True
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
+    # Monte-Carlo vs Latin Hypercube sampler (ADR-0271). "mc" is the byte-frozen default; "lhs"
+    # stratifies the copula draws for tighter convergence at the same iteration count. Centered
+    # LHS uses the stratum midpoints (fully deterministic, no within-stratum jitter).
+    sra_sampling: str = "mc"  # "mc" | "lhs"
+    sra_lhs_centered: bool = False
     # full pairwise/shared-driver correlation MATRIX inputs (ADR-0270). Empty → the scalar
     # blanket correlation above drives the run; non-empty over ≥2 uncertain tasks OVERRIDES it
     # and drives a multivariate Gaussian copula (a distinct mode). Pairwise rho may be negative.
@@ -3981,6 +3986,8 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
             correlation_matrix=_correlation_spec(st),
+            sampling=st.sra_sampling,
+            lhs_centered=st.sra_lhs_centered,
         )
         three_point = _ssi_three_point(st, sch)
         if zero_margin:
@@ -4036,6 +4043,8 @@ def create_app(
             "occurrence_mode": cfg.occurrence_mode,
             "use_risk_register": cfg.use_risk_register,
             "correlation": cfg.correlation,
+            "sampling": result.sampling,
+            "lhs_centered": cfg.lhs_centered,
             "margin_task_count": len(margin_uids),
             "zero_margin": zero_margin,
             "curve_basis": (
@@ -6508,6 +6517,8 @@ def create_app(
         occurrence_mode: str = Form("random_each"),
         correlation: float = Form(0.0),
         use_risks: str = Form(""),
+        sampling: str = Form("mc"),
+        lhs_centered: str = Form(""),
     ) -> RedirectResponse:
         st = session()
         st.sra_focus_uid = int(focus_uid) if focus_uid.strip().isdigit() else None
@@ -6516,6 +6527,8 @@ def create_app(
         )
         st.sra_correlation = min(1.0, max(0.0, correlation))
         st.sra_use_risk_register = use_risks in ("on", "true", "1")
+        st.sra_sampling = "lhs" if sampling == "lhs" else "mc"
+        st.sra_lhs_centered = lhs_centered in ("on", "true", "1")
         return RedirectResponse(url="/sra", status_code=303)
 
     @app.post("/sra/correlation-matrix")
@@ -6626,6 +6639,8 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
             correlation_matrix=_correlation_spec(st),
+            sampling=st.sra_sampling,
+            lhs_centered=st.sra_lhs_centered,
         )
         # offload the heavy Monte-Carlo to a worker process on big schedules (keeps the server
         # responsive for a concurrent Ask-the-AI call); byte-identical to an in-process run
@@ -6726,6 +6741,8 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
             correlation_matrix=_correlation_spec(st),
+            sampling=st.sra_sampling,
+            lhs_centered=st.sra_lhs_centered,
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
@@ -6925,6 +6942,8 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
             correlation_matrix=_correlation_spec(st),
+            sampling=st.sra_sampling,
+            lhs_centered=st.sra_lhs_centered,
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         result = run_maybe_offloaded(
@@ -6987,6 +7006,8 @@ def create_app(
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
             correlation_matrix=_correlation_spec(st),
+            sampling=st.sra_sampling,
+            lhs_centered=st.sra_lhs_centered,
         )
         result = run_maybe_offloaded(
             len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD,
@@ -13187,6 +13208,7 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         "iterations": result.iterations,
         "occurrence_mode": result.occurrence_mode,
         "correlation": result.correlation,
+        "sampling": result.sampling,
         "correlation_matrix": {
             "applied": result.correlation_matrix_applied,
             "repaired": result.correlation_matrix_repaired,
@@ -13270,6 +13292,7 @@ def _jcl_data(sch: Schedule, result: JCLResult) -> dict[str, object]:
         "target_uid": result.target_uid,
         "focus_name": focus,
         "iterations": result.iterations,
+        "sampling": result.sampling,
         "deterministic": {
             "date": result.deterministic_finish_date,
             "eac": result.deterministic_eac,
@@ -13433,6 +13456,8 @@ def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
         "occurrence_mode": st.sra_occurrence_mode,
         "use_risk_register": st.sra_use_risk_register,
         "correlation": st.sra_correlation,
+        "sampling": st.sra_sampling,
+        "lhs_centered": st.sra_lhs_centered,
         # legacy global triangular (fractions of each activity's remaining duration) + per-activity
         # 3-point overrides in working minutes — the legacy Monte-Carlo's inputs
         "triangular": {"low": st.sra_low, "ml": st.sra_ml, "high": st.sra_high},
@@ -13485,6 +13510,8 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
         st.sra_correlation = min(1.0, max(0.0, float(data.get("correlation", 0.0))))  # type: ignore[arg-type]
     except (TypeError, ValueError):
         st.sra_correlation = 0.0
+    st.sra_sampling = "lhs" if data.get("sampling") == "lhs" else "mc"
+    st.sra_lhs_centered = bool(data.get("lhs_centered", False))
     # legacy global triangular (fractions of remaining duration); absent in a v1 setup -> screening
     # defaults, so a load is a clean, complete reset of every model's inputs
     lo, ml, hi = 0.9, 1.0, 1.10
@@ -14244,6 +14271,9 @@ def _ssi_panel(st: SessionState) -> str:
     )
     rand_ck = " checked" if st.sra_occurrence_mode == "random_each" else ""
     exact_ck = " checked" if st.sra_occurrence_mode == "exact_overall" else ""
+    mc_ck = " checked" if st.sra_sampling != "lhs" else ""
+    lhs_ck = " checked" if st.sra_sampling == "lhs" else ""
+    centered_ck = " checked" if st.sra_lhs_centered else ""
     iters = "".join(
         f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
         for n in (500, 1000, 2000, 5000)
@@ -14265,6 +14295,12 @@ ADR-0005).</p>
  Exact percentage overall &#9432;</label>
 <label title="Blanket correlation between the task duration distributions (0 = independent; 0.3&ndash;0.5 typical) — offsets the cancelling of extreme high/low results.">Correlation
  <input type=number name=correlation min=0 max=1 step=0.05 value="{st.sra_correlation:g}" style="width:60px"></label>
+<label title="Monte-Carlo draws each iteration independently at random.">
+ <input type=radio name=sampling value=mc{mc_ck}> Monte-Carlo &#9432;</label>
+<label title="Latin Hypercube stratifies the draws (one sample per equal-probability band per input), converging to the same distribution in far fewer iterations.">
+ <input type=radio name=sampling value=lhs{lhs_ck}> Latin Hypercube &#9432;</label>
+<label title="Centered LHS uses each stratum's midpoint (fully deterministic, no within-band jitter) — a smoother curve at low iteration counts.">
+ <input type=checkbox name=lhs_centered value=on{centered_ck}> Centered &#9432;</label>
 <label><input type=checkbox name=use_risks value=on{" checked" if st.sra_use_risk_register else ""}>
  Use risk register</label>
 <button type=submit>Save run options</button></form>
@@ -14305,6 +14341,31 @@ cancelling effect) and reads falsely optimistic &mdash; not recommended for a fo
 defend.</p>
 <p class=muted>Mechanics: a single-factor Gaussian copula (one shared draw per iteration), std-lib only;
 risk firing is a separate stream, and <b>r&nbsp;=&nbsp;0 reproduces the independent run exactly</b>.</p></details>
+<details class=explainer><summary><b>Monte-Carlo vs Latin Hypercube &mdash; which sampler should I use?</b></summary>
+<p><b>What they are.</b> Both run the <i>same</i> model &mdash; the same three-point durations, the same
+correlation, the same risk register &mdash; and differ only in <b>how the random draws are chosen</b>.
+<b>Monte-Carlo (MC)</b> draws every iteration purely at random. <b>Latin Hypercube (LHS)</b> divides each
+input's probability range into <i>N</i> equal-probability bands (one per iteration) and takes exactly one
+draw from each band, then shuffles which band pairs with which across inputs. Every region of the
+distribution &mdash; especially the tails &mdash; is guaranteed representation instead of being left to
+chance.</p>
+<p><b>Why it matters.</b> Pure MC can clump: by luck a 1,000-run may over-sample the middle and miss the
+extreme tail, so the P80/P90 wobble from run to run. LHS removes that clumping, so the percentiles
+<b>converge to the same answer in far fewer iterations</b> (commonly several-fold tighter for the same
+count). The distribution it converges to is <b>identical</b> to MC's &mdash; LHS is a variance-reduction
+technique, not a different model, so it never changes the honest answer, only how fast you reach it.</p>
+<p><b>Centered.</b> Off (default): the one draw inside each band is random, so repeated runs vary slightly
+but average out. On: each band contributes its <b>midpoint</b> &mdash; fully deterministic and the smoothest
+curve at low iteration counts, at the cost of never sampling the very edge of a band.</p>
+<ul>
+<li><b>Monte-Carlo</b> &mdash; the classic, matches the reference-tool convention; use it when you want the
+textbook method or are reconciling against another tool's MC run.</li>
+<li><b>Latin Hypercube</b> &mdash; <b>recommended</b> when you want stable P-values at a lower iteration
+count (large schedules, quick what-ifs); same distribution, less noise.</li>
+</ul>
+<p class=muted>Mechanics: LHS stratifies on a dedicated, disjoint RNG stream, then feeds the same
+Gaussian-copula composition (LHS-then-Cholesky under a correlation matrix), std-lib only. With no
+uncertainty anywhere it falls back to the deterministic finish exactly like MC.</p></details>
 <h3>Risk Factors table</h3>
 <form action="/sra/factor-table" method=post>
 <table style="width:auto"><tr><th>Factor</th><th>% subtract (Best Case)</th><th>% add (Worst Case)</th></tr>

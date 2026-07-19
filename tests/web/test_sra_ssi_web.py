@@ -77,6 +77,39 @@ def test_ssi_run_config_persists(client: TestClient) -> None:
     assert j["correlation"] == 0.4
 
 
+def test_ssi_panel_offers_the_sampler_choice(client: TestClient) -> None:
+    """The run-config form carries the Monte-Carlo / Latin Hypercube radio + a Centered checkbox and
+    an explainer (ADR-0271); MC is the default checked option."""
+    page = client.get("/sra").text
+    assert "name=sampling" in page
+    assert "value=mc" in page and "value=lhs" in page
+    assert "name=lhs_centered" in page
+    assert "Latin Hypercube" in page
+    # MC is the default sampler → its radio is pre-checked, LHS is not
+    assert re.search(r"name=sampling value=mc checked", page)
+    assert not re.search(r"name=sampling value=lhs checked", page)
+
+
+def test_ssi_sampling_persists_and_echoes_in_the_payload(client: TestClient) -> None:
+    client.post(
+        "/sra/ssi-run-config",
+        data={
+            "focus_uid": "7",
+            "occurrence_mode": "random_each",
+            "correlation": "0.3",
+            "sampling": "lhs",
+            "lhs_centered": "on",
+        },
+    )
+    # the selection sticks in the rendered form...
+    page = client.get("/sra").text
+    assert re.search(r"name=sampling value=lhs checked", page)
+    assert re.search(r"name=lhs_centered value=on checked", page)
+    # ...and the run's provenance echoes the sampler that produced the curve
+    j = client.get("/api/sra/ssi?iterations=200").json()
+    assert j["sampling"] == "lhs"
+
+
 def test_api_ssi_returns_focus_payload_and_matrices(client: TestClient) -> None:
     j = client.get("/api/sra/ssi?iterations=200").json()
     assert j["iterations"] == 200

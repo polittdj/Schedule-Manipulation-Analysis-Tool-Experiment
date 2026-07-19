@@ -7202,3 +7202,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (engine + scorecard level). No new metric math, no parity impact, no new ADR (highest stays
   **ADR-0270**). Wheel + 9 installers regenerated in lockstep. A Latin Hypercube design Workflow
   (Hulett #11) is running in parallel for the next item.
+
+- **Session (2026-07-19c, Ultracode cont.):** implemented **Latin Hypercube sampling (LHS)** as a
+  distinct opt-in variance-reduction mode on the SRA/JCL Monte-Carlo (**ADR-0271**, #331 Hulett
+  #11) — designed via a design Workflow, with the lead **independently re-verifying every
+  load-bearing numeric** against a std-lib prototype (`scratchpad/lhs_verify.py`) BEFORE writing
+  engine code (verify-everything protocol): Φ⁻¹ finite at the clamped ±7.03 edges, exact
+  one-sample-per-stratum stratification, plan RNG stream disjoint from the iteration streams, and
+  the ~45× estimator-variance reduction. Delivered (in `sra.py`, no new module — LHS is a mode of
+  the existing shared sampler): `_phi_inv` (std-lib probit, clamped), `LatinHypercubePlan` +
+  `_lhs_plan` (stratified columns on the dedicated `_lhs_seed(seed)` stream, `centered` =
+  midpoints), `_build_lhs_plan` (column count exactly matches each correlation branch's draw
+  count), `_lhs_overrides` (plan columns replace the RNG draws in the exact draw order, copula
+  composition unchanged — LHS-then-Cholesky under a matrix). `_iteration_duration_overrides` gains
+  kw-only `plan`/`iteration`; **`plan is None` (the default) runs the exact MC statements
+  byte-for-byte** — the freeze holds. `SRAConfig` +`sampling`/`lhs_centered`; SSIResult/JCLResult
+  +`sampling` (default "mc", appended last, inert to the finish-cdf pin). Both engines build the
+  plan from identical uids/three/prepared so the **ssi==jcl finish-marginal equality holds under
+  LHS** for all three branches. Web: SessionState `sra_sampling`/`sra_lhs_centered` thread through
+  POST /sra/ssi-run-config into all 5 SSI/JCL SRAConfig builders (NOT the legacy compute_sra
+  path); a Monte-Carlo/Latin Hypercube radio + Centered checkbox + explainer on `/sra`; payload
+  echo (`_ssi_data`/`_jcl_data`/`/api/sra`); Save/Load persistence; i18n +"Centered" ×4 langs.
+  Verified: `tests/engine/test_lhs.py` (27, incl. the >5×/≈45× variance-reduction pin and the
+  ssi==jcl-under-LHS matrix over triangular/pert × r=0/0.3 × centered) + `test_sra_ssi_web.py` +3;
+  engine+web SRA suites green; ruff + mypy (116 files) + bandit clean. v1.0.76 → **1.0.77**, wheel
+  + 9 installers regenerated in lockstep (17 installer tests green). Highest ADR **ADR-0271**.
+  Next file-free item: the risk-critical Gantt tint (Hulett #12).
