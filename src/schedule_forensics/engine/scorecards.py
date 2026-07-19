@@ -289,7 +289,9 @@ def compute_nasa_stat(schedule: Schedule, cpm: CPMResult, audit: ScheduleAudit) 
             NA if oos is None or not oos.evaluated else _zero_bar(oos.count),
             "not evaluated" if oos is None else _pct(oos.count, oos.population),
             "Logic-integrity check (engine/metrics/logic_integrity)",
-            (),
+            # drill-down: the activities behind the offending edges (the only scored, FAIL-capable
+            # STAT line that previously shipped no offenders — the UIDs are computed upstream).
+            oos.offender_uids if oos is not None else (),
         ),
         ScorecardCheck(
             "actuals_after_status",
