@@ -38,8 +38,8 @@ _VALID = {PASS, FAIL, NA}
 
 def test_out_of_sequence_scorecard_line_drills_into_offenders() -> None:
     """The out_of_sequence STAT line is scored (FAIL-capable); when it FAILs it must now carry the
-    offending activity UIDs for drill-down — previously it shipped none, the only scored FAIL-capable
-    line in any scorecard without offenders (the #331 scorecard-audit fix)."""
+    offending activity UIDs for drill-down — previously it shipped none, the only scored,
+    FAIL-capable line in any scorecard without offenders (the #331 scorecard-audit fix)."""
     mon = dt.datetime(2025, 1, 6, 8, 0)
     pred = Task(
         unique_id=1,
