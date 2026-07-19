@@ -466,6 +466,7 @@ title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integri
 </header>
 <main>{{ banner }}{{ body }}</main><script src="/static/heartbeat.js"></script>
 <script src="/static/chartframe.js"></script>
+<script src="/static/legend_toggle.js"></script>
 <script src="/static/target.js"></script>
 <script src="/static/globe.js"></script>
 <script src="/static/sysmon.js"></script>

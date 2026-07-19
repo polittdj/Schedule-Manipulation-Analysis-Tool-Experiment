@@ -1,46 +1,40 @@
-# Handoff — 2026-07-19g (post-#417 audit hardening + Mission Control play/stop fix; v1.0.82; highest ADR 0275)
+# Handoff — 2026-07-19h (interactive legends phase 1 — SFLegend + trend charts; v1.0.83; highest ADR 0276)
 
-> ## STATUS (current) — operator (after merging #417): "continue [the read-only Ultracode audit] AND address the Mission Control play/stop bug + interactive legends." This session ships the audit hardening + the play/stop fix as **v1.0.82**; the interactive-legend feature is scoped as the phased **NEXT** (see below). Highest ADR **0275**.
+> ## STATUS (current) — operator (after merging #418): "do all you can without my files" → picked up the operator's earlier **interactive-legend** ask. **Phase 1 shipped as v1.0.83 (ADR-0276):** a reusable, animation-safe `SFLegend` toggle module + its first adopter, the `trend.js` multi-series charts (the CEI-across-periods chart the operator screenshotted). Remaining charts adopt the same convention in phased follow-ups. Highest ADR **0276**.
 >
-> - **Read-only Ultracode audit of merged #417 (ADR-0274)** ran (4 dims, adversarial verify). Lead
->   reconciled + fixed the real findings:
->   - **M1 (medium, 2-reviewer + lead repro):** a **summary / inactive** monitor passed the
->     augmentation gate (built from ALL tasks) but is absent from `compute_cpm().timings` / the
->     override map (non-summary AND active) → finish-metric **KeyError aborted the whole SSI run**
->     (422); duration-metric **silently read 0** → wrong plan mix reported `applied=True` (Law-2 silent
->     wrong number). FIX: gate the monitor + plan endpoints on `non_summary(schedule)` in
->     `_augment_with_conditionals`; add `is_active` to the web `_valid`. Inert + disclosed instead.
->     +3 engine regression tests.
->   - **L5:** `/sra/conditional` `_uid` used `isdigit()` (admits `--5`, `²` → 500). FIX: `int()` +
->     ValueError guard. **M2/H1/M3 (tests):** strengthened the tautological which-plan-wins web
->     assert (known-side, threshold 0 → Plan B 100%); added the missing **DOCX** disclosure test;
->     added a **Save/Load fidelity** round-trip test (metric/trip_when/threshold/plan durations).
-> - **Play/stop bug (Mission Control) — FIXED (ADR-0275).** Root cause: the master "Play all" steps
->   every chart by programmatically clicking their Next buttons; a per-chart Stop only cleared that
->   chart's own timer, so the master kept stepping it ("hit stop, kept playing", worst when enlarged).
->   FIX: a shared **`window.SFPlayAll`** coordinator in `chartframe.js` — masters (`mission.js`,
->   `trend.js #sfPlayAll`) register their `stop()`, and a **capture-phase** document listener stops
->   every master on a **TRUSTED** user click on any per-chart animation control. The master's own
->   `element.click()` is `isTrusted=false`, so it never stops itself (the load-bearing distinction).
->   Verified by a Node harness (`tests/web/js/playall_harness.mjs` + `test_playall_js.py`).
-> - **Verified:** full local gate green (ruff, format, mypy 116, bandit exit 0, node, pytest — engine
->   conditional 14 + ssi-web + playall). v1.0.81 → **1.0.82**, wheel + 9 installers in lockstep.
+> - **What it does:** click a legend entry on a (wired) chart to **show/hide that series**, plus a
+>   **show-all/none** control. "For instance, on CEI, choose whether you're looking at Tasks vs
+>   Milestones" — the operator's exact ask.
+> - **Module (`static/legend_toggle.js`, `window.SFLegend`)** — generic + opt-in by convention:
+>   series SVG carry `data-series="<key>"`, legend entries carry `data-series-toggle="<key>"`, an
+>   optional all/none control carries `data-series-all`. ONE delegated document click listener (+
+>   Enter/Space) toggles `display` on the matching series within the entry's **scope** (smallest
+>   ancestor holding both — trend's `.chart` wrap), so charts on a page are independent.
+>   **Animation-safe:** a **lazy per-scope MutationObserver** re-applies the hidden set after each
+>   frame redraw (the steppers rebuild their series SVG every frame) and disconnects when nothing is
+>   hidden. Air-gap/CSP-safe; **Law-2 honest-N:** it only styles the on-screen SVG (a view filter),
+>   never removes data — the hidden data-table / Excel export are untouched.
+> - **First adopter (`trend.js`):** `legend(wrap, items, {toggle: series.length>1})` emits the
+>   toggle markup + all/none; the multi-series line draw tags each mark (`polyline`/`circle`/value
+>   `text`) with `data-series="<label>"` (re-tagged every frame). Single-series charts don't opt in.
+>   CSS (`app.css`): pointer/focus affordance + dim/strike an OFF series.
+> - **Verified:** `tests/web/js/legend_toggle_harness.mjs` (+`test_legend_toggle_js.py`) — hide/show,
+>   per-scope independence, all/none, and the load-bearing **re-drawn element inherits the hidden
+>   state**; `tests/web/test_legend_toggle_wiring.py` — module loaded app-wide + serves, trend.js
+>   emits the opt-in markup + tags its series. Full local gate green (ruff, format, mypy 116, bandit
+>   exit 0, node, pytest). v1.0.82 → **1.0.83**, wheel + 9 installers lockstep.
 > - **Standing rule (from #412):** update `docs/STATE/LESSONS-LEARNED.md` DAILY — first-class state.
-> - **State:** v1.0.82; **ADR-0275** highest; wheel + 9 installers lockstep. Branch
->   `claude/conditional-branching-contingency-bi6g00` (harness-designated; restarted from merged main).
->   This session's PR carries the audit hardening + play/stop fix.
-> - **NEXT: interactive legends (operator ask, phased UI work — NOT yet built).** "Click a legend
->   entry on ANY chart to show/hide that series, plus all/none, on ALL charts/pages." Architecture
->   finding: there is **NO shared legend helper** — ~18 chart modules each hand-roll their legend
->   (`trend.js::legend`, `curves.js::buildLegend`, `performance.js::legend`, `path_evolution.js::legend`,
->   `margin_dashboard.js::legend`, `sra_grid.js::renderLegend`, `dashboard.js::legend`, cei.js inline,
->   …), and a series toggle needs each chart's series SVG elements TAGGED with a key. Per
->   DESIGN-SYSTEM.md ("never big-bang; one page shell per PR") this is a **phased** rollout: build one
->   reusable `SFLegend` toggle module (convention: `data-series` on series elements +
->   `data-series-toggle` on legend swatches + an all/none control, wired generically in the shared
->   layer), then adopt it chart-by-chart starting with **trend.js** (the CEI-across-periods chart the
->   operator screenshotted) → curves/margin → the rest. Also still OWED by the operator: ADR-0261
->   PowerShell crash log + large dataset; ADR-0258 Claude-Design portfolio prompt.
+> - **State:** v1.0.83; **ADR-0276** highest; wheel + 9 installers lockstep. Branch
+>   `claude/conditional-branching-contingency-bi6g00` (harness-designated; restarted from merged main
+>   e0ec367 = v1.0.82 #418). This session's PR carries the legend phase 1.
+> - **NEXT: interactive legends phase 2+ (roll the SFLegend convention out chart-by-chart).** The
+>   mechanism is generic — a chart adopts it by adding `data-series` to its series marks +
+>   `data-series-toggle` to its legend entries (+ `data-series-all`), no per-chart toggle logic. Order
+>   (one focused PR each per DESIGN-SYSTEM "never big-bang"): the OTHER trend.js chart types
+>   (stacked/segments/groups at the remaining `legend(...)` call sites) → `curves.js::buildLegend` →
+>   `margin_dashboard.js` / `performance.js` → `path_evolution.js` → `cei.js` → `dashboard.js` →
+>   `sra_grid.js`. Also still OWED by the operator: ADR-0261 PowerShell crash log + large dataset;
+>   ADR-0258 Claude-Design portfolio prompt. The file-free #331 Hulett backlog remains DONE.
 
 # (prior) handoffs — archived
 

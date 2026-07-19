@@ -317,7 +317,8 @@
   }
 
   // a small color-key legend row appended under the chart (rect/line swatch + label)
-  function legend(wrap, items) {
+  function legend(wrap, items, opts) {
+    var toggle = !!(opts && opts.toggle); // opt-in: interactive show/hide per series (ADR-0276)
     var row = document.createElement("div");
     row.className = "chart-legend";
     items.forEach(function (it) {
@@ -331,8 +332,25 @@
       cell.className = "chart-legend-item";
       cell.appendChild(sw);
       cell.appendChild(lab);
+      if (toggle) {
+        // clicking the entry shows/hides the SVG series tagged data-series="<key>" (SFLegend wires it)
+        cell.setAttribute("data-series-toggle", it.key || it.label);
+        cell.setAttribute("role", "button");
+        cell.setAttribute("tabindex", "0");
+        cell.setAttribute("aria-pressed", "true");
+        cell.title = "Show / hide this series";
+      }
       row.appendChild(cell);
     });
+    if (toggle && items.length > 1) {
+      var all = document.createElement("button");
+      all.type = "button";
+      all.className = "chart-legend-all linkbtn";
+      all.setAttribute("data-series-all", "1");
+      all.textContent = "all / none";
+      all.title = "Show every series, or hide them all";
+      row.appendChild(all);
+    }
     wrap.appendChild(row);
   }
 
@@ -462,17 +480,21 @@
         return true;
       }
       series.forEach(function (s) {
+        // tag every mark of this series with its key so the interactive legend can show/hide it
+        // (SFLegend/ADR-0276); the tag re-attaches each animation frame since the layer is rebuilt.
         var pts = [];
         s.values.forEach(function (v, i) { if (v != null && i <= k) pts.push(x(i) + "," + y(v)); });
         if (pts.length) {
           layer.appendChild(svgEl("polyline", {
             points: pts.join(" "), fill: "none", stroke: s.color, "stroke-width": 2.5,
-            "class": "sf-curve-line", pathLength: "1",
+            "class": "sf-curve-line", pathLength: "1", "data-series": s.label,
           }));
         }
         s.values.forEach(function (v, i) {
           if (v != null && i <= k) {
-            var dot = svgEl("circle", { cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: s.color });
+            var dot = svgEl("circle", {
+              cx: x(i), cy: y(v), r: i === k ? 5 : 4, fill: s.color, "data-series": s.label,
+            });
             var dtt = svgEl("title", {});  // hover call-out (always present — the value's home)
             dtt.textContent = labels[i] + " · " + s.label + ": " + v.toFixed(2);
             dot.appendChild(dtt);
@@ -482,6 +504,7 @@
             if (labelFits(x(i), ly)) {
               var val = svgEl("text", {
                 x: x(i), y: ly, "text-anchor": "middle", fill: "var(--ink)", "font-size": 10,
+                "data-series": s.label,
               });
               val.textContent = v.toFixed(2);
               layer.appendChild(val);
@@ -493,7 +516,9 @@
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
     wrap.appendChild(svg);
-    legend(wrap, series.map(function (s) { return { color: s.color, label: s.label }; }));
+    legend(wrap, series.map(function (s) { return { color: s.color, label: s.label }; }), {
+      toggle: series.length > 1, // multi-series charts get click-to-show/hide legends (ADR-0276)
+    });
     if (window.SFA11y) {
       wrap.appendChild(SFA11y.table(
         title + " — data",
