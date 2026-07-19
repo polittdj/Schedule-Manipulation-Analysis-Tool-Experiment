@@ -7300,3 +7300,40 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   finishes under independent firing) + 2 web tests (gapped save/load → 3 distinct ids all applied;
   XLSX names the branch). Full local gate green. Wheel + 9 installers regenerated in lockstep.
   Highest ADR stays **ADR-0273**.
+
+- **Session (2026-07-19g, Ultracode cont. — Hulett #9 conditional branching):** operator: "provide
+  the PowerShell to reflect current state, then continue the autonomous build on the harness branch
+  `claude/conditional-branching-contingency-bi6g00`, Opus Ultracode ON, do all you can without my
+  files." Confirmed #411/#414/#415/#416 all merged; restarted the branch from merged main c58e14a
+  (v1.0.80). Read #331 + the Hulett-deck comment: **#9 conditional branching** is the LAST
+  non-deferred item. **Prototype-verified BEFORE build** (`scratchpad/cond_branch_verify.py`, 15
+  checks vs the real `compute_cpm`): no-op augmentation (both plan fragnets zero → byte-identical
+  base), **monitor-finish invariance** (finish-metric probe reads the monitor with zero circularity
+  since it's upstream of its branch), exact plan shift, which-plan-wins fraction == raw threshold
+  crossing for both metrics, plans-on-different-ties + merge bias. Built **ADR-0274**: engine
+  (`BranchPlan`/`ConditionalBranch`/`SSIConditionalStat`, `_augment_with_conditionals` all-or-nothing
+  + same-tie chaining after #8's augmentation, `_conditional_draws` disjoint stream,
+  `_conditional_trips`, a probe solve only for finish-metric conditionals, `SSIResult.conditionals`,
+  byte-frozen when none) + web (`sra_conditionals`, `POST /sra/conditional`, a two-fieldset editor,
+  `conditionals=` threaded into all SSI call sites, a "Conditional-branch outcomes" table, Save/Load
+  with dense id regeneration C1..Cn, XLSX/DOCX disclosure). A shadow-variable bug (the per-iteration
+  `plan` reassignment clobbered the LHS-plan var passed to the sampler) was caught by the new tests
+  and fixed by renaming to `chosen_plan`. Verified: +11 engine tests + 6 web tests; broader SRA/SSI/
+  JCL suite (306) green; full local gate green (ruff, format, mypy 116, bandit, node, pytest).
+  v1.0.80 → **1.0.81**, wheel + 9 installers in lockstep. Highest ADR **ADR-0274**. **With #9 done
+  the file-free #331 backlog is COMPLETE** — awaiting the 3 OWED operator inputs (ADR-0261 PowerShell
+  crash log + large dataset; ADR-0258 Claude-Design portfolio prompt).
+
+- **Session (2026-07-19g, cont.) — #417 CI fix (workflow-corrupted commit + latent bandit issues):**
+  the initial #9 commit (f935a6e) unexpectedly captured the **class-less baseline `sra.py`** because a
+  background audit-workflow agent had `git checkout origin/main -- sra.py` in the pre-`git add`
+  window; CI failed at mypy (8 `has no attribute`). Stopped the workflow, hard-reset `sra.py` to the
+  pinned baseline, re-applied every edit deterministically, and re-verified (byte-freeze + same-tie
+  chaining self-checks + 40 conditional/SSI tests). The forced clean rebuild also surfaced two latent
+  issues masked by a `bandit | tail; echo $?` measurement bug (reported tail's exit, not bandit's):
+  two bare `assert`s (B101 — replaced with `raise … # pragma: no cover`, matching the src zero-assert
+  convention) and a B608 `select…from` false positive in the conditional editor's HTML (reworded
+  "offset from project start" → "offset into the project"). Wheel + 9 installers rebuilt from the
+  corrected source (lockstep re-verified). Full local gate re-run to green. Lessons logged
+  (LESSONS-LEARNED cont. 5): never run working-tree-mutating agents concurrently with a commit;
+  commit before auditing; capture a tool's own exit code, not a pipe's.

@@ -470,3 +470,189 @@ def test_sra_ssi_js_is_air_gapped(client: TestClient) -> None:
     urls = [u for u in re.findall(r"https?://[^\s\"')]+", js) if "www.w3.org" not in u]
     assert not urls, f"external URL in sra_ssi.js: {urls}"
     assert not re.findall(r"""["'(]//[^\s"'<>)]+""", js)
+
+
+# --- conditional branching (ADR-0274, Hulett #9) -----------------------------------------
+
+
+def test_ssi_panel_offers_conditional_branches(client: TestClient) -> None:
+    """ADR-0274: the SSI panel carries the conditional-branch (contingency) editor."""
+    page = client.get("/sra").text
+    assert "Conditional branches" in page
+    assert 'action="/sra/conditional"' in page
+    assert "name=monitor_uid" in page and "name=metric" in page and "name=threshold" in page
+    assert "name=a_after" in page and "name=b_after" in page  # both plan ties
+    assert "No conditional branches defined." in page  # empty state before any add
+
+
+def test_conditional_add_persists_and_reports_which_plan_wins(client: TestClient) -> None:
+    """Adding a contingency on a driving FS tie lists it, and the SSI run reports it applied with
+    the two plan-win fractions summing to 100% (exactly one plan executes each iteration)."""
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "OffTheShelf",
+            "monitor_uid": str(a),
+            "metric": "duration",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": str(a),
+            "a_before": str(b),
+            "a_low": "2",
+            "a_ml": "3",
+            "a_high": "5",
+            "b_after": str(a),
+            "b_before": str(b),
+            "b_low": "8",
+            "b_ml": "10",
+            "b_high": "15",
+        },
+    )
+    assert "OffTheShelf" in client.get("/sra").text  # listed
+    j = client.get("/api/sra/ssi?iterations=200").json()
+    assert j["conditionals"], "the run payload surfaces the conditional"
+    cs = j["conditionals"][0]
+    assert cs["applied"] is True and cs["name"] == "OffTheShelf"
+    assert abs(cs["plan_a_pct"] + cs["plan_b_pct"] - 100.0) < 0.11  # exactly one plan per iteration
+
+
+def test_conditional_on_missing_endpoints_is_rejected(client: TestClient) -> None:
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "Nowhere",
+            "monitor_uid": "999999",
+            "metric": "duration",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": "999999",
+            "a_before": "888888",
+            "a_low": "1",
+            "a_ml": "1",
+            "a_high": "1",
+            "b_after": "999999",
+            "b_before": "888888",
+            "b_low": "1",
+            "b_ml": "1",
+            "b_high": "1",
+        },
+    )
+    assert "Nowhere" not in client.get("/sra").text  # non-existent activities → add rejected
+
+
+def test_conditional_clear_removes_all(client: TestClient) -> None:
+    a, b = _fs_tie(client, driving=False)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "TmpCond",
+            "monitor_uid": str(a),
+            "metric": "duration",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": str(a),
+            "a_before": str(b),
+            "a_low": "1",
+            "a_ml": "1",
+            "a_high": "1",
+            "b_after": str(a),
+            "b_before": str(b),
+            "b_low": "2",
+            "b_ml": "2",
+            "b_high": "2",
+        },
+    )
+    assert "TmpCond" in client.get("/sra").text
+    client.post("/sra/conditional", data={"action": "clear"})
+    assert "No conditional branches defined." in client.get("/sra").text
+
+
+def test_conditional_ids_survive_gapped_save_load_without_collision(client: TestClient) -> None:
+    """ADR-0274: like #8's branches, a loaded conditional whose id has a gap (only ``C5`` survives)
+    is regenerated densely so ``sra_conditional_seq == len`` stays collision-free — a gapped load
+    plus an add yields two DISTINCT ids."""
+    import json
+
+    a, b = _fs_tie(client, driving=False)
+    blob = json.dumps(
+        {
+            "setup_version": 2,
+            "conditionals": [
+                {
+                    "id": "C5",
+                    "name": "KeptCond",
+                    "monitor_uid": a,
+                    "metric": "duration",
+                    "threshold_minutes": 480,
+                    "trip_when": "at_or_above",
+                    "plan_a": {"after_uid": a, "before_uid": b, "low": 480, "ml": 480, "high": 480},
+                    "plan_b": {"after_uid": a, "before_uid": b, "low": 960, "ml": 960, "high": 960},
+                },
+            ],
+        }
+    )
+    client.post("/sra/ssi/load", files={"setup": ("s.json", blob.encode(), "application/json")})
+    assert "KeptCond" in client.get("/sra").text  # loaded with a regenerated id
+    c, d = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "AddedCond",
+            "monitor_uid": str(c),
+            "metric": "duration",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": str(c),
+            "a_before": str(d),
+            "a_low": "1",
+            "a_ml": "1",
+            "a_high": "1",
+            "b_after": str(c),
+            "b_before": str(d),
+            "b_low": "2",
+            "b_ml": "2",
+            "b_high": "2",
+        },
+    )
+    j = client.get("/api/sra/ssi?iterations=100").json()
+    ids = [cs["id"] for cs in j["conditionals"]]
+    assert len(ids) == 2 and len(set(ids)) == 2  # two DISTINCT dense ids — no collision
+
+
+def test_sra_export_discloses_conditional_branches(client: TestClient) -> None:
+    """ADR-0274: a conditional shifts the exported percentiles, so the XLSX hand-out must disclose
+    the contingency setup + which-plan-wins outcomes (an undocumented modeled input is
+    unreproducible)."""
+    import io
+    import zipfile
+
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "CondExport",
+            "monitor_uid": str(a),
+            "metric": "finish",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": str(a),
+            "a_before": str(b),
+            "a_low": "2",
+            "a_ml": "3",
+            "a_high": "5",
+            "b_after": str(a),
+            "b_before": str(b),
+            "b_low": "8",
+            "b_ml": "10",
+            "b_high": "15",
+        },
+    )
+    resp = client.get("/export/xlsx/sra")
+    assert resp.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+        text = b"".join(z.read(n) for n in z.namelist() if n.endswith(".xml")).decode(
+            "utf-8", "ignore"
+        )
+    assert "Conditional branches" in text  # the setup row + the dedicated table
+    assert "CondExport" in text  # the conditional itself is named in the export

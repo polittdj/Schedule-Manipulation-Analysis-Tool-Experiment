@@ -435,6 +435,63 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 5) — an adversarial-audit WORKFLOW corrupted my working tree mid-commit; and a piped `$?` hid a real bandit failure
+- **The incident.** After the local gate passed on #9 (v1.0.81) I launched a background multi-agent
+  **audit workflow** over the *uncommitted* diff, then committed + pushed. CI failed at **mypy** with
+  8 `has no attribute` errors — the committed `sra.py` was the **class-less baseline**, missing every
+  line of the conditional-branching code, even though app.py/tests/JS/docs committed correctly. Root
+  cause: a workflow review agent (byte-freeze dimension) ran `git checkout origin/main -- sra.py` to
+  diff the baseline and never restored it; that landed in the window before my `git add -A`, so the
+  commit captured the reverted file. Worse, when I first looked I **misread** the working-tree diff
+  (the classes shown as `+` because HEAD lacked them) as a corruption and `git checkout`-reverted the
+  *correct* working copy — then a still-running agent re-added it — a moving target until I stopped the
+  workflow with its **task id** (not the run id) and hard-reset `sra.py` to the pinned `origin/main`
+  blob, re-applying every edit deterministically.
+- **Lessons (generalizable, high value):**
+  1. **Never run a workflow whose agents can touch the working tree while you have uncommitted work
+     you intend to commit.** Audit/review agents must be *read-only* — or run with `isolation:
+     "worktree"` so they operate on a throwaway copy. A concurrent `git checkout`/edit from an agent
+     is indistinguishable from your own change and will be captured by `git add -A`.
+  2. **Commit BEFORE launching a background audit**, not after. Review the committed SHA; push fixes
+     as follow-ups. (The draft-PR + Codex-review loop already provides the adversarial pass safely.)
+  3. **When git state looks impossible, establish ground truth before acting** — `git show HEAD:file`,
+     `md5sum` vs `origin/main`, `git status` — don't `git checkout` on a hunch. My revert destroyed the
+     one correct copy.
+  4. **`cmd | tail; echo $?` reports the tail's exit, not cmd's.** My "bandit exit: 0" was `tail`'s 0
+     the whole time — bandit had been failing on two bare `assert`s (B101) since the first gate run,
+     and would have failed CI's bandit step too (CI just never reached it, dying at mypy first). For a
+     pass/fail gate, capture the tool's OWN exit: `cmd; echo $?` or `set -o pipefail`.
+- **Two real code fixes surfaced by rebuilding clean:** (a) replaced the two bare `assert`s with
+  explicit `raise ... # pragma: no cover` (the src convention is **zero** bare asserts — they vanish
+  under `python -O`, and bandit B101-flags them); (b) an HTML `<select>` element plus the tooltip
+  words "offset **from** project start" tripped bandit's **B608** `select…from` SQL heuristic — reworded
+  to "offset into the project" (no `# nosec` needed). Both were latent in the original build; the
+  forced clean-rebuild caught them.
+
+### 2026-07-19 (cont. 4) — a shadowed loop variable silently corrupted a sampler arg; the new tests caught it
+- Building Hulett #9 conditional branching (ADR-0274), the per-iteration switch did
+  `plan = cond.plan_b if trips else cond.plan_a`. That **shadowed** the outer `plan` — the Latin
+  Hypercube plan passed to `_iteration_duration_overrides(..., plan=plan)` at the top of the *next*
+  iteration. Iteration 0 ran fine; iteration 1 handed a `BranchPlan` to the LHS sampler →
+  `AttributeError: 'BranchPlan' object has no attribute 'columns'`. Fix: rename to `chosen_plan`.
+- **Why it was caught instantly:** the 11 new engine tests (written before wiring the web) failed on
+  the very first non-frozen run. A 2-second signal, not a field bug. Reinforces the standing habit:
+  write the pins first, run them the moment the mechanism exists.
+- **Generalizable lesson:** in a long function that already threads a variable named for a domain
+  noun (`plan` = the LHS plan), never reuse that name for a loop-local of a *different* type. mypy
+  did **not** catch it (both are objects passed positionally through an `Any`-ish boundary), and ruff
+  doesn't flag same-name rebind. Only an executable test did. Prefer distinct, specific local names
+  (`chosen_plan`, `plan_arm`) over the tempting short one.
+- **Also reaffirmed:** mirroring an existing feature's *entire* surface pays off. #9 touched the
+  exact same file set as #8 (`sra.py`, `app.py`, `sra_ssi.js`, the two test files, one ADR, the
+  state docs) — grepping #8's wiring points (`sra_branch_seq`, `_schedule_branches`, the 4
+  `compute_sra_ssi` call sites, save/load, export tables, DOCX) gave a complete checklist so nothing
+  was missed (e.g. the dense-id Save/Load guard from #8's Codex P1 was carried over pre-emptively).
+- **Prototype-first, again:** `scratchpad/cond_branch_verify.py` proved the load-bearing
+  *monitor-finish invariance* (a downstream branch can't move its upstream monitor's finish, so the
+  finish-metric condition reads cleanly from one probe solve) **before** any engine code — so the
+  probe-solve design was known-correct, not hoped-correct.
+
 ### 2026-07-19 (cont. 3) — an automated reviewer caught three real edge cases my own tests missed
 - **Context:** right after probabilistic branching (#415) merged, a **Codex bot review** posted three
   findings on the exact feature. I verified each against the code (not blindly applying — external
