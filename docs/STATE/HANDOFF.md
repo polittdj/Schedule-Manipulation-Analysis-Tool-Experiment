@@ -26,13 +26,20 @@
 >   on-machine re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258).
 >   #13 XER per-task calendars PARKED.
 > - **State:** v1.0.80; **ADR-0273** highest (no new ADR — hardening); wheel + 9 installers in
->   lockstep. Branch `claude/handoff-continuation-vistlu` (restarted from main after #415 merged).
->   This session merged #411 (LHS) + #414 (tint) + #415 (branching); the branching-hardening PR is
->   the open PR at this snapshot.
-> - **NEXT (file-free):** Hulett **#9 conditional branching** (Alt-A/Alt-B contingency switching —
->   builds on #8's augmentation; a larger design) is the last non-deferred Hulett item (#13
->   resource-leveled iterations is deferred/out-of-scope). Then re-read #331 for anything else, or
->   the 3 OWED operator inputs (ADR-0261/0258). Keep the daily LESSONS-LEARNED entry.
+>   lockstep. Branch `claude/handoff-continuation-vistlu`. This session merged #411 (LHS) + #414
+>   (tint) + #415 (branching); **#416 (branching hardening) carries this handoff and was merged by
+>   the operator to close the session** — so **START HERE:** `git fetch --prune origin && git
+>   checkout -B claude/handoff-continuation-vistlu origin/main` to restart the branch from the merged
+>   main before any new work. (If #416 shows still-open, drive it to green/merge first.)
+> - **NEXT (file-free):** Hulett **#9 conditional branching** — Alt-A/Alt-B contingency switching
+>   (stick with plan A vs fall to plan B when a condition trips; report which plan wins how often).
+>   It builds on #8's `_augment_with_branches` (sra.py) and is a larger design than #8;
+>   **prototype-verify the switching semantics against the real compute_cpm BEFORE building** (as #8
+>   did in `scratchpad/branch_verify.py`). This is the **last** non-deferred Hulett-deck item (#13
+>   resource-leveled iterations is deferred/out-of-scope). If #331 has nothing else after it, the
+>   file-free backlog is DONE — say so and await the 3 OWED operator inputs (ADR-0261 PowerShell
+>   crash log + large dataset; ADR-0258 Claude-Design portfolio prompt). Keep the daily
+>   LESSONS-LEARNED Part VIII entry every session that changes code.
 
 # (prior) handoffs — archived
 
