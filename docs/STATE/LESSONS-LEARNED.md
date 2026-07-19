@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 5) — a concurrent tree-mutating agent corrupted a commit; and audit-before-ship pays
+- **The costly one:** while a commit was in flight, a background audit-workflow agent ran
+  `git checkout origin/main -- sra.py` in the same working tree, so the commit captured a class-less
+  engine file → CI mypy failed on the just-opened PR. LESSON: never run agents that can mutate the
+  working tree concurrently with a `git add`/`commit`; commit (or use an isolated worktree) BEFORE
+  launching any audit fan-out. The re-run audit was made **strictly read-only** (agents forbidden any
+  write/git-mutation) and behaved.
+- **Measure the tool's own exit, not a pipe's:** the gate had `bandit … | tail; echo $?` — reporting
+  tail's exit (0), not bandit's. Real bandit findings (bare asserts, a B608 false positive) sat hidden
+  until a clean rebuild surfaced them. Use `${PIPESTATUS[0]}` / run the checker unpiped.
+- **Audit-before-ship earns its keep:** the read-only Ultracode audit of the *merged* #417 found a
+  real Law-2 defect (M1: a summary/inactive monitor crashed the SSI run or silently reported the wrong
+  plan mix) that 2 reviewers + a lead repro confirmed — caught only because the audit probed the
+  non-scheduled-task edge the tests didn't. Adversarial verify (default-refuted) kept the noise out.
+- **Fix bugs where the operator sees them, not just where they're reported:** the "hit stop, kept
+  playing" bug lived in the master-vs-per-chart timer coupling, not the enlarge code the report named.
+  Reading the screenshot carefully (chart button said "▶ Play" yet it animated ⇒ the *master* drove
+  it) pinned the true cause; `event.isTrusted` cleanly separates the master's programmatic
+  `.click()` from a real user click, so the fix is one shared coordinator, not per-chart edits.
+- **Know when a feature is a phase, not a commit:** "interactive legends on ALL charts" meets ~18
+  hand-rolled legends with no shared helper. The right answer is a reusable module + a phased,
+  chart-by-chart rollout (DESIGN-SYSTEM: never big-bang) — ship the verified bug fixes now, scope the
+  feature honestly, rather than half-do a cross-cutting change.
+
 ### 2026-07-19 (cont. 5) — an adversarial-audit WORKFLOW corrupted my working tree mid-commit; and a piped `$?` hid a real bandit failure
 - **The incident.** After the local gate passed on #9 (v1.0.81) I launched a background multi-agent
   **audit workflow** over the *uncommitted* diff, then committed + pushed. CI failed at **mypy** with

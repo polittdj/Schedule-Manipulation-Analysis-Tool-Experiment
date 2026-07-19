@@ -1,48 +1,46 @@
-# Handoff — 2026-07-19f (conditional branching — #331 Hulett #9, the LAST non-deferred deck item; v1.0.81; highest ADR 0274)
+# Handoff — 2026-07-19g (post-#417 audit hardening + Mission Control play/stop fix; v1.0.82; highest ADR 0275)
 
-> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode". **Conditional branching (ADR-0274, Hulett #9)** shipped this session — Alt-A / Alt-B contingency switching on the SSI Monte-Carlo. v1.0.80 → **1.0.81**. This is the **LAST non-deferred Hulett-deck item**; with it done the file-free #331 backlog is **COMPLETE** (see NEXT).
+> ## STATUS (current) — operator (after merging #417): "continue [the read-only Ultracode audit] AND address the Mission Control play/stop bug + interactive legends." This session ships the audit hardening + the play/stop fix as **v1.0.82**; the interactive-legend feature is scoped as the phased **NEXT** (see below). Highest ADR **0275**.
 >
-> - **What it does:** each SSI iteration a **condition** on a monitored activity picks the primary
->   **Plan A** (not tripped) or the contingency **Plan B** (tripped) — "stick with A vs fall to B" —
->   and the run reports **which plan wins how often** + the mean finish cost of falling to B. Unlike
->   #8's fixed-probability coin flip that *adds* rework, #9 is a **switch** driven by the iteration's
->   realized state (a duration overrun or a finish slip).
-> - **Verified BEFORE build (Law 2)** in `scratchpad/cond_branch_verify.py` (15 checks vs the real
->   `compute_cpm`): no-op augmentation (both plan fragnets zero → byte-identical base); **monitor-
->   finish invariance** (the finish-metric probe reads the monitor's finish with zero circularity
->   because it's upstream of its branch); exact plan shift; which-plan-wins fraction == raw threshold
->   crossing for both the duration and finish metrics; plans-on-different-ties + merge bias.
-> - **Engine (`sra.py`):** `BranchPlan` + `ConditionalBranch` + `SSIConditionalStat`;
->   `_augment_with_conditionals` (inserts BOTH plan fragnets ONCE, all-or-nothing, same-tie chaining,
->   after #8's augmentation so branch uids stay byte-identical); `_conditional_draws` (disjoint RNG
->   stream) + `_conditional_trips`; wired into `compute_sra_ssi` (a probe solve only when a
->   finish-metric conditional is present) + `SSIResult.conditionals`. **Byte-frozen** when no
->   conditional (point-mass fragnets consume no duration draw).
-> - **Web (`app.py`, `sra_ssi.js`):** `sra_conditionals`/`sra_conditional_seq`; `POST /sra/conditional`
->   (add/remove/clear, validated endpoints, days→minutes); a two-fieldset "Conditional branches"
->   editor under #8's branch editor; `conditionals=` threaded into all SSI call sites; a
->   "Conditional-branch outcomes" table; Save/Load with **dense id regeneration** (C1..Cn — #8's
->   Codex-P1 collision guard); XLSX/DOCX disclose a setup row + a dedicated table + methodology.
-> - **Verified:** `tests/engine/test_sra_conditional.py` (+11: freeze, no #8-stream perturbation,
->   duration/finish switching disjoint-regime signature, point-mass determinism, merge bias,
->   trip_when=below, inert disclosure, determinism, same-tie chaining) + `tests/web/test_sra_ssi_web.py`
->   (+6: editor render, add→which-plan-wins payload, endpoint rejection, clear, dense-id gapped
->   save/load, XLSX disclosure). Full local gate green (ruff, format, mypy 116, bandit, node, pytest).
->   v1.0.80 → **1.0.81**, wheel + 9 installers in lockstep.
+> - **Read-only Ultracode audit of merged #417 (ADR-0274)** ran (4 dims, adversarial verify). Lead
+>   reconciled + fixed the real findings:
+>   - **M1 (medium, 2-reviewer + lead repro):** a **summary / inactive** monitor passed the
+>     augmentation gate (built from ALL tasks) but is absent from `compute_cpm().timings` / the
+>     override map (non-summary AND active) → finish-metric **KeyError aborted the whole SSI run**
+>     (422); duration-metric **silently read 0** → wrong plan mix reported `applied=True` (Law-2 silent
+>     wrong number). FIX: gate the monitor + plan endpoints on `non_summary(schedule)` in
+>     `_augment_with_conditionals`; add `is_active` to the web `_valid`. Inert + disclosed instead.
+>     +3 engine regression tests.
+>   - **L5:** `/sra/conditional` `_uid` used `isdigit()` (admits `--5`, `²` → 500). FIX: `int()` +
+>     ValueError guard. **M2/H1/M3 (tests):** strengthened the tautological which-plan-wins web
+>     assert (known-side, threshold 0 → Plan B 100%); added the missing **DOCX** disclosure test;
+>     added a **Save/Load fidelity** round-trip test (metric/trip_when/threshold/plan durations).
+> - **Play/stop bug (Mission Control) — FIXED (ADR-0275).** Root cause: the master "Play all" steps
+>   every chart by programmatically clicking their Next buttons; a per-chart Stop only cleared that
+>   chart's own timer, so the master kept stepping it ("hit stop, kept playing", worst when enlarged).
+>   FIX: a shared **`window.SFPlayAll`** coordinator in `chartframe.js` — masters (`mission.js`,
+>   `trend.js #sfPlayAll`) register their `stop()`, and a **capture-phase** document listener stops
+>   every master on a **TRUSTED** user click on any per-chart animation control. The master's own
+>   `element.click()` is `isTrusted=false`, so it never stops itself (the load-bearing distinction).
+>   Verified by a Node harness (`tests/web/js/playall_harness.mjs` + `test_playall_js.py`).
+> - **Verified:** full local gate green (ruff, format, mypy 116, bandit exit 0, node, pytest — engine
+>   conditional 14 + ssi-web + playall). v1.0.81 → **1.0.82**, wheel + 9 installers in lockstep.
 > - **Standing rule (from #412):** update `docs/STATE/LESSONS-LEARNED.md` DAILY — first-class state.
-> - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261 on-machine
->   re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258). #13 XER per-task
->   calendars / resource-leveled iterations remain PARKED / out-of-scope.
-> - **State:** v1.0.81; **ADR-0274** highest; wheel + 9 installers in lockstep. Branch
->   `claude/conditional-branching-contingency-bi6g00` (this session's harness-designated branch,
->   restarted from merged main c58e14a). Draft PR opened + babysat to green.
-> - **NEXT (file-free): the #331 file-free backlog is DONE.** #9 was the last non-deferred Hulett-deck
->   item (#8 branching, #10 correlation matrix, #11 LHS, #12 risk-critical Gantt all shipped; #13
->   resource-leveled iterations deferred/out-of-scope). Issue #331 is CLOSED. **Await the 3 OWED
->   operator inputs** to proceed further: ADR-0261 PowerShell crash log + a real large dataset; the
->   ADR-0258 Claude-Design portfolio (US-map/site drill) prompt. Absent those, remaining work is
->   polish/hardening (e.g. Codex-review follow-ups on this PR) — keep the daily LESSONS-LEARNED
->   Part VIII entry every session that changes code.
+> - **State:** v1.0.82; **ADR-0275** highest; wheel + 9 installers lockstep. Branch
+>   `claude/conditional-branching-contingency-bi6g00` (harness-designated; restarted from merged main).
+>   This session's PR carries the audit hardening + play/stop fix.
+> - **NEXT: interactive legends (operator ask, phased UI work — NOT yet built).** "Click a legend
+>   entry on ANY chart to show/hide that series, plus all/none, on ALL charts/pages." Architecture
+>   finding: there is **NO shared legend helper** — ~18 chart modules each hand-roll their legend
+>   (`trend.js::legend`, `curves.js::buildLegend`, `performance.js::legend`, `path_evolution.js::legend`,
+>   `margin_dashboard.js::legend`, `sra_grid.js::renderLegend`, `dashboard.js::legend`, cei.js inline,
+>   …), and a series toggle needs each chart's series SVG elements TAGGED with a key. Per
+>   DESIGN-SYSTEM.md ("never big-bang; one page shell per PR") this is a **phased** rollout: build one
+>   reusable `SFLegend` toggle module (convention: `data-series` on series elements +
+>   `data-series-toggle` on legend swatches + an all/none control, wired generically in the shared
+>   layer), then adopt it chart-by-chart starting with **trend.js** (the CEI-across-periods chart the
+>   operator screenshotted) → curves/margin → the rest. Also still OWED by the operator: ADR-0261
+>   PowerShell crash log + large dataset; ADR-0258 Claude-Design portfolio prompt.
 
 # (prior) handoffs — archived
 
