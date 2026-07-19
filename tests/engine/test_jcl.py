@@ -18,6 +18,7 @@ import random
 
 import pytest
 
+from schedule_forensics.engine.correlation import CorrelationSpec
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.jcl import JCLConfig, compute_jcl
 from schedule_forensics.engine.sra import (
@@ -127,6 +128,24 @@ def test_finish_marginal_equals_the_ssi_run(
     assert (jcl.finish_p10_date, jcl.finish_p50_date) == (ssi.p10_date, ssi.p50_date)
     assert (jcl.finish_p80_date, jcl.finish_p90_date) == (ssi.p80_date, ssi.p90_date)
     assert jcl.deterministic_finish_date == ssi.deterministic_finish_date
+
+
+def test_finish_marginal_equals_the_ssi_run_under_a_correlation_matrix() -> None:
+    """ADR-0270: the shared duration sampler keeps the JCL finish marginal byte-identical to the
+    SSI run even when a full correlation MATRIX drives both — the equality invariant survives the
+    new mode because both engines call the same _iteration_duration_overrides with the same
+    prepared factor. Tasks 2 AND 3 carry factors and NO risk, so both are genuinely uncertain
+    (a risk-driven task is a point mass and would not enter the matrix)."""
+    s = _costed_net()
+    tbl = RiskFactorTable()
+    tp = {2: factor_to_bc_wc(10 * DAY, 3, tbl), 3: factor_to_bc_wc(2 * DAY, 4, tbl)}
+    spec = CorrelationSpec(groups=(((2, 3), 0.5),))
+    cfg = SRAConfig(iterations=120, target_uid=4, correlation_matrix=spec)
+    ssi = compute_sra_ssi(s, config=cfg, three_point=tp)
+    jcl = compute_jcl(s, config=cfg, three_point=tp)
+    assert jcl.finish_cdf == ssi.cdf  # the FULL distribution, byte-identical under the matrix
+    assert jcl.correlation_matrix_applied and ssi.correlation_matrix_applied
+    assert not jcl.correlation_matrix_repaired  # rho=0.5 over two tasks is feasible
 
 
 def test_cost_multipliers_never_perturb_the_duration_stream() -> None:

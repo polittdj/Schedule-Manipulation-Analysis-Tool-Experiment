@@ -7163,3 +7163,26 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   shipped; ranked next (risk-driver correlation matrix + eigenvalue feasibility; STAT/GAO
   scorecard gap audit) awaits operator confirmation, and the three operator-owed inputs
   (ADR-0261 crash log + large dataset; ADR-0258 design prompt) still gate that work.
+
+- **Session (2026-07-19a, Opus Ultracode — the correlation matrix, ADR-0270):** Operator:
+  "do all you can that doesn't require my files, continue with Opus Ultracode." Switched to
+  Opus 4.8 + Ultracode. First shipped a full-pipeline **costed-MSPDI import-path JCL test**
+  (PR #408, merged) — the synthetic namespaced fixture flows /upload → importer → cost-loaded
+  gate → hand-summed EAC 852,000 — strengthening the ADR-0269 evidence chain through the real
+  parser without an operator file. Then built **#331 item 2: the correlation MATRIX +
+  eigenvalue feasibility** (**ADR-0270**). Design was authored by a multi-agent **Workflow**
+  (3 independent proposals × 3 adversarial pressure-tests × lead synthesis); the lead then
+  **independently re-verified every hand-computed constant** against a std-lib prototype before
+  writing engine code (the CLAUDE.md verify-everything protocol — the prototype confirmed the
+  design's two load-bearing catches: robust_cholesky for the feasible ρ=1 singular block, and
+  the Jacobi zero-off-diagonal skip guard needing a mixed-matrix test). Delivered: pure-std-lib
+  `engine/correlation.py` (Jacobi eigen + PSD feasibility + spectral-clip repair + robust
+  Cholesky; `CorrelationSpec`/`PreparedCorrelation` frozen types); the duplicated per-iteration
+  duration draw extracted into ONE shared `_iteration_duration_overrides` landed as a proven
+  byte-identical no-op refactor (78 freeze tests) BEFORE the matrix branch; the matrix is a
+  distinct opt-in mode that overrides the scalar correlation and keeps ssi==jcl; provenance
+  fields on both results; a `/sra` editor panel + POST route + feasibility badge; i18n +6
+  terms ×4 langs. Verified: 14 hand-computed correlation-engine pins + SSI/JCL matrix cases +
+  8 web tests; 801+ tests green; mypy clean. v1.0.74 → **1.0.75**, wheel + 9 installers
+  regenerated in lockstep (17 installer tests green). Highest ADR **ADR-0270**. Remaining
+  #331 items (STAT/GAO audit, Latin Hypercube, risk-critical Gantt) need no operator files.

@@ -1,54 +1,50 @@
-# Handoff — 2026-07-18g (ADR-0269: JCL / FICSM joint cost-&-schedule confidence — the #331 phase opened on operator direction; v1.0.74; highest ADR 0269)
+# Handoff — 2026-07-19a (ADR-0270: correlation matrix + eigenvalue feasibility — #331 item 2, Opus Ultracode; v1.0.75; highest ADR 0270)
 
-> ## STATUS (current) — the operator said "continue" and picked #331 item 1 (top-ranked gap), so the Advanced-Schedule-Analysis phase is OPEN: built the JCL / FICSM joint cost-&-schedule confidence feature end-to-end (ADR-0269) and live-verified it in Chromium. Version 1.0.73 → 1.0.74 (wheel + 9 installers in lockstep).
+> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode", so the #331 phase continues: shipped a costed-MSPDI import-path JCL test (#408, merged), then built the correlation MATRIX + eigenvalue feasibility feature (ADR-0270) end-to-end via a design workflow + independently-verified numerics. Version 1.0.74 → 1.0.75 (wheel + 9 installers in lockstep). Design authored by a 3-proposal × adversarial-pressure-test × synthesis Workflow; every hand-computed constant re-verified by the lead against a std-lib prototype before implementing.
 >
-> - **Engine:** new parity-isolated `engine/jcl.py` — `compute_jcl` replicates the SSI MC's
->   draw discipline EXACTLY (seed+i, ascending-uid draws, point-mass/copula/risk rules, the
->   one trusted `compute_cpm` chokepoint, stored-finish realignment), so the joint sample's
->   finish marginal is byte-identical to `compute_sra_ssi` — pinned by full-CDF equality
->   across triangular/PERT × correlation 0/0.3 × focus/project. Cost rides the SAME sampled
->   durations (NASA CEH App. J / Hulett): EAC_i = completed finals + Σ(spent +
->   (TI + TD·d_i/d_ML)·m_i); τ=td_share (default 1.0, labeled screening), FICSM cost
->   multipliers default 1/1/1=OFF and draw AFTER all duration draws (stream-stability
->   test-pinned). Outputs: JCL=P(both) + SCL/CCL marginals (JCL≤min pinned + Fréchet lower
->   bound), quadrants (sum-1 pinned), P-grid iso-confidence frontier (achieves-confidence +
->   monotone pinned), cost CDF/percentiles, deterministic EAC = AC+(BAC−EV) exactly.
->   NOT cost-loaded (the EVM Σbudgeted_cost>0 gate) → raises — never a fabricated figure;
->   an SCL can no longer be mislabeled JCL (ADR-0106's reservation, structurally enforced).
-> - **Web:** gated JCL panel on /sra after the SSI panel — POST /sra/jcl-config
->   (targets/τ/multipliers/confidence, clamped+order-coerced, reset), lazy GET /api/sra/jcl
->   (offload-aware; honest 422 when uncosted; 400 when empty), vendored `sra_jcl.js`
->   (football scatter with quadrant %s + target crosshair + frontier polyline + det marker,
->   EAC S-curve, FICSM SCL/CCL/JCL strip, quadrant table, provenance line) — CSP-strict-safe
->   (external file, addEventListener only, chartframe callouts/zoom). /export/xlsx/sra gains
->   3 JCL sheets when costed (headline+provenance / frontier / joint sample). Explainers
->   flipped to the live panel (SRA JCL "Status here", both SCL disclaimers, EVM's "How EVM
->   relates to a JCL") with the pinned honesty language kept verbatim. help.py glossary
->   +eac/scl/ccl/jcl (dictionary regenerated — no delta; glossary keys aren't engine
->   metrics); i18n catalog +9 JCL terms in ES/FR/DE/PT.
-> - **Verified:** tests/engine/test_jcl.py (19 — incl. a hand-REPLAYED single-iteration draw
->   + hand-summed EAC fixtures 1175/1405/510) and tests/web/test_jcl_web.py (9 — gate,
->   422/400, config persist/bad-date/reset, web-layer SSI coherence, export gains sheets
->   ONLY when costed); full gate green. LIVE Chromium under the strict CSP: panel renders,
->   a real POST form navigation applies through the SEC-2 Fetch-Metadata gate, Run JCL
->   renders football + cost curve + FICSM strip, ZERO console errors — and the sweep caught
->   a real bug the DOM asserts missed (football x-axis end labels used iteration-order
->   first/last instead of the axis bounds) — fixed and re-verified. Parity untouched.
+> - **Engine:** new pure-std-lib leaf `engine/correlation.py` (no numpy, no sra/jcl import —
+>   no cycle). `CorrelationSpec` (pairwise pairs + shared-driver GROUPS, Hulett) →
+>   `build_matrix` → cyclic **Jacobi** eigen (with the MANDATORY zero-off-diagonal skip guard —
+>   a mixed correlated/independent matrix would else ZeroDivisionError; pinned by a mixed test)
+>   → feasibility (min-eigenvalue PSD test) → **spectral-clipping** repair (clip to +ε floor,
+>   reconstruct, renormalize diagonal — a congruence, PD-preserving by Sylvester inertia;
+>   chosen over Higham for auditability, raw min-eig + Frobenius distance surfaced so never
+>   silent) → **robust_cholesky** (zero-pivot→zero column, used on BOTH paths so a feasible ρ=1
+>   all-ones block samples as a zero column, not a crash). `prepare_correlation` order is
+>   load-bearing (None/`<2`-uncertain/identity → scalar fallback).
+> - **Shared sampler (the freeze discipline):** extracted the duplicated per-iteration duration
+>   draw from compute_sra_ssi + compute_jcl into ONE `_iteration_duration_overrides(rng, config,
+>   uids, three, prepared)` — landed as a PROVEN no-op refactor FIRST (78 freeze tests
+>   byte-identical) before the matrix branch. `prepared is None` → the exact scalar statements,
+>   byte-frozen (incl. the pert-uses-triangular-when-r>0 quirk + point-mass-no-draw). `prepared`
+>   set → multivariate copula x=Lz, a DISTINCT mode (N idiosyncratic, no common draw), OVERRIDES
+>   the scalar correlation; both engines call the identical helper so ssi==jcl finish marginal
+>   holds under a matrix too (pinned). SSIResult/JCLResult gain 4 default-valued provenance
+>   fields (applied/repaired/min_eigenvalue/frobenius_distance), inert to the finish-cdf pin.
+> - **Web:** SessionState sra_corr_pairs/sra_corr_groups; POST /sra/correlation-matrix
+>   (add-pair/add-group/clear, ρ∈[-1,1] negatives allowed, unknown/summary uids dropped,
+>   SEC-2-gated); `_correlation_spec(st)` threads correlation_matrix into all 5 SRAConfig
+>   builders; a `/sra` editor panel (lists pairs/groups, clear) + a post-run `#corrBadge`
+>   feasibility badge fed from provenance ("feasible (min eig …)" / "infeasible input repaired
+>   … Frobenius …") rendered by both sra_ssi.js and sra_jcl.js; i18n +6 terms ×4 langs.
+> - **Verified:** tests/engine/test_correlation.py (14 hand-computed pins: 2×2 {0.4,1.6} +
+>   Cholesky [[1,0],[0.6,0.8]]; infeasible ρ=-0.6 {-0.2,1.6,1.6}; clip→exact E(-0.5) +
+>   Frobenius √0.06; both zero-pivot singular cases; the mixed-matrix skip guard) +
+>   test_sra_ssi.py matrix cases (widen, distinct-from-scalar, repair provenance, <2 fallback)
+>   + test_jcl.py ssi==jcl-under-matrix + tests/web/test_correlation_web.py (8). 801+ engine/web
+>   tests green; mypy clean (116 files). **Browser verification of the panel still OWED this
+>   session** (run before final ship if not yet done — see NEXT).
 > - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
->   on-machine re-validation; five-large-file stress); Claude-Design prompt (Portfolio
->   US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
-> - **State:** v1.0.74; **ADR-0269** highest; wheel + 9 installers in lockstep. **PR #406
->   MERGED** (squash `ad10868`, CI fully green: both test matrices + Windows/Linux installer
->   smokes); branch `claude/handoff-continuation-vistlu` restarted from the squash, clean
->   tree, NO open PR, nothing in flight. Earlier this session: #405 (verification-session
->   log) MERGED; the desktop-update PowerShell command was provided (git pull + re-run the
->   same-tier installer — it force-reinstalls the embedded wheel).
-> - **NEXT:** the #331 phase is OPEN with item 1 (JCL/FICSM) SHIPPED. Ranked next per the
->   issue + its Hulett-deck comment: #2 risk-driver correlation matrix + eigenvalue
->   feasibility, then auditing the existing Assessment Scorecards against the STAT/GAO gap
->   lists — but CONFIRM with the operator before starting the next item. A golden
->   COST-LOADED fixture (budgeted MSPDI) would strengthen JCL evidence beyond synthetic
->   nets. The three OWED operator inputs above still block ADR-0261/0258 work.
+>   on-machine re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258).
+>   #13 XER per-task calendars PARKED.
+> - **State:** v1.0.75; **ADR-0270** highest; wheel + 9 installers in lockstep. Branch
+>   `claude/handoff-continuation-vistlu`. This session already MERGED #407 (docs) + #408
+>   (costed-MSPDI test). Correlation feature committed but PR not yet opened at this snapshot.
+> - **NEXT:** open the correlation PR, get CI green, merge. Then the remaining #331 items,
+>   none needing operator files: the **STAT/GAO scorecard gap audit** (#12 — likely
+>   confirm-complete, scorecards already ship all 11 STAT + 10 GAO checks), **Latin Hypercube
+>   sampling** (Hulett #11), and the **risk-critical Gantt tint** (Hulett #12). The 3 OWED
+>   operator inputs still block ADR-0261/0258.
 
 # (prior) handoffs — archived
 

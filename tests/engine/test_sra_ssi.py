@@ -9,7 +9,10 @@ claimed bit-exact vs SSI's RNG (std-lib Mersenne Twister  !=  SSI's generator �
 from __future__ import annotations
 
 import datetime as dt
+import math
+from dataclasses import replace
 
+from schedule_forensics.engine.correlation import CorrelationSpec
 from schedule_forensics.engine.cpm import compute_cpm
 from schedule_forensics.engine.sra import (
     RiskFactorTable,
@@ -204,6 +207,58 @@ def test_correlation_widens_the_focus_distribution() -> None:
         s, config=SRAConfig(iterations=400, seed=1, target_uid=4, correlation=0.6), three_point=tp
     )
     assert corr.std_days > indep.std_days
+
+
+# --- correlation MATRIX (ADR-0270) ---------------------------------------------------
+
+
+def test_correlation_matrix_widens_and_is_a_distinct_mode() -> None:
+    """A full matrix (a shared-driver group at 0.6 over the two drivers) widens the spread like
+    the scalar blanket does, BUT is a DISTINCT mode: the multivariate copula draws N idiosyncratic
+    normals (no shared common draw), so its distribution differs from the scalar r=0.6 run."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {1: factor_to_bc_wc(1 * DAY, 3, tbl), 2: factor_to_bc_wc(10 * DAY, 3, tbl)}
+    base = SRAConfig(iterations=400, seed=1, target_uid=4)
+    indep = compute_sra_ssi(s, config=base, three_point=tp)
+    spec = CorrelationSpec(groups=(((1, 2), 0.6),))
+    mat = compute_sra_ssi(s, config=replace(base, correlation_matrix=spec), three_point=tp)
+    scalar = compute_sra_ssi(s, config=replace(base, correlation=0.6), three_point=tp)
+    assert mat.std_days > indep.std_days  # correlation widens the finish distribution
+    assert mat.correlation_matrix_applied and not mat.correlation_matrix_repaired
+    assert mat.cdf != scalar.cdf  # distinct mode — not a silent reroute of the scalar path
+
+
+def test_correlation_matrix_infeasible_is_repaired_and_surfaced() -> None:
+    """Three tasks each mutually correlated at -0.6 is infeasible (smallest eigenvalue -0.2); the
+    run repairs to the nearest valid matrix and SURFACES the raw min-eigenvalue + repair size."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {u: factor_to_bc_wc(d * DAY, 3, tbl) for u, d in ((1, 1), (2, 10), (3, 2))}
+    spec = CorrelationSpec(groups=(((1, 2, 3), -0.6),))
+    r = compute_sra_ssi(
+        s,
+        config=SRAConfig(iterations=200, seed=1, target_uid=4, correlation_matrix=spec),
+        three_point=tp,
+    )
+    assert r.correlation_matrix_applied and r.correlation_matrix_repaired
+    assert math.isclose(r.correlation_min_eigenvalue, -0.2, abs_tol=1e-6)  # entered infeasibility
+    assert r.correlation_frobenius_distance > 0.0  # a real repair happened
+
+
+def test_correlation_matrix_falls_back_when_under_two_uncertain() -> None:
+    """A matrix needs >=2 uncertain activities; with only one, prepare returns None and the run is
+    byte-identical to the no-matrix (scalar) run — the freeze holds under a supplied-but-inert
+    spec."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {2: factor_to_bc_wc(10 * DAY, 3, tbl)}  # only task 2 is uncertain (N=1)
+    base = SRAConfig(iterations=150, seed=2, target_uid=4)
+    plain = compute_sra_ssi(s, config=base, three_point=tp)
+    spec = CorrelationSpec(pairs=((2, 3, 0.5),))  # references task 3 (a point mass) -> inert
+    withspec = compute_sra_ssi(s, config=replace(base, correlation_matrix=spec), three_point=tp)
+    assert withspec.cdf == plain.cdf  # byte-identical -> fell back to the scalar path
+    assert not withspec.correlation_matrix_applied
 
 
 def test_s_curve_is_dense_dated_and_monotonic() -> None:

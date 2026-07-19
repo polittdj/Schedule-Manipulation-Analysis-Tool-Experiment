@@ -41,6 +41,7 @@ import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from schedule_forensics.engine.correlation import PreparedCorrelation, prepare_correlation
 from schedule_forensics.engine.cpm import compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.engine.sra import (
@@ -50,12 +51,11 @@ from schedule_forensics.engine.sra import (
     _build_cdf,
     _finish_of,
     _is_completed,
+    _iteration_duration_overrides,
     _latest_finish,
     _ml_minutes,
     _occurrence_schedule,
     _percentile,
-    _phi,
-    _sample_duration,
     _sample_triangular,
 )
 from schedule_forensics.model.schedule import Schedule
@@ -143,6 +143,13 @@ class JCLResult:
     incomplete_costed_count: int  # incomplete tasks carrying remaining budget
     td_share: float
     cost_uncertainty_on: bool
+    # correlation-matrix provenance (ADR-0270), mirroring SSIResult — a full pairwise/shared-
+    # driver matrix drove the shared duration sampler (else the scalar path), plus the entered
+    # matrix's smallest eigenvalue and the Frobenius size of any feasibility repair.
+    correlation_matrix_applied: bool = False
+    correlation_matrix_repaired: bool = False
+    correlation_min_eigenvalue: float = 0.0
+    correlation_frobenius_distance: float = 0.0
 
 
 def cost_loaded_total(schedule: Schedule) -> float:
@@ -210,8 +217,11 @@ def compute_jcl(
 
     occ = _occurrence_schedule(active_risks, config.occurrence_mode, config.iterations, config.seed)
     mpd = schedule.calendar.working_minutes_per_day or 480
-    r = max(0.0, min(1.0, config.correlation))
-    k_common, k_indep = math.sqrt(r), math.sqrt(1.0 - r)
+    # the correlation matrix (ADR-0270) is prepared ONCE over the uncertain-duration set and fed
+    # to the SAME shared sampler the SSI engine uses, so the finish marginals stay byte-identical
+    # (the ADR-0269 pin); None → the scalar single-factor path (the byte-frozen default).
+    uncertain = [u for u in uids if three[u][2] > three[u][0]]
+    prepared = prepare_correlation(uncertain, config.correlation_matrix)
 
     # ---- the cost model's constant parts (ADR-0269) ----
     tau = max(0.0, min(1.0, jcl.td_share))
@@ -249,19 +259,7 @@ def compute_jcl(
     costs: list[float] = []
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
-        common = rng.gauss(0.0, 1.0) if r > 0.0 else 0.0
-        overrides: dict[int, int] = {}
-        for u in uids:
-            low, mode, high = three[u]
-            if high <= low:  # point mass — no draw
-                overrides[u] = round(low)
-                continue
-            if r > 0.0:
-                uni = _phi(k_common * common + k_indep * rng.gauss(0.0, 1.0))
-                minutes = _sample_triangular(uni, float(low), float(mode), float(high))
-            else:
-                minutes = _sample_duration(rng, config, float(low), float(mode), float(high))
-            overrides[u] = max(0, round(minutes))
+        overrides = _iteration_duration_overrides(rng, config, uids, three, prepared)
         for ridx, risk in enumerate(active_risks):
             if occ[ridx][i]:
                 add = round(risk.impact_days * mpd)
@@ -297,6 +295,7 @@ def compute_jcl(
         incomplete_costed=incomplete_costed,
         tau=tau,
         cost_uncertainty_on=cost_uncertainty_on,
+        prepared=prepared,
     )
 
 
@@ -331,6 +330,7 @@ def _build_jcl_result(
     incomplete_costed: int,
     tau: float,
     cost_uncertainty_on: bool,
+    prepared: PreparedCorrelation | None = None,
 ) -> JCLResult:
     """Assemble the :class:`JCLResult` from the joint iteration series."""
     n = len(finishes)
@@ -429,4 +429,10 @@ def _build_jcl_result(
         incomplete_costed_count=incomplete_costed,
         td_share=tau,
         cost_uncertainty_on=cost_uncertainty_on,
+        correlation_matrix_applied=prepared is not None,
+        correlation_matrix_repaired=prepared.repaired if prepared is not None else False,
+        correlation_min_eigenvalue=prepared.min_eig_raw if prepared is not None else 0.0,
+        correlation_frobenius_distance=(
+            prepared.frobenius_distance if prepared is not None else 0.0
+        ),
     )

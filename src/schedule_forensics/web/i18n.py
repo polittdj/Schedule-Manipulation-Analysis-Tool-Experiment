@@ -1173,6 +1173,43 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Quadranten an den Zielwerten",
         "pt": "Quadrantes nos alvos",
     },
+    # — correlation-matrix editor (ADR-0270). PSD / Cholesky / eigenvalue stay untranslated. —
+    "Correlation matrix (advanced)": {
+        "es": "Matriz de correlación (avanzado)",
+        "fr": "Matrice de corrélation (avancé)",
+        "de": "Korrelationsmatrix (erweitert)",
+        "pt": "Matriz de correlação (avançado)",
+    },
+    "Add pair": {
+        "es": "Agregar par",
+        "fr": "Ajouter une paire",
+        "de": "Paar hinzufügen",
+        "pt": "Adicionar par",
+    },
+    "Add group": {
+        "es": "Agregar grupo",
+        "fr": "Ajouter un groupe",
+        "de": "Gruppe hinzufügen",
+        "pt": "Adicionar grupo",
+    },
+    "Clear all correlations": {
+        "es": "Borrar todas las correlaciones",
+        "fr": "Effacer toutes les corrélations",
+        "de": "Alle Korrelationen löschen",
+        "pt": "Limpar todas as correlações",
+    },
+    "Add a pairwise correlation": {
+        "es": "Agregar una correlación por pares",
+        "fr": "Ajouter une corrélation par paire",
+        "de": "Paarweise Korrelation hinzufügen",
+        "pt": "Adicionar uma correlação entre pares",
+    },
+    "Add a shared-driver group": {
+        "es": "Agregar un grupo de causa común",
+        "fr": "Ajouter un groupe à cause commune",
+        "de": "Gruppe mit gemeinsamer Ursache hinzufügen",
+        "pt": "Adicionar um grupo de causa comum",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

@@ -246,6 +246,19 @@
     ch.appendChild(chartHost(football(d)));
     ch.appendChild(chartHost(costCurve(d)));
     ch.appendChild(chartHost(ficsmStrip(d.levels)));
+
+    // the correlation-matrix feasibility badge (ADR-0270), shared with the SSI panel's #corrBadge
+    var cb = document.getElementById("corrBadge");
+    var cm = d.correlation_matrix;
+    if (cb && cm && cm.applied) {
+      cb.innerHTML = "";
+      var note = el("div", { class: "notice " + (cm.repaired ? "warn" : "ok"), role: "note" });
+      note.textContent = cm.repaired
+        ? "Correlation matrix: infeasible input REPAIRED to the nearest valid PSD matrix (entered " +
+          "min eigenvalue " + cm.min_eigenvalue + ", Frobenius distance " + cm.frobenius_distance + ")."
+        : "Correlation matrix: feasible (min eigenvalue " + cm.min_eigenvalue + ").";
+      cb.appendChild(note);
+    }
     if (window.SFChartFrame) window.SFChartFrame.scan();
   }
 
