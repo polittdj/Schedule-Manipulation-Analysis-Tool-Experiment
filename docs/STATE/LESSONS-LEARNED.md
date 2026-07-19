@@ -435,6 +435,18 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 7) — a good abstraction makes phase 2 nearly free; and check for what already exists
+- Phase 2 of the interactive-legend rollout (trend.js stacked + grouped bars) needed **zero** change
+  to the SFLegend module — just `data-series` on the bar rects + an opt-in flag on the legend call.
+  The convention-based module (phase 1) paid off immediately: each new chart is a ~4-line adoption.
+- **Look before you build:** `curves.js` already had a hand-rolled interactive legend (show/hide +
+  Show-all/Hide-all). Had I not read it, I'd have "added" a feature it already has. LESSON for the
+  remaining rollout: grep each target for an existing toggle before adopting SFLegend — some charts
+  are already done, and duplicating would regress (two competing handlers).
+- **Honest degradation beats hidden cleverness:** hiding a STACKED segment leaves its gap rather than
+  silently re-stacking. Re-stacking would misrepresent the bar's composition; the gap plainly says
+  "this segment is hidden." A forensic tool should prefer the visibly-honest behavior.
+
 ### 2026-07-19 (cont. 6) — a good abstraction turns an "18-file" ask into a module + one adopter
 - The operator wanted interactive legends "on ALL charts, all pages." The naive read is an 18-file
   edit (no shared legend helper exists). The better read: build ONE generic, opt-in module

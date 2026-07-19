@@ -39,5 +39,9 @@ def test_trend_charts_opt_into_the_toggle_and_tag_their_series() -> None:
     trend = (_STATIC / "trend.js").read_text(encoding="utf-8")
     assert 'setAttribute("data-series-toggle"' in trend  # legend entries opt in
     assert "data-series-all" in trend  # the show-all/none control
-    assert '"data-series": s.label' in trend  # the series marks are tagged for hiding
-    assert "toggle: series.length > 1" in trend  # only multi-series charts enable it
+    assert '"data-series": s.label' in trend  # the line / stacked series marks are tagged
+    assert '"data-series": g.label' in trend  # the grouped-bar marks are tagged (phase 2)
+    # every multi-series trend chart type opts in: the line chart + the stacked + the grouped bars
+    assert "toggle: series.length > 1" in trend
+    assert "toggle: segments.length > 1" in trend
+    assert "toggle: groups.length > 1" in trend

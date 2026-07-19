@@ -7374,3 +7374,16 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   trend.js emits the markup). Full local gate green; v1.0.82 → **1.0.83**, wheel + 9 installers
   lockstep. Highest ADR **ADR-0276**. NEXT: roll the convention out chart-by-chart (phase 2+, one
   focused PR each per DESIGN-SYSTEM).
+
+- **Session (2026-07-19j, post-#419 — interactive legends phase 2):** operator merged #419 (legend
+  phase 1); standing "do all you can" → phase 2 (ADR-0276 rollout, no new ADR). Extended the SFLegend
+  convention to the remaining trend.js multi-series charts: `stackedBarChart` + the grouped-bar chart
+  now tag each `rect` with `data-series="<segment/group label>"` and opt their `legend()` calls in
+  (`toggle: segments.length>1` / `groups.length>1`) — the generic module needed no change. Discovered
+  `curves.js` ALREADY has native legend toggles (its own show/hide + Show-all/Hide-all), so it's done
+  and untouched. Stacked segments hide leaving their gap (honest); grouped bars hide cleanly; the
+  ahead/behind chart stays static (semantic labels, not separable series). Extended
+  test_legend_toggle_wiring.py to pin the new opt-ins + tags. Full local gate green; v1.0.83 →
+  **1.0.84**, wheel + 9 installers lockstep. Highest ADR **ADR-0276**. NEXT: phase 3+ — remaining
+  hand-rolled-legend charts (margin_dashboard, performance, path_evolution, cei, dashboard, sra_grid),
+  checking each for a native toggle first.

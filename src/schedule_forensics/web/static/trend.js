@@ -716,6 +716,7 @@
           var bH = (v / maxTotal) * barH;
           var rect = svgEl("rect", {
             x: cx - bw / 2, y: yBase - bH, width: bw, height: bH, fill: s.color,
+            "data-series": s.label, // interactive legend toggle (ADR-0276); re-tagged each frame
           });
           drill(rect, d[s.key + "_uids"], d.file, labels[i] + " · " + (s.label || s.key));
           layer.appendChild(rect);
@@ -727,7 +728,9 @@
       }
     }
     wrap.appendChild(svg);
-    legend(wrap, segments.map(function (s) { return { color: s.color, label: s.label }; }));
+    legend(wrap, segments.map(function (s) { return { color: s.color, label: s.label }; }), {
+      toggle: segments.length > 1, // click a segment in the legend to show/hide it (ADR-0276)
+    });
     if (window.SFA11y) {
       wrap.appendChild(SFA11y.table(
         title + " — data",
@@ -800,6 +803,7 @@
           if (bH > 0) {
             var rect = svgEl("rect", {
               x: gx0 + gi * bw, y: padT + barH - bH, width: bw - 1, height: bH, fill: g.color,
+              "data-series": g.label, // interactive legend toggle (ADR-0276); re-tagged each frame
             });
             drill(rect, d[g.key + "_uids"], d.file, labels[i] + " · " + (g.label || g.key));
             layer.appendChild(rect);
@@ -811,7 +815,9 @@
       }
     }
     wrap.appendChild(svg);
-    legend(wrap, groups.map(function (g) { return { color: g.color, label: g.label }; }));
+    legend(wrap, groups.map(function (g) { return { color: g.color, label: g.label }; }), {
+      toggle: groups.length > 1, // click a group in the legend to show/hide it (ADR-0276)
+    });
     if (window.SFA11y) {
       wrap.appendChild(SFA11y.table(
         title + " — data",
