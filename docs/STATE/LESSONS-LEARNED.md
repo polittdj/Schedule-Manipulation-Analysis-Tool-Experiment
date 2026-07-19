@@ -435,6 +435,24 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 6) — a good abstraction turns an "18-file" ask into a module + one adopter
+- The operator wanted interactive legends "on ALL charts, all pages." The naive read is an 18-file
+  edit (no shared legend helper exists). The better read: build ONE generic, opt-in module
+  (`SFLegend`) keyed by data-attributes, wire the FIRST chart (the one screenshotted), and let the
+  rest adopt the convention in phased PRs — delivering the capability now without a big-bang.
+- **The non-obvious hard part was animation, not the click.** trend/curves/margin steppers rebuild
+  their series SVG every frame, so a "hide this element" toggle is dropped on the next redraw. A lazy
+  per-scope MutationObserver that re-applies the hidden set on childList changes (and disconnects
+  when nothing is hidden) solves it generically — and watching childList only means apply()'s own
+  style writes can't retrigger it (no loop). LESSON: when adding interactivity to a chart, ask "does
+  this chart re-render?" first; if yes, the state must live outside the redrawn DOM and re-apply.
+- **Honest-N still applies to a view filter.** Hiding a series is display:none on the SVG only — the
+  data-table and Excel export are untouched, so a "hidden" series is a view choice, not a dropped
+  number (Law 2). Worth stating explicitly so a future reader doesn't mistake it for data suppression.
+- **Match the repo's test idiom.** The repo executes vendored JS via node .mjs harnesses (theme.js,
+  sra_derive), not Playwright. A faithful DOM-stub harness that drives the real module + asserts the
+  redraw-persistence is the consistent, cheap verification — no new browser-test dependency introduced.
+
 ### 2026-07-19 (cont. 5) — a concurrent tree-mutating agent corrupted a commit; and audit-before-ship pays
 - **The costly one:** while a commit was in flight, a background audit-workflow agent ran
   `git checkout origin/main -- sra.py` in the same working tree, so the commit captured a class-less

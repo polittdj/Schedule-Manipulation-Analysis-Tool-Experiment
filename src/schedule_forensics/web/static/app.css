@@ -560,6 +560,13 @@ th.metric-th { position: relative; }
 .chart-legend-item { display: inline-flex; align-items: center; gap: 5px; }
 .chart-swatch { display: inline-block; width: 12px; height: 10px; border-radius: 2px; flex: 0 0 auto; }
 .chart-swatch.dashed { background: none !important; border-top: 2px dashed var(--muted); height: 0; width: 14px; }
+/* interactive legend (ADR-0276): a togglable entry looks clickable; an OFF series dims + strikes. */
+.chart-legend-item[data-series-toggle] { cursor: pointer; user-select: none; border-radius: 3px; padding: 0 2px; }
+.chart-legend-item[data-series-toggle]:hover { color: var(--ink); }
+.chart-legend-item[data-series-toggle]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.chart-legend-item.legend-off { opacity: 0.45; text-decoration: line-through; }
+.chart-legend-item.legend-off .chart-swatch { filter: grayscale(1); }
+.chart-legend-all { font-size: 11px; padding: 0 4px; }
 
 /* Chart frame (operator request): full-screen + zoom toolbar on every chart (chartframe.js).
    The bar overlays the top-right corner of each .chart-host and fades in on hover/focus. */

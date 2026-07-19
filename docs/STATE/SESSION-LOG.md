@@ -7357,3 +7357,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   ~18 charts hand-roll legends with NO shared helper; a series toggle needs per-chart series tagging →
   per DESIGN-SYSTEM "never big-bang", roll out via a reusable SFLegend module chart-by-chart starting
   with trend.js (the screenshotted CEI-across-periods chart).
+
+- **Session (2026-07-19i, post-#418 — interactive legends phase 1):** operator merged #418, standing
+  "do all you can" → picked up the earlier interactive-legend ask. Architecture: NO shared legend
+  helper (~18 charts hand-roll), and the trend/curves/margin steppers rebuild their series SVG every
+  animation frame. Built **ADR-0276**: a reusable `static/legend_toggle.js` (`window.SFLegend`) —
+  opt-in convention (`data-series` on series marks, `data-series-toggle` on legend entries,
+  `data-series-all` on an all/none control), ONE delegated document click listener toggling `display`
+  within the entry's scope, and a **lazy per-scope MutationObserver** that re-applies the hidden set
+  after each frame redraw (the load-bearing part) and disconnects when nothing is hidden. Air-gap/
+  CSP-safe; Law-2 honest-N (a view filter, never drops data; export/data-table untouched). First
+  adopter: `trend.js` multi-series charts (the screenshotted CEI-across-periods chart) — `legend()`
+  opt-in + `data-series` tagging on polyline/dots/value-text; CSS affordance in app.css. Verified:
+  `legend_toggle_harness.mjs` (+test_legend_toggle_js.py; hide/show, scope independence, all/none,
+  re-drawn element inherits hidden state) + `test_legend_toggle_wiring.py` (loaded app-wide + serves;
+  trend.js emits the markup). Full local gate green; v1.0.82 → **1.0.83**, wheel + 9 installers
+  lockstep. Highest ADR **ADR-0276**. NEXT: roll the convention out chart-by-chart (phase 2+, one
+  focused PR each per DESIGN-SYSTEM).
