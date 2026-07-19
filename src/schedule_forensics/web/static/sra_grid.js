@@ -177,6 +177,46 @@
     var cb = document.getElementById("ssiBarDates");
     return !!(cb && cb.checked);
   }
+
+  // Risk-critical Gantt tint (ADR-0272): tint bars by each activity's Criticality Index from the
+  // last SRA run (cached server-side, delivered per-row as r.criticality_index). The band → CSS
+  // class map matches the .g-ci-* / .rk-* risk-heat palette (0 = never critical … 4 = CI >= 80%).
+  var critAvailable = false; // did the last SRA run populate a CI to tint by?
+  var critIters = 0; // that run's iteration count (provenance for the legend)
+  function tintCritOn() {
+    var cb = document.getElementById("ssiTintCrit");
+    return !!(cb && cb.checked);
+  }
+  function ciBand(ci) {
+    if (ci >= 0.8) return 4;
+    if (ci >= 0.5) return 3;
+    if (ci >= 0.2) return 2;
+    if (ci > 0) return 1;
+    return 0;
+  }
+  var CI_LEGEND = [
+    ["rk-min", "0"],
+    ["rk-low", "<20%"],
+    ["rk-mod", "20–50%"],
+    ["rk-high", "50–80%"],
+    ["rk-extreme", "≥80%"],
+  ];
+  // The tint legend + honest provenance: swatch scale when a run exists, otherwise a prompt to run.
+  function renderLegend() {
+    var host = document.getElementById("ssiTintLegend");
+    if (!host) return;
+    host.innerHTML = "";
+    if (!tintCritOn()) return;
+    if (!critAvailable) {
+      host.appendChild(el("span", { text: "Run the SRA to populate the criticality tint." }));
+      return;
+    }
+    host.appendChild(el("span", { text: "Criticality Index (last " + critIters + "-iteration run): " }));
+    CI_LEGEND.forEach(function (b) {
+      host.appendChild(el("span", { class: "ci-sw " + b[0], title: "Critical in " + b[1] + " of iterations" }));
+      host.appendChild(el("span", { text: " " + b[1] + "  " }));
+    });
+  }
   function barLabel(track, axis, anchor, side, iso) {
     if (!iso) return;
     var lx = side === "s" ? anchor - LABEL_W : anchor;
@@ -212,7 +252,14 @@
       }
       var left = axis.x(s), width = Math.max(2, axis.x(f) - left);
       var cls = r.is_summary ? "g-bar g-sum" : r.is_critical ? "g-bar g-crit" : "g-bar";
-      var bar = el("div", { class: cls, title: r.name + "  " + (SFGantt.fmtMDY(r.start) || r.start) + " -> " + (SFGantt.fmtMDY(r.finish) || r.finish), style: "left:" + left + "px;width:" + width + "px" });
+      // risk-critical tint (ADR-0272): a non-summary bar recolors by its Criticality Index when the
+      // toggle is on and the last run supplied one — overriding the planned/critical color.
+      var critTip = "";
+      if (!r.is_summary && tintCritOn() && r.criticality_index != null) {
+        cls = "g-bar g-ci-" + ciBand(r.criticality_index);
+        critTip = "  •  criticality " + Math.round(r.criticality_index * 100) + "%";
+      }
+      var bar = el("div", { class: cls, title: r.name + "  " + (SFGantt.fmtMDY(r.start) || r.start) + " -> " + (SFGantt.fmtMDY(r.finish) || r.finish) + critTip, style: "left:" + left + "px;width:" + width + "px" });
       if (!r.is_summary && (r.complete || r.percent_complete > 0)) {
         bar.appendChild(el("div", { class: "g-done", style: "width:" + (r.complete ? 100 : Math.min(100, r.percent_complete)) + "%" }));
       }
@@ -340,9 +387,12 @@
         if (!res.ok) { statusEl.textContent = res.j.error || "Could not load the grid."; return; }
         rows = res.j.rows || [];
         dataDate = res.j.data_date || null;
+        critAvailable = !!res.j.criticality_available;
+        critIters = res.j.criticality_iters || 0;
         pending = {};
         populateGroupCustom();
         render();
+        renderLegend();
         statusEl.textContent = rows.length + " tasks.";
       })
       .catch(function () { statusEl.textContent = "Could not load the grid."; });
@@ -430,6 +480,12 @@
   if (showDoneEl) showDoneEl.addEventListener("change", function () { if (rows.length) render(); });
   var barDatesEl = document.getElementById("ssiBarDates");
   if (barDatesEl) barDatesEl.addEventListener("change", function () { if (rows.length) render(); });
+  // risk-critical tint toggle (ADR-0272): repaint the bars + (re)draw the legend/provenance
+  var tintEl = document.getElementById("ssiTintCrit");
+  if (tintEl) tintEl.addEventListener("change", function () { if (rows.length) render(); renderLegend(); });
+  // a completed SRA run refreshes the grid so the fresh Criticality Index is available to tint by
+  // (the run and the grid are decoupled fetches; sra_ssi.js fires this after a successful run)
+  window.addEventListener("sf-ssi-run", function () { load(); });
   // MS-Project Find, shared with every Gantt (SFGantt.findTask): a pure-integer query jumps to
   // that UniqueID; any other text marks every row whose text contains it (find by NAME or part
   // of a name — the same behavior as the Activities/Path/Driving-Path grids)

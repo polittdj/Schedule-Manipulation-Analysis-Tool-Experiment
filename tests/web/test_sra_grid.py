@@ -72,11 +72,36 @@ def test_grid_feed_shape(client: TestClient) -> None:
         "is_focus",
         "editable",
         "is_summary",
+        "criticality_index",  # ADR-0272 — the risk-critical Gantt tint's per-row source
     }
     assert keys <= set(j["rows"][0])
     # summary rows are not editable; leaf rows are
     assert any(r["editable"] for r in j["rows"])
     assert all(not r["editable"] for r in j["rows"] if r["is_summary"])
+    # before any run the tint is unavailable and every row's CI is null (ADR-0272)
+    assert j["criticality_available"] is False
+    assert j["criticality_iters"] == 0
+    assert all(r["criticality_index"] is None for r in j["rows"])
+
+
+def test_grid_gantt_tint_populates_after_a_run(client: TestClient) -> None:
+    """ADR-0272: running the SRA caches a per-activity Criticality Index server-side; the grid feed
+    then reports the tint as available (with the run's iteration count) and carries a CI on the
+    activities that were critical, so the Gantt bars can tint by 'how often critical'."""
+    # focus the project finish and give the whole schedule a spread so a real MC runs
+    client.post("/sra/factor", data={"uids": "all", "factor": "3"})
+    client.post("/sra/auto-calc", data={"scope": "all"})
+    run = client.get("/api/sra/ssi?iterations=200").json()
+    # the run payload itself now surfaces the per-activity CI (ADR-0272)
+    assert run.get("criticality")  # present and non-empty
+    assert all(0.0 <= c["ci"] <= 1.0 for c in run["criticality"])
+    j = client.get("/api/sra/grid").json()
+    assert j["criticality_available"] is True
+    assert j["criticality_iters"] == 200
+    # at least one activity landed on the critical path in some iteration → a non-null, in-range CI
+    cis = [r["criticality_index"] for r in j["rows"] if r["criticality_index"] is not None]
+    assert cis and all(0.0 <= c <= 1.0 for c in cis)
+    assert max(cis) > 0.0  # the driving path is critical in at least some iterations
 
 
 def test_grid_save_factor_autofills_bcwc_and_sets_focus(client: TestClient) -> None:

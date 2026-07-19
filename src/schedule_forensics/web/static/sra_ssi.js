@@ -361,6 +361,9 @@
         if (!res.ok) { status.textContent = res.j.error || "Run failed."; return; }
         status.textContent = "";
         renderResult(res.j);
+        // the run cached a fresh per-activity Criticality Index server-side (ADR-0272); tell the
+        // (decoupled) SSI grid to reload so its Gantt can tint by it.
+        window.dispatchEvent(new Event("sf-ssi-run"));
       })
       .catch(function () { status.textContent = "Run failed."; });
   }

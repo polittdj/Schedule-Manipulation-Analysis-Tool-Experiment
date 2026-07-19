@@ -73,6 +73,20 @@
 }
 .g-bar.g-sum::before { left: 0; } .g-bar.g-sum::after { right: 0; }
 .g-done { height: 100%; background: var(--gantt-done); border-radius: 3px 0 0 3px; }
+/* Risk-critical Gantt tint (ADR-0272): when the SSI grid's "tint by criticality" toggle is on,
+   each bar is recolored by its Criticality Index — the fraction of the last SRA run's iterations
+   the activity was critical — using the sanctioned, theme-INDEPENDENT risk-heat palette (the same
+   fixed hexes as base.css .rk-*; the risk-heat exception to the token rule, semantics fixed in
+   light and dark). Cool green = never critical (low schedule risk) → hot red = near-always
+   critical (risk-critical). Overrides the planned/g-crit background; the g-done overlay stays. */
+.g-bar.g-ci-0 { background: #2e7d32; }  /* CI = 0 — never on the critical path */
+.g-bar.g-ci-1 { background: #9e9d24; }  /* CI < 20% */
+.g-bar.g-ci-2 { background: #f9a825; }  /* CI 20–50% */
+.g-bar.g-ci-3 { background: #ef6c00; }  /* CI 50–80% */
+.g-bar.g-ci-4 { background: #c62828; }  /* CI ≥ 80% — near-always critical */
+/* the tint legend under the grid controls: small swatches (reuse the .rk-* palette) + provenance */
+.ci-legend { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.ci-sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; vertical-align: middle; }
 .g-ms { position: absolute; top: 4px; width: 9px; height: 9px; background: var(--gantt-ms); transform: translateX(-50%) rotate(45deg); }
 .g-status { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--warn); opacity: .85; }
 /* MS-Project "dates on bars": compact MM/DD/YYYY start/finish text at the ends of each bar /

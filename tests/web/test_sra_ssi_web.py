@@ -110,6 +110,27 @@ def test_ssi_sampling_persists_and_echoes_in_the_payload(client: TestClient) -> 
     assert j["sampling"] == "lhs"
 
 
+def test_ssi_grid_offers_the_criticality_tint(client: TestClient) -> None:
+    """ADR-0272: the SSI grid controls carry the 'tint by criticality' toggle + a legend host, the
+    Gantt bar-tint bands live in app.css, and sra_grid.js wires the tint + a post-run reload."""
+    page = client.get("/sra").text
+    assert "id=ssiTintCrit" in page and "id=ssiTintLegend" in page
+    assert "tint by criticality" in page
+    css = client.get("/static/app.css").text
+    assert ".g-bar.g-ci-4" in css and ".g-bar.g-ci-0" in css  # the risk-heat tint bands
+    grid_js = client.get("/static/sra_grid.js").text
+    assert "g-ci-" in grid_js and "ciBand" in grid_js  # the band → class map
+    assert "sf-ssi-run" in grid_js  # reloads when a run completes
+    assert "sf-ssi-run" in client.get("/static/sra_ssi.js").text  # the run dispatches it
+
+
+def test_api_ssi_payload_carries_per_activity_criticality(client: TestClient) -> None:
+    j = client.get("/api/sra/ssi?iterations=200").json()
+    assert "criticality" in j
+    assert all({"uid", "ci"} <= set(c) for c in j["criticality"])
+    assert all(0.0 <= c["ci"] <= 1.0 for c in j["criticality"])
+
+
 def test_api_ssi_returns_focus_payload_and_matrices(client: TestClient) -> None:
     j = client.get("/api/sra/ssi?iterations=200").json()
     assert j["iterations"] == 200

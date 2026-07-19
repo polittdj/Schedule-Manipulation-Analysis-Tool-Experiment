@@ -771,6 +771,13 @@ class SessionState:
     # and drives a multivariate Gaussian copula (a distinct mode). Pairwise rho may be negative.
     sra_corr_pairs: tuple[tuple[int, int, float], ...] = ()
     sra_corr_groups: tuple[tuple[tuple[int, ...], float], ...] = ()
+    #: the last SSI run's per-activity Criticality Index (ADR-0272): uid -> fraction of iterations
+    #: the activity was critical, cached so the SSI grid Gantt can tint bars by "how often critical"
+    #: (the grid is a separate fetch from the run). Empty until the operator runs the simulation.
+    sra_criticality: dict[int, float] = field(default_factory=dict)
+    sra_criticality_iters: int = (
+        0  # the iteration count of the run that produced the tint (provenance)
+    )
     #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
     sra_import_msg: str | None = None
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
@@ -6656,6 +6663,10 @@ def create_app(
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
+        # cache this run's per-activity Criticality Index (ADR-0272) so the SSI grid Gantt can tint
+        # its bars by "how often critical" — the grid is a separate fetch, so it reads the last run.
+        st.sra_criticality = {int(u): ci for u, ci in result.criticality}
+        st.sra_criticality_iters = result.iterations
         return JSONResponse(_ssi_data(sch, result))
 
     @app.post("/sra/jcl-config")
@@ -6831,6 +6842,10 @@ def create_app(
             {
                 "rows": _ssi_grid_rows(st, sch, cpm),
                 "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
+                # criticality-tint provenance (ADR-0272): whether the last SSI run's CI is available
+                # to tint by, and at what iteration count — the grid labels the tint honestly.
+                "criticality_available": bool(st.sra_criticality),
+                "criticality_iters": st.sra_criticality_iters,
             }
         )
 
@@ -13209,6 +13224,9 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         "occurrence_mode": result.occurrence_mode,
         "correlation": result.correlation,
         "sampling": result.sampling,
+        # per-activity Criticality Index from this run (ADR-0272): the risk-critical Gantt tint's
+        # source, also exposed here for API consumers (uid -> fraction of iterations critical).
+        "criticality": [{"uid": u, "ci": round(ci, 4)} for u, ci in result.criticality],
         "correlation_matrix": {
             "applied": result.correlation_matrix_applied,
             "repaired": result.correlation_matrix_repaired,
@@ -13436,6 +13454,9 @@ def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict
                 "has_risk": uid in risk_uids,
                 "is_focus": uid == st.sra_focus_uid,
                 "editable": editable,
+                # the last SSI run's Criticality Index for this activity (ADR-0272), or None if no
+                # run yet / the activity was absent — the Gantt bar tints by "how often critical".
+                "criticality_index": st.sra_criticality.get(uid),
             }
         )
     return rows
@@ -14398,6 +14419,8 @@ onto the first cell to fill the column down across every task in one go. Edits q
 <label>Find <input id=ssiFind type=text placeholder="UID or name…" title="Jump to a UniqueID, or mark every grid task whose row contains this text"></label>
 <span id=ssiFindStatus class=muted aria-live=polite></span>
 <label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id=ssiBarDates type=checkbox> dates on bars</label>
+<label title="Tint each Gantt bar by its Criticality Index from the last SRA run — the fraction of Monte-Carlo iterations the activity landed on the critical path under uncertainty (the risk-critical view, Hulett). Run the SRA first to populate it."><input id=ssiTintCrit type=checkbox> tint by criticality</label>
+<span id=ssiTintLegend class="muted ci-legend" aria-live=polite></span>
 <button id=timescaleBtn type=button title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale&hellip;</button>
 <label>Group by <select id=ssiGridGroupBy data-no-i18n title="Group the grid rows under headers by any field — WBS, resources, critical, outline level, or any custom field (like the Path pages)">
 <option value="">(none)</option>
