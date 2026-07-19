@@ -1210,6 +1210,14 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Gruppe mit gemeinsamer Ursache hinzufügen",
         "pt": "Adicionar um grupo de causa comum",
     },
+    # — sampler choice (ADR-0271). "Monte-Carlo" / "Latin Hypercube" are method proper nouns and
+    # stay untranslated (like PSD / Cholesky above); only the plain modifier is translated. —
+    "Centered": {
+        "es": "Centrado",
+        "fr": "Centré",
+        "de": "Zentriert",
+        "pt": "Centralizado",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

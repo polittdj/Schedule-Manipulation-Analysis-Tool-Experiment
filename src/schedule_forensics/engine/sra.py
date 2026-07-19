@@ -88,6 +88,15 @@ class SRAConfig:
     #: uncertain activities it OVERRIDES the scalar ``correlation`` and drives a multivariate
     #: Gaussian copula (a distinct mode — the scalar path is never silently changed).
     correlation_matrix: CorrelationSpec | None = None
+    #: Sampling mode (ADR-0271): ``"mc"`` (plain Monte-Carlo, the byte-frozen default) or
+    #: ``"lhs"`` (Latin Hypercube — stratified draws for tighter convergence at the same
+    #: iteration count). A distinct opt-in mode that composes with the correlation copula; the
+    #: MC path is never silently changed. Marginals are exactly stratified only at zero
+    #: correlation (LHS-then-Cholesky), and PERT falls back to the triangular inverse under LHS.
+    sampling: str = "mc"
+    #: LHS within-stratum placement: ``False`` = random (McKay-Beckman-Conover, the default);
+    #: ``True`` = the stratum midpoint (biases tail percentiles low — opt-in, never a default).
+    lhs_centered: bool = False
 
 
 #: The default run config — a module-level singleton so it can be a keyword default
@@ -749,6 +758,8 @@ class SSIResult:
     correlation_matrix_repaired: bool = False
     correlation_min_eigenvalue: float = 0.0
     correlation_frobenius_distance: float = 0.0
+    #: the sampler that produced this run (ADR-0271): "mc" (Monte-Carlo) or "lhs" (Latin Hypercube)
+    sampling: str = "mc"
 
 
 def factor_to_bc_wc(
@@ -815,12 +826,142 @@ def _phi(z: float) -> float:
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
 
 
+#: Std-lib standard normal, reused for the probit (LHS, ADR-0271) — no third-party numerics.
+_STD_NORMAL = statistics.NormalDist()
+
+
+def _phi_inv(p: float) -> float:
+    """Standard-normal inverse CDF (probit) via std-lib ``NormalDist.inv_cdf``; the input is
+    clamped to ``[1e-12, 1-1e-12]`` so a stratum-edge draw of 0.0/1.0 maps to a finite ±7.03,
+    never ±inf or a math-domain error (ADR-0271)."""
+    return _STD_NORMAL.inv_cdf(min(1.0 - 1e-12, max(1e-12, p)))
+
+
+def _lhs_seed(base_seed: int) -> int:
+    """A disjoint integer transform of the base seed for the LHS plan's DEDICATED RNG stream — a
+    different salt from the per-iteration ``seed+i`` streams and the ``_occurrence_schedule``
+    stream, so the plan's draws cannot advance or coincide with them (no worse than plain MC)."""
+    return (base_seed * 2246822519 ^ 0x5F3759DF) & 0x7FFFFFFF
+
+
+@dataclass(frozen=True)
+class LatinHypercubePlan:
+    """A seeded Latin Hypercube plan (ADR-0271): ``columns`` is one stratified,
+    independently-permuted [0, 1) sequence per sampling dimension, each of length ``iterations``.
+    Built ONCE before the per-iteration loop on a dedicated RNG stream (RNG-free w.r.t. every
+    ``random.Random(seed+i)`` stream), so it can never perturb the frozen Monte-Carlo path."""
+
+    columns: tuple[tuple[float, ...], ...]
+    iterations: int
+
+
+def _lhs_plan(seed: int, iterations: int, n_columns: int, centered: bool) -> LatinHypercubePlan:
+    """Build the seeded LHS plan: for each of ``n_columns`` dimensions, exactly one sample in each
+    stratum ``[k/N, (k+1)/N)`` — random within the stratum (McKay-Beckman-Conover 1979) or the
+    stratum midpoint when ``centered`` — then a std-lib Fisher-Yates shuffle so each dimension's
+    permutation is independent. Deterministic, std-lib, fixed operation order (no set/dict traversal
+    in the numeric path)."""
+    rng = random.Random(_lhs_seed(seed))  # nosec B311 — simulation, not crypto
+    columns: list[tuple[float, ...]] = []
+    for _d in range(n_columns):
+        col = [(k + (0.5 if centered else rng.random())) / iterations for k in range(iterations)]
+        rng.shuffle(col)
+        columns.append(tuple(col))
+    return LatinHypercubePlan(columns=tuple(columns), iterations=iterations)
+
+
+def _build_lhs_plan(
+    config: SRAConfig,
+    uids: Sequence[int],
+    three: Mapping[int, tuple[int, int, int]],
+    prepared: PreparedCorrelation | None,
+) -> LatinHypercubePlan | None:
+    """The run's LHS plan, or ``None`` to run plain Monte-Carlo (the byte-frozen default). The
+    column count EXACTLY matches the shared sampler's per-iteration draw count for the active
+    correlation branch, so plan column ↔ draw is a stable mapping. Returns ``None`` (→ the
+    identical MC branch) when the mode is off or every activity is a point mass (ADR-0271)."""
+    if config.sampling != "lhs":
+        return None
+    uncertain = [u for u in uids if three[u][2] > three[u][0]]
+    if prepared is not None:
+        n_columns = len(prepared.uids)  # matrix: N correlated normals
+    elif max(0.0, min(1.0, config.correlation)) > 0.0:
+        n_columns = 1 + len(uncertain)  # scalar single-factor: 1 common + D idiosyncratic
+    else:
+        n_columns = len(uncertain)  # independent: D stratified uniforms
+    if n_columns == 0:
+        return None
+    return _lhs_plan(config.seed, config.iterations, n_columns, config.lhs_centered)
+
+
+def _lhs_overrides(
+    config: SRAConfig,
+    uids: Sequence[int],
+    three: Mapping[int, tuple[int, int, int]],
+    prepared: PreparedCorrelation | None,
+    plan: LatinHypercubePlan,
+    iteration: int,
+) -> dict[int, int]:
+    """The Latin Hypercube branch of the shared sampler (ADR-0271): the plan's stratified columns
+    replace the per-iteration RNG draws, walked by a cursor in the EXACT current draw order. The
+    correlation composition is unchanged — only the SOURCE of the normals/uniforms differs
+    (LHS-then-Cholesky). Duration dimensions only; the triangular inverse-CDF is used for every
+    marginal, so ``distribution="pert"`` under LHS falls back to triangular (documented — there is
+    no std-lib PERT inverse, mirroring the scalar-correlation quirk)."""
+    overrides: dict[int, int] = {}
+    cols = plan.columns
+    if prepared is not None:  # matrix: z = probit of stratified uniforms, then x = L z
+        n = len(prepared.uids)
+        pos = {u: k for k, u in enumerate(prepared.uids)}
+        z = [_phi_inv(cols[k][iteration]) for k in range(n)]
+        x = [sum(prepared.chol[k][j] * z[j] for j in range(k + 1)) for k in range(n)]
+        for u in uids:
+            low, mode, high = three[u]
+            if high <= low:  # point mass — no column consumed (matches the MC path)
+                overrides[u] = round(low)
+                continue
+            uni = _phi(x[pos[u]])
+            overrides[u] = max(
+                0, round(_sample_triangular(uni, float(low), float(mode), float(high)))
+            )
+        return overrides
+    r = max(0.0, min(1.0, config.correlation))
+    if r > 0.0:  # scalar single-factor: common + idiosyncratic, both probit of stratified uniforms
+        k_common, k_indep = math.sqrt(r), math.sqrt(1.0 - r)
+        common = _phi_inv(cols[0][iteration])
+        c = 1
+        for u in uids:
+            low, mode, high = three[u]
+            if high <= low:
+                overrides[u] = round(low)
+                continue
+            uni = _phi(k_common * common + k_indep * _phi_inv(cols[c][iteration]))
+            c += 1
+            overrides[u] = max(
+                0, round(_sample_triangular(uni, float(low), float(mode), float(high)))
+            )
+        return overrides
+    c = 0  # r == 0: the stratified uniform IS the copula uniform — no probit round-trip
+    for u in uids:
+        low, mode, high = three[u]
+        if high <= low:
+            overrides[u] = round(low)
+            continue
+        uni = cols[c][iteration]
+        c += 1
+        overrides[u] = max(0, round(_sample_triangular(uni, float(low), float(mode), float(high))))
+    return overrides
+
+
 def _iteration_duration_overrides(
     rng: random.Random,
     config: SRAConfig,
     uids: Sequence[int],
     three: Mapping[int, tuple[int, int, int]],
     prepared: PreparedCorrelation | None = None,
+    *,
+    plan: LatinHypercubePlan | None = None,
+    iteration: int = 0,
 ) -> dict[int, int]:
     """One iteration's sampled duration overrides (working minutes), SHARED by
     :func:`compute_sra_ssi` and :func:`compute_jcl` so their finish marginals stay
@@ -837,7 +978,14 @@ def _iteration_duration_overrides(
     the prepared Cholesky factor (``x = L z``), one per uncertain activity, mapped through
     :func:`_phi` → the triangular inverse-CDF. A DISTINCT mode (N idiosyncratic draws, no
     common draw), never a silent reroute of the scalar path.
+
+    ``plan`` set (ADR-0271) — Latin Hypercube: the same three correlation branches, but the
+    per-iteration RNG draws are replaced by the stratified plan columns (delegated to
+    :func:`_lhs_overrides`). ``plan is None`` (the default) runs the exact Monte-Carlo statements
+    below, byte-for-byte, so every frozen run is untouched.
     """
+    if plan is not None:
+        return _lhs_overrides(config, uids, three, prepared, plan, iteration)
     overrides: dict[int, int] = {}
     if prepared is None:
         r = max(0.0, min(1.0, config.correlation))
@@ -990,6 +1138,9 @@ def compute_sra_ssi(
     # when supplied, is prepared ONCE over exactly this set (ADR-0270, RNG-free); None → scalar.
     uncertain = [u for u in uids if three[u][2] > three[u][0]]
     prepared = prepare_correlation(uncertain, config.correlation_matrix)
+    # the Latin Hypercube plan (ADR-0271), built ONCE off a dedicated RNG stream; None for the
+    # frozen Monte-Carlo default. Shared identically with compute_jcl so the finish marginals match.
+    plan = _build_lhs_plan(config, uids, three, prepared)
 
     finishes: list[int] = []
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
@@ -997,7 +1148,9 @@ def compute_sra_ssi(
 
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
-        overrides = _iteration_duration_overrides(rng, config, uids, three, prepared)
+        overrides = _iteration_duration_overrides(
+            rng, config, uids, three, prepared, plan=plan, iteration=i
+        )
         for ridx, risk in enumerate(active_risks):
             fired = occ[ridx][i]
             risk_occurred[ridx].append(fired)
@@ -1156,6 +1309,7 @@ def _build_ssi_result(
         correlation_frobenius_distance=(
             prepared.frobenius_distance if prepared is not None else 0.0
         ),
+        sampling=config.sampling,
     )
 
 

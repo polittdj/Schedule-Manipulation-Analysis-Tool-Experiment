@@ -49,6 +49,7 @@ from schedule_forensics.engine.sra import (
     ScheduleRisk,
     SRAConfig,
     _build_cdf,
+    _build_lhs_plan,
     _finish_of,
     _is_completed,
     _iteration_duration_overrides,
@@ -150,6 +151,8 @@ class JCLResult:
     correlation_matrix_repaired: bool = False
     correlation_min_eigenvalue: float = 0.0
     correlation_frobenius_distance: float = 0.0
+    #: the sampler that produced this run (ADR-0271): "mc" (Monte-Carlo) or "lhs" (Latin Hypercube)
+    sampling: str = "mc"
 
 
 def cost_loaded_total(schedule: Schedule) -> float:
@@ -222,6 +225,9 @@ def compute_jcl(
     # (the ADR-0269 pin); None → the scalar single-factor path (the byte-frozen default).
     uncertain = [u for u in uids if three[u][2] > three[u][0]]
     prepared = prepare_correlation(uncertain, config.correlation_matrix)
+    # the Latin Hypercube plan (ADR-0271) — built by the SAME shared helper the SSI engine uses,
+    # so the duration draws (and thus the finish marginal) stay byte-identical; None for MC.
+    plan = _build_lhs_plan(config, uids, three, prepared)
 
     # ---- the cost model's constant parts (ADR-0269) ----
     tau = max(0.0, min(1.0, jcl.td_share))
@@ -259,7 +265,9 @@ def compute_jcl(
     costs: list[float] = []
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
-        overrides = _iteration_duration_overrides(rng, config, uids, three, prepared)
+        overrides = _iteration_duration_overrides(
+            rng, config, uids, three, prepared, plan=plan, iteration=i
+        )
         for ridx, risk in enumerate(active_risks):
             if occ[ridx][i]:
                 add = round(risk.impact_days * mpd)
@@ -435,4 +443,5 @@ def _build_jcl_result(
         correlation_frobenius_distance=(
             prepared.frobenius_distance if prepared is not None else 0.0
         ),
+        sampling=config.sampling,
     )
