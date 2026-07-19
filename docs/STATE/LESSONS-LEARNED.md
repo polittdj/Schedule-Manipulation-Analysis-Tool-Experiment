@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 3) — an automated reviewer caught three real edge cases my own tests missed
+- **Context:** right after probabilistic branching (#415) merged, a **Codex bot review** posted three
+  findings on the exact feature. I verified each against the code (not blindly applying — external
+  review is a *claim*, same discipline as an audit) and all three were **real**:
+  - **Save/Load id collision:** the restore set the id counter to the loaded *count*, not the highest
+    suffix; a gapped id set (only "B3" survives) could later recreate "B3", and since the fragnet map
+    is keyed by id, one branch would overwrite another's tie. My own round-trip test used dense ids,
+    so it never exercised the gap.
+  - **Two branches on the same tie:** the first consumed the FS tie, the second silently went inert
+    (order-dependent). My tests only ever put one branch per tie.
+  - **Exports didn't disclose branches:** the export path *did* pass `branches=` (so the numbers
+    shifted), but the XLSX/DOCX tables listed only the risk register — a self-describing-report gap I
+    simply didn't think to test, because the on-screen table was right.
+- **Lesson (generalizes → Part V):** my test suite proved the feature's *happy paths and core
+  invariants* well, but missed **cross-feature seams** — Save/Load × id generation, multiplicity on a
+  shared resource, and *every output surface* (screen vs. export) of a new modeled input. When adding
+  a modeled input that shifts results, enumerate: does it round-trip through Save/Load with adversarial
+  ids? what happens with two of them on the same target? and is it disclosed on **every** export, not
+  just the screen? An independent reviewer (human or bot) is cheap insurance for exactly the seams the
+  author's mental model glosses over — treat its findings as leads to verify, and fold the confirmed
+  ones back as tests (I added four).
+- **Process note:** the PR merged before the review landed, so these became follow-up fixes on a new
+  branch rather than pre-merge edits. Not wrong (draft-PR review + fast follow-up works), but a beat
+  more patience before merging a large new feature would have folded them into the original PR.
+
 ### 2026-07-19 (cont. 2) — prototype-verify a NEW mechanism against the trusted solver before the big build
 - **Context:** probabilistic branching (Hulett #8, ADR-0273) — the first SRA feature that changes
   network *topology* per iteration (inserting a rework fragnet), not just activity durations. The

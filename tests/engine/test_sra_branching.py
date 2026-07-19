@@ -141,6 +141,32 @@ def test_branching_is_deterministic_for_a_seed() -> None:
     assert a.branches == b.branches
 
 
+def test_two_branches_on_the_same_tie_chain_in_series() -> None:
+    """Two branches on the SAME after->before tie both apply — the fragnets chain in series
+    (after -> F1 -> F2 -> before), so with both certain the finish adds BOTH reworks (Codex P2 fix):
+    12 + 5 + 3 = 20 d, and neither is silently marked inert."""
+    s = _focus_net()
+    b1 = _branch(after=2, before=4, days=5, p=1.0, id="B1", name="First")
+    b2 = _branch(after=2, before=4, days=3, p=1.0, id="B2", name="Second")
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=30, seed=1, target_uid=4), branches=[b1, b2])
+    assert r.p50 == 20 * DAY  # 12 base + 5 + 3, chained
+    assert {bs.id for bs in r.branches} == {"B1", "B2"}
+    assert all(bs.applied for bs in r.branches)  # both applied, neither inert
+
+
+def test_two_branches_same_tie_independent_firing_is_additive() -> None:
+    """Chained same-tie branches fire independently: with p=0.5 each, the finish takes four values
+    (neither / only B1 / only B2 / both) — 12, 17, 15, 20 d."""
+    s = _focus_net()
+    b1 = _branch(after=2, before=4, days=5, p=0.5, id="B1")
+    b2 = _branch(after=2, before=4, days=3, p=0.5, id="B2")
+    r = compute_sra_ssi(
+        s, config=SRAConfig(iterations=600, seed=3, target_uid=4), branches=[b1, b2]
+    )
+    finishes = {off for off, _p in r.cdf}
+    assert finishes == {12 * DAY, 15 * DAY, 17 * DAY, 20 * DAY}
+
+
 def test_zero_probability_branch_is_ignored() -> None:
     s = _focus_net()
     base = compute_sra_ssi(s, config=SRAConfig(iterations=40, seed=1, target_uid=4))

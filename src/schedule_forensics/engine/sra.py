@@ -1144,12 +1144,19 @@ def _augment_with_branches(
     rels = list(schedule.relationships)
     next_uid = (max((t.unique_id for t in tasks), default=0)) + 1
     fragnet_uids: dict[str, int] = {}
+    # Two+ branches on the SAME after->before tie CHAIN in series (after -> F1 -> F2 -> before),
+    # each firing independently, so both rework events apply instead of the second going inert.
+    # `chain_pred` tracks the current predecessor of before_uid for a tie so each next fragnet
+    # inserts onto the live segment (`F1 -> before`), not the already-consumed original tie.
+    chain_pred: dict[tuple[int, int], int] = {}
     for branch in branches:
+        key = (branch.after_uid, branch.before_uid)
+        pred = chain_pred.get(key, branch.after_uid)
         idx = next(
             (
                 k
                 for k, r in enumerate(rels)
-                if r.predecessor_id == branch.after_uid
+                if r.predecessor_id == pred
                 and r.successor_id == branch.before_uid
                 and r.type == RelationshipType.FS
             ),
@@ -1165,7 +1172,7 @@ def _augment_with_branches(
         )
         rels.append(
             Relationship(
-                predecessor_id=branch.after_uid,
+                predecessor_id=pred,
                 successor_id=f_uid,
                 type=RelationshipType.FS,
                 lag_minutes=0,
@@ -1179,6 +1186,7 @@ def _augment_with_branches(
                 lag_minutes=orig.lag_minutes,
             )
         )
+        chain_pred[key] = f_uid  # a later same-tie branch inserts after this fragnet
         fragnet_uids[branch.id] = f_uid
     aug = schedule.model_copy(update={"tasks": tuple(tasks), "relationships": tuple(rels)})
     return aug, fragnet_uids

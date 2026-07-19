@@ -13808,8 +13808,12 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                 hi = max(mid, int(item.get("high", mid)))
                 bseq += 1
                 branches.append(
+                    # REGENERATE ids densely (B1..Bn) rather than trusting the saved id — a saved
+                    # gap (e.g. only "B3" survives) would otherwise leave the counter below the
+                    # highest suffix, so a later add could recreate an in-use id and collide the
+                    # fragnet mapping. Dense ids keep `sra_branch_seq == len(branches)` collision-free.
                     ProbabilisticBranch(
-                        id=str(item.get("id") or f"B{bseq}"),
+                        id=f"B{bseq}",
                         name=str(item.get("name") or f"Branch {bseq}"),
                         probability=min(1.0, max(0.0, float(item.get("probability", 0.0)))),
                         after_uid=a,
@@ -13863,6 +13867,11 @@ def _ssi_export_tables(
             ("Occurrence mode", result.occurrence_mode),
             ("Correlation", result.correlation),
             ("Risk register", "on" if result.used_risks else "off"),
+            ("Sampling", result.sampling),
+            (
+                "Probabilistic branches",
+                f"on ({len(result.branches)})" if result.branches else "off",
+            ),
             ("Iterations", result.iterations),
             ("Schedule", sch.name),
         ),
@@ -13914,6 +13923,42 @@ def _ssi_export_tables(
                 rs.mean_delta_days,
             )
             for rs in result.risks
+        ),
+    )
+    # probabilistic-branch setup + outcomes (ADR-0273) — a branch shifts the percentiles, so the
+    # export must disclose it (an undocumented modeled input makes the run unreproducible, Law 2).
+    branch_by_id = {b.id: b for b in st.sra_branches}
+    branches_tbl = Table(
+        "Probabilistic branches",
+        (
+            "ID",
+            "Name",
+            "Probability %",
+            "Tie (after->before)",
+            "BC/ML/WC d",
+            "Fired %",
+            "Mean rework d",
+            "Mean delta d",
+            "Status",
+        ),
+        tuple(
+            (
+                bs.id,
+                bs.name,
+                round(bs.probability * 100, 1),
+                f"{branch_by_id[bs.id].after_uid} -> {branch_by_id[bs.id].before_uid}"
+                if bs.id in branch_by_id
+                else "",
+                f"{branch_by_id[bs.id].low / mpd:g} / {branch_by_id[bs.id].ml / mpd:g}"
+                f" / {branch_by_id[bs.id].high / mpd:g}"
+                if bs.id in branch_by_id
+                else "",
+                round(bs.fired_fraction * 100, 1) if bs.applied else "",
+                bs.mean_fragnet_days if bs.applied else "",
+                bs.mean_delta_days if bs.applied else "",
+                "applied" if bs.applied else "inert (no FS tie)",
+            )
+            for bs in result.branches
         ),
     )
     results = Table(
@@ -13971,7 +14016,17 @@ def _ssi_export_tables(
     )
     return TableSet(
         f"Schedule Risk & Opportunity Analysis - {sch.name}",
-        (conclusions, setup, durations, risks, results, sens, risk_matrix, opp_matrix),
+        (
+            conclusions,
+            setup,
+            durations,
+            risks,
+            branches_tbl,
+            results,
+            sens,
+            risk_matrix,
+            opp_matrix,
+        ),
     )
 
 
@@ -14390,6 +14445,18 @@ def _sra_report_blocks(
         ),
         doc("Risk register"),
     ]
+    if result.branches:  # probabilistic branches shifted the percentiles → disclose them (ADR-0273)
+        blocks += [
+            Heading("Probabilistic branches", level=1),
+            Paragraph(
+                "Discrete rework events, each inserted onto an existing logic tie and firing with "
+                "its own probability — modeling a failure/retest that delays the downstream work "
+                "when it occurs. The table lists each branch's tie, 3-point rework duration, fired "
+                "fraction, and mean finish impact (working days); a branch whose tie was absent is "
+                "reported inert."
+            ),
+            doc("Probabilistic branches"),
+        ]
     blocks += [
         Heading("Risk & Opportunity assessment matrices", level=1),
         Paragraph(
@@ -14409,6 +14476,9 @@ def _sra_report_blocks(
             "BC = ML x (1 - subtract%/100), WC = ML x (1 + add%/100) with the per-factor percentages "
             f"from the Risk Factors table. Occurrence mode: {result.occurrence_mode}. Correlation: "
             f"{result.correlation:g}. Risk register: {'on' if result.used_risks else 'off'}. "
+            f"Sampling: {result.sampling}. Probabilistic branches: "
+            f"{len(result.branches) if result.branches else 'none'}"
+            f"{' (discrete rework on a logic tie; see the Probabilistic branches table)' if result.branches else ''}. "
             "Consequence (1-5) is auto-rated from the schedule impact via the NASA Schedule guideline "
             "(impact days converted to calendar months: <1 week=1, 1 week to <1 month=2, 1 to "
             "<3 months=3, 3 to <=6 months=4, >6 months=5)."

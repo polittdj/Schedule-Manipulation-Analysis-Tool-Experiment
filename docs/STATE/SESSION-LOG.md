@@ -7280,3 +7280,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (freeze, bi-modal split, merge-bias no-op + overtake, inert disclosure, determinism, zero-prob) +
   4 web tests + an end-to-end web bimodal check (Project5 tie 131→142). Full local gate green.
   v1.0.78 → **1.0.79**, wheel + 9 installers in lockstep. Highest ADR **ADR-0273**.
+
+- **Session (2026-07-19f, Ultracode cont.):** two operator interactions + a review-driven follow-up.
+  (1) **Closed PR #413** (a parallel session's "lessons-learned log + daily-update mandate") at the
+  operator's request: verified it's **superseded by the merged #412** (same content on main, which
+  I've been appending to all session), stale base (pre-#411/#412/#414), and its ADR-0271 number
+  collides with the merged LHS ADR — so closing, not merging, is correct; posted a short close note.
+  (2) **#415 (probabilistic branching) merged**, then a **Codex bot review** posted three findings;
+  I verified each against the code (all real) and fixed them in a follow-up PR (no new ADR — ADR-0273
+  hardening; v1.0.79 → **1.0.80**): **P1 branch-id collision on Save/Load** (restore set the counter
+  to the loaded count, not the max suffix → a gapped id set could recreate an in-use id → the
+  `fragnet_uids` map, keyed by id, overwrites → wrong tie modeled; FIX: regenerate ids densely on
+  load); **P2 two branches on the same FS tie** (first consumed the tie, second went inert,
+  order-dependent; FIX: a `chain_pred` map chains same-tie branches in series so both apply
+  independently); **P1 exports didn't disclose branches** (the /export/{fmt}/sra call passes
+  `branches=`, so exported percentiles are branch-shifted, but the XLSX/DOCX listed only the risk
+  register — a reproducibility/Law-2 honesty gap; FIX: a "Probabilistic branches" table + a Run-setup
+  row + the DOCX assumptions mention). Verified: +2 engine tests (same-tie chain additive; four
+  finishes under independent firing) + 2 web tests (gapped save/load → 3 distinct ids all applied;
+  XLSX names the branch). Full local gate green. Wheel + 9 installers regenerated in lockstep.
+  Highest ADR stays **ADR-0273**.
