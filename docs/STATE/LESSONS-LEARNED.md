@@ -435,6 +435,39 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 5) — an adversarial-audit WORKFLOW corrupted my working tree mid-commit; and a piped `$?` hid a real bandit failure
+- **The incident.** After the local gate passed on #9 (v1.0.81) I launched a background multi-agent
+  **audit workflow** over the *uncommitted* diff, then committed + pushed. CI failed at **mypy** with
+  8 `has no attribute` errors — the committed `sra.py` was the **class-less baseline**, missing every
+  line of the conditional-branching code, even though app.py/tests/JS/docs committed correctly. Root
+  cause: a workflow review agent (byte-freeze dimension) ran `git checkout origin/main -- sra.py` to
+  diff the baseline and never restored it; that landed in the window before my `git add -A`, so the
+  commit captured the reverted file. Worse, when I first looked I **misread** the working-tree diff
+  (the classes shown as `+` because HEAD lacked them) as a corruption and `git checkout`-reverted the
+  *correct* working copy — then a still-running agent re-added it — a moving target until I stopped the
+  workflow with its **task id** (not the run id) and hard-reset `sra.py` to the pinned `origin/main`
+  blob, re-applying every edit deterministically.
+- **Lessons (generalizable, high value):**
+  1. **Never run a workflow whose agents can touch the working tree while you have uncommitted work
+     you intend to commit.** Audit/review agents must be *read-only* — or run with `isolation:
+     "worktree"` so they operate on a throwaway copy. A concurrent `git checkout`/edit from an agent
+     is indistinguishable from your own change and will be captured by `git add -A`.
+  2. **Commit BEFORE launching a background audit**, not after. Review the committed SHA; push fixes
+     as follow-ups. (The draft-PR + Codex-review loop already provides the adversarial pass safely.)
+  3. **When git state looks impossible, establish ground truth before acting** — `git show HEAD:file`,
+     `md5sum` vs `origin/main`, `git status` — don't `git checkout` on a hunch. My revert destroyed the
+     one correct copy.
+  4. **`cmd | tail; echo $?` reports the tail's exit, not cmd's.** My "bandit exit: 0" was `tail`'s 0
+     the whole time — bandit had been failing on two bare `assert`s (B101) since the first gate run,
+     and would have failed CI's bandit step too (CI just never reached it, dying at mypy first). For a
+     pass/fail gate, capture the tool's OWN exit: `cmd; echo $?` or `set -o pipefail`.
+- **Two real code fixes surfaced by rebuilding clean:** (a) replaced the two bare `assert`s with
+  explicit `raise ... # pragma: no cover` (the src convention is **zero** bare asserts — they vanish
+  under `python -O`, and bandit B101-flags them); (b) an HTML `<select>` element plus the tooltip
+  words "offset **from** project start" tripped bandit's **B608** `select…from` SQL heuristic — reworded
+  to "offset into the project" (no `# nosec` needed). Both were latent in the original build; the
+  forced clean-rebuild caught them.
+
 ### 2026-07-19 (cont. 4) — a shadowed loop variable silently corrupted a sampler arg; the new tests caught it
 - Building Hulett #9 conditional branching (ADR-0274), the per-iteration switch did
   `plan = cond.plan_b if trips else cond.plan_a`. That **shadowed** the outer `plan` — the Latin

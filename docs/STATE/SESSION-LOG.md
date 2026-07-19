@@ -7323,3 +7323,17 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   v1.0.80 → **1.0.81**, wheel + 9 installers in lockstep. Highest ADR **ADR-0274**. **With #9 done
   the file-free #331 backlog is COMPLETE** — awaiting the 3 OWED operator inputs (ADR-0261 PowerShell
   crash log + large dataset; ADR-0258 Claude-Design portfolio prompt).
+
+- **Session (2026-07-19g, cont.) — #417 CI fix (workflow-corrupted commit + latent bandit issues):**
+  the initial #9 commit (f935a6e) unexpectedly captured the **class-less baseline `sra.py`** because a
+  background audit-workflow agent had `git checkout origin/main -- sra.py` in the pre-`git add`
+  window; CI failed at mypy (8 `has no attribute`). Stopped the workflow, hard-reset `sra.py` to the
+  pinned baseline, re-applied every edit deterministically, and re-verified (byte-freeze + same-tie
+  chaining self-checks + 40 conditional/SSI tests). The forced clean rebuild also surfaced two latent
+  issues masked by a `bandit | tail; echo $?` measurement bug (reported tail's exit, not bandit's):
+  two bare `assert`s (B101 — replaced with `raise … # pragma: no cover`, matching the src zero-assert
+  convention) and a B608 `select…from` false positive in the conditional editor's HTML (reworded
+  "offset from project start" → "offset into the project"). Wheel + 9 installers rebuilt from the
+  corrected source (lockstep re-verified). Full local gate re-run to green. Lessons logged
+  (LESSONS-LEARNED cont. 5): never run working-tree-mutating agents concurrently with a commit;
+  commit before auditing; capture a tool's own exit code, not a pipe's.

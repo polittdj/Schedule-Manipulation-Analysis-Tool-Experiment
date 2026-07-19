@@ -13067,7 +13067,7 @@ plans (a finish-metric monitor is read from a per-iteration probe solve).</p>
 <select name=metric><option value=duration>duration</option><option value=finish>finish</option></select></label>
 <label>trips when
 <select name=trip_when><option value=at_or_above>&ge; threshold (late/long)</option><option value=below>&lt; threshold (early/short)</option></select></label>
-<label title="Working days: a duration for the duration metric, or a finish offset from project start for the finish metric">Threshold&nbsp;days <input type=number name=threshold min=0 step=0.5 style="width:64px" required></label>
+<label title="Working days: a duration for the duration metric, or a finish offset into the project for the finish metric">Threshold&nbsp;days <input type=number name=threshold min=0 step=0.5 style="width:64px" required></label>
 <fieldset style="display:inline-block;border:1px solid var(--sf-border,#888);padding:4px 8px;margin:2px">
 <legend>Plan A (primary)</legend>
 <label>After <input type=number name=a_after min=1 style="width:72px" required></label>

@@ -757,6 +757,89 @@ class SSIBranchStat:
 
 
 @dataclass(frozen=True)
+class BranchPlan:
+    """One arm of a :class:`ConditionalBranch` (ADR-0274): an alternative/contingency **fragnet** —
+    a new activity inserted onto an existing Finish-to-Start tie ``after_uid -> before_uid``, like
+    a :class:`ProbabilisticBranch`'s rework node — carrying its own 3-point duration
+    ``(low, ml, high)`` in working minutes. The two plans of a conditional branch are **mutually
+    exclusive**: in a given iteration exactly one plan's fragnet takes a sampled duration and the
+    other stays at its zero placeholder. A plan whose FS tie is absent makes the whole conditional
+    inert (disclosed). ``low <= ml <= high`` (clamped at use)."""
+
+    after_uid: int
+    before_uid: int
+    low: int
+    ml: int
+    high: int
+    name: str = ""
+
+
+@dataclass(frozen=True)
+class ConditionalBranch:
+    """A Hulett **conditional branch** (ADR-0274): contingency-plan switching. Each iteration a
+    **condition** on a monitored activity decides which of two mutually-exclusive plans executes —
+    the primary ``plan_a`` (condition NOT tripped, "stick with Plan A") or the contingency
+    ``plan_b`` (tripped, "fall to Plan B"). The run reports **which plan wins how often**.
+
+    Unlike a :class:`ProbabilisticBranch` (a fixed-probability coin flip that *adds* rework), the
+    choice here is driven by the iteration's *realized* state, so the headline is "how often it
+    fell to the fallback" and the finish distribution reflects the plan mix. Both plans are fragnets
+    (see :class:`BranchPlan`); with both at their zero placeholder the augmented network is
+    byte-identical to the base (verified against ``compute_cpm``).
+
+    ``metric`` selects the monitored quantity, compared against ``threshold_minutes`` (working
+    minutes — a *duration* for ``"duration"``, a finish *offset* for ``"finish"``):
+
+    * ``"duration"`` — the sampled duration of ``monitor_uid`` this iteration (read pre-solve; one
+      CPM solve per iteration, as today).
+    * ``"finish"`` — the early-finish **offset** of ``monitor_uid`` on the *pre-contingency* network
+      (read from one extra per-iteration probe solve). The monitor must be **upstream** of the
+      branch, which makes its finish invariant to the plan fragnets (the no-circularity property
+      verified before build); a finish-metric conditional therefore costs a second CPM solve per
+      iteration, so it is off the page-load path.
+
+    ``trip_when`` is ``"at_or_above"`` (default — fall to Plan B when the monitor runs **late**,
+    the natural contingency trigger) or ``"below"`` (fall to Plan B when it runs early/short). A
+    conditional whose monitor is absent, or **either** plan's FS tie is absent, is inert (disclosed,
+    never silent)."""
+
+    id: str
+    name: str
+    monitor_uid: int
+    metric: str  # "duration" | "finish"
+    threshold_minutes: int
+    plan_a: BranchPlan  # primary — executes when the condition does NOT trip
+    plan_b: BranchPlan  # contingency — executes when the condition trips
+    trip_when: str = "at_or_above"  # "at_or_above" | "below"
+
+
+@dataclass(frozen=True)
+class SSIConditionalStat:
+    """Per-conditional-branch outcome of an SSI run (ADR-0274) — which plan won how often + impact.
+
+    ``plan_b_fraction`` is the reportable headline ("how often we fell to the contingency").
+    ``mean_delta_days`` = mean focus finish when Plan B executed minus when Plan A executed (working
+    days) — the empirical cost of falling to the fallback; ``0.0`` when one plan never executed."""
+
+    id: str
+    name: str
+    monitor_uid: int
+    metric: str
+    threshold_minutes: int
+    trip_when: str
+    applied: bool  # False if the monitor or EITHER plan's FS tie was absent (conditional inert)
+    plan_a_name: str
+    plan_b_name: str
+    plan_a_hits: int  # iterations Plan A executed (condition not tripped)
+    plan_b_hits: int  # iterations Plan B executed (condition tripped)
+    plan_a_fraction: float
+    plan_b_fraction: float  # how often the plan fell to the contingency
+    mean_a_finish_days: float  # mean focus finish (working days) over the Plan-A iterations
+    mean_b_finish_days: float  # mean focus finish (working days) over the Plan-B iterations
+    mean_delta_days: float  # mean_b_finish - mean_a_finish (cost of falling to Plan B)
+
+
+@dataclass(frozen=True)
 class SSIResult:
     """The SSI focus-event finish distribution + per-risk stats (parity-isolated, ADR-0123)."""
 
@@ -807,6 +890,9 @@ class SSIResult:
     #: per-probabilistic-branch outcomes (ADR-0273): fired fraction + mean rework magnitude + mean
     #: finish impact. Empty when no branches were supplied (the byte-frozen default).
     branches: tuple[SSIBranchStat, ...] = ()
+    #: per-conditional-branch outcomes (ADR-0274, Hulett #9): which plan won how often + the mean
+    #: finish delta of falling to the contingency. Empty when no conditionals were supplied.
+    conditionals: tuple[SSIConditionalStat, ...] = ()
 
 
 def factor_to_bc_wc(
@@ -1253,6 +1339,157 @@ def _build_branch_stats(
     return tuple(stats)
 
 
+def _augment_with_conditionals(
+    schedule: Schedule, conditionals: Sequence[ConditionalBranch]
+) -> tuple[Schedule, dict[str, tuple[int, int]]]:
+    """Insert BOTH plan fragnets of each conditional branch into the network ONCE (ADR-0274),
+    returning the augmented schedule + a ``{conditional_id: (plan_a_uid, plan_b_uid)}`` map for the
+    APPLIED conditionals.
+
+    Each plan is inserted exactly like a :func:`_augment_with_branches` rework node —
+    ``after --FS0--> F --FS(orig lag)--> before`` with ``F`` a zero-placeholder leaf — so with both
+    plan fragnets left at 0 the augmented network is byte-identical to the base (the no-fire case;
+    verified against ``compute_cpm``). The Monte-Carlo then toggles exactly ONE plan's fragnet to a
+    sampled duration per iteration. A conditional is **all-or-nothing**: if the monitor, or
+    **either** plan's FS tie is missing, NEITHER plan is inserted and the conditional is dropped
+    (inert — not in the returned map, disclosed upstream) so there is never a half-branch.
+    Two plans on the SAME after->before tie chain in series (after -> Fa -> Fb -> before), so one
+    firing per iteration still adds exactly that plan's duration. Fragnet uids are assigned above
+    every existing uid, so they cannot collide."""
+    if not conditionals:
+        return schedule, {}
+    tasks = list(schedule.tasks)
+    rels = list(schedule.relationships)
+    next_uid = (max((t.unique_id for t in tasks), default=0)) + 1
+    present = {t.unique_id for t in tasks}
+    # a same-tie pair chains: `chain_pred` tracks the live predecessor of a tie across insertions,
+    # so a second plan on the same tie inserts onto the live segment (Fa -> before), not the
+    # already-consumed original tie. Shared across all conditionals (a later one sees a tie a prior
+    # one consumed as gone -> inert, disclosed).
+    chain_pred: dict[tuple[int, int], int] = {}
+
+    def _tie_idx(after: int, before: int) -> int | None:
+        pred = chain_pred.get((after, before), after)
+        return next(
+            (
+                k
+                for k, r in enumerate(rels)
+                if r.predecessor_id == pred
+                and r.successor_id == before
+                and r.type == RelationshipType.FS
+            ),
+            None,
+        )
+
+    def _insert(plan: BranchPlan, cid: str) -> int:
+        nonlocal next_uid
+        key = (plan.after_uid, plan.before_uid)
+        idx = _tie_idx(*key)
+        if idx is None:  # pragma: no cover - the caller's all-or-nothing check guarantees the tie
+            raise RuntimeError("conditional plan tie vanished before insertion")
+        orig = rels.pop(idx)
+        f_uid = next_uid
+        next_uid += 1
+        tasks.append(Task(unique_id=f_uid, name=plan.name or f"Plan {cid}", duration_minutes=0))
+        rels.append(
+            Relationship(
+                predecessor_id=orig.predecessor_id,
+                successor_id=f_uid,
+                type=RelationshipType.FS,
+                lag_minutes=0,
+            )
+        )
+        rels.append(
+            Relationship(
+                predecessor_id=f_uid,
+                successor_id=plan.before_uid,
+                type=RelationshipType.FS,
+                lag_minutes=orig.lag_minutes,
+            )
+        )
+        chain_pred[key] = f_uid
+        return f_uid
+
+    plan_uids: dict[str, tuple[int, int]] = {}
+    for cond in conditionals:
+        # all-or-nothing: the monitor and BOTH plan ties must currently exist (chaining-aware).
+        if cond.monitor_uid not in present:
+            continue
+        if _tie_idx(cond.plan_a.after_uid, cond.plan_a.before_uid) is None:
+            continue
+        if _tie_idx(cond.plan_b.after_uid, cond.plan_b.before_uid) is None:
+            continue
+        fa = _insert(cond.plan_a, cond.id)
+        fb = _insert(cond.plan_b, cond.id)  # re-finds via chain_pred for the same-tie case
+        plan_uids[cond.id] = (fa, fb)
+    aug = schedule.model_copy(update={"tasks": tuple(tasks), "relationships": tuple(rels)})
+    return aug, plan_uids
+
+
+def _conditional_draws(
+    conditionals: Sequence[ConditionalBranch], iterations: int, seed: int
+) -> list[list[float]]:
+    """Per-conditional per-iteration uniform for the CHOSEN plan's 3-point sample (ADR-0274), on a
+    stream **disjoint** from the duration/correlation/LHS draws, the risk-occurrence draws, and the
+    probabilistic-branch draws — so conditionals never perturb the byte-frozen no-conditional path
+    and are reproducible. The *condition* (not a random draw) picks which plan runs; this uniform
+    only samples that picked plan's rework duration via the triangular inverse-CDF."""
+    out: list[list[float]] = []
+    for cidx, _c in enumerate(conditionals):
+        rng = random.Random((seed * 1900987 ^ (cidx + 1) * 0x27D4EB2F) & 0x7FFFFFFF)  # nosec B311
+        out.append([rng.random() for _ in range(iterations)])
+    return out
+
+
+def _build_conditional_stats(
+    applied: Sequence[ConditionalBranch],
+    iterations: int,
+    mpd: int,
+    plan_a_finish: Sequence[Sequence[int]],
+    plan_b_finish: Sequence[Sequence[int]],
+) -> tuple[SSIConditionalStat, ...]:
+    """Per-conditional outcome stats (ADR-0274): which plan won how often + the mean finish delta of
+    falling to the contingency (mean Plan-B finish minus mean Plan-A finish, working days)."""
+    stats: list[SSIConditionalStat] = []
+    for cidx, c in enumerate(applied):
+        a_fin = plan_a_finish[cidx]
+        b_fin = plan_b_finish[cidx]
+        a_hits, b_hits = len(a_fin), len(b_fin)
+        mean_a = statistics.fmean(a_fin) / mpd if a_fin else 0.0
+        mean_b = statistics.fmean(b_fin) / mpd if b_fin else 0.0
+        delta = (mean_b - mean_a) if a_fin and b_fin else 0.0
+        stats.append(
+            SSIConditionalStat(
+                id=c.id,
+                name=c.name,
+                monitor_uid=c.monitor_uid,
+                metric=c.metric,
+                threshold_minutes=c.threshold_minutes,
+                trip_when=c.trip_when,
+                applied=True,
+                plan_a_name=c.plan_a.name or f"Plan {c.id}-A",
+                plan_b_name=c.plan_b.name or f"Plan {c.id}-B",
+                plan_a_hits=a_hits,
+                plan_b_hits=b_hits,
+                plan_a_fraction=a_hits / iterations if iterations else 0.0,
+                plan_b_fraction=b_hits / iterations if iterations else 0.0,
+                mean_a_finish_days=round(mean_a, 2),
+                mean_b_finish_days=round(mean_b, 2),
+                mean_delta_days=round(delta, 2),
+            )
+        )
+    return tuple(stats)
+
+
+def _conditional_trips(monitor_value: int, threshold: int, trip_when: str) -> bool:
+    """Whether a conditional's condition trips (fall to Plan B). ``at_or_above`` trips when the
+    monitored value is >= the threshold (the monitor ran late/long — the natural contingency
+    trigger); ``below`` trips when it is < the threshold."""
+    if trip_when == "below":
+        return monitor_value < threshold
+    return monitor_value >= threshold
+
+
 def compute_sra_ssi(
     schedule: Schedule,
     *,
@@ -1260,6 +1497,7 @@ def compute_sra_ssi(
     three_point: Mapping[int, tuple[int, int, int]] | None = None,
     risks: Sequence[ScheduleRisk] = (),
     branches: Sequence[ProbabilisticBranch] = (),
+    conditionals: Sequence[ConditionalBranch] = (),
 ) -> SSIResult:
     """Run the SSI Monte-Carlo and return the focus-event :class:`SSIResult` (ADR-0123).
 
@@ -1274,7 +1512,14 @@ def compute_sra_ssi(
     ``config.correlation`` > 0 applies a single-factor **Gaussian copula** across the sampled
     activities (one shared normal per iteration), countering the central-limit cancelling of
     independent draws; it samples via the triangular inverse-CDF (the documented choice — the PERT
-    quantile has no std-lib inverse), and at 0 the configured distribution is honoured exactly."""
+    quantile has no std-lib inverse), and at 0 the configured distribution is honoured exactly.
+
+    ``conditionals`` adds Hulett **conditional branches** (ADR-0274, #9): each iteration a condition
+    on a monitored activity picks one of two mutually-exclusive plan fragnets (primary Plan A vs
+    contingency Plan B). Both plan fragnets are inserted up front as zero placeholders (byte-frozen
+    when none apply). A ``metric="finish"`` conditional costs one extra ``compute_cpm`` probe solve
+    per iteration to read the monitor's pre-contingency finish; ``metric="duration"`` ones read
+    the sampled duration pre-solve and add no solve. Reports which plan won how often."""
     if config.iterations < 1:
         raise ValueError("SRAConfig.iterations must be >= 1")
     # Probabilistic branches (ADR-0273): insert each rework fragnet ONCE up front; the fragnet
@@ -1284,6 +1529,11 @@ def compute_sra_ssi(
     active_branches = [b for b in branches if b.probability > 0.0]
     schedule, fragnet_uids = _augment_with_branches(schedule, active_branches)
     applied_branches = [b for b in active_branches if b.id in fragnet_uids]
+    # Conditional branches (ADR-0274): insert BOTH plan fragnets of each conditional ONCE, after the
+    # probabilistic-branch augmentation (so #8's fragnet uids stay byte-identical). Both plans are
+    # zero placeholders until a condition activates exactly one per iteration.
+    schedule, cond_plan_uids = _augment_with_conditionals(schedule, conditionals)
+    applied_conditionals = [c for c in conditionals if c.id in cond_plan_uids]
     tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
     uids = [t.unique_id for t in tasks]
     uid_set = set(uids)
@@ -1331,6 +1581,12 @@ def compute_sra_ssi(
     branch_fired, branch_uni = _branch_draws(
         applied_branches, config.occurrence_mode, config.iterations, config.seed
     )
+    # conditional-branch chosen-plan uniforms (ADR-0274), on a stream disjoint from all the above.
+    cond_uni = _conditional_draws(applied_conditionals, config.iterations, config.seed)
+    # a finish-metric conditional reads the monitor's pre-contingency early finish → one extra probe
+    # solve per iteration (with both plan fragnets at 0). Skipped entirely when every conditional is
+    # duration-metric (or there are none), so the frozen no-conditional path adds no solve.
+    needs_probe = any(c.metric == "finish" for c in applied_conditionals)
 
     finishes: list[int] = []
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
@@ -1338,6 +1594,9 @@ def compute_sra_ssi(
     branch_fragnet_days: list[list[float]] = [[] for _ in applied_branches]
     branch_fire_finish: list[list[int]] = [[] for _ in applied_branches]
     branch_nofire_finish: list[list[int]] = [[] for _ in applied_branches]
+    # per-conditional focus finishes split by which plan executed (for the "which plan wins" stats)
+    cond_a_finish: list[list[int]] = [[] for _ in applied_conditionals]
+    cond_b_finish: list[list[int]] = [[] for _ in applied_conditionals]
 
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
@@ -1360,6 +1619,34 @@ def compute_sra_ssi(
                 overrides[fragnet_uids[branch.id]] = max(0, round(dur))
                 branch_fragnet_days[bidx].append(overrides[fragnet_uids[branch.id]] / mpd)
             # a non-fired branch leaves its fragnet at the 0 point-mass override (no delay)
+        # conditional branches (ADR-0274): a probe solve (only if a finish-metric conditional is
+        # present) reads each monitor's PRE-contingency finish — both plan fragnets are still at 0
+        # here, so the monitor (upstream of its branch) sees its true finish. Then each condition
+        # activates exactly one plan's fragnet; the other stays at its 0 placeholder.
+        probe_timings = (
+            compute_cpm(schedule, duration_overrides=overrides).timings if needs_probe else None
+        )
+        cond_took_b = [False] * len(applied_conditionals)
+        for cidx, cond in enumerate(applied_conditionals):
+            if cond.metric == "finish":
+                if probe_timings is None:  # pragma: no cover - a finish metric implies needs_probe
+                    raise RuntimeError("probe timings missing for a finish-metric conditional")
+                monitor_value = probe_timings[cond.monitor_uid].early_finish
+            else:  # duration: the monitor's realized sampled duration this iteration
+                monitor_value = overrides.get(cond.monitor_uid, 0)
+            trips = _conditional_trips(monitor_value, cond.threshold_minutes, cond.trip_when)
+            cond_took_b[cidx] = trips
+            chosen_plan = cond.plan_b if trips else cond.plan_a
+            fa_uid, fb_uid = cond_plan_uids[cond.id]
+            chosen_uid = fb_uid if trips else fa_uid
+            dur = _sample_triangular(
+                cond_uni[cidx][i],
+                float(chosen_plan.low),
+                float(chosen_plan.ml),
+                float(chosen_plan.high),
+            )
+            overrides[chosen_uid] = max(0, round(dur))
+            # the other plan's fragnet stays at its 0 point-mass override (not executed)
         result = compute_cpm(schedule, duration_overrides=overrides)
         fin = _finish_of(result, config.target_uid)
         finishes.append(fin)
@@ -1367,6 +1654,8 @@ def compute_sra_ssi(
             (branch_fire_finish if branch_fired[bidx][i] else branch_nofire_finish)[bidx].append(
                 fin
             )
+        for cidx in range(len(applied_conditionals)):
+            (cond_b_finish if cond_took_b[cidx] else cond_a_finish)[cidx].append(fin)
         for u in uids:
             if result.timings[u].total_float <= 0:
                 critical_counts[u] += 1
@@ -1395,6 +1684,33 @@ def compute_sra_ssi(
         if b.id not in fragnet_uids
     )
 
+    conditional_stats = _build_conditional_stats(
+        applied_conditionals, config.iterations, mpd, cond_a_finish, cond_b_finish
+    )
+    # disclose conditionals dropped for a missing monitor / plan tie (inert) so none is ever silent
+    conditional_stats += tuple(
+        SSIConditionalStat(
+            id=c.id,
+            name=c.name,
+            monitor_uid=c.monitor_uid,
+            metric=c.metric,
+            threshold_minutes=c.threshold_minutes,
+            trip_when=c.trip_when,
+            applied=False,
+            plan_a_name=c.plan_a.name or f"Plan {c.id}-A",
+            plan_b_name=c.plan_b.name or f"Plan {c.id}-B",
+            plan_a_hits=0,
+            plan_b_hits=0,
+            plan_a_fraction=0.0,
+            plan_b_fraction=0.0,
+            mean_a_finish_days=0.0,
+            mean_b_finish_days=0.0,
+            mean_delta_days=0.0,
+        )
+        for c in conditionals
+        if c.id not in cond_plan_uids
+    )
+
     return _build_ssi_result(
         schedule,
         config,
@@ -1407,6 +1723,7 @@ def compute_sra_ssi(
         prepared,
         critical_counts=critical_counts,
         branch_stats=branch_stats,
+        conditional_stats=conditional_stats,
     )
 
 
@@ -1454,6 +1771,7 @@ def _build_ssi_result(
     prepared: PreparedCorrelation | None = None,
     critical_counts: Mapping[int, int] | None = None,
     branch_stats: tuple[SSIBranchStat, ...] = (),
+    conditional_stats: tuple[SSIConditionalStat, ...] = (),
 ) -> SSIResult:
     n = len(finishes)
     sorted_f = sorted(finishes)
@@ -1561,6 +1879,7 @@ def _build_ssi_result(
         sampling=config.sampling,
         criticality=criticality,
         branches=branch_stats,
+        conditionals=conditional_stats,
     )
 
 
