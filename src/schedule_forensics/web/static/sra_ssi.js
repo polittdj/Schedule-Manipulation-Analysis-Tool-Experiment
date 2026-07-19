@@ -330,8 +330,25 @@
       });
     }
 
+    renderCorrBadge(d.correlation_matrix);
+
     // frame the freshly-built charts/matrices: independent zoom + full screen + hover call-outs
     if (window.SFChartFrame) window.SFChartFrame.scan();
+  }
+
+  // The correlation-matrix feasibility badge (ADR-0270): after a run, say whether a supplied
+  // matrix was feasible or was repaired to the nearest valid PSD matrix (never a silent fix).
+  function renderCorrBadge(cm) {
+    var cb = document.getElementById("corrBadge");
+    if (!cb) return;
+    cb.innerHTML = "";
+    if (!cm || !cm.applied) return;
+    var note = el("div", { class: "notice " + (cm.repaired ? "warn" : "ok"), role: "note" });
+    note.textContent = cm.repaired
+      ? "Correlation matrix: infeasible input REPAIRED to the nearest valid PSD matrix (entered " +
+        "min eigenvalue " + cm.min_eigenvalue + ", Frobenius distance " + cm.frobenius_distance + ")."
+      : "Correlation matrix: feasible (min eigenvalue " + cm.min_eigenvalue + ").";
+    cb.appendChild(note);
   }
 
   function run() {

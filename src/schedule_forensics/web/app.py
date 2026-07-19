@@ -75,6 +75,7 @@ from schedule_forensics.engine import (
 from schedule_forensics.engine.bow_wave import BowWave, compute_bow_wave
 from schedule_forensics.engine.cache import content_hash, get_default_cache
 from schedule_forensics.engine.change_effects import ChangeEffect, compute_change_effects
+from schedule_forensics.engine.correlation import CorrelationSpec
 from schedule_forensics.engine.cpm import (
     CPMError,
     CPMResult,
@@ -760,6 +761,11 @@ class SessionState:
     sra_occurrence_mode: str = "random_each"  # "random_each" | "exact_overall"
     sra_use_risk_register: bool = True
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
+    # full pairwise/shared-driver correlation MATRIX inputs (ADR-0270). Empty → the scalar
+    # blanket correlation above drives the run; non-empty over ≥2 uncertain tasks OVERRIDES it
+    # and drives a multivariate Gaussian copula (a distinct mode). Pairwise rho may be negative.
+    sra_corr_pairs: tuple[tuple[int, int, float], ...] = ()
+    sra_corr_groups: tuple[tuple[tuple[int, ...], float], ...] = ()
     #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
     sra_import_msg: str | None = None
     # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
@@ -3974,6 +3980,7 @@ def create_app(
             occurrence_mode=st.sra_occurrence_mode,
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
+            correlation_matrix=_correlation_spec(st),
         )
         three_point = _ssi_three_point(st, sch)
         if zero_margin:
@@ -6511,6 +6518,45 @@ def create_app(
         st.sra_use_risk_register = use_risks in ("on", "true", "1")
         return RedirectResponse(url="/sra", status_code=303)
 
+    @app.post("/sra/correlation-matrix")
+    def sra_correlation_matrix(
+        action: str = Form("add-pair"),
+        uid_a: str = Form(""),
+        uid_b: str = Form(""),
+        rho: str = Form(""),
+        uids: str = Form(""),
+        group_rho: str = Form(""),
+    ) -> RedirectResponse:
+        """Maintain the correlation-matrix inputs (ADR-0270): ``add-pair`` (uid_a, uid_b, rho),
+        ``add-group`` (a shared-driver block of uids at one rho), or ``clear``, then redirect to
+        /sra. rho is clamped to [-1, 1] (negatives ARE allowed, unlike the [0,1] blanket); an
+        unknown/summary uid is dropped; a pair needs two distinct valid uids and a group >= 2."""
+        st = session()
+        if action == "clear":
+            st.sra_corr_pairs = ()
+            st.sra_corr_groups = ()
+            return RedirectResponse(url="/sra", status_code=303)
+        chosen = _sra_selected(st)
+        sch = chosen[1] if chosen is not None else None
+
+        def _valid(uid: int) -> bool:
+            if sch is None:
+                return False
+            task = sch.tasks_by_id.get(uid)
+            return task is not None and not task.is_summary
+
+        if action == "add-pair":
+            a, b = _parse_uid(uid_a), _parse_uid(uid_b)
+            if a is not None and b is not None and a != b and _valid(a) and _valid(b):
+                r = _clamp_float(rho, -1.0, 1.0, 0.0)
+                st.sra_corr_pairs = (*st.sra_corr_pairs, (a, b, r))
+        elif action == "add-group":
+            members = tuple(dict.fromkeys(u for u in _parse_uid_list(uids) if _valid(u)))
+            if len(members) >= 2:
+                r = _clamp_float(group_rho, -1.0, 1.0, 0.0)
+                st.sra_corr_groups = (*st.sra_corr_groups, (members, r))
+        return RedirectResponse(url="/sra", status_code=303)
+
     @app.post("/sra/factor-table")
     def ssi_factor_table(
         sub1: float = Form(50.0),
@@ -6579,6 +6625,7 @@ def create_app(
             occurrence_mode=st.sra_occurrence_mode,
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
+            correlation_matrix=_correlation_spec(st),
         )
         # offload the heavy Monte-Carlo to a worker process on big schedules (keeps the server
         # responsive for a concurrent Ask-the-AI call); byte-identical to an in-process run
@@ -6678,6 +6725,7 @@ def create_app(
             occurrence_mode=st.sra_occurrence_mode,
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
+            correlation_matrix=_correlation_spec(st),
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         try:
@@ -6876,6 +6924,7 @@ def create_app(
             occurrence_mode=st.sra_occurrence_mode,
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
+            correlation_matrix=_correlation_spec(st),
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         result = run_maybe_offloaded(
@@ -6937,6 +6986,7 @@ def create_app(
             occurrence_mode=st.sra_occurrence_mode,
             use_risk_register=st.sra_use_risk_register,
             correlation=st.sra_correlation,
+            correlation_matrix=_correlation_spec(st),
         )
         result = run_maybe_offloaded(
             len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD,
@@ -13137,6 +13187,12 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         "iterations": result.iterations,
         "occurrence_mode": result.occurrence_mode,
         "correlation": result.correlation,
+        "correlation_matrix": {
+            "applied": result.correlation_matrix_applied,
+            "repaired": result.correlation_matrix_repaired,
+            "min_eigenvalue": round(result.correlation_min_eigenvalue, 4),
+            "frobenius_distance": round(result.correlation_frobenius_distance, 4),
+        },
         "used_risks": result.used_risks,
         "deterministic": {
             "date": result.deterministic_finish_date,
@@ -13173,6 +13229,14 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         # filled with the run's own figures; sra_ssi.js renders them under the result table
         "conclusions": conclusions_as_dicts(conclusions_from_ssi(sch, result)),
     }
+
+
+def _correlation_spec(st: SessionState) -> CorrelationSpec | None:
+    """The session's correlation-matrix inputs as the engine's frozen :class:`CorrelationSpec`,
+    or ``None`` when both are empty (the scalar blanket-correlation path then runs). ADR-0270."""
+    if not st.sra_corr_pairs and not st.sra_corr_groups:
+        return None
+    return CorrelationSpec(pairs=st.sra_corr_pairs, groups=st.sra_corr_groups)
 
 
 def _jcl_config_from_state(st: SessionState) -> JCLConfig:
@@ -13253,6 +13317,12 @@ def _jcl_data(sch: Schedule, result: JCLResult) -> dict[str, object]:
             "incomplete_costed": result.incomplete_costed_count,
             "td_share_pct": round(result.td_share * pct, 1),
             "cost_uncertainty_on": result.cost_uncertainty_on,
+        },
+        "correlation_matrix": {
+            "applied": result.correlation_matrix_applied,
+            "repaired": result.correlation_matrix_repaired,
+            "min_eigenvalue": round(result.correlation_min_eigenvalue, 4),
+            "frobenius_distance": round(result.correlation_frobenius_distance, 4),
         },
     }
 
@@ -14327,6 +14397,58 @@ skipped &mdash; nothing is fabricated, and you get a summary of exactly what lan
 <script src="/static/sra_grid.js"></script></div>"""
 
 
+def _correlation_matrix_panel(st: SessionState) -> str:
+    """The correlation-matrix editor (ADR-0270): pairwise correlations + shared-driver groups
+    over the uncertain activities, a clear control, and a post-run feasibility badge host. A
+    non-empty matrix overrides the blanket scalar correlation and drives a multivariate copula."""
+    pairs = st.sra_corr_pairs
+    groups = st.sra_corr_groups
+    rows = ""
+    for a, b, r in pairs:
+        rows += f"<tr><td>pair</td><td>{a} &harr; {b}</td><td>{r:g}</td></tr>"
+    for members, r in groups:
+        ids = ", ".join(str(u) for u in members)
+        rows += f"<tr><td>group</td><td>{_e(ids)}</td><td>{r:g}</td></tr>"
+    if pairs or groups:
+        listing = (
+            "<table><tr><th>Kind</th><th>Activities (UID)</th><th>&rho;</th></tr>"
+            f"{rows}</table>"
+            '<form action="/sra/correlation-matrix" method=post style="display:inline">'
+            "<input type=hidden name=action value=clear>"
+            "<button type=submit>Clear all correlations</button></form>"
+        )
+    else:
+        listing = (
+            "<p class=muted>No correlation matrix entered &mdash; the blanket scalar correlation "
+            "above drives the run.</p>"
+        )
+    return f"""
+<div class=panel><h2>Correlation matrix (advanced)</h2>
+<p class=muted>Beyond the single blanket correlation above, enter <b>pairwise</b> correlations
+between specific activities, or <b>shared-driver groups</b> (activities with a common cause &mdash;
+one crew, one vendor, one test rig &mdash; that move together, the Hulett risk-driver idea). A
+non-empty matrix <b>OVERRIDES</b> the blanket scalar for the run and drives a multivariate Gaussian
+copula over the uncertain (spread-bearing) activities. Pairwise &rho; may be <b>negative</b> (unlike
+the 0&ndash;1 blanket); strong mutual negatives can be jointly infeasible, in which case the run
+repairs to the nearest valid correlation matrix and says so below (never silently). Not bit-exact
+vs commercial tools (ADR-0005/0106).</p>
+{listing}
+<h3>Add a pairwise correlation</h3>
+<form action="/sra/correlation-matrix" method=post class=viz-controls>
+<input type=hidden name=action value=add-pair>
+<label>UID A <input type=number name=uid_a min=1 step=1></label>
+<label>UID B <input type=number name=uid_b min=1 step=1></label>
+<label>&rho; (&minus;1&hellip;1) <input type=number name=rho min=-1 max=1 step=any></label>
+<button type=submit>Add pair</button></form>
+<h3>Add a shared-driver group</h3>
+<form action="/sra/correlation-matrix" method=post class=viz-controls>
+<input type=hidden name=action value=add-group>
+<label>UIDs <input type=text name=uids placeholder="101, 102, 205"></label>
+<label>&rho; (&minus;1&hellip;1) <input type=number name=group_rho min=-1 max=1 step=any></label>
+<button type=submit>Add group</button></form>
+<div id=corrBadge></div></div>"""
+
+
 def _jcl_panel(st: SessionState) -> str:
     """The Joint Cost-&-Schedule Confidence (JCL / FICSM) panel (ADR-0269), gated on a
     cost-loaded file (the same non-summary Σ budgeted_cost > 0 rule as the cost EVM
@@ -14637,6 +14759,7 @@ def _sra_body(st: SessionState) -> str:
 {top_file_panel}
 {_sra_explainers()}
 {_ssi_panel(st)}
+{_correlation_matrix_panel(st)}
 {_jcl_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its

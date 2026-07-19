@@ -40,6 +40,11 @@ import statistics
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
+from schedule_forensics.engine.correlation import (
+    CorrelationSpec,
+    PreparedCorrelation,
+    prepare_correlation,
+)
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import non_summary
 from schedule_forensics.model.schedule import Schedule
@@ -78,6 +83,11 @@ class SRAConfig:
     #: Optional blanket correlation (0..1) between task duration distributions — a single-factor
     #: Gaussian copula (0 = independent, today's behaviour; 0.3-0.5 is the usual SRA range).
     correlation: float = 0.0
+    #: Optional full pairwise/shared-driver correlation MATRIX (ADR-0270). ``None`` (default) →
+    #: the scalar single-factor path above runs byte-identically. When supplied over ≥2
+    #: uncertain activities it OVERRIDES the scalar ``correlation`` and drives a multivariate
+    #: Gaussian copula (a distinct mode — the scalar path is never silently changed).
+    correlation_matrix: CorrelationSpec | None = None
 
 
 #: The default run config — a module-level singleton so it can be a keyword default
@@ -732,6 +742,13 @@ class SSIResult:
     s_curve: tuple[tuple[str, float], ...] = field(default=())
     finish_hist: tuple[tuple[str, int], ...] = field(default=())
     risks: tuple[SSIRiskStat, ...] = field(default=())
+    # correlation-matrix provenance (ADR-0270) — a full pairwise/shared-driver matrix drove
+    # this run (else the scalar single-factor path); the entered matrix's smallest eigenvalue
+    # (< 0 ⇒ was infeasible) and the Frobenius size of any repair, so the fix is never silent.
+    correlation_matrix_applied: bool = False
+    correlation_matrix_repaired: bool = False
+    correlation_min_eigenvalue: float = 0.0
+    correlation_frobenius_distance: float = 0.0
 
 
 def factor_to_bc_wc(
@@ -796,6 +813,63 @@ def deterministic_margin_bounds(
 def _phi(z: float) -> float:
     """Standard-normal CDF Φ(z) via ``math.erf`` (std-lib) — the Gaussian-copula link function."""
     return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+
+
+def _iteration_duration_overrides(
+    rng: random.Random,
+    config: SRAConfig,
+    uids: Sequence[int],
+    three: Mapping[int, tuple[int, int, int]],
+    prepared: PreparedCorrelation | None = None,
+) -> dict[int, int]:
+    """One iteration's sampled duration overrides (working minutes), SHARED by
+    :func:`compute_sra_ssi` and :func:`compute_jcl` so their finish marginals stay
+    byte-identical (the ADR-0269 equality pin) — a single sampler, no drifting copies.
+
+    ``prepared is None`` — the scalar single-factor Gaussian copula (byte-frozen, ADR-0106/
+    0123): one shared ``common`` normal (only when ``config.correlation > 0``) plus one
+    idiosyncratic normal per uncertain activity, in ascending-``unique_id`` order; a
+    point-mass activity (``high <= low``) consumes NO draw. Reproduces the prior inline block
+    statement-for-statement, including the deliberate quirk that a positive scalar correlation
+    always samples via the triangular inverse-CDF even under ``distribution="pert"``.
+
+    ``prepared`` set — the multivariate Gaussian copula (ADR-0270): N correlated normals from
+    the prepared Cholesky factor (``x = L z``), one per uncertain activity, mapped through
+    :func:`_phi` → the triangular inverse-CDF. A DISTINCT mode (N idiosyncratic draws, no
+    common draw), never a silent reroute of the scalar path.
+    """
+    overrides: dict[int, int] = {}
+    if prepared is None:
+        r = max(0.0, min(1.0, config.correlation))
+        k_common, k_indep = math.sqrt(r), math.sqrt(1.0 - r)
+        common = rng.gauss(0.0, 1.0) if r > 0.0 else 0.0
+        for u in uids:
+            low, mode, high = three[u]
+            if high <= low:  # point mass — no draw
+                overrides[u] = round(low)
+                continue
+            if r > 0.0:
+                uni = _phi(k_common * common + k_indep * rng.gauss(0.0, 1.0))
+                minutes = _sample_triangular(uni, float(low), float(mode), float(high))
+            else:
+                minutes = _sample_duration(rng, config, float(low), float(mode), float(high))
+            overrides[u] = max(0, round(minutes))
+        return overrides
+
+    chol = prepared.chol
+    n = len(prepared.uids)
+    pos = {u: k for k, u in enumerate(prepared.uids)}
+    z = [rng.gauss(0.0, 1.0) for _ in range(n)]  # N correlated draws, ascending-uid order
+    x = [sum(chol[k][j] * z[j] for j in range(k + 1)) for k in range(n)]  # x = L z (unit variance)
+    for u in uids:
+        low, mode, high = three[u]
+        if high <= low:  # point mass — no draw (identical to the scalar path)
+            overrides[u] = round(low)
+            continue
+        uni = _phi(x[pos[u]])
+        minutes = _sample_triangular(uni, float(low), float(mode), float(high))
+        overrides[u] = max(0, round(minutes))
+    return overrides
 
 
 def _prob_rating(probability: float) -> int:
@@ -912,8 +986,10 @@ def compute_sra_ssi(
 
     occ = _occurrence_schedule(active_risks, config.occurrence_mode, config.iterations, config.seed)
     mpd = schedule.calendar.working_minutes_per_day or _MIN_PER_DAY
-    r = max(0.0, min(1.0, config.correlation))
-    k_common, k_indep = math.sqrt(r), math.sqrt(1.0 - r)
+    # the uncertain-duration activities (a point mass has high == low) — the correlation matrix,
+    # when supplied, is prepared ONCE over exactly this set (ADR-0270, RNG-free); None → scalar.
+    uncertain = [u for u in uids if three[u][2] > three[u][0]]
+    prepared = prepare_correlation(uncertain, config.correlation_matrix)
 
     finishes: list[int] = []
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
@@ -921,19 +997,7 @@ def compute_sra_ssi(
 
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
-        common = rng.gauss(0.0, 1.0) if r > 0.0 else 0.0
-        overrides: dict[int, int] = {}
-        for u in uids:
-            low, mode, high = three[u]
-            if high <= low:  # point mass — no draw
-                overrides[u] = round(low)
-                continue
-            if r > 0.0:
-                uni = _phi(k_common * common + k_indep * rng.gauss(0.0, 1.0))
-                minutes = _sample_triangular(uni, float(low), float(mode), float(high))
-            else:
-                minutes = _sample_duration(rng, config, float(low), float(mode), float(high))
-            overrides[u] = max(0, round(minutes))
+        overrides = _iteration_duration_overrides(rng, config, uids, three, prepared)
         for ridx, risk in enumerate(active_risks):
             fired = occ[ridx][i]
             risk_occurred[ridx].append(fired)
@@ -949,7 +1013,7 @@ def compute_sra_ssi(
                 critical_counts[u] += 1
 
     return _build_ssi_result(
-        schedule, config, finishes, active_risks, risk_occurred, mpd, ml_finish, anchor
+        schedule, config, finishes, active_risks, risk_occurred, mpd, ml_finish, anchor, prepared
     )
 
 
@@ -994,6 +1058,7 @@ def _build_ssi_result(
     mpd: int,
     deterministic: int,
     anchor_date: _dt.datetime | None,
+    prepared: PreparedCorrelation | None = None,
 ) -> SSIResult:
     n = len(finishes)
     sorted_f = sorted(finishes)
@@ -1085,6 +1150,12 @@ def _build_ssi_result(
         s_curve=s_curve,
         finish_hist=finish_hist,
         risks=tuple(rstats),
+        correlation_matrix_applied=prepared is not None,
+        correlation_matrix_repaired=prepared.repaired if prepared is not None else False,
+        correlation_min_eigenvalue=prepared.min_eig_raw if prepared is not None else 0.0,
+        correlation_frobenius_distance=(
+            prepared.frobenius_distance if prepared is not None else 0.0
+        ),
     )
 
 
