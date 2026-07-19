@@ -7186,3 +7186,19 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   8 web tests; 801+ tests green; mypy clean. v1.0.74 → **1.0.75**, wheel + 9 installers
   regenerated in lockstep (17 installer tests green). Highest ADR **ADR-0270**. Remaining
   #331 items (STAT/GAO audit, Latin Hypercube, risk-critical Gantt) need no operator files.
+
+- **Session (2026-07-19b, Ultracode cont.):** #409 (correlation matrix) merged by the operator
+  (squash `df193c4`, all 5 CI checks green). Ran the **STAT/GAO scorecard gap audit (#331
+  items 3/4)** as a read-only Workflow (STAT-vs-canon, GAO-vs-canon, mapping-correctness ×
+  lead reconcile); the lead independently re-verified every claimed gap against the real code.
+  Verdict: the three scorecards are **COMPLETE and honest** — all 11 NASA STAT checks + 10 GAO
+  practices map to real computed metrics, NA reported honestly, no fabricated figure (Law 2
+  holds). One small additive gap found + code-confirmed + fixed (**v1.0.76**): the
+  `out_of_sequence` STAT line is scored (FAIL-capable) but shipped empty offenders — the only
+  such line in any scorecard — even though `_out_of_sequence` already computes the offending
+  (pred,succ) UID pairs. Added a defaulted `offender_uids: tuple[int,...] = ()` to `LogicCheck`,
+  populated it (union of both endpoints, sorted/deduped/capped), and passed it into the
+  `compute_nasa_stat` out_of_sequence `ScorecardCheck` (was a literal `()`). Two tests pin it
+  (engine + scorecard level). No new metric math, no parity impact, no new ADR (highest stays
+  **ADR-0270**). Wheel + 9 installers regenerated in lockstep. A Latin Hypercube design Workflow
+  (Hulett #11) is running in parallel for the next item.

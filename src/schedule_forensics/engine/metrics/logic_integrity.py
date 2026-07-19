@@ -43,7 +43,9 @@ class LogicCheck:
     ``offenders`` are human-readable directed-edge descriptors (``"pred→succ"``), already sorted.
     ``evaluated`` is ``False`` when the check was deliberately skipped (e.g. redundant logic on a
     cyclic or oversize network); ``count`` / ``population`` are then ``0`` and ``description`` says
-    why.
+    why. ``offender_uids`` are the raw activity UniqueIDs behind the offenders (for a UID-keyed
+    drill-down, e.g. the Assessment-Scorecard ribbon); default empty for checks that don't surface
+    them.
     """
 
     key: str
@@ -53,6 +55,7 @@ class LogicCheck:
     offenders: tuple[str, ...]
     description: str
     evaluated: bool = True
+    offender_uids: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -108,6 +111,9 @@ def _out_of_sequence(schedule: Schedule, ns_ids: set[int]) -> LogicCheck:
         if pred.actual_finish is None or succ.actual_start < pred.actual_finish:
             offenders.append((r.predecessor_id, r.successor_id))
     offenders.sort()
+    # the raw activity UIDs behind the offending edges (both endpoints), sorted + deduplicated +
+    # capped — so a scorecard/ribbon can drill from an out-of-sequence FAIL into the activities.
+    offender_uids = tuple(sorted({u for pair in offenders for u in pair})[:_OFFENDER_CAP])
     return LogicCheck(
         key="out_of_sequence",
         label="Out-of-sequence logic (FS)",
@@ -120,6 +126,7 @@ def _out_of_sequence(schedule: Schedule, ns_ids: set[int]) -> LogicCheck:
             "predecessor has no recorded finish while the successor has already started) — work "
             "done in an order the logic forbids, a status-override / broken-logic signature."
         ),
+        offender_uids=offender_uids,
     )
 
 

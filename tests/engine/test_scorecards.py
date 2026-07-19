@@ -29,9 +29,44 @@ from schedule_forensics.engine.scorecards import (
     _finish_at_percentile as finish_at_percentile,
 )
 from schedule_forensics.model.calendar import Calendar
+from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
+from schedule_forensics.model.task import Task
 
 _VALID = {PASS, FAIL, NA}
+
+
+def test_out_of_sequence_scorecard_line_drills_into_offenders() -> None:
+    """The out_of_sequence STAT line is scored (FAIL-capable); when it FAILs it must now carry the
+    offending activity UIDs for drill-down — previously it shipped none, the only scored FAIL-capable
+    line in any scorecard without offenders (the #331 scorecard-audit fix)."""
+    mon = dt.datetime(2025, 1, 6, 8, 0)
+    pred = Task(
+        unique_id=1,
+        name="P",
+        duration_minutes=480,
+        actual_start=mon,
+        actual_finish=dt.datetime(2025, 1, 10, 8, 0),
+    )
+    succ = (
+        Task(  # started on the 8th — before the predecessor finished on the 10th (out of sequence)
+            unique_id=2, name="S", duration_minutes=480, actual_start=dt.datetime(2025, 1, 8, 8, 0)
+        )
+    )
+    rel = Relationship(predecessor_id=1, successor_id=2, type=RelationshipType.FS, lag_minutes=0)
+    sch = Schedule(
+        name="oos",
+        project_start=mon,
+        status_date=dt.datetime(2025, 1, 12, 8, 0),
+        tasks=(pred, succ),
+        relationships=(rel,),
+    )
+    cpm = compute_cpm(sch)
+    audit = audit_schedule(sch, cpm)
+    stat = compute_nasa_stat(sch, cpm, audit)
+    oos = next(c for c in stat.checks if c.key == "out_of_sequence")
+    assert oos.status == FAIL  # the violation is scored...
+    assert oos.offender_uids == (1, 2)  # ...and now drills into both offending activities
 
 
 def _cards(sch: Schedule):

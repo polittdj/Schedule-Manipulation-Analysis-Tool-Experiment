@@ -50,6 +50,7 @@ def test_out_of_sequence_flags_successor_started_before_predecessor_finished() -
     assert c.count == 1
     assert c.offenders == ("1→2",)
     assert c.population == 1
+    assert c.offender_uids == (1, 2)  # both endpoints, for the scorecard drill-down
 
 
 def test_in_sequence_progress_is_not_flagged() -> None:

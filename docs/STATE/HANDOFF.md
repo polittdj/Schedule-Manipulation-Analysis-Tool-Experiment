@@ -1,4 +1,4 @@
-# Handoff — 2026-07-19a (ADR-0270: correlation matrix + eigenvalue feasibility — #331 item 2, Opus Ultracode; v1.0.75; highest ADR 0270)
+# Handoff — 2026-07-19a (ADR-0270: correlation matrix + eigenvalue feasibility — #331 item 2, Opus Ultracode; v1.0.76; highest ADR 0270)
 
 > ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode", so the #331 phase continues: shipped a costed-MSPDI import-path JCL test (#408, merged), then built the correlation MATRIX + eigenvalue feasibility feature (ADR-0270) end-to-end via a design workflow + independently-verified numerics. Version 1.0.74 → 1.0.75 (wheel + 9 installers in lockstep). Design authored by a 3-proposal × adversarial-pressure-test × synthesis Workflow; every hand-computed constant re-verified by the lead against a std-lib prototype before implementing.
 >
@@ -37,14 +37,20 @@
 > - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
 >   on-machine re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258).
 >   #13 XER per-task calendars PARKED.
-> - **State:** v1.0.75; **ADR-0270** highest; wheel + 9 installers in lockstep. Branch
->   `claude/handoff-continuation-vistlu`. This session already MERGED #407 (docs) + #408
->   (costed-MSPDI test). Correlation feature committed but PR not yet opened at this snapshot.
-> - **NEXT:** open the correlation PR, get CI green, merge. Then the remaining #331 items,
->   none needing operator files: the **STAT/GAO scorecard gap audit** (#12 — likely
->   confirm-complete, scorecards already ship all 11 STAT + 10 GAO checks), **Latin Hypercube
->   sampling** (Hulett #11), and the **risk-critical Gantt tint** (Hulett #12). The 3 OWED
->   operator inputs still block ADR-0261/0258.
+> - **Since ADR-0270 merged:** **PR #409 (correlation matrix) MERGED** (squash `df193c4`, CI
+>   fully green). The **STAT/GAO scorecard gap audit (#12) is DONE** — a read-only Workflow +
+>   lead code-re-verification confirmed the scorecards are COMPLETE and honest (all 11 STAT +
+>   10 GAO checks map to real computed metrics, no fabrication, Law 2 holds). One small
+>   additive fix found + shipped (v1.0.76): the `out_of_sequence` STAT line was the only scored,
+>   FAIL-capable line with no drill-down offenders — now surfaces its offending activity UIDs
+>   (already computed in `_out_of_sequence`; added a defaulted `offender_uids` to `LogicCheck`).
+> - **State:** v1.0.76; **ADR-0270** highest (the #12 fix needs no ADR); wheel + 9 installers in
+>   lockstep. Branch `claude/handoff-continuation-vistlu`. This session merged #407 + #408 +
+>   #409; the #12 fix is the open PR at this snapshot.
+> - **NEXT (all file-free, one gated PR each):** **Latin Hypercube sampling** (Hulett #11) — a
+>   design Workflow is running/complete; implement it as a distinct opt-in seeded mode (default
+>   OFF byte-identical, composes with the ADR-0270 copula) as a new ADR. Then the **risk-critical
+>   Gantt tint** (Hulett #12). The 3 OWED operator inputs still block ADR-0261/0258.
 
 # (prior) handoffs — archived
 
