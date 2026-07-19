@@ -249,6 +249,7 @@ from schedule_forensics.engine.scorecards import (
 from schedule_forensics.engine.sra import (
     ActivityRisk,
     OATSensitivity,
+    ProbabilisticBranch,
     RiskEvent,
     RiskFactorTable,
     ScheduleRisk,
@@ -745,6 +746,10 @@ class SessionState:
     sra_risks: list[UnifiedRisk] = field(default_factory=list)
     # monotonic id counter so each registered risk keeps a stable, unique id across removals.
     sra_risk_seq: int = 0
+    # probabilistic branches (ADR-0273, Hulett #8): rework fragnets inserted onto an FS tie in p% of
+    # SSI iterations → bi-modal finish. Durations stored in working minutes. Set via POST /sra/branch.
+    sra_branches: list[ProbabilisticBranch] = field(default_factory=list)
+    sra_branch_seq: int = 0  # stable unique-id counter across removals
     # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
     # solvable version (the historical default). Set via GET /sra?file=<key>.
     sra_file: str | None = None
@@ -4012,6 +4017,7 @@ def create_app(
                 config=cfg,
                 three_point=three_point,
                 risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
             )
         except Exception as exc:
             return {"error": str(exc)}
@@ -6464,6 +6470,67 @@ def create_app(
             )
         return RedirectResponse(url="/sra", status_code=303)
 
+    @app.post("/sra/branch")
+    def sra_branch(
+        action: str = Form("add"),
+        bid: str = Form(""),
+        name: str = Form(""),
+        prob: str = Form(""),
+        after_uid: str = Form(""),
+        before_uid: str = Form(""),
+        low: str = Form(""),
+        ml: str = Form(""),
+        high: str = Form(""),
+    ) -> RedirectResponse:
+        """Maintain the probabilistic-branch list (ADR-0273, Hulett #8): a rework fragnet inserted
+        onto the FS tie ``after_uid -> before_uid`` in ``prob``% of SSI iterations, delaying
+        everything downstream by its sampled 3-point duration → a bi-modal finish. ``action`` is
+        add / remove / clear; durations are entered in working DAYS and stored in minutes. Endpoints
+        must be distinct non-summary activities of the selected schedule; a branch whose FS tie is
+        absent is accepted but reported inert after the run (never silently dropped)."""
+        st = session()
+        if action == "clear":
+            st.sra_branches.clear()
+            return RedirectResponse(url="/sra", status_code=303)
+        if action == "remove":
+            st.sra_branches = [b for b in st.sra_branches if b.id != bid.strip()]
+            return RedirectResponse(url="/sra", status_code=303)
+        chosen = _sra_selected(st)
+        sch = chosen[1] if chosen is not None else None
+        a = int(after_uid) if after_uid.strip().lstrip("-").isdigit() else None
+        b = int(before_uid) if before_uid.strip().lstrip("-").isdigit() else None
+        label = name.strip()
+        ok = (
+            sch is not None
+            and a is not None
+            and b is not None
+            and a != b
+            and a in sch.tasks_by_id
+            and b in sch.tasks_by_id
+            and not sch.tasks_by_id[a].is_summary
+            and not sch.tasks_by_id[b].is_summary
+        )
+        if label and ok and sch is not None and a is not None and b is not None:
+            mpd = sch.calendar.working_minutes_per_day or 480
+            p = _clamp_float(prob, 0.0, 1.0, 0.0, scale=0.01)
+            lo = max(0, round(_clamp_float(low, 0.0, 1_000_000.0, 0.0) * mpd))
+            mid = max(lo, round(_clamp_float(ml, 0.0, 1_000_000.0, 0.0) * mpd))
+            hi = max(mid, round(_clamp_float(high, 0.0, 1_000_000.0, 0.0) * mpd))
+            st.sra_branch_seq += 1
+            st.sra_branches.append(
+                ProbabilisticBranch(
+                    id=f"B{st.sra_branch_seq}",
+                    name=label,
+                    probability=p,
+                    after_uid=a,
+                    before_uid=b,
+                    low=lo,
+                    ml=mid,
+                    high=hi,
+                )
+            )
+        return RedirectResponse(url="/sra", status_code=303)
+
     @app.get("/api/sra")
     def sra_json(
         iterations: int = Query(1000), distribution: str = Query("triangular")
@@ -6660,6 +6727,7 @@ def create_app(
                 config=cfg,
                 three_point=_ssi_three_point(st, sch),
                 risks=_schedule_risks(st),
+                branches=_schedule_branches(st),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -6962,7 +7030,13 @@ def create_app(
         )
         heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
         result = run_maybe_offloaded(
-            heavy, compute_sra_ssi, sch, config=cfg, three_point=tp, risks=_schedule_risks(st)
+            heavy,
+            compute_sra_ssi,
+            sch,
+            config=cfg,
+            three_point=tp,
+            risks=_schedule_risks(st),
+            branches=_schedule_branches(st),
         )
         exclude = (
             frozenset(u for r in st.sra_risks for u in r.affected)
@@ -7031,6 +7105,7 @@ def create_app(
             config=cfg,
             three_point=tp,
             risks=_schedule_risks(st),
+            branches=_schedule_branches(st),
         )
         keep = {"Risk register", "Per-task durations"}
         full = _ssi_export_tables(st, sch, result, [])  # registry needs no OAT (skip the 2N solves)
@@ -7501,6 +7576,8 @@ def create_app(
             st.sra_overrides.clear()
             st.sra_risks.clear()
             st.sra_risk_seq = 0
+            st.sra_branches.clear()
+            st.sra_branch_seq = 0
             # A wipe is a full reset: turn the AI back off and stop any local model it is
             # running, so a wiped session never leaves Ollama consuming RAM/CPU (operator
             # report: Ollama survived a Wipe → Quit). Re-enabling is one click in AI Settings.
@@ -12787,6 +12864,49 @@ _CONSEQUENCE_HINT = (
 )
 
 
+def _branch_section(st: SessionState) -> str:
+    """The probabilistic-branch editor (ADR-0273, Hulett #8): add / list / clear rework branches
+    that fire in p% of the SSI iterations. Durations shown in working days."""
+    chosen = _sra_selected(st)
+    mpd = (chosen[1].calendar.working_minutes_per_day or 480) if chosen is not None else 480
+    rows = ""
+    for b in st.sra_branches:
+        rows += (
+            f"<tr><td>{_e(b.name)}</td><td>{b.after_uid}&rarr;{b.before_uid}</td>"
+            f"<td>{b.probability * 100:g}%</td>"
+            f"<td>{b.low / mpd:g} / {b.ml / mpd:g} / {b.high / mpd:g}</td>"
+            f'<td><form action="/sra/branch" method=post style="display:inline">'
+            f'<input type=hidden name=action value=remove><input type=hidden name=bid value="{b.id}">'
+            f"<button type=submit class=linkbtn>remove</button></form></td></tr>"
+        )
+    table = (
+        '<table style="width:auto"><tr><th>Rework</th><th>Tie</th><th>P</th>'
+        f"<th>BC/ML/WC d</th><th></th></tr>{rows}</table>"
+        if st.sra_branches
+        else "<p class=muted>No probabilistic branches defined.</p>"
+    )
+    return f"""<details class=explainer><summary><b>Probabilistic branches</b> &mdash; discrete rework that fires in p% of iterations (the bi-modal risk view, Hulett)</summary>
+<p class=muted>A <b>probabilistic branch</b> models a discrete failure/rework that, when it fires,
+inserts an extra activity onto an existing Finish&ndash;to&ndash;Start tie &mdash; delaying everything
+downstream by its sampled duration. Unlike a risk (which adds days to an <i>existing</i> task), a
+branch is a <b>new node</b> on the chosen link, so it only moves the finish when it becomes the
+driving path, and it produces the <b>bi-modal</b> finish distribution (a spike at "no failure" plus a
+shifted lump when the rework happens) the deterministic plan hides. Durations are working days; a
+branch whose After&rarr;Before FS tie doesn't exist is reported <b>inert</b> after the run.</p>
+<form action="/sra/branch" method=post class=viz-controls>
+<label>Name <input type=text name=name placeholder="Retest after failure" required></label>
+<label>After UID <input type=number name=after_uid min=1 style="width:80px" required></label>
+<label>Before UID <input type=number name=before_uid min=1 style="width:80px" required></label>
+<label>Probability&nbsp;% <input type=number name=prob min=0 max=100 step=1 value=20 style="width:64px"></label>
+<label title="Best / Most-Likely / Worst-case rework duration in working days">BC/ML/WC days <input type=number name=low min=0 step=0.5 placeholder=BC style="width:56px">
+<input type=number name=ml min=0 step=0.5 placeholder=ML style="width:56px">
+<input type=number name=high min=0 step=0.5 placeholder=WC style="width:56px"></label>
+<button type=submit>Add branch</button></form>
+{table}
+<form action="/sra/branch" method=post style="display:inline"><input type=hidden name=action value=clear>
+<button type=submit class=linkbtn>Clear all branches</button></form></details>"""
+
+
 def _unified_risk_section(st: SessionState) -> str:
     """The single 'enter once' risk/opportunity register: ONE form carrying BOTH a days magnitude
     (SSI) and a %/multiplicative magnitude (legacy), the registered-risk table (with each magnitude
@@ -12902,6 +13022,11 @@ def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
         )
         for r in st.sra_risks
     )
+
+
+def _schedule_branches(st: SessionState) -> tuple[ProbabilisticBranch, ...]:
+    """The probabilistic branches for the SSI run (ADR-0273), stored ready-to-use on the session."""
+    return tuple(st.sra_branches)
 
 
 def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> float:
@@ -13262,6 +13387,21 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
         ],
         "risk_matrix": _ssi_matrix_counts(result.risks, opportunity=False),
         "opportunity_matrix": _ssi_matrix_counts(result.risks, opportunity=True),
+        # probabilistic-branch outcomes (ADR-0273): fired fraction, rework magnitude, finish impact,
+        # and the inert flag (a branch whose FS tie was absent) — sra_ssi.js renders the table.
+        "branches": [
+            {
+                "id": br.id,
+                "name": br.name,
+                "probability": round(br.probability * 100, 1),
+                "applied": br.applied,
+                "hits": br.hits,
+                "fired_pct": round(br.fired_fraction * 100, 1),
+                "mean_fragnet_days": br.mean_fragnet_days,
+                "mean_delta_days": br.mean_delta_days,
+            }
+            for br in result.branches
+        ],
         # dense plotting series (realigned dates): the cumulative S-curve + the finish-date histogram
         "s_curve": [{"date": d, "p": p} for d, p in result.s_curve],
         "finish_hist": [{"date": d, "count": c} for d, c in result.finish_hist],
@@ -13500,6 +13640,20 @@ def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
             }
             for r in st.sra_risks
         ],
+        # probabilistic branches (ADR-0273) — durations in working minutes, restored verbatim
+        "branches": [
+            {
+                "id": b.id,
+                "name": b.name,
+                "probability": b.probability,
+                "after_uid": b.after_uid,
+                "before_uid": b.before_uid,
+                "low": b.low,
+                "ml": b.ml,
+                "high": b.high,
+            }
+            for b in st.sra_branches
+        ],
     }
 
 
@@ -13639,6 +13793,34 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
             )
     st.sra_risks = risks
     st.sra_risk_seq = seq
+    # probabilistic branches (ADR-0273): restore verbatim (durations already in working minutes)
+    branches: list[ProbabilisticBranch] = []
+    bseq = 0
+    raw_branches = data.get("branches")
+    if isinstance(raw_branches, list):
+        for item in raw_branches:
+            if not isinstance(item, dict):
+                continue
+            with contextlib.suppress(TypeError, ValueError):
+                a, bef = int(item["after_uid"]), int(item["before_uid"])
+                lo = max(0, int(item.get("low", 0)))
+                mid = max(lo, int(item.get("ml", lo)))
+                hi = max(mid, int(item.get("high", mid)))
+                bseq += 1
+                branches.append(
+                    ProbabilisticBranch(
+                        id=str(item.get("id") or f"B{bseq}"),
+                        name=str(item.get("name") or f"Branch {bseq}"),
+                        probability=min(1.0, max(0.0, float(item.get("probability", 0.0)))),
+                        after_uid=a,
+                        before_uid=bef,
+                        low=lo,
+                        ml=mid,
+                        high=hi,
+                    )
+                )
+    st.sra_branches = branches
+    st.sra_branch_seq = bseq
 
 
 def _ssi_export_tables(
@@ -14403,6 +14585,7 @@ uncertainty anywhere it falls back to the deterministic finish exactly like MC.<
 <input type=text name=uids placeholder="selected UIDs" style="width:150px">
 <button type=submit>Calculate — selected</button></form>
 {_unified_risk_section(st)}
+{_branch_section(st)}
 <h3>Editable schedule grid</h3>
 <p class=muted>The whole schedule as a spreadsheet-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. <b>Factor 0

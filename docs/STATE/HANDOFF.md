@@ -1,40 +1,40 @@
-# Handoff — 2026-07-19c (ADR-0272: risk-critical Gantt tint — #331 Hulett #12, Opus Ultracode; v1.0.78; highest ADR 0272)
+# Handoff — 2026-07-19d (ADR-0273: probabilistic branching — #331 Hulett #8, Opus Ultracode; v1.0.79; highest ADR 0273)
 
-> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode"; the #331 phase continues at Hulett #12: the SSI schedule grid's Gantt bars now **tint by Criticality Index** (how often each activity was on the critical path across the last Monte-Carlo run) — the risk-critical view (ADR-0272). Version 1.0.77 → 1.0.78 (wheel + 9 installers in lockstep). **Premise correction caught by verify-everything BEFORE any code:** the task was scoped "pure UI" on the belief SSIResult carried CI — it did NOT (compute_sra_ssi tallied `critical_counts` per iteration then DISCARDED it; CI lived only on the legacy compute_sra/SRAResult path, a different sim). So it needed a minimal ADDITIVE engine change (plumb the already-computed value through), not new math.
+> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode"; the #331 phase continues at Hulett #8: **probabilistic branching** — a discrete failure that inserts *rework* into the SSI Monte-Carlo in p% of iterations → the **bi-modal** finish distribution (a spike at "no failure" + a shifted lump when the rework happens) the deterministic plan hides (ADR-0273). v1.0.78 → 1.0.79. Unlike a risk (adds days to an EXISTING task), a branch is a NEW node on a chosen FS tie, so it participates in **merge bias** (only moves the finish when it drives). The core augmentation mechanism was **verified against the real compute_cpm BEFORE any code** (`scratchpad/branch_verify.py`).
 >
-> - **Engine (`sra.py`, additive — Law 2 clean, no new number):** `SSIResult` gains
->   `criticality: tuple[tuple[int,float],...] = ()` (uid, fraction-of-iterations-critical, asc uid),
->   appended last → inert to the finish-cdf pin + the ssi==jcl equality. `_build_ssi_result` takes
->   `critical_counts` and builds `count/n`; `compute_sra_ssi` passes the counts it already tallies.
->   No engine LOGIC change — the value was computed every run and thrown away; now carried through.
-> - **Web:** `SessionState.sra_criticality` (uid→CI) + `sra_criticality_iters` cache the LAST run
->   (set in the `/api/sra/ssi` handler — the grid + run are decoupled fetches). `_ssi_grid_rows`
->   adds `criticality_index` per row; `/api/sra/grid` reports `criticality_available`+`_iters` for
->   provenance; `_ssi_data` echoes `criticality`. `sra_grid.js` `timelineCell` tints the bar
->   `g-bar g-ci-{0..4}` (banded 0/<20/20-50/50-80/≥80%) behind the **"tint by criticality"** toggle,
->   with a legend + "last N-iteration run" provenance; the tint is a ROW property so it survives
->   sort/filter/group/zoom re-renders. `sra_ssi.js` fires a `sf-ssi-run` window event after a run →
->   `sra_grid.js` reloads (no shared-global coupling). Bands reuse the sanctioned risk-heat palette
->   (fixed hexes, theme-independent — the DESIGN-SYSTEM exception); NASA-red stays reserved for the
->   deterministic critical path. i18n +"tint by criticality" ×4 langs.
-> - **Verified:** `tests/engine/test_sra_ssi.py` (+3: CI ranks driver>0.95 / off-path<0.05,
->   determinism, all-point-mass 0/1 split); `tests/web/test_sra_grid.py` (+grid-row CI, run→grid
->   provenance) + `test_sra_ssi_web.py` (+toggle/legend/CSS-band/JS-wiring, payload CI). **Browser
->   four-theme check** (`scratchpad/verify_tint.py`, CSP-strict Chromium): the CI→band→color map is
->   correct end-to-end — on Project5's rigid critical path, 122 bars green (CI=0) / 4 red (CI=1.0)
->   in console/daylight/apollo/jarvis. Full local gate green (ruff, format, mypy 116, bandit, node,
->   pytest). v1.0.77 → **1.0.78**, wheel + 9 installers in lockstep.
-> - **Standing rule (from #412, now on main):** update `docs/STATE/LESSONS-LEARNED.md` DAILY —
->   append a Part VIII entry when a lesson is learned; it's first-class durable state.
+> - **Engine (`sra.py`, additive — Law 2 clean):** `ProbabilisticBranch` spec (id, name,
+>   probability, after_uid, before_uid, 3-point low/ml/high minutes). `_augment_with_branches`
+>   inserts each fragnet ONCE: replaces the FS tie `after→before` with `after --FS0--> F
+>   --FS(lag)--> before`, F a new leaf with **0 placeholder duration** (so F-at-0 == base,
+>   byte-frozen; verified). `compute_sra_ssi` gains `branches`; F's ml=0 → point-mass 0 in the
+>   anchor + no-fire iterations; `_branch_draws` fires + samples the fragnet on streams DISJOINT
+>   from duration/risk draws; a fired iteration overrides F to a `_sample_triangular` 3-point draw.
+>   `SSIResult.branches: tuple[SSIBranchStat,...]=()` (fired fraction, mean rework days, mean finish
+>   Δ, applied/inert), appended last → inert to the finish-cdf + ssi==jcl pins. SSI-only (not
+>   JCL/OAT/legacy). Inert branch (FS tie absent) disclosed, never silent.
+> - **Web:** `SessionState.sra_branches`/`_seq`; `POST /sra/branch` (add/remove/clear; days→minutes;
+>   distinct non-summary endpoints); `_schedule_branches(st)` threads `branches=` into all 5 SSI
+>   `compute_sra_ssi` sites; a collapsible **"Probabilistic branches"** editor on `/sra` (form +
+>   list + explainer of the merge-bias distinction); `_ssi_data` echoes per-branch stats +
+>   `sra_ssi.js` renders a "Probabilistic-branch outcomes" table; the bi-modal finish shows in the
+>   existing S-curve. Save/Load persists branches; wipe clears them; i18n +2 terms ×4 langs.
+> - **Verified:** `tests/engine/test_sra_branching.py` (8: freeze, bi-modal split, certain-shift,
+>   off-path no-op + overtake = merge bias, inert disclosure, determinism, zero-prob ignore);
+>   `tests/web/test_sra_ssi_web.py` (+4: editor render, add→listed→bimodal payload, inert, clear).
+>   **End-to-end through the web** on Project5 driving tie 131→142: fired ~40%, mean rework ~23 d
+>   (=(10+20+40)/3), finish shifted by that amount (bi-modal). Full local gate green (ruff, format,
+>   mypy 116, bandit, node, pytest). v1.0.78 → **1.0.79**, wheel + 9 installers in lockstep.
+> - **Standing rule (from #412):** update `docs/STATE/LESSONS-LEARNED.md` DAILY — first-class state.
 > - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
 >   on-machine re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258).
 >   #13 XER per-task calendars PARKED.
-> - **State:** v1.0.78; **ADR-0272** highest; wheel + 9 installers in lockstep. Branch
->   `claude/handoff-continuation-vistlu` (restarted from main after #411 merged). This session
->   merged #411 (LHS); the Gantt-tint is the open PR at this snapshot.
-> - **NEXT (file-free):** the #331 Hulett-deck ranked items after #12 are worked through; re-read
->   issue #331 for the next-ranked item, or pick up the 3 OWED operator inputs when supplied
->   (ADR-0261/0258). Keep the daily LESSONS-LEARNED entry as part of the end-of-session ritual.
+> - **State:** v1.0.79; **ADR-0273** highest; wheel + 9 installers in lockstep. Branch
+>   `claude/handoff-continuation-vistlu` (restarted from main after #414 merged). This session
+>   merged #411 (LHS) + #414 (Gantt tint); the branching PR is the open PR at this snapshot.
+> - **NEXT (file-free):** Hulett **#9 conditional branching** (Alt-A/Alt-B contingency switching —
+>   builds on #8's augmentation; a larger design) is the last non-deferred Hulett item (#13
+>   resource-leveled iterations is deferred/out-of-scope). Then re-read #331 for anything else, or
+>   the 3 OWED operator inputs (ADR-0261/0258). Keep the daily LESSONS-LEARNED entry.
 
 # (prior) handoffs — archived
 

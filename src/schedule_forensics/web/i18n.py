@@ -1225,6 +1225,19 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "nach Kritikalität einfärben",
         "pt": "colorir por criticidade",
     },
+    # — probabilistic branches (ADR-0273, Hulett #8) —
+    "Add branch": {
+        "es": "Agregar ramificación",
+        "fr": "Ajouter une branche",
+        "de": "Verzweigung hinzufügen",
+        "pt": "Adicionar ramificação",
+    },
+    "Clear all branches": {
+        "es": "Borrar todas las ramificaciones",
+        "fr": "Effacer toutes les branches",
+        "de": "Alle Verzweigungen löschen",
+        "pt": "Limpar todas as ramificações",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

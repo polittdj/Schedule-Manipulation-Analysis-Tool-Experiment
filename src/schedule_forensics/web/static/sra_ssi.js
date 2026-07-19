@@ -294,6 +294,18 @@
       });
       out.appendChild(rt);
     }
+    // probabilistic-branch outcomes (ADR-0273): fired fraction + rework magnitude + finish impact
+    if (d.branches && d.branches.length) {
+      out.appendChild(el("h3", null, "Probabilistic-branch outcomes"));
+      var bt = el("table");
+      bt.appendChild(row(["Branch", "Prob", "Fired", "Mean rework (d)", "Mean Δ (wd)", "Status"], true));
+      d.branches.forEach(function (b) {
+        bt.appendChild(row([b.name, b.probability + "%", b.applied ? b.fired_pct + "%" : "—",
+          b.applied ? b.mean_fragnet_days : "—", b.applied ? b.mean_delta_days : "—",
+          b.applied ? "applied" : "inert (no FS tie)"]));
+      });
+      out.appendChild(bt);
+    }
     var ch = document.getElementById("ssiCharts");
     ch.innerHTML = "";
     if (d.s_curve && d.s_curve.length) {

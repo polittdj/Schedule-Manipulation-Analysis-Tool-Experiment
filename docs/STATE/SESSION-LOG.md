@@ -7254,3 +7254,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   views). i18n +"tint by criticality" ×4 langs. Full local gate green. v1.0.77 → **1.0.78**, wheel
   + 9 installers in lockstep. Highest ADR **ADR-0272**. Also appended the daily LESSONS-LEARNED
   Part VIII entry (the premise-correction catch as the lesson).
+
+- **Session (2026-07-19e, Ultracode cont.):** #414 (Gantt tint) merged by the operator; restarted
+  the branch from main. Re-read issue #331 + its Hulett-deck comment: the two clear file-free items
+  (#11 LHS, #12 tint) are shipped; the ranked-next file-free item is **#8 probabilistic branching**
+  (#9 conditional branching builds on it; #13 resource-leveled iterations is deferred/out-of-scope).
+  Implemented **probabilistic branching (ADR-0273)**: a discrete failure that inserts *rework* into
+  the SSI Monte-Carlo in p% of iterations → the bi-modal finish the deterministic plan hides.
+  **Verified the core mechanism against the real compute_cpm BEFORE any code** (verify-everything;
+  `scratchpad/branch_verify.py`): a fragnet inserted as `pred --FS0--> F --FS(lag)--> before` with F
+  at duration 0 is byte-identical to the base (calendars included), firing shifts the finish exactly
+  when F drives, an off-path fire that doesn't overtake leaves the finish unchanged (merge bias),
+  and synthetic high uids don't perturb base timings — so the whole MC runs on ONE augmented
+  schedule toggling F's duration via the existing `duration_overrides` hook (no per-iteration
+  rebuild). Engine (additive, Law 2 clean): `ProbabilisticBranch` spec, `_augment_with_branches`
+  (FS-tie replacement, 0-placeholder fragnet), `compute_sra_ssi(branches=...)`, `_branch_draws`
+  (disjoint firing + fragnet uniforms), `SSIResult.branches` (SSIBranchStat: fired fraction, mean
+  rework, mean Δ, applied/inert; appended last, inert to the finish-cdf + ssi==jcl pins). SSI-only.
+  Web: `SessionState.sra_branches`; POST /sra/branch (add/remove/clear); threaded into all 5 SSI
+  call sites; a collapsible "Probabilistic branches" editor + per-branch outcomes table; Save/Load
+  persistence; wipe clears; i18n +2 terms ×4 langs. Before the large build I paired an
+  AskUserQuestion scope check with a recommendation, but the tool aborted and the operator was away,
+  so — per the standing "do all you can without files" mandate + the draft-PR review safety net — I
+  proceeded with the recommended single-inserted-activity MVP scope. Verified: 8 engine tests
+  (freeze, bi-modal split, merge-bias no-op + overtake, inert disclosure, determinism, zero-prob) +
+  4 web tests + an end-to-end web bimodal check (Project5 tie 131→142). Full local gate green.
+  v1.0.78 → **1.0.79**, wheel + 9 installers in lockstep. Highest ADR **ADR-0273**.
