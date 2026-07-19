@@ -306,6 +306,22 @@
       });
       out.appendChild(bt);
     }
+    // conditional-branch outcomes (ADR-0274): which plan won how often + mean finish delta of the fallback
+    if (d.conditionals && d.conditionals.length) {
+      out.appendChild(el("h3", null, "Conditional-branch outcomes"));
+      var ct = el("table");
+      ct.appendChild(row(["Contingency", "Condition", "Plan A won", "Plan B won",
+        "Mean A (d)", "Mean B (d)", "Mean Δ (wd)", "Status"], true));
+      d.conditionals.forEach(function (c) {
+        var cmp = c.trip_when === "at_or_above" ? "≥" : "<";
+        var cond = "UID " + c.monitor_uid + " " + c.metric + " " + cmp + " " + c.threshold_days + "d";
+        ct.appendChild(row([c.name, cond, c.applied ? c.plan_a_pct + "%" : "—",
+          c.applied ? c.plan_b_pct + "%" : "—", c.applied ? c.mean_a_days : "—",
+          c.applied ? c.mean_b_days : "—", c.applied ? c.mean_delta_days : "—",
+          c.applied ? "applied" : "inert (missing monitor/tie)"]));
+      });
+      out.appendChild(ct);
+    }
     var ch = document.getElementById("ssiCharts");
     ch.innerHTML = "";
     if (d.s_curve && d.s_curve.length) {

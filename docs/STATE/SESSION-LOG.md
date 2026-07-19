@@ -7300,3 +7300,26 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   finishes under independent firing) + 2 web tests (gapped save/load → 3 distinct ids all applied;
   XLSX names the branch). Full local gate green. Wheel + 9 installers regenerated in lockstep.
   Highest ADR stays **ADR-0273**.
+
+- **Session (2026-07-19g, Ultracode cont. — Hulett #9 conditional branching):** operator: "provide
+  the PowerShell to reflect current state, then continue the autonomous build on the harness branch
+  `claude/conditional-branching-contingency-bi6g00`, Opus Ultracode ON, do all you can without my
+  files." Confirmed #411/#414/#415/#416 all merged; restarted the branch from merged main c58e14a
+  (v1.0.80). Read #331 + the Hulett-deck comment: **#9 conditional branching** is the LAST
+  non-deferred item. **Prototype-verified BEFORE build** (`scratchpad/cond_branch_verify.py`, 15
+  checks vs the real `compute_cpm`): no-op augmentation (both plan fragnets zero → byte-identical
+  base), **monitor-finish invariance** (finish-metric probe reads the monitor with zero circularity
+  since it's upstream of its branch), exact plan shift, which-plan-wins fraction == raw threshold
+  crossing for both metrics, plans-on-different-ties + merge bias. Built **ADR-0274**: engine
+  (`BranchPlan`/`ConditionalBranch`/`SSIConditionalStat`, `_augment_with_conditionals` all-or-nothing
+  + same-tie chaining after #8's augmentation, `_conditional_draws` disjoint stream,
+  `_conditional_trips`, a probe solve only for finish-metric conditionals, `SSIResult.conditionals`,
+  byte-frozen when none) + web (`sra_conditionals`, `POST /sra/conditional`, a two-fieldset editor,
+  `conditionals=` threaded into all SSI call sites, a "Conditional-branch outcomes" table, Save/Load
+  with dense id regeneration C1..Cn, XLSX/DOCX disclosure). A shadow-variable bug (the per-iteration
+  `plan` reassignment clobbered the LHS-plan var passed to the sampler) was caught by the new tests
+  and fixed by renaming to `chosen_plan`. Verified: +11 engine tests + 6 web tests; broader SRA/SSI/
+  JCL suite (306) green; full local gate green (ruff, format, mypy 116, bandit, node, pytest).
+  v1.0.80 → **1.0.81**, wheel + 9 installers in lockstep. Highest ADR **ADR-0274**. **With #9 done
+  the file-free #331 backlog is COMPLETE** — awaiting the 3 OWED operator inputs (ADR-0261 PowerShell
+  crash log + large dataset; ADR-0258 Claude-Design portfolio prompt).

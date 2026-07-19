@@ -248,6 +248,8 @@ from schedule_forensics.engine.scorecards import (
 )
 from schedule_forensics.engine.sra import (
     ActivityRisk,
+    BranchPlan,
+    ConditionalBranch,
     OATSensitivity,
     ProbabilisticBranch,
     RiskEvent,
@@ -750,6 +752,10 @@ class SessionState:
     # SSI iterations → bi-modal finish. Durations stored in working minutes. Set via POST /sra/branch.
     sra_branches: list[ProbabilisticBranch] = field(default_factory=list)
     sra_branch_seq: int = 0  # stable unique-id counter across removals
+    # conditional branches (ADR-0274, Hulett #9): contingency switching — a condition on a monitored
+    # activity picks primary Plan A vs contingency Plan B each iteration. Set via POST /sra/conditional.
+    sra_conditionals: list[ConditionalBranch] = field(default_factory=list)
+    sra_conditional_seq: int = 0  # stable unique-id counter across removals
     # which loaded file the SRA runs against (operator choice). None / unknown key => the latest
     # solvable version (the historical default). Set via GET /sra?file=<key>.
     sra_file: str | None = None
@@ -4018,6 +4024,7 @@ def create_app(
                 three_point=three_point,
                 risks=_schedule_risks(st),
                 branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
             )
         except Exception as exc:
             return {"error": str(exc)}
@@ -6531,6 +6538,109 @@ def create_app(
             )
         return RedirectResponse(url="/sra", status_code=303)
 
+    @app.post("/sra/conditional")
+    def sra_conditional(
+        action: str = Form("add"),
+        cid: str = Form(""),
+        name: str = Form(""),
+        monitor_uid: str = Form(""),
+        metric: str = Form("duration"),
+        threshold: str = Form(""),
+        trip_when: str = Form("at_or_above"),
+        a_after: str = Form(""),
+        a_before: str = Form(""),
+        a_low: str = Form(""),
+        a_ml: str = Form(""),
+        a_high: str = Form(""),
+        b_after: str = Form(""),
+        b_before: str = Form(""),
+        b_low: str = Form(""),
+        b_ml: str = Form(""),
+        b_high: str = Form(""),
+    ) -> RedirectResponse:
+        """Maintain the conditional-branch list (ADR-0274, Hulett #9): a contingency switch that,
+        each SSI iteration, tests a monitored activity and executes the primary Plan A (condition not
+        tripped) or the contingency Plan B (tripped) — reporting which plan wins how often. ``metric``
+        is ``duration`` (the monitor's sampled duration) or ``finish`` (its pre-contingency early
+        finish, read via a probe solve); ``threshold`` is entered in working DAYS; ``trip_when`` is
+        ``at_or_above`` (fall to B when the monitor runs late/long) or ``below``. Each plan is a
+        fragnet on an FS tie ``after -> before`` with a 3-point rework duration (working days). The
+        monitor and both plan endpoints must be distinct non-summary activities of the selected
+        schedule; a plan whose FS tie is absent is accepted but the conditional is reported inert
+        after the run (never silently dropped)."""
+        st = session()
+        if action == "clear":
+            st.sra_conditionals.clear()
+            return RedirectResponse(url="/sra", status_code=303)
+        if action == "remove":
+            st.sra_conditionals = [c for c in st.sra_conditionals if c.id != cid.strip()]
+            return RedirectResponse(url="/sra", status_code=303)
+        chosen = _sra_selected(st)
+        sch = chosen[1] if chosen is not None else None
+        tb = sch.tasks_by_id if sch is not None else {}
+
+        def _valid(u: int | None) -> bool:
+            return u is not None and u in tb and not tb[u].is_summary
+
+        def _uid(raw: str) -> int | None:
+            return int(raw) if raw.strip().lstrip("-").isdigit() else None
+
+        mon, aa, ab, ba, bb = (
+            _uid(monitor_uid),
+            _uid(a_after),
+            _uid(a_before),
+            _uid(b_after),
+            _uid(b_before),
+        )
+        label = name.strip()
+        ok = (
+            sch is not None
+            and label != ""
+            and metric in ("duration", "finish")
+            and trip_when in ("at_or_above", "below")
+            and all(_valid(u) for u in (mon, aa, ab, ba, bb))
+            and aa != ab
+            and ba != bb
+        )
+        if (
+            ok
+            and sch is not None
+            and mon is not None
+            and aa is not None
+            and ab is not None
+            and ba is not None
+            and bb is not None
+        ):
+            mpd = sch.calendar.working_minutes_per_day or 480
+
+            def _dur(low: str, ml: str, high: str) -> tuple[int, int, int]:
+                lo = max(0, round(_clamp_float(low, 0.0, 1_000_000.0, 0.0) * mpd))
+                mid = max(lo, round(_clamp_float(ml, 0.0, 1_000_000.0, 0.0) * mpd))
+                hi = max(mid, round(_clamp_float(high, 0.0, 1_000_000.0, 0.0) * mpd))
+                return lo, mid, hi
+
+            la, ma, ha = _dur(a_low, a_ml, a_high)
+            lb, mb, hb = _dur(b_low, b_ml, b_high)
+            thr = max(0, round(_clamp_float(threshold, 0.0, 10_000_000.0, 0.0) * mpd))
+            st.sra_conditional_seq += 1
+            st.sra_conditionals.append(
+                ConditionalBranch(
+                    id=f"C{st.sra_conditional_seq}",
+                    name=label,
+                    monitor_uid=mon,
+                    metric=metric,
+                    threshold_minutes=thr,
+                    plan_a=BranchPlan(
+                        after_uid=aa, before_uid=ab, low=la, ml=ma, high=ha, name="Plan A"
+                    ),
+                    plan_b=BranchPlan(
+                        after_uid=ba, before_uid=bb, low=lb, ml=mb, high=hb, name="Plan B"
+                    ),
+                    trip_when=trip_when,
+                )
+            )
+        return RedirectResponse(url="/sra", status_code=303)
+
     @app.get("/api/sra")
     def sra_json(
         iterations: int = Query(1000), distribution: str = Query("triangular")
@@ -6728,6 +6838,7 @@ def create_app(
                 three_point=_ssi_three_point(st, sch),
                 risks=_schedule_risks(st),
                 branches=_schedule_branches(st),
+                conditionals=_schedule_conditionals(st),
             )
         except Exception as exc:
             return JSONResponse({"error": str(exc)}, status_code=422)
@@ -7037,6 +7148,7 @@ def create_app(
             three_point=tp,
             risks=_schedule_risks(st),
             branches=_schedule_branches(st),
+            conditionals=_schedule_conditionals(st),
         )
         exclude = (
             frozenset(u for r in st.sra_risks for u in r.affected)
@@ -7106,6 +7218,7 @@ def create_app(
             three_point=tp,
             risks=_schedule_risks(st),
             branches=_schedule_branches(st),
+            conditionals=_schedule_conditionals(st),
         )
         keep = {"Risk register", "Per-task durations"}
         full = _ssi_export_tables(st, sch, result, [])  # registry needs no OAT (skip the 2N solves)
@@ -7578,6 +7691,8 @@ def create_app(
             st.sra_risk_seq = 0
             st.sra_branches.clear()
             st.sra_branch_seq = 0
+            st.sra_conditionals.clear()
+            st.sra_conditional_seq = 0
             # A wipe is a full reset: turn the AI back off and stop any local model it is
             # running, so a wiped session never leaves Ollama consuming RAM/CPU (operator
             # report: Ollama survived a Wipe → Quit). Re-enabling is one click in AI Settings.
@@ -12907,6 +13022,72 @@ branch whose After&rarr;Before FS tie doesn't exist is reported <b>inert</b> aft
 <button type=submit class=linkbtn>Clear all branches</button></form></details>"""
 
 
+def _conditional_section(st: SessionState) -> str:
+    """The conditional-branch editor (ADR-0274, Hulett #9): add / list / clear contingency switches.
+    Each tests a monitored activity every SSI iteration and executes the primary Plan A or the
+    contingency Plan B; the run reports which plan wins how often. Durations/threshold in working
+    days."""
+    chosen = _sra_selected(st)
+    mpd = (chosen[1].calendar.working_minutes_per_day or 480) if chosen is not None else 480
+    rows = ""
+    for c in st.sra_conditionals:
+        cmp_sym = "&ge;" if c.trip_when == "at_or_above" else "&lt;"
+        metric_lbl = "dur" if c.metric == "duration" else "finish"
+        cond_txt = f"UID {c.monitor_uid} {metric_lbl} {cmp_sym} {c.threshold_minutes / mpd:g}d"
+        rows += (
+            f"<tr><td>{_e(c.name)}</td><td>{cond_txt}</td>"
+            f"<td>{c.plan_a.after_uid}&rarr;{c.plan_a.before_uid} ({c.plan_a.ml / mpd:g}d)</td>"
+            f"<td>{c.plan_b.after_uid}&rarr;{c.plan_b.before_uid} ({c.plan_b.ml / mpd:g}d)</td>"
+            f'<td><form action="/sra/conditional" method=post style="display:inline">'
+            f'<input type=hidden name=action value=remove><input type=hidden name=cid value="{c.id}">'
+            f"<button type=submit class=linkbtn>remove</button></form></td></tr>"
+        )
+    table = (
+        '<table style="width:auto"><tr><th>Contingency</th><th>Condition</th>'
+        f"<th>Plan A (primary)</th><th>Plan B (fallback)</th><th></th></tr>{rows}</table>"
+        if st.sra_conditionals
+        else "<p class=muted>No conditional branches defined.</p>"
+    )
+    return f"""<details class=explainer><summary><b>Conditional branches</b> &mdash; contingency switching: stick with Plan A vs fall to Plan B when a condition trips (Hulett)</summary>
+<p class=muted>A <b>conditional branch</b> models a <b>contingency plan</b>. Each iteration a
+<b>condition</b> on a <i>monitored</i> activity decides which of two mutually-exclusive plans runs:
+the primary <b>Plan A</b> when the condition does <i>not</i> trip, or the contingency <b>Plan B</b>
+when it does. Unlike a probabilistic branch (a fixed-probability coin flip), the choice is driven by
+the iteration's realized state, so the run reports <b>which plan wins how often</b> and the finish
+distribution reflects the plan mix. The <b>Monitor</b> is the watched activity; the condition trips
+on its sampled <b>duration</b> or its pre-contingency <b>finish</b> crossing the <b>threshold</b>
+(working days). Each plan is a new activity on an existing Finish&ndash;to&ndash;Start tie
+(<b>After&rarr;Before</b>) with a 3-point duration; a plan whose tie doesn't exist makes the
+conditional <b>inert</b> (disclosed after the run). The Monitor should be <i>upstream</i> of the
+plans (a finish-metric monitor is read from a per-iteration probe solve).</p>
+<form action="/sra/conditional" method=post class=viz-controls>
+<label>Name <input type=text name=name placeholder="Fall back to off-the-shelf part" required></label>
+<label title="The watched activity whose outcome trips the contingency">Monitor UID <input type=number name=monitor_uid min=1 style="width:80px" required></label>
+<label title="duration = the monitor's sampled duration; finish = its early finish (working days from start), read via a probe solve">Condition on
+<select name=metric><option value=duration>duration</option><option value=finish>finish</option></select></label>
+<label>trips when
+<select name=trip_when><option value=at_or_above>&ge; threshold (late/long)</option><option value=below>&lt; threshold (early/short)</option></select></label>
+<label title="Working days: a duration for the duration metric, or a finish offset from project start for the finish metric">Threshold&nbsp;days <input type=number name=threshold min=0 step=0.5 style="width:64px" required></label>
+<fieldset style="display:inline-block;border:1px solid var(--sf-border,#888);padding:4px 8px;margin:2px">
+<legend>Plan A (primary)</legend>
+<label>After <input type=number name=a_after min=1 style="width:72px" required></label>
+<label>Before <input type=number name=a_before min=1 style="width:72px" required></label>
+<label title="Best / Most-Likely / Worst-case working days">BC/ML/WC <input type=number name=a_low min=0 step=0.5 placeholder=BC style="width:52px">
+<input type=number name=a_ml min=0 step=0.5 placeholder=ML style="width:52px">
+<input type=number name=a_high min=0 step=0.5 placeholder=WC style="width:52px"></label></fieldset>
+<fieldset style="display:inline-block;border:1px solid var(--sf-border,#888);padding:4px 8px;margin:2px">
+<legend>Plan B (contingency)</legend>
+<label>After <input type=number name=b_after min=1 style="width:72px" required></label>
+<label>Before <input type=number name=b_before min=1 style="width:72px" required></label>
+<label title="Best / Most-Likely / Worst-case working days">BC/ML/WC <input type=number name=b_low min=0 step=0.5 placeholder=BC style="width:52px">
+<input type=number name=b_ml min=0 step=0.5 placeholder=ML style="width:52px">
+<input type=number name=b_high min=0 step=0.5 placeholder=WC style="width:52px"></label></fieldset>
+<button type=submit>Add contingency</button></form>
+{table}
+<form action="/sra/conditional" method=post style="display:inline"><input type=hidden name=action value=clear>
+<button type=submit class=linkbtn>Clear all conditionals</button></form></details>"""
+
+
 def _unified_risk_section(st: SessionState) -> str:
     """The single 'enter once' risk/opportunity register: ONE form carrying BOTH a days magnitude
     (SSI) and a %/multiplicative magnitude (legacy), the registered-risk table (with each magnitude
@@ -13027,6 +13208,11 @@ def _schedule_risks(st: SessionState) -> tuple[ScheduleRisk, ...]:
 def _schedule_branches(st: SessionState) -> tuple[ProbabilisticBranch, ...]:
     """The probabilistic branches for the SSI run (ADR-0273), stored ready-to-use on the session."""
     return tuple(st.sra_branches)
+
+
+def _schedule_conditionals(st: SessionState) -> tuple[ConditionalBranch, ...]:
+    """The conditional branches for the SSI run (ADR-0274), stored ready-to-use on the session."""
+    return tuple(st.sra_conditionals)
 
 
 def _affected_avg_remaining_days(sch: Schedule | None, uids: Sequence[int]) -> float:
@@ -13402,6 +13588,29 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
             }
             for br in result.branches
         ],
+        # conditional-branch outcomes (ADR-0274): which plan won how often + the mean finish delta of
+        # falling to the contingency, and the inert flag — sra_ssi.js renders the table.
+        "conditionals": [
+            {
+                "id": cs.id,
+                "name": cs.name,
+                "monitor_uid": cs.monitor_uid,
+                "metric": cs.metric,
+                "threshold_days": round(
+                    cs.threshold_minutes / (sch.calendar.working_minutes_per_day or 480), 2
+                ),
+                "trip_when": cs.trip_when,
+                "applied": cs.applied,
+                "plan_a_name": cs.plan_a_name,
+                "plan_b_name": cs.plan_b_name,
+                "plan_a_pct": round(cs.plan_a_fraction * 100, 1),
+                "plan_b_pct": round(cs.plan_b_fraction * 100, 1),
+                "mean_a_days": cs.mean_a_finish_days,
+                "mean_b_days": cs.mean_b_finish_days,
+                "mean_delta_days": cs.mean_delta_days,
+            }
+            for cs in result.conditionals
+        ],
         # dense plotting series (realigned dates): the cumulative S-curve + the finish-date histogram
         "s_curve": [{"date": d, "p": p} for d, p in result.s_curve],
         "finish_hist": [{"date": d, "count": c} for d, c in result.finish_hist],
@@ -13654,6 +13863,34 @@ def _ssi_setup_dict(st: SessionState) -> dict[str, object]:
             }
             for b in st.sra_branches
         ],
+        # conditional branches (ADR-0274) — durations/threshold in working minutes, restored verbatim
+        "conditionals": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "monitor_uid": c.monitor_uid,
+                "metric": c.metric,
+                "threshold_minutes": c.threshold_minutes,
+                "trip_when": c.trip_when,
+                "plan_a": {
+                    "after_uid": c.plan_a.after_uid,
+                    "before_uid": c.plan_a.before_uid,
+                    "low": c.plan_a.low,
+                    "ml": c.plan_a.ml,
+                    "high": c.plan_a.high,
+                    "name": c.plan_a.name,
+                },
+                "plan_b": {
+                    "after_uid": c.plan_b.after_uid,
+                    "before_uid": c.plan_b.before_uid,
+                    "low": c.plan_b.low,
+                    "ml": c.plan_b.ml,
+                    "high": c.plan_b.high,
+                    "name": c.plan_b.name,
+                },
+            }
+            for c in st.sra_conditionals
+        ],
     }
 
 
@@ -13825,6 +14062,60 @@ def _apply_ssi_setup(st: SessionState, data: dict[str, object]) -> None:
                 )
     st.sra_branches = branches
     st.sra_branch_seq = bseq
+    # conditional branches (ADR-0274): restore verbatim (durations/threshold already in working
+    # minutes), regenerating ids densely (C1..Cn) so `sra_conditional_seq == len` is collision-free
+    # (the same Save/Load id-density guard as #8's probabilistic branches).
+    conditionals: list[ConditionalBranch] = []
+    cseq = 0
+    raw_conditionals = data.get("conditionals")
+    if isinstance(raw_conditionals, list):
+        for item in raw_conditionals:
+            if not isinstance(item, dict):
+                continue
+            pa = item.get("plan_a")
+            pb = item.get("plan_b")
+            if not (isinstance(pa, dict) and isinstance(pb, dict)):
+                continue
+            with contextlib.suppress(TypeError, ValueError, KeyError):
+                a_lo = max(0, int(pa.get("low", 0)))
+                a_mid = max(a_lo, int(pa.get("ml", a_lo)))
+                a_hi = max(a_mid, int(pa.get("high", a_mid)))
+                b_lo = max(0, int(pb.get("low", 0)))
+                b_mid = max(b_lo, int(pb.get("ml", b_lo)))
+                b_hi = max(b_mid, int(pb.get("high", b_mid)))
+                metric = str(item.get("metric", "duration"))
+                metric = metric if metric in ("duration", "finish") else "duration"
+                trip = str(item.get("trip_when", "at_or_above"))
+                trip = trip if trip in ("at_or_above", "below") else "at_or_above"
+                cseq += 1
+                conditionals.append(
+                    ConditionalBranch(
+                        id=f"C{cseq}",
+                        name=str(item.get("name") or f"Contingency {cseq}"),
+                        monitor_uid=int(item["monitor_uid"]),
+                        metric=metric,
+                        threshold_minutes=max(0, int(item.get("threshold_minutes", 0))),
+                        plan_a=BranchPlan(
+                            after_uid=int(pa["after_uid"]),
+                            before_uid=int(pa["before_uid"]),
+                            low=a_lo,
+                            ml=a_mid,
+                            high=a_hi,
+                            name=str(pa.get("name") or "Plan A"),
+                        ),
+                        plan_b=BranchPlan(
+                            after_uid=int(pb["after_uid"]),
+                            before_uid=int(pb["before_uid"]),
+                            low=b_lo,
+                            ml=b_mid,
+                            high=b_hi,
+                            name=str(pb.get("name") or "Plan B"),
+                        ),
+                        trip_when=trip,
+                    )
+                )
+    st.sra_conditionals = conditionals
+    st.sra_conditional_seq = cseq
 
 
 def _ssi_export_tables(
@@ -13871,6 +14162,10 @@ def _ssi_export_tables(
             (
                 "Probabilistic branches",
                 f"on ({len(result.branches)})" if result.branches else "off",
+            ),
+            (
+                "Conditional branches",
+                f"on ({len(result.conditionals)})" if result.conditionals else "off",
             ),
             ("Iterations", result.iterations),
             ("Schedule", sch.name),
@@ -13961,6 +14256,48 @@ def _ssi_export_tables(
             for bs in result.branches
         ),
     )
+    # conditional-branch setup + outcomes (ADR-0274) — a conditional shifts the percentiles, so the
+    # export must disclose which plan won how often (an undocumented modeled input is unreproducible).
+    cond_by_id = {c.id: c for c in st.sra_conditionals}
+    conditionals_tbl = Table(
+        "Conditional branches",
+        (
+            "ID",
+            "Name",
+            "Condition",
+            "Plan A (primary)",
+            "Plan B (fallback)",
+            "Plan A %",
+            "Plan B %",
+            "Mean A d",
+            "Mean B d",
+            "Mean delta d",
+            "Status",
+        ),
+        tuple(
+            (
+                cs.id,
+                cs.name,
+                f"UID {cs.monitor_uid} {cs.metric}"
+                f" {'>=' if cs.trip_when == 'at_or_above' else '<'} {cs.threshold_minutes / mpd:g}d",
+                f"{cond_by_id[cs.id].plan_a.after_uid} -> {cond_by_id[cs.id].plan_a.before_uid}"
+                f" ({cond_by_id[cs.id].plan_a.ml / mpd:g}d)"
+                if cs.id in cond_by_id
+                else "",
+                f"{cond_by_id[cs.id].plan_b.after_uid} -> {cond_by_id[cs.id].plan_b.before_uid}"
+                f" ({cond_by_id[cs.id].plan_b.ml / mpd:g}d)"
+                if cs.id in cond_by_id
+                else "",
+                round(cs.plan_a_fraction * 100, 1) if cs.applied else "",
+                round(cs.plan_b_fraction * 100, 1) if cs.applied else "",
+                cs.mean_a_finish_days if cs.applied else "",
+                cs.mean_b_finish_days if cs.applied else "",
+                cs.mean_delta_days if cs.applied else "",
+                "applied" if cs.applied else "inert (missing monitor/tie)",
+            )
+            for cs in result.conditionals
+        ),
+    )
     results = Table(
         "Focus-finish results",
         ("Measure", "Value"),
@@ -14022,6 +14359,7 @@ def _ssi_export_tables(
             durations,
             risks,
             branches_tbl,
+            conditionals_tbl,
             results,
             sens,
             risk_matrix,
@@ -14457,6 +14795,21 @@ def _sra_report_blocks(
             ),
             doc("Probabilistic branches"),
         ]
+    if (
+        result.conditionals
+    ):  # conditional branches shifted the percentiles → disclose them (ADR-0274)
+        blocks += [
+            Heading("Conditional branches", level=1),
+            Paragraph(
+                "Contingency switches: each iteration a condition on a monitored activity executes "
+                "the primary Plan A or the contingency Plan B (falling back when the monitor runs "
+                "late/long or early/short past the threshold). The table lists each switch's "
+                "condition, the two plans, how often each plan won, and the mean finish impact of "
+                "falling to the contingency (working days); a conditional whose monitor or a plan "
+                "tie was absent is reported inert."
+            ),
+            doc("Conditional branches"),
+        ]
     blocks += [
         Heading("Risk & Opportunity assessment matrices", level=1),
         Paragraph(
@@ -14479,6 +14832,8 @@ def _sra_report_blocks(
             f"Sampling: {result.sampling}. Probabilistic branches: "
             f"{len(result.branches) if result.branches else 'none'}"
             f"{' (discrete rework on a logic tie; see the Probabilistic branches table)' if result.branches else ''}. "
+            f"Conditional branches: {len(result.conditionals) if result.conditionals else 'none'}"
+            f"{' (contingency switching; see the Conditional branches table)' if result.conditionals else ''}. "
             "Consequence (1-5) is auto-rated from the schedule impact via the NASA Schedule guideline "
             "(impact days converted to calendar months: <1 week=1, 1 week to <1 month=2, 1 to "
             "<3 months=3, 3 to <=6 months=4, >6 months=5)."
@@ -14656,6 +15011,7 @@ uncertainty anywhere it falls back to the deterministic finish exactly like MC.<
 <button type=submit>Calculate — selected</button></form>
 {_unified_risk_section(st)}
 {_branch_section(st)}
+{_conditional_section(st)}
 <h3>Editable schedule grid</h3>
 <p class=muted>The whole schedule as a spreadsheet-style grid: type a <b>Risk Ranking Factor</b> (0&ndash;5) or
 edit <b>Best/Worst Case</b> days inline, and pick the <b>focus</b> event with the radio. <b>Factor 0
