@@ -1117,6 +1117,62 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "(Prüfung nötig)",
         "pt": "(requer atenção)",
     },
+    # — JCL joint cost-&-schedule confidence panel (ADR-0269). JCL / FICSM / SCL / CCL / EAC
+    #   stay untranslated by convention (product/standard acronyms). —
+    "Joint Cost-&-Schedule Confidence (JCL / FICSM)": {
+        "es": "Confianza conjunta de costo y cronograma (JCL / FICSM)",
+        "fr": "Confiance conjointe coût-calendrier (JCL / FICSM)",
+        "de": "Gemeinsames Kosten-Termin-Konfidenzniveau (JCL / FICSM)",
+        "pt": "Confiança conjunta de custo e cronograma (JCL / FICSM)",
+    },
+    "Run JCL": {
+        "es": "Ejecutar JCL",
+        "fr": "Lancer le JCL",
+        "de": "JCL ausführen",
+        "pt": "Executar JCL",
+    },
+    "Save JCL settings": {
+        "es": "Guardar ajustes JCL",
+        "fr": "Enregistrer les réglages JCL",
+        "de": "JCL-Einstellungen speichern",
+        "pt": "Salvar configurações JCL",
+    },
+    "Reset defaults": {
+        "es": "Restablecer valores predeterminados",
+        "fr": "Réinitialiser les valeurs par défaut",
+        "de": "Standardwerte zurücksetzen",
+        "pt": "Restaurar padrões",
+    },
+    "Target date": {
+        "es": "Fecha objetivo",
+        "fr": "Date cible",
+        "de": "Zieltermin",
+        "pt": "Data alvo",
+    },
+    "Target cost": {
+        "es": "Costo objetivo",
+        "fr": "Coût cible",
+        "de": "Zielkosten",
+        "pt": "Custo alvo",
+    },
+    "Needs a cost-loaded schedule.": {
+        "es": "Requiere un cronograma con costos cargados.",
+        "fr": "Nécessite un calendrier chargé en coûts.",
+        "de": "Benötigt einen kostenbeladenen Terminplan.",
+        "pt": "Requer um cronograma com custos carregados.",
+    },
+    "Screening setup.": {
+        "es": "Configuración de cribado.",
+        "fr": "Paramétrage de dégrossissage.",
+        "de": "Screening-Voreinstellung.",
+        "pt": "Configuração de triagem.",
+    },
+    "Quadrants at the targets": {
+        "es": "Cuadrantes en los objetivos",
+        "fr": "Quadrants aux cibles",
+        "de": "Quadranten an den Zielwerten",
+        "pt": "Quadrantes nos alvos",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

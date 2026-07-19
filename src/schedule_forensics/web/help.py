@@ -1500,6 +1500,42 @@ _FIELD_GLOSSARY: dict[str, MetricDoc] = {
         "A large standard deviation means the finish is highly uncertain (wide P10-P90), so a "
         "schedule with a tight commitment needs more contingency or risk burn-down.",
     ),
+    # --- JCL joint cost-&-schedule confidence (ADR-0269) ---------------------------------
+    "eac": _gloss(
+        "EAC (Estimate at Completion)",
+        "The simulated total project cost at completion: money spent to date plus the "
+        "remaining budget as it burns over each iteration's sampled durations.",
+        "EAC_i = actuals + sum(remaining budget x sampled/ML remaining duration "
+        "[x cost multiplier]); deterministic EAC = AC + (BAC - EV)",
+        "The EAC distribution is the cost half of a JCL: its P50/P80 against the budget says "
+        "whether the cost commitment is realistic, exactly as the finish percentiles do for "
+        "the date.",
+    ),
+    "scl": _gloss(
+        "SCL (Schedule Confidence Level)",
+        "The probability of finishing on or before the target date — the schedule marginal "
+        "of the joint run.",
+        "SCL = P(finish <= target date) = iterations meeting the date / iterations",
+        "SCL is what a schedule-only SRA reports; NASA reserves the word JCL for the joint "
+        "number (CEH App. J), so quoting an SCL as a JCL overstates confidence.",
+    ),
+    "ccl": _gloss(
+        "CCL (Cost Confidence Level)",
+        "The probability of the EAC landing at or below the target cost — the cost marginal "
+        "of the joint run.",
+        "CCL = P(EAC <= target cost) = iterations meeting the cost / iterations",
+        "CCL vs SCL shows which commitment (cost or date) is the weaker promise; the joint "
+        "JCL can never exceed the smaller of the two.",
+    ),
+    "jcl": _gloss(
+        "JCL (Joint Confidence Level)",
+        "The probability of finishing at or below the target cost AND on or before the "
+        "target date in the same iteration (NASA NPR 7120.5F / CEH App. J; the policy "
+        "anchor is ~70%).",
+        "JCL = P(finish <= target date AND EAC <= target cost); JCL <= min(SCL, CCL)",
+        "The number agencies commit to at decision points: it prices cost and schedule risk "
+        "together, capturing the coupling a separate SCL and CCL miss (a slip burns money).",
+    ),
 }
 
 

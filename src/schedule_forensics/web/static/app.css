@@ -787,6 +787,17 @@ tr.sra-risk td { box-shadow: inset 3px 0 0 var(--warn); }
 .ssi-svg .ch-hot { fill: #fff; opacity: 0; cursor: crosshair; }
 .ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }
 .ssi-svg .ch-yl { text-anchor: end; }
+/* JCL football scatter (ADR-0269): the joint (finish, cost) cloud, target crosshair, and the
+   iso-confidence frontier. A point that meets BOTH targets is blue; a miss on either is red. */
+.ssi-svg .ch-pt { fill: #3d8ec4; opacity: 0.5; }
+.ssi-svg .ch-pt.miss { fill: #e8352e; opacity: 0.35; }
+.ssi-svg .ch-tgt { stroke: #e8352e; stroke-width: 1; stroke-dasharray: 4 3; }
+.ssi-svg .ch-frontier { fill: none; stroke: #2da44e; stroke-width: 1.6; }
+.ssi-svg .ch-ql { font-size: 8px; font-weight: 700; fill: #5a6878; }
+/* the FICSM SCL/CCL/JCL strip bars */
+.ssi-svg .ch-lvl { fill: #3d8ec4; }
+.ssi-svg .ch-lvl.jcl { fill: #2da44e; }
+.ssi-svg .ch-lvl-bg { fill: #e3e8ee; }
 
 /* Operator: "make those graphs way smaller and the text way smaller" — the SRA charts (S-curve,
    finish-date distribution, duration-sensitivity tornado) are width:100% SVGs, so capping the host
