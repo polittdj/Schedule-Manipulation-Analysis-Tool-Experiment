@@ -123,6 +123,82 @@ def test_branch_clear_removes_all(client: TestClient) -> None:
     assert "No probabilistic branches defined." in client.get("/sra").text
 
 
+def test_branch_ids_survive_gapped_save_load_without_collision(client: TestClient) -> None:
+    """ADR-0273 (Codex P1): loading a setup whose branch ids have gaps (only ``B3`` survives) must
+    not leave the counter below the highest suffix, or later adds could recreate an in-use id and
+    collide the fragnet mapping. Ids are regenerated densely on load, so a gapped load + two adds
+    yields three DISTINCT ids, all applied to their own fragnet."""
+    import json
+
+    a, b = _fs_tie(client, driving=False)
+    blob = json.dumps(
+        {
+            "setup_version": 2,
+            "branches": [
+                {
+                    "id": "B3",
+                    "name": "Kept",
+                    "probability": 0.5,
+                    "after_uid": a,
+                    "before_uid": b,
+                    "low": 480,
+                    "ml": 960,
+                    "high": 1440,
+                },
+            ],
+        }
+    )
+    client.post("/sra/ssi/load", files={"setup": ("s.json", blob.encode(), "application/json")})
+    assert "Kept" in client.get("/sra").text  # loaded (with a regenerated id)
+    c, d = _fs_tie(client, driving=True)
+    for name in ("AddedOne", "AddedTwo"):  # two adds on the same tie (they chain)
+        client.post(
+            "/sra/branch",
+            data={
+                "name": name,
+                "after_uid": str(c),
+                "before_uid": str(d),
+                "prob": "50",
+                "low": "3",
+                "ml": "3",
+                "high": "3",
+            },
+        )
+    j = client.get("/api/sra/ssi?iterations=200").json()
+    ids = [br["id"] for br in j["branches"]]
+    assert len(ids) == 3 and len(set(ids)) == 3  # three DISTINCT ids — no collision
+    assert all(br["applied"] for br in j["branches"])  # each mapped to its own fragnet
+
+
+def test_sra_export_discloses_probabilistic_branches(client: TestClient) -> None:
+    """ADR-0273 (Codex P1): a branch shifts the exported percentiles, so the XLSX hand-out must
+    disclose the branch setup + outcomes (an undocumented modeled input is unreproducible)."""
+    import io
+    import zipfile
+
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/branch",
+        data={
+            "name": "FIXITexport",
+            "after_uid": str(a),
+            "before_uid": str(b),
+            "prob": "40",
+            "low": "10",
+            "ml": "20",
+            "high": "40",
+        },
+    )
+    resp = client.get("/export/xlsx/sra")
+    assert resp.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as z:
+        text = b"".join(z.read(n) for n in z.namelist() if n.endswith(".xml")).decode(
+            "utf-8", "ignore"
+        )
+    assert "Probabilistic branches" in text  # the setup row + the dedicated table
+    assert "FIXITexport" in text  # the branch itself is named in the export
+
+
 def test_ssi_panel_renders_without_running(client: TestClient) -> None:
     start = time.perf_counter()
     page = client.get("/sra").text
