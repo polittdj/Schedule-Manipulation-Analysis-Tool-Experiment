@@ -7202,3 +7202,26 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (engine + scorecard level). No new metric math, no parity impact, no new ADR (highest stays
   **ADR-0270**). Wheel + 9 installers regenerated in lockstep. A Latin Hypercube design Workflow
   (Hulett #11) is running in parallel for the next item.
+
+## 2026-07-19c — Lessons-learned log + autonomous rebuild prompt (docs/process only)
+
+- **Session:** 2026-07-19c   **Model/mode:** Opus 4.8
+- **Branch:** `claude/lessons-learned-build-prompt-ofufhm`
+- **Ask:** operator wanted (1) a cross-cutting "lessons learned" log — everything we've done, tried,
+  and that didn't work — kept current **daily**, and (2) a separate, adversarially-hardened,
+  **autonomous** "if we rebuilt this from scratch knowing what we know now" prompt delivered as an MS
+  Word document (explicitly weighing React/Vue/Bootstrap/Tailwind/bundler, architecture, security,
+  debugging, UI, local AI, and scalability).
+- **Deep dive:** full-repo research (271 ADRs, 7.2K-line SESSION-LOG, 5.7K-line HANDOFF-ARCHIVE, the
+  three QC audits, PARITY/FUSE reports, CI + guards) via six parallel research agents + lead synthesis;
+  crux tech decisions (ADR-0004 stack, ADR-0019 no-bundler, the app.py monolith, the AI figure-gate
+  saga, the 480-min footgun) re-read first-hand.
+- **Shipped:** `docs/STATE/LESSONS-LEARNED.md` (9 parts + reversal index + dated Change log; every
+  lesson ADR-cited); a **daily-update mandate** wired into CLAUDE.md's Durable-state section
+  (**ADR-0271**) — deliberately no time-based enforcement test (a clock gate would be flaky; ADR-0249
+  holds a flaky gate is worse than none). The rebuild prompt was drafted, then run through **two
+  adversarial red-team rounds** (architecture · security/CUI/supply-chain · autonomy/executability),
+  hardened, re-reviewed, and delivered as a `.docx` (uncommitted — CUI guard blocks `.docx`).
+- **Scope:** docs/process only — **no** engine, parity, metric, AI, or UI change; product state
+  unchanged at **v1.0.76**. Highest ADR on disk now **ADR-0271**. Full gate unaffected (docs-only);
+  the state-doc drift guard re-run green.

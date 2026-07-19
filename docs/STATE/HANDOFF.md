@@ -51,6 +51,13 @@
 >   design Workflow is running/complete; implement it as a distinct opt-in seeded mode (default
 >   OFF byte-identical, composes with the ADR-0270 copula) as a new ADR. Then the **risk-critical
 >   Gantt tint** (Hulett #12). The 3 OWED operator inputs still block ADR-0261/0258.
+> - **Also 2026-07-19 (docs/process only, separate branch/PR):** started
+>   `docs/STATE/LESSONS-LEARNED.md` — the cross-cutting "what we built / what we tried / what
+>   didn't work" log — and wired a **daily-update mandate** into CLAUDE.md's Durable-state rules
+>   (**ADR-0271**); delivered an adversarially-hardened autonomous greenfield-rebuild prompt to the
+>   operator as an MS Word doc (uncommitted — the CUI guard rightly blocks `.docx`). **No engine /
+>   parity / metric / AI / UI change**; product state stays **v1.0.76** with the #331 queue above
+>   unchanged. Latest ADR on disk is now **ADR-0271**.
 
 # (prior) handoffs — archived
 

@@ -182,6 +182,13 @@ one page shell per PR → new panels; never big-bang, and never touch `engine/` 
   the live handoff stays small enough to read in full in one pass.
 - `docs/STATE/SESSION-LOG.md` — append-only per-session history (the full running log; the archive is
   handoff snapshots).
+- `docs/STATE/LESSONS-LEARNED.md` — the cross-cutting "what we built / what we tried / what didn't work"
+  log (reversals, wrong fixes caught, footguns, validated approaches). **Standing operator mandate
+  (ADR-0271): update it EVERY session** — append a dated entry to its Change log before the session ends
+  (a one-line "verification-only" entry still counts), and record any real lesson in the relevant Part the
+  same day. Treat updating it as part of the session Definition of Done, like refreshing HANDOFF/SESSION-LOG.
+  There is deliberately no time-based test enforcing the cadence (a clock-based gate would be flaky, and
+  ADR-0249 holds that a flaky gate is worse than none) — the mandate rides on this rule + code review.
 - `docs/adr/NNNN-*.md` — one ADR per significant decision.
 - `tests/test_state_docs.py` **fails** unless the highest ADR number on disk appears in BOTH `HANDOFF.md`
   and `SESSION-LOG.md` (so any change that adds an ADR must refresh both docs in the same commit) **and**
