@@ -1,42 +1,40 @@
-# Handoff — 2026-07-19b (ADR-0271: Latin Hypercube sampling — #331 Hulett #11, Opus Ultracode; v1.0.77; highest ADR 0271)
+# Handoff — 2026-07-19c (ADR-0272: risk-critical Gantt tint — #331 Hulett #12, Opus Ultracode; v1.0.78; highest ADR 0272)
 
-> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode", so the #331 phase continues at Hulett #11: added a **Latin Hypercube (LHS) variance-reduction sampler** as a distinct opt-in mode on the SRA/JCL Monte-Carlo (ADR-0271), designed via a design Workflow whose load-bearing numerics were re-verified by the lead against a std-lib prototype (`scratchpad/lhs_verify.py`) BEFORE implementing. Version 1.0.76 → 1.0.77 (wheel + 9 installers in lockstep). Default sampler stays **"mc"** — the byte-frozen Monte-Carlo path is untouched.
+> ## STATUS (current) — operator said "do all you can without my files, continue with Opus Ultracode"; the #331 phase continues at Hulett #12: the SSI schedule grid's Gantt bars now **tint by Criticality Index** (how often each activity was on the critical path across the last Monte-Carlo run) — the risk-critical view (ADR-0272). Version 1.0.77 → 1.0.78 (wheel + 9 installers in lockstep). **Premise correction caught by verify-everything BEFORE any code:** the task was scoped "pure UI" on the belief SSIResult carried CI — it did NOT (compute_sra_ssi tallied `critical_counts` per iteration then DISCARDED it; CI lived only on the legacy compute_sra/SRAResult path, a different sim). So it needed a minimal ADDITIVE engine change (plumb the already-computed value through), not new math.
 >
-> - **Engine (`sra.py`, no new module — LHS is a sampling MODE of the existing shared sampler):**
->   `_phi_inv` (std-lib probit via `NormalDist().inv_cdf`, input clamped to [1e-12, 1−1e-12] →
->   finite ±7.03 at the edges); `LatinHypercubePlan` + `_lhs_plan` (one stratified [0,1) column
->   per dimension on a DEDICATED disjoint RNG stream `_lhs_seed(seed)` — one draw per stratum,
->   Fisher-Yates shuffle per column, `centered` = midpoints); `_build_lhs_plan` (column count
->   EXACTLY matches the branch's per-iteration draw count: matrix N, scalar 1+D, independent D;
->   None when off or all-point-mass); `_lhs_overrides` (the three correlation branches, plan
->   columns replace the RNG draws in the EXACT current draw order, copula composition unchanged —
->   LHS-then-Cholesky under a matrix; probit for scalar common+idiosyncratic; stratified uniform
->   used directly as the copula uniform when r=0). `_iteration_duration_overrides` gains kw-only
->   `plan`/`iteration`; **`plan is None` (default) runs the exact MC statements byte-for-byte**.
->   `SRAConfig` +`sampling="mc"` +`lhs_centered=False`; SSIResult/JCLResult +`sampling` (default
->   "mc", appended last, inert to the finish-cdf pin). Both engines build the plan from identical
->   uids/three/prepared → **ssi==jcl finish marginal holds under LHS** for all 3 branches (pinned).
->   `pert` under LHS falls back to triangular (no std-lib PERT inverse — documented quirk).
-> - **Web:** SessionState `sra_sampling`/`sra_lhs_centered` thread through POST /sra/ssi-run-config
->   into ALL 5 SSI/JCL SRAConfig builders (NOT the legacy compute_sra path); a Monte-Carlo /
->   Latin Hypercube radio + Centered checkbox + a plain-language explainer on `/sra`; run payloads
->   (`_ssi_data`/`_jcl_data`/`/api/sra`) echo `sampling`; Save/Load setup persists both; i18n
->   +"Centered" ×4 langs (method names stay untranslated). CSP-safe, no JS change.
-> - **Verified:** `tests/engine/test_lhs.py` (27: freeze mc==default, stratification random+centered,
->   disjoint seed stream, Φ⁻¹ finiteness+round-trip, **>5× (≈45×) variance reduction vs MC**,
->   lhs≠mc but in-support, determinism, all-point-mass fallback, matrix widening, **ssi==jcl under
->   LHS × triangular/pert × r=0/0.3 × centered, + matrix**); `tests/web/test_sra_ssi_web.py` +3
->   (radio renders, MC pre-checked, sampling persists+echoes). Engine+web SRA suites green; ruff +
->   mypy (116 files) + bandit clean.
+> - **Engine (`sra.py`, additive — Law 2 clean, no new number):** `SSIResult` gains
+>   `criticality: tuple[tuple[int,float],...] = ()` (uid, fraction-of-iterations-critical, asc uid),
+>   appended last → inert to the finish-cdf pin + the ssi==jcl equality. `_build_ssi_result` takes
+>   `critical_counts` and builds `count/n`; `compute_sra_ssi` passes the counts it already tallies.
+>   No engine LOGIC change — the value was computed every run and thrown away; now carried through.
+> - **Web:** `SessionState.sra_criticality` (uid→CI) + `sra_criticality_iters` cache the LAST run
+>   (set in the `/api/sra/ssi` handler — the grid + run are decoupled fetches). `_ssi_grid_rows`
+>   adds `criticality_index` per row; `/api/sra/grid` reports `criticality_available`+`_iters` for
+>   provenance; `_ssi_data` echoes `criticality`. `sra_grid.js` `timelineCell` tints the bar
+>   `g-bar g-ci-{0..4}` (banded 0/<20/20-50/50-80/≥80%) behind the **"tint by criticality"** toggle,
+>   with a legend + "last N-iteration run" provenance; the tint is a ROW property so it survives
+>   sort/filter/group/zoom re-renders. `sra_ssi.js` fires a `sf-ssi-run` window event after a run →
+>   `sra_grid.js` reloads (no shared-global coupling). Bands reuse the sanctioned risk-heat palette
+>   (fixed hexes, theme-independent — the DESIGN-SYSTEM exception); NASA-red stays reserved for the
+>   deterministic critical path. i18n +"tint by criticality" ×4 langs.
+> - **Verified:** `tests/engine/test_sra_ssi.py` (+3: CI ranks driver>0.95 / off-path<0.05,
+>   determinism, all-point-mass 0/1 split); `tests/web/test_sra_grid.py` (+grid-row CI, run→grid
+>   provenance) + `test_sra_ssi_web.py` (+toggle/legend/CSS-band/JS-wiring, payload CI). **Browser
+>   four-theme check** (`scratchpad/verify_tint.py`, CSP-strict Chromium): the CI→band→color map is
+>   correct end-to-end — on Project5's rigid critical path, 122 bars green (CI=0) / 4 red (CI=1.0)
+>   in console/daylight/apollo/jarvis. Full local gate green (ruff, format, mypy 116, bandit, node,
+>   pytest). v1.0.77 → **1.0.78**, wheel + 9 installers in lockstep.
+> - **Standing rule (from #412, now on main):** update `docs/STATE/LESSONS-LEARNED.md` DAILY —
+>   append a Part VIII entry when a lesson is learned; it's first-class durable state.
 > - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
 >   on-machine re-validation); Claude-Design prompt (Portfolio US-map/site drill, ADR-0258).
 >   #13 XER per-task calendars PARKED.
-> - **State:** v1.0.77; **ADR-0271** highest; wheel + 9 installers in lockstep. Branch
->   `claude/handoff-continuation-vistlu`. Prior session merged #407 + #408 + #409 + #410 (the #12
->   scorecard fix). LHS is the open PR at this snapshot.
-> - **NEXT (all file-free, one gated PR each):** **risk-critical Gantt tint** (Hulett #12) — tint
->   the SSI grid Gantt bars by criticality index from the last MC run; a separate gated PR. The 3
->   OWED operator inputs still block ADR-0261/0258.
+> - **State:** v1.0.78; **ADR-0272** highest; wheel + 9 installers in lockstep. Branch
+>   `claude/handoff-continuation-vistlu` (restarted from main after #411 merged). This session
+>   merged #411 (LHS); the Gantt-tint is the open PR at this snapshot.
+> - **NEXT (file-free):** the #331 Hulett-deck ranked items after #12 are worked through; re-read
+>   issue #331 for the next-ranked item, or pick up the 3 OWED operator inputs when supplied
+>   (ADR-0261/0258). Keep the daily LESSONS-LEARNED entry as part of the end-of-session ritual.
 
 # (prior) handoffs — archived
 

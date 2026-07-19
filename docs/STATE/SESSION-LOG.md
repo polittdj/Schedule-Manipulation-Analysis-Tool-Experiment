@@ -7228,3 +7228,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   engine+web SRA suites green; ruff + mypy (116 files) + bandit clean. v1.0.76 → **1.0.77**, wheel
   + 9 installers regenerated in lockstep (17 installer tests green). Highest ADR **ADR-0271**.
   Next file-free item: the risk-critical Gantt tint (Hulett #12).
+
+- **Session (2026-07-19d, Ultracode cont.):** #411 (LHS) merged by the operator (CI 5/5 green);
+  restarted the branch from the freshly-merged `main` (which now also carries a parallel session's
+  #412 — the living LESSONS-LEARNED log + a **daily-update standing rule** in CLAUDE.md, which I
+  now follow). Implemented the **risk-critical Gantt tint (Hulett #12, ADR-0272)**: the SSI
+  schedule grid's Gantt bars tint by each activity's **Criticality Index** — how often it was on
+  the critical path across the last Monte-Carlo run. **A read-only recon agent + first-hand code
+  read caught a load-bearing premise error BEFORE any code** (verify-everything): the task was
+  scoped "pure UI" believing `SSIResult` carried CI, but `compute_sra_ssi` tallied `critical_counts`
+  per iteration and **discarded** it — CI lived only on the legacy `compute_sra`/`SRAResult` path (a
+  different sim). So it took a minimal **additive** engine change (Law 2 clean, no new number):
+  `SSIResult` +`criticality` (uid, fraction-critical; appended last, inert to the finish-cdf +
+  ssi==jcl pins), `_build_ssi_result` takes `critical_counts`, `compute_sra_ssi` passes the counts
+  it already computes. Web: `SessionState.sra_criticality`/`_iters` cache the last run (set in the
+  `/api/sra/ssi` handler; grid + run are decoupled fetches), `_ssi_grid_rows` adds per-row CI,
+  `/api/sra/grid` reports availability+iters, `_ssi_data` echoes CI; `sra_grid.js` tints bars
+  `g-ci-{0..4}` (risk-heat bands) behind a "tint by criticality" toggle with a legend + provenance,
+  as a ROW property so it survives every grid re-render; `sra_ssi.js` fires `sf-ssi-run` → the grid
+  reloads. Bands reuse the sanctioned theme-independent risk-heat palette; NASA-red stays reserved
+  for the deterministic critical path. Verified: +3 engine CI tests (ranking, determinism,
+  point-mass 0/1 split) + grid/SSI web tests (row CI, provenance, toggle/legend/CSS/JS pins, payload
+  CI); a **four-theme CSP-strict browser check** (`scratchpad/verify_tint.py`) confirmed the
+  CI→band→color map end-to-end (Project5's rigid critical path → 122 green / 4 red in all four
+  views). i18n +"tint by criticality" ×4 langs. Full local gate green. v1.0.77 → **1.0.78**, wheel
+  + 9 installers in lockstep. Highest ADR **ADR-0272**. Also appended the daily LESSONS-LEARNED
+  Part VIII entry (the premise-correction catch as the lesson).

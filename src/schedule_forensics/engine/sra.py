@@ -760,6 +760,10 @@ class SSIResult:
     correlation_frobenius_distance: float = 0.0
     #: the sampler that produced this run (ADR-0271): "mc" (Monte-Carlo) or "lhs" (Latin Hypercube)
     sampling: str = "mc"
+    #: per-activity Criticality Index from THIS run (ADR-0272): (unique_id, fraction of iterations
+    #: the activity was critical — total float <= 0), ascending uid. Already tallied per iteration
+    #: for the run; surfaced here (was discarded) so the risk-critical Gantt tint can read it.
+    criticality: tuple[tuple[int, float], ...] = ()
 
 
 def factor_to_bc_wc(
@@ -1166,7 +1170,16 @@ def compute_sra_ssi(
                 critical_counts[u] += 1
 
     return _build_ssi_result(
-        schedule, config, finishes, active_risks, risk_occurred, mpd, ml_finish, anchor, prepared
+        schedule,
+        config,
+        finishes,
+        active_risks,
+        risk_occurred,
+        mpd,
+        ml_finish,
+        anchor,
+        prepared,
+        critical_counts=critical_counts,
     )
 
 
@@ -1212,6 +1225,7 @@ def _build_ssi_result(
     deterministic: int,
     anchor_date: _dt.datetime | None,
     prepared: PreparedCorrelation | None = None,
+    critical_counts: Mapping[int, int] | None = None,
 ) -> SSIResult:
     n = len(finishes)
     sorted_f = sorted(finishes)
@@ -1275,6 +1289,13 @@ def _build_ssi_result(
     histogram = _build_histogram(sorted_f)
     s_curve = tuple((iso(off), round(prob, 4)) for off, prob in cdf)
     finish_hist = tuple((iso((lo + hi) / 2.0), count) for lo, hi, count in histogram)
+    # per-activity Criticality Index (ADR-0272): fraction of iterations the activity was critical,
+    # ascending uid. Already tallied in the run loop; carried through instead of discarded.
+    criticality = (
+        tuple((uid, critical_counts[uid] / n) for uid in sorted(critical_counts))
+        if critical_counts and n > 0
+        else ()
+    )
     return SSIResult(
         iterations=config.iterations,
         seed=config.seed,
@@ -1310,6 +1331,7 @@ def _build_ssi_result(
             prepared.frobenius_distance if prepared is not None else 0.0
         ),
         sampling=config.sampling,
+        criticality=criticality,
     )
 
 

@@ -1218,6 +1218,13 @@ _TERMS: dict[str, dict[str, str]] = {
         "de": "Zentriert",
         "pt": "Centralizado",
     },
+    # — risk-critical Gantt tint (ADR-0272). "Criticality Index" stays as the standard SRA term. —
+    "tint by criticality": {
+        "es": "colorear por criticidad",
+        "fr": "teinter par criticité",
+        "de": "nach Kritikalität einfärben",
+        "pt": "colorir por criticidade",
+    },
 }
 
 #: Per-language catalog: language code → {english source: translation}, derived from :data:`_TERMS`.

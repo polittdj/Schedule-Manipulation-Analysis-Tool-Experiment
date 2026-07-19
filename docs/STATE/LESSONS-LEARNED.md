@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont.) — verify-everything caught a false premise in our OWN handoff
+- **Context:** implementing the risk-critical Gantt tint (Hulett #12, ADR-0272). The prior session's
+  handoff — which *we* wrote — scoped it as a "pure UI feature: tint the SSI grid by criticality
+  index from the last MC run," on the belief that `SSIResult` already carried a per-activity
+  Criticality Index.
+- **The catch:** a read-only recon agent, then a first-hand code read, proved it did **not**.
+  `compute_sra_ssi` tallies `critical_counts` every iteration and then **discards** it —
+  `_build_ssi_result` never received it and `SSIResult` had no CI field. CI only ever lived on the
+  **legacy** `compute_sra`/`SRAResult.activities` path (a *different* simulation, exposed at
+  `/api/sra`, top-20-truncated). Grepping `criticality` matched BOTH paths; the earlier session had
+  conflated them.
+- **Why it mattered:** had we trusted the handoff, we'd have wired the tint to the wrong (legacy,
+  truncated) data source or invented a web-side re-computation (duplicating engine logic, breaking
+  Law 2's single source of truth). Instead the correct fix was a *minimal additive* engine change:
+  stop discarding the already-computed value (`SSIResult.criticality`, appended last, inert to the
+  finish-cdf + ssi==jcl pins). No new math.
+- **Lesson (generalizes → Part V / Part VI):** a handoff or ADR is a **claim, not a fact** — even
+  one we authored. "READ EVERYTHING, ASSUME NOTHING, VERIFY EVERYTHING" applies to our own prior
+  notes as hard as to an external audit. A single grep that matches two code paths is a classic way
+  a false premise survives into the next session; disambiguate which path owns the value before
+  building on it. The recon-agent-then-lead-reverify pattern paid for itself here in one catch.
+- **Also:** the strict CSP (`script-src 'self'`, no `unsafe-eval`) blocks Playwright's
+  `wait_for_function`/string-eval — a *good* signal the air-gap holds. Drive browser checks with
+  `page.evaluate`/`eval_on_selector` (isolated world) and poll manually instead.
+
 ### 2026-07-19 — Lessons-learned log created
 - Built this log from a full-history deep dive (271 ADRs, the 7.2k-line SESSION-LOG, the 5.7k-line
   HANDOFF-ARCHIVE, four audits, the build spec, and the source tree), synthesized via six parallel

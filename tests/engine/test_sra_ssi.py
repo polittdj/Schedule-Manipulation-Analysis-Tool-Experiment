@@ -275,6 +275,47 @@ def test_s_curve_is_dense_dated_and_monotonic() -> None:
     assert sum(c for _d, c in r.finish_hist) == 600  # every iteration lands in a histogram bin
 
 
+# --- Criticality Index from the SSI run (ADR-0272) -----------------------------------
+
+
+def test_ssi_criticality_index_ranks_the_driver_over_the_off_path() -> None:
+    """The SSI run now SURFACES the per-activity Criticality Index (fraction of iterations the
+    activity was critical) it already tallies — the risk-critical Gantt tint reads it. The 10-day
+    driver on the focus path is critical (nearly) every iteration; the short off-path task almost
+    never is."""
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    # both the driver (2) and the off-path task (3) carry a factor-3 spread → genuine uncertainty
+    tp = {2: factor_to_bc_wc(10 * DAY, 3, tbl), 3: factor_to_bc_wc(2 * DAY, 3, tbl)}
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=400, seed=1, target_uid=4), three_point=tp)
+    ci = dict(r.criticality)
+    assert set(ci) == {1, 2, 3, 4}  # every non-summary activity carries a CI
+    assert all(0.0 <= v <= 1.0 for v in ci.values())  # a valid fraction
+    assert tuple(u for u, _ in r.criticality) == (1, 2, 3, 4)  # ascending uid, stable order
+    assert ci[2] > 0.95  # the 10-day driver is on the focus path essentially always
+    assert ci[3] < 0.05  # the 2-day off-path task cannot overtake a 10-day path
+
+
+def test_ssi_criticality_is_deterministic_for_a_seed() -> None:
+    s = _focus_net()
+    tbl = RiskFactorTable()
+    tp = {2: factor_to_bc_wc(10 * DAY, 4, tbl)}
+    cfg = SRAConfig(iterations=200, seed=5, target_uid=4)
+    a = compute_sra_ssi(s, config=cfg, three_point=tp)
+    b = compute_sra_ssi(s, config=cfg, three_point=tp)
+    assert a.criticality == b.criticality  # same seed → byte-identical CI
+
+
+def test_ssi_criticality_all_point_mass_is_the_deterministic_critical_path() -> None:
+    """With no uncertainty the CI is 1.0 for every activity on the deterministic critical path
+    (1→2→4) and 0.0 for the off-path task — a clean 0/1 split, no spread."""
+    s = _focus_net()
+    r = compute_sra_ssi(s, config=SRAConfig(iterations=16, seed=1, target_uid=4))
+    ci = dict(r.criticality)
+    assert ci[1] == ci[2] == ci[4] == 1.0  # the focus path is critical every iteration
+    assert ci[3] == 0.0  # the off-path task never is
+
+
 # --- 5x5 matrix ratings --------------------------------------------------------------
 
 
