@@ -287,6 +287,8 @@
       play.textContent = "⏸ Pause all";
     });
     stepBtn.addEventListener("click", stepAll);
+    // register this page master so a manual click on any per-chart control halts it (ADR-0275).
+    if (window.SFPlayAll) window.SFPlayAll.register(stop);
     panel.parentNode.insertBefore(bar, panel);
   }
 

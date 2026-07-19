@@ -71,6 +71,9 @@
   if (play) play.addEventListener("click", toggle);
   var step = document.getElementById("missionStep");
   if (step) step.addEventListener("click", stepAll);
+  // register the wall master so a manual click on ANY per-chart control halts it (ADR-0275) — else
+  // a chart's own Stop can't stop motion the master is driving ("hit stop, it kept playing").
+  if (window.SFPlayAll) window.SFPlayAll.register(stop);
 
   // per-tile controls (event-delegated): the Data toggle reveals the chart's hidden .sr-only data
   // table; the Enlarge toggle grows the tile to the full wall width (and back) so the user can

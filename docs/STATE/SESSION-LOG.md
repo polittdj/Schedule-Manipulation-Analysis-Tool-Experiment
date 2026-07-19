@@ -7337,3 +7337,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   corrected source (lockstep re-verified). Full local gate re-run to green. Lessons logged
   (LESSONS-LEARNED cont. 5): never run working-tree-mutating agents concurrently with a commit;
   commit before auditing; capture a tool's own exit code, not a pipe's.
+
+- **Session (2026-07-19h, post-#417 — audit hardening + Mission Control play/stop):** operator merged
+  #417 (conditional branching), then: "continue the read-only Ultracode audit AND address the Mission
+  Control play/stop bug + interactive legends." (1) **Audit reconciled (ADR-0274 hardening, no new
+  ADR for it):** lead-verified + fixed **M1** (a summary/inactive monitor passed the augmentation gate
+  built from ALL tasks but is absent from compute_cpm timings / the override map → finish-metric
+  KeyError aborted the whole SSI run, duration-metric silently read 0 → wrong plan mix applied=True;
+  FIX: gate monitor + plan endpoints on non_summary(schedule), add is_active to web _valid; +3 tests),
+  **L5** (uid parser isdigit→int guard), and the **M2/H1/M3** test gaps (tautological which-plan-wins
+  assert → known-side; missing DOCX disclosure test; Save/Load fidelity round-trip). (2) **Play/stop
+  bug FIXED — ADR-0275:** the master "Play all" steps charts by clicking their Next buttons, so a
+  per-chart Stop (own timer only) couldn't halt master-driven motion ("hit stop, kept playing", worst
+  enlarged). FIX: a shared `window.SFPlayAll` coordinator in chartframe.js — masters register stop();
+  a capture-phase document listener stops all masters on a TRUSTED user click on any per-chart control
+  (the master's own element.click() is isTrusted=false → never self-stops). Node harness
+  (playall_harness.mjs + test_playall_js.py). Full local gate green; v1.0.81 → **1.0.82**, wheel + 9
+  installers lockstep. Highest ADR **ADR-0275**. (3) **Interactive legends = phased NEXT** (not built):
+  ~18 charts hand-roll legends with NO shared helper; a series toggle needs per-chart series tagging →
+  per DESIGN-SYSTEM "never big-bang", roll out via a reusable SFLegend module chart-by-chart starting
+  with trend.js (the screenshotted CEI-across-periods chart).

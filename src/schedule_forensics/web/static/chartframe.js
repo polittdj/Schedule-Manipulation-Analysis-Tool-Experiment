@@ -103,6 +103,47 @@
   }
   wireCallouts();
 
+  // ── "Play all" coordinator: manual chart control halts the master (ADR-0275) ────────────────
+  // Animated charts carry a per-chart ‹ Prev / ▶ Play / Next › stepper AND a page-level master
+  // "Play all" (mission.js on the wall, #sfPlayAll on Trends) that steps every chart in lockstep by
+  // PROGRAMMATICALLY clicking their Next buttons on a timer. A per-chart Stop only cleared THAT
+  // chart's own timer, so while the master ran it kept stepping the chart — the operator hit a
+  // chart's Stop and it "continued to play" (most visible on an enlarged chart, where the master
+  // control is out of view). Fix: masters register their stop() here, and any TRUSTED (real user)
+  // click on a per-chart animation control stops every master first — touching a chart by hand
+  // takes manual control and the auto-play-all halts, so Stop (and Prev/Next) behave as expected.
+  // The master's OWN stepping uses element.click() (isTrusted === false), so it never stops itself.
+  var playMasters = [];
+  window.SFPlayAll = window.SFPlayAll || {
+    register: function (stopFn) {
+      if (typeof stopFn === "function" && playMasters.indexOf(stopFn) === -1) {
+        playMasters.push(stopFn);
+      }
+    },
+    stopAll: function () {
+      for (var i = 0; i < playMasters.length; i++) {
+        try { playMasters[i](); } catch (e) { /* one bad master must not block the rest */ }
+      }
+    },
+  };
+  // every per-chart animation control across the app (the sf-frame stepper shared by trend/margin/
+  // curves, plus the dedicated play/step buttons of the bow-wave, S-curve, drift, path-evolution
+  // and quality steppers). A new animated chart adds its control ids here to join the coordinator.
+  var ANIM_CTL_SELECTOR =
+    ".sf-frame-play,.sf-frame-next,.sf-frame-prev," +
+    "#autoPlay,#scurvePlay,#driftPlay,#evoPlay,#qualPlay," +
+    "#nextSnap,#prevSnap,#nextScurve,#prevScurve,#nextDrift,#prevDrift," +
+    "#nextEvo,#prevEvo,#qualNext,#qualPrev";
+  document.addEventListener(
+    "click",
+    function (e) {
+      if (!e.isTrusted) return; // the master's own programmatic .click() must NOT stop the master
+      var t = e.target;
+      if (t && t.closest && t.closest(ANIM_CTL_SELECTOR)) window.SFPlayAll.stopAll();
+    },
+    true // capture phase: halt the master BEFORE the control's own handler advances/toggles
+  );
+
   function requestFs(el) {
     var fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
     return fn ? fn.call(el) : null;
