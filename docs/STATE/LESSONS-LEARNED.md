@@ -435,6 +435,33 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-19 (cont. 2) — prototype-verify a NEW mechanism against the trusted solver before the big build
+- **Context:** probabilistic branching (Hulett #8, ADR-0273) — the first SRA feature that changes
+  network *topology* per iteration (inserting a rework fragnet), not just activity durations. The
+  natural fear was a large, architecturally-significant build (per-iteration schedule rebuilds, new
+  spec types, merge-bias correctness).
+- **What worked:** before writing a line of feature code, a ~60-line scratchpad script drove the
+  **real `compute_cpm`** on a hand-built base + augmented schedule and proved the load-bearing
+  claim: a fragnet inserted as `pred --FS0--> F --FS(lag)--> before` with `F` at duration 0 is
+  **byte-identical** to the base (calendars included), firing shifts the finish exactly when `F`
+  drives, an off-path fire that doesn't overtake leaves the finish unchanged (merge bias), and a
+  synthetic high uid doesn't perturb base timings. That single verification collapsed the design to
+  its elegant form: **one** augmented schedule built up front, `F`'s duration toggled 0/sampled via
+  the existing `duration_overrides` hook — no per-iteration rebuild, the trusted solver stays the
+  sole source of every number, and the freeze is automatic (no branch → no augmentation).
+- **Lesson (generalizes → Part III / Part VI):** when a feature introduces a genuinely NEW
+  mechanism (not just a new number), spend the cheap prototype first — drive the *real* engine on a
+  tiny fixture and assert the invariant you're about to depend on. It's the difference between
+  discovering "0-duration FS chains are exact passthroughs" in 5 minutes vs. debugging a subtle
+  calendar mismatch after building the whole feature on a wrong assumption. The prototype also
+  becomes the ADR's verification pointer and the shape of the engine tests.
+- **Process note:** the build was large and architecturally significant, so I tried to checkpoint
+  scope with the operator (AskUserQuestion + a recommendation). The tool aborted and the operator
+  was away; with the standing "do all you can without files" mandate and the draft-PR review as the
+  scope safety net, I proceeded with the recommended MVP rather than stall. Reasonable call, but the
+  reminder stands: for a big speculative build, a cheap prototype + a draft PR the operator can
+  redirect beats either stalling or over-building on a guess.
+
 ### 2026-07-19 (cont.) — verify-everything caught a false premise in our OWN handoff
 - **Context:** implementing the risk-critical Gantt tint (Hulett #12, ADR-0272). The prior session's
   handoff — which *we* wrote — scoped it as a "pure UI feature: tint the SSI grid by criticality

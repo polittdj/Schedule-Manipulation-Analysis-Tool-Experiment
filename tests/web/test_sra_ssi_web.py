@@ -33,6 +33,96 @@ def client() -> TestClient:
     return c
 
 
+def _fs_tie(client: TestClient, *, driving: bool) -> tuple[int, int]:
+    """A real FS tie in the loaded Project5 — both endpoints critical when ``driving``."""
+    from schedule_forensics.engine.cpm import compute_cpm
+    from schedule_forensics.importers.mspdi import parse_mspdi
+    from schedule_forensics.model.relationship import RelationshipType
+
+    sch = parse_mspdi(GOLDEN)
+    crit = {u for u, t in compute_cpm(sch).timings.items() if t.total_float <= 0}
+    for r in sch.relationships:
+        if r.type != RelationshipType.FS:
+            continue
+        on = r.predecessor_id in crit and r.successor_id in crit
+        if on == driving:
+            return r.predecessor_id, r.successor_id
+    raise AssertionError("no matching FS tie")
+
+
+def test_ssi_panel_offers_probabilistic_branches(client: TestClient) -> None:
+    """ADR-0273: the SSI panel carries the probabilistic-branch editor (form + explainer)."""
+    page = client.get("/sra").text
+    assert "Probabilistic branches" in page
+    assert 'action="/sra/branch"' in page
+    assert "name=after_uid" in page and "name=before_uid" in page
+    assert "No probabilistic branches defined." in page  # empty state before any add
+
+
+def test_branch_add_persists_and_echoes_bimodal_impact(client: TestClient) -> None:
+    """Adding a branch on a driving FS tie lists it, and the SSI run reports it applied with a real
+    fired fraction + rework magnitude + finish impact (the bi-modal signature) — ADR-0273."""
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/branch",
+        data={
+            "name": "FIXIT",
+            "after_uid": str(a),
+            "before_uid": str(b),
+            "prob": "40",
+            "low": "10",
+            "ml": "20",
+            "high": "40",
+        },
+    )
+    assert "FIXIT" in client.get("/sra").text  # listed
+    j = client.get("/api/sra/ssi?iterations=300").json()
+    assert j["branches"], "the run payload surfaces the branch"
+    br = j["branches"][0]
+    assert br["applied"] is True and br["name"] == "FIXIT"
+    assert 25.0 < br["fired_pct"] < 55.0  # ~40% firing
+    assert 15.0 < br["mean_fragnet_days"] < 30.0  # ~ (10+20+40)/3 rework days
+    assert br["mean_delta_days"] > 0.0  # on the driving path → firing moves the finish
+    # bi-modal: more than one distinct finish date (a no-fire spike + the fired spread)
+    assert len({x["date"] for x in j["finish_hist"]}) > 1
+
+
+def test_branch_on_missing_tie_is_reported_inert(client: TestClient) -> None:
+    client.post(
+        "/sra/branch",
+        data={
+            "name": "Nowhere",
+            "after_uid": "999999",
+            "before_uid": "888888",
+            "prob": "50",
+            "low": "5",
+            "ml": "5",
+            "high": "5",
+        },
+    )
+    # endpoints don't exist → the add is rejected outright (never a phantom branch)
+    assert "Nowhere" not in client.get("/sra").text
+
+
+def test_branch_clear_removes_all(client: TestClient) -> None:
+    a, b = _fs_tie(client, driving=False)
+    client.post(
+        "/sra/branch",
+        data={
+            "name": "Tmp",
+            "after_uid": str(a),
+            "before_uid": str(b),
+            "prob": "10",
+            "low": "1",
+            "ml": "2",
+            "high": "3",
+        },
+    )
+    assert "Tmp" in client.get("/sra").text
+    client.post("/sra/branch", data={"action": "clear"})
+    assert "No probabilistic branches defined." in client.get("/sra").text
+
+
 def test_ssi_panel_renders_without_running(client: TestClient) -> None:
     start = time.perf_counter()
     page = client.get("/sra").text

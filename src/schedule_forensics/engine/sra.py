@@ -47,6 +47,7 @@ from schedule_forensics.engine.correlation import (
 )
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm, offset_to_datetime
 from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 
@@ -682,6 +683,31 @@ class ScheduleRisk:
 
 
 @dataclass(frozen=True)
+class ProbabilisticBranch:
+    """A Hulett **probabilistic branch** (ADR-0273): a discrete event that, when it fires (with
+    ``probability`` per iteration), inserts a *rework* activity — a fragnet — onto an existing
+    Finish-to-Start logic tie ``after_uid -> before_uid``, delaying everything downstream by the
+    fragnet's sampled duration. Unlike a :class:`ScheduleRisk` (which adds days to an *existing*
+    task), the branch is a NEW node on a chosen link, so it participates in merge bias — it only
+    moves the finish when it becomes the driving path — and produces the bi-modal finish
+    distribution (a spike at "no failure" + a shifted lump when the rework happens) the
+    deterministic plan hides. The inserted activity carries its own 3-point duration
+    ``(low, ml, high)`` in working minutes. A branch whose ``after_uid -> before_uid`` FS tie does
+    not exist is inert (disclosed)."""
+
+    id: str
+    name: str
+    probability: float  # 0..1 chance the branch fires each iteration
+    after_uid: int  # the predecessor of the FS tie the fragnet is inserted onto
+    before_uid: (
+        int  # the successor of that tie (after_uid -> before_uid becomes after -> F -> before)
+    )
+    low: int  # inserted-activity Best-Case duration (working minutes)
+    ml: int  # Most-Likely duration
+    high: int  # Worst-Case duration
+
+
+@dataclass(frozen=True)
 class OATSensitivity:
     """A deterministic one-at-a-time sensitivity row (SSI "Sensitivity Analysis" export).
 
@@ -714,6 +740,20 @@ class SSIRiskStat:
     mean_delta_days: float  # mean focus finish when it fired minus when it didn't (working days)
     probability_rating: int  # 1..5 from the occurrence band
     consequence_rating: int  # 1..5 (operator-entered or |impact_days| band)
+
+
+@dataclass(frozen=True)
+class SSIBranchStat:
+    """Per-branch outcome of an SSI run (ADR-0273) — how often the rework fired and its impact."""
+
+    id: str
+    name: str
+    probability: float  # the entered per-iteration firing probability
+    applied: bool  # False if the after_uid -> before_uid FS tie was absent (branch inert)
+    hits: int  # iterations the branch fired
+    fired_fraction: float  # hits / iterations
+    mean_fragnet_days: float  # mean sampled rework duration when it fired (working days)
+    mean_delta_days: float  # mean focus finish when it fired minus when it didn't (working days)
 
 
 @dataclass(frozen=True)
@@ -764,6 +804,9 @@ class SSIResult:
     #: the activity was critical — total float <= 0), ascending uid. Already tallied per iteration
     #: for the run; surfaced here (was discarded) so the risk-critical Gantt tint can read it.
     criticality: tuple[tuple[int, float], ...] = ()
+    #: per-probabilistic-branch outcomes (ADR-0273): fired fraction + mean rework magnitude + mean
+    #: finish impact. Empty when no branches were supplied (the byte-frozen default).
+    branches: tuple[SSIBranchStat, ...] = ()
 
 
 def factor_to_bc_wc(
@@ -1081,12 +1124,134 @@ def _occurrence_schedule(
     return out
 
 
+def _augment_with_branches(
+    schedule: Schedule, branches: Sequence[ProbabilisticBranch]
+) -> tuple[Schedule, dict[str, int]]:
+    """Insert each probabilistic branch's rework fragnet into the network ONCE (ADR-0273),
+    returning the augmented schedule + a ``{branch_id: fragnet_uid}`` map for the applied branches.
+
+    For a branch whose ``after_uid -> before_uid`` **FS** tie exists, that tie is replaced by
+    ``after_uid --FS0--> F --FS(original lag)--> before_uid`` where ``F`` is a new leaf activity
+    with a **zero placeholder duration** — so with ``F`` left at 0 the augmented network is
+    byte-identical to the base (the no-fire case; verified against ``compute_cpm``), and the
+    Monte-Carlo toggles ``F``'s duration per iteration via ``duration_overrides`` (0 = didn't fire,
+    sampled = fired). A branch whose FS tie is absent is dropped (inert — not in the returned
+    map, disclosed upstream).
+    Fragnet uids are assigned above every existing uid, so they cannot collide."""
+    if not branches:
+        return schedule, {}
+    tasks = list(schedule.tasks)
+    rels = list(schedule.relationships)
+    next_uid = (max((t.unique_id for t in tasks), default=0)) + 1
+    fragnet_uids: dict[str, int] = {}
+    for branch in branches:
+        idx = next(
+            (
+                k
+                for k, r in enumerate(rels)
+                if r.predecessor_id == branch.after_uid
+                and r.successor_id == branch.before_uid
+                and r.type == RelationshipType.FS
+            ),
+            None,
+        )
+        if idx is None:
+            continue  # inert: no FS tie to insert the rework onto
+        orig = rels.pop(idx)
+        f_uid = next_uid
+        next_uid += 1
+        tasks.append(
+            Task(unique_id=f_uid, name=branch.name or f"Rework {branch.id}", duration_minutes=0)
+        )
+        rels.append(
+            Relationship(
+                predecessor_id=branch.after_uid,
+                successor_id=f_uid,
+                type=RelationshipType.FS,
+                lag_minutes=0,
+            )
+        )
+        rels.append(
+            Relationship(
+                predecessor_id=f_uid,
+                successor_id=branch.before_uid,
+                type=RelationshipType.FS,
+                lag_minutes=orig.lag_minutes,
+            )
+        )
+        fragnet_uids[branch.id] = f_uid
+    aug = schedule.model_copy(update={"tasks": tuple(tasks), "relationships": tuple(rels)})
+    return aug, fragnet_uids
+
+
+def _branch_draws(
+    branches: Sequence[ProbabilisticBranch], mode: str, iterations: int, seed: int
+) -> tuple[list[list[bool]], list[list[float]]]:
+    """Per-branch firing matrix + per-branch fragnet-duration uniforms (ADR-0273), each on a stream
+    **disjoint** from the duration/correlation/LHS draws, the risk-occurrence draws, and each
+    other — so branches never perturb the byte-frozen no-branch path and are reproducible.
+    ``random_each``: independent Bernoulli per iteration; ``exact_overall``: exactly
+    ``round(p*iterations)`` firings."""
+    fired_all: list[list[bool]] = []
+    uni_all: list[list[float]] = []
+    for bidx, b in enumerate(branches):
+        p = max(0.0, min(1.0, b.probability))
+        rng = random.Random((seed * 2246822519 ^ (bidx + 1) * 0x9E3779B1) & 0x7FFFFFFF)  # nosec B311
+        if mode == "exact_overall":
+            k = round(p * iterations)
+            fired = [False] * iterations
+            for i in rng.sample(range(iterations), min(k, iterations)):
+                fired[i] = True
+        else:
+            fired = [rng.random() < p for _ in range(iterations)]
+        drng = random.Random((seed * 40503 ^ (bidx + 1) * 2654435761) & 0x7FFFFFFF)  # nosec B311
+        uni = [drng.random() for _ in range(iterations)]
+        fired_all.append(fired)
+        uni_all.append(uni)
+    return fired_all, uni_all
+
+
+def _build_branch_stats(
+    applied: Sequence[ProbabilisticBranch],
+    iterations: int,
+    mpd: int,
+    fragnet_days: Sequence[Sequence[float]],
+    fire_finish: Sequence[Sequence[int]],
+    nofire_finish: Sequence[Sequence[int]],
+) -> tuple[SSIBranchStat, ...]:
+    """Per-branch outcome stats (ADR-0273): fired fraction, mean rework magnitude, and the mean
+    finish delta (mean focus finish when the branch fired minus when it didn't, working days)."""
+    stats: list[SSIBranchStat] = []
+    for bidx, b in enumerate(applied):
+        hits = len(fire_finish[bidx])
+        mean_frag = statistics.fmean(fragnet_days[bidx]) if fragnet_days[bidx] else 0.0
+        delta = (
+            (statistics.fmean(fire_finish[bidx]) - statistics.fmean(nofire_finish[bidx])) / mpd
+            if fire_finish[bidx] and nofire_finish[bidx]
+            else 0.0
+        )
+        stats.append(
+            SSIBranchStat(
+                id=b.id,
+                name=b.name,
+                probability=max(0.0, min(1.0, b.probability)),
+                applied=True,
+                hits=hits,
+                fired_fraction=hits / iterations if iterations else 0.0,
+                mean_fragnet_days=round(mean_frag, 2),
+                mean_delta_days=round(delta, 2),
+            )
+        )
+    return tuple(stats)
+
+
 def compute_sra_ssi(
     schedule: Schedule,
     *,
     config: SRAConfig = _DEFAULT_CONFIG,
     three_point: Mapping[int, tuple[int, int, int]] | None = None,
     risks: Sequence[ScheduleRisk] = (),
+    branches: Sequence[ProbabilisticBranch] = (),
 ) -> SSIResult:
     """Run the SSI Monte-Carlo and return the focus-event :class:`SSIResult` (ADR-0123).
 
@@ -1104,6 +1269,13 @@ def compute_sra_ssi(
     quantile has no std-lib inverse), and at 0 the configured distribution is honoured exactly."""
     if config.iterations < 1:
         raise ValueError("SRAConfig.iterations must be >= 1")
+    # Probabilistic branches (ADR-0273): insert each rework fragnet ONCE up front; the fragnet
+    # activities are zero-duration leaves in the base/no-fire case (byte-frozen when no branch
+    # applies) and are toggled to their sampled 3-point duration in the iterations they fire. The
+    # whole Monte-Carlo then runs on this ONE augmented schedule via the duration_overrides hook.
+    active_branches = [b for b in branches if b.probability > 0.0]
+    schedule, fragnet_uids = _augment_with_branches(schedule, active_branches)
+    applied_branches = [b for b in active_branches if b.id in fragnet_uids]
     tasks = sorted(non_summary(schedule), key=lambda t: t.unique_id)
     uids = [t.unique_id for t in tasks]
     uid_set = set(uids)
@@ -1146,9 +1318,18 @@ def compute_sra_ssi(
     # frozen Monte-Carlo default. Shared identically with compute_jcl so the finish marginals match.
     plan = _build_lhs_plan(config, uids, three, prepared)
 
+    # probabilistic-branch firing + fragnet-duration draws (ADR-0273), on streams disjoint from the
+    # duration/risk draws; each fired iteration overrides its fragnet to a sampled 3-point duration.
+    branch_fired, branch_uni = _branch_draws(
+        applied_branches, config.occurrence_mode, config.iterations, config.seed
+    )
+
     finishes: list[int] = []
     critical_counts: dict[int, int] = dict.fromkeys(uids, 0)
     risk_occurred: list[list[bool]] = [[] for _ in active_risks]
+    branch_fragnet_days: list[list[float]] = [[] for _ in applied_branches]
+    branch_fire_finish: list[list[int]] = [[] for _ in applied_branches]
+    branch_nofire_finish: list[list[int]] = [[] for _ in applied_branches]
 
     for i in range(config.iterations):
         rng = random.Random(config.seed + i)  # nosec B311 — simulation, not crypto
@@ -1163,11 +1344,48 @@ def compute_sra_ssi(
                 for u in risk.affected:
                     if u in overrides:
                         overrides[u] = max(0, overrides[u] + add)
+        for bidx, branch in enumerate(applied_branches):
+            if branch_fired[bidx][i]:  # fire → the fragnet takes a sampled 3-point rework duration
+                dur = _sample_triangular(
+                    branch_uni[bidx][i], float(branch.low), float(branch.ml), float(branch.high)
+                )
+                overrides[fragnet_uids[branch.id]] = max(0, round(dur))
+                branch_fragnet_days[bidx].append(overrides[fragnet_uids[branch.id]] / mpd)
+            # a non-fired branch leaves its fragnet at the 0 point-mass override (no delay)
         result = compute_cpm(schedule, duration_overrides=overrides)
-        finishes.append(_finish_of(result, config.target_uid))
+        fin = _finish_of(result, config.target_uid)
+        finishes.append(fin)
+        for bidx in range(len(applied_branches)):
+            (branch_fire_finish if branch_fired[bidx][i] else branch_nofire_finish)[bidx].append(
+                fin
+            )
         for u in uids:
             if result.timings[u].total_float <= 0:
                 critical_counts[u] += 1
+
+    branch_stats = _build_branch_stats(
+        applied_branches,
+        config.iterations,
+        mpd,
+        branch_fragnet_days,
+        branch_fire_finish,
+        branch_nofire_finish,
+    )
+    # disclose branches whose FS tie was absent (inert, never inserted) so they are never silent
+    branch_stats += tuple(
+        SSIBranchStat(
+            id=b.id,
+            name=b.name,
+            probability=max(0.0, min(1.0, b.probability)),
+            applied=False,
+            hits=0,
+            fired_fraction=0.0,
+            mean_fragnet_days=0.0,
+            mean_delta_days=0.0,
+        )
+        for b in active_branches
+        if b.id not in fragnet_uids
+    )
 
     return _build_ssi_result(
         schedule,
@@ -1180,6 +1398,7 @@ def compute_sra_ssi(
         anchor,
         prepared,
         critical_counts=critical_counts,
+        branch_stats=branch_stats,
     )
 
 
@@ -1226,6 +1445,7 @@ def _build_ssi_result(
     anchor_date: _dt.datetime | None,
     prepared: PreparedCorrelation | None = None,
     critical_counts: Mapping[int, int] | None = None,
+    branch_stats: tuple[SSIBranchStat, ...] = (),
 ) -> SSIResult:
     n = len(finishes)
     sorted_f = sorted(finishes)
@@ -1332,6 +1552,7 @@ def _build_ssi_result(
         ),
         sampling=config.sampling,
         criticality=criticality,
+        branches=branch_stats,
     )
 
 
