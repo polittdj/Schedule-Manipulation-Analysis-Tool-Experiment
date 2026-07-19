@@ -182,6 +182,15 @@ one page shell per PR → new panels; never big-bang, and never touch `engine/` 
   the live handoff stays small enough to read in full in one pass.
 - `docs/STATE/SESSION-LOG.md` — append-only per-session history (the full running log; the archive is
   handoff snapshots).
+- `docs/STATE/LESSONS-LEARNED.md` — the **living lessons-learned log** (what we've done, what we tried,
+  what didn't work, and the forward-looking "how would we build this better" analysis). **STANDING RULE
+  (operator directive 2026-07-19): UPDATE THIS LOG DAILY** — every session that changes the codebase,
+  and at least once per working day of active work, appends a dated entry to its Part VIII at the
+  moment a lesson is learned (a bug that fought back, a reverted fix, a dead end, a parity/packaging/
+  deploy surprise, a decision that paid off or backfired). Do not batch it for the end. When a lesson
+  generalizes, promote it into the relevant themed section (Parts IV–VI). This log is a first-class
+  durable-state doc alongside HANDOFF/SESSION-LOG — treat keeping it current as part of the
+  end-of-session ritual.
 - `docs/adr/NNNN-*.md` — one ADR per significant decision.
 - `tests/test_state_docs.py` **fails** unless the highest ADR number on disk appears in BOTH `HANDOFF.md`
   and `SESSION-LOG.md` (so any change that adds an ADR must refresh both docs in the same commit) **and**
