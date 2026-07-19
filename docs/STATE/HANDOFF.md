@@ -37,17 +37,18 @@
 > - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
 >   on-machine re-validation; five-large-file stress); Claude-Design prompt (Portfolio
 >   US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
-> - **State:** v1.0.74; **ADR-0269** highest; wheel + 9 installers in lockstep. Branch
->   `claude/handoff-continuation-vistlu`; **draft PR #406 OPEN**. Earlier this session:
->   #405 (verification-session log) MERGED by the operator; the desktop-update PowerShell
->   command was provided (git pull + re-run the same-tier installer — it force-reinstalls
->   the embedded wheel).
-> - **NEXT:** get #406 green and merged. The #331 phase is now open — its ranked next items
->   are #2 risk-driver correlation matrix + eigenvalue feasibility (per the Hulett-deck
->   comment) and auditing the existing Assessment Scorecards against the STAT/GAO gap lists
->   — but confirm with the operator before starting the next item. A golden COST-LOADED
->   fixture (budgeted MSPDI) would strengthen JCL evidence beyond synthetic nets. The three
->   OWED operator inputs above still block ADR-0261/0258 work.
+> - **State:** v1.0.74; **ADR-0269** highest; wheel + 9 installers in lockstep. **PR #406
+>   MERGED** (squash `ad10868`, CI fully green: both test matrices + Windows/Linux installer
+>   smokes); branch `claude/handoff-continuation-vistlu` restarted from the squash, clean
+>   tree, NO open PR, nothing in flight. Earlier this session: #405 (verification-session
+>   log) MERGED; the desktop-update PowerShell command was provided (git pull + re-run the
+>   same-tier installer — it force-reinstalls the embedded wheel).
+> - **NEXT:** the #331 phase is OPEN with item 1 (JCL/FICSM) SHIPPED. Ranked next per the
+>   issue + its Hulett-deck comment: #2 risk-driver correlation matrix + eigenvalue
+>   feasibility, then auditing the existing Assessment Scorecards against the STAT/GAO gap
+>   lists — but CONFIRM with the operator before starting the next item. A golden
+>   COST-LOADED fixture (budgeted MSPDI) would strengthen JCL evidence beyond synthetic
+>   nets. The three OWED operator inputs above still block ADR-0261/0258 work.
 
 # (prior) handoffs — archived
 

@@ -7155,3 +7155,11 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   (git pull + re-run the same-tier installer; it force-reinstalls the embedded wheel).
   Draft PR #406 opened from `claude/handoff-continuation-vistlu`; HANDOFF rotated (0268f →
   archive) in the same commit. Highest ADR **ADR-0269**.
+
+- **Session close (2026-07-18g):** PR #406 marked ready and MERGED by the operator (squash
+  `ad10868`) with CI fully green (check, test 3.11/3.13, windows + linux installer smokes).
+  v1.0.74 / ADR-0269 (JCL/FICSM) is on `main`. Branch restarted from the squash, clean
+  tree, no open PR, stale #406 check-in trigger deleted. The #331 phase is open with item 1
+  shipped; ranked next (risk-driver correlation matrix + eigenvalue feasibility; STAT/GAO
+  scorecard gap audit) awaits operator confirmation, and the three operator-owed inputs
+  (ADR-0261 crash log + large dataset; ADR-0258 design prompt) still gate that work.
