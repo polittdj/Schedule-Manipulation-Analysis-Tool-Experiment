@@ -116,6 +116,12 @@ from schedule_forensics.engine.grouping import (
     select,
     with_ancestors,
 )
+from schedule_forensics.engine.jcl import (
+    JCLConfig,
+    JCLResult,
+    compute_jcl,
+    cost_loaded_total,
+)
 from schedule_forensics.engine.manipulation import detect_manipulation, trend_across_versions
 from schedule_forensics.engine.margin_dashboard import (
     GOLD_RULE_DAYS_PER_YEAR,
@@ -756,6 +762,17 @@ class SessionState:
     sra_correlation: float = 0.0  # 0 = independent; 0.3-0.5 typical blanket correlation
     #: one-shot feedback from an Excel round-trip import (ADR-0211), rendered once on /sra
     sra_import_msg: str | None = None
+    # JCL joint cost-&-schedule confidence settings (ADR-0269). Blank targets (None) mean
+    # "use the run's deterministic finish / EAC"; td_share is the time-dependent cost share
+    # τ; the 1/1/1 multipliers mean cost-estimating uncertainty is OFF (duration-driven
+    # cost only); confidence is the frontier's joint target (NPR 7120.5F anchor 0.70).
+    jcl_target_date: str | None = None  # ISO date
+    jcl_target_cost: float | None = None
+    jcl_td_share: float = 1.0
+    jcl_cost_low: float = 1.0
+    jcl_cost_ml: float = 1.0
+    jcl_cost_high: float = 1.0
+    jcl_confidence: float = 0.70
     # Routes are sync `def` (Starlette threadpool = real concurrency); this reentrant lock makes
     # the scope/analysis caches and the filter/wipe invalidations atomic, so a render can never
     # iterate a dict another request is clearing (QC audit D18 — live-reproduced KeyError on
@@ -6579,6 +6596,104 @@ def create_app(
             return JSONResponse({"error": str(exc)}, status_code=422)
         return JSONResponse(_ssi_data(sch, result))
 
+    @app.post("/sra/jcl-config")
+    def sra_jcl_config(
+        target_date: str = Form(""),
+        target_cost: str = Form(""),
+        td_share: str = Form(""),
+        cost_low: str = Form(""),
+        cost_ml: str = Form(""),
+        cost_high: str = Form(""),
+        confidence: str = Form(""),
+        reset: str = Form(""),
+    ) -> RedirectResponse:
+        """Persist the JCL settings (ADR-0269) on the session, then redirect back to /sra.
+
+        Blank targets mean "use the run's deterministic finish / EAC" (stored ``None``);
+        percent inputs are scaled to fractions, clamped, and order-coerced (low <= ml <=
+        high); an unparseable target date leaves the stored value unchanged; ``reset``
+        restores every default."""
+        st = session()
+        if reset.strip():
+            st.jcl_target_date = None
+            st.jcl_target_cost = None
+            st.jcl_td_share = 1.0
+            st.jcl_cost_low = st.jcl_cost_ml = st.jcl_cost_high = 1.0
+            st.jcl_confidence = 0.70
+            return RedirectResponse(url="/sra", status_code=303)
+        raw_date = target_date.strip()
+        if raw_date:
+            with contextlib.suppress(ValueError):
+                st.jcl_target_date = dt.date.fromisoformat(raw_date).isoformat()
+        else:
+            st.jcl_target_date = None
+        raw_cost = target_cost.strip()
+        if raw_cost:
+            with contextlib.suppress(ValueError):
+                st.jcl_target_cost = float(raw_cost)
+        else:
+            st.jcl_target_cost = None
+        if td_share.strip():
+            st.jcl_td_share = _clamp_float(td_share, 0.0, 1.0, st.jcl_td_share, scale=0.01)
+        lo, mid, hi = st.jcl_cost_low, st.jcl_cost_ml, st.jcl_cost_high
+        if cost_low.strip():
+            lo = _clamp_float(cost_low, 0.1, 1.5, lo, scale=0.01)
+        if cost_ml.strip():
+            mid = _clamp_float(cost_ml, 0.5, 1.5, mid, scale=0.01)
+        if cost_high.strip():
+            hi = _clamp_float(cost_high, 1.0, 3.0, hi, scale=0.01)
+        mid = max(lo, mid)
+        hi = max(mid, hi)
+        st.jcl_cost_low, st.jcl_cost_ml, st.jcl_cost_high = lo, mid, hi
+        if confidence.strip():
+            st.jcl_confidence = _clamp_float(confidence, 0.10, 0.95, st.jcl_confidence, scale=0.01)
+        return RedirectResponse(url="/sra", status_code=303)
+
+    @app.get("/api/sra/jcl")
+    def sra_jcl_json(
+        iterations: int = Query(1000), distribution: str = Query("triangular")
+    ) -> JSONResponse:
+        """The joint cost-&-schedule Monte-Carlo (ADR-0269): the SAME schedule inputs as the
+        ``/api/sra/ssi`` run (so the finish marginal is identical — the equivalence a test
+        pins) plus the session's JCL cost settings. An honest 422 when the file is not
+        cost-loaded — a duration-only run is an SCL and is never labeled JCL (Law 2)."""
+        st = session()
+        chosen = _sra_selected(st)
+        if chosen is None:
+            return JSONResponse({"error": "No analyzable schedule loaded."}, status_code=400)
+        _key, sch, _cpm = chosen
+        if cost_loaded_total(sch) <= 0.0:
+            return JSONResponse(
+                {
+                    "error": "This schedule is not cost-loaded (no budgeted cost on its "
+                    "tasks) — a duration-only run is a schedule confidence level (SCL), "
+                    "not a JCL. Load a cost-loaded schedule to run the joint simulation."
+                },
+                status_code=422,
+            )
+        cfg = SRAConfig(
+            iterations=max(100, min(10000, iterations)),
+            distribution="pert" if distribution == "pert" else "triangular",
+            target_uid=st.sra_focus_uid,
+            occurrence_mode=st.sra_occurrence_mode,
+            use_risk_register=st.sra_use_risk_register,
+            correlation=st.sra_correlation,
+        )
+        heavy = len(sch.tasks_by_id) >= OFFLOAD_TASK_THRESHOLD
+        try:
+            result = run_maybe_offloaded(
+                heavy,
+                compute_jcl,
+                sch,
+                config=cfg,
+                three_point=_ssi_three_point(st, sch),
+                risks=_schedule_risks(st),
+                jcl=_jcl_config_from_state(st),
+            )
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse(_jcl_data(sch, result))
+
     @app.get("/api/sra/oat")
     def sra_oat_json() -> JSONResponse:
         st = session()
@@ -6787,7 +6902,21 @@ def create_app(
                 media_type=_EXPORT_MEDIA["docx"][0],
                 headers={"Content-Disposition": 'attachment; filename="sra-report.docx"'},
             )
-        return _export_response(fmt, _ssi_export_tables(st, sch, result, oat), "sra-ssi")
+        tables = _ssi_export_tables(st, sch, result, oat)
+        if cost_loaded_total(sch) > 0.0:
+            # cost-loaded file: append the JCL sheets (ADR-0269) — same schedule inputs as
+            # the SSI run above, so the joint sample's finish marginal matches it exactly
+            jr = run_maybe_offloaded(
+                heavy,
+                compute_jcl,
+                sch,
+                config=cfg,
+                three_point=tp,
+                risks=_schedule_risks(st),
+                jcl=_jcl_config_from_state(st),
+            )
+            tables = TableSet(tables.title, tables.tables + _jcl_export_tables(jr))
+        return _export_response(fmt, tables, "sra-ssi")
 
     @app.get("/export/{fmt}/sra-registry")
     def export_sra_registry(fmt: str) -> Response:
@@ -13046,6 +13175,139 @@ def _ssi_data(sch: Schedule, result: SSIResult) -> dict[str, object]:
     }
 
 
+def _jcl_config_from_state(st: SessionState) -> JCLConfig:
+    """The session's JCL settings as the engine's frozen config (ADR-0269)."""
+    target: dt.date | None = None
+    if st.jcl_target_date:
+        with contextlib.suppress(ValueError):
+            target = dt.date.fromisoformat(st.jcl_target_date)
+    return JCLConfig(
+        target_date=target,
+        target_cost=st.jcl_target_cost,
+        td_share=st.jcl_td_share,
+        cost_low=st.jcl_cost_low,
+        cost_ml=st.jcl_cost_ml,
+        cost_high=st.jcl_cost_high,
+        confidence=st.jcl_confidence,
+    )
+
+
+def _jcl_data(sch: Schedule, result: JCLResult) -> dict[str, object]:
+    """The JCL run payload for ``sra_jcl.js`` — the joint statement, the football-scatter
+    sample, the frontier, and the cost marginal (dates realigned like the SSI result)."""
+    names = sch.tasks_by_id
+    focus = (
+        names[result.target_uid].name
+        if result.target_uid is not None and result.target_uid in names
+        else "Project finish"
+    )
+    pct = 100.0
+    return {
+        "target_uid": result.target_uid,
+        "focus_name": focus,
+        "iterations": result.iterations,
+        "deterministic": {
+            "date": result.deterministic_finish_date,
+            "eac": result.deterministic_eac,
+        },
+        "targets": {
+            "date": result.target_date,
+            "cost": result.target_cost,
+            "confidence": round(result.confidence * pct, 1),
+        },
+        "levels": {
+            "scl": round(result.scl * pct, 1),
+            "ccl": round(result.ccl * pct, 1),
+            "jcl": round(result.jcl * pct, 1),
+        },
+        "quadrants": {
+            "both": round(result.q_both * pct, 1),
+            "date_only": round(result.q_date_only * pct, 1),
+            "cost_only": round(result.q_cost_only * pct, 1),
+            "neither": round(result.q_neither * pct, 1),
+        },
+        "finish_percentiles": [
+            {"label": "P10", "date": result.finish_p10_date},
+            {"label": "P50", "date": result.finish_p50_date},
+            {"label": "P80", "date": result.finish_p80_date},
+            {"label": "P90", "date": result.finish_p90_date},
+        ],
+        "cost_percentiles": [
+            {"label": "P10", "value": result.cost_p10},
+            {"label": "P50", "value": result.cost_p50},
+            {"label": "P80", "value": result.cost_p80},
+            {"label": "P90", "value": result.cost_p90},
+        ],
+        "cost_mean": result.cost_mean,
+        "cost_std": result.cost_std,
+        "cost_min": result.cost_min,
+        "cost_max": result.cost_max,
+        "points": [[d, c] for d, c in result.points],
+        "frontier": [[d, c] for d, c in result.frontier],
+        "cost_cdf": [[c, p] for c, p in result.cost_cdf],
+        "provenance": {
+            "sunk": result.sunk_total,
+            "remaining_ti": result.remaining_ti_total,
+            "remaining_td": result.remaining_td_total,
+            "completed": result.completed_count,
+            "incomplete_costed": result.incomplete_costed_count,
+            "td_share_pct": round(result.td_share * pct, 1),
+            "cost_uncertainty_on": result.cost_uncertainty_on,
+        },
+    }
+
+
+def _jcl_export_tables(result: JCLResult) -> tuple[Table, ...]:
+    """The JCL sheets appended to the SRA Excel hand-out when the file is cost-loaded
+    (ADR-0269): the headline joint statement + provenance, the iso-confidence frontier, and
+    the joint sample behind the football scatter. Every figure is the engine's own."""
+    pct = 100.0
+    headline_rows: tuple[tuple[Cell, ...], ...] = (
+        ("Iterations", result.iterations),
+        (
+            "Focus event UID",
+            result.target_uid if result.target_uid is not None else "project finish",
+        ),
+        ("Deterministic finish (all-ML)", result.deterministic_finish_date),
+        ("Deterministic EAC = AC + (BAC - EV)", result.deterministic_eac),
+        ("Target date", result.target_date),
+        ("Target cost", result.target_cost),
+        ("SCL - P(finish on/before target date) %", round(result.scl * pct, 1)),
+        ("CCL - P(EAC at/below target cost) %", round(result.ccl * pct, 1)),
+        ("JCL - P(both) %", round(result.jcl * pct, 1)),
+        ("Quadrant: on time AND on cost %", round(result.q_both * pct, 1)),
+        ("Quadrant: on time, over cost %", round(result.q_date_only * pct, 1)),
+        ("Quadrant: late, on cost %", round(result.q_cost_only * pct, 1)),
+        ("Quadrant: late AND over cost %", round(result.q_neither * pct, 1)),
+        ("EAC P10", result.cost_p10),
+        ("EAC P50", result.cost_p50),
+        ("EAC P80", result.cost_p80),
+        ("EAC P90", result.cost_p90),
+        ("EAC mean", result.cost_mean),
+        ("EAC std deviation", result.cost_std),
+        ("Sunk (actuals + completed finals)", result.sunk_total),
+        ("Remaining budget - time-independent", result.remaining_ti_total),
+        ("Remaining budget - time-dependent", result.remaining_td_total),
+        ("Time-dependent share (tau) %", round(result.td_share * pct, 1)),
+        (
+            "Cost-estimating uncertainty",
+            "on" if result.cost_uncertainty_on else "off (duration-driven cost only)",
+        ),
+    )
+    headline = Table("JCL - joint cost & schedule confidence", ("Measure", "Value"), headline_rows)
+    frontier = Table(
+        f"JCL frontier (P{round(result.confidence * pct):g})",
+        ("Finish on/before", "Minimum EAC target achieving the confidence jointly"),
+        tuple((d, c) for d, c in result.frontier),
+    )
+    sample = Table(
+        "JCL joint sample",
+        ("Iteration finish date", "Iteration EAC"),
+        tuple((d, c) for d, c in result.points),
+    )
+    return (headline, frontier, sample)
+
+
 def _ssi_grid_rows(st: SessionState, sch: Schedule, cpm: CPMResult) -> list[dict[str, object]]:
     """Per-task rows for the editable SSI Gantt grid: the activity row (name, indent, dates,
     bar metadata — reusing ``_activity_rows``) plus the SSI inputs (Remaining d, Risk Ranking
@@ -13897,6 +14159,10 @@ def _ssi_panel(st: SessionState) -> str:
                 "deterministic_finish",
                 "mean_finish",
                 "std_dev_finish",
+                "eac",
+                "scl",
+                "ccl",
+                "jcl",
             )
         )
     ).replace("<", "\\u003c")
@@ -14061,6 +14327,81 @@ skipped &mdash; nothing is fabricated, and you get a summary of exactly what lan
 <script src="/static/sra_grid.js"></script></div>"""
 
 
+def _jcl_panel(st: SessionState) -> str:
+    """The Joint Cost-&-Schedule Confidence (JCL / FICSM) panel (ADR-0269), gated on a
+    cost-loaded file (the same non-summary Σ budgeted_cost > 0 rule as the cost EVM
+    indices). A duration-only file renders the honest requirement note — never a number."""
+    chosen = _sra_selected(st)
+    scoped = chosen[1] if chosen is not None else None
+    loaded = scoped is not None and cost_loaded_total(scoped) > 0.0
+    head = (
+        "<div class=panel><h2>Joint Cost-&amp;-Schedule Confidence (JCL / FICSM)</h2>"
+        "<p class=muted>The probability of finishing <b>at or below a target cost AND on or "
+        "before a target date</b>, from one joint Monte-Carlo (NASA NPR&nbsp;7120.5F / CEH "
+        "App.&nbsp;J; the policy anchor is ~70%). The cost dimension rides the <i>same</i> "
+        "sampled durations as the SSI run above — time-dependent cost burns at each "
+        "activity's budget rate over its <i>sampled</i> remaining duration (the "
+        "NASA/Hulett integrated method, ADR-0269) — so the football chart's schedule axis "
+        "is exactly the SSI S-curve. It uses the SSI panel's focus event, factors, risk "
+        "register, correlation and distribution; only the cost settings below are its own.</p>"
+    )
+    if not loaded:
+        return (
+            head + '<div class="notice warn" role=note><b>Needs a cost-loaded schedule.</b> '
+            "This file carries no budgeted cost, so a run here would be a <b>schedule-only</b> "
+            "confidence level (SCL) and must not be labeled JCL (NASA CEH App.&nbsp;J; "
+            "ADR-0106). Load a schedule with task budgets — the same gate as the cost-based "
+            "EVM indices — and this panel runs the full joint simulation.</div></div>"
+        )
+    tgt_date = _e(st.jcl_target_date or "")
+    tgt_cost = "" if st.jcl_target_cost is None else f"{st.jcl_target_cost:g}"
+    td_pct = f"{st.jcl_td_share * 100:g}"
+    cl_pct = f"{st.jcl_cost_low * 100:g}"
+    cm_pct = f"{st.jcl_cost_ml * 100:g}"
+    ch_pct = f"{st.jcl_cost_high * 100:g}"
+    conf_pct = f"{st.jcl_confidence * 100:g}"
+    unc_off = st.jcl_cost_low == 1.0 and st.jcl_cost_ml == 1.0 and st.jcl_cost_high == 1.0
+    screening = (
+        '<div class="notice warn" role=note><b>Screening setup.</b> Cost uncertainty is '
+        "duration-driven only (multipliers 100/100/100 = off) with a 100%-time-dependent "
+        "default (&tau;); a defensible decision-point JCL needs elicited cost ranges "
+        "(GAO). Blank targets use the run's deterministic finish / EAC.</div>"
+        if unc_off and st.jcl_td_share == 1.0
+        else '<div class="notice ok" role=note>Using your cost settings. Blank targets use '
+        "the run's deterministic finish / EAC.</div>"
+    )
+    iters = "".join(
+        f'<option value="{n}"{" selected" if n == 1000 else ""}>{n}</option>'
+        for n in (500, 1000, 2000, 5000)
+    )
+    return f"""{head}
+{screening}
+<form action="/sra/jcl-config" method=post class=viz-controls>
+<label>Target date <input type=date name=target_date value="{tgt_date}"></label>
+<label>Target cost <input type=number name=target_cost min=0 step=any value="{tgt_cost}"
+ placeholder="deterministic EAC"></label>
+<label title="The share of every remaining budget that burns with time (labor); the rest is time-independent (materials / fixed price). 100% is the labor-dominant screening default.">TD share %
+ <input type=number name=td_share min=0 max=100 step=1 value="{td_pct}" style="width:60px"></label>
+<label title="FICSM cost-estimating uncertainty: a triangular multiplier on each incomplete activity's remaining cost. 100/100/100 = off (duration-driven cost only); supply elicited values for a real range.">Cost low/ml/high %
+ <input type=number name=cost_low min=10 max=150 step=1 value="{cl_pct}" style="width:56px">
+ <input type=number name=cost_ml min=50 max=150 step=1 value="{cm_pct}" style="width:56px">
+ <input type=number name=cost_high min=100 max=300 step=1 value="{ch_pct}" style="width:56px"></label>
+<label title="The joint confidence the frontier line is drawn at (NASA policy anchor 70%).">Confidence %
+ <input type=number name=confidence min=10 max=95 step=1 value="{conf_pct}" style="width:56px"></label>
+<button type=submit>Save JCL settings</button>
+<button type=submit name=reset value=1>Reset defaults</button></form>
+<div class=viz-controls>
+<label>Iterations <select id=jclIters>{iters}</select></label>
+<button id=jclRun type=button>Run JCL</button></div>
+<p id=jclStatus class=muted aria-live=polite></p>
+<div id=jclSummary></div>
+<div id=jclCharts class=ssi-charts></div>
+<p class=muted style="font-size:11px">The JCL sheets (headline, frontier, joint sample) ride the
+SRA Excel export above once the file is cost-loaded. Each chart has the shared toolbar (full
+screen, zoom) and hover call-outs.</p>
+<script src="/static/sra_jcl.js"></script></div>"""
+
+
 def _sra_explainers() -> str:
     """Detailed, example-rich "which model, and when" guidance for the SRA page: the two Monte-Carlo
     models the tool offers (SSI additive vs legacy multiplicative) and JCL — what each does, its
@@ -14119,9 +14460,11 @@ correlation that a schedule-only run cannot.</p>
 schedule-only SRA.</p>
 <p><b>When to use.</b> A formal cost+schedule confidence at a decision point (e.g. a NASA KDP) where a
 cost-loaded, risk-adjusted IMS exists.</p>
-<p class=muted><b>Status here.</b> The two models above are <b>schedule</b> SRA (an SCL). JCL is out of
-scope until cost inputs exist (ADR-0106): load a cost-loaded schedule and the <a href="/evm">EVM</a>
-section surfaces the cost indices; a full joint cost+schedule Monte-Carlo is a tracked follow-on.</p></details>
+<p class=muted><b>Status here.</b> The two models above are <b>schedule</b> SRA (an SCL). The
+<b>Joint Cost-&amp;-Schedule Confidence panel below</b> runs the full joint Monte-Carlo (ADR-0269)
+whenever the loaded file is <b>cost-loaded</b> (task budgets present &mdash; the same gate as the
+<a href="/evm">EVM</a> cost indices). Without cost it stays honestly gated: a duration-only run
+remains an SCL and is never labeled JCL.</p></details>
 </div>"""
 
 
@@ -14277,15 +14620,15 @@ def _sra_body(st: SessionState) -> str:
             "duration (Min&nbsp;90% / Most-Likely&nbsp;100% / Max&nbsp;110% &mdash; an industry "
             '"Realistic" default). It is a <b>screening placeholder, not SME-validated</b> (GAO/NASA/AACE '
             "prefer elicited ranges) and is overridable per-activity. A duration-only run is a "
-            "<i>schedule</i> confidence level &mdash; JCL (cost-loaded) is out of scope until cost "
-            "inputs exist (ADR-0106).</div>"
+            "<i>schedule</i> confidence level &mdash; a cost-loaded file unlocks the joint "
+            "cost+schedule (JCL) panel above (ADR-0269).</div>"
         )
     else:
         disclaimer = (
             '<div class="notice ok" role=note>Using your analyst-supplied uncertainty (global '
             f"low/ml/high = {low_pct}/{ml_pct}/{high_pct}%, {len(st.sra_overrides)} per-activity "
-            "overrides). A duration-only run is a <i>schedule</i> confidence level &mdash; JCL "
-            "(cost-loaded) is out of scope until cost inputs exist (ADR-0106).</div>"
+            "overrides). A duration-only run is a <i>schedule</i> confidence level &mdash; a "
+            "cost-loaded file unlocks the joint cost+schedule (JCL) panel above (ADR-0269).</div>"
         )
     # B608 is bandit's SQL heuristic tripping on HTML ("<select ..." + "drawn from the latest
     # run" in one f-string) — this is a server-rendered page template, no SQL anywhere.
@@ -14294,6 +14637,7 @@ def _sra_body(st: SessionState) -> str:
 {top_file_panel}
 {_sra_explainers()}
 {_ssi_panel(st)}
+{_jcl_panel(st)}
 <div class=panel><h2>Legacy SRA &mdash; Monte-Carlo (multiplicative risk drivers)</h2>
 <p class=muted>A seeded Monte-Carlo simulation samples each activity's duration from its
 distribution and recomputes the network finish through the trusted CPM solver, building a
@@ -15163,8 +15507,9 @@ budgets and actual costs; the tool never fabricates a cost figure (Law&nbsp;2).<
 <p>A <b>JCL</b> (Joint Confidence Level) is a Monte-Carlo over a <b>cost-loaded, risk-loaded</b> schedule
 &mdash; the joint probability of finishing at or below a cost AND on or before a date. EVM here gives
 you the deterministic cost+schedule performance to date; once a schedule is cost-loaded, those cost
-indices populate and a full JCL becomes possible (today's <a href="/sra">Risk Analysis</a> is a
-schedule-only confidence level). See the JCL explainer on the Risk Analysis page.</p></details>
+indices populate and the <a href="/sra">Risk Analysis</a> page's <b>JCL panel</b> runs the full joint
+cost+schedule Monte-Carlo (ADR-0269). Without cost it stays a schedule-only confidence level (SCL).
+See the JCL explainer on the Risk Analysis page.</p></details>
 </div>"""
 
 

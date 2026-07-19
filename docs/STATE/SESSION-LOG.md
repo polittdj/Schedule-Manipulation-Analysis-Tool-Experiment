@@ -7128,3 +7128,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   delete at leisure. Still owed by the operator: PowerShell crash log + real large dataset
   (ADR-0261 re-validation), Claude-Design prompt (ADR-0258); #13 XER per-task calendars
   PARKED. No code, no version change; highest ADR remains **ADR-0268**.
+
+- **Session (2026-07-18g continued — the JCL build, ADR-0269):** After #405 merged, the
+  operator said "continue" and picked **#331 item 1** from the offered options — the
+  Advanced-Schedule-Analysis phase is now OPEN at its top-ranked gap. Built **JCL / FICSM
+  joint cost-&-schedule confidence** end-to-end: parity-isolated `engine/jcl.py`
+  (`compute_jcl` — replicates the SSI MC draw discipline exactly so the finish marginal is
+  byte-identical to `compute_sra_ssi`, pinned by full-CDF equality across 12 parameter
+  combinations; cost co-sampled on the SAME durations: EAC_i = completed finals +
+  Σ(spent + (TI + TD·d_i/d_ML)·m_i); JCL/SCL/CCL + quadrants + P-grid iso-confidence
+  frontier + cost CDF; deterministic EAC = AC+(BAC−EV) exactly; raises on an uncosted file
+  — the EVM Σbudgeted_cost>0 gate, never a fabricated figure). 19 engine tests incl. a
+  hand-replayed single-iteration draw, hand-summed EAC fixtures (1175/1405/510),
+  stream-stability (cost multipliers never perturb durations), Fréchet bounds, frontier
+  properties. Web: gated /sra panel + POST /sra/jcl-config + lazy offload-aware
+  /api/sra/jcl (honest 422 uncosted) + vendored `sra_jcl.js` (football scatter with
+  quadrant %s/target crosshair/frontier, EAC S-curve, FICSM strip, quadrant table,
+  provenance line; CSP-strict-safe) + 3 JCL sheets on /export/xlsx/sra when costed;
+  9 web tests; explainers flipped to the live panel with the pinned honesty language kept;
+  help glossary +eac/scl/ccl/jcl; i18n +9 terms ×4 languages. v1.0.73 → **1.0.74**, wheel +
+  9 installers regenerated in lockstep (17 installer tests green). LIVE Chromium under the
+  strict CSP: real POST form navigation applies through the SEC-2 gate, all 3 charts
+  render, zero console errors — and the visual sweep caught a real bug the DOM asserts
+  missed (football x-axis end labels showed iteration-order first/last, not the axis
+  bounds) — fixed and re-verified. Also answered the operator's desktop-update question
+  (git pull + re-run the same-tier installer; it force-reinstalls the embedded wheel).
+  Draft PR #406 opened from `claude/handoff-continuation-vistlu`; HANDOFF rotated (0268f →
+  archive) in the same commit. Highest ADR **ADR-0269**.

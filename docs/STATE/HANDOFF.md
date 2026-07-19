@@ -1,46 +1,60 @@
-# Handoff — 2026-07-18f (ADR-0268: strict script-src CSP + 4 residuals + a browser-surfaced SEC-2 correction; v1.0.73; highest ADR 0268)
+# Handoff — 2026-07-18g (ADR-0269: JCL / FICSM joint cost-&-schedule confidence — the #331 phase opened on operator direction; v1.0.74; highest ADR 0269)
 
-> ## STATUS (current) — with the standing queue empty, cleared the recorded residuals in one PR (ADR-0268) — and the browser verification of the CSP change SURFACED A SERIOUS LATENT BUG in the already-merged ADR-0264 SEC-2 gate (every POST form was refused live) and fixed it. Version 1.0.72 → 1.0.73 (wheel + 9 installers in lockstep).
+> ## STATUS (current) — the operator said "continue" and picked #331 item 1 (top-ranked gap), so the Advanced-Schedule-Analysis phase is OPEN: built the JCL / FICSM joint cost-&-schedule confidence feature end-to-end (ADR-0269) and live-verified it in Chromium. Version 1.0.73 → 1.0.74 (wheel + 9 installers in lockstep).
 >
-> - **Strict CSP:** `script-src 'self'` (dropped 'unsafe-inline'). Every inline handler →
->   delegated in the new `chrome.js` via `data-sf-*` attrs (autosubmit / navselect /
->   nexturl-submit / confirm / sfQuitLink); every `window.SF_*=` boot script → a
->   non-executable `<script type="application/json">` block its consumer parses by id
->   (sfI18nBoot/sfScurveFields/sfRibbonDrillData/sfRemainDays/sfFieldHelp). style-src keeps
->   'unsafe-inline' (Gantt px widths). Defense in depth: injected inline JS can't execute.
-> - **SEC-2 CORRECTION (browser-surfaced MAJOR):** the ADR-0264 Origin-only gate refused
->   EVERY real-browser POST *form* navigation — `Referrer-Policy: no-referrer` makes Chromium
->   send `Origin: null` on those, read as cross-site. The #400 probe only did fetch POSTs
->   (real Origin), so it never caught it. Gate now uses `Sec-Fetch-Site` (primary; a
->   forbidden header no-referrer doesn't null, unforgeable cross-site) — same-origin/none
->   pass, cross-site/same-site/cross-origin refused — with the Origin check as the
->   absent-header fallback (OWASP Fetch-Metadata pattern). Proven live: the language POST
->   form now applies (page renders in Spanish — also confirms ADR-0267).
-> - **Residuals cleared:** GET /cei?target side effect → POST /target (uids stays a display
->   GET); /export mission degrades to a valid note workbook <2 versions (not a 422);
->   /export margin?zero_margin=1 exports the Fig 7-43 snapshot (ADR-0266).
-> - **Verified:** test_csp_strict_scripts.py + test_residuals_268.py + expanded
->   test_sec_hardening.py (Sec-Fetch-Site cases incl. the null-Origin-same-origin
->   regression); re-targeted old-markup pins + the SRA-derive JS harness; Chromium sweep of
->   10 pages ZERO CSP violations, forms work, Wipe confirm fires. Parity untouched.
-> - **Still OWED by the operator (all remaining work):** PowerShell crash log + real large
->   dataset (ADR-0261 on-machine re-validation; five-large-file stress); Claude-Design prompt
->   (Portfolio US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
-> - **State:** v1.0.73; **ADR-0268** highest; wheel + 9 installers in lockstep. **PR #403
->   MERGED** (squash `43beddd`); branch `claude/handoff-review-validation-ikldbf` restarted
->   from the #403 squash, clean tree, NO open PR, nothing in flight. The full 2026-07-18
->   automated cycle landed on `main`: #399→#400→#401→#402→#403.
-> - **NEXT:** nothing queued — the feature queue AND the recorded-residuals list are both
->   empty. WAIT on operator inputs (the three OWED items above) before starting new work; a
->   fresh session should confirm `origin/main` tip is `43beddd` and re-run the gate green if it
->   intends to build. Do not invent work without direction.
+> - **Engine:** new parity-isolated `engine/jcl.py` — `compute_jcl` replicates the SSI MC's
+>   draw discipline EXACTLY (seed+i, ascending-uid draws, point-mass/copula/risk rules, the
+>   one trusted `compute_cpm` chokepoint, stored-finish realignment), so the joint sample's
+>   finish marginal is byte-identical to `compute_sra_ssi` — pinned by full-CDF equality
+>   across triangular/PERT × correlation 0/0.3 × focus/project. Cost rides the SAME sampled
+>   durations (NASA CEH App. J / Hulett): EAC_i = completed finals + Σ(spent +
+>   (TI + TD·d_i/d_ML)·m_i); τ=td_share (default 1.0, labeled screening), FICSM cost
+>   multipliers default 1/1/1=OFF and draw AFTER all duration draws (stream-stability
+>   test-pinned). Outputs: JCL=P(both) + SCL/CCL marginals (JCL≤min pinned + Fréchet lower
+>   bound), quadrants (sum-1 pinned), P-grid iso-confidence frontier (achieves-confidence +
+>   monotone pinned), cost CDF/percentiles, deterministic EAC = AC+(BAC−EV) exactly.
+>   NOT cost-loaded (the EVM Σbudgeted_cost>0 gate) → raises — never a fabricated figure;
+>   an SCL can no longer be mislabeled JCL (ADR-0106's reservation, structurally enforced).
+> - **Web:** gated JCL panel on /sra after the SSI panel — POST /sra/jcl-config
+>   (targets/τ/multipliers/confidence, clamped+order-coerced, reset), lazy GET /api/sra/jcl
+>   (offload-aware; honest 422 when uncosted; 400 when empty), vendored `sra_jcl.js`
+>   (football scatter with quadrant %s + target crosshair + frontier polyline + det marker,
+>   EAC S-curve, FICSM SCL/CCL/JCL strip, quadrant table, provenance line) — CSP-strict-safe
+>   (external file, addEventListener only, chartframe callouts/zoom). /export/xlsx/sra gains
+>   3 JCL sheets when costed (headline+provenance / frontier / joint sample). Explainers
+>   flipped to the live panel (SRA JCL "Status here", both SCL disclaimers, EVM's "How EVM
+>   relates to a JCL") with the pinned honesty language kept verbatim. help.py glossary
+>   +eac/scl/ccl/jcl (dictionary regenerated — no delta; glossary keys aren't engine
+>   metrics); i18n catalog +9 JCL terms in ES/FR/DE/PT.
+> - **Verified:** tests/engine/test_jcl.py (19 — incl. a hand-REPLAYED single-iteration draw
+>   + hand-summed EAC fixtures 1175/1405/510) and tests/web/test_jcl_web.py (9 — gate,
+>   422/400, config persist/bad-date/reset, web-layer SSI coherence, export gains sheets
+>   ONLY when costed); full gate green. LIVE Chromium under the strict CSP: panel renders,
+>   a real POST form navigation applies through the SEC-2 Fetch-Metadata gate, Run JCL
+>   renders football + cost curve + FICSM strip, ZERO console errors — and the sweep caught
+>   a real bug the DOM asserts missed (football x-axis end labels used iteration-order
+>   first/last instead of the axis bounds) — fixed and re-verified. Parity untouched.
+> - **Still OWED by the operator:** PowerShell crash log + real large dataset (ADR-0261
+>   on-machine re-validation; five-large-file stress); Claude-Design prompt (Portfolio
+>   US-map/site drill, ADR-0258). #13 XER per-task calendars PARKED.
+> - **State:** v1.0.74; **ADR-0269** highest; wheel + 9 installers in lockstep. Branch
+>   `claude/handoff-continuation-vistlu`; **draft PR #406 OPEN**. Earlier this session:
+>   #405 (verification-session log) MERGED by the operator; the desktop-update PowerShell
+>   command was provided (git pull + re-run the same-tier installer — it force-reinstalls
+>   the embedded wheel).
+> - **NEXT:** get #406 green and merged. The #331 phase is now open — its ranked next items
+>   are #2 risk-driver correlation matrix + eigenvalue feasibility (per the Hulett-deck
+>   comment) and auditing the existing Assessment Scorecards against the STAT/GAO gap lists
+>   — but confirm with the operator before starting the next item. A golden COST-LOADED
+>   fixture (budgeted MSPDI) would strengthen JCL evidence beyond synthetic nets. The three
+>   OWED operator inputs above still block ADR-0261/0258 work.
 
 # (prior) handoffs — archived
 
 > The earlier handoff sections now live in **[HANDOFF-ARCHIVE.md](HANDOFF-ARCHIVE.md)** (newest-first,
 > verbatim), and the full append-only per-session history is in **[SESSION-LOG.md](SESSION-LOG.md)**.
 > Per ADR-0246 this file keeps ONLY the current STATUS section above, so the entire live handoff is
-> small enough to read in one pass every session (and the SessionStart hook auto-injects it). When you
+> small enough to read in full in one pass every session (and the SessionStart hook auto-injects it). When you
 > write the next handoff, MOVE the current section to the top of `HANDOFF-ARCHIVE.md` (demote its
 > heading to `(prior) Handoff`) and REPLACE the section above — do not stack another archived heading
 > here. This single pointer is intentionally the only such heading in the file; the size guard enforces
