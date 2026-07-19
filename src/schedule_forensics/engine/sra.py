@@ -1361,7 +1361,14 @@ def _augment_with_conditionals(
     tasks = list(schedule.tasks)
     rels = list(schedule.relationships)
     next_uid = (max((t.unique_id for t in tasks), default=0)) + 1
-    present = {t.unique_id for t in tasks}
+    # The monitor and plan endpoints must be SCHEDULED activities — non-summary AND active, the set
+    # compute_cpm times and the sampler builds overrides over (non_summary == _scheduled_tasks).
+    # Gating on the full task list instead let a summary/inactive monitor slip through as "applied",
+    # then crash the finish-metric probe (`probe_timings[uid]` KeyError -> the whole SSI run aborts)
+    # or read as 0 in the duration metric (a silent wrong plan mix reported applied=True). Gating on
+    # the scheduled set makes such a conditional inert + disclosed instead, honoring the
+    # never-silent contract (ADR-0274 hardening, audit M1).
+    present = {t.unique_id for t in non_summary(schedule)}
     # a same-tie pair chains: `chain_pred` tracks the live predecessor of a tie across insertions,
     # so a second plan on the same tie inserts onto the live segment (Fa -> before), not the
     # already-consumed original tie. Shared across all conditionals (a later one sees a tie a prior
@@ -1412,8 +1419,16 @@ def _augment_with_conditionals(
 
     plan_uids: dict[str, tuple[int, int]] = {}
     for cond in conditionals:
-        # all-or-nothing: the monitor and BOTH plan ties must currently exist (chaining-aware).
-        if cond.monitor_uid not in present:
+        # all-or-nothing: the monitor + all 4 plan endpoints must be scheduled activities AND both
+        # plan ties must currently exist (chaining-aware). Any miss -> the conditional is inert.
+        endpoints = (
+            cond.monitor_uid,
+            cond.plan_a.after_uid,
+            cond.plan_a.before_uid,
+            cond.plan_b.after_uid,
+            cond.plan_b.before_uid,
+        )
+        if any(u not in present for u in endpoints):
             continue
         if _tie_idx(cond.plan_a.after_uid, cond.plan_a.before_uid) is None:
             continue

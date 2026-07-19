@@ -486,8 +486,12 @@ def test_ssi_panel_offers_conditional_branches(client: TestClient) -> None:
 
 
 def test_conditional_add_persists_and_reports_which_plan_wins(client: TestClient) -> None:
-    """Adding a contingency on a driving FS tie lists it, and the SSI run reports it applied with
-    the two plan-win fractions summing to 100% (exactly one plan executes each iteration)."""
+    """Adding a contingency on a driving FS tie lists it, and the SSI run reports which plan wins.
+    The monitor carries no factor (a point mass), and threshold 0 with at_or_above always trips (any
+    duration >= 0), so the plan falls to the contingency Plan B EVERY iteration — a deterministic,
+    known-side end-to-end check of the 'which plan wins' plumbing. (Asserting only sum==100
+    be tautological: plan_a+plan_b is 100 by construction; a switch stuck on Plan A would still pass
+    that but fails this. The genuine ~50/50 split is pinned in the engine test.)"""
     a, b = _fs_tie(client, driving=True)
     client.post(
         "/sra/conditional",
@@ -495,7 +499,7 @@ def test_conditional_add_persists_and_reports_which_plan_wins(client: TestClient
             "name": "OffTheShelf",
             "monitor_uid": str(a),
             "metric": "duration",
-            "threshold": "1",
+            "threshold": "0",  # at_or_above 0 always trips -> Plan B every iteration (known side)
             "trip_when": "at_or_above",
             "a_after": str(a),
             "a_before": str(b),
@@ -514,7 +518,9 @@ def test_conditional_add_persists_and_reports_which_plan_wins(client: TestClient
     assert j["conditionals"], "the run payload surfaces the conditional"
     cs = j["conditionals"][0]
     assert cs["applied"] is True and cs["name"] == "OffTheShelf"
-    assert abs(cs["plan_a_pct"] + cs["plan_b_pct"] - 100.0) < 0.11  # exactly one plan per iteration
+    # decisive + correct side: the condition trips every iteration -> Plan B 100%, Plan A 0%
+    assert cs["plan_b_pct"] == 100.0 and cs["plan_a_pct"] == 0.0
+    assert abs(cs["plan_a_pct"] + cs["plan_b_pct"] - 100.0) < 0.11  # and they still sum to 100
 
 
 def test_conditional_on_missing_endpoints_is_rejected(client: TestClient) -> None:
@@ -656,3 +662,100 @@ def test_sra_export_discloses_conditional_branches(client: TestClient) -> None:
         )
     assert "Conditional branches" in text  # the setup row + the dedicated table
     assert "CondExport" in text  # the conditional itself is named in the export
+
+
+def test_sra_docx_export_discloses_conditional_branches(client: TestClient) -> None:
+    """ADR-0274 claims the DOCX (the testimony hand-out) discloses conditionals too, not only
+    the XLSX. A conditional shifts the exported percentiles, so the Word report must name it —
+    else a modeled input silently moves the P50/P80/P90 dates (Law 2; audit H1: was untested)."""
+    import io
+    import zipfile
+
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "DocxContingency",
+            "monitor_uid": str(a),
+            "metric": "finish",
+            "threshold": "1",
+            "trip_when": "at_or_above",
+            "a_after": str(a),
+            "a_before": str(b),
+            "a_low": "2",
+            "a_ml": "3",
+            "a_high": "5",
+            "b_after": str(a),
+            "b_before": str(b),
+            "b_low": "8",
+            "b_ml": "10",
+            "b_high": "15",
+        },
+    )
+    r = client.get("/export/docx/sra")
+    assert r.status_code == 200
+    doc = zipfile.ZipFile(io.BytesIO(r.content)).read("word/document.xml").decode()
+    assert "Conditional branches" in doc  # the dedicated disclosure heading/table
+    assert "DocxContingency" in doc  # the contingency itself is named in the report
+
+
+def test_conditional_save_load_round_trips_metric_tripwhen_threshold_and_plans(
+    client: TestClient,
+) -> None:
+    """Audit M3: a conditional is a modeled input that shifts the exported percentiles, so silent
+    corruption of metric / trip_when / threshold / the two plans' 3-point durations on reload is a
+    Law-2 reproducibility gap. The id-density test alone never read these back. Save a distinctive
+    conditional (finish + below + a non-default threshold + asymmetric plan durations), assert the
+    saved JSON carries every field verbatim, then reload into a fresh client and confirm the API
+    payload restores metric/trip_when/threshold."""
+    import json
+
+    a, b = _fs_tie(client, driving=True)
+    client.post(
+        "/sra/conditional",
+        data={
+            "name": "RoundTrip",
+            "monitor_uid": str(a),
+            "metric": "finish",
+            "threshold": "7",
+            "trip_when": "below",
+            "a_after": str(a),
+            "a_before": str(b),
+            "a_low": "2",
+            "a_ml": "4",
+            "a_high": "9",
+            "b_after": str(a),
+            "b_before": str(b),
+            "b_low": "11",
+            "b_ml": "13",
+            "b_high": "20",
+        },
+    )
+    saved = client.get("/sra/ssi/save")
+    assert saved.status_code == 200
+    blob = json.loads(saved.content)
+    assert len(blob["conditionals"]) == 1
+    c = blob["conditionals"][0]
+    # serialization fidelity (durations/threshold in working minutes)
+    assert c["metric"] == "finish" and c["trip_when"] == "below"
+    assert c["threshold_minutes"] == 7 * 480
+    assert c["monitor_uid"] == a
+    assert (c["plan_a"]["low"], c["plan_a"]["ml"], c["plan_a"]["high"]) == (
+        2 * 480,
+        4 * 480,
+        9 * 480,
+    )
+    assert (c["plan_b"]["low"], c["plan_b"]["ml"], c["plan_b"]["high"]) == (
+        11 * 480,
+        13 * 480,
+        20 * 480,
+    )
+    # deserialization fidelity: reload into a fresh client and read the restored fields back
+    fresh = TestClient(create_app(SessionState()))
+    fresh.post("/upload", files={"files": ("Project5.mspdi.xml", GOLDEN.read_bytes(), "text/xml")})
+    fresh.post("/sra/ssi/load", files={"setup": ("s.json", saved.content, "application/json")})
+    j = fresh.get("/api/sra/ssi?iterations=100").json()
+    assert len(j["conditionals"]) == 1
+    rc = j["conditionals"][0]
+    assert rc["metric"] == "finish" and rc["trip_when"] == "below"
+    assert rc["threshold_days"] == 7.0 and rc["name"] == "RoundTrip"

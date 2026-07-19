@@ -6580,10 +6580,18 @@ def create_app(
         tb = sch.tasks_by_id if sch is not None else {}
 
         def _valid(u: int | None) -> bool:
-            return u is not None and u in tb and not tb[u].is_summary
+            # the monitor and plan endpoints must be SCHEDULED activities: non-summary AND active
+            # (is_active) — the set the engine augments/times over. An inactive task would otherwise
+            # be accepted here yet crash / silently mis-switch the run (audit M1).
+            return u is not None and u in tb and not tb[u].is_summary and tb[u].is_active
 
         def _uid(raw: str) -> int | None:
-            return int(raw) if raw.strip().lstrip("-").isdigit() else None
+            # int() directly (not isdigit(), which admits values int() rejects — '--5', '²', … —
+            # and would 500 the endpoint); a clean parse or None (audit L5).
+            try:
+                return int(raw.strip())
+            except ValueError:
+                return None
 
         mon, aa, ab, ba, bb = (
             _uid(monitor_uid),

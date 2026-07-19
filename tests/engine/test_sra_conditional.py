@@ -242,3 +242,67 @@ def test_two_conditionals_on_the_same_tie_both_apply() -> None:
     assert {cs.id for cs in r.conditionals} == {"C1", "C2"}
     assert all(cs.applied for cs in r.conditionals)
     assert r.p50 == 24 * DAY  # 12 base + 8 + 4, both contingencies chained
+
+
+# --- audit M1: a non-scheduled (inactive / summary) monitor must be inert, never a crash ----------
+
+
+def _net_with_extra(extra: Task) -> Schedule:
+    """The focus net plus one extra task (used to plant a non-scheduled monitor)."""
+    return Schedule(
+        name="S",
+        project_start=MON,
+        tasks=(_task(1, 1), _task(2, 10), _task(3, 2), _task(4, 1), extra),
+        relationships=(_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4)),
+    )
+
+
+def test_inactive_monitor_is_inert_not_a_crash_or_silent_mis_switch() -> None:
+    """A monitor that is a NON-summary but INACTIVE task is not in the scheduled set compute_cpm
+    times / the sampler overrides. It must be reported inert (applied=False), never (finish-metric)
+    crash the run with a KeyError nor (duration-metric) read as 0 and confidently report the wrong
+    plan mix (audit M1). Both metrics must leave the finish distribution byte-identical to no
+    conditional."""
+    inactive = Task(unique_id=5, name="INACTIVE", duration_minutes=7 * DAY, is_active=False)
+    s = _net_with_extra(inactive)
+    cfg = SRAConfig(iterations=40, seed=1, target_uid=4)
+    base = compute_sra_ssi(s, config=cfg)
+    for metric in ("finish", "duration"):
+        c = _cond(
+            5, metric, 5, _plan(3, 4, 1), _plan(3, 4, 9)
+        )  # 7d monitor would trip at_or_above 5d
+        r = compute_sra_ssi(s, config=cfg, conditionals=[c])  # must not raise
+        cs = r.conditionals[0]
+        assert cs.applied is False, metric
+        assert r.cdf == base.cdf, metric  # inert -> byte-identical, no silent shift
+
+
+def test_summary_monitor_is_inert() -> None:
+    """A summary-task monitor is likewise non-scheduled and must be inert (never a KeyError)."""
+    summary = Task(unique_id=9, name="SUMMARY", duration_minutes=0, is_summary=True)
+    s = _net_with_extra(summary)
+    cfg = SRAConfig(iterations=30, seed=2, target_uid=4)
+    base = compute_sra_ssi(s, config=cfg)
+    c = _cond(9, "finish", 5, _plan(3, 4, 1), _plan(3, 4, 9))
+    r = compute_sra_ssi(s, config=cfg, conditionals=[c])
+    assert r.conditionals[0].applied is False
+    assert r.cdf == base.cdf
+
+
+def test_plan_endpoint_on_an_inactive_task_is_inert() -> None:
+    """A plan whose tie endpoint is an inactive task is not a scheduled activity, so the conditional
+    is inert rather than wiring a fragnet onto a node outside the CPM network (audit M1)."""
+    inactive = Task(unique_id=5, name="INACTIVE", duration_minutes=7 * DAY, is_active=False)
+    # a real FS tie 5->4 exists, but 5 is inactive -> the plan endpoint is not scheduled
+    s = Schedule(
+        name="S",
+        project_start=MON,
+        tasks=(_task(1, 1), _task(2, 10), _task(3, 2), _task(4, 1), inactive),
+        relationships=(_rel(1, 2), _rel(1, 3), _rel(2, 4), _rel(3, 4), _rel(5, 4)),
+    )
+    cfg = SRAConfig(iterations=20, seed=1, target_uid=4)
+    base = compute_sra_ssi(s, config=cfg)
+    c = _cond(2, "duration", 1, _plan(5, 4, 3), _plan(2, 4, 8))  # plan A endpoint 5 is inactive
+    r = compute_sra_ssi(s, config=cfg, conditionals=[c])
+    assert r.conditionals[0].applied is False
+    assert r.cdf == base.cdf
