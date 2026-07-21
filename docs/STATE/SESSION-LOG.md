@@ -7428,3 +7428,27 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   **1.0.86**, wheel + 9 installers lockstep. Highest ADR **ADR-0276**. NEXT: the interactive-legend
   rollout is substantially DONE — dashboard.js (anchor-wrapped summary cards, low value), sra_grid.js
   (tint-scale key), path_evolution.js (descriptive) intentionally SKIPPED (no separable series).
+
+- **Session (2026-07-21c — DCMA milestone scope, Acumen parity):** operator delivered a real
+  Acumen-vs-Program dataset (Large Test File / File2: `.mpp` + `.afw` + comparison workbooks) and
+  asked to root-cause why our DCMA metrics differ from Acumen Fuse, test, and fix. Converted both
+  `.mpp` → MSPDI via the vendored MPXJ, ran `compute_dcma14`, and **set-differenced our offender
+  lists against Acumen's actual flagged task-ID lists** (empirical, not theorised). Findings: (1)
+  **milestones** — excluding zero-duration milestones matches Acumen's offender SET exactly on Hard
+  Constraints (1→0) and Negative Float (41→35), and covers the milestone share of High Float / Logic
+  / SS-FF; completion checks (Missed/BEI) KEEP milestones (excluding overshoots Acumen — verified).
+  (2) **CPLI** — we use recomputed CPM float (≈0 → 1.0); Acumen uses STORED float; stored nails File 1
+  (0.97) but File 2 (0.59) needs Acumen's stored-schedule critical-path length (bigger change,
+  deferred). (3) a fixed **~24 non-milestone tasks** Acumen omits from every check, structurally
+  indistinguishable in the `.mpp` (operator confirmed no Acumen filter) — UNEXPLAINED. **Caught and
+  discarded a WRONG initial hypothesis** (Resources = dropped `-65535` placeholder assignment) on
+  deeper verification — the tasks Acumen flags and omits have identical `-65535` assignments (the
+  ASSUME-NOTHING discipline paying off; audit findings have been wrong before). **Shipped** the
+  verified, parity-safe fix: a configurable DCMA milestone scope — `compute_dcma14(...,
+  exclude_milestones=False)` + `audit_schedule` + `SessionState.dcma_exclude_milestones` (default off,
+  in `_scope_signature` only when on → analysis re-keys, never a stale audit) + a `/analysis` DCMA
+  toggle POSTing `/dcma/scope`. **ADR-0277.** Default off is byte-identical to before (P2/P5 goldens
+  untouched — verified default==exclude). Tests: `test_dcma14.py` (3 new) + `test_dcma_scope.py`. Full
+  local gate green. v1.0.86 → **1.0.87**, wheel + 9 installers lockstep. Highest ADR **ADR-0277**.
+  Sandbox preserved under `scratchpad/acumen_parity/` (findings + scripts; 20 MB inputs not committed).
+  NEXT (operator to steer): CPLI stored-float/stored-CPL change; the 24-task mystery; BEI.

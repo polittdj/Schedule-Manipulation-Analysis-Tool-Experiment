@@ -161,8 +161,8 @@ def test_wipe_during_analysis_compute_leaves_no_orphans(sc, monkeypatch) -> None
         st.cpms.clear()
     real = app_module._compute_analysis
 
-    def wiping_analysis(s, cpm=None):  # type: ignore[no-untyped-def]
-        result = real(s, cpm=cpm)
+    def wiping_analysis(s, cpm=None, **kwargs):  # type: ignore[no-untyped-def]
+        result = real(s, cpm=cpm, **kwargs)
         client.post("/session/wipe")
         return result
 

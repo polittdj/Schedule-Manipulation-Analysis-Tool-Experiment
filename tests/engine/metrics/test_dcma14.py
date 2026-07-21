@@ -286,3 +286,98 @@ def test_bei_numerator_is_cumulative_complete_among_the_due_set() -> None:
     # once the early completion's baseline finish comes DUE, it counts in both terms
     later = compute_dcma14(_sched(tasks, status_date=MON + dt.timedelta(days=31)))["DCMA14"]
     assert later.count == 1 and later.population == 2 and later.value == 0.5
+
+
+def test_exclude_milestones_scopes_work_checks_only() -> None:
+    """ADR-0277 Acumen-parity milestone scope: exclude_milestones drops zero-duration milestones
+    from the float / logic / constraint / relationship checks (a milestone is not an activity whose
+    float or constraint is meaningful), but NEVER from the completion checks (Missed / BEI).
+    Verified UID-exact against Acumen on the Large Test File (Hard 1→0, Negative Float 41→35)."""
+    tasks = [
+        # one normal task and one milestone per work-check, each tripping it
+        Task(
+            unique_id=1,
+            name="hard-task",
+            duration_minutes=DAY,
+            constraint_type=ConstraintType.MSO,
+            constraint_date=MON,
+        ),
+        Task(
+            unique_id=2,
+            name="hard-ms",
+            duration_minutes=0,
+            is_milestone=True,
+            constraint_type=ConstraintType.MSO,
+            constraint_date=MON,
+        ),
+        Task(unique_id=3, name="neg-task", duration_minutes=DAY, stored_total_float_minutes=-DAY),
+        Task(
+            unique_id=4,
+            name="neg-ms",
+            duration_minutes=0,
+            is_milestone=True,
+            stored_total_float_minutes=-DAY,
+        ),
+        Task(
+            unique_id=5, name="hf-task", duration_minutes=DAY, stored_total_float_minutes=100 * DAY
+        ),
+        Task(
+            unique_id=6,
+            name="hf-ms",
+            duration_minutes=0,
+            is_milestone=True,
+            stored_total_float_minutes=100 * DAY,
+        ),
+    ]
+    sch = _sched(tasks)
+    inc = compute_dcma14(sch)  # default: milestones included (prior behaviour)
+    exc = compute_dcma14(sch, exclude_milestones=True)
+
+    assert inc["DCMA05"].count == 2 and exc["DCMA05"].count == 1  # Hard constraints
+    assert inc["DCMA07"].count == 2 and exc["DCMA07"].count == 1  # Negative float
+    assert inc["DCMA06"].count == 2 and exc["DCMA06"].count == 1  # High float
+    # exactly the milestone UIDs are the ones dropped
+    assert set(inc["DCMA05"].offender_uids) - set(exc["DCMA05"].offender_uids) == {2}
+    assert set(inc["DCMA07"].offender_uids) - set(exc["DCMA07"].offender_uids) == {4}
+    assert set(inc["DCMA06"].offender_uids) - set(exc["DCMA06"].offender_uids) == {6}
+    # the denominators (population) also drop the milestones for those checks
+    assert exc["DCMA07"].population == inc["DCMA07"].population - 3
+
+
+def test_exclude_milestones_keeps_missed_milestones() -> None:
+    """A missed MILESTONE is a real missed deliverable — the completion checks keep milestones under
+    both scopes (excluding them would undercount vs Acumen)."""
+    status = MON + dt.timedelta(days=10)
+    due = MON  # baselined to finish before the data date
+    tasks = [
+        Task(unique_id=1, name="late-task", duration_minutes=DAY, baseline_finish=due),
+        Task(
+            unique_id=2, name="late-ms", duration_minutes=0, is_milestone=True, baseline_finish=due
+        ),
+    ]
+    sch = _sched(tasks, status_date=status)
+    inc = compute_dcma14(sch)
+    exc = compute_dcma14(sch, exclude_milestones=True)
+    assert inc["DCMA11"].count == 2  # both the task and the milestone are missed
+    assert exc["DCMA11"].count == 2  # milestone STILL counted under the exclude scope
+    assert set(inc["DCMA11"].offender_uids) == set(exc["DCMA11"].offender_uids) == {1, 2}
+
+
+def test_exclude_milestones_default_is_identical_to_prior() -> None:
+    """Default off must be byte-identical to the prior single-arg behaviour (protects the P2/P5
+    goldens): a schedule with no milestones is unaffected either way, and the default equals the
+    explicit include on the golden P5 audit."""
+    sch = _sched(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                constraint_type=ConstraintType.MSO,
+                constraint_date=MON,
+            ),
+        ]
+    )
+    a = {k: v.count for k, v in compute_dcma14(sch).items()}
+    b = {k: v.count for k, v in compute_dcma14(sch, exclude_milestones=False).items()}
+    assert a == b

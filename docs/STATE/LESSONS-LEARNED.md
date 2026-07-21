@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-21 (cont. 2) — root-cause an external-tool parity gap by SET-DIFF against its own output, and distrust the first clean hypothesis
+- Acumen-vs-our-DCMA parity investigation on a real 2,100-activity dataset. The single most valuable
+  move: the operator's Acumen export contained the **actual flagged task-ID lists** per check, so
+  instead of theorising about formulas I **set-differenced our offender UIDs against Acumen's**, then
+  characterised the differing tasks. Every conclusion became "these specific tasks, this shared
+  attribute," not "maybe it's X." LESSON: when matching an external tool, diff the *entities* it
+  flagged, not just the counts — the shared attribute of the disagreement set IS the root cause.
+- **My first "clean fix" was wrong, and only exact-count verification caught it.** I was confident
+  Resources over-counted because our importer drops MS Project's `-65535` unassigned-work placeholder
+  — the 24 over-flagged tasks all had it. But I hadn't checked the tasks Acumen *does* flag: they have
+  the **identical** `-65535` assignment. The discriminator didn't exist. Had I implemented on the
+  first hypothesis (it looked airtight), I'd have shipped a wrong fix that also touched P2/P5. LESSON
+  (ADR-0240, verbatim): a mistaken fix is worse than the drift — verify a hypothesis against the
+  *counter*-population (what the tool does NOT flag), not just the population that fits your story.
+- **Distinguish "reproducible from the file" from "config in the tool."** After ruling out resource,
+  calendar, type, WBS, work/cost, and create-date, ~24 tasks Acumen omits remained structurally
+  identical in the `.mpp`. That exclusion isn't *in the schedule* — it's tool/workspace state. Knowing
+  when to STOP deriving from the data and ask the operator (vs. inventing a rule that happens to fit)
+  is itself the discipline. Shipped only the milestone finding, which was exact and parity-safe;
+  documented the rest honestly rather than forcing a fit.
+- **Default-off is how you add an Acumen-matching behavior without breaking validated parity.** The
+  milestone scope reverses a prior P2/P5-matching choice, so it ships as an opt-in flag whose default
+  is byte-identical to before (and isn't in the cache-key shape unless enabled). "Configurable,
+  default-preserves-goldens" let both truths coexist — Acumen's population and our validated parity.
+
 ### 2026-07-21 (cont.) — not every legend swatch is a togglable series; and fit the mechanism to the chart
 - Legend phase 3b (margin_dashboard.js). The burn-down legend has seven swatches, but one — "Below
   requirement" — is **not a series**: the margin bars are drawn green above / red below the NASA

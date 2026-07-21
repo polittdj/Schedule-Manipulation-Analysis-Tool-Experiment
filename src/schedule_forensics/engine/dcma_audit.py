@@ -101,9 +101,17 @@ _OK_NOTE = "Within the DCMA tolerance — no action required."
 _NA_NOTE = "Not applicable for this schedule (inputs absent)."
 
 
-def audit_schedule(schedule: Schedule, cpm_result: CPMResult | None = None) -> ScheduleAudit:
-    """Run the 14 DCMA checks and return an independent, cited audit of one schedule."""
-    results = compute_dcma14(schedule, cpm_result)
+def audit_schedule(
+    schedule: Schedule,
+    cpm_result: CPMResult | None = None,
+    *,
+    exclude_milestones: bool = False,
+) -> ScheduleAudit:
+    """Run the 14 DCMA checks and return an independent, cited audit of one schedule.
+
+    ``exclude_milestones`` forwards the Acumen-parity milestone scope to :func:`compute_dcma14`
+    (see its docstring; default off preserves prior behaviour and the golden parity, ADR-0277)."""
+    results = compute_dcma14(schedule, cpm_result, exclude_milestones=exclude_milestones)
     checks: list[AuditCheck] = []
     for metric_id, result in results.items():
         improvement = (

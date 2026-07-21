@@ -1,33 +1,36 @@
-# Handoff — 2026-07-21b (interactive legends phase 3b — margin_dashboard.js; v1.0.86; highest ADR 0276)
+# Handoff — 2026-07-21c (DCMA milestone scope — Acumen parity; v1.0.87; highest ADR 0277)
 
-> ## STATUS (current) — operator merged #421 (phase 3a); standing "do all you can" → phase 3b of the interactive-legend rollout (ADR-0276, no new ADR — extended with a phase-3b note). **margin_dashboard.js** (the executive margin/contingency **burn-down** + margin **erosion** charts) now has click-to-show/hide legends + all/none. With this, **the rollout is substantially complete** — every analysis chart with separable series (trend, curves-native, performance, cei, margin) is covered. Highest ADR **0276**.
+> ## STATUS (current) — operator delivered a real Acumen-vs-Program dataset (Large Test File / File2: `.mpp` + `.afw` + comparison workbooks) and asked to root-cause why our DCMA metrics differ from Acumen Fuse, test, and fix. **Deep forensic root-cause done** (converted `.mpp`→MSPDI via MPXJ, ran our engine, **set-differenced our offender lists against Acumen's actual flagged-ID lists**). **Shipped the one verified, parity-safe fix: a configurable DCMA milestone scope (ADR-0277).** Highest ADR **0277**.
 >
-> - **The new wrinkle — a mixed toggle / static legend.** margin renders **once** (no version stepper),
->   so its legend's svg scope is already stable and it needs **no** `data-series-scope` marker (unlike
->   performance/cei). But its burn-down legend has a swatch that is **not a series**: the margin bars
->   are green above / red below the NASA requirement, and "Below requirement" explains that *recoloring*
->   — toggling it is meaningless. So margin's own `legend()` gained a per-item `static: true` flag: a
->   static entry is a plain, non-clickable color key, while every real series (margin bars — one key for
->   both colors — contingency, requirement line, planned depletion, corrective carets, Fig 5-30 band +
->   diamonds, erosion trend, zero-margin marker) is tagged + togglable. The generic `SFLegend` module
->   needed **no change** (a static entry has no toggle attr → ignored by the module and by all/none).
-> - **Verified:** `tests/web/js/legend_static_harness.mjs` (run by `test_legend_toggle_js.py`) boots the
->   real module against margin's shape — one toggle hides both colors of the conditional-color margin
->   series, the static key is inert, all/none skips it. `test_legend_toggle_wiring.py` pins the emitted
->   markup (`static:true` opt-out + tagged marks + explicit `Erosion trend` key). Prototype-verified the
->   shape first (`scratchpad/margin_legend_verify.mjs`). Full local gate green (ruff, format, mypy 116,
->   bandit exit 0, node, pytest). v1.0.85 → **1.0.86**, wheel + 9 installers lockstep.
-> - **Standing rule (from #412):** update `docs/STATE/LESSONS-LEARNED.md` DAILY — first-class state (done: 2026-07-21 cont. entry).
-> - **State:** v1.0.86; **ADR-0276** highest (no new ADR — phase-3b note appended); wheel + 9 installers
->   lockstep. Branch `claude/conditional-branching-contingency-bi6g00` (restarted from merged main
->   35182e4 = v1.0.85 #421). This session's PR carries legend phase 3b.
-> - **NEXT: the interactive-legend rollout is substantially DONE.** Intentionally SKIPPED (no separable
->   series to toggle): `dashboard.js` (landing-page summary cards inside an `<a>` link — low value +
->   anchor-wrapping/proportion-strip issues; the per-file charts it links to already have toggles),
->   `sra_grid.js` (tint-scale heatmap key), `path_evolution.js` (descriptive legend). If the operator
->   wants dashboard cards toggled anyway, that needs a `preventDefault` module tweak + per-mini-chart
->   scope split. Also still OWED by the operator (blocks deferred work): ADR-0261 PowerShell crash log +
->   large dataset; ADR-0258 Claude-Design portfolio prompt. The file-free #331 Hulett backlog is DONE.
+> - **Verified root cause (milestones).** Excluding zero-duration milestones makes our offender SET
+>   match Acumen EXACTLY on **Hard Constraints** (1→0) and **Negative Float** (41→35), and covers the
+>   milestone share of High Float / Logic / SS-FF. Coherent rule: **work checks** (Logic 01, SS/FF 04,
+>   Hard 05, High float 06, Neg float 07) omit milestones; **completion checks** (Missed 11, BEI 14)
+>   KEEP them (a missed milestone is a real missed deliverable — excluding OVERSHOOTS Acumen, confirmed).
+> - **Implementation:** `compute_dcma14(..., exclude_milestones=False)` + `audit_schedule` forward it;
+>   `SessionState.dcma_exclude_milestones` (default off), added to `_scope_signature` ONLY when on (so
+>   the default cache-key shape is unchanged, analysis re-keys on toggle → never a stale audit); a
+>   checkbox on the `/analysis` DCMA panel POSTs `/dcma/scope`. **Default off = byte-identical to before,
+>   P2/P5 goldens untouched** (verified default==exclude on P2/P5). Tests: `test_dcma14.py` (3 new) +
+>   `test_dcma_scope.py` (toggle seam). Full local gate green. v1.0.86 → **1.0.87**, wheel + 9 installers.
+> - **Root-caused but NOT shipped (documented in ADR-0277 + `scratchpad/acumen_parity/FINDINGS.md`):**
+>   (a) **CPLI** 1.0 vs 0.97/0.59 — we use recomputed CPM float (≈0); Acumen uses STORED float. Stored
+>   float nails File 1 (0.97 exact) but File 2 (0.59) needs Acumen's stored-schedule critical-path
+>   length (our pure-logic CPM schedules a chain to 2025 the stored file puts in 2028) → a real engine
+>   change. (b) A fixed **~24 non-milestone tasks** Acumen omits from EVERY check, structurally
+>   indistinguishable in the `.mpp` (NOT resource/calendar/type/WBS/work/cost/create-date; operator
+>   confirmed NO Acumen filter) — still UNEXPLAINED. (c) **BEI** 0.51 vs 0.52/0.53 (small). (d) the
+>   ribbon-vs-detail counting basis for Logic/SS-FF/Lags/Invalid-Forecast (Acumen's own display
+>   truncation; our diffs used the authoritative ribbon count).
+> - **Sandbox preserved:** `scratchpad/acumen_parity/` (converted `file1.xml`/`file2.xml`, all
+>   set-diff/verification scripts, `FINDINGS.md`). The 20 MB MSPDI + `.mpp` are NOT committed.
+> - **State:** v1.0.87; **ADR-0277** highest; wheel + 9 installers lockstep. Branch
+>   `claude/conditional-branching-contingency-bi6g00` (from merged main). This session's PR carries the
+>   DCMA milestone scope.
+> - **NEXT (operator to steer):** the CPLI stored-float / stored-CPL change (own PR, both files); the
+>   24-task mystery (needs the operator's insight — maybe the `.afw` selection state, or a schedule
+>   detail); BEI. Also still OWED: ADR-0261 PowerShell crash log + large dataset; ADR-0258 Claude-Design
+>   portfolio prompt. Interactive-legend rollout (ADR-0276) is DONE.
 
 # (prior) handoffs — archived
 
