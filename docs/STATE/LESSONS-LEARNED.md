@@ -459,6 +459,16 @@ those fixed defects in earlier "closed" fixes:
   path_evolution (descriptive legend) have **no series to toggle** at all. LESSON: "add toggles to all
   charts" is not uniform work — classify each legend (separable series? conditional state? scale key?)
   and defer/skip the ones a toggle would misrepresent, rather than forcing the convention everywhere.
+- **Don't launch the authoritative full-gate run mid-edit — it reads a half-updated tree and reports
+  phantom failures.** Twice today a background `pytest` I kicked off "to run while I prep the rest"
+  came back RED for something already fixed by the time it finished: once the installer lockstep test
+  (I'd changed JS but not yet regenerated the wheel), once the state-doc version-pin test (pyproject
+  was bumped to 1.0.85 but HANDOFF still read 1.0.84 because the run started before I rotated it). Both
+  were stale-read timing artifacts — the *committed* tree was green (each re-verified in isolation).
+  LESSON: sequence the release ceremony so the ONE authoritative full run starts only AFTER every
+  artifact is regenerated and every state doc is rotated; a run started earlier is a progress check at
+  best, a false alarm at worst. Always re-verify such a failure against the current tree before
+  treating it as real — it usually points at your own mid-flight edit, not a bug.
 
 ### 2026-07-19 (cont. 7) — a good abstraction makes phase 2 nearly free; and check for what already exists
 - Phase 2 of the interactive-legend rollout (trend.js stacked + grouped bars) needed **zero** change
