@@ -1,6 +1,8 @@
 # ADR-0277 — DCMA milestone scope: Acumen-parity population for the work checks
 
-Status: accepted (2026-07-21)
+Status: accepted (2026-07-21) — **corrected by ADR-0278**: High Float (06) must NOT exclude
+milestones (Acumen's High-Float detail includes them). The scope below is narrowed from
+{01,04,05,06,07} to {01,04,05,07}; see ADR-0278 for the UID-level ground-truth evidence.
 
 ## Context
 

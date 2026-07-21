@@ -53,16 +53,23 @@ def compute_dcma14(
     """Compute all 14 DCMA checks, keyed by id (``"DCMA01"`` … ``"DCMA14"`` with
     ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon).
 
-    ``exclude_milestones`` (default off) selects the Acumen-parity population for the **work**
-    checks — Logic (01), SS/FF relationships (04), Hard constraints (05), High float (06) and
-    Negative float (07): Acumen omits zero-duration milestones from those, since a milestone is not
-    an *activity* whose float / logic density / constraint is meaningful. Verified UID-exact against
-    Acumen on the operator's Large Test File (Hard 1→0, Negative Float 41→35). The **completion**
-    checks — Missed (11) and BEI (14) — always keep milestones (a missed milestone is a real missed
-    deliverable; excluding them undercounts vs Acumen), and the duration/lead/lag/resource/invalid
-    checks are unaffected (milestones are already screened by their own predicates). Default off
-    keeps the prior behaviour and the P2/P5 goldens byte-identical; the deployed tool exposes it as
-    a per-analysis option (ADR-0277)."""
+    ``exclude_milestones`` (default off) selects the Acumen-parity population for the checks where
+    Acumen omits zero-duration milestones — Logic (01), SS/FF relationships (04), Hard constraints
+    (05) and Negative float (07). Verified **UID-exact** against Acumen's own flagged-task detail on
+    the operator's Large Test File: Hard 1→0 and Negative Float 41→35 match Acumen's list exactly
+    (every extra we drop is a milestone Acumen omits), and SS/FF drops only milestone successors
+    Acumen does not count (ADR-0277 amendment, ground-truth verified 2026-07-21).
+
+    **High float (06) KEEPS milestones even under exclude_milestones** — Acumen's High-Float detail
+    *includes* zero-duration milestones with genuinely high stored float (7 of its 814 on File 1),
+    so dropping them would UNDER-report vs Acumen (7 false negatives). This is the corrected scope;
+    ADR-0277 wrongly excluded 06. The **completion** checks — Missed (11) and BEI (14) —
+    also keep milestones (a missed milestone is a real missed deliverable). Duration/lead/lag/
+    resource/invalid checks are unaffected (milestones are screened by their own predicates). The
+    residual over-counts vs Acumen (Resources, part of High Float / SS-FF) are an Acumen
+    workspace-side exclusion (the `.afw`'s per-activity ``Excluded`` flag / Level-of-Effort filter),
+    not a milestone rule — our engine is correct to flag them. Default off keeps the prior behaviour
+    and the P2/P5 goldens byte-identical; the deployed tool exposes it as a per-analysis option."""
     tasks = non_summary(schedule)
     real_ids = {t.unique_id for t in tasks}
     incomplete = [t for t in tasks if is_incomplete(t)]
@@ -177,14 +184,16 @@ def compute_dcma14(
     # High Float — incomplete activities with total float > 44 working days. Scored on the source
     # tool's STORED Total Slack when present (matches Acumen on progressed files — verified 44/44 on
     # the authoritative Project2/Project5 exports, closing the former recomputed-float residual,
-    # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080).
+    # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080). Milestones are KEPT even under
+    # exclude_milestones: Acumen's High-Float detail includes zero-duration milestones with high
+    # stored float, so this check uses the full incomplete population (ADR-0278 corrects ADR-0277).
     high_float = tuple(
         t.unique_id
-        for t in work_incomplete
+        for t in incomplete
         if effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
     )
     out["DCMA06"] = _r(
-        "DCMA06", "High Float", len(high_float), n_work_inc, "%", 5.0, Direction.LE, high_float
+        "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
     )
 
     # DCMA-07 Negative float — incomplete activities with total float < 0. Scored on the source

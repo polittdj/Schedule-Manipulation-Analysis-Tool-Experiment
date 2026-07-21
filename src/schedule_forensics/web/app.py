@@ -10392,8 +10392,8 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <a href="/help">Metric Dictionary</a>.</p>
 <form method=post action="/dcma/scope" style="margin:0 0 8px">
 <input type=hidden name=next value="/analysis/{quote(key, safe="")}">
-<label class=muted title="Acumen Fuse omits zero-duration milestones from the Logic, SS/FF, Hard-constraint and High/Negative-float checks (a milestone is not an activity whose float or logic density is meaningful). Enable to match Acumen's population for those checks. The completion checks — Missed and BEI — always keep milestones (a missed milestone is a real missed deliverable), so they are unaffected (ADR-0277).">
-<input type=checkbox name=exclude_ms value=1 {"checked" if dcma_exclude_milestones else ""} onchange="this.form.submit()"> <b>Acumen milestone scope</b> — exclude zero-duration milestones from the Logic / SS-FF / Hard-constraint / High &amp; Negative-float checks (Missed &amp; BEI keep milestones)</label></form>
+<label class=muted title="Acumen Fuse omits zero-duration milestones from the Logic, SS/FF, Hard-constraint and Negative-float checks (a milestone is not an activity whose float or logic density is meaningful there). Enable to match Acumen's flagged-task population for those checks (verified UID-exact on the Large Test File: Hard and Negative Float match Acumen exactly). High Float KEEPS milestones — Acumen's High-Float detail includes milestones with genuinely high stored float — as do the completion checks Missed and BEI (ADR-0277, corrected by ADR-0278).">
+<input type=checkbox name=exclude_ms value=1 {"checked" if dcma_exclude_milestones else ""} onchange="this.form.submit()"> <b>Acumen milestone scope</b> — exclude zero-duration milestones from the Logic / SS-FF / Hard-constraint / Negative-float checks (High Float, Missed &amp; BEI keep milestones)</label></form>
 {_stoplight_board(audit.checks)}
 <table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
 <th scope=col>What it measures (how)</th>
