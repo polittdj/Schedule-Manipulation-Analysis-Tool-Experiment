@@ -7452,3 +7452,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   local gate green. v1.0.86 → **1.0.87**, wheel + 9 installers lockstep. Highest ADR **ADR-0277**.
   Sandbox preserved under `scratchpad/acumen_parity/` (findings + scripts; 20 MB inputs not committed).
   NEXT (operator to steer): CPLI stored-float/stored-CPL change; the 24-task mystery; BEI.
+
+---
+
+## (cont.) — 2026-07-21d — DCMA milestone scope: ground-truth CORRECTION (ADR-0278)
+
+- **Session:** continued   **Model/mode:** Opus 4.8 + Ultracode
+- **Branch:** `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #424)
+- **Trigger:** operator committed the **ground-truth workbooks** to `00_REFERENCE_INTAKE/acumen_v8.11.0/`
+  (`Large Test File[2] Acumen DCMA 14 Point vs Program Results.xlsx` — Acumen's ACTUAL per-check
+  flagged-task detail rows, + the re-uploaded `.afw` and the `.mpp` under `mpp/`).
+- **Finding (UID-level, on the committed `Large Test File.mpp`, 2126 tasks; join Acumen `Id`==our
+  `unique_id`, `Description`==`name`, verified exact):** ADR-0277's milestone-exclusion is UID-EXACT
+  for Hard (05: 1→0) and Negative Float (07: 41→35) and safe for SS-FF (04) / Logic (01), but
+  **HARMFUL for High Float (06)** — Acumen's 814 detail INCLUDES 7 milestones with high stored float;
+  excluding them = 7 false negatives. ADR-0277 wrongly excluded 06.
+- **Shipped (ADR-0278, corrects 0277):** narrowed `exclude_milestones` scope {01,04,05,06,07} →
+  **{01,04,05,07}** (High Float uses full incomplete population under both scopes). `dcma14.py` (06 →
+  `incomplete`/`n_inc` + docstring), `test_dcma14.py` (06 retains its milestone; population unchanged),
+  `/analysis` toggle label corrected. Default off byte-identical; **P2/P5 untouched**. Re-verified
+  UID-level: Hard=0 exact, NegFloat=35 exact, HighFloat=898 (0 FN). v1.0.87 → **1.0.88**, wheel + 9
+  installers lockstep. Highest ADR **ADR-0278**.
+- **Residuals resolved as Acumen-side (not our bug), documented in ADR-0278:** the ~24-task class
+  Acumen omits from every check is structurally indistinguishable in the `.mpp`; the `.afw`
+  (gzip→.NET) exposes a per-activity `Excluded` field + `FilterActivityTypeLevelOfEffort` ⇒ Acumen
+  workspace-side exclusion/LOE. Ribbon-vs-detail is Acumen's own over-count (operator-confirmed).
+- **Still open (operator to steer):** Logic-01 definition difference (Acumen flags 5 fully-linked
+  tasks); CPLI stored-float/CPL; BEI. Sandbox: `scratchpad/acumen_parity/FINDINGS2_GROUNDTRUTH.md`.

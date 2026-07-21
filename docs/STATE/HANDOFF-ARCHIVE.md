@@ -5,6 +5,27 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-21c (DCMA milestone scope — Acumen parity; v1.0.87; highest ADR 0277)
+
+> ## STATUS (current) — operator delivered a real Acumen-vs-Program dataset (Large Test File / File2: `.mpp` + `.afw` + comparison workbooks) and asked to root-cause why our DCMA metrics differ from Acumen Fuse, test, and fix. **Deep forensic root-cause done** (converted `.mpp`→MSPDI via MPXJ, ran our engine, **set-differenced our offender lists against Acumen's actual flagged-ID lists**). **Shipped the one verified, parity-safe fix: a configurable DCMA milestone scope (ADR-0277).** Highest ADR **0277**.
+>
+> - **Verified root cause (milestones).** Excluding zero-duration milestones makes our offender SET
+>   match Acumen EXACTLY on **Hard Constraints** (1→0) and **Negative Float** (41→35), and covers the
+>   milestone share of High Float / Logic / SS-FF. Coherent rule: **work checks** (Logic 01, SS/FF 04,
+>   Hard 05, High float 06, Neg float 07) omit milestones; **completion checks** (Missed 11, BEI 14)
+>   KEEP them (a missed milestone is a real missed deliverable — excluding OVERSHOOTS Acumen, confirmed).
+> - **Implementation:** `compute_dcma14(..., exclude_milestones=False)` + `audit_schedule` forward it;
+>   `SessionState.dcma_exclude_milestones` (default off), added to `_scope_signature` ONLY when on (so
+>   the default cache-key shape is unchanged, analysis re-keys on toggle → never a stale audit); a
+>   checkbox on the `/analysis` DCMA panel POSTs `/dcma/scope`. **Default off = byte-identical to before,
+>   P2/P5 goldens untouched** (verified default==exclude on P2/P5). Tests: `test_dcma14.py` (3 new) +
+>   `test_dcma_scope.py` (toggle seam). Full local gate green. v1.0.86 → **1.0.87**, wheel + 9 installers.
+> - **Root-caused but NOT shipped (documented in ADR-0277 + `scratchpad/acumen_parity/FINDINGS.md`):**
+>   (a) **CPLI** 1.0 vs 0.97/0.59; (b) a fixed **~24 non-milestone tasks** Acumen omits from EVERY check;
+>   (c) **BEI** 0.51 vs 0.52/0.53; (d) the ribbon-vs-detail counting basis. [NOTE: superseded next
+>   session by ADR-0278 — the ground-truth workbooks proved (a)/(b) below.]
+> - **Sandbox preserved:** `scratchpad/acumen_parity/`. **State:** v1.0.87; **ADR-0277** highest.
+
 # (prior) Handoff — 2026-07-21b (interactive legends phase 3b — margin_dashboard.js; v1.0.86; highest ADR 0276)
 
 > ## STATUS (current) — operator merged #421 (phase 3a); standing "do all you can" → phase 3b of the interactive-legend rollout (ADR-0276, no new ADR — extended with a phase-3b note). **margin_dashboard.js** (the executive margin/contingency **burn-down** + margin **erosion** charts) now has click-to-show/hide legends + all/none. With this, **the rollout is substantially complete** — every analysis chart with separable series (trend, curves-native, performance, cei, margin) is covered. Highest ADR **0276**.

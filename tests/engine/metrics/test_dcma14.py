@@ -289,10 +289,13 @@ def test_bei_numerator_is_cumulative_complete_among_the_due_set() -> None:
 
 
 def test_exclude_milestones_scopes_work_checks_only() -> None:
-    """ADR-0277 Acumen-parity milestone scope: exclude_milestones drops zero-duration milestones
-    from the float / logic / constraint / relationship checks (a milestone is not an activity whose
-    float or constraint is meaningful), but NEVER from the completion checks (Missed / BEI).
-    Verified UID-exact against Acumen on the Large Test File (Hard 1→0, Negative Float 41→35)."""
+    """ADR-0277 (amended) Acumen-parity milestone scope: exclude_milestones drops zero-duration
+    milestones from Hard constraints (05), Negative float (07), Logic (01) and SS/FF (04) — verified
+    UID-exact against Acumen's flagged-task detail on the Large Test File (Hard 1→0, Negative Float
+    41→35). It does NOT touch High float (06): Acumen's High-Float detail INCLUDES milestones with
+    genuinely high stored float, so 06 keeps them under both scopes (the original ADR wrongly
+    excluded 06 → 7 false negatives vs Acumen; ground-truth corrected by ADR-0278). Completion
+    checks (Missed / BEI) always keep milestones."""
     tasks = [
         # one normal task and one milestone per work-check, each tripping it
         Task(
@@ -333,15 +336,19 @@ def test_exclude_milestones_scopes_work_checks_only() -> None:
     inc = compute_dcma14(sch)  # default: milestones included (prior behaviour)
     exc = compute_dcma14(sch, exclude_milestones=True)
 
-    assert inc["DCMA05"].count == 2 and exc["DCMA05"].count == 1  # Hard constraints
-    assert inc["DCMA07"].count == 2 and exc["DCMA07"].count == 1  # Negative float
-    assert inc["DCMA06"].count == 2 and exc["DCMA06"].count == 1  # High float
-    # exactly the milestone UIDs are the ones dropped
+    assert inc["DCMA05"].count == 2 and exc["DCMA05"].count == 1  # Hard: milestone dropped
+    assert (
+        inc["DCMA07"].count == 2 and exc["DCMA07"].count == 1
+    )  # Negative float: milestone dropped
+    # High float KEEPS milestones under both scopes (Acumen's detail includes them) — ADR-0278
+    assert inc["DCMA06"].count == 2 and exc["DCMA06"].count == 2
+    # exactly the milestone UIDs drop from the milestone-scoped checks; 06 retains its milestone
     assert set(inc["DCMA05"].offender_uids) - set(exc["DCMA05"].offender_uids) == {2}
     assert set(inc["DCMA07"].offender_uids) - set(exc["DCMA07"].offender_uids) == {4}
-    assert set(inc["DCMA06"].offender_uids) - set(exc["DCMA06"].offender_uids) == {6}
-    # the denominators (population) also drop the milestones for those checks
+    assert set(exc["DCMA06"].offender_uids) == {5, 6}  # milestone 6 retained under exclude
+    # the negative-float denominator drops the milestones; the high-float denominator does NOT
     assert exc["DCMA07"].population == inc["DCMA07"].population - 3
+    assert exc["DCMA06"].population == inc["DCMA06"].population
 
 
 def test_exclude_milestones_keeps_missed_milestones() -> None:

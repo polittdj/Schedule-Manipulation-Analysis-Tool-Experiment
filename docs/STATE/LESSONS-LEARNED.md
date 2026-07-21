@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-21 (cont. 3) — the fix I shipped an hour earlier was PARTLY WRONG, and richer ground truth caught it (ADR-0278 corrects 0277)
+- Right after ADR-0277 merged (milestone-exclusion for the DCMA "work" checks {01,04,05,06,07}), the
+  operator committed the **ground-truth workbooks** — Acumen's ACTUAL per-check flagged-task detail
+  rows (not just counts, not just the ribbon). A **UID-level** re-diff overturned part of my fix:
+  excluding milestones is UID-EXACT for Hard (05) and Negative Float (07), but **HARMFUL for High
+  Float (06)** — Acumen's 814 detail *includes* 7 zero-duration milestones with genuinely high stored
+  float, so excluding them = 7 false negatives (under-report, the wrong direction for testimony).
+- **The root LESSON: a count match can be a coincidental proxy.** In the prior session I saw
+  "exclude milestones ⇒ 41→35, matches Acumen's 35" and generalised "work checks omit milestones" to
+  all five. But 41→35 matched *by count*; I hadn't confirmed the 6 dropped were the *only* difference
+  AND that the same rule held on the OTHER checks' actual rows. On High Float the milestone count (60
+  of 84 FP) looked like the story but the real driver was a **non-milestone** population Acumen
+  excludes workspace-side. Milestone-ness was correlated, not causal. VERIFY THE RULE ON EACH CHECK'S
+  ENTITY LIST, not one check's count — a proxy that fits sample A can be actively wrong on sample B.
+- **What the richer data resolved that I'd left "unexplained":** the `.afw` (gzip → .NET
+  BinaryFormatter) exposes a per-activity **`Excluded`** field + a **`FilterActivityTypeLevelOfEffort`**
+  filter. So the ~24-task class Acumen omits from every check is an **Acumen workspace-side exclusion /
+  LOE classification**, not derivable from the `.mpp` — our engine is CORRECT to flag them. Confirms
+  the (cont. 2) instinct to STOP deriving and label it tool-state, now with positive evidence.
+- **Meta-lesson on "verified":** I described the milestone fix as "verified, parity-safe" in the
+  handoff and PR. It was verified against *counts and the ribbon*; it was not verified against
+  Acumen's per-check detail rows (which I didn't have until the operator committed them). "Verified"
+  must name the oracle. When better ground truth arrives, re-run — and be willing to correct a
+  just-merged decision the same day. Default-off saved us: nothing live was wrong, only the opt-in.
+
 ### 2026-07-21 (cont. 2) — root-cause an external-tool parity gap by SET-DIFF against its own output, and distrust the first clean hypothesis
 - Acumen-vs-our-DCMA parity investigation on a real 2,100-activity dataset. The single most valuable
   move: the operator's Acumen export contained the **actual flagged task-ID lists** per check, so
