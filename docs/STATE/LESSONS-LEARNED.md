@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-21 (cont.) — not every legend swatch is a togglable series; and fit the mechanism to the chart
+- Legend phase 3b (margin_dashboard.js). The burn-down legend has seven swatches, but one — "Below
+  requirement" — is **not a series**: the margin bars are drawn green above / red below the NASA
+  requirement, and that swatch explains the *recoloring*. Toggling it ("hide the red months, keep the
+  green") is meaningless; it is one series with a per-month threshold color. The honest model is a
+  `static:true` legend entry that renders as a plain color KEY (no toggle), while the real series
+  (including the conditional-color margin bars, tagged with a **single** key so both colors hide
+  together) stay togglable. LESSON: before wiring a toggle to every legend row, ask of each "is this a
+  separable series, a threshold *state* of another series, or a scale key?" — only the first should
+  toggle. Forcing toggles onto states/keys produces incoherent filters.
+- **Fit the mechanism to the chart's actual behavior — don't cargo-cult.** performance/cei needed the
+  `data-series-scope` host marker because their svg is rebuilt every animation frame. margin renders
+  **once** (no stepper), so its svg scope is already stable and the marker would be pure ceremony —
+  omitted, and documented why. Same feature, different mechanism, decided by whether the chart
+  re-renders. Reflexively stamping the marker everywhere would add noise and imply an animation that
+  isn't there.
+- **The generic module kept paying off:** a static entry simply carries no toggle attribute, so
+  `SFLegend` ignores it and all/none skips it — zero module change for a genuinely new legend *shape*.
+  Verified the shape (conditional-color hides together, static is inert, all/none skips it) against the
+  REAL module in a node harness before shipping — the same reproduce-then-build discipline, one more time.
+
 ### 2026-07-21 — an abstraction proven on ONE structural shape can silently fail on another
 - Legend phase 3 (performance.js + cei.js). The phase-1 `SFLegend` module was verified on trend.js,
   where the legend sits OUTSIDE the redrawn svg, so `scopeFor`'s "smallest ancestor containing the

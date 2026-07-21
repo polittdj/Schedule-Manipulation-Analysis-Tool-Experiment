@@ -75,3 +75,24 @@ def test_cei_chart_opts_into_the_toggle_and_marks_a_stable_scope() -> None:
     assert '"data-series": pair[2]' in cei  # cumulative (running-totals) curves tagged
     assert '"data-series-toggle": item[0]' in cei  # legend entries opt in
     assert '"data-series-all": "1"' in cei  # the show-all/none control
+
+
+def test_margin_dashboard_opts_in_with_a_static_color_key_entry() -> None:
+    """margin_dashboard.js (phase 3b) is render-once (no stepper) so it needs no data-series-scope
+    marker, but its burndown legend MIXES clickable toggles with a static color-key: "Below
+    requirement" is a per-month recoloring of the margin bars (a threshold state), not a separate
+    series, so it opts OUT via static:true while the real series (margin bars, contingency,
+    requirement line, planned depletion, corrective carets, band, erosion trend, zero-margin marker)
+    are tagged and togglable."""
+    margin = (_STATIC / "margin_dashboard.js").read_text(encoding="utf-8")
+    assert '"data-series-toggle": it.key || it.label' in margin  # legend entries opt in
+    assert '"data-series-all": "1"' in margin  # the show-all/none control
+    assert "if (!it.static)" in margin  # the static color-key path (renders plain, no toggle)
+    assert 'label: "Below requirement", static: true' in margin  # the one static entry
+    # a representative set of the tagged series marks (bars, lines, markers)
+    assert '"data-series": "Effective margin (wd)"' in margin
+    assert '"data-series": "Contingency (days)"' in margin
+    assert '"data-series": "NASA requirement"' in margin
+    assert '"data-series": "Erosion trend"' in margin  # explicit key (label has a dynamic rate)
+    # the zero-margin text label is tagged too (via setAttribute, not an attr literal)
+    assert 'zt.setAttribute("data-series", "Zero-margin date")' in margin

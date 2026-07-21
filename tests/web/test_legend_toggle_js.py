@@ -18,6 +18,7 @@ import pytest
 
 _HARNESS = Path(__file__).parent / "js" / "legend_toggle_harness.mjs"
 _SCOPE_HARNESS = Path(__file__).parent / "js" / "legend_scope_harness.mjs"
+_STATIC_HARNESS = Path(__file__).parent / "js" / "legend_static_harness.mjs"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
@@ -41,6 +42,23 @@ def test_legend_stable_scope_survives_svg_replacement() -> None:
     fallback)."""
     proc = subprocess.run(
         [str(shutil.which("node")), str(_SCOPE_HARNESS)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert proc.returncode == 0, f"harness failed:\n{proc.stdout}\n{proc.stderr}"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
+def test_legend_static_and_conditional_color_series() -> None:
+    """margin_dashboard.js (phase 3b) mixes clickable toggles with a STATIC color-key entry
+    ("Below requirement" is a per-month recoloring of the margin bars, not a separate series), and
+    tags a conditional-color series (green above / red below the requirement) with one key. This
+    harness proves a single toggle hides both colors together, the static entry is inert, and
+    all/none toggles only the real series."""
+    proc = subprocess.run(
+        [str(shutil.which("node")), str(_STATIC_HARNESS)],
         capture_output=True,
         text=True,
         timeout=30,
