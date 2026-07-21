@@ -77,24 +77,45 @@
     h.appendChild(svg);
     return svg;
   }
+  // Each entry is a clickable <g data-series-toggle> so SFLegend (ADR-0276) shows/hides the matching
+  // data-series path/bars; the key is it.key||it.label (an explicit key where the short legend label
+  // differs from the series name). A trailing "all / none" control toggles every series.
   function legend(svg, x, y, items) {
     var cx = x;
     items.forEach(function (it) {
+      var g = svgEl("g", {
+        "data-series-toggle": it.key || it.label, role: "button", tabindex: "0",
+        "aria-pressed": "true", "aria-label": "Show / hide " + it.label,
+      });
+      g.style.cursor = "pointer";
       var mark = svgEl(it.dash ? "line" : "rect",
         it.dash
           ? { x1: cx, y1: y - 3, x2: cx + 14, y2: y - 3, stroke: it.color, "stroke-width": 2, "stroke-dasharray": it.dash === true ? "4 3" : it.dash }
           : { x: cx, y: y - 9, width: 10, height: 8, fill: it.color, opacity: it.op || 1 });
-      svg.appendChild(mark);
-      var t = txt(svg, cx + (it.dash ? 18 : 14), y, it.label, { size: 9 });
-      cx += (it.dash ? 18 : 14) + it.label.length * 5.2 + 14;
-      void t;
+      g.appendChild(mark);
+      txt(g, cx + (it.dash ? 18 : 14), y, it.label, { size: 9 });
+      var w = (it.dash ? 18 : 14) + it.label.length * 5.2 + 14;
+      // a transparent hit area so the whole entry (not just the glyphs) is a click target
+      g.appendChild(svgEl("rect", { x: cx - 1, y: y - 11, width: w, height: 14, fill: "transparent" }));
+      svg.appendChild(g);
+      cx += w;
     });
+    if (items.length > 1) {
+      var ctrl = svgEl("g", { "data-series-all": "1", role: "button", tabindex: "0", "aria-label": "Show all series, or hide all" });
+      ctrl.style.cursor = "pointer";
+      txt(ctrl, cx + 2, y, "all / none", { size: 9, fill: "var(--focus)" });
+      ctrl.appendChild(svgEl("rect", { x: cx, y: y - 11, width: 52, height: 14, fill: "transparent" }));
+      svg.appendChild(ctrl);
+    }
   }
 
   /* A shared month-axis cartesian frame: returns {svg,x,y,L,R,T,B} with ticks + DD line. */
   function monthFrame(id, months, ymin, ymax, W, H, label) {
     var svg = frame(id, W, H, label);
     if (!svg) return null;
+    // mark the stable host as the legend scope: the svg is rebuilt every animation frame, so the
+    // SFLegend hidden set must live on the host (which survives the redraw), not the svg (ADR-0276).
+    if (svg.parentNode && svg.parentNode.setAttribute) svg.parentNode.setAttribute("data-series-scope", "1");
     var L = 46, R = W - 12, T = 16, B = H - 26;
     var n = Math.max(1, months.length);
     function x(i) { return L + (R - L) * (n === 1 ? 0.5 : i / (n - 1)); }
@@ -128,7 +149,7 @@
     if (!d) return;
     var p = svgEl("path", { d: d, fill: "none", stroke: color, "stroke-width": 1.7 });
     if (dash) p.setAttribute("stroke-dasharray", dash);
-    if (name) tip(p, name);
+    if (name) { tip(p, name); p.setAttribute("data-series", name); } // interactive legend (ADR-0276)
     f.svg.appendChild(p);
   }
   function area(f, vals, color, op, name) {
@@ -143,7 +164,7 @@
     if (!d) return;
     d += "L" + lastX.toFixed(1) + " " + f.y(0).toFixed(1) + " L" + firstX.toFixed(1) + " " + f.y(0).toFixed(1) + " Z";
     var p = svgEl("path", { d: d, fill: color, opacity: op || 0.3, stroke: "none" });
-    if (name) tip(p, name);
+    if (name) { tip(p, name); p.setAttribute("data-series", name); } // interactive legend (ADR-0276)
     f.svg.appendChild(p);
   }
   function stackedBars(f, rows, keys, colors, labels, vfile) {
@@ -156,7 +177,7 @@
         var x0 = f.x(i) - bw / 2, yv, hh;
         if (v > 0) { yv = f.y(up + v); hh = f.y(up) - yv; up += v; }
         else { yv = f.y(down); hh = f.y(down + v) - yv; down += v; }
-        var rect = svgEl("rect", { x: x0, y: yv, width: bw, height: Math.max(0.6, hh), fill: colors[ki], opacity: 0.9 });
+        var rect = svgEl("rect", { x: x0, y: yv, width: bw, height: Math.max(0.6, hh), fill: colors[ki], opacity: 0.9, "data-series": labels[ki] });
         tip(rect, r.month + " — " + labels[ki] + ": " + v);
         // each segment carries the UIDs behind its count (r[key + "_uids"]) — click to drill
         drill(rect, r[k + "_uids"], vfile, r.month + " — " + labels[ki]);
@@ -209,9 +230,11 @@
     line(f, FLOW.map(function (m) { return m["scheduled_" + pre]; }), ACC, null, "Scheduled/forecast");
     line(f, FLOW.map(function (m) { return m["actual_" + pre]; }), OK, null, "Actual");
     legend(f.svg, f.L + 4, f.T + 2, [
-      { color: MUT, label: "Baselined", dash: "5 3" }, { color: ACC, label: "Scheduled", dash: "0" },
+      { color: MUT, label: "Baselined", dash: "5 3" },
+      { color: ACC, label: "Scheduled", dash: "0", key: "Scheduled/forecast" }, // series name differs
       { color: OK, label: "Actual", dash: "0" }, { color: WARN, label: "late ≤30d", op: 0.9 },
-      { color: ACC, label: "31–60d", op: 0.9 }, { color: BAD, label: ">60d", op: 0.9 },
+      { color: ACC, label: "31–60d", op: 0.9, key: "late 31–60d" },
+      { color: BAD, label: ">60d", op: 0.9, key: "late >60d" },
     ]);
   }
   function renderG2() {
@@ -233,9 +256,12 @@
     line(f, FLOW.map(function (m) { return m.cum_scheduled_finishes; }), ACC, "5 3", "Scheduled finishes (cum)");
     line(f, FLOW.map(function (m) { return m.cum_actual_finishes; }), OK, "5 3", "Actual finishes (cum)");
     legend(f.svg, f.L + 4, f.T + 2, [
-      { color: MUT, label: "BL starts", dash: "0" }, { color: ACC, label: "Sched starts", dash: "0" },
-      { color: OK, label: "Actual starts", dash: "0" }, { color: MUT, label: "BL finishes", dash: "5 3" },
-      { color: ACC, label: "Sched finishes", dash: "5 3" }, { color: OK, label: "Actual finishes", dash: "5 3" },
+      { color: MUT, label: "BL starts", dash: "0", key: "Baselined starts (cum)" },
+      { color: ACC, label: "Sched starts", dash: "0", key: "Scheduled starts (cum)" },
+      { color: OK, label: "Actual starts", dash: "0", key: "Actual starts (cum)" },
+      { color: MUT, label: "BL finishes", dash: "5 3", key: "Baselined finishes (cum)" },
+      { color: ACC, label: "Sched finishes", dash: "5 3", key: "Scheduled finishes (cum)" },
+      { color: OK, label: "Actual finishes", dash: "5 3", key: "Actual finishes (cum)" },
     ]);
   }
 
@@ -256,12 +282,14 @@
     line(f, FLOW.map(function (m) { return m[rollKey]; }), WARN, null, "HMI 3-mo rolling");
     FLOW.forEach(function (m, i) {
       if (m[hmiKey] === null || m[hmiKey] === undefined) return;
-      var c = svgEl("circle", { cx: f.x(i), cy: f.y(m[hmiKey]), r: 2, fill: WARN, opacity: 0.7 });
+      // the monthly HMI dots share the rolling line's series key so the legend hides both together
+      var c = svgEl("circle", { cx: f.x(i), cy: f.y(m[hmiKey]), r: 2, fill: WARN, opacity: 0.7, "data-series": "HMI 3-mo rolling" });
       tip(c, m.month + " HMI: " + m[hmiKey]);
       f.svg.appendChild(c);
     });
     legend(f.svg, f.L + 4, f.T + 2, [
-      { color: ACC, label: "BEI", dash: "0" }, { color: WARN, label: "HMI (monthly + 3-mo avg)", dash: "0" },
+      { color: ACC, label: "BEI", dash: "0", key: "BEI (cumulative)" },
+      { color: WARN, label: "HMI (monthly + 3-mo avg)", dash: "0", key: "HMI 3-mo rolling" },
     ]);
   }
   function renderG3() {
@@ -290,8 +318,10 @@
       ["On plan", "Early", "Workoff (was past-due)", "Past-due, forecast here", "Future baseline, slipped here", "Backlog at its baselined month"], vlabel);
     legend(f.svg, f.L + 4, f.T + 2, [
       { color: OK, label: "On plan", op: 0.9 }, { color: ACC, label: "Early", op: 0.9 },
-      { color: WARN, label: "Workoff done", op: 0.9 }, { color: BAD, label: "Past-due → forecast", op: 0.9 },
-      { color: "#b58cff", label: "Future BL slipped", op: 0.9 }, { color: MUT, label: "Backlog (below axis)", op: 0.9 },
+      { color: WARN, label: "Workoff done", op: 0.9, key: "Workoff (was past-due)" },
+      { color: BAD, label: "Past-due → forecast", op: 0.9, key: "Past-due, forecast here" },
+      { color: "#b58cff", label: "Future BL slipped", op: 0.9, key: "Future baseline, slipped here" },
+      { color: MUT, label: "Backlog (below axis)", op: 0.9, key: "Backlog at its baselined month" },
     ]);
   }
   function renderG4() {

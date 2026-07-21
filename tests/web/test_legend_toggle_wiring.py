@@ -30,6 +30,9 @@ def test_legend_module_is_loaded_app_wide_and_serves(client: TestClient) -> None
     body = js.text
     assert "window.SFLegend" in body
     assert "data-series-toggle" in body and "data-series-all" in body
+    # phase 3: scopeFor honors an explicit stable-scope marker so a legend drawn INSIDE an svg that
+    # is rebuilt every animation frame keeps its hidden set on the (surviving) host, not the svg.
+    assert "data-series-scope" in body
 
 
 def test_trend_charts_opt_into_the_toggle_and_tag_their_series() -> None:
@@ -45,3 +48,30 @@ def test_trend_charts_opt_into_the_toggle_and_tag_their_series() -> None:
     assert "toggle: series.length > 1" in trend
     assert "toggle: segments.length > 1" in trend
     assert "toggle: groups.length > 1" in trend
+
+
+def test_performance_charts_opt_into_the_toggle_and_mark_a_stable_scope() -> None:
+    """performance.js (G1-G4 census/flow/index/burden) draws its legend INSIDE the svg and the
+    master stepper rebuilds that svg every frame. It must: tag each series mark with data-series,
+    emit data-series-toggle legend groups + a data-series-all control, and mark the stable host
+    (monthFrame) with data-series-scope so the hidden set survives the redraw."""
+    perf = (_STATIC / "performance.js").read_text(encoding="utf-8")
+    assert 'setAttribute("data-series", name)' in perf  # line() and area() paths tag their series
+    assert '"data-series": labels[ki]' in perf  # stacked bar segments are tagged
+    assert '"data-series-toggle": it.key || it.label' in perf  # legend entries opt in
+    assert '"data-series-all": "1"' in perf  # the show-all/none control
+    # the stable scope marker on the host (the svg is transient across animation frames)
+    assert 'setAttribute("data-series-scope", "1")' in perf
+
+
+def test_cei_chart_opts_into_the_toggle_and_marks_a_stable_scope() -> None:
+    """cei.js is the chart the operator named ("looking at CEI, I want to select ... milestones or
+    tasks"). render() rebuilds the svg every auto-play frame, so it marks its host
+    (ceiChart) with data-series-scope, tags both the grouped bars and the cumulative curves with
+    data-series, and emits clickable legend toggles + an all/none control."""
+    cei = (_STATIC / "cei.js").read_text(encoding="utf-8")
+    assert 'setAttribute("data-series-scope", "1")' in cei  # the stable host scope
+    assert '"data-series": sd[4]' in cei  # grouped bars tagged
+    assert '"data-series": pair[2]' in cei  # cumulative (running-totals) curves tagged
+    assert '"data-series-toggle": item[0]' in cei  # legend entries opt in
+    assert '"data-series-all": "1"' in cei  # the show-all/none control

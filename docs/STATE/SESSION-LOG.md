@@ -7387,3 +7387,24 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   **1.0.84**, wheel + 9 installers lockstep. Highest ADR **ADR-0276**. NEXT: phase 3+ — remaining
   hand-rolled-legend charts (margin_dashboard, performance, path_evolution, cei, dashboard, sra_grid),
   checking each for a native toggle first.
+
+- **Session (2026-07-21, post-#420 — interactive legends phase 3a):** operator merged #420 (legend
+  phase 2); standing "do all you can" → phase 3a (ADR-0276 rollout; the ADR gains a phase-3 note, no
+  new ADR). Adopters: **performance.js** (G1–G4 census/flow/index/burden — 5 legend-bearing chart
+  families sharing the line/area/stackedBars helpers) and **cei.js** (the bow-wave chart the operator
+  NAMED). Both draw the legend INSIDE the svg, and the steppers rebuild that svg every frame — so
+  phase-1 `scopeFor` (smallest ancestor holding the series) resolved to the *transient* svg and the
+  hidden set died on redraw. **Prototype-verified the bug and the fix against the real module**
+  (`scratchpad/legend_scope_verify.mjs`): enhanced `scopeFor` to first honor an explicit
+  `data-series-scope` marker on the persistent host (performance: the `monthFrame` host; cei:
+  `#ceiChart`), so the hidden set + MutationObserver live on the surviving host; trend.js/phase-1/2
+  charts are unaffected (no marker → identical fallback, existing harness still green). Series-key
+  discipline: explicit `key` where the legend label ≠ the series name (perf g2/g2cum/g3; cei maps its
+  3 families to both the grouped bars and the running-totals curves). Verified: new node harness
+  `legend_scope_harness.mjs` (firing MutationObserver — scopeFor→marked-host, redraw persistence,
+  independence, all/none-survives-redraw) + performance/cei opt-in assertions in
+  test_legend_toggle_wiring.py. Full local gate green (ruff, format, mypy 116, bandit exit 0, node,
+  pytest 2600+). v1.0.84 → **1.0.85**, wheel + 9 installers lockstep. Highest ADR **ADR-0276**. NEXT:
+  phase 3b (BESPOKE) — margin_dashboard.js (conditional color-states + marker glyphs) + dashboard.js
+  (anchor-wrapped, two-charts-per-scope, needs preventDefault); sra_grid + path_evolution SKIPPED
+  (tint-scale / descriptive legends, no series to toggle).

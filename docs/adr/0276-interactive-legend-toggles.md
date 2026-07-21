@@ -73,3 +73,52 @@ load-bearing part — that a **re-drawn** series element inherits the hidden sta
 is included on every page and serves, and `trend.js` actually emits `data-series-toggle` + tags its
 series so the generic toggle has something to hide. The node-harness pattern mirrors the existing
 `theme.js` / `sra_derive` JS unit tests (the repo's established way to execute vendored JS).
+
+## Phase 3 (2026-07-21) — performance.js + cei.js, and the stable-scope refinement
+
+Adopters this phase: **performance.js** (the G1–G4 census / flow / index / burden chart families —
+five legend-bearing charts sharing the `line` / `area` / `stackedBars` helpers) and **cei.js** (the
+bow-wave chart the operator named explicitly). Both draw their legend **inside** the svg.
+
+**Refinement — an explicit stable-scope marker.** Phase 1's `scopeFor` returns the *smallest*
+ancestor holding both the legend and the series. That is correct when the legend sits OUTSIDE the
+redrawn svg (trend.js's `.chart` wrap survives frame redraws). But performance.js / cei.js draw the
+legend INSIDE the svg, and `frame()` / `render()` **replace that whole svg every animation frame** —
+so the smallest-containing ancestor *is* the transient svg, and the hidden set (plus its
+`MutationObserver`) dies with it on the next step. Prototype-verified against the real module: a
+legend click hides the series, and a simulated svg-replacing redraw brings it right back
+(`scratchpad/legend_scope_verify.mjs`, "current" mode).
+
+Fix: `scopeFor` first walks up for an explicit `data-series-scope` ancestor and returns it when
+present; otherwise it falls back to the phase-1 smallest-containing search. A chart whose svg is
+rebuilt marks its **persistent host** (performance.js: the `monthFrame` host; cei.js: `#ceiChart`)
+with `data-series-scope` — one marker per chart, since a shared container would merge sibling charts
+into one scope. The hidden set now lives on the surviving host, and the lazy `MutationObserver`
+(attached to that host) re-hides the freshly drawn series after each redraw. trend.js and every
+phase-1/2 chart are unaffected (no marker → identical fallback behavior), confirmed by the existing
+harness still passing.
+
+**Series-key discipline.** A legend's short label often differs from the series name it toggles
+(performance g2: legend "Scheduled" vs series "Scheduled/forecast"; g2cum "BL starts" vs "Baselined
+starts (cum)"). Each legend entry carries an explicit `key` where they differ, matched exactly to the
+mark's `data-series`; cei.js maps its three families ("Baselined/Scheduled to Finish", "Finished") to
+both the grouped bars and the running-totals curves so the toggle holds across the bars↔curves mode
+switch. The g3 monthly-HMI dots share the rolling line's key so the "HMI (monthly + 3-mo avg)" entry
+hides both together.
+
+**Verification (phase 3).** `tests/web/js/legend_scope_harness.mjs` (run by
+`test_legend_toggle_js.py::test_legend_stable_scope_survives_svg_replacement`) boots the real module
+with a **firing** `MutationObserver` stub and proves: `scopeFor` resolves an in-svg legend item to
+the marked host (not the svg); a full svg replacement keeps the series hidden; marked hosts stay
+independent; all/none survives a redraw. `test_legend_toggle_wiring.py` gains
+`test_performance_charts_opt_into_the_toggle_and_mark_a_stable_scope` and
+`test_cei_chart_opts_into_the_toggle_and_marks_a_stable_scope`.
+
+**Remaining (phase 3b+).** `margin_dashboard.js` and `dashboard.js` need bespoke handling, not a
+mechanical adoption: margin's burn-down legend mixes true series (contingency, requirement line,
+planned line) with per-month conditional color-states ("Effective margin" vs "Below requirement" are
+the same bar recolored) and marker glyphs (corrective carets, Fig 5-30 band); dashboard's legends sit
+inside an `<a>` card (a toggle click would follow the card link without a `preventDefault`), one card
+scope conflates two mini-charts, and toggling a 100 %-proportion strip leaves gaps. `sra_grid.js`
+(tint-scale heatmap key) and `path_evolution.js` (descriptive legend) have **no series to toggle** and
+are intentionally skipped.

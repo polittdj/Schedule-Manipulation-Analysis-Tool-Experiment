@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-21 — an abstraction proven on ONE structural shape can silently fail on another
+- Legend phase 3 (performance.js + cei.js). The phase-1 `SFLegend` module was verified on trend.js,
+  where the legend sits OUTSIDE the redrawn svg, so `scopeFor`'s "smallest ancestor containing the
+  series" lands on the stable `.chart` wrap. performance.js / cei.js draw the legend **inside** the
+  svg — and `frame()` / `render()` replace that whole svg every animation frame. So the exact same
+  `scopeFor` now resolves to the **transient svg**, the hidden set (and its MutationObserver) die on
+  the next step, and the toggle silently reverts on Play. The module "just worked" in phase 2 (bars
+  are also outside-legend), which lulled me — but a different **structural shape** broke the invariant.
+  LESSON: when a generic mechanism meets a new adopter, re-verify the *structural assumption* it
+  depends on (here: "the scope element survives a redraw"), don't assume prior success transfers.
+- **Prototype-verify caught it before a single line of the fix.** I ran the REAL module in a scratch
+  harness that models host>svg(transient)>legend, clicked a toggle, simulated an svg-replacing redraw,
+  and watched the series reappear — reproducing the bug against trusted code first, then confirming the
+  `data-series-scope` stable-host marker flips it green (and that trend.js's fallback is untouched).
+  Same discipline as the engine work: reproduce against the real thing, then build.
+- **Not every legend is a set of separable series — recognize the ones that shouldn't toggle.** Of the
+  six "phase-3" charts, only performance + cei are clean adoptions. margin_dashboard mixes true series
+  (contingency, requirement line) with per-month conditional **color-states** (the same margin bar is
+  green or red) and marker glyphs (corrective carets, guideline band) — a mechanical toggle would be
+  incoherent. dashboard's legend lives inside an `<a>` card (a toggle needs `preventDefault` or it
+  follows the link) and one card scope spans two mini-charts. sra_grid (tint-scale heatmap key) and
+  path_evolution (descriptive legend) have **no series to toggle** at all. LESSON: "add toggles to all
+  charts" is not uniform work — classify each legend (separable series? conditional state? scale key?)
+  and defer/skip the ones a toggle would misrepresent, rather than forcing the convention everywhere.
+
 ### 2026-07-19 (cont. 7) — a good abstraction makes phase 2 nearly free; and check for what already exists
 - Phase 2 of the interactive-legend rollout (trend.js stacked + grouped bars) needed **zero** change
   to the SFLegend module — just `data-series` on the bar rects + an opt-in flag on the legend call.
