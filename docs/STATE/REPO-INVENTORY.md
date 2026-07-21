@@ -632,9 +632,13 @@ All are single-sheet `Directional Path Export` workbooks. **Column schema (ident
 |---|---|---|---|---|
 | `Project5_TAMPERED_UID_67_Directional_Path_Analysis_2026-7-8-8-19-10.xlsx` | 11 KB | UID 67 "Pour roof slab", 20 Path-01 rows | `golden/ssi_uid67/case.json`; Predecessors, Driving Slack≤0d, Waterfall | Driving-path membership + **drag gated exact** (`test_ssi_drag_exact`) |
 | `Large_Test_File_UID_152_Directional_Path_Analysis_2026-7-8-8-45-50.xlsx` | 15 KB | UID 152, 76 Path-01 rows (all slack 0d) | `golden/ssi_uid152/case.json`; drag provenance-only (ADR-0158) | `test_ssi_driving_slack_uid152_exact` |
-| `Large Test File Leveled ... UID_152 ... 2026-7-14-17-21-13.xlsx` | 68 KB | UID 152, all-dependencies + driving slack | `golden/ssi_uid152_leveled/case.json` (2026-07-14) | Leveled driving-path parity (ignore-leveling-delay convention) |
-| `Large Test File Leveled Critical - Secondary - Teritiary ... 2026-7-14-17-22-42.xlsx` | 19 KB | UID 152, tiered (critical/secondary/tertiary) | same golden dir | Tier-band (secondary/tertiary) validation |
-| `Large Test File Leveled ... SSI Settings.jpg` | 80 KB | **Screenshot (JPEG)** of SSI tool settings | 2026-07-14 | Documents the exact SSI config (Predecessors, Ignore constraints/leveling delay, near-path bands) behind the leveled goldens |
+| `Large Test File Leveled UID_152_Directional_Path_Analysis_2026-7-14.xlsx` | 68 KB | UID 152, all-dependencies + driving slack | `golden/ssi_uid152_leveled/case.json` (2026-07-14) | Leveled driving-path parity (ignore-leveling-delay convention) |
+| `Large Test File Leveled 152_Directional_Path_Analysis_2026-7-14 (b).xlsx` | 19 KB | UID 152, tiered (critical/secondary/tertiary) | same golden dir | Tier-band (secondary/tertiary) validation |
+| `Large Test File Leveled UID_152_Directional_Path_Analysis_2026-7-14.jpg` | 80 KB | **Screenshot (JPEG)** of SSI tool settings | 2026-07-14 | Documents the exact SSI config (Predecessors, Ignore constraints/leveling delay, near-path bands) behind the leveled goldens |
+<!-- renamed on GitHub 2026-07-21 (path-length only, content unchanged) from the original
+     "... with driving slack to UID_152_Directional_Path_Analysis_2026-7-14-17-21-13.xlsx" /
+     "... Critical - Secondary - Teritiary - with driving slack to ...-17-22-42[.xlsx|.jpg]" names -->
+
 | `Hard_File_Path_Trace_UID_155_...2026-7-8-13-30-7.xlsx` | 16 KB | UID 155, base Hard_File | `golden/ssi_hardfile_uid155/case.json` | Path-01 membership + ordered driving chain (141→156→36→9→144→145→146→411→155) |
 | `Hard_File_Path_Updated_Trace_UID_155_...2026-7-8-13-30-7.xlsx` | 16 KB | UID 155, Hard_File_updated | same golden | Same, on the updated snapshot |
 | `.gitkeep` | 0 | placeholder | — | — |
