@@ -25,9 +25,20 @@
   var HIDDEN = "__sfHiddenSeries"; // Set<string> stamped on the scope element
   var MO = "__sfLegendMo"; // the lazy MutationObserver stamped on the scope element
 
-  // the smallest ancestor of `node` that also contains series elements (so the legend and its
-  // series share one scope); null if none (a legend with no tagged series — a no-op, static chart).
+  // The scope owns the hidden set and bounds one chart. An explicit, stable boundary wins: charts
+  // whose svg is rebuilt every animation frame (performance.js / cei.js draw the legend INSIDE that
+  // svg, so the smallest-containing ancestor would be the transient svg and the hidden set would die
+  // on redraw) mark their persistent host with data-series-scope — one marker per chart, since a
+  // shared container would merge sibling charts into one scope. Otherwise fall back to the smallest
+  // ancestor that also holds series elements (trend.js's `.chart` wrap: its legend sits OUTSIDE the
+  // svg, so that ancestor is already stable across redraws). null if none (a legend with no tagged
+  // series — a no-op, static chart).
   function scopeFor(node) {
+    var m = node;
+    while (m) {
+      if (m.getAttribute && m.getAttribute("data-series-scope") != null) return m;
+      m = m.parentNode;
+    }
     var n = node;
     while (n && n.querySelector) {
       if (n.querySelector("[data-series]")) return n;
@@ -52,7 +63,13 @@
     for (var j = 0; j < items.length; j++) {
       var k = items[j].getAttribute("data-series-toggle");
       var off = !!hid[k];
-      if (items[j].classList) items[j].classList.toggle("legend-off", off);
+      // HTML legend entries dim + strike via the .legend-off CSS; SVG legend groups (drawn charts)
+      // have no CSS class hook, so dim them inline. Either way classList stays a usable state hook.
+      if (items[j].namespaceURI === "http://www.w3.org/2000/svg") {
+        items[j].style.opacity = off ? "0.4" : "";
+      } else if (items[j].classList) {
+        items[j].classList.toggle("legend-off", off);
+      }
       items[j].setAttribute("aria-pressed", off ? "false" : "true");
     }
   }

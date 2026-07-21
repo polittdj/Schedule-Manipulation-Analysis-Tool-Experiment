@@ -17,12 +17,30 @@ from pathlib import Path
 import pytest
 
 _HARNESS = Path(__file__).parent / "js" / "legend_toggle_harness.mjs"
+_SCOPE_HARNESS = Path(__file__).parent / "js" / "legend_scope_harness.mjs"
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
 def test_legend_toggle_hides_shows_series_and_survives_redraw() -> None:
     proc = subprocess.run(
         [str(shutil.which("node")), str(_HARNESS)],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert proc.returncode == 0, f"harness failed:\n{proc.stdout}\n{proc.stderr}"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not on PATH (local-gate tool)")
+def test_legend_stable_scope_survives_svg_replacement() -> None:
+    """Phase-3 charts (performance.js / cei.js) draw the legend INSIDE an svg that is rebuilt every
+    animation frame; they mark their persistent host with data-series-scope so scopeFor resolves to
+    the stable host and a firing MutationObserver re-hides the freshly drawn series after a full svg
+    replacement. This harness proves that path (the other harness covers the legend-outside-svg
+    fallback)."""
+    proc = subprocess.run(
+        [str(shutil.which("node")), str(_SCOPE_HARNESS)],
         capture_output=True,
         text=True,
         timeout=30,

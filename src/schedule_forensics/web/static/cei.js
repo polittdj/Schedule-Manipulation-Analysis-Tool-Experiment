@@ -16,6 +16,9 @@
 (function () {
   var box = document.getElementById("ceiChart");
   if (!box) return;
+  // stable SFLegend scope: render() rebuilds the svg every frame, so the hidden set must live on this
+  // host (which survives the redraw), not the transient svg (ADR-0276).
+  box.setAttribute("data-series-scope", "1");
   var NS = "http://www.w3.org/2000/svg";
   var GOLD = "var(--warn)", BLUE = "var(--accent)", GREEN = "var(--ok)";
 
@@ -90,26 +93,29 @@
     });
 
     if (totals) {
-      // running totals: three cumulative finish curves (gold/blue/green)
-      [[snap.baselined, GOLD], [snap.scheduled, BLUE], [snap.finished, GREEN]].forEach(function (pair) {
+      // running totals: three cumulative finish curves (gold/blue/green); each tagged with its
+      // legend series key so SFLegend can hide/show it (ADR-0276)
+      [[snap.baselined, GOLD, "Baselined to Finish"], [snap.scheduled, BLUE, "Scheduled to Finish"],
+       [snap.finished, GREEN, "Finished"]].forEach(function (pair) {
         var cum = cumulative(pair[0]);
         var pts = cum.map(function (v, i) { return xc(i) + "," + y(v); });
-        svg.appendChild(svgEl("polyline", { points: pts.join(" "), fill: "none", stroke: pair[1], "stroke-width": 2 }));
+        svg.appendChild(svgEl("polyline", { points: pts.join(" "), fill: "none", stroke: pair[1], "stroke-width": 2, "data-series": pair[2] }));
       });
     } else {
       // per-month grouped bars: gold/blue/green
       for (var i = 0; i < n; i++) {
         var x0 = xc(i);
         var series = [
-          [snap.baselined[i], GOLD, -1.15, "baselined"],
-          [snap.scheduled[i], BLUE, 0, "scheduled"],
-          [snap.finished[i], GREEN, 1.15, "finished"],
+          [snap.baselined[i], GOLD, -1.15, "baselined", "Baselined to Finish"],
+          [snap.scheduled[i], BLUE, 0, "scheduled", "Scheduled to Finish"],
+          [snap.finished[i], GREEN, 1.15, "finished", "Finished"],
         ];
         series.forEach(function (sd) {
           var v = sd[0];
           if (!v) return;
           var bx = x0 + sd[2] * barW - barW / 2;
-          var rect = svgEl("rect", { x: bx, y: y(v), width: barW, height: y(0) - y(v), fill: sd[1] });
+          // sd[4] is the legend series key so SFLegend can hide/show this series (ADR-0276)
+          var rect = svgEl("rect", { x: bx, y: y(v), width: barW, height: y(0) - y(v), fill: sd[1], "data-series": sd[4] });
           // each bar carries the UIDs finishing in this month for this series — click to drill
           drill(rect, (snap[sd[3] + "_uids"] || [])[i], snap.label, sd[3] + " to finish — " + months[i]);
           svg.appendChild(rect);
@@ -180,16 +186,33 @@
       svg.appendChild(tl);
     });
 
-    // legend
+    // legend — each entry is a clickable toggle for its data-series (ADR-0276); a trailing all/none
+    // control shows or hides every series. The keys match the bars'/curves' data-series exactly.
     var legend = [["Baselined to Finish", GOLD], ["Scheduled to Finish", BLUE], ["Finished", GREEN]];
     var lx = padL;
     legend.forEach(function (item) {
-      svg.appendChild(svgEl("rect", { x: lx, y: H - 12, width: 10, height: 10, fill: item[1] }));
+      var g = svgEl("g", {
+        "data-series-toggle": item[0], role: "button", tabindex: "0",
+        "aria-pressed": "true", "aria-label": "Show / hide " + item[0],
+      });
+      g.style.cursor = "pointer";
+      g.appendChild(svgEl("rect", { x: lx, y: H - 12, width: 10, height: 10, fill: item[1] }));
       var lt = svgEl("text", { x: lx + 14, y: H - 3, fill: "var(--muted)", "font-size": 11 });
       lt.textContent = item[0];
-      svg.appendChild(lt);
-      lx += 14 + item[0].length * 6 + 22;
+      g.appendChild(lt);
+      var w = 14 + item[0].length * 6 + 22;
+      // a transparent hit area so the whole entry (swatch + label) is one click target
+      g.appendChild(svgEl("rect", { x: lx - 2, y: H - 14, width: w, height: 15, fill: "transparent" }));
+      svg.appendChild(g);
+      lx += w;
     });
+    var ctrl = svgEl("g", { "data-series-all": "1", role: "button", tabindex: "0", "aria-label": "Show all series, or hide all" });
+    ctrl.style.cursor = "pointer";
+    var ct = svgEl("text", { x: lx + 2, y: H - 3, fill: "var(--focus)", "font-size": 11 });
+    ct.textContent = "all / none";
+    ctrl.appendChild(ct);
+    ctrl.appendChild(svgEl("rect", { x: lx, y: H - 14, width: 58, height: 15, fill: "transparent" }));
+    svg.appendChild(ctrl);
 
     box.appendChild(svg);
 
