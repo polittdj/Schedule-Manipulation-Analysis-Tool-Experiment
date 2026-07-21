@@ -513,16 +513,20 @@ class _Analysis:
     scoped: Schedule
 
 
-def _compute_analysis(sch: Schedule, cpm: CPMResult | None = None) -> _Analysis:
+def _compute_analysis(
+    sch: Schedule, cpm: CPMResult | None = None, *, dcma_exclude_milestones: bool = False
+) -> _Analysis:
     """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere).
 
     ``cpm`` lets a caller hand in an already-cached solve of THIS exact schedule (the ADR-0261
-    P2 tier) so the network is never solved twice for one epoch — never a different input."""
+    P2 tier) so the network is never solved twice for one epoch — never a different input.
+    ``dcma_exclude_milestones`` forwards the Acumen-parity DCMA milestone scope (ADR-0277); it is
+    part of the analysis cache signature so toggling it re-keys, never serving a stale audit."""
     cpm = cpm if cpm is not None else compute_cpm(sch)
     return _Analysis(
         scoped=sch,
         cpm=cpm,
-        audit=audit_schedule(sch, cpm),
+        audit=audit_schedule(sch, cpm, exclude_milestones=dcma_exclude_milestones),
         compliance=compute_baseline_compliance(sch, cpm),
         float_bands=compute_float_bands(sch, cpm),
         completion=compute_completion_performance(sch),
@@ -674,6 +678,12 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
+    # DCMA milestone scope (ADR-0277): when True, the DCMA-14 float/logic/constraint/relationship
+    # checks (Logic, SS/FF, Hard constraints, High & Negative float) omit zero-duration milestones,
+    # matching Acumen Fuse's population for those checks (verified UID-exact on the operator's Large
+    # Test File: Hard 1→0, Negative Float 41→35). Off by default (prior behaviour + golden parity);
+    # part of the analysis cache signature so a toggle re-keys, never serving a stale audit.
+    dcma_exclude_milestones: bool = False
     # F3c: operator-settable NASA Gold-Rule margin-requirement rate (work-days per program year) the
     # dashboard measures effective margin against. 30/yr (the Schedule Management Handbook default) is
     # the initial value; set via GET /margin?rate=. The burn-down requirement line, the per-version
@@ -909,6 +919,11 @@ class SessionState:
                 parts.append("F=" + repr(self.active_filter))
         if self.target_uid is not None:
             parts.append(f"T={self.target_uid}")
+        # DCMA milestone scope (ADR-0277): contributes only when ENABLED, so the default epoch's
+        # key shape is byte-identical to before — an analysis's audit differs under this flag, so it
+        # must live in its own cache epoch (never serve a stale audit across a toggle).
+        if self.dcma_exclude_milestones:
+            parts.append("M=1")
         return "\x1f".join(parts)
 
     def scope_signature(self) -> str:
@@ -984,6 +999,14 @@ class SessionState:
             self.target_uid = uid
             self.sra_focus_uid = uid
             self._invalidate_scope()
+
+    def set_dcma_exclude_milestones(self, enabled: bool) -> None:
+        """Toggle the Acumen-parity DCMA milestone scope (ADR-0277). The flag is part of the
+        analysis cache signature (``_scope_signature`` adds ``M=1`` when enabled), so flipping it
+        re-keys the analysis epoch — the DCMA audit recomputes on next access and a toggle can never
+        serve a stale audit; the scoped population itself is unchanged, so nothing else invalidates."""
+        with self._lock:
+            self.dcma_exclude_milestones = enabled
 
     def set_margin_rate(self, rate: float) -> None:
         """Set the NASA Gold-Rule margin-requirement rate (work-days per program year) the margin
@@ -1225,7 +1248,8 @@ class SessionState:
             scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
             pre = self.cpms.get(ck)
             cpm = pre[1] if pre is not None and pre[0] is sch else None
-        analysis = _compute_analysis(scoped, cpm=cpm)
+            ex_ms = self.dcma_exclude_milestones  # captured under the lock with the cache key
+        analysis = _compute_analysis(scoped, cpm=cpm, dcma_exclude_milestones=ex_ms)
         with self._lock:
             if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
                 self.analyses.put(ck, (sch, analysis))
@@ -3371,6 +3395,7 @@ def create_app(
                 st.target_uid,
                 erosion_field=erosion_field,
                 margin_confirmed=st.margin_overlay.get(name),
+                dcma_exclude_milestones=st.dcma_exclude_milestones,
             ),
             ask_schedule=name,
             chapter=_CHAPTER_BY_NUM.get(
@@ -7400,7 +7425,12 @@ def create_app(
         # the background and swaps in the local-AI-polished version when a model is active.
         briefing = build_briefing(schedules, cpms=cpms)
         body = (
-            _the_briefing_header(briefing, schedules[-1], cpms[-1])
+            _the_briefing_header(
+                briefing,
+                schedules[-1],
+                cpms[-1],
+                exclude_milestones=st.dcma_exclude_milestones,
+            )
             + _skipped_notice(skipped)
             + '<div id=briefingBody data-ai-endpoint="/api/ai/briefing">'
             + _briefing_body(briefing)
@@ -7601,6 +7631,17 @@ def create_app(
         st.set_target(_parse_uid(uid))
         # local redirect only: a path on this app, never a scheme/host ("//host" included)
         dest = next_url if next_url.startswith("/") and not next_url.startswith("//") else "/"
+        return RedirectResponse(url=dest, status_code=303)
+
+    @app.post("/dcma/scope")
+    def set_dcma_scope(exclude_ms: str = Form(""), next: str = Form("/")) -> RedirectResponse:
+        """Toggle the Acumen-parity DCMA milestone scope (ADR-0277). Funnels through
+        :meth:`SessionState.set_dcma_exclude_milestones`, which re-keys the analysis cache epoch so
+        the audit recomputes on the next render (never a stale audit across the toggle)."""
+        st = session()
+        st.set_dcma_exclude_milestones(bool(exclude_ms))
+        # local redirect only: a path on this app, never a scheme/host ("//host" included)
+        dest = next if next.startswith("/") and not next.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
 
     @app.post("/project/select")
@@ -10276,6 +10317,7 @@ def _analysis_body(
     narrative: Narrative | None = None,
     erosion_field: str | None = None,
     margin_confirmed: frozenset[int] | None = None,
+    dcma_exclude_milestones: bool = False,
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
@@ -10348,6 +10390,10 @@ Each row shows the <b>count</b> and the <b>percentage</b> of its population,
 not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
 criteria, why it matters, and what it indicates; full formulas + citations are in the
 <a href="/help">Metric Dictionary</a>.</p>
+<form method=post action="/dcma/scope" style="margin:0 0 8px">
+<input type=hidden name=next value="/analysis/{quote(key, safe="")}">
+<label class=muted title="Acumen Fuse omits zero-duration milestones from the Logic, SS/FF, Hard-constraint and High/Negative-float checks (a milestone is not an activity whose float or logic density is meaningful). Enable to match Acumen's population for those checks. The completion checks — Missed and BEI — always keep milestones (a missed milestone is a real missed deliverable), so they are unaffected (ADR-0277).">
+<input type=checkbox name=exclude_ms value=1 {"checked" if dcma_exclude_milestones else ""} onchange="this.form.submit()"> <b>Acumen milestone scope</b> — exclude zero-duration milestones from the Logic / SS-FF / Hard-constraint / High &amp; Negative-float checks (Missed &amp; BEI keep milestones)</label></form>
 {_stoplight_board(audit.checks)}
 <table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
 <th scope=col>What it measures (how)</th>
@@ -18401,7 +18447,13 @@ def _briefing_table_html(section: BriefingSection) -> str:
     return f"<div class=brief-scroll><table class=brief-table>{head}{body}</table></div>"
 
 
-def _the_briefing_header(briefing: ExecutiveBriefing, sch: Schedule, cpm: CPMResult) -> str:
+def _the_briefing_header(
+    briefing: ExecutiveBriefing,
+    sch: Schedule,
+    cpm: CPMResult,
+    *,
+    exclude_milestones: bool = False,
+) -> str:
     """Chapter 12 "The briefing" (ADR-0210): the data-driven takeaway (the briefing's own
     verdict + headline figures), a KPI strip from the briefing banner, and the action-items
     and quality-snapshot bars — the executive synthesis. Every figure is one the briefing /
@@ -18427,7 +18479,7 @@ def _the_briefing_header(briefing: ExecutiveBriefing, sch: Schedule, cpm: CPMRes
     high = sum(1 for f in findings if f.severity == Severity.HIGH)
     med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
     low = sum(1 for f in findings if f.severity == Severity.LOW)
-    audit = audit_schedule(sch, cpm)
+    audit = audit_schedule(sch, cpm, exclude_milestones=exclude_milestones)
     passed = sum(1 for c in audit.checks if c.status is CheckStatus.PASS)
     failed = sum(1 for c in audit.checks if c.status is CheckStatus.FAIL)
     na = sum(1 for c in audit.checks if c.status is CheckStatus.NOT_APPLICABLE)

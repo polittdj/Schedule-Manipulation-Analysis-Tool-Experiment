@@ -45,15 +45,36 @@ _CRITICAL_PATH_TEST_DELAY_DAYS = 100
 
 
 def compute_dcma14(
-    schedule: Schedule, cpm_result: CPMResult | None = None
+    schedule: Schedule,
+    cpm_result: CPMResult | None = None,
+    *,
+    exclude_milestones: bool = False,
 ) -> dict[str, MetricResult]:
     """Compute all 14 DCMA checks, keyed by id (``"DCMA01"`` … ``"DCMA14"`` with
-    ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon)."""
+    ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon).
+
+    ``exclude_milestones`` (default off) selects the Acumen-parity population for the **work**
+    checks — Logic (01), SS/FF relationships (04), Hard constraints (05), High float (06) and
+    Negative float (07): Acumen omits zero-duration milestones from those, since a milestone is not
+    an *activity* whose float / logic density / constraint is meaningful. Verified UID-exact against
+    Acumen on the operator's Large Test File (Hard 1→0, Negative Float 41→35). The **completion**
+    checks — Missed (11) and BEI (14) — always keep milestones (a missed milestone is a real missed
+    deliverable; excluding them undercounts vs Acumen), and the duration/lead/lag/resource/invalid
+    checks are unaffected (milestones are already screened by their own predicates). Default off
+    keeps the prior behaviour and the P2/P5 goldens byte-identical; the deployed tool exposes it as
+    a per-analysis option (ADR-0277)."""
     tasks = non_summary(schedule)
     real_ids = {t.unique_id for t in tasks}
     incomplete = [t for t in tasks if is_incomplete(t)]
     pct_by = {t.unique_id: t.percent_complete for t in tasks}
     n_tasks, n_inc = len(tasks), len(incomplete)
+
+    # The "work" population for the float/logic/constraint/relationship checks: identical to `tasks`
+    # unless exclude_milestones drops the zero-duration milestones Acumen omits from those checks.
+    is_ms = {t.unique_id: t.is_milestone for t in tasks}
+    work_tasks = [t for t in tasks if not (exclude_milestones and t.is_milestone)]
+    work_incomplete = [t for t in incomplete if not (exclude_milestones and t.is_milestone)]
+    n_work_tasks, n_work_inc = len(work_tasks), len(work_incomplete)
 
     # logic links restricted to the activity network
     links = [
@@ -76,13 +97,17 @@ def compute_dcma14(
 
     out: dict[str, MetricResult] = {}
 
-    # DCMA-01 Logic — incomplete activities missing a predecessor and/or successor.
+    # DCMA-01 Logic — incomplete activities missing a predecessor and/or successor. A link to a
+    # milestone still gives an activity an end (has_pred/has_succ are built from ALL links), but a
+    # milestone itself is not counted as an offender under exclude_milestones (work population).
     logic_off = tuple(
         t.unique_id
-        for t in incomplete
+        for t in work_incomplete
         if t.unique_id not in has_pred or t.unique_id not in has_succ
     )
-    out["DCMA01"] = _r("DCMA01", "Logic", len(logic_off), n_inc, "%", 5.0, Direction.LE, logic_off)
+    out["DCMA01"] = _r(
+        "DCMA01", "Logic", len(logic_off), n_work_inc, "%", 5.0, Direction.LE, logic_off
+    )
 
     # DCMA-02 Leads — incomplete ACTIVITIES with a negative-lag predecessor link (count,
     # must be 0). Fuse counts activities, not links ("0 activities (0%) have 2. Leads" in
@@ -127,6 +152,7 @@ def compute_dcma14(
         for r in links
         if r.type in (RelationshipType.SS, RelationshipType.FF)
         and pct_by.get(r.successor_id, 0.0) < 100.0
+        and not (exclude_milestones and is_ms.get(r.successor_id, False))
     )
     sf = tuple(
         r.successor_id
@@ -140,9 +166,9 @@ def compute_dcma14(
     out["DCMA04_SF"] = _r("DCMA04_SF", "SF Relationships", len(sf), n_links, "%", None, None, sf)
 
     # DCMA-05 Hard constraints.
-    hard = tuple(t.unique_id for t in tasks if t.constraint_type in _HARD_CONSTRAINTS)
+    hard = tuple(t.unique_id for t in work_tasks if t.constraint_type in _HARD_CONSTRAINTS)
     out["DCMA05"] = _r(
-        "DCMA05", "Hard Constraints", len(hard), n_tasks, "%", 5.0, Direction.LE, hard
+        "DCMA05", "Hard Constraints", len(hard), n_work_tasks, "%", 5.0, Direction.LE, hard
     )
 
     # DCMA-06 High float — incomplete activities with total float > 44 working days
@@ -154,20 +180,22 @@ def compute_dcma14(
     # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080).
     high_float = tuple(
         t.unique_id
-        for t in incomplete
+        for t in work_incomplete
         if effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
     )
     out["DCMA06"] = _r(
-        "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
+        "DCMA06", "High Float", len(high_float), n_work_inc, "%", 5.0, Direction.LE, high_float
     )
 
     # DCMA-07 Negative float — incomplete activities with total float < 0. Scored on the source
     # tool's STORED Total Slack when present (Acumen fidelity on progressed files), else the
     # recomputed CPM float (ADR-0080).
     neg = tuple(
-        t.unique_id for t in incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
+        t.unique_id for t in work_incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
     )
-    out["DCMA07"] = _r("DCMA07", "Negative Float", len(neg), n_inc, "%", 0.0, Direction.EQ, neg)
+    out["DCMA07"] = _r(
+        "DCMA07", "Negative Float", len(neg), n_work_inc, "%", 0.0, Direction.EQ, neg
+    )
 
     # DCMA-08 High duration — incomplete activities with baseline duration > 44 days.
     high_dur = tuple(

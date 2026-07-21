@@ -5,6 +5,32 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-21b (interactive legends phase 3b — margin_dashboard.js; v1.0.86; highest ADR 0276)
+
+> ## STATUS (current) — operator merged #421 (phase 3a); standing "do all you can" → phase 3b of the interactive-legend rollout (ADR-0276, no new ADR — extended with a phase-3b note). **margin_dashboard.js** (the executive margin/contingency **burn-down** + margin **erosion** charts) now has click-to-show/hide legends + all/none. With this, **the rollout is substantially complete** — every analysis chart with separable series (trend, curves-native, performance, cei, margin) is covered. Highest ADR **0276**.
+>
+> - **The new wrinkle — a mixed toggle / static legend.** margin renders **once** (no version stepper),
+>   so its legend's svg scope is already stable and it needs **no** `data-series-scope` marker (unlike
+>   performance/cei). But its burn-down legend has a swatch that is **not a series**: the margin bars
+>   are green above / red below the NASA requirement, and "Below requirement" explains that *recoloring*
+>   — toggling it is meaningless. So margin's own `legend()` gained a per-item `static: true` flag: a
+>   static entry is a plain, non-clickable color key, while every real series (margin bars — one key for
+>   both colors — contingency, requirement line, planned depletion, corrective carets, Fig 5-30 band +
+>   diamonds, erosion trend, zero-margin marker) is tagged + togglable. The generic `SFLegend` module
+>   needed **no change** (a static entry has no toggle attr → ignored by the module and by all/none).
+> - **Verified:** `tests/web/js/legend_static_harness.mjs` (run by `test_legend_toggle_js.py`) boots the
+>   real module against margin's shape — one toggle hides both colors of the conditional-color margin
+>   series, the static key is inert, all/none skips it. `test_legend_toggle_wiring.py` pins the emitted
+>   markup (`static:true` opt-out + tagged marks + explicit `Erosion trend` key). Prototype-verified the
+>   shape first (`scratchpad/margin_legend_verify.mjs`). Full local gate green (ruff, format, mypy 116,
+>   bandit exit 0, node, pytest). v1.0.85 → **1.0.86**, wheel + 9 installers lockstep.
+> - **State:** v1.0.86; **ADR-0276** highest (no new ADR — phase-3b note appended); wheel + 9 installers
+>   lockstep. Branch `claude/conditional-branching-contingency-bi6g00` (restarted from merged main
+>   35182e4 = v1.0.85 #421). PR #422 carried legend phase 3b (merged as e600360).
+> - **NEXT: the interactive-legend rollout is substantially DONE.** Skipped: dashboard.js, sra_grid.js,
+>   path_evolution.js (no separable series). Owed by operator: ADR-0261 PowerShell crash log + large
+>   dataset; ADR-0258 Claude-Design portfolio prompt.
+
 # (prior) Handoff — 2026-07-21 (interactive legends phase 3a — performance.js + cei.js; v1.0.85; highest ADR 0276)
 
 > ## STATUS (current) — operator (after merging #420 phase 2): standing "do all you can" → phase 3a of the interactive-legend rollout (ADR-0276, no new ADR — extended with a phase-3 note). **performance.js** (the G1–G4 census / flow / index / burden families — 5 legend-bearing charts) and **cei.js** (the bow-wave chart the operator NAMED: "when I'm looking at CEI, I want to select ... milestones or tasks") now have click-to-show/hide legends + all/none. Highest ADR **0276**.

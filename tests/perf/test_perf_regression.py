@@ -138,9 +138,9 @@ def test_p1_scope_toggle_never_recomputes_resident_epochs(monkeypatch) -> None: 
     calls = {"n": 0}
     real = app_module._compute_analysis
 
-    def counting(sch, cpm=None):  # type: ignore[no-untyped-def]
+    def counting(sch, cpm=None, **kwargs):  # type: ignore[no-untyped-def]
         calls["n"] += 1
-        return real(sch, cpm=cpm)
+        return real(sch, cpm=cpm, **kwargs)
 
     monkeypatch.setattr(app_module, "_compute_analysis", counting)
     st = SessionState()
@@ -167,9 +167,9 @@ def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:
     real_analysis = app_module._compute_analysis
     real_cpm = app_module.compute_cpm
 
-    def counting_analysis(sch, cpm=None):  # type: ignore[no-untyped-def]
+    def counting_analysis(sch, cpm=None, **kwargs):  # type: ignore[no-untyped-def]
         counts["analysis"] += 1
-        return real_analysis(sch, cpm=cpm)
+        return real_analysis(sch, cpm=cpm, **kwargs)
 
     def counting_cpm(sch, **kw):  # type: ignore[no-untyped-def]
         counts["cpm"] += 1
