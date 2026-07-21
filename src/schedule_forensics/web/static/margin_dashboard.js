@@ -52,19 +52,47 @@
     h.appendChild(svg);
     return svg;
   }
+  // Each non-static entry is a clickable <g data-series-toggle> so SFLegend (ADR-0276) shows/hides the
+  // matching data-series mark(s); the key is it.key||it.label. A `static:true` entry renders as a
+  // plain, NON-clickable color key — e.g. "Below requirement" is a per-month RE-COLORING of the margin
+  // bars (a threshold state), not a separable series, so it explains a color rather than toggling one.
+  // A trailing "all / none" control toggles every togglable series. (These charts render once — not an
+  // animation stepper — so the legend's svg scope is stable; no data-series-scope host marker needed.)
   function legend(svg, x, y, items) {
     // wraps to the next row instead of overflowing the frame (the burn-down now carries 7 items)
-    var cx = x, cy = y, MAXX = 700;
+    var cx = x, cy = y, MAXX = 700, toggles = 0;
+    function wrap(w) { if (cx + w > MAXX && cx > x) { cx = x; cy += 13; } }
     items.forEach(function (it) {
       var w = (it.dash ? 18 : 14) + it.label.length * 5.2 + 14;
-      if (cx + w > MAXX && cx > x) { cx = x; cy += 13; }
+      wrap(w);
+      var parent = svg;
+      if (!it.static) {
+        var g = svgEl("g", {
+          "data-series-toggle": it.key || it.label, role: "button", tabindex: "0",
+          "aria-pressed": "true", "aria-label": "Show / hide " + it.label,
+        });
+        g.style.cursor = "pointer";
+        svg.appendChild(g);
+        parent = g;
+        toggles += 1;
+      }
       var mark = svgEl(it.dash ? "line" : "rect", it.dash
         ? { x1: cx, y1: cy - 3, x2: cx + 14, y2: cy - 3, stroke: it.color, "stroke-width": 2, "stroke-dasharray": it.dash === true ? "4 3" : it.dash }
         : { x: cx, y: cy - 9, width: 10, height: 8, fill: it.color, opacity: it.op || 0.9 });
-      svg.appendChild(mark);
-      txt(svg, cx + (it.dash ? 18 : 14), cy, it.label, { size: 9 });
+      parent.appendChild(mark);
+      txt(parent, cx + (it.dash ? 18 : 14), cy, it.label, { size: 9 });
+      // a transparent hit area so the whole entry (not just the glyphs) is a click target
+      if (!it.static) parent.appendChild(svgEl("rect", { x: cx - 1, y: cy - 11, width: w, height: 14, fill: "transparent" }));
       cx += w;
     });
+    if (toggles > 1) {
+      wrap(54);
+      var ctrl = svgEl("g", { "data-series-all": "1", role: "button", tabindex: "0", "aria-label": "Show all series, or hide all" });
+      ctrl.style.cursor = "pointer";
+      txt(ctrl, cx + 2, cy, "all / none", { size: 9, fill: "var(--focus)" });
+      ctrl.appendChild(svgEl("rect", { x: cx, y: cy - 11, width: 52, height: 14, fill: "transparent" }));
+      svg.appendChild(ctrl);
+    }
   }
   function shortDate(iso) { return iso ? iso.slice(0, 7) : ""; }  // YYYY-MM
 
@@ -115,7 +143,7 @@
         if (bandPts.length === 1) dPoly += "L" + xs3[1].toFixed(1) + " " + y(bandPts[k2].b.low_wd).toFixed(1) + " ";
         dPoly += "L" + xs3[0].toFixed(1) + " " + y(bandPts[k2].b.low_wd).toFixed(1) + " ";
       }
-      var poly = svgEl("path", { d: dPoly + "Z", fill: ACC, opacity: 0.14, stroke: "none" });
+      var poly = svgEl("path", { d: dPoly + "Z", fill: ACC, opacity: 0.14, stroke: "none", "data-series": "Fig 5-30 band (operator-set)" });
       tip(poly, "Fig 5-30 guideline band (operator-set rates; SMH §5.5.11.2 / §7.3.3.1.6)");
       svg.appendChild(poly);
     }
@@ -124,18 +152,20 @@
       // margin (work days) at the base — red when below the NASA requirement (the trigger)
       var marginColor = m.below_requirement ? BAD : OK;
       var ym = y(m.effective_margin_wd), hm = y(0) - ym;
-      var rMar = svgEl("rect", { x: x0, y: ym, width: bw, height: Math.max(0.5, hm), fill: marginColor, opacity: 0.92 });
+      // one series regardless of the per-month color (green above / red below the requirement); the
+      // "Below requirement" legend entry is a static color key, not a separate togglable series.
+      var rMar = svgEl("rect", { x: x0, y: ym, width: bw, height: Math.max(0.5, hm), fill: marginColor, opacity: 0.92, "data-series": "Effective margin (wd)" });
       tip(rMar, m.status_date + " — effective margin " + m.effective_margin_wd + " wd" + (m.below_requirement ? " (BELOW requirement — trigger)" : ""));
       svg.appendChild(rMar);
       // contingency (weekends + holidays) stacked above
       var yc = y(m.total_available), hc = ym - yc;
-      var rCon = svgEl("rect", { x: x0, y: yc, width: bw, height: Math.max(0.5, hc), fill: ACC, opacity: 0.55 });
+      var rCon = svgEl("rect", { x: x0, y: yc, width: bw, height: Math.max(0.5, hc), fill: ACC, opacity: 0.55, "data-series": "Contingency (days)" });
       tip(rCon, m.status_date + " — contingency " + m.contingency_wd + " days (total available " + m.total_available + ")");
       svg.appendChild(rCon);
       // planned margin at the period START (prior month-end) — a tick showing what was consumed
       if (m.planned_margin_wd != null) {
         var yp = y(m.planned_margin_wd);
-        var tick = svgEl("line", { x1: x0 - 2, y1: yp, x2: x0 + bw + 2, y2: yp, stroke: MUT, "stroke-width": 1.6 });
+        var tick = svgEl("line", { x1: x0 - 2, y1: yp, x2: x0 + bw + 2, y2: yp, stroke: MUT, "stroke-width": 1.6, "data-series": "Planned depletion" });
         tip(tick, m.status_date + " — planned (period start) " + m.planned_margin_wd + " wd; consumed " + m.consumed_wd + " wd this period");
         svg.appendChild(tick);
       }
@@ -144,7 +174,7 @@
       // Margin; citation corrected from §7.3.3.1.6, ADR-0254). A caret above the stack.
       if (m.corrective_action) {
         var yt = y(m.total_available);
-        var mk = svgEl("path", { d: "M" + (x(i) - 5) + " " + (yt - 6) + " L" + (x(i) + 5) + " " + (yt - 6) + " L" + x(i) + " " + (yt - 14) + " Z", fill: WARN });
+        var mk = svgEl("path", { d: "M" + (x(i) - 5) + " " + (yt - 6) + " L" + (x(i) + 5) + " " + (yt - 6) + " L" + x(i) + " " + (yt - 14) + " Z", fill: WARN, "data-series": "Corrective ≥ 50%" });
         tip(mk, m.status_date + " — " + (m.consumed_pct != null ? Math.round(100 * m.consumed_pct) : "50+") + "% of planned margin consumed (>=50% — the Schedule Management Handbook's example corrective-action threshold, §7.3.3.2.3)");
         svg.appendChild(mk);
       }
@@ -156,7 +186,7 @@
         var yd = y(m.effective_margin_wd);
         var dia = svgEl("path", {
           d: "M" + x(i) + " " + (yd - 6) + " L" + (x(i) + 6) + " " + yd + " L" + x(i) + " " + (yd + 6) + " L" + (x(i) - 6) + " " + yd + " Z",
-          fill: "none", stroke: BAD, "stroke-width": 1.6,
+          fill: "none", stroke: BAD, "stroke-width": 1.6, "data-series": "Fig 5-30 band (operator-set)",
         });
         tip(dia, m.status_date + " — effective margin " + m.effective_margin_wd + " wd is BELOW the Fig 5-30 guideline band (" + bnd.low_wd + "-" + bnd.high_wd + " wd; operator-set rates, SMH §5.5.11.2 / §7.3.3.1.6)");
         svg.appendChild(dia);
@@ -172,20 +202,22 @@
       pstarted = true;
     });
     if (pd) {
-      var pline = svgEl("path", { d: pd, fill: "none", stroke: MUT, "stroke-width": 1.4, "stroke-dasharray": "2 2" });
+      var pline = svgEl("path", { d: pd, fill: "none", stroke: MUT, "stroke-width": 1.4, "stroke-dasharray": "2 2", "data-series": "Planned depletion" });
       tip(pline, "planned margin (period-start, carried forward)");
       svg.appendChild(pline);
     }
     // NASA Gold-Rule requirement line (per month)
     var d = "";
     MONTHS.forEach(function (m, i) { d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(m.nasa_rqmt_wd).toFixed(1) + " "; });
-    var reqPath = svgEl("path", { d: d, fill: "none", stroke: WARN, "stroke-width": 1.8, "stroke-dasharray": "5 3" });
+    var reqPath = svgEl("path", { d: d, fill: "none", stroke: WARN, "stroke-width": 1.8, "stroke-dasharray": "5 3", "data-series": "NASA requirement" });
     tip(reqPath, "NASA Gold-Rule requirement (" + (DATA.gold_rule_per_year || 30) + " work-days per program year; operator-set, ADR-0253)");
     svg.appendChild(reqPath);
     var legendItems = [
       { color: OK, label: "Effective margin (wd)" },
       { color: ACC, label: "Contingency (days)", op: 0.55 },
-      { color: BAD, label: "Below requirement" },
+      // a static color key: the same margin bars, re-colored red the months they breach the
+      // requirement — a threshold state of "Effective margin", not a separately togglable series.
+      { color: BAD, label: "Below requirement", static: true },
       { color: WARN, label: "NASA requirement", dash: "5 3" },
       { color: MUT, label: "Planned depletion", dash: "2 2" },
       { color: WARN, label: "Corrective ≥ 50%" },
@@ -229,7 +261,7 @@
       function fit(t) { return intercept + slope * (t - t0) / DAYMS; }
       var trend = svgEl("line", {
         x1: x(tmin), y1: y(Math.max(0, fit(tmin))), x2: x(tmax), y2: y(Math.max(0, fit(tmax))),
-        stroke: WARN, "stroke-width": 1.6, "stroke-dasharray": "6 4",
+        stroke: WARN, "stroke-width": 1.6, "stroke-dasharray": "6 4", "data-series": "Erosion trend",
       });
       tip(trend, "least-squares erosion trend");
       svg.appendChild(trend);
@@ -237,9 +269,9 @@
     // the actual margin line + markers
     var dd = "";
     pts.forEach(function (p, i) { dd += (i ? "L" : "M") + x(p.t).toFixed(1) + " " + y(p.y).toFixed(1) + " "; });
-    svg.appendChild(svgEl("path", { d: dd, fill: "none", stroke: ACC, "stroke-width": 1.8 }));
+    svg.appendChild(svgEl("path", { d: dd, fill: "none", stroke: ACC, "stroke-width": 1.8, "data-series": "Effective margin (wd)" }));
     pts.forEach(function (p) {
-      var c = svgEl("circle", { cx: x(p.t), cy: y(p.y), r: 3, fill: ACC });
+      var c = svgEl("circle", { cx: x(p.t), cy: y(p.y), r: 3, fill: ACC, "data-series": "Effective margin (wd)" });
       tip(c, p.iso + " — effective margin " + p.y + " wd");
       svg.appendChild(c);
       if (n <= 24) txt(svg, x(p.t), B + 12, shortDate(p.iso), { anchor: "middle", size: 8 });
@@ -247,16 +279,19 @@
     // projected zero-margin date marker
     if (zeroT) {
       var zx = x(zeroT);
-      svg.appendChild(svgEl("line", { x1: zx, y1: T, x2: zx, y2: B, stroke: BAD, "stroke-width": 1.2, "stroke-dasharray": "3 3" }));
-      var tri = svgEl("path", { d: "M" + (zx - 5) + " " + B + " L" + (zx + 5) + " " + B + " L" + zx + " " + (B - 9) + " Z", fill: BAD });
+      // the three parts of the zero-margin marker share one series key so the legend hides them together
+      svg.appendChild(svgEl("line", { x1: zx, y1: T, x2: zx, y2: B, stroke: BAD, "stroke-width": 1.2, "stroke-dasharray": "3 3", "data-series": "Zero-margin date" }));
+      var tri = svgEl("path", { d: "M" + (zx - 5) + " " + B + " L" + (zx + 5) + " " + B + " L" + zx + " " + (B - 9) + " Z", fill: BAD, "data-series": "Zero-margin date" });
       tip(tri, "projected zero-margin date " + DATA.zero_margin_date);
       svg.appendChild(tri);
-      txt(svg, zx, T + 8, "zero margin " + shortDate(DATA.zero_margin_date), { anchor: zx > R - 90 ? "end" : "start", fill: BAD, size: 8.5 });
+      var zt = txt(svg, zx, T + 8, "zero margin " + shortDate(DATA.zero_margin_date), { anchor: zx > R - 90 ? "end" : "start", fill: BAD, size: 8.5 });
+      zt.setAttribute("data-series", "Zero-margin date");
     }
     var rate = DATA.erosion_wd_per_month;
     legend(svg, L + 4, T + 2, [
       { color: ACC, label: "Effective margin (wd)" },
-      { color: WARN, label: "Erosion trend" + (rate ? " (" + rate + " wd/mo)" : ""), dash: "6 4" },
+      // explicit stable key: the label carries a dynamic rate, but the mark's data-series does not
+      { color: WARN, label: "Erosion trend" + (rate ? " (" + rate + " wd/mo)" : ""), dash: "6 4", key: "Erosion trend" },
       { color: BAD, label: "Zero-margin date", dash: "3 3" },
     ]);
     txt(svg, R, B + 12, "status date", { anchor: "end", size: 8.5 });

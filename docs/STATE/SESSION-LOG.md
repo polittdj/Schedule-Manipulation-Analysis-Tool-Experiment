@@ -7408,3 +7408,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   phase 3b (BESPOKE) — margin_dashboard.js (conditional color-states + marker glyphs) + dashboard.js
   (anchor-wrapped, two-charts-per-scope, needs preventDefault); sra_grid + path_evolution SKIPPED
   (tint-scale / descriptive legends, no series to toggle).
+
+- **Session (2026-07-21b, post-#421 — interactive legends phase 3b):** operator merged #421 (legend
+  phase 3a); standing "do all you can" → phase 3b (ADR-0276 rollout; the ADR gains a phase-3b note, no
+  new ADR). Adopter: **margin_dashboard.js** (executive margin/contingency burn-down + margin erosion
+  charts). These render ONCE (no version stepper), so — unlike performance/cei — their legend's svg
+  scope is already stable and they need NO data-series-scope marker (documented). The wrinkle: the
+  burn-down legend has a swatch that is NOT a series — the margin bars are green above / red below the
+  NASA requirement, and "Below requirement" explains that RECOLORING (a threshold state), so toggling
+  it is meaningless. margin's own legend() gained a per-item `static:true` flag → a plain,
+  non-clickable color key; every real series (margin bars tagged with ONE key so both colors hide
+  together, contingency, requirement line, planned depletion, corrective carets, Fig 5-30 band +
+  deviation diamonds, erosion trend, zero-margin marker) is tagged + togglable. The generic SFLegend
+  module needed NO change (a static entry has no toggle attr → ignored by the module and by all/none).
+  Verified: new node harness `legend_static_harness.mjs` (one toggle hides both colors of the
+  conditional-color series; static key inert; all/none skips it) + margin opt-in assertions in
+  test_legend_toggle_wiring.py; prototype-verified the shape first (scratchpad/margin_legend_verify.mjs).
+  Full local gate green (ruff, format, mypy 116, bandit exit 0, node, pytest 2600+). v1.0.85 →
+  **1.0.86**, wheel + 9 installers lockstep. Highest ADR **ADR-0276**. NEXT: the interactive-legend
+  rollout is substantially DONE — dashboard.js (anchor-wrapped summary cards, low value), sra_grid.js
+  (tint-scale key), path_evolution.js (descriptive) intentionally SKIPPED (no separable series).

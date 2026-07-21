@@ -122,3 +122,39 @@ inside an `<a>` card (a toggle click would follow the card link without a `preve
 scope conflates two mini-charts, and toggling a 100 %-proportion strip leaves gaps. `sra_grid.js`
 (tint-scale heatmap key) and `path_evolution.js` (descriptive legend) have **no series to toggle** and
 are intentionally skipped.
+
+## Phase 3b (2026-07-21) — margin_dashboard.js, and a static color-key entry
+
+Adopter this phase: **margin_dashboard.js** (the executive margin/contingency **burn-down** + margin
+**erosion** charts). Both render **once** at load (no version stepper), so — unlike performance/cei —
+their legend's svg scope is already stable and they need **no** `data-series-scope` marker; the phase-1
+smallest-containing `scopeFor` lands on the (stable) svg.
+
+**The new wrinkle — a mixed toggle / static legend.** The burn-down legend carries seven entries, but
+one of them is not a separable series: the margin bars are drawn **green above / red below** the NASA
+requirement, and "Below requirement" is a legend swatch that explains that **recoloring**, not a
+distinct data series. Toggling it (hiding "the red months but keeping the green") is meaningless — it
+is one series with a per-month threshold color. So margin's own `legend()` helper gains a per-item
+`static: true` flag: a static entry renders as a plain, non-clickable color key (no
+`data-series-toggle`, no hit-rect), while every real series (margin bars, contingency, requirement
+line, planned depletion, corrective carets, Fig 5-30 band + its deviation diamonds, erosion trend,
+zero-margin marker) is tagged and togglable. The **conditional-color** margin bars all carry one key
+(`"Effective margin (wd)"`), so a single toggle hides both colors together. The generic `SFLegend`
+module needed **no change** — a static entry simply carries no toggle attribute, so the module ignores
+it and all/none skips it.
+
+**Verification (phase 3b).** `tests/web/js/legend_static_harness.mjs` (run by
+`test_legend_toggle_js.py::test_legend_static_and_conditional_color_series`) boots the real module
+against margin's shape and proves: one toggle hides both colors of the conditional-color series; the
+static "Below requirement" key is inert on click; all/none toggles only the real series.
+`test_legend_toggle_wiring.py::test_margin_dashboard_opts_in_with_a_static_color_key_entry` pins the
+emitted markup (the `static:true` opt-out, the tagged marks, the explicit `Erosion trend` key whose
+label carries a dynamic rate).
+
+**Now-remaining (skipped).** `dashboard.js` (landing-page summary cards inside an `<a>` link — low
+analytical value, and the anchor-wrapping/two-charts-per-scope/proportion-strip issues above make a
+toggle awkward; the detailed per-file charts it links to already carry toggles), `sra_grid.js`
+(tint-scale heatmap key), and `path_evolution.js` (descriptive legend) have no separable series to
+toggle and are intentionally left static. The interactive-legend rollout is thus **substantially
+complete**: every analysis chart with separable series (trend, curves-native, performance, cei,
+margin) can show/hide any series with a one-click all/none.
