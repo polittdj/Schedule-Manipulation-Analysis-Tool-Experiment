@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.metrics import CheckStatus, compute_bei, compute_dcma14
-from schedule_forensics.engine.metrics._common import forty_four_days_min
+from schedule_forensics.engine.metrics._common import forty_four_days_min, to_offset
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -388,3 +388,48 @@ def test_exclude_milestones_default_is_identical_to_prior() -> None:
     a = {k: v.count for k, v in compute_dcma14(sch).items()}
     b = {k: v.count for k, v in compute_dcma14(sch, exclude_milestones=False).items()}
     assert a == b
+
+
+def test_cpli_stored_float_reads_stored_slack_and_finish() -> None:
+    """ADR-0279 Acumen-parity CPLI: default uses the recomputed pure-logic CPM float (~0 with no
+    imposed deadline → CPLI 1.0); ``cpli_stored_float`` reads the source tool's STORED negative
+    Total Slack and STORED project finish, so a schedule behind an imposed finish reports CPLI < 1
+    (the Acumen view — verified UID-exact on the Large Test File 0.97 / File2 0.59)."""
+    status = MON
+    finish = MON + dt.timedelta(days=30)  # a stored finish well past the 5-day logic finish
+    sch = _sched(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=5 * DAY,
+                finish=finish,
+                stored_total_float_minutes=-4 * DAY,
+            ),
+        ],
+        status_date=status,
+    )
+    assert compute_dcma14(sch)["DCMA13"].value == 1.0  # recomputed float ~0 → CPLI 1.0
+    stored = compute_dcma14(sch, cpli_stored_float=True)["DCMA13"]
+    length = to_offset(sch, finish) - (to_offset(sch, status) or 0)
+    assert stored.value == round((length - 4 * DAY) / length, 2)
+    assert stored.value < 1.0 and stored.status is CheckStatus.FAIL
+
+
+def test_cpli_stored_float_keeps_one_when_ahead() -> None:
+    """The P2/P5 shape: a small POSITIVE stored slack against a long remaining length rounds to
+    CPLI 1.0 under the stored scope too (why enabling the flag leaves the golden CPLI untouched)."""
+    sch = _sched(
+        [
+            Task(
+                unique_id=1,
+                name="A",
+                duration_minutes=DAY,
+                finish=MON + dt.timedelta(days=300),
+                stored_total_float_minutes=DAY,
+            ),
+        ],
+        status_date=MON,
+    )
+    assert compute_dcma14(sch)["DCMA13"].value == 1.0
+    assert compute_dcma14(sch, cpli_stored_float=True)["DCMA13"].value == 1.0
