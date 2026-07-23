@@ -107,12 +107,12 @@ Hop 1's data exists at import time — `_parse_extended_attribute_defs` (mspdi.p
 Resolver custom hop (engine layer):
 
 ```python
-def _resolve_custom(schedule, task, raw_field):          # raw_field e.g. "Duration8"
+def _resolve_custom(schedule, task, raw_field):  # raw_field e.g. "Duration8"
     label = schedule.custom_field_by_raw_name_map.get(raw_field, raw_field)
-    raw = task.custom_field(label)                        # str | None (task.py:141)
+    raw = task.custom_field(label)  # str | None (task.py:141)
     if raw is None:
-        return None                                       # field empty on this task
-    return _coerce_by_family(raw_field, raw)              # §2 table
+        return None  # field empty on this task
+    return _coerce_by_family(raw_field, raw)  # §2 table
 ```
 
 Edge cases to encode: (a) a stored value that is empty string `""` — the importer skips `Value is None` but an explicit `""` can appear (e.g. `_MCTasks` tests `Text19 EQUALS ''`); `custom_field` returns the stored string, so `""` must survive as `""`, not become `None` — the evaluator's empty/`null` distinction depends on it. (b) duplicate aliases across two raw ids (rare) collide only at hop 2 (`custom_field` returns the first `(label,value)` match, task.py:143-145) — document as a known approximation. (c) unpopulated-but-defined field → hop 1 resolves the label, hop 2 returns `None`.
@@ -137,28 +137,43 @@ Everything in §1 and §2 (all core scheduling fields + the six custom families:
 New module `src/schedule_forensics/engine/msp_field_resolver.py` — the single chokepoint used by `engine/msp_filters.py` (evaluator) and the session-wide grouping:
 
 ```python
-FieldValue = str | int | float | bool | dt.datetime | None   # int = working minutes
+FieldValue = str | int | float | bool | dt.datetime | None  # int = working minutes
+
 
 class FieldKind(StrEnum):
-    STRING; NUMERIC; DURATION_MINUTES; DATE; BOOLEAN; PERCENT; CURRENCY; UNRESOLVED
+    STRING
+    NUMERIC
+    DURATION_MINUTES
+    DATE
+    BOOLEAN
+    PERCENT
+    CURRENCY
+    UNRESOLVED
+
 
 @dataclass(frozen=True)
 class ResolvedField:
-    value: FieldValue          # coerced task-side value (§1/§2)
-    kind: FieldKind            # so the evaluator coerces the literal to match
-    resolvable: bool           # False ⇒ a §4 hard gap (Board Status/Sprint/ID)
+    value: FieldValue  # coerced task-side value (§1/§2)
+    kind: FieldKind  # so the evaluator coerces the literal to match
+    resolvable: bool  # False ⇒ a §4 hard gap (Board Status/Sprint/ID)
+
 
 def resolve_field(
     schedule: Schedule, task: Task, raw_field: str, *, field_enum: str | None = None
-) -> ResolvedField: ...
+) -> ResolvedField:
+    ...
     # Normalizes raw_field via field_enum first (unambiguous: "TEXT9","ACTUAL_FINISH"),
     # else the raw display name. Order: core-field table (§1) → custom family (§2/§3) → UNRESOLVED.
 
-def field_kind(raw_field: str, *, field_enum: str | None = None) -> FieldKind: ...
+
+def field_kind(raw_field: str, *, field_enum: str | None = None) -> FieldKind:
+    ...
     # Type of a field WITHOUT a task — lets the evaluator coerce filter literals
     # ("0.0d" → minutes, "true" → bool, "2028-09-29T17:00" → datetime) before comparison.
 
-def is_resolvable(schedule: Schedule, raw_field: str, *, field_enum: str | None = None) -> bool: ...
+
+def is_resolvable(schedule: Schedule, raw_field: str, *, field_enum: str | None = None) -> bool:
+    ...
     # Drives UI: hide/annotate a filter/group referencing a §4 hard-gap field.
 ```
 

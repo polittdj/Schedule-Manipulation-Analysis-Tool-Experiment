@@ -56,20 +56,33 @@ from schedule_forensics.engine.msp_filters import evaluate, matches, MissingProm
 MON = dt.datetime(2025, 1, 6, 8, 0)
 DAY = 480  # working minutes / day (units.py:33)
 
+
 def _task(uid: int, **kw) -> Task:
     kw.setdefault("name", f"T{uid}")
     kw.setdefault("duration_minutes", DAY)
     return Task(unique_id=uid, **kw)
 
+
 def _sched(tasks, labels=()) -> Schedule:
-    return Schedule(name="f", source_file="f.mpp", project_start=MON,
-                    tasks=tuple(tasks), custom_field_labels=labels)
+    return Schedule(
+        name="f",
+        source_file="f.mpp",
+        project_start=MON,
+        tasks=tuple(tasks),
+        custom_field_labels=labels,
+    )
+
 
 def leaf(op, field, *values, field_ref=None, prompt=None) -> Criterion:
     return Criterion(op=op, field=field, values=values, field_ref=field_ref, prompt=prompt)
 
-def AND(*kids) -> Criterion: return Criterion(op=OP.AND, children=kids)
-def OR(*kids)  -> Criterion: return Criterion(op=OP.OR,  children=kids)
+
+def AND(*kids) -> Criterion:
+    return Criterion(op=OP.AND, children=kids)
+
+
+def OR(*kids) -> Criterion:
+    return Criterion(op=OP.OR, children=kids)
 ```
 
 **Custom-field storage in fixtures.** `Task.custom_fields` is `tuple[(label,value),...]` of **strings** (`task.py:134`), and in the real file the operator did **not** alias these fields, so the label *is* the raw MSP name. Fixtures therefore key customs by raw name: `custom_fields=(("Text9","ZIN"),("Duration8","1.0d"))`. Booleans that are real `Task` attributes (`is_summary`, `is_active`, `is_milestone` — `task.py:77-84`) and dates (`start`,`finish`,`actual_finish` — `task.py:106-108`) are set directly, not as customs.
@@ -105,7 +118,7 @@ Each test hand-encodes the exact tree from `views_leveled.json` and asserts the 
 def test_all_tasks_is_passthrough_including_summaries():
     f = SavedFilter(name="All Tasks", criteria=None)
     tasks = [_task(1), _task(2, is_summary=True), _task(3, is_active=False)]
-    assert evaluate(_sched(tasks), f) == (1, 2, 3)   # nothing excluded, file order
+    assert evaluate(_sched(tasks), f) == (1, 2, 3)  # nothing excluded, file order
 ```
 - Criteria: `criteria=null` (json). Expected: **every UID**, summaries and inactive included.
 
@@ -123,21 +136,31 @@ Shared population:
 | 6 | `""` (empty name) |
 
 ```python
-def _svt_pop(): return _sched([_task(1,name="SVT-01 Thermal Cycle"),
-    _task(2,name="svt-02 lowercase"), _task(3,name="SVT Review"),
-    _task(4,name="Structural Assembly"), _task(5,name="Pre-SVT-Delivery Gate"),
-    _task(6,name="")])
+def _svt_pop():
+    return _sched(
+        [
+            _task(1, name="SVT-01 Thermal Cycle"),
+            _task(2, name="svt-02 lowercase"),
+            _task(3, name="SVT Review"),
+            _task(4, name="Structural Assembly"),
+            _task(5, name="Pre-SVT-Delivery Gate"),
+            _task(6, name=""),
+        ]
+    )
 
-def test_filter_SVT_hyphen():          # CONTAINS 'SVT-'  (json: op CONTAINS, NAME)
-    f = SavedFilter(name="SVT-", criteria=leaf(OP.CONTAINS,"NAME","SVT-"))
-    assert evaluate(_svt_pop(), f) == (1, 2, 5)     # 2 proves case-insensitivity (F1)
 
-def test_filter_No_SVT_hyphen():       # DOES_NOT_CONTAIN 'SVT-'
-    f = SavedFilter(name="No SVT-", criteria=leaf(OP.DOES_NOT_CONTAIN,"NAME","SVT-"))
-    assert evaluate(_svt_pop(), f) == (3, 4, 6)     # exact complement; empty name matches (F2 edge)
+def test_filter_SVT_hyphen():  # CONTAINS 'SVT-'  (json: op CONTAINS, NAME)
+    f = SavedFilter(name="SVT-", criteria=leaf(OP.CONTAINS, "NAME", "SVT-"))
+    assert evaluate(_svt_pop(), f) == (1, 2, 5)  # 2 proves case-insensitivity (F1)
 
-def test_filter_SVT():                 # CONTAINS 'SVT'
-    f = SavedFilter(name="SVT", criteria=leaf(OP.CONTAINS,"NAME","SVT"))
+
+def test_filter_No_SVT_hyphen():  # DOES_NOT_CONTAIN 'SVT-'
+    f = SavedFilter(name="No SVT-", criteria=leaf(OP.DOES_NOT_CONTAIN, "NAME", "SVT-"))
+    assert evaluate(_svt_pop(), f) == (3, 4, 6)  # exact complement; empty name matches (F2 edge)
+
+
+def test_filter_SVT():  # CONTAINS 'SVT'
+    f = SavedFilter(name="SVT", criteria=leaf(OP.CONTAINS, "NAME", "SVT"))
     assert evaluate(_svt_pop(), f) == (1, 2, 3, 5)
 ```
 - `SVT-` → **{1,2,5}**; `No SVT-` → **{3,4,6}** (logical complement, incl. empty name); `SVT` → **{1,2,3,5}**.
@@ -159,33 +182,44 @@ Window supplied: after=`2025-03-01`, before=`2025-06-30`.
 
 ```python
 def _daterange_filter():
-    return SavedFilter(name="Date Range...", show_summary_rows=True,
-        criteria=AND(leaf(OP.IS_GREATER_THAN_OR_EQUAL_TO,"FINISH",
-                          prompt="Show tasks that start or finish after:"),
-                     leaf(OP.IS_LESS_THAN_OR_EQUAL_TO,"START",
-                          prompt="And before:")))
+    return SavedFilter(
+        name="Date Range...",
+        show_summary_rows=True,
+        criteria=AND(
+            leaf(
+                OP.IS_GREATER_THAN_OR_EQUAL_TO,
+                "FINISH",
+                prompt="Show tasks that start or finish after:",
+            ),
+            leaf(OP.IS_LESS_THAN_OR_EQUAL_TO, "START", prompt="And before:"),
+        ),
+    )
+
 
 def _daterange_pop():
     d = lambda m, day: dt.datetime(2025, m, day, 8, 0)
-    return _sched([
-        _task(1, start=d(2,1),  finish=d(2,20)),
-        _task(2, start=d(4,1),  finish=d(5,1)),
-        _task(3, start=d(7,15), finish=d(8,1)),
-        _task(4, start=d(2,15), finish=d(3,1)),
-        _task(5, start=d(6,30), finish=d(9,1)),
-        _task(6, start=d(4,1),  finish=None)])
+    return _sched(
+        [
+            _task(1, start=d(2, 1), finish=d(2, 20)),
+            _task(2, start=d(4, 1), finish=d(5, 1)),
+            _task(3, start=d(7, 15), finish=d(8, 1)),
+            _task(4, start=d(2, 15), finish=d(3, 1)),
+            _task(5, start=d(6, 30), finish=d(9, 1)),
+            _task(6, start=d(4, 1), finish=None),
+        ]
+    )
+
 
 def test_date_range_prompts_supplied():
-    prompts = {"Show tasks that start or finish after:": "2025-03-01",
-               "And before:": "2025-06-30"}
+    prompts = {"Show tasks that start or finish after:": "2025-03-01", "And before:": "2025-06-30"}
     assert evaluate(_daterange_pop(), _daterange_filter(), prompts) == (2, 4, 5)
 
-def test_date_range_missing_prompt_raises():          # F12
+
+def test_date_range_missing_prompt_raises():  # F12
     with pytest.raises(MissingPromptError):
         evaluate(_daterange_pop(), _daterange_filter(), prompts=None)
-    with pytest.raises(MissingPromptError):            # partial supply still raises
-        evaluate(_daterange_pop(), _daterange_filter(),
-                 {"And before:": "2025-06-30"})
+    with pytest.raises(MissingPromptError):  # partial supply still raises
+        evaluate(_daterange_pop(), _daterange_filter(), {"And before:": "2025-06-30"})
 ```
 - Prompts supplied → **{2,4,5}**. No/partial prompts → **raises** (F12).
 
@@ -206,19 +240,31 @@ Tree (json): `AND( Text9 EQUALS 'ZIN', Start <= 2028-09-29T17:00 )`, `show_summa
 ```python
 def test_cam_tasks():
     cut = dt.datetime(2028, 9, 29, 17, 0)
-    f = SavedFilter(name="CAM_Tasks", show_summary_rows=True,
-        criteria=AND(leaf(OP.EQUALS,"TEXT9","ZIN"),
-                     leaf(OP.IS_LESS_THAN_OR_EQUAL_TO,"START","2028-09-29T17:00")))
+    f = SavedFilter(
+        name="CAM_Tasks",
+        show_summary_rows=True,
+        criteria=AND(
+            leaf(OP.EQUALS, "TEXT9", "ZIN"),
+            leaf(OP.IS_LESS_THAN_OR_EQUAL_TO, "START", "2028-09-29T17:00"),
+        ),
+    )
+
     def t(uid, tx, start):
         cf = (("Text9", tx),) if tx is not None else ()
         return _task(uid, custom_fields=cf, start=start)
-    s = _sched([t(1,"ZIN",dt.datetime(2027,1,1,8,0)),
-                t(2,"ZIN",dt.datetime(2029,1,1,8,0)),
-                t(3,"zin",dt.datetime(2027,1,1,8,0)),
-                t(4,"BOE",dt.datetime(2027,1,1,8,0)),
-                t(5,None ,dt.datetime(2027,1,1,8,0)),
-                t(6,"ZIN",None),
-                t(7,"ZIN",cut)], labels=("Text9",))
+
+    s = _sched(
+        [
+            t(1, "ZIN", dt.datetime(2027, 1, 1, 8, 0)),
+            t(2, "ZIN", dt.datetime(2029, 1, 1, 8, 0)),
+            t(3, "zin", dt.datetime(2027, 1, 1, 8, 0)),
+            t(4, "BOE", dt.datetime(2027, 1, 1, 8, 0)),
+            t(5, None, dt.datetime(2027, 1, 1, 8, 0)),
+            t(6, "ZIN", None),
+            t(7, "ZIN", cut),
+        ],
+        labels=("Text9",),
+    )
     assert evaluate(s, f) == (1, 3, 7)
 ```
 - Expected: **{1,3,7}**.
@@ -237,11 +283,12 @@ Tree (json): `EQUALS Flag6 'true'` (`v0type Boolean`).
 
 ```python
 def test_mc_exported_tasks_flag6_true():
-    f = SavedFilter(name="_MCexportedTasks", criteria=leaf(OP.EQUALS,"FLAG6","true"))
+    f = SavedFilter(name="_MCexportedTasks", criteria=leaf(OP.EQUALS, "FLAG6", "true"))
+
     def t(uid, v):
-        return _task(uid, custom_fields=(("Flag6",v),) if v is not None else ())
-    s = _sched([t(1,"Yes"), t(2,"No"), t(3,None), t(4,"true"), t(5,"1")],
-               labels=("Flag6",))
+        return _task(uid, custom_fields=(("Flag6", v),) if v is not None else ())
+
+    s = _sched([t(1, "Yes"), t(2, "No"), t(3, None), t(4, "true"), t(5, "1")], labels=("Flag6",))
     assert evaluate(s, f) == (1, 4, 5)
 ```
 - Expected: **{1,4,5}**. UID 3 pins F6 (missing flag → False, unlike missing text).
@@ -270,15 +317,19 @@ Base (UID 10): `is_summary=False, is_milestone=False, is_active=True, actual_fin
 
 ```python
 def test_mc_tasks_eight_condition_and():
-    f = SavedFilter(name="_MCTasks", criteria=AND(
-        leaf(OP.EQUALS,"SUMMARY","false"),
-        leaf(OP.IS_GREATER_THAN,"DURATION9", field_ref="DURATION8"),
-        leaf(OP.IS_GREATER_THAN_OR_EQUAL_TO,"DURATION8","0.0d"),
-        leaf(OP.IS_GREATER_THAN_OR_EQUAL_TO,"DURATION9","0.0d"),
-        leaf(OP.EQUALS,"TEXT19",""),
-        leaf(OP.EQUALS,"ACTUAL_FINISH"),                      # zero operands = null-test (F3)
-        leaf(OP.EQUALS,"ACTIVE","true"),
-        leaf(OP.EQUALS,"MILESTONE","false")))
+    f = SavedFilter(
+        name="_MCTasks",
+        criteria=AND(
+            leaf(OP.EQUALS, "SUMMARY", "false"),
+            leaf(OP.IS_GREATER_THAN, "DURATION9", field_ref="DURATION8"),
+            leaf(OP.IS_GREATER_THAN_OR_EQUAL_TO, "DURATION8", "0.0d"),
+            leaf(OP.IS_GREATER_THAN_OR_EQUAL_TO, "DURATION9", "0.0d"),
+            leaf(OP.EQUALS, "TEXT19", ""),
+            leaf(OP.EQUALS, "ACTUAL_FINISH"),  # zero operands = null-test (F3)
+            leaf(OP.EQUALS, "ACTIVE", "true"),
+            leaf(OP.EQUALS, "MILESTONE", "false"),
+        ),
+    )
     # ... build UIDs 10-20 per table ...
     assert evaluate(s, f) == (10, 18, 20)
 ```
@@ -300,11 +351,15 @@ Tree (json). Near-inverse of `_MCTasks` on Text19 (populated), and **no** Milest
 
 ```python
 def test_risk_reg_tasks():
-    f = SavedFilter(name="_RiskRegTasks", criteria=AND(
-        leaf(OP.EQUALS,"SUMMARY","false"),
-        leaf(OP.DOES_NOT_EQUAL,"TEXT19",""),
-        leaf(OP.EQUALS,"ACTUAL_FINISH"),
-        leaf(OP.EQUALS,"ACTIVE","true")))
+    f = SavedFilter(
+        name="_RiskRegTasks",
+        criteria=AND(
+            leaf(OP.EQUALS, "SUMMARY", "false"),
+            leaf(OP.DOES_NOT_EQUAL, "TEXT19", ""),
+            leaf(OP.EQUALS, "ACTUAL_FINISH"),
+            leaf(OP.EQUALS, "ACTIVE", "true"),
+        ),
+    )
     # ... build UIDs 30-36 ...
     assert evaluate(s, f) == (30, 36)
 ```
@@ -335,15 +390,20 @@ One focused `matches(...)`-level test per `TestOperator` (SPEC line 11-13). **Gr
 | `OR` | any child True | | 2-child; also **nested `AND` inside `OR`** to pin recursion |
 
 ```python
-def test_or_and_nested_recursion():           # no real filter uses OR — pins the tree engine
+def test_or_and_nested_recursion():  # no real filter uses OR — pins the tree engine
     # OR( AND(Flag6=true, Text9='ZIN'), Name CONTAINS 'SVT' )
-    crit = OR(AND(leaf(OP.EQUALS,"FLAG6","true"), leaf(OP.EQUALS,"TEXT9","ZIN")),
-              leaf(OP.CONTAINS,"NAME","SVT"))
-    s = _sched([
-        _task(1, name="A", custom_fields=(("Flag6","Yes"),("Text9","ZIN"))),  # left AND
-        _task(2, name="SVT-9"),                                               # right leaf
-        _task(3, name="B", custom_fields=(("Flag6","Yes"),("Text9","BOE"))),  # neither
-    ], labels=("Flag6","Text9"))
+    crit = OR(
+        AND(leaf(OP.EQUALS, "FLAG6", "true"), leaf(OP.EQUALS, "TEXT9", "ZIN")),
+        leaf(OP.CONTAINS, "NAME", "SVT"),
+    )
+    s = _sched(
+        [
+            _task(1, name="A", custom_fields=(("Flag6", "Yes"), ("Text9", "ZIN"))),  # left AND
+            _task(2, name="SVT-9"),  # right leaf
+            _task(3, name="B", custom_fields=(("Flag6", "Yes"), ("Text9", "BOE"))),  # neither
+        ],
+        labels=("Flag6", "Text9"),
+    )
     assert evaluate(SavedFilter(name="x", criteria=crit), s) == (1, 2)
 ```
 
