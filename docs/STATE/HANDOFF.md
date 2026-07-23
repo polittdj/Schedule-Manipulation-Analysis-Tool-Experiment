@@ -1,6 +1,6 @@
 # Handoff — 2026-07-23 (Acumen parity mode from the .aft — solves ALL DCMA parity; v1.0.90; highest ADR 0280)
 
-> ## STATUS (current) — the operator supplied the **NASA Acumen metric library** (`NASA_Metrics_Complete_20260708.aft`, newer than the committed 20260423). Reading it verbatim **solved every remaining parity issue** and revealed my milestone toggle was a proxy. **Shipped ONE "Acumen parity mode" (ADR-0280) that reproduces Acumen UID-exact on all checks; supersedes 0277/0278, folds in 0279.** Highest ADR **0280**.
+> ## STATUS (current) — the Acumen-parity thread is **COMPLETE and MERGED (PR #427, v1.0.90, ADR-0280)**; branch reset clean to `origin/main`, nothing uncommitted. The operator supplied the **NASA Acumen metric library** (`NASA_Metrics_Complete_20260708.aft`, newer than the committed 20260423); reading it verbatim **solved every remaining parity issue** and revealed the milestone toggle was a proxy. **Shipped ONE "Acumen parity mode" (ADR-0280) that reproduces Acumen UID-exact on all checks; supersedes 0277/0278, folds in 0279.** Highest ADR **0280**. **Operator is about to start a NEW session and has a followup prompt queued — begin by reading their next message; the parity work needs no further action.**
 >
 > - **The unifying rule (from the `.aft` `<PrimaryFilter>`):** every DCMA work metric filters on
 >   **`Baseline Duration > 0`, truncated to WHOLE DAYS** (a sub-day baseline reads as 0) and sets
@@ -24,11 +24,15 @@
 >   set-diff/verification scripts). The `.aft` lives in `00_REFERENCE_INTAKE/` (20260423 committed;
 >   the 20260708 the operator uploaded is newer — NOT re-committed here).
 > - **State:** v1.0.90; **ADR-0280** highest (supersedes 0277/0278, folds 0279); wheel + 9 installers
->   lockstep. Branch `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #426).
-> - **NEXT (operator to steer):** operator has a **followup prompt queued** (said "tell me when ready").
->   Still OWED by operator: ADR-0261 PowerShell crash log + large dataset (they don't have it yet); the
->   Claude-Design portfolio prompt (not ready yet). Consider committing the 20260708 `.aft` + refreshing
->   `test_aft_formula_audit.py` to the newer library. Interactive-legend rollout DONE.
+>   lockstep. **PR #427 merged; branch `claude/conditional-branching-contingency-bi6g00` reset clean to
+>   `origin/main` (tip `f551b01`); tree clean, nothing pending.** Full gate was green at merge (2609 passed).
+> - **NEXT (operator to steer):** the operator is starting a NEW session with a **followup prompt** —
+>   **read their first message and act on it**; the parity thread itself is done. Still OWED by operator:
+>   ADR-0261 PowerShell crash log + large dataset (they don't have it yet); the Claude-Design portfolio
+>   prompt (not ready yet). Optional cleanup: the operator uploaded a newer `.aft` (20260708) than the
+>   committed 20260423 — if they commit it (reference binaries go in via the GitHub web UI; the
+>   pre-commit guard blocks the agent from adding them), refresh `test_aft_formula_audit.py` to it.
+>   Interactive-legend rollout DONE.
 
 # (prior) handoffs — archived
 
