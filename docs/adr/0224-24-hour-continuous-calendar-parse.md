@@ -16,9 +16,9 @@ finish is the *next* midnight).
 `importers/_common.py::working_time_span` collapsed that block to nothing:
 
 ```python
-if to_min == 0 and from_min > 0:   # only rescued a *partial* span ending at midnight
+if to_min == 0 and from_min > 0:  # only rescued a *partial* span ending at midnight
     to_min = 24 * 60
-if to_min <= from_min:             # 00:00→00:00 → 0 <= 0 → None
+if to_min <= from_min:  # 00:00→00:00 → 0 <= 0 → None
     return None
 ```
 
@@ -42,9 +42,9 @@ calendar parsed to **480** min/day; the four tasks on it were scheduled on an 8-
 Drop the `from_min > 0` guard so the midnight-finish rescue covers the 24-hour case uniformly:
 
 ```python
-if to_min == 0:          # a 00:00 finish is end-of-day midnight (24:00) — full day or partial
+if to_min == 0:  # a 00:00 finish is end-of-day midnight (24:00) — full day or partial
     to_min = 24 * 60
-if to_min <= from_min:   # genuine zero-length / inverted span (08:00→08:00, 12:00→08:00) → None
+if to_min <= from_min:  # genuine zero-length / inverted span (08:00→08:00, 12:00→08:00) → None
     return None
 return (from_min, to_min)
 ```

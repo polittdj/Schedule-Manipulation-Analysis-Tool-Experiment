@@ -52,7 +52,7 @@ incomplete-activity float list `floats`; expose its size on the frozen model:
 @dataclass(frozen=True)
 class RibbonMetrics:
     ...
-    incomplete_float_count: int   # == len(floats); 0 ⇒ avg/max_float_days are a placeholder 0.0
+    incomplete_float_count: int  # == len(floats); 0 ⇒ avg/max_float_days are a placeholder 0.0
 ```
 
 `incomplete_float_count == 0` is the single, unambiguous "this figure is unmeasurable" test — it is the

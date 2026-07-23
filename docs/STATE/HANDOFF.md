@@ -1,38 +1,40 @@
-# Handoff — 2026-07-23 (Acumen parity mode from the .aft — solves ALL DCMA parity; v1.0.90; highest ADR 0280)
+# Handoff — 2026-07-23b (validated multi-project performance fixes; byte-identical numbers; v1.0.91; highest ADR 0282)
 
-> ## STATUS (current) — the Acumen-parity thread is **COMPLETE and MERGED (PR #427, v1.0.90, ADR-0280)**; branch reset clean to `origin/main`, nothing uncommitted. The operator supplied the **NASA Acumen metric library** (`NASA_Metrics_Complete_20260708.aft`, newer than the committed 20260423); reading it verbatim **solved every remaining parity issue** and revealed the milestone toggle was a proxy. **Shipped ONE "Acumen parity mode" (ADR-0280) that reproduces Acumen UID-exact on all checks; supersedes 0277/0278, folds in 0279.** Highest ADR **0280**. **Operator is about to start a NEW session and has a followup prompt queued — begin by reading their next message; the parity work needs no further action.**
+> ## STATUS (current) — implemented the four **sandbox-validated** performance fixes from the
+> 2026-07-23 audit-validation session (ADR-0281). **Every number is byte-identical** — this is a
+> speed/robustness change only (Law 2). Version **1.0.91**. Highest ADR **0282** (a *proposed* open
+> question, no code). Branch `claude/multi-project-perf-fixes-khihxv` (fresh from `origin/main` at
+> `f551b01`).
 >
-> - **The unifying rule (from the `.aft` `<PrimaryFilter>`):** every DCMA work metric filters on
->   **`Baseline Duration > 0`, truncated to WHOLE DAYS** (a sub-day baseline reads as 0) and sets
->   **`IncludeMilestone = 1`** (Acumen KEEPS milestones — the ones I excluded just have baseline dur 0;
->   milestone-ness was a coincidental proxy). Plus: **Resources** = `Baseline Cost = 0 AND Baseline
->   Work = 0` (NOT "no resource name" — this is the "24-task mystery": those have no baseline duration);
->   **float compared in whole days**; **BEI** two-term denominator; **CPLI** stored (ADR-0279).
-> - **Verified UID-EXACT on BOTH files:** Hard 05, SS/FF 04, High Float 06, Neg Float 07, Resources 10,
->   Missed 11 all Id-exact; BEI 0.52/0.53; CPLI 0.97/0.59; Logic = Acumen **ribbon** (0/2; File-1
->   detail-of-5 is Acumen's own inconsistency). **P2/P5 golden byte-identical** (no sub-day baselines).
-> - **Shipped (ADR-0280):** `compute_dcma14(..., acumen_parity=False)` + `audit_schedule` forward one
->   flag; retired `exclude_milestones`/`cpli_stored_float`. New `Task.baseline_work_minutes` (+importer
->   `<Baseline><Work>`). `SessionState.dcma_acumen_parity` (default off), `_scope_signature` `A=1`, ONE
->   `/analysis` checkbox + an example-driven explanation panel. Docs: `docs/ACUMEN-PARITY-MODE.md`
->   (the two views, real-world examples, when-to-use). Tests: `test_dcma14.py` (6 parity tests) +
->   `test_dcma_scope.py` (single toggle). Default off = byte-identical (golden green). v1.0.89 →
->   **1.0.90**, wheel + 9 installers.
-> - **Retracted:** the ADR-0278 `.afw` `Excluded`/LOE hypothesis for the 24 tasks was WRONG — the real
->   discriminator is `Baseline Duration > 0` in the schedule.
-> - **Sandbox:** `scratchpad/acumen_parity/FINDINGS2_GROUNDTRUTH.md` (the full `.aft` solution +
->   set-diff/verification scripts). The `.aft` lives in `00_REFERENCE_INTAKE/` (20260423 committed;
->   the 20260708 the operator uploaded is newer — NOT re-committed here).
-> - **State:** v1.0.90; **ADR-0280** highest (supersedes 0277/0278, folds 0279); wheel + 9 installers
->   lockstep. **PR #427 merged; branch `claude/conditional-branching-contingency-bi6g00` reset clean to
->   `origin/main` (tip `f551b01`); tree clean, nothing pending.** Full gate was green at merge (2609 passed).
-> - **NEXT (operator to steer):** the operator is starting a NEW session with a **followup prompt** —
->   **read their first message and act on it**; the parity thread itself is done. Still OWED by operator:
->   ADR-0261 PowerShell crash log + large dataset (they don't have it yet); the Claude-Design portfolio
->   prompt (not ready yet). Optional cleanup: the operator uploaded a newer `.aft` (20260708) than the
->   committed 20260423 — if they commit it (reference binaries go in via the GitHub web UI; the
->   pre-commit guard blocks the agent from adding them), refresh `test_aft_formula_audit.py` to it.
->   Interactive-legend rollout DONE.
+> - **Tests committed FIRST (fail on main), then the fixes turned them green** — op-count/equality
+>   pins per ADR-0249: `tests/web/test_dashboard_perf_contract.py` (dashboard builds 0 full analyses;
+>   warm-served past the LRU cap; single-flight; 1×/1× deps; **golden payload SHA-256**; wipe/epoch
+>   guards; xfail cross-project leak) + `tests/web/test_upload_dedup_scaling.py` (O(M) dedup).
+> - **A′ dashboard card tier:** new `_DashCore` (the 3 card fields projected, ~1 KiB, no citation
+>   pins) + `SessionState.dash_cores` (plain dict, epoch-keyed like `cpms`, cleared on wipe) +
+>   `dashboard_core_for` (3 tiers: resident core → project a full analysis → compute only audit +
+>   zero-float band off the solve). `_dashboard_data` reads the core. **No more LRU thrash past N=48.**
+> - **B single-flight:** 64 striped locks + `_stripe_for`; `analysis_for` / `cpm_scoped_for` take the
+>   stripe OUTSIDE `_lock` and re-derive `ck`/`gen`/`parity` inside it, compute once, store under the
+>   `wipe_gen` guard. Exceptions propagate to every waiter; unrelated keys stay concurrent.
+> - **C compute deps once:** `recommend(precomputed_audit=, precomputed_compliance=)`,
+>   `build_narrative(precomputed_findings=)`; `_compute_analysis` computes audit + compliance once and
+>   threads them (3×/3×/2× → 1×/1×/1×). **Deliberate pin:** parity mode still derives findings from the
+>   DEFAULT audit (byte-identical) — the "should findings follow the parity audit?" question is filed
+>   as **ADR-0282** for the operator, NOT changed here.
+> - **D linear dedup:** `/upload` builds a `(hash, folder)→first-key` index once per batch; O(1)
+>   lookup, first-loaded-wins, folder-context rules preserved.
+> - **Gate:** full `pytest` green (2624 passed, 1 xfail = the Fix-E leak) once the wheel + 9 installers
+>   were regenerated to 1.0.91 (installer lockstep green); `-m parity` 44 green; ruff/mypy-strict/bandit
+>   clean on all changed files; `node --check` clean. (Pre-existing `ruff format` drift on `docs/*.md`
+>   from a newer local ruff formatting embedded code blocks — NOT touched, not mine.)
+> - **NEXT — deferred follow-ups in order (separate PRs; do NOT fold together):** **Fix E** —
+>   active-population scoping of `_render_target_control` + `_endpoint_banner` (real cross-project UID
+>   leak; un-xfail test 7; decide with operator whether the target dropdown should list other projects'
+>   milestones at all). Then: lazy status-UID payload trim (486 KB → ~40 KB @ 50 versions); home.js
+>   bounded-concurrency pre-read; manifest-projection memo; instrument-then-byte-budget the
+>   `cpms`/`summaries` tiers; MPP capability probe; importer profiling; `web/app.py` monolith split
+>   (never with a behavior fix). And **ADR-0282**: settle the parity-findings source with the operator.
 
 # (prior) handoffs — archived
 

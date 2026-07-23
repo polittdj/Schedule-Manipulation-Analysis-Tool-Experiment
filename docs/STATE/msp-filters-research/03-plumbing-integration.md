@@ -89,10 +89,10 @@ The critical semantic: **HIGHLIGHT mode does not reduce.** In highlight mode the
 ```python
 def scope(self, sch: Schedule) -> Schedule:
     with self._lock:
-        matched = self._match_uids(sch)                       # None = no filter
+        matched = self._match_uids(sch)  # None = no filter
         reducing = matched is not None and self.filter_mode == "reduce"
         if not reducing and self.target_uid is None:
-            return sch                                         # nothing changes the population
+            return sch  # nothing changes the population
         cached = self._scoped.get(id(sch))
         if cached is not None and cached[0] is sch:
             return cached[1]
@@ -137,17 +137,21 @@ def highlight_uids(self, sch: Schedule) -> frozenset[int] | None:
 All clear the three scope-dependent caches plus the two new memos. Mutual exclusivity is enforced in the setters, not the callers:
 
 ```python
-def set_saved_filter(self, saved: SavedFilter | None, prompts: dict[str, str] | None = None) -> None:
+def set_saved_filter(
+    self, saved: SavedFilter | None, prompts: dict[str, str] | None = None
+) -> None:
     with self._lock:
         self.active_saved_filter = saved
         self.saved_filter_prompts = dict(prompts or {})
-        self.active_filter = ()                     # mutual exclusivity: a saved filter clears field rows
+        self.active_filter = ()  # mutual exclusivity: a saved filter clears field rows
         self._invalidate_scope()
+
 
 def set_filter_mode(self, mode: str) -> None:
     with self._lock:
         self.filter_mode = "highlight" if mode == "highlight" else "reduce"
-        self._invalidate_scope()                    # reduce<->highlight CHANGES the population → full clear
+        self._invalidate_scope()  # reduce<->highlight CHANGES the population → full clear
+
 
 def set_saved_group(self, group: SavedGroup | None) -> None:
     with self._lock:
@@ -169,14 +173,20 @@ Keep the existing field-row `apply`/`clear` path. Add query params `saved_filter
 qp = request.query_params
 mode = "highlight" if qp.get("mode") == "highlight" else "reduce"
 if "clear" in qp:
-    st.set_filter(()); st.set_saved_filter(None); st.set_saved_group(None)
-elif (name := qp.get("saved_filter")):
-    saved = _find_saved_filter(versions, name)          # union lookup by name, §4
-    prompts = {p.text: qp.get(f"prompt_{i}", "") for i, p in enumerate(saved.prompts)} if saved else {}
+    st.set_filter(())
+    st.set_saved_filter(None)
+    st.set_saved_group(None)
+elif name := qp.get("saved_filter"):
+    saved = _find_saved_filter(versions, name)  # union lookup by name, §4
+    prompts = (
+        {p.text: qp.get(f"prompt_{i}", "") for i, p in enumerate(saved.prompts)} if saved else {}
+    )
     if saved is not None:
-        st.set_filter_mode(mode); st.set_saved_filter(saved, prompts)
+        st.set_filter_mode(mode)
+        st.set_saved_filter(saved, prompts)
 elif "apply" in qp:
-    st.set_filter_mode(mode); st.set_filter(param_criteria)   # field rows, existing path
+    st.set_filter_mode(mode)
+    st.set_filter(param_criteria)  # field rows, existing path
 if (gname := qp.get("saved_group")) is not None:
     st.set_saved_group(_find_saved_group(versions, gname) if gname else None)
 ```
@@ -193,11 +203,11 @@ Branch on the active source and mode; add a group line. Emitted unchanged at `ap
 def _filter_banner(state: SessionState) -> str:
     parts: list[str] = []
     if state.active_saved_filter is not None:
-        parts.append(_saved_filter_banner(state))     # name + human-readable tree + mode wording
+        parts.append(_saved_filter_banner(state))  # name + human-readable tree + mode wording
     elif state.active_filter:
-        parts.append(_field_filter_banner(state))      # existing 778-792 body, extracted
+        parts.append(_field_filter_banner(state))  # existing 778-792 body, extracted
     if state.active_saved_group is not None:
-        parts.append(_group_banner(state))             # "Grouped by <display_name>" + clear link
+        parts.append(_group_banner(state))  # "Grouped by <display_name>" + clear link
     return "".join(parts)
 ```
 
@@ -274,7 +284,8 @@ Values are already A→Z (`distinct_values` `grouping.py:169`, `group_values` `1
        for s in schedules:
            for f in s.saved_filters:
                if f.name not in seen:
-                   seen.add(f.name); out.append(f)
+                   seen.add(f.name)
+                   out.append(f)
        return tuple(sorted(out, key=lambda f: f.display_name.casefold()))
    ```
 3. **Saved-group picker** (new): identical shape — `saved_groups_union(schedules)` sorted by `display_name.casefold()`. (Note the real file has duplicate group names like two `&No Group` and `Group `/`Group 2`, `views_leveled.json` — dedupe by name keeps the first; a stable A→Z sort handles the rest.)
