@@ -105,20 +105,15 @@ def audit_schedule(
     schedule: Schedule,
     cpm_result: CPMResult | None = None,
     *,
-    exclude_milestones: bool = False,
-    cpli_stored_float: bool = False,
+    acumen_parity: bool = False,
 ) -> ScheduleAudit:
     """Run the 14 DCMA checks and return an independent, cited audit of one schedule.
 
-    ``exclude_milestones`` forwards the Acumen-parity milestone scope; ``cpli_stored_float``
-    forwards the Acumen-parity stored-float/stored-finish CPLI (ADR-0279). Both default off and
-    preserve prior behaviour and the golden parity (see :func:`compute_dcma14`)."""
-    results = compute_dcma14(
-        schedule,
-        cpm_result,
-        exclude_milestones=exclude_milestones,
-        cpli_stored_float=cpli_stored_float,
-    )
+    ``acumen_parity`` (default off) switches the checks to Acumen Fuse's exact definitions from the
+    NASA metric library (ADR-0280 — baselined population, whole-day float, Baseline-Cost/Work
+    resources, stored-float CPLI, two-term BEI). Default off preserves the pure-logic behaviour and
+    the golden parity (see :func:`compute_dcma14`)."""
+    results = compute_dcma14(schedule, cpm_result, acumen_parity=acumen_parity)
     checks: list[AuditCheck] = []
     for metric_id, result in results.items():
         improvement = (

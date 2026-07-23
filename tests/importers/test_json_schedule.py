@@ -435,6 +435,7 @@ def _maximal_schedule():  # type: ignore[no-untyped-def]
         budgeted_cost=1000.0,
         work_minutes=1920,
         actual_work_minutes=840,
+        baseline_work_minutes=1800,
         resource_names=("Crane", "Crew A"),
         resource_ids=(21,),
         resource_assignments=(

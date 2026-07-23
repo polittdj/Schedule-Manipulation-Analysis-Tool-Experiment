@@ -517,26 +517,19 @@ def _compute_analysis(
     sch: Schedule,
     cpm: CPMResult | None = None,
     *,
-    dcma_exclude_milestones: bool = False,
-    dcma_cpli_stored_float: bool = False,
+    dcma_acumen_parity: bool = False,
 ) -> _Analysis:
     """Run the engine once for ``sch`` (a single ``compute_cpm``, reused everywhere).
 
     ``cpm`` lets a caller hand in an already-cached solve of THIS exact schedule (the ADR-0261
     P2 tier) so the network is never solved twice for one epoch — never a different input.
-    ``dcma_exclude_milestones`` forwards the Acumen-parity DCMA milestone scope (ADR-0277) and
-    ``dcma_cpli_stored_float`` the Acumen-parity stored-float CPLI (ADR-0279); both are part of the
-    analysis cache signature so toggling either re-keys, never serving a stale audit."""
+    ``dcma_acumen_parity`` forwards the single Acumen-parity DCMA mode (ADR-0280); it is part of the
+    analysis cache signature so toggling it re-keys, never serving a stale audit."""
     cpm = cpm if cpm is not None else compute_cpm(sch)
     return _Analysis(
         scoped=sch,
         cpm=cpm,
-        audit=audit_schedule(
-            sch,
-            cpm,
-            exclude_milestones=dcma_exclude_milestones,
-            cpli_stored_float=dcma_cpli_stored_float,
-        ),
+        audit=audit_schedule(sch, cpm, acumen_parity=dcma_acumen_parity),
         compliance=compute_baseline_compliance(sch, cpm),
         float_bands=compute_float_bands(sch, cpm),
         completion=compute_completion_performance(sch),
@@ -688,18 +681,13 @@ class SessionState:
     # optional session-wide target activity: every view that can focus on a UniqueID
     # (report trace, trend focus, compare movement) defaults to this when set.
     target_uid: int | None = None
-    # DCMA milestone scope (ADR-0277): when True, the DCMA-14 float/logic/constraint/relationship
-    # checks (Logic, SS/FF, Hard constraints, High & Negative float) omit zero-duration milestones,
-    # matching Acumen Fuse's population for those checks (verified UID-exact on the operator's Large
-    # Test File: Hard 1→0, Negative Float 41→35). Off by default (prior behaviour + golden parity);
-    # part of the analysis cache signature so a toggle re-keys, never serving a stale audit.
-    dcma_exclude_milestones: bool = False
-    # DCMA CPLI stored-float scope (ADR-0279): when True, CPLI (DCMA-13) is computed from the source
-    # tool's STORED, progress-aware Total Slack and STORED project finish (not the recomputed CPM
-    # float, which is ~0 on a progressed schedule → CPLI 1.0). Reproduces Acumen exactly on the
-    # operator's files (File 1 0.97, File 2 0.59). Off by default (prior behaviour + P2/P5 golden);
-    # part of the analysis cache signature so a toggle re-keys, never serving a stale audit.
-    dcma_cpli_stored_float: bool = False
+    # DCMA Acumen parity mode (ADR-0280): when True, the DCMA-14 checks use Acumen Fuse's exact
+    # definitions from the NASA metric library — baselined population (Baseline Duration >= 1 day,
+    # milestones kept), whole-day float, Resources on Baseline Cost/Work, stored-float CPLI, two-term
+    # BEI. Verified UID-exact on the operator's Large Test File / File2. Off by default (pure-logic
+    # forensic behaviour + golden parity); part of the analysis cache signature so a toggle re-keys,
+    # never serving a stale audit. Supersedes the former milestone-scope + CPLI toggles (0277/0278/0279).
+    dcma_acumen_parity: bool = False
     # F3c: operator-settable NASA Gold-Rule margin-requirement rate (work-days per program year) the
     # dashboard measures effective margin against. 30/yr (the Schedule Management Handbook default) is
     # the initial value; set via GET /margin?rate=. The burn-down requirement line, the per-version
@@ -935,14 +923,11 @@ class SessionState:
                 parts.append("F=" + repr(self.active_filter))
         if self.target_uid is not None:
             parts.append(f"T={self.target_uid}")
-        # DCMA milestone scope (ADR-0277): contributes only when ENABLED, so the default epoch's
+        # DCMA Acumen parity mode (ADR-0280): contributes only when ENABLED, so the default epoch's
         # key shape is byte-identical to before — an analysis's audit differs under this flag, so it
         # must live in its own cache epoch (never serve a stale audit across a toggle).
-        if self.dcma_exclude_milestones:
-            parts.append("M=1")
-        # DCMA CPLI stored-float scope (ADR-0279): same epoch discipline — contributes only when on.
-        if self.dcma_cpli_stored_float:
-            parts.append("C=1")
+        if self.dcma_acumen_parity:
+            parts.append("A=1")
         return "\x1f".join(parts)
 
     def scope_signature(self) -> str:
@@ -1019,22 +1004,13 @@ class SessionState:
             self.sra_focus_uid = uid
             self._invalidate_scope()
 
-    def set_dcma_exclude_milestones(self, enabled: bool) -> None:
-        """Toggle the Acumen-parity DCMA milestone scope (ADR-0277). The flag is part of the
-        analysis cache signature (``_scope_signature`` adds ``M=1`` when enabled), so flipping it
-        re-keys the analysis epoch — the DCMA audit recomputes on next access and a toggle can never
-        serve a stale audit; the scoped population itself is unchanged, so nothing else invalidates."""
+    def set_dcma_acumen_parity(self, enabled: bool) -> None:
+        """Toggle the single Acumen-parity DCMA mode (ADR-0280). The flag is part of the analysis
+        cache signature (``_scope_signature`` adds ``A=1`` when enabled), so flipping it re-keys the
+        analysis epoch — the DCMA audit recomputes on next access and a toggle can never serve a stale
+        audit; the scoped population itself is unchanged, so nothing else invalidates."""
         with self._lock:
-            self.dcma_exclude_milestones = enabled
-
-    def set_dcma_cpli_stored_float(self, enabled: bool) -> None:
-        """Toggle the Acumen-parity stored-float CPLI (ADR-0279). Like the milestone scope, the flag
-        is part of the analysis cache signature (``_scope_signature`` adds ``C=1`` when enabled), so
-        flipping it re-keys the analysis epoch — the DCMA audit recomputes on next access and a
-        toggle can never serve a stale CPLI; the scoped population is unchanged, nothing else
-        invalidates."""
-        with self._lock:
-            self.dcma_cpli_stored_float = enabled
+            self.dcma_acumen_parity = enabled
 
     def set_margin_rate(self, rate: float) -> None:
         """Set the NASA Gold-Rule margin-requirement rate (work-days per program year) the margin
@@ -1276,14 +1252,8 @@ class SessionState:
             scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
             pre = self.cpms.get(ck)
             cpm = pre[1] if pre is not None and pre[0] is sch else None
-            ex_ms = self.dcma_exclude_milestones  # captured under the lock with the cache key
-            cpli_sf = self.dcma_cpli_stored_float  # captured under the lock with the cache key
-        analysis = _compute_analysis(
-            scoped,
-            cpm=cpm,
-            dcma_exclude_milestones=ex_ms,
-            dcma_cpli_stored_float=cpli_sf,
-        )
+            parity = self.dcma_acumen_parity  # captured under the lock with the cache key
+        analysis = _compute_analysis(scoped, cpm=cpm, dcma_acumen_parity=parity)
         with self._lock:
             if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
                 self.analyses.put(ck, (sch, analysis))
@@ -3429,8 +3399,7 @@ def create_app(
                 st.target_uid,
                 erosion_field=erosion_field,
                 margin_confirmed=st.margin_overlay.get(name),
-                dcma_exclude_milestones=st.dcma_exclude_milestones,
-                dcma_cpli_stored_float=st.dcma_cpli_stored_float,
+                dcma_acumen_parity=st.dcma_acumen_parity,
             ),
             ask_schedule=name,
             chapter=_CHAPTER_BY_NUM.get(
@@ -7464,8 +7433,7 @@ def create_app(
                 briefing,
                 schedules[-1],
                 cpms[-1],
-                exclude_milestones=st.dcma_exclude_milestones,
-                cpli_stored_float=st.dcma_cpli_stored_float,
+                acumen_parity=st.dcma_acumen_parity,
             )
             + _skipped_notice(skipped)
             + '<div id=briefingBody data-ai-endpoint="/api/ai/briefing">'
@@ -7670,19 +7638,12 @@ def create_app(
         return RedirectResponse(url=dest, status_code=303)
 
     @app.post("/dcma/scope")
-    def set_dcma_scope(
-        exclude_ms: str = Form(""),
-        cpli_stored: str = Form(""),
-        next: str = Form("/"),
-    ) -> RedirectResponse:
-        """Toggle the Acumen-parity DCMA scopes — milestone population (ADR-0277) and stored-float
-        CPLI (ADR-0279). Both checkboxes live in one form and submit together (an unchecked box is
-        simply absent), so each POST carries the full current state of both. Funnels through the
-        SessionState setters, which re-key the analysis cache epoch so the audit recomputes on the
-        next render (never a stale audit/CPLI across a toggle)."""
-        st = session()
-        st.set_dcma_exclude_milestones(bool(exclude_ms))
-        st.set_dcma_cpli_stored_float(bool(cpli_stored))
+    def set_dcma_scope(parity: str = Form(""), next: str = Form("/")) -> RedirectResponse:
+        """Toggle the single Acumen-parity DCMA mode (ADR-0280). The checkbox is absent when
+        unchecked, so the POST carries its full current state. Funnels through the SessionState
+        setter, which re-keys the analysis cache epoch so the audit recomputes on the next render
+        (never a stale audit across the toggle)."""
+        session().set_dcma_acumen_parity(bool(parity))
         # local redirect only: a path on this app, never a scheme/host ("//host" included)
         dest = next if next.startswith("/") and not next.startswith("//") else "/"
         return RedirectResponse(url=dest, status_code=303)
@@ -10360,8 +10321,7 @@ def _analysis_body(
     narrative: Narrative | None = None,
     erosion_field: str | None = None,
     margin_confirmed: frozenset[int] | None = None,
-    dcma_exclude_milestones: bool = False,
-    dcma_cpli_stored_float: bool = False,
+    dcma_acumen_parity: bool = False,
 ) -> str:
     audit = analysis.audit
     audit_rows = "".join(
@@ -10436,10 +10396,30 @@ criteria, why it matters, and what it indicates; full formulas + citations are i
 <a href="/help">Metric Dictionary</a>.</p>
 <form method=post action="/dcma/scope" style="margin:0 0 8px">
 <input type=hidden name=next value="/analysis/{quote(key, safe="")}">
-<label class=muted title="Acumen Fuse omits zero-duration milestones from the Logic, SS/FF, Hard-constraint and Negative-float checks (a milestone is not an activity whose float or logic density is meaningful there). Enable to match Acumen's flagged-task population for those checks (verified UID-exact on the Large Test File: Hard and Negative Float match Acumen exactly). High Float KEEPS milestones — Acumen's High-Float detail includes milestones with genuinely high stored float — as do the completion checks Missed and BEI (ADR-0277, corrected by ADR-0278).">
-<input type=checkbox name=exclude_ms value=1 {"checked" if dcma_exclude_milestones else ""} onchange="this.form.submit()"> <b>Acumen milestone scope</b> — exclude zero-duration milestones from the Logic / SS-FF / Hard-constraint / Negative-float checks (High Float, Missed &amp; BEI keep milestones)</label>
-<label class=muted title="CPLI (DCMA-13) normally uses the recomputed pure-logic CPM float, which is ~0 on a progressed schedule (CPLI 1.0). Enable to compute CPLI from the source tool's STORED, progress-aware Total Slack and STORED project finish, matching Acumen Fuse (verified exact on the Large Test File: 0.97, and File2: 0.59). Off by default (prior behaviour + P2/P5 golden). ADR-0279." style="display:block;margin-top:4px">
-<input type=checkbox name=cpli_stored value=1 {"checked" if dcma_cpli_stored_float else ""} onchange="this.form.submit()"> <b>Acumen CPLI (stored float)</b> — compute CPLI from the schedule's stored Total Slack &amp; stored finish (matches Acumen on progressed schedules)</label></form>
+<label><input type=checkbox name=parity value=1 {"checked" if dcma_acumen_parity else ""} onchange="this.form.submit()"> <b>Acumen&nbsp;Fuse&nbsp;parity&nbsp;mode</b> {"<b style='color:var(--sf-accent,#2a7)'>ON — matching Acumen Fuse</b>" if dcma_acumen_parity else "<span class=muted>OFF — pure-logic / forensic view</span>"}</label></form>
+<details class=panel style="margin:0 0 10px"><summary><b>What is Acumen parity mode?</b> — the two DCMA views, with examples &amp; when to use each</summary>
+<p class=muted>The 14 DCMA checks can be scored two ways. They agree on a clean, fully-baselined schedule; they diverge on real progressed schedules with milestones, un-baselined tasks, and imposed deadlines. Neither is "more correct" — they answer different questions.</p>
+<table>
+<tr><th scope=col>Dimension</th><th scope=col>Pure-logic / forensic (default, OFF)</th><th scope=col>Acumen&nbsp;Fuse&nbsp;parity (ON)</th></tr>
+<tr><td><b>Total Float</b></td><td>The engine's freshly re-computed CPM float (independent of the file's stored dates).</td><td>The file's <b>stored, progress-aware</b> Total Slack, compared in whole days — exactly what Acumen reads.</td></tr>
+<tr><td><b>Population</b></td><td>Every incomplete activity, whether or not it was baselined.</td><td>Only activities with a <b>baseline duration ≥ 1 day</b> (Acumen's <i>Baseline Duration&nbsp;&gt;&nbsp;0</i>). Milestones are kept when they carry a real baseline.</td></tr>
+<tr><td><b>Resources (10)</b></td><td>Incomplete, real-duration activities with <b>no named resource</b>.</td><td>Activities with <b>no baseline cost AND no baseline work</b> (a task can lack a named resource yet still carry work).</td></tr>
+<tr><td><b>CPLI (13)</b></td><td>Recomputed critical-path float — ~0 with no imposed deadline, so CPLI reads 1.0.</td><td>Stored float + stored remaining duration — reflects a behind-schedule finish (e.g. 0.97 / 0.59).</td></tr>
+</table>
+<p class=muted style="margin-top:6px"><b>Real-world examples:</b></p>
+<ul class=muted>
+<li><b>A "Project Complete" milestone with a Must-Finish-On date.</b> Pure-logic counts it under Hard Constraints; Acumen parity does not (a zero-baseline milestone fails <i>Baseline Duration&nbsp;&gt;&nbsp;0</i>) — so a schedule that "has 1 hard constraint" here shows 0 in Acumen.</li>
+<li><b>A planning-package task with the MS&nbsp;Project unassigned-work placeholder but no named resource.</b> Pure-logic flags it as missing a resource; Acumen parity does not, because it carries baseline work.</li>
+<li><b>A task 7 hours behind an imposed deadline (minus 0.29 day of float).</b> Pure-logic flags Negative Float; Acumen parity does not (Acumen shows float in whole days, so -0.29 reads as 0).</li>
+<li><b>A behind-schedule program.</b> Pure-logic CPLI reads 1.0 (looks on-track); Acumen parity reads &lt;&nbsp;1.0, correctly showing the slip.</li>
+</ul>
+<p class=muted><b>When to use which:</b></p>
+<ul class=muted>
+<li><b>Use pure-logic (default)</b> for independent forensic analysis — delay/path analysis, an un-baselined or draft schedule, or when you want the tool's own recomputation rather than the file's stored dates. It flags <i>every</i> issue the logic exposes, baseline or not.</li>
+<li><b>Use Acumen parity</b> when you need to <b>reconcile with or defend against an Acumen&nbsp;Fuse report</b> (e.g. a customer's DCMA scorecard), when the <b>baseline is authoritative</b>, or in a <b>testimony</b> context where Acumen is the reference tool. Its counts match Acumen's ribbon activity-for-activity.</li>
+</ul>
+<p class=muted style="font-size:0.9em">Formulas are taken verbatim from the NASA Acumen metric library and verified UID-exact against Acumen on the reference schedules (ADR-0280). The default is unchanged and the golden parity gate is unaffected.</p>
+</details>
 {_stoplight_board(audit.checks)}
 <table><tr><th scope=col>Check</th><th scope=col>Status</th><th scope=col>Count</th><th scope=col>% of tasks</th>
 <th scope=col>What it measures (how)</th>
@@ -18498,8 +18478,7 @@ def _the_briefing_header(
     sch: Schedule,
     cpm: CPMResult,
     *,
-    exclude_milestones: bool = False,
-    cpli_stored_float: bool = False,
+    acumen_parity: bool = False,
 ) -> str:
     """Chapter 12 "The briefing" (ADR-0210): the data-driven takeaway (the briefing's own
     verdict + headline figures), a KPI strip from the briefing banner, and the action-items
@@ -18526,9 +18505,7 @@ def _the_briefing_header(
     high = sum(1 for f in findings if f.severity == Severity.HIGH)
     med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
     low = sum(1 for f in findings if f.severity == Severity.LOW)
-    audit = audit_schedule(
-        sch, cpm, exclude_milestones=exclude_milestones, cpli_stored_float=cpli_stored_float
-    )
+    audit = audit_schedule(sch, cpm, acumen_parity=acumen_parity)
     passed = sum(1 for c in audit.checks if c.status is CheckStatus.PASS)
     failed = sum(1 for c in audit.checks if c.status is CheckStatus.FAIL)
     na = sum(1 for c in audit.checks if c.status is CheckStatus.NOT_APPLICABLE)

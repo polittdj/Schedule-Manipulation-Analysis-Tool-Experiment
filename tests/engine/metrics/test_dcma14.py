@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from schedule_forensics.engine.metrics import CheckStatus, compute_bei, compute_dcma14
-from schedule_forensics.engine.metrics._common import forty_four_days_min, to_offset
+from schedule_forensics.engine.metrics._common import forty_four_days_min
 from schedule_forensics.model.calendar import Calendar
 from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
@@ -288,148 +288,152 @@ def test_bei_numerator_is_cumulative_complete_among_the_due_set() -> None:
     assert later.count == 1 and later.population == 2 and later.value == 0.5
 
 
-def test_exclude_milestones_scopes_work_checks_only() -> None:
-    """ADR-0277 (amended) Acumen-parity milestone scope: exclude_milestones drops zero-duration
-    milestones from Hard constraints (05), Negative float (07), Logic (01) and SS/FF (04) — verified
-    UID-exact against Acumen's flagged-task detail on the Large Test File (Hard 1→0, Negative Float
-    41→35). It does NOT touch High float (06): Acumen's High-Float detail INCLUDES milestones with
-    genuinely high stored float, so 06 keeps them under both scopes (the original ADR wrongly
-    excluded 06 → 7 false negatives vs Acumen; ground-truth corrected by ADR-0278). Completion
-    checks (Missed / BEI) always keep milestones."""
+# ── ADR-0280: the single Acumen-parity mode (supersedes the milestone/CPLI toggles) ──────
+
+
+def test_acumen_parity_population_is_baseline_duration_in_whole_days() -> None:
+    """The unifying parity rule: Acumen scopes the work checks to Baseline Duration > 0,
+    whole days (a sub-day baseline reads as 0), and KEEPS milestones that carry a real baseline. A
+    Normal task with a half-day baseline drops out under parity; a baselined milestone stays in."""
     tasks = [
-        # one normal task and one milestone per work-check, each tripping it
+        # normal, hard-constrained, but only a half-day baseline -> parity drops it (sub-day)
         Task(
             unique_id=1,
-            name="hard-task",
+            name="half-day",
             duration_minutes=DAY,
+            baseline_duration_minutes=DAY // 2,
             constraint_type=ConstraintType.MSO,
             constraint_date=MON,
         ),
+        # milestone, hard-constrained, WITH a 2-day baseline -> parity KEEPS it (IncludeMilestone=1)
         Task(
             unique_id=2,
-            name="hard-ms",
+            name="ms-baselined",
             duration_minutes=0,
             is_milestone=True,
+            baseline_duration_minutes=2 * DAY,
             constraint_type=ConstraintType.MSO,
             constraint_date=MON,
-        ),
-        Task(unique_id=3, name="neg-task", duration_minutes=DAY, stored_total_float_minutes=-DAY),
-        Task(
-            unique_id=4,
-            name="neg-ms",
-            duration_minutes=0,
-            is_milestone=True,
-            stored_total_float_minutes=-DAY,
-        ),
-        Task(
-            unique_id=5, name="hf-task", duration_minutes=DAY, stored_total_float_minutes=100 * DAY
-        ),
-        Task(
-            unique_id=6,
-            name="hf-ms",
-            duration_minutes=0,
-            is_milestone=True,
-            stored_total_float_minutes=100 * DAY,
         ),
     ]
     sch = _sched(tasks)
-    inc = compute_dcma14(sch)  # default: milestones included (prior behaviour)
-    exc = compute_dcma14(sch, exclude_milestones=True)
-
-    assert inc["DCMA05"].count == 2 and exc["DCMA05"].count == 1  # Hard: milestone dropped
-    assert (
-        inc["DCMA07"].count == 2 and exc["DCMA07"].count == 1
-    )  # Negative float: milestone dropped
-    # High float KEEPS milestones under both scopes (Acumen's detail includes them) — ADR-0278
-    assert inc["DCMA06"].count == 2 and exc["DCMA06"].count == 2
-    # exactly the milestone UIDs drop from the milestone-scoped checks; 06 retains its milestone
-    assert set(inc["DCMA05"].offender_uids) - set(exc["DCMA05"].offender_uids) == {2}
-    assert set(inc["DCMA07"].offender_uids) - set(exc["DCMA07"].offender_uids) == {4}
-    assert set(exc["DCMA06"].offender_uids) == {5, 6}  # milestone 6 retained under exclude
-    # the negative-float denominator drops the milestones; the high-float denominator does NOT
-    assert exc["DCMA07"].population == inc["DCMA07"].population - 3
-    assert exc["DCMA06"].population == inc["DCMA06"].population
+    default = compute_dcma14(sch)["DCMA05"]
+    parity = compute_dcma14(sch, acumen_parity=True)["DCMA05"]
+    assert set(default.offender_uids) == {1, 2}  # pure logic: both hard-constrained
+    assert set(parity.offender_uids) == {2}  # parity: sub-day baseline dropped, milestone kept
 
 
-def test_exclude_milestones_keeps_missed_milestones() -> None:
-    """A missed MILESTONE is a real missed deliverable — the completion checks keep milestones under
-    both scopes (excluding them would undercount vs Acumen)."""
-    status = MON + dt.timedelta(days=10)
-    due = MON  # baselined to finish before the data date
+def test_acumen_parity_resources_uses_baseline_cost_and_work() -> None:
+    """Parity flags Resources on Baseline Cost = 0 AND Baseline Work = 0 (not "no named resource"):
+    a task with no resource but baseline work is NOT flagged; one with neither is."""
     tasks = [
-        Task(unique_id=1, name="late-task", duration_minutes=DAY, baseline_finish=due),
         Task(
-            unique_id=2, name="late-ms", duration_minutes=0, is_milestone=True, baseline_finish=due
+            unique_id=1, name="no-loading", duration_minutes=DAY, baseline_duration_minutes=2 * DAY
+        ),
+        Task(
+            unique_id=2,
+            name="has-baseline-work",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            baseline_work_minutes=3 * DAY,
         ),
     ]
+    sch = _sched(tasks)
+    default = compute_dcma14(sch)["DCMA10"]
+    parity = compute_dcma14(sch, acumen_parity=True)["DCMA10"]
+    assert set(default.offender_uids) == {1, 2}  # pure logic: neither has a named resource
+    assert set(parity.offender_uids) == {1}  # parity: #2 carries baseline work, so Acumen keeps it
+
+
+def test_acumen_parity_negative_float_is_day_grained() -> None:
+    """Acumen displays Total Float in whole days, so a sub-day negative float (-0.29 day) is not
+    flagged under parity; a whole-day-negative float is (default flags both)."""
+    tasks = [
+        Task(
+            unique_id=1,
+            name="tiny-neg",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            stored_total_float_minutes=-(DAY // 3),  # ≈ -0.33 day → rounds to 0
+        ),
+        Task(
+            unique_id=2,
+            name="real-neg",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            stored_total_float_minutes=-2 * DAY,
+        ),
+    ]
+    sch = _sched(tasks)
+    assert set(compute_dcma14(sch)["DCMA07"].offender_uids) == {1, 2}
+    assert set(compute_dcma14(sch, acumen_parity=True)["DCMA07"].offender_uids) == {2}
+
+
+def test_acumen_parity_bei_uses_two_term_denominator() -> None:
+    """Parity BEI (ADR-0280) adds Acumen's second denominator term — activities carrying a duration
+    but MISSING a baseline count as due — so an un-baselined in-progress task lowers BEI."""
+    status = MON + dt.timedelta(days=30)
+    due = MON  # baselined to finish before the data date
+    tasks = [
+        Task(
+            unique_id=1,
+            name="done",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            baseline_start=MON,
+            baseline_finish=due,
+            percent_complete=100.0,
+            actual_finish=MON,
+        ),
+        # a real-duration task with NO baseline -> only the parity two-term denominator counts it
+        Task(unique_id=2, name="no-baseline", duration_minutes=DAY),
+    ]
     sch = _sched(tasks, status_date=status)
-    inc = compute_dcma14(sch)
-    exc = compute_dcma14(sch, exclude_milestones=True)
-    assert inc["DCMA11"].count == 2  # both the task and the milestone are missed
-    assert exc["DCMA11"].count == 2  # milestone STILL counted under the exclude scope
-    assert set(inc["DCMA11"].offender_uids) == set(exc["DCMA11"].offender_uids) == {1, 2}
+    assert compute_dcma14(sch)["DCMA14"].value == 1.0  # default: 1 complete / 1 due
+    # parity: 1 complete / (1 baselined-due + 1 no-baseline) = 0.5
+    assert compute_dcma14(sch, acumen_parity=True)["DCMA14"].value == 0.5
 
 
-def test_exclude_milestones_default_is_identical_to_prior() -> None:
-    """Default off must be byte-identical to the prior single-arg behaviour (protects the P2/P5
-    goldens): a schedule with no milestones is unaffected either way, and the default equals the
-    explicit include on the golden P5 audit."""
-    sch = _sched(
-        [
-            Task(
-                unique_id=1,
-                name="A",
-                duration_minutes=DAY,
-                constraint_type=ConstraintType.MSO,
-                constraint_date=MON,
-            ),
-        ]
-    )
-    a = {k: v.count for k, v in compute_dcma14(sch).items()}
-    b = {k: v.count for k, v in compute_dcma14(sch, exclude_milestones=False).items()}
-    assert a == b
-
-
-def test_cpli_stored_float_reads_stored_slack_and_finish() -> None:
-    """ADR-0279 Acumen-parity CPLI: default uses the recomputed pure-logic CPM float (~0 with no
-    imposed deadline → CPLI 1.0); ``cpli_stored_float`` reads the source tool's STORED negative
-    Total Slack and STORED project finish, so a schedule behind an imposed finish reports CPLI < 1
-    (the Acumen view — verified UID-exact on the Large Test File 0.97 / File2 0.59)."""
+def test_acumen_parity_cpli_uses_stored_float() -> None:
+    """Parity CPLI reads the STORED negative float + stored finish (folds in the CPLI toggle):
+    default reads ~0 recomputed float → 1.0, parity reads the behind-schedule slip → < 1."""
     status = MON
-    finish = MON + dt.timedelta(days=30)  # a stored finish well past the 5-day logic finish
+    finish = MON + dt.timedelta(days=30)
     sch = _sched(
         [
             Task(
                 unique_id=1,
                 name="A",
                 duration_minutes=5 * DAY,
+                baseline_duration_minutes=2 * DAY,
                 finish=finish,
                 stored_total_float_minutes=-4 * DAY,
             ),
         ],
         status_date=status,
     )
-    assert compute_dcma14(sch)["DCMA13"].value == 1.0  # recomputed float ~0 → CPLI 1.0
-    stored = compute_dcma14(sch, cpli_stored_float=True)["DCMA13"]
-    length = to_offset(sch, finish) - (to_offset(sch, status) or 0)
-    assert stored.value == round((length - 4 * DAY) / length, 2)
-    assert stored.value < 1.0 and stored.status is CheckStatus.FAIL
-
-
-def test_cpli_stored_float_keeps_one_when_ahead() -> None:
-    """The P2/P5 shape: a small POSITIVE stored slack against a long remaining length rounds to
-    CPLI 1.0 under the stored scope too (why enabling the flag leaves the golden CPLI untouched)."""
-    sch = _sched(
-        [
-            Task(
-                unique_id=1,
-                name="A",
-                duration_minutes=DAY,
-                finish=MON + dt.timedelta(days=300),
-                stored_total_float_minutes=DAY,
-            ),
-        ],
-        status_date=MON,
-    )
     assert compute_dcma14(sch)["DCMA13"].value == 1.0
-    assert compute_dcma14(sch, cpli_stored_float=True)["DCMA13"].value == 1.0
+    parity = compute_dcma14(sch, acumen_parity=True)["DCMA13"]
+    assert parity.value < 1.0 and parity.status is CheckStatus.FAIL
+
+
+def test_acumen_parity_default_is_identical_to_prior() -> None:
+    """Default off (the arg absent) must equal ``acumen_parity=False`` on every check: pure-logic
+    behaviour is byte-identical, protecting the P2/P5 golden gate."""
+    tasks = [
+        Task(
+            unique_id=1,
+            name="A",
+            duration_minutes=DAY,
+            baseline_duration_minutes=DAY,
+            constraint_type=ConstraintType.MSO,
+            constraint_date=MON,
+        ),
+    ]
+    sch = _sched(tasks)
+    a = {k: (v.count, v.population, v.value) for k, v in compute_dcma14(sch).items()}
+    b = {
+        k: (v.count, v.population, v.value)
+        for k, v in compute_dcma14(sch, acumen_parity=False).items()
+    }
+    assert a == b
