@@ -7505,3 +7505,31 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Still open (operator to steer):** Logic-01 definition (Acumen's own exports disagree: ribbon 0/8,
   detail 5); the ~24-task `Excluded`/LOE population (Acumen-side); BEI. Sandbox scripts under
   `scratchpad/acumen_parity/`.
+
+---
+
+## (cont.) — 2026-07-23 — Acumen parity mode from the NASA .aft (ADR-0280; supersedes 0277/0278, folds 0279)
+
+- **Session:** continued (after PR #426 merged)   **Model/mode:** Opus 4.8 + Ultracode
+- **Branch:** `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #426)
+- **Trigger:** operator supplied the **NASA Acumen metric library** (`NASA_Metrics_Complete_20260708.aft`,
+  newer than the committed 20260423) and asked to deep-dive it and solve the remaining DCMA parity
+  issues (Logic, the ~24-task/Resources, BEI).
+- **Deep dive:** each `<Metric>` carries its `<Formula>` + a `<PrimaryFilter>` (IncludeNormal/Milestone/
+  Summary/Hammock + FilterExpressions). The unifying rule is **`Baseline Duration > 0`, truncated to
+  whole days** (a sub-day baseline reads as 0) with **`IncludeMilestone = 1`**. My milestone toggle
+  (0277/0278) was a coincidental proxy (the excluded milestones just have baseline dur 0). Resources =
+  `Baseline Cost = 0 AND Baseline Work = 0` (the 24-task class has no baseline duration). BEI = two-term
+  denominator. Float compared in whole days. The `.afw` Excluded/LOE hypothesis (0278) was WRONG.
+- **Verified UID-EXACT on both files:** Hard/SS-FF/High-Float/Neg-Float/Resources/Missed Id-exact; BEI
+  0.52/0.53; CPLI 0.97/0.59; Logic = Acumen ribbon (0/2). P2/P5 golden **byte-identical** (no sub-day
+  baselines) — verified.
+- **Shipped (ADR-0280):** ONE `acumen_parity` flag replacing `exclude_milestones` + `cpli_stored_float`;
+  `Task.baseline_work_minutes` (+ importer `<Baseline><Work>`); `SessionState.dcma_acumen_parity`
+  (default off), `_scope_signature` `A=1`, one `/analysis` checkbox + an example-driven explanation
+  panel; `docs/ACUMEN-PARITY-MODE.md` (two views, real-world examples, when-to-use). Tests: 6 engine
+  parity tests + the single web toggle. Default off byte-identical (golden green). v1.0.89 → **1.0.90**,
+  wheel + 9 installers lockstep. Highest ADR **ADR-0280**.
+- **NEXT:** operator has a **followup prompt queued**. Still OWED by operator: ADR-0261 PowerShell crash
+  log (don't have it); Claude-Design portfolio prompt (not ready). Consider committing the 20260708
+  `.aft` + refreshing `test_aft_formula_audit.py`.

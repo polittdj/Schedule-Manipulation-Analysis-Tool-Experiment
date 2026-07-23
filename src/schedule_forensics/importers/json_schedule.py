@@ -189,7 +189,7 @@ def _task(raw: dict[str, Any]) -> Task:
     for key in ("cost", "actual_cost", "budgeted_cost"):
         if raw.get(key) is not None:
             fields[key] = float(raw[key])
-    for key in ("work_minutes", "actual_work_minutes"):
+    for key in ("work_minutes", "actual_work_minutes", "baseline_work_minutes"):
         if raw.get(key) is not None:
             fields[key] = _int(raw[key], key)
     for field in _DATE_FIELDS:
@@ -488,6 +488,8 @@ def to_json_text(schedule: Schedule) -> str:
             task["work_minutes"] = t.work_minutes
         if t.actual_work_minutes is not None:
             task["actual_work_minutes"] = t.actual_work_minutes
+        if t.baseline_work_minutes is not None:
+            task["baseline_work_minutes"] = t.baseline_work_minutes
         for field in _DATE_FIELDS:
             value = iso(getattr(t, field))
             if value is not None:

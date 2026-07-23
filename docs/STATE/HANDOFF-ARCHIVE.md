@@ -5,6 +5,15 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-21e (Acumen-parity CPLI stored-float; v1.0.89; highest ADR 0279)
+
+> ## STATUS — root-caused and shipped CPLI (DCMA-13) parity as a configurable option (ADR-0279).
+> Acumen "Ribbon Analysis" CPLI: File 1 0.97, File 2 0.59; ours was 1.00. Cause: we used recomputed
+> CPM float (~0 → 1.0); Acumen uses stored progress-aware Total Slack AND the stored project finish.
+> Shipped `cpli_stored_float` toggle (default off); re-verified EXACT (0.9698≈0.97, 0.5863≈0.59); P2/P5
+> stays 1.0. v1.0.89. [NOTE: superseded next session by ADR-0280 — the .aft revealed the unifying rule
+> is `Baseline Duration > 0`, and CPLI parity folded into one "Acumen parity mode".]
+
 # (prior) Handoff — 2026-07-21d (DCMA milestone scope — ground-truth CORRECTION; v1.0.88; highest ADR 0278)
 
 > ## STATUS — the operator committed the **ground-truth workbooks** (Acumen's ACTUAL per-check flagged-task lists + the `.afw` + the `.mpp` under `mpp/`). A **UID-level** re-verification **overturned part of ADR-0277** and shipped as **ADR-0278**.

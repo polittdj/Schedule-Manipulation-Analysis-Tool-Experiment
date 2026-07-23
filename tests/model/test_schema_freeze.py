@@ -57,6 +57,7 @@ _EXPECTED_FIELDS: dict[type[pydantic.BaseModel], set[str]] = {
         "budgeted_cost",
         "work_minutes",
         "actual_work_minutes",
+        "baseline_work_minutes",
         "resource_names",
         "resource_ids",
         "resource_assignments",

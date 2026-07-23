@@ -76,6 +76,11 @@ class Task(StrictFrozenModel):
     # assume 0. Tracked cross-version for the Fuse-parity work-change signals (ADR-0176).
     work_minutes: int | None = Field(default=None, ge=0)  # total (planned) work
     actual_work_minutes: int | None = Field(default=None, ge=0)  # work performed to date
+    # Baselined (Number==0) work in minutes; None = the source recorded no baseline work. Distinct
+    # from ``work_minutes`` (the CURRENT plan): Acumen Fuse's DCMA-10 "Resources" flags an activity
+    # with **no baseline cost AND no baseline work** (ADR-0280 parity), so the baseline figure — not
+    # the live plan — is the discriminator.
+    baseline_work_minutes: int | None = Field(default=None, ge=0)
 
     # --- classification ---
     is_milestone: bool = False

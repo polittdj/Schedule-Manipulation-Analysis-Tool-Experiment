@@ -33,7 +33,7 @@ from schedule_forensics.engine.metrics._common import (
 )
 from schedule_forensics.model.relationship import RelationshipType
 from schedule_forensics.model.schedule import Schedule
-from schedule_forensics.model.task import ConstraintType
+from schedule_forensics.model.task import ConstraintType, Task
 
 #: MS Project hard/mandatory constraints (DCMA-05). SNET/FNET are soft (excluded).
 _HARD_CONSTRAINTS = frozenset(
@@ -48,41 +48,46 @@ def compute_dcma14(
     schedule: Schedule,
     cpm_result: CPMResult | None = None,
     *,
-    exclude_milestones: bool = False,
-    cpli_stored_float: bool = False,
+    acumen_parity: bool = False,
 ) -> dict[str, MetricResult]:
     """Compute all 14 DCMA checks, keyed by id (``"DCMA01"`` … ``"DCMA14"`` with
     ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon).
 
-    ``exclude_milestones`` (default off) selects the Acumen-parity population for the checks where
-    Acumen omits zero-duration milestones — Logic (01), SS/FF relationships (04), Hard constraints
-    (05) and Negative float (07). Verified **UID-exact** against Acumen's own flagged-task detail on
-    the operator's Large Test File: Hard 1→0 and Negative Float 41→35 match Acumen's list exactly
-    (every extra we drop is a milestone Acumen omits), and SS/FF drops only milestone successors
-    Acumen does not count (ADR-0277 amendment, ground-truth verified 2026-07-21).
+    ``acumen_parity`` (default off) switches the checks to Acumen Fuse's exact definitions, taken
+    verbatim from the NASA Acumen metric library (``NASA_Metrics_Complete_*.aft``) and verified
+    UID-exact against Acumen's flagged-task detail on the operator's Large Test File / File2
+    (ADR-0280). The unifying rule is Acumen's population filter **Baseline Duration > 0**, where its
+    Baseline Duration is truncated to WHOLE DAYS (a sub-day baseline reads as 0). Under parity the
+    work checks (Logic 01, SS/FF 04, Hard 05, High/Neg float 06/07, Resources 10, Missed 11) scope
+    to baselined activities (>= 1 working day of baseline), KEEPING milestones (Acumen sets
+    ``IncludeMilestone = 1``; the milestone-exclusion scope, ADR-0277/0278, was a coincidental proxy
+    and is superseded). It also compares Total Float in whole days; flags **Resources** on
+    ``Baseline Cost = 0 AND Baseline Work = 0`` (not "no resource name"); scores **CPLI** on the
+    stored float + stored finish (folds in ADR-0279); and scores **BEI** with Acumen's two-term
+    denominator.
 
-    **High float (06) KEEPS milestones even under exclude_milestones** — Acumen's High-Float detail
-    *includes* zero-duration milestones with genuinely high stored float (7 of its 814 on File 1),
-    so dropping them would UNDER-report vs Acumen (7 false negatives). This is the corrected scope;
-    ADR-0277 wrongly excluded 06. The **completion** checks — Missed (11) and BEI (14) —
-    also keep milestones (a missed milestone is a real missed deliverable). Duration/lead/lag/
-    resource/invalid checks are unaffected (milestones are screened by their own predicates). The
-    residual over-counts vs Acumen (Resources, part of High Float / SS-FF) are an Acumen
-    workspace-side exclusion (the `.afw`'s per-activity ``Excluded`` flag / Level-of-Effort filter),
-    not a milestone rule — our engine is correct to flag them. Default off keeps the prior behaviour
-    and the P2/P5 goldens byte-identical; the deployed tool exposes it as a per-analysis option."""
+    Default off keeps the pure-logic / forensic behaviour and is **byte-identical** to before, so
+    the P2/P5 golden parity gate is unaffected (they carry no sub-day baselines). The deployed tool
+    exposes this as a single per-analysis "Acumen parity mode" toggle."""
     tasks = non_summary(schedule)
     real_ids = {t.unique_id for t in tasks}
     incomplete = [t for t in tasks if is_incomplete(t)]
     pct_by = {t.unique_id: t.percent_complete for t in tasks}
     n_tasks, n_inc = len(tasks), len(incomplete)
 
-    # The "work" population for the float/logic/constraint/relationship checks: identical to `tasks`
-    # unless exclude_milestones drops the zero-duration milestones Acumen omits from those checks.
-    is_ms = {t.unique_id: t.is_milestone for t in tasks}
-    work_tasks = [t for t in tasks if not (exclude_milestones and t.is_milestone)]
-    work_incomplete = [t for t in incomplete if not (exclude_milestones and t.is_milestone)]
-    n_work_tasks, n_work_inc = len(work_tasks), len(work_incomplete)
+    # Acumen-parity population (ADR-0280): Acumen's DCMA metrics filter on Baseline Duration > 0,
+    # truncated to whole days (a sub-day baseline reads as 0). Parity scopes the work checks to
+    # activities with >= 1 working day of baseline, KEEPING milestones (the milestone scope was a
+    # proxy). Default = the full non-summary population (byte-identical).
+    mpd = schedule.calendar.working_minutes_per_day
+
+    def _baselined(t: Task) -> bool:
+        return (t.baseline_duration_minutes or 0) >= mpd
+
+    ap_tasks = [t for t in tasks if _baselined(t)] if acumen_parity else tasks
+    ap_inc = [t for t in incomplete if _baselined(t)] if acumen_parity else incomplete
+    ap_inc_uids = {t.unique_id for t in ap_inc}
+    n_ap_inc = len(ap_inc)
 
     # logic links restricted to the activity network
     links = [
@@ -103,18 +108,22 @@ def compute_dcma14(
     tf = {uid: t.total_float for uid, t in result.timings.items()}
     status_off = to_offset(schedule, schedule.status_date)
 
+    # Total Float basis: minute-grain (pure logic, default) or whole-day-grained under parity —
+    # shows Total Float in days, so a -0.29-day float reads as 0, i.e. not negative (ADR-0280).
+    def _negative_float(t: Task) -> bool:
+        eff = effective_total_float(t, tf.get(t.unique_id, 0))
+        return round(eff / mpd) < 0 if acumen_parity else eff < 0
+
     out: dict[str, MetricResult] = {}
 
     # DCMA-01 Logic — incomplete activities missing a predecessor and/or successor. A link to a
-    # milestone still gives an activity an end (has_pred/has_succ are built from ALL links), but a
-    # milestone itself is not counted as an offender under exclude_milestones (work population).
+    # milestone still gives an activity an end (has_pred/has_succ are built from ALL links). Under
+    # parity the population is baselined activities (Acumen's Logic filters Baseline Duration > 0).
     logic_off = tuple(
-        t.unique_id
-        for t in work_incomplete
-        if t.unique_id not in has_pred or t.unique_id not in has_succ
+        t.unique_id for t in ap_inc if t.unique_id not in has_pred or t.unique_id not in has_succ
     )
     out["DCMA01"] = _r(
-        "DCMA01", "Logic", len(logic_off), n_work_inc, "%", 5.0, Direction.LE, logic_off
+        "DCMA01", "Logic", len(logic_off), n_ap_inc, "%", 5.0, Direction.LE, logic_off
     )
 
     # DCMA-02 Leads — incomplete ACTIVITIES with a negative-lag predecessor link (count,
@@ -160,7 +169,7 @@ def compute_dcma14(
         for r in links
         if r.type in (RelationshipType.SS, RelationshipType.FF)
         and pct_by.get(r.successor_id, 0.0) < 100.0
-        and not (exclude_milestones and is_ms.get(r.successor_id, False))
+        and (not acumen_parity or r.successor_id in ap_inc_uids)
     )
     sf = tuple(
         r.successor_id
@@ -173,10 +182,12 @@ def compute_dcma14(
     )
     out["DCMA04_SF"] = _r("DCMA04_SF", "SF Relationships", len(sf), n_links, "%", None, None, sf)
 
-    # DCMA-05 Hard constraints.
-    hard = tuple(t.unique_id for t in work_tasks if t.constraint_type in _HARD_CONSTRAINTS)
+    # DCMA-05 Hard constraints. Default scores over all non-summary activities; parity scopes to
+    # baselined incomplete activities (Acumen's Hard filter is Baseline Duration > 0, Complete = 0).
+    hard_pop = ap_inc if acumen_parity else tasks
+    hard = tuple(t.unique_id for t in hard_pop if t.constraint_type in _HARD_CONSTRAINTS)
     out["DCMA05"] = _r(
-        "DCMA05", "Hard Constraints", len(hard), n_work_tasks, "%", 5.0, Direction.LE, hard
+        "DCMA05", "Hard Constraints", len(hard), len(hard_pop), "%", 5.0, Direction.LE, hard
     )
 
     # DCMA-06 High float — incomplete activities with total float > 44 working days
@@ -185,26 +196,30 @@ def compute_dcma14(
     # High Float — incomplete activities with total float > 44 working days. Scored on the source
     # tool's STORED Total Slack when present (matches Acumen on progressed files — verified 44/44 on
     # the authoritative Project2/Project5 exports, closing the former recomputed-float residual,
-    # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080). Milestones are KEPT even under
-    # exclude_milestones: Acumen's High-Float detail includes zero-duration milestones with high
-    # stored float, so this check uses the full incomplete population (ADR-0278 corrects ADR-0277).
+    # ADR-0012/ADR-0109), else the recomputed CPM float (ADR-0080). Under parity the baselined
+    # population KEEPS milestones (Acumen's High-Float detail includes baselined milestones) and the
+    # threshold is applied in whole days (ADR-0280).
+    high_pop = ap_inc if acumen_parity else incomplete
     high_float = tuple(
         t.unique_id
-        for t in incomplete
-        if effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
+        for t in high_pop
+        if (
+            round(effective_total_float(t, tf.get(t.unique_id, 0)) / mpd) > 44
+            if acumen_parity
+            else effective_total_float(t, tf.get(t.unique_id, 0)) > forty_four
+        )
     )
     out["DCMA06"] = _r(
-        "DCMA06", "High Float", len(high_float), n_inc, "%", 5.0, Direction.LE, high_float
+        "DCMA06", "High Float", len(high_float), len(high_pop), "%", 5.0, Direction.LE, high_float
     )
 
     # DCMA-07 Negative float — incomplete activities with total float < 0. Scored on the source
     # tool's STORED Total Slack when present (Acumen fidelity on progressed files), else the
     # recomputed CPM float (ADR-0080).
-    neg = tuple(
-        t.unique_id for t in work_incomplete if effective_total_float(t, tf.get(t.unique_id, 0)) < 0
-    )
+    neg_pop = ap_inc if acumen_parity else incomplete
+    neg = tuple(t.unique_id for t in neg_pop if _negative_float(t))
     out["DCMA07"] = _r(
-        "DCMA07", "Negative Float", len(neg), n_work_inc, "%", 0.0, Direction.EQ, neg
+        "DCMA07", "Negative Float", len(neg), len(neg_pop), "%", 0.0, Direction.EQ, neg
     )
 
     # DCMA-08 High duration — incomplete activities with baseline duration > 44 days.
@@ -271,50 +286,75 @@ def compute_dcma14(
             "DCMA09", "Invalid Dates", len(invalid), n_tasks, "%", 0.0, Direction.EQ, tuple(invalid)
         )
 
-    # DCMA-10 Resources — incomplete, real-duration activities with no resource assigned.
-    candidates = [t for t in incomplete if t.duration_minutes > 0]
-    no_res = tuple(t.unique_id for t in candidates if not t.resource_names)
-    out["DCMA10"] = _r(
-        "DCMA10", "Resources", len(no_res), len(candidates), "%", 5.0, Direction.LE, no_res
-    )
+    # DCMA-10 Resources — activities carrying no resource loading. Default (pure logic): incomplete,
+    # real-duration activities with no named resource. Parity: Acumen flags on Baseline Cost = 0 AND
+    # Baseline Work = 0 over baselined incomplete Normal activities (ADR-0280) — a task can have no
+    # named resource yet still carry baseline work/cost (the MSP unassigned-work placeholder),
+    # which Acumen does NOT flag; the baseline figures, not the name, are the discriminator.
+    if acumen_parity:
+        res_pop = [t for t in ap_inc if not t.is_milestone]
+        no_res = tuple(
+            t.unique_id
+            for t in res_pop
+            if (t.budgeted_cost or 0) == 0 and (t.baseline_work_minutes or 0) == 0
+        )
+        res_den = len(res_pop)
+    else:
+        candidates = [t for t in incomplete if t.duration_minutes > 0]
+        no_res = tuple(t.unique_id for t in candidates if not t.resource_names)
+        res_den = len(candidates)
+    out["DCMA10"] = _r("DCMA10", "Resources", len(no_res), res_den, "%", 5.0, Direction.LE, no_res)
 
-    # DCMA-11 Missed activities — baselined-due-by-status activities not finished on time.
-    due = [
+    # DCMA-11 Missed: baselined-due-by-status activities not finished on time. Parity uses
+    # Acumen's exact predicate (Finish > Baseline Finish over baselined, baseline-finish ≤ data-date
+    # activities, ADR-0280); default keeps the on-time-actual-finish form (both keep milestones).
+    missed_due = [
         t
-        for t in tasks
+        for t in (ap_tasks if acumen_parity else tasks)
         if t.baseline_finish is not None
         and status_dt is not None
         and t.baseline_finish <= status_dt
     ]
-    missed = tuple(
-        t.unique_id
-        for t in due
-        if not (
-            t.percent_complete >= 100.0
-            and t.actual_finish is not None
+    if acumen_parity:
+        missed = tuple(
+            t.unique_id
+            for t in missed_due
+            if t.finish is not None
             and t.baseline_finish is not None
-            and t.actual_finish <= t.baseline_finish
+            and t.finish > t.baseline_finish
         )
-    )
+    else:
+        missed = tuple(
+            t.unique_id
+            for t in missed_due
+            if not (
+                t.percent_complete >= 100.0
+                and t.actual_finish is not None
+                and t.baseline_finish is not None
+                and t.actual_finish <= t.baseline_finish
+            )
+        )
     out["DCMA11"] = _r(
-        "DCMA11", "Missed Activities", len(missed), len(due), "%", 5.0, Direction.LE, missed
+        "DCMA11", "Missed Activities", len(missed), len(missed_due), "%", 5.0, Direction.LE, missed
     )
 
     # DCMA-12 Critical path test — a delay on a critical activity must flow to the finish.
     out["DCMA12"] = _critical_path_test(schedule, result)
 
-    # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
-    # cpli_stored_float selects the Acumen-parity STORED-float / STORED-finish inputs (ADR-0279).
-    out["DCMA13"] = _cpli(result, status_off, schedule, cpli_stored_float)
+    # DCMA-13 CPLI: (crit-path length + project total float) / crit-path length. Under parity
+    # the STORED progress-aware float + STORED remaining duration (ADR-0279, folded into the
+    # single parity mode by ADR-0280).
+    out["DCMA13"] = _cpli(result, status_off, schedule, acumen_parity)
 
     # DCMA-14 BEI — see compute_bei (ADR-0089). Factored out so the grouping/breakdown UI can
-    # score BEI per group without a CPM re-solve (it is pure counts), one source of truth.
-    out["DCMA14"] = compute_bei(schedule)
+    # score BEI per group without a CPM re-solve (pure counts), one source of truth. Parity uses
+    # Acumen's two-term denominator (ADR-0280).
+    out["DCMA14"] = compute_bei(schedule, acumen_parity=acumen_parity)
 
     return out
 
 
-def compute_bei(schedule: Schedule) -> MetricResult:
+def compute_bei(schedule: Schedule, *, acumen_parity: bool = False) -> MetricResult:
     """DCMA-14 Baseline Execution Index — Acumen "BEI - Value Tasks" (ADR-0176; corrects
     ADR-0089/ADR-0085):
 
@@ -331,20 +371,60 @@ def compute_bei(schedule: Schedule) -> MetricResult:
     updated2 0.59, updated3 0.47 (and the Large-File ribbon). No baseline-duration filter and
     no missing-baseline term (ADR-0085 added both; disproved). Pure counts — no CPM — so the
     grouping UI can score it per group cheaply.
+
+    ``acumen_parity`` (ADR-0280) instead evaluates the NASA-library ``14. BEI`` formula over
+    the Normal+Milestone population: numerator = complete activities with baseline duration ≥ 1 day;
+    denominator = (baseline-finish ≤ data-date AND baseline duration ≥ 1 day) PLUS activities that
+    carry a duration but are MISSING a baseline (no baseline start or finish). Verified UID-exact on
+    the operator's Large Test File (0.52) / File2 (0.53). The default form above stays validated
+    against Project2/5 and the Hard_File series.
     """
     status_dt = schedule.status_date
-    bei_normal = [t for t in non_summary(schedule) if not t.is_milestone]
-    bei_due = [
-        t
-        for t in bei_normal
-        if t.baseline_finish is not None
-        and status_dt is not None
-        and t.baseline_finish <= status_dt
-    ]
-    bei_complete = sum(1 for t in bei_due if t.percent_complete >= 100.0)
-    bei_den = len(bei_due)
-    # the activities dragging BEI below 1.0 — baselined-due Normal tasks not finished (citable)
-    bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)
+    if acumen_parity:
+        mpd = schedule.calendar.working_minutes_per_day
+        pop = list(non_summary(schedule))  # Normal + Milestone (Acumen IncludeMilestone=1)
+
+        def _bd_day(t: Task) -> bool:
+            return (t.baseline_duration_minutes or 0) >= mpd
+
+        bei_complete = sum(1 for t in pop if _bd_day(t) and t.percent_complete >= 100.0)
+        den_due = sum(
+            1
+            for t in pop
+            if _bd_day(t)
+            and t.baseline_finish is not None
+            and status_dt is not None
+            and t.baseline_finish <= status_dt
+        )
+        den_nobaseline = sum(
+            1
+            for t in pop
+            if (t.duration_minutes != 0 or (t.baseline_duration_minutes or 0) != 0)
+            and (t.baseline_start is None or t.baseline_finish is None)
+        )
+        bei_den = den_due + den_nobaseline
+        bei_offenders = tuple(
+            t.unique_id
+            for t in pop
+            if _bd_day(t)
+            and t.baseline_finish is not None
+            and status_dt is not None
+            and t.baseline_finish <= status_dt
+            and t.actual_finish is None
+        )
+    else:
+        bei_normal = [t for t in non_summary(schedule) if not t.is_milestone]
+        bei_due = [
+            t
+            for t in bei_normal
+            if t.baseline_finish is not None
+            and status_dt is not None
+            and t.baseline_finish <= status_dt
+        ]
+        bei_complete = sum(1 for t in bei_due if t.percent_complete >= 100.0)
+        bei_den = len(bei_due)
+        # the activities dragging BEI below 1.0 — baselined-due Normal tasks not finished (citable)
+        bei_offenders = tuple(t.unique_id for t in bei_due if t.actual_finish is None)
     if bei_den and status_dt is not None:
         bei = bei_complete / bei_den
         return MetricResult(

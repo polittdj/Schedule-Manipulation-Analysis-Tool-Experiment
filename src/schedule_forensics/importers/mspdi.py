@@ -552,7 +552,7 @@ def _parse_task(
     ):
         constraint_type = ConstraintType.ASAP
         constraint_date = None
-    bl_start, bl_finish, bl_cost, bl_duration = _primary_baseline(task_el)
+    bl_start, bl_finish, bl_cost, bl_duration, bl_work = _primary_baseline(task_el)
 
     cal_uid = _int(task_el, "CalendarUID")
     if cal_uid is not None and cal_uid < 0:  # MSPDI writes -1 for "use the project calendar"
@@ -597,6 +597,7 @@ def _parse_task(
             budgeted_cost=bl_cost,
             work_minutes=_optional_minutes(task_el, "Work"),
             actual_work_minutes=_optional_minutes(task_el, "ActualWork"),
+            baseline_work_minutes=bl_work,
             resource_names=assigned_names_by_task.get(uid, ()),
             resource_ids=assigned_uids_by_task.get(uid, ()),
             resource_assignments=assignments_by_task.get(uid, ()),
@@ -631,11 +632,12 @@ def _optional_minutes(parent: ET.Element, tag: str) -> int | None:
 
 def _primary_baseline(
     task_el: ET.Element,
-) -> tuple[dt.datetime | None, dt.datetime | None, float, int | None]:
-    """Pick the primary baseline (``Number == 0``, else the first) → start/finish/cost/duration.
+) -> tuple[dt.datetime | None, dt.datetime | None, float, int | None, int | None]:
+    """Primary baseline (``Number == 0``, else the first) → start / finish / cost / duration / work.
 
     Baseline cost is the budget-at-completion (BAC) basis for EVM; absent → ``0.0``
-    (the model's ``budgeted_cost`` default; never fabricated).
+    (the model's ``budgeted_cost`` default; never fabricated). Baseline work is the DCMA-10
+    "Resources" discriminator (ADR-0280); absent → ``None`` (never assumed 0).
     """
     chosen: ET.Element | None = None
     for bl in task_el.findall("Baseline"):
@@ -645,9 +647,10 @@ def _primary_baseline(
         if chosen is None:
             chosen = bl
     if chosen is None:
-        return None, None, 0.0, None
+        return None, None, 0.0, None, None
     cost = parse_float(_text(chosen, "Cost"))
     duration = _optional_minutes(chosen, "Duration")
+    work = _optional_minutes(chosen, "Work")
     return (
         parse_datetime(_text(chosen, "Start")),
         parse_datetime(_text(chosen, "Finish")),
@@ -655,6 +658,7 @@ def _primary_baseline(
         # a negative baseline cost (a credit) clamps to 0 rather than rejecting the file
         max(0.0, cost) if cost is not None else 0.0,
         duration,
+        work,
     )
 
 
@@ -674,7 +678,7 @@ def _project_baseline_finish(root: ET.Element) -> dt.datetime | None:
         # disagrees with the network the rest of the tool computes on).
         if not _bool(task_el, "Active", default=True):
             continue
-        _, bl_finish, _, _ = _primary_baseline(task_el)
+        _, bl_finish, _, _, _ = _primary_baseline(task_el)
         if bl_finish is not None:
             finishes.append(bl_finish)
     return max(finishes) if finishes else None

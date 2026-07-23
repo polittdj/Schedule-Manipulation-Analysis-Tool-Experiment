@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-23 — the AUTHORITATIVE SOURCE dissolved three sessions of proxies in one read (ADR-0280)
+- Over three sessions I set-differenced our offenders against Acumen's flagged-task lists and shipped:
+  a milestone-exclusion scope (0277), a correction to it (0278), and a stored-float CPLI (0279). Each
+  was empirically verified and each was *partly a proxy*. Then the operator handed me the **`.aft`
+  metric library** — Acumen's formulas AND population filters verbatim — and in one reading every
+  proxy collapsed into a single true rule: **`Baseline Duration > 0`, truncated to whole days**, with
+  milestones INCLUDED. The milestones I'd been excluding just happen to have baseline duration 0.
+- **LESSON: get the spec before you reverse-engineer the behavior.** Set-differencing against outputs
+  is powerful but it finds *a* rule that fits the sample, not necessarily *the* rule. I had the `.aft`
+  reference concept in CLAUDE.md the whole time ("metric formulas come from the Bible") but was
+  matching against exported *counts/detail* instead of reading the library's `<PrimaryFilter>`. When an
+  authoritative definition exists, spend the hour to parse it FIRST; it is worth more than ten
+  set-diffs. (The committed `.aft` was even the older 20260423 — the operator's newer 20260708 had the
+  current formulas.)
+- **A wrong root cause I had written down as fact:** ADR-0278 claimed the ~24-task gap was an Acumen
+  `.afw` workspace `Excluded`/Level-of-Effort exclusion (I'd even found those strings in the binary and
+  reasoned they weren't reproducible from the schedule). The `.aft` showed the real discriminator —
+  `Baseline Duration > 0` — was in the schedule all along. Finding a *plausible* mechanism in a side
+  artifact (the `.afw`) is not proof; I stopped digging one layer too early and enshrined a guess.
+  RETRACT loudly when the authoritative source contradicts a prior ADR.
+- **What went right:** default-off/configurable at every step meant three proxy iterations shipped with
+  ZERO risk to the golden gate or existing behavior — each was opt-in, byte-identical by default. So
+  the proxies were never *wrong in production*, only incomplete, and collapsing them into one correct
+  "Acumen parity mode" was a clean supersede, not a firefight. Configurability bought the freedom to be
+  iteratively-wrong safely.
+- **Two views, not one truth:** the final design keeps BOTH the pure-logic/forensic scoring and the
+  Acumen-faithful scoring as first-class modes with an explicit when-to-use, because they answer
+  different questions (independent recomputation vs "what would Acumen report"). Resisting the urge to
+  pick a single "correct" default on a testimony tool is itself the lesson.
+
 ### 2026-07-21 (cont. 4) — CPLI parity: a two-part fix whose halves are worthless apart (ADR-0279)
 - Root-caused why our CPLI (1.00) ≠ Acumen (0.97 / 0.59). Two causes, and the trap was that fixing
   ONE makes the answer WORSE: (1) we use recomputed CPM float (min ~0) where Acumen uses stored Total
