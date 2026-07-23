@@ -18,13 +18,14 @@ from dataclasses import dataclass, replace
 from enum import StrEnum
 
 from schedule_forensics.engine.cpm import CPMResult, compute_cpm
-from schedule_forensics.engine.dcma_audit import Citation, audit_schedule
+from schedule_forensics.engine.dcma_audit import Citation, ScheduleAudit, audit_schedule
 from schedule_forensics.engine.driving_slack import compute_driving_slack
 from schedule_forensics.engine.metrics import (
     compute_baseline_compliance,
     compute_change_metrics,
     compute_net_finish_impact,
 )
+from schedule_forensics.engine.metrics._common import MetricResult
 from schedule_forensics.engine.summary_logic import summaries_with_logic
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.units import MINUTES_PER_DAY
@@ -158,19 +159,29 @@ def recommend(
     current_cpm: CPMResult | None = None,
     prior_cpm: CPMResult | None = None,
     target_uid: int | None = None,
+    precomputed_audit: ScheduleAudit | None = None,
+    precomputed_compliance: dict[str, MetricResult] | None = None,
 ) -> tuple[Finding, ...]:
     """Produce the cited risk/opportunity/concern findings for ``current``.
 
     Supply ``prior`` (an earlier version) to add version-to-version change findings, and
     ``target_uid`` to add the driving-path opportunity. CPM results may be passed to avoid
     recomputation. Findings are ordered most-severe first, then by metric id.
+
+    ``precomputed_audit`` / ``precomputed_compliance`` (ADR-0281) let a caller that already holds
+    the DEFAULT DCMA audit and baseline-compliance metrics for exactly ``current`` + ``current_cpm``
+    hand them in, so the recommender does not recompute them. They MUST be the default (non-Acumen-
+    parity) audit and the baseline compliance for this schedule + solve; the findings are
+    byte-identical to computing them here. Left ``None`` (every existing call site) nothing changes.
     """
     cpm_cur = current_cpm if current_cpm is not None else compute_cpm(current)
     findings: list[Finding] = []
-    findings.extend(_dcma_findings(current, cpm_cur))
+    findings.extend(_dcma_findings(current, cpm_cur, precomputed_audit=precomputed_audit))
     findings.extend(_logic_support_findings(current, cpm_cur))
     findings.extend(_summary_logic_findings(current))
-    findings.extend(_compliance_findings(current, cpm_cur))
+    findings.extend(
+        _compliance_findings(current, cpm_cur, precomputed_compliance=precomputed_compliance)
+    )
     if prior is not None:
         findings.extend(_change_findings(current, prior, cpm_cur, prior_cpm))
     if target_uid is not None:
@@ -260,8 +271,15 @@ def _finish_driver_citations(schedule: Schedule, cpm: CPMResult) -> tuple[Citati
     return _cite(schedule, uids)
 
 
-def _dcma_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
-    audit = audit_schedule(schedule, cpm_cur)
+def _dcma_findings(
+    schedule: Schedule,
+    cpm_cur: CPMResult,
+    *,
+    precomputed_audit: ScheduleAudit | None = None,
+) -> list[Finding]:
+    audit = (
+        precomputed_audit if precomputed_audit is not None else audit_schedule(schedule, cpm_cur)
+    )
     out: list[Finding] = []
     fallback: tuple[Citation, ...] | None = None
     for check in audit.failed_checks:
@@ -352,10 +370,19 @@ def _summary_logic_findings(schedule: Schedule) -> list[Finding]:
     ]
 
 
-def _compliance_findings(schedule: Schedule, cpm_cur: CPMResult) -> list[Finding]:
+def _compliance_findings(
+    schedule: Schedule,
+    cpm_cur: CPMResult,
+    *,
+    precomputed_compliance: dict[str, MetricResult] | None = None,
+) -> list[Finding]:
     if schedule.status_date is None:
         return []
-    c = compute_baseline_compliance(schedule, cpm_cur)
+    c = (
+        precomputed_compliance
+        if precomputed_compliance is not None
+        else compute_baseline_compliance(schedule, cpm_cur)
+    )
     out: list[Finding] = []
     late = c["completed_late"]
     if late.count > 0:

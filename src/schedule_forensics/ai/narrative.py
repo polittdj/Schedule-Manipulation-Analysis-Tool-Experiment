@@ -96,22 +96,33 @@ def build_narrative(
     backend: AIBackend | None = None,
     current_cpm: CPMResult | None = None,
     prior_cpm: CPMResult | None = None,
+    precomputed_findings: tuple[Finding, ...] | None = None,
 ) -> Narrative:
     """Build the cited forensic narrative for ``current`` (vs ``prior`` if given).
 
     ``backend`` rephrases the prose (default :class:`NullBackend` = verbatim). Every emitted
     statement is guaranteed to carry a citation (file + UID + task) — verified before return.
+
+    ``precomputed_findings`` (ADR-0281) lets a caller that already ran :func:`recommend` for
+    exactly this ``current`` (+ ``prior`` / ``current_cpm`` / ``prior_cpm`` / ``target_uid``) hand
+    the findings in, so the narrative does not run ``recommend`` a second time. The manipulation
+    signals (added only when ``prior`` is given) are still detected here. Left ``None`` (every
+    existing call site), nothing changes.
     """
     be: AIBackend = backend if backend is not None else NullBackend()
     cpm_cur = current_cpm if current_cpm is not None else compute_cpm(current)
 
-    findings: list[Finding] = list(
-        recommend(
-            current,
-            prior,
-            current_cpm=cpm_cur,
-            prior_cpm=prior_cpm,
-            target_uid=target_uid,
+    findings: list[Finding] = (
+        list(precomputed_findings)
+        if precomputed_findings is not None
+        else list(
+            recommend(
+                current,
+                prior,
+                current_cpm=cpm_cur,
+                prior_cpm=prior_cpm,
+                target_uid=target_uid,
+            )
         )
     )
     if prior is not None:

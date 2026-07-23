@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-23b — validate an external audit against HEAD, not against the report (ADR-0281/0282)
+- Implemented four performance fixes from a ChatGPT "5.6 Sol" audit. The audit was **directionally
+  right on all three P0/P1 mechanisms** (dashboard full-analysis + LRU thrash, no single-flight,
+  duplicate dependency computes) — but its *specifics* had rotted: it referenced the retired
+  `dcma_exclude_milestones` (ADR-0280 replaced it with `dcma_acumen_parity`/`A=1`/`acumen_parity`),
+  claimed an importer `strptime` hotspot that doesn't exist (we already use `datetime.fromisoformat`),
+  and cited a **63-hex-character "SHA-256"** as its byte-for-byte proof (not a valid length).
+- **LESSON: re-ground every finding against current HEAD and re-prove it before adopting it.** The
+  validation session that produced our implementation prompt did exactly this — it rebuilt every
+  finding as a characterization test, ran them against the untouched tree, and prototyped the fixes in
+  a disposable clone — so by the time I implemented, each fix was a known-good against `f551b01`. An
+  audit is a set of *hypotheses*; treat its API names, its hotspots, and its "proofs" as claims to
+  verify, not facts to act on. (Our own sandbox SHA-256 was a valid 64-char hash and byte-equal — the
+  report's conclusion was right even though its cited hash was impossible; right conclusion, unusable
+  evidence.)
+- **LESSON: op-count characterization tests belong in the tree before the fix.** Committing them first
+  (failing) proved they were genuine — a reader can check out that commit and watch them fail — and
+  they doubled as the acceptance contract (byte-identical payload golden, 1×/1× dep counts,
+  single-flight). This is the repo's "turn every miss into a test" habit applied to *performance*.
+- **LESSON: a second knob changes the op-count truth table — re-run the audit with it set.** The
+  parity-mode findings inconsistency (displayed audit is parity, findings derive from the default
+  audit) was invisible until the dependency-count check re-ran with `A=1`. Had I only measured the
+  default mode I'd have "fixed" the dep counts and silently frozen a latent product bug. Filed it as
+  **ADR-0282** (open question for the operator) rather than quietly re-sourcing findings inside a
+  performance PR — a behaviour change rides its own PR with its own parity goldens (Law 2 / ADR-0240).
+
 ### 2026-07-23 — the AUTHORITATIVE SOURCE dissolved three sessions of proxies in one read (ADR-0280)
 - Over three sessions I set-differenced our offenders against Acumen's flagged-task lists and shipped:
   a milestone-exclusion scope (0277), a correction to it (0278), and a stored-float CPLI (0279). Each

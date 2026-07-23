@@ -7533,3 +7533,37 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** operator has a **followup prompt queued**. Still OWED by operator: ADR-0261 PowerShell crash
   log (don't have it); Claude-Design portfolio prompt (not ready). Consider committing the 20260708
   `.aft` + refreshing `test_aft_formula_audit.py`.
+
+## 2026-07-23b — validated multi-project performance fixes (ADR-0281; ADR-0282 open question; v1.0.91)
+
+- **Model/mode:** Opus 4.8 (lead, ADR-0240 — verify-everything against HEAD, no delegated result
+  landed unverified). **Branch:** `claude/multi-project-perf-fixes-khihxv` (fresh from `origin/main`
+  at `f551b01`).
+- **Input:** the deliverable of the 2026-07-23 read-only audit-validation session — a ChatGPT "5.6
+  Sol" performance audit re-verified in a sandbox against HEAD, with every fix prototyped and proven
+  byte-identical. This session **implemented** the four endorsed fixes.
+- **Re-verified all four mechanisms against HEAD before touching anything:** dashboard builds a full
+  `_Analysis` per version (uses 3 of 8 fields) and thrashes the 48-entry LRU past N=48; no single-flight
+  (8 cold → 8 computes); `_compute_analysis` recomputed audit 3× / compliance 3× / recommend 2×; upload
+  dedup O(M²). Also re-confirmed the **parity-mode findings inconsistency** (displayed audit is parity,
+  findings derive from the default audit) — only visible with `A=1`.
+- **Committed the characterization tests FIRST** (`test_dashboard_perf_contract.py` +
+  `test_upload_dedup_scaling.py`) — they FAIL on the untouched tree — then implemented:
+  - **A′** `_DashCore` + `SessionState.dash_cores` (plain, epoch-keyed, wiped) + `dashboard_core_for`
+    (3-tier); `_dashboard_data` reads the projected core. No LRU thrash.
+  - **B** 64 striped locks + `_stripe_for`; single-flight in `analysis_for` / `cpm_scoped_for`
+    (stripe→`_lock`, re-derive key inside, `wipe_gen` guard).
+  - **C** `recommend(precomputed_audit=, precomputed_compliance=)`,
+    `build_narrative(precomputed_findings=)`; `_compute_analysis` computes each dep once
+    (1×/1×/1× default; 2×/1×/1× parity, pinned + documented).
+  - **D** per-batch reverse index for `/upload` dedup (O(1), first-loaded-wins, folder-context kept).
+- **Fidelity:** dashboard payload byte-identical (golden SHA-256, incl. parity ON + unsolvable card);
+  findings/narrative byte-equal to the plain `recommend`/`build_narrative` path; `-m parity` 44 green;
+  full `pytest` 2624 passed + 1 xfail (the deferred Fix-E leak) after regenerating the wheel + 9
+  installers to **1.0.91** (lockstep green). ruff/mypy-strict/bandit/`node --check` clean on changed files.
+- **Filed ADR-0282** (proposed / open question, no code): should findings/narrative follow the parity
+  audit when parity mode is on? Deferred to the operator — behaviour pinned by ADR-0281. **Highest ADR
+  ADR-0282.**
+- **Deliberately deferred (separate PRs):** Fix E (target-control/endpoint-banner active-population
+  scoping — un-xfail test 7), payload UID trim, home.js pre-read, manifest memo, tier byte-budgeting,
+  MPP probe, importer profiling, `web/app.py` split.

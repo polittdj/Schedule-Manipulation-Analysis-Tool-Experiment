@@ -513,6 +513,36 @@ class _Analysis:
     scoped: Schedule
 
 
+@dataclass(frozen=True)
+class _DashCore:
+    """The three dashboard-card fields projected out of a full :class:`_Analysis` (ADR-0281).
+
+    The Dashboard renders only 3 of ``_Analysis``'s 8 fields — the network finish, the zero-float
+    band, and the DCMA-14 verdicts (see :func:`_dashboard_data`). Building a full analysis per
+    loaded version just to read those three thrashed the 48-entry analysis LRU at N>48 (every
+    refresh recomputed every version — the recorded ~65x cliff at ``_ANALYSIS_CACHE_MAX``). This
+    tier stores ONLY the projected primitives the card needs — never the heavy engine objects (a
+    ``MetricResult`` / ``AuditCheck`` pins citation tuples) — so an entry is ~1 KiB and a
+    100-version portfolio's dashboard tier stays trivial next to the full-analysis cache."""
+
+    project_finish: int  # cpm.project_finish (network-finish working-minute offset)
+    critical_count: int  # float_bands["float_total_0"].count
+    critical_pct: float  # float_bands["float_total_0"].value (rounded at render, unchanged)
+    #: (metric_id, name, str(status)) per DCMA-14 check — exactly the card's ``dcma`` projection.
+    dcma: tuple[tuple[str, str, str], ...]
+
+
+def _dash_core(cpm: CPMResult, audit: ScheduleAudit, fb0: MetricResult) -> _DashCore:
+    """Project the three dashboard-card fields from the engine results — the single source of
+    truth for both the from-full-analysis and the compute-only tiers of ``dashboard_core_for``."""
+    return _DashCore(
+        project_finish=cpm.project_finish,
+        critical_count=fb0.count,
+        critical_pct=fb0.value,
+        dcma=tuple((c.metric_id, c.name, str(c.status)) for c in audit.checks),
+    )
+
+
 def _compute_analysis(
     sch: Schedule,
     cpm: CPMResult | None = None,
@@ -526,18 +556,34 @@ def _compute_analysis(
     ``dcma_acumen_parity`` forwards the single Acumen-parity DCMA mode (ADR-0280); it is part of the
     analysis cache signature so toggling it re-keys, never serving a stale audit."""
     cpm = cpm if cpm is not None else compute_cpm(sch)
+    # ADR-0281: compute each deterministic dependency ONCE and thread it through the recommender and
+    # the narrative — they used to each recompute the DCMA audit, baseline compliance, and findings
+    # (3x audit / 3x compliance / 2x recommend per cold analysis).
+    audit = audit_schedule(sch, cpm, acumen_parity=dcma_acumen_parity)
+    compliance = compute_baseline_compliance(sch, cpm)
+    # DELIBERATE PIN (ADR-0281): in Acumen-parity mode the DISPLAYED audit is the parity one, but the
+    # recommender still derives its findings from the DEFAULT (non-parity) audit — today's behaviour,
+    # kept byte-for-byte in BOTH modes. So the precomputed audit is reused ONLY in default mode; parity
+    # mode passes None and the recommender recomputes the default audit itself. (Whether findings
+    # SHOULD follow the parity audit when parity is on is a separate product question — ADR-0282.)
+    findings = recommend(
+        sch,
+        current_cpm=cpm,
+        precomputed_audit=audit if not dcma_acumen_parity else None,
+        precomputed_compliance=compliance,
+    )
     return _Analysis(
         scoped=sch,
         cpm=cpm,
-        audit=audit_schedule(sch, cpm, acumen_parity=dcma_acumen_parity),
-        compliance=compute_baseline_compliance(sch, cpm),
+        audit=audit,
+        compliance=compliance,
         float_bands=compute_float_bands(sch, cpm),
         completion=compute_completion_performance(sch),
-        findings=recommend(sch, current_cpm=cpm),
+        findings=findings,
         # the cached narrative is always the deterministic (NullBackend) one; a real
         # session-selected backend rephrases it per request via _polished_narrative
         # (citations re-attached, figures re-verified — see ai.citations.reattach).
-        narrative=build_narrative(sch, current_cpm=cpm),
+        narrative=build_narrative(sch, current_cpm=cpm, precomputed_findings=findings),
         activity_rows=_activity_rows(sch, cpm),
     )
 
@@ -645,6 +691,12 @@ class SessionState:
     # version; this holds that solve without the heavy full analysis, and ``analysis_for``
     # reuses it so a network is never solved twice for one epoch. Cleared on wipe.
     cpms: dict[str, tuple[Schedule, CPMResult]] = field(default_factory=dict)
+    # ADR-0281: the dashboard card tier — epoch-keyed like ``cpms`` ((key, scope-signature) →
+    # (raw schedule, _DashCore)). The home Dashboard needs only 3 of the 8 ``_Analysis`` fields per
+    # version; this holds that ~1 KiB projection so a portfolio of many versions renders (and
+    # refreshes) without ever building — or LRU-thrashing — a full analysis. Plain dict (not the
+    # capped LRU): the whole point is that it never evicts under the cap. Cleared on wipe.
+    dash_cores: dict[str, tuple[Schedule, _DashCore]] = field(default_factory=dict)
     # ADR-0261 P3: per-version Performance-page memo, keyed by the SCOPED schedule's object
     # identity (one scoped object per version per epoch, courtesy of the scope memo):
     # id -> (scoped ref, effective-critical set, serialized G1-G5 block, truncated flag). The
@@ -831,6 +883,15 @@ class SessionState:
     # orphan would otherwise pin the dead scoped schedule until the next flip/wipe).
     wipe_gen: int = 0
     _scope_gen: int = 0
+    # ADR-0281 single-flight: 64 fixed striped locks so N concurrent COLD requests for one epoch
+    # key compute ONCE (the winner computes; the rest wait, then hit the just-filled cache) —
+    # without serialising unrelated keys (a different key almost always maps to a different stripe;
+    # a rare collision only serialises two unrelated cold computes, never yields a wrong number).
+    # Bounded count, never a per-key lock map. Deadlock discipline: a stripe is ALWAYS taken
+    # OUTSIDE ``_lock`` (stripe → ``_lock`` ordering, never the reverse), and never nested.
+    _stripes: tuple[threading.Lock, ...] = field(
+        default_factory=lambda: tuple(threading.Lock() for _ in range(64)), repr=False
+    )
 
     def _match_uids(self, sch: Schedule) -> frozenset[int] | None:
         """The UIDs of ``sch`` matching the active filter — the faithful saved-filter tree OR the
@@ -1232,6 +1293,13 @@ class SessionState:
             ]
             return group_into_projects(records)
 
+    def _stripe_for(self, ck: str) -> threading.Lock:
+        """The single-flight stripe for epoch key ``ck`` (ADR-0281) — stable within a process. A
+        bounded-collision hash, never a per-key map: it serialises duplicate COLD computes of the
+        SAME epoch key, and at worst two unrelated keys share a stripe (they serialise; the result
+        is still byte-identical to computing them apart)."""
+        return self._stripes[hash(ck) % len(self._stripes)]
+
     def analysis_for(self, key: str, sch: Schedule) -> _Analysis:
         """The cached analysis for ``key`` over the active scope.
 
@@ -1239,26 +1307,36 @@ class SessionState:
         anchor — toggling a filter/target flips between resident epochs (clearing a filter is a
         cache hit again), while a re-upload under the same key still recomputes (new object).
         ADR-0261 P4: the heavy engine compute runs OUTSIDE the session lock, so one long
-        analysis never serialises every other request; a concurrent duplicate compute of the
-        same epoch is deterministic (byte-identical result) and last-write-wins under the lock.
-        A wipe between unlock and store leaves at most one orphaned LRU entry that is never
-        consulted again (its key's schedule is gone) and is evicted normally."""
-        with self._lock:
+        analysis never serialises every other request. ADR-0281 single-flight: on a miss the
+        compute runs under the key's STRIPE, so N concurrent cold callers compute ONCE (the rest
+        wait, then hit the just-filled cache) — with ``ck`` / ``gen`` / ``parity`` re-derived under
+        ``_lock`` INSIDE the stripe (a scope flip while queued recomputes under the CURRENT key,
+        never a stale one). An exception propagates to every waiter's caller (the ``with``-scoped
+        locks release) and a later call recomputes cleanly; a wipe between unlock and store leaves
+        at most one orphaned LRU entry that is never consulted again and is evicted normally."""
+        with self._lock:  # fast path: a resident hit needs no stripe (the common warm case)
             ck = self._cache_key(key, self._scope_signature())
-            gen = self.wipe_gen
             cached = self.analyses.get_lru(ck)
             if cached is not None and cached[0] is sch:
                 return cached[1]
-            scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
-            pre = self.cpms.get(ck)
-            cpm = pre[1] if pre is not None and pre[0] is sch else None
-            parity = self.dcma_acumen_parity  # captured under the lock with the cache key
-        analysis = _compute_analysis(scoped, cpm=cpm, dcma_acumen_parity=parity)
-        with self._lock:
-            if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
-                self.analyses.put(ck, (sch, analysis))
-                self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
-        return analysis
+        # miss: single-flight on the key's stripe (taken OUTSIDE _lock — stripe → _lock ordering)
+        with self._stripe_for(ck):
+            with self._lock:
+                ck = self._cache_key(key, self._scope_signature())
+                gen = self.wipe_gen
+                cached = self.analyses.get_lru(ck)
+                if cached is not None and cached[0] is sch:
+                    return cached[1]  # a prior stripe holder already filled this epoch
+                scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
+                pre = self.cpms.get(ck)
+                cpm = pre[1] if pre is not None and pre[0] is sch else None
+                parity = self.dcma_acumen_parity  # captured under the lock with the cache key
+            analysis = _compute_analysis(scoped, cpm=cpm, dcma_acumen_parity=parity)
+            with self._lock:
+                if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                    self.analyses.put(ck, (sch, analysis))
+                    self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
+            return analysis
 
     def cpm_scoped_for(self, key: str, sch: Schedule) -> tuple[Schedule, CPMResult]:
         """The ``(scoped schedule, CPM solve)`` pair for ``key``, captured CONSISTENTLY in one
@@ -1267,10 +1345,11 @@ class SessionState:
         change could pair an old-epoch solve with a new-epoch population (and the P3 memo would
         then re-serve that poisoned pairing for the rest of the epoch). Here the scoped object
         is resolved in the SAME window that resolves the epoch key, and a cache-miss solve runs
-        on exactly that object, so an inconsistent pair is unrepresentable."""
-        with self._lock:
+        on exactly that object, so an inconsistent pair is unrepresentable. ADR-0281: the solve
+        is single-flighted on the key's stripe (it also serves :meth:`dashboard_core_for`), so N
+        concurrent cold callers solve the network ONCE."""
+        with self._lock:  # fast path: a resident solve (or a resident full analysis') — no stripe
             ck = self._cache_key(key, self._scope_signature())
-            gen = self.wipe_gen
             scoped = self.scope(sch)
             pre = self.cpms.get(ck)
             if pre is not None and pre[0] is sch:
@@ -1279,11 +1358,24 @@ class SessionState:
             if full is not None and full[0] is sch:
                 self.cpms[ck] = (sch, full[1].cpm)
                 return scoped, full[1].cpm
-        cpm = compute_cpm(scoped)
-        with self._lock:
-            if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
-                self.cpms[ck] = (sch, cpm)
-        return scoped, cpm
+        # miss: single-flight the solve on the key's stripe (taken OUTSIDE _lock — stripe → _lock)
+        with self._stripe_for(ck):
+            with self._lock:
+                ck = self._cache_key(key, self._scope_signature())
+                gen = self.wipe_gen
+                scoped = self.scope(sch)
+                pre = self.cpms.get(ck)
+                if pre is not None and pre[0] is sch:
+                    return scoped, pre[1]  # a prior stripe holder already solved this epoch
+                full = self.analyses.get_lru(ck)
+                if full is not None and full[0] is sch:
+                    self.cpms[ck] = (sch, full[1].cpm)
+                    return scoped, full[1].cpm
+            cpm = compute_cpm(scoped)
+            with self._lock:
+                if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                    self.cpms[ck] = (sch, cpm)
+            return scoped, cpm
 
     def cpm_for(self, key: str, sch: Schedule) -> CPMResult:
         """Just the CPM solve for ``key`` over the active scope (ADR-0261 P2).
@@ -1299,6 +1391,44 @@ class SessionState:
         :meth:`cpm_scoped_for` (one consistent pair) instead of pairing this with a separate
         ``scope()`` call."""
         return self.cpm_scoped_for(key, sch)[1]
+
+    def dashboard_core_for(self, key: str, sch: Schedule) -> _DashCore:
+        """The tiny dashboard-card core for ``key`` over the active scope (ADR-0281).
+
+        Three tiers, cheapest first: (1) a resident dash-core (epoch-keyed) is returned as-is;
+        (2) a resident FULL analysis is projected down with no engine work; (3) otherwise only the
+        two metrics the card needs — the DCMA audit and the zero-float band — are computed off the
+        shared, single-flighted CPM solve (:meth:`cpm_scoped_for`), never the whole 8-field
+        analysis. Epoch-keyed by the same ``(key, scope-signature)`` as ``analyses`` / ``cpms`` (a
+        filter / target / parity change re-keys automatically), with ``parity`` captured under the
+        lock alongside the key; stored under the ``wipe_gen`` guard. ``CPMError`` propagates exactly
+        as :meth:`analysis_for` — the unschedulable-card path is unchanged."""
+        with self._lock:
+            ck = self._cache_key(key, self._scope_signature())
+            gen = self.wipe_gen
+            parity = self.dcma_acumen_parity  # captured under the lock with the epoch key
+            hit = self.dash_cores.get(ck)
+            if hit is not None and hit[0] is sch:
+                return hit[1]
+            full = self.analyses.get_lru(ck)
+            if full is not None and full[0] is sch:
+                core = _dash_core(full[1].cpm, full[1].audit, full[1].float_bands["float_total_0"])
+                self.dash_cores[ck] = (sch, core)  # under the lock, same epoch as the full analysis
+                return core
+        # tier 3: not resident anywhere — compute ONLY the two metrics the card needs, off the
+        # single-flighted solve. A concurrent request may fill the tier while this one solves.
+        scoped, cpm = self.cpm_scoped_for(key, sch)
+        with self._lock:
+            resident = self.dash_cores.get(ck)
+            if resident is not None and resident[0] is sch:
+                return resident[1]
+        audit = audit_schedule(scoped, cpm, acumen_parity=parity)
+        fb0 = compute_float_bands(scoped, cpm)["float_total_0"]
+        core = _dash_core(cpm, audit, fb0)
+        with self._lock:
+            if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
+                self.dash_cores[ck] = (sch, core)
+        return core
 
     def summary_for(self, key: str, sch: Schedule) -> VersionSummary:
         """The cached rollup summary for ``key`` (v4 Feature 2 lazy tier) — the Portfolio's cheap
@@ -3195,8 +3325,16 @@ def create_app(
         # in short windows (the slow parse stays outside), so a concurrent locked render can never
         # see a dict mutate mid-iteration; the wipe generation captured here makes a mid-upload
         # wipe final — nothing parsed before it is stored (in memory or on disk) after it.
+        # ADR-0281: a reverse index (content-hash, folder-context) → first-loaded key, built ONCE
+        # here so the per-file dedup is an O(1) lookup instead of rescanning the whole
+        # ``content_hashes`` map for every file (the recorded O(M^2) upload cost). ``setdefault``
+        # keeps the FIRST-loaded key on a collision — byte-identical to the old first-match scan —
+        # and the batch keeps this local index in lockstep as it accepts files (below).
         with st._lock:
             upload_gen = st.wipe_gen
+            dup_index: dict[tuple[str, str | None], str] = {}
+            for k, h in st.content_hashes.items():
+                dup_index.setdefault((h, st.file_meta.get(k, (None, None))[0]), k)
         wiped_midway = False
         with mpxj_batch_session():
             for i, upload_file in enumerate(files):
@@ -3229,14 +3367,7 @@ def create_app(
                     if st.wipe_gen != upload_gen:
                         wiped_midway = True
                         break
-                    dup_key = next(
-                        (
-                            k
-                            for k, h in st.content_hashes.items()
-                            if h == chash and st.file_meta.get(k, (None, None))[0] == folder_ctx
-                        ),
-                        None,
-                    )
+                    dup_key = dup_index.get((chash, folder_ctx))  # O(1) — ADR-0281
                     kept = (
                         (st.schedules[dup_key].source_file or dup_key)
                         if dup_key is not None
@@ -3272,6 +3403,9 @@ def create_app(
                     st.file_meta[key] = meta[i] if i < len(meta) else (None, None)
                     # lets the Portfolio read this version's on-disk summary
                     st.content_hashes[key] = chash
+                    # ADR-0281: keep the local dedup index in lockstep so a later byte-identical
+                    # file in the SAME batch + context still collapses (first-loaded key wins).
+                    dup_index.setdefault((chash, folder_ctx), key)
                 accepted.append(key)
         if wiped_midway:
             errors.append(
@@ -7721,6 +7855,7 @@ def create_app(
             st.analyses.clear()
             st.summaries.clear()
             st.cpms.clear()
+            st.dash_cores.clear()  # ADR-0281 dashboard card tier
             st._perf_memo.clear()
             st.polished.clear()
             st.set_filter(())  # drop the session-wide field filter and its scope cache
@@ -18378,8 +18513,10 @@ def _evolution_tier_data(
 
 def _dashboard_data(st: SessionState) -> dict[str, object]:
     """Per-loaded-schedule health snapshot for the Dashboard cards: status mix, critical
-    exposure, computed finish vs baseline, and the DCMA-14 verdicts. Reuses the cached
-    per-schedule analysis (one CPM each); an unschedulable file degrades to a flagged card."""
+    exposure, computed finish vs baseline, and the DCMA-14 verdicts. Reads the lightweight card
+    tier (:meth:`SessionState.dashboard_core_for`, ADR-0281) — the three engine figures the card
+    needs, never a full analysis — so a many-version portfolio renders (and refreshes) without
+    LRU-thrashing the analysis cache; an unschedulable file degrades to a flagged card."""
     cards: list[dict[str, object]] = []
     # the home dashboard is the session MANIFEST: one self-contained card per loaded file, every
     # Project, excluded versions included — nothing here blends files (ADR-0258)
@@ -18393,7 +18530,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             "data_date": sch.status_date.date().isoformat() if sch.status_date else None,
         }
         try:
-            an = st.analysis_for(key, sch)
+            core = st.dashboard_core_for(key, sch)
         except CPMError:
             card["solvable"] = False
             cards.append(card)
@@ -18409,13 +18546,12 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             "planned": [t.unique_id for t in ns_scoped if t.percent_complete <= 0.0],
         }
         cpm_finish = offset_to_datetime(
-            scoped.project_start, an.cpm.project_finish, scoped.calendar
+            scoped.project_start, core.project_finish, scoped.calendar
         ).date()
         baseline_dates = [
             t.baseline_finish for t in non_summary(scoped) if t.baseline_finish is not None
         ]
         baseline_finish = max(baseline_dates).date() if baseline_dates else None
-        fb0 = an.float_bands["float_total_0"]
         card.update(
             {
                 "solvable": True,
@@ -18426,8 +18562,8 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                 },
                 "status_mix_uids": status_mix_uids,
                 "percent_complete": round(100 * makeup.complete / total, 1) if total else 0.0,
-                "critical_count": fb0.count,
-                "critical_pct": round(fb0.value, 1),
+                "critical_count": core.critical_count,
+                "critical_pct": round(core.critical_pct, 1),
                 "cpm_finish": cpm_finish.isoformat(),
                 "baseline_finish": baseline_finish.isoformat() if baseline_finish else None,
                 # positive = computed finish later than baseline (a slip)
@@ -18435,8 +18571,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                 if baseline_finish
                 else None,
                 "dcma": [
-                    {"id": c.metric_id, "name": c.name, "status": str(c.status)}
-                    for c in an.audit.checks
+                    {"id": mid, "name": nm, "status": status} for mid, nm, status in core.dcma
                 ],
             }
         )
