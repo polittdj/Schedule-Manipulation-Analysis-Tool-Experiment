@@ -5,6 +5,22 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-21d (DCMA milestone scope — ground-truth CORRECTION; v1.0.88; highest ADR 0278)
+
+> ## STATUS — the operator committed the **ground-truth workbooks** (Acumen's ACTUAL per-check flagged-task lists + the `.afw` + the `.mpp` under `mpp/`). A **UID-level** re-verification **overturned part of ADR-0277** and shipped as **ADR-0278**.
+>
+> - **Ground truth (File 1):** milestone-exclusion is **UID-EXACT** for Hard (05: 1→0) and Negative
+>   Float (07: 41→35) and safe for SS-FF (04)/Logic (01), but **HARMFUL for High Float (06)** —
+>   Acumen's 814 detail INCLUDES 7 milestones; excluding them = 7 false negatives. ADR-0277 wrongly
+>   excluded 06.
+> - **Shipped (ADR-0278):** narrowed `exclude_milestones` {01,04,05,06,07}→**{01,04,05,07}** (High
+>   Float keeps milestones). Default off byte-identical, P2/P5 untouched. v1.0.88, wheel + 9 installers.
+> - **Residuals RESOLVED as Acumen-side:** the ~24-task class (Resources 866 vs 890) is structurally
+>   indistinguishable in the `.mpp`; the `.afw` exposes a per-activity `Excluded` field +
+>   `FilterActivityTypeLevelOfEffort` ⇒ Acumen workspace-side exclusion/LOE (our engine is correct).
+>   Ribbon-vs-detail is Acumen's own over-count (operator-confirmed).
+> - **Open:** Logic-01 definition; CPLI stored-float/CPL; BEI. **State:** v1.0.88; ADR-0278 highest.
+
 # (prior) Handoff — 2026-07-21c (DCMA milestone scope — Acumen parity; v1.0.87; highest ADR 0277)
 
 > ## STATUS (current) — operator delivered a real Acumen-vs-Program dataset (Large Test File / File2: `.mpp` + `.afw` + comparison workbooks) and asked to root-cause why our DCMA metrics differ from Acumen Fuse, test, and fix. **Deep forensic root-cause done** (converted `.mpp`→MSPDI via MPXJ, ran our engine, **set-differenced our offender lists against Acumen's actual flagged-ID lists**). **Shipped the one verified, parity-safe fix: a configurable DCMA milestone scope (ADR-0277).** Highest ADR **0277**.

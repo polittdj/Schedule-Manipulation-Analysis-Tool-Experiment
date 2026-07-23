@@ -1,36 +1,36 @@
-# Handoff — 2026-07-21d (DCMA milestone scope — ground-truth CORRECTION; v1.0.88; highest ADR 0278)
+# Handoff — 2026-07-21e (Acumen-parity CPLI stored-float; v1.0.89; highest ADR 0279)
 
-> ## STATUS (current) — the operator committed the **ground-truth workbooks** (`00_REFERENCE_INTAKE/acumen_v8.11.0/Large Test File[2] Acumen DCMA 14 Point vs Program Results.xlsx` — Acumen's ACTUAL per-check flagged-task lists, + the `.afw` + the `.mpp` under `mpp/`). A **UID-level** re-verification (join: Acumen `Id`==our `unique_id`, `Description`==`name`, exact) **overturned part of ADR-0277** and is shipped as **ADR-0278**. Highest ADR **0278**.
+> ## STATUS (current) — after the milestone-scope correction (ADR-0278, PR #425 merged), continued the Acumen-parity work using the operator's committed ground-truth. **Root-caused and shipped CPLI (DCMA-13) parity as a configurable option (ADR-0279).** Highest ADR **0279**.
 >
-> - **What the ground truth proved (File 1, on the committed `Large Test File.mpp`, 2126 tasks):**
->   milestone-exclusion is **UID-EXACT** for Hard (05: 1→0) and Negative Float (07: 41→35) on File 1
->   — every extra we drop is a milestone Acumen omits (File 2: 0 FN, small non-milestone residual =
->   the Acumen-side exclusion class) — and **safe** for SS-FF (04) and Logic (01). But **HARMFUL for
->   High Float (06): Acumen's 814 detail INCLUDES 7 milestones** with high stored float; excluding
->   them = 7 false negatives (under-report). ADR-0277 wrongly excluded 06.
-> - **Shipped (ADR-0278):** narrowed `exclude_milestones` scope from {01,04,05,06,07} → **{01,04,05,07}**
->   (High Float 06 now KEEPS milestones — uses full incomplete population under both scopes). Engine
->   `dcma14.py` (06 → `incomplete`/`n_inc`), test updated (06 retains its milestone), the `/analysis`
->   toggle label corrected. Default **off** still byte-identical; **P2/P5 untouched**. v1.0.87 →
->   **1.0.88**, wheel + 9 installers. Re-verified UID-level: Hard=0 exact, NegFloat=35 exact, HighFloat=898 (0 FN).
-> - **Two residuals RESOLVED as Acumen-side (not our bug), documented in ADR-0278:** (a) the **~24-task**
->   class Acumen omits from EVERY check (Resources 866 vs our 890, same 24 in High Float) is
->   **structurally indistinguishable in the `.mpp`**; the **`.afw`** (gzip→.NET) exposes a per-activity
->   **`Excluded`** field + a **`FilterActivityTypeLevelOfEffort`** filter ⇒ an Acumen workspace-side
->   exclusion/LOE classification — our engine is CORRECT to flag them. (b) **Ribbon vs detail** is
->   Acumen's own over-count (operator-confirmed in the sheet notes: Logic 8→5, SS-FF 93→73, Lags 8→5).
-> - **Still open (need operator's Acumen-side input / bigger change):** **Logic 01** — Acumen flags 5
->   fully-linked tasks under a *different definition* than our missing-pred-OR-succ (we flag 2 others);
->   needs the operator's Acumen Logic metric setting. **CPLI** stored-float/stored-CPL (File 2 0.59
->   needs Acumen's stored critical-path length — real engine change). **BEI** 0.51 vs 0.52/0.53.
-> - **Sandbox:** `scratchpad/acumen_parity/` (`FINDINGS2_GROUNDTRUTH.md` + all set-diff scripts +
->   converted `file1.xml`/`file1_committed.xml`/`file2.xml` + decompressed `.afw`). Big binaries NOT committed.
-> - **State:** v1.0.88; **ADR-0278** highest (corrects 0277); wheel + 9 installers lockstep. Branch
->   `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #424). This session's
->   PR carries the ground-truth correction.
-> - **NEXT (operator to steer):** confirm the Acumen-side config for the 24-task `Excluded`/LOE set and
->   the Logic definition; then CPLI stored-float/CPL; BEI. Also still OWED: ADR-0261 PowerShell crash
->   log + large dataset; ADR-0258 Claude-Design portfolio prompt. Interactive-legend rollout DONE.
+> - **CPLI ground truth (Acumen "Ribbon Analysis" sheet in the committed Quick-Add-Metrics workbook):**
+>   File 1 **0.97**, File 2 **0.59**. Ours was **1.00** for both. Root cause: we compute CPLI from the
+>   recomputed pure-logic CPM (min float ~0 → 1.0); Acumen uses the file's **stored, progress-aware
+>   Total Slack** AND the **stored project finish** for the remaining length. Our pure-logic CPM
+>   collapses File 2's finish to ~2025 (78-day remaining) vs the stored ~2028 (~1053 d), so the two
+>   stored inputs are **inseparable** (stored float + recomputed length gives File 2 a nonsense −4.55).
+> - **Shipped (ADR-0279):** `compute_dcma14(..., cpli_stored_float=False)` + `audit_schedule` forward
+>   it; `_cpli` gains the stored mode (project float = `min effective_total_float` over `non_summary`;
+>   length = `max stored finish − status`). **Re-verified EXACT: File 1 0.9698≈0.97, File 2 0.5863≈0.59.**
+>   `SessionState.dcma_cpli_stored_float` (default off), `_scope_signature` `C=1` only when on, a 2nd
+>   checkbox on the `/analysis` DCMA form → `/dcma/scope` (composes with milestone `M=1`). **Default off
+>   byte-identical; P2/P5 CPLI stays 1.0 even ENABLED** (their min stored slack is +1 d vs a long length
+>   → rounds to 1.00). Tests: `test_dcma14.py` (+2), `test_dcma_scope.py` (+1). v1.0.88 → **1.0.89**,
+>   wheel + 9 installers.
+> - **Acumen parity status now:** Hard (05) & Negative Float (07) UID-exact via milestone scope (ADR-0278);
+>   **CPLI (13) exact via stored-float (ADR-0279)**; High Float (06) keeps milestones (correct). Two
+>   Acumen-parity toggles on `/analysis` (milestone scope + stored-float CPLI), both default-off.
+> - **Still open (need operator's Acumen-side input):** **Logic 01** — Acumen's own exports disagree
+>   (ribbon 0 vs 8 vs detail 5); it flags 5 fully-linked tasks under a *different definition* than our
+>   missing-pred-OR-succ. Needs the operator's Acumen Logic metric setting. The **~24-task** `Excluded`/
+>   LOE population (Acumen workspace-side, ADR-0278) — confirm in Acumen. **BEI** 0.52/0.53 vs our 0.51.
+> - **Sandbox:** `scratchpad/acumen_parity/` (`FINDINGS2_GROUNDTRUTH.md` + set-diff/CPLI scripts +
+>   converted `file1.xml`/`file2.xml` + decompressed `.afw`). Big binaries NOT committed.
+> - **State:** v1.0.89; **ADR-0279** highest; wheel + 9 installers lockstep. Branch
+>   `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #425). This session's
+>   PR carries the CPLI stored-float option.
+> - **NEXT (operator to steer):** confirm the Acumen-side Logic definition + the 24-task `Excluded`/LOE
+>   set; BEI. Also still OWED: ADR-0261 PowerShell crash log + large dataset; ADR-0258 Claude-Design
+>   portfolio prompt. Interactive-legend rollout DONE.
 
 # (prior) handoffs — archived
 

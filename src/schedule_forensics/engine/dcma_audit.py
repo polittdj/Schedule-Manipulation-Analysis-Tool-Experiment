@@ -106,12 +106,19 @@ def audit_schedule(
     cpm_result: CPMResult | None = None,
     *,
     exclude_milestones: bool = False,
+    cpli_stored_float: bool = False,
 ) -> ScheduleAudit:
     """Run the 14 DCMA checks and return an independent, cited audit of one schedule.
 
-    ``exclude_milestones`` forwards the Acumen-parity milestone scope to :func:`compute_dcma14`
-    (see its docstring; default off preserves prior behaviour and the golden parity, ADR-0277)."""
-    results = compute_dcma14(schedule, cpm_result, exclude_milestones=exclude_milestones)
+    ``exclude_milestones`` forwards the Acumen-parity milestone scope; ``cpli_stored_float``
+    forwards the Acumen-parity stored-float/stored-finish CPLI (ADR-0279). Both default off and
+    preserve prior behaviour and the golden parity (see :func:`compute_dcma14`)."""
+    results = compute_dcma14(
+        schedule,
+        cpm_result,
+        exclude_milestones=exclude_milestones,
+        cpli_stored_float=cpli_stored_float,
+    )
     checks: list[AuditCheck] = []
     for metric_id, result in results.items():
         improvement = (

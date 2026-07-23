@@ -49,6 +49,7 @@ def compute_dcma14(
     cpm_result: CPMResult | None = None,
     *,
     exclude_milestones: bool = False,
+    cpli_stored_float: bool = False,
 ) -> dict[str, MetricResult]:
     """Compute all 14 DCMA checks, keyed by id (``"DCMA01"`` … ``"DCMA14"`` with
     ``DCMA04`` split into FS / SS-FF / SF rows to mirror the Acumen ribbon).
@@ -303,7 +304,8 @@ def compute_dcma14(
     out["DCMA12"] = _critical_path_test(schedule, result)
 
     # DCMA-13 CPLI — (critical-path length + project total float) / critical-path length.
-    out["DCMA13"] = _cpli(result, status_off)
+    # cpli_stored_float selects the Acumen-parity STORED-float / STORED-finish inputs (ADR-0279).
+    out["DCMA13"] = _cpli(result, status_off, schedule, cpli_stored_float)
 
     # DCMA-14 BEI — see compute_bei (ADR-0089). Factored out so the grouping/breakdown UI can
     # score BEI per group without a CPM re-solve (it is pure counts), one source of truth.
@@ -483,30 +485,58 @@ def _critical_path_test(schedule: Schedule, result: CPMResult) -> MetricResult:
     )
 
 
-def _cpli(result: CPMResult, status_offset: int | None) -> MetricResult:
+def _cpli(
+    result: CPMResult,
+    status_offset: int | None,
+    schedule: Schedule,
+    stored_float: bool = False,
+) -> MetricResult:
     """Critical Path Length Index = (remaining critical-path length + project total float) ÷
     remaining critical-path length. The denominator is the **remaining** length — from the
     data date (status) to the project finish — matching the Bible's ``ProjectRemainingDuration``
     and the DCMA standard (ADR-0086), not the full project span. With no imposed deadline the
     controlling path's float is 0, so CPLI = 1; a negative project float (behind an imposed
-    finish) drives it < 1, and the remaining denominator makes that deviation correctly sharp."""
-    # remaining critical-path length: data date -> project finish (working minutes); falls back
-    # to the full network length when the schedule carries no status date.
-    length = result.project_finish - max(status_offset or 0, 0)
+    finish) drives it < 1, and the remaining denominator makes that deviation correctly sharp.
+
+    ``stored_float`` (default off) selects the **Acumen-parity** inputs (ADR-0279): the source
+    tool's STORED, progress-aware Total Slack (via :func:`effective_total_float`) for the project
+    float AND the STORED project finish (the latest stored activity finish) for the remaining
+    length. On a heavily progressed schedule the recomputed pure-logic CPM drives min float to ~0
+    (CPLI 1.0) and can collapse the remaining length, so it disagrees with Acumen; the stored view
+    reproduces Acumen EXACTLY on the operator's files (File 1 0.97, File 2 0.59). Default keeps the
+    recomputed behaviour (P2/P5 golden untouched)."""
+    if stored_float:
+        tasks = non_summary(schedule)
+        status = max(status_offset or 0, 0)
+        finishes = [
+            off
+            for t in tasks
+            if t.finish is not None
+            for off in (to_offset(schedule, t.finish),)
+            if off is not None
+        ]
+        length = (max(finishes) - status) if finishes else (result.project_finish - status)
+        tf = {uid: t.total_float for uid, t in result.timings.items()}
+        eff = {t.unique_id: effective_total_float(t, tf.get(t.unique_id, 0)) for t in tasks}
+        project_float = min(eff.values(), default=0)
+        crit_uids = eff
+    else:
+        # remaining critical-path length: data date -> project finish (working minutes); falls back
+        # to the full network length when the schedule carries no status date.
+        length = result.project_finish - max(status_offset or 0, 0)
+        project_float = min((t.total_float for t in result.timings.values()), default=0)
+        crit_uids = {uid: t.total_float for uid, t in result.timings.items()}
     if length <= 0:
         return MetricResult(
             "DCMA13", "CPLI", 0, 0, 0.0, "ratio", CheckStatus.NOT_APPLICABLE, 0.95, Direction.GE
         )
-    project_float = min((t.total_float for t in result.timings.values()), default=0)
     cpli = (length + project_float) / length
-    status = evaluate(cpli, 0.95, Direction.GE)
+    status_flag = evaluate(cpli, 0.95, Direction.GE)
     # on FAIL, cite the most-negative-float activities — the chain that is consuming the
     # project's float and dragging CPLI under threshold (verifiable, §6).
     offenders: tuple[int, ...] = ()
-    if status is CheckStatus.FAIL:
-        offenders = tuple(
-            sorted(uid for uid, t in result.timings.items() if t.total_float == project_float)
-        )
+    if status_flag is CheckStatus.FAIL:
+        offenders = tuple(sorted(uid for uid, v in crit_uids.items() if v == project_float))
     return MetricResult(
         "DCMA13",
         "CPLI",
@@ -514,7 +544,7 @@ def _cpli(result: CPMResult, status_offset: int | None) -> MetricResult:
         1,
         round(cpli, 2),
         "ratio",
-        status,
+        status_flag,
         0.95,
         Direction.GE,
         offenders,

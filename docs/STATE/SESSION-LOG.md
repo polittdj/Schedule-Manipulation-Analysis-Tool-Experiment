@@ -7479,3 +7479,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   workspace-side exclusion/LOE. Ribbon-vs-detail is Acumen's own over-count (operator-confirmed).
 - **Still open (operator to steer):** Logic-01 definition difference (Acumen flags 5 fully-linked
   tasks); CPLI stored-float/CPL; BEI. Sandbox: `scratchpad/acumen_parity/FINDINGS2_GROUNDTRUTH.md`.
+
+---
+
+## (cont.) — 2026-07-21e — Acumen-parity CPLI stored-float option (ADR-0279)
+
+- **Session:** continued (after PR #425 merged)   **Model/mode:** Opus 4.8 + Ultracode
+- **Branch:** `claude/conditional-branching-contingency-bi6g00` (fresh from merged main after #425)
+- **Trigger:** operator merged the milestone-scope correction (#425); "continue" → next Acumen-parity
+  item, CPLI (DCMA-13), using the committed ground truth (Acumen "Ribbon Analysis" CPLI: File 1 0.97,
+  File 2 0.59; ours was 1.00).
+- **Root cause (verified on the committed `.mpp`s):** we compute CPLI from the recomputed pure-logic
+  CPM (min float ~0 → 1.0); Acumen uses the file's STORED, progress-aware Total Slack AND the STORED
+  project finish for the remaining length. Our pure-logic CPM collapses File 2's finish to ~2025 (78-d
+  remaining) vs the stored ~2028 (~1053 d), so the two stored inputs are INSEPARABLE (stored float +
+  recomputed length gives File 2 −4.55). Both together reproduce Acumen EXACTLY (0.9698≈0.97,
+  0.5863≈0.59).
+- **Shipped (ADR-0279):** `compute_dcma14(..., cpli_stored_float=False)` + `audit_schedule` forward it;
+  `_cpli` stored mode (project float = min `effective_total_float` over `non_summary`; length = max
+  stored finish − status). `SessionState.dcma_cpli_stored_float` (default off), `_scope_signature`
+  `C=1` only when on, a 2nd checkbox on the `/analysis` DCMA form → `/dcma/scope` (composes with `M=1`).
+  Default off byte-identical; P2/P5 CPLI stays 1.0 even ENABLED (min stored slack +1 d vs long length →
+  rounds to 1.00). Tests: `test_dcma14.py` (+2 CPLI), `test_dcma_scope.py` (+1 toggle). v1.0.88 →
+  **1.0.89**, wheel + 9 installers lockstep. Highest ADR **ADR-0279**.
+- **Still open (operator to steer):** Logic-01 definition (Acumen's own exports disagree: ribbon 0/8,
+  detail 5); the ~24-task `Excluded`/LOE population (Acumen-side); BEI. Sandbox scripts under
+  `scratchpad/acumen_parity/`.

@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-21 (cont. 4) — CPLI parity: a two-part fix whose halves are worthless apart (ADR-0279)
+- Root-caused why our CPLI (1.00) ≠ Acumen (0.97 / 0.59). Two causes, and the trap was that fixing
+  ONE makes the answer WORSE: (1) we use recomputed CPM float (min ~0) where Acumen uses stored Total
+  Slack; (2) our pure-logic CPM collapses File 2's finish to ~2025 (78-day remaining length) where the
+  stored schedule finishes ~2028 (~1053 d). Swap in the stored float but keep the recomputed length
+  and File 2's CPLI is **−4.55** — a nonsense number that would look like a new bug. LESSON: when a
+  metric has multiple divergent inputs, verify the fix with ALL of them swapped together on EVERY
+  sample; a partial swap can score worse than the original and mislead you into reverting the right
+  idea. File 1 (where recomputed ≈ stored finish) would have "passed" a one-input fix and hidden it.
+- **The consistency tell:** `effective_total_float` (stored-preferring) was ALREADY the default for
+  DCMA-06/07 — CPLI was the one float-based check still on raw recomputed float. Noticing that
+  inconsistency is what pointed at the fix. When one metric disagrees with a tool the others match,
+  ask what input the odd one out is reading differently — the answer is usually "it never adopted the
+  convention the rest of the engine already uses."
+- **Ground truth that contradicts itself is itself a finding.** Acumen's own exports disagree on Logic
+  for File 1 (Ribbon-Analysis says 0; the DCMA-14 detail workbook says ribbon 8 / detail 5). When the
+  reference tool isn't internally consistent, that metric is not a parity target you can chase to an
+  exact number — flag it as needing the operator's Acumen settings, don't invent a rule to fit one
+  of the conflicting exports.
+
 ### 2026-07-21 (cont. 3) — the fix I shipped an hour earlier was PARTLY WRONG, and richer ground truth caught it (ADR-0278 corrects 0277)
 - Right after ADR-0277 merged (milestone-exclusion for the DCMA "work" checks {01,04,05,06,07}), the
   operator committed the **ground-truth workbooks** — Acumen's ACTUAL per-check flagged-task detail
