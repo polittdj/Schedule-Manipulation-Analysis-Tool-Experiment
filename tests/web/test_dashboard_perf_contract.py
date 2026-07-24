@@ -446,10 +446,6 @@ def _milestone_project(ms_name: str) -> Schedule:
     )
 
 
-@pytest.mark.xfail(
-    reason="Fix E deferred: target control + endpoint banner not yet scoped to the active project",
-    strict=True,
-)
 def test_target_control_and_banner_scope_to_active_project() -> None:
     st = SessionState()
     st.schedules["alpha"] = _milestone_project("ALPHA COMPLETE")

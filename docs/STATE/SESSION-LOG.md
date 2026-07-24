@@ -7597,3 +7597,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT (still open, separate PRs):** ADR-0282 (findings source under parity — File2 is the concrete
   disagreement case; recommend Option A, needs operator sign-off + fresh goldens); Fix E (cross-project
   UID leak, un-xfail test 7 + dropdown sub-question); then the deferred perf backlog.
+
+## 2026-07-24b — Fix E: target control + endpoint banner scoped to the active project (ADR-0284; v1.0.93)
+
+- **Model/mode:** Opus 4.8 (lead, ADR-0240). **Branch:** `claude/smat-tool-continuation-uskbh7`
+  restarted fresh from `origin/main` at `54f06ce` after PR #430 (ADR-0283) squash-merged.
+- **Context:** the deferred "Fix E" from ADR-0281 — a real cross-project UID leak whose
+  characterization test shipped `xfail(strict=True)`. Operator decision (2026-07-24): the target
+  dropdown should list **only the active project's** milestones.
+- **Root cause:** `_render_target_control` and `_endpoint_banner` iterated `state.schedules.values()`
+  (every version across every project) instead of the ADR-0258 active-project population. The dropdown
+  keys milestones by `unique_id` (first label wins), so a shared UID could show a foreign project's
+  label; the banner's omitted-count spanned the whole session.
+- **Fix (ADR-0284):** both iterate `state.ordered_versions()` (active project, exclusions dropped;
+  reentrant `RLock`, so deadlock-safe on the render path). Removed the `xfail` marker — the test now
+  asserts the fix (Alpha+Beta share UID 100, Beta active → no "ALPHA COMPLETE" leak, banner shows
+  Beta's 2 of 2). Single-project sessions unchanged.
+- **Gate:** `tests/web/` green; ruff/format/mypy clean on changed files; bumped **1.0.92 → 1.0.93**,
+  regenerated wheel + 9 installers (lockstep). **Highest ADR ADR-0284.**
+- **NEXT (its own PR):** ADR-0282 Option A — findings/narrative FOLLOW the parity audit when parity
+  mode is on (operator chose this). Threads the parity audit through `recommend()`/`build_narrative()`;
+  changes findings/narrative/briefing/risk-matrix under parity → needs fresh parity-variant goldens +
+  re-pinned `ai.citations` goldens; testimony-facing, do with full ground-truth verification.
