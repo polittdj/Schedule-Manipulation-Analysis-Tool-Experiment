@@ -627,6 +627,10 @@ _V = TypeVar("_V")
 #: comparison never evicts — an evicted entry simply recomputes byte-identically, so the cap only
 #: trades memory for occasional recompute and can never change a computed number.
 _ANALYSIS_CACHE_MAX = 48
+#: Cap for the CPM-solve tier (ADR-0292). Entries are ~641 KiB vs ~7.2 MiB for a full analysis, so a
+#: larger cap costs far less memory while keeping more versions cheap to re-serve after an analysis
+#: eviction. 144 x 641 KiB is ~90 MiB worst case.
+_CPM_CACHE_MAX = _ANALYSIS_CACHE_MAX * 3
 
 #: ADR-0258: sentinel population id for the pooled title-less loose files — stable, storable and
 #: selectable like a real Project pid, and never colliding with the engine's pid prefixes
@@ -693,7 +697,15 @@ class SessionState:
     # (raw schedule, solve)). The multi-version population pass needs only dates/float per
     # version; this holds that solve without the heavy full analysis, and ``analysis_for``
     # reuses it so a network is never solved twice for one epoch. Cleared on wipe.
-    cpms: dict[str, tuple[Schedule, CPMResult]] = field(default_factory=dict)
+    # ADR-0292: BOUNDED. Each entry retains the scoped Schedule + CPMResult — measured at
+    # ~641 KiB, i.e. ~11x a dash-core. While the same key is resident in ``analyses`` those objects
+    # are shared and this tier is nearly free, but ``analyses`` is LRU-capped and this was a PLAIN
+    # DICT: after an eviction the ``cpms`` entry kept the heavy objects alive on its own, so the
+    # analysis cap did not actually bound session memory. Capped at 3x the analysis cap (entries are
+    # ~11x lighter, and this tier is what makes an evicted version cheap to re-serve).
+    cpms: _LRUCache[tuple[Schedule, CPMResult]] = field(
+        default_factory=lambda: _LRUCache(_CPM_CACHE_MAX)
+    )
     # ADR-0281: the dashboard card tier — epoch-keyed like ``cpms`` ((key, scope-signature) →
     # (raw schedule, _DashCore)). The home Dashboard needs only 3 of the 8 ``_Analysis`` fields per
     # version; this holds that ~1 KiB projection so a portfolio of many versions renders (and
@@ -1344,14 +1356,14 @@ class SessionState:
                 if cached is not None and cached[0] is sch:
                     return cached[1]  # a prior stripe holder already filled this epoch
                 scoped = self.scope(sch)  # memoised; cheap next to the engine pass below
-                pre = self.cpms.get(ck)
+                pre = self.cpms.get_lru(ck)
                 cpm = pre[1] if pre is not None and pre[0] is sch else None
                 parity = self.dcma_acumen_parity  # captured under the lock with the cache key
             analysis = _compute_analysis(scoped, cpm=cpm, dcma_acumen_parity=parity)
             with self._lock:
                 if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
                     self.analyses.put(ck, (sch, analysis))
-                    self.cpms[ck] = (sch, analysis.cpm)  # the P2 tier reuses the solve either way
+                    self.cpms.put(ck, (sch, analysis.cpm))  # P2 tier reuses the solve either way
             return analysis
 
     def cpm_scoped_for(self, key: str, sch: Schedule) -> tuple[Schedule, CPMResult]:
@@ -1367,12 +1379,12 @@ class SessionState:
         with self._lock:  # fast path: a resident solve (or a resident full analysis') — no stripe
             ck = self._cache_key(key, self._scope_signature())
             scoped = self.scope(sch)
-            pre = self.cpms.get(ck)
+            pre = self.cpms.get_lru(ck)
             if pre is not None and pre[0] is sch:
                 return scoped, pre[1]
             full = self.analyses.get_lru(ck)
             if full is not None and full[0] is sch:
-                self.cpms[ck] = (sch, full[1].cpm)
+                self.cpms.put(ck, (sch, full[1].cpm))
                 return scoped, full[1].cpm
         # miss: single-flight the solve on the key's stripe (taken OUTSIDE _lock — stripe → _lock)
         with self._stripe_for(ck):
@@ -1380,17 +1392,17 @@ class SessionState:
                 ck = self._cache_key(key, self._scope_signature())
                 gen = self.wipe_gen
                 scoped = self.scope(sch)
-                pre = self.cpms.get(ck)
+                pre = self.cpms.get_lru(ck)
                 if pre is not None and pre[0] is sch:
                     return scoped, pre[1]  # a prior stripe holder already solved this epoch
                 full = self.analyses.get_lru(ck)
                 if full is not None and full[0] is sch:
-                    self.cpms[ck] = (sch, full[1].cpm)
+                    self.cpms.put(ck, (sch, full[1].cpm))
                     return scoped, full[1].cpm
             cpm = compute_cpm(scoped)
             with self._lock:
                 if self.wipe_gen == gen:  # ADR-0263: never re-populate a wiped session
-                    self.cpms[ck] = (sch, cpm)
+                    self.cpms.put(ck, (sch, cpm))
             return scoped, cpm
 
     def cpm_for(self, key: str, sch: Schedule) -> CPMResult:

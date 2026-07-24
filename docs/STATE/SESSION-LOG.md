@@ -7752,3 +7752,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   to take the caller's captured generation.
 - **Version 1.0.97 → 1.0.98**, wheel + 9 installers regenerated. **Highest ADR ADR-0291.**
 - **NEXT:** perf items 4–7, then AXIS-TITLES, then CRISPNESS (re-grounded), then Guided/Voice.
+
+## 2026-07-24h — perf #4: cache-tier byte budget; cpms bounded (ADR-0292; v1.0.99)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** from `origin/main` at `6175040` after #436 merged.
+- **The instrumentation overturned my own conclusion twice — worth recording.** First pass (per-tier
+  `seen` set) said `dash_cores` = 923 KiB/entry and I nearly reported ADR-0281's "~1 KiB" claim as a
+  900x documentation defect. Re-measured with a SHARED `seen` charging `st.schedules` first: 2.4 KiB
+  — ADR-0281 was right. I then wrote a scratchpad conclusion of "cpms is 0.1 KiB, item 4 needs no
+  action". **My own new test then failed at 641 KiB/entry for `cpms`** — because the 0.1 KiB figure
+  was an artifact of charging `analyses` FIRST in the same shared set.
+- **The real finding:** `cpms` holds the scoped Schedule + CPMResult (~641 KiB standalone). It shares
+  those objects with `analyses` while both are resident — but `analyses` is LRU-capped at 48 and
+  `cpms` was a PLAIN DICT, so after an eviction `cpms` kept them alive alone. The analysis cap was
+  not actually bounding session memory (~125 MiB at 200 versions).
+- **Fix (ADR-0292):** `cpms` → `_LRUCache(_CPM_CACHE_MAX)`, cap `_ANALYSIS_CACHE_MAX * 3` = 144
+  (~90 MiB worst case); `get_lru` reads / `put` writes. `dash_cores` (2.8 KiB) and `dash_cards`
+  (20.1 KiB) deliberately left unbounded — under 5 MiB at 200 versions; capping them would be the
+  "slightly-too-small LRU" ADR-0281 warned against. `_ANALYSIS_CACHE_MAX` left at 48 (~348 MiB worst
+  case) and FLAGGED for the operator rather than changed unilaterally.
+- **Tests:** `test_cache_tier_weights.py` — per-entry ceilings on the light tiers, both heavy tiers
+  are `_LRUCache`, and driving past the cap actually evicts. Method documented in the test.
+- **Version 1.0.98 → 1.0.99**, wheel + 9 installers regenerated. **Highest ADR ADR-0292.**
