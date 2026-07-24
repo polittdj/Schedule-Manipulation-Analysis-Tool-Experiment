@@ -435,6 +435,28 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24g — a cache fixed the expensive half and left the cheap half running N times (ADR-0291)
+- ADR-0281 cached the dashboard's ENGINE work and I treated the dashboard as "done". It wasn't: with
+  that cache fully warm, `/api/dashboard` still burned **117 ms at 30 versions** re-deriving the
+  projection built *around* the cached figures — `scope()` per version, `non_summary()` three times
+  per version, activity-makeup, the status-UID partition. **LESSON: after caching the expensive step,
+  re-measure the warm path. The remaining cost is never zero, and "cheap × N versions × every
+  refresh" is exactly the shape that hides from profiling done at N=1.**
+- **LESSON: I wrote a guard that was a tautology, and only reading the existing pattern caught it.**
+  My first `dashboard_card_store` did `if self.wipe_gen != self._wipe_gen_at_entry(sch)` where the
+  helper returned `self.wipe_gen` — comparing a value to itself, so the guard could never fire. It
+  would have passed every test I had written. The fix came from reading how `dashboard_core_for`
+  actually does it (capture `gen` at ENTRY, compare at STORE) rather than inventing a shape. When
+  adding a tier to an existing family, copy the family's proven guard; don't improvise one.
+- **LESSON: prefer a memo whose cached value IS the finished artifact.** Caching the assembled card
+  dict makes "payload byte-identical" true *by construction* rather than something to re-verify —
+  there is no second code path that could drift. The equality pin then guards the cache key, not the
+  arithmetic.
+- **Named the residual instead of quietly absorbing it.** After the memo, the warm cost that remains
+  is JSON-serialising the `status_mix_uids` arrays the payload ships — the dashboard's version of the
+  trend-payload problem ADR-0288 solved. Recorded as its own item rather than scope-crept into this
+  PR, so the next measurement starts from a known baseline.
+
 ### 2026-07-24f — verify a planning doc's PREMISE before you execute its plan (ADR-0289/0290)
 - The operator committed six Claude-Design planning docs. Two of them turned out to rest on claims
   the tree contradicts. `CRISPNESS-PATCH.md` states `sf-themes.css` "was never committed" and builds

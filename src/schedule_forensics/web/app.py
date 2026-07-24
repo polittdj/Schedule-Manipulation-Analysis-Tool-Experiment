@@ -700,6 +700,12 @@ class SessionState:
     # refreshes) without ever building — or LRU-thrashing — a full analysis. Plain dict (not the
     # capped LRU): the whole point is that it never evicts under the cap. Cleared on wipe.
     dash_cores: dict[str, tuple[Schedule, _DashCore]] = field(default_factory=dict)
+    #: ADR-0291 — the projected dashboard CARD per (key, scope-epoch). ``dash_cores`` caches the
+    #: three ENGINE figures; this caches the MANIFEST PROJECTION built around them (the scoped
+    #: schedule's activity count, status mix + its UID partition, and the baseline finish), which
+    #: was otherwise re-derived for every version on every dashboard refresh even when fully warm.
+    #: Plain dict, epoch-keyed exactly like ``dash_cores``, cleared on wipe.
+    dash_cards: dict[str, tuple[Schedule, dict[str, object]]] = field(default_factory=dict)
     # ADR-0261 P3: per-version Performance-page memo, keyed by the SCOPED schedule's object
     # identity (one scoped object per version per epoch, courtesy of the scope memo):
     # id -> (scoped ref, effective-critical set, serialized G1-G5 block, truncated flag). The
@@ -1401,6 +1407,31 @@ class SessionState:
         :meth:`cpm_scoped_for` (one consistent pair) instead of pairing this with a separate
         ``scope()`` call."""
         return self.cpm_scoped_for(key, sch)[1]
+
+    def dashboard_card_cached(self, key: str, sch: Schedule) -> dict[str, object] | None:
+        """The memoised dashboard CARD for ``key`` over the active scope, or ``None`` (ADR-0291).
+
+        Epoch-keyed by the same ``(key, scope-signature)`` as ``dash_cores``/``cpms``, so a filter /
+        target / parity change re-keys automatically and a stale card can never be served. The
+        identity guard (``hit[0] is sch``) is the same one ``dashboard_core_for`` uses: a re-uploaded
+        version is a NEW frozen ``Schedule`` object, so it misses and re-projects."""
+        with self._lock:
+            hit = self.dash_cards.get(self._cache_key(key, self._scope_signature()))
+            return hit[1] if hit is not None and hit[0] is sch else None
+
+    def dashboard_card_store(
+        self, key: str, sch: Schedule, card: dict[str, object], gen: int
+    ) -> None:
+        """Memoise a projected dashboard card, under the ``wipe_gen`` guard (ADR-0291).
+
+        ``gen`` is the wipe generation the caller captured BEFORE building the card. If a wipe
+        landed in between, the card describes a session that no longer exists and is dropped rather
+        than resurrecting dead state — the same ADR-0263 rule ``dashboard_core_for`` follows. The
+        key is re-derived inside the lock so a scope flip during the build stores under the CURRENT
+        epoch, never a stale one."""
+        with self._lock:
+            if self.wipe_gen == gen:
+                self.dash_cards[self._cache_key(key, self._scope_signature())] = (sch, card)
 
     def dashboard_core_for(self, key: str, sch: Schedule) -> _DashCore:
         """The tiny dashboard-card core for ``key`` over the active scope (ADR-0281).
@@ -7927,6 +7958,7 @@ def create_app(
             st.summaries.clear()
             st.cpms.clear()
             st.dash_cores.clear()  # ADR-0281 dashboard card tier
+            st.dash_cards.clear()  # ADR-0291 manifest-projection memo
             st._perf_memo.clear()
             st.polished.clear()
             st.set_filter(())  # drop the session-wide field filter and its scope cache
@@ -18575,9 +18607,20 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
     needs, never a full analysis — so a many-version portfolio renders (and refreshes) without
     LRU-thrashing the analysis cache; an unschedulable file degrades to a flagged card."""
     cards: list[dict[str, object]] = []
+    gen = st.wipe_gen  # ADR-0291/0263: cards built for THIS epoch only (see dashboard_card_store)
     # the home dashboard is the session MANIFEST: one self-contained card per loaded file, every
     # Project, excluded versions included — nothing here blends files (ADR-0258)
     for key, sch in st.all_versions():  # earliest -> latest data date
+        # ADR-0291: the whole per-version projection below is deterministic for a given
+        # (key, scope-epoch), so a warm refresh serves it from the memo and re-derives NOTHING.
+        # Previously `scope()` rebuilt a scoped Schedule and `non_summary()` / activity-makeup /
+        # the status-UID partition ran again for every card on every refresh — ~3.6 ms per version
+        # even with the ADR-0281 card tier fully warm (measured: 30 versions = 117 ms of pure
+        # re-derivation). The cached value IS the finished card, so the payload is byte-identical.
+        memo = st.dashboard_card_cached(key, sch)
+        if memo is not None:
+            cards.append(memo)
+            continue
         scoped = st.scope(sch)  # the active filter applies to the dashboard cards too
         card: dict[str, object] = {
             "key": key,
@@ -18590,6 +18633,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             core = st.dashboard_core_for(key, sch)
         except CPMError:
             card["solvable"] = False
+            st.dashboard_card_store(key, sch, card, gen)  # unsolvable cards cache too
             cards.append(card)
             continue
         makeup = compute_activity_makeup(scoped)
@@ -18632,6 +18676,7 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                 ],
             }
         )
+        st.dashboard_card_store(key, sch, card, gen)
         cards.append(card)
     return {"cards": cards}
 

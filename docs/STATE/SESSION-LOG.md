@@ -7732,3 +7732,23 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   them. Correct path: download the self-contained `installer/install-tier2.ps1` from the GitHub web
   UI and run it; no clone needed.
 - **NEXT:** perf items 3–7, then AXIS-TITLES, then CRISPNESS (re-grounded), then Guided/Voice.
+
+## 2026-07-24g — perf #3: manifest-projection memo (ADR-0291; v1.0.98)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** from `origin/main` at `8ca820c` after #435 merged.
+- **Measured BEFORE changing anything** (the ADR-0249 habit): with ADR-0281's `dash_cores` fully
+  warm, `/api/dashboard` still spent **45.8 ms @ 10 versions / 117.3 ms @ 30** re-deriving the
+  manifest projection — `scope()` per version, `non_summary()` 3x per version,
+  `compute_activity_makeup()`, and the status-UID partition. Linear at ~3.6 ms/version.
+- **Fix (ADR-0291):** `SessionState.dash_cards` memoises the FINISHED card per `(key, scope-epoch)`,
+  mirroring `dash_cores` — identity guard on the frozen `Schedule`, `wipe_gen` guard on store (gen
+  captured once before the build), key re-derived inside the lock, cleared on wipe, unsolvable cards
+  cached too. Payload byte-identical by construction.
+- **Result:** warm 45.8 → **12.3 ms** and 117.3 → **35.8 ms**; **zero** scope/makeup/non_summary
+  calls warm; payload SHA identical cold vs warm.
+- **Wrote then discarded a bad guard:** my first `dashboard_card_store` compared `wipe_gen` to a
+  helper that returned `self.wipe_gen` — i.e. a value to itself, always true, a no-op guard. Caught
+  it by reading the repo's real pattern (`dashboard_core_for` captures `gen` at ENTRY) and rewrote it
+  to take the caller's captured generation.
+- **Version 1.0.97 → 1.0.98**, wheel + 9 installers regenerated. **Highest ADR ADR-0291.**
+- **NEXT:** perf items 4–7, then AXIS-TITLES, then CRISPNESS (re-grounded), then Guided/Voice.
