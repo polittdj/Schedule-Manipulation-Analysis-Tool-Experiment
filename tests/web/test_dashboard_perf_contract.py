@@ -11,13 +11,14 @@ ADR-0249): a fast wrong number is worthless. The contract they lock:
 3. Concurrent cold requests for one key compute **once** (single-flight), exceptions propagate to
    every waiter, and unrelated keys stay concurrent.
 4. One cold ``_compute_analysis`` computes each deterministic dependency (DCMA audit, baseline
-   compliance, ``recommend``) **once** (default) — while parity mode still recomputes the DEFAULT
-   audit for the recommender, byte-for-byte as before (a documented, deliberate pin).
+   compliance, ``recommend``) **once** — in BOTH modes. Since ADR-0282 Option A (ADR-0285) the
+   recommender's findings FOLLOW the displayed audit, so parity mode reuses the single parity audit
+   instead of recomputing a default one (1x/1x/1x in both modes; findings agree with the ribbon).
 5. The dashboard payload is **byte-identical** across the change (golden SHA-256).
 6. The wipe/epoch guards (ADR-0263 / ADR-0261) still hold under the new single-flight path.
-7. (xfail until Fix E) the target control + endpoint banner scope to the active project.
+7. The target control + endpoint banner scope to the active project (ADR-0284, Fix E — un-xfailed).
 
-Committed FIRST: tests 1-4 FAIL on ``main`` (that is the point), 7 xfails, 5/6 already hold.
+Committed FIRST: tests 1-4 FAIL on ``main`` (that is the point), 5/6/7 already hold.
 """
 
 from __future__ import annotations
@@ -320,26 +321,33 @@ def test_cold_analysis_computes_each_dependency_once_default(
     assert (audit.count, comp.count, reco.count) == (1, 1, 1)
 
 
-def test_cold_analysis_parity_mode_is_documented(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cold_analysis_parity_mode_computes_each_dependency_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     sch = _chain("deps", status_date=dt.datetime(2026, 3, 2, 8, 0))
     audit, comp, reco = _dep_spies(monkeypatch)
     app_mod._compute_analysis(sch, dcma_acumen_parity=True)
-    # audit twice: the DISPLAYED parity audit, plus the recommender still deriving findings from
-    # the DEFAULT (non-parity) audit — today's behaviour, pinned here (the parity-findings question
-    # is a separate ADR decision, deliberately NOT changed in this PR).
-    assert (audit.count, comp.count, reco.count) == (2, 1, 1)
+    # ADR-0282 Option A (ADR-0285): the findings follow the DISPLAYED audit, so parity mode reuses
+    # the single parity audit (no second DEFAULT-audit recompute inside the recommender) — 1x/1x/1x,
+    # exactly like default mode.
+    assert (audit.count, comp.count, reco.count) == (1, 1, 1)
     flags = [c.get("acumen_parity", "ABSENT") for c in audit.calls]
-    assert flags == [True, "ABSENT"]
+    assert flags == [True]
 
 
-def test_findings_and_narrative_match_the_default_recommend_path() -> None:
+def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:
     sch = _chain("equ", status_date=dt.datetime(2026, 3, 2, 8, 0))
+    # default mode: findings/narrative equal the plain (default) recommend/narrative path
     an = app_mod._compute_analysis(sch, dcma_acumen_parity=False)
     assert an.findings == recommend(sch, current_cpm=an.cpm)
     assert an.narrative == build_narrative(sch, current_cpm=an.cpm)
-    # parity mode: findings still derive from the DEFAULT audit, so they equal the plain recommend
+    # ADR-0282 Option A: parity mode's findings/narrative follow the PARITY audit, so they equal the
+    # parity recommend/narrative path (and the parity findings feed the narrative).
     an_parity = app_mod._compute_analysis(sch, dcma_acumen_parity=True)
-    assert an_parity.findings == recommend(sch, current_cpm=an_parity.cpm)
+    assert an_parity.findings == recommend(sch, current_cpm=an_parity.cpm, acumen_parity=True)
+    assert an_parity.narrative == build_narrative(
+        sch, current_cpm=an_parity.cpm, precomputed_findings=an_parity.findings
+    )
 
 
 # ---------------------------------------------------------------------------------------------

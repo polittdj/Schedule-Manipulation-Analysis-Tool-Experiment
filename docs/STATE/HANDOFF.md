@@ -1,38 +1,45 @@
-# Handoff — 2026-07-24b (Fix E: target control + endpoint banner scoped to the active project; v1.0.93; highest ADR 0284)
+# Handoff — 2026-07-24c (ADR-0282 resolved as Option A: findings/narrative/briefing follow the parity audit; v1.0.94; highest ADR 0285)
 
-> ## STATUS (current) — shipped **Fix E** (the deferred cross-project UID leak from ADR-0281) as
-> **ADR-0284**, on a branch restarted fresh from `origin/main` after PR #430 (ADR-0283) squash-merged.
-> Version **1.0.93**. Highest ADR **0284**. Branch `claude/smat-tool-continuation-uskbh7` (from
-> `origin/main` at `54f06ce`).
+> ## STATUS (current) — resolved the last queued open question. The operator chose **Option A** for
+> ADR-0282, shipped as **ADR-0285**: when Acumen-parity mode is ON, the findings, narrative, risk
+> matrix and executive briefing all derive from the **parity** audit, so every surface agrees with the
+> ribbon. Version **1.0.94**. Highest ADR **0285**. Branch `claude/smat-tool-continuation-uskbh7`
+> (restarted fresh from `origin/main` at `17431a6` after PR #431 / ADR-0284 squash-merged).
 >
-> - **The leak:** `_render_target_control` and `_endpoint_banner` iterated `state.schedules.values()`
->   — every version across EVERY project — instead of the active project. The dropdown keys milestones
->   by `unique_id` and keeps the first label, so a UID shared across projects (e.g. UID 100 in both)
->   could show a **foreign project's label**; the banner's omitted-count described the whole session,
->   not the analysed project, and a UID present only in a non-active project still marked the endpoint
->   "found."
-> - **Fix (operator decision: active project only):** both now iterate **`state.ordered_versions()`**
->   (the ADR-0258 active-project population, exclusions dropped). Dropdown lists only the active
->   project's milestones (still the union across its VERSIONS, so a milestone deleted later stays
->   selectable); banner counts the active project. `ordered_versions()` takes the reentrant `RLock`, so
->   the render path is deadlock-safe. Single-project sessions are **unchanged** (`ordered_versions()`
->   returns every loaded version there).
-> - **Test:** removed the `xfail(strict=True)` marker from
->   `test_target_control_and_banner_scope_to_active_project` — it now asserts the fix directly
->   (Alpha+Beta both carry UID 100, Beta active → no "ALPHA COMPLETE" leak, banner shows Beta's 2 of 2,
->   not 4). Docs: ADR-0284. Wheel + 9 installers regenerated to 1.0.93 (lockstep green).
-> - **Gate:** `tests/web/` green; the un-xfailed test passes; ruff/format/mypy clean on the changed
->   files. (Run the FULL gate — ruff/format/mypy/bandit/pytest cov/node — before the squash-merge.)
-> - **NEXT — the big one (its own PR, do NOT fold): ADR-0282 Option A — findings/narrative FOLLOW the
->   parity audit when parity mode is on** (operator chose this 2026-07-24). Today `recommend()` /
->   `build_narrative()` derive findings from the DEFAULT audit even under parity, so the ribbon and the
->   narrative can disagree (Large Test File2 is the concrete case: High Float 660/717, Neg Float
->   112/123, Missed 1095/1221, CPLI 0.59/1.0, BEI 0.53/0.51). Threading the parity audit through the
->   recommender changes findings/narrative/briefing/risk-matrix whenever parity is on — needs **fresh
->   parity-variant goldens** and **re-pinned `ai.citations` goldens**; it is testimony-facing, so do it
->   carefully with full ground-truth verification (Law 2 / ADR-0240). Then the deferred perf backlog
->   (lazy status-UID trim, home.js pre-read, manifest memo, tier byte-budgeting, MPP probe, importer
->   profiling, `web/app.py` monolith split — never with a behavior fix).
+> - **What changed:** a single `acumen_parity` flag threaded through every findings-derived surface —
+>   `recommend(..., acumen_parity=)` (sources `_dcma_findings` from the parity audit),
+>   `build_narrative(..., acumen_parity=)` (its fallback `recommend`), `build_briefing(...,
+>   acumen_parity=)` (BOTH the audit driving `dcma_fails`/**verdict** and its `recommend`), and the web
+>   call sites `/risks`, `/export/*/risks`, `/briefing`, `/export/*/briefing`, `/api/ai/briefing`,
+>   `_the_briefing_header`. This also closed a real gap: the `/briefing` header was parity-aware while
+>   its BODY was not.
+> - **The ADR-0281 pin is gone:** `_compute_analysis` now passes its parity-aware audit as
+>   `precomputed_audit` in BOTH modes, so parity mode dropped from **2×/1×/1× to 1×/1×/1×** audit /
+>   compliance / recommend (a free perf win alongside the behaviour fix).
+> - **Default is byte-identical** (verified on the 2,126-task golden: `recommend(sch)` ==
+>   `recommend(sch, acumen_parity=False)`, same for `build_narrative`). **Baseline compliance is
+>   mode-independent** (one Acumen-validated definition), so only DCMA-check findings move.
+> - **No golden re-pin was needed.** A read-only survey confirmed there are NO stored findings/
+>   narrative/briefing/risk-matrix goldens (all inline + default-mode), and the `ai.citations`
+>   re-verification tests are literal-fixture / mode-independent — so ADR-0282's feared citation re-pin
+>   did not materialize. The parity dashboard SHA is audit-only and unaffected.
+> - **Tests:** new `test_acumen_parity_findings_follow_the_parity_audit` (a no-baseline past-date task
+>   is a DCMA-09 CONCERN in default, absent under parity; default byte-identical); rewrote the two pins
+>   that encoded the OLD behaviour — `test_cold_analysis_parity_mode_computes_each_dependency_once`
+>   (now `(1,1,1)` / flags `[True]`) and `test_findings_and_narrative_follow_the_active_audit_per_mode`.
+>   Refreshed the module docstring (points 4 and 7). Docs: ADR-0285, ADR-0282 marked resolved,
+>   `docs/ACUMEN-PARITY-MODE.md` notes the toggle applies end-to-end.
+> - **Gate:** full suite **2627 passed** at the pre-version-bump checkpoint (only the expected wheel
+>   lockstep failed, then fixed by regenerating); ruff / ruff format / mypy-strict / bandit /
+>   `node --check` clean; installer+packaging 21 green at 1.0.94. **Re-run the FULL gate before the
+>   squash-merge.**
+> - **NEXT — the queue is clear; remaining backlog is the deferred perf work** (separate PRs, never
+>   folded with a behavior fix): lazy status-UID payload trim (486 KB → ~40 KB @ 50 versions); home.js
+>   bounded-concurrency pre-read; manifest-projection memo; instrument-then-byte-budget the
+>   `cpms`/`summaries`/`dash_cores` tiers; MPP capability probe; importer profiling; the `web/app.py`
+>   monolith split. Also still OWED by the operator: the ADR-0261 PowerShell crash log; the
+>   Claude-Design portfolio prompt. Consider committing the newer `20260708` `.aft` + refreshing
+>   `test_aft_formula_audit.py`.
 
 # (prior) handoffs — archived
 

@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24c — the feared golden re-pin didn't exist; and a mode flag must reach EVERY derived surface (ADR-0285)
+- ADR-0282 predicted that making findings follow the parity audit would force "fresh parity-variant
+  goldens **and** re-pinned `ai.citations` goldens" — the main reason it looked expensive. Before
+  changing anything I had the test/golden surface mapped and then verified it myself: there are **no
+  stored goldens** for findings/narrative/briefing/risk-matrix (they're all inline, default-mode
+  assertions), and every `ai.citations` test is built from literal `CitedStatement` fixtures, so it is
+  mode-independent. The real breaking surface was **two tests** that deliberately pinned the old
+  behaviour. **LESSON: an ADR's cost estimate is a hypothesis written before the work — re-measure it
+  against the tree before you either accept the cost or shy away from the change.** The change landed
+  in one sitting instead of the multi-session golden re-pin it was billed as.
+- **LESSON: "make X follow the mode" means finding every surface DERIVED from X, not just the obvious
+  call.** The first pass wired `_compute_analysis` + the two `/risks` sites and looked complete. A
+  grep for the remaining call sites found `build_briefing()` and `build_narrative()` each calling
+  `recommend()` internally, plus `build_briefing` computing its verdict from its OWN default audit —
+  so the `/briefing` page would have shown a parity-aware HEADER above a default-audit BODY. Chasing
+  the flag to the leaves is the difference between "every surface agrees" and a new, subtler
+  disagreement than the one being fixed.
+- **A behaviour fix that also removes work:** deleting the ADR-0281 pin let parity mode reuse the one
+  audit it already computes, so the extra pass disappeared (2×/1×/1× → 1×/1×/1×). Worth noting because
+  the usual assumption is that correctness costs speed; here the *inconsistency* was the thing costing
+  speed.
+- **Process that paid off:** a full-suite checkpoint BEFORE the version bump / installer regen isolated
+  the only failure (wheel lockstep, caused by my own later edit) from any real regression — and
+  confirmed no golden moved.
+
 ### 2026-07-24b — a population narrowing must reach the CHROME, not just the analysis (ADR-0284, Fix E)
 - ADR-0258 narrowed every *analysis* population to the active project via `ordered()` /
   `ordered_versions()`, but two page-chrome helpers (`_render_target_control`, `_endpoint_banner`) kept

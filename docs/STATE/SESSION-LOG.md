@@ -7619,3 +7619,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   mode is on (operator chose this). Threads the parity audit through `recommend()`/`build_narrative()`;
   changes findings/narrative/briefing/risk-matrix under parity → needs fresh parity-variant goldens +
   re-pinned `ai.citations` goldens; testimony-facing, do with full ground-truth verification.
+
+## 2026-07-24c — ADR-0282 resolved as Option A: findings/narrative/briefing follow the parity audit (ADR-0285; v1.0.94)
+
+- **Model/mode:** Opus 4.8 (lead, ADR-0240; one read-only Explore agent mapped the test/golden surface,
+  every claim re-verified by the lead against the code). **Branch:** `claude/smat-tool-continuation-uskbh7`
+  restarted fresh from `origin/main` at `17431a6` after PR #431 (ADR-0284) squash-merged.
+- **Decision:** the operator settled ADR-0282 against Large Test File2 — where default and parity
+  disagree on High Float (717/660), Neg Float (123/112), Missed (1221/1095), Resources (864/842),
+  CPLI (1.0/0.59), BEI (0.51/0.53) and Invalid Dates (182/173), all finding-driving checks — choosing
+  **Option A**: parity mode gives parity end-to-end.
+- **Implemented (ADR-0285):** one `acumen_parity` flag threaded through `recommend()`,
+  `build_narrative()`, `build_briefing()` (both its verdict-driving audit AND its findings) and the web
+  call sites (`/risks`, `/export/*/risks`, `/briefing`, `/export/*/briefing`, `/api/ai/briefing`,
+  `_the_briefing_header`). Closed a real gap: the `/briefing` header was parity-aware, its body was not.
+- **Removed the ADR-0281 pin:** `_compute_analysis` passes its parity-aware audit as `precomputed_audit`
+  in BOTH modes → parity dropped from 2x/1x/1x to **1x/1x/1x** (free perf win with the behaviour fix).
+- **Default byte-identical** (verified on the 2,126-task golden for both `recommend` and
+  `build_narrative`); baseline compliance is mode-independent so only DCMA findings move.
+- **No golden re-pin needed** — contrary to ADR-0282's expectation. A read-only survey confirmed there
+  are NO stored findings/narrative/briefing/risk-matrix goldens (all inline, default-mode) and the
+  `ai.citations` tests are literal-fixture/mode-independent. The parity dashboard SHA is audit-only.
+- **Tests:** added `test_acumen_parity_findings_follow_the_parity_audit`; rewrote the two pins encoding
+  the OLD behaviour (`test_cold_analysis_parity_mode_computes_each_dependency_once` now `(1,1,1)` /
+  `[True]`; `test_findings_and_narrative_follow_the_active_audit_per_mode`); refreshed the module
+  docstring. Docs: ADR-0285, ADR-0282 marked resolved, `ACUMEN-PARITY-MODE.md` end-to-end note.
+- **Gate:** full suite **2627 passed** (only the expected wheel-lockstep failed pre-regen); ruff/format/
+  mypy-strict/bandit/node clean; installer+packaging 21 green. v1.0.93 → **1.0.94**, wheel + 9
+  installers regenerated. **Highest ADR ADR-0285.**
+- **NEXT:** the operator queue is clear; remaining backlog is the deferred perf work (lazy status-UID
+  trim, home.js pre-read, manifest memo, tier byte-budgeting, MPP probe, importer profiling,
+  `web/app.py` monolith split) — separate PRs, never folded with a behavior fix.

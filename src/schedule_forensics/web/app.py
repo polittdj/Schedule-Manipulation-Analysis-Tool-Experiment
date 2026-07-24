@@ -561,16 +561,18 @@ def _compute_analysis(
     # (3x audit / 3x compliance / 2x recommend per cold analysis).
     audit = audit_schedule(sch, cpm, acumen_parity=dcma_acumen_parity)
     compliance = compute_baseline_compliance(sch, cpm)
-    # DELIBERATE PIN (ADR-0281): in Acumen-parity mode the DISPLAYED audit is the parity one, but the
-    # recommender still derives its findings from the DEFAULT (non-parity) audit — today's behaviour,
-    # kept byte-for-byte in BOTH modes. So the precomputed audit is reused ONLY in default mode; parity
-    # mode passes None and the recommender recomputes the default audit itself. (Whether findings
-    # SHOULD follow the parity audit when parity is on is a separate product question — ADR-0282.)
+    # ADR-0282 Option A (ADR-0285): the findings follow the DISPLAYED audit — so when Acumen-parity
+    # mode is on, the risk/concern findings, the narrative and the briefing all derive from the parity
+    # audit and agree with the ribbon (no more "the card says PASS but a finding says FAIL"). The
+    # precomputed audit is the parity-aware one already computed above, so it is reused in BOTH modes
+    # (1x audit either way). Default mode is byte-identical to before. (Baseline compliance is
+    # mode-independent — one Acumen-validated definition — so `compliance` is reused unchanged.)
     findings = recommend(
         sch,
         current_cpm=cpm,
-        precomputed_audit=audit if not dcma_acumen_parity else None,
+        precomputed_audit=audit,
         precomputed_compliance=compliance,
+        acumen_parity=dcma_acumen_parity,
     )
     return _Analysis(
         scoped=sch,
@@ -4633,7 +4635,12 @@ def create_app(
         prior = solv[-2][1] if len(solv) >= 2 else None
         prior_cpm = solv[-2][2].cpm if len(solv) >= 2 else None
         findings = recommend(
-            current, prior, current_cpm=cur_an.cpm, prior_cpm=prior_cpm, target_uid=st.target_uid
+            current,
+            prior,
+            current_cpm=cur_an.cpm,
+            prior_cpm=prior_cpm,
+            target_uid=st.target_uid,
+            acumen_parity=st.dcma_acumen_parity,  # ADR-0282 Option A: findings follow the parity audit
         )
         tableset = TableSet("Risks, issues & opportunities", (findings_table(findings),))
         return _export_response(fmt, tableset, "risks")
@@ -6498,6 +6505,7 @@ def create_app(
             current_cpm=cur_an.cpm,
             prior_cpm=prior_cpm,
             target_uid=st.target_uid,
+            acumen_parity=st.dcma_acumen_parity,  # ADR-0282 Option A: findings follow the parity audit
         )
         # Render the deterministic narrative immediately so the page never blocks on the model; the
         # local-AI polish (when a model is active) is fetched asynchronously by ai_polish.js via
@@ -7534,10 +7542,11 @@ def create_app(
         same cited content the /briefing page renders (ADR-0121)."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
+        st = session()
         schedules, cpms, _skipped = _solvable_versions()
         if not schedules:
             return JSONResponse({"error": "need at least one analyzable schedule"}, status_code=400)
-        briefing = build_briefing(schedules, cpms=cpms)
+        briefing = build_briefing(schedules, cpms=cpms, acumen_parity=st.dcma_acumen_parity)
         if fmt == "docx":
             blocks = cast("list[Block]", briefing_blocks(briefing))
             return Response(
@@ -7567,7 +7576,7 @@ def create_app(
         # synchronous per-section AI polish on page load made this page hang (effectively "won't
         # open") on big workbooks with a slow local model. ai_polish.js fetches /api/ai/briefing in
         # the background and swaps in the local-AI-polished version when a model is active.
-        briefing = build_briefing(schedules, cpms=cpms)
+        briefing = build_briefing(schedules, cpms=cpms, acumen_parity=st.dcma_acumen_parity)
         body = (
             _the_briefing_header(
                 briefing,
@@ -7618,7 +7627,9 @@ def create_app(
         if backend.name == "null":
             return JSONResponse({"polished": False})
         try:
-            briefing = build_briefing(schedules, cpms=cpms, backend=backend)
+            briefing = build_briefing(
+                schedules, cpms=cpms, backend=backend, acumen_parity=st.dcma_acumen_parity
+            )
             html = _briefing_body(briefing)
         except Exception:
             logger.warning("AI briefing endpoint failed; client keeps the deterministic briefing")
@@ -18642,7 +18653,7 @@ def _the_briefing_header(
     # KPI strip = the briefing's own banner headline figures (up to six)
     kpi = _stat_cards([(label, value) for label, value in briefing.banner[:6]])
 
-    findings = recommend(sch, current_cpm=cpm)
+    findings = recommend(sch, current_cpm=cpm, acumen_parity=acumen_parity)
     high = sum(1 for f in findings if f.severity == Severity.HIGH)
     med = sum(1 for f in findings if f.severity == Severity.MEDIUM)
     low = sum(1 for f in findings if f.severity == Severity.LOW)

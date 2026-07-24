@@ -5,6 +5,33 @@
 > The full append-only per-session history is in [SESSION-LOG.md](SESSION-LOG.md); the current
 > state is always the top of [HANDOFF.md](HANDOFF.md).
 
+# (prior) Handoff — 2026-07-24b (Fix E: target control + endpoint banner scoped to the active project; v1.0.93; highest ADR 0284)
+
+> ## STATUS (current) — shipped **Fix E** (the deferred cross-project UID leak from ADR-0281) as
+> **ADR-0284**, on a branch restarted fresh from `origin/main` after PR #430 (ADR-0283) squash-merged.
+> Version **1.0.93**. Highest ADR **0284**. Branch `claude/smat-tool-continuation-uskbh7` (from
+> `origin/main` at `54f06ce`).
+>
+> - **The leak:** `_render_target_control` and `_endpoint_banner` iterated `state.schedules.values()`
+>   — every version across EVERY project — instead of the active project. The dropdown keys milestones
+>   by `unique_id` and keeps the first label, so a UID shared across projects (e.g. UID 100 in both)
+>   could show a **foreign project's label**; the banner's omitted-count described the whole session,
+>   not the analysed project, and a UID present only in a non-active project still marked the endpoint
+>   "found."
+> - **Fix (operator decision: active project only):** both now iterate **`state.ordered_versions()`**
+>   (the ADR-0258 active-project population, exclusions dropped). Dropdown lists only the active
+>   project's milestones (still the union across its VERSIONS, so a milestone deleted later stays
+>   selectable); banner counts the active project. `ordered_versions()` takes the reentrant `RLock`, so
+>   the render path is deadlock-safe. Single-project sessions are **unchanged** (`ordered_versions()`
+>   returns every loaded version there).
+> - **Test:** removed the `xfail(strict=True)` marker from
+>   `test_target_control_and_banner_scope_to_active_project` — it now asserts the fix directly
+>   (Alpha+Beta both carry UID 100, Beta active → no "ALPHA COMPLETE" leak, banner shows Beta's 2 of 2,
+>   not 4). Docs: ADR-0284. Wheel + 9 installers regenerated to 1.0.93 (lockstep green).
+> - **Gate:** full suite 2627 passed (0 failures); ruff/format/mypy/bandit/node clean; installer
+>   lockstep green.
+> - **NEXT:** ADR-0282 Option A (findings/narrative follow the parity audit) — shipped next as ADR-0285.
+
 # (prior) Handoff — 2026-07-24 (Acumen-parity DCMA-09 scoped to Baseline Duration > 0; UID-exact on File2; v1.0.92; highest ADR 0283)
 
 > ## STATUS (current) — root-caused the operator's "why does POLnRIS's DCMA-14 differ from Acumen

@@ -281,3 +281,43 @@ def test_recommend_driving_float_populated_only_with_target() -> None:
 
     # with no target_uid, no finding may carry a driving slack
     assert all(f.driving_float_days is None for f in recommend(s))
+
+
+def test_acumen_parity_findings_follow_the_parity_audit() -> None:
+    """ADR-0282 Option A (ADR-0285): with ``acumen_parity`` the DCMA-derived findings come from the
+    parity audit, so a check the parity population scopes out no longer produces a finding. A task
+    with NO baseline and a stored start before the data date trips Invalid Dates (DCMA09) in the
+    default audit, but parity's ``Baseline Duration > 0`` population (ADR-0283) drops it — a CONCERN
+    in default, gone under parity. Default (arg absent) stays byte-identical."""
+    status = MON + dt.timedelta(days=30)
+    tasks = [
+        # baselined anchor with clean FUTURE forecast dates -> not an Invalid-Dates offender, and it
+        # keeps the parity population non-empty (so DCMA09 is a real PASS under parity, not NA)
+        Task(
+            unique_id=1,
+            name="baselined",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            baseline_start=MON,
+            baseline_finish=MON + dt.timedelta(days=2),
+            start=status + dt.timedelta(days=5),
+            finish=status + dt.timedelta(days=10),
+        ),
+        # NO baseline + a stored start already behind the data date, not started -> DCMA09 in
+        # DEFAULT only (parity drops it: no baseline duration)
+        Task(
+            unique_id=2,
+            name="no-baseline-past",
+            duration_minutes=DAY,
+            start=MON,
+            finish=MON + dt.timedelta(days=1),
+        ),
+    ]
+    sch = Schedule(
+        name="s", project_start=MON, tasks=tuple(tasks), relationships=(), status_date=status
+    )
+    default = recommend(sch)
+    assert recommend(sch, acumen_parity=False) == default  # default byte-identical
+    parity = recommend(sch, acumen_parity=True)
+    assert [f for f in default if f.metric_id == "DCMA09"]  # default flags Invalid Dates
+    assert not [f for f in parity if f.metric_id == "DCMA09"]  # parity scopes it out

@@ -1,7 +1,7 @@
 # ADR-0282 — should findings/narrative follow the parity audit when Acumen-parity mode is on?
 
-Status: **proposed / open question for the operator** (2026-07-23) — no code change; behaviour pinned
-by ADR-0281
+Status: **resolved (2026-07-24) — the operator chose Option A**; implemented by **ADR-0285**
+(originally proposed 2026-07-23 with behaviour pinned by ADR-0281)
 
 ## Context
 
@@ -47,3 +47,13 @@ differ on a check that also drives a finding (e.g. a sub-day-baseline High-Float
 case), so the disagreement is concrete before choosing. Whichever way it goes, it lands in its own PR
 with fresh parity-variant goldens under the parity gate (Law 2 / ADR-0240) — never bundled with a
 performance change.
+
+## Resolution (2026-07-24)
+
+Settled against **Large Test File2**, exactly as recommended: default vs parity differ there on High
+Float (717/660), Negative Float (123/112), Missed (1221/1095), Resources (864/842), CPLI (1.0/0.59),
+BEI (0.51/0.53) and Invalid Dates (182/173 after ADR-0283) — all finding-driving checks. The operator
+chose **Option A**: when parity mode is on, the findings / narrative / briefing follow the parity
+audit so every surface agrees. Implemented in its own PR as **ADR-0285** (which also removes parity
+mode's extra audit pass). Default mode stays byte-identical; the `ai.citations` goldens turned out to
+be literal-fixture and mode-independent, so no citation re-pin was needed.
