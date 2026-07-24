@@ -1,36 +1,38 @@
-# Handoff — 2026-07-24 (Acumen-parity DCMA-09 scoped to Baseline Duration > 0; UID-exact on File2; v1.0.92; highest ADR 0283)
+# Handoff — 2026-07-24b (Fix E: target control + endpoint banner scoped to the active project; v1.0.93; highest ADR 0284)
 
-> ## STATUS (current) — root-caused the operator's "why does POLnRIS's DCMA-14 differ from Acumen
-> Fuse?" question against the fresh **Large Test File2** (2,124 activities, DD 2025-03-10) + its Acumen
-> ribbon/detail exports, and shipped the one genuine residual as **ADR-0283**. Version **1.0.92**.
-> Highest ADR **0283**. Branch `claude/smat-tool-continuation-uskbh7` (from `origin/main` at `df68be7`).
+> ## STATUS (current) — shipped **Fix E** (the deferred cross-project UID leak from ADR-0281) as
+> **ADR-0284**, on a branch restarted fresh from `origin/main` after PR #430 (ADR-0283) squash-merged.
+> Version **1.0.93**. Highest ADR **0284**. Branch `claude/smat-tool-continuation-uskbh7` (from
+> `origin/main` at `54f06ce`).
 >
-> - **Primary finding (no bug): the operator's screenshot was DEFAULT (pure-logic) mode.** The engine
->   reproduces every screenshot value **byte-for-byte** in default mode (Logic 3, SS/FF 98, High Float
->   717, Neg Float 123, Resources 864/919, Missed 1221/1357, CPLI 1.0, BEI 0.51, Invalid 182). With
->   **Acumen-parity mode ON** it already matched Acumen's ribbon on **12/14** checks and Acumen's
->   *detail* (distinct activities) on the SS/FF + Lags counts the ribbon over-counts by counting links.
-> - **The one real residual: DCMA-09 Invalid Dates** (parity 182 vs Acumen detail 173 = 170 forecast +
->   3 actual). Set-differencing: we caught ALL 173, plus **9 extra**, every one with **no baseline
->   duration** (8 milestones + 1 completed task with a future actual). The NASA `.aft` shows the
->   `9. Invalid Forecast/Actual Dates` metrics carry the SAME `PrimaryFilter` as the other work checks
->   — **`Baseline Duration > 0`** — which ADR-0280 applied everywhere EXCEPT DCMA-09.
-> - **Fix (ADR-0283, parity-only):** `compute_dcma14` scopes the DCMA-09 loop + population to
->   `ap_tasks` (the baselined population) when `acumen_parity=True`; default (`ap_tasks is tasks`) is
->   **byte-identical** (still 182). Parity → **173, UID-exact vs Acumen detail** (0 FP, 0 miss). Each
->   date condition self-excludes the wrong completion state, so the single combined loop == Acumen's
->   two separately-filtered metrics. Test `test_acumen_parity_invalid_dates_scoped_to_baselined_population`
->   (fails on pre-fix engine `{1,2,3}`, passes after `{1}`). Docs: `docs/ACUMEN-PARITY-MODE.md` (new
->   check-9 row + example 6). Wheel + 9 installers regenerated to 1.0.92 (lockstep green).
-> - **Gate:** `test_dcma14.py` 26 green; `-m parity` 44 green; installer/packaging 21 green. (Run the
->   FULL gate — ruff/format/mypy/bandit/pytest cov/node — before the squash-merge.)
-> - **NEXT — still-open, separate PRs (do NOT fold):** **ADR-0282** — decide findings/narrative source
->   under parity; File2 IS the "two audits disagree on a finding-driving check" case the operator asked
->   for (default vs parity differ on High Float/Neg Float/Resources/Missed/CPLI/BEI). Recommend Option A
->   (findings follow parity when parity is on) — needs operator sign-off + fresh parity-variant goldens.
->   **Fix E** — cross-project UID leak in `_render_target_control` + `_endpoint_banner` (xfail test 7
->   ready to un-xfail; sub-question: should the target dropdown list other projects' milestones at all).
->   Then the deferred perf backlog (lazy status-UID trim, home.js pre-read, monolith split, …).
+> - **The leak:** `_render_target_control` and `_endpoint_banner` iterated `state.schedules.values()`
+>   — every version across EVERY project — instead of the active project. The dropdown keys milestones
+>   by `unique_id` and keeps the first label, so a UID shared across projects (e.g. UID 100 in both)
+>   could show a **foreign project's label**; the banner's omitted-count described the whole session,
+>   not the analysed project, and a UID present only in a non-active project still marked the endpoint
+>   "found."
+> - **Fix (operator decision: active project only):** both now iterate **`state.ordered_versions()`**
+>   (the ADR-0258 active-project population, exclusions dropped). Dropdown lists only the active
+>   project's milestones (still the union across its VERSIONS, so a milestone deleted later stays
+>   selectable); banner counts the active project. `ordered_versions()` takes the reentrant `RLock`, so
+>   the render path is deadlock-safe. Single-project sessions are **unchanged** (`ordered_versions()`
+>   returns every loaded version there).
+> - **Test:** removed the `xfail(strict=True)` marker from
+>   `test_target_control_and_banner_scope_to_active_project` — it now asserts the fix directly
+>   (Alpha+Beta both carry UID 100, Beta active → no "ALPHA COMPLETE" leak, banner shows Beta's 2 of 2,
+>   not 4). Docs: ADR-0284. Wheel + 9 installers regenerated to 1.0.93 (lockstep green).
+> - **Gate:** `tests/web/` green; the un-xfailed test passes; ruff/format/mypy clean on the changed
+>   files. (Run the FULL gate — ruff/format/mypy/bandit/pytest cov/node — before the squash-merge.)
+> - **NEXT — the big one (its own PR, do NOT fold): ADR-0282 Option A — findings/narrative FOLLOW the
+>   parity audit when parity mode is on** (operator chose this 2026-07-24). Today `recommend()` /
+>   `build_narrative()` derive findings from the DEFAULT audit even under parity, so the ribbon and the
+>   narrative can disagree (Large Test File2 is the concrete case: High Float 660/717, Neg Float
+>   112/123, Missed 1095/1221, CPLI 0.59/1.0, BEI 0.53/0.51). Threading the parity audit through the
+>   recommender changes findings/narrative/briefing/risk-matrix whenever parity is on — needs **fresh
+>   parity-variant goldens** and **re-pinned `ai.citations` goldens**; it is testimony-facing, so do it
+>   carefully with full ground-truth verification (Law 2 / ADR-0240). Then the deferred perf backlog
+>   (lazy status-UID trim, home.js pre-read, manifest memo, tier byte-budgeting, MPP probe, importer
+>   profiling, `web/app.py` monolith split — never with a behavior fix).
 
 # (prior) handoffs — archived
 

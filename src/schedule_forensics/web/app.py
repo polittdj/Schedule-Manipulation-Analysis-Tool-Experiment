@@ -1585,7 +1585,11 @@ def _endpoint_banner(state: SessionState) -> str:
         return ""
     found = False
     kept = total = 0
-    for s in state.schedules.values():
+    # Scope to the ACTIVE project's versions (ADR-0284 / Fix E), not every loaded version across
+    # every project: ordered_versions() applies the ADR-0258 active-project narrowing, so the
+    # omitted-count reflects the population actually being analysed (a UID that lives only in
+    # another project neither counts toward `total` nor marks the endpoint as found here).
+    for _key, s in state.ordered_versions():
         if any(t.unique_id == uid and not t.is_summary for t in s.tasks):
             found = True
         scoped = state.scope(s)
@@ -2599,12 +2603,14 @@ def _resolve_route(state: SessionState, route: str) -> str:
 def _render_target_control(state: SessionState) -> str:
     """The global Analysis-Target selector: pick the activity every metric, path, forecast and the
     briefing verdict is measured to (Project finish = the whole schedule). The dropdown lists the
-    **milestones** across every loaded version (so a milestone deleted in a later version is still
-    selectable); the **UID box** measures to ANY activity by UniqueID — a non-milestone, or a UID
-    that exists only in an older version. Both post to ``/target`` (which drives the endpoint scope
-    and the SRA/SSI focus). A non-milestone target still shows as a selected custom dropdown option."""
+    **milestones** across the ACTIVE project's loaded versions (ADR-0284 / Fix E — a milestone
+    deleted in a later version is still selectable, but another project's milestone never leaks in,
+    which also stops a shared UniqueID from showing a foreign project's label); the **UID box**
+    measures to ANY activity by UniqueID — a non-milestone, or a UID that exists only in an older
+    version. Both post to ``/target`` (which drives the endpoint scope and the SRA/SSI focus). A
+    non-milestone target still shows as a selected custom dropdown option."""
     seen: dict[int, str] = {}
-    for s in state.schedules.values():
+    for _key, s in state.ordered_versions():
         for t in s.tasks:
             if t.is_milestone and not t.is_summary and t.unique_id not in seen:
                 seen[t.unique_id] = t.name or f"UID {t.unique_id}"

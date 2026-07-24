@@ -435,6 +435,26 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24b — a population narrowing must reach the CHROME, not just the analysis (ADR-0284, Fix E)
+- ADR-0258 narrowed every *analysis* population to the active project via `ordered()` /
+  `ordered_versions()`, but two page-chrome helpers (`_render_target_control`, `_endpoint_banner`) kept
+  iterating `state.schedules.values()`. The dropdown keys milestones by `unique_id` and keeps the first
+  label, so a UID shared across projects rendered a **foreign project's name** — a real identity leak
+  hiding in the nav bar, not the engine. **LESSON: when you introduce a scoping helper, grep for every
+  remaining raw iteration of the unscoped collection (`schedules.values()`) — the ones left behind are
+  usually in rendering/summary code that "looks read-only" and gets skipped in the analysis-focused
+  review.** The fix was a one-line swap to `ordered_versions()` in each, but finding the second site
+  mattered as much as the first.
+- **LESSON: a committed `xfail(strict=True)` is the cleanest hand-off for a known bug.** ADR-0281
+  parked this leak as a strict-xfail characterization test. Picking it up a session later was
+  friction-free: the test already encoded the exact expected behavior (Beta active ⇒ no Alpha label,
+  banner counts Beta's 2 not 4), so "fix it" meant "make this pass and delete the marker" — no
+  re-deriving what "correct" was. Strict-xfail also guarantees the marker can't rot: the moment the fix
+  lands, the suite fails loudly until the marker is removed.
+- **Confirmed before trusting it:** `ordered_versions()` takes the session lock; I checked `_lock` is a
+  reentrant `RLock` before calling it from the render path, so a caller already holding the lock can't
+  deadlock. Verify the lock discipline, don't assume it.
+
 ### 2026-07-24 — "why don't the numbers match Acumen?" was mostly a toggle; the real bug was one unscoped check (ADR-0283)
 - The operator sent a screenshot of our DCMA ribbon next to Acumen Fuse's and asked why they differ.
   The instinct is to hunt the engine. The disciplined move paid off instead: I MPXJ-converted the exact
