@@ -86,6 +86,10 @@ to ~2× the activity count; the tool reports **one row per activity**, matching 
 
 - Switching the toggle **never changes the data** — only how the 14 checks are scored. Both views
   cite the same underlying activities.
+- The toggle applies **end-to-end** (ADR-0285): the findings on *Risks & Opportunities*, the AI
+  narrative, the risk matrix and the Executive Briefing (including its verdict) are all derived from
+  whichever view is active, so the ribbon and the prose always cite the same numbers. Baseline
+  compliance has a single Acumen-validated definition and is the same in both views.
 - The **default is unchanged** by this feature, and the tool's validated golden parity (Project2 /
   Project5) is unaffected — those schedules carry no sub-day baselines, so both views agree on them.
 - Details and the formula provenance are in **ADR-0280** (which supersedes the earlier milestone-scope

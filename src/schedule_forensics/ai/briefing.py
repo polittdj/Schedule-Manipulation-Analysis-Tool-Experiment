@@ -785,12 +785,17 @@ def build_briefing(
     backend: AIBackend | None = None,
     cpms: list[CPMResult] | None = None,
     today: dt.date | None = None,
+    acumen_parity: bool = False,
 ) -> ExecutiveBriefing:
     """Build the cited leadership Executive Briefing for the loaded version(s).
 
     Versions are ordered by data date (oldest first); the newest is the subject of the report.
     With two or more versions, Section 3 shows a real critical-path then-vs-now. ``backend``
     (default offline Null) may rephrase the prose; citations are re-attached and re-verified.
+
+    ``acumen_parity`` (ADR-0282 Option A / ADR-0285) sources the DCMA fail-count that drives the
+    verdict AND the findings from the Acumen-parity audit, so with parity mode on the briefing
+    agrees with the parity ribbon. Default off is the pure-logic read, byte-identical to before.
     """
     if not schedules:
         raise ValueError("the briefing needs at least one schedule version")
@@ -812,13 +817,15 @@ def build_briefing(
     finish = _finish_dt(subject, subject_cpm)
     slip = _workday_slip(subject, subject_cpm, baseline_finish)
     spi = _spi(subject, subject_cpm)
-    audit = audit_schedule(subject, subject_cpm)
+    audit = audit_schedule(subject, subject_cpm, acumen_parity=acumen_parity)
     applicable = [c for c in audit.checks if c.status is not CheckStatus.NOT_APPLICABLE]
     dcma_fails = sum(1 for c in applicable if c.status is CheckStatus.FAIL)
     verdict = _verdict(slip, spi, dcma_fails)
     prior = ordered[-2] if len(ordered) >= 2 else None
     prior_cpm = cpm_list[-2] if len(ordered) >= 2 else None
-    findings = recommend(subject, prior, current_cpm=subject_cpm, prior_cpm=prior_cpm)
+    findings = recommend(
+        subject, prior, current_cpm=subject_cpm, prior_cpm=prior_cpm, acumen_parity=acumen_parity
+    )
 
     meta_rows = (
         ("Report date", _day(report_day)),

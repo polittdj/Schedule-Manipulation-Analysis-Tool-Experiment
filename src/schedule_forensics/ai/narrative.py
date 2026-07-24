@@ -97,6 +97,7 @@ def build_narrative(
     current_cpm: CPMResult | None = None,
     prior_cpm: CPMResult | None = None,
     precomputed_findings: tuple[Finding, ...] | None = None,
+    acumen_parity: bool = False,
 ) -> Narrative:
     """Build the cited forensic narrative for ``current`` (vs ``prior`` if given).
 
@@ -122,6 +123,7 @@ def build_narrative(
                 current_cpm=cpm_cur,
                 prior_cpm=prior_cpm,
                 target_uid=target_uid,
+                acumen_parity=acumen_parity,
             )
         )
     )

@@ -161,6 +161,7 @@ def recommend(
     target_uid: int | None = None,
     precomputed_audit: ScheduleAudit | None = None,
     precomputed_compliance: dict[str, MetricResult] | None = None,
+    acumen_parity: bool = False,
 ) -> tuple[Finding, ...]:
     """Produce the cited risk/opportunity/concern findings for ``current``.
 
@@ -168,15 +169,26 @@ def recommend(
     ``target_uid`` to add the driving-path opportunity. CPM results may be passed to avoid
     recomputation. Findings are ordered most-severe first, then by metric id.
 
-    ``precomputed_audit`` / ``precomputed_compliance`` (ADR-0281) let a caller that already holds
-    the DEFAULT DCMA audit and baseline-compliance metrics for exactly ``current`` + ``current_cpm``
-    hand them in, so the recommender does not recompute them. They MUST be the default (non-Acumen-
-    parity) audit and the baseline compliance for this schedule + solve; the findings are
-    byte-identical to computing them here. Left ``None`` (every existing call site) nothing changes.
+    ``acumen_parity`` (ADR-0282 Option A / ADR-0285) sources the DCMA-derived findings from the
+    Acumen-parity audit instead of the default pure-logic one, so when the operator turns on parity
+    mode every surface agrees (the ribbon, findings, narrative, briefing). Default off is the
+    pure-logic forensic read, byte-identical to before. Baseline-compliance findings are
+    mode-independent (``compute_baseline_compliance`` has one Acumen-validated definition), so only
+    the DCMA-check findings move with the flag.
+
+    ``precomputed_audit`` / ``precomputed_compliance`` (ADR-0281) let a caller holding the DCMA
+    audit + baseline-compliance metrics for exactly ``current`` + ``current_cpm`` hand them in,
+    so the recommender does not recompute them. ``precomputed_audit`` MUST match ``acumen_parity``
+    (the parity audit when it is set, the default audit otherwise) — the findings are byte-identical
+    to computing them here. Left ``None`` (every existing call site default) nothing changes.
     """
     cpm_cur = current_cpm if current_cpm is not None else compute_cpm(current)
     findings: list[Finding] = []
-    findings.extend(_dcma_findings(current, cpm_cur, precomputed_audit=precomputed_audit))
+    findings.extend(
+        _dcma_findings(
+            current, cpm_cur, precomputed_audit=precomputed_audit, acumen_parity=acumen_parity
+        )
+    )
     findings.extend(_logic_support_findings(current, cpm_cur))
     findings.extend(_summary_logic_findings(current))
     findings.extend(
@@ -276,9 +288,12 @@ def _dcma_findings(
     cpm_cur: CPMResult,
     *,
     precomputed_audit: ScheduleAudit | None = None,
+    acumen_parity: bool = False,
 ) -> list[Finding]:
     audit = (
-        precomputed_audit if precomputed_audit is not None else audit_schedule(schedule, cpm_cur)
+        precomputed_audit
+        if precomputed_audit is not None
+        else audit_schedule(schedule, cpm_cur, acumen_parity=acumen_parity)
     )
     out: list[Finding] = []
     fallback: tuple[Citation, ...] | None = None
