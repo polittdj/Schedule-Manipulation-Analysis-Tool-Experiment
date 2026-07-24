@@ -396,6 +396,7 @@ _LAYOUT = Template(
 <script src="/static/a11y.js"></script>
 <script src="/static/translate.js"></script>
 <script src="/static/drilldown.js"></script>
+<script src="/static/tooltips.js"></script>
 <link rel=stylesheet href="/static/base.css"><link rel=stylesheet href="/static/app.css"><link rel=stylesheet href="/static/hud.css"><link rel=stylesheet href="/static/sf-themes.css">
 <style>
 /* Density + containment overrides (operator request, ADR-0150): tighter spacing everywhere,
@@ -738,10 +739,17 @@ class SessionState:
     # DCMA Acumen parity mode (ADR-0280): when True, the DCMA-14 checks use Acumen Fuse's exact
     # definitions from the NASA metric library — baselined population (Baseline Duration >= 1 day,
     # milestones kept), whole-day float, Resources on Baseline Cost/Work, stored-float CPLI, two-term
-    # BEI. Verified UID-exact on the operator's Large Test File / File2. Off by default (pure-logic
-    # forensic behaviour + golden parity); part of the analysis cache signature so a toggle re-keys,
-    # never serving a stale audit. Supersedes the former milestone-scope + CPLI toggles (0277/0278/0279).
-    dcma_acumen_parity: bool = False
+    # BEI. Verified UID-exact on the operator's Large Test File / File2. Part of the analysis cache
+    # signature so a toggle re-keys, never serving a stale audit. Supersedes the former
+    # milestone-scope + CPLI toggles (0277/0278/0279).
+    #
+    # ON by default since ADR-0287: the tool's headline promise is that its DCMA-14 ribbon reconciles
+    # with Acumen Fuse on the same file, and a default-OFF toggle made a fresh session silently report
+    # the pure-logic numbers instead — read as "the tool disagrees with Acumen" twice by the operator.
+    # Unchecking restores the independent pure-logic forensic view; the ENGINE default stays False, so
+    # every golden/parity test (which passes the flag explicitly) is untouched. This is a session
+    # PRESENTATION default only.
+    dcma_acumen_parity: bool = True
     # F3c: operator-settable NASA Gold-Rule margin-requirement rate (work-days per program year) the
     # dashboard measures effective margin against. 30/yr (the Schedule Management Handbook default) is
     # the initial value; set via GET /margin?rate=. The burn-down requirement line, the per-version

@@ -95,6 +95,7 @@ def test_analysis_cache_residency_is_bounded_at_scale() -> None:
     fails. Correctness is unaffected — an evicted entry recomputes byte-identically (proven in
     tests/web/test_analysis_cache_lru.py)."""
     st = SessionState()
+    st.dcma_acumen_parity = False  # no scope signature, so the LRU key is the bare version key
     versions = _ANALYSIS_CACHE_MAX * 3  # three times the cap
     for i in range(versions):
         st.analysis_for(f"v{i}", _chain(6, f"v{i}"))

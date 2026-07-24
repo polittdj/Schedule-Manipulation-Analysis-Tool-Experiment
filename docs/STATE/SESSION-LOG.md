@@ -7650,3 +7650,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** the operator queue is clear; remaining backlog is the deferred perf work (lazy status-UID
   trim, home.js pre-read, manifest memo, tier byte-budgeting, MPP probe, importer profiling,
   `web/app.py` monolith split) — separate PRs, never folded with a behavior fix.
+
+## 2026-07-24d — one tooltip + 1.5s hover-intent delay; Acumen parity ON by default (ADR-0286/0287; v1.0.95)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** `claude/smat-tool-continuation-uskbh7` restarted
+  from `origin/main` at `b8edf0f` after PR #432 (ADR-0285) squash-merged.
+- **Operator report 1 — two tooltips on one hover.** Root cause: `_dcma_metric_cell` emitted a rich
+  `.dcma-tip` AND a native `title=` (a documented no-CSS fallback), so both painted. The tool had
+  three custom tooltip mechanisms plus the browser's.
+  **Fix (ADR-0286):** new `web/static/tooltips.js` in `_LAYOUT` normalises every `title` at runtime —
+  retire it to `data-sf-title` where a custom tip exists, promote a plain one to `data-sf-hint` so it
+  uses the same styled callout; replaced elements keep the native tooltip. Delay implemented as a
+  **`transition-delay`** (`--sf-tip-delay: 1.5s`) so it is CANCELLABLE — moving away before it elapses
+  paints nothing. `.dcma-tip` moved off `display` (untransitionable) to opacity/visibility;
+  `app.js`'s float tip uses `window.SF_TIP_DELAY_MS` + `clearTimeout`. Focus stays instant.
+  `MutationObserver` covers client-rendered content. 6 new pins in `tests/web/test_tooltips.py`.
+- **Operator report 2 — "DCMA-14 still doesn't match Acumen."** Verified: the `.mpp` and the Acumen
+  detail export were **md5-identical** to the morning's uploads, and a re-exported ribbon carried
+  **identical numbers** — so neither input nor oracle changed. Their screenshot read **"parity mode
+  ☐ OFF"** and every value matched the engine's DEFAULT output exactly; with the box ticked the file
+  is already UID-exact vs Acumen (ADR-0280/0283). **No engine defect — a defaulting problem.**
+  **Fix (ADR-0287):** `SessionState.dcma_acumen_parity` defaults **True**. Engine defaults untouched
+  (`acumen_parity: bool = False`), so every golden/parity test is unaffected.
+- **Test hygiene:** pure-logic goldens now set `st.dcma_acumen_parity = False` explicitly rather than
+  inheriting the session default (2 dashboard SHA goldens, the scope-epoch guard, the LRU-residency
+  perf gate whose key would otherwise carry `A=1`); `test_dcma_scope.py` asserts checked-by-default.
+- **Version 1.0.94 → 1.0.95**, wheel + 9 installers regenerated. **Highest ADR ADR-0287.**
+- **NEXT:** the deferred perf backlog is still UNSTARTED (payload trim, home.js pre-read, manifest
+  memo, tier byte-budgeting, MPP probe, importer profiling) and the `web/app.py` monolith split needs
+  its own behaviour-free PR.

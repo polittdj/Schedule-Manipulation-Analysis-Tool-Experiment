@@ -112,9 +112,17 @@
           el("span", { class: "dcma-info", "aria-hidden": "true", text: "ⓘ" }),
         ]
       );
-      const show = () => placeFloatTip(tip, row);
-      const hide = () => { tip.style.display = "none"; };
-      row.addEventListener("mouseenter", show);
+      // Hover-intent: reveal only after the pointer RESTS on the row for the shared delay
+      // (ADR-0286, same --sf-tip-delay the CSS tooltips use); leaving early cancels the timer so
+      // sweeping across the list never flashes a stack of tips. Keyboard focus shows at once —
+      // focus is already a deliberate act, and a delay there would just feel broken.
+      const delay = window.SF_TIP_DELAY_MS || 0;
+      let timer = null;
+      const clear = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
+      const hide = () => { clear(); tip.style.display = "none"; };
+      const show = () => { clear(); placeFloatTip(tip, row); };
+      const showLater = () => { clear(); timer = setTimeout(show, delay); };
+      row.addEventListener("mouseenter", showLater);
       row.addEventListener("mouseleave", hide);
       row.addEventListener("focus", show);
       row.addEventListener("blur", hide);

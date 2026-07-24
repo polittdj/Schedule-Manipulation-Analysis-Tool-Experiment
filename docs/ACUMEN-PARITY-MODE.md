@@ -6,16 +6,16 @@ on real progressed schedules that have milestones, un-baselined tasks, and impos
 
 Neither is "more correct." They answer **different questions**:
 
-- **Pure-logic (default, toggle OFF)** — *"What does the schedule's own logic say, right now, if I
+- **Pure-logic (toggle OFF)** — *"What does the schedule's own logic say, right now, if I
   recompute everything from scratch?"* An independent forensic recomputation.
-- **Acumen parity (toggle ON)** — *"What would Acumen Fuse report on this exact file?"* A faithful
+- **Acumen parity (DEFAULT, toggle ON)** — *"What would Acumen Fuse report on this exact file?"* A faithful
   reproduction of Acumen's published DCMA definitions, verified activity-for-activity.
 
 ---
 
 ## The differences at a glance
 
-| Dimension | Pure-logic / forensic (default) | Acumen Fuse parity |
+| Dimension | Pure-logic / forensic | Acumen Fuse parity (default) |
 |---|---|---|
 | **Total Float** | The engine's freshly **re-computed CPM float** (independent of the file's stored dates). | The file's **stored, progress-aware Total Slack**, compared in **whole days** — exactly what Acumen reads. |
 | **Which activities count** | Every incomplete activity, whether or not it was baselined. | Only activities with a **baseline duration ≥ 1 day** (Acumen's *Baseline Duration > 0*, truncated to whole days). Milestones are kept when they carry a real baseline. |
@@ -65,7 +65,7 @@ to ~2× the activity count; the tool reports **one row per activity**, matching 
 
 ## When to use which
 
-### Use **Pure-logic / forensic** (default) when…
+### Use **Pure-logic / forensic** (untick the box) when…
 - You are doing **independent forensic analysis** — delay analysis, driving-path analysis,
   as-planned-vs-as-built — and want the tool's **own recomputation**, not the file's stored dates.
 - The schedule is **draft or un-baselined**, or you don't trust the baseline. Pure-logic still
@@ -73,7 +73,7 @@ to ~2× the activity count; the tool reports **one row per activity**, matching 
   baseline ⇒ nothing passes *Baseline Duration > 0*).
 - You want the **most conservative** read — it flags *every* activity with an issue, baselined or not.
 
-### Use **Acumen Fuse parity** when…
+### Use **Acumen Fuse parity** (the default) when…
 - You need to **reconcile with, or defend against, an Acumen Fuse report** — e.g. a customer's or
   government DCMA scorecard. The counts will match Acumen's ribbon activity-for-activity.
 - The **baseline is authoritative** and current, and you want the metric population Acumen uses.
@@ -90,7 +90,9 @@ to ~2× the activity count; the tool reports **one row per activity**, matching 
   narrative, the risk matrix and the Executive Briefing (including its verdict) are all derived from
   whichever view is active, so the ribbon and the prose always cite the same numbers. Baseline
   compliance has a single Acumen-validated definition and is the same in both views.
-- The **default is unchanged** by this feature, and the tool's validated golden parity (Project2 /
+- Since **ADR-0287 a new session starts with parity ON**, so the ribbon reconciles with Acumen out of
+  the box; unticking gives the pure-logic view. The ENGINE default is still pure-logic, so the
+  tool's validated golden parity (Project2 /
   Project5) is unaffected — those schedules carry no sub-day baselines, so both views agree on them.
 - Details and the formula provenance are in **ADR-0280** (which supersedes the earlier milestone-scope
   and stored-float-CPLI options, ADR-0277/0278/0279); the Invalid-Dates (check 9) population scoping is

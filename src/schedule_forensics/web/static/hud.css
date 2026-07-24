@@ -16,13 +16,30 @@
 .cui-banner.unclassified{background:#007a33;color:#fff} /* UNCLASSIFIED: green */
 
 /* ── Guidance hints (all themes) ───────────────────────────────────────────────────────── */
+/* ONE tooltip, revealed only after the pointer RESTS on the target for --sf-tip-delay
+   (ADR-0286). The callout is always in the box tree but hidden, so the reveal can be a
+   transition-delay: leaving before the delay elapses cancels it and nothing ever flashes.
+   Hiding is immediate (no delay on the base rule). tooltips.js guarantees a trigger never also
+   carries a native title=, so a hover can never paint two boxes. */
+:root{--sf-tip-delay:1.5s}
 [data-sf-hint]{position:relative}
-[data-sf-hint]:hover::after,[data-sf-hint]:focus-visible::after{
+[data-sf-hint]::after{
   content:attr(data-sf-hint);position:absolute;left:0;top:calc(100% + 7px);z-index:60;
   width:max-content;max-width:340px;padding:8px 11px;border-radius:8px;font-size:12px;
   font-weight:400;line-height:1.45;letter-spacing:normal;text-transform:none;white-space:normal;
   background:var(--panel);color:var(--ink);border:1px solid var(--accent);
-  box-shadow:0 6px 22px rgba(0,0,0,.35)}
+  box-shadow:0 6px 22px rgba(0,0,0,.35);
+  opacity:0;visibility:hidden;pointer-events:none;
+  transition:opacity .1s linear,visibility 0s linear .1s}
+[data-sf-hint]:hover::after,[data-sf-hint]:focus-visible::after{
+  opacity:1;visibility:visible;
+  transition:opacity .12s linear var(--sf-tip-delay),visibility 0s linear var(--sf-tip-delay)}
+/* Respect a reduced-motion preference by dropping the fade, never the delay (the delay is the
+   requested behaviour, not decoration). */
+@media (prefers-reduced-motion:reduce){
+  [data-sf-hint]::after{transition:visibility 0s linear .1s}
+  [data-sf-hint]:hover::after,[data-sf-hint]:focus-visible::after{
+    transition:visibility 0s linear var(--sf-tip-delay)}}
 .hint-dot{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;
   margin-left:5px;border-radius:50%;font-size:10px;font-weight:700;cursor:help;
   background:var(--accent);color:var(--btn-ink);vertical-align:middle;flex:0 0 auto}
