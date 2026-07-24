@@ -657,7 +657,26 @@
   // Stacked bar chart: segments is [{key, label, color}]; data is array of objects.
   // tag a bar as a drill trigger for a UID set (no-op if SFDrill / the set is absent)
   function drill(node, uids, file, title) {
-    if (window.SFDrill && uids && uids.length) SFDrill.mark(node, uids, file, title);
+    if (!window.SFDrill || !uids) return;
+    // a lazy {segment:"name"} descriptor has no length — the server resolves it on click (ADR-0288)
+    if (typeof uids === "object" && !Array.isArray(uids)) SFDrill.mark(node, uids, file, title);
+    else if (uids.length) SFDrill.mark(node, uids, file, title);
+  }
+
+  // Segments the SERVER can rebuild on demand (ADR-0288) — kept in lockstep with
+  // `_drill_uid_set` in web/app.py. The cross-file-comparison charts partition the whole
+  // schedule, so their UID arrays are no longer shipped in /api/trend; a bar carries the segment
+  // NAME instead. Any other chart still ships its ids and is untouched.
+  var LAZY_SEGMENTS = {
+    complete: 1, in_progress: 1, planned: 1,
+    milestones: 1, normal: 1, summaries: 1,
+    ahead: 1, on_schedule: 1, behind: 1
+  };
+  // the ids for a bar: the shipped array when present, else a lazy segment for a known key
+  function drillSet(row, key) {
+    var ids = row[key + "_uids"];
+    if (ids !== undefined && ids !== null) return ids;
+    return LAZY_SEGMENTS[key] ? { segment: key } : null;
   }
 
   function stackedBarChart(title, labels, data, segments, desc) {
@@ -718,7 +737,7 @@
             x: cx - bw / 2, y: yBase - bH, width: bw, height: bH, fill: s.color,
             "data-series": s.label, // interactive legend toggle (ADR-0276); re-tagged each frame
           });
-          drill(rect, d[s.key + "_uids"], d.file, labels[i] + " · " + (s.label || s.key));
+          drill(rect, drillSet(d, s.key), d.file, labels[i] + " · " + (s.label || s.key));
           layer.appendChild(rect);
           yBase -= bH;
         });
@@ -805,7 +824,7 @@
               x: gx0 + gi * bw, y: padT + barH - bH, width: bw - 1, height: bH, fill: g.color,
               "data-series": g.label, // interactive legend toggle (ADR-0276); re-tagged each frame
             });
-            drill(rect, d[g.key + "_uids"], d.file, labels[i] + " · " + (g.label || g.key));
+            drill(rect, drillSet(d, g.key), d.file, labels[i] + " · " + (g.label || g.key));
             layer.appendChild(rect);
           }
         });

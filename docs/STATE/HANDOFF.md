@@ -1,47 +1,37 @@
-# Handoff — 2026-07-24d (one tooltip + 1.5s hover-intent delay; Acumen parity ON by default; v1.0.95; highest ADR 0287)
+# Handoff — 2026-07-24e (perf backlog #1: lazy segment drill trims /api/trend ~46%; v1.0.96; highest ADR 0288)
 
-> ## STATUS (current) — two operator-reported UX/defaulting fixes. Version **1.0.95**. Highest ADR
-> **0287**. Branch `claude/smat-tool-continuation-uskbh7` (restarted fresh from `origin/main` at
-> `b8edf0f` after PR #432 / ADR-0285 squash-merged).
+> ## STATUS (current) — started the deferred **performance backlog** the operator asked for. Item 1
+> of 7 is done: **ADR-0288, the lazy status-UID payload trim**. Version **1.0.96**. Highest ADR
+> **0288**. Branch `claude/smat-tool-continuation-uskbh7` (fresh from `origin/main` at `10b2cc1`
+> after PR #433 / ADR-0286+0287 squash-merged).
 >
-> - **ADR-0286 — ONE tooltip, revealed after 1.5s of hover-intent.** The operator hovered a DCMA-14
->   check name and got **two overlapping boxes**: the rich `.dcma-tip` callout AND the browser's
->   native `title=` tooltip (`_dcma_metric_cell` emitted both by design, as a no-CSS fallback). New
->   **`web/static/tooltips.js`** (loaded from `_LAYOUT`, so every page) normalises every `title` at
->   runtime: a trigger that already has a custom tip has its `title` moved to `data-sf-title`
->   (text preserved, browser box gone); a **plain** `title` is **promoted** to `data-sf-hint` so it
->   renders as the same styled callout. Replaced elements (input/select/img/svg/…) can't host
->   `::after`, so they keep the native tooltip — still exactly one. Delay is a **`transition-delay`**
->   (`--sf-tip-delay: 1.5s`, defined once in `hud.css`), NOT a timer, so moving away before it
->   elapses cancels the reveal; `.dcma-tip` moved off `display` (untransitionable) to
->   opacity/visibility; the JS float tip uses `window.SF_TIP_DELAY_MS` with `clearTimeout` on leave.
->   Keyboard focus stays instant. A `MutationObserver` covers client-rendered charts/tables.
-> - **ADR-0287 — Acumen parity mode is ON by default.** The operator reported (twice) that the
->   DCMA-14 numbers "don't match Acumen". Root cause was **not** an engine defect: their screenshot
->   read "parity mode ☐ OFF" and every value on it reproduced the engine's DEFAULT output exactly;
->   with the box ticked the same file is already **UID-exact** vs Acumen. Re-verified this session
->   that the `.mpp` + Acumen detail export were **md5-identical** to the morning's copies and the
->   re-exported ribbon carried identical numbers. So `SessionState.dcma_acumen_parity` now defaults
->   **True**. **ENGINE defaults are unchanged** (`acumen_parity: bool = False` everywhere), so no
->   golden/parity test shifts. Since ADR-0285 the toggle is end-to-end, so every surface stays
->   consistent.
-> - **Test hygiene:** tests that pinned pure-logic payloads now **state their mode explicitly**
->   (`st.dcma_acumen_parity = False`) instead of inheriting the session default — the two default
->   dashboard SHA goldens, the scope-epoch guard, and the LRU-residency perf gate (its cache key
->   would otherwise carry `A=1`). `test_dcma_scope.py` asserts the box renders **checked** on a fresh
->   session and exercises off→on. New `tests/web/test_tooltips.py` (6 pins).
-> - **Gate:** full suite **2628 passed** on the pre-change base; after these changes re-run the FULL
->   gate before merge. Wheel + 9 installers regenerated to 1.0.95.
-> - **PRs merged today:** #430 (ADR-0283 DCMA-09 parity population), #431 (ADR-0284 Fix E),
->   #432 (ADR-0285 parity findings). This work is the next PR.
-> - **NEXT — the deferred perf backlog is UNSTARTED and is what the operator asked for next**
->   (separate PRs, never folded with a behaviour fix): lazy status-UID payload trim (486 KB → ~40 KB
->   @ 50 versions); home.js bounded-concurrency pre-read; manifest-projection memo;
->   instrument-then-byte-budget the `cpms`/`summaries`/`dash_cores` tiers; MPP capability probe;
->   importer profiling; and the **`web/app.py` monolith split** (~19k lines — its OWN PR, no
->   behaviour change in the same diff). Also still OWED by the operator: the ADR-0261 PowerShell
->   crash log; the Claude-Design portfolio prompt. Consider committing the newer `20260708` `.aft` +
->   refreshing `test_aft_formula_audit.py`.
+> - **The problem (measured, not estimated):** `/api/trend` shipped every segment's full UniqueID
+>   list per version. The status-split and activity-makeup groups **partition the whole schedule**,
+>   so each version carried every activity id twice — **46.5% of the payload**, read only if the
+>   operator clicks a bar. On the 2,126-task fixture: 234.2 KB @ 5 versions, 467.3 KB @ 10,
+>   **46,600 B per version**.
+> - **The fix:** ship the segment NAME, resolve the ids server-side on click.
+>   `_drill_uid_set(sch, analysis, uids, segment)` rebuilds a named segment with the SAME predicates;
+>   `/api/activities/drill` + `/export/{fmt}/activities-drill` accept `segment=`. Client:
+>   `SFDrill.mark()` takes a lazy `{segment}` descriptor (`data-segment`), `fire()`/`open()`/
+>   `exportHref()` pass it through; `trend.js` `drillSet()` uses the shipped array when present else
+>   a lazy segment **only for keys on the `LAZY_SEGMENTS` whitelist** mirroring the server. Every
+>   other drill trigger (float bands, WBS, dashboard, CEI, performance) is **untouched**.
+> - **Result:** 124.7 KB @ 5 / 248.3 KB @ 10, **25,290 B per version** (~46% smaller, half the
+>   growth rate). **No number changes** — every segment resolves byte-identically to the old
+>   explicit-UID request (pinned per segment, not asserted by eye).
+> - **Tests:** new `tests/web/test_trend_payload_trim.py` (9 pins incl. the byte-identical
+>   equivalence, a 32 KB/version size bound, whitelist==server-resolver, and export-accepts-segment).
+>   Updated the 3 pins in `test_categorical_bar_drill.py` that encoded the OLD payload contract —
+>   the drill-resolution one is now STRONGER (exact row count vs merely non-empty).
+> - **Gate:** full suite **2637 passed** with only the expected state-doc + old-contract failures,
+>   now fixed; ruff/format/mypy-strict/node clean. Wheel + 9 installers regenerated to 1.0.96.
+> - **NEXT — perf backlog items 2-7, still UNSTARTED** (separate PRs, never folded with a behaviour
+>   fix): **(2)** home.js bounded-concurrency pre-read; **(3)** manifest-projection memo;
+>   **(4)** instrument-then-byte-budget the `cpms`/`summaries`/`dash_cores` tiers; **(5)** MPP
+>   capability probe; **(6)** importer profiling; **(7)** the **`web/app.py` monolith split**
+>   (~19k lines — its OWN behaviour-free PR). Also still OWED by the operator: the ADR-0261
+>   PowerShell crash log; the Claude-Design portfolio prompt.
 
 # (prior) handoffs — archived
 

@@ -7679,3 +7679,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** the deferred perf backlog is still UNSTARTED (payload trim, home.js pre-read, manifest
   memo, tier byte-budgeting, MPP probe, importer profiling) and the `web/app.py` monolith split needs
   its own behaviour-free PR.
+
+## 2026-07-24e — perf backlog #1: lazy segment drill trims /api/trend ~46% (ADR-0288; v1.0.96)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** `claude/smat-tool-continuation-uskbh7` from
+  `origin/main` at `10b2cc1` after PR #433 merged.
+- **First item of the deferred performance backlog.** Measured before touching anything: the
+  `*_uids` arrays in `/api/trend` were **46.5%** of the payload (234.2 KB @ 5 versions, 467.3 KB @
+  10, 46,600 B/version on the 2,126-task fixture). The status-split and activity-makeup groups
+  partition the whole schedule, so every version shipped every activity id twice — for data only
+  read on a bar click.
+- **Fix (ADR-0288):** ship the segment NAME, resolve server-side on click. `_drill_uid_set` rebuilds
+  a named segment with the same predicates; the drill JSON + Excel export accept `segment=`;
+  `SFDrill.mark()` accepts a lazy `{segment}` descriptor; `trend.js` `drillSet()` falls back to a
+  segment only for whitelisted keys. Every other drill trigger untouched.
+- **Result:** 25,290 B/version (from 46,600) — ~46% smaller, half the growth rate. **Byte-identical
+  drill results**, pinned per segment against the old explicit-UID path (Law 2).
+- **Tests:** new `test_trend_payload_trim.py` (9 pins); updated 3 pins in
+  `test_categorical_bar_drill.py` that encoded the old payload contract — the drill-resolution pin
+  is now stronger (exact row count).
+- **Version 1.0.95 → 1.0.96**, wheel + 9 installers regenerated. **Highest ADR ADR-0288.**
+- **NEXT:** backlog items 2–7 unstarted (home.js pre-read, manifest memo, tier byte-budgeting, MPP
+  probe, importer profiling, `web/app.py` monolith split in its own behaviour-free PR).
