@@ -69,7 +69,8 @@
 
   function exportHref() {
     var q = "?file=" + encodeURIComponent(state.file) +
-            "&uids=" + encodeURIComponent(state.uids) +
+            "&uids=" + encodeURIComponent(state.uids || "") +
+            "&segment=" + encodeURIComponent(state.segment || "") +
             "&title=" + encodeURIComponent(state.title);
     if (state.extra.length) q += "&cols=" + encodeURIComponent(state.extra.join(","));
     return "/export/xlsx/activities-drill" + q;
@@ -161,19 +162,21 @@
     gridHost.appendChild(table);
   }
 
-  function open(uids, file, title) {
+  function open(uids, file, title, segment) {
     var o = overlay();
     o.innerHTML = "";
     o.appendChild(el("p", { class: "panel muted" }, "Loading activities…"));
     fetch("/api/activities/drill?file=" + encodeURIComponent(file) +
-          "&uids=" + encodeURIComponent(uids) +
+          "&uids=" + encodeURIComponent(uids || "") +
+          "&segment=" + encodeURIComponent(segment || "") +
           "&title=" + encodeURIComponent(title))
       .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "failed"); return j; }); })
       .then(function (j) {
         state = {
           rows: j.rows || [], columns: j.columns || BASE_COLS, fields: j.fields || [],
           extra: [], sort: null, asc: true, filter: "",
-          uids: uids, file: j.file || file, title: j.title || title, label: j.label || ""
+          uids: uids || "", segment: segment || "",
+          file: j.file || file, title: j.title || title, label: j.label || ""
         };
         render();
       })
@@ -200,7 +203,8 @@
     var uids = t.getAttribute("data-uids") || "";
     var file = t.getAttribute("data-file") || "";
     var title = t.getAttribute("data-title") || "Activities";
-    if (uids) open(uids, file, title);
+    var segment = t.getAttribute("data-segment") || "";
+    if (uids || segment) open(uids, file, title, segment);
   }
   document.addEventListener("click", function (e) {
     var t = triggerFrom(e.target);
@@ -217,11 +221,19 @@
   // / empty set leaves the node inert (no cursor, no class) so empty bars aren't clickable.
   function mark(node, uids, file, title) {
     if (!node) return node;
-    var ids = Array.isArray(uids) ? uids.filter(function (u) { return u != null; }).join(",") : (uids || "");
-    if (!ids) return node;
+    // `uids` may instead be a LAZY descriptor {segment:"name"} (ADR-0288): the server resolves the
+    // UID set on click, so charts whose segments partition the whole schedule don't have to ship
+    // every id up front. Everything downstream is identical — only the source of the set differs.
+    var seg = uids && !Array.isArray(uids) && typeof uids === "object" ? uids.segment || "" : "";
+    var ids = "";
+    if (!seg) {
+      ids = Array.isArray(uids) ? uids.filter(function (u) { return u != null; }).join(",") : (uids || "");
+      if (!ids) return node;
+    }
     var cls = node.getAttribute("class") || "";
     if (cls.split(/\s+/).indexOf("sf-drill") < 0) node.setAttribute("class", (cls + " sf-drill").trim());
-    node.setAttribute("data-uids", ids);
+    if (seg) node.setAttribute("data-segment", seg);
+    else node.setAttribute("data-uids", ids);
     node.setAttribute("data-file", file == null ? "" : String(file));
     node.setAttribute("data-title", title || "Activities");
     node.setAttribute("role", "button");

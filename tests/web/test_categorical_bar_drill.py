@@ -58,12 +58,13 @@ def test_trend_version_bars_carry_file_and_uids(client: TestClient) -> None:
     assert versions
     for v in versions:
         assert v["file"]  # a resolvable schedule key for the drill
+        # ADR-0288: the status-split / completion-performance segments partition the schedule, so
+        # their UID arrays are no longer shipped — the bar carries a segment NAME and the server
+        # rebuilds the set on click. The COUNTS (what the bars render from) must still be here.
         ss = v["status_split"]
-        for seg in ("complete", "in_progress", "planned"):
-            assert len(ss[f"{seg}_uids"]) == ss[seg]
+        assert set(ss) == {"complete", "in_progress", "planned"}
         cp = v["completion_perf"]
-        for seg in ("ahead", "on_schedule", "behind"):
-            assert len(cp[f"{seg}_uids"]) == cp[seg]
+        assert set(cp) == {"ahead", "on_schedule", "behind"}
         for band in v["float_bands"].values():
             assert len(band["uids"]) == band["count"]
 
@@ -72,8 +73,10 @@ def test_categorical_bar_js_is_tagged_for_drill() -> None:
     assert "SFDrill.mark(seg" in (STATIC / "dashboard.js").read_text(encoding="utf-8")
     assert "SFDrill.mark(wrect" in (STATIC / "wbs.js").read_text(encoding="utf-8")
     trend = (STATIC / "trend.js").read_text(encoding="utf-8")
-    assert 'drill(rect, d[s.key + "_uids"], d.file' in trend  # stacked bars
-    assert 'drill(rect, d[g.key + "_uids"], d.file' in trend  # grouped (float) bars
+    # ADR-0288: both take the shipped array when present, else a lazy {segment} for a known key
+    assert "drill(rect, drillSet(d, s.key), d.file" in trend  # stacked bars
+    assert "drill(rect, drillSet(d, g.key), d.file" in trend  # grouped (float) bars
+    assert "var LAZY_SEGMENTS = {" in trend  # the whitelist mirroring the server resolver
     perf = (STATIC / "performance.js").read_text(encoding="utf-8")
     assert 'drill(rect, r[k + "_uids"], vfile' in perf  # G2 late buckets + G4 burden bars
     cei = (STATIC / "cei.js").read_text(encoding="utf-8")
@@ -155,10 +158,13 @@ def test_perf_and_cei_bar_uids_resolve_through_the_drill_api(client: TestClient)
 def test_categorical_bar_uids_resolve_through_the_drill_api(client: TestClient) -> None:
     versions = client.get("/api/trend").json()["versions"]
     latest = versions[-1]
-    uids = latest["status_split"]["complete_uids"] or latest["status_split"]["planned_uids"]
-    assert uids
+    split = latest["status_split"]
+    segment = "complete" if split["complete"] else "planned"
+    assert split[segment]  # the bar has a non-zero count, so it is drillable
+    # ADR-0288: the bar carries the segment name; the server resolves it to the same activities
     r = client.get(
         "/api/activities/drill",
-        params={"file": latest["file"], "uids": ",".join(str(u) for u in uids[:5]), "title": "x"},
+        params={"file": latest["file"], "segment": segment, "title": "x"},
     )
-    assert r.status_code == 200 and r.json()["rows"]
+    assert r.status_code == 200
+    assert len(r.json()["rows"]) == split[segment]

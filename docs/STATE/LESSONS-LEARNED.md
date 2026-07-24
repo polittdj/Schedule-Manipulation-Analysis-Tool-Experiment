@@ -435,6 +435,27 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24e — measure the payload before optimising it, and let the SERVER own the expensive half (ADR-0288)
+- The backlog said "lazy status-UID payload trim (486 KB → ~40 KB @ 50 versions)". Before writing
+  any code I measured: the `*_uids` arrays were **46.5%** of `/api/trend` and it grew **46,600 B per
+  version**. The estimate's *direction* was right and its *magnitude* was roughly right, but only the
+  measurement told me which three groups mattered (the two that PARTITION the schedule) and which to
+  leave alone (the float bands, whose id sets are small and genuinely sparse). **LESSON: a backlog
+  estimate tells you where to look, never what to change.**
+- **LESSON: when data is only needed on an interaction, ship the QUESTION not the ANSWER.** The bars
+  needed "which activities are in this segment?" — so the bar now carries the segment NAME and the
+  server rebuilds the set on click, using the same predicates. Payload halves, and the drill result
+  is provably identical because both paths run the same code.
+- **LESSON: a whitelist beats a fallback when the two sides must agree.** `trend.js` could have
+  lazily segmented ANY key whose `_uids` were missing — but then a typo or a future chart would make
+  a bar silently inert (server returns empty). An explicit `LAZY_SEGMENTS` list, pinned equal to the
+  server resolver by a test, makes drift a build failure instead of a dead click.
+- **LESSON: when a test breaks because you changed the contract it pinned, rewrite it to the NEW
+  contract — and take the chance to make it stronger.** Three pins in `test_categorical_bar_drill.py`
+  asserted the old `*_uids` payload. The replacement for the drill-resolution one no longer checks
+  "some rows came back" for the first 5 ids; it asserts the resolved row count EQUALS the bar's
+  count. The change forced a better test than was there before.
+
 ### 2026-07-24d — "the numbers are wrong" was a DEFAULT, not a defect; and one hover should mean one tooltip (ADR-0286/0287)
 - The operator reported for the second time in a day that the DCMA-14 ribbon disagreed with Acumen
   Fuse. Before touching the engine I re-hashed their uploads: the `.mpp` and the Acumen detail export

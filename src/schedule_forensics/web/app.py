@@ -2875,6 +2875,47 @@ def _parse_uid_list(value: str | None) -> list[int]:
     return out
 
 
+def _drill_uid_set(sch: Schedule, analysis: _Analysis, uids: str, segment: str) -> tuple[int, ...]:
+    """The UID set behind a drill request — an explicit ``uids`` list, or a named ``segment``
+    resolved server-side (ADR-0288).
+
+    The cross-file-comparison charts (status split / activity makeup / completion performance)
+    partition the WHOLE schedule, so shipping their UID arrays in ``/api/trend`` cost ~21.8 KiB per
+    version (46% of the payload) for data only ever read on a click. The client now marks those bars
+    with a segment NAME and this resolver rebuilds the set on demand, using the SAME predicates the
+    payload used — so the drill result is byte-identical, it is just no longer pre-shipped.
+
+    An explicit ``uids`` list always wins (every other drill trigger still passes one); an unknown
+    segment resolves to the empty set, which the drill renders as "no activities".
+    """
+    if uids:
+        return tuple(_parse_uid_list(uids))
+    if not segment:
+        return ()
+    ns = non_summary(sch)
+    if segment == "complete":
+        return tuple(t.unique_id for t in ns if t.percent_complete >= 100.0)
+    if segment == "in_progress":
+        return tuple(t.unique_id for t in ns if 0.0 < t.percent_complete < 100.0)
+    if segment == "planned":
+        return tuple(t.unique_id for t in ns if t.percent_complete <= 0.0)
+    if segment == "milestones":
+        return tuple(t.unique_id for t in ns if t.is_milestone)
+    if segment == "normal":
+        return tuple(t.unique_id for t in ns if not t.is_milestone)
+    if segment == "summaries":
+        return tuple(t.unique_id for t in sch.tasks if t.is_summary and t.unique_id != 0)
+    # completion performance — the engine already computed these offender sets for this version
+    cp_key = {
+        "ahead": "completed_ahead",
+        "on_schedule": "completed_on_schedule",
+        "behind": "completed_behind",
+    }.get(segment)
+    if cp_key is not None:
+        return tuple(analysis.completion[cp_key].offender_uids)
+    return ()
+
+
 #: Cap on the operator-tracked UIDs on the Bow-Wave / S-Curve charts (operator 2026-07-09:
 #: "max of 20 UIDs") — more markers than that turn the animation into noise.
 _MAX_TRACK_UIDS = 20
@@ -5939,13 +5980,17 @@ def create_app(
 
     @app.get("/api/activities/drill")
     def activities_drill_json(
-        file: str = Query(""), uids: str = Query(""), title: str = Query("")
+        file: str = Query(""),
+        uids: str = Query(""),
+        title: str = Query(""),
+        segment: str = Query(""),
     ) -> JSONResponse:
         picked = _pick_scorecard_version(file)
         if picked is None:
             return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
         key, sch, a = picked
-        fields, rows = _workbench_drill_rows(sch, a, tuple(_parse_uid_list(uids)))
+        wanted = _drill_uid_set(sch, a, uids, segment)
+        fields, rows = _workbench_drill_rows(sch, a, wanted)
         return JSONResponse(
             {
                 "title": title or "Activities",
@@ -5964,6 +6009,7 @@ def create_app(
         uids: str = Query(""),
         cols: str = Query(""),
         title: str = Query(""),
+        segment: str = Query(""),
     ) -> Response:
         """The activities behind any drillable element (UID set) + chosen extra columns, as Excel/Word."""
         if (bad := _bad_format(fmt)) is not None:
@@ -5972,7 +6018,7 @@ def create_app(
         if picked is None:
             return JSONResponse({"error": "load a schedule first"}, status_code=422)
         _key, sch, a = picked
-        fields, rows = _workbench_drill_rows(sch, a, tuple(_parse_uid_list(uids)))
+        fields, rows = _workbench_drill_rows(sch, a, _drill_uid_set(sch, a, uids, segment))
         extra = [c for c in cols.split(",") if c and c in fields]
         headers = ("UID", *_DRILL_BASE_COLS, *extra)
         body: list[tuple[Cell, ...]] = []
@@ -12357,19 +12403,10 @@ def _trend_data(
         bri_r = compute_bri(sch)
         # SVt (Earned-Schedule time variance, working days) per version — the SV/SVt trend (D4)
         svt = compute_schedule_variance(sch, non_summary(sch)).svt_days
-        # the activity ids behind each stacked-bar segment, so the trend bars can drill (same
-        # predicates as compute_activity_makeup / completion_performance / the float bands)
-        ns = non_summary(sch)
-        status_uids = {
-            "complete_uids": [t.unique_id for t in ns if t.percent_complete >= 100.0],
-            "in_progress_uids": [t.unique_id for t in ns if 0.0 < t.percent_complete < 100.0],
-            "planned_uids": [t.unique_id for t in ns if t.percent_complete <= 0.0],
-        }
-        makeup_uids = {
-            "milestones_uids": [t.unique_id for t in ns if t.is_milestone],
-            "normal_uids": [t.unique_id for t in ns if not t.is_milestone],
-            "summaries_uids": [t.unique_id for t in sch.tasks if t.is_summary and t.unique_id != 0],
-        }
+        # The activity ids behind each stacked-bar segment are NOT shipped here (ADR-0288): these
+        # three groups partition the whole schedule, so their UID arrays were ~21.8 KiB per version
+        # (46% of this payload) for data only read when the operator clicks a bar. The bars now carry
+        # a segment NAME and `_drill_uid_set` rebuilds the set on demand from the same predicates.
         version_rows.append(
             {
                 "label": p.source_file or f"v{p.version_index + 1}",
@@ -12387,21 +12424,16 @@ def _trend_data(
                     "milestones": makeup.milestones,
                     "normal": makeup.normal,
                     "summaries": makeup.summaries,
-                    **makeup_uids,
                 },
                 "status_split": {
                     "complete": makeup.complete,
                     "in_progress": makeup.in_progress,
                     "planned": makeup.planned,
-                    **status_uids,
                 },
                 "completion_perf": {
                     "ahead": cp["completed_ahead"].count,
                     "on_schedule": cp["completed_on_schedule"].count,
                     "behind": cp["completed_behind"].count,
-                    "ahead_uids": list(cp["completed_ahead"].offender_uids),
-                    "on_schedule_uids": list(cp["completed_on_schedule"].offender_uids),
-                    "behind_uids": list(cp["completed_behind"].offender_uids),
                 },
                 "indices": {
                     "mei": mei_r.value if mei_r.population else None,
