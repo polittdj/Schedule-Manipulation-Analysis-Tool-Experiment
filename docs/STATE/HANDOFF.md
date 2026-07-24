@@ -1,45 +1,47 @@
-# Handoff — 2026-07-24c (ADR-0282 resolved as Option A: findings/narrative/briefing follow the parity audit; v1.0.94; highest ADR 0285)
+# Handoff — 2026-07-24d (one tooltip + 1.5s hover-intent delay; Acumen parity ON by default; v1.0.95; highest ADR 0287)
 
-> ## STATUS (current) — resolved the last queued open question. The operator chose **Option A** for
-> ADR-0282, shipped as **ADR-0285**: when Acumen-parity mode is ON, the findings, narrative, risk
-> matrix and executive briefing all derive from the **parity** audit, so every surface agrees with the
-> ribbon. Version **1.0.94**. Highest ADR **0285**. Branch `claude/smat-tool-continuation-uskbh7`
-> (restarted fresh from `origin/main` at `17431a6` after PR #431 / ADR-0284 squash-merged).
+> ## STATUS (current) — two operator-reported UX/defaulting fixes. Version **1.0.95**. Highest ADR
+> **0287**. Branch `claude/smat-tool-continuation-uskbh7` (restarted fresh from `origin/main` at
+> `b8edf0f` after PR #432 / ADR-0285 squash-merged).
 >
-> - **What changed:** a single `acumen_parity` flag threaded through every findings-derived surface —
->   `recommend(..., acumen_parity=)` (sources `_dcma_findings` from the parity audit),
->   `build_narrative(..., acumen_parity=)` (its fallback `recommend`), `build_briefing(...,
->   acumen_parity=)` (BOTH the audit driving `dcma_fails`/**verdict** and its `recommend`), and the web
->   call sites `/risks`, `/export/*/risks`, `/briefing`, `/export/*/briefing`, `/api/ai/briefing`,
->   `_the_briefing_header`. This also closed a real gap: the `/briefing` header was parity-aware while
->   its BODY was not.
-> - **The ADR-0281 pin is gone:** `_compute_analysis` now passes its parity-aware audit as
->   `precomputed_audit` in BOTH modes, so parity mode dropped from **2×/1×/1× to 1×/1×/1×** audit /
->   compliance / recommend (a free perf win alongside the behaviour fix).
-> - **Default is byte-identical** (verified on the 2,126-task golden: `recommend(sch)` ==
->   `recommend(sch, acumen_parity=False)`, same for `build_narrative`). **Baseline compliance is
->   mode-independent** (one Acumen-validated definition), so only DCMA-check findings move.
-> - **No golden re-pin was needed.** A read-only survey confirmed there are NO stored findings/
->   narrative/briefing/risk-matrix goldens (all inline + default-mode), and the `ai.citations`
->   re-verification tests are literal-fixture / mode-independent — so ADR-0282's feared citation re-pin
->   did not materialize. The parity dashboard SHA is audit-only and unaffected.
-> - **Tests:** new `test_acumen_parity_findings_follow_the_parity_audit` (a no-baseline past-date task
->   is a DCMA-09 CONCERN in default, absent under parity; default byte-identical); rewrote the two pins
->   that encoded the OLD behaviour — `test_cold_analysis_parity_mode_computes_each_dependency_once`
->   (now `(1,1,1)` / flags `[True]`) and `test_findings_and_narrative_follow_the_active_audit_per_mode`.
->   Refreshed the module docstring (points 4 and 7). Docs: ADR-0285, ADR-0282 marked resolved,
->   `docs/ACUMEN-PARITY-MODE.md` notes the toggle applies end-to-end.
-> - **Gate:** full suite **2627 passed** at the pre-version-bump checkpoint (only the expected wheel
->   lockstep failed, then fixed by regenerating); ruff / ruff format / mypy-strict / bandit /
->   `node --check` clean; installer+packaging 21 green at 1.0.94. **Re-run the FULL gate before the
->   squash-merge.**
-> - **NEXT — the queue is clear; remaining backlog is the deferred perf work** (separate PRs, never
->   folded with a behavior fix): lazy status-UID payload trim (486 KB → ~40 KB @ 50 versions); home.js
->   bounded-concurrency pre-read; manifest-projection memo; instrument-then-byte-budget the
->   `cpms`/`summaries`/`dash_cores` tiers; MPP capability probe; importer profiling; the `web/app.py`
->   monolith split. Also still OWED by the operator: the ADR-0261 PowerShell crash log; the
->   Claude-Design portfolio prompt. Consider committing the newer `20260708` `.aft` + refreshing
->   `test_aft_formula_audit.py`.
+> - **ADR-0286 — ONE tooltip, revealed after 1.5s of hover-intent.** The operator hovered a DCMA-14
+>   check name and got **two overlapping boxes**: the rich `.dcma-tip` callout AND the browser's
+>   native `title=` tooltip (`_dcma_metric_cell` emitted both by design, as a no-CSS fallback). New
+>   **`web/static/tooltips.js`** (loaded from `_LAYOUT`, so every page) normalises every `title` at
+>   runtime: a trigger that already has a custom tip has its `title` moved to `data-sf-title`
+>   (text preserved, browser box gone); a **plain** `title` is **promoted** to `data-sf-hint` so it
+>   renders as the same styled callout. Replaced elements (input/select/img/svg/…) can't host
+>   `::after`, so they keep the native tooltip — still exactly one. Delay is a **`transition-delay`**
+>   (`--sf-tip-delay: 1.5s`, defined once in `hud.css`), NOT a timer, so moving away before it
+>   elapses cancels the reveal; `.dcma-tip` moved off `display` (untransitionable) to
+>   opacity/visibility; the JS float tip uses `window.SF_TIP_DELAY_MS` with `clearTimeout` on leave.
+>   Keyboard focus stays instant. A `MutationObserver` covers client-rendered charts/tables.
+> - **ADR-0287 — Acumen parity mode is ON by default.** The operator reported (twice) that the
+>   DCMA-14 numbers "don't match Acumen". Root cause was **not** an engine defect: their screenshot
+>   read "parity mode ☐ OFF" and every value on it reproduced the engine's DEFAULT output exactly;
+>   with the box ticked the same file is already **UID-exact** vs Acumen. Re-verified this session
+>   that the `.mpp` + Acumen detail export were **md5-identical** to the morning's copies and the
+>   re-exported ribbon carried identical numbers. So `SessionState.dcma_acumen_parity` now defaults
+>   **True**. **ENGINE defaults are unchanged** (`acumen_parity: bool = False` everywhere), so no
+>   golden/parity test shifts. Since ADR-0285 the toggle is end-to-end, so every surface stays
+>   consistent.
+> - **Test hygiene:** tests that pinned pure-logic payloads now **state their mode explicitly**
+>   (`st.dcma_acumen_parity = False`) instead of inheriting the session default — the two default
+>   dashboard SHA goldens, the scope-epoch guard, and the LRU-residency perf gate (its cache key
+>   would otherwise carry `A=1`). `test_dcma_scope.py` asserts the box renders **checked** on a fresh
+>   session and exercises off→on. New `tests/web/test_tooltips.py` (6 pins).
+> - **Gate:** full suite **2628 passed** on the pre-change base; after these changes re-run the FULL
+>   gate before merge. Wheel + 9 installers regenerated to 1.0.95.
+> - **PRs merged today:** #430 (ADR-0283 DCMA-09 parity population), #431 (ADR-0284 Fix E),
+>   #432 (ADR-0285 parity findings). This work is the next PR.
+> - **NEXT — the deferred perf backlog is UNSTARTED and is what the operator asked for next**
+>   (separate PRs, never folded with a behaviour fix): lazy status-UID payload trim (486 KB → ~40 KB
+>   @ 50 versions); home.js bounded-concurrency pre-read; manifest-projection memo;
+>   instrument-then-byte-budget the `cpms`/`summaries`/`dash_cores` tiers; MPP capability probe;
+>   importer profiling; and the **`web/app.py` monolith split** (~19k lines — its OWN PR, no
+>   behaviour change in the same diff). Also still OWED by the operator: the ADR-0261 PowerShell
+>   crash log; the Claude-Design portfolio prompt. Consider committing the newer `20260708` `.aft` +
+>   refreshing `test_aft_formula_audit.py`.
 
 # (prior) handoffs — archived
 

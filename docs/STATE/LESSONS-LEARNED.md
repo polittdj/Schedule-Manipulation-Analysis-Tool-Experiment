@@ -435,6 +435,35 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24d — "the numbers are wrong" was a DEFAULT, not a defect; and one hover should mean one tooltip (ADR-0286/0287)
+- The operator reported for the second time in a day that the DCMA-14 ribbon disagreed with Acumen
+  Fuse. Before touching the engine I re-hashed their uploads: the `.mpp` and the Acumen detail export
+  were **md5-identical** to the morning's copies, and the freshly re-exported ribbon carried
+  **identical numbers**. Their screenshot read "parity mode ☐ OFF", and every value on it reproduced
+  the engine's DEFAULT output exactly. **LESSON: when a user says a number is wrong, first establish
+  WHICH MODE produced it and whether the inputs actually changed — hashing the uploads took seconds
+  and ruled out an entire engine investigation.** The fix was a one-line default, not a formula.
+- **LESSON: a correct feature behind a default-off toggle reads as a broken product.** Parity mode was
+  verified UID-exact and thoroughly documented, and the operator still hit the mismatch twice. When
+  the tool's headline promise is "it reconciles with Acumen", the default has to answer that question;
+  the alternative view stays one click away. Being right in an unticked checkbox is not being right.
+- **LESSON: flip a PRESENTATION default, never the ENGINE default.** `SessionState.dcma_acumen_parity`
+  went True while `compute_dcma14`/`audit_schedule`/`recommend` kept `acumen_parity=False`. Every
+  golden passes the flag explicitly, so not one parity test moved. The blast radius was six tests that
+  had been *inheriting* the session default — and the right fix there was to make each one state its
+  mode explicitly, which is better hygiene than it had before.
+- **LESSON: implement a hover delay as a `transition-delay`, not a `setTimeout`.** The requirement was
+  "only show if the cursor rests for 1.5s". A CSS transition-delay gives that for free and is
+  inherently cancellable — leave early and the transition never completes, so nothing paints and there
+  is no timer to clean up. This forced `.dcma-tip` off `display:none` (which cannot be transitioned)
+  onto opacity/visibility. Only the JS-positioned tip needed a real timer, and that one does need an
+  explicit `clearTimeout` on mouseleave.
+- **LESSON: fix a duplicated-affordance bug at the layer that OWNS the duplication.** There were ~104
+  server-rendered `title=` attributes; editing each call site would have been a huge diff that the
+  next `title` would silently re-break. One runtime normaliser in `tooltips.js` (plus a
+  MutationObserver for client-rendered charts) fixes every current and future occurrence, and the
+  test pins the invariant rather than the call sites.
+
 ### 2026-07-24c — the feared golden re-pin didn't exist; and a mode flag must reach EVERY derived surface (ADR-0285)
 - ADR-0282 predicted that making findings follow the parity audit would force "fresh parity-variant
   goldens **and** re-pinned `ai.citations` goldens" — the main reason it looked expensive. Before

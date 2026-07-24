@@ -43,20 +43,24 @@ def test_parity_toggle_renders_flips_the_flag_and_reflects_state(
     assert 'action="/dcma/scope"' in page.text  # the toggle form is on the page
     assert "Acumen" in page.text and "parity" in page.text  # the control + its explanation
     assert "When to use" in page.text  # the example-driven explanatory panel
-    assert st.dcma_acumen_parity is False  # default off (pure-logic / golden parity)
-
-    # enabling it flips the session flag (funnels through set_dcma_acumen_parity)
-    r = client.post("/dcma/scope", data={"parity": "1", "next": f"/analysis/{key}"})
-    assert r.status_code == 200  # followed the 303 back to the analysis page
+    # ADR-0287: parity is ON by default so a fresh session reconciles with Acumen Fuse out of the
+    # box; the box therefore renders checked, and the scope signature already carries A=1.
     assert st.dcma_acumen_parity is True
-    # the flag is part of the analysis cache signature so a toggle can't serve a stale audit
     assert st._scope_signature() == "A=1"
-    assert "checked" in client.get(f"/analysis/{key}").text
+    assert "value=1 checked" in page.text  # the input itself, not the prose
 
-    # unchecking (no parity field posted) clears it again
-    client.post("/dcma/scope", data={"next": f"/analysis/{key}"})
+    # unchecking (no parity field posted) clears it -> the pure-logic / forensic view
+    r = client.post("/dcma/scope", data={"next": f"/analysis/{key}"})
+    assert r.status_code == 200  # followed the 303 back to the analysis page
     assert st.dcma_acumen_parity is False
+    # the flag is part of the analysis cache signature so a toggle can't serve a stale audit
     assert st._scope_signature() == ""
+    assert "value=1 checked" not in client.get(f"/analysis/{key}").text
+
+    # re-enabling flips it back (funnels through set_dcma_acumen_parity)
+    client.post("/dcma/scope", data={"parity": "1", "next": f"/analysis/{key}"})
+    assert st.dcma_acumen_parity is True
+    assert st._scope_signature() == "A=1"
 
 
 def test_scope_redirect_is_local_only(loaded: tuple[TestClient, SessionState, str]) -> None:

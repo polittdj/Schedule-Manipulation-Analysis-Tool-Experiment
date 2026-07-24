@@ -366,6 +366,8 @@ _SHA_TWO_VERSION_PARITY = "51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a876
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:
     st = SessionState()
+    st.dcma_acumen_parity = False  # this golden pins the PURE-LOGIC payload (session default is
+    # parity since ADR-0287) — state the mode explicitly rather than inherit it
     st.schedules["v1"] = big
     st.schedules["v2"] = big.model_copy(update={"source_file": "Large_Test_File_v2.mspdi.xml"})
     assert _dashboard_sha(TestClient(create_app(st))) == _SHA_TWO_VERSION
@@ -384,6 +386,7 @@ def test_dashboard_payload_parity_mode_is_byte_stable(big: Schedule) -> None:
 
 def test_dashboard_payload_with_unsolvable_card_is_byte_identical(big: Schedule) -> None:
     st = SessionState()
+    st.dcma_acumen_parity = False  # pure-logic golden (see above)
     st.schedules["v1"] = big
     st.schedules["bad"] = _cyclic()  # CPMError -> a flagged, unsolvable card
     assert _dashboard_sha(TestClient(create_app(st))) == _SHA_UNSOLVABLE
@@ -421,6 +424,8 @@ def test_mid_flight_wipe_does_not_repopulate(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_scope_epoch_key_prevents_cross_epoch_service() -> None:
     st = SessionState()
+    # start from the NO-scope epoch so the parity flip below is a real epoch change
+    st.dcma_acumen_parity = False
     sch = _chain("epoch", n=6)
     a0 = st.analysis_for("k", sch)
 
