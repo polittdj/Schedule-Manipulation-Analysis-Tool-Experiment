@@ -20,6 +20,7 @@ Neither is "more correct." They answer **different questions**:
 | **Total Float** | The engine's freshly **re-computed CPM float** (independent of the file's stored dates). | The file's **stored, progress-aware Total Slack**, compared in **whole days** — exactly what Acumen reads. |
 | **Which activities count** | Every incomplete activity, whether or not it was baselined. | Only activities with a **baseline duration ≥ 1 day** (Acumen's *Baseline Duration > 0*, truncated to whole days). Milestones are kept when they carry a real baseline. |
 | **Resources (check 10)** | Incomplete, real-duration activities with **no named resource**. | Activities with **no baseline cost AND no baseline work** (a task can lack a named resource yet still carry work). |
+| **Invalid Dates (check 9)** | Every non-summary activity whose stored start/finish is already past the data date without a matching actual (or an actual beyond it). | The same date logic, scoped to **Baseline Duration > 0** — no-baseline placeholders and milestones are dropped, matching Acumen's flagged-activity detail (Large Test File2: 182 → 173). |
 | **CPLI (check 13)** | Recomputed critical-path float — ≈ 0 with no imposed deadline, so CPLI reads **1.0**. | Stored float + stored remaining duration — reflects a behind-schedule finish. |
 | **BEI (check 14)** | Complete ÷ baselined-due (Normal tasks). | Acumen's **two-term** denominator: baselined-due **plus** activities that have a duration but are missing a baseline; milestones included. |
 
@@ -53,6 +54,13 @@ correctly showing the slip, because it uses the file's stored float and stored f
 It doesn't affect pure-logic *BEI* (no baseline finish, so it isn't "due"). Acumen parity's second
 denominator term counts it as work that *should* have been baselined, lowering **BEI**.
 
+**6. A milestone or planning placeholder with no baseline and a stored date before the data date.**
+Pure-logic flags it under *Invalid Dates*. Acumen parity does **not** — with no baseline duration it
+fails *Baseline Duration > 0*, so Acumen never lists it. (Acumen's ribbon also counts invalid *date
+fields* — a start flag and a finish flag can both fire on one activity, so the ribbon number runs up
+to ~2× the activity count; the tool reports **one row per activity**, matching Acumen's activity
+**detail**, not the ribbon's field tally.)
+
 ---
 
 ## When to use which
@@ -81,4 +89,5 @@ denominator term counts it as work that *should* have been baselined, lowering *
 - The **default is unchanged** by this feature, and the tool's validated golden parity (Project2 /
   Project5) is unaffected — those schedules carry no sub-day baselines, so both views agree on them.
 - Details and the formula provenance are in **ADR-0280** (which supersedes the earlier milestone-scope
-  and stored-float-CPLI options, ADR-0277/0278/0279).
+  and stored-float-CPLI options, ADR-0277/0278/0279); the Invalid-Dates (check 9) population scoping is
+  **ADR-0283**.

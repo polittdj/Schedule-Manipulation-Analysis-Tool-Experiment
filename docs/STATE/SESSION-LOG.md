@@ -7567,3 +7567,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Deliberately deferred (separate PRs):** Fix E (target-control/endpoint-banner active-population
   scoping — un-xfail test 7), payload UID trim, home.js pre-read, manifest memo, tier byte-budgeting,
   MPP probe, importer profiling, `web/app.py` split.
+
+## 2026-07-24 — Acumen-parity DCMA-09 scoped to Baseline Duration > 0 (ADR-0283; v1.0.92)
+
+- **Model/mode:** Opus 4.8 (lead, ADR-0240 — READ EVERYTHING / VERIFY EVERYTHING; every count
+  set-differenced at the UID level against Acumen's own export before any code change). **Branch:**
+  `claude/smat-tool-continuation-uskbh7` (from `origin/main` at `df68be7`).
+- **Input:** operator asked why POLnRIS's DCMA-14 ribbon differs from Acumen Fuse on the same `.mpp`,
+  supplying **Large Test File2** (`.mpp`, 2,124 activities, DD 2025-03-10), the Acumen *MS Excel
+  Metrics* (ribbon) + *Analysis Metrics* (per-activity detail) exports, and a screenshot of our ribbon.
+- **Method:** MPXJ-converted the `.mpp` → MSPDI, ran `compute_dcma14` in BOTH modes, and set-differenced
+  every check by activity name against Acumen's ribbon AND its detail sheet.
+- **Root cause (two parts):**
+  1. **The screenshot was DEFAULT (pure-logic) mode.** The engine reproduces every screenshot value
+     byte-for-byte in default mode; parity mode already matched Acumen's ribbon on 12/14 checks (SS/FF
+     `count`=90 = ribbon links, offender set = 70 = detail; Lags 5 = detail, ribbon 8 = links — Acumen's
+     own ribbon/detail inconsistency, not ours).
+  2. **One real residual: DCMA-09 Invalid Dates** — parity flagged 182 vs Acumen detail 173 (170
+     forecast + 3 actual). We caught all 173 + 9 extra, every extra with **no baseline duration**. The
+     NASA `.aft` `9. Invalid Forecast/Actual Dates` metrics carry `PrimaryFilter Baseline Duration > 0`,
+     which ADR-0280 applied to every check EXCEPT DCMA-09.
+- **Fix (ADR-0283):** parity DCMA-09 scopes its loop + population to `ap_tasks` (baselined); default
+  unchanged/byte-identical (still 182); parity → 173, UID-exact (0 FP / 0 miss). Test added (fails on
+  pre-fix engine). Updated `docs/ACUMEN-PARITY-MODE.md`. Bumped **1.0.91 → 1.0.92**, regenerated wheel +
+  9 installers (lockstep green). **Highest ADR ADR-0283.**
+- **Reference inputs NOT committed** (held out of git per Law 1 — real production schedules are the only
+  CUI; these build/reference files stay out anyway): the 10 MB `.mpp`, 21 MB MSPDI, and the two Acumen
+  `.xlsx` exports live only in the session scratchpad.
+- **NEXT (still open, separate PRs):** ADR-0282 (findings source under parity — File2 is the concrete
+  disagreement case; recommend Option A, needs operator sign-off + fresh goldens); Fix E (cross-project
+  UID leak, un-xfail test 7 + dropdown sub-question); then the deferred perf backlog.

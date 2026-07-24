@@ -349,6 +349,11 @@ def test_findings_and_narrative_match_the_default_recommend_path() -> None:
 # Captured on the untouched HEAD (f551b01) via the same TestClient path these tests use.
 _SHA_TWO_VERSION = "d62a4f9e791783701eacc6aeb47ee9b69e0ff80abf4cfeb9bfeddf7b998a58d1"
 _SHA_UNSOLVABLE = "8d7bcc386168f0e9c3e384bde6beb0789be5beb4b1485a81f0d96138038afc16"
+# Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a
+# single invalid-date activity with NO baseline duration, which Acumen's `Baseline Duration > 0`
+# population excludes, so parity DCMA-09 drops 1 → 0 and its card flips FAIL → PASS (the ONLY delta
+# vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24.
+_SHA_TWO_VERSION_PARITY = "51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a8767c292c504cb"
 
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:
@@ -358,12 +363,15 @@ def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None
     assert _dashboard_sha(TestClient(create_app(st))) == _SHA_TWO_VERSION
 
 
-def test_dashboard_payload_parity_mode_is_byte_identical(big: Schedule) -> None:
+def test_dashboard_payload_parity_mode_is_byte_stable(big: Schedule) -> None:
+    # The parity dashboard payload is deterministic and byte-stable against its own golden (the
+    # ADR-0281 invariant). Since ADR-0283 it differs from the default payload on this fixture by
+    # one DCMA-09 card (FAIL → PASS — the no-baseline invalid-date activity Acumen excludes).
     st = SessionState()
-    st.dcma_acumen_parity = True  # exercises the parity audit path (identical output here)
+    st.dcma_acumen_parity = True
     st.schedules["v1"] = big
     st.schedules["v2"] = big.model_copy(update={"source_file": "Large_Test_File_v2.mspdi.xml"})
-    assert _dashboard_sha(TestClient(create_app(st))) == _SHA_TWO_VERSION
+    assert _dashboard_sha(TestClient(create_app(st))) == _SHA_TWO_VERSION_PARITY
 
 
 def test_dashboard_payload_with_unsolvable_card_is_byte_identical(big: Schedule) -> None:

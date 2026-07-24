@@ -437,3 +437,54 @@ def test_acumen_parity_default_is_identical_to_prior() -> None:
         for k, v in compute_dcma14(sch, acumen_parity=False).items()
     }
     assert a == b
+
+
+def test_acumen_parity_invalid_dates_scoped_to_baselined_population() -> None:
+    """DCMA-09 parity scoping (ADR-0283). The NASA library's "9. Invalid Forecast/Actual Dates"
+    metrics carry the SAME universal PrimaryFilter as the other work checks — Baseline Duration > 0
+    (whole days) — which ADR-0280 applied everywhere EXCEPT DCMA-09. Default (pure-logic) still
+    flags every non-summary activity with a stored date past the status date; parity drops the
+    no-baseline placeholders/milestones Acumen never lists, reproducing Fuse's detail (Large Test
+    File2: 182 → 173). Each date condition self-excludes the wrong completion state, so one combined
+    loop equals Acumen's two separately-filtered metrics."""
+    status = MON + dt.timedelta(days=30)
+    past = MON  # a stored (forecast) date already behind the data date
+    future = status + dt.timedelta(days=10)  # an actual after the data date
+    tasks = [
+        # baselined Normal with a forecast start in the past, not yet started -> invalid in BOTH
+        Task(
+            unique_id=1,
+            name="baselined-past-forecast",
+            duration_minutes=DAY,
+            baseline_duration_minutes=2 * DAY,
+            start=past,
+            finish=past + dt.timedelta(days=1),
+        ),
+        # NO-baseline milestone with a past forecast date -> Acumen never lists it (Baseline
+        # Duration = 0); default flags it, parity drops it
+        Task(
+            unique_id=2,
+            name="no-baseline-milestone",
+            duration_minutes=0,
+            is_milestone=True,
+            start=past,
+            finish=past,
+        ),
+        # NO-baseline completed task whose ACTUAL finish is in the future (the File2 dH18… case) ->
+        # default flags the actual-in-future; parity drops it (no baseline duration)
+        Task(
+            unique_id=3,
+            name="no-baseline-actual-future",
+            duration_minutes=DAY,
+            percent_complete=100.0,
+            actual_start=past,
+            actual_finish=future,
+        ),
+    ]
+    sch = _sched(tasks, status_date=status)
+    default = compute_dcma14(sch)["DCMA09"]
+    parity = compute_dcma14(sch, acumen_parity=True)["DCMA09"]
+    assert set(default.offender_uids) == {1, 2, 3}  # pure logic: every stored date past the DD
+    assert default.population == 3
+    assert set(parity.offender_uids) == {1}  # parity: only the baselined activity survives
+    assert parity.population == 1  # population scoped to Baseline Duration > 0

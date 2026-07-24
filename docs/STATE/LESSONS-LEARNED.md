@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24 — "why don't the numbers match Acumen?" was mostly a toggle; the real bug was one unscoped check (ADR-0283)
+- The operator sent a screenshot of our DCMA ribbon next to Acumen Fuse's and asked why they differ.
+  The instinct is to hunt the engine. The disciplined move paid off instead: I MPXJ-converted the exact
+  `.mpp`, ran `compute_dcma14` in both modes, and the **default-mode** output reproduced the screenshot
+  **byte-for-byte** — so the headline "discrepancy" was simply that **Acumen-parity mode was OFF**.
+  Parity mode already matched Acumen's ribbon on 12/14 checks. **LESSON: before fixing a parity gap,
+  first confirm which mode produced the number** — a mode toggle explains a whole table of "differences"
+  that no code change should chase.
+- **LESSON: the ribbon and the detail of the SAME external tool can disagree — pick the surface your
+  data model represents.** Acumen's ribbon counts SS/FF and Lags by *link* (90, 8); its detail lists
+  *distinct activities* (70, 5). Our count field matched the ribbon on SS/FF and the detail on Lags —
+  because DCMA-04 doesn't dedupe successors and DCMA-02/03 do. Both "match Acumen," just different
+  Acumen surfaces. For a citation tool the activity (detail) count is the one that has to be right; the
+  ribbon's field/link tallies are a documented units divergence, not a bug to chase.
+- **The one real residual** was DCMA-09 Invalid Dates (parity 182 vs Acumen detail 173). Set-diff by
+  activity name: we caught all 173 + 9 extra, every extra with **no baseline duration**. The `.aft`
+  proved it — `9. Invalid Forecast/Actual Dates` carry the SAME `PrimaryFilter Baseline Duration > 0`
+  as every other work check, which ADR-0280 had applied everywhere EXCEPT DCMA-09 (explicitly, to avoid
+  unverified regressions). **LESSON: a deliberately-deferred "leave it for now" is a debt with a name —
+  when the ground truth finally arrives (a new reference file), pay it.** The fix reuses the existing
+  `ap_tasks` population; default stays byte-identical; parity goes UID-exact (0 FP / 0 miss).
+- **LESSON: one combined loop can faithfully reproduce two separately-filtered external metrics IF each
+  predicate self-excludes the wrong population.** I nearly split DCMA-09 into forecast/actual halves to
+  mirror Acumen's two metrics (IncludeComplete=0 / IncludePlanned=0). Unnecessary: a complete task
+  carries actuals so it never trips a "no-actual" forecast term; a planned task has no actuals so it
+  never trips an "actual-in-future" term. Only `Baseline Duration > 0` changes any count. Verified, not
+  assumed — the merged loop gives exactly 173.
+
 ### 2026-07-23b — validate an external audit against HEAD, not against the report (ADR-0281/0282)
 - Implemented four performance fixes from a ChatGPT "5.6 Sol" audit. The audit was **directionally
   right on all three P0/P1 mechanisms** (dashboard full-analysis + LRU thrash, no single-flight,
