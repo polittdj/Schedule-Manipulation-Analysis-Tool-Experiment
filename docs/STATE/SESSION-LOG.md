@@ -6900,3 +6900,18 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Deferred (queued, propose-then-build):** SEC-2 CSRF/Origin, SEC-3 Host allowlist.
 - **State:** v1.0.64 → **1.0.65**; wheel + 9 installers in lockstep; **ADR-0256**; HANDOFF
   moved/replaced + this entry in the same commit. Next-session prompt delivered to the operator.
+
+---
+
+## 2026-07-17 — SEC-2/SEC-3 hardening: loopback Host allowlist + Origin mutation gate (ADR-0257)
+
+- **Propose-then-build, as the audit queued:** design put to the operator ("Approve both").
+- **One middleware extension** before any route, rejections carry the security headers:
+  non-loopback Host → 421 (DNS-rebinding read vector killed at the Host artifact; `testserver`
+  TestClient exception disclosed); POST with present non-loopback/null Origin → 403 (CSRF dead
+  in modern browsers, zero token plumbing, zero UI change; absent Origin passes; reads
+  ungated — SOP + CSP). Residuals disclosed in the ADR.
+- **Verified:** 6 new guard tests (incl. state-proven-untouched on refused mutations); full
+  suite green unchanged under the guard; full gate green on the frozen tree.
+- **State:** v1.0.65 → **1.0.66**; wheel + 9 installers in lockstep; **ADR-0257**; HANDOFF
+  moved/replaced + this entry in the same commit.
