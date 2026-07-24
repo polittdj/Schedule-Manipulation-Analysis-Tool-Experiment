@@ -73,7 +73,7 @@ def compute_dcma14(
     real_ids = {t.unique_id for t in tasks}
     incomplete = [t for t in tasks if is_incomplete(t)]
     pct_by = {t.unique_id: t.percent_complete for t in tasks}
-    n_tasks, n_inc = len(tasks), len(incomplete)
+    n_inc = len(incomplete)
 
     # Acumen-parity population (ADR-0280): Acumen's DCMA metrics filter on Baseline Duration > 0,
     # truncated to whole days (a sub-day baseline reads as 0). Parity scopes the work checks to
@@ -243,9 +243,21 @@ def compute_dcma14(
     # Hard_File_updated2 (21) / updated3 (0). Recomputed CPM remains the fallback when a file
     # carries no stored dates. Task-level count (a task with both dates past counts once; Fuse's
     # Metric History counts FIELDS, so its 42 = these 21 activities x 2 — documented divergence).
+    #
+    # Population (ADR-0283): the NASA library's "9. Invalid Forecast/Actual Dates" metrics carry the
+    # SAME universal PrimaryFilter as the other work checks — Baseline Duration > 0 (whole days),
+    # keeping milestones (IncludeMilestone=1). ADR-0280 scoped every other check to that population
+    # but left DCMA-09 on the full non-summary set; that over-flags no-baseline placeholders/
+    # milestones whose stored forecast dates precede the data date. Parity scopes to ap_tasks (the
+    # baselined population); each date condition self-excludes the wrong completion state (a
+    # complete activity carries actuals so it never trips a "no-actual" forecast term; a planned
+    # activity carries no actuals so it never trips an "actual-in-future" term), so the single
+    # combined loop reproduces Acumen's two separately-filtered metrics. Default (ap_tasks IS tasks)
+    # is unchanged and byte-identical. Verified UID-exact vs Fuse detail on Large Test File2 (173).
+    inv_pop = ap_tasks if acumen_parity else tasks
     invalid: list[int] = []
     status_dt = schedule.status_date
-    for t in tasks:
+    for t in inv_pop:
         bad = False
         if status_dt is not None:
             if t.actual_start is not None and t.actual_start > status_dt:
@@ -274,7 +286,7 @@ def compute_dcma14(
             "DCMA09",
             "Invalid Dates",
             0,
-            n_tasks,
+            len(inv_pop),
             0.0,
             "%",
             CheckStatus.NOT_APPLICABLE,
@@ -283,7 +295,14 @@ def compute_dcma14(
         )
     else:
         out["DCMA09"] = _r(
-            "DCMA09", "Invalid Dates", len(invalid), n_tasks, "%", 0.0, Direction.EQ, tuple(invalid)
+            "DCMA09",
+            "Invalid Dates",
+            len(invalid),
+            len(inv_pop),
+            "%",
+            0.0,
+            Direction.EQ,
+            tuple(invalid),
         )
 
     # DCMA-10 Resources — activities carrying no resource loading. Default (pure logic): incomplete,
