@@ -55,17 +55,57 @@
   // Pre-read each picked file. Returns { readable:[File], meta:[{rel,mtime}], skipped:[{path,reason}] }.
   // file.arrayBuffer() forces the byte read NOW (catchable): a cloud placeholder / locked file rejects
   // with a NotReadableError instead of failing invisibly at send time.
+  //
+  // BOUNDED CONCURRENCY (ADR-0289). This used to await one file at a time, so a folder drop paid the
+  // full per-file latency serially — and on OneDrive-backed files that latency is a network hydrate,
+  // not a disk read, so an N-file folder took N round-trips end to end. A small worker pool overlaps
+  // them. The bound matters in both directions: unbounded (Promise.all over the whole FileList) would
+  // open every read at once, which spikes memory by the size of the entire selection and gets
+  // throttled by the browser on large folders; PREREAD_CONCURRENCY keeps at most a handful of buffers
+  // alive at any moment.
+  //
+  // ORDER IS PRESERVED EXACTLY. Results land in index-addressed slots and are compacted in index
+  // order afterwards, so `readable`, `meta` and `skipped` come out byte-for-byte identical to the
+  // sequential version (readable[j] stays aligned with meta[j], which /upload relies on). Only the
+  // wall-clock changes.
+  var PREREAD_CONCURRENCY = 6;
+
   async function preread(fileList) {
-    var readable = [], meta = [], skipped = [];
-    for (var i = 0; i < fileList.length; i++) {
-      var f = fileList[i];
-      try {
-        var buf = await f.arrayBuffer();
-        readable.push(new File([buf], f.name, { type: f.type, lastModified: f.lastModified }));
-        meta.push({ rel: f.webkitRelativePath || '', mtime: f.lastModified || null });
-      } catch (err) {
-        skipped.push({ path: f.webkitRelativePath || f.name, reason: (err && err.name) || 'ReadError' });
+    var files = Array.prototype.slice.call(fileList);
+    var slots = new Array(files.length); // { ok:true, file, meta } | { ok:false, skip }
+    var next = 0;
+
+    async function worker() {
+      while (true) {
+        var i = next++;
+        if (i >= files.length) return;
+        var f = files[i];
+        try {
+          var buf = await f.arrayBuffer();
+          slots[i] = {
+            ok: true,
+            file: new File([buf], f.name, { type: f.type, lastModified: f.lastModified }),
+            meta: { rel: f.webkitRelativePath || '', mtime: f.lastModified || null }
+          };
+        } catch (err) {
+          slots[i] = {
+            ok: false,
+            skip: { path: f.webkitRelativePath || f.name, reason: (err && err.name) || 'ReadError' }
+          };
+        }
       }
+    }
+
+    var pool = [];
+    for (var w = 0; w < Math.min(PREREAD_CONCURRENCY, files.length); w++) pool.push(worker());
+    await Promise.all(pool); // a worker never rejects — every failure is captured into its slot
+
+    var readable = [], meta = [], skipped = [];
+    for (var i = 0; i < slots.length; i++) {
+      var s = slots[i];
+      if (!s) continue;
+      if (s.ok) { readable.push(s.file); meta.push(s.meta); }
+      else skipped.push(s.skip);
     }
     return { readable: readable, meta: meta, skipped: skipped };
   }

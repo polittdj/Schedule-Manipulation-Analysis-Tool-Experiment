@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24f — verify a planning doc's PREMISE before you execute its plan (ADR-0289/0290)
+- The operator committed six Claude-Design planning docs. Two of them turned out to rest on claims
+  the tree contradicts. `CRISPNESS-PATCH.md` states `sf-themes.css` "was never committed" and builds
+  its whole §2.1 recommendation on that — move the type ramp into `base.css` and rewrite
+  DESIGN-SYSTEM to name it the token file. **`sf-themes.css` exists**: 4,576 bytes, 36 custom
+  properties, linked in `_LAYOUT`. Executing that plan would have split the token layer and
+  documented the wrong file as canonical. **LESSON: a planning doc is a hypothesis. Check its factual
+  claims against the tree before you implement even one line — the same rule we already apply to
+  audit findings applies to specs.**
+- `RENAME-PLAN.md` asked which of five names to adopt; its own §0 recommended never. Checking the
+  premise made the decision free: the brand is already POLARIS everywhere and "Schedule Forensics"
+  appears **zero** times in any user-visible surface — so the "cheap alternative" the plan offered was
+  already done. **LESSON: before choosing between options, verify which of them is already true.**
+  The answer cost one grep and saved a ~350-file refactor.
+- **LESSON: for a CONCURRENCY change, a source-assertion test is worthless — execute it.** The
+  bounded-concurrency pre-read could have been "verified" by grepping for `Promise.all`. Instead the
+  harness runs the real function under node against an oracle re-implementation of the OLD sequential
+  algorithm, with seeded jittered latency so completion order never matches pick order by luck, and
+  injected failures so the error path is exercised too. That is what actually proves `readable[j]`
+  still pairs with `meta[j]`. Then I proved the test discriminates by setting the cap to 1 and
+  watching both assertions fail.
+- **LESSON: bound the parallelism, and say why in both directions.** Serial was slow; `Promise.all`
+  over a whole FileList would hold every picked file's bytes in memory at once. The cap is the
+  decision, so it is a single named constant with a test asserting it stays in a sane band — a future
+  "optimisation" that sets it to 1 (silently serial) now fails the gate.
+
 ### 2026-07-24e — measure the payload before optimising it, and let the SERVER own the expensive half (ADR-0288)
 - The backlog said "lazy status-UID payload trim (486 KB → ~40 KB @ 50 versions)". Before writing
   any code I measured: the `*_uids` arrays were **46.5%** of `/api/trend` and it grew **46,600 B per

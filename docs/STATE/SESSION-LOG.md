@@ -7701,3 +7701,34 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Version 1.0.95 → 1.0.96**, wheel + 9 installers regenerated. **Highest ADR ADR-0288.**
 - **NEXT:** backlog items 2–7 unstarted (home.js pre-read, manifest memo, tier byte-budgeting, MPP
   probe, importer profiling, `web/app.py` monolith split in its own behaviour-free PR).
+
+## 2026-07-24f — perf #2 bounded-concurrency pre-read; package rename declined (ADR-0289/0290; v1.0.97)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** `claude/smat-tool-continuation-uskbh7` from
+  `origin/main` at `bdb369d` after PR #434 merged.
+- **ADR-0289 (perf backlog item 2 of 7):** `home.js` pre-read every picked file **serially**
+  (`await file.arrayBuffer()` in a `for` loop). For OneDrive-backed files that per-file latency is a
+  network hydrate, so an N-file folder drop cost N round-trips end to end. Replaced with a 6-worker
+  pool draining an index cursor into **index-addressed slots**, compacted in index order — output is
+  byte-identical to sequential, which matters because `/upload` pairs `readable[j]` with `meta[j]`.
+  Bounded deliberately: `Promise.all` over the whole FileList would hold the entire selection in
+  memory and get throttled on big folders.
+  **Verified by EXECUTION under node, not source pins** — the harness re-implements the OLD
+  sequential algorithm as an oracle and asserts byte-identical output across n=0/1/5/25/100/13/7 with
+  seeded jittered latency + injected `NotReadableError`s, then asserts peak concurrency ≤ cap and > 1.
+  **Proven discriminating:** setting the cap to 1 fails both tests.
+- **ADR-0290 — package rename DECLINED** (operator chose "never"). Verified the plan's own premise
+  before accepting it: the brand is already **POLARIS** in the UI, and "Schedule Forensics" appears
+  **zero** times in `web/app.py`'s rendered body, the exhibit exports, or the briefing — so the
+  "display-name only" alternative was **already complete**. Zero code change; `RENAME-PLAN.md` shelved.
+- **Caught a factual error in a committed planning doc:** `CRISPNESS-PATCH.md` §2.1 asserts
+  `sf-themes.css` "was never committed". It exists — 4,576 B, 36 custom properties, linked in
+  `_LAYOUT`. Following the doc would have moved the type ramp into the wrong file AND rewritten
+  DESIGN-SYSTEM to name `base.css` as the token file. Recorded so the re-grounded patch starts right.
+- **Operator decisions:** CRISPNESS → 11px floor, skip vendored fonts; GUIDED-MODE + VOICE-DECISION →
+  parked until the perf backlog lands; AXIS-TITLES-PATCH → actionable, unstarted.
+- **Version 1.0.96 → 1.0.97**, wheel + 9 installers regenerated. **Highest ADR ADR-0290.**
+- **Deploy note:** the operator has **no local clone** — the `cd` + `git pull` instruction failed for
+  them. Correct path: download the self-contained `installer/install-tier2.ps1` from the GitHub web
+  UI and run it; no clone needed.
+- **NEXT:** perf items 3–7, then AXIS-TITLES, then CRISPNESS (re-grounded), then Guided/Voice.
