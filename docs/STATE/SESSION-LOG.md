@@ -7849,3 +7849,41 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   equality pin proving both paths build identical `Schedule`s.
 - **XER is unmeasured and stays unmeasured:** the only fixture is 2 KB (0.3 ms). Profiling it would
   be theatre; a large real `.xer` is needed first. Recorded as a gap, not as a result.
+
+## 2026-07-25c — perf #6 closed as a DECISION: the importer is left alone (ADR-0294; no version bump)
+
+- **Model/mode:** Opus (lead, ADR-0240). **Branch:** `claude/smat-tool-continuation-uskbh7`, restarted
+  fresh from `origin/main` at `339da47` after #439 (ADR-0293) squash-merged.
+- **I corrected my own handoff.** The 2026-07-25a handoff told the next session that the MSPDI
+  namespace pre-strip was "the ONE hypothesis that survived — 114 ms / 8.1%, implement it."
+  **It does not survive.** I implemented it fully — guarded three ways, byte-identical `Schedule`s —
+  and then reverted it.
+- **Why it lost, in the numbers the component estimate never priced:**
+  - `fromstring` on a namespaced doc **922.6 ms** vs a plain one **915.4 ms** → the parse-side
+    saving is **7 ms**. ElementTree's namespace handling is essentially free, so the entire benefit
+    had to come from skipping the Python-level walk.
+  - The pre-strip has to rebuild the 21 MB string without the 45-byte declaration (**52.9 ms**) and
+    scan it for `xmlns` first (**7.4 ms**) — **60.3 ms of new work**, which eats most of the 114 ms
+    walk it removes.
+  - End-to-end A/B on the real `parse_mspdi_text`, fast path on vs forced off, interleaved:
+    **wall-clock −28.7 ms (−1.8%)**, inside the noise band (samples 1,503–4,989 ms); **CPU time
+    median −55.5 ms (−3.6%) but min-to-min −8.0 ms**. A 7x disagreement between median and minimum
+    is allocator/GC state, not less work.
+- **THE LESSON (new, promoted): a component measurement prices what you REMOVE; it says nothing
+  about what you ADD in its place.** `_strip_namespaces` really does cost 114 ms — that number was
+  never wrong. What was wrong was inferring that deleting it *saves* 114 ms, when the replacement
+  costs 60 ms and the parser only gives back 7 ms. Close the loop with an end-to-end A/B of the real
+  function before writing a number into a handoff as an instruction.
+- **Item 6 closed as a decision (ADR-0294), with all five rejected hypotheses recorded** so nobody
+  re-tries them: bytes-not-str (*slower*: 945 vs 894 ms) · selective parsing (`Tasks` is 78.7% of
+  the DOM — nothing large to discard) · per-Task `{tag: text}` map (13.7 ms of 1,410 = 1%; `find` is
+  already C) · lxml (binary dep across 9 installers — ADR-0290 grounds) · the namespace pre-strip.
+- **Profile of record** (unprofiled medians, 21.45 MB / 2,126 tasks / 433,254 elements):
+  `ET.fromstring` **913 ms (64.7%)** · `_parse_task` 182 ms (12.9%) · unattributed 179 ms (12.7%) ·
+  `_strip_namespaces` 114 ms (8.1%) · `_build_links` 15 ms · `_parse_assignments` 5 ms · **TOTAL
+  1,410 ms**. cProfile inflates this ~1.4x — use it for *where*, never *how much*.
+- **No code shipped, no version bump, wheel untouched** — the deliverable is the decision and the
+  do-not-retry list. **Highest ADR ADR-0294.**
+- **NEXT:** perf **(7)** the `web/app.py` monolith split (its own behaviour-free PR) and the
+  dashboard `status_mix_uids` trim (ADR-0291's residual; the ADR-0288 lazy-segment pattern already
+  exists, so it is the tractable one). Then AXIS-TITLES, then CRISPNESS (11px floor, re-grounded).
