@@ -435,6 +435,32 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-25c — I wrote a number into a handoff as an instruction, and it was wrong (ADR-0294)
+- Yesterday's handoff told the next session: *"the ONE hypothesis that survived — skip
+  `_strip_namespaces`, **114 ms / 8.1%**, implement it."* Today I implemented it, measured it
+  end-to-end, and **reverted it**. The walk really does cost 114 ms — that number was never wrong.
+  What was wrong was the inference that deleting it *saves* 114 ms: the replacement (rebuild the
+  21 MB string, 52.9 ms + scan for `xmlns`, 7.4 ms) costs **60 ms**, and the parser only hands back
+  **7 ms** because ElementTree's namespace handling is nearly free. **LESSON: a component
+  measurement prices what you REMOVE. It is silent on what you ADD in its place. Never promote a
+  component delta to a predicted win without an end-to-end A/B of the real function.**
+- **The A/B itself needed two instruments to be trustworthy.** Wall-clock said −28.7 ms (−1.8%) with
+  samples ranging 1,503–4,989 ms — useless. CPU time said median −55.5 ms but **min-to-min −8.0 ms**.
+  **LESSON: when the median and the minimum of the same measurement disagree by 7x, you are
+  measuring allocator/GC state, not work. Report both, and believe the one that survives repetition.**
+- **Writing a forward-looking claim into durable state is a commitment, and it propagates.** The
+  handoff is auto-injected into every session, so a wrong "implement this, here's the number" would
+  have been read as settled fact by whoever picked it up — they'd have shipped a mutation of the
+  document text *before parsing*, on the most parity-critical path in the tool, for an unmeasurable
+  few percent. **LESSON: mark forward-looking estimates in the handoff as HYPOTHESES with the
+  measurement still owed, and reserve the declarative voice for what has been proven end to end.**
+- **Closing an item as "declined" is a real deliverable.** Item 6 ships no code. What it ships is a
+  profile of record and five hypotheses with their kill-shots attached (bytes-not-str is *slower*;
+  `Tasks` is 78.7% of the DOM so selective parsing has no headroom; a per-task dict saves 1%; lxml
+  is a binary dep across 9 installers; the pre-strip above). That list is worth more than a 2%
+  optimisation, because it stops the next five sessions from re-deriving it. Third precedent now,
+  after ADR-0290's declined rename and ADR-0292's two untouched cache tiers.
+
 ### 2026-07-25a — the measurement killed two of my three fixes, and that was the deliverable (ADR-0293)
 - Perf item 5 arrived as five words: *"an MPP capability probe."* I had three candidate fixes before
   measuring anything, and **two of them were wrong**:
