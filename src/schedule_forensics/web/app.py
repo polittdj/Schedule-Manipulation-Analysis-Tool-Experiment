@@ -2457,13 +2457,16 @@ _SECURITY_HEADERS: dict[str, str] = {
     "X-Frame-Options": "DENY",
 }
 
-#: Hosts this loopback-only tool answers to (ADR-0257, SEC-3): the loopback names/addresses on
-#: any port, plus starlette TestClient's fixed ``testserver`` host (dev/test-only — a browser
-#: cannot forge Host to it cross-site, and the deployed server binds 127.0.0.1). Any OTHER Host
-#: is the DNS-rebinding signature — a page on an attacker's domain rebinding to 127.0.0.1 makes
-#: the browser send the ATTACKER'S hostname as Host — and is refused with 421 before any route
-#: runs, so no schedule content (real CUI on a production machine) can be read cross-origin.
-_ALLOWED_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "testserver"})
+#: Hosts this loopback-only tool answers to (ADR-0257, SEC-3): anything the bind API itself
+#: accepts — ``net_guard.is_loopback_host`` (the SAME predicate ``launcher.run`` / ``serve``
+#: validate the bind host with, so a host accepted at startup can never produce a server that
+#: 421s itself; Codex review on PR #438) — plus starlette TestClient's fixed ``testserver``
+#: host (dev/test-only — a browser cannot forge Host to it cross-site, and the deployed server
+#: binds loopback). Any OTHER Host is the DNS-rebinding signature — a page on an attacker's
+#: domain rebinding to 127.0.0.1 makes the browser send the ATTACKER'S hostname as Host — and
+#: is refused with 421 before any route runs, so no schedule content (real CUI on a production
+#: machine) can be read cross-origin.
+_EXTRA_ALLOWED_HOSTS = frozenset({"testserver"})
 
 
 def _host_allowed(host_header: str) -> bool:
@@ -2476,7 +2479,7 @@ def _host_allowed(host_header: str) -> bool:
         host = host[1:].split("]", 1)[0]
     elif host.count(":") == 1:  # name:port / v4:port (a bare v6 has 2+ colons, no port form)
         host = host.split(":", 1)[0]
-    return host in _ALLOWED_HOSTS
+    return host in _EXTRA_ALLOWED_HOSTS or is_loopback_host(host)
 
 
 def _origin_allows_mutation(origin_header: str | None) -> bool:
@@ -2491,7 +2494,9 @@ def _origin_allows_mutation(origin_header: str | None) -> bool:
     if origin_header.strip().lower() == "null":
         return False
     host = urlparse(origin_header.strip()).hostname or ""
-    return host.lower() in {"127.0.0.1", "localhost", "::1"}
+    # the same predicate the bind API uses (net_guard) — any loopback the server can legally
+    # bind is an origin its own pages may post from (Codex review on PR #438)
+    return is_loopback_host(host)
 
 
 #: FastAPI defaults for the optional repeated-string query params (the S-curve per-chart filter's

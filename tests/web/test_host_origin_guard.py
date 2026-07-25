@@ -31,8 +31,19 @@ def test_foreign_host_is_refused_before_any_route() -> None:
 
 
 def test_loopback_hosts_pass_on_any_port() -> None:
+    # includes the non-default loopbacks the bind API itself accepts (net_guard.is_loopback_host
+    # — 127.0.0.0/8, ip6-localhost): a host accepted at startup must never 421 its own server
+    # (Codex review on PR #438).
     _st, c = _client()
-    for host in ("127.0.0.1", "127.0.0.1:8000", "localhost:9411", "[::1]:8000", "testserver"):
+    for host in (
+        "127.0.0.1",
+        "127.0.0.1:8000",
+        "localhost:9411",
+        "[::1]:8000",
+        "testserver",
+        "127.0.0.2:8000",
+        "ip6-localhost",
+    ):
         assert c.get("/", headers={"host": host}).status_code == 200
 
 
@@ -61,8 +72,9 @@ def test_loopback_and_absent_origins_mutate_normally() -> None:
     # absent Origin (curl / TestClient / legacy same-origin form post)
     assert c.post("/role", data={"role": "pm"}, follow_redirects=False).status_code == 303
     assert st.role == "pm"
-    # explicit loopback Origins (modern browser same-origin fetch/form)
-    for origin in ("http://127.0.0.1:8000", "http://localhost:9411"):
+    # explicit loopback Origins (modern browser same-origin fetch/form), incl. the
+    # non-default loopbacks the bind API accepts
+    for origin in ("http://127.0.0.1:8000", "http://localhost:9411", "http://127.0.0.2:8000"):
         r = c.post(
             "/role", data={"role": "analyst"}, headers={"origin": origin}, follow_redirects=False
         )

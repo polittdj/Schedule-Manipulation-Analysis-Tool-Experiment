@@ -23,8 +23,13 @@ The 2026-07-17 audit recorded two pre-existing surface gaps in the loopback web 
 **One middleware extension** (inside the existing liveness/security-headers middleware, so it
 runs before any route and its rejections still carry the CSP/nosniff headers):
 
-1. **Host allowlist** — a request whose ``Host`` is not a loopback name (``127.0.0.1``,
-   ``localhost``, ``::1``, any port) is refused with **421** before any route runs. The
+1. **Host allowlist** — a request whose ``Host`` is not a loopback host (any port) is
+   refused with **421** before any route runs. "Loopback" is decided by the SAME predicate the
+   bind API validates its host with (``net_guard.is_loopback_host`` — all of 127.0.0.0/8,
+   ``localhost``, ``ip6-localhost``, ``::1``), so a host accepted at startup can never produce
+   a server that 421s itself (refined per the Codex review on the PR — the first cut's narrower
+   literal set would have broken a legitimate ``serve(host="127.0.0.2")`` bind; the Origin gate
+   shares the predicate for the same reason). The
    rebinding attack's defining artifact is the attacker's hostname in Host; refusing it kills
    the read vector outright. Disclosed exception: ``testserver`` (starlette TestClient's fixed
    host) — dev/test-only, unforgeable cross-site from a browser, and the deployed server binds
