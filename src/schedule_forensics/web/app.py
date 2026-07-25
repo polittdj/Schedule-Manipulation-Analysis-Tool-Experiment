@@ -290,7 +290,7 @@ from schedule_forensics.importers import (
     supported_extensions,
     to_json_text,
 )
-from schedule_forensics.importers.mpp_mpxj import mpxj_batch_session
+from schedule_forensics.importers.mpp_mpxj import mpp_capability, mpxj_batch_session
 from schedule_forensics.logging_redaction import configure_logging
 from schedule_forensics.model.saved_view import Criterion as SavedCriterion
 from schedule_forensics.model.saved_view import Operand as SavedOperand
@@ -8155,9 +8155,16 @@ def _parse_upload(name: str, data: bytes) -> Schedule:
         return parse_mspdi_text(data.decode("utf-8-sig", errors="replace"))
     if suffix == ".xer":
         return parse_xer_text(decode_xer_bytes(data))
-    # native .mpp / .mpt — needs the MPXJ runner + a JRE. Write into a temp *directory* and
-    # close the file before parsing: on Windows an open NamedTemporaryFile handle blocks the
-    # MPXJ java subprocess from reading the path (the upload would always fail on Windows).
+    # native .mpp / .mpt — needs the MPXJ runner + a JRE. ADR-0293: ask the ingest-scoped
+    # capability probe FIRST. On a machine that cannot convert .mpp at all the answer is the same
+    # for every file, so spilling each one to disk before finding out just writes (and discards) a
+    # folder's worth of megabytes; the operator sees the identical message either way.
+    capability = mpp_capability()
+    if not capability.available:
+        raise ImporterError(capability.reason)
+    # Write into a temp *directory* and close the file before parsing: on Windows an open
+    # NamedTemporaryFile handle blocks the MPXJ java subprocess from reading the path (the
+    # upload would always fail on Windows).
     with tempfile.TemporaryDirectory(prefix="sf-upload-") as tmp:
         temp_path = Path(tmp) / f"upload{suffix or '.mpp'}"
         temp_path.write_bytes(data)

@@ -26,6 +26,7 @@ import tempfile
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 from schedule_forensics.importers._common import ImporterError
@@ -160,20 +161,83 @@ def _mpxj_home() -> Path:
     return here.parents[3] / "tools" / "mpxj"
 
 
-def _build_command(mpxj_home: Path, input_path: Path, output_path: Path) -> list[str]:
-    """Assemble the ``java -cp <classes>:<lib/*> MpxjToMspdi <in> <out>`` argv."""
+# --- the .mpp capability probe (ADR-0293) -------------------------------------------------------
+#
+# "Can THIS machine ingest a native .mpp?" is a property of the machine, not of the file — the
+# answer is the same for every file in an ingest. It used to be re-derived per file, and only
+# AFTER the caller had already written the file's bytes to a temp path, so a folder of .mpp on a
+# machine with no JRE wrote (and immediately discarded) every megabyte before failing on each one.
+# The probe answers it ONCE per ingest, ahead of the I/O, without changing what any caller reports.
+
+#: The JRE-missing message, verbatim (it is what the operator sees, and it names the exact fix).
+_NO_JAVA_REASON = (
+    "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, tools/jre, and the "
+    "standard install folders) — native .mpp needs a JRE/JDK 17+. No admin rights? "
+    "Extract a portable JDK/JRE zip (adoptium.net or aka.ms/download-jdk) into "
+    "%LOCALAPPDATA%\\Programs\\Microsoft (scanned automatically) or the tool's "
+    "tools/jre folder and restart — no PATH change needed. Otherwise install with "
+    "'winget install EclipseAdoptium.Temurin.21.JRE', or set JAVA_HOME."
+)
+
+
+@dataclass(frozen=True)
+class MppCapability:
+    """Whether native ``.mpp`` ingestion works here, and — when it doesn't — the reason to show.
+
+    ``reason`` is empty exactly when the capability is available, and otherwise carries the same
+    operator-facing text the conversion path has always raised, so a caller can fail early with an
+    identical message instead of discovering the problem after the work is done.
+    """
+
+    mpxj_home: Path
+    java: str | None
+    reason: str
+
+    @property
+    def available(self) -> bool:
+        return not self.reason
+
+
+def probe_mpp_capability() -> MppCapability:
+    """Locate the vendored MPXJ runner and a JRE, once.
+
+    The runner is checked **before** the JRE, preserving the order the conversion path has always
+    reported: a deployment missing ``tools/mpxj`` names that, not a JRE it never got far enough to
+    need.
+    """
+    home = _mpxj_home()
+    if not (home / "classes" / "MpxjToMspdi.class").is_file():
+        return MppCapability(
+            mpxj_home=home,
+            java=None,
+            reason=(
+                f"MPXJ runner not found under {home} — run tools/mpxj/setup.sh or set SF_MPXJ_HOME"
+            ),
+        )
     java = _find_java()
     if java is None:
-        raise ImporterError(
-            "Java runtime not found (checked SF_JAVA, JAVA_HOME, PATH, tools/jre, and the "
-            "standard install folders) — native .mpp needs a JRE/JDK 17+. No admin rights? "
-            "Extract a portable JDK/JRE zip (adoptium.net or aka.ms/download-jdk) into "
-            "%LOCALAPPDATA%\\Programs\\Microsoft (scanned automatically) or the tool's "
-            "tools/jre folder and restart — no PATH change needed. Otherwise install with "
-            "'winget install EclipseAdoptium.Temurin.21.JRE', or set JAVA_HOME."
-        )
-    classpath = os.pathsep.join([str(mpxj_home / "classes"), str(mpxj_home / "lib" / "*")])
-    return [java, "-cp", classpath, "MpxjToMspdi", str(input_path), str(output_path)]
+        return MppCapability(mpxj_home=home, java=None, reason=_NO_JAVA_REASON)
+    return MppCapability(mpxj_home=home, java=java, reason="")
+
+
+def mpp_capability() -> MppCapability:
+    """The capability for the ingest in progress: probed once per :func:`mpxj_batch_session`.
+
+    Scoping the memo to the batch session is what makes it safe to cache at all — a machine that
+    gains (or loses) a JRE between two uploads is re-probed on the next one, so there is no stale
+    process-wide answer to invalidate. Outside a session the probe simply runs fresh; it costs
+    microseconds (measured), and the win it buys is the *work it skips*, not its own speed.
+    """
+    batch = _active_batch.get()
+    return batch.capability() if batch is not None else probe_mpp_capability()
+
+
+def _build_command(cap: MppCapability, input_path: Path, output_path: Path) -> list[str]:
+    """Assemble the ``java -cp <classes>:<lib/*> MpxjToMspdi <in> <out>`` argv."""
+    if cap.java is None:  # pragma: no cover — callers gate on `cap.available` first
+        raise ImporterError(cap.reason or _NO_JAVA_REASON)
+    classpath = os.pathsep.join([str(cap.mpxj_home / "classes"), str(cap.mpxj_home / "lib" / "*")])
+    return [cap.java, "-cp", classpath, "MpxjToMspdi", str(input_path), str(output_path)]
 
 
 # --- persistent batch JVM (v4 Feature 2 scale) --------------------------------------------------
@@ -280,35 +344,43 @@ def _server_argv(java: str, mpxj_home: Path) -> list[str]:
     return [java, f"-Xmx{xmx}", "-cp", classpath, "MpxjToMspdi", "--server"]
 
 
-def _try_start_server(mpxj_home: Path) -> _MpxjServer | None:
+def _try_start_server(cap: MppCapability) -> _MpxjServer | None:
     """Start the batch JVM, or return ``None`` (→ per-file fallback). ``SF_MPXJ_NO_SERVER`` forces
     the fallback (an escape hatch, and how the one-shot tests stay one-shot)."""
     if os.environ.get("SF_MPXJ_NO_SERVER"):
         return None
-    java = _find_java()
-    if java is None:
+    if cap.java is None:
         return None
     try:
-        return _MpxjServer(_server_argv(java, mpxj_home))
+        return _MpxjServer(_server_argv(cap.java, cap.mpxj_home))
     except (OSError, ValueError, _ServerDown):
         return None
 
 
 class _LazyBatch:
     """Starts the JVM on the FIRST .mpp actually converted in a session (so a text-only ingest never
-    spawns Java), then reuses it. A start failure is remembered so we don't retry per file."""
+    spawns Java), then reuses it. A start failure is remembered so we don't retry per file.
 
-    def __init__(self, mpxj_home: Path) -> None:
-        self._home = mpxj_home
+    The session also owns the ingest's :class:`MppCapability` (ADR-0293): the JRE/runner lookup is
+    the same answer for every file, so it is probed on first demand and reused for the rest.
+    """
+
+    def __init__(self) -> None:
         self._server: _MpxjServer | None = None
         self._tried = False
+        self._capability: MppCapability | None = None
+
+    def capability(self) -> MppCapability:
+        if self._capability is None:
+            self._capability = probe_mpp_capability()
+        return self._capability
 
     def convert(self, input_path: Path, output_path: Path) -> None:
         if self._server is None:
             if self._tried:
                 raise _ServerDown("MPXJ server unavailable")
             self._tried = True
-            self._server = _try_start_server(self._home)
+            self._server = _try_start_server(self.capability())
             if self._server is None:
                 raise _ServerDown("MPXJ server could not start")
         self._server.convert(input_path, output_path)
@@ -332,7 +404,7 @@ def mpxj_batch_session() -> Iterator[None]:
     ingest, not thousands. Transparently falls back to per-file conversion if the persistent JVM
     can't start or dies mid-batch; the parsed result is identical either way. Re-entrant and
     thread-scoped via a ContextVar (the JVM is closed when the block exits)."""
-    batch = _LazyBatch(_mpxj_home())
+    batch = _LazyBatch()
     token = _active_batch.set(batch)
     try:
         yield
@@ -341,9 +413,9 @@ def mpxj_batch_session() -> Iterator[None]:
         batch.close()
 
 
-def _convert_one_shot(input_path: Path, output_path: Path, mpxj_home: Path) -> None:
+def _convert_one_shot(input_path: Path, output_path: Path, cap: MppCapability) -> None:
     """Convert one file with a fresh ``java`` subprocess (the default path + the batch fallback)."""
-    command = _build_command(mpxj_home, input_path, output_path)
+    command = _build_command(cap, input_path, output_path)
     try:
         result = subprocess.run(  # nosec B603  # fixed argv, shell=False, validated paths
             command,
@@ -365,7 +437,7 @@ def _convert_one_shot(input_path: Path, output_path: Path, mpxj_home: Path) -> N
         raise ImporterError(f"MPXJ produced no output for {input_path.name}")
 
 
-def _convert(input_path: Path, output_path: Path, mpxj_home: Path) -> None:
+def _convert(input_path: Path, output_path: Path, cap: MppCapability) -> None:
     """Convert ``input_path`` to MSPDI at ``output_path`` — via the active batch JVM when one is set
     (falling back to a one-shot subprocess on any server trouble), else a one-shot subprocess."""
     batch = _active_batch.get()
@@ -378,7 +450,7 @@ def _convert(input_path: Path, output_path: Path, mpxj_home: Path) -> None:
             if output_path.is_file():
                 return
             # server reported OK but produced nothing → treat as trouble, fall back
-    _convert_one_shot(input_path, output_path, mpxj_home)
+    _convert_one_shot(input_path, output_path, cap)
 
 
 def parse_mpp(path: str | os.PathLike[str]) -> Schedule:
@@ -392,17 +464,17 @@ def parse_mpp(path: str | os.PathLike[str]) -> Schedule:
     if not file_path.is_file():
         raise ImporterError(f"cannot read .mpp file: {file_path}")
 
-    mpxj_home = _mpxj_home()
-    if not (mpxj_home / "classes" / "MpxjToMspdi.class").is_file():
-        raise ImporterError(
-            f"MPXJ runner not found under {mpxj_home} — run tools/mpxj/setup.sh or set SF_MPXJ_HOME"
-        )
+    # ADR-0293: one probe answers "runner present? JRE present?" for the whole ingest, before any
+    # temp directory is created. The messages are the ones this path has always raised.
+    cap = mpp_capability()
+    if not cap.available:
+        raise ImporterError(cap.reason)
 
     with tempfile.TemporaryDirectory(prefix="sf-mpxj-") as tmp:
         output_path = Path(tmp) / "converted.xml"
         # via the active batch JVM if a session is open (a big folder ingest), else a one-shot
         # subprocess — same result either way (see `_convert` / `mpxj_batch_session`).
-        _convert(file_path, output_path, mpxj_home)
+        _convert(file_path, output_path, cap)
         mspdi_text = output_path.read_text(encoding="utf-8-sig", errors="replace")
         # The converter also writes the saved VIEWS (filters/groups — feature #10) to a
         # sidecar, since MSPDI XML cannot carry them. Absent = an older converter → no views.

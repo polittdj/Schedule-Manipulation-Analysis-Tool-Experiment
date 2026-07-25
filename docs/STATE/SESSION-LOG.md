@@ -7774,3 +7774,78 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Tests:** `test_cache_tier_weights.py` — per-entry ceilings on the light tiers, both heavy tiers
   are `_LRUCache`, and driving past the cap actually evicts. Method documented in the test.
 - **Version 1.0.98 → 1.0.99**, wheel + 9 installers regenerated. **Highest ADR ADR-0292.**
+
+## 2026-07-25a — perf #5: the MPP capability probe (ADR-0293; v1.0.100)
+
+- **Model/mode:** Opus (lead, ADR-0240 — READ EVERYTHING / VERIFY EVERYTHING; every claim measured
+  before any code changed). **Branch:** `claude/smat-tool-continuation-uskbh7`, fresh from
+  `origin/main` at `0f5bec2` after #437 merged.
+- **The item was five words** ("an MPP capability probe", ADR-0281's deferred list), so the session
+  began by finding out whether it names a real cost. Measured on the committed reference
+  `00_REFERENCE_INTAKE/Project2.mpp` (691,712 B), interleaved + repeated per ADR-0292.
+- **Two of the three obvious fixes died on the measurement — the useful part of this session:**
+  1. **Memoise `_find_java()` process-wide.** It costs **~0.3 ms**. Rejected: microseconds bought,
+     a stale "no Java here" answer that outlives the operator installing a JRE sold.
+  2. **Pre-warm the JVM in the background.** The whole window from `/upload` entry to the first
+     conversion starting is **97 ms** — nothing to overlap the 1.35 s MPXJ warm-up with. Rejected.
+  3. **The batch JVM looked like a 1.4 s regression at N=1** (2.99 s server vs 1.58 s one-shot).
+     Re-measured interleaved: **1.52 s vs 1.49 s** at N=1, **2.71 s vs 11.74 s** at N=8. The first
+     reading was cold page cache on the MPXJ jars — the ADR-0292 order-dependence trap, second
+     sighting in two sessions. Nothing to fix; the batch JVM is correct.
+- **What survived is I/O, not CPU:** on a machine that cannot convert `.mpp` at all, `/upload`
+  writes every file to a temp path BEFORE re-deriving, per file, that no subprocess will ever read
+  it. Measured **16 files → 3,200,064 B written then discarded**; ~10 MB real files × a 500-file
+  folder ≈ **5 GB** of pointless writes on the operator's laptop disk.
+- **Fix (ADR-0293):** `MppCapability(mpxj_home, java, reason)` + `probe_mpp_capability()` (runner
+  checked BEFORE the JRE, preserving the reported precedence) + `mpp_capability()`, which returns
+  the probe cached on the active `mpxj_batch_session()`. **Ingest-scoped, not process-wide** — that
+  is precisely what makes caching safe here: the next upload re-probes, so there is no long-lived
+  answer to invalidate. `_build_command` / `_try_start_server` / `_convert_one_shot` now take the
+  capability; `parse_mpp` and the upload `.mpp` branch gate on it before any temp directory exists.
+- **After:** discovery **(8, 9) → (1, 1)** per 8-file ingest; doomed temp writes **3.2 MB → 0**.
+  Both failure messages and their order unchanged; a real `.mpp` parses identically batch vs
+  one-shot (Law 2).
+- **Tests:** `tests/importers/test_mpp_capability_probe.py` (7). **Proved they discriminate** by
+  stashing the source diff and re-running: **6 of 7 fail** on the pre-change tree, with the two
+  quantitative pins reporting exactly `(8, 9)` and `3,200,064 B`.
+- **Deferred on purpose and named in the ADR:** surfacing the probe in the UI. Real value, and
+  `mpp_capability()` is the hook — but it owes the DESIGN-SYSTEM Definition-of-Done (ADR-0195), and
+  folding UI into a perf PR would smuggle it past that gate.
+- **Gate:** ruff/format/mypy-strict/bandit clean; full suite **2,659 passed** (only the expected
+  wheel-staleness guard failed, cleared by regenerating). Version 1.0.99 → **1.0.100**, wheel + 9
+  installers regenerated. **Highest ADR ADR-0293.**
+- **NEXT:** perf **(6)** importer profiling, **(7)** the `web/app.py` monolith split (its own
+  behaviour-free PR), plus ADR-0291's `status_mix_uids` dashboard trim. Then AXIS-TITLES, then
+  CRISPNESS (11px floor only, re-grounded), then Guided Mode / Voice (parked on the operator).
+
+## 2026-07-25b — perf #6 measurement: the MSPDI importer profiled (no code change yet)
+
+- **Model/mode:** Opus (lead, ADR-0240). Same branch/session as 2026-07-25a; recorded while #439's
+  CI ran so the next session implements from data instead of re-profiling.
+- **Method note:** **cProfile inflates this workload ~1.4x** — it reported a 2,721 ms parse where
+  the unprofiled median is **1,410 ms**, and it over-weights the many-small-calls helpers
+  (`_text` fires 236,698 times). Every number below is an unprofiled median of 3–5 runs on the
+  committed 21.45 MB / 2,126-task / 433,254-element golden MSPDI. Use the profile to find *where*,
+  never *how much*.
+- **Breakdown:** `ET.fromstring` **913 ms (64.7%)** · `_parse_task` x2126 **182 ms (12.9%)** ·
+  unattributed (baselines, the pydantic `Schedule`, `_in_file_links`) **179 ms (12.7%)** ·
+  `_strip_namespaces` **114 ms (8.1%)** · `_build_links` 15 ms · `_parse_assignments` 5 ms ·
+  everything else <2 ms.
+- **Four hypotheses tested and killed** (each recorded so nobody re-tries them):
+  1. **Parse bytes, not str** — the upload path decodes 21 MB and ElementTree re-encodes it.
+     Measured `fromstring(bytes)` = **945 ms** vs `fromstring(str)` = **894 ms**: *slower*.
+  2. **Selective parsing** (drop subtrees we don't consume) — `Tasks` is **78.7%** of the DOM,
+     `Assignments` 12.4%, `Calendars` 7.6%. There is no large discardable section, so the ceiling
+     does not justify rewriting a parity-critical importer.
+  3. **A per-Task `{tag: text}` map** instead of ~29 `Element.find()` linear scans — prototyped and
+     measured at **13.7 ms saved out of 1,410 (1%)**, because `find` is already C and the dict build
+     itself costs 21 ms. Not worth touching `_parse_task`.
+  4. **lxml** — 3–5x faster, but a binary dependency embedded in 9 installers, against the
+     air-gap/packaging posture. Declined on the same grounds as ADR-0290's rename.
+- **The one hypothesis that survived:** `_strip_namespaces` walks all 433,254 elements to drop a
+  prefix that comes from a **single** `xmlns` declaration (`text.count("xmlns")` is literally 1, and
+  costs 7 ms to verify). Removing that one declaration before parsing makes the pass unnecessary —
+  **114 ms / 8.1%** — guarded so a multi-namespace document still takes the existing path, with an
+  equality pin proving both paths build identical `Schedule`s.
+- **XER is unmeasured and stays unmeasured:** the only fixture is 2 KB (0.3 ms). Profiling it would
+  be theatre; a large real `.xer` is needed first. Recorded as a gap, not as a result.
