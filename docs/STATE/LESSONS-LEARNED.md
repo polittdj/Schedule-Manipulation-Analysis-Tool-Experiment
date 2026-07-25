@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-25a — the measurement killed two of my three fixes, and that was the deliverable (ADR-0293)
+- Perf item 5 arrived as five words: *"an MPP capability probe."* I had three candidate fixes before
+  measuring anything, and **two of them were wrong**:
+  **(a)** memoise the JRE lookup process-wide — it costs **0.3 ms**, so the entire purchase would
+  have been microseconds in exchange for a stale "no Java here" answer that outlives the operator
+  installing a JRE; **(b)** pre-warm the JVM in the background — the whole window between the upload
+  arriving and the first conversion starting is **97 ms**, so there is nothing to overlap the 1.35 s
+  MPXJ warm-up with. **LESSON: a backlog item's NAME is a hypothesis, not a finding. Measure what it
+  points at before you design the fix for it — half the time the named thing is already free and the
+  real cost is one layer over.**
+- **The ADR-0292 order-dependence trap bit again, in a completely different subsystem.** My first
+  reading said the persistent batch JVM was **1.4 s slower** than a one-shot for a single file
+  (2.99 s vs 1.58 s) — a regression on the most common case, and I nearly went looking for it.
+  Re-measured interleaved and repeated: **1.52 s vs 1.49 s** at N=1 and **2.71 s vs 11.74 s** at
+  N=8. The first number was cold page cache on the MPXJ jars, because the server path ran first.
+  **LESSON: the "measure A then B" habit is a bug generator. Interleave and repeat by default —
+  this is now the second session in a row where the naive ordering produced a confident wrong
+  answer.** (Promoted alongside the ADR-0292 entry below; treat it as standing practice, not a
+  one-off.)
+- **What actually survived was I/O, in the layer above.** The upload path spilled every `.mpp` to a
+  temp file *before* asking whether the machine could convert one at all — 16 files = **3.2 MB**
+  written then discarded, and the operator's real files are ~10 MB, so a 500-file folder is **~5 GB**
+  of pointless writes. Nobody would have found that by profiling CPU; it only showed up because I
+  counted `write_bytes` calls in the failure case. **LESSON: profile the FAILURE path too. The
+  happy path was fine; all the waste lived where the answer was "no".**
+- **Scoped the cache to the ingest, not the process — deliberately, and it is the whole safety
+  argument.** A process-wide memo would need invalidating the moment the operator installs a JRE
+  and retries, and a stale answer that outlives its own fix is worse than the cost it removed. A
+  batch session is one ingest; the next upload re-probes; there is no long-lived answer to get
+  wrong. **LESSON: pick the smallest scope at which the memo still pays. "Cache it forever" is not
+  the default — it is the version with an invalidation bug you haven't written yet.**
+- **Kept the UI out of the perf PR.** Surfacing "native .mpp is unavailable on this machine" is real
+  value and the probe is now the hook for it — but it owes the DESIGN-SYSTEM Definition-of-Done
+  (ADR-0195), and a perf diff is exactly where a UI change goes unreviewed. Named it in the ADR as
+  deferred instead of quietly shipping it.
+
 ### 2026-07-24h — I measured the same thing three ways and got three answers; only the third was right (ADR-0292)
 - Sizing the session cache tiers looked trivial and was not, because every tier stores `(sch, value)`
   where `sch` REFERENCES a Schedule already held in `st.schedules`.
