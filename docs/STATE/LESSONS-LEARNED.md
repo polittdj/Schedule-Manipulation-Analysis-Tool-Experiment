@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-24h — I measured the same thing three ways and got three answers; only the third was right (ADR-0292)
+- Sizing the session cache tiers looked trivial and was not, because every tier stores `(sch, value)`
+  where `sch` REFERENCES a Schedule already held in `st.schedules`.
+  **Attempt 1** (a fresh visited-set per tier) double-counted that Schedule and reported `dash_cores`
+  at 923 KiB/entry — I was one step from filing ADR-0281's "~1 KiB" estimate as a 900x defect.
+  **Attempt 2** (one shared visited-set, tiers charged in sequence) fixed that but produced
+  `cpms = 0.1 KiB/entry`, and I wrote a scratchpad conclusion that item 4 needed no action at all.
+  **Attempt 3** — forced on me when the test I had just written FAILED at 641 KiB — charged each tier
+  independently and found the truth. **LESSON: when a measurement's answer depends on the ORDER you
+  measure in, you are measuring the wrong quantity. Ask "what does this cost if the others were
+  empty?" and measure that.**
+- **The test caught me, not the other way round.** I had already written the conclusion down. The
+  only reason it did not ship is that I encoded the claim as an executable ceiling and ran it. A
+  scratchpad note asserting "cpms is free" would have been believed by the next session.
+  **LESSON: turn a measurement into an assertion immediately — a number in a doc is a rumour, a
+  number in a test is a fact.**
+- **The real bug was a cap that did not cap.** `analyses` was LRU-bounded; `cpms` was a plain dict
+  holding the SAME heavy objects. While both were resident that was invisible — `cpms` genuinely
+  shares. But after an analysis eviction the `cpms` entry kept the scoped Schedule + CPMResult alive
+  by itself, so the bound everyone trusted was not bounding anything at 200 versions.
+  **LESSON: a memory cap is only real if EVERY tier holding the object is capped. Check the whole
+  retention graph, not the tier you happen to be looking at.**
+- **Said no to two of the three tiers the backlog named.** `dash_cores` (2.8 KiB) and `dash_cards`
+  (20.1 KiB) are under 5 MiB even at 200 versions; capping them would add exactly the
+  "slightly-too-small LRU" ADR-0281 warned against. And I left `_ANALYSIS_CACHE_MAX` alone and
+  flagged it (~348 MiB worst case) instead of quietly retuning it — that trade is the operator's
+  hardware, not mine.
+
 ### 2026-07-24g — a cache fixed the expensive half and left the cheap half running N times (ADR-0291)
 - ADR-0281 cached the dashboard's ENGINE work and I treated the dashboard as "done". It wasn't: with
   that cache fully warm, `/api/dashboard` still burned **117 ms at 30 versions** re-deriving the
