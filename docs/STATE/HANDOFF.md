@@ -36,8 +36,32 @@
 >   unavailable on this machine — here's the fix"). It is real value and `mpp_capability()` is now
 >   the hook for it, but it is UI work owing the DESIGN-SYSTEM Definition-of-Done (ADR-0195);
 >   folding it into a perf PR would smuggle a UI change past that gate.
-> - **NEXT — perf items 6-7:** **(6)** importer profiling; **(7)** the **`web/app.py` monolith
->   split** (~19k lines — its OWN behaviour-free PR). Also still open: the dashboard
+> - **ITEM 6 IS ALREADY MEASURED — do not re-profile, implement from this table.** MSPDI,
+>   21.45 MB / 2,126 tasks / 433,254 elements, **unprofiled medians** (cProfile inflates ~1.4x —
+>   the profiler said 2,721 ms where the real total is 1,410 ms; use these numbers, not a profile):
+>   | phase | ms | % |
+>   |---|---|---|
+>   | `ET.fromstring` | **913** | **64.7%** |
+>   | `_parse_task` x2126 | 182 | 12.9% |
+>   | unattributed (baselines, pydantic `Schedule`, `_in_file_links`) | 179 | 12.7% |
+>   | `_strip_namespaces` | **114** | **8.1%** |
+>   | `_build_links` | 15 | 1.1% |
+>   | `_parse_assignments` | 5 | 0.4% |
+>   | **TOTAL** | **1,410** | |
+>   **Four hypotheses tested and KILLED (do not re-try):** (a) parse **bytes** to skip a
+>   decode/re-encode — `fromstring(bytes)` is **945 ms vs 894 ms** for `str`, i.e. *slower*;
+>   (b) **selective parsing** — `Tasks` is **78.7%** of the DOM (`Assignments` 12.4%, `Calendars`
+>   7.6%), so there is no large discardable section; (c) **per-Task `{tag: text}` dict** instead of
+>   `Element.find()` — saves **13.7 ms of 1,410 (1%)** because `find` is already C; (d) **lxml** —
+>   3-5x faster but a binary dep embedded in 9 installers, against the air-gap/packaging posture.
+>   **The ONE hypothesis that survived:** skip `_strip_namespaces` when the document declares
+>   exactly one namespace (`text.count("xmlns") == 1` costs **7 ms**; it is **1** in the fixture) by
+>   removing the single default declaration before parsing → **114 ms / 8.1%**, with an equality pin
+>   proving both paths build identical `Schedule`s. **XER is unmeasured** — the only fixture is
+>   2 KB / 0.3 ms; a large real `.xer` is needed before touching that importer.
+> - **NEXT — perf items 6-7:** **(6)** importer profiling — measured above, implement the namespace
+>   skip; **(7)** the **`web/app.py` monolith split** (~19k lines — its OWN behaviour-free PR). Also
+>   still open: the dashboard
 >   `status_mix_uids` payload trim (ADR-0291's named residual — the dashboard equivalent of
 >   ADR-0288). Then **AXIS-TITLES-PATCH**, then **CRISPNESS 11px floor** (⚠️ RE-GROUND: its §2.1
 >   claim that `sf-themes.css` "was never committed" is FALSE — it exists, 4,576 B, 36 custom
