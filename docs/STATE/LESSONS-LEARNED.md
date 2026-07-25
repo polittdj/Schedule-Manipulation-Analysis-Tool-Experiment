@@ -435,6 +435,29 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-25d — scoping a perf change surfaced a shipped correctness bug (ADR-0295)
+- The `status_mix_uids` trim looked like pure plumbing: swap an id array for a segment name, reuse
+  the ADR-0288 pattern. Before building it I probed its core assumption — "the drill resolves the
+  card's own file" — with two distinct Projects loaded. It doesn't: `_pick_scorecard_version`
+  searches the ACTIVE population only and silently falls back to `versions[-1]`, so a non-active
+  card's drill listed the active Project's activities under the clicked card's label.
+  **LESSON: before building on an assumption, write the probe that would falsify it — especially
+  when the assumption is "this obviously routes to the right place." The probe cost 20 lines and
+  found a shipped, operator-visible wrong-data bug.**
+- **The perf change would have upgraded the bug from visible to invisible.** With explicit UIDs,
+  the substituted file produces a half-empty, obviously-broken drill. With a lazy segment name,
+  the substituted file produces a fully self-consistent, plausible, WRONG activity list.
+  **LESSON: lazy resolution deepens trust in the resolver. Any change that moves data derivation
+  from "shipped with the view" to "resolved on demand" must first prove the resolver's identity
+  guarantees, because it removes the incoherence that used to expose mis-resolution.**
+- **Silent fallback is the defect pattern, again.** The resolver's `versions[-1]` default was
+  correct for its original caller (a page with its own version selector) and wrong for a drill
+  trigger carrying an exact key. **LESSON: "fall back to something reasonable" is only safe when
+  the caller can SEE what was chosen. For programmatic callers that name an exact target, a miss
+  must be an error — substituting is how wrong numbers acquire the right labels (Law 2).**
+- Fix ordering mattered and was itself a decision: correctness PR first (ADR-0295), trim second,
+  never folded — the standing "a correctness fix never rides with a perf change" rule, third use.
+
 ### 2026-07-25c — I wrote a number into a handoff as an instruction, and it was wrong (ADR-0294)
 - Yesterday's handoff told the next session: *"the ONE hypothesis that survived — skip
   `_strip_namespaces`, **114 ms / 8.1%**, implement it."* Today I implemented it, measured it
