@@ -18696,14 +18696,11 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
             continue
         makeup = compute_activity_makeup(scoped)
         total = makeup.complete + makeup.in_progress + makeup.planned
-        # the activity IDs behind each status segment, so the card's status bar can drill (same
-        # predicates as compute_activity_makeup — schedule_card.py)
-        ns_scoped = non_summary(scoped)
-        status_mix_uids = {
-            "complete": [t.unique_id for t in ns_scoped if t.percent_complete >= 100.0],
-            "in_progress": [t.unique_id for t in ns_scoped if 0.0 < t.percent_complete < 100.0],
-            "planned": [t.unique_id for t in ns_scoped if t.percent_complete <= 0.0],
-        }
+        # ADR-0296: the card no longer ships the per-segment UID arrays (measured 87.6% of the
+        # whole /api/dashboard payload — data only ever read on a click). The status bar marks
+        # each segment with its NAME and the drill resolves the set on demand via `_drill_uid_set`
+        # against THIS card's file (ADR-0295), using the same predicates `compute_activity_makeup`
+        # used — so the drill rows are byte-identical, just no longer pre-shipped.
         cpm_finish = offset_to_datetime(
             scoped.project_start, core.project_finish, scoped.calendar
         ).date()
@@ -18719,7 +18716,6 @@ def _dashboard_data(st: SessionState) -> dict[str, object]:
                     "in_progress": makeup.in_progress,
                     "planned": makeup.planned,
                 },
-                "status_mix_uids": status_mix_uids,
                 "percent_complete": round(100 * makeup.complete / total, 1) if total else 0.0,
                 "critical_count": core.critical_count,
                 "critical_pct": round(core.critical_pct, 1),

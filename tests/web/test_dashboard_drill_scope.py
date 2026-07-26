@@ -30,9 +30,22 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from schedule_forensics.engine.metrics._common import non_summary
+from schedule_forensics.importers.mspdi import parse_mspdi_text
 from schedule_forensics.web.app import SessionState, create_app
 
 GOLD = Path(__file__).resolve().parents[1] / "fixtures" / "golden" / "project2_5"
+
+
+def _complete_uids(name: str) -> list[int]:
+    """The fixture's own complete-activity UIDs — the same predicate the card counts with.
+
+    Derived from the schedule directly (not from the card payload) since ADR-0296 trimmed the
+    ``status_mix_uids`` arrays off the dashboard cards; the explicit-UID cross-file drill this
+    file guards must keep working regardless of what the payload ships.
+    """
+    sch = parse_mspdi_text((GOLD / name).read_text(encoding="utf-8-sig"), source_file=name)
+    return [t.unique_id for t in non_summary(sch) if t.percent_complete >= 100.0]
 
 
 def _two_projects() -> TestClient:
@@ -49,12 +62,11 @@ def _two_projects() -> TestClient:
 
 def test_every_dashboard_card_drills_against_its_own_file() -> None:
     client = _two_projects()
-    cards = client.get("/api/dashboard").json()["cards"]
+    cards = {c["key"]: c for c in client.get("/api/dashboard").json()["cards"]}
     assert len(cards) == 2, "the dashboard is the manifest — both Projects must appear"
 
-    for card in cards:
-        key = card["key"]
-        uids = (card.get("status_mix_uids") or {}).get("complete") or []
+    for key, source in (("Project2", "Project2.mspdi.xml"), ("Project5", "Project5.mspdi.xml")):
+        uids = _complete_uids(source)
         drill = client.get(
             f"/api/activities/drill?file={key}&uids=" + ",".join(str(u) for u in uids)
         ).json()
@@ -62,9 +74,9 @@ def test_every_dashboard_card_drills_against_its_own_file() -> None:
         assert drill["file"] == key, (
             f"card {key} drilled against {drill['file']!r} — another Project's schedule"
         )
-        assert len(drill["rows"]) == card["status_mix"]["complete"], (
-            f"card {key} says {card['status_mix']['complete']} complete but the drill listed "
-            f"{len(drill['rows'])}"
+        assert len(drill["rows"]) == cards[key]["status_mix"]["complete"], (
+            f"card {key} says {cards[key]['status_mix']['complete']} complete but the drill "
+            f"listed {len(drill['rows'])}"
         )
 
 

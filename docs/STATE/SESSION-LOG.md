@@ -7917,3 +7917,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   1.0.100 → **1.0.101**, wheel + 9 installers regenerated. **Highest ADR ADR-0295.**
 - **NEXT:** the `status_mix_uids` trim (pattern + guard now in place), then perf (7) the
   `web/app.py` monolith split, then AXIS-TITLES → CRISPNESS (re-grounded) → Guided/Voice (parked).
+
+## 2026-07-26a — dashboard status-UID payload trim shipped (ADR-0296; v1.0.102)
+
+- **Model/mode:** Fable 5 (lead, ADR-0240 — measured before touching anything). **Branch:**
+  `claude/smat-tool-continuation-uskbh7`, fresh from `origin/main` at `c9ab32c` after #441 merged.
+- **The residual ADR-0291 named is closed.** Measured first (ADR-0249): the three `status_mix_uids`
+  arrays were **87.6% of the entire /api/dashboard payload** — growth per loaded version
+  **9,698 B → 1,195 B** (8.1x; ~485 KB → ~60 KB at the operator's 50-version scale).
+- **Change:** the card keeps `status_mix` (the counts) and drops the arrays; `dashboard.js` marks
+  each bar segment with the ADR-0288 lazy descriptor `{ segment: name }`; `_drill_uid_set` resolves
+  it (unchanged — those segments have existed since the trend trim) against the card's OWN file per
+  ADR-0295. One less `non_summary` pass per cold card build; warm was already zero (ADR-0291).
+- **Sequencing paid off exactly as planned:** the ADR-0295 fix + forward guard landed FIRST, so the
+  lazy form could not hide the cross-project substitution it would otherwise have made invisible.
+- **Tests:** `tests/web/test_dashboard_status_trim.py` (4) — shape pin, size pin (< 4,000 B/version
+  vs 9,698 measured), row-identical lazy-vs-explicit drill (Law 2), dashboard.js source pin.
+  **3 of 4 fail on the pre-trim tree** (stash-verified); the byte-identity pin passes both ways by
+  design — it is the invariant, not the discriminator.
+- **Knock-on updates, deliberate and each explained in the diff:** the three ADR-0281 payload
+  golden SHAs re-pinned (only delta = the removed key, proven at row level by the new tests);
+  `test_categorical_bar_drill.py`'s dashboard contract flipped to the lazy shape (WBS groups KEEP
+  explicit ids — arbitrary WBS values are not re-derivable by name); `test_dashboard_drill_scope.py`
+  now derives expected UIDs from the golden fixtures directly, decoupling the ADR-0295 guard from
+  the payload shape.
+- **Gate:** full suite **2,668 passed** + the new 4; ruff/format/mypy-strict/bandit/node clean.
+  Version 1.0.101 → **1.0.102**, wheel + 9 installers regenerated. **Highest ADR ADR-0296.**
+- **NEXT:** perf **(7)** the `web/app.py` monolith split — the LAST perf-backlog item (its own
+  behaviour-free PR) — then AXIS-TITLES, then CRISPNESS (11px floor only, re-grounded), then
+  Guided Mode / Voice (parked on the operator's 5 + 4 decisions).

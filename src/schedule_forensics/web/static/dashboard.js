@@ -36,9 +36,8 @@
     });
     return row;
   }
-  function statusBar(mix, uids, fileKey) {
+  function statusBar(mix, fileKey) {
     mix = mix || {};
-    uids = uids || {};
     var total = (mix.complete || 0) + (mix.in_progress || 0) + (mix.planned || 0);
     var bar = el("div", "dash-bar");
     if (total) {
@@ -52,8 +51,10 @@
           var label = s[0].replace("_", " ");
           seg.title = label + ": " + v;
           // click the segment to list its activities (the shared handler preventDefaults, so the
-          // click does NOT also follow the card's <a> link)
-          if (window.SFDrill) SFDrill.mark(seg, uids[s[0]], fileKey, "Status: " + label);
+          // click does NOT also follow the card's <a> link). ADR-0296: the payload no longer
+          // ships the segment's UID array — the LAZY descriptor names the segment and the server
+          // rebuilds the identical set on demand, against THIS card's file (ADR-0295).
+          if (window.SFDrill) SFDrill.mark(seg, { segment: s[0] }, fileKey, "Status: " + label);
           bar.appendChild(seg);
         });
     }
@@ -93,7 +94,7 @@
 
         card.appendChild(el("p", "chart-desc",
           "Activity status mix — share of activities complete / in progress / planned (not started)."));
-        card.appendChild(statusBar(c.status_mix, c.status_mix_uids, c.key));
+        card.appendChild(statusBar(c.status_mix, c.key));
         card.appendChild(legend([
           { label: "Complete", color: "var(--ok)" },
           { label: "In progress", color: "var(--warn)" },
