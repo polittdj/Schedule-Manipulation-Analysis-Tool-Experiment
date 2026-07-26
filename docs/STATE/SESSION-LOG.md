@@ -7887,3 +7887,33 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** perf **(7)** the `web/app.py` monolith split (its own behaviour-free PR) and the
   dashboard `status_mix_uids` trim (ADR-0291's residual; the ADR-0288 lazy-segment pattern already
   exists, so it is the tractable one). Then AXIS-TITLES, then CRISPNESS (11px floor, re-grounded).
+
+## 2026-07-25d — dashboard drill cross-project substitution fixed (ADR-0295; v1.0.101)
+
+- **Model/mode:** Fable 5 (lead, ADR-0240 — the finding was reproduced end-to-end on the golden
+  pair BEFORE any code changed, and the blast radius was enumerated first). **Branch:**
+  `claude/smat-tool-continuation-uskbh7`, fresh from `origin/main` at `95a64a5` after #440 merged.
+- **How it was found:** scoping the `status_mix_uids` payload trim (ADR-0291's residual). The trim
+  needs the drill to resolve a dashboard card's OWN file; probing that assumption with two
+  distinct Projects loaded exposed the substitution.
+- **The bug:** `/api/activities/drill` (+ its export) resolved `file` via
+  `_pick_scorecard_version` — active population only, silent `versions[-1]` fallback. The
+  dashboard is the MANIFEST (ADR-0258), so a non-active Project's card drilled into the ACTIVE
+  Project's schedule: `card Project2, card.complete=20, drill rows=20, resolved file=Project5` —
+  20 Project5 rows that merely share UIDs, presented under Project2's label.
+- **Sequencing consequence:** the lazy-segment form is WORSE under substitution (27 fully
+  self-consistent wrong rows, no visual tell), so this fix had to land BEFORE the trim — and as
+  its own PR (a correctness fix never rides with a perf change).
+- **Fix (ADR-0295):** `_pick_drill_version` for the two drill endpoints only — `file=""`
+  unchanged; active population searched first exactly as before; then the manifest
+  (`all_versions()` + `analysis_for`, epoch-keyed, one CPM pass on first click, cached); a named
+  miss is 400/422 NAMING the version, never a substitution. Scorecards pages deliberately keep
+  the old resolver (visible navigation fallback ≠ silent data swap).
+- **Tests:** `tests/web/test_dashboard_drill_scope.py` (7) — 5 of 7 fail on the pre-fix tree
+  (stash-verified); 2 are anti-regression pins (unnamed fallback, active-population resolution).
+  Includes the forward guard the trim will rely on: server-resolved segment == the card's own
+  count for BOTH cards.
+- **Gate:** full suite 2,662 passed + 7 new; ruff/format/mypy-strict/bandit/node clean. Version
+  1.0.100 → **1.0.101**, wheel + 9 installers regenerated. **Highest ADR ADR-0295.**
+- **NEXT:** the `status_mix_uids` trim (pattern + guard now in place), then perf (7) the
+  `web/app.py` monolith split, then AXIS-TITLES → CRISPNESS (re-grounded) → Guided/Voice (parked).

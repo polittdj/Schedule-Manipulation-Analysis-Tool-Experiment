@@ -5921,6 +5921,39 @@ def create_app(
                     return (key, sch, a)
         return versions[-1]
 
+    def _pick_drill_version(file: str) -> tuple[str, Schedule, _Analysis] | None:
+        """The version behind a drill trigger — resolved across EVERY loaded file, never
+        substituted (ADR-0295).
+
+        A drill trigger carries the exact key (or label) of the version whose numbers it was
+        rendered from. The dashboard is the session MANIFEST (ADR-0258): its cards cover every
+        Project, so a card from a non-active Project must resolve against ITS file — the old
+        resolver searched only the active population and silently fell back to ``versions[-1]``,
+        listing a DIFFERENT schedule's activities under the clicked card's label. A named version
+        that cannot be resolved is therefore an error (``None``), never a substitution. Only an
+        UNNAMED request (``file=""``) keeps the historical "latest solvable of the active
+        population" meaning — that is how the UID-only triggers (e.g. sra.js) work.
+
+        The active population is searched FIRST, exactly as before, so every trigger that
+        resolved correctly yesterday resolves identically today (a label duplicated across
+        Projects still prefers the active one); the manifest-wide search only ADDS resolution
+        where the old path substituted.
+        """
+        if not file:
+            return _pick_scorecard_version("")
+        for key, sch, a in _scorecard_versions():
+            if key == file or (sch.source_file or sch.name) == file:
+                return (key, sch, a)
+        st = session()
+        for key, raw in st.all_versions():
+            if key == file or (raw.source_file or raw.name) == file:
+                try:
+                    a = st.analysis_for(key, raw)
+                except CPMError:
+                    return None  # named but unsolvable — an error, never a substitution
+                return (key, a.scoped, a)
+        return None
+
     @app.get("/scorecards", response_class=HTMLResponse)
     def scorecards_view(file: str = Query("")) -> HTMLResponse:
         st = session()
@@ -6028,9 +6061,14 @@ def create_app(
         title: str = Query(""),
         segment: str = Query(""),
     ) -> JSONResponse:
-        picked = _pick_scorecard_version(file)
+        picked = _pick_drill_version(file)
         if picked is None:
-            return JSONResponse({"error": "no analyzable schedule loaded"}, status_code=400)
+            msg = (
+                f"unknown or unanalyzable version: {file}"
+                if file
+                else "no analyzable schedule loaded"
+            )
+            return JSONResponse({"error": msg}, status_code=400)
         key, sch, a = picked
         wanted = _drill_uid_set(sch, a, uids, segment)
         fields, rows = _workbench_drill_rows(sch, a, wanted)
@@ -6057,9 +6095,10 @@ def create_app(
         """The activities behind any drillable element (UID set) + chosen extra columns, as Excel/Word."""
         if (bad := _bad_format(fmt)) is not None:
             return bad
-        picked = _pick_scorecard_version(file)
+        picked = _pick_drill_version(file)
         if picked is None:
-            return JSONResponse({"error": "load a schedule first"}, status_code=422)
+            msg = f"unknown or unanalyzable version: {file}" if file else "load a schedule first"
+            return JSONResponse({"error": msg}, status_code=422)
         _key, sch, a = picked
         fields, rows = _workbench_drill_rows(sch, a, _drill_uid_set(sch, a, uids, segment))
         extra = [c for c in cols.split(",") if c and c in fields]
