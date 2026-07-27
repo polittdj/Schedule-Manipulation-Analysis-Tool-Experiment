@@ -469,6 +469,17 @@ those fixed defects in earlier "closed" fixes:
   (generalizes → Part VI): this tool's whole thesis is that every figure has a citation you can
   follow. Apply it to our own decision record — a reference into `docs/adr/` should be resolvable at
   the moment it is written, and "I'll file it as an addendum" is not the same as what the code says.**
+- **An inherited blocker was never re-tested, and it was false.** "The four-theme visual pass needs a
+  browser this sandbox cannot automate" had been copied forward across handoffs since 2026-07-27b.
+  This container ships Chromium at `/opt/pw-browsers` with `PLAYWRIGHT_BROWSERS_PATH` already set;
+  `pip install playwright` plus an explicit
+  `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"` launches it and renders. The
+  *real* obstacle was one version skew — the pip driver wants build 1228, the image has 1194, so a
+  bare `launch()` dies with "Executable doesn't exist" and reads like "no browser here". **LESSON: an
+  inherited "cannot" is a claim with a shelf life. Environments change between sessions; re-test the
+  blocker before you re-copy it, and when a tool says "not installed", check whether it means "not
+  installed" or "installed at a version I did not expect".** Recorded precisely: the browser is
+  verified, the *pass* is not — do not let the correction over-claim in the other direction.
 - **A `pull_request` `paths:` filter matches the WHOLE base…head diff, not the pushed commit.**
   Observed, and it contradicted what I had just written in a PR body: a docs-only push to this branch
   re-ran `installer-smoke` (windows + linux) because the PR's cumulative diff still touches

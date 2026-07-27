@@ -46,7 +46,18 @@
 >   operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the 11 `NO_SVG_AXES`
 >   visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
 > - **STILL OWED:** AXIS-TITLES batch 0's four-theme visual pass (console / daylight / apollo /
->   jarvis at 90–125%) — needs a browser this sandbox cannot automate; outstanding since 2026-07-27b.
+>   jarvis at 90–125%), outstanding since 2026-07-27b. **⚠️ THE STATED BLOCKER IS FALSE IN THIS
+>   CONTAINER — a headless browser IS usable, verified this session, not assumed:**
+>   `pip install playwright` (PyPI is reachable), then launch with an explicit
+>   `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`. The pip-installed
+>   driver expects build 1228 and the image ships **1194**, so a bare `p.chromium.launch()` fails
+>   with "Executable doesn't exist"; `executable_path` is the whole fix, and
+>   `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` is already set. Rendered a page and read back
+>   `navigator.userAgent` to confirm. **What is verified is the BROWSER, not the whole pass** — the
+>   rest of the chain (serve the app, load a schedule, screenshot each theme, judge it) is untested,
+>   so treat the pass as unblocked-but-unproven. Prior sessions' CSP note still applies: use
+>   `page.evaluate` / `eval_on_selector`, never `wait_for_function` (`script-src 'self'` blocks
+>   string-eval — which is the air-gap working).
 >   Also possible-but-not-done: a standalone PowerShell harness for the 3b block (the twin of
 >   `_run_mpxj_block`) would make windows mutation cheap, but running the *whole* installer is what
 >   caught the `java -version` probe abort, so it is an addition, never a substitute.
