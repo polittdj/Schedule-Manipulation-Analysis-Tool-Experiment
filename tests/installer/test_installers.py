@@ -227,12 +227,16 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
-        assert 'cp -R "$MPXJ_SRC"' in tpl and "MpxjToMspdi.class" in tpl, family
+        # behaviour, not spelling: the discovered source is copied and the converter class is
+        # what identifies it. (The literal `cp -R "$MPXJ_SRC"` pin broke on a CORRECT fix when
+        # staging changed it to `"$MPXJ_SRC/."` — the third time a literal pin has done that in
+        # this file. Copy ordering/safety is asserted by the staging test below.)
+        assert '"$MPXJ_SRC' in tpl and "MpxjToMspdi.class" in tpl, family
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
         assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
         for family in ("sh", "command"):
-            assert 'cp -R "$MPXJ_SRC"' in _read(tier, family), (tier, family)
+            assert '"$MPXJ_SRC' in _read(tier, family), (tier, family)
 
 
 # ── ADR-0299: the one-file installer must deliver .mpp support with NO repo checkout ──────
@@ -529,3 +533,50 @@ def test_the_zip_remedy_the_installer_advises_is_actually_available() -> None:
     assert sum(1 for f in tracked if f.endswith(".jar")) >= 20, "ZIP would carry too few jars"
     for family in FAMILIES:
         assert "Download ZIP" in _read("tier1", family), family
+
+
+def test_a_symlinked_source_neither_destroys_nor_falsely_claims_success(tmp_path: Path) -> None:
+    """ADR-0300 (found by the parallel #449 investigation, reproduced here before fixing).
+
+    `SF_MPXJ_HOME` pointing at a SYMLINK to the installed copy compared unequal to the
+    destination under a LOGICAL ``pwd``, so the self-copy skip missed it; the copy step then
+    ``rm -rf``'d the real directory and copied from the link it had just broken — **destroying
+    the converter while printing** ``[ok] MPXJ converter deployed``. Two independent defences
+    now: ``pwd -P`` makes the detection correct, and staging makes a missed detection
+    survivable."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    cls = _installed(tmp_path)
+    cls.write_bytes(b"REAL-CONVERTER")
+    link = tmp_path / "link"
+    link.symlink_to(cls.parent.parent, target_is_directory=True)
+    out = _run_mpxj_block(
+        tmp_path,
+        script_dir=script_dir,
+        env={"SF_MPXJ_OFFLINE": "1", "SF_MPXJ_HOME": str(link)},
+    )
+    assert cls.exists() and cls.read_bytes() == b"REAL-CONVERTER", (
+        f"a symlinked source destroyed the converter:\n{out}"
+    )
+    assert "stays ON" in out, out
+    assert not (tmp_path / "root" / "tools" / ".mpxj-staging").exists(), "staging residue"
+
+
+def test_the_local_copy_is_staged_before_the_destination_is_touched(tmp_path: Path) -> None:
+    """The defence that does not depend on getting path comparison right. A detection must be
+    correct on every platform to protect anything; staging protects even when it is wrong —
+    verified by mutation on the shipped block (guard reverted to a logical ``pwd``, converter
+    still survived). Both families must read the source fully before deleting anything."""
+    for family in ("sh", "command"):
+        text = _read("tier1", family)
+        start = text.index("# --- 3b. vendored MPXJ")
+        block = text[start : text.index("\n# --- 4.", start)]
+        stage = block.index('cp -R "$MPXJ_SRC/." "$MPXJ_TMP/"')
+        wipe = block.index('rm -rf "$MPXJ_DEST"')
+        assert stage < wipe, f"{family}: destination wiped before the source was staged"
+        assert "pwd -P" in block, f"{family}: logical pwd cannot detect a symlinked self-copy"
+    ps1 = _read("tier1", "ps1")
+    assert "$mpxjStaged" in ps1 and ".mpxj-staging" in ps1
+    assert ps1.index("Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj") < ps1.index(
+        "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj"
+    ), "ps1: destination removed before the source was staged"
