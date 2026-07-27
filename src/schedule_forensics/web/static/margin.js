@@ -219,6 +219,12 @@
         lx += 20 + item[0].length * 6 + 24;
       });
 
+      // Axis captions via the ONE shared helper (ADR-0298/0301). Both series are on the LOCKED
+      // working-day axis above, and the X labels are each version's data date (`xLabels`).
+      SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+        xLabel: "Schedule version (data date)",
+        yLabel: "Margin remaining (working days)",
+      });
       if (window.SFA11y) SFA11y.label(svg, "Schedule margin burndown — total vs effective margin by version");
       box.appendChild(svg);
 

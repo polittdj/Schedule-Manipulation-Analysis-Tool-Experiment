@@ -8336,3 +8336,38 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   new `pyproject` (1.0.106). Re-running it against the settled tree passes. **LESSON: a
   long-running background test job is a snapshot of the tree at the moment each test executed,
   not at the moment you read the result. When one fails, re-run THAT test before believing it.**
+
+## 2026-07-27j — AXIS-TITLES batch 2: a ledger entry that was never a chart (ADR-0301 addendum)
+
+- **`PENDING` 11 -> 7.** Captioned `margin`, `trend_drill`, `wbs`; **removed `path.js`**, which was
+  never an SVG chart. Four mutations bite (unclassified module · exception not in NO_SVG_AXES ·
+  exception that renders no SVG · captioned chart parked as a DOM visual).
+- **`path.js` was mis-parked on a claim in ADR-0298** — "the regex missed `path.js` and
+  `resources.js`, which do draw SVG axes". `resources.js` does; `path.js` does not: DOM table plus
+  one 2-element SVG connector overlay. **LESSON: an ADR's incidental factual claims inherit no
+  authority from its decision. This one shipped inside a correction list, which made it read as
+  already-verified.**
+- **I tried to replace the weak proxy with a better regex and it was worse — caught only because I
+  ran it against every module before adopting it.** "An `<svg>` root AND a plot rect" mis-classified
+  five modules (geometry named `L/R/T/B` vs `padL`; a local `svg()` factory vs `svgEl("svg")`) and
+  still called `path.js` a chart. **LESSON: test a proposed classifier against the WHOLE population
+  before swapping it in. A discriminator that is right about the case in front of you and wrong
+  about five others is a regression dressed as a fix.**
+- **The fix was an explicit, self-policing exception, not a cleverer heuristic.** `INCIDENTAL_SVG`
+  names the module and the reason; `test_the_incidental_svg_exception_cannot_rot` closes the three
+  ways an escape hatch becomes a dumping ground. **LESSON: when a property cannot be computed,
+  make the exception cost two deliberate edits and a written reason.**
+- **The spec's caption table is now wrong for 6 of 8 modules checked** (`trend_drill` and `wbs`
+  join the batch-1 four). `margin.js` is the one it got right.
+- **A gap named rather than improvised:** `wbs.js` is a combo chart and the helper draws one Y, so
+  its right axis stays uncaptioned. `sra.js` and `margin_dashboard.js` will want a secondary-axis
+  affordance — a change to the shared convention, deferred to its own decision.
+- **v1.0.106 -> 1.0.107**, wheel + nine installers regenerated. **The MPXJ pin held at `749bf07c`**,
+  confirming the previous batch's fix is stable rather than incidental.
+- **⚠️ CAUGHT BY THE LOCKSTEP GUARD: `| head -2` killed the installer generator after 1 of 9.**
+  Piping `build_installers.py` to `head` to shorten the log sent SIGPIPE to the producer mid-sweep,
+  leaving **2 installers at 1.0.107 and 7 at 1.0.106** — and the pipeline's exit status was
+  `head`'s, so it looked fine. Regenerated properly (9/9) and the suite is green. **LESSON: never
+  pipe an artefact-WRITING command into `head`/`grep -m`; redirect to a file and summarise after.
+  A half-finished artefact set is worse than none because it looks complete.** This is the exact
+  ADR-0148 incident the lockstep test exists for.

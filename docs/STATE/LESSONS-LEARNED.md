@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27j — test a proposed classifier against the whole population, not the case in front of you (ADR-0301 addendum)
+- **My "better" regex was worse, and only running it over every module caught that.** The ledger's
+  proxy for "is this a chart" (grep the SVG namespace) had just mis-classified `path.js`, so I wrote
+  a sharper one — an `<svg>` root *and* a declared plot rect — and, before swapping it in, ran it
+  against all 30 modules. It mis-classified **five**: `performance.js` and `margin_dashboard.js`
+  name their geometry `L/R/T/B` rather than `padL`; `resources.js`, `sra_jcl.js` and `sra_ssi.js`
+  build through a local `svg()` factory rather than `svgEl("svg")`. It *also* still called `path.js`
+  a chart. **LESSON (generalizes → Part V): a discriminator that is right about the case in front of
+  you and wrong about five others is a regression dressed as a fix. Run a proposed classifier over
+  the entire population and diff it against the current classification before adopting it — the
+  disagreements are the whole point.**
+- **When a property cannot be computed, price the exception instead of faking the computation.**
+  The fix was not a cleverer heuristic but an explicit `INCIDENTAL_SVG` list: the module, the
+  reason, and a test closing the three ways an escape hatch becomes a dumping ground (an entry not
+  in the parent bucket; an entry that never needed excusing; an entry that has since gained
+  captions). Parking a real chart there now costs two deliberate edits and a written justification.
+  **LESSON: an escape hatch is safe in proportion to how expensive and visible it is to use.**
+- **An ADR's incidental factual claims inherit no authority from its decision.** `path.js` sat in
+  the wrong bucket because ADR-0298 asserted it "does draw SVG axes" — inside a *corrections* list,
+  which is exactly the context that reads as already-verified. It draws a DOM table plus one
+  two-element SVG connector overlay. **LESSON: a decision record is authoritative about the
+  decision. Its supporting observations are still claims, and they age.**
+- **`| head -2` SIGPIPE-killed the installer generator after ONE of nine files.** I piped
+  `build_installers.py` to `head` to keep the log short; `head` exited after two lines, the producer
+  took SIGPIPE, and the run died mid-sweep leaving **2 installers at the new version and 7 at the
+  old**. Exit status looked fine because the pipeline's status is `head`'s. The lockstep guard
+  caught it (5 failures), which is precisely the ADR-0148 incident it was written for — the
+  operator once reinstalled and got stale JS. **LESSON: never pipe a command that WRITES artefacts
+  into `head`/`grep -m`/any early-exiting reader. Redirect to a file and summarise afterwards.
+  Truncating a log is not free when the producer is still working — and a half-finished artefact
+  set is worse than none, because it looks complete.**
+- **The failure arrived as "5 failed" in a background run I could have waved away.** The previous
+  entry's lesson (a background suite is a snapshot) cuts both ways, and this was the other way: it
+  was a real, current defect. What separated the two cases was ten seconds of diagnosis — reading
+  which test failed and checking the artefacts by hand (`grep` the embedded version out of all nine
+  installers) — not a prior about background runs.
+- **Name the gap, do not improvise across it.** `wbs.js` is a combo chart whose right axis the
+  shared helper cannot caption. Captioning the primary pair is strictly better than two unlabelled
+  axes and says nothing false; inventing a second convention mid-batch would have undone ADR-0298.
+  Recorded as a decision owed, with the two modules that will also need it.
+
 ### 2026-07-27i — a caption is an assertion; a spec written without running the app cannot make it (ADR-0301)
 - **Four of the five captions I was told to apply were wrong about what the chart plots.** The
   applyable spec's §3 table said `curves.js` plots cumulative dollars (it plots activity counts),

@@ -122,6 +122,19 @@
         lx += 14 + item[0].length * 6 + 22;
       });
 
+      // Axis captions via the ONE shared helper (ADR-0298/0301). The Y caption names the LEFT
+      // axis, which is what the bars are drawn against — SPI(t), a ratio against a 1.0 on-plan
+      // reference, NOT the patch spec's "PERCENT COMPLETE (%)".
+      //
+      // KNOWN GAP, deliberately not invented here: this is a combo chart and its RIGHT axis
+      // (earned schedule, working days) stays uncaptioned, because `axisTitles` draws exactly one
+      // X and one Y. A secondary-axis affordance is a change to the shared convention and needs
+      // its own decision — see the ledger. Captioning the primary pair is strictly better than
+      // the two unlabelled axes this had before, and says nothing false about the right axis.
+      SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+        xLabel: "WBS branch",
+        yLabel: "SPI(t) (ratio, left axis)",
+      });
       box.appendChild(svg);
 
       // A3 (WCAG 1.1.1): a visually-hidden data table of the per-WBS values, so a screen reader

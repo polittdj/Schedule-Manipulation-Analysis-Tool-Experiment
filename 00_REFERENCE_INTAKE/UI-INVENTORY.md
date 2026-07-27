@@ -221,7 +221,7 @@ One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-
 | `performance.js` | 532 | `/healthz` | bar/line/area/hist | yes | yes | yes | no | yes | yes | 0 |
 | `resources.js` | 257 | `/healthz` | gantt/bar/column/line | yes | yes | yes | no | yes | no | 0 |
 | `margin_dashboard.js` | 414 | `/healthz` | bar/line/area/box | no | no | yes | no | yes | no | 0 |
-| `margin.js` | 272 | `/healthz` | bar/line/box | no | no | yes | no | yes | no | 0 |
+| `margin.js` | 272 | `/healthz` | bar/line/box | yes | yes | yes | no | yes | no | 0 |
 | `scorecards.js` | 109 | `/healthz` | — | no | no | no | yes | no | no | 0 |
 | `scatter.js` | 160 | `/healthz` | bar/line/scatter/box | yes | yes | yes | no | yes | no | 0 |
 | `globe.js` | 282 |  | line | no | no | no | yes | no | no | 0 |
@@ -231,13 +231,13 @@ One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-
 | `workbench.js` | 285 | `/healthz` | bar/column/box | no | no | no | no | yes | no | 0 |
 | `volatility.js` | 486 | `/healthz` | bar/line/area/hist | no | no | no | no | no | no | 0 |
 | `trend.js` | 1165 | `/healthz` | bar/line/box | no | no | yes | yes | yes | yes | 0 |
-| `trend_drill.js` | 235 | `/healthz` | bar/column/line/box | no | no | yes | yes | yes | no | 0 |
+| `trend_drill.js` | 235 | `/healthz` | bar/column/line/box | yes | yes | yes | yes | yes | no | 0 |
 | `sra.js` | 515 | `/healthz` | bar/line/area/hist | no | no | no | no | yes | no | 0 |
 | `sra_grid.js` | 506 | `/healthz` | gantt/bar/column/line | no | no | yes | yes | yes | yes | 0 |
 | `sra_jcl.js` | 283 | `/healthz` | bar/line/scatter/box | no | no | no | no | yes | no | 0 |
 | `sra_risk.js` | 81 | `/healthz` | — | no | no | no | no | no | no | 0 |
 | `sra_ssi.js` | 433 | `/healthz` | gantt/bar/column/line | no | no | yes | no | yes | no | 0 |
-| `wbs.js` | 145 | `/healthz` | bar/line/box | no | no | yes | no | no | no | 0 |
+| `wbs.js` | 145 | `/healthz` | bar/line/box | yes | yes | yes | no | no | no | 0 |
 | `whatif.js` | 177 | `/healthz` | gantt/bar/column/hist | no | no | no | no | yes | no | 0 |
 | `timeaxis.js` | 104 | `/healthz` | line | no | no | no | no | no | no | 0 |
 | `chartframe.js` | 336 |  | gantt/bar/area/hist | no | no | no | yes | yes | no | 0 |

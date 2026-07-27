@@ -97,6 +97,15 @@
       lab.addEventListener("click", function () { sel.value = m; selId = m; render(); });
       svg.appendChild(lab);
     });
+    // Axis captions via the ONE shared helper (ADR-0298/0301). Derived from the code, not the
+    // patch spec's table, which says "SCHEDULE VERSION (UPDATE)" by "METRIC VALUE" — wrong on
+    // both counts: one BAR PER METRIC is drawn (`slot = (W - padL - padR) / metrics.length`) and
+    // the locked Y axis counts offending activities. The version is chosen by the stepper, so it
+    // is the frame, not the X axis.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule-quality metric",
+      yLabel: "Offending activities (count)",
+    });
     bars.appendChild(svg);
 
     var cap = document.createElement("p");
