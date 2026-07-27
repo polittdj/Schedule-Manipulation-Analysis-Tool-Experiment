@@ -78,3 +78,44 @@ convention.
 - **Still owed, unchanged:** the four-theme visual pass. The secondary caption is the one placement
   most worth eyeballing, because it is the newest and sits where a legend or a value readout often
   lives — `cei.js` draws its CEI figure near that corner, though it passes no `y2Label`.
+
+## Addendum — 2026-07-27: the four-theme pass is now executable, and it is CLEAN
+
+The Definition-of-Done line "captions legible in all four themes at 90-125%" had been owed since
+ADR-0298 and carried forward through three ADRs. It stayed owed because eyeballing four themes x
+three scales x every chart page is ~100 screenshots nobody re-checks. **Everything it asks is
+measurable**, so `tests/web/test_axis_titles_visual.py` measures it in a real browser:
+non-zero box + `.ch-at` hook, the token's 11px, genuine `text-transform: uppercase`, the caption
+box inside its chart's `<svg>`, no caption-on-caption overlap, and fill-vs-background contrast.
+
+**Result: clean. 144 caption renders**, 4 themes x 3 scales x the 4 pages the golden fixtures
+chart. Contrast **5.00-5.95:1** everywhere — console 5.95, daylight 5.52, jarvis 5.23, apollo
+5.00 — comfortably past the 3.0 floor and past WCAG AA's 4.5 for body text. No clipping, no
+collisions, 11px and uppercase in every theme.
+
+**Two corrections came out of building it, both worth more than the result.**
+
+1. **"Themes only change colour" is FALSE.** The first version factored the matrix — colour once
+   per theme, geometry once per scale — and asserted the factoring rather than assuming it. The
+   assertion failed: `sf-themes.css` gives apollo `font-family:'IBM Plex Mono'`, so caption widths
+   genuinely differ per theme, and apollo's wider glyphs are exactly the case most likely to clip.
+   Geometry is now measured per theme. **Asserting the shortcut is what made the shortcut safe to
+   consider at all.**
+2. **A page with no chart is not a missing caption.** The first run flagged `/resources` and
+   `/margin` as "NO captions rendered". Both are correct: `/resources` needs a resource picked
+   from its dropdown, `/margin` needs tasks named "margin" (`/api/margin` returns
+   `total: 0.0, effective: 0.0` for these fixtures), and both render an explicit no-data note
+   instead of a chart. Reporting that as a defect would have sent the next session hunting a bug
+   that does not exist.
+
+**Gated, not wired into CI.** Playwright is deliberately not a project dependency — the runtime is
+stdlib-only by Law 1 and CI has no browser — so the test skips unless `playwright` is installed and
+the bundled chromium is present. Run it with `pip install playwright` and
+`pytest tests/web/test_axis_titles_visual.py -q -s`. The pip driver expects a newer chromium than
+the image ships, so the test passes an explicit `executable_path`; a bare `launch()` fails with
+"Executable doesn't exist", which reads like "no browser here" and is why this looked impossible
+for several sessions.
+
+**Mutation-verified against the real CSS** (file backups, tree confirmed byte-identical after):
+dropping `text-transform: uppercase` from `.ch-at`, and moving `--sf-fs-axis-title` off 11px, each
+turn it red.

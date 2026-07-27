@@ -8405,3 +8405,32 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **CLOSED: #458 merged** (`abfa6ec`), all five checks green. Local full suite 2733 passed, 1
   skipped. Running the installer regeneration in the background worked as intended — windows and
   linux both ran against a complete, consistent set of nine at v1.0.108.
+
+## 2026-07-27l — the four-theme visual pass, owed since 07-27b, is DONE and CLEAN (ADR-0302 addendum)
+
+- **Closed by making it EXECUTABLE, not by eyeballing it.** `tests/web/test_axis_titles_visual.py`
+  drives a real chromium: 4 themes x 3 scales x 4 pages = **144 caption renders**. Contrast
+  **5.00-5.95:1** (console 5.95 · daylight 5.52 · jarvis 5.23 · apollo 5.00), past the 3.0 floor
+  and past WCAG AA's 4.5. No clipping, no collisions, 11px + uppercase everywhere.
+  **LESSON: a Definition-of-Done line that stays owed across four ADRs is usually a line nobody
+  can repeat. Ask what it actually asserts — "legible" decomposed into contrast, size, case,
+  clipping and collision, all measurable — and the perpetual task becomes a 22-second test.**
+- **"Themes only change colour" is FALSE, and only the assertion caught it.** I factored the
+  matrix (colour per theme, geometry per scale) to cut 72 loads to 22, and asserted the factoring
+  instead of assuming it. It failed: apollo is `font-family:'IBM Plex Mono'`, so caption widths
+  genuinely differ per theme — and apollo's wider glyphs are exactly the clip risk. **LESSON:
+  when you take a shortcut for cost, encode the assumption it rests on as an assertion in the same
+  change. The shortcut is then self-invalidating instead of silently wrong.**
+- **A page with no chart is not a missing caption.** The first run flagged `/resources` and
+  `/margin` as "NO captions rendered"; both correctly render a no-data note (no resource picked;
+  no tasks named "margin"). **LESSON: a check for "X is absent" must distinguish "the thing that
+  carries X never rendered". Reporting that would have sent the next session hunting a bug that
+  does not exist.**
+- **Three self-inflicted harness traps, all costing real time, none of them product defects:**
+  `wait_until="networkidle"` never settles on this app (heartbeat 3s, sysmon 2s); piping a long
+  run through `| tail` buffers to EOF so the progress prints I added to make it observable were
+  invisible; and **`pkill -f <pattern>` kills the shell running it** when the pattern appears in
+  its own command line — that produced two "failures" that were nothing of the sort.
+  **LESSON: when diagnosing a hung or killed job, suspect the harness before the subject.**
+- Mutation-verified against the real CSS (drop `text-transform`, move `--sf-fs-axis-title` off
+  11px — each turns it red), tree confirmed byte-identical afterwards.
