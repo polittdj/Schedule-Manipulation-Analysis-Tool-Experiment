@@ -250,3 +250,10 @@ better comparison — it is never putting the only copy at risk in the first pla
 **A third literal test pin broke on a correct fix here** (`cp -R "$MPXJ_SRC"` → `"$MPXJ_SRC/."`),
 after the ADR-0193 pin and the `"stays OFF"` pin. Restated for the file: **pin literals only when
 the literal itself is the contract; otherwise assert the behaviour.**
+
+> **Promoted to [ADR-0300](0300-a-link-shaped-source-must-never-destroy-the-converter.md).** The
+> shipped installers, the templates and the test suite all cite this defect as `ADR-0300`, and every
+> claim above was verified **in bash**. ADR-0300 is its home and adds the windows-latest execution
+> of both this shape and the drive-root shape from the first addendum — including the measurement
+> that 5.1's `Resolve-Path` really does return a reparse point's own spelling. This addendum stands
+> as the original reproduction record.

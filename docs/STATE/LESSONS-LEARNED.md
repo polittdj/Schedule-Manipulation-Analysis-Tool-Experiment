@@ -435,6 +435,47 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27h — a guard that greps prose measures the documentation, not the behaviour (ADR-0300)
+- **The guard I wrote to prevent a CI leg from being silently deleted passed with the leg gutted.**
+  It asserted that the windows job mentioned `Junction`, `SymbolicLink` and `subst`. Mutating the
+  reparse-point loop to `@("Directory")` left every explanatory comment naming both shapes in place,
+  so the test stayed green. Removing every `subst` *call* left a `::warning::` string mentioning
+  subst, so it stayed green again. **LESSON: when asserting that something RUNS, read comments and
+  step names out of the text first, then pin an invocation (`& subst`, `$env:X =`,
+  `New-Item … -Target`) rather than a word.** A well-commented file is the easiest thing in the world
+  for a text guard to pass. This is the same family as "a string pin detects a rewording, never a
+  falsehood" (2026-07-27f) seen from the other side: there the literal was too tight, here it was too
+  loose, and both times the fix was to ask *what behaviour is the contract?*
+- **I found it only because I mutation-tested my own new test, not just the code it guards.** The
+  standing rule (ADR-0298) says mutate the guard; the temptation is to mutate the *product* and call
+  it done. Six mutations, each required to fail, took about two minutes with file backups.
+- **A leg that cannot fail is indistinguishable from a leg that passes.** Two legs shipped last
+  session did exactly that: one satisfied itself from the checkout while appearing to prove a
+  download, another swallowed a mid-run abort because a later command reset `$LASTEXITCODE`. So each
+  new leg here permanently carries a mutation step that breaks the guard in a scratch copy of the
+  installer and requires the leg's own assertion to fire — including an assertion that the mutation
+  *applied*, since a stale needle would silently re-run the unmutated installer and report success.
+  **LESSON (generalizes → Part V): the CI step that proves a defect cannot recur needs its own proof
+  that it would still notice. Encode it as a step, not as a note in an ADR.**
+- **Choosing OFFLINE mode was a correctness decision, not an optimisation.** With the converter fetch
+  reachable, a destroyed destination would simply be re-downloaded and the leg would go green over
+  real data loss. **LESSON: when a system self-heals, disable the healing in the test that checks for
+  the wound.** The same reasoning made the setup step feed the converter from the checkout rather
+  than the network — cheap *and* it isolates what is under test.
+- **A dangling citation is a claim with no reachable source.** Thirteen shipped sites — nine
+  installers, three templates, one test — cited `ADR-0300` for the symlink defect, which had been
+  filed as ADR-0299 *Addendum 2*. Nothing failed: `tests/test_state_docs.py` anchors on the highest
+  ADR **on disk**, so a citation pointing *past* the end of the record is invisible to it. **LESSON
+  (generalizes → Part VI): this tool's whole thesis is that every figure has a citation you can
+  follow. Apply it to our own decision record — a reference into `docs/adr/` should be resolvable at
+  the moment it is written, and "I'll file it as an addendum" is not the same as what the code says.**
+- **Read-before-write caught three traps in one leg**, none of which would have failed loudly: the
+  installer had to be copied out of the checkout or `$PSScriptRoot`'s parent would supply a valid
+  source and the link would never be reached; `SMOKE INSTALL OK`, not `DONE`, is the final line in
+  smoke mode; and the reparse point had to be deleted with `[IO.Directory]::Delete($link, $false)`
+  because `Remove-Item -Recurse` can empty a junction's target — my own test cleanup would have
+  reproduced the bug it was testing for.
+
 ### 2026-07-27g — I found the bugs I was replacing and missed the ones I was introducing (ADR-0299)
 - Across three PRs, six installer defects were fixed. **Three were mine, and an outside check caught
   every one** — a parallel session's report, that session's PR (twice), and a CI leg I had just
