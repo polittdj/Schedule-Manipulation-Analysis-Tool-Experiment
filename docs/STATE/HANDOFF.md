@@ -1,8 +1,9 @@
-# Handoff — 2026-07-27h (the windows CI leg now EXECUTES the symlink + drive-root shapes; ADR-0300; v1.0.105)
+# Handoff — 2026-07-27h (the windows CI leg now EXECUTES the symlink + drive-root shapes; ADR-0300 MERGED; v1.0.105)
 
-> ## STATUS (current) — ADR-0300 shipped. `main` at `4f3916b`. Version **1.0.105**. Highest ADR **ADR-0300**.
-> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`. **PR #452 open
-> (draft)** — the windows CI hardening below. #451 merged.
+> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0300 merged. `main` at `0c87c61`. Version **1.0.105**. Highest ADR **ADR-0300**.
+> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
+> **#451 and #452 both merged. No open PRs.** Every check green on #452's head, including the
+> parity gate (Acumen Fuse v8.11.0 + SSI golden), engine coverage ≥85% and overall ≥70%.
 >
 > - **THE LAST UNPROVEN CLAIM FROM THE DOWNLOADER WORK IS CLOSED.** The previous handoff's option
 >   (a). `installer-smoke.yml`'s windows job ran the download and from-checkout branches only, so the
@@ -15,7 +16,16 @@
 >   lines are now a full branch census of section 3b: `deployed` (checkout) · `downloaded and
 >   SHA-256 verified` (one-file) · `deployed` (python-only) · `deployed` (link setup) ·
 >   `already installed` ×2 (Junction, SymbolicLink) · `deployed` (mutation) · `no MPXJ converter
->   found` (drive root, offline). 3 m 40 s, eleven steps, seven installs.
+>   found` (drive root, offline). **Ten steps, nine installer runs** — and note that number: I first
+>   wrote "eleven steps and seven installs" off the YAML, and grepping `-File` there says 14 because
+>   `Get-ChildItem -Recurse -File` matches. **The job log is the only artefact that knows what the
+>   job did.**
+> - **FOUR consecutive green windows runs**, each walking both shapes and both mutations. The four
+>   new steps cost **~63 s** (link leg 31 s · its mutation 9 s · drive root + mutation 23 s) because
+>   each re-uses the venv the step before it created. Whole job **3 m 06 s – 5 m 32 s**: the spread
+>   is runner variance, not the new steps — one run spent **2 minutes inside `git config --system
+>   core.longpaths`**. That is why `timeout-minutes: 30` is hang headroom and not a budget, and it is
+>   worth knowing before you diagnose a "slow" windows job as your own fault.
 > - **MEASURED, NOT ASSUMED — the fact to carry forward:** Windows PowerShell 5.1's `Resolve-Path`
 >   returns a reparse point's **own spelling** for a junction *and* a symlink, while `.Target` gives
 >   the real destination with **no** `\??\` prefix. So `Resolve-SfPath`'s one-hop follow is both

@@ -492,6 +492,11 @@ those fixed defects in earlier "closed" fixes:
   installer runs**, and grepping `-File` over the workflow says 14 because `Get-ChildItem -Recurse
   -File` matches. Same family as last session's 50-vs-54. **LESSON: derive a number from the artefact
   that actually produced it — for "what did the job do", that is the job log.**
+  **And the sharper half: I corrected it in the ADR and left it standing in the HANDOFF**, where it
+  survived four commits inside the doc the SessionStart hook injects into every session. Last session
+  learned "a number repeated across three artifacts is one unverified claim copied three times"; this
+  session learned its corollary. **LESSON: correcting a figure is a `grep`, not an edit — fix every
+  copy in the same commit, or the one you missed becomes the one that gets quoted.**
 - **Read-before-write caught three traps in one leg**, none of which would have failed loudly: the
   installer had to be copied out of the checkout or `$PSScriptRoot`'s parent would supply a valid
   source and the link would never be reached; `SMOKE INSTALL OK`, not `DONE`, is the final line in
