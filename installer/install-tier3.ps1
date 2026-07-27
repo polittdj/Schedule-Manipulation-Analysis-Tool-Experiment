@@ -202,10 +202,19 @@ function Resolve-SfPath([string]$p) {
 $destMpxj = Join-Path $InstallRoot "tools\mpxj"
 $destReal = Resolve-SfPath $destMpxj
 $srcMpxj = $null
-foreach ($cand in @($env:SF_MPXJ_HOME,
-                    (Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"),
-                    (Join-Path $PSScriptRoot "tools\mpxj"),
-                    (Join-Path $PWD.Path "tools\mpxj"))) {
+# Build the candidate list DEFENSIVELY, one base at a time. `Split-Path -Parent` of a drive root
+# ("C:\", a mapped "Z:\") returns "", and `Join-Path` rejects an empty -Path with a parameter-
+# binding error, which is TERMINATING regardless of $ErrorActionPreference. In an array literal
+# every Join-Path is evaluated eagerly, so an installer saved to a drive root aborted the whole
+# run right here — after the venv, before the shortcut, uninstaller and README. Same rule as
+# Invoke-SfNative above: a step that merely looks for something must never be able to kill the
+# install. (The bash families concatenate strings and cannot throw, so this is PowerShell-only.)
+$mpxjCandidates = @()
+if ($env:SF_MPXJ_HOME) { $mpxjCandidates += $env:SF_MPXJ_HOME }
+foreach ($base in @((Split-Path -Parent $PSScriptRoot), $PSScriptRoot, $PWD.Path)) {
+    if ($base) { $mpxjCandidates += (Join-Path $base "tools\mpxj") }
+}
+foreach ($cand in $mpxjCandidates) {
     if (-not $cand) { continue }
     if (-not (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) { continue }
     # never copy the installed copy over itself — that would delete the only converter

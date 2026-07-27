@@ -190,3 +190,25 @@ uses it.
   the tree was verified byte-identical afterwards.
 - Touching `tools/mpxj` without regenerating the installers now fails the gate — the same
   regenerate-or-fail contract the wheel already has.
+
+## Addendum — 2026-07-27, post-merge
+
+**A drive-root install could abort the run.** The candidate list was an array literal, so every
+`Join-Path` evaluated eagerly. `Split-Path -Parent` of a drive root (`C:\`, a mapped `Z:\`)
+returns `""`, and `Join-Path` rejects an empty `-Path` with a parameter-binding error — terminating
+regardless of `$ErrorActionPreference` — so the install died after the venv and before the
+shortcut, uninstaller and README. Same rule as §2b: **a step that only looks for something must
+never be able to kill the install.** The list is now assembled one base at a time behind an
+`if ($base)`. PowerShell-only; the bash families concatenate strings and cannot throw.
+
+Found by PR #447, an independent fix for the same #445 diagnosis developed in a parallel session.
+That PR is **superseded** — its `template.ps1` carries none of this ADR's work (no pinned download,
+no `Invoke-SfNative` stderr guard, no staged fetch), so merging it would have removed the converter
+download entirely and reinstated the Java-probe abort. Its two genuinely additive pieces are ported
+here instead: this empty-base guard, and an assertion that the ZIP remedy the not-found branch
+advises is still real (`git ls-files tools/mpxj` still carries the converter and ≥20 jars) — advice
+that quietly stops working is the same defect class as a false capability claim.
+
+Also replaced a stale ADR-0193 pin that asserted the removed eager expression *verbatim*. #447 made
+the general point well: **a string pin detects a rewording, never a falsehood.** The parent-of-
+script-dir layout is now asserted as a search *base*, and the eager form is asserted absent.
