@@ -435,6 +435,38 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27b — a spec written without a runtime had five false premises; the mutants caught my guard, not my code (ADR-0298)
+- The AXIS-TITLES spec is genuinely good work — its census of 58 modules is exact and its caption
+  wording is sound. But it was authored with **no Python, no app, no network** (it says so), and
+  **five** load-bearing implementation claims failed on contact: a helper that does not exist
+  (`SFChartFrame.text`), CSS tokens that do not exist (`--sf-fs-label`, `--sf-font-mono` — the
+  theme file is colour-only), a module described as missing an X caption that already had one
+  (`scatter.js`), a "not exempt" Gantt that renders **HTML** and therefore cannot take an SVG
+  caption, and stale golden SHAs plus a wrong doc path. **LESSON: an applyable spec's OBSERVATIONS
+  (what the code contains) survive without a runtime; its PRESCRIPTIONS (what to call, what token
+  to read) do not. Verify every symbol and every token the spec tells you to use actually exists
+  before writing a line — that check took minutes and would have produced five broken commits.**
+- **The mutation test caught MY GUARD, not my code.** My first "size must come from the token"
+  assertion sliced the source from `function axisTitles` forward — and the planted numeric
+  `font-size` sat in the node-building helper *just above* that line, so the mutant passed. The
+  test was green and worthless in exactly the dimension it existed for. **LESSON: mutation-test the
+  ASSERTION's reach, not just the code's behaviour. A guard that greps a window is only as good as
+  the window; prefer slicing to a semantic boundary (the whole block) over an offset.**
+- **`git checkout --` is not an undo when the tree is dirty.** Reverting a mutant that way wiped a
+  legitimate uncommitted edit in the same file and I only noticed because the ledger test failed
+  with a name I did not expect. **LESSON: mutation-test with file backups (`cp` to a scratch dir),
+  never with git, whenever the working tree carries changes you have not committed.**
+- **A heuristic that under-detects is worse than no heuristic, because it looks like coverage.**
+  The spec's tick-regex found 14 of 28 remaining chart modules and said nothing at all about the
+  dozen HTML-rendered visuals. Replacing it with an exhaustive three-way ledger (captioned /
+  pending / not-applicable) made the remaining work *countable* and made an unclassified new module
+  a hard failure. **LESSON: prefer an explicit ledger over a clever matcher for "what still needs
+  doing" — the ledger cannot silently shrink, and it forces triage of anything new.**
+- **Say what you did not verify.** The design system's DoD wants a four-theme rendered pass; this
+  sandbox has no browser automation, so the ADR, handoff and PR all say the visual pass is *owed*
+  rather than implying the static + node layers covered it. **LESSON: an unchecked DoD box is a
+  disclosure, not a footnote — name it where the reviewer will see it.**
+
 ### 2026-07-27a — splitting a monolith is a test-namespace problem, not a code-move problem (ADR-0297)
 - The code move itself was the easy 90%: cut byte-ranges by script, re-export with `X as X`
   (the one idiom that satisfies BOTH mypy-strict's explicit-reexport rule and ruff F401), let

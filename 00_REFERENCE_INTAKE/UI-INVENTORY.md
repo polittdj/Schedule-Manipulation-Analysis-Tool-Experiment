@@ -173,6 +173,20 @@ Classifier (re-derivable): the span from each `@app.*` decorator to the next one
 
 ## 2. Every chart and visualization — the regression contract
 
+**CORRECTIONS (ADR-0298, verified against the source — not grep):**
+* `margin.js` (a)/(b) were scored **yes** in an earlier draft of the axis-titles spec: that was a
+  false positive on the substring `xLabel`. Its `xLabels()` (L32) is a **tick-label generator**, not
+  an axis caption. The row below is correct at **no/no** — it is a real gap, and `margin.js` is in
+  `tests/web/test_axis_titles.py`'s `PENDING` ledger.
+* `scatter.js` was described as having a rotated **Y caption only**. It had **both** — a centred X
+  caption (L100) and a rotated Y caption (L103). Both are now the shared convention, so (a) and (b)
+  are **yes**.
+* `performance.js` (a)/(b) flip to **yes**: its captions were always there, drawn locally; they now
+  come from `SFChartFrame.axisTitles`.
+* Columns (a)/(b) are enforced from ADR-0298 onward by `tests/web/test_axis_titles.py`, which keeps
+  an explicit three-way ledger (exempt / DOM-visual / pending) rather than a grep heuristic — the
+  heuristic missed `path.js` and `resources.js` and said nothing about the HTML-rendered visuals.
+
 One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-derived):** each cell is a source-token test on the real file — (a) `axisTitle|xTitle|axisLabel`, (b) `yTitle|rotate(-90)`, (c) `legend`, (d) `takeaway|headline|howToRead|hint`, (e) `ENLARGE|EXCEL|cf-bar|chartFrame|▦|⤓|⛶`. A **yes** proves the token exists somewhere in the module, **not** that every chart in it renders the element; a **no** on (a)/(b) is a genuine gap to close.
 
 | Module | lines | Page(s) | Chart kinds | (a) X title | (b) Y title | (c) legend | (d) takeaway | (e) toolbar | DD line | `<text>` |
@@ -187,12 +201,12 @@ One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-
 | `driving_path.js` | 260 | `/healthz` | gantt/bar/column/line | no | no | no | no | no | yes | 0 |
 | `driving_tiers.js` | 200 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
 | `cei.js` | 280 | `/healthz` | bar/line/area/box | no | no | yes | no | no | yes | 0 |
-| `performance.js` | 532 | `/healthz` | bar/line/area/hist | no | no | yes | no | yes | yes | 0 |
+| `performance.js` | 532 | `/healthz` | bar/line/area/hist | yes | yes | yes | no | yes | yes | 0 |
 | `resources.js` | 257 | `/healthz` | gantt/bar/column/line | no | no | yes | no | yes | no | 0 |
 | `margin_dashboard.js` | 414 | `/healthz` | bar/line/area/box | no | no | yes | no | yes | no | 0 |
 | `margin.js` | 272 | `/healthz` | bar/line/box | no | no | yes | no | yes | no | 0 |
 | `scorecards.js` | 109 | `/healthz` | — | no | no | no | yes | no | no | 0 |
-| `scatter.js` | 160 | `/healthz` | bar/line/scatter/box | no | yes | yes | no | yes | no | 0 |
+| `scatter.js` | 160 | `/healthz` | bar/line/scatter/box | yes | yes | yes | no | yes | no | 0 |
 | `globe.js` | 282 |  | line | no | no | no | yes | no | no | 0 |
 | `ribbon_drill.js` | 203 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
 | `drilldown.js` | 235 |  | bar/column/line | no | no | no | no | yes | no | 0 |

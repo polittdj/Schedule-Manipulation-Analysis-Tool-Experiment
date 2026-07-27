@@ -7985,3 +7985,48 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   payload trim).
 - **NEXT:** AXIS-TITLES-PATCH (UI change — DESIGN-SYSTEM DoD applies), then CRISPNESS 11px floor
   only (re-grounded), then Guided Mode / Voice (parked on the operator's 5 + 4 decisions).
+
+## 2026-07-27b — AXIS-TITLES batch 0: one caption convention, five spec premises disproved (ADR-0298; v1.0.104)
+
+- **Model/mode:** Opus 5 Max (operator directive — maximum-effort single-focus deep dive, ADR-0240).
+  **Branch:** `claude/smat-tool-continuation-uskbh7`, fresh from `origin/main` at `3c0f098` after
+  #443 merged.
+- **Shipped:** `SFChartFrame.axisTitles(svg, {L,R,T,B}, opts)` in `chartframe.js` is now the ONE
+  axis-caption implementation; `--sf-fs-axis-title: 11px` in `base.css` + `.ch-at` is the ONE type
+  token; `performance.js` and `scatter.js` both retired their local implementations. `rotate(-90`
+  is gone from every module.
+- **FIVE spec premises failed verification before a line was written** (the spec was authored with
+  no runtime, and says so — this is exactly the ADR-0294 discipline paying off again):
+  1. `SFChartFrame.text` **does not exist** — chartframe exported `{frame, scan}` only.
+  2. **No type/font tokens existed at all**: `var(--sf-fs-label)` / `var(--sf-font-mono)` would have
+     resolved to nothing. `sf-themes.css` is colour-only. This ADR *defines* the token.
+  3. **`scatter.js` already had an X caption** (centred, L100) — the spec called it "Y only … gains
+     the X caption it never had". So the change RELOCATES two captions rather than adding one.
+  4. **`gantt.js` renders HTML, not SVG** ("shared MS-Project-style HTML Gantt timeline
+     primitives"), so the spec's "a Gantt is not exempt, both axes get captions" is impossible with
+     an SVG `<text>` helper — and 11 further modules in its §3 table render no SVG at all.
+  5. Its §7 golden SHAs are stale (pre-ADR-0296); its §6 path `docs/UI-INVENTORY.md` is really
+     `00_REFERENCE_INTAKE/UI-INVENTORY.md`.
+- **Replaced the spec's tick-detecting regex with an explicit three-way LEDGER.** The regex
+  under-detected by half (missed `path.js`, `resources.js`; silent on every HTML visual). Now every
+  non-exempt module sits in exactly one bucket — captioned / `PENDING` (16 real SVG charts, the list
+  shrinking to empty is the completion signal) / `NO_SVG_AXES` (11 DOM visuals). An unclassified NEW
+  module fails the test: the anti-regression property the heuristic could not give.
+- **Proved the guard bites — 6 mutants, each caught by its intended assertion:** reintroduced
+  rotated caption · new unclassified module · numeric `font-size` in the caption block · token
+  removed from CSS · helper call deleted · DOM-only module mis-parked in `PENDING`.
+- **Two mistakes worth recording.** (a) My first size assertion sliced from `function axisTitles`
+  and **missed** a `font-size` planted in the node builder just above — the mutant caught my guard,
+  not my code; widened to the whole caption block. (b) `git checkout --` to undo a mutant **wiped a
+  legitimate uncommitted edit** (performance.js's conversion). Use file backups for mutation
+  testing on a dirty tree, never git checkout.
+- **Behaviour executed, not pinned:** `tests/web/js/axis_titles_harness.mjs` boots chartframe.js
+  against a DOM stub and asserts placement, the `.ch-at` hook, non-rotation, the no-numeric-type
+  law, and that missing arguments are a no-op (ADR-0289 idiom).
+- **Gate:** full suite **2,704 passed**; the three dashboard golden SHAs UNCHANGED (a caption
+  cannot move a payload hash); ruff/format/mypy-strict/bandit/node clean. Version 1.0.103 →
+  **1.0.104**, wheel + 9 installers regenerated. `UI-INVENTORY.md` corrected. **Highest ADR 0298.**
+- **OWED, explicitly not claimed:** the DoD's four-theme / 90-125% rendered pass needs a browser
+  this sandbox cannot automate. Flagged in the ADR and the PR rather than asserted.
+- **NEXT:** batches 1-5 drive `PENDING` (16) to empty (~5 modules/PR; the spec's §3 caption strings
+  are sound — only its premises were not), then CRISPNESS 11px floor (the token is already the seam).

@@ -4,7 +4,12 @@
 --dz-bg:#0e1422;--dz-over:#10203a;--ok-bg:#0d2818;--bad-bg:#3a1d1d;
 --sum-ink:#aab6c4;--beyond:#3a4759;--beyond-ink:#6b7a8d;--done-overlay:rgba(255,255,255,.45);
 --border:var(--line);--grid-line:rgba(127,127,127,.25);
---focus:#c792ea}
+--focus:#c792ea;
+/* Axis-caption type size (ADR-0298). The ONE place a chart's axis caption size is
+   set — .ch-at reads it, no chart hard-codes a number. 11px matches the UI base size
+   below and the DESIGN-SYSTEM §1 compact standard; the queued CRISPNESS readability
+   floor moves this single value rather than editing 30 chart modules. */
+--sf-fs-axis-title:11px}
 html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a6878;--accent:#0b6bcb;
 --ok:#17803a;--warn:#996b00;--bad:#cf222e;--line:#d6dde7;
 --header-bg:#e9eef5;--field-bg:#eef1f6;--btn-ink:#ffffff;--hover:#eef2f7;
@@ -26,6 +31,13 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
    sizes for hierarchy. Bump one value here to dial the whole UI up/down. */
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
 font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+/* Axis captions (ADR-0298) — the single styling for SFChartFrame.axisTitles' <text> nodes.
+   Uppercase + tracking is the convention adopted from AXIS-TITLES-PATCH §3 so every caption
+   reads the same whatever case the chart passes; the size comes from the token above, never
+   from a number in JS. Font-family is deliberately NOT set: captions inherit exactly like the
+   tick labels beside them, so the queued type/vendored-font work owns that question alone. */
+.ch-at{font-size:var(--sf-fs-axis-title);fill:var(--muted);font-weight:700;
+text-transform:uppercase;letter-spacing:.08em}
 a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
 /* slim band (operator 2026-07-10, ADR-0194): the globe is out of the flex flow (absolute,
    top-right), so the header is only as tall as the brand + nav; the right padding reserves

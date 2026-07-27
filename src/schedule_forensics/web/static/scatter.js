@@ -96,13 +96,13 @@
       zl.textContent = "0 float";
       svg.appendChild(zl);
     }
-    // axis titles
-    var xt = svgEl("text", { x: (padL + W - padR) / 2, y: H - 6, "text-anchor": "middle", fill: "var(--muted)", "font-size": 11 });
-    xt.textContent = "Total float (working days)";
-    svg.appendChild(xt);
-    var yt = svgEl("text", { x: 12, y: (padT + H - padB) / 2, "text-anchor": "middle", fill: "var(--muted)", "font-size": 11, transform: "rotate(-90 12 " + (padT + H - padB) / 2 + ")" });
-    yt.textContent = "Duration (working days)";
-    svg.appendChild(yt);
+    // axis titles — the shared convention (ADR-0298). This module used to draw its own pair:
+    // a centred X caption and a ROTATED Y caption, the second convention the promotion removes.
+    // Same wording, now horizontal, right/top-aligned, and sized from the .ch-at token.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Total float (working days)",
+      yLabel: "Duration (working days)",
+    });
 
     // dots: circle per activity (diamond for milestones), red when critical
     pts.forEach(function (p) {

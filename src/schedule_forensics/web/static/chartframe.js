@@ -325,7 +325,34 @@
   // Public hook so charts rendered AFTER page load (e.g. the SSI run fetches its S-curve / histogram /
   // assessment matrices on demand) can frame their freshly-built ".chart-host" wrappers: call
   // SFChartFrame.scan() once the new nodes are in the DOM. frame() is idempotent (guards __cfFramed).
-  window.SFChartFrame = { frame: frame, scan: scan };
+  // ── shared axis captions (ADR-0298) ─────────────────────────────────────────────────────────
+  // The ONE implementation of a named axis caption. Placement and option names are promoted
+  // verbatim from performance.js: the X caption sits right-aligned at the plot's bottom-right,
+  // the Y caption horizontally at the top-left just inside the axis. Horizontal (never rotated)
+  // is deliberate — rotated text was the second, conflicting convention (scatter.js) and it
+  // collides with the widest tick label; horizontal reads in all four themes at 90-125% scale.
+  //
+  // Size/colour/case come from the .ch-at class (--sf-fs-axis-title) so no chart hard-codes a
+  // number: the type ramp moves in ONE place. Callers pass the same options object they already
+  // build: { xLabel: "…", yLabel: "…" }, plus the plot geometry { L, R, T, B }.
+  var CAP_NS = "http://www.w3.org/2000/svg";
+  function caption(svg, x, y, s, anchor) {
+    var node = document.createElementNS(CAP_NS, "text");
+    node.setAttribute("x", x);
+    node.setAttribute("y", y);
+    node.setAttribute("class", "ch-at");
+    if (anchor) node.setAttribute("text-anchor", anchor);
+    node.textContent = s;
+    svg.appendChild(node);
+    return node;
+  }
+  function axisTitles(svg, geom, opts) {
+    if (!svg || !geom || !opts) return;
+    if (opts.xLabel) caption(svg, geom.R, geom.B - 4, opts.xLabel, "end");
+    if (opts.yLabel) caption(svg, geom.L + 4, geom.T + 9, opts.yLabel, null);
+  }
+
+  window.SFChartFrame = { frame: frame, scan: scan, axisTitles: axisTitles };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scan);
