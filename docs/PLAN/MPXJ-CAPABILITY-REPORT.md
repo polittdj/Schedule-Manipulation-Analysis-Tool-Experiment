@@ -1,11 +1,16 @@
 # MPXJ capability reporting — verified diagnosis and ready-to-apply fix
 
 - **Raised by:** operator, 2026-07-27, from a real upgrade run on their machine
-- **Status:** diagnosed, evidence executable, **fix written and validated but NOT yet applied**
+- **Status: APPLIED — shipped in #446 as ADR-0299** (capability-truth reporting, the widened search,
+  and the self-copy guard), extended by #448 (drive-root abort) and ADR-0299 addendum 2 (a symlinked
+  source destroyed the converter). This line read "NOT yet applied" for as long as the fix had
+  already been on `main` — kept honest here because a stale status line in a durable doc is the same
+  defect class the report itself is about. Flagged by PR #449.
 - **Owns:** `tools/installer/template.{ps1,sh,command}`, `installer/install-tier{1,2,3}.*`,
   `tests/installer/`, `installer/README-DISTRIBUTABLE.md`
-- **Becomes** ADR-0299 when it lands. Companion to ADR-0193 (the converter ships beside the venv)
-  and ADR-0293 (the runtime `.mpp` capability probe).
+- **Landed as** ADR-0299 (`docs/adr/0299-one-file-installer-delivers-mpp-support.md`, plus its two
+  addenda). Companion to ADR-0193 (the converter ships beside the venv) and ADR-0293 (the runtime
+  `.mpp` capability probe).
 
 ## The incident
 
