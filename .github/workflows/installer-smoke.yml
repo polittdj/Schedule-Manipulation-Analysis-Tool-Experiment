@@ -6,6 +6,13 @@
 # -> venv -> import -> launcher/shutdown endpoints exist. ubuntu-latest does the same for the
 # .sh family plus an actual serve/stop round-trip. Triggered only when installer content
 # changes (the files are ~600 KB each; no need to run on every commit).
+#
+# ADR-0300: the two most recent destructive defects — a LINK-SHAPED MPXJ source and an
+# installer saved to a DRIVE ROOT — were both diagnosed on the operator's own platform,
+# Windows, and both were then verified only by executing the *bash* twin plus static text
+# guards. "Proven by parity" was wrong twice in one session, so the windows job now runs both
+# shapes for real, and each is followed by a MUTATION step that breaks the guard in a scratch
+# copy and requires the leg's own assertion to fire. A leg that cannot fail proves nothing.
 name: installer-smoke
 
 on:
@@ -23,7 +30,9 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
-    timeout-minutes: 15
+    # 15 was sized for three installs; the ADR-0300 link/drive-root legs and their mutation
+    # steps add four more (two of them re-use an existing venv, so they are cheap).
+    timeout-minutes: 30
     steps:
       # Some committed reference files under 00_REFERENCE_INTAKE/ssi/ have long names; under the
       # runner's deep D:\a\<repo>\<repo>\ path they exceed Windows MAX_PATH (260), so `git checkout`
@@ -122,6 +131,268 @@ jobs:
           powershell -ExecutionPolicy Bypass -File installer/install-tier1.ps1
           $venvPy = Join-Path $env:SF_INSTALL_ROOT "venv\Scripts\python.exe"
           & $venvPy -c "import schedule_forensics; print('python-only discovery path OK')"
+
+      - name: A link-shaped MPXJ source must not cost the operator their converter (ADR-0300)
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+          # OFFLINE is not a speed-up, it is what lets this leg FAIL. With the fetch reachable a
+          # destroyed destination would just be re-downloaded and the step would go green over
+          # real data loss.
+          SF_MPXJ_OFFLINE: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          # pwsh 7.4 turns a native command's non-zero exit into a terminating error by default;
+          # every installer exit code here is judged deliberately, a few lines below the call.
+          $PSNativeCommandUseErrorActionPreference = $false
+          $repo = $env:GITHUB_WORKSPACE
+          $root = Join-Path $env:RUNNER_TEMP "SFLink"
+          $dest = Join-Path $root "tools\mpxj"
+          $cls  = Join-Path $dest "classes\MpxjToMspdi.class"
+          $env:SF_INSTALL_ROOT = $root
+
+          # 1. leave a converter exactly where an earlier install would have left one. Sourced
+          #    from the checkout, so no 17 MB fetch is involved.
+          $env:SF_MPXJ_HOME = Join-Path $repo "tools\mpxj"
+          powershell -ExecutionPolicy Bypass -File (Join-Path $repo "installer\install-tier1.ps1") |
+            ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) { Write-Host "::error::the setup install exited $LASTEXITCODE"; exit 1 }
+          if (-not (Test-Path $cls)) {
+            Write-Host "::error::the setup install deployed no converter — there is nothing here to protect"
+            exit 1
+          }
+          $before      = (Get-FileHash -Algorithm SHA256 -LiteralPath $cls).Hash
+          $filesBefore = @(Get-ChildItem -Recurse -File -LiteralPath $dest).Count
+          Write-Host "installed converter: $filesBefore files, class SHA-256 $before"
+
+          # 2. the re-run must happen from OUTSIDE the checkout. Launched by its in-repo path,
+          #    $PSScriptRoot's parent is the workspace, whose real tools\mpxj is a perfectly good
+          #    source — it would be chosen, deploy happily, and the link would never be reached.
+          $dl = Join-Path $env:RUNNER_TEMP "LinkDownloads"
+          New-Item -ItemType Directory -Force -Path $dl | Out-Null
+          Copy-Item (Join-Path $repo "installer\install-tier1.ps1") -Destination $dl -Force
+          # what Windows PowerShell 5.1 — the shell the installer actually runs under — sees of a
+          # reparse point. pwsh 7 resolves them differently, so probing from THIS shell would
+          # describe a platform the operator never runs on.
+          $probe = Join-Path $dl "probe-link.ps1"
+          Set-Content -LiteralPath $probe -Encoding UTF8 -Value @(
+            '$i = Get-Item -LiteralPath $env:SF_MPXJ_HOME -Force',
+            '"LinkType=" + $i.LinkType',
+            '"Target=" + (@($i.Target) -join ";")',
+            '"Resolve-Path=" + (Resolve-Path -LiteralPath $env:SF_MPXJ_HOME).ProviderPath'
+          )
+
+          $exercised = @()
+          foreach ($kind in @("Junction", "SymbolicLink")) {
+            $link = Join-Path $env:RUNNER_TEMP "mpxj-as-$kind"
+            # delete the LINK, never through it: Remove-Item -Recurse on a junction has been
+            # known to empty the target, which is the very accident under test here.
+            if ([IO.Directory]::Exists($link)) {
+              try { [IO.Directory]::Delete($link, $false) }
+              catch { Write-Host "::warning::a stale $link could not be removed: $($_.Exception.Message)" }
+            }
+            try {
+              New-Item -ItemType $kind -Path $link -Target $dest -ErrorAction Stop | Out-Null
+            } catch {
+              # a SymbolicLink needs elevation or Developer Mode; a Junction never does. Name the
+              # shape that went uncovered out loud — a quietly reduced scope reads as full coverage.
+              Write-Host "::warning::this runner refused to create a $kind ($($_.Exception.Message)); that shape is NOT covered by this run"
+              continue
+            }
+            $env:SF_MPXJ_HOME = $link
+            Write-Host "  $kind -> $dest"
+            powershell -NoProfile -ExecutionPolicy Bypass -File $probe |
+              ForEach-Object { Write-Host "    5.1 sees: $_" }
+
+            Push-Location $dl
+            $out = powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1") 2>&1 |
+              ForEach-Object { $line = "$_"; Write-Host $line; $line }
+            $code = $LASTEXITCODE
+            Pop-Location
+            if ($code -ne 0) { Write-Host "::error::the $kind re-run exited $code"; exit 1 }
+
+            # (a) SURVIVAL — the only property the operator feels. Byte-identical and complete,
+            #     not merely present: a half-copied tree is data loss too.
+            if (-not (Test-Path $cls)) {
+              Write-Host "::error::a $kind source DESTROYED the installed converter"
+              exit 1
+            }
+            $after      = (Get-FileHash -Algorithm SHA256 -LiteralPath $cls).Hash
+            $filesAfter = @(Get-ChildItem -Recurse -File -LiteralPath $dest).Count
+            if ($after -ne $before -or $filesAfter -ne $filesBefore) {
+              Write-Host "::error::a $kind source rewrote the converter ($filesBefore -> $filesAfter files; $before -> $after)"
+              exit 1
+            }
+            # (b) DETECTION — staging keeps (a) green even with the self-copy skip broken (the
+            #     next step proves exactly that). The skip is what keeps the REPORT true, so
+            #     assert which branch ran, not merely that nothing burned down.
+            if (-not ($out -match "already installed")) {
+              Write-Host "::error::the $kind self-copy went undetected — the converter survived on staging alone and the run announced a deploy that never happened"
+              exit 1
+            }
+            if (Test-Path (Join-Path $root "tools\.mpxj-staging")) {
+              Write-Host "::error::staging residue left behind after the $kind run"
+              exit 1
+            }
+            $exercised += $kind
+          }
+          if ($exercised.Count -eq 0) {
+            Write-Host "::error::no link shape could be created — this leg proved nothing"
+            exit 1
+          }
+          Write-Host "link shapes executed on real Windows: $($exercised -join ', ')"
+
+      - name: MUTATION — with the self-copy skip gone, staging alone must still save it
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+          SF_MPXJ_OFFLINE: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
+          # Two things the leg above cannot establish about itself:
+          #   * its survival assertion is not vacuous — break the detection and staging is the
+          #     ONLY thing left between a re-run and the operator's converter;
+          #   * its "already installed" assertion really does tell the two defences apart.
+          # ADR-0299 rule 1 is two INDEPENDENT layers by design; the independence was proved by
+          # mutation on the bash twin and, until now, only asserted for PowerShell.
+          $repo = $env:GITHUB_WORKSPACE
+          $root = Join-Path $env:RUNNER_TEMP "SFLink"     # the converter the leg above left behind
+          $dest = Join-Path $root "tools\mpxj"
+          $cls  = Join-Path $dest "classes\MpxjToMspdi.class"
+          if (-not (Test-Path $cls)) { Write-Host "::error::no converter to mutate against"; exit 1 }
+          $before = (Get-FileHash -Algorithm SHA256 -LiteralPath $cls).Hash
+
+          $mut = Join-Path $env:RUNNER_TEMP "MutSkip"
+          New-Item -ItemType Directory -Force -Path $mut | Out-Null
+          $text   = [IO.File]::ReadAllText((Join-Path $repo "installer\install-tier1.ps1"))
+          $broken = $text.Replace(
+            '    if ((Resolve-SfPath $cand) -ieq $destReal) { continue }',
+            '    if ($false) { continue }')
+          if ($broken -eq $text) {
+            # a mutation that no longer applies turns this step into a copy of the leg above and
+            # silently stops proving anything.
+            Write-Host "::error::the self-copy skip was not found verbatim — this mutation is stale, re-point the needle"
+            exit 1
+          }
+          # the installers ship as UTF-8 WITH a BOM; 5.1 reads a BOM-less file as Windows-1252.
+          [IO.File]::WriteAllText((Join-Path $mut "install-tier1.ps1"), $broken,
+                                  (New-Object System.Text.UTF8Encoding($true)))
+
+          $env:SF_INSTALL_ROOT = $root
+          $env:SF_MPXJ_HOME    = $dest      # the worst case: the source IS the destination
+          Push-Location $mut
+          $out = powershell -ExecutionPolicy Bypass -File (Join-Path $mut "install-tier1.ps1") 2>&1 |
+            ForEach-Object { $line = "$_"; Write-Host $line; $line }
+          $code = $LASTEXITCODE
+          Pop-Location
+          if ($code -ne 0) { Write-Host "::error::the mutated install exited $code"; exit 1 }
+          if (-not (Test-Path $cls) -or
+              (Get-FileHash -Algorithm SHA256 -LiteralPath $cls).Hash -ne $before) {
+            Write-Host "::error::STAGING DOES NOT PROTECT THE CONVERTER ON WINDOWS — with the self-copy skip gone, a re-run destroyed or rewrote it"
+            exit 1
+          }
+          if (-not ($out -match "converter deployed")) {
+            Write-Host "::error::the mutation changed no behaviour — the detection branch still ran, so the leg above proves less than it claims"
+            exit 1
+          }
+          Write-Host "mutation verified: detection broken -> converter still byte-identical (staging held), report degrades to 'deployed'"
+
+      - name: A drive-root install must not abort the run — and that leg must be able to fail
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+          SF_MPXJ_OFFLINE: "1"   # the drive root is what is under test, not the 17 MB fetch
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $false
+          # `Split-Path -Parent "X:\"` is "", and Join-Path rejects an empty -Path with a
+          # parameter-binding error that is TERMINATING regardless of $ErrorActionPreference — so
+          # an installer saved to a drive root died after the venv and before the shortcut,
+          # uninstaller and README (ADR-0299 §2b). Only a REAL drive root reproduces it:
+          # $PSScriptRoot has to BE a root for Split-Path to return "". subst provides one
+          # without writing to C:\.
+          $repo = $env:GITHUB_WORKSPACE
+          $src  = Join-Path $repo "installer\install-tier1.ps1"
+          $back = Join-Path $env:RUNNER_TEMP "DriveRoot"
+          New-Item -ItemType Directory -Force -Path $back | Out-Null
+          Copy-Item $src -Destination $back -Force
+
+          $rootPath = $null; $letter = $null
+          foreach ($c in @("X", "Y", "W", "V")) {
+            if ([IO.Directory]::Exists("${c}:\")) { continue }
+            & subst "${c}:" $back
+            if ([IO.File]::Exists("${c}:\install-tier1.ps1")) { $rootPath = "${c}:\"; $letter = "${c}:"; break }
+            & subst "${c}:" /D
+          }
+          if (-not $rootPath) {
+            # subst is unavailable, or its mapping is invisible to child processes on this runner.
+            # C:\ IS a drive root and the runner is elevated, so fall back rather than skip — and
+            # say which shape actually ran.
+            Copy-Item $src -Destination "C:\" -Force
+            $rootPath = "C:\"
+            Write-Host "::warning::subst produced no usable drive root; falling back to the real C:\ root"
+          }
+          Write-Host "drive root under test: $rootPath"
+
+          # cwd must NOT be the checkout: $PWD\tools\mpxj is a candidate and would hand the run a
+          # valid source, changing what 3b does after the point under test.
+          function Invoke-FromDriveRoot([string]$script, [string]$installRoot) {
+            $env:SF_INSTALL_ROOT = $installRoot
+            Push-Location $env:RUNNER_TEMP
+            $captured = powershell -ExecutionPolicy Bypass -File ($rootPath + $script) 2>&1 |
+              ForEach-Object { $line = "$_"; Write-Host $line; $line }
+            $script:lastRunCode = $LASTEXITCODE
+            Pop-Location
+            return $captured
+          }
+
+          $installRoot = Join-Path $env:RUNNER_TEMP "SFDriveRoot"
+          $out = Invoke-FromDriveRoot "install-tier1.ps1" $installRoot
+          if ($lastRunCode -ne 0) {
+            Write-Host "::error::the installer exited $lastRunCode when run from the drive root $rootPath"
+            exit 1
+          }
+          # exit 0 is NOT proof it got past 3b — assert the artefacts written AFTER it. These are
+          # precisely what the operator was left without when the abort happened.
+          foreach ($rel in @("Uninstall-ScheduleForensics.ps1", "FIRST-RUN-README.txt", "Start-ScheduleForensics.cmd")) {
+            if (-not (Test-Path (Join-Path $installRoot $rel))) {
+              Write-Host "::error::$rel was never written — the drive-root run aborted before finishing section 6"
+              exit 1
+            }
+          }
+          if (-not ($out -match "SMOKE INSTALL OK")) {
+            Write-Host "::error::the drive-root run never reached its final line"
+            exit 1
+          }
+          Write-Host "drive-root install completed through section 6 from $rootPath"
+
+          # MUTATION: put the eager, unguarded Join-Path back and the same run must DIE. Without
+          # this, an exit-code assertion that can never be reached would read exactly as green.
+          $text   = [IO.File]::ReadAllText($src)
+          $broken = $text.Replace(
+            '    if ($base) { $mpxjCandidates += (Join-Path $base "tools\mpxj") }',
+            '    $mpxjCandidates += (Join-Path $base "tools\mpxj")')
+          if ($broken -eq $text) {
+            Write-Host "::error::the empty-base guard was not found verbatim — this mutation is stale, re-point the needle"
+            exit 1
+          }
+          [IO.File]::WriteAllText(($rootPath + "mutated-tier1.ps1"), $broken,
+                                  (New-Object System.Text.UTF8Encoding($true)))
+          $mutOut = Invoke-FromDriveRoot "mutated-tier1.ps1" $installRoot
+          $mutCode = $lastRunCode
+          if ($letter) { & subst $letter /D }
+          if ($rootPath -eq "C:\") {
+            Remove-Item -Force -ErrorAction SilentlyContinue "C:\install-tier1.ps1", "C:\mutated-tier1.ps1"
+          }
+          if ($mutCode -eq 0) {
+            Write-Host "::error::the drive-root leg cannot fail: with the empty-base guard removed the install still exited 0, so its exit-code assertion proves nothing"
+            exit 1
+          }
+          if (-not ($mutOut -match "empty string")) {
+            Write-Host "::warning::the mutated run exited $mutCode but not with the expected empty -Path binding error; the leg can fail, though possibly for another reason"
+          }
+          Write-Host "mutation verified: empty-base guard removed -> the drive-root install exits $mutCode, which the leg above would have caught"
 
   linux:
     runs-on: ubuntu-latest
