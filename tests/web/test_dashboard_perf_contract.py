@@ -355,13 +355,16 @@ def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:
 # ---------------------------------------------------------------------------------------------
 
 # Captured on the untouched HEAD (f551b01) via the same TestClient path these tests use.
-_SHA_TWO_VERSION = "d62a4f9e791783701eacc6aeb47ee9b69e0ff80abf4cfeb9bfeddf7b998a58d1"
-_SHA_UNSOLVABLE = "8d7bcc386168f0e9c3e384bde6beb0789be5beb4b1485a81f0d96138038afc16"
+# Re-pinned 2026-07-26 (ADR-0296): the cards no longer ship the status_mix_uids arrays —
+# the ONLY delta is that key's removal; every count/date/DCMA value is unchanged, which
+# test_dashboard_status_trim.py proves at the row level against the lazy drill.
+_SHA_TWO_VERSION = "8409b3e20a181a0ac12e4c0be3365055f88c826a8c1e35bd7909bb158bb7d914"
+_SHA_UNSOLVABLE = "a30c698db9a48c3d4dc12c78a91fd8ec4e38cd2e04fc356427d25aa4556a90e8"
 # Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a
 # single invalid-date activity with NO baseline duration, which Acumen's `Baseline Duration > 0`
 # population excludes, so parity DCMA-09 drops 1 → 0 and its card flips FAIL → PASS (the ONLY delta
 # vs `_SHA_TWO_VERSION`). Default mode is unchanged. Re-pinned 2026-07-24.
-_SHA_TWO_VERSION_PARITY = "51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a8767c292c504cb"
+_SHA_TWO_VERSION_PARITY = "647cf7cc78e58e08684c6d545d4abf800cd844742b2eb4c4625b2d88da8742fe"
 
 
 def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:

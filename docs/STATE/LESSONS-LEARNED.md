@@ -435,6 +435,30 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-26a — the two-PR sequencing paid for itself; and a golden SHA is a tripwire, not proof (ADR-0296)
+- The `status_mix_uids` trim landed exactly as sequenced: ADR-0295's resolver fix + forward guard
+  FIRST, the lazy trim SECOND. When the trim flipped the dashboard drill to `{ segment: name }`
+  descriptors, the guard test (server-resolved segment == the card's own count, for every card in
+  the manifest) was already sitting there to catch any regression — the trim's riskiest property
+  was pinned before the trim existed. **LESSON: when change B deepens reliance on a property that
+  change A establishes, commit A's guard test in A's PR, phrased so B cannot land without
+  satisfying it. The guard is cheap in A; it is a bug report in B.**
+- **Re-pinning a golden SHA is only honest when something else proves the delta.** The three
+  ADR-0281 payload SHAs had to change (the payload lost a key), and a bare re-pin would have
+  laundered ANY payload change through the same commit. What makes it safe: the new trim tests
+  prove at ROW level that every count survives and every segment drill returns identical
+  activities, so the SHA delta is exactly the removed key and nothing else. **LESSON: a golden
+  hash detects change; it never explains it. Every re-pin needs a companion test that proves the
+  intended delta is the only delta — otherwise the golden silently becomes "whatever HEAD does".**
+- **Not every categorical bar went lazy, and the asymmetry is the design.** Status/type/completion
+  segments are re-derivable by NAME from predicates the server owns; WBS groups partition by
+  arbitrary data values, so they keep explicit UID arrays. **LESSON: lazy descriptors work only
+  where the name is a total function to the set. If re-deriving needs the data itself, shipping
+  the ids IS the honest design — don't force the pattern past its precondition.**
+- Payload numbers for the record: the arrays were **87.6%** of /api/dashboard; growth per version
+  9,698 B → 1,195 B. Second confirmation (after ADR-0288's 46%) that per-activity ID arrays
+  dominate these payloads — worth checking any NEW chart payload for the same shape at design time.
+
 ### 2026-07-25d — scoping a perf change surfaced a shipped correctness bug (ADR-0295)
 - The `status_mix_uids` trim looked like pure plumbing: swap an id array for a segment name, reuse
   the ADR-0288 pattern. Before building it I probed its core assumption — "the drill resolves the

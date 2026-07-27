@@ -1,9 +1,14 @@
 """Categorical count bars → click-to-drill (operator 2026-07-13).
 
-The dashboard status bar, the WBS SPI bars, and the trend status/type/completion/float bars now
-carry the per-segment activity IDs so a click lists the activities behind the count (add columns +
-Excel), reusing the shared sf-drill runtime. This pins the server payloads + the JS tagging; the
-interactive click-through is Chromium-verified.
+The dashboard status bar, the WBS SPI bars, and the trend status/type/completion/float bars let a
+click list the activities behind the count (add columns + Excel), reusing the shared sf-drill
+runtime. This pins the server payloads + the JS tagging; the interactive click-through is
+Chromium-verified.
+
+Two of the payload families have since moved to LAZY segment descriptors — the trend
+whole-schedule partitions (ADR-0288) and the dashboard status bar (ADR-0296): the bar carries a
+segment NAME and the server rebuilds the identical UID set on click. The WBS groups still ship
+explicit ids (they partition by an arbitrary WBS value the server does not re-derive by name).
 """
 
 from __future__ import annotations
@@ -32,16 +37,19 @@ def client() -> TestClient:
     return c
 
 
-def test_dashboard_cards_carry_status_mix_uids(client: TestClient) -> None:
+def test_dashboard_cards_drill_lazily_and_the_counts_survive(client: TestClient) -> None:
+    """ADR-0296: the card ships counts only; the segment drill resolves the identical set."""
     cards = client.get("/api/dashboard").json()["cards"]
     solvable = [c for c in cards if c.get("solvable")]
     assert solvable
     for c in solvable:
-        u = c["status_mix_uids"]
-        assert set(u) == {"complete", "in_progress", "planned"}
-        # the segment UID counts equal the segment counts (no divergence)
+        assert "status_mix_uids" not in c, "the UID arrays crept back into the card payload"
+        assert set(c["status_mix"]) == {"complete", "in_progress", "planned"}
+        # the server-resolved segment equals the card's own count (no divergence) — the same
+        # guarantee the arrays used to pin, now against the lazy resolver
         for k, v in c["status_mix"].items():
-            assert len(u[k]) == v
+            rows = client.get(f"/api/activities/drill?file={c['key']}&segment={k}").json()["rows"]
+            assert len(rows) == v, f"{c['key']}/{k}"
 
 
 def test_wbs_groups_carry_uids(client: TestClient) -> None:
