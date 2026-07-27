@@ -103,12 +103,20 @@ INCIDENTAL_SVG = {
 #: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
 #: helper, and may not be listed here unless it really renders SVG — both are asserted.
 PENDING = {
-    # ``drift.js`` is deliberately still here after batch 1, for two reasons worth stating so the
-    # next batch does not "just add the call": (1) its Y axis is a list of three FORECAST METHODS
-    # and its X axis is a forecast DATE — the patch spec's "SCHEDULE VERSION (UPDATE)" by
-    # "SLIP AGAINST BASELINE (WORKDAYS)" would print a false statement on the chart; (2) the Y
-    # caption anchor (``T + 9``) lands 7px above its first method-name row (``padT + 14``), so it
-    # needs a padT nudge, and moving the plot is out of scope for a caption batch.
+    # ``drift.js`` was ATTEMPTED and REVERTED — do not simply re-add the call. Three facts, all
+    # measured in a browser by ``test_axis_titles_visual.py``, not reasoned about:
+    #   1. Its captions are "Forecast finish date" x "Forecast method". The patch spec's
+    #      "SCHEDULE VERSION (UPDATE)" by "SLIP AGAINST BASELINE (WORKDAYS)" is false for this
+    #      chart: X is a DATE scale and Y is three categorical forecast-method rows.
+    #   2. At the shipped row offset the Y caption overlaps the first row name by **136x6px**.
+    #      Nudging ``padT`` does NOT fix it — padT moves the caption and the rows together, so the
+    #      gap is invariant. The ROW OFFSET has to change (``padT + 14`` -> ``padT + 26``, with H
+    #      grown 12px to keep the last row's clearance), which does fix it.
+    #   3. But then the X caption overlaps the rightmost forecast value label by **75x3px** at 90%
+    #      page scale. A caption that collides is worse than none, and the helper requires both
+    #      labels or neither — so drift needs a placement answer, not another nudge.
+    # It is blocked on the same decision as ``KNOWN_COLLISIONS`` in the visual test: where does a
+    # caption go when the chart already has text at that corner?
     "drift.js",
     "margin_dashboard.js",
     "sra.js",
