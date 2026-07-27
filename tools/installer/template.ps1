@@ -10,15 +10,20 @@
    2. Ensures Python 3.11+ (winget if missing).
    3. Installs the Schedule Forensics tool into its OWN venv from the wheel embedded
       in this file (no internet needed for the tool itself).
-   4. Optionally ensures Java 17+ (only needed to open native .mpp files).
+   3b. Deploys the MPXJ converter that native .mpp import needs — copied from a repo
+      checkout beside this file if there is one, else downloaded (~17 MB) and SHA-256
+      verified against the manifest baked into this installer.
+   4. Optionally ensures Java 17+ (also needed to open native .mpp files).
    5. Installs Ollama + this tier's local AI model (skippable — the tool runs fully
       without AI).
-   6. Creates Desktop + Start-Menu shortcuts: "Start Schedule Forensics" and
-      "Stop Schedule Forensics", plus an uninstaller and a first-run README.
+   6. Creates the single Desktop + Start-Menu shortcut "Schedule Forensics" (the app stops
+      itself and the local AI on Quit — ADR-0193 retired the separate Stop icon, and this
+      installer deletes any old Start/Stop pair), plus an uninstaller and a first-run README.
 
  DATA SOVEREIGNTY: the installed tool is loopback-only (127.0.0.1) — no schedule
  data ever leaves the machine. Internet is used ONLY at install time, for public
- prerequisites (Python / Java / Ollama / the AI model), never by the running tool.
+ prerequisites (Python / Java / the MPXJ converter / Ollama / the AI model), never by the
+ running tool. Set SF_MPXJ_OFFLINE=1 to suppress the MPXJ download on an air-gapped machine.
 
  Run: right-click this file -> "Run with PowerShell"
       (or:  powershell -ExecutionPolicy Bypass -File <this file>)
@@ -29,6 +34,25 @@
 # ---------------------------- END TIER CONFIG — SHARED BODY -------------------------
 
 $ErrorActionPreference = "Stop"
+
+# ADR-0299. While $ErrorActionPreference is "Stop", ANY native program that writes to stderr
+# raises a TERMINATING error — even when it succeeded. `java -version` prints its banner on
+# stderr, and `winget` / `ollama pull` stream progress there, so a step that merely PROBES for
+# Java, or an AI install documented as optional, could kill the whole run before the shortcuts,
+# uninstaller and README were ever created. That is exactly what happened on the windows CI
+# runner (java on PATH -> NativeCommandError -> no DONE), and it stayed invisible because the
+# following commands in those steps reset $LASTEXITCODE.
+# Run native commands through this helper: it softens the preference for the duration of the
+# call and always restores it, streaming output so long downloads still show progress. The
+# CALLER decides what a non-zero $LASTEXITCODE means — nothing here aborts implicitly.
+function Invoke-SfNative {
+    param([Parameter(Mandatory = $true)][scriptblock]$Command)
+    $prevEap = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Command
+    } finally { $ErrorActionPreference = $prevEap }
+}
 
 function Install-Main {
 # SF_INSTALLER_SMOKE=1: non-interactive CI/self-test mode — temp install root, prompts skipped,
@@ -88,7 +112,7 @@ if (-not $py) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         throw "winget is not available. Install Python 3.12 manually from python.org, then re-run this installer."
     }
-    winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent --scope user
+    Invoke-SfNative { winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent --scope user }
     $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
     $py = Find-Python
     if (-not $py) { throw "Python installed but not discoverable on PATH yet — open a NEW window and re-run this installer." }
@@ -116,20 +140,93 @@ Ok ("Installed " + "{{WHEEL_NAME}}")
 try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
 # --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
-# The wheel is pure Python; the 17 MB Java converter (tools\mpxj) rides in the repository
-# next to this installer and is copied beside the venv, where the runtime's walk-up
-# discovery finds it automatically (ADR-0193). Without it every .mpp import fails with
-# "MPXJ runner not found".
-$repoMpxj = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"
-if (Test-Path (Join-Path $repoMpxj "classes\MpxjToMspdi.class")) {
-    $destMpxj = Join-Path $InstallRoot "tools\mpxj"
+# The wheel is pure Python; the 17 MB Java converter is what makes native .mpp import work,
+# and without it EVERY .mpp import fails with "MPXJ runner not found".
+#
+# ADR-0299: it is not embedded (23 MB of base64 x 9 installers, re-committed on every version
+# bump), and it must not depend on a repo checkout either — the documented deploy path is a
+# SINGLE file downloaded from the GitHub web UI into %USERPROFILE%\Downloads, where the old
+# `Split-Path -Parent $PSScriptRoot` lookup resolved to %USERPROFILE%\tools\mpxj, silently
+# left .mpp support OFF, and still printed DONE. Several layouts are searched, and failing
+# those the pinned file set is downloaded and verified against the baked-in SHA-256 manifest.
+#
+# TWO RULES THIS BLOCK MUST NEVER BREAK (both mutation-verified — MPXJ-CAPABILITY-REPORT.md):
+#  1. NEVER DESTROY AN INSTALLED CONVERTER. Widening the search makes the already-installed
+#     copy selectable as a SOURCE, and the copy step clears the destination first — so a re-run
+#     would delete the operator's only converter. Hence the self-copy skip, and hence the
+#     download stages into a temp folder and is swapped in ONLY once every byte verifies.
+#  2. REPORT THE CAPABILITY OF THE DEPLOYED TOOL, NOT THE OUTCOME OF THIS COPY STEP. An
+#     upgrade that finds no source but already has a converter installed leaves native .mpp
+#     ON; saying "stays OFF" there was simply false, and on a testimony tool a false claim
+#     about your own capability is a correctness defect.
+$MpxjBaseUrl = "{{MPXJ_BASE_URL}}"
+$MpxjManifest = @'
+{{MPXJ_MANIFEST}}
+'@
+function Resolve-SfPath([string]$p) {
+    try { return (Resolve-Path -LiteralPath $p -ErrorAction Stop).ProviderPath } catch { return $p }
+}
+$destMpxj = Join-Path $InstallRoot "tools\mpxj"
+$destReal = Resolve-SfPath $destMpxj
+$srcMpxj = $null
+foreach ($cand in @($env:SF_MPXJ_HOME,
+                    (Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"),
+                    (Join-Path $PSScriptRoot "tools\mpxj"),
+                    (Join-Path $PWD.Path "tools\mpxj"))) {
+    if (-not $cand) { continue }
+    if (-not (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) { continue }
+    # never copy the installed copy over itself — that would delete the only converter
+    if ((Resolve-SfPath $cand) -ieq $destReal) { continue }
+    $srcMpxj = $cand
+    break
+}
+if ($srcMpxj) {
     New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
-    Copy-Item -Recurse -Force -Path (Join-Path $repoMpxj "*") -Destination $destMpxj
+    Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj "*") -Destination $destMpxj
     Ok "MPXJ converter deployed (native .mpp import enabled)"
+} elseif (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class")) {
+    Ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"
+} elseif ($env:SF_MPXJ_OFFLINE -ne "1") {
+    Write-Host "    Downloading the MPXJ converter (~17 MB, one time) for native .mpp import..."
+    $tmpMpxj = Join-Path $InstallRoot "tools\.mpxj-incoming"
+    try {
+        # Windows PowerShell 5.1 can still negotiate TLS 1.0/1.1 by default, which every modern
+        # host (raw.githubusercontent, aka.ms) refuses — the download would fail with an opaque
+        # "connection was closed". OR-ing in Tls12 only ADDS a protocol; it removes nothing.
+        try {
+            [Net.ServicePointManager]::SecurityProtocol =
+                [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        } catch { }
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpMpxj
+        New-Item -ItemType Directory -Force -Path $tmpMpxj | Out-Null
+        foreach ($line in ($MpxjManifest -split "`n")) {
+            $line = $line.Trim()
+            if (-not $line) { continue }
+            $sha, $rel = $line -split "\s+", 2
+            $target = Join-Path $tmpMpxj ($rel -replace "/", "\")
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+            Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLower()
+            if ($got -ne $sha.ToLower()) { throw "checksum mismatch for $rel" }
+        }
+        if (-not (Test-Path (Join-Path $tmpMpxj "classes\MpxjToMspdi.class"))) {
+            throw "converter class missing after download"
+        }
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
+        Move-Item -Force -Path $tmpMpxj -Destination $destMpxj
+        Ok "MPXJ converter downloaded and SHA-256 verified (native .mpp import enabled)"
+    } catch {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpMpxj
+        Warn2 ("MPXJ download failed (" + $_.Exception.Message + ") — native .mpp import is OFF")
+        Warn2 "  offline? download the repository ZIP (green 'Code' button -> Download ZIP),"
+        Warn2 "  extract it, then re-run this installer from inside the extracted folder"
+        Warn2 "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
+    }
 } else {
-    Warn2 "tools\mpxj not found next to this installer — native .mpp import stays OFF"
-    Warn2 "  (run the installer from the repository checkout, or set SF_MPXJ_HOME;"
-    Warn2 "  .mpp files can still be opened after exporting to MSPDI XML from MS Project)"
+    Warn2 "no MPXJ converter found — native .mpp import is OFF"
+    Warn2 "  to turn it on: set SF_MPXJ_HOME to an MPXJ folder, or download the repository ZIP"
+    Warn2 "  (green 'Code' button -> Download ZIP), extract it, and re-run from inside it"
+    Warn2 "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
 }
 
 # a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)
@@ -152,8 +249,12 @@ if ($shadow -and $shadow.Source -and -not $shadow.Source.StartsWith($InstallRoot
 Step "Checking Java 17+ (optional — only needed to open native .mpp files)"
 function Find-JavaNoAdmin {
     if (Get-Command java -ErrorAction SilentlyContinue) {
-        $jv = (& java -version 2>&1 | Select-Object -First 1) -replace '.*"(\d+).*', '$1'
-        if (($jv -match '^\d+$') -and ([int]$jv -ge 17)) { return "java (on PATH)" }
+        # `java -version` prints to STDERR even on success — see Invoke-SfNative (ADR-0299).
+        $raw = (Invoke-SfNative { java -version 2>&1 }) | Out-String
+        if ($raw -match '"(\d+)') {
+            $jv = $Matches[1]
+            if ([int]$jv -ge 17) { return "java (on PATH)" }
+        }
     }
     $roots = @(
         (Join-Path $env:LOCALAPPDATA "Programs\Microsoft"),
@@ -201,20 +302,29 @@ Step "Local AI ($OllamaModel) — the tool runs fully without it (skippable)"
 if ($Smoke) { $ans = "n"; Warn2 "Smoke mode: skipping AI install" }
 else { $ans = Read-Host "    Install Ollama + pull '$OllamaModel' (~$ModelDiskGB GB download)? [Y/n]" }
 if ($ans -notmatch "^[Nn]") {
+    # ADR-0299: this step is OPTIONAL, so it must never claim a success it did not get. Both
+    # halves used to print [ok] unconditionally — a winget failure (no admin, source down) and
+    # a failed pull (disk full, daemon not running, network drop) were both reported as ready,
+    # and the operator only found out when the AI features silently did nothing. Same rule as
+    # the Java block (ADR-0192): verify, then report what actually happened.
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
-        winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent
+        Invoke-SfNative { winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent }
         $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
-        Ok "Ollama installed"
+        if (Get-Command ollama -ErrorAction SilentlyContinue) { Ok "Ollama installed" }
+        else { Warn2 "Ollama install failed — skipping the AI model; the tool runs fully without it" }
     } else { Ok "Ollama already present" }
-    Write-Host "    Pulling $OllamaModel (this is the big download — grab a coffee)..."
-    & ollama pull $OllamaModel
-    Ok "Model ready: $OllamaModel"
+    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+        Write-Host "    Pulling $OllamaModel (this is the big download — grab a coffee)..."
+        Invoke-SfNative { ollama pull $OllamaModel }
+        if ($LASTEXITCODE -eq 0) { Ok "Model ready: $OllamaModel" }
+        else { Warn2 "Model download failed — AI prose stays off until you run: ollama pull $OllamaModel" }
+    }
 } else {
     Warn2 "Skipped — the tool works fully offline; AI prose features stay off until a model is installed"
 }
 
 # --- 6. Start / Stop commands, shortcuts, uninstaller, README -------------------------
-Step "Creating Start/Stop shortcuts, uninstaller, and first-run README"
+Step "Creating the Schedule Forensics shortcut, uninstaller, and first-run README"
 $startCmd = Join-Path $InstallRoot "Start-ScheduleForensics.cmd"
 @"
 @echo off

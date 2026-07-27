@@ -8073,3 +8073,113 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   into `Downloads` — the one layout that guarantees the converter is not found. Now: Code → Download
   ZIP, extract, run `.\installer\install-tier2.ps1` from inside.
 - **Highest ADR remains 0298**; no ADR was created for work that has not landed.
+## 2026-07-27c — "Fix the downloader": the one-file installer could never open a .mpp (ADR-0299; v1.0.105)
+
+- **Model/mode:** Opus 5, targeted deep dive (ADR-0240 — a multi-path fix, not the full Ultracode
+  audit). **Branch:** `claude/downloader-fixes-jv6tjb`, fresh from `origin/main` at `c884602`.
+- **The ask was ambiguous** — "fix the downloader", no symptom, and no component in the tree is
+  named that. Asked; operator said **do all of it** and "I'm not sure" on the symptom. So all four
+  candidate download paths were swept, and **every finding was reproduced before anything changed**.
+- **FOUND (and fixed) — the real one:** the documented deploy path (download ONE installer to
+  `~/Downloads`, no clone) resolved MPXJ to `%USERPROFILE%\tools\mpxj`, missed, warned once, and
+  **still printed a green `DONE`**. The resulting install failed EVERY `.mpp` —
+  `ImporterError: MPXJ runner not found` — and the remedy in that error needs Maven + a checkout the
+  operator does not have. `.mpp` is the tool's primary input, so the operator's whole workflow was
+  dead on the only deploy path we document. ADR-0193 was right for a developer and structurally
+  impossible for the operator.
+- **Fix:** local copy first (unchanged for checkout/CI/offline media), else download the pinned set
+  from the public raw URL and **verify every file against a build-time SHA-256 manifest**.
+  Embedding was rejected (~23 MB base64 x 9 installers x every version bump); the manifest costs
+  ~3 KB. `SF_MPXJ_OFFLINE=1` opts out. Proved end-to-end: bare-dir install → downloads → verifies →
+  parses a real 145-activity `.mpp`.
+- **SECOND live defect, found by auditing the neighbours:** under `set -euo pipefail` a failed
+  `ollama pull` **aborted the installer** before the launchers/uninstaller/README were written —
+  for a step the header calls optional. Proved with a stub whose `pull` exits 1: the script died at
+  that line. The `.ps1` had the mirror bug (unconditional `Ok` after `winget install` AND after
+  `ollama pull` — a false success, the exact class ADR-0192 removed from the Java block).
+- **THIRD (latent):** `pull_model` sent a **non-streaming** multi-GB pull on the 120 s generate
+  timeout — the tier models are 2/5/43 GB, so it could only ever time out. Given its own 6 h
+  `pull_timeout`. Nothing in `web/` calls it (the app diagnoses and tells the operator to pull), so
+  this was a trap, not a live symptom — recorded as such rather than dressed up as the bug.
+- **NOT a defect — swept and left alone:** all 37 `/export/{fmt}/…` routes x xlsx+docx plus
+  `/download/{name}.json` = **76 combinations, every one 200 with a valid zip/JSON payload**. The
+  first sweep's 12 "failures" were my own harness omitting required query params; re-run with real
+  params derived from the engine, all clean. Worth recording: the sweep's first result was a false
+  alarm I had to disprove before it became a "fix".
+- **Guards proved to bite — 5 mutants, each caught by its intended assertion:** flipped manifest SHA
+  · manifest line dropped · raw-URL fallback removed · false `[ok]` on the failure path · local-copy
+  branch deleted. Used **file backups** per ADR-0298's lesson (never `git checkout` on a dirty tree)
+  and verified the tree byte-identical after.
+- **CI now runs the operator's shape:** `installer-smoke.yml` copies one installer to a bare
+  directory and fails if `classes/MpxjToMspdi.class` is absent afterwards. The existing job only
+  ever ran from the checkout — which is exactly why three months of green CI never caught this.
+- **Gate:** full suite **2,724 passed**; ruff/format/mypy-strict/bandit clean; `bash -n` on all six
+  shell installers; wheel + 9 installers regenerated at **1.0.105**. **Highest ADR 0299.**
+- **Owed, not claimed:** no `pwsh` in this sandbox, so the `.ps1` fixes are mirrors of the executed
+  bash ones plus static guards — the windows-latest smoke job is what actually exercises them.
+- **CI follow-up (same session):** first PR #446 run went 4/4 green, and the Linux no-checkout leg
+  proved the fetch live — `MPXJ converter downloaded and SHA-256 verified`, 24 jars, ~2 s against
+  `main`. But reading the logs (rather than trusting the green tick) showed the **windows** job
+  took the LOCAL-copy branch, because every Windows leg runs from the checkout — so the download
+  was still unexercised on the operator's own platform. Added a windows no-checkout leg.
+  **LESSON: a green check only proves the branch the job actually walked; read the log to find out
+  which branch that was.**
+
+## 2026-07-27d — merging with #445's diagnosis: my own fix had the destructive edge it warned about
+
+- **`main` moved mid-PR** (#445 landed `docs/PLAN/MPXJ-CAPABILITY-REPORT.md`) and #446 went
+  `mergeable_state: dirty`. Merged `origin/main` in; conflicts were only in the four durable-state
+  docs (both sides appended), no code.
+- **Reading that report before resolving was the whole ballgame.** It diagnosed a *different*
+  symptom of the same lookup — on an UPGRADE the installer printed "stays OFF" about a machine
+  where `.mpp` demonstrably worked — and it **explicitly warned that widening the search opens a
+  destructive edge**: the installed copy becomes selectable as a SOURCE, and the copy step
+  `rm -rf`s the destination first. My branch had already widened the search. **My code had that
+  bug, and worse:** the download wiped the destination *before* fetching and again on failure, so
+  an offline upgrade would have destroyed a working converter — strictly worse than the behaviour
+  I was "fixing", which only warned.
+- **Fixed both:** `sf_realpath`/`-ieq $destReal` self-copy skip, and the fetch now stages into
+  `.mpxj-incoming` and swaps in only after every byte verifies. Adopted #445's capability-truth
+  reporting (deployed / already-installed-stays-ON / is-OFF) so the printed sentence always agrees
+  with what `_mpxj_home()` finds. Verified all four scenarios from a NEUTRAL cwd — my first run
+  was contaminated because `$PWD/tools/mpxj` matched the real repo and made every scenario "pass".
+  Mutation-reproduced the destruction with the guard removed.
+- **Codex review P1 was valid and I acted on it:** the URL pointed at mutable `main` while the
+  manifest is generated from local bytes. Two failure modes — installers in the wild break when
+  those bytes change, and a PR that legitimately upgrades MPXJ regenerates new hashes while main
+  still serves old jars, blocking its own upgrade in CI. Its suggested "embed the build commit
+  SHA" doesn't work (the squash commit doesn't exist at build time), so the URL now pins to
+  `git log -1 -- tools/mpxj` — the commit that actually contains the bytes. Verified a non-tip SHA
+  serves byte-identical content. A test rejects any non-40-hex ref.
+- **LESSONS:** (1) *a fix that widens a search must ask what the search can now find that it
+  couldn't before* — here, the destination itself; (2) *never delete something you cannot
+  immediately replace* — stage, verify, then swap; (3) *a test harness that inherits the repo's cwd
+  will pass on the developer's own checkout and prove nothing*; (4) a green CI check only proves
+  the branch the job actually walked — read the log to find out which.
+- **The new windows CI leg paid for itself within one run.** It went red, and the log showed the
+  installer dying at the *Java detection* step: under `$ErrorActionPreference = "Stop"` a native
+  program writing anything to stderr is a TERMINATING error, and `java -version` prints its banner
+  to stderr — so on any machine with java on PATH the installer aborted before the shortcut,
+  uninstaller and README were created. **It had been shipping that way**; the two older Windows
+  legs end with `& $venvPy -c ...`, which resets `$LASTEXITCODE` and swallowed the aborted exit
+  code. `winget install` and `ollama pull` had the same exposure (progress on stderr) — the
+  PowerShell twin of the bash `ollama pull` abort. All routed through a new `Invoke-SfNative`
+  helper; the CI leg now asserts the installer's own exit code. **LESSON: a step that only
+  PROBES must never be able to fail the run, and a CI step whose last command is not the thing
+  under test will happily hide that thing's exit code.**
+- **Second cwd lesson, same shape as the first:** the windows leg ran from the repo root, so
+  `$PWD\tools\mpxj` matched the checkout and it took the local-copy branch instead of downloading
+  — the very contamination I had just fixed in my local harness. Now `Set-Location`s to the bare
+  download folder first.
+- **Check-in (04:5x): PR #446 is 5/5 green and `mergeable_state: clean`.** The windows no-checkout
+  leg's own output on the final head confirms the fetch — `Downloading the MPXJ converter…` →
+  `[ok] MPXJ converter downloaded and SHA-256 verified` — while the from-checkout leg in the same
+  job correctly reports `deployed`, so both branches are exercised once each.
+- **One last self-misdescription found while verifying that, and fixed.** Both no-checkout CI legs
+  printed `MPXJ jars downloaded + SHA-256 verified: 24` **unconditionally** — they would have said
+  "downloaded" even having taken the local-copy branch, which is exactly what the windows leg did
+  on its first run. Presence of the converter is not proof of the fetch. Both legs now grep the
+  installer's own output for `downloaded and SHA-256 verified` and fail if it is absent.
+  **LESSON: the summary line a CI leg prints IS what future readers will trust — if it states a
+  conclusion the step did not verify, it is the same defect class as the installer claiming
+  "stays OFF" about a machine where .mpp worked. Assert the evidence, then print the claim.**

@@ -435,6 +435,40 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27c — three months of green CI never ran the way the operator actually installs (ADR-0299)
+- **The bug was not in the code; it was in the shape CI never tested.** The installer deployed the
+  MPXJ converter from `<installer dir>/../tools/mpxj`. Every test and every CI job ran it **from the
+  repo checkout**, where that path is correct — so it passed, always. The operator has no clone and
+  runs a single downloaded file from `~/Downloads`, where the same expression resolves to
+  `%USERPROFILE%\tools\mpxj`. It missed, warned once, and printed a green `DONE`; every `.mpp`
+  import then failed, and `.mpp` is the tool's primary input. **LESSON: a test that runs from the
+  developer's layout cannot validate a deploy path that has a different layout. When the deploy
+  instruction is written down in the handoff — "download ONE file into Downloads and run it" —
+  make CI execute exactly that, literally, including the directory it lands in. The gap was not
+  subtle logic; it was a working directory nobody reproduced.**
+- **A "one-file installer" is only self-contained for the parts you actually embedded.** The wheel
+  was embedded, so the promise felt true; the 17 MB Java converter was not, and the header's "no
+  internet needed for the tool itself" quietly covered for the omission. **LESSON: when a component
+  advertises self-sufficiency, enumerate what it needs at RUNTIME and check each item is either
+  embedded or fetched — a partial guarantee reads exactly like a whole one right up until the
+  feature it silently dropped is the one the user needs.**
+- **An optional step killed the mandatory ones.** Under `set -euo pipefail`, a failed `ollama pull`
+  — explicitly documented as skippable — terminated the installer *before* the launchers,
+  uninstaller and README were written. **LESSON: `set -e` makes every unguarded command mandatory
+  regardless of what the docs call it. Anything labelled optional must be wrapped in `if …; then`
+  (or `|| true`) or the label is a lie; and order matters — put the essential artifacts BEFORE the
+  optional downloads so a late failure cannot un-install what already succeeded.**
+- **My own first sweep produced twelve false positives.** The export-route scan reported 12 failing
+  endpoints; every one was my harness omitting a required query param, not a defect. Re-run with
+  real params derived from the engine, all 76 route/format combinations were clean. **LESSON: a
+  red result from a harness you just wrote indicts the harness first. Disproving those twelve cost
+  one iteration; "fixing" them would have been twelve changes to working code — and the standing
+  rule is that a mistaken fix is worse than the drift it chases.**
+- **Separate the live bug from the latent one, in the write-up.** `pull_model` really was
+  mis-timed-out (a non-streaming multi-GB download on a 120 s budget), but nothing calls it, so it
+  had never hurt anyone. It got fixed and labelled latent. **LESSON: shipping a latent fix inside a
+  bug report inflates the apparent severity of the real defect and erodes trust in the next report.
+  Fix it, say it was a trap not a symptom, and let the reproduced failure carry the headline.**
 ### 2026-07-27c — "is this an issue?" was the highest-value question of the week; and a fix that would have opened a destructive edge
 - **The operator asked whether an installer warning mattered, and the honest answer was "not the way
   you fear, but yes — worse than you think."** They saw `native .mpp import stays OFF` on a machine

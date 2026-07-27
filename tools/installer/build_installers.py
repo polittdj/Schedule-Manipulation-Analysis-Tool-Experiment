@@ -15,11 +15,20 @@ from __future__ import annotations
 
 import base64
 import glob
+import hashlib
+import re
+import subprocess
 import sys
 import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+
+#: Where an installer that was downloaded ON ITS OWN (no repo checkout beside it) fetches the
+#: vendored MPXJ converter from. The jars are ~17 MB — embedding them would push every installer
+#: past 20 MB and re-commit 200 MB on each version bump, so they are pulled at install time from
+#: the public repo and verified against the SHA-256 manifest baked in below (ADR-0299).
+MPXJ_DIR = ROOT / "tools" / "mpxj"
 
 #: (file suffix, label, min RAM GB, needs GPU, ollama model, model download GB)
 TIERS: tuple[tuple[str, str, int, bool, str, int], ...] = (
@@ -48,12 +57,75 @@ OLLAMA_MODEL="{model}"
 MODEL_DISK_GB={disk}"""
 
 
+def mpxj_ref() -> str:
+    """The IMMUTABLE commit to fetch the converter from: the last commit that touched
+    ``tools/mpxj``.
+
+    Never a branch name. A mutable ``main`` would mean (a) every installer already in the wild
+    starts failing its baked-in hashes the moment those bytes change, and (b) a PR that
+    legitimately upgrades MPXJ regenerates the manifest with the NEW hashes while ``main`` still
+    serves the OLD jars, so CI's no-checkout leg downloads old bytes and blocks its own upgrade
+    (PR #446 review, P1). Pinning to the commit that actually contains these bytes fixes both:
+    the URL and the manifest can never disagree.
+
+    Upgrading MPXJ is therefore a deliberate two-step: **commit and push ``tools/mpxj`` first**,
+    then regenerate the installers so they pin to that pushed commit. The build prints the ref it
+    chose; if it is not on the remote yet, the download will 404 and the installers must be
+    regenerated after the push.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%H", "--", str(MPXJ_DIR)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise SystemExit(
+            f"cannot resolve the MPXJ commit via git ({exc}) — refusing to pin a mutable ref"
+        ) from exc
+    if not re.fullmatch(r"[0-9a-f]{40}", out):
+        raise SystemExit(f"git returned {out!r}, not a commit SHA — refusing to pin a mutable ref")
+    return out
+
+
+def mpxj_base_url() -> str:
+    """The raw.githubusercontent base for ``tools/mpxj``, derived from pyproject's Repository URL
+    so the installers cannot drift from the repo they ship out of, and pinned to an immutable
+    commit (see :func:`mpxj_ref`)."""
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    m = re.search(r'^Repository\s*=\s*"https://github\.com/([^/"]+)/([^/"]+)"', pyproject, re.M)
+    if not m:
+        raise SystemExit("pyproject [project.urls] Repository not found — cannot pin the MPXJ URL")
+    owner, repo = m.group(1), m.group(2)
+    return f"https://raw.githubusercontent.com/{owner}/{repo}/{mpxj_ref()}/tools/mpxj"
+
+
+def mpxj_manifest() -> str:
+    """``<sha256>  <relative/path>`` for every vendored MPXJ file, sorted for reproducibility.
+
+    Both the checksum AND the file list are pinned: an installer downloads exactly this set and
+    refuses anything whose bytes differ, so a moved/replaced jar fails loudly instead of silently
+    installing a converter that is not the one this build was tested against.
+    """
+    if not (MPXJ_DIR / "classes" / "MpxjToMspdi.class").exists():
+        raise SystemExit(f"{MPXJ_DIR} has no compiled converter — run tools/mpxj/setup.sh first")
+    lines: list[str] = []
+    for path in sorted(p for p in MPXJ_DIR.rglob("*") if p.is_file()):
+        rel = path.relative_to(MPXJ_DIR).as_posix()
+        lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {rel}")
+    return "\n".join(lines)
+
+
 def build(wheel: Path) -> list[Path]:
     b64 = base64.b64encode(wheel.read_bytes()).decode("ascii")
     wrapped = "\n".join(textwrap.wrap(b64, 120))
     commented = "\n".join("# " + line for line in wrapped.splitlines())
     out_dir = ROOT / "installer"
     out_dir.mkdir(exist_ok=True)
+    manifest, base_url = mpxj_manifest(), mpxj_base_url()
+    print(f"MPXJ pinned to {base_url}")
     written: list[Path] = []
     families = (
         ("template.ps1", "install-{s}.ps1", _CONFIG, "utf-8-sig", "\r\n", "{{WHEEL_B64}}", wrapped),
@@ -87,6 +159,8 @@ def build(wheel: Path) -> list[Path]:
                 .replace("{{TIER_SUFFIX}}", suffix)
                 .replace("{{TIER_CONFIG}}", config)
                 .replace("{{WHEEL_NAME}}", wheel.name)
+                .replace("{{MPXJ_BASE_URL}}", base_url)
+                .replace("{{MPXJ_MANIFEST}}", manifest)
                 .replace(payload_key, payload)
             )
             out = out_dir / out_pattern.format(s=suffix)

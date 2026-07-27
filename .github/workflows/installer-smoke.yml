@@ -57,6 +57,51 @@ jobs:
           & $venvPy -c "import schedule_forensics; from schedule_forensics.launcher import main; print('deployed import OK')"
           & $venvPy -c "import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')"
 
+      - name: One-file install with NO repo checkout (the operator's real deploy path, ADR-0299)
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          # The operator is on WINDOWS and has no clone: they download ONE .ps1 from the GitHub
+          # web UI into %USERPROFILE%\Downloads and run it. Every other leg here runs from the
+          # checkout, so it takes the local-copy branch and never exercises the download —
+          # which is exactly how the pre-ADR-0299 bug (native .mpp silently OFF, then a green
+          # DONE) survived. Copy the installer somewhere bare and make it fetch for real.
+          $dl = Join-Path $env:RUNNER_TEMP "Downloads"
+          New-Item -ItemType Directory -Force -Path $dl | Out-Null
+          Copy-Item installer/install-tier1.ps1 -Destination $dl
+          $env:SF_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP "SFOneFile"
+          # cwd must leave the checkout too: `$PWD\tools\mpxj` is one of the four candidates, so
+          # running from the repo root silently satisfies the local-copy branch and the download
+          # is never exercised (the first run of this leg did exactly that).
+          Set-Location $dl
+          $out = powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1") 2>&1 |
+            ForEach-Object { $line = "$_"; Write-Host $line; $line }
+          # Assert the installer's OWN exit code. The two legs above end with `& $venvPy -c ...`,
+          # which resets $LASTEXITCODE — so a mid-run abort (java -version writing to stderr under
+          # $ErrorActionPreference = "Stop") was invisible for as long as it has existed. Never let
+          # a non-zero installer exit be swallowed by a later command again (ADR-0299).
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::the installer exited $LASTEXITCODE — it aborted partway through"
+            exit 1
+          }
+          $cls = Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\classes\MpxjToMspdi.class"
+          if (-not (Test-Path $cls)) {
+            Write-Host "::error::MPXJ converter missing — .mpp import would be dead on the operator's path"
+            exit 1
+          }
+          # Assert the installer actually took the DOWNLOAD branch. Presence of the converter is
+          # not enough: `$PWD\tools\mpxj` is a search candidate, so this leg once satisfied itself
+          # from the checkout while appearing to prove the fetch. A summary line that says
+          # "downloaded" regardless of which branch ran is the same class of self-misdescription
+          # ADR-0299 exists to remove — so make the claim conditional on the evidence.
+          if (-not ($out -match "MPXJ converter downloaded and SHA-256 verified")) {
+            Write-Host "::error::the converter was NOT downloaded — this leg proved nothing about the fetch"
+            exit 1
+          }
+          $jars = (Get-ChildItem (Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\lib")).Count
+          Write-Host "MPXJ jars downloaded + SHA-256 verified: $jars"
+
       - uses: actions/setup-python@v5  # a 3.12 python.exe first on PATH for the leg below
         with:
           python-version: "3.12"
@@ -88,6 +133,27 @@ jobs:
           for f in installer/install-*.sh installer/install-*.command; do
             bash -n "$f" && echo "$f: parses clean"
           done
+      - name: One-file install with NO repo checkout (the operator's real deploy path, ADR-0299)
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          # Copy ONE installer to a bare directory — exactly what downloading it from the
+          # GitHub web UI into ~/Downloads gives you. Before ADR-0299 this silently left
+          # native .mpp import OFF and still printed DONE.
+          mkdir -p "$RUNNER_TEMP/Downloads"
+          cp installer/install-tier1.sh "$RUNNER_TEMP/Downloads/"
+          export SF_INSTALL_ROOT="$RUNNER_TEMP/SFOneFile"
+          (cd "$RUNNER_TEMP/Downloads" && bash install-tier1.sh) | tee "$RUNNER_TEMP/onefile.log"
+          test -f "$SF_INSTALL_ROOT/tools/mpxj/classes/MpxjToMspdi.class" \
+            || { echo "::error::MPXJ converter missing — .mpp import would be dead"; exit 1; }
+          # presence is not proof of the FETCH: `$PWD/tools/mpxj` is a search candidate, so this
+          # leg can satisfy itself from a checkout while appearing to prove the download. Claim
+          # only what the run actually did (ADR-0299).
+          grep -q "MPXJ converter downloaded and SHA-256 verified" "$RUNNER_TEMP/onefile.log" \
+            || { echo "::error::converter not downloaded — this leg proved nothing about the fetch"; exit 1; }
+          echo "MPXJ jars downloaded + SHA-256 verified: $(ls "$SF_INSTALL_ROOT/tools/mpxj/lib" | wc -l)"
+          bash "$SF_INSTALL_ROOT/uninstall-schedule-forensics.sh"
+
       - name: Smoke-run tier1 end-to-end (install -> serve -> static -> stop -> uninstall)
         env:
           SF_INSTALLER_SMOKE: "1"
