@@ -454,8 +454,9 @@
       txt(svg, x(p[xKey]) + 8, y(p[yKey]) + 3, short + " " + p.label.slice(0, 18), { size: 8.5 });
       void i;
     });
-    txt(svg, R, B - 4, opts.xLabel, { anchor: "end", size: 9, weight: "bold" });
-    txt(svg, L + 4, T + 9, opts.yLabel, { size: 9, weight: "bold" });
+    // ADR-0298: the axis captions this module used to draw locally are now the shared
+    // convention — same placement, same option names, size from the .ch-at token.
+    SFChartFrame.axisTitles(svg, { L: L, R: R, T: T, B: B }, opts);
     if (skipped) txt(svg, L + 4, B - 4, skipped + " version(s) N/A (undefined measure) — not plotted", { size: 8 });
   }
   function renderQuads() {

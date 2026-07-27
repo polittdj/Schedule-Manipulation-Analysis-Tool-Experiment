@@ -1,46 +1,51 @@
-# Handoff — 2026-07-27a (monolith split phase 1: state.py extracted; PERF BACKLOG CLEAR; v1.0.103; highest ADR 0297)
+# Handoff — 2026-07-27b (AXIS-TITLES batch 0: one caption convention; v1.0.104; highest ADR 0298)
 
-> ## STATUS (current) — perf item 7 phase 1 SHIPPED; the ADR-0281 perf backlog is CLOSED. Version **1.0.103**. Highest ADR **0297**.
-> Branch `claude/smat-tool-continuation-uskbh7` (fresh from `origin/main` at `1876959` after PR #442
-> / ADR-0296 squash-merged).
+> ## STATUS (current) — AXIS-TITLES batch 0 SHIPPED. Version **1.0.104**. Highest ADR **0298**.
+> Branch `claude/smat-tool-continuation-uskbh7` (fresh from `origin/main` at `3c0f098` after PR
+> #443 / ADR-0297 squash-merged).
 >
-> - **ADR-0297 — `web/app.py` 19,211 → 18,050 lines; `web/state.py` (1,616 lines) now holds the
->   state machinery, extracted VERBATIM:** `_LRUCache` + cache caps, `_Flash`, `_Analysis` /
->   `_DashCore` / `_dash_core`, `_compute_analysis`, `UnifiedRisk`, the `_Role` data table,
->   `SessionState`, `_iso_date` / `_activity_rows`. `web.app` re-exports every moved name via the
->   explicit `X as X` idiom (mypy-strict + ruff clean) so ALL existing import paths keep working.
-> - **THE RULE THAT MADE IT SAFE (reuse in phases 2-3): patch where the CALL SITE lives.** Python
->   resolves a callee in the calling module's namespace, so tests spying `_compute_analysis` /
->   `compute_cpm` / `compute_summary` / `audit_schedule` / `compute_float_bands` /
->   `compute_baseline_compliance` / `recommend` now patch `web.state`; spies on
->   `work_to_go_census` / `_parse_upload` / `_MAX_UPLOAD_BYTES` (called from `_perf_version_block` /
->   the upload route in app.py) STAY on `web.app`. 11 sites updated across 4 files; two first-pass
->   mistakes in BOTH directions were caught by loud test failures — the perf-contract suite is the
->   harness that makes the split verifiable.
-> - **Verbatim except line-wrapping:** state.py earns NO E501 exemption (no HTML), so 32 over-long
->   comment/docstring lines were re-wrapped — whitespace only, no statement changed.
->   `_OAT_MAX_ACTIVITIES` deliberately stayed in app.py (its only caller is the SRA route; a test
->   patches it through the app namespace).
-> - **Proof of behaviour-freedom:** full suite **2,670 passed**; the three dashboard payload golden
->   SHAs passed UNTOUCHED (byte-identical payloads across the split, both DCMA modes + unsolvable
->   card); `-m parity` 44; ruff/format/mypy-strict/bandit/node clean. Wheel + 9 installers at
->   **1.0.103**. CLAUDE.md's architecture note updated (it said "the entire UI in one file").
-> - **Phases 2-3 queued (ordinary follow-on, each its own behaviour-free PR):** **(2)** page chrome
->   (`_LAYOUT`, nav/banner/shell) → `web/chrome.py`; **(3)** the ~11k lines of `_*_body` /
->   `_*_panel` / `_*_data` presentation helpers → per-page modules (they carry the HTML f-strings
->   and take the E501 exemption with them). Routes stay in app.py until the helpers are out.
-> - **PERF BACKLOG (ADR-0281) FINAL LEDGER:** 1-4 shipped (ADR-0288/0289/0291/0292), 5 shipped
->   (ADR-0293), 6 closed as a decision (ADR-0294), 7 phase 1 here — plus the two bonus items the
->   backlog surfaced: ADR-0295 (drill cross-project substitution FIX) and ADR-0296 (dashboard trim).
-> - **NEXT (in order):** **(1)** **AXIS-TITLES-PATCH** (`00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md`:
->   chart axis captions + units + anti-regression test — a UI change, so the DESIGN-SYSTEM DoD
->   checklist applies). **(2)** **CRISPNESS 11px floor** ONLY, no vendored fonts (⚠️ RE-GROUND: its
->   §2.1 claim that `sf-themes.css` "was never committed" is FALSE — it exists, 4,576 B, 36 custom
->   properties, linked in `_LAYOUT`; put the type ramp in the REAL token file). **(3)** GUIDED-MODE
->   (5 decisions) + VOICE-DECISION (4 decisions), parked on the operator. Optional interleave:
->   split phases 2-3.
-> - **STILL FLAGGED, not changed unilaterally:** `_ANALYSIS_CACHE_MAX = 48` (~348 MiB worst case,
->   ADR-0292); the .mpp capability probe's UI surface (ADR-0293 hook, owes the DESIGN-SYSTEM DoD).
+> - **ADR-0298 — `SFChartFrame.axisTitles` is now the ONE axis-caption implementation.** The tree
+>   had TWO (`performance.js` local pair at 9px; `scatter.js` centred-X + **rotated** Y at 11px)
+>   and 28 uncaptioned chart modules. Both are retired into the shared helper; `rotate(-90` is now
+>   absent from every module. Size comes from **`--sf-fs-axis-title: 11px`** in `base.css` via
+>   `.ch-at` — no chart sets a number, so the queued CRISPNESS floor moves ONE value.
+> - **⚠️ THE SPEC HAD FIVE FALSE PREMISES — all verified before implementing. Do not trust
+>   `00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md` unchecked:** (1) `SFChartFrame.text` **does not
+>   exist** (chartframe exported `{frame, scan}` only); (2) **no type/font tokens existed** —
+>   `var(--sf-fs-label)` / `var(--sf-font-mono)` would resolve to nothing (`sf-themes.css` is
+>   colour-only); (3) **`scatter.js` already had an X caption** — the spec says "Y only … gains the
+>   X caption it never had"; (4) **`gantt.js` renders HTML, not SVG**, so the spec's "a Gantt is not
+>   exempt, both axes get captions" is impossible with an SVG `<text>` helper — and 11 further
+>   modules in its §3 table render no SVG at all; (5) its §7 golden SHAs are stale (pre-ADR-0296)
+>   and §6 points at `docs/UI-INVENTORY.md`, which lives in `00_REFERENCE_INTAKE/`.
+> - **The guard is a LEDGER, not the spec's regex** (which under-detected by half — missed
+>   `path.js`/`resources.js`, silent on every HTML visual). `tests/web/test_axis_titles.py` puts
+>   every non-exempt module in exactly ONE bucket: captioned · **`PENDING` (16 real SVG charts left
+>   — this list shrinking to empty IS the completion signal)** · `NO_SVG_AXES` (11 DOM visuals the
+>   SVG helper cannot serve). A NEW unclassified module FAILS the test.
+> - **The guard was PROVED to bite — 6 mutants, each caught by its intended assertion.** One is
+>   worth remembering: an earlier, narrower size assertion sliced from `function axisTitles` and
+>   **missed** a numeric `font-size` planted in the node builder just above it. Widened to the whole
+>   caption block. Also: `git checkout --` to undo a mutant **wiped a legitimate uncommitted edit**
+>   (performance.js) — use file backups for mutation testing, never git checkout.
+> - **Visible change is exactly 5 captions** (3 perf: 9px→11px + uppercase; scatter X: centred→
+>   right-aligned; scatter Y: rotated→horizontal). No plotted value, scale, domain, tick or payload
+>   touched — the three dashboard golden SHAs are unchanged.
+> - **Gate:** full suite **2,704 passed**; ruff/format/mypy-strict/bandit/node clean; wheel + 9
+>   installers at **1.0.104**. `00_REFERENCE_INTAKE/UI-INVENTORY.md` corrected (3 rows + a
+>   verified-corrections note).
+> - **OWED, NOT CLAIMED:** the DESIGN-SYSTEM DoD's "renders correctly in all 4 themes + 90-125%
+>   scale" needs a browser and this sandbox has no automation for it (prior Chromium checks were
+>   manual). Structure/styling hooks are covered by the static + node layers; **the four-theme
+>   visual pass is outstanding** — `text-transform` on SVG `<text>` is the property to eyeball.
+> - **NEXT:** AXIS-TITLES batches 1-5 — drive `PENDING` (16) to empty, ~5 modules per PR, each
+>   passing `xLabel`/`yLabel` per the spec's §3 table (its captions are sound; only its premises
+>   were not). Then **CRISPNESS 11px floor** ONLY, no vendored fonts (⚠️ its §2.1 claim that
+>   `sf-themes.css` "was never committed" is FALSE) — note `--sf-fs-axis-title` is already the seam.
+>   Then GUIDED-MODE (5 decisions) + VOICE-DECISION (4), parked on the operator. Also open: split
+>   phases 2-3 (`web/chrome.py`, then per-page helper modules); a DOM caption mechanism for the 11
+>   `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe's UI surface
+>   (ADR-0293).
 > - **DEPLOY NOTE:** the operator has **no local clone** — download `installer/install-tier2.ps1`
 >   from the GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
