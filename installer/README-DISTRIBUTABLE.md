@@ -16,10 +16,16 @@ what is missing: Python 3.11+ → the tool in its own private environment (embed
 internet needed for the tool itself) → the MPXJ converter that native `.mpp` import needs (copied
 from a repo checkout if you have one beside the file, otherwise downloaded, ~17 MB, and SHA-256
 verified against a manifest baked into the installer) → optional Java 17 (also native `.mpp` only)
-→ optional Ollama + the tier's AI model. It finishes by creating **Start Schedule Forensics** and
-**Stop Schedule Forensics** icons on the Desktop and Start Menu, an uninstaller, and a first-run
-README. Nothing optional can abort the install: a failed Java, converter, or model download is
+→ optional Ollama + the tier's AI model. It finishes by creating the Desktop and Start-Menu
+shortcut — a single **Schedule Forensics** icon on Windows (the app stops itself on Quit),
+**Start**/**Stop** launchers on Linux and macOS — an uninstaller, and a first-run README.
+Nothing optional can abort the install: a failed Java, converter, or model download is
 reported plainly and the rest still completes.
+
+**If the machine is offline** (or the converter download is blocked), native `.mpp` support can
+still be installed by hand: on the repository page use the green **Code → Download ZIP**, extract
+it, and run the installer from inside the extracted folder — it carries `tools/mpxj` and will copy
+it across. A converter from an earlier install is always kept, never overwritten or deleted.
 
 **Privacy / data sovereignty:** the installed tool binds `127.0.0.1` only — schedule data never
 leaves the machine. Internet is used only during installation, for public prerequisites (Python,

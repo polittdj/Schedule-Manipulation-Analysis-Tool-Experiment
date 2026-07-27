@@ -49,6 +49,34 @@ that could not open a single production schedule — and the remedy printed in t
 
 ## Decision
 
+### 0. It reports the capability of the DEPLOYED TOOL, not the outcome of its copy step
+
+`docs/PLAN/MPXJ-CAPABILITY-REPORT.md` (PR #445) diagnosed the same lookup from the other end: on an
+**upgrade**, the source is missing but a converter is already installed, so the old code printed
+`native .mpp import stays OFF` **about a machine where `.mpp` demonstrably worked**. On a testimony
+tool a false claim about your own capability is a correctness defect, not a cosmetic one. Three
+outcomes now, and the printed sentence must always agree with what `_mpxj_home()` will find:
+
+| condition | message |
+| --- | --- |
+| a source converter was found and copied | `MPXJ converter deployed (native .mpp import enabled)` |
+| no source, but one is already installed | `MPXJ converter already installed — native .mpp import stays ON (existing copy kept)` |
+| neither (and no download) | `no MPXJ converter found — native .mpp import is OFF` + the ZIP remedy |
+
+### 0b. Two destructive edges — the second one was mine
+
+Widening the search makes the **already-installed copy selectable as a source**, and the copy step
+clears the destination first, so a re-run would delete the operator's only converter. That is the
+edge #445's report predicted; the `sf_realpath` / `-ieq $destReal` skip closes it, and a mutant with
+the skip removed reproduces the destruction (`cp: cannot stat …`).
+
+**The first cut of this ADR had it worse.** The download wiped the destination *before* fetching and
+again in the failure branch — so an upgrade that lost the network would have destroyed a working
+converter, strictly worse than the behaviour being fixed (which merely warned). The fetch now stages
+into `.mpxj-incoming` and is swapped in **only after every byte verifies**; a failed download leaves
+an existing install byte-for-byte untouched. **Never delete something you cannot immediately
+replace.**
+
 ### 1. The converter is fetched, pinned by content, and never assumed
 
 Embedding MPXJ was rejected: 17 MB → ~23 MB of base64 × 9 installers, re-committed on **every**
@@ -65,6 +93,18 @@ version bump. Instead each installer now, in order:
 pyproject's `Repository`, so the installers cannot drift from the repo they ship out of. The
 manifest pins **content, not a branch**: a swapped or corrupted jar fails loudly rather than
 silently installing a converter this build was never tested against. Cost: ~3 KB per installer.
+
+**The URL pins an immutable commit, never `main`** (PR #446 review, P1 — valid). Because the
+manifest is generated from the *local* bytes, a mutable ref guarantees an eventual disagreement:
+every installer already distributed starts failing its hashes the moment those bytes change, and a
+PR that legitimately upgrades MPXJ regenerates the manifest with the NEW hashes while `main` still
+serves the OLD jars — so CI's own no-checkout leg would download stale bytes and block the upgrade.
+The reviewer's suggested "embed the build commit SHA" cannot work (the squash-merge commit does not
+exist at build time), so the builder resolves `git log -1 --format=%H -- tools/mpxj` — the commit
+that actually *contains* these bytes, already on `main` in the normal case. Verified that a non-tip
+SHA serves byte-identical content from `raw.githubusercontent.com`. A test rejects any non-40-hex
+ref. Consequence, documented in the builder: **upgrading MPXJ is a two-step — push `tools/mpxj`
+first, then regenerate the installers so they pin to that pushed commit.**
 
 This stays inside Law 1's stated posture — internet at **install** time for public prerequisites
 (Python / Java / Ollama / the model), never by the running tool. `SF_MPXJ_OFFLINE=1` suppresses the

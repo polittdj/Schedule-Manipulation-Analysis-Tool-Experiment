@@ -8031,6 +8031,48 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** batches 1-5 drive `PENDING` (16) to empty (~5 modules/PR; the spec's §3 caption strings
   are sound — only its premises were not), then CRISPNESS 11px floor (the token is already the seam).
 
+## 2026-07-27c — ADR-0298 merged; a shipped installer defect diagnosed, evidenced and staged (no ADR yet; v1.0.104)
+- **PR #444 (ADR-0298, AXIS-TITLES batch 0) squash-merged** at `c884602`. Branch restarted from
+  `origin/main` with `--prune`; the hourly check-in trigger was deleted rather than re-armed.
+- **Answered the operator's question about the installer warning, and it turned out to be a real
+  defect rather than a false alarm.** They upgraded and saw
+  `[!!] tools\mpxj not found next to this installer — native .mpp import stays OFF`, then confirmed
+  `Test-Path "$env:LOCALAPPDATA\ScheduleForensics\tools\mpxj\classes\MpxjToMspdi.class"` → `True`.
+  Nothing was broken (the `else` branch only warns; it never deletes), but **the installer stated
+  the opposite of the truth about the tool it had just installed** — on a testimony-context tool
+  that is a correctness bug, not cosmetics.
+- **Proved it executably instead of reasoning about it.** Lifted the `# --- 3b.` section verbatim out
+  of the generated `installer/install-tier2.sh`, stubbed only `ok`/`warn`/`INSTALL_ROOT`, and ran it
+  under the installer's own `set -euo pipefail` across four machine layouts. Three agreed with
+  reality; the upgrade-from-Downloads case — the operator's — claimed OFF while the converter was
+  present. Four distinct defects fell out: the report describes the copy step rather than the
+  deployed tool; only one source path is searched; `SF_MPXJ_HOME` is named in the advice and ignored
+  by the code; and "run it from the repository checkout" is not actionable for an operator with no
+  clone.
+- **Wrote and validated the fix, but did NOT apply it** (the operator called the session to a
+  handoff first). All of it is preserved in **`docs/PLAN/MPXJ-CAPABILITY-REPORT.md`** — evidence
+  table, the ready-to-apply bash and PowerShell blocks, the pins in `test_installers.py` that will
+  fail, the documentation drift, and the full drafted test in an appendix. It becomes ADR-0299.
+- **Found and closed a destructive edge the fix itself would have opened.** Widening the search to
+  `SF_MPXJ_HOME`/CWD makes the already-installed copy selectable as the *source*, and the copy step
+  `rm -rf`s the destination first — so a re-run would delete the operator's only converter. Added a
+  `sf_realpath` self-copy skip and mutation-tested it: guard present → converter survives; guard
+  removed → `cp: cannot stat …` and the converter is gone.
+- **Verified the remediation before recommending it.** The new not-found message tells the operator
+  to download the repository ZIP; `git ls-files tools/mpxj` confirms all 28 files (the converter
+  class + 24 jars) are tracked with no LFS, so GitHub's ZIP genuinely carries them. That check is
+  written into the drafted test so the advice cannot rot silently.
+- **Three documentation drifts found in passing:** `README-DISTRIBUTABLE.md` promises "give the
+  recipient **one** file" and never mentions `tools/mpxj`, so the documented distribution model
+  structurally cannot deliver native `.mpp`; it also claims Start/Stop icons, which is true on
+  Linux/macOS but wrong on Windows since ADR-0193; and `template.ps1`'s own §6 header repeats that
+  stale two-icon claim while its code ~260 lines below deletes those two and creates one.
+- **Rejected embedding MPXJ in the installers** (~23 MB of base64 × 9 files, regenerated per version
+  bump, ≈200 MB of git per release) and recorded the reasoning so it is not re-litigated.
+- **Corrected the DEPLOY NOTE that caused this.** It told the operator to download the single `.ps1`
+  into `Downloads` — the one layout that guarantees the converter is not found. Now: Code → Download
+  ZIP, extract, run `.\installer\install-tier2.ps1` from inside.
+- **Highest ADR remains 0298**; no ADR was created for work that has not landed.
 ## 2026-07-27c — "Fix the downloader": the one-file installer could never open a .mpp (ADR-0299; v1.0.105)
 
 - **Model/mode:** Opus 5, targeted deep dive (ADR-0240 — a multi-path fix, not the full Ultracode
@@ -8082,3 +8124,35 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   was still unexercised on the operator's own platform. Added a windows no-checkout leg.
   **LESSON: a green check only proves the branch the job actually walked; read the log to find out
   which branch that was.**
+
+## 2026-07-27d — merging with #445's diagnosis: my own fix had the destructive edge it warned about
+
+- **`main` moved mid-PR** (#445 landed `docs/PLAN/MPXJ-CAPABILITY-REPORT.md`) and #446 went
+  `mergeable_state: dirty`. Merged `origin/main` in; conflicts were only in the four durable-state
+  docs (both sides appended), no code.
+- **Reading that report before resolving was the whole ballgame.** It diagnosed a *different*
+  symptom of the same lookup — on an UPGRADE the installer printed "stays OFF" about a machine
+  where `.mpp` demonstrably worked — and it **explicitly warned that widening the search opens a
+  destructive edge**: the installed copy becomes selectable as a SOURCE, and the copy step
+  `rm -rf`s the destination first. My branch had already widened the search. **My code had that
+  bug, and worse:** the download wiped the destination *before* fetching and again on failure, so
+  an offline upgrade would have destroyed a working converter — strictly worse than the behaviour
+  I was "fixing", which only warned.
+- **Fixed both:** `sf_realpath`/`-ieq $destReal` self-copy skip, and the fetch now stages into
+  `.mpxj-incoming` and swaps in only after every byte verifies. Adopted #445's capability-truth
+  reporting (deployed / already-installed-stays-ON / is-OFF) so the printed sentence always agrees
+  with what `_mpxj_home()` finds. Verified all four scenarios from a NEUTRAL cwd — my first run
+  was contaminated because `$PWD/tools/mpxj` matched the real repo and made every scenario "pass".
+  Mutation-reproduced the destruction with the guard removed.
+- **Codex review P1 was valid and I acted on it:** the URL pointed at mutable `main` while the
+  manifest is generated from local bytes. Two failure modes — installers in the wild break when
+  those bytes change, and a PR that legitimately upgrades MPXJ regenerates new hashes while main
+  still serves old jars, blocking its own upgrade in CI. Its suggested "embed the build commit
+  SHA" doesn't work (the squash commit doesn't exist at build time), so the URL now pins to
+  `git log -1 -- tools/mpxj` — the commit that actually contains the bytes. Verified a non-tip SHA
+  serves byte-identical content. A test rejects any non-40-hex ref.
+- **LESSONS:** (1) *a fix that widens a search must ask what the search can now find that it
+  couldn't before* — here, the destination itself; (2) *never delete something you cannot
+  immediately replace* — stage, verify, then swap; (3) *a test harness that inherits the repo's cwd
+  will pass on the developer's own checkout and prove nothing*; (4) a green CI check only proves
+  the branch the job actually walked — read the log to find out which.

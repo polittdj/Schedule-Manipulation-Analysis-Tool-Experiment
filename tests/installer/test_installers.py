@@ -214,18 +214,21 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     upgrade and by the uninstaller."""
     tpl_ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
     assert 'Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"' in tpl_ps1
-    assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import stays OFF" in tpl_ps1
+    # "stays OFF" is retired (ADR-0299): the installer now reports the DEPLOYED capability,
+    # so the three outcomes are enabled / stays ON (existing kept) / is OFF.
+    assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import is OFF" in tpl_ps1
+    assert "native .mpp import stays OFF" not in tpl_ps1
     assert '"Schedule Forensics.lnk"' in tpl_ps1  # the ONE icon
     assert "pythonw.exe" in tpl_ps1  # launched directly (self-stopping app, no console)
     assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
-        assert 'cp -R "$cand"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert 'cp -R "$MPXJ_SRC"' in tpl and "MpxjToMspdi.class" in tpl, family
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
         assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
         for family in ("sh", "command"):
-            assert 'cp -R "$cand"' in _read(tier, family), (tier, family)
+            assert 'cp -R "$MPXJ_SRC"' in _read(tier, family), (tier, family)
 
 
 # ── ADR-0299: the one-file installer must deliver .mpp support with NO repo checkout ──────
@@ -293,7 +296,12 @@ def _mpxj_block(family: str) -> str:
 
 
 def _run_mpxj_block(tmp_path: Path, *, script_dir: Path, env: dict[str, str]) -> str:
-    """Execute the REAL shipped 3b block standalone (stubbed ok/warn), no venv, no network."""
+    """Execute the REAL shipped 3b block standalone (stubbed ok/warn), no venv, no network.
+
+    Runs with cwd set to an EMPTY directory on purpose: ``$PWD/tools/mpxj`` is one of the four
+    candidates, so running from the repo root would silently satisfy every scenario from the
+    developer's own checkout and the test would prove nothing.
+    """
     harness = script_dir / "mpxj_block.sh"
     harness.write_text(
         "set -euo pipefail\n"
@@ -302,14 +310,25 @@ def _run_mpxj_block(tmp_path: Path, *, script_dir: Path, env: dict[str, str]) ->
         f'INSTALL_ROOT="{tmp_path / "root"}"\n' + _mpxj_block("sh") + "\n",
         encoding="utf-8",
     )
+    neutral = tmp_path / "neutral"
+    neutral.mkdir(exist_ok=True)
     proc = subprocess.run(
         ["bash", str(harness)],
         capture_output=True,
         text=True,
         timeout=120,
+        cwd=neutral,
         env={"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(tmp_path), **env},
     )
     return proc.stdout + proc.stderr
+
+
+def _installed(tmp_path: Path) -> Path:
+    """Pre-deploy a converter where an EARLIER install would have left it."""
+    cls = tmp_path / "root" / "tools" / "mpxj" / "classes" / "MpxjToMspdi.class"
+    cls.parent.mkdir(parents=True, exist_ok=True)
+    cls.write_bytes(b"stub")
+    return cls
 
 
 def test_mpxj_block_deploys_a_local_copy_without_touching_the_network(tmp_path: Path) -> None:
@@ -317,11 +336,71 @@ def test_mpxj_block_deploys_a_local_copy_without_touching_the_network(tmp_path: 
     script_dir = tmp_path / "media"
     (script_dir / "tools" / "mpxj" / "classes").mkdir(parents=True)
     (script_dir / "tools" / "mpxj" / "classes" / "MpxjToMspdi.class").write_bytes(b"stub")
-    # SF_MPXJ_OFFLINE stays unset: if the local copy were missed this would try to download,
-    # so a pass proves the local branch short-circuits it.
     out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
     assert "[ok]" in out and "native .mpp import enabled" in out, out
     assert (tmp_path / "root" / "tools" / "mpxj" / "classes" / "MpxjToMspdi.class").exists()
+
+
+def test_an_upgrade_reports_the_converter_it_already_has(tmp_path: Path) -> None:
+    """THE OPERATOR'S INCIDENT (MPXJ-CAPABILITY-REPORT.md scenario C). Re-running the downloaded
+    installer over an existing install found no source and printed "native .mpp import stays OFF"
+    on a machine where the converter was demonstrably present and .mpp import WORKED. The
+    installer described its own copy step instead of the capability of the tool it had just
+    installed — on a testimony tool, a false claim about your own capability is a correctness
+    defect. What is printed must agree with what ``_mpxj_home()`` will find."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    cls = _installed(tmp_path)
+    out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
+    assert "stays ON" in out, out
+    assert "is OFF" not in out, "claimed OFF while a working converter was installed"
+    assert cls.exists(), "an upgrade destroyed the existing converter"
+
+
+def test_a_re_run_never_destroys_the_installed_converter(tmp_path: Path) -> None:
+    """The destructive edge that widening the search opens (mutation-verified in the report and
+    again here): with ``SF_MPXJ_HOME`` pointing AT the installed copy, the copy step would clear
+    the destination and then copy from the thing it just deleted. The self-copy skip is the only
+    thing standing between a re-run and the operator's only converter."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    cls = _installed(tmp_path)
+    out = _run_mpxj_block(
+        tmp_path,
+        script_dir=script_dir,
+        env={"SF_MPXJ_OFFLINE": "1", "SF_MPXJ_HOME": str(cls.parent.parent)},
+    )
+    assert cls.exists(), "SF_MPXJ_HOME == destination deleted the only converter"
+    assert "stays ON" in out, out
+
+
+def test_a_failed_download_leaves_an_existing_install_untouched(tmp_path: Path) -> None:
+    """A download that cannot reach the host must never cost the operator a working converter:
+    the fetch stages into a temp dir and is swapped in only once every byte verifies."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    cls = _installed(tmp_path)
+    out = _run_mpxj_block(  # unroutable proxy => every fetch fails
+        tmp_path,
+        script_dir=script_dir,
+        env={"http_proxy": "http://127.0.0.1:1", "https_proxy": "http://127.0.0.1:1"},
+    )
+    assert cls.exists(), "a failed download destroyed the installed converter"
+    assert "stays ON" in out or "enabled" in out, out
+    assert not (tmp_path / "root" / "tools" / ".mpxj-incoming").exists(), "staging dir left behind"
+
+
+def test_mpxj_block_fails_honestly_when_it_cannot_get_the_converter(tmp_path: Path) -> None:
+    """No local copy, nothing installed, no download allowed => an explicit OFF statement and NO
+    false [ok], no half-written converter tree, and a remedy the operator can actually follow
+    (they have no clone, so "run it from the checkout" was never actionable)."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
+    assert "native .mpp import is OFF" in out, out
+    assert "native .mpp import enabled" not in out, out
+    assert "Download ZIP" in out, "the remedy must be one the operator can actually follow"
+    assert not (tmp_path / "root" / "tools" / "mpxj").exists()
 
 
 def test_a_failed_model_download_neither_aborts_the_install_nor_claims_success(
@@ -366,12 +445,21 @@ def test_a_failed_model_download_neither_aborts_the_install_nor_claims_success(
     assert "[ok] Model ready" not in out, "claimed a model it never got"
 
 
-def test_mpxj_block_fails_honestly_when_it_cannot_get_the_converter(tmp_path: Path) -> None:
-    """No local copy + no download allowed => an explicit OFF warning and NO false [ok],
-    and no half-written converter tree left behind (the ADR-0192 honesty rule)."""
-    script_dir = tmp_path / "downloads"
-    script_dir.mkdir()
-    out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
-    assert "native .mpp import stays OFF" in out, out
-    assert "native .mpp import enabled" not in out, out
-    assert not (tmp_path / "root" / "tools" / "mpxj").exists()
+@pytest.mark.parametrize("family", FAMILIES)
+def test_the_converter_url_is_pinned_to_an_immutable_commit(family: str) -> None:
+    """PR #446 review (P1). The manifest is generated from the LOCAL ``tools/mpxj`` bytes, so a
+    mutable ``main`` in the URL guarantees an eventual disagreement between what an installer
+    fetches and what its baked-in hashes expect:
+
+    * every installer already in the wild starts failing the moment those bytes change on main;
+    * a PR that legitimately upgrades MPXJ regenerates the manifest with the NEW hashes while
+      main still serves the OLD jars — so CI's no-checkout leg downloads old bytes, fails the
+      hash check, and blocks its own upgrade.
+
+    Pinning to the commit that actually contains these bytes makes the two unable to disagree.
+    """
+    text = _read("tier1", family)
+    m = re.search(r"raw\.githubusercontent\.com/[^/\s\"]+/[^/\s\"]+/([^/\s\"]+)/tools/mpxj", text)
+    assert m, "no MPXJ raw URL found"
+    ref = m.group(1)
+    assert re.fullmatch(r"[0-9a-f]{40}", ref), f"MPXJ URL pinned to mutable ref {ref!r}"

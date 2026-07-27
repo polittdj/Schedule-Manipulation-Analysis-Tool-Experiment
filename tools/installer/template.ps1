@@ -16,8 +16,9 @@
    4. Optionally ensures Java 17+ (also needed to open native .mpp files).
    5. Installs Ollama + this tier's local AI model (skippable — the tool runs fully
       without AI).
-   6. Creates Desktop + Start-Menu shortcuts: "Start Schedule Forensics" and
-      "Stop Schedule Forensics", plus an uninstaller and a first-run README.
+   6. Creates the single Desktop + Start-Menu shortcut "Schedule Forensics" (the app stops
+      itself and the local AI on Quit — ADR-0193 retired the separate Stop icon, and this
+      installer deletes any old Start/Stop pair), plus an uninstaller and a first-run README.
 
  DATA SOVEREIGNTY: the installed tool is loopback-only (127.0.0.1) — no schedule
  data ever leaves the machine. Internet is used ONLY at install time, for public
@@ -127,30 +128,48 @@ try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 # bump), and it must not depend on a repo checkout either — the documented deploy path is a
 # SINGLE file downloaded from the GitHub web UI into %USERPROFILE%\Downloads, where the old
 # `Split-Path -Parent $PSScriptRoot` lookup resolved to %USERPROFILE%\tools\mpxj, silently
-# left .mpp support OFF, and still printed DONE. So: prefer a local copy when one really is
-# beside this installer (repo checkout / offline media), otherwise download the pinned file
-# set and verify every byte against the SHA-256 manifest baked in at build time.
-$destMpxj = Join-Path $InstallRoot "tools\mpxj"
-$mpxjOk = $false
+# left .mpp support OFF, and still printed DONE. Several layouts are searched, and failing
+# those the pinned file set is downloaded and verified against the baked-in SHA-256 manifest.
+#
+# TWO RULES THIS BLOCK MUST NEVER BREAK (both mutation-verified — MPXJ-CAPABILITY-REPORT.md):
+#  1. NEVER DESTROY AN INSTALLED CONVERTER. Widening the search makes the already-installed
+#     copy selectable as a SOURCE, and the copy step clears the destination first — so a re-run
+#     would delete the operator's only converter. Hence the self-copy skip, and hence the
+#     download stages into a temp folder and is swapped in ONLY once every byte verifies.
+#  2. REPORT THE CAPABILITY OF THE DEPLOYED TOOL, NOT THE OUTCOME OF THIS COPY STEP. An
+#     upgrade that finds no source but already has a converter installed leaves native .mpp
+#     ON; saying "stays OFF" there was simply false, and on a testimony tool a false claim
+#     about your own capability is a correctness defect.
 $MpxjBaseUrl = "{{MPXJ_BASE_URL}}"
 $MpxjManifest = @'
 {{MPXJ_MANIFEST}}
 '@
-foreach ($cand in @(
-        $env:SF_MPXJ_HOME,
-        (Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"),
-        (Join-Path $PSScriptRoot "tools\mpxj"),
-        (Join-Path $PSScriptRoot "mpxj"))) {
-    if ($cand -and (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) {
-        New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
-        Copy-Item -Recurse -Force -Path (Join-Path $cand "*") -Destination $destMpxj
-        Ok "MPXJ converter deployed from $cand (native .mpp import enabled)"
-        $mpxjOk = $true
-        break
-    }
+function Resolve-SfPath([string]$p) {
+    try { return (Resolve-Path -LiteralPath $p -ErrorAction Stop).ProviderPath } catch { return $p }
 }
-if ((-not $mpxjOk) -and ($env:SF_MPXJ_OFFLINE -ne "1")) {
+$destMpxj = Join-Path $InstallRoot "tools\mpxj"
+$destReal = Resolve-SfPath $destMpxj
+$srcMpxj = $null
+foreach ($cand in @($env:SF_MPXJ_HOME,
+                    (Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"),
+                    (Join-Path $PSScriptRoot "tools\mpxj"),
+                    (Join-Path $PWD.Path "tools\mpxj"))) {
+    if (-not $cand) { continue }
+    if (-not (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) { continue }
+    # never copy the installed copy over itself — that would delete the only converter
+    if ((Resolve-SfPath $cand) -ieq $destReal) { continue }
+    $srcMpxj = $cand
+    break
+}
+if ($srcMpxj) {
+    New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
+    Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj "*") -Destination $destMpxj
+    Ok "MPXJ converter deployed (native .mpp import enabled)"
+} elseif (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class")) {
+    Ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"
+} elseif ($env:SF_MPXJ_OFFLINE -ne "1") {
     Write-Host "    Downloading the MPXJ converter (~17 MB, one time) for native .mpp import..."
+    $tmpMpxj = Join-Path $InstallRoot "tools\.mpxj-incoming"
     try {
         # Windows PowerShell 5.1 can still negotiate TLS 1.0/1.1 by default, which every modern
         # host (raw.githubusercontent, aka.ms) refuses — the download would fail with an opaque
@@ -159,31 +178,36 @@ if ((-not $mpxjOk) -and ($env:SF_MPXJ_OFFLINE -ne "1")) {
             [Net.ServicePointManager]::SecurityProtocol =
                 [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
         } catch { }
-        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
-        New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpMpxj
+        New-Item -ItemType Directory -Force -Path $tmpMpxj | Out-Null
         foreach ($line in ($MpxjManifest -split "`n")) {
             $line = $line.Trim()
             if (-not $line) { continue }
             $sha, $rel = $line -split "\s+", 2
-            $target = Join-Path $destMpxj ($rel -replace "/", "\")
+            $target = Join-Path $tmpMpxj ($rel -replace "/", "\")
             New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
             Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
             $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLower()
             if ($got -ne $sha.ToLower()) { throw "checksum mismatch for $rel" }
         }
-        if (-not (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class"))) {
+        if (-not (Test-Path (Join-Path $tmpMpxj "classes\MpxjToMspdi.class"))) {
             throw "converter class missing after download"
         }
-        Ok "MPXJ converter downloaded and SHA-256 verified (native .mpp import enabled)"
-        $mpxjOk = $true
-    } catch {
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
-        Warn2 ("MPXJ download failed (" + $_.Exception.Message + ")")
+        Move-Item -Force -Path $tmpMpxj -Destination $destMpxj
+        Ok "MPXJ converter downloaded and SHA-256 verified (native .mpp import enabled)"
+    } catch {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmpMpxj
+        Warn2 ("MPXJ download failed (" + $_.Exception.Message + ") — native .mpp import is OFF")
+        Warn2 "  offline? download the repository ZIP (green 'Code' button -> Download ZIP),"
+        Warn2 "  extract it, then re-run this installer from inside the extracted folder"
+        Warn2 "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
     }
-}
-if (-not $mpxjOk) {
-    Warn2 "native .mpp import stays OFF — set SF_MPXJ_HOME to an MPXJ folder, or open .mpp"
-    Warn2 "  files by exporting MSPDI XML from MS Project (File > Save As > XML) instead"
+} else {
+    Warn2 "no MPXJ converter found — native .mpp import is OFF"
+    Warn2 "  to turn it on: set SF_MPXJ_HOME to an MPXJ folder, or download the repository ZIP"
+    Warn2 "  (green 'Code' button -> Download ZIP), extract it, and re-run from inside it"
+    Warn2 "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
 }
 
 # a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)

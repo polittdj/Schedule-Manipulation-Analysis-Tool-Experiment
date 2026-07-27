@@ -1,61 +1,61 @@
-# Handoff — 2026-07-27c (the downloader: the one-file installer now delivers .mpp; v1.0.105; highest ADR 0299)
+# Handoff — 2026-07-27d (the downloader: one-file install now delivers .mpp, honestly; v1.0.105; highest ADR 0299)
 
-> ## STATUS (current) — DOWNLOADER FIXED. Version **1.0.105**. Highest ADR **0299**.
-> Branch `claude/downloader-fixes-jv6tjb`, fresh from `origin/main` at `c884602` (PR #444 merged).
-> Operator asked to "fix the downloader" with no symptom given, and to cover ALL of it — so all
-> four download paths were swept and each finding was reproduced before it was touched.
+> ## STATUS (current) — DOWNLOADER FIXED, PR #446 open. Version **1.0.105**. Highest ADR **0299**.
+> Branch `claude/downloader-fixes-jv6tjb`, branched at `c884602`, **merged with `origin/main`
+> `e044b4a`** (PR #445's diagnosis doc). Operator asked to "fix the downloader" with no symptom
+> and to cover ALL of it, so all four download paths were swept and every finding reproduced
+> before it was touched.
 >
-> - **THE BUG (ADR-0299): the documented deploy path could never open a `.mpp`.** ADR-0193 copied
->   the 17 MB MPXJ converter out of `<installer dir>/../tools/mpxj` — correct from a checkout,
->   but the operator downloads ONE file into `~/Downloads`, where that resolves to
->   `%USERPROFILE%\tools\mpxj`. It missed, warned once, and **still printed a green `DONE`**;
->   every `.mpp` then died with `ImporterError: MPXJ runner not found`, and the remedy the error
->   printed (`tools/mpxj/setup.sh`) needs Maven + a clone the operator does not have. **Native
->   `.mpp` is the tool's primary input.** Reproduced end-to-end before any code changed.
-> - **The fix:** local copy first (`SF_MPXJ_HOME`, `../tools/mpxj`, `./tools/mpxj`, `./mpxj` —
->   checkout and CI unchanged, no network), else **download the pinned set from this repo's
->   public raw URL and verify every file against a SHA-256 manifest** baked in at build time by
->   `build_installers.py` (+3 KB per installer; embedding was rejected at ~23 MB x 9 x every
->   version bump). `SF_MPXJ_OFFLINE=1` opts out. **Verified: bare-directory install downloads,
->   verifies, and parses a real 145-activity `.mpp`.**
-> - **Second live defect, same audit:** a failed `ollama pull` **aborted the whole installer**
->   under `set -euo pipefail` — before the launchers/uninstaller/README were written, leaving a
->   venv with no way to start the tool — for a step documented as optional. The `.ps1` had the
->   mirror bug: `winget install` and `ollama pull` both followed by an unconditional `Ok`. Both
->   proved by execution, both fixed to verify-then-report-and-continue (the ADR-0192 rule).
-> - **Third (latent):** `OllamaBackend.pull_model` used the 120 s generate timeout for a
->   **non-streaming** multi-GB pull (tiers are 2/5/43 GB) — it could only ever time out. Now has
->   its own `pull_timeout` (6 h). Nothing in `web/` calls it today; fixed so the seam is sound.
-> - **The in-app export/download routes are CLEAN — swept, not assumed:** all 37
->   `/export/{fmt}/…` routes x both formats + `/download/{name}.json` = **76 combinations, all
->   200 with a valid payload**. No change made there.
-> - **Guards proved to bite — 5 mutants, each caught by its intended assertion:** flipped manifest
->   SHA · manifest line dropped · raw-URL fallback removed · false `[ok]` on the failure path ·
->   local-copy branch deleted. Mutation testing used **file backups** (ADR-0298's lesson), and the
->   tree was verified byte-identical afterwards. CI now runs the operator's shape: one installer
->   copied to a bare dir, and it **fails** if the converter is missing after.
-> - **Gate:** full suite **2,724 passed**; ruff/format/mypy-strict/bandit clean; wheel + 9
->   installers at **1.0.105**.
-> - **NEXT (unchanged, still queued):** AXIS-TITLES batches 1-5 — drive `PENDING` (16) to empty,
->   ~5 modules/PR per the spec's §3 table. Then **CRISPNESS 11px floor** ONLY, no vendored fonts
->   (`--sf-fs-axis-title` is already the seam; ⚠️ its §2.1 "sf-themes.css was never committed" is
->   FALSE). Then GUIDED-MODE (5 decisions) + VOICE-DECISION (4), parked on the operator. Also
->   open: monolith split phases 2-3 (`web/chrome.py`, then per-page helpers); a DOM caption
->   mechanism for the 11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp
->   probe's UI surface (ADR-0293).
-> - **CI proof (PR #446, first run):** linux + windows smoke both green. The Linux no-checkout leg
->   printed `MPXJ converter downloaded and SHA-256 verified` / `MPXJ jars deployed: 24` — the fetch
->   works live against `main`. Windows ran the rewritten `.ps1` clean, but from the checkout, so it
->   took the local-copy branch; a **windows no-checkout leg was added** so the fetch is exercised on
->   the operator's own platform.
-> - **OWED, NOT CLAIMED:** no pwsh in this sandbox, so the `.ps1` was never executed *locally* — it
->   is proven by the windows smoke job, and the download branch specifically only from the CI run
->   that follows the second push. AXIS-TITLES batch 0's four-theme visual pass is still outstanding
->   from the prior session.
-> - **DEPLOY NOTE:** the operator has **no local clone** — download `installer/install-tier2.ps1`
->   from the GitHub web UI and run
+> - **ADR-0299 fixes TWO converging defects.** (a) *Mine, found by sweep:* the documented deploy
+>   path — ONE downloaded file, no clone — resolved MPXJ to `%USERPROFILE%\tools\mpxj`, missed,
+>   and **still printed a green `DONE`**; every `.mpp` then died with `MPXJ runner not found`.
+>   (b) *PR #445's diagnosis:* on an UPGRADE the same lookup missed but a converter was already
+>   installed, so the installer printed "stays OFF" **about a machine where `.mpp` worked**.
+> - **The block now reports the capability of the DEPLOYED TOOL, not its own copy step** —
+>   deployed / already-installed-stays-ON / is-OFF — and searches `SF_MPXJ_HOME` →
+>   `<dir>/../tools/mpxj` → `<dir>/tools/mpxj` → `$PWD/tools/mpxj`, else **downloads the pinned
+>   set and SHA-256-verifies every byte**.
+> - **⚠️ TWO DESTRUCTIVE EDGES CLOSED — both mutation-proved.** (1) Widening the search makes the
+>   *installed* copy selectable as a SOURCE, and the copy `rm -rf`s the destination first: without
+>   the `sf_realpath`/`-ieq $destReal` skip a re-run **deletes the only converter** (mutant
+>   reproduced it here: `cp: cannot stat …`). (2) **My own first cut had it worse** — the download
+>   wiped the destination *before* fetching and again on failure, so an offline upgrade would have
+>   destroyed a working converter. The fetch now stages into `.mpxj-incoming` and swaps in only
+>   after every byte verifies. **Never delete a converter you cannot immediately replace.**
+> - **Codex P1 (valid, fixed): the URL is pinned to an IMMUTABLE commit**, not `main`. A mutable
+>   ref means installers in the wild break the moment those bytes change, AND a PR that upgrades
+>   MPXJ regenerates the manifest with new hashes while main still serves old jars — blocking its
+>   own upgrade. `build_installers.py` resolves `git log -1 -- tools/mpxj`; a test rejects any
+>   non-40-hex ref. **Upgrading MPXJ is now a two-step: push `tools/mpxj` FIRST, then regenerate.**
+> - **Second live defect:** a failed `ollama pull` **aborted the whole installer** under
+>   `set -euo pipefail` — before launchers/uninstaller/README — for a step documented as optional;
+>   the `.ps1` mirror-bug printed `Ok` after `winget install` and `ollama pull` regardless. Both
+>   proved by execution, both fixed. **Third (latent):** `pull_model` sent a non-streaming multi-GB
+>   pull on the 120 s generate timeout; now has its own `pull_timeout`. Nothing calls it today.
+> - **In-app export/download routes are CLEAN — swept, not assumed:** 37 `/export/{fmt}/…` routes
+>   x both formats + `/download/{name}.json` = **76 combinations, all 200 with valid payloads**.
+> - **Doc drift fixed (from #445's report):** README-DISTRIBUTABLE's two-icon claim (wrong on
+>   Windows since ADR-0193) + the same stale claim in `template.ps1`'s own header; ZIP-route
+>   remedy documented.
+> - **Gate:** full suite **2,724 passed** pre-merge; installer suite now **41**; ruff/format/
+>   mypy-strict/bandit/node/`bash -n` clean. Wheel + 9 installers at **1.0.105**.
+> - **CI (PR #446):** first run 4/4 green; the Linux no-checkout leg proved the fetch live
+>   (`downloaded and SHA-256 verified`, 24 jars). Reading the logs showed **windows took the
+>   local-copy branch**, so a windows no-checkout leg was added — the operator is on Windows, so
+>   that is the fetch that must be proven.
+> - **NEXT (unchanged):** AXIS-TITLES batches 1-5 — drive `PENDING` (16) to empty, ~5 modules/PR.
+>   Then **CRISPNESS 11px floor** ONLY (`--sf-fs-axis-title` is the seam; ⚠️ its §2.1
+>   "sf-themes.css was never committed" is FALSE). Then GUIDED-MODE (5) + VOICE-DECISION (4),
+>   parked on the operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the
+>   11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
+> - **OWED, NOT CLAIMED:** no pwsh in this sandbox — the `.ps1` is proven by the windows smoke
+>   job, and its *download* branch only by the CI run following the latest push. AXIS-TITLES batch
+>   0's four-theme visual pass is still outstanding.
+> - **DEPLOY NOTE:** operator has **no local clone** — download `installer/install-tier2.ps1` from
+>   the GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
->   **As of 1.0.105 that single file now fetches + verifies the .mpp converter on its own.**
+>   **As of 1.0.105 that single file fetches + verifies the .mpp converter itself**; offline, use
+>   Code → Download ZIP and run it from inside the extracted folder.
 
 
 # (prior) handoffs — archived

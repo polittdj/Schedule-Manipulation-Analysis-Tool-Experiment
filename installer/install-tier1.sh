@@ -115,10 +115,22 @@ ok "Installed schedule_forensics-1.0.105-py3-none-any.whl"
 # ADR-0299: it is not embedded (23 MB of base64 x 9 installers, re-committed on every
 # version bump), and it must not depend on a repo checkout either — the documented deploy
 # path is a SINGLE downloaded file, where the old `dirname "$0"/..` lookup missed, silently
-# left .mpp support OFF, and still printed DONE. So: prefer a local copy when one really is
-# beside this installer, otherwise download the pinned file set and verify every byte
-# against the SHA-256 manifest baked in at build time.
-MPXJ_BASE_URL="https://raw.githubusercontent.com/polittdj/schedule-manipulation-analysis-tool-experiment/main/tools/mpxj"
+# left .mpp support OFF, and still printed DONE. So: several layouts are searched, and
+# failing those the pinned file set is downloaded and verified byte-for-byte against the
+# SHA-256 manifest baked in at build time.
+#
+# TWO RULES THIS BLOCK MUST NEVER BREAK (both mutation-verified — MPXJ-CAPABILITY-REPORT.md):
+#  1. NEVER DESTROY AN INSTALLED CONVERTER. Widening the search makes the already-installed
+#     copy selectable as a SOURCE, and the copy step rm -rf's the destination first — so a
+#     re-run would delete the operator's only converter. Hence the self-copy skip, and hence
+#     the download stages into a temp dir and is swapped in ONLY once every byte verifies.
+#     A failed download must leave an existing install exactly as it was.
+#  2. REPORT THE CAPABILITY OF THE DEPLOYED TOOL, NOT THE OUTCOME OF THIS COPY STEP. An
+#     upgrade that finds no source but already has a converter installed leaves native .mpp
+#     ON; saying "stays OFF" there was simply false, and on a testimony tool a false claim
+#     about your own capability is a correctness defect. Whatever is printed below must
+#     agree with what `importers/mpp_mpxj.py::_mpxj_home` will find.
+MPXJ_BASE_URL="https://raw.githubusercontent.com/polittdj/schedule-manipulation-analysis-tool-experiment/1f10729dcf1d02e38fa04934a81c820ad3707455/tools/mpxj"
 MPXJ_MANIFEST="$(cat <<'SF_MPXJ_MANIFEST_EOF'
 5e48d00285e1443a23b545fe1cb68fe7fa153dedb8b9dc341368fd415f8b63b5  MpxjToMspdi.java
 1a2c05dc0d4e038a3cb99d57cec3f2fc2a33fbe9993ab4d14069a9a7016363cd  classes/MpxjToMspdi.class
@@ -150,8 +162,9 @@ f80078970a148fda65e4855a48bd5b4540e5a3058f9c7562d0789ed2cb6c8719  setup.ps1
 a08844b17f06889397bb4229f79d1ec1de6d4ce1a3bc802d9f6856832d640288  setup.sh
 SF_MPXJ_MANIFEST_EOF
 )"
-DEST_MPXJ="$INSTALL_ROOT/tools/mpxj"
-mpxj_ok=0
+MPXJ_DEST="$INSTALL_ROOT/tools/mpxj"
+sf_realpath() { (cd "$1" 2>/dev/null && pwd) || printf '%s\n' "$1"; }
+MPXJ_DEST_REAL="$(sf_realpath "$MPXJ_DEST")"
 sf_sha256() {  # coreutils on Linux, shasum on macOS
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
   else shasum -a 256 "$1" | awk '{print $1}'; fi
@@ -160,40 +173,53 @@ sf_fetch() {   # $1 = url, $2 = destination
   if command -v curl >/dev/null 2>&1; then curl -fsSL --retry 3 -o "$2" "$1"
   else wget -q -O "$2" "$1"; fi
 }
-SELF_DIR="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
-for cand in "${SF_MPXJ_HOME:-}" "$SELF_DIR/../tools/mpxj" "$SELF_DIR/tools/mpxj" "$SELF_DIR/mpxj"; do
-  [ -n "$cand" ] || continue
-  if [ -f "$cand/classes/MpxjToMspdi.class" ]; then
-    mkdir -p "$INSTALL_ROOT/tools"
-    rm -rf "$DEST_MPXJ"
-    cp -R "$cand" "$DEST_MPXJ"
-    ok "MPXJ converter deployed from $cand (native .mpp import enabled)"
-    mpxj_ok=1
-    break
-  fi
+MPXJ_SRC=""
+SF_HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || printf '%s\n' ".")"
+for cand in "${SF_MPXJ_HOME:-}" "$SF_HERE/../tools/mpxj" "$SF_HERE/tools/mpxj" "$PWD/tools/mpxj"; do
+  if [ -z "$cand" ]; then continue; fi
+  if [ ! -f "$cand/classes/MpxjToMspdi.class" ]; then continue; fi
+  # never copy the installed copy over itself — that would rm -rf the only converter
+  if [ "$(sf_realpath "$cand")" = "$MPXJ_DEST_REAL" ]; then continue; fi
+  MPXJ_SRC="$cand"
+  break
 done
-if [ "$mpxj_ok" = "0" ] && [ "${SF_MPXJ_OFFLINE:-0}" != "1" ]; then
+if [ -n "$MPXJ_SRC" ]; then
+  mkdir -p "$INSTALL_ROOT/tools"
+  rm -rf "$MPXJ_DEST"
+  cp -R "$MPXJ_SRC" "$MPXJ_DEST"
+  ok "MPXJ converter deployed (native .mpp import enabled)"
+elif [ -f "$MPXJ_DEST/classes/MpxjToMspdi.class" ]; then
+  # already deployed by an earlier install — keep it, and say what is TRUE (never re-download
+  # over a working converter: that is the "nothing already present is reinstalled" rule)
+  ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"
+elif [ "${SF_MPXJ_OFFLINE:-0}" != "1" ]; then
   echo "    Downloading the MPXJ converter (~17 MB, one time) for native .mpp import..."
-  rm -rf "$DEST_MPXJ"
-  mkdir -p "$DEST_MPXJ"
+  MPXJ_TMP="$INSTALL_ROOT/tools/.mpxj-incoming"
+  rm -rf "$MPXJ_TMP"
+  mkdir -p "$MPXJ_TMP"
   if (
     printf '%s\n' "$MPXJ_MANIFEST" | while read -r sha rel; do
       [ -n "$rel" ] || continue
-      mkdir -p "$DEST_MPXJ/$(dirname "$rel")"
-      sf_fetch "$MPXJ_BASE_URL/$rel" "$DEST_MPXJ/$rel" || exit 1
-      [ "$(sf_sha256 "$DEST_MPXJ/$rel")" = "$sha" ] || { echo "checksum mismatch: $rel" >&2; exit 1; }
+      mkdir -p "$MPXJ_TMP/$(dirname "$rel")"
+      sf_fetch "$MPXJ_BASE_URL/$rel" "$MPXJ_TMP/$rel" || exit 1
+      [ "$(sf_sha256 "$MPXJ_TMP/$rel")" = "$sha" ] || { echo "checksum mismatch: $rel" >&2; exit 1; }
     done
-  ) && [ -f "$DEST_MPXJ/classes/MpxjToMspdi.class" ]; then
+  ) && [ -f "$MPXJ_TMP/classes/MpxjToMspdi.class" ]; then
+    rm -rf "$MPXJ_DEST"          # only now, with a fully verified replacement in hand
+    mv "$MPXJ_TMP" "$MPXJ_DEST"
     ok "MPXJ converter downloaded and SHA-256 verified (native .mpp import enabled)"
-    mpxj_ok=1
   else
-    rm -rf "$DEST_MPXJ"
-    warn "MPXJ download failed"
+    rm -rf "$MPXJ_TMP"           # destination untouched — an existing install survives
+    warn "MPXJ download failed — native .mpp import is OFF"
+    warn "  offline? download the repository ZIP (green 'Code' button -> Download ZIP),"
+    warn "  extract it, then re-run this installer from inside the extracted folder"
+    warn "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
   fi
-fi
-if [ "$mpxj_ok" = "0" ]; then
-  warn "native .mpp import stays OFF — set SF_MPXJ_HOME to an MPXJ folder, or open .mpp"
-  warn "  files by exporting MSPDI XML from MS Project (File > Save As > XML) instead"
+else
+  warn "no MPXJ converter found — native .mpp import is OFF"
+  warn "  to turn it on: set SF_MPXJ_HOME to an MPXJ folder, or download the repository ZIP"
+  warn "  (green 'Code' button -> Download ZIP), extract it, and re-run from inside it"
+  warn "  until then: export MSPDI XML from MS Project (File > Save As > XML) instead"
 fi
 
 # --- 4. Ollama + this tier's local AI model -------------------------------------------
