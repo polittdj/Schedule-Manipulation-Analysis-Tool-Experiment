@@ -131,7 +131,11 @@ HTML + vendored JS charts**, with the AI layer polishing narrative on top of alr
   (ADR-0145) adds the first semantic check: an explicit-unit contradiction (a "5%"-only figure
   re-used as "5 days") is discarded/flagged; bare usages and multi-unit tokens never are.
   Interpretive stays ungated by design. A fuller semantic role model remains future work.
-- **`web/app.py`** — the entire UI in one (large) file: routes + server-rendered HTML + a Jinja layout.
+- **`web/app.py`** — the UI's routes + server-rendered HTML + a Jinja layout in one (large) file;
+  since ADR-0297 (monolith split, phase 1) the session-state machinery lives in **`web/state.py`**
+  (`SessionState`, `_LRUCache` + cache caps, `_Analysis`/`_compute_analysis`, `_activity_rows`),
+  re-exported by `web.app` so old import paths keep working. Tests that monkeypatch engine
+  callables patch the module whose code CALLS them (state vs app — see the ADR).
   `SessionState` is the in-memory, per-process session (loaded `schedules`, `ai_config`,
   `active_filter`, `language`, caches). The per-schedule analysis chokepoint is `_Analysis`, built once
   by `_compute_analysis(sch)` (a single CPM pass reused by every view) and cached via

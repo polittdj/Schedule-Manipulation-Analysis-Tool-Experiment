@@ -60,6 +60,7 @@ def test_cpm_scoped_for_pair_survives_a_mid_solve_scope_change(monkeypatch) -> N
     mixed pair: the returned schedule is the one the solve was computed from (the pre-flip
     population), never the new epoch's."""
     import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     st = SessionState()
     sch = _chain(6, "v0")
@@ -73,7 +74,7 @@ def test_cpm_scoped_for_pair_survives_a_mid_solve_scope_change(monkeypatch) -> N
             st.set_filter([("Task Name", "v0-2")])  # the concurrent scope change, mid-solve
         return real(s, **kw)
 
-    monkeypatch.setattr(app_module, "compute_cpm", flipping_cpm)
+    monkeypatch.setattr(state_module, "compute_cpm", flipping_cpm)
     scoped, cpm = st.cpm_scoped_for("v0", sch)
     # the pair is self-consistent: the solve covers exactly the population it was handed —
     # the full pre-flip chain, not the 1-task filtered population the flip installed
@@ -129,20 +130,20 @@ def _upload_one(client: TestClient) -> None:
 def test_wipe_during_summary_compute_never_reinserts_on_disk(sc, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     """A wipe landing between summary compute and store: nothing may be written back —
     neither the in-memory summaries dict nor (critically) the on-disk CUI cache."""
-    import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     st, client = sc
     _upload_one(client)
     (key, sch) = next(iter(st.schedules.items()))
     chash = st.content_hashes[key]
-    real = app_module.compute_summary
+    real = state_module.compute_summary
 
     def wiping_summary(s, **kw):  # type: ignore[no-untyped-def]
         result = real(s, **kw)
         client.post("/session/wipe")  # the operator's wipe lands mid-request, before the store
         return result
 
-    monkeypatch.setattr(app_module, "compute_summary", wiping_summary)
+    monkeypatch.setattr(state_module, "compute_summary", wiping_summary)
     st.summary_for(key, sch)  # returns fine to ITS caller…
     assert st.summaries == {}  # …but stored nothing in memory…
     assert get_default_cache().get_summary(chash) is None  # …and NOTHING on disk survived
@@ -152,6 +153,7 @@ def test_wipe_during_analysis_compute_leaves_no_orphans(sc, monkeypatch) -> None
     """A wipe landing during the engine pass: the late analysis/cpm stores are skipped, so no
     orphaned entry pins the wiped schedule in memory."""
     import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     st, client = sc
     _upload_one(client)
@@ -166,7 +168,7 @@ def test_wipe_during_analysis_compute_leaves_no_orphans(sc, monkeypatch) -> None
         client.post("/session/wipe")
         return result
 
-    monkeypatch.setattr(app_module, "_compute_analysis", wiping_analysis)
+    monkeypatch.setattr(state_module, "_compute_analysis", wiping_analysis)
     st.analysis_for(key, sch)
     assert dict(st.analyses) == {}
     assert st.cpms == {}

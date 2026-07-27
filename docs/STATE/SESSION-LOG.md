@@ -7946,3 +7946,42 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **NEXT:** perf **(7)** the `web/app.py` monolith split — the LAST perf-backlog item (its own
   behaviour-free PR) — then AXIS-TITLES, then CRISPNESS (11px floor only, re-grounded), then
   Guided Mode / Voice (parked on the operator's 5 + 4 decisions).
+
+## 2026-07-27a — monolith split phase 1: web/state.py extracted; the perf backlog is CLEAR (ADR-0297; v1.0.103)
+
+- **Model/mode:** Fable 5 (lead, ADR-0240 — inventory before cutting; the tests were the oracle).
+  **Branch:** `claude/smat-tool-continuation-uskbh7`, fresh from `origin/main` at `1876959` after
+  #442 merged.
+- **The cut:** `web/app.py` **19,211 → 18,050 lines**; new `web/state.py` (**1,616 lines**) holds
+  the state machinery verbatim — `_LRUCache` + caps, `_Flash`, `_Analysis`/`_DashCore`/`_dash_core`,
+  `_compute_analysis`, `UnifiedRisk`, the `_Role` data table, `SessionState`,
+  `_iso_date`/`_activity_rows`. `web.app` re-exports all of it via the explicit `X as X` idiom
+  (mypy-strict attr-defined + ruff F401 both clean), so all 126 `SessionState` imports and every
+  other existing path keep working, including `web/__init__`.
+- **Method that made a 1,100-line move safe on the first full-suite run:**
+  1. Inventory FIRST: mapped every `monkeypatch.setattr(app_mod, ...)` target and every
+     `from web.app import X` across the suite before choosing the boundary.
+  2. Cut by byte-range with a script (no retyping), then let ruff F821/F401 + mypy-strict find
+     the misses — F821 caught the one real missed dependency (`_ROLE_BY_ID` in `set_role` →
+     moved the `_Role` table too, it is pure data).
+  3. **Patch where the call site lives:** tests spying engine callables invoked from state.py
+     (_compute_analysis, compute_cpm, compute_summary, audit_schedule, compute_float_bands,
+     compute_baseline_compliance, recommend) now patch `web.state`; spies on callables invoked
+     from app.py (work_to_go_census via `_perf_version_block`, `_parse_upload`,
+     `_MAX_UPLOAD_BYTES`) stay on `web.app`. 11 sites across 4 files; my two first-pass mistakes
+     (one in EACH direction) failed loudly and were fixed — the ADR-0281 perf-contract suite is
+     exactly the harness that makes this class of refactor verifiable.
+- **Verbatim except wrapping:** state.py takes no E501 exemption (it has no HTML), so 32
+  over-long comment/docstring lines were re-wrapped — whitespace only. `_OAT_MAX_ACTIVITIES`
+  stayed in app.py on purpose (SRA-route caller + an app-namespace patch).
+- **Proof:** full suite **2,670 passed**; the three dashboard payload golden SHAs passed
+  UNTOUCHED (byte-identical payloads across the split — both DCMA modes and the unsolvable-card
+  case); `-m parity` 44; ruff/format/mypy-strict/bandit/node clean. Version 1.0.102 → **1.0.103**,
+  wheel + 9 installers regenerated. CLAUDE.md architecture note corrected. **Highest ADR 0297.**
+- **The ADR-0281 perf backlog is CLOSED** — ledger: items 1-4 ADR-0288/0289/0291/0292; 5
+  ADR-0293; 6 declined-with-evidence ADR-0294; 7 phase 1 ADR-0297 (phases 2-3 queued: chrome →
+  `web/chrome.py`, presentation helpers → per-page modules). Bonus finds along the way:
+  ADR-0295 (a shipped cross-project drill substitution bug, fixed) and ADR-0296 (87.6% dashboard
+  payload trim).
+- **NEXT:** AXIS-TITLES-PATCH (UI change — DESIGN-SYSTEM DoD applies), then CRISPNESS 11px floor
+  only (re-grounded), then Guided Mode / Voice (parked on the operator's 5 + 4 decisions).

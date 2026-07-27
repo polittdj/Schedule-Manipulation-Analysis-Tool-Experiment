@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import schedule_forensics.web.app as app_module
+import schedule_forensics.web.state as state_module
 from schedule_forensics.engine.cache import content_hash, get_default_cache
 from schedule_forensics.web.app import SessionState, create_app
 
@@ -113,7 +114,7 @@ def test_portfolio_reads_the_in_memory_summary_cache(
         calls["n"] += 1
         return real(sch, **kw)  # type: ignore[arg-type]
 
-    monkeypatch.setattr(app_module, "compute_summary", counting)
+    monkeypatch.setattr(state_module, "compute_summary", counting)
     _st, client = sc
     client.post(
         "/upload",
@@ -138,7 +139,7 @@ def test_portfolio_summary_persists_across_sessions(monkeypatch: pytest.MonkeyPa
     def boom(sch: object) -> object:
         raise AssertionError("the summary must come from the SQLite cache, not a recompute")
 
-    monkeypatch.setattr(app_module, "compute_summary", boom)
+    monkeypatch.setattr(state_module, "compute_summary", boom)
     st2 = SessionState()
     c2 = TestClient(create_app(st2))
     c2.post("/upload", files=[("files", ("a.xml", payload, "text/xml"))])
