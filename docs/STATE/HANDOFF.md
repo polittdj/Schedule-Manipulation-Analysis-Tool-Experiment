@@ -1,73 +1,65 @@
-# Handoff — 2026-07-27d (the downloader: one-file install now delivers .mpp, honestly; v1.0.105; highest ADR 0299)
+# Handoff — 2026-07-27e (ADR-0300: a symlinked source could destroy the converter and report success; v1.0.106; highest ADR 0300)
 
-> ## STATUS (current) — DOWNLOADER FIXED, PR #446 open. Version **1.0.105**. Highest ADR **0299**.
-> Branch `claude/downloader-fixes-jv6tjb`, branched at `c884602`, **merged with `origin/main`
-> `e044b4a`** (PR #445's diagnosis doc). Operator asked to "fix the downloader" with no symptom
-> and to cover ALL of it, so all four download paths were swept and every finding reproduced
-> before it was touched.
+> ## STATUS (current) — ADR-0300 SHIPPED (PR #447). Version **1.0.106**. Highest ADR **0300**.
+> Branch `claude/smat-tool-continuation-uskbh7`, **reset onto `origin/main` `5970398`** after
+> PR #446 merged. **PR #447 was force-pushed to a completely different change** — see below.
 >
-> - **ADR-0299 fixes TWO converging defects.** (a) *Mine, found by sweep:* the documented deploy
->   path — ONE downloaded file, no clone — resolved MPXJ to `%USERPROFILE%\tools\mpxj`, missed,
->   and **still printed a green `DONE`**; every `.mpp` then died with `MPXJ runner not found`.
->   (b) *PR #445's diagnosis:* on an UPGRADE the same lookup missed but a converter was already
->   installed, so the installer printed "stays OFF" **about a machine where `.mpp` worked**.
-> - **The block now reports the capability of the DEPLOYED TOOL, not its own copy step** —
->   deployed / already-installed-stays-ON / is-OFF — and searches `SF_MPXJ_HOME` →
->   `<dir>/../tools/mpxj` → `<dir>/tools/mpxj` → `$PWD/tools/mpxj`, else **downloads the pinned
->   set and SHA-256-verifies every byte**.
-> - **⚠️ TWO DESTRUCTIVE EDGES CLOSED — both mutation-proved.** (1) Widening the search makes the
->   *installed* copy selectable as a SOURCE, and the copy `rm -rf`s the destination first: without
->   the `sf_realpath`/`-ieq $destReal` skip a re-run **deletes the only converter** (mutant
->   reproduced it here: `cp: cannot stat …`). (2) **My own first cut had it worse** — the download
->   wiped the destination *before* fetching and again on failure, so an offline upgrade would have
->   destroyed a working converter. The fetch now stages into `.mpxj-incoming` and swaps in only
->   after every byte verifies. **Never delete a converter you cannot immediately replace.**
-> - **Codex P1 (valid, fixed): the URL is pinned to an IMMUTABLE commit**, not `main`. A mutable
->   ref means installers in the wild break the moment those bytes change, AND a PR that upgrades
->   MPXJ regenerates the manifest with new hashes while main still serves old jars — blocking its
->   own upgrade. `build_installers.py` resolves `git log -1 -- tools/mpxj`; a test rejects any
->   non-40-hex ref. **Upgrading MPXJ is now a two-step: push `tools/mpxj` FIRST, then regenerate.**
-> - **Second live defect:** a failed `ollama pull` **aborted the whole installer** under
->   `set -euo pipefail` — before launchers/uninstaller/README — for a step documented as optional;
->   the `.ps1` mirror-bug printed `Ok` after `winget install` and `ollama pull` regardless. Both
->   proved by execution, both fixed. **Third (latent):** `pull_model` sent a non-streaming multi-GB
->   pull on the 120 s generate timeout; now has its own `pull_timeout`. Nothing calls it today.
-> - **In-app export/download routes are CLEAN — swept, not assumed:** 37 `/export/{fmt}/…` routes
->   x both formats + `/download/{name}.json` = **76 combinations, all 200 with valid payloads**.
-> - **Doc drift fixed (from #445's report):** README-DISTRIBUTABLE's two-icon claim (wrong on
->   Windows since ADR-0193) + the same stale claim in `template.ps1`'s own header; ZIP-route
->   remedy documented.
-> - **Gate:** full suite **2,724 passed** pre-merge; installer suite now **41**; ruff/format/
->   mypy-strict/bandit/node/`bash -n` clean. Wheel + 9 installers at **1.0.105**.
-> - **CI (PR #446):** first run 4/4 green; the Linux no-checkout leg proved the fetch live
->   (`downloaded and SHA-256 verified`, 24 jars). Reading the logs showed **windows took the
->   local-copy branch**, so a windows no-checkout leg was added — the operator is on Windows, so
->   that is the fetch that must be proven.
-> - **NEXT (unchanged):** AXIS-TITLES batches 1-5 — drive `PENDING` (16) to empty, ~5 modules/PR.
->   Then **CRISPNESS 11px floor** ONLY (`--sf-fs-axis-title` is the seam; ⚠️ its §2.1
->   "sf-themes.css was never committed" is FALSE). Then GUIDED-MODE (5) + VOICE-DECISION (4),
->   parked on the operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the
->   11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
-> - **PowerShell IS NOW PROVEN — the owed item is discharged.** The windows runner executed the
->   real one-file path end to end: `Downloading the MPXJ converter…` →
->   `[ok] MPXJ converter downloaded and SHA-256 verified` → `MPXJ jars downloaded + SHA-256
->   verified: 24` → `SMOKE INSTALL OK`. TLS hardening + the pinned commit included.
-> - **That leg found a 4th, pre-existing shipped bug on its FIRST run.** Under
->   `$ErrorActionPreference = "Stop"` a native program writing anything to stderr is a
->   TERMINATING error, and `java -version` prints its banner to stderr — so on any machine with
->   java on PATH the Java *probe* aborted the install before the shortcut/uninstaller/README were
->   created. Invisible until now because the older windows legs end with `& $venvPy -c …`, which
->   resets `$LASTEXITCODE`. `winget install` / `ollama pull` had the same exposure. All routed
->   through `Invoke-SfNative`; the CI leg now asserts the installer's own exit code and
->   `Set-Location`s out of the checkout (it had been matching `$PWD\tools\mpxj`).
-> - **OWED, NOT CLAIMED:** AXIS-TITLES batch 0's four-theme visual pass is still outstanding from
->   the prior session (needs a browser this sandbox cannot automate).
+> - **⚠️ TWO SESSIONS FIXED THE SAME BUG IN PARALLEL. #446 WON; #447's ORIGINAL CONTENT WAS
+>   DISCARDED.** While PR #447 (my ADR-0299) sat green as a draft, `claude/downloader-fixes-jv6tjb`
+>   shipped **PR #446**, which took the diagnosis staged in PR #445, implemented the *same* three
+>   outcomes and the *same* `sf_realpath` self-copy guard, **and went further** (SHA-256-verified
+>   download, so a single downloaded file now delivers `.mpp` with no clone at all). Merging #447
+>   would have created a duplicate ADR-0299 **and reverted #446's download**. The branch was reset
+>   onto main instead. **Nothing was lost:** main already had my templates, tests, doc-drift fixes
+>   and durable-state updates, via #446 crediting #445.
+> - **ADR-0300 — the guard #446 inherited from my report had a P1, found by the Codex reviewer on
+>   #447 and REPRODUCED against the shipped installer before anything was touched.**
+>   `sf_realpath` used `(cd … && pwd)` — the **logical** path. A candidate that is a **symlink to
+>   the installed converter** therefore compares unequal to `MPXJ_DEST_REAL`, the self-copy skip
+>   never fires, and the block `rm -rf`s the real converter and copies the dangling link back —
+>   **while printing `native .mpp import enabled`**:
+>   ```
+>   BEFORE: converter present = YES
+>           OK:MPXJ converter deployed (native .mpp import enabled)
+>   AFTER:  converter present = NO      mpxj -> …/tools/mpxj   (dangling self-link)
+>   ```
+>   **Both rules ADR-0299 wrote into that block, broken by one path**, in the direction that costs
+>   the operator data *and* lies about it.
+> - **Fix: `pwd -P` (physical paths) + `cp -RL` (real files, never a link into a source tree that
+>   can later move or vanish).** Both mutation-verified — each revert fails its own test and only
+>   its own test. Two executed tests added beside #446's harness, not replacing it.
+> - **SCOPE: bash + `.command` ONLY.** The PowerShell family does `New-Item -Force` then
+>   `Copy-Item -Force` and **never removes the destination**, so the same mis-compare there costs a
+>   redundant copy, not data. `Resolve-SfPath` stays imprecise for junctions — **recorded, not
+>   patched**, because this container cannot execute PowerShell and a blind fix is worse.
+> - **Why the existing test missed it:** `test_a_re_run_never_destroys_the_installed_converter`
+>   passes `SF_MPXJ_HOME` as the destination's **own spelling**, which a logical `pwd` compares
+>   equal. The guard worked for the case it was written against and failed one indirection away.
+> - **A pin cannot catch a lie — twice now.** ADR-0299 existed because a source pin asserted the
+>   wrong sentence was present. This defect then sat *inside* that fix, in the guard the ADR called
+>   load-bearing, and was found by **review**, not by any test in the suite.
+> - **Gate:** installer suite **46 passed**; full suite green; ruff/format/mypy-strict/bandit clean;
+>   all six bash installers `bash -n` clean. Wheel + 9 installers at **1.0.106**.
+> - **UNVERIFIED, DELIBERATELY NOT SHIPPED:** in `template.ps1` the four MPXJ candidates are built
+>   **eagerly** inside `@(...)`, including `Join-Path (Split-Path -Parent $PSScriptRoot) …`. Under
+>   `$ErrorActionPreference = "Stop"`, `Split-Path -Parent` of a **drive root** returns `""` and
+>   `Join-Path` may then throw and abort the whole install (installer run from `E:\` — plausible
+>   for removable media). **I could not execute PowerShell to confirm it**, so it is flagged, not
+>   fixed. Settle it with a one-line pwsh step in the windows CI leg before changing anything.
+> - **NEXT, unchanged:** (1) **AXIS-TITLES batches 1-5** — drive `PENDING` (16) to empty, ~5
+>   modules/PR, captions per `00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md` §3 (its caption STRINGS are
+>   sound; **five of its premises were false** — see the 2026-07-27b archived handoff). (2)
+>   **CRISPNESS 11px floor** ONLY (`--sf-fs-axis-title` is the seam; ⚠️ its §2.1 "sf-themes.css was
+>   never committed" is FALSE). (3) GUIDED-MODE (5) + VOICE-DECISION (4), parked on the operator.
+>   Also open: monolith split phases 2-3; a DOM caption mechanism for the 11 `NO_SVG_AXES` visuals;
+>   `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the `.mpp` probe UI (ADR-0293).
+> - **OWED, NOT CLAIMED:** AXIS-TITLES batch 0's four-theme / 90-125% visual pass (needs a browser
+>   this sandbox cannot automate).
 > - **DEPLOY NOTE:** operator has **no local clone** — download `installer/install-tier2.ps1` from
 >   the GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
->   **As of 1.0.105 that single file fetches + verifies the .mpp converter itself**; offline, use
->   Code → Download ZIP and run it from inside the extracted folder.
-
+>   As of 1.0.105 that single file fetches + SHA-256-verifies the `.mpp` converter itself; offline,
+>   use Code → Download ZIP and run it from inside the extracted folder.
 
 # (prior) handoffs — archived
 

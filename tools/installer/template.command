@@ -120,7 +120,11 @@ MPXJ_MANIFEST="$(cat <<'SF_MPXJ_MANIFEST_EOF'
 SF_MPXJ_MANIFEST_EOF
 )"
 MPXJ_DEST="$INSTALL_ROOT/tools/mpxj"
-sf_realpath() { (cd "$1" 2>/dev/null && pwd) || printf '%s\n' "$1"; }
+# `pwd -P` — the PHYSICAL path. A logical `pwd` reports the symlink's own spelling, so a
+# candidate that is a SYMLINK to the already-installed converter compares unequal to
+# MPXJ_DEST_REAL, the self-copy skip below never fires, and the copy step rm -rf's the real
+# converter and leaves a dangling self-link — while printing "enabled". ADR-0300.
+sf_realpath() { (cd "$1" 2>/dev/null && pwd -P) || printf '%s\n' "$1"; }
 MPXJ_DEST_REAL="$(sf_realpath "$MPXJ_DEST")"
 sf_sha256() {  # coreutils on Linux, shasum on macOS
   if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'
@@ -143,7 +147,9 @@ done
 if [ -n "$MPXJ_SRC" ]; then
   mkdir -p "$INSTALL_ROOT/tools"
   rm -rf "$MPXJ_DEST"
-  cp -R "$MPXJ_SRC" "$MPXJ_DEST"
+  # -L dereferences: what lands beside the venv must be REAL files, never a link into a
+  # source tree that can move or vanish after the install (ADR-0300).
+  cp -RL "$MPXJ_SRC" "$MPXJ_DEST"
   ok "MPXJ converter deployed (native .mpp import enabled)"
 elif [ -f "$MPXJ_DEST/classes/MpxjToMspdi.class" ]; then
   # already deployed by an earlier install — keep it, and say what is TRUE (never re-download

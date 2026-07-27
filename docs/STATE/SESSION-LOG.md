@@ -8183,3 +8183,41 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   **LESSON: the summary line a CI leg prints IS what future readers will trust — if it states a
   conclusion the step did not verify, it is the same defect class as the installer claiming
   "stays OFF" about a machine where .mpp worked. Assert the evidence, then print the claim.**
+
+## 2026-07-27e — a symlinked source could destroy the converter and report success (ADR-0300; v1.0.106)
+- **Two sessions fixed the same bug in parallel; #446 won.** While PR #447 (my ADR-0299) sat green
+  as a draft, `claude/downloader-fixes-jv6tjb` merged **PR #446**, which took the diagnosis staged
+  in PR #445, implemented the same three outcomes and the same `sf_realpath` self-copy guard, and
+  went further — a SHA-256-verified download so one downloaded file delivers `.mpp` with no clone.
+  Merging #447 would have created a **duplicate ADR-0299** and **reverted #446's download**. The
+  branch was reset onto `origin/main` and #447 force-pushed to an entirely different change.
+  Nothing was lost: main already carried my templates, tests, doc-drift fixes and durable-state
+  updates by way of #446 crediting #445.
+- **The Codex reviewer on #447 filed a P1 against the guard — and it was real.** `sf_realpath` used
+  `(cd … && pwd)`, the **logical** path. A candidate that is a **symlink** to the installed
+  converter therefore compares unequal to `MPXJ_DEST_REAL`, the self-copy skip never fires, and the
+  block `rm -rf`s the real converter then copies the dangling link back. Reproduced against the
+  SHIPPED installer before touching anything:
+  `BEFORE: converter present = YES` → `OK:MPXJ converter deployed (native .mpp import enabled)` →
+  `AFTER: converter present = NO`, leaving `mpxj -> …/tools/mpxj`. **Both rules ADR-0299 wrote into
+  that block, broken by one path** — data destroyed *and* a false claim of success.
+- **Fixed with `pwd -P` and `cp -RL`**, each mutation-verified: reverting `pwd -P` fails the
+  destruction test and only that one; reverting `cp -RL` fails the real-files test and only that
+  one. Two executed tests added beside #446's harness rather than replacing it.
+- **Scoped precisely: bash and `.command` only.** The PowerShell family uses `New-Item -Force` +
+  `Copy-Item -Force` and never removes the destination, so the same mis-compare there costs a
+  redundant copy, not data. `Resolve-SfPath` stays imprecise for junctions — **recorded, not
+  patched**, because this container cannot execute PowerShell.
+- **Why the existing test missed it:** it passed `SF_MPXJ_HOME` as the destination's own spelling,
+  which a logical `pwd` compares equal. The guard worked for the case it was written against and
+  failed one indirection away.
+- **Flagged but NOT shipped (unverified):** `template.ps1` builds its four MPXJ candidates eagerly
+  inside `@(...)`, including `Join-Path (Split-Path -Parent $PSScriptRoot) …`. Under
+  `$ErrorActionPreference = "Stop"`, `Split-Path -Parent` of a drive root returns `""` and
+  `Join-Path` may throw, aborting the install. Could not be executed here, so it is written into
+  the handoff instead of fixed on speculation.
+- **Gate:** installer suite **46 passed**; full suite green; ruff/format/mypy-strict/bandit clean;
+  six bash installers `bash -n` clean. Version 1.0.105 → **1.0.106**, wheel + 9 installers
+  regenerated. **Highest ADR 0300.**
+- Also corrected `docs/PLAN/MPXJ-CAPABILITY-REPORT.md`, whose status line still read "NOT yet
+  applied" on main (my #447 edit never landed).

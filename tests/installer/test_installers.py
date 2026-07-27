@@ -221,14 +221,20 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     assert '"Schedule Forensics.lnk"' in tpl_ps1  # the ONE icon
     assert "pythonw.exe" in tpl_ps1  # launched directly (self-stopping app, no console)
     assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
+    # ADR-0300: -L dereferences (real files beside the venv, never a link into a source tree)
+    # and `pwd -P` makes the self-copy skip compare PHYSICAL paths. What those two actually
+    # guarantee is EXECUTED in the symlink tests below; these only catch a silent revert.
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
-        assert 'cp -R "$MPXJ_SRC"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert 'cp -RL "$MPXJ_SRC"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert "pwd -P) || printf" in tpl, f"{family}: self-copy guard compares logical paths"
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
         assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
         for family in ("sh", "command"):
-            assert 'cp -R "$MPXJ_SRC"' in _read(tier, family), (tier, family)
+            text = _read(tier, family)
+            assert 'cp -RL "$MPXJ_SRC"' in text, (tier, family)
+            assert "pwd -P) || printf" in text, (tier, family)
 
 
 # ── ADR-0299: the one-file installer must deliver .mpp support with NO repo checkout ──────
@@ -372,6 +378,58 @@ def test_a_re_run_never_destroys_the_installed_converter(tmp_path: Path) -> None
     )
     assert cls.exists(), "SF_MPXJ_HOME == destination deleted the only converter"
     assert "stays ON" in out, out
+
+
+def test_a_symlinked_source_cannot_destroy_the_installed_converter(tmp_path: Path) -> None:
+    """ADR-0300 — Codex P1 on #447, reproduced against the SHIPPED block before it was fixed.
+
+    The test above passes ``SF_MPXJ_HOME`` as the destination's own spelling, which a LOGICAL
+    ``pwd`` compares equal. Point it at a **symlink** to the same directory and the two spellings
+    differ, the self-copy skip never fires, and the block selects the link as its source — then
+    ``rm -rf``s the real converter and copies the now-dangling link back in its place, printing
+    ``native .mpp import enabled``. Both rules the block states for itself broken at once, in the
+    direction that costs the operator data *and* lies about it. ``pwd -P`` compares physical
+    paths, so the skip fires and the upgrade is correctly reported as a no-op.
+    """
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    cls = _installed(tmp_path)
+    link = tmp_path / "linked-mpxj"
+    link.symlink_to(cls.parent.parent, target_is_directory=True)
+    out = _run_mpxj_block(
+        tmp_path,
+        script_dir=script_dir,
+        env={"SF_MPXJ_OFFLINE": "1", "SF_MPXJ_HOME": str(link)},
+    )
+    assert cls.exists(), "a symlinked SF_MPXJ_HOME destroyed the only converter"
+    assert not (tmp_path / "root" / "tools" / "mpxj").is_symlink(), (
+        "the converter directory was replaced by a symlink"
+    )
+    assert "stays ON" in out, out
+    assert "enabled" not in out, "claimed a fresh deploy while nothing was actually copied"
+
+
+def test_a_symlinked_source_deploys_real_files_not_a_link(tmp_path: Path) -> None:
+    """``cp -RL``. When the source genuinely is elsewhere but reached through a link, what lands
+    beside the venv must be REAL files: a link into a tree that later moves, unmounts or is
+    cleaned up would leave the deployed tool with a converter that silently vanishes."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    real = tmp_path / "elsewhere" / "mpxj" / "classes"
+    real.mkdir(parents=True)
+    (real / "MpxjToMspdi.class").write_bytes(b"stub")
+    link = tmp_path / "linked-source"
+    link.symlink_to(real.parent, target_is_directory=True)
+    out = _run_mpxj_block(
+        tmp_path,
+        script_dir=script_dir,
+        env={"SF_MPXJ_OFFLINE": "1", "SF_MPXJ_HOME": str(link)},
+    )
+    assert "native .mpp import enabled" in out, out
+    deployed = tmp_path / "root" / "tools" / "mpxj"
+    assert not deployed.is_symlink(), "deployed a symlink instead of the converter itself"
+    cls = deployed / "classes" / "MpxjToMspdi.class"
+    assert cls.is_file() and not cls.is_symlink(), "converter class is not a real file"
 
 
 def test_a_failed_download_leaves_an_existing_install_untouched(tmp_path: Path) -> None:

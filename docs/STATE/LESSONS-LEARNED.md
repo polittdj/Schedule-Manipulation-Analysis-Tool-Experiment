@@ -435,6 +435,56 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27e — the bug was inside the fix, in the guard the ADR called load-bearing; and two sessions built the same thing (ADR-0300)
+- **A defect hid inside the defence against that same defect.** ADR-0299's block states two rules
+  for itself in its own comment: never destroy an installed converter, and report the deployed
+  capability rather than the copy step. A single path — a candidate that is a **symlink** to the
+  installed converter — broke **both at once**: `sf_realpath` used a *logical* `pwd`, so the
+  spellings differed, the self-copy skip never fired, the block `rm -rf`'d the real converter and
+  copied a dangling link back, and then printed `native .mpp import enabled`. **LESSON: after
+  writing a guard, ask what INPUT SHAPE makes it silently not apply. Guards fail by not firing, and
+  a guard that does not fire looks exactly like a guard that passed.**
+- **The existing test proved the guard for the only spelling it thought of.**
+  `test_a_re_run_never_destroys_the_installed_converter` passed `SF_MPXJ_HOME` as the destination's
+  *own path string*, which a logical `pwd` compares equal — so it was green and the guard was
+  broken one indirection away. **LESSON: when a test establishes identity between two things,
+  vary HOW each is named, not just whether they match. Path equality, ID equality and name equality
+  all have more than one spelling of the same thing.**
+- **Review caught what the whole suite could not.** 46 installer tests, a bash harness that
+  executes the real shipped block, mutation testing, a real-Windows CI leg — and this came from an
+  automated reviewer reading the diff. **LESSON: executable tests prove the cases you imagined;
+  review is how you find the case you did not. Neither substitutes for the other, and a rich test
+  suite is a reason to take review MORE seriously, not less — it is the only remaining source of
+  unimagined cases.**
+- **I reproduced the reviewer's claim against the SHIPPED artifact before believing it.** The P1
+  was filed against my PR, but the same helper had already merged to `main` via #446 — so the
+  reproduction had to run against main's installer, not my branch's. It destroyed the converter
+  exactly as described. **LESSON: when a review lands on a PR, check whether the flagged code is
+  already SHIPPED elsewhere. The urgency of a finding depends on where the code lives, not where
+  the diff is.**
+- **Scoped the fix by reading the other implementation instead of assuming symmetry.** The
+  PowerShell family has the same imprecise comparison but uses `New-Item -Force` + `Copy-Item
+  -Force` and never removes the destination — so there it costs a redundant copy, not data. Fixing
+  bash and *recording* the PowerShell imprecision was correct; "fix it everywhere for consistency"
+  would have meant changing unexecutable code on speculation. **LESSON: the same flaw has different
+  severity in different implementations. Establish blast radius per implementation before deciding
+  the fix is uniform.**
+- **Two sessions independently built the same fix, and the parallel one was better.** #446 took the
+  diagnosis I had staged in #445, implemented it, and added a verified download I had explicitly
+  scoped out. My #447 was left redundant — and merging it would have duplicated an ADR number *and*
+  reverted the better work. Resetting my branch onto main cost nothing because the durable state
+  (plan doc, credited in #446's ADR) had already carried my contribution across. **LESSON: staging
+  a diagnosis as a committed document is what let parallel work compound instead of collide. And
+  when your branch loses the race, check what the winner actually contains before resolving the
+  conflict — the reflex "merge mine in" can silently revert someone else's superior fix.**
+- **Left one finding unfixed on purpose.** `template.ps1` builds its candidates eagerly inside
+  `@(...)`, and `Join-Path` may throw on the empty string `Split-Path -Parent` returns for a drive
+  root — which under `ErrorActionPreference = "Stop"` would abort the install. I could not execute
+  PowerShell to confirm it, so it went into the handoff with a suggested one-line CI probe instead
+  of into the code. **LESSON (reinforces Part V): shipping an unverified fix to a hypothetical is
+  how you trade a possible bug for a certain one. "Flagged, with the experiment that would settle
+  it" is a legitimate deliverable.**
+
 ### 2026-07-27c — three months of green CI never ran the way the operator actually installs (ADR-0299)
 - **The bug was not in the code; it was in the shape CI never tested.** The installer deployed the
   MPXJ converter from `<installer dir>/../tools/mpxj`. Every test and every CI job ran it **from the
