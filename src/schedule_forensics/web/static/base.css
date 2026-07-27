@@ -29,7 +29,11 @@ html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a687
 /* Operator: the whole tool's text should read at the Gantt's compact 11px. This is the single base
    size everything inherits (paragraphs, labels, tables, controls); headings keep their own larger
    sizes for hierarchy. Bump one value here to dial the whole UI up/down. */
-*{box-sizing:border-box}body{margin:0;background:var(--bgfx,var(--bg)) fixed;color:var(--ink);
+/* longhand on purpose: in the shorthand `background:<layers> fixed`, `fixed` binds only to the
+   final (color) layer — the gradient layers would default to scroll, so the console/jarvis/apollo
+   atmosphere would ride the content instead of sitting fixed behind it */
+*{box-sizing:border-box}body{margin:0;background:var(--bgfx,var(--bg));
+background-attachment:fixed;color:var(--ink);
 font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
 /* Axis captions (ADR-0298) — the single styling for SFChartFrame.axisTitles' <text> nodes.
    Uppercase + tracking is the convention adopted from AXIS-TITLES-PATCH §3 so every caption
@@ -526,3 +530,28 @@ header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 
 .start-card:hover{border-color:var(--accent)}
 .start-card .muted{font-size:12px}
 .nav-chapter.role-hl{border-left:2px solid var(--accent);padding-left:6px}
+
+/* ── Panel contract (Mission Ops slice 1) — headline strip, three-glyph tools, prov chip,
+   takeaway line, data drawer. Reusable vocabulary for every page shell; tokens only. ── */
+.page-kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace;
+  margin:2px 2px 4px}
+.page-lede{font-size:12px;font-weight:500;color:var(--muted);max-width:780px;margin:0 0 16px}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  flex-wrap:wrap;margin:0 0 10px}
+.panel-head h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink)}
+.sf-tools{display:inline-flex;gap:6px;align-items:center}
+.sf-tools button{background:transparent;color:var(--muted);border:1px solid var(--line);
+  border-radius:5px;padding:2px 7px;cursor:pointer;
+  font:600 9px ui-monospace,"IBM Plex Mono",Consolas,monospace}
+.sf-tools button:hover{color:var(--ink);border-color:var(--accent)}
+.prov-chip{font:600 8px ui-monospace,"IBM Plex Mono",Consolas,monospace;letter-spacing:.06em;
+  color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:1px 8px;
+  margin-left:auto}
+.sf-take{font-size:10px;font-weight:500;line-height:1.5;color:var(--muted);margin:0 0 8px}
+.sf-drawer{max-height:170px;overflow:auto;margin:8px 0 0}
+.sf-drawer table{font:9px/1.5 ui-monospace,"IBM Plex Mono",Consolas,monospace}
+.sf-drawer th{position:sticky;top:0;background:var(--panel);text-transform:uppercase}
+.sf-drawer td{border-bottom:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.is-big{grid-column:1/-1}

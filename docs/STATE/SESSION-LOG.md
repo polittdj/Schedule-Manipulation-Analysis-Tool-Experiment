@@ -8522,3 +8522,25 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   descent is real geometry.** `/forecast` joined the visual pass so both stay measured.
 - **RESULT: 648 caption renders, 4 themes x 3 scales, 5 pages, ZERO problems.** `PENDING` is 5
   (`margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`, `volatility` — batch 3b).
+
+## 2026-07-27p — Ultracode round 1 verdict: SHIP; the jarvis clobber closed (v1.0.111)
+
+- **The operator invoked Fable 5 Ultracode for the redesign** (ADR-0240). Round 1 ran 8 agents
+  (~1.0M tokens): 3 surveys, the lead plan (8+ route rebuild queue), the implementer (home-screen
+  shell + panel contract + panelkit.js), two adversarial verifiers (full gate; four-theme
+  chromium fidelity vs the prototype — the intake PNGs are partially corrupt, so the prototype
+  HTML was the authority), and the lead's reconciliation. **Verdict: SHIP**, every claim
+  re-verified against the tree and executable tests.
+- Shipped as #462 (atmosphere, v1.0.110 — merged) and #463 (home shell + panel contract,
+  v1.0.111). The fidelity verifier measured the kicker/takeaway/chip/toolbar styling as
+  character-for-character prototype matches in all four themes.
+- **The one confirmed defect was inherited, not the slice's**: hud.css's jarvis body rule
+  (higher specificity, shorthand) clobbered base.css's `var(--bgfx)` wiring — the token was
+  defined but DEAD, attachment computed `scroll`, hud's .028 alphas beat the token's .03. The
+  exact clobber pattern the slice fixed for apollo. Fixed by deleting the rule; **measured live**
+  (computed backgroundImage = all five token layers, attachment `fixed, ...`).
+  **LESSON: when a token system and a legacy per-theme override both paint the same surface,
+  the override wins silently — fold the effect INTO the token and delete the override, per
+  theme, and MEASURE the computed style; a defined token is not a painting token.**
+- Next-round queue (lead's plan, ranked): /mission tile-contract normalization · /analysis
+  source-file bar + panel shells · /evm story header · /compare · /integrity · /portfolio · …

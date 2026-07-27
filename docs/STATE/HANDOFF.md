@@ -1,6 +1,6 @@
 # Handoff — 2026-07-27l (the caption was never the problem; ADR-0303; v1.0.109)
 
-> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.110** (atmosphere port, ADR-0148 lockstep). Highest ADR **ADR-0303**.
+> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.111** (Ultracode round 1 slice 1: home-screen shell + panel contract). Highest ADR **ADR-0303**.
 > **#451-#460 all merged.** The four-theme visual pass is green again — this time against a
 > detector that can actually see the collisions it is looking for.
 >

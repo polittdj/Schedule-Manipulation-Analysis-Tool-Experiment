@@ -74,6 +74,12 @@
         head.appendChild(el("span", "dash-open", "Open report →"));
         card.appendChild(head);
         if (c.source_file) card.appendChild(el("div", "muted dash-src", c.source_file));
+        // provenance chip (panel contract, Mission Ops slice 1): which file + data date this
+        // card was computed from. data-no-i18n: filename + date must never be translated.
+        var prov = el("span", "prov-chip",
+          "SOURCE: " + (c.source_file || c.name) + " · DD " + (c.data_date || "—"));
+        prov.setAttribute("data-no-i18n", "");
+        card.appendChild(prov);
 
         if (!c.solvable) {
           card.appendChild(el("p", "notice err",
