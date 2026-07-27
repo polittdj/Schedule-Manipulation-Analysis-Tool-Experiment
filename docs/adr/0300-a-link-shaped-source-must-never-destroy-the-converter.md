@@ -165,8 +165,12 @@ compare. `Resolve-SfPath`'s one-hop reparse follow is therefore both necessary a
 ## Consequences
 
 - The windows job grows four steps (two legs + two mutations) and its `timeout-minutes` goes 15 → 30.
-  Two of the four re-use an existing venv, so the added wall-clock is modest, and the workflow still
-  only runs when installer content or the workflow itself changes.
+  Two of the four re-use an existing venv, so the added wall-clock is modest.
+- **Every push to a PR that has ever touched installer content re-runs this workflow.** A
+  `pull_request` `paths:` filter matches the **cumulative base…head diff**, not the pushed commit —
+  observed here, when a docs-only commit re-ran the whole windows job. Good for confidence (the legs
+  re-validate on the head commit) and worth knowing when batching commits (each push costs a windows
+  run). The `push:` trigger on `main` still filters per commit.
 - The installer suite goes **50 → 52**: the two shapes must keep executing on windows, and every
   mutation needle must still match the shipped installers verbatim.
 - **Both new tests were mutation-verified with file backups (ADR-0298), and the first draft of one

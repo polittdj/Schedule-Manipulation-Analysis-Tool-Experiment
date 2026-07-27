@@ -469,6 +469,18 @@ those fixed defects in earlier "closed" fixes:
   (generalizes → Part VI): this tool's whole thesis is that every figure has a citation you can
   follow. Apply it to our own decision record — a reference into `docs/adr/` should be resolvable at
   the moment it is written, and "I'll file it as an addendum" is not the same as what the code says.**
+- **A `pull_request` `paths:` filter matches the WHOLE base…head diff, not the pushed commit.**
+  Observed, and it contradicted what I had just written in a PR body: a docs-only push to this branch
+  re-ran `installer-smoke` (windows + linux) because the PR's cumulative diff still touches
+  `.github/workflows/installer-smoke.yml`. Useful both ways — every push to a PR that has ever
+  touched installer content re-validates it (good), and each one costs a windows run (worth batching
+  commits). **LESSON: `paths:` on `push` filters the commit; `paths:` on `pull_request` filters the
+  PR. Do not reason about one from the other.**
+- **A count taken from the wrong artefact reads exactly like a verified one.** I wrote "eleven steps
+  and seven installs" into an ADR from a glance at the YAML; the log says **ten steps and nine
+  installer runs**, and grepping `-File` over the workflow says 14 because `Get-ChildItem -Recurse
+  -File` matches. Same family as last session's 50-vs-54. **LESSON: derive a number from the artefact
+  that actually produced it — for "what did the job do", that is the job log.**
 - **Read-before-write caught three traps in one leg**, none of which would have failed loudly: the
   installer had to be copied out of the checkout or `$PSScriptRoot`'s parent would supply a valid
   source and the link would never be reached; `SMOKE INSTALL OK`, not `DONE`, is the final line in
