@@ -213,7 +213,11 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     browser close / Quit — ADR-0122); the old Start/Stop desktop icons are removed on
     upgrade and by the uninstaller."""
     tpl_ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
-    assert 'Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"' in tpl_ps1
+    # the parent-of-script-dir layout (a repo checkout) must still be searched — asserted as a
+    # BASE in the candidate list, not as a literal Join-Path expression: that eager form was
+    # removed because it throws on a drive root (see the empty-base test below).
+    assert "Split-Path -Parent $PSScriptRoot" in tpl_ps1
+    assert '$mpxjCandidates += (Join-Path $base "tools\\mpxj")' in tpl_ps1
     # "stays OFF" is retired (ADR-0299): the installer now reports the DEPLOYED capability,
     # so the three outcomes are enabled / stays ON (existing kept) / is OFF.
     assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import is OFF" in tpl_ps1
@@ -492,3 +496,36 @@ def test_no_probe_or_optional_step_can_abort_the_windows_install(tier: str) -> N
             code = re.sub(r'"[^"]*"', "", line)
             if risky in code:
                 assert "Invoke-SfNative" in line, f"{risky!r} can abort the install: {line.strip()}"
+
+
+@pytest.mark.parametrize("tier", TIERS)
+def test_no_candidate_path_is_built_from_a_possibly_empty_base(tier: str) -> None:
+    """A drive-root install must not abort the run (found by the parallel #447 investigation).
+
+    ``Split-Path -Parent`` of a drive root ("C:\\", a mapped "Z:\\") returns ""; ``Join-Path``
+    rejects an empty -Path with a parameter-binding error, which is TERMINATING regardless of
+    ``$ErrorActionPreference``. Inside an array literal every ``Join-Path`` evaluates eagerly, so
+    the whole install died there — after the venv, before the shortcut/uninstaller/README. The
+    candidate list must therefore be assembled one base at a time behind an ``if ($base)``.
+    """
+    ps1 = _read(tier, "ps1")
+    assert 'if ($base) { $mpxjCandidates += (Join-Path $base "tools\\mpxj") }' in ps1
+    # and the eager array literal must not come back
+    assert '(Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"),' not in ps1
+
+
+def test_the_zip_remedy_the_installer_advises_is_actually_available() -> None:
+    """The not-found branch tells an operator with no clone to use Code -> Download ZIP. That
+    advice only holds while the converter is committed, so assert it rather than trust it — a
+    remedy that quietly stops working is the same defect class as a false capability claim."""
+    tracked = subprocess.run(
+        ["git", "ls-files", "tools/mpxj"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.split()
+    assert "tools/mpxj/classes/MpxjToMspdi.class" in tracked, "ZIP would carry no converter"
+    assert sum(1 for f in tracked if f.endswith(".jar")) >= 20, "ZIP would carry too few jars"
+    for family in FAMILIES:
+        assert "Download ZIP" in _read("tier1", family), family
