@@ -157,10 +157,17 @@ compare. `Resolve-SfPath`'s one-hop reparse follow is therefore both necessary a
   `downloaded and SHA-256 verified` (one-file) · `deployed` (python-only) · `deployed` (link setup) ·
   `already installed` ×2 (the two link shapes) · `deployed` (mutation) · `no MPXJ converter found`
   (drive root, offline). Every branch of section 3b is now exercised at least once on Windows.
-- Total windows wall-clock: **3 m 40 s** for ten steps and **nine installer runs** — the eight above
-  plus the drive-root mutation, which aborts before reaching 3b and so prints no MPXJ line at all.
-  (Counted from the log's outcome lines, not from the YAML: grepping `-File` over the workflow gives
-  14, because `Get-ChildItem -Recurse -File` and the 5.1 link probe match too.)
+- Ten steps and **nine installer runs** — the eight above plus the drive-root mutation, which aborts
+  before reaching 3b and so prints no MPXJ line at all. (Counted from the log's outcome lines, not
+  from the YAML: grepping `-File` over the workflow gives 14, because `Get-ChildItem -Recurse -File`
+  and the 5.1 link probe match too.)
+- **The four new steps cost ~63 s.** Per-step, from the job API: link leg **31 s**, its mutation
+  **9 s**, drive root + its mutation **23 s**. Whole windows job **3 m 06 s – 3 m 40 s** across three
+  green runs on this branch. They are cheap because each re-uses the venv the step before it created
+  — which is also why the link mutation had to run *after* the link leg rather than as a fresh
+  install.
+- **Three consecutive green runs** (`833760f`, `e73aa70`, `4fe6d13`), each executing both shapes and
+  both mutations. Not one green run treated as proof of a stable leg.
 
 ## Consequences
 

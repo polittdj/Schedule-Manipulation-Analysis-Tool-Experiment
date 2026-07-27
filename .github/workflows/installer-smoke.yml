@@ -30,8 +30,11 @@ on:
 jobs:
   windows:
     runs-on: windows-latest
-    # 15 was sized for three installs; the ADR-0300 link/drive-root legs and their mutation
-    # steps add four more (two of them re-use an existing venv, so they are cheap).
+    # 15 was sized for three installs; the ADR-0300 link/drive-root legs and their mutation steps
+    # add six more installer runs. Measured, not guessed: they cost ~63 s of a ~3-minute job (link
+    # leg 31 s, its mutation 9 s, drive root + mutation 23 s), because every one of them re-uses a
+    # venv the step before it created. 30 is headroom for a hung Invoke-WebRequest on a slow runner,
+    # not a budget.
     timeout-minutes: 30
     steps:
       # Some committed reference files under 00_REFERENCE_INTAKE/ssi/ have long names; under the
