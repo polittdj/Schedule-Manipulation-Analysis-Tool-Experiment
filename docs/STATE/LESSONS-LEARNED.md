@@ -464,6 +464,14 @@ those fixed defects in earlier "closed" fixes:
   decision *and* a layout nudge its batch may not make, so it stays in `PENDING` with both reasons
   as a comment in the ledger — where the next session reads it, rather than in a merged PR body
   nobody re-opens.
+- **A long-running background test job is a snapshot, not a verdict.** The full suite reported
+  `test_handoff_top_section_pins_the_current_pyproject_version` FAILED. It was real at the moment
+  that test executed — the run had started before the handoff was rewritten, so it compared the old
+  handoff (1.0.105) against the new `pyproject` (1.0.106) — and it was already false by the time I
+  read it. **LESSON: when a background suite reports a failure, re-run THAT test against the current
+  tree before believing it OR dismissing it.** Both errors are available here: believing a stale
+  failure wastes a fix, and waving one away as "probably timing" is how a real defect ships. The
+  cheap discriminator is a targeted re-run plus checking the two values the assertion compares.
 - **A squash-merge orphans any SHA captured before it.** `mpxj_ref()` pins the last commit touching
   `tools/mpxj`; the pin shipped in v1.0.105 is **not an ancestor of `main`**, surviving only on an
   unmerged branch, so the operator's converter download depended on that branch not being deleted.
