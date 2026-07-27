@@ -103,18 +103,17 @@ INCIDENTAL_SVG = {
 #: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
 #: helper, and may not be listed here unless it really renders SVG — both are asserted.
 PENDING = {
-    # ``drift.js`` is deliberately still here after batch 1, for two reasons worth stating so the
-    # next batch does not "just add the call": (1) its Y axis is a list of three FORECAST METHODS
-    # and its X axis is a forecast DATE — the patch spec's "SCHEDULE VERSION (UPDATE)" by
-    # "SLIP AGAINST BASELINE (WORKDAYS)" would print a false statement on the chart; (2) the Y
-    # caption anchor (``T + 9``) lands 7px above its first method-name row (``padT + 14``), so it
-    # needs a padT nudge, and moving the plot is out of scope for a caption batch.
-    "drift.js",
+    # ``drift.js`` graduated in ADR-0303 batch 3a after being attempted and reverted once. The
+    # placement answer its revert note demanded turned out to be ADR-0303's law — the caption
+    # stays fixed, the DATA yields: the method rows sit 12px lower (``padT + 26``, H grown to
+    # match) clearing the Y caption's 136x6px hit on the first row name, and the last row's
+    # forecast date label clamps to ``H - padB - 15`` clearing the X caption's 75x3px hit at
+    # 90% scale. Both collisions are MEASURED closed by ``test_axis_titles_visual.py``, which
+    # walks ``/forecast`` in every theme at every scale.
     "margin_dashboard.js",
     "sra.js",
     "sra_jcl.js",
     "sra_ssi.js",
-    "trend.js",
     "volatility.js",
 }
 

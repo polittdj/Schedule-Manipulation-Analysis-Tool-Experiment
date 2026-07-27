@@ -3,6 +3,79 @@
 > Older handoff sections, moved out of `docs/STATE/HANDOFF.md` so the live handoff stays
 > small enough to read in full in one pass every session (ADR-0246). Newest first, verbatim.
 
+# (prior) Handoff — 2026-07-27k (the caption helper gains a secondary-axis label; ADR-0302; v1.0.108)
+
+> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0302 merged. Version **1.0.108**. Highest ADR **ADR-0302**. `main` at `abfa6ec`.
+> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
+> **#451-#458 all merged. No open PRs.** All five checks green on #458; the background
+> regeneration produced a clean set of nine installers (windows + linux both ran against them).
+>
+> - **`SFChartFrame.axisTitles` now takes an OPTIONAL `y2Label`** for a combo chart's secondary
+>   (right) axis. **The operator was asked and chose this** over "primary axes only, permanently"
+>   and over deferring it — batch 2 had recorded it as a gap rather than inventing a fix mid-batch.
+> - **Placement mirrors the Y caption to the plot's top-RIGHT**, end-anchored, same baseline:
+>   `caption(svg, geom.R - 4, geom.T + 9, opts.y2Label, "end")`. The three captions occupy three
+>   different corners **by construction** — X bottom-right `(R, B-4)`, Y top-left `(L+4, T+9)`,
+>   Y2 top-right. Horizontal, never rotated.
+> - **This PRESERVES ADR-0298's "one convention", it does not break it.** The rule is one
+>   *implementation*, one *token*, one *placement law* — not "exactly two labels". Y2 goes through
+>   the same `caption()` builder and the same `.ch-at` class, so the queued **CRISPNESS 11px floor
+>   still moves ONE value**.
+> - **Omitting `y2Label` emits nothing**, so every pre-existing caller is unaffected — asserted in
+>   the harness, not assumed.
+> - **`wbs.js` is the first caller**: SPI(t) (ratio, left axis) + earned schedule (working days,
+>   right axis). Its captions **name their own axis**, because on a two-scale chart the reader's
+>   real question is *which gridlines do I read this against*.
+> - **Mutation-verified — four mutants, each caught:** Y2 moved onto the X caption's corner · Y2
+>   emitted unconditionally (would silently add a caption to every existing caller) · Y2
+>   left-anchored · a numeric `font-size` planted in the caption block.
+> - **`PENDING` is UNCHANGED at 7** (`drift`, `margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`,
+>   `trend`, `volatility`). Nothing new was captioned on purpose: the convention change is
+>   reviewable on its own rather than buried in seven modules of caption text.
+> - **Version 1.0.107 -> 1.0.108**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep —
+>   `chartframe.js` + `wbs.js` are packaged). ⚠️ **Run the regeneration in the BACKGROUND**: at the
+>   120s foreground timeout it gets killed mid-write and leaves tier3 a version behind tier1/tier2
+>   (`test_shared_body_is_identical_across_tiers_no_drift[ps1]` catches it — that happened in batch 2).
+> - **NEXT: AXIS-TITLES batch 3** — the 7 remaining, and they are the hard ones, mostly **multi-chart
+>   modules needing per-chart captions, not one call**: `sra.js` (4 charts), `volatility.js` (10
+>   visuals, 7 plot rects), `trend.js` (1,183 lines, 5 svg roots), `margin_dashboard.js` (2 charts +
+>   a strip), `sra_jcl.js` / `sra_ssi.js` (football scatter + S-curve + non-axis strips/matrices).
+>   `sra` and `margin_dashboard` can now use **`y2Label`**. `trend` + `volatility` need the
+>   per-metric Y caption (`metric.label + " (" + metric.unit + ")"`; **a metric with no unit is a
+>   catalogue gap to REPORT, not a caption to invent**). `drift.js` also needs a `padT` nudge (its Y
+>   anchor lands 7px above the first method-name row). **Derive every caption from the rendering
+>   code (ADR-0301) — the spec's table has been wrong for 6 of 8 modules checked.**
+>   Then **CRISPNESS 11px floor ONLY**. Then GUIDED-MODE (5) + VOICE-DECISION (4), parked on the
+>   operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the 13
+>   `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
+> - **✅ THE FOUR-THEME VISUAL PASS IS DONE — and it is CLEAN.** Owed since 2026-07-27b, closed by
+>   making it EXECUTABLE instead of eyeballed: `tests/web/test_axis_titles_visual.py` drives a real
+>   chromium over 4 themes x 3 scales x the 4 pages the golden fixtures chart. **144 caption
+>   renders; contrast 5.00-5.95:1** (console 5.95 · daylight 5.52 · jarvis 5.23 · apollo 5.00) —
+>   past the 3.0 floor and past WCAG AA's 4.5. No clipping, no collisions, 11px + uppercase
+>   everywhere. Mutation-verified against the real CSS (drop `text-transform`, move the token off
+>   11px — each turns it red). **Skips unless `pip install playwright`**; the runtime stays
+>   stdlib-only (Law 1) and CI has no browser.
+> - **⚠️ TWO THINGS THAT PASS BUILT WRONG FIRST — do not re-make them:** (1) **"themes only change
+>   colour" is FALSE** — apollo is `font-family:'IBM Plex Mono'`, so caption geometry genuinely
+>   differs per theme and must be measured per theme; the factoring assertion caught it only
+>   because it was asserted rather than assumed. (2) **A page with no chart is not a missing
+>   caption** — `/resources` needs a resource picked and `/margin` needs tasks named "margin"
+>   (`/api/margin` = `total 0.0`), so both correctly render a no-data note; flagging that as a
+>   defect would send the next session chasing a bug that does not exist.
+> - **⚠️ HARNESS TRAPS, all self-inflicted, all cost time:** never `wait_until="networkidle"` on
+>   this app (`heartbeat.js` polls 3s, `sysmon.js` 2s — it never settles); never pipe a long run
+>   through `| tail` (buffers to EOF, so progress prints vanish); and **never `pkill -f <pattern>`
+>   where the pattern appears in your own command line** — it kills the shell running it.
+> - **DEPLOY NOTE (operator has no local clone):** download `installer/install-tier2.ps1` from the
+>   GitHub web UI and run
+>   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
+>   One file; it fetches + SHA-256-verifies the `.mpp` converter from a pinned immutable commit on
+>   `main`. An existing converter is never destroyed — not by a re-run, a failed download, a
+>   self-referential `SF_MPXJ_HOME`, a junction, or a symlink; and a drive root no longer aborts the
+>   install. All executed on Windows in CI (ADR-0300). Offline: Code -> Download ZIP, run from
+>   inside the extracted folder.
+
 # (prior) Handoff — 2026-07-27j (AXIS-TITLES batch 2: PENDING 11 -> 7; a ledger entry that was never a chart; ADR-0301 addendum; v1.0.107)
 
 > ## STATUS (current) — NOTHING IN FLIGHT. ADR-0301 + batch-2 addendum merged. Version **1.0.107**. Highest ADR **ADR-0301**. `main` at `c9cbe4a`.

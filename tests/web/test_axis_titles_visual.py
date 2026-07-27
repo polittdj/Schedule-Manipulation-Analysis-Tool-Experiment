@@ -52,7 +52,23 @@ SCALES = ("0.9", "1", "1.25")
 #: picked from its dropdown and ``/margin`` needs tasks named "margin"; with these fixtures both
 #: correctly render a "no data" note and NO chart, so a missing caption there would be a false
 #: positive rather than a defect.
-PAGES = ("/curves", "/scurve", "/cei", "/trend")
+#: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
+#: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
+#: those collisions stay closed.
+PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast")
+
+#: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
+#: kept as a record of why, because the wrong diagnosis here cost a full round trip.
+#:
+#: Widening the overlap detector (from caption-vs-caption to caption-vs-EVERY-text) found two real
+#: ones: ``/cei`` 14x6px and ``/trend`` 6x10px. They were first written down as "the Y caption sits
+#: where the top gridline's label already is", which made the fix look like a placement-convention
+#: change. Measured in the browser, that premise was false on both counts: on ``/cei`` the top
+#: gridline label ``15`` clears the caption by 13px and the collision is with a first-month BAR
+#: VALUE label; on ``/trend`` the colliding caption is the **X** caption, which no Y-placement rule
+#: touches at all. Both are one thing — a data label parked in a caption's band — and ADR-0303
+#: fixes them where they are caused, in ``cei.js`` and ``trend_drill.js``, by moving the LABEL.
+KNOWN_COLLISIONS: set[tuple[str, str]] = set()
 
 CONTRAST_FLOOR = 3.0
 TOKEN_PX = 11.0
@@ -69,7 +85,12 @@ _PROBE = """() => {
               w: Math.round(r.width), h: Math.round(r.height), fs: cs.fontSize,
               tt: cs.textTransform, fill: cs.fill || cs.color, bg,
               svg: sr ? {x: Math.round(sr.x), y: Math.round(sr.y),
-                         w: Math.round(sr.width), h: Math.round(sr.height)} : null});
+                         w: Math.round(sr.width), h: Math.round(sr.height)} : null,
+              siblings: svg ? [...svg.querySelectorAll('text')]
+                .filter(o => o !== n && o.textContent.trim())
+                .map(o => { const b = o.getBoundingClientRect();
+                            return {text: o.textContent, x: Math.round(b.x), y: Math.round(b.y),
+                                    w: Math.round(b.width), h: Math.round(b.height)}; }) : []});
   });
   return out;
 }"""
@@ -138,6 +159,7 @@ def test_captions_survive_every_theme_and_scale(served: str) -> None:
     from playwright.sync_api import sync_playwright
 
     problems: list[str] = []
+    known_hit: set[tuple[str, str]] = set()
     measured = 0
     geometry: dict[str, list[tuple[Any, ...]]] = {}
 
@@ -171,7 +193,7 @@ def test_captions_survive_every_theme_and_scale(served: str) -> None:
                         geometry.setdefault(route, []).append(
                             tuple((c["text"], c["x"], c["y"], c["w"]) for c in caps)
                         )
-                    for i, c in enumerate(caps):
+                    for c in caps:
                         measured += 1
                         label = f"{where} “{c['text'][:34]}”"
                         if c["w"] <= 0 or c["h"] <= 0:
@@ -190,19 +212,36 @@ def test_captions_survive_every_theme_and_scale(served: str) -> None:
                         ratio = _contrast(_rgb(c["fill"]), _rgb(c["bg"]))
                         if ratio < CONTRAST_FLOOR:
                             problems.append(f"{label}: contrast {ratio:.2f}:1 < {CONTRAST_FLOOR}")
-                        for other in caps[i + 1 :]:
-                            if (
-                                c["svg"]
-                                and other["svg"]
-                                and c["svg"] == other["svg"]
-                                and abs(c["y"] - other["y"]) < max(c["h"], other["h"])
-                                and c["x"] < other["x"] + other["w"]
-                                and other["x"] < c["x"] + c["w"]
-                            ):
-                                problems.append(f"{label}: overlaps “{other['text'][:30]}”")
+                        # against EVERY other text in the same svg — a caption colliding with a
+                        # tick label or a row name is the likeliest real collision, and comparing
+                        # captions only to captions cannot see it.
+                        for other in c.get("siblings", []):
+                            # Overlap must be REAL, not a rounding artefact: every coordinate is
+                            # rounded to whole pixels above, which can manufacture a ~1px touch.
+                            # Require a 2px bite on BOTH axes before calling it a collision.
+                            dx = min(c["x"] + c["w"], other["x"] + other["w"]) - max(
+                                c["x"], other["x"]
+                            )
+                            dy = min(c["y"] + c["h"], other["y"] + other["h"]) - max(
+                                c["y"], other["y"]
+                            )
+                            if dx >= 2 and dy >= 2:
+                                key = (route, c["text"])
+                                if key in KNOWN_COLLISIONS:
+                                    known_hit.add(key)
+                                    continue
+                                problems.append(
+                                    f"{label}: overlaps “{other['text'][:30]}” by {dx}x{dy}px"
+                                )
         browser.close()
 
     assert measured >= 100, f"only {measured} caption renders measured — the pass proved little"
+    # The debt list may only shrink. An entry that no longer collides has been FIXED, and leaving
+    # it listed would hide the next regression at that exact spot.
+    stale = KNOWN_COLLISIONS - known_hit
+    assert not stale, (
+        f"these no longer collide — delete them from KNOWN_COLLISIONS: {sorted(stale)}"
+    )
     assert not problems, f"{len(problems)} caption problem(s):\n  " + "\n  ".join(problems[:30])
 
     # Recorded, not asserted-away: geometry DOES vary by theme (apollo is IBM Plex Mono), which

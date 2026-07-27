@@ -37,7 +37,10 @@
       (v.as_of ? " (data date " + v.as_of + ")" : "");
     box.innerHTML = "";
 
-    var W = 980, H = 80 + methods.length * 64, padL = 12, padR = 14, padT = 44, padB = 36;
+    // ADR-0303: the method rows sit 12px lower than they used to (padT + 26, H grown to
+    // match) so the Y caption band inside the plot top is clear of the first row name —
+    // the measured collision was 136x6px when the caption landed on "Schedule logic (CPM)".
+    var W = 980, H = 92 + methods.length * 64, padL = 12, padR = 14, padT = 44, padB = 36;
     var svg = svgEl("svg", { viewBox: "0 0 " + W + " " + H, width: "100%", role: "img" });
     if (window.SFA11y) SFA11y.label(svg, "Forecast drift — the three forecasts across versions");
     var x = function (ms) { return padL + ((ms - lo) / (hi - lo)) * (W - padL - padR); };
@@ -92,7 +95,7 @@
 
     var prior = index > 0 ? versions[index - 1] : null;
     methods.forEach(function (m, li) {
-      var ly = padT + 14 + li * 64;
+      var ly = padT + 26 + li * 64;
       svg.appendChild(svgEl("line", { x1: padL, y1: ly + 18, x2: W - padR, y2: ly + 18, stroke: "var(--line)", "stroke-width": 1 }));
       var name = svgEl("text", { x: padL, y: ly + 2, fill: "var(--muted)", "font-size": 11 });
       name.textContent = m.name;
@@ -114,7 +117,10 @@
           }
         }
         svg.appendChild(svgEl("circle", { cx: cx, cy: ly + 18, r: 6, fill: color }));
-        var val = svgEl("text", { x: cx, y: ly + 36, "text-anchor": "middle", fill: "var(--ink)", "font-size": 11 });
+        // stay clear of the X caption band, DESCENT INCLUDED — a text box extends ~3px
+        // below its baseline, which is what left a 73x2px residue at the first clamp (ADR-0303)
+        var vy = Math.min(ly + 36, H - padB - 20);
+        var val = svgEl("text", { x: cx, y: vy, "text-anchor": "middle", fill: "var(--ink)", "font-size": 11 });
         val.textContent = iso;
         svg.appendChild(val);
       } else {
@@ -124,6 +130,9 @@
       }
     });
 
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Forecast finish date", yLabel: "Forecast method",
+    });
     box.appendChild(svg);
 
     var leg = document.createElement("div");

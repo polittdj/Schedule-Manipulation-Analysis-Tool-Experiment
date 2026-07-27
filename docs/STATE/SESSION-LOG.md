@@ -8434,3 +8434,91 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   **LESSON: when diagnosing a hung or killed job, suspect the harness before the subject.**
 - Mutation-verified against the real CSS (drop `text-transform`, move `--sf-fs-axis-title` off
   11px — each turns it red), tree confirmed byte-identical afterwards.
+
+## 2026-07-27m — the caption was never the problem (ADR-0303, v1.0.109)
+
+- **The diagnosis in the previous section was wrong, and a fix was built on it before it was
+  measured.** The two collisions the widened detector found were recorded as *"the Y caption sits
+  where the top gridline's label already is"* — which made the remedy look like a placement change
+  (move the Y captions above the plot), and that is what the operator was asked to choose between.
+  A browser probe of every caption's box plus every neighbouring `<text>` box falsified **both**
+  halves: on `/cei` the top gridline label `15` clears the caption by **13px** and the text it hits
+  is a **bar VALUE label** at attr `(51.9, 59.3)`; on `/trend` the colliding caption is the **X**
+  caption, which no Y-placement rule touches. **LESSON: a collision report names two boxes. Read
+  BOTH. I named the caption and then assumed the other box from the source, and the assumption
+  survived four commits, an operator decision, and an implementation before anything measured it.**
+- **The chosen change was implemented, harness-tested, measured, and REVERTED.** An adaptive
+  "above when the band is free, inside when not" rule chose *inside* on all four charted pages —
+  every one already has text there — so it changed **nothing**, while making a caption's position
+  depend on the data (it would move between frames of an animated stepper). Unconditional "above"
+  was worse: `/curves` month letters (11x6, 9x6px), and on `/cei` a **56x13** hit against `data
+  date` in place of the 14x6 it removed. **LESSON: "it passed the unit harness" proves the rule
+  does what you wrote; it says nothing about whether the rule was worth writing. The measurement
+  that justifies a change has to run before the change is adopted, not after it is implemented.**
+- **ADR-0303 — placement stays fixed; the DATA LABEL yields.** Two one-line clamps at the cause
+  (`cei.js` `Math.max(y(v) - 3, padT + 22)`, `trend_drill.js`
+  `Math.min(padT + plotH - bh - 5, padT + plotH - 18)`), each biting only the small set of bars
+  that reach a caption's band. Result: **144 caption renders, 4 themes x 3 scales, zero problems,
+  `KNOWN_COLLISIONS` empty.**
+- **A dangling `ADR-0303` citation was deleted** from `test_axis_titles_visual.py`: it credited a
+  `/forecast` geometry fix that was reverted, on a page not in that pass's `PAGES`. Same defect
+  class ADR-0300 exists to stop, found in work merged one commit earlier. **LESSON: an ADR number
+  written into code before the ADR file exists is a forward reference that survives a revert.**
+- **⚠️ Build trap, cost a full rebuild:** `python -m build --wheel` writes to `dist/`, but
+  `tools/installer/build_installers.py` defaults to **`dist/wheel/*.whl`**. It silently embedded a
+  stale 1.0.108 wheel and emitted nine installers byte-identical to HEAD — a version bump that
+  shipped the previous version. Always `python -m build --wheel --outdir dist/wheel`.
+  `tests/installer/test_installers.py:89` does pin the embedded version to `pyproject`, so the gate
+  catches it — **LESSON: a silent no-op is the failure mode to fear from a defaulted path
+  argument; check the artefact, not the exit code.**
+
+## 2026-07-27n — the stranded "DCMA 14 — BEI" callout (operator screenshot)
+
+- **The bug.** The DCMA overview float tip (`.dcma-tip-float`, `position:fixed` on `<body>`,
+  z-index 10000) painted over the fixed nav rail (z-index 110) and stayed there. **First theory
+  (hover + scroll) did not survive the browser**: chromium synthesizes a mousemove when content
+  scrolls under a stationary pointer, so the hover path self-heals — a mutation with the guard
+  removed still passed a hover-scroll probe. The REACHABLE stuck path is **focus/touch**: the
+  rows are `tabindex=0`, click/tap focuses one (tip shows instantly), and neither wheel- nor
+  touch-scroll fires `blur` — the fixed tip floats over whatever scrolls beneath it. A second,
+  degenerate path: a 0x0 row anchors the tip at the clamps' floor — the viewport's top-left
+  corner, exactly where the operator's screenshot shows it.
+- **The fix (`app.js`)**: a document-level capture-phase scroll listener hides every float tip
+  (the same guard the shared cf-tip has had since ADR-0190 — this older mechanism predates it);
+  `placeFloatTip` refuses a 0x0 anchor, clamps `left` to the fixed rail's right edge, and
+  shrinks to the space beside the rail; the hover-intent timer re-checks
+  `document.elementFromPoint` before showing.
+- **Test**: `tests/web/test_float_tip_scroll.py` — focus-shows the tip (no pointer, like touch),
+  asserts it sits clear of the rail, scrolls, asserts it hides. **Mutation-proven for the
+  scroll-hide** (gutting it fails the test in 2.7s, deterministically). The zero-rect guard is
+  defensive and NOT claimed as covered — its first mutation "kill" was a flake that vanished on
+  re-run. **LESSON: re-run a surprising mutation kill before believing it; a flaky kill
+  manufactures exactly the confidence mutation testing exists to prevent.**
+- v1.0.109 wheel + nine installers REBUILT to embed the fixed `app.js` (same version — it exists
+  only on unmerged #461; one merged PR = one version).
+
+## 2026-07-27o — AXIS-TITLES batch 3a: trend.js (5 builders) + drift.js re-landed (ADR-0303 applied)
+
+- **The redesign mandate**: the operator dropped the design-handoff bundle into
+  `00_REFERENCE_INTAKE/` on `main` and directed "use it to redesign the UI, don't stop until
+  complete." Several files arrived GARBLED (both ASTROLABE .dc.html files are a PNG and an MP4;
+  CLAUDE-CODE-HANDOFF.md / DESIGN-GUIDE.md / README.md / github.md / mock-api.js are images) —
+  the usable corpus is `Mission Ops Redesign v2.dc.html` (real HTML, THE deliverable per the
+  handoff), `support.js`, the AISMAT token CSS, and the per-screen PNGs. The Mission Ops chrome
+  (rail/acts/kicker/story-footer) is already integrated, so the in-flight phase IS the chart
+  contract: AXIS-TITLES.
+- **trend.js**: all five generic builders (`lineChart`, `multiLineChart`, `varianceTrendChart`,
+  `stackedBarChart`, `groupedBarChart`) now call the ONE helper; Y captions supplied per call
+  site (ADR-0301 — derived from what each call plots; the version axis is the X everywhere).
+  The spec's `metric.unit` plumbing was NOT built — no caption needed it: every call site's
+  quantity (count/ratio/wd/%) is knowable from the code that computes its values.
+- **The first visual run found 92 problems — almost all one thing**: the X caption's corner band
+  collides with INLINE VALUE LABELS whose data point lands at the plot's bottom-right. Fixed by
+  ADR-0303's law, mechanically: the existing `labelFits` de-overlap now also refuses the caption
+  band (suppressed values keep their hover `<title>`, the contract the de-overlap already had).
+- **drift.js re-landed**: rows down 12px (`padT + 26`, H grown) closes the 136x6px Y hit; the
+  last row's date label clamps to `H - padB - 20` — the FIRST clamp (-15) left a 73x2px residue
+  because a text box extends ~3px BELOW its baseline. **LESSON: clamp text boxes, not baselines —
+  descent is real geometry.** `/forecast` joined the visual pass so both stay measured.
+- **RESULT: 648 caption renders, 4 themes x 3 scales, 5 pages, ZERO problems.** `PENDING` is 5
+  (`margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`, `volatility` — batch 3b).

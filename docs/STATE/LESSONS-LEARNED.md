@@ -435,6 +435,50 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27n — the first theory of a UI bug must survive the browser; and re-run surprising mutation kills
+
+- **Diagnosing the stranded float tip, the first theory (hover + scroll) was falsified by its own
+  mutation test**: chromium synthesizes mouse events on scroll, so the hover path self-heals and
+  the "fix" was untestable. The reachable path was focus/touch (`tabindex=0` rows + no `blur` on
+  scroll) plus a degenerate 0x0 anchor. **LESSON: for event-lifecycle bugs, enumerate every path
+  that SHOWS the artifact (hover, focus, touch, timer) and every event that can END each one —
+  the stuck state is whichever show-path has no reachable hide-event.**
+- **A mutation "kill" flaked**: removing a defensive guard failed the test once (6.5s run) and
+  passed on re-run (2.6s). Claiming that guard as mutation-proven would have been false.
+  **LESSON: a surprising mutation kill gets one immediate re-run before it is believed — a flaky
+  kill manufactures exactly the confidence mutation testing exists to prevent.**
+
+### 2026-07-27m — a collision report names TWO boxes; I read one and assumed the other (ADR-0303)
+
+- **The failure.** The four-theme visual pass reported two caption collisions (`/cei` 14x6px,
+  `/trend` 6x10px). I wrote them down as *"the Y caption sits where the top gridline's label
+  already is"* — reasoning from the chart source, not from the measurement. That framing turned a
+  local defect into a convention change, and it is what the operator was asked to decide between.
+  Measuring the actual boxes falsified **both** halves: on `/cei` the top gridline label clears the
+  caption by **13px** and the real neighbour is a **bar value label**; on `/trend` the colliding
+  caption is the **X** caption, which no Y-placement rule touches.
+  **LESSON: an overlap is a relation between two rectangles. Identify BOTH from the measurement.
+  Naming one and inferring the other from source reading is a guess wearing a measurement's
+  clothes — and it survived four commits, an operator decision, and a full implementation.**
+- **The cost of adopting before measuring.** The chosen rule ("Y caption above the plot, adaptively
+  when the band is free") was implemented and passed its unit harness — then measured, and it chose
+  *inside* on **all four** charted pages, changing nothing, at the cost of a caption whose position
+  moves with the data. **LESSON: a green unit harness proves the rule does what you wrote. It says
+  nothing about whether the rule was worth writing. Run the justifying measurement BEFORE adoption.**
+- **What actually fixed it, in two lines.** Placement stays fixed (ADR-0298); the *data label*
+  yields where it enters a caption's band. Generalises without touching the shared helper.
+  **LESSON: when a shared convention and a local detail collide, move the local detail first —
+  the convention's cost is paid by every chart, the detail's by one.**
+- **A dangling `ADR-0303` citation was found in code merged one commit earlier**, crediting a
+  `/forecast` fix that had been reverted, on a page not even in that test's `PAGES`.
+  **LESSON: an ADR number written into code before the ADR exists is a forward reference that
+  outlives the revert it described. Cite an ADR only once its file is on disk.**
+- **Packaging trap.** `python -m build --wheel` writes to `dist/`; `build_installers.py` defaults to
+  `dist/wheel/*.whl`. It silently embedded the previous version's wheel and produced nine
+  installers byte-identical to HEAD — a version bump that shipped the old version. The gate does
+  pin the embedded version to `pyproject`, so it would have failed. **LESSON: the failure mode to
+  fear from a defaulted path argument is a silent no-op. Verify the artefact, not the exit code.**
+
 ### 2026-07-27l — a task that stays owed across four ADRs is a task nobody can repeat (ADR-0302 addendum)
 - **The four-theme visual pass was owed since 2026-07-27b and survived four ADRs untouched.** Not
   because it was hard — because it was *unrepeatable*: eyeballing four themes x three scales x

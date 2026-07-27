@@ -120,7 +120,12 @@
           drill(rect, (snap[sd[3] + "_uids"] || [])[i], snap.label, sd[3] + " to finish — " + months[i]);
           svg.appendChild(rect);
           if (slot > 26) {
-            var t = svgEl("text", { x: bx + barW / 2, y: y(v) - 3, "text-anchor": "middle", fill: "var(--ink)", "font-size": 9 });
+            // ADR-0303: a value label may not enter the axis-caption band. A bar within ~9% of the
+            // locked Y max puts its label at the plot's top-left, where the Y caption lives — the
+            // measured collision was 14x6px between "Activities finishing (count)" and a first-month
+            // bar's "14". The label yields (it drops just inside the bar); the caption does not move.
+            var ly = Math.max(y(v) - 3, padT + 22);
+            var t = svgEl("text", { x: bx + barW / 2, y: ly, "text-anchor": "middle", fill: "var(--ink)", "font-size": 9 });
             t.textContent = String(v);
             svg.appendChild(t);
           }
