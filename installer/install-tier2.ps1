@@ -41,6 +41,25 @@ $ModelDiskGB = 5
 
 $ErrorActionPreference = "Stop"
 
+# ADR-0299. While $ErrorActionPreference is "Stop", ANY native program that writes to stderr
+# raises a TERMINATING error — even when it succeeded. `java -version` prints its banner on
+# stderr, and `winget` / `ollama pull` stream progress there, so a step that merely PROBES for
+# Java, or an AI install documented as optional, could kill the whole run before the shortcuts,
+# uninstaller and README were ever created. That is exactly what happened on the windows CI
+# runner (java on PATH -> NativeCommandError -> no DONE), and it stayed invisible because the
+# following commands in those steps reset $LASTEXITCODE.
+# Run native commands through this helper: it softens the preference for the duration of the
+# call and always restores it, streaming output so long downloads still show progress. The
+# CALLER decides what a non-zero $LASTEXITCODE means — nothing here aborts implicitly.
+function Invoke-SfNative {
+    param([Parameter(Mandatory = $true)][scriptblock]$Command)
+    $prevEap = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Command
+    } finally { $ErrorActionPreference = $prevEap }
+}
+
 function Install-Main {
 # SF_INSTALLER_SMOKE=1: non-interactive CI/self-test mode — temp install root, prompts skipped,
 # no shortcuts, no Ollama/Java. Used by the windows-latest smoke workflow; harmless for users.
@@ -99,7 +118,7 @@ if (-not $py) {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
         throw "winget is not available. Install Python 3.12 manually from python.org, then re-run this installer."
     }
-    winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent --scope user
+    Invoke-SfNative { winget install --id Python.Python.3.12 --exact --accept-source-agreements --accept-package-agreements --silent --scope user }
     $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
     $py = Find-Python
     if (-not $py) { throw "Python installed but not discoverable on PATH yet — open a NEW window and re-run this installer." }
@@ -263,8 +282,12 @@ if ($shadow -and $shadow.Source -and -not $shadow.Source.StartsWith($InstallRoot
 Step "Checking Java 17+ (optional — only needed to open native .mpp files)"
 function Find-JavaNoAdmin {
     if (Get-Command java -ErrorAction SilentlyContinue) {
-        $jv = (& java -version 2>&1 | Select-Object -First 1) -replace '.*"(\d+).*', '$1'
-        if (($jv -match '^\d+$') -and ([int]$jv -ge 17)) { return "java (on PATH)" }
+        # `java -version` prints to STDERR even on success — see Invoke-SfNative (ADR-0299).
+        $raw = (Invoke-SfNative { java -version 2>&1 }) | Out-String
+        if ($raw -match '"(\d+)') {
+            $jv = $Matches[1]
+            if ([int]$jv -ge 17) { return "java (on PATH)" }
+        }
     }
     $roots = @(
         (Join-Path $env:LOCALAPPDATA "Programs\Microsoft"),
@@ -318,14 +341,14 @@ if ($ans -notmatch "^[Nn]") {
     # and the operator only found out when the AI features silently did nothing. Same rule as
     # the Java block (ADR-0192): verify, then report what actually happened.
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
-        winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent
+        Invoke-SfNative { winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent }
         $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
         if (Get-Command ollama -ErrorAction SilentlyContinue) { Ok "Ollama installed" }
         else { Warn2 "Ollama install failed — skipping the AI model; the tool runs fully without it" }
     } else { Ok "Ollama already present" }
     if (Get-Command ollama -ErrorAction SilentlyContinue) {
         Write-Host "    Pulling $OllamaModel (this is the big download — grab a coffee)..."
-        & ollama pull $OllamaModel
+        Invoke-SfNative { ollama pull $OllamaModel }
         if ($LASTEXITCODE -eq 0) { Ok "Model ready: $OllamaModel" }
         else { Warn2 "Model download failed — AI prose stays off until you run: ollama pull $OllamaModel" }
     }

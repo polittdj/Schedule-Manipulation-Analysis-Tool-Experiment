@@ -8156,3 +8156,18 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   immediately replace* — stage, verify, then swap; (3) *a test harness that inherits the repo's cwd
   will pass on the developer's own checkout and prove nothing*; (4) a green CI check only proves
   the branch the job actually walked — read the log to find out which.
+- **The new windows CI leg paid for itself within one run.** It went red, and the log showed the
+  installer dying at the *Java detection* step: under `$ErrorActionPreference = "Stop"` a native
+  program writing anything to stderr is a TERMINATING error, and `java -version` prints its banner
+  to stderr — so on any machine with java on PATH the installer aborted before the shortcut,
+  uninstaller and README were created. **It had been shipping that way**; the two older Windows
+  legs end with `& $venvPy -c ...`, which resets `$LASTEXITCODE` and swallowed the aborted exit
+  code. `winget install` and `ollama pull` had the same exposure (progress on stderr) — the
+  PowerShell twin of the bash `ollama pull` abort. All routed through a new `Invoke-SfNative`
+  helper; the CI leg now asserts the installer's own exit code. **LESSON: a step that only
+  PROBES must never be able to fail the run, and a CI step whose last command is not the thing
+  under test will happily hide that thing's exit code.**
+- **Second cwd lesson, same shape as the first:** the windows leg ran from the repo root, so
+  `$PWD\tools\mpxj` matched the checkout and it took the local-copy branch instead of downloading
+  — the very contamination I had just fixed in my local harness. Now `Set-Location`s to the bare
+  download folder first.

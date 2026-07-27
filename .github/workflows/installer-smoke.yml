@@ -71,7 +71,19 @@ jobs:
           New-Item -ItemType Directory -Force -Path $dl | Out-Null
           Copy-Item installer/install-tier1.ps1 -Destination $dl
           $env:SF_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP "SFOneFile"
+          # cwd must leave the checkout too: `$PWD\tools\mpxj` is one of the four candidates, so
+          # running from the repo root silently satisfies the local-copy branch and the download
+          # is never exercised (the first run of this leg did exactly that).
+          Set-Location $dl
           powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1")
+          # Assert the installer's OWN exit code. The two legs above end with `& $venvPy -c ...`,
+          # which resets $LASTEXITCODE — so a mid-run abort (java -version writing to stderr under
+          # $ErrorActionPreference = "Stop") was invisible for as long as it has existed. Never let
+          # a non-zero installer exit be swallowed by a later command again (ADR-0299).
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::error::the installer exited $LASTEXITCODE — it aborted partway through"
+            exit 1
+          }
           $cls = Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\classes\MpxjToMspdi.class"
           if (-not (Test-Path $cls)) {
             Write-Host "::error::MPXJ converter missing — .mpp import would be dead on the operator's path"

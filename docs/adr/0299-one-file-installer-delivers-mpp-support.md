@@ -128,6 +128,25 @@ an unconditional `Ok`, so a failed install or pull was reported as ready and the
 out when the AI features silently did nothing — exactly the dishonesty ADR-0192 removed from the
 Java block. Every branch now verifies, reports what actually happened, and continues.
 
+### 2b. On Windows, a *probe* was aborting the install — found by the new CI leg
+
+Adding the windows no-checkout leg immediately turned it red, and the log showed the installer
+printing the MPXJ line, hitting the Java check, emitting `NativeCommandError`, and **never reaching
+`DONE`**. Root cause: while `$ErrorActionPreference = "Stop"`, a native program writing **anything**
+to stderr raises a **terminating** error even on success — and `java -version` prints its banner to
+stderr. So on any machine with `java` on PATH, the Java *detection* step killed the run before the
+shortcut, uninstaller and README were created.
+
+It had been shipping that way, invisibly: the two pre-existing Windows legs end with
+`& $venvPy -c ...`, which resets `$LASTEXITCODE`, so the aborted installer's exit code was
+swallowed. `winget install` and `ollama pull` stream progress to stderr and carried the same
+exposure — the PowerShell twin of the §2 bash abort, at a step documented as optional.
+
+All such calls now go through `Invoke-SfNative`, which softens the preference for the duration of
+the call, **always** restores it (`finally`), and streams output so long downloads still show
+progress; the caller judges `$LASTEXITCODE`. The CI leg now asserts the installer's own exit code,
+so a mid-run abort can never again be masked by a later command.
+
 ### 3. `pull_model` gets a timeout a real pull can finish inside
 
 `OllamaBackend.pull_model` issues one **non-streaming** `POST /api/pull` on the shared 120 s

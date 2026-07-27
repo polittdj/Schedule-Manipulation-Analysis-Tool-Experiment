@@ -463,3 +463,32 @@ def test_the_converter_url_is_pinned_to_an_immutable_commit(family: str) -> None
     assert m, "no MPXJ raw URL found"
     ref = m.group(1)
     assert re.fullmatch(r"[0-9a-f]{40}", ref), f"MPXJ URL pinned to mutable ref {ref!r}"
+
+
+@pytest.mark.parametrize("tier", TIERS)
+def test_no_probe_or_optional_step_can_abort_the_windows_install(tier: str) -> None:
+    """ADR-0299, found by the new windows no-checkout CI leg.
+
+    While ``$ErrorActionPreference = "Stop"``, a native program writing ANYTHING to stderr raises
+    a TERMINATING error even when it succeeded. ``java -version`` prints its banner on stderr, so
+    the Java *detection* step killed the whole install before the shortcut, uninstaller and
+    README were created — on any machine with java on PATH. It stayed invisible because the CI
+    steps that ran the installer ended with another command, which reset ``$LASTEXITCODE``.
+    ``winget`` and ``ollama pull`` stream progress to stderr and had the same exposure, which
+    would have aborted an install at a step documented as optional.
+
+    Every such call must go through ``Invoke-SfNative`` (softens the preference, always restores
+    it, lets the caller judge the exit code).
+    """
+    ps1 = _read(tier, "ps1")
+    assert "function Invoke-SfNative" in ps1, "the stderr-safety helper is gone"
+    assert "finally { $ErrorActionPreference = $prevEap }" in ps1, "preference not restored"
+    for risky in ("java -version", "winget install", "ollama pull"):
+        for line in ps1.splitlines():
+            if line.strip().startswith("#"):
+                continue
+            # only real INVOCATIONS count — the same words appear inside operator-facing advice
+            # strings ("...run: ollama pull <model>"), which cannot abort anything.
+            code = re.sub(r'"[^"]*"', "", line)
+            if risky in code:
+                assert "Invoke-SfNative" in line, f"{risky!r} can abort the install: {line.strip()}"
