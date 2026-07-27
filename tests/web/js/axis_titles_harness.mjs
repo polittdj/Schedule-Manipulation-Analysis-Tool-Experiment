@@ -94,10 +94,40 @@ for (const [name, node] of [["x", x], ["y", y]]) {
   check(`${name} caption sets no inline style`, Object.keys(node.style).length, 0);
 }
 
+// ADR-0302: the OPTIONAL secondary-axis caption for combo charts. Two properties matter — it
+// mirrors the Y caption to the plot's top-RIGHT, and it is absent unless asked for, so every
+// pre-ADR-0302 caller emits exactly what it did before.
+const combo = fakeNode("svg");
+api.axisTitles(combo, GEOM, {
+  xLabel: "WBS BRANCH",
+  yLabel: "SPI(T) (RATIO, LEFT AXIS)",
+  y2Label: "EARNED SCHEDULE (WORKING DAYS, RIGHT AXIS)",
+});
+check("combo chart emits three captions", combo.children.length, 3);
+const y2 = combo.children[2];
+check("y2 caption text", y2.textContent, "EARNED SCHEDULE (WORKING DAYS, RIGHT AXIS)");
+check("y2 caption class", y2.getAttribute("class"), "ch-at");
+check("y2 caption x = plot right - 4", y2.getAttribute("x"), "920");
+check("y2 caption y = plot top + 9 (mirrors Y)", y2.getAttribute("y"), "27");
+check("y2 caption is right-aligned", y2.getAttribute("text-anchor"), "end");
+check("y2 caption is NOT rotated", y2.getAttribute("transform"), "null");
+check("y2 caption sets no font-size", y2.getAttribute("font-size"), "null");
+check("y2 caption sets no fill attr", y2.getAttribute("fill"), "null");
+// the three captions must occupy three DIFFERENT corners — a secondary caption that landed on
+// the X caption would be worse than no caption at all.
+const corners = combo.children.map((n) => `${n.getAttribute("x")},${n.getAttribute("y")}`);
+check("three captions, three distinct anchors", new Set(corners).size, 3);
+check("y2 shares the Y caption's baseline, not the X caption's", y2.getAttribute("y"),
+  combo.children[1].getAttribute("y"));
+
 // one-sided and absent labels
 const onlyX = fakeNode("svg");
 api.axisTitles(onlyX, GEOM, { xLabel: "MONTH" });
 check("a missing yLabel emits nothing", onlyX.children.length, 1);
+
+const noY2 = fakeNode("svg");
+api.axisTitles(noY2, GEOM, { xLabel: "MONTH", yLabel: "COUNT" });
+check("omitting y2Label leaves existing callers at two captions", noY2.children.length, 2);
 
 const empty = fakeNode("svg");
 api.axisTitles(empty, GEOM, { xLabel: "", yLabel: "" });

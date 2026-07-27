@@ -8375,3 +8375,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   the regenerated nine installers — the independent confirmation that the v1.0.107 rebuild is
   internally consistent, which matters because the first regeneration attempt was interrupted
   mid-write and left tier3.ps1 a version behind.
+
+## 2026-07-27k — the one caption helper gains a secondary-axis label (ADR-0302)
+
+- **Operator decision, asked rather than assumed.** Batch 2 left `wbs.js`'s right axis uncaptioned
+  and recorded it as a gap instead of inventing a second mechanism mid-batch. Put to the operator
+  as three options; they chose **extend the helper**. `sra.js` and `margin_dashboard.js` needed the
+  same affordance, so deciding it before batch 3 rather than during it was the point.
+- **`axisTitles` now takes an optional `y2Label`**, mirroring the Y caption to the plot's top-RIGHT
+  on the same baseline. The three captions occupy three different corners **by construction**, and
+  the harness asserts that rather than trusting it — a secondary caption landing on the X caption
+  would be worse than no caption.
+- **This preserves ADR-0298's "one convention".** The rule is one implementation, one token, one
+  placement law — not "exactly two labels". Y2 uses the same node builder and the same `.ch-at`
+  class, so the queued CRISPNESS floor still moves ONE value.
+- **Mutation-verified, four mutants, each caught:** Y2 on the X caption's corner · Y2 emitted
+  unconditionally · Y2 left-anchored · a numeric `font-size` planted in the caption block. The
+  unconditional-emit mutant is the one worth naming: it would have silently added a third caption
+  to **every existing caller**, and only the "omitting y2Label leaves callers at two captions"
+  assertion catches it. **LESSON: when adding an optional parameter, assert the DEFAULT path is
+  unchanged, not just that the new path works.**
+- **`PENDING` deliberately unchanged at 7.** The convention change ships reviewable on its own
+  rather than buried in seven modules of caption text.
+- **v1.0.107 -> 1.0.108**, wheel + nine installers regenerated — **in the background this time.**
+  In batch 2 the same command hit the 120s foreground timeout, was killed mid-write, and left
+  tier3.ps1 a version behind tier1/tier2. **LESSON: a build step that rewrites N files is not
+  interruption-safe; run it where it cannot be killed halfway, and let the cross-tier drift check
+  confirm it finished.**

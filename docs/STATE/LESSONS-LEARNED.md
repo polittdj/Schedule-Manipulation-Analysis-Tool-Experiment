@@ -435,6 +435,34 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27k — when you add an optional parameter, test the DEFAULT path (ADR-0302)
+- **The dangerous mutant was not the new feature failing — it was the new feature firing when
+  nobody asked.** Adding an optional `y2Label` to the shared caption helper, the four mutants I ran
+  included "emit it unconditionally". That one adds a third caption to **every existing caller**,
+  silently, and no assertion about the *new* behaviour catches it. Only an explicit "omitting
+  `y2Label` leaves existing callers at two captions" does. **LESSON (generalizes → Part V): an
+  optional parameter has two contracts — what it does when supplied, and that nothing changes when
+  it is not. The second is the one that breaks callers who never heard of it, and it is the one
+  people forget to assert.**
+- **Extending a convention is not the same as breaking it — but only if you can say why.** ADR-0298
+  established "one convention" for axis captions, so a third label looks like a violation. It is
+  not: the rule is one *implementation*, one *token*, one *placement law*, not "exactly two
+  labels". Y2 goes through the same node builder and the same `.ch-at` class, so the queued
+  type-ramp change still moves one value. **LESSON: before extending a rule, restate what the rule
+  actually protects. If the extension preserves that, it is an extension; if you cannot restate it,
+  you are probably forking the convention.**
+- **A decision that belongs to the operator should be surfaced BEFORE the batch that needs it, not
+  during.** Batch 2 hit the combo-chart problem, captioned the primary pair, and recorded the gap
+  rather than improvising. Asking at the boundary meant one decision unblocked three modules
+  (`wbs`, `sra`, `margin_dashboard`) instead of three separate mid-batch judgement calls that would
+  have been hard to reverse. **LESSON: when a gap will recur, stop and name it; a convention
+  invented under batch pressure gets copied before anyone reviews it.**
+- **A build step that rewrites N files is not interruption-safe.** Regenerating the nine installers
+  hit the 120s foreground timeout in batch 2, was killed mid-write, and left `tier3.ps1` a version
+  behind `tier1`/`tier2` — caught only by the cross-tier drift check. Run it in the background
+  where it cannot be halved. **LESSON: for any generator that writes a set, treat "it was
+  interrupted" as a real state and keep the check that proves the set is internally consistent.**
+
 ### 2026-07-27j — test a proposed classifier against the whole population, not the case in front of you (ADR-0301 addendum)
 - **My "better" regex was worse, and only running it over every module caught that.** The ledger's
   proxy for "is this a chart" (grep the SVG namespace) had just mis-classified `path.js`, so I wrote

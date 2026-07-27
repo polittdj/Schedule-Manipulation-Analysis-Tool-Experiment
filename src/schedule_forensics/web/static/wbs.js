@@ -122,18 +122,18 @@
         lx += 14 + item[0].length * 6 + 22;
       });
 
-      // Axis captions via the ONE shared helper (ADR-0298/0301). The Y caption names the LEFT
-      // axis, which is what the bars are drawn against — SPI(t), a ratio against a 1.0 on-plan
-      // reference, NOT the patch spec's "PERCENT COMPLETE (%)".
+      // Axis captions via the ONE shared helper (ADR-0298/0301/0302). A combo chart: SPI(t) bars
+      // on the LEFT axis (a ratio against the 1.0 on-plan reference line — NOT the patch spec's
+      // "PERCENT COMPLETE (%)"), earned schedule as a line on the RIGHT.
       //
-      // KNOWN GAP, deliberately not invented here: this is a combo chart and its RIGHT axis
-      // (earned schedule, working days) stays uncaptioned, because `axisTitles` draws exactly one
-      // X and one Y. A secondary-axis affordance is a change to the shared convention and needs
-      // its own decision — see the ledger. Captioning the primary pair is strictly better than
-      // the two unlabelled axes this had before, and says nothing false about the right axis.
+      // Batch 2 could only name the left one and recorded the right as a gap; ADR-0302 added the
+      // optional `y2Label`, so both scales are now identified. Each caption says which axis it
+      // belongs to, because on a two-scale chart "SPI(t)" alone does not tell the reader which
+      // gridlines to read it against.
       SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
         xLabel: "WBS branch",
         yLabel: "SPI(t) (ratio, left axis)",
+        y2Label: "Earned schedule (working days, right axis)",
       });
       box.appendChild(svg);
 

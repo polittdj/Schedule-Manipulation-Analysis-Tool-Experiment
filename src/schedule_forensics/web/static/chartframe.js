@@ -335,6 +335,16 @@
   // Size/colour/case come from the .ch-at class (--sf-fs-axis-title) so no chart hard-codes a
   // number: the type ramp moves in ONE place. Callers pass the same options object they already
   // build: { xLabel: "…", yLabel: "…" }, plus the plot geometry { L, R, T, B }.
+  //
+  // ADR-0302: an OPTIONAL third label, `y2Label`, captions a combo chart's SECONDARY (right) axis
+  // — mirroring the Y caption to the plot's top-RIGHT, end-anchored. It is still one helper, one
+  // token, one placement rule, so ADR-0298's "one convention" holds; what changes is that a chart
+  // with two scales can now name both. Before this, wbs.js drew SPI(t) against earned schedule and
+  // could only label one of them, which on a testimony tool leaves the reader a scale they cannot
+  // identify. Omitting y2Label emits nothing, so every existing caller is unaffected.
+  //
+  // The top-right corner is free by construction: the X caption sits at the BOTTOM-right
+  // (R, B - 4) and the Y caption at the TOP-left (L + 4, T + 9), so the three never share a corner.
   var CAP_NS = "http://www.w3.org/2000/svg";
   function caption(svg, x, y, s, anchor) {
     var node = document.createElementNS(CAP_NS, "text");
@@ -350,6 +360,7 @@
     if (!svg || !geom || !opts) return;
     if (opts.xLabel) caption(svg, geom.R, geom.B - 4, opts.xLabel, "end");
     if (opts.yLabel) caption(svg, geom.L + 4, geom.T + 9, opts.yLabel, null);
+    if (opts.y2Label) caption(svg, geom.R - 4, geom.T + 9, opts.y2Label, "end");
   }
 
   window.SFChartFrame = { frame: frame, scan: scan, axisTitles: axisTitles };
