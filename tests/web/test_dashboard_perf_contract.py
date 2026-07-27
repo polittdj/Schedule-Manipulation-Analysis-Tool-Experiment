@@ -43,6 +43,7 @@ from schedule_forensics.model.relationship import Relationship, RelationshipType
 from schedule_forensics.model.schedule import Schedule
 from schedule_forensics.model.task import Task
 from schedule_forensics.web import app as app_mod
+from schedule_forensics.web import state as state_mod
 from schedule_forensics.web.app import _ANALYSIS_CACHE_MAX, SessionState, create_app
 
 _DAY = 480
@@ -144,7 +145,7 @@ def test_dashboard_builds_zero_full_analyses(monkeypatch: pytest.MonkeyPatch) ->
     _load_n(st, _ANALYSIS_CACHE_MAX + 2)  # cross the analysis LRU cap (48 -> 50)
     client = TestClient(create_app(st))
     spy = _Spy()
-    monkeypatch.setattr(app_mod, "_compute_analysis", spy.wrap(app_mod._compute_analysis))
+    monkeypatch.setattr(state_mod, "_compute_analysis", spy.wrap(state_mod._compute_analysis))
 
     first = client.get("/api/dashboard")
     cold = spy.count
@@ -170,7 +171,7 @@ def test_warm_dashboard_is_cache_served_past_the_cap(monkeypatch: pytest.MonkeyP
     client.get("/api/dashboard")  # pass 2 (warm)
 
     spy = _Spy()
-    _patch(monkeypatch, spy, [(app_mod, "audit_schedule"), (app_mod, "compute_float_bands")])
+    _patch(monkeypatch, spy, [(state_mod, "audit_schedule"), (state_mod, "compute_float_bands")])
     r = client.get("/api/dashboard")  # pass 3 — must be fully cache-served
 
     assert r.status_code == 200
@@ -195,7 +196,7 @@ def test_concurrent_cold_requests_compute_once(monkeypatch: pytest.MonkeyPatch) 
         time.sleep(0.05)  # widen the compute window so all cold callers overlap
         return real(*a, **k)
 
-    monkeypatch.setattr(app_mod, "_compute_analysis", slow)
+    monkeypatch.setattr(state_mod, "_compute_analysis", slow)
     results: list[object] = [None] * n
     errors: list[BaseException] = []
 
@@ -232,7 +233,7 @@ def test_single_flight_exception_propagates_then_recovers(
             raise RuntimeError("compute failed")
         return real(*a, **k)
 
-    monkeypatch.setattr(app_mod, "_compute_analysis", maybe_fail)
+    monkeypatch.setattr(state_mod, "_compute_analysis", maybe_fail)
     errors: list[RuntimeError] = []
 
     def worker() -> None:
@@ -283,7 +284,7 @@ def test_distinct_keys_are_not_serialized(monkeypatch: pytest.MonkeyPatch) -> No
             pass
         return real(*a, **k)
 
-    monkeypatch.setattr(app_mod, "_compute_analysis", slow)
+    monkeypatch.setattr(state_mod, "_compute_analysis", slow)
     threads = [
         threading.Thread(target=lambda kk=kk: st.analysis_for(kk, schedules[kk])) for kk in keys
     ]
@@ -302,13 +303,13 @@ def test_distinct_keys_are_not_serialized(monkeypatch: pytest.MonkeyPatch) -> No
 
 def _dep_spies(monkeypatch: pytest.MonkeyPatch) -> tuple[_Spy, _Spy, _Spy]:
     audit, comp, reco = _Spy(), _Spy(), _Spy()
-    _patch(monkeypatch, audit, [(app_mod, "audit_schedule"), (reco_mod, "audit_schedule")])
+    _patch(monkeypatch, audit, [(state_mod, "audit_schedule"), (reco_mod, "audit_schedule")])
     _patch(
         monkeypatch,
         comp,
-        [(app_mod, "compute_baseline_compliance"), (reco_mod, "compute_baseline_compliance")],
+        [(state_mod, "compute_baseline_compliance"), (reco_mod, "compute_baseline_compliance")],
     )
-    _patch(monkeypatch, reco, [(app_mod, "recommend"), (narrative_mod, "recommend")])
+    _patch(monkeypatch, reco, [(state_mod, "recommend"), (narrative_mod, "recommend")])
     return audit, comp, reco
 
 
@@ -410,7 +411,7 @@ def test_mid_flight_wipe_does_not_repopulate(monkeypatch: pytest.MonkeyPatch) ->
         gate.wait(2)  # hold the compute open so we can wipe mid-flight
         return real(*a, **k)
 
-    monkeypatch.setattr(app_mod, "_compute_analysis", slow)
+    monkeypatch.setattr(state_mod, "_compute_analysis", slow)
     worker = threading.Thread(target=lambda: st.analysis_for("k", sch))
     worker.start()
     time.sleep(0.05)

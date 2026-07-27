@@ -135,6 +135,7 @@ def test_p1_scope_toggle_never_recomputes_resident_epochs(monkeypatch) -> None: 
     original epoch — epoch-keyed caches make the toggle-back a resident hit. Reverting
     _invalidate_scope to clear the analysis cache makes the final render recompute and fails."""
     import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     calls = {"n": 0}
     real = app_module._compute_analysis
@@ -143,7 +144,7 @@ def test_p1_scope_toggle_never_recomputes_resident_epochs(monkeypatch) -> None: 
         calls["n"] += 1
         return real(sch, cpm=cpm, **kwargs)
 
-    monkeypatch.setattr(app_module, "_compute_analysis", counting)
+    monkeypatch.setattr(state_module, "_compute_analysis", counting)
     st = SessionState()
     versions = {f"v{i}": _chain(6, f"v{i}") for i in range(3)}
     for k, sch in versions.items():
@@ -163,6 +164,7 @@ def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:
     """REGRESSION GATE (P2): the CPM tier solves each version WITHOUT the monolithic analysis,
     and a later full analysis REUSES that solve (no second compute_cpm for the epoch)."""
     import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     counts = {"analysis": 0, "cpm": 0}
     real_analysis = app_module._compute_analysis
@@ -176,8 +178,8 @@ def test_p2_population_pass_never_builds_the_full_analysis(monkeypatch) -> None:
         counts["cpm"] += 1
         return real_cpm(sch, **kw)
 
-    monkeypatch.setattr(app_module, "_compute_analysis", counting_analysis)
-    monkeypatch.setattr(app_module, "compute_cpm", counting_cpm)
+    monkeypatch.setattr(state_module, "_compute_analysis", counting_analysis)
+    monkeypatch.setattr(state_module, "compute_cpm", counting_cpm)
     st = SessionState()
     versions = {f"v{i}": _chain(6, f"v{i}") for i in range(4)}
     for k, sch in versions.items():
@@ -192,6 +194,7 @@ def test_p2_cpm_tier_is_epoch_keyed_and_resident(monkeypatch) -> None:  # type: 
     version, and toggling the filter back re-serves the RESIDENT solves — zero new solves.
     The original P2 gate only exercised the default epoch; this closes the audit gap."""
     import schedule_forensics.web.app as app_module
+    import schedule_forensics.web.state as state_module
 
     counts = {"cpm": 0}
     real_cpm = app_module.compute_cpm
@@ -200,7 +203,7 @@ def test_p2_cpm_tier_is_epoch_keyed_and_resident(monkeypatch) -> None:  # type: 
         counts["cpm"] += 1
         return real_cpm(sch, **kw)
 
-    monkeypatch.setattr(app_module, "compute_cpm", counting_cpm)
+    monkeypatch.setattr(state_module, "compute_cpm", counting_cpm)
     st = SessionState()
     versions = {f"v{i}": _chain(6, f"v{i}") for i in range(3)}
     for k, sch in versions.items():

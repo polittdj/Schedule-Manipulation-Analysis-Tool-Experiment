@@ -435,6 +435,31 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27a — splitting a monolith is a test-namespace problem, not a code-move problem (ADR-0297)
+- The code move itself was the easy 90%: cut byte-ranges by script, re-export with `X as X`
+  (the one idiom that satisfies BOTH mypy-strict's explicit-reexport rule and ruff F401), let
+  F821/F401 + mypy find the misses. The hard 10% was entirely about **monkeypatch targets**:
+  Python resolves a callee in the CALLING module's namespace, so moving a call site silently
+  disconnects every `setattr(app_mod, ...)` spy aimed at it. **LESSON: before moving code, grep
+  the suite for every setattr on the source module and classify each by WHERE ITS CALL SITE will
+  end up — that list, not the import graph, is the real blast radius of a Python refactor.**
+- I got two of the eleven retargets wrong — in OPPOSITE directions (`work_to_go_census` is called
+  from app's `_perf_version_block`, not state's `summary_for`; and one test READ `real` off the
+  app module after the import vanished). Both failed loudly within seconds because the
+  perf-contract suite pins call COUNTS, not just outcomes. **LESSON: op-count pins (ADR-0249)
+  double as refactor armour — a suite that counts calls turns "silently ineffective spy" (the
+  worst refactor failure, a test that passes while testing nothing) into an immediate red.**
+- The strongest behaviour-freedom proof cost nothing: the three dashboard payload golden SHAs
+  (ADR-0281) passed untouched across the split. **LESSON: goldens you already own are the
+  cheapest refactor oracle — run them FIRST after a big move; a byte-identical payload closes
+  the argument in a way "all tests green" doesn't quite.**
+- Scoping discipline held under temptation: the full split (19k lines → modules) wants to be one
+  heroic PR, and phase 1 (state machinery only, 1,616 lines) looks "small". But phase 1 is the
+  piece with the trickiest coupling (caches, epochs, single-flight, 126 imports) — landing it
+  alone, verbatim, with the patch-rule documented, makes phases 2-3 mechanical for whoever does
+  them. **LESSON (ADR-0195 reaffirmed): cut the phase with the highest coupling-to-size ratio
+  first, while the file is still hot in context — the cheap bulk (HTML helpers) can move any day.**
+
 ### 2026-07-26a — the two-PR sequencing paid for itself; and a golden SHA is a tripwire, not proof (ADR-0296)
 - The `status_mix_uids` trim landed exactly as sequenced: ADR-0295's resolver fix + forward guard
   FIRST, the lazy trim SECOND. When the trim flipped the dashboard drill to `{ segment: name }`
