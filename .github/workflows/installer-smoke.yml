@@ -57,6 +57,29 @@ jobs:
           & $venvPy -c "import schedule_forensics; from schedule_forensics.launcher import main; print('deployed import OK')"
           & $venvPy -c "import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')"
 
+      - name: One-file install with NO repo checkout (the operator's real deploy path, ADR-0299)
+        shell: pwsh
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          # The operator is on WINDOWS and has no clone: they download ONE .ps1 from the GitHub
+          # web UI into %USERPROFILE%\Downloads and run it. Every other leg here runs from the
+          # checkout, so it takes the local-copy branch and never exercises the download —
+          # which is exactly how the pre-ADR-0299 bug (native .mpp silently OFF, then a green
+          # DONE) survived. Copy the installer somewhere bare and make it fetch for real.
+          $dl = Join-Path $env:RUNNER_TEMP "Downloads"
+          New-Item -ItemType Directory -Force -Path $dl | Out-Null
+          Copy-Item installer/install-tier1.ps1 -Destination $dl
+          $env:SF_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP "SFOneFile"
+          powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1")
+          $cls = Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\classes\MpxjToMspdi.class"
+          if (-not (Test-Path $cls)) {
+            Write-Host "::error::MPXJ converter missing — .mpp import would be dead on the operator's path"
+            exit 1
+          }
+          $jars = (Get-ChildItem (Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\lib")).Count
+          Write-Host "MPXJ jars downloaded + SHA-256 verified: $jars"
+
       - uses: actions/setup-python@v5  # a 3.12 python.exe first on PATH for the leg below
         with:
           python-version: "3.12"

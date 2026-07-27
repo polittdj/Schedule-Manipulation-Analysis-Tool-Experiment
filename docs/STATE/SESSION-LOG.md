@@ -8075,3 +8075,10 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   shell installers; wheel + 9 installers regenerated at **1.0.105**. **Highest ADR 0299.**
 - **Owed, not claimed:** no `pwsh` in this sandbox, so the `.ps1` fixes are mirrors of the executed
   bash ones plus static guards — the windows-latest smoke job is what actually exercises them.
+- **CI follow-up (same session):** first PR #446 run went 4/4 green, and the Linux no-checkout leg
+  proved the fetch live — `MPXJ converter downloaded and SHA-256 verified`, 24 jars, ~2 s against
+  `main`. But reading the logs (rather than trusting the green tick) showed the **windows** job
+  took the LOCAL-copy branch, because every Windows leg runs from the checkout — so the download
+  was still unexercised on the operator's own platform. Added a windows no-checkout leg.
+  **LESSON: a green check only proves the branch the job actually walked; read the log to find out
+  which branch that was.**

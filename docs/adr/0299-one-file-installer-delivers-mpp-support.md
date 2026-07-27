@@ -118,9 +118,13 @@ uses it.
   fallback and air-gap opt-out must exist in all nine installers; and two harnesses **execute** the
   real shipped blocks — the converter step (local copy wins; honest failure leaves no partial tree)
   and the AI step (a failed pull neither aborts nor claims success).
-- CI gains the operator's actual shape: `installer-smoke.yml` copies one installer to a bare
-  directory, runs it, and **fails** if `classes/MpxjToMspdi.class` is missing afterwards. The
-  existing job only ever ran from the checkout, which is precisely why this never surfaced.
+- CI gains the operator's actual shape, **on both platforms**: `installer-smoke.yml`'s linux *and*
+  windows jobs each copy one installer to a bare directory, run it, and **fail** if
+  `classes/MpxjToMspdi.class` is missing afterwards. Every pre-existing leg ran from the checkout —
+  so it took the local-copy branch and never exercised the download — which is precisely why this
+  never surfaced. The Windows leg matters most: the operator is on Windows, so that is the fetch
+  that has to work. First run of the Linux leg confirmed it live: `MPXJ converter downloaded and
+  SHA-256 verified`, 24 jars, ~2 s.
 - **Proved the guards bite — 5 mutants, each caught by its intended assertion:** a flipped manifest
   SHA · a manifest line removed · the raw-URL fallback removed · a false `[ok]` on the failure path ·
   the local-copy branch deleted. Per the ADR-0298 lesson, mutation testing used **file backups**, and

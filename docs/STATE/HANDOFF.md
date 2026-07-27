@@ -43,10 +43,15 @@
 >   open: monolith split phases 2-3 (`web/chrome.py`, then per-page helpers); a DOM caption
 >   mechanism for the 11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp
 >   probe's UI surface (ADR-0293).
-> - **OWED, NOT CLAIMED:** the `.ps1` family could not be executed here (no pwsh in the sandbox) —
->   its fixes are mirrors of the executed bash ones plus the static guards, and the
->   windows-latest smoke job is what actually runs them. AXIS-TITLES batch 0's four-theme visual
->   pass is still outstanding from the prior session.
+> - **CI proof (PR #446, first run):** linux + windows smoke both green. The Linux no-checkout leg
+>   printed `MPXJ converter downloaded and SHA-256 verified` / `MPXJ jars deployed: 24` — the fetch
+>   works live against `main`. Windows ran the rewritten `.ps1` clean, but from the checkout, so it
+>   took the local-copy branch; a **windows no-checkout leg was added** so the fetch is exercised on
+>   the operator's own platform.
+> - **OWED, NOT CLAIMED:** no pwsh in this sandbox, so the `.ps1` was never executed *locally* — it
+>   is proven by the windows smoke job, and the download branch specifically only from the CI run
+>   that follows the second push. AXIS-TITLES batch 0's four-theme visual pass is still outstanding
+>   from the prior session.
 > - **DEPLOY NOTE:** the operator has **no local clone** — download `installer/install-tier2.ps1`
 >   from the GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
