@@ -118,3 +118,53 @@ overlapping.
 - **Still owed, unchanged:** the four-theme visual pass (console / daylight / apollo / jarvis at
   90–125%). A headless browser *is* available in this container (see the handoff), but the pass
   itself has not been run.
+
+## Addendum — batch 2, 2026-07-27: a ledger entry that was never a chart
+
+`PENDING` **11 → 7**: captioned `margin.js`, `trend_drill.js`, `wbs.js`, and **moved `path.js` out
+of `PENDING` entirely** because it is not an SVG chart.
+
+**`path.js` was mis-parked, on a claim in ADR-0298.** That ADR said the spec's tick-detecting regex
+"missed `path.js` and `resources.js`, which do draw SVG axes". Half of that is right:
+`resources.js` genuinely draws SVG axes (captioned in batch 1). `path.js` does not. Its timeline is
+a **DOM table** — `tbody`, `.path-track` divs, `rowIndex` arithmetic — and its *only* SVG is a
+two-element absolutely-positioned overlay (`.pv-link`: one `<svg>`, one `<path>`) drawing a
+dependency connector between two table rows. No chart root, no plot rect, no tick text. Nothing
+`SFChartFrame.axisTitles` can attach to. So "11 charts still to caption" overstated the work by
+one, which is precisely what the ledger exists to prevent.
+
+**Both mirror tests used the same too-weak proxy.** `NO_SVG_AXES` means "no SVG *axes*", but the
+test asserted "renders no SVG *at all*" — so there was no correct bucket for a DOM visual with an
+incidental SVG overlay.
+
+**A cleverer regex was tried first, and rejected on evidence.** The obvious fix — detect a real
+chart as "creates an `<svg>` root AND declares a plot rect" — was written and run against every
+module before adoption. It mis-classified **five**: `performance.js` and `margin_dashboard.js`
+(geometry named `L/R/T/B`, not `padL`), `resources.js`, `sra_jcl.js` and `sra_ssi.js` (built through
+a local `svg()` factory, not `svgEl("svg")`) — and it *still* called `path.js` a chart. Every module
+names its geometry differently, so a static detector is the same name-based trap this ADR already
+warns about, one level up.
+
+**So the exception is explicit instead of inferred.** `INCIDENTAL_SVG` names the entry and the
+reason; the mirror test skips only those. Three ways it could rot are closed by
+`test_the_incidental_svg_exception_cannot_rot`: an entry not in `NO_SVG_AXES`, an entry that
+renders no SVG (so the exception was never needed), and an entry that has since gained captions.
+Parking a real chart there now takes two deliberate edits and a written reason.
+
+### A gap named, not invented: secondary axes
+
+`wbs.js` is a **combo chart** — SPI(t) bars on the left axis, earned schedule (working days) as a
+line on the right. `axisTitles` draws exactly one X and one Y, so the right axis stays uncaptioned.
+Captioning the primary pair is strictly better than the two unlabelled axes it had, and says
+nothing false about the right axis. A secondary-axis affordance is a change to the shared
+convention (ADR-0298) and needs its own decision — `sra.js` and `margin_dashboard.js` will want it
+too. Recorded here rather than improvised mid-batch.
+
+### The spec was wrong again, in the same direction
+
+`trend_drill.js` — spec: "SCHEDULE VERSION (UPDATE)" by "METRIC VALUE". The code draws **one bar
+per quality metric** (`slot = (W - padL - padR) / metrics.length`) against a locked count of
+**offending activities**; the version is the animation frame, not the X axis. `wbs.js` — spec:
+"PERCENT COMPLETE (%)"; the left axis is **SPI(t)**, a ratio against a 1.0 on-plan reference.
+`margin.js` is the one the spec got right. That is now 6 of 8 checked modules wrong, which is the
+evidence behind this ADR's rule rather than an anecdote supporting it.

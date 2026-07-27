@@ -73,6 +73,7 @@ NO_SVG_AXES = {
     "driving_tiers.js",
     "findings_drill.js",
     "gantt.js",
+    "path.js",
     "path_evolution.js",
     "ribbon_drill.js",
     "scorecards.js",
@@ -80,6 +81,22 @@ NO_SVG_AXES = {
     "sra_risk.js",
     "whatif.js",
     "workbench.js",
+}
+
+#: Entries of ``NO_SVG_AXES`` that DO emit some SVG, but not an axis — so the bucket is right and
+#: the "renders no SVG at all" shortcut below would wrongly reject them. Each needs a reason.
+#:
+#: ``path.js`` was parked in ``PENDING`` until ADR-0301 batch 2, on ADR-0298's claim that it
+#: "does draw SVG axes". It does not. Its timeline is a DOM table (``tbody``, ``.path-track``
+#: divs, ``rowIndex`` arithmetic); its ONLY SVG is a 2-element absolutely-positioned overlay
+#: (``.pv-link``: one ``<svg>``, one ``<path>``) that draws a dependency connector between two
+#: table rows. There is no chart root, no plot rect, no tick text — nothing
+#: ``SFChartFrame.axisTitles`` can attach to.
+#:
+#: Keeping this list separate and explicit is the point: a real chart cannot land in
+#: ``NO_SVG_AXES`` quietly, because parking it there ALSO requires naming it here, with a reason.
+INCIDENTAL_SVG = {
+    "path.js",
 }
 
 #: SVG axis charts not yet captioned. This list SHRINKS one batch at a time and reaching empty
@@ -93,16 +110,12 @@ PENDING = {
     # caption anchor (``T + 9``) lands 7px above its first method-name row (``padT + 14``), so it
     # needs a padT nudge, and moving the plot is out of scope for a caption batch.
     "drift.js",
-    "margin.js",
     "margin_dashboard.js",
-    "path.js",
     "sra.js",
     "sra_jcl.js",
     "sra_ssi.js",
     "trend.js",
-    "trend_drill.js",
     "volatility.js",
-    "wbs.js",
 }
 
 CALLS_HELPER = re.compile(r"SFChartFrame\.axisTitles\s*\(")
@@ -148,10 +161,42 @@ def test_pending_entries_are_really_svg_charts(name: str) -> None:
 
 @pytest.mark.parametrize("name", sorted(NO_SVG_AXES))
 def test_no_svg_axes_entries_really_render_no_svg(name: str) -> None:
-    """The mirror check: a module parked as 'DOM visual' must not actually draw SVG axes."""
+    """The mirror check: a module parked as 'DOM visual' must not actually draw SVG axes.
+
+    "Renders no SVG at all" is a shortcut for the real property, and ADR-0301 batch 2 found where
+    it breaks: ``path.js`` renders a DOM table plus ONE two-element SVG overlay for a dependency
+    connector. The bucket ("no SVG *axes*") was right for it; this assertion was not. Rather than
+    swap in a cleverer regex — a chart-root/plot-rect detector was tried and mis-classified five
+    modules, because every module names its geometry differently — the exception is explicit and
+    must be justified in ``INCIDENTAL_SVG``.
+    """
+    if name in INCIDENTAL_SVG:
+        pytest.skip(f"{name}: SVG present but not an axis — see INCIDENTAL_SVG")
     assert not RENDERS_SVG.search(_src(STATIC / name)), (
         f"{name} does render SVG — move it to PENDING (or caption it) rather than exempting it"
     )
+
+
+def test_the_incidental_svg_exception_cannot_rot() -> None:
+    """The escape hatch above is only safe while it stays small, justified, and TRUE.
+
+    Three ways it could quietly become a dumping ground, each closed here: an entry that is not
+    actually parked as a DOM visual; an entry that renders no SVG at all (so the exception was
+    never needed and now hides nothing but itself); and an entry that has since gained real
+    captions.
+    """
+    assert INCIDENTAL_SVG <= NO_SVG_AXES, (
+        "INCIDENTAL_SVG may only excuse NO_SVG_AXES entries: "
+        f"{sorted(INCIDENTAL_SVG - NO_SVG_AXES)}"
+    )
+    for name in sorted(INCIDENTAL_SVG):
+        src = _src(STATIC / name)
+        assert RENDERS_SVG.search(src), (
+            f"{name} renders no SVG at all — it needs no exception; drop it from INCIDENTAL_SVG"
+        )
+        assert not CALLS_HELPER.search(src), (
+            f"{name} calls axisTitles — it is a captioned chart, not a DOM visual"
+        )
 
 
 def test_captioned_modules_pass_both_labels() -> None:
