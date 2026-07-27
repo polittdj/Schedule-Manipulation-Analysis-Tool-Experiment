@@ -435,6 +435,46 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27d — a source pin asserted the WRONG SENTENCE and passed for months; and my fix carried two hazards of its own (ADR-0299)
+- **The guard that should have caught this was `assert "native .mpp import stays OFF" in tpl_ps1`.**
+  It pinned the very sentence that was the lie. It had been green for months and would have stayed
+  green forever, because a string pin can only detect a *rewording* — never a falsehood. **LESSON
+  (promote → Part V): when what you are guarding is a REPORT, assert the agreement between the
+  report and the reality it describes, never the text of the report. The replacement executes the
+  shipped block and checks the claim against the filesystem; reverting to the old block now fails 10
+  of 14 cases.**
+- **Applying a staged plan is not the same as trusting it.** The plan doc from the prior session was
+  detailed and correct, and I still re-ran the bash block, re-ran the mutation, and re-read the
+  templates before editing. That re-verification is what surfaced the second hazard below, which the
+  plan did not mention. **LESSON: a plan authored by a past session is a claim like any other
+  (Part V). Execute its evidence again rather than quoting it — the cost is minutes and the plan
+  cannot know what it missed.**
+- **My own fix introduced a second, different failure mode — in the language I could not execute.**
+  `$ErrorActionPreference` is `"Stop"`, and PowerShell's `Join-Path` *throws* on an empty base;
+  `Split-Path -Parent` of a drive root returns `""`. The old code built one candidate, so the
+  exposure was narrow; building four eagerly widened it, and a throw there aborts the entire
+  install. Found by reading my own generated output against the script's global settings, not by any
+  test. **LESSON: when you widen a construct from one instance to N, re-audit the construct's
+  failure modes at N — "it was already like that" stops being true when you multiply it. And in a
+  language you cannot execute, the ambient settings (`ErrorActionPreference`, `set -e`, strict mode)
+  are where the un-testable bugs live: read them before writing, not after.**
+- **Two hazards, both self-inflicted, both from the same widening.** The self-copy `rm -rf` and the
+  empty-base throw were only reachable *because* the search path grew. Neither existed in the code I
+  was fixing. **LESSON (promote → Part IV): a "just add more candidates to the lookup" change is not
+  additive when the consumer of that lookup is destructive or throws. Enumerate what happens for
+  each NEW candidate value — especially the degenerate ones (equal to the target, empty, missing).**
+- **Test the advice the software prints.** The not-found branch tells the operator to download the
+  repository ZIP; a test now asserts `git ls-files tools/mpxj` still carries the converter class and
+  ≥20 jars. The message it replaced advised setting `SF_MPXJ_HOME` — which the installer never read.
+  **LESSON: user-facing remediation text is a claim the tool makes about itself. Give it an
+  assertion, or it will drift into folklore.**
+- **Name the coverage you do not have.** `installer-smoke.yml` runs the installer *from the
+  checkout*, so real-OS CI had only ever exercised the single layout that already worked — every
+  other layout was uncovered, which is exactly why the bug survived. Written into the ADR and the
+  test docstring rather than left implicit. **LESSON: when a green CI job creates false confidence,
+  the fix is not only more tests — it is documenting the shape of what that job actually exercises,
+  next to the tests that fill the gap.**
+
 ### 2026-07-27c — "is this an issue?" was the highest-value question of the week; and a fix that would have opened a destructive edge
 - **The operator asked whether an installer warning mattered, and the honest answer was "not the way
   you fear, but yes — worse than you think."** They saw `native .mpp import stays OFF` on a machine

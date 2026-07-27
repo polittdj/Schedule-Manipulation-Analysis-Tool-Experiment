@@ -1,10 +1,14 @@
 # MPXJ capability reporting — verified diagnosis and ready-to-apply fix
 
 - **Raised by:** operator, 2026-07-27, from a real upgrade run on their machine
-- **Status:** diagnosed, evidence executable, **fix written and validated but NOT yet applied**
+- **Status:** SHIPPED as **ADR-0299** (v1.0.105). Kept as the diagnosis record; the decision and
+  its consequences now live in `docs/adr/0299-installer-reports-deployed-mpp-capability.md`.
+  Two hazards found while applying it are recorded there and NOT in the blocks below: the
+  PowerShell candidate list needs a per-base `if ($base)` guard (`Join-Path` throws on an empty
+  base under `ErrorActionPreference = "Stop"`), so prefer the shipped template over this text.
 - **Owns:** `tools/installer/template.{ps1,sh,command}`, `installer/install-tier{1,2,3}.*`,
   `tests/installer/`, `installer/README-DISTRIBUTABLE.md`
-- **Becomes** ADR-0299 when it lands. Companion to ADR-0193 (the converter ships beside the venv)
+- **Became** ADR-0299. Companion to ADR-0193 (the converter ships beside the venv)
   and ADR-0293 (the runtime `.mpp` capability probe).
 
 ## The incident

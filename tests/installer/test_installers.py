@@ -210,16 +210,19 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     browser close / Quit — ADR-0122); the old Start/Stop desktop icons are removed on
     upgrade and by the uninstaller."""
     tpl_ps1 = (ROOT / "tools" / "installer" / "template.ps1").read_text(encoding="utf-8")
-    assert 'Join-Path (Split-Path -Parent $PSScriptRoot) "tools\\mpxj"' in tpl_ps1
-    assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import stays OFF" in tpl_ps1
+    assert "Split-Path -Parent $here" in tpl_ps1 and "$PSScriptRoot" in tpl_ps1
+    # ADR-0299 retired the unconditional "stays OFF" (it was printed even when the deployed tool
+    # could open .mpp) — the outcome is now reported from the DEPLOYED tree. What that reporting
+    # must actually satisfy is executed in test_mpxj_capability_report.py; this stays structural.
+    assert "MpxjToMspdi.class" in tpl_ps1 and "native .mpp import is OFF" in tpl_ps1
     assert '"Schedule Forensics.lnk"' in tpl_ps1  # the ONE icon
     assert "pythonw.exe" in tpl_ps1  # launched directly (self-stopping app, no console)
     assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
-        assert 'cp -R "$REPO_MPXJ"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert 'cp -R "$MPXJ_SRC" "$MPXJ_DEST"' in tpl and "MpxjToMspdi.class" in tpl, family
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
         assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
         for family in ("sh", "command"):
-            assert 'cp -R "$REPO_MPXJ"' in _read(tier, family), (tier, family)
+            assert 'cp -R "$MPXJ_SRC" "$MPXJ_DEST"' in _read(tier, family), (tier, family)

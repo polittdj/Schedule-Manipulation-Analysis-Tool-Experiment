@@ -93,18 +93,38 @@ ok "Installed {{WHEEL_NAME}}"
 "$VENV_DIR/bin/python" -m pip install --quiet psutil >/dev/null 2>&1 || true
 
 # --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
-# The wheel is pure Python; the Java converter (tools/mpxj) rides in the repository next
-# to this installer and is copied beside the venv, where the runtime's walk-up discovery
-# finds it automatically (ADR-0193). Without it every .mpp import fails.
-REPO_MPXJ="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/tools/mpxj"
-if [ -f "$REPO_MPXJ/classes/MpxjToMspdi.class" ]; then
+# The wheel is pure Python; the 17 MB Java converter (tools/mpxj) is NOT embedded in this
+# file — it rides in the repository and is copied beside the venv, where the runtime's
+# walk-up discovery finds it (ADR-0193). Several layouts are searched, because this file
+# is run from a download folder at least as often as from a checkout.
+# What is REPORTED is the capability of the DEPLOYED TOOL, not of this copy step: an
+# upgrade that finds no source but already has a converter installed leaves native .mpp
+# ON, and saying "stays OFF" there was simply false (ADR-0299).
+MPXJ_DEST="$INSTALL_ROOT/tools/mpxj"
+sf_realpath() { (cd "$1" 2>/dev/null && pwd) || printf '%s\n' "$1"; }
+MPXJ_DEST_REAL="$(sf_realpath "$MPXJ_DEST")"
+MPXJ_SRC=""
+SF_HERE="$(cd "$(dirname "$0")" 2>/dev/null && pwd || printf '%s\n' ".")"
+for cand in "${SF_MPXJ_HOME:-}" "$SF_HERE/../tools/mpxj" "$SF_HERE/tools/mpxj" "$PWD/tools/mpxj"; do
+  if [ -z "$cand" ]; then continue; fi
+  if [ ! -f "$cand/classes/MpxjToMspdi.class" ]; then continue; fi
+  # never copy the installed copy over itself — that would rm -rf the only converter
+  if [ "$(sf_realpath "$cand")" = "$MPXJ_DEST_REAL" ]; then continue; fi
+  MPXJ_SRC="$cand"
+  break
+done
+if [ -n "$MPXJ_SRC" ]; then
   mkdir -p "$INSTALL_ROOT/tools"
-  rm -rf "$INSTALL_ROOT/tools/mpxj"
-  cp -R "$REPO_MPXJ" "$INSTALL_ROOT/tools/mpxj"
+  rm -rf "$MPXJ_DEST"
+  cp -R "$MPXJ_SRC" "$MPXJ_DEST"
   ok "MPXJ converter deployed (native .mpp import enabled)"
+elif [ -f "$MPXJ_DEST/classes/MpxjToMspdi.class" ]; then
+  ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"
 else
-  warn "tools/mpxj not found next to this installer — native .mpp import stays OFF"
-  warn "  (run the installer from the repository checkout, or set SF_MPXJ_HOME)"
+  warn "no MPXJ converter found — native .mpp import is OFF"
+  warn "  to turn it on: download the repository ZIP (green 'Code' button -> Download ZIP),"
+  warn "  extract it, then re-run this installer from inside the extracted folder"
+  warn "  until then: export MSPDI XML from MS Project and analyse that instead"
 fi
 
 # --- 4. Ollama + this tier's local AI model -------------------------------------------

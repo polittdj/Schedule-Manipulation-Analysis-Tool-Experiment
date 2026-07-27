@@ -8073,3 +8073,44 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   into `Downloads` — the one layout that guarantees the converter is not found. Now: Code → Download
   ZIP, extract, run `.\installer\install-tier2.ps1` from inside.
 - **Highest ADR remains 0298**; no ADR was created for work that has not landed.
+
+## 2026-07-27d — the installer stops lying about native .mpp (ADR-0299; v1.0.105)
+- **PR #445 squash-merged** at `e044b4a`; branch restarted from `origin/main` with `--prune`. Applied
+  the diagnosis staged in `docs/PLAN/MPXJ-CAPABILITY-REPORT.md` rather than re-deriving it.
+- **ADR-0299 — the installer reports the DEPLOYED tool's capability, not its own copy step.** The
+  operator's upgrade printed `native .mpp import stays OFF` on a machine where it was **ON**. Three
+  outcomes now, and the printed sentence always agrees with the filesystem: *deployed* · *already
+  installed — stays ON (existing copy kept)* · *no converter found — is OFF* plus an actionable ZIP
+  remedy. Four search layouts instead of one, and `SF_MPXJ_HOME` is **honoured** rather than merely
+  named in the advice.
+- **The old guard was a source pin asserting the WRONG SENTENCE was present**, and it passed for
+  months. Replaced with an invariant: `tests/installer/test_mpxj_capability_report.py` (14 tests)
+  extracts the `# --- 3b.` block **verbatim from the generated installer**, runs it under the
+  installer's own `set -euo pipefail`, and asserts that whatever it claims about native `.mpp`
+  matches what is on disk where `_mpxj_home()` looks.
+- **Proved the new guard bites:** reverting the two bash installers to the old block fails **10 of
+  14** cases, including the operator's exact scenario. Run-from-a-checkout still passes — it was
+  never broken. (Mutation done with file backups in a scratch dir, per the 2026-07-27b lesson —
+  never `git checkout` on a dirty tree.)
+- **Caught TWO hazards my own fix introduced.** (1) Widening the search made the already-installed
+  copy selectable as the *source*, and the copy step `rm -rf`s the destination first — a re-run
+  would have deleted the operator's only converter. Closed with the `sf_realpath` / `-ieq $destReal`
+  self-copy skip, mutation-verified both ways. (2) `$ErrorActionPreference` is `"Stop"` and
+  `Join-Path` **throws on an empty base** (`Split-Path -Parent` of a drive root returns `""`);
+  building four candidates eagerly widened that exposure, and a throw there aborts the whole
+  install. Closed with a per-base `if ($base)` guard, pinned by the new test.
+- **Verified the advice, not just the code:** the not-found branch tells the operator to download the
+  repository ZIP, and a test asserts `git ls-files tools/mpxj` still carries the converter class and
+  ≥20 jars — so the printed remedy cannot rot silently.
+- **Coverage gap named:** `installer-smoke.yml` runs the installer FROM the checkout, so real-OS CI
+  only ever exercised the one layout that already worked. `pwsh` is absent from the container, so
+  the Windows family is held to structural parity (same four sources, three outcomes, both guards) —
+  stated as parity, never dressed up as execution.
+- **Three documentation drifts fixed:** `README-DISTRIBUTABLE.md` promised "give the recipient
+  **one** file" while never mentioning `tools/mpxj`, and claimed Start/Stop icons (true on
+  Linux/macOS, wrong on Windows since ADR-0193); `template.ps1`'s §6 header repeated that stale
+  two-icon claim while its own code ~260 lines below deletes those two and creates one.
+- **Gate:** full suite **2,718 passed**; ruff / ruff format / mypy-strict / bandit clean; all six
+  bash installers `bash -n` clean. Version 1.0.104 → **1.0.105**, wheel + 9 installers regenerated.
+  **Highest ADR 0299.**
+- **NEXT:** AXIS-TITLES batches 1-5 (drive `PENDING` 16 → empty), then the CRISPNESS 11px floor.

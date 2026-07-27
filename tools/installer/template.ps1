@@ -13,8 +13,16 @@
    4. Optionally ensures Java 17+ (only needed to open native .mpp files).
    5. Installs Ollama + this tier's local AI model (skippable — the tool runs fully
       without AI).
-   6. Creates Desktop + Start-Menu shortcuts: "Start Schedule Forensics" and
-      "Stop Schedule Forensics", plus an uninstaller and a first-run README.
+   6. Creates ONE Desktop + Start-Menu shortcut, "Schedule Forensics" (the app stops
+      itself and the local AI on browser close / Quit — ADR-0193 retired the old
+      Start/Stop pair, which this installer deletes on upgrade), plus an uninstaller
+      and a first-run README.
+
+ Native .mpp support is OPTIONAL and does NOT ride in this file: the 17 MB Java
+ converter lives in the repository at tools\mpxj. To enable it, download the repository
+ ZIP (green "Code" button -> Download ZIP), extract it, and run this installer from
+ inside the extracted folder; it is then copied beside the venv. Upgrading an existing
+ install keeps whatever converter is already deployed either way (ADR-0299).
 
  DATA SOVEREIGNTY: the installed tool is loopback-only (127.0.0.1) — no schedule
  data ever leaves the machine. Internet is used ONLY at install time, for public
@@ -116,20 +124,46 @@ Ok ("Installed " + "{{WHEEL_NAME}}")
 try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
 # --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
-# The wheel is pure Python; the 17 MB Java converter (tools\mpxj) rides in the repository
-# next to this installer and is copied beside the venv, where the runtime's walk-up
-# discovery finds it automatically (ADR-0193). Without it every .mpp import fails with
-# "MPXJ runner not found".
-$repoMpxj = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"
-if (Test-Path (Join-Path $repoMpxj "classes\MpxjToMspdi.class")) {
-    $destMpxj = Join-Path $InstallRoot "tools\mpxj"
+# The wheel is pure Python; the 17 MB Java converter (tools\mpxj) is NOT embedded in this
+# file — it rides in the repository and is copied beside the venv, where the runtime's
+# walk-up discovery finds it (ADR-0193). Several layouts are searched, because this file is
+# run from a download folder at least as often as from a checkout.
+# What is REPORTED is the capability of the DEPLOYED TOOL, not of this copy step: an upgrade
+# that finds no source but already has a converter installed leaves native .mpp ON, and
+# reporting "stays OFF" there was simply false (ADR-0299).
+function Resolve-SfPath([string]$p) {
+    try { return (Resolve-Path -LiteralPath $p -ErrorAction Stop).ProviderPath } catch { return $p }
+}
+$destMpxj = Join-Path $InstallRoot "tools\mpxj"
+$destReal = Resolve-SfPath $destMpxj
+$srcMpxj = $null
+# built defensively: $ErrorActionPreference is "Stop", and Join-Path THROWS on an empty base
+# (Split-Path -Parent of a drive root returns ""), which would abort the whole install.
+$here = if ($PSScriptRoot) { $PSScriptRoot } else { $PWD.Path }
+$mpxjCandidates = @()
+if ($env:SF_MPXJ_HOME) { $mpxjCandidates += $env:SF_MPXJ_HOME }
+foreach ($base in @((Split-Path -Parent $here), $here, $PWD.Path)) {
+    if ($base) { $mpxjCandidates += (Join-Path $base "tools\mpxj") }
+}
+foreach ($cand in $mpxjCandidates) {
+    if (-not $cand) { continue }
+    if (-not (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) { continue }
+    # never copy the installed copy over itself — that would delete the only converter
+    if ((Resolve-SfPath $cand) -ieq $destReal) { continue }
+    $srcMpxj = $cand
+    break
+}
+if ($srcMpxj) {
     New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
-    Copy-Item -Recurse -Force -Path (Join-Path $repoMpxj "*") -Destination $destMpxj
+    Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj "*") -Destination $destMpxj
     Ok "MPXJ converter deployed (native .mpp import enabled)"
+} elseif (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class")) {
+    Ok "MPXJ converter already installed — native .mpp import stays ON (existing copy kept)"
 } else {
-    Warn2 "tools\mpxj not found next to this installer — native .mpp import stays OFF"
-    Warn2 "  (run the installer from the repository checkout, or set SF_MPXJ_HOME;"
-    Warn2 "  .mpp files can still be opened after exporting to MSPDI XML from MS Project)"
+    Warn2 "no MPXJ converter found — native .mpp import is OFF"
+    Warn2 "  to turn it on: download the repository ZIP (green 'Code' button -> Download ZIP),"
+    Warn2 "  extract it, then re-run this installer from inside the extracted folder"
+    Warn2 "  until then: export MSPDI XML from MS Project and analyse that instead"
 }
 
 # a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)
