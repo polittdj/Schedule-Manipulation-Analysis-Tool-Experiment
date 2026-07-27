@@ -1,0 +1,735 @@
+Advanced Schedule Analysis
+
+-- 1 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 2
+Topics
+Why
+Conduct
+Schedule
+Analysis
+Schedule
+Types
+Schedule
+Health
+Analysis
+Schedules
+Integrated
+Cost and
+Schedule
+Analysis
+Sources:
+• GAO, “GAO Schedule Assessment Guide, Best Practices for project schedules.” May 2012.
+• NASA/SP-2010-3403, “NASA Schedule Management Handbook,” March 2011.
+• PMBOK® Guide and Standards.
+• DCMA EVMS Program Analysis Pamphlet.
+• Integrated Master Schedule (IMS) Data Item Description (DID).
+• Joint Agency Cost Schedule Risk and Uncertainty Handbook
+
+-- 2 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 3
+ Schedules are not only a list of “things” and when they will
+be done.
+ Schedules are the foundation for the execution of project to
+meet goals/requirements.
+ Identify relationships and interdependences of tasks
+ Identify required time to meet goals
+ Resources required to complete tasks
+ Progress effort
+ Sequencing decisions
+ Time phases budgets/cost estimates
+ Predict impact on schedule and budget of management
+decisions
+ Flexibility of schedule to external changes
+ Ex. Weather
+ Development of Risk Mitigation Plans
+Why are Schedules important?
+
+-- 3 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 4
+Why Conduct Schedule Analysis?
+ GAO: “Simply put, schedule variances are usually followed by cost variances. Because some
+program costs such as labor, supervision, rented equipment, and facilities cost more if the
+program takes longer, a reliable schedule can contribute to an understanding of the cost impact if
+the program does not finish on time. In addition, management tends to respond to schedule
+delays by adding more resources or authorizing overtime. Further, a schedule risk analysis allows
+for program management to account for the cost effects of schedule slippage when developing the
+life-cycle cost estimate. A cost estimate cannot be considered credible if it does not account for
+the cost effects of schedule slippage. Thus, a well-planned schedule is a fundamental
+management tool that can help government programs use public funds effectively by specifying
+when work will be performed in the future and measuring program performance against an
+approved plan. Moreover, as a model of time, an integrated and reliable schedule can show when
+major events are expected as well as the completion dates for all activities leading up to them,
+which can help determine if the program’s parameters are realistic and achievable. A program’s
+success depends in part on the quality of its schedule. A well-formulated schedule can help
+analyze how change affects the program.
+well-planned schedule is a fundamental management tool that can help government
+programs use public funds effectively by specifying when work will be performed in the
+future and measuring program performance against an approved plan.
+Goal: Is the schedule feasible and at what cost?
+
+-- 4 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 5
+Integrated Master Schedule(IMS):
+ A schedule that includes the entire scope of effort,
+including the effort from government, contractor, and
+other key parties of a program for successful execution
+from start to finish.
+Analysis Schedule: Summary schedule based on
+Integrated Master schedule used to conduct schedule
+risk analysis and integrated cost and schedule analysis.
+ Maintain attributes of IMS: Task type, constraints,
+predecessor, successor, float, criticality, and start and
+finish dates.
+Schedule Types
+
+-- 5 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 6
+Scheduling Methodology: Rules and approaches for the
+scheduling Process.
+Critical Path Method (CPM)
+Theory of Constraints (TOC)
+Critical Chain Method (CCM)
+Critical Path: The series of tasks, or even a single task,
+that determines the finish date of a project.
+ No Slack
+Critical Chain: Level loading of resources while
+maintaining flexible start times and ability to switch
+between task chains to keep project on schedule.
+Assumption that resources are always available. No
+series of tasks to determine finish date.
+Schedule Types cont.
+
+-- 6 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 7
+Schedule Health
+Slightly varied criteria with the same goal to evaluate
+schedule quality:
+ NASA Schedule Management Handbook
+ STAT Tool
+ DCMA 14-point Assessment
+ GAO Schedule Assessment Guide (Basic Schedule Analysis)
+
+-- 7 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 8
+Schedule Health = Schedule Quality
+ NASA STAT
+ Tasks and Milestones without
+Predecessors
+ Tasks and Milestones without Successors
+ To Go Tasks with No Finish Ties
+ To Go Tasks with No Start Ties
+ Summaries with Logic Ties
+ Out of Sequence Relationships
+ Task and Milestones needing Updates
+ Actuals after Status Date
+ Tasks marked as Milestones
+ Tasks with estimated duration
+ Manual Tasks
+ DCMA 14-point (The 5 percenter!)
+ Logic
+ Leads
+ Lags
+ Relationship Types
+ Hard Constraints
+ High Float
+ Negative Float
+ High Duration
+ Invalid Dates
+ Resources
+ Missed Tasks
+ Critical Path Test
+ Critical Path Length Index (CPLI)
+ Baseline Execution Index (BEI)
+
+-- 8 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 9
+DCMA 14-point Logic
+Logic: Predecessor and Successor logic.
+Identifies tasks with missing logic links.
+Number of tasks without predecessors and/or successors
+should not exceed 5%.
+An excess of 5% should be considered a flag. The formula
+for calculating this metric is as follows:
+
+-- 9 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 10
+DCMA 14-point Leads
+Leads: Negative Time
+Identifies the number of logic links with a lead (negative lag)
+in predecessor relationships of tasks.
+Distorts the total float in the schedule and may cause
+resource conflicts.
+The goal for this metric is 0.
+
+-- 10 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 11
+DCMA 14-point Lags
+Lags: Built in time where no activity occurs before successor
+cannot start.
+Assesses the number of lags in predecessor logic
+relationship.
+The number relationships with lags should not exceed 5%.
+
+-- 11 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 12
+DCMA 14-point Relationship Types
+Relationship Types: Count of tasks containing each type of logic link.
+ Finish-to-Start (FS) relationship type (“once the predecessor is finished,
+the successor can start”) provides a logical path through the program
+and should account for at least 90% of the relationship types being
+used.
+ Start-to-Finish (SF) relationship type is counter-intuitive (“the successor
+can’t finish until the predecessor starts”) and should only be used very
+rarely and with detailed justification.
+
+-- 12 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 13
+DCMA 14-point Hard Constraints
+Hard Constraints: Count of Hard constraints.
+ Hard constraints [Must-Finish-On (MFO), Must-Start-On (MSO), Start-No-
+Later-Than (SNLT), & Finish-No-Later Than (FNLT)] may prevent tasks
+from being moved by their dependencies and prevent the schedule
+from being logic-driven.
+ Soft constraints such as As-Soon-As-Possible (ASAP), Start-No-Earlier-
+Than (SNET), and Finish-No-Earlier-Than (FNET) enable the schedule to
+be logic-driven.
+ Divide the total number of hard constraints by the number of tasks.
+The number of tasks with hard constraints should not exceed 5%.
+
+-- 13 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 14
+DCMA 14-point High Float
+High Float: A task with total float greater than 44 working
+days (2 months).
+A task with total float over 44 working days may be a result
+of missing predecessors and/or successors.
+If the percentage of tasks with excessive total float exceeds
+5%, the network may be unstable and may not be logic-
+driven.
+
+-- 14 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 15
+DCMA 14-point Negative Float
+Negative Float: A task with total float less than 0 working
+days is included in this metric.
+Helps identify tasks that are delaying completion of one or
+more milestones.
+Tasks with negative float should have an explanation and a
+corrective action plan to mitigate the negative float
+Ideally, there should not be any negative float in the
+schedule. (Re-plan)
+
+-- 15 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 16
+DCMA 14-point High Duration
+High Duration: A task with a baseline duration greater than 44
+working days (2 months), and has a baseline start date within the detail
+planning period or rolling wave is included in this metric.
+ Determines whether or not a task can be broken into two or more
+discrete tasks rather than one.
+ The number of tasks with high duration should not exceed 5%.
+
+-- 16 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 17
+DCMA 14-point Invalid Dates
+Invalid Dates: Tasks that have a forecast start/finish date
+prior to the IMS/Schedule status date, or has an actual
+start/finish date beyond the IMS status date are included in
+this metric.
+Task should have forecast start and forecast finish dates in
+the future relative to the status date of the IMS.
+Task should not have an actual start or actual finish date
+that is in the future relative to the status date of the IMS.
+There should zero (0) invalid dates in the schedule.
+
+-- 17 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 18
+DCMA 14-point Resources
+Resources: Provides verification that all tasks with durations
+greater than zero have dollars or hours assigned
+The IMS DID (DIMGMT-81650) does not require the
+contractor to load resources directly into the schedule.
+If the schedule is not resource loaded, calculate the metric
+by dividing the number of tasks without dollars/hours
+assigned by the total number of tasks.
+
+-- 18 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 19
+DCMA 14-point Missed Tasks
+Missed Tasks: A task supposed to be completed already (baseline
+finish date on or before the status date) and the actual finish date or
+forecast finish date (early finish date) is after the baseline finish date or
+the Finish Variance (Early Finish minus Baseline Finish) is greater than
+zero.
+ Identifies how well or poorly the schedule is meeting the baseline plan.
+ The number of missed tasks should not exceed 5%.
+
+-- 19 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 20
+DCMA 14-point Critical Path Test
+Critical Path Test: Tests the integrity of the overall network logic and,
+in particular, the critical path.
+ If the project completion date (or other milestone) is not delayed in
+direct proportion (assuming zero float) to the amount of intentional slip
+that is introduced into the schedule as part of this test, then there is
+broken logic somewhere in the network.
+
+-- 20 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 21
+DCMA 14-point Critical Path Length Index (CPLI)
+ CPLI: Measure of the efficiency required to complete a milestone on-time.
+ Measures critical path “realism” relative to the baselined finish date, when
+constrained.
+ CPLI of 1.00 means that the program must accomplish one day’s worth of work for
+every day that passes.
+ CPLI less than 1.00 means that the program schedule is inefficient with regard to
+meeting the baseline date of the milestone (i.e. going to finish late).
+ CPLI greater than 1.00 means the program is running efficiently with regard to
+meeting the baseline date of the milestone (i.e. going to finish early).
+ CPLI less than 0.95 should be considered a flag and requires further investigation.
+The CPLI requires determining the program schedule’s Critical Path Length (CPL)
+and the Total Float (TF).
+ The CPL is the length in work days from time now until the next program milestone
+that is being measured.
+ TF is the amount of days a project can be delayed before delaying the project
+completion date. TF can be negative, which reflects that the program is behind
+schedule.
+
+-- 21 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 22
+DCMA 14-point Baseline Execution Index (BEI)
+ BEI: Metric is an IMS-based metric that calculates the efficiency with
+which tasks have been accomplished when measured against the
+baseline tasks.
+ Measure of task throughput.
+ Insight into the realism of program cost, resource, and schedule
+estimates.
+ Compares the cumulative number of tasks completed to the cumulative
+number of tasks with a baseline finish date on or before the current
+reporting period. If a Program completes more tasks than planned,
+then the BEI will be higher than 1.00 reflecting a higher task
+throughput than planned. Tasks missing baseline finish dates are
+included in the denominator.
+ BEI less than 0.95 should be considered a flag and requires additional
+investigation.
+
+-- 22 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 23
+Schedule Health Sanity Check
+ Outside of specific metrics some great questions for analysts:
+ Does the IMS reflect the total scope of work?
+ Is the correct WBS element identified for each task and milestone in the IMS?
+ Do all tasks/milestones have interdependencies identified to reflect a credible logical sequence?
+ Are task durations reasonable, measurable, and at an appropriate level of detail for effective management?
+ Does the IMS include all contract and/or designated management control milestones?
+ Does the IMS reflect accurate current status and credible start/finish forecasts for all to-go tasks and
+milestones?
+ Has the IMS been resource-loaded and are assigned resources reasonable and available?
+ Is the critical path identifiable and determined by the calculated IMS logic network?
+ Is the critical path credible?
+ Has the IMS content been baselined and is it adequately controlled?
+ Is there an excessive and invalid use of task constraints and relationships of leads/lags?
+ Are right task and resource calendars used in the IMS?
+ What is the working calendar?
+ If an analyst is reviewing a schedule that has passed earlier review, some great questions/thoughts to consider:
+ Schedule Performance Efficiency Analysis
+ Linear Projection of Actuals Based on Schedule Performance
+ Total Slack Trend Based on Schedule Performance
+ Schedule Margin/Reserve assessment
+ Correlating and validating the integration of cost and schedule
+ Were assumptions correct? Adjusted?
+ Assessing Resources
+ EVM performance
+
+-- 23 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 24
+Analysis Schedules
+The Joint Agency Cost Schedule Risk and Uncertainty
+Handbook (CSRUH) details the Fully Integrated
+Cost/Schedule Method (FICSM).
+Provides Guidance for creating an Analysis Schedule
+suitable for the FICSM Process.
+
+-- 24 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 25
+Why Analysis Schedules?
+Very large/detailed schedules can make analysis very
+challenging.
+ Often multiple schedules linked to Program milestone
+schedule for management tracking
+Schedule does pass basic health checks, will not work for
+analysis.
+ No critical path
+ Many parallel activities with limited logic at Program/project
+level
+ Limited predecessor and successor relationships
+ Limited level of detail to identify and map schedule risks
+Required to assign Costs/Resources
+
+-- 25 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 26
+Goal would be to use Program/project Integrated Master
+Schedule (IMS)
+Logical network of activities/tasks required to complete the
+goals of a Program/project.
+Any schedule used to conduct schedule uncertainty and risk
+analysis.
+ Typically developed by the estimator/analyst.
+ Can be the Program/project schedule.
+ Often created in coordination with cost estimate/analysis.
+ Typically a summation of activities/tasks maintaining
+schedule network logic.
+What are Analysis Schedules?
+
+-- 26 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 27
+Analysis Schedule – Desired Attributes
+ All activities defined using Work Breakdown
+Structure (WBS).
+ Entire scope is accounted for in schedule.
+ Logic
+ All activities sequenced and utilize
+network logic.
+ Resource loaded activities included.
+ Labor, material, overhead.
+ Time dependent and independent.
+ Estimated durations included.
+ Reference to resources applied and
+external factors affecting duration.
+ Reference estimate foundations (ex.
+Expert opinion, historical).
+ Critical path defined.
+ Total slack, or float, identified.
+ Removed for risk and uncertainty
+analysis.
+ Evidence of continuous updates, rolling wave
+approach.
+ History detailed in schedule or baseline
+schedule provided.
+◦ Trend analysis.
+◦ Schedule analysis uncertainty foundations.
+ Limited to no use of Level of Efforts (LOEs) or
+Hammock tasks.
+◦ LOE: Latest start dates and earliest finish
+dates.
+◦ Hammock: Earliest start dates and latest
+finish dates.
+◦ Not modeled in schedule analysis as
+activities should not fall on critical path,
+required capture for cost analysis.
+ No or very limited use of task constraints.
+◦ Example: Launch window
+ Utilizes standard working hours.
+◦ No schedule crashing.
+*Source: NASA Independent Program Assessment Office Programmatic Assessment Group
+
+-- 27 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 28
+ All activities defined using Work Breakdown Structure (WBS).
+ Mapped to common WBS, traceable, repeatable.
+ Ensures scope is accounted for in schedule.
+ Additional benefit of Mapping to Lifecycle Cost Estimate.
+ Time phased with fiscal year.
+Analysis Schedule - WBS Mapping
+*Project File Source: Joint Agency Cost Schedule Risk and Uncertainty Handbook (JA CSRUH) Supporting Documents
+
+-- 28 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 29
+Analysis Schedule - Logic
+ Logic
+ All activities sequenced and
+utilize network logic in
+accordance with IMS.
+ Assumption of good IMS health.
+ If health is poor analyst needs to
+add logic to allow for schedule to
+replicate real changes and
+shocks to the schedule.
+
+-- 29 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 30
+Analysis Schedule – Resource Loading
+ Resource loaded activities included in analysis schedule if time
+and demand allows.
+ Labor, material, overhead.
+ Time dependent and independent costs.
+ WBS level for cost mapping determined and maintained.
+
+-- 30 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 31
+Analysis Schedule – Estimated Durations Included
+ Estimated durations included.
+ Minimum, Most Likely, Maximum
+ Actual durations
+ Duration Percentage
+ Reference to resources applied and
+external factors affecting duration.
+ Reference estimate foundations (ex.
+Expert opinion, historical).
+ Baseline execution index
+ EVM
+ Experts
+ Analogous
+ Schedule Estimating Relationship
+(SER)
+
+-- 31 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 32
+Analysis Schedule – Critical Path
+Critical Path Defined
+ IMS critical path maintained in analysis schedule
+ Secondary, and tertiary path analysis.
+ Look for changes resulting from risk and uncertainty analysis.
+
+-- 32 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 33
+Analysis Schedule –Slack, Float
+Total slack, or float (leads and lags), identified and removed
+where possible.
+ Removed for risk and uncertainty analysis by zeroing out the
+task duration.
+ Pulls Program finish date to the left.
+ Risk and Uncertainty analysis pushing back to the right to show
+a more realistic picture of schedule margin.
+ Schedule reserve or margin built into the schedule is
+removed.
+ If reserve/slack/float is allocated to a task and there is a plan
+to use it, it is no longer reserve or margin, it is mitigation, and
+in that case it is left in the schedule.
+ Document these assumptions/methodologies in your analysis.
+
+-- 33 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 34
+Analysis Schedule – Updates and Baselines
+ Evidence of continuous updates, rolling wave approach.
+ If multiple baselines are included in the schedule file analysts should
+protect data for use in informing performance or estimating
+uncertainty or risk factors.
+ NASA Example of what to look for from updates and new baselines as
+Programs mature:
+ Phase A: Concept and Technology Development: Preliminary
+schedules. Milestones should have predecessor and successor
+activities. Critical path should be identifiable; reasonable slack.
+Funded schedule reserve should be included, resources should be
+identified. Phased schedule synchronized phased budget
+ Phase B: Preliminary Design and Technology Completion: Baseline
+schedule. Reporting and other schedule management criteria
+should be in place and in practice by the project. Regular status
+updates, reporting, and performance analysis should be taking
+place in the project office. The schedule captures actuals (time
+and cost) at the appropriate WBS level.
+
+-- 34 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 35
+Analysis Schedule – Level of Effort
+ Limited to no use of Level of Efforts (LOEs) or Hammock tasks.
+ LOE: Latest start dates and earliest finish dates.
+ Hammock: Earliest start dates and latest finish dates.
+ Not modeled in schedule analysis as activities and should not
+fall on critical path, required capture for cost analysis.
+ Time Dependent
+ Example: Program Office Activities
+ Safety & Mission Assurance
+ Business Office
+ Education Outreach
+No uncertainty applied to LOEs
+ Schedule logic will push and pull these events
+
+-- 35 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 36
+Analysis Schedule - Constraints
+ Must Start On, Must Finish On, Start no later than than, etc.
+ Reminder: A constraint prevents the calculated schedule from
+being pushed beyond a specific date for the task.
+ No or very limited use of task constraints in schedule analysis.
+ Will override schedule risk and uncertainty analysis.
+ Example: Launch window, must finish on
+Some are justified, provide detail/justification
+ Example: Start no earlier than a launch window.
+Soft Constraints: does not prevent the schedule form being
+changed based upon its dependencies.
+ Example: As soon as possible, Start no earlier than, etc.
+
+-- 36 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 37
+Analysis Schedule - Calendar
+Utilizes standard working hours.
+ Extra or long shifts can be
+used but must be documented
+and captured correction in
+schedule properties to be used
+for analysis.
+No schedule crashing.
+ Heroic efforts to improve
+schedule and cost
+performance
+
+-- 37 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 38
+ Schedule Risk Analysis
+ Model Activity/Task Durations as Uncertain Quantities that have Probability Distributions
+ Combine Activity/Task Durations Statistically (Monte Carlo simulations) to Generate
+Cumulative Distributions of Project Total Duration
+ Obtain confidence level dates to determine additional amount of time to complete project
+ Identify best and deterministic date and probability of project completion date.
+ *Stephen A. Book. “Schedule Risk Analysis: Why It is Important and How to Do It. March
+2002.
+ Discrete schedule risk mapping.
+ Schedule risk factor mapping.
+Schedule Risk Analysis
+
+-- 38 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 39
+A Program/project IMS is a schedule point estimate.
+By requiring three point estimates you as an analyst are
+obtaining high level uncertainty bounds.
+This uncertainty can be applied to task durations.
+Schedule Risk Analysis - Uncertainty
+Modeling Uncertain Durations
+
+-- 39 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 40
+Powerful modeling tool to combine schedule duration
+uncertainty with time dependent costs.
+Schedule Risk Analysis – Uncertainty Schedule and
+Cost
+Modeling Uncertain Durations with Time
+Independent and Time Dependent Costs
+
+-- 40 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 41
+Map risk events into the schedule.
+ Both Cost and Schedule
+Schedule Risk Analysis – Risk
+Modeling Risk Events
+
+-- 41 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 42
+FICSM
+The Joint Agency Cost
+Schedule Risk and
+Uncertainty Handbook
+(CSRUH) Appendix B provides
+a guide to conduct and fully
+integrated cost and schedule
+method (FICSM) to integrate
+three pieces of information:
+1. Cost Uncertainty
+2. Schedule Uncertainty
+3. Risk
+
+-- 42 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 43
+Pitfalls of Analysis Schedules
+Merge Bias: two or more uncertain paths merge at one
+milestones pushing it to the right more than if the individual
+paths leading to it.
+Model creation over summarizes task durations and logic.
+ Loss of details of individual tasks and logic
+ Critical Path sensitivity
+Scenario lottery
+ Running large number of scenarios to achieve desired result.
+ Uncertainty and Risk Distributions.
+
+-- 43 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 44
+Budgets are not suitable for
+Cost Basis of Estimates and
+therefore notional deadlines
+(ex. Launch date, budget
+cycles) are not suitable for
+Schedule development.
+ Independently derived
+duration estimates.
+Inadequate Schedules
+
+-- 44 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 45
+ Growing implementation of Joint Cost/Schedule Confidence
+Level (JCL) highlights importance of Schedules, ex. NASA.
+ JCL development procedure steps:
+1. Develop the Schedule (60%)
+2. Cost/Resource Load the Schedule (25%)
+3. Incorporate Risks (Cost/Schedule)
+4. Conduct Uncertainty Risk Analysis
+5. Obtain Results and Plot outputs
+6. Analyze Results and Refine
+Importance to Joint Cost/Schedule Confidence Level
+Development
+60%
+25%
+15%
+Best Practice Time Percentage per JCL Task
+*Source NASA Cost Analysis Division (CAD)
+Schedule Development
+Cost Loading
+Risk/Uncertainty/Refinement
+(15%)
+
+-- 45 of 46 --
+
+Copyright Reed Integration, Inc. 2015 | All Rights Reserved 46
+Justin Hornback, PMP, CCEA
+Program Manager/Analyst – Advanced Analytics
+Reed Integration, Inc.
+jhornback@reedintegration.com
+757-541-8035 (o)
+757-435-0050 (m)
+www.reedintegration.com
+Additional Resources:
+ GAO, “GAO Schedule Assessment Guide, Best Practices for project schedules.” May 2012.
+http://www.gao.gov/assets/600/591240.pdf
+ NASA/SP-2010-3403, “NASA Schedule Management Handbook,” March 2011.
+ PMBOK® Guide and Standards. http://www.pmi.org/PMBOK-Guide-and-Standards.aspx
+ DCMA EVMS Program Analysis Pamphlet. http://www.dcma.mil/policy/200-1/PAM-200-1.pdf
+ Integrated Master Schedule (IMS) Data Item Description. http://dcarc.cape.osd.mil/files/evmcr/ims_did.pdf
+ Joint Agency Cost Schedule Risk and Uncertainty Handbook.
+https://www.ncca.navy.mil/tools/csruh/JA_CSRUH_16Sep2014.pdf
+Point of Contact
+
+-- 46 of 46 --
+

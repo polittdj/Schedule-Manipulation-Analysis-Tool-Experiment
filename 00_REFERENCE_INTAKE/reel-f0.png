@@ -1,0 +1,441 @@
+{
+ "cssTiny": [
+  {
+   "f": "base.css",
+   "line": 292,
+   "v": 9,
+   "snip": ".rk-cell-s{position:absolute;right:4px;bottom:2px;font-size:9px;opacity:.7}"
+  },
+  {
+   "f": "base.css",
+   "line": 316,
+   "v": 9,
+   "snip": ".nav-sect-label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;"
+  },
+  {
+   "f": "base.css",
+   "line": 320,
+   "v": 9,
+   "snip": ".nav-chapter .ch-num{font-size:9px;font-weight:700;color:var(--header-line);letter-spacing:.03em;"
+  },
+  {
+   "f": "base.css",
+   "line": 324,
+   "v": 10,
+   "snip": ".nav-beats a{font-size:10px;font-weight:500;color:var(--header-muted);white-space:nowrap}"
+  },
+  {
+   "f": "base.css",
+   "line": 409,
+   "v": 10,
+   "snip": ".chapter-kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;"
+  },
+  {
+   "f": "base.css",
+   "line": 414,
+   "v": 9,
+   "snip": ".story-so-far{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;"
+  },
+  {
+   "f": "base.css",
+   "line": 450,
+   "v": 9,
+   "snip": ".stack-foot{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;"
+  },
+  {
+   "f": "base.css",
+   "line": 462,
+   "v": 10,
+   "snip": ".concl-topic{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;"
+  },
+  {
+   "f": "base.css",
+   "line": 475,
+   "v": 10,
+   "snip": ".wb-family-head .linkbtn{font-size:10px}"
+  },
+  {
+   "f": "base.css",
+   "line": 486,
+   "v": 10,
+   "snip": "font-size:10px;letter-spacing:.1em;font-weight:700}"
+  },
+  {
+   "f": "app.css",
+   "line": 60,
+   "v": 10,
+   "snip": ".g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 10px; color: var(--muted); "
+  },
+  {
+   "f": "app.css",
+   "line": 95,
+   "v": 9,
+   "snip": ".g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color: var(--muted); white-spac"
+  },
+  {
+   "f": "app.css",
+   "line": 155,
+   "v": 9,
+   "snip": ".pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); font-weight: 400; }"
+  },
+  {
+   "f": "app.css",
+   "line": 167,
+   "v": 10,
+   "snip": "box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 10px;"
+  },
+  {
+   "f": "app.css",
+   "line": 339,
+   "v": 10,
+   "snip": ".ut-badge { display: inline-block; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacin"
+  },
+  {
+   "f": "app.css",
+   "line": 349,
+   "v": 9,
+   "snip": ".res-svg .res-yl, .res-svg .res-xl { font-size: 9px; fill: #5a6878; }"
+  },
+  {
+   "f": "app.css",
+   "line": 469,
+   "v": 10,
+   "snip": ".ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px; font-size: 10px; }"
+  },
+  {
+   "f": "app.css",
+   "line": 765,
+   "v": 10,
+   "snip": ".nm-chead { font-size: 10px; text-align: center; padding: 1px 2px; vertical-align: bottom; }"
+  },
+  {
+   "f": "app.css",
+   "line": 767,
+   "v": 9,
+   "snip": ".nm-clab { font-size: 9px; color: var(--muted); max-width: 64px; }"
+  },
+  {
+   "f": "app.css",
+   "line": 770,
+   "v": 9,
+   "snip": ".nm-rlab { font-size: 9px; color: var(--muted); }"
+  },
+  {
+   "f": "app.css",
+   "line": 777,
+   "v": 10,
+   "snip": "border-radius: 8px; background: #10202e; color: #fff; font-size: 10px; font-weight: 700; padding: 0 3px; }"
+  },
+  {
+   "f": "app.css",
+   "line": 789,
+   "v": 10,
+   "snip": ".nm-leg-item { font-size: 10px; color: var(--ink); display: inline-flex; align-items: center; }"
+  },
+  {
+   "f": "app.css",
+   "line": 814,
+   "v": 10,
+   "snip": ".ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: 2px; }"
+  },
+  {
+   "f": "app.css",
+   "line": 824,
+   "v": 8,
+   "snip": ".ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }"
+  },
+  {
+   "f": "app.css",
+   "line": 832,
+   "v": 8,
+   "snip": ".ssi-svg .ch-ql { font-size: 8px; font-weight: 700; fill: #5a6878; }"
+  },
+  {
+   "f": "app.css",
+   "line": 998,
+   "v": 8,
+   "snip": ".brand-sub { font-size: 8px; font-weight: 600; letter-spacing: .24em; text-transform: uppercase;"
+  },
+  {
+   "f": "hud.css",
+   "line": 44,
+   "v": 10,
+   "snip": "margin-left:5px;border-radius:50%;font-size:10px;font-weight:700;cursor:help;"
+  },
+  {
+   "f": "hud.css",
+   "line": 145,
+   "v": 10,
+   "snip": "html[data-theme=jarvis] table th{color:var(--warn);text-transform:uppercase;font-size:10px;"
+  }
+ ],
+ "dist": {
+  "8": 3,
+  "9": 10,
+  "10": 15,
+  "11": 42,
+  "12": 66,
+  "13": 25,
+  "14": 11,
+  "15": 5,
+  "16": 9,
+  "17": 1,
+  "18": 2,
+  "19": 1,
+  "20": 1,
+  "22": 3,
+  "26": 1,
+  "34": 1,
+  "12.5": 1
+ },
+ "jsAll": {
+  "9": 6,
+  "10": 34,
+  "11": 19,
+  "12": 4,
+  "16": 3,
+  "18": 1
+ },
+ "jsTiny": [
+  {
+   "mod": "histogram",
+   "line": 184,
+   "v": 10,
+   "snip": "x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "curves",
+   "line": 295,
+   "v": 10,
+   "snip": "x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "curves",
+   "line": 309,
+   "v": 10,
+   "snip": "var sl = svgEl(\"text\", { x: sx, y: padT - 4, \"text-anchor\": \"middle\", fill: BLUE, \"font-size\": 10 })"
+  },
+  {
+   "mod": "scurve",
+   "line": 87,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-"
+  },
+  {
+   "mod": "scurve",
+   "line": 98,
+   "v": 10,
+   "snip": "var sl = svgEl(\"text\", { x: sx, y: padT - 4, \"text-anchor\": \"middle\", fill: \"var(--muted)\", \"font-si"
+  },
+  {
+   "mod": "scurve",
+   "line": 131,
+   "v": 9,
+   "snip": "x: fx + 7, y: fy - 4 - (k % 5) * 11, fill: BLUE, \"font-size\": 9, \"font-weight\": 600,"
+  },
+  {
+   "mod": "drift",
+   "line": 71,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: tx, y: ly, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "drift",
+   "line": 83,
+   "v": 10,
+   "snip": "var pl = svgEl(\"text\", { x: px, y: padT - 4, \"text-anchor\": \"middle\", fill: \"var(--warn)\", \"font-siz"
+  },
+  {
+   "mod": "cei",
+   "line": 90,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-"
+  },
+  {
+   "mod": "cei",
+   "line": 123,
+   "v": 9,
+   "snip": "var t = svgEl(\"text\", { x: bx + barW / 2, y: y(v) - 3, \"text-anchor\": \"middle\", fill: \"var(--ink)\", "
+  },
+  {
+   "mod": "cei",
+   "line": 135,
+   "v": 10,
+   "snip": "var ml = svgEl(\"text\", { x: xc(j), y: H - padB + 16, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"fo"
+  },
+  {
+   "mod": "cei",
+   "line": 146,
+   "v": 10,
+   "snip": "var sl = svgEl(\"text\", { x: sx, y: padT - 4, \"text-anchor\": \"middle\", fill: BLUE, \"font-size\": 10 })"
+  },
+  {
+   "mod": "cei",
+   "line": 157,
+   "v": 10,
+   "snip": "var t = svgEl(\"text\", { x: mx + 6, y: ytext, fill: color, \"font-size\": 10, \"font-weight\": 600 });"
+  },
+  {
+   "mod": "cei",
+   "line": 180,
+   "v": 9,
+   "snip": "var tl = svgEl(\"text\", { x: mx2 + 7, y: myy + 3, fill: color, \"font-size\": 9, \"font-weight\": 600 });"
+  },
+  {
+   "mod": "margin",
+   "line": 164,
+   "v": 10,
+   "snip": "x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "margin",
+   "line": 169,
+   "v": 10,
+   "snip": "var unit = svgEl(\"text\", { x: padL - 6, y: padT - 8, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"fo"
+  },
+  {
+   "mod": "margin",
+   "line": 179,
+   "v": 10,
+   "snip": "x: x(i), y: H - padB + 16, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "scatter",
+   "line": 79,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-"
+  },
+  {
+   "mod": "scatter",
+   "line": 87,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: gx, y: H - padB + 14, \"text-anchor\": \"middle\", fill: \"var(--muted)\", \"f"
+  },
+  {
+   "mod": "scatter",
+   "line": 95,
+   "v": 10,
+   "snip": "var zl = svgEl(\"text\", { x: zx + 3, y: padT + 10, fill: \"var(--warn)\", \"font-size\": 10 });"
+  },
+  {
+   "mod": "trend",
+   "line": 375,
+   "v": 10,
+   "snip": "x: x(i), y: H - padB + 14, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 461,
+   "v": 10,
+   "snip": "x: x(i), y: H - padB + 14, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 506,
+   "v": 10,
+   "snip": "x: x(i), y: ly, \"text-anchor\": \"middle\", fill: \"var(--ink)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 579,
+   "v": 9,
+   "snip": "x: padL - 4, y: y(v) + 3, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 9,"
+  },
+  {
+   "mod": "trend",
+   "line": 588,
+   "v": 10,
+   "snip": "x: x(i), y: H - padB + 14, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 626,
+   "v": 10,
+   "snip": "x: x(i), y: ly, \"text-anchor\": \"middle\", fill: \"var(--ink)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 687,
+   "v": 9,
+   "snip": "x: padL - 6, y: yv + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 9,"
+  },
+  {
+   "mod": "trend",
+   "line": 697,
+   "v": 10,
+   "snip": "x: cx, y: H - padB + 14, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend",
+   "line": 775,
+   "v": 9,
+   "snip": "x: padL - 6, y: yv + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 9,"
+  },
+  {
+   "mod": "trend",
+   "line": 785,
+   "v": 10,
+   "snip": "x: cx, y: H - padB + 14, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "trend_drill",
+   "line": 65,
+   "v": 10,
+   "snip": "x: padL - 6, y: yv + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "sra",
+   "line": 66,
+   "v": 10,
+   "snip": "x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "sra",
+   "line": 77,
+   "v": 10,
+   "snip": "x: x(i), y: H - padB + 16, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "sra",
+   "line": 167,
+   "v": 10,
+   "snip": "x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "sra",
+   "line": 188,
+   "v": 10,
+   "snip": "x: xc(i), y: H - padB + 16, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-size\": 10,"
+  },
+  {
+   "mod": "wbs",
+   "line": 56,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: padL - 6, y: gy + 4, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-"
+  },
+  {
+   "mod": "wbs",
+   "line": 63,
+   "v": 10,
+   "snip": "var lab = svgEl(\"text\", { x: W - padR + 6, y: gy + 4, \"text-anchor\": \"start\", fill: \"var(--muted)\", "
+  },
+  {
+   "mod": "wbs",
+   "line": 71,
+   "v": 10,
+   "snip": "var refLab = svgEl(\"text\", { x: padL + 2, y: refY - 4, fill: \"var(--warn)\", \"font-size\": 10 });"
+  },
+  {
+   "mod": "wbs",
+   "line": 91,
+   "v": 10,
+   "snip": "var ml = svgEl(\"text\", { x: cx, y: H - padB + 16, \"text-anchor\": \"end\", fill: \"var(--muted)\", \"font-"
+  },
+  {
+   "mod": "timeaxis",
+   "line": 89,
+   "v": 10,
+   "snip": "\"text-anchor\": \"middle\", fill: \"var(--muted)\", \"font-size\": 10 });"
+  }
+ ]
+}
