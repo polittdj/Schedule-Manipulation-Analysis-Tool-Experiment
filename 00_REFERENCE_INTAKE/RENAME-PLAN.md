@@ -1,143 +1,187 @@
-# RENAME-PLAN — mechanical package rename (NAMES PROPOSED, awaiting your choice)
+# GUIDED-MODE — the five-Act teaching layer (SPEC ONLY, awaiting approval)
 
-Per PROMPT 5 §1 this stops at the name choice. §2's blast-radius plan is below and is name-agnostic — it uses `<pkg>` (import name, snake_case), `<dist>` (distribution name, kebab-case) and `<Display>` (the human name) so it applies verbatim once you choose.
+**Nothing has been built.** Per PROMPT 3 §1 this is the spec, and it stops for approval before any code. Governing law: repo `CLAUDE.md` + `docs/DESIGN-SYSTEM.md`. Source inventory: `docs/UI-INVENTORY.md`.
 
-*This workspace has no Python runtime and no network, so §5's gate must run in the repo. Every file class in §3 was verified against the repo at tree `10b2cc1b0625` (version `1.0.95`).*
+**Two corrections before the spec starts.**
+1. **Route count is 133, not 128** (`docs/UI-INVENTORY.md` §1: 32 HTML · 28 JSON · 39 export · 32 POST, parsed line-by-line from the 19,081-line `app.py`). All 133 must keep working; the additive rule is unchanged, the number is just larger than the prompt assumed.
+2. **Tooltip text does not need new dictionary fields.** `MetricDoc` in `src/schedule_forensics/web/help.py` already carries `definition`, `formula`, `source`, `importance`, `indicates`, `threshold`, `example_ok`, `example_fail`, `use_case`, `citation_basis`. The required what / how / decision triple is a **projection of existing fields** (§4), so guided mode is a renderer, not a documentation migration.
 
----
-
-## 0. Recommendation first: consider **never**
-
-The prompt already says it — zero user-visible benefit, ~350–400 files, and it can break the lockstep gate. Two facts sharpen that:
-
-1. **The user-visible name is already decoupled.** The UI shows a display name from the header chrome, not the package name; DESIGN-SYSTEM §2 only forbids the word "NASA". You can ship `<Display>` on every screen, in every export and in the CUI-marked briefing **today**, with a one-line copy change and zero rename risk.
-2. **The rename's real cost is in the gates, not the code.** `tests/test_packaging.py` asserts on the literal filenames `schedule-forensics.desktop` / `.command` / `.bat` / `.ico` / `.png` **and** on the exact string `"-m schedule_forensics"` inside the Windows shortcut arguments (L14–16, L30–31), while `tests/installer/test_installers.py` asserts the embedded wheel is named `schedule_forensics-{version}` (L82–83) and byte-compares every packaged `schedule_forensics/**` path against the source tree (L120). A rename rewrites all of those simultaneously — which is exactly the "indistinguishable failure" the prompt wants to avoid, and it is why this must be one commit that either goes fully green or is reverted whole.
-
-**My advice: do the display-name change now, and only rename the package if it must be the import name in someone else's environment** (a second tool importing it, an external distribution, or a legal/branding requirement). If you accept that, PROMPT 5 becomes a 20-minute copy change and this plan goes in the drawer.
-
-If you still want the rename, everything below is ready.
+*This workspace has no Python runtime, no app and no network: the gates, the 200-check sweep and the screenshots run in the repo.*
 
 ---
 
-## 1. Five names
+## 1. Design rules that bind every Act
 
-| # | `<Display>` | `<dist>` | `<pkg>` | Why | Risk |
-|---|---|---|---|---|---|
-| 1 | **Astrolabe** | `astrolabe-forensics` | `astrolabe` | The name already carried by the design prototype and the redesigned UI — renaming to it makes the code match the product the operator has been reviewing. An astrolabe is an instrument for fixing your position from fixed bodies: exactly what the tool does with a schedule | `astrolabe` exists on PyPI; irrelevant while `Private :: Do Not Upload` holds, but the dist name is kept distinct anyway |
-| 2 | **Orrery** | `orrery` | `orrery` | A geared model that shows where bodies are *and predicts where they will be* — the closest single word to "past, present and forecast of a schedule". Short, memorable, near-certainly unclaimed | Slightly obscure; people mispronounce it (OR-uh-ree) |
-| 3 | **Plumbline** | `plumbline` | `plumbline` | The forensic metaphor: a plumb line cannot be argued with. Reads well in a claim or deposition context | Less evocative of schedule/time |
-| 4 | **Sextant** | `sextant-sf` | `sextant` | Navigation instrument; fits the mission-ops chrome and the "instruments, not widgets" doctrine | Common word, several existing tools/products use it |
-| 5 | **Keelson** | `keelson` | `keelson` | The structural spine a hull is built on — the schedule as the spine of a programme. Almost certainly collision-free | Hard to spell and say; weakest of the five, listed for completeness |
+| Rule | Value |
+|---|---|
+| Visuals per Act | **≤ 3** (hard cap) |
+| Headline per Act | **exactly 1** — a sentence with a number in it, per DESIGN-SYSTEM §2 |
+| Metric readouts per Act | **≤ 5**, each with a tooltip |
+| Everything else | **not removed — deep-linked.** Each visual carries "see the full view →" to the existing page, which keeps every current control (column pickers, zoom, filters, play, ▦/⤓/⛶) exactly one click away |
+| New charts | **none.** Every visual is an existing module rendered against an existing endpoint |
+| New engine calls | **none.** Guided mode reads what the page it links to already reads |
+| Reading order | Act *n* unlocks Act *n+1*'s Continue footer; any Act is still directly addressable by URL |
 
-**My pick: Astrolabe** — it is the only one that removes an existing inconsistency (prototype/UI say one thing, package says another) rather than adding a new name to remember. Note the knock-on: the voice clips in `docs/VOICE-DECISION.md` bake a spoken name, so choosing here settles that question too.
-
----
-
-## 2. Scope rule
-
-One commit. Zero behaviour change. No feature work, no formatting sweep, no import reordering beyond what the rename forces, no version-content change other than the bump. If `git diff` shows a line that is not a name, it does not belong in this commit.
+The density fix is structural: today a report page carries 6–12 panels; an Act carries 3. Nothing is deleted — the other 9 live on the page the Act links to.
 
 ---
 
-## 3. Every file class that changes (verified)
+## 2. The five Acts
 
-### 3.1 `pyproject.toml` — 6 sites, and two the prompt lists that do **not** need changing
+### Act 1 — What is this project?
 
-| Site | Now | Becomes |
+*Teaches: a schedule is a network of activities joined by logic, not a list of dates; the data date splits history from forecast; float is spare time.*
+
+| Slot | Visual | Existing module | Route it deep-links to | Endpoint |
+|---|---|---|---|---|
+| 1 | Driving-path Gantt (bars + data-date line) | `gantt.js` | `/analysis/{name}` | existing analysis payload |
+| 2 | Total-float distribution | `histogram.js` | `/analysis/{name}` | same |
+| 3 | Schedule ID card (population / calendars / constraints / open ends / baseline) — a **table**, not a new chart | existing analysis fields | `/analysis/{name}` | same |
+
+Metric readouts (dictionary ids): activity population · data date · min total float · open ends (`DCMA01`) · hard constraints (`DCMA05`).
+Headline pattern: *"N activities, M of them decide the finish date — and K of those already have negative float."*
+Deliberately omitted here: every quality percentage, every trend, every forecast. A first-time reader gets shape and vocabulary only.
+Continue segue: *"You can read the plan. Next: whether it can be trusted."*
+
+### Act 2 — Is it healthy?
+
+*Teaches: structural quality is a separate question from lateness; DCMA-14 inspects the file, not the progress; margin is reserve, not float.*
+
+| Slot | Visual | Module | Deep-links to |
+|---|---|---|---|
+| 1 | DCMA-14 ribbon (the "must stay below" checks) | `ribbon_drill.js` | `/ribbon` |
+| 2 | Execution indices strip (SPI · SPI(t) · CPI · BEI · CPLI · TCPI) | `performance.js` | `/performance` |
+| 3 | Margin burn-down vs guideline | `margin.js` / `margin_dashboard.js` | `/margin` |
+
+Metric readouts: `DCMA01` · `DCMA09` · `DCMA13` (CPLI) · `DCMA14` (BEI) · margin remaining.
+Headline pattern: *"X of 14 quality checks fail and Y% of the approved reserve is spent."*
+Note for implementation: the ribbon has **two axis conventions** (ten checks with a 5% ceiling; the FS-relationship check with a 90% floor). Act 2 shows the ten-check ribbon only and links the FS check to `/ribbon`; mixing them on one axis is the defect `docs/AXIS-TITLES-PATCH.md` and the operator's own review already flagged.
+Continue segue: *"You know its condition. Next: when it started going wrong."*
+
+### Act 3 — What went wrong and when?
+
+*Teaches: one version tells you where you are, the chain of versions tells you where you are going; deferred work accumulates.*
+
+| Slot | Visual | Module | Deep-links to |
+|---|---|---|---|
+| 1 | Milestone drift across versions | `drift.js` (or `trend.js`) | `/trend` |
+| 2 | Driving-path churn / CP evolution | `path_evolution.js` | `/evolution` |
+| 3 | Bow wave + current execution index | `cei.js` | `/cei` |
+
+Metric readouts: forecast slip vs baseline · churn % · CEI · BEI (`DCMA14`) · min-float trend.
+Headline pattern: *"The finish has moved N workdays across M updates, and the remaining plan now needs P× the demonstrated throughput."*
+Continue segue: *"You know the trend. Next: whether the trend was managed or edited."*
+
+### Act 4 — Was it manipulated?
+
+*Teaches: a date can improve two ways — work, or editing; concentration of edits on the driving path is the forensic signal; SUSPECTED is a legitimate answer.*
+
+| Slot | Visual | Module | Deep-links to |
+|---|---|---|---|
+| 1 | Version-pair change signals (duration cuts · logic removed · lags added · constraints added · baseline edits) | compare diff view | `/compare` |
+| 2 | Integrity findings ledger (old → new → shift rows) | `findings_drill.js` / `drilldown.js` | `/integrity` |
+| 3 | Float erosion / negative-float emergence | `volatility.js` | `/volatility` |
+
+Metric readouts: relationships changed · driving-path edits · constraints added (`DCMA05`) · invalid dates (`DCMA09`) · min total float.
+Headline pattern: *"N edits between the last two updates moved the reported finish earlier while no work completed; M of them landed on the driving path."*
+**Honesty rule for this Act specifically:** every claim renders its `⌖ file · UID` citation and any engine-flagged uncertainty stays visible as `SUSPECTED`. Guided mode may not soften a flag to keep a story tidy.
+Continue segue: *"You know what changed. Next: what to do about it."*
+
+### Act 5 — What has to happen now?
+
+*Teaches: a forecast is defensible when independent methods agree; commit to a confidence level, not a date; reserve is sized from the distribution.*
+
+| Slot | Visual | Module | Deep-links to |
+|---|---|---|---|
+| 1 | Three-method forecast S-curve | `scurve.js` / `curves.js` | `/forecast` |
+| 2 | Simulated finish distribution + cumulative P-curve (P50/P80) | `sra.js` | `/sra` |
+| 3 | Recommended actions with citations (existing briefing content) | briefing view | `/brief` |
+
+Metric readouts: P50 · P80 · P(target met) · reserve required vs held · joint confidence (where cost-loaded).
+Headline pattern: *"P50 is <date>, P80 is <date>, and holding the committed date needs N more workdays of reserve than remain."*
+**Caveat that must render:** when the SRA runs on auto-default uncertainty, Act 5 shows the existing "screening placeholder, not SME-validated" warning verbatim. It is the last screen a reader sees; it may not be the one where the caveat is dropped.
+Closing segue: *"You have the whole story. Leave guided mode to work the detail →"* (links to `/mission`).
+
+---
+
+## 3. What guided mode is, technically (and why the goldens cannot move)
+
+**New surface, 6 routes:**
+
+```
+GET  /guided                 -> Act picker + progress (HTML)
+GET  /guided/act/{n}         -> Act n, n in 1..5 (HTML)
+POST /guided/dismiss         -> sets the opt-out, redirects to /mission
+```
+
+- Each Act template **includes the existing chart modules** and fetches **the endpoints those charts already use**. No new JSON endpoint, no new field, no serializer touched, no engine function called that the linked page does not already call.
+- **Therefore `/api/dashboard` is untouched and the three goldens are byte-identical by construction** — `_SHA_TWO_VERSION` `d62a4f9e…58d1`, `_SHA_UNSOLVABLE` `8d7bcc38…fc16`, `_SHA_TWO_VERSION_PARITY` `51691cb7…504cb`. Re-pinning a golden is not an option in this task; if an Act appears to need a payload change, see §5 and stop.
+- Existing routes: **zero diffs**. Guided mode adds nav entries and one post-ingest prompt; it changes no existing handler's response. The one interaction with existing behaviour is the landing rule, and it defers: **an ingest with errors still lands on the manifest** (ADR-0255/0267) regardless of guided mode.
+
+**Opt-in / dismissible:**
+- Trigger: after a *clean* first ingest, `/` offers "Explain this project to me" beside the existing role cards. It is an offer, never a redirect.
+- State: `localStorage["sf-guided"]` = `"on" | "off"`, matching the `sf-*` convention `theme.js` already uses (`sf-theme`, `sf-theme-dark`). Absent = off.
+- Dismiss: a persistent "Leave guided mode" control on every Act; `POST /guided/dismiss` sets `off` and returns the user to `/mission`. Re-entry is always available from the nav.
+- Power users are unaffected: with `sf-guided` unset, every landing, nav target and page is exactly today's.
+
+**Files touched:** `web/app.py` (+6 routes, +1 offer block on `/`), one new template shell, one new `web/static/guided.js` (Act navigation + tooltip wiring only — it draws nothing), `base.css` (Act layout tokens), nav definitions, `docs/DESIGN-SYSTEM.md` (§2 gains the Act layer), `docs/UI-INVENTORY.md` (§1 gains the 6 routes).
+
+---
+
+## 4. Tooltip contract — a projection of `MetricDoc`, nothing invented
+
+`MetricDoc` (in `web/help.py`) is the single source. Guided mode renders exactly three beats:
+
+| Tooltip beat | Field(s) used | Fallback |
 |---|---|---|
-| `[project] name` | `"schedule-forensics"` | `"<dist>"` |
-| `[project] version` | `"1.0.95"` | bumped (§5) |
-| `[project.scripts]` #1 | `schedule-forensics = "schedule_forensics.launcher:main"` | `<dist> = "<pkg>.launcher:main"` |
-| `[project.scripts]` #2 | `schedule-forensics-report = "schedule_forensics.exhibits.cli:main"` | `<dist>-report = "<pkg>.exhibits.cli:main"` |
-| `[tool.setuptools.package-data]` key | `schedule_forensics = ["web/static/*", "web/examples/*"]` | `<pkg> = [...]` — **if this key is missed the wheel installs and the app crashes mounting `/static`**, which is the failure the Linux end-to-end run caught on 2026-07-02 |
-| `[tool.ruff.lint.per-file-ignores]` | `"src/schedule_forensics/web/app.py" = ["E501"]` | `"src/<pkg>/web/app.py"` — miss it and ruff fails on ~19k lines of embedded HTML |
-| `[tool.coverage.run] source` | `["schedule_forensics"]` | `["<pkg>"]` — miss it and coverage reports 0% and the ≥70 gate fails |
-| `[tool.mypy]` | `files = ["src"]` | **no change** — path-based, not name-based (the prompt assumed otherwise) |
-| `[tool.bandit] exclude_dirs` | `["tests", ".venv", "tools"]` | **no change** — path-based |
-| `[project.urls]`, description, keywords | mention the old name/product | judgement call: update description and `<Display>`; leaving the GitHub URLs alone is correct if the repo is not renamed |
+| **What it means** | `definition` (title = `name`) | none — a metric with no definition is a doc bug, fail loudly |
+| **How to read it** | `formula` + `threshold`, and `indicates` when a value is failing | `formula` alone |
+| **What decision it supports** | `use_case` | `importance`, then `indicates` |
+| footer | `source` + `citation_basis` | — |
+| on a failing value | `example_fail`; on a passing value `example_ok` | omit |
 
-### 3.2 The package directory — the bulk of the diff
-
-`git mv src/schedule_forensics src/<pkg>`, then rewrite intra-package imports. Repo tree reports **180 files under `src/schedule_forensics/`**. Count the actual import surface before starting, and again after, so the numbers must match:
-
-```bash
-grep -rn "schedule_forensics" src/ tests/ tools/ packaging/ .github/ docs/ *.md *.toml | wc -l
-grep -rln "^\(from\|import\) schedule_forensics" src/ tests/ | wc -l
-```
-
-`web/app.py` alone carries **88** occurrences of the literal (measured), so do not hand-edit it — use a scripted replace and review the diff.
-
-**Two name-bearing runtime paths that are easy to miss:** `src/<pkg>/net_guard.py` (the egress guard, asserted by `tests/guards/test_egress.py`) and `src/<pkg>/__main__.py` (the guarded `-m <pkg>` bootstrap that `tests/test_packaging.py` asserts on by literal string).
-
-### 3.3 `packaging/` — filenames encode the name
-
-`packaging/schedule-forensics.png` · `packaging/windows/schedule-forensics.ico` · the generated `schedule-forensics.desktop` / `.command` / `.bat` / `.vbs` · `packaging/make_icon.py` (writes those filenames) · `packaging/README.md` (**8** name-bearing lines, measured).
-
-`tests/test_packaging.py` asserts these exact filenames (L14–16, L36, L64–65) **and** that `favicon.ico` at `src/schedule_forensics/web/static/favicon.ico` byte-matches the packaging icon (L66) — so the icon move and the test update are the same edit.
-
-### 3.4 The installer templates and the 9 generated installers
-
-`tools/installer/template.ps1` · `template.sh` · `template.command` encode: the wheel filename, `-m schedule_forensics`, the install-root name, and the generated helper scripts `start-` / `stop-` / `uninstall-schedule-forensics.{sh,ps1}` (visible in `installer-smoke.yml` L97/L101/L106). `tools/installer/build_installers.py` defaults to the glob `dist/wheel/schedule_forensics-*.whl`.
-
-The **9 installers are build output** — they are regenerated, never hand-edited:
-
-```bash
-python -m build --wheel --outdir dist/wheel
-python tools/installer/build_installers.py dist/wheel/<pkg>-*.whl
-```
-
-### 3.5 CI
-
-`.github/workflows/ci.yml` — 2 lines (`--cov=schedule_forensics`, `--include='*/schedule_forensics/engine/*'`).
-`.github/workflows/installer-smoke.yml` — **6** lines, including the two import probes `import schedule_forensics; from schedule_forensics.launcher import main` (L57) and the static-assets check `import schedule_forensics.web.app as a` (L58), plus the three generated helper-script names (L97, L101, L106).
-
-### 3.6 Tests that assert on the name (expect these to fail first)
-
-`tests/test_packaging.py` (12 lines) · `tests/installer/test_installers.py` (wheel name L82–83, packaged-path comparison L120) · `tests/guards/test_egress.py` · `tests/test_launcher.py` · `tests/test_startup_bootstrap.py` · `tests/web/test_docs.py` (regenerates `docs/METRIC-DICTIONARY.md` from `<pkg>.web.help`) · `tests/test_state_docs.py`.
-
-### 3.7 Docs
-
-`CLAUDE.md` · `README.md` · `docs/DESIGN-SYSTEM.md` · `docs/USER-GUIDE.md` · `docs/METRIC-DICTIONARY.md` (**generated** — regenerate, do not edit) · `installer/README-DISTRIBUTABLE.md` · `packaging/README.md` · `docs/UI-INVENTORY.md` (all its `src/schedule_forensics/...` paths) · the 288 ADRs — **do not rewrite history**: ADRs record what was true when written; add one new ADR recording the rename instead.
+Rules:
+- Tooltips read `METRIC_DICTIONARY` **from `web/help.py`**, never from `docs/METRIC-DICTIONARY.md` — the `.md` is *generated* from `help.py` and `tests/web/test_docs.py::test_metric_dictionary_doc_is_in_sync` exists to prove it.
+- **Do not add metric ids.** `tests/engine/test_aft_formula_audit.py:843` asserts `set(audited) == set(METRIC_DICTIONARY)`; a new id fails there too. Guided mode documents no new metric — it explains existing ones.
+- Where `use_case` is empty, fill it **in `help.py`** with one plain sentence naming the decision, then regenerate the doc with the command the sync test prints. That keeps `test_docs`, `test_help` (every emitted metric documented) and `test_visuals` (DCMA entries) green, and adds no ids.
+- Audit first: `python -c "from schedule_forensics.web.help import METRIC_DICTIONARY as M; print([k for k,v in M.items() if not v.use_case])"` — that list is the content backlog for this task, and it is the only `help.py` edit guided mode is allowed to make.
 
 ---
 
-## 4. Execution order (one commit, but do it in this sequence locally)
+## 5. Gap register — the only things the Acts want that the app may not already produce
 
-1. `git checkout -b rename/<pkg>` — and change nothing else on this branch, ever.
-2. `git mv src/schedule_forensics src/<pkg>`; `git mv` the four `packaging/` assets.
-3. Scripted replace of `schedule_forensics` → `<pkg>` and `schedule-forensics` → `<dist>` across `src/ tests/ tools/ packaging/ .github/ docs/` and the root `*.md`/`*.toml`, **excluding `docs/adr/`**.
-4. Hand-check the six `pyproject.toml` sites in §3.1 (a scripted replace gets five of them; the ruff per-file-ignores path is the one that silently survives).
-5. Regenerate what is generated: `docs/METRIC-DICTIONARY.md`, the icons if `make_icon.py` output filenames changed, then the wheel and the 9 installers (§3.4).
-6. Bump `[project] version` — `1.0.95` → `1.1.0` (a rename is not a patch).
-7. Add `docs/adr/0285-package-rename-to-<pkg>.md`: what changed, what did not (no behaviour, no engine, no payload), and the fact that ADRs 0001–0284 keep the old name deliberately.
-8. Run the full gate (§5). One commit, one PR.
+| # | Gap | Resolution that needs **no** payload change |
+|---|---|---|
+| 1 | An Act-level headline sentence with numbers in it | Compose in the **template** from values the linked page already renders. Never a new payload field; if a number isn't already on screen somewhere, the Act does not claim it |
+| 2 | Reading progress (which Acts a user has seen) | Client-side `localStorage`, same as theme. No server state, no payload |
+| 3 | "What changed since the last update" in one sentence for Act 4 | The existing `/compare` view already computes the signal counts; the Act quotes them |
+| 4 | Per-Act "teach" copy (the three teaching lines) | Static template copy, reviewed by the operator — it is UI text, not data |
+| 5 | `use_case` text for tooltips where empty | `help.py` content fill + doc regeneration (§4) |
 
----
-
-## 5. Gate — all of it, or revert
-
-```bash
-ruff check . && ruff format --check . && mypy
-pytest --cov=<pkg> --cov-report=term-missing --cov-fail-under=70
-coverage report --include='*/<pkg>/engine/*' --fail-under=85
-pytest -m parity -p no:cacheprovider
-bandit -q -r src && pip-audit --progress-spinner=off
-python -m build --wheel --outdir dist/wheel
-python tools/installer/build_installers.py dist/wheel/<pkg>-*.whl
-pytest tests/installer/test_installers.py tests/test_packaging.py -q
-grep -rn "schedule_forensics\|schedule-forensics" --exclude-dir=docs/adr --exclude-dir=.git . | grep -v "^docs/adr" | wc -l   # expect 0
-```
-
-Plus, per the prompt: **installer-smoke green on both `windows-latest` and Linux** — that workflow is the only place the renamed wheel is actually installed and imported (`installer-smoke.yml` L57–58), so a green unit suite with a red smoke run means the rename is not done.
-
-**Invariants that must not move:**
-- The three dashboard goldens — `_SHA_TWO_VERSION` `d62a4f9e…58d1`, `_SHA_UNSOLVABLE` `8d7bcc38…fc16`, `_SHA_TWO_VERSION_PARITY` `51691cb7…504cb`. A rename cannot touch a payload; if one moves, something non-mechanical happened.
-- Parity results (`pytest -m parity`), engine coverage ≥85%, DCMA counts (173 parity / 182 default on the reference file).
-
-**Revert rule:** if any gate is red after one honest debugging pass, `git checkout main && git branch -D rename/<pkg>`. Do not land a partial rename, do not `# type: ignore` a rename, do not relax an installer assertion to make the wheel name match. A half-renamed package is worse than no rename — that is the prompt's rule and it is the right one.
+If implementation hits a sixth gap that genuinely requires a payload change: **stop, write it here with the failing Act and the field needed, and ask** — do not re-pin a golden.
 
 ---
 
-## STOP — one decision
+## 6. Definition of done
 
-**Which name?** (Or "never", and I do the display-name-only change instead.) Nothing will be moved until you answer, and once you do, this becomes a single mechanical branch with the gate above as its only definition of done.
+Same gate as PROMPT 1, plus:
+
+- [ ] The three dashboard goldens **byte-identical** (no re-pinning).
+- [ ] Every pre-existing route returns 200 with unchanged content: sweep all 133 (`docs/UI-INVENTORY.md` §1 is the list) and diff each HTML/JSON body against `main`. A new test — `tests/web/test_guided_is_additive.py` — should assert the route table's size and that no existing handler's response changed for a fixed fixture session.
+- [ ] `/guided`, `/guided/act/{1..5}` and `POST /guided/dismiss` render in all four themes, both densities, 90/100/125%.
+- [ ] With `sf-guided` unset, every landing and nav target is identical to today (screenshot diff `/`, `/mission`, `/trend`).
+- [ ] Each Act: ≤3 visuals, exactly 1 headline, ≤5 readouts, every readout tooltip renders all three beats, every claim cites `file · UID`, `SUSPECTED` flags visible, SRA caveat present in Act 5.
+- [ ] Ingest-with-errors still lands on the manifest (ADR-0255/0267), guided mode or not.
+- [ ] `docs/DESIGN-SYSTEM.md` records the Act layer; `docs/UI-INVENTORY.md` §1 lists the 6 new routes; `engine/` untouched; nothing renamed.
+
+---
+
+## STOP — five decisions needed before code
+
+1. **Act 3 primary visual:** `drift.js` (milestone drift, simpler) or `trend.js` (the full trend engine, richer but 1,165 lines)? I recommend `drift.js` for the lean page and a link into `/trend`.
+2. **Act 4 slot 2:** `findings_drill.js` (integrity findings) or `drilldown.js` (activity-level diff)? Recommend findings — it reads as a ledger, which is the forensic register a reader can follow.
+3. **Margin in Act 2:** `margin.js` (compact) or `margin_dashboard.js` (full burn-down + erosion)? Recommend `margin.js` compact, deep-linking `/margin`.
+4. **Where guided mode lives in the nav:** its own top group above "Load", or an entry inside the existing story spine? Recommend its own group, so the twelve chapters keep their numbering untouched.
+5. **The `use_case` backlog:** do you want to review the filled sentences before they land in `help.py` (they become the tooltip "what decision it supports" text, and they end up in the generated dictionary doc)?
+
+No code will be written until these are answered.

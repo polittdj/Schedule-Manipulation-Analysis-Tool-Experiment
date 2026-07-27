@@ -1,0 +1,59 @@
+/* AISMAT Command Deck — Typography
+   Three faces, clear roles:
+     Display  — Space Grotesk : act titles, headlines, hero metrics
+     Sans/UI  — IBM Plex Sans : body, tables, labels, controls (dense-tool 14px default)
+     Mono/Data— IBM Plex Mono : float values, metrics, fact IDs, timestamps, console chrome
+   Numeric data ALWAYS uses tabular-nums (see --num-feature) so columns align. */
+:root {
+  /* Families */
+  --font-display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-data: var(--font-mono);
+
+  /* Size ramp (px; dense analytical tool → 14px UI base) */
+  --fs-2xs: 11px;
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 15px;
+  --fs-lg: 16px;
+  --fs-xl: 18px;
+  --fs-2xl: 22px;
+  --fs-3xl: 28px;
+  --fs-4xl: 36px;
+  --fs-5xl: 48px;
+  --fs-6xl: 64px;
+
+  /* Weights */
+  --fw-regular: 400; /* @kind font */
+  --fw-medium: 500; /* @kind font */
+  --fw-semibold: 600; /* @kind font */
+  --fw-bold: 700; /* @kind font */
+
+  /* Line heights */
+  --lh-tight: 1.1; /* @kind font */
+  --lh-snug: 1.25; /* @kind font */
+  --lh-data: 1.3; /* @kind font */
+  --lh-normal: 1.5; /* @kind font */
+  --lh-relaxed: 1.62; /* @kind font */
+
+  /* Letter spacing */
+  --ls-tighter: -0.03em; /* @kind font */
+  --ls-tight: -0.015em; /* @kind font */
+  --ls-normal: 0em; /* @kind font */
+  --ls-wide: 0.02em; /* @kind font */
+  --ls-wider: 0.06em; /* @kind font */
+  --ls-label: 0.12em; /* @kind font */
+  --ls-mono: 0.01em; /* @kind font */
+
+  /* Numeric feature set for data readouts */
+  --num-feature: tabular-nums; /* @kind font */
+
+  /* ---- Semantic type roles (family + tracking hints; size set per element) ---- */
+  --type-display-family: var(--font-display);
+  --type-heading-family: var(--font-display);
+  --type-body-family: var(--font-sans);
+  --type-label-family: var(--font-sans);
+  --type-data-family: var(--font-mono);
+}

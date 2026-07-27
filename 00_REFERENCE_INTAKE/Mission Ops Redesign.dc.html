@@ -1,0 +1,145 @@
+/* AISMAT Command Deck — Color System
+   Base ramps + semantic aliases. Dark ("Command Deck") is the default theme,
+   declared here on :root. Bright / High-Contrast / Console remap the semantic
+   aliases in themes.css. Consumers should use the SEMANTIC tokens, never the
+   raw ramp values — that is what keeps all four appearance modes coherent. */
+:root {
+  /* ---- Base ramp: Deck neutrals (cool, blue-tinted near-blacks → whites) ---- */
+  --deck-950: #070B11;
+  --deck-900: #0A0F17;
+  --deck-850: #0E1520;
+  --deck-800: #131B28;
+  --deck-750: #18222F;
+  --deck-700: #1E293A;
+  --deck-650: #243349;
+  --deck-600: #2C3B52;
+  --deck-500: #3A4A62;
+  --deck-400: #546983;
+  --deck-300: #7C90AC;
+  --deck-200: #A6B7CE;
+  --deck-100: #D3DEEC;
+  --deck-050: #EEF3FA;
+
+  /* ---- Base ramp: Signal Cyan (primary / instrumentation / HUD) ---- */
+  --cyan-200: #9BF5EC;
+  --cyan-300: #63EDDE;
+  --cyan-400: #33DECD;
+  --cyan-500: #16C6B7;
+  --cyan-600: #0E9E93;
+  --cyan-700: #0B7A72;
+
+  /* ---- Base ramp: Command Gold (secondary accent / driving path) ---- */
+  --gold-300: #FFDE8A;
+  --gold-400: #FFCB5C;
+  --gold-500: #F2B03A;
+  --gold-600: #D18E1E;
+
+  /* ---- Base ramp: Status Green (pass / on-track) ---- */
+  --green-300: #7DEBA9;
+  --green-400: #43D585;
+  --green-500: #28B76A;
+  --green-600: #1B8B4F;
+
+  /* ---- Base ramp: Status Amber (warning / near-critical) ---- */
+  --amber-300: #FFD27A;
+  --amber-400: #FDB43E;
+  --amber-500: #E5921F;
+  --amber-600: #B87016;
+
+  /* ---- Base ramp: Status Red (fail / at-risk / breach) ---- */
+  --red-300: #FF9A9A;
+  --red-400: #FF6B6B;
+  --red-500: #EE4343;
+  --red-600: #C62C2C;
+
+  /* ---- Base ramp: Info Blue ---- */
+  --blue-300: #9CC2FF;
+  --blue-400: #6BA1FF;
+  --blue-500: #4784F5;
+  --blue-600: #2E63D6;
+
+  /* ---- Base ramp: Risk Violet (SRA / categorical) ---- */
+  --violet-300: #C9B6FF;
+  --violet-400: #A98BFF;
+  --violet-500: #8A66F0;
+
+  /* ================= SEMANTIC ALIASES — DARK (default) ================= */
+  /* Backgrounds & surfaces */
+  --bg-void: var(--deck-950);
+  --bg-app: var(--deck-900);
+  --bg-panel: var(--deck-850);
+  --surface: var(--deck-800);
+  --surface-raised: var(--deck-750);
+  --surface-hover: var(--deck-700);
+  --surface-sunken: var(--deck-900);
+
+  /* Borders / hairlines */
+  --border-subtle: var(--deck-700);
+  --border: var(--deck-600);
+  --border-strong: var(--deck-500);
+
+  /* Text */
+  --text-primary: var(--deck-050);
+  --text-secondary: var(--deck-200);
+  --text-muted: var(--deck-300);
+  --text-faint: var(--deck-400);
+  --text-inverse: var(--deck-950);
+  --text-accent: var(--cyan-400);
+
+  /* Accent (interactive / brand) */
+  --accent: var(--cyan-500);
+  --accent-hover: var(--cyan-400);
+  --accent-active: var(--cyan-600);
+  --accent-contrast: var(--deck-950);
+  --accent-muted: rgba(22, 198, 183, 0.14);
+  --accent-border: rgba(51, 222, 205, 0.42);
+  --accent-gold: var(--gold-500);
+
+  /* Focus */
+  --focus-ring: var(--cyan-400);
+
+  /* Status (RAG + info + driving/critical path) */
+  --status-pass: var(--green-400);
+  --status-warn: var(--amber-400);
+  --status-fail: var(--red-400);
+  --status-info: var(--blue-400);
+  --status-driving: var(--gold-400);
+  --status-neutral: var(--deck-300);
+
+  /* Status tinted surfaces */
+  --status-pass-bg: rgba(67, 213, 133, 0.12);
+  --status-warn-bg: rgba(253, 180, 62, 0.12);
+  --status-fail-bg: rgba(255, 107, 107, 0.12);
+  --status-info-bg: rgba(107, 161, 255, 0.12);
+  --status-driving-bg: rgba(255, 203, 92, 0.12);
+
+  /* Status tinted borders */
+  --status-pass-border: rgba(67, 213, 133, 0.4);
+  --status-warn-border: rgba(253, 180, 62, 0.4);
+  --status-fail-border: rgba(255, 107, 107, 0.4);
+  --status-info-border: rgba(107, 161, 255, 0.4);
+  --status-driving-border: rgba(255, 203, 92, 0.4);
+
+  /* Data-viz categorical sequence (charts, series, legends) */
+  --viz-1: var(--cyan-400);
+  --viz-2: var(--gold-400);
+  --viz-3: var(--blue-400);
+  --viz-4: var(--violet-400);
+  --viz-5: var(--green-400);
+  --viz-6: var(--red-400);
+
+  /* Chart chrome */
+  --grid-line: rgba(124, 144, 172, 0.14);
+  --axis-line: var(--deck-500);
+  --baseline-line: var(--deck-400);
+
+  /* Textures (mission-control graticule; console scanline set per-theme) */
+  --texture-grid:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); /* @kind other */
+  --texture-grid-size: 40px 40px; /* @kind other */
+  --texture-scanline: none; /* @kind other */
+
+  /* Scrim / overlay for dialogs */
+  --scrim: rgba(4, 8, 14, 0.72);
+}

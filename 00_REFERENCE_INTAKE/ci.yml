@@ -1,0 +1,22 @@
+# Repo audit — polittdj/Schedule-Manipulation-Analysis-Tool-Experiment @ main (tree 1a9c900b1fcb, read 2026-07-27)
+
+Read this turn: README.md · docs/DESIGN-SYSTEM.md · docs/USER-GUIDE.md · 00_REFERENCE_INTAKE/UI-INVENTORY.md (full), plus the full 913-file tree. Earlier syncs (see github.md) read CLAUDE.md, app.py in chunks, base/app/hud.css, 38 static JS modules, ADRs ≤0284.
+
+## Product truth
+- POLARIS — local forensic schedule-analysis desktop tool (FastAPI + vanilla JS; app.py ~905 KB / 19k lines). Ingests .mpp/.mspdi/.xer/.json; CPM, driving slack/SSI, DCMA-14, Fuse v8.11.0 parity, EVM, manipulation detection, SRA Monte-Carlo, JCL, margin, forecasts (3 methods), scorecards, workbench, groups/filters, briefing.
+- Two laws: (1) data sovereignty — loopback only, air-gap tested, CUI bars on every page/export, AI local + fails closed; (2) fidelity — parity gate-locked; a missing input renders “—”, never a fabricated figure.
+- 133 routes: 32 HTML pages · 28 JSON · 39 exports (one per panel = “everything exports to Excel”) · 32 POST. 12-chapter Mission Ops story + Setup rail. 4 token themes: console (default) / daylight / apollo / jarvis — token remaps of the same markup; tokens live in base.css (sf-themes.css NOT committed).
+- Design laws: nothing styles itself (tokens only); every visual is an instrument (takeaway h1 with a number, DD red line, legend, ▦ DATA / ⤓ EXCEL / ⛶ ENLARGE toolbar, how-to-read line, provenance chip `SOURCE: file · DD date`, measured-to-target chip). Chart fitness rules; no pies/3D/dual axes. Milestones = 45° squares. Baseline muted-dash, current accent, forecast warn-dash, critical red.
+- Voice: findings as sentences with the number inside; buttons are verbs; citations `⌖ file · UID n`; HIGH/MED/LOW.
+- “The word NASA never appears” is already a repo design law (header spec). Red family token is literally named `--nasa-red` in repo CSS — our design must not carry that name.
+
+## Known repo UI gaps (their own audit)
+- Fonts: spec says Barlow / Barlow Semi Condensed / IBM Plex Mono, but 0 @font-face, 0 vendored binaries — UI runs on the OS system stack at 11px base. Vendoring the faces is “simultaneously the fidelity fix, the air-gap prerequisite, and the highest-leverage answer to ‘everything looks fussy’”.
+- 28 rules below 11px (8/9/10px) flagged; 8px floor is for mono labels only.
+- Axis titles missing on many chart modules (tests/web/test_axis_titles.py keeps a PENDING ledger); toolbar/legend inherited via chartframe.js for modules that render through it.
+- hud.css (jarvis) exists — high-tech is a token remap, not a second system; globe.js wireframe insignia doubles as the AI status light.
+
+## What that means for this design project (ASTROLABE + Mission Ops v2)
+- Keep: every capability listed above already has a screen in ASTROLABE (see github.md screen map). Improvements must be presentation/UX only — no number invented, no capability dropped.
+- HD/professional pass levers: vendored-grade type discipline (the DS already ships Space Grotesk/IBM Plex), 2× crisp SVG rendering, ≥11px floors (done earlier: 10.5–11px), consistent instrument chrome, axis titles everywhere (done in ASTROLABE), DD line + provenance chips everywhere.
+- Banned words scrubbed from UI copy on 2026-07-27: NASA → agency/Gold-Rule/STAT context-appropriate; “Microsoft Project”/“MS Project”/“MS-Project” → MPP / planner-style / native planner; “Primavera”/“Oracle” → P6/XER. File-format tokens (.mpp, .xer, P6, XER, MSPDI) retained — they are formats, not the banned names. The stale reference copy under src/schedule_forensics/** is repo source kept for grep, not UI, and was left untouched.

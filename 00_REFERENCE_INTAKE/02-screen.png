@@ -1,0 +1,224 @@
+/* AISMAT Command Deck — Appearance Modes
+   Four modes, one token system. Each remaps the SEMANTIC aliases from
+   colors.css; the base ramps never change. Set on any ancestor:
+     <html data-theme="dark|bright|contrast|console">
+   Dark is the :root default (colors.css); the [data-theme="dark"] block below
+   is an explicit anchor so the attribute can be toggled back.
+   Rule (per DECK doctrine): tokens only — no loose hex in markup, ever. */
+
+[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* ============================ BRIGHT ============================
+   Daylight-readable. High default for conference-room screen-sharing. */
+[data-theme="bright"] {
+  color-scheme: light;
+
+  --bg-void: #DBE2EC;
+  --bg-app: #EDF1F7;
+  --bg-panel: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #F5F8FC;
+  --surface-hover: #EAF0F7;
+  --surface-sunken: #EEF2F8;
+
+  --border-subtle: #E6EBF2;
+  --border: #D2DBE7;
+  --border-strong: #B4C0D0;
+
+  --text-primary: #0C1420;
+  --text-secondary: #384658;
+  --text-muted: #5E6E83;
+  --text-faint: #8A98AC;
+  --text-inverse: #FFFFFF;
+  --text-accent: var(--cyan-700);
+
+  --accent: var(--cyan-600);
+  --accent-hover: var(--cyan-700);
+  --accent-active: var(--cyan-700);
+  --accent-contrast: #FFFFFF;
+  --accent-muted: rgba(14, 158, 147, 0.10);
+  --accent-border: rgba(14, 158, 147, 0.38);
+  --accent-gold: var(--gold-600);
+
+  --focus-ring: var(--cyan-600);
+
+  --status-pass: var(--green-600);
+  --status-warn: var(--amber-600);
+  --status-fail: var(--red-600);
+  --status-info: var(--blue-600);
+  --status-driving: var(--gold-600);
+  --status-neutral: #5E6E83;
+
+  --status-pass-bg: rgba(31, 139, 79, 0.10);
+  --status-warn-bg: rgba(184, 112, 22, 0.10);
+  --status-fail-bg: rgba(198, 44, 44, 0.09);
+  --status-info-bg: rgba(46, 99, 214, 0.09);
+  --status-driving-bg: rgba(209, 142, 30, 0.11);
+
+  --status-pass-border: rgba(31, 139, 79, 0.34);
+  --status-warn-border: rgba(184, 112, 22, 0.34);
+  --status-fail-border: rgba(198, 44, 44, 0.32);
+  --status-info-border: rgba(46, 99, 214, 0.30);
+  --status-driving-border: rgba(209, 142, 30, 0.34);
+
+  --viz-1: var(--cyan-600);
+  --viz-2: var(--gold-600);
+  --viz-3: var(--blue-500);
+  --viz-4: var(--violet-500);
+  --viz-5: var(--green-600);
+  --viz-6: var(--red-500);
+
+  --grid-line: rgba(20, 40, 70, 0.08);
+  --axis-line: #B4C0D0;
+  --baseline-line: #8A98AC;
+
+  --scrim: rgba(24, 34, 47, 0.42);
+}
+
+/* ========================= HIGH-CONTRAST =========================
+   Accessibility-first, WCAG-AA-or-better. Pure black, pure white text,
+   max-chroma status, thick visible borders, no low-alpha tints. */
+[data-theme="contrast"] {
+  color-scheme: dark;
+
+  --bg-void: #000000;
+  --bg-app: #000000;
+  --bg-panel: #080808;
+  --surface: #0C0C0C;
+  --surface-raised: #141414;
+  --surface-hover: #1E1E1E;
+  --surface-sunken: #000000;
+
+  --border-subtle: #616161;
+  --border: #8C8C8C;
+  --border-strong: #FFFFFF;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #F0F0F0;
+  --text-muted: #CFCFCF;
+  --text-faint: #A8A8A8;
+  --text-inverse: #000000;
+  --text-accent: #5CF2E4;
+
+  --accent: #4FEDE0;
+  --accent-hover: #7CF6EC;
+  --accent-active: #2FD9CB;
+  --accent-contrast: #000000;
+  --accent-muted: rgba(79, 237, 224, 0.22);
+  --accent-border: rgba(79, 237, 224, 0.75);
+  --accent-gold: #FFD24D;
+
+  --focus-ring: #FFFFFF;
+
+  --status-pass: #5BFF9E;
+  --status-warn: #FFCB4D;
+  --status-fail: #FF7B7B;
+  --status-info: #86B9FF;
+  --status-driving: #FFD24D;
+  --status-neutral: #CFCFCF;
+
+  --status-pass-bg: rgba(91, 255, 158, 0.20);
+  --status-warn-bg: rgba(255, 203, 77, 0.20);
+  --status-fail-bg: rgba(255, 123, 123, 0.22);
+  --status-info-bg: rgba(134, 185, 255, 0.20);
+  --status-driving-bg: rgba(255, 210, 77, 0.20);
+
+  --status-pass-border: rgba(91, 255, 158, 0.85);
+  --status-warn-border: rgba(255, 203, 77, 0.85);
+  --status-fail-border: rgba(255, 123, 123, 0.85);
+  --status-info-border: rgba(134, 185, 255, 0.85);
+  --status-driving-border: rgba(255, 210, 77, 0.85);
+
+  --viz-1: #4FEDE0;
+  --viz-2: #FFD24D;
+  --viz-3: #86B9FF;
+  --viz-4: #C9B6FF;
+  --viz-5: #5BFF9E;
+  --viz-6: #FF7B7B;
+
+  --grid-line: rgba(255, 255, 255, 0.22);
+  --axis-line: #FFFFFF;
+  --baseline-line: #CFCFCF;
+
+  --scrim: rgba(0, 0, 0, 0.86);
+}
+
+/* ======================= CONSOLE / OPS DECK =======================
+   HUD phosphor chrome. Teal-black surfaces, cyan glow, mono-forward.
+   The scanline texture ships here as a token; components opt in. This is
+   the opt-in "fun" theme — never a default, never carried into exports. */
+[data-theme="console"] {
+  color-scheme: dark;
+
+  --bg-void: #020608;
+  --bg-app: #04090C;
+  --bg-panel: #061114;
+  --surface: #08181C;
+  --surface-raised: #0B2227;
+  --surface-hover: #0F2C32;
+  --surface-sunken: #030A0C;
+
+  --border-subtle: rgba(51, 222, 205, 0.12);
+  --border: rgba(51, 222, 205, 0.24);
+  --border-strong: rgba(51, 222, 205, 0.46);
+
+  --text-primary: #CFF7F1;
+  --text-secondary: #8FD8CF;
+  --text-muted: #5EA79E;
+  --text-faint: #3E756E;
+  --text-inverse: #02110F;
+  --text-accent: #63EDDE;
+
+  --accent: #3EE8D6;
+  --accent-hover: #6FF3E6;
+  --accent-active: #16C6B7;
+  --accent-contrast: #02110F;
+  --accent-muted: rgba(62, 232, 214, 0.14);
+  --accent-border: rgba(62, 232, 214, 0.5);
+  --accent-gold: #FFCB5C;
+
+  --focus-ring: #6FF3E6;
+
+  --status-pass: #4DE89A;
+  --status-warn: #FFC24B;
+  --status-fail: #FF6E6E;
+  --status-info: #6FB0FF;
+  --status-driving: #FFD24D;
+  --status-neutral: #5EA79E;
+
+  --status-pass-bg: rgba(77, 232, 154, 0.14);
+  --status-warn-bg: rgba(255, 194, 75, 0.14);
+  --status-fail-bg: rgba(255, 110, 110, 0.14);
+  --status-info-bg: rgba(111, 176, 255, 0.14);
+  --status-driving-bg: rgba(255, 210, 77, 0.14);
+
+  --status-pass-border: rgba(77, 232, 154, 0.5);
+  --status-warn-border: rgba(255, 194, 75, 0.5);
+  --status-fail-border: rgba(255, 110, 110, 0.5);
+  --status-info-border: rgba(111, 176, 255, 0.5);
+  --status-driving-border: rgba(255, 210, 77, 0.5);
+
+  --viz-1: #3EE8D6;
+  --viz-2: #FFCB5C;
+  --viz-3: #6FB0FF;
+  --viz-4: #C9B6FF;
+  --viz-5: #4DE89A;
+  --viz-6: #FF6E6E;
+
+  --grid-line: rgba(62, 232, 214, 0.10);
+  --axis-line: rgba(62, 232, 214, 0.28);
+  --baseline-line: rgba(62, 232, 214, 0.4);
+
+  --texture-scanline:
+    repeating-linear-gradient(
+      to bottom,
+      rgba(62, 232, 214, 0.05) 0px,
+      rgba(62, 232, 214, 0.05) 1px,
+      transparent 1px,
+      transparent 3px
+    ); /* @kind other */
+
+  --scrim: rgba(2, 8, 10, 0.8);
+}

@@ -1,0 +1,55 @@
+/* AISMAT Command Deck — Core component styles.
+   Namespaced aismat-*; all values from tokens. */
+
+/* ---- Icon (Lucide wrapper) ---- */
+.aismat-icon{display:inline-flex;align-items:center;justify-content:center;line-height:0;color:currentColor;vertical-align:middle;flex:none}
+.aismat-icon svg{display:block;width:100%;height:100%}
+
+/* ---- Button ---- */
+.aismat-btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);font-family:var(--font-sans);font-weight:var(--fw-semibold);font-size:var(--fs-base);line-height:1;letter-spacing:var(--ls-normal);border:var(--border-width) solid transparent;border-radius:var(--radius-control);cursor:pointer;user-select:none;white-space:nowrap;text-decoration:none;transition:background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard),color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard),transform var(--dur-instant) var(--ease-standard)}
+.aismat-btn:focus-visible{outline:none;box-shadow:var(--ring-glow)}
+.aismat-btn:active:not(:disabled){transform:translateY(1px)}
+.aismat-btn:disabled,.aismat-btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.aismat-btn--full{width:100%}
+.aismat-btn--sm{height:30px;padding:0 var(--space-3);font-size:var(--fs-sm);border-radius:var(--radius-sm)}
+.aismat-btn--md{height:38px;padding:0 var(--space-4)}
+.aismat-btn--lg{height:46px;padding:0 var(--space-6);font-size:var(--fs-lg)}
+.aismat-btn--primary{background:var(--accent);color:var(--accent-contrast);border-color:var(--accent)}
+.aismat-btn--primary:hover:not(:disabled){background:var(--accent-hover);border-color:var(--accent-hover);box-shadow:var(--glow-cyan)}
+.aismat-btn--primary:active:not(:disabled){background:var(--accent-active)}
+.aismat-btn--secondary{background:var(--surface-raised);color:var(--text-primary);border-color:var(--border-strong)}
+.aismat-btn--secondary:hover:not(:disabled){background:var(--surface-hover);border-color:var(--accent-border)}
+.aismat-btn--ghost{background:transparent;color:var(--text-secondary);border-color:transparent}
+.aismat-btn--ghost:hover:not(:disabled){background:var(--surface-hover);color:var(--text-primary)}
+.aismat-btn--danger{background:var(--status-fail-bg);color:var(--status-fail);border-color:var(--status-fail-border)}
+.aismat-btn--danger:hover:not(:disabled){background:var(--red-500);color:#fff;border-color:var(--red-500)}
+
+/* ---- IconButton ---- */
+.aismat-iconbtn{display:inline-flex;align-items:center;justify-content:center;background:transparent;border:var(--border-width) solid transparent;border-radius:var(--radius-sm);color:var(--text-muted);cursor:pointer;transition:background var(--dur-fast) var(--ease-standard),color var(--dur-fast) var(--ease-standard),box-shadow var(--dur-fast) var(--ease-standard)}
+.aismat-iconbtn:hover{background:var(--surface-hover);color:var(--text-primary)}
+.aismat-iconbtn:focus-visible{outline:none;box-shadow:var(--ring)}
+.aismat-iconbtn:active{transform:translateY(1px)}
+.aismat-iconbtn--sm{width:28px;height:28px}
+.aismat-iconbtn--md{width:34px;height:34px}
+.aismat-iconbtn--lg{width:40px;height:40px}
+.aismat-iconbtn--active{color:var(--accent);background:var(--accent-muted)}
+
+/* ---- Badge ---- */
+.aismat-badge{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-family:var(--font-mono);font-size:var(--fs-2xs);font-weight:var(--fw-medium);padding:2px 7px;border-radius:var(--radius-chip);background:var(--surface-hover);color:var(--text-secondary);border:var(--border-width) solid var(--border);letter-spacing:var(--ls-mono);font-variant-numeric:var(--num-feature)}
+.aismat-badge--accent{background:var(--accent-muted);color:var(--text-accent);border-color:var(--accent-border)}
+.aismat-badge--gold{background:var(--status-driving-bg);color:var(--status-driving);border-color:var(--status-driving-border)}
+
+/* ---- StatusChip (RAG — text + dot, never color alone) ---- */
+.aismat-statuschip{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-sans);font-size:var(--fs-2xs);font-weight:var(--fw-semibold);text-transform:uppercase;letter-spacing:var(--ls-wide);padding:3px 9px 3px 8px;border-radius:var(--radius-chip);border:var(--border-width) solid var(--border);color:var(--text-secondary);white-space:nowrap}
+.aismat-statuschip__dot{width:7px;height:7px;border-radius:var(--radius-pill);flex:none;background:currentColor}
+.aismat-statuschip--pass{background:var(--status-pass-bg);border-color:var(--status-pass-border);color:var(--status-pass)}
+.aismat-statuschip--warn{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn)}
+.aismat-statuschip--fail{background:var(--status-fail-bg);border-color:var(--status-fail-border);color:var(--status-fail)}
+.aismat-statuschip--info{background:var(--status-info-bg);border-color:var(--status-info-border);color:var(--status-info)}
+.aismat-statuschip--driving{background:var(--status-driving-bg);border-color:var(--status-driving-border);color:var(--status-driving)}
+.aismat-statuschip--neutral{background:var(--surface-hover);border-color:var(--border);color:var(--text-muted)}
+
+/* ---- Tag (filter / removable) ---- */
+.aismat-tag{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-family:var(--font-sans);font-size:var(--fs-xs);padding:3px 6px 3px 9px;border-radius:var(--radius-chip);background:var(--surface-raised);border:var(--border-width) solid var(--border);color:var(--text-secondary)}
+.aismat-tag__x{cursor:pointer;color:var(--text-faint);display:inline-flex;background:none;border:none;padding:2px;border-radius:var(--radius-xs)}
+.aismat-tag__x:hover{color:var(--text-primary);background:var(--surface-hover)}

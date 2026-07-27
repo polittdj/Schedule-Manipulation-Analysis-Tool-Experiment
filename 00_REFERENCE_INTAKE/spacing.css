@@ -1,0 +1,36 @@
+/* AISMAT Command Deck — standardized chart chrome (GanttChart + TrendChart).
+   THE standardization layer: every Gantt and trend chart in the product uses
+   these classes, so format and options sit in the same place everywhere. */
+
+/* ---- Shared options strip (same position on every chart) ---- */
+.aismat-chartopts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 12px}
+.aismat-chartopt{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-sans);font-size:var(--fs-2xs);font-weight:var(--fw-semibold);text-transform:uppercase;letter-spacing:var(--ls-wide);padding:4px 9px;border-radius:var(--radius-chip);border:var(--border-width) solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;transition:color var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard)}
+.aismat-chartopt:hover{color:var(--text-primary);border-color:var(--border-strong)}
+.aismat-chartopt:focus-visible{outline:none;box-shadow:var(--ring)}
+.aismat-chartopt--on{background:var(--accent-muted);border-color:var(--accent-border);color:var(--text-accent)}
+.aismat-chartnote{font-family:var(--font-mono);font-size:10px;color:var(--text-faint);margin-left:auto;letter-spacing:var(--ls-mono)}
+
+/* ---- GanttChart ---- */
+.aismat-gantt{display:flex;flex-direction:column;gap:7px}
+.aismat-gantt__row{display:grid;grid-template-columns:150px 1fr 46px;align-items:center;gap:12px}
+.aismat-gantt__name{font-family:var(--font-sans);font-size:var(--fs-xs);color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aismat-gantt__track{position:relative;height:18px;background:var(--surface-sunken);border-radius:3px;border:var(--border-width) solid var(--border-subtle)}
+.aismat-gantt__bar{position:absolute;top:-1px;height:18px;border-radius:3px;background:var(--deck-500);transition:left var(--dur-slower) var(--ease-in-out),width var(--dur-slower) var(--ease-in-out),top var(--dur-base) var(--ease-standard),height var(--dur-base) var(--ease-standard)}
+.aismat-gantt__bar--crit{background:var(--status-driving);box-shadow:0 0 10px rgba(255,203,92,.3)}
+.aismat-gantt__bar--slim{top:1px;height:9px}
+.aismat-gantt__bar--walk{animation:aismat-walk-glow 3.4s var(--ease-in-out) infinite}
+.aismat-gantt__bar--changed{animation:aismat-bar-flash .9s var(--ease-out)}
+.aismat-gantt__ghost{position:absolute;top:12px;height:4px;border-radius:2px;border:1px dashed var(--border-strong);opacity:.85}
+.aismat-gantt__float{position:absolute;top:5px;height:6px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--border-strong),var(--border-strong) 3px,transparent 3px,transparent 6px);opacity:.7;transition:left var(--dur-slower) var(--ease-in-out)}
+.aismat-gantt__dd{position:absolute;top:-4px;bottom:-4px;width:0;border-left:1px dashed var(--accent-border)}
+.aismat-gantt__tf{font-family:var(--font-mono);font-size:var(--fs-2xs);text-align:right;color:var(--text-muted);font-variant-numeric:var(--num-feature)}
+.aismat-gantt__tf--crit{color:var(--status-driving)}
+.aismat-gantt__tf--neg{color:var(--status-fail)}
+@keyframes aismat-walk-glow{0%,100%{box-shadow:0 0 6px rgba(255,203,92,.12);filter:brightness(1)}12%{box-shadow:0 0 20px rgba(255,210,77,.8);filter:brightness(1.4)}32%{box-shadow:0 0 8px rgba(255,203,92,.18);filter:brightness(1)}}
+@keyframes aismat-bar-flash{0%{filter:brightness(2.1);box-shadow:0 0 20px rgba(51,222,205,.65)}100%{filter:brightness(1)}}
+
+/* ---- TrendChart ---- */
+.aismat-trend{display:block}
+.aismat-trend svg{display:block;width:100%;cursor:crosshair}
+.aismat-trend__readout{display:flex;gap:14px;flex-wrap:wrap;font-family:var(--font-mono);font-size:var(--fs-2xs);color:var(--text-muted);min-height:16px;margin-bottom:6px;font-variant-numeric:var(--num-feature);letter-spacing:var(--ls-mono)}
+.aismat-trend__readout b{color:var(--text-primary);font-weight:var(--fw-medium)}
