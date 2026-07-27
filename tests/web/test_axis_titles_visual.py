@@ -48,30 +48,24 @@ CHROME = Path("/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
 
 THEMES = ("console", "daylight", "apollo", "jarvis")
 SCALES = ("0.9", "1", "1.25")
-#: ``/forecast`` (drift.js) is here because ADR-0303 moved its category rows down to stop
-#: the Y caption colliding with the first row name — a geometry fix this pass MEASURES
-#: rather than argues about.
 #: Pages the golden Project2/Project5 pair actually charts. ``/resources`` needs a resource
 #: picked from its dropdown and ``/margin`` needs tasks named "margin"; with these fixtures both
 #: correctly render a "no data" note and NO chart, so a missing caption there would be a false
 #: positive rather than a defect.
 PAGES = ("/curves", "/scurve", "/cei", "/trend")
 
-#: Caption-vs-tick-label collisions that EXIST TODAY in merged work. They surfaced the moment the
-#: overlap detector was widened to compare a caption against EVERY text in its chart rather than
-#: only against other captions — the narrower check is why the pass first reported "clean".
+#: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
+#: kept as a record of why, because the wrong diagnosis here cost a full round trip.
 #:
-#: Both are real and measured, not rounding: ``/cei`` 14x6px, ``/trend`` 6x10px, and both occur
-#: ONLY at 90% page scale. Keyed on (route, caption) because the tick text is data-dependent.
-#:
-#: They are recorded rather than silently tolerated because FIXING them is a placement decision
-#: for the shared helper — where does a Y caption go when the top gridline's label already sits
-#: there? — and that is a convention change (ADR-0298's placement law) needing its own ADR, not an
-#: improvisation inside a caption batch. A NEW collision still fails; this list may only shrink.
-KNOWN_COLLISIONS = {
-    ("/cei", "Activities finishing (count)"),
-    ("/trend", "Schedule-quality metric"),
-}
+#: Widening the overlap detector (from caption-vs-caption to caption-vs-EVERY-text) found two real
+#: ones: ``/cei`` 14x6px and ``/trend`` 6x10px. They were first written down as "the Y caption sits
+#: where the top gridline's label already is", which made the fix look like a placement-convention
+#: change. Measured in the browser, that premise was false on both counts: on ``/cei`` the top
+#: gridline label ``15`` clears the caption by 13px and the collision is with a first-month BAR
+#: VALUE label; on ``/trend`` the colliding caption is the **X** caption, which no Y-placement rule
+#: touches at all. Both are one thing — a data label parked in a caption's band — and ADR-0303
+#: fixes them where they are caused, in ``cei.js`` and ``trend_drill.js``, by moving the LABEL.
+KNOWN_COLLISIONS: set[tuple[str, str]] = set()
 
 CONTRAST_FLOOR = 3.0
 TOKEN_PX = 11.0

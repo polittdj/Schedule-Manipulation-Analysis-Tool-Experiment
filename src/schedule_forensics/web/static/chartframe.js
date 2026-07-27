@@ -356,6 +356,14 @@
     svg.appendChild(node);
     return node;
   }
+  // Placement is FIXED, deliberately (ADR-0298, re-affirmed by ADR-0303). Moving the Y captions
+  // out of the plot to `T - 4` was tried and measured: on every charted page the band above the
+  // plot is already occupied — curves/scurve draw a stacked month/quarter time-tier header there,
+  // cei draws its "data date" label, trend_drill parks the tallest bar's value label there — so an
+  // adaptive "above when free, inside when not" rule chose *inside* on all four pages and changed
+  // nothing, while making a caption's position depend on the data (it would jump between frames of
+  // an animated stepper as an annotation appears). The real cause of the two collisions that
+  // motivated the move was a DATA LABEL sitting in the caption's band; the label yields (ADR-0303).
   function axisTitles(svg, geom, opts) {
     if (!svg || !geom || !opts) return;
     if (opts.xLabel) caption(svg, geom.R, geom.B - 4, opts.xLabel, "end");

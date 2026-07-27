@@ -81,8 +81,13 @@
       });
       rect.addEventListener("click", function () { sel.value = m; selId = m; render(); });
       svg.appendChild(rect);
+      // ADR-0303: the mirror of cei.js — a SHORT bar (a metric with zero offenders is the common
+      // case) puts its value label on the plot's bottom edge, where the X caption sits. Measured
+      // collision: 6x10px between "Schedule-quality metric" and a rightmost "0". The label lifts
+      // clear of the caption band; short bars' labels then line up, which reads fine.
+      var vy = Math.min(padT + plotH - bh - 5, padT + plotH - 18);
       var val = svgEl("text", {
-        x: cx, y: padT + plotH - bh - 5, "text-anchor": "middle",
+        x: cx, y: vy, "text-anchor": "middle",
         fill: isSel ? "var(--ink)" : "var(--muted)", "font-size": 11,
         "font-weight": isSel ? 700 : 400,
       });

@@ -120,6 +120,21 @@ check("three captions, three distinct anchors", new Set(corners).size, 3);
 check("y2 shares the Y caption's baseline, not the X caption's", y2.getAttribute("y"),
   combo.children[1].getAttribute("y"));
 
+// ADR-0303: placement does NOT depend on what is already in the svg. Moving the Y captions above
+// the plot when that band looked free was implemented, then measured and reverted — every charted
+// page already has text there, so the rule chose "inside" everywhere and bought nothing, at the
+// cost of a caption whose position moves with the data. Pinned here because "put it above the
+// plot instead" is the change a future reader is most likely to re-propose.
+const tiered = fakeNode("svg");
+const tier = fakeNode("text");           // a tier label sitting just above the plot top
+tier.setAttribute("y", String(GEOM.T - 6));
+tier.textContent = "MAR";
+tiered.appendChild(tier);
+api.axisTitles(tiered, GEOM, { xLabel: "MONTH", yLabel: "ACTIVITIES (COUNT)", y2Label: "RATIO" });
+check("existing text does not move the Y caption", tiered.children[2].getAttribute("y"), "27");
+check("existing text does not move Y2 either", tiered.children[3].getAttribute("y"), "27");
+check("the tier label itself is untouched", tier.getAttribute("y"), String(GEOM.T - 6));
+
 // one-sided and absent labels
 const onlyX = fakeNode("svg");
 api.axisTitles(onlyX, GEOM, { xLabel: "MONTH" });

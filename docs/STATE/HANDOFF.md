@@ -1,67 +1,73 @@
-# Handoff — 2026-07-27k (the caption helper gains a secondary-axis label; ADR-0302; v1.0.108)
+# Handoff — 2026-07-27l (the caption was never the problem; ADR-0303; v1.0.109)
 
-> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0302 merged. Version **1.0.108**. Highest ADR **ADR-0302**. `main` at `abfa6ec`.
-> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
-> **#451-#458 all merged. No open PRs.** All five checks green on #458; the background
-> regeneration produced a clean set of nine installers (windows + linux both ran against them).
+> ## STATUS (current) — ADR-0303 pushed on `claude/schedule-forensics-continue-gkju7l`. Version **1.0.109**. Highest ADR **ADR-0303**.
+> **#451-#460 all merged.** The four-theme visual pass is green again — this time against a
+> detector that can actually see the collisions it is looking for.
 >
-> - **`SFChartFrame.axisTitles` now takes an OPTIONAL `y2Label`** for a combo chart's secondary
->   (right) axis. **The operator was asked and chose this** over "primary axes only, permanently"
->   and over deferring it — batch 2 had recorded it as a gap rather than inventing a fix mid-batch.
-> - **Placement mirrors the Y caption to the plot's top-RIGHT**, end-anchored, same baseline:
->   `caption(svg, geom.R - 4, geom.T + 9, opts.y2Label, "end")`. The three captions occupy three
->   different corners **by construction** — X bottom-right `(R, B-4)`, Y top-left `(L+4, T+9)`,
->   Y2 top-right. Horizontal, never rotated.
-> - **This PRESERVES ADR-0298's "one convention", it does not break it.** The rule is one
->   *implementation*, one *token*, one *placement law* — not "exactly two labels". Y2 goes through
->   the same `caption()` builder and the same `.ch-at` class, so the queued **CRISPNESS 11px floor
->   still moves ONE value**.
-> - **Omitting `y2Label` emits nothing**, so every pre-existing caller is unaffected — asserted in
->   the harness, not assumed.
-> - **`wbs.js` is the first caller**: SPI(t) (ratio, left axis) + earned schedule (working days,
->   right axis). Its captions **name their own axis**, because on a two-scale chart the reader's
->   real question is *which gridlines do I read this against*.
-> - **Mutation-verified — four mutants, each caught:** Y2 moved onto the X caption's corner · Y2
->   emitted unconditionally (would silently add a caption to every existing caller) · Y2
->   left-anchored · a numeric `font-size` planted in the caption block.
-> - **`PENDING` is UNCHANGED at 7** (`drift`, `margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`,
->   `trend`, `volatility`). Nothing new was captioned on purpose: the convention change is
->   reviewable on its own rather than buried in seven modules of caption text.
-> - **Version 1.0.107 -> 1.0.108**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep —
->   `chartframe.js` + `wbs.js` are packaged). ⚠️ **Run the regeneration in the BACKGROUND**: at the
->   120s foreground timeout it gets killed mid-write and leaves tier3 a version behind tier1/tier2
->   (`test_shared_body_is_identical_across_tiers_no_drift[ps1]` catches it — that happened in batch 2).
-> - **NEXT: AXIS-TITLES batch 3** — the 7 remaining, and they are the hard ones, mostly **multi-chart
->   modules needing per-chart captions, not one call**: `sra.js` (4 charts), `volatility.js` (10
->   visuals, 7 plot rects), `trend.js` (1,183 lines, 5 svg roots), `margin_dashboard.js` (2 charts +
->   a strip), `sra_jcl.js` / `sra_ssi.js` (football scatter + S-curve + non-axis strips/matrices).
->   `sra` and `margin_dashboard` can now use **`y2Label`**. `trend` + `volatility` need the
->   per-metric Y caption (`metric.label + " (" + metric.unit + ")"`; **a metric with no unit is a
->   catalogue gap to REPORT, not a caption to invent**). `drift.js` also needs a `padT` nudge (its Y
->   anchor lands 7px above the first method-name row). **Derive every caption from the rendering
->   code (ADR-0301) — the spec's table has been wrong for 6 of 8 modules checked.**
->   Then **CRISPNESS 11px floor ONLY**. Then GUIDED-MODE (5) + VOICE-DECISION (4), parked on the
->   operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the 13
->   `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
-> - **✅ THE FOUR-THEME VISUAL PASS IS DONE — and it is CLEAN.** Owed since 2026-07-27b, closed by
->   making it EXECUTABLE instead of eyeballed: `tests/web/test_axis_titles_visual.py` drives a real
->   chromium over 4 themes x 3 scales x the 4 pages the golden fixtures chart. **144 caption
->   renders; contrast 5.00-5.95:1** (console 5.95 · daylight 5.52 · jarvis 5.23 · apollo 5.00) —
->   past the 3.0 floor and past WCAG AA's 4.5. No clipping, no collisions, 11px + uppercase
->   everywhere. Mutation-verified against the real CSS (drop `text-transform`, move the token off
->   11px — each turns it red). **Skips unless `pip install playwright`**; the runtime stays
->   stdlib-only (Law 1) and CI has no browser.
-> - **⚠️ TWO THINGS THAT PASS BUILT WRONG FIRST — do not re-make them:** (1) **"themes only change
->   colour" is FALSE** — apollo is `font-family:'IBM Plex Mono'`, so caption geometry genuinely
->   differs per theme and must be measured per theme; the factoring assertion caught it only
->   because it was asserted rather than assumed. (2) **A page with no chart is not a missing
->   caption** — `/resources` needs a resource picked and `/margin` needs tasks named "margin"
->   (`/api/margin` = `total 0.0`), so both correctly render a no-data note; flagging that as a
->   defect would send the next session chasing a bug that does not exist.
+> - **THE DIAGNOSIS IN THE LAST HANDOFF WAS WRONG, and the operator's chosen fix was built on it.**
+>   The two collisions the widened detector found were written down as *"the Y caption sits where
+>   the top gridline's label already is"*, so the fix looked like a placement change: move the Y
+>   captions above the plot. **Measured in a browser, both halves of that premise are false.**
+>   On `/cei` the top gridline label `15` clears the caption by **13px**; the text it actually hits
+>   is a **bar VALUE label** at attr `(51.9, 59.3)`. On `/trend` the colliding caption is the **X**
+>   caption — no Y-placement rule touches it at all. **Eighth false premise in this line of work,
+>   and this one was mine, not the patch spec's.**
+> - **The placement change was implemented, harness-tested, MEASURED, and REVERTED.** An adaptive
+>   "above when the band is free, inside when not" rule chose **inside on all four charted pages** —
+>   every one already has text there (`curves`/`scurve` time-tier header, `cei`'s `data date`,
+>   `trend_drill`'s tallest-bar value label) — so it changed nothing while making a caption's
+>   position **depend on the data** (it would move between frames of an animated stepper). Moving
+>   up unconditionally was worse still: on `/curves` it hit the month letters (11x6, 9x6px) and on
+>   `/cei` it would trade a 14x6 collision for a **56x13** one against `data date`.
+> - **ADR-0303 — placement stays fixed; the DATA LABEL yields.** Two one-line clamps, at the cause:
+>   `cei.js` `ly = Math.max(y(v) - 3, padT + 22)` (bites only bars within ~9% of the locked max —
+>   their label drops just inside the bar) and `trend_drill.js`
+>   `vy = Math.min(padT + plotH - bh - 5, padT + plotH - 18)` (bites only bars under ~13px — a
+>   zero-offender metric is the common case; those labels then line up above the axis).
+> - **RESULT: 144 caption renders, 4 themes x 3 scales, ZERO problems, `KNOWN_COLLISIONS` EMPTY.**
+>   Not "clean" in the earlier sense — the detector now compares each caption against every `<text>`
+>   in its own svg, which is what it was blind to when it first reported clean.
+> - **The reverted attempt is PINNED in `tests/web/js/axis_titles_harness.mjs`**: an svg that
+>   already has text just above the plot must STILL get its caption at `T + 9`. "Put it above the
+>   plot instead" is the change a future reader is most likely to re-propose.
+> - **A DANGLING `ADR-0303` CITATION was deleted** from `test_axis_titles_visual.py` — it credited a
+>   `/forecast` geometry fix that was **reverted**, on a page that is not even in that pass's
+>   `PAGES`. Exactly the defect class ADR-0300 exists to stop; this ADR takes the freed number.
+> - **⚠️ NEW BUILD TRAP, cost a full rebuild:** `python -m build --wheel` writes to `dist/`, but
+>   `tools/installer/build_installers.py` defaults to **`dist/wheel/*.whl`** — it silently embedded
+>   a stale 1.0.108 wheel and produced installers byte-identical to HEAD. **Always
+>   `python -m build --wheel --outdir dist/wheel`.** (`tests/installer/test_installers.py:89` pins
+>   the embedded version to `pyproject`, so the gate does catch it — but only after the fact.)
+>   And still: **run the regeneration in the BACKGROUND** (120s foreground timeout truncates it).
+> - **Version 1.0.108 -> 1.0.109**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep —
+>   `chartframe.js` / `cei.js` / `trend_drill.js` are packaged), all three tiers verified at 1.0.109.
+> - **NEXT: AXIS-TITLES batch 3** — `PENDING` unchanged at **7** (`drift`, `margin_dashboard`,
+>   `sra`, `sra_jcl`, `sra_ssi`, `trend`, `volatility`), and they are the hard ones, mostly
+>   **multi-chart modules needing per-chart captions, not one call**: `sra.js` (4 charts),
+>   `volatility.js` (10 visuals, 7 plot rects), `trend.js` (1,183 lines, **5 chart functions** —
+>   `lineChart`, `multiLineChart`, `varianceTrendChart`, `stackedBarChart`, `groupedBarChart` — so
+>   five call sites), `margin_dashboard.js` (2 charts + a strip), `sra_jcl.js` / `sra_ssi.js`.
+>   `sra` and `margin_dashboard` can use **`y2Label`** (ADR-0302). **`drift.js` was ATTEMPTED and
+>   REVERTED — do not simply re-add the call** (see the long note on `PENDING` in
+>   `tests/web/test_axis_titles.py`; its X caption collides with the rightmost forecast value).
+>   **SEVENTH FALSE PREMISE, still standing:** `/api/trend` emits **no `unit` field**, so the spec's
+>   `metric.label + " (" + metric.unit + ")"` mechanism **does not exist client-side** — every
+>   DCMA-14 metric does carry a unit (`%`, `count`, `ratio`) but it is not plumbed to the client.
+>   Plumbing it is the first task of batch 3, not a caption to invent.
+>   **Derive every caption from the rendering code (ADR-0301) — the spec's table has been wrong for
+>   6 of 8 modules checked.** Then **CRISPNESS 11px floor ONLY**. Then GUIDED-MODE (5) +
+>   VOICE-DECISION (4), parked on the operator. Also open: monolith split phases 2-3; a DOM caption
+>   mechanism for the 13 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp
+>   probe UI (ADR-0293).
 > - **⚠️ HARNESS TRAPS, all self-inflicted, all cost time:** never `wait_until="networkidle"` on
 >   this app (`heartbeat.js` polls 3s, `sysmon.js` 2s — it never settles); never pipe a long run
->   through `| tail` (buffers to EOF, so progress prints vanish); and **never `pkill -f <pattern>`
->   where the pattern appears in your own command line** — it kills the shell running it.
+>   through `| tail` (buffers to EOF, so progress prints vanish); **never `pkill -f <pattern>`**
+>   where the pattern appears in your own command line (it kills the shell running it); and
+>   **"themes only change colour" is FALSE** — apollo is `font-family:'IBM Plex Mono'`, so caption
+>   geometry genuinely differs per theme and must be measured per theme.
+> - **A page with no chart is not a missing caption** — `/resources` needs a resource picked and
+>   `/margin` needs tasks named "margin", so with the golden fixtures both correctly render a
+>   no-data note. Flagging that would send the next session chasing a bug that does not exist.
 > - **DEPLOY NOTE (operator has no local clone):** download `installer/install-tier2.ps1` from the
 >   GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
@@ -70,6 +76,7 @@
 >   self-referential `SF_MPXJ_HOME`, a junction, or a symlink; and a drive root no longer aborts the
 >   install. All executed on Windows in CI (ADR-0300). Offline: Code -> Download ZIP, run from
 >   inside the extracted folder.
+
 
 
 

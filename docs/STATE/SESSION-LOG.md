@@ -8434,3 +8434,40 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   **LESSON: when diagnosing a hung or killed job, suspect the harness before the subject.**
 - Mutation-verified against the real CSS (drop `text-transform`, move `--sf-fs-axis-title` off
   11px — each turns it red), tree confirmed byte-identical afterwards.
+
+## 2026-07-27m — the caption was never the problem (ADR-0303, v1.0.109)
+
+- **The diagnosis in the previous section was wrong, and a fix was built on it before it was
+  measured.** The two collisions the widened detector found were recorded as *"the Y caption sits
+  where the top gridline's label already is"* — which made the remedy look like a placement change
+  (move the Y captions above the plot), and that is what the operator was asked to choose between.
+  A browser probe of every caption's box plus every neighbouring `<text>` box falsified **both**
+  halves: on `/cei` the top gridline label `15` clears the caption by **13px** and the text it hits
+  is a **bar VALUE label** at attr `(51.9, 59.3)`; on `/trend` the colliding caption is the **X**
+  caption, which no Y-placement rule touches. **LESSON: a collision report names two boxes. Read
+  BOTH. I named the caption and then assumed the other box from the source, and the assumption
+  survived four commits, an operator decision, and an implementation before anything measured it.**
+- **The chosen change was implemented, harness-tested, measured, and REVERTED.** An adaptive
+  "above when the band is free, inside when not" rule chose *inside* on all four charted pages —
+  every one already has text there — so it changed **nothing**, while making a caption's position
+  depend on the data (it would move between frames of an animated stepper). Unconditional "above"
+  was worse: `/curves` month letters (11x6, 9x6px), and on `/cei` a **56x13** hit against `data
+  date` in place of the 14x6 it removed. **LESSON: "it passed the unit harness" proves the rule
+  does what you wrote; it says nothing about whether the rule was worth writing. The measurement
+  that justifies a change has to run before the change is adopted, not after it is implemented.**
+- **ADR-0303 — placement stays fixed; the DATA LABEL yields.** Two one-line clamps at the cause
+  (`cei.js` `Math.max(y(v) - 3, padT + 22)`, `trend_drill.js`
+  `Math.min(padT + plotH - bh - 5, padT + plotH - 18)`), each biting only the small set of bars
+  that reach a caption's band. Result: **144 caption renders, 4 themes x 3 scales, zero problems,
+  `KNOWN_COLLISIONS` empty.**
+- **A dangling `ADR-0303` citation was deleted** from `test_axis_titles_visual.py`: it credited a
+  `/forecast` geometry fix that was reverted, on a page not in that pass's `PAGES`. Same defect
+  class ADR-0300 exists to stop, found in work merged one commit earlier. **LESSON: an ADR number
+  written into code before the ADR file exists is a forward reference that survives a revert.**
+- **⚠️ Build trap, cost a full rebuild:** `python -m build --wheel` writes to `dist/`, but
+  `tools/installer/build_installers.py` defaults to **`dist/wheel/*.whl`**. It silently embedded a
+  stale 1.0.108 wheel and emitted nine installers byte-identical to HEAD — a version bump that
+  shipped the previous version. Always `python -m build --wheel --outdir dist/wheel`.
+  `tests/installer/test_installers.py:89` does pin the embedded version to `pyproject`, so the gate
+  catches it — **LESSON: a silent no-op is the failure mode to fear from a defaulted path
+  argument; check the artefact, not the exit code.**
