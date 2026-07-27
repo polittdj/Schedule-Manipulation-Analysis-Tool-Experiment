@@ -355,7 +355,7 @@
   }
 
   // One line chart: values per version; null = no data (never fabricated as 0).
-  function lineChart(title, labels, values, valueText, color, desc, seriesLabel) {
+  function lineChart(title, labels, values, valueText, color, desc, seriesLabel, yLabel) {
     var W = 460, H = 210, padL = 14, padR = 14, padT = 26, padB = 54;
     var known = values.filter(function (v) { return v != null; });
     if (!known.length) return;
@@ -386,7 +386,11 @@
       while (layer.firstChild) layer.removeChild(layer.firstChild);
       // de-overlap the inline value labels (see multiLineChart): a suppressed value stays on hover.
       var placed = [];
+      function inCaptionBand(lx, ly) {
+        return lx > W - padR - 165 && ly > H - padB - 22;
+      }
       function labelFits(lx, ly) {
+        if (inCaptionBand(lx, ly)) return false; // the data label yields to the caption (ADR-0303)
         for (var p = 0; p < placed.length; p++) {
           if (Math.abs(placed[p][0] - lx) < 28 && Math.abs(placed[p][1] - ly) < 13) return false;
         }
@@ -418,6 +422,11 @@
       });
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
+    // Axis captions via the ONE shared helper (ADR-0298/0301). X is always the locked version
+    // axis; Y comes from the call site, which knows what this generic builder is plotting.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version", yLabel: yLabel || seriesLabel || title.split(" (")[0],
+    });
     wrap.appendChild(svg);
     legend(wrap, [{ color: color, label: seriesLabel || title.split(" (")[0] }]);
     if (window.SFA11y) {
@@ -438,7 +447,7 @@
   }
 
   // Multi-line chart: series is [{label, values, color}].
-  function multiLineChart(title, labels, series, desc) {
+  function multiLineChart(title, labels, series, desc, yLabel) {
     var W = 460, H = 210, padL = 14, padR = 14, padT = 26, padB = 54;
     var allVals = [];
     series.forEach(function (s) {
@@ -473,7 +482,11 @@
       // already placed this frame (operator 2026-07-13 — dense series stacked unreadable numbers).
       // A suppressed value is never lost: every point keeps its hover call-out (the <title> below).
       var placed = [];
+      function inCaptionBand(lx, ly) {
+        return lx > W - padR - 165 && ly > H - padB - 22;
+      }
       function labelFits(lx, ly) {
+        if (inCaptionBand(lx, ly)) return false; // the data label yields to the caption (ADR-0303)
         for (var p = 0; p < placed.length; p++) {
           if (Math.abs(placed[p][0] - lx) < 26 && Math.abs(placed[p][1] - ly) < 12) return false;
         }
@@ -515,6 +528,9 @@
       });
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version", yLabel: yLabel || "Index value",
+    });
     wrap.appendChild(svg);
     legend(wrap, series.map(function (s) { return { color: s.color, label: s.label }; }), {
       toggle: series.length > 1, // multi-series charts get click-to-show/hide legends (ADR-0276)
@@ -597,7 +613,11 @@
     function drawData(k) {
       while (layer.firstChild) layer.removeChild(layer.firstChild);
       var placed = [];
+      function inCaptionBand(lx, ly) {
+        return lx > W - padR - 165 && ly > H - padB - 22;
+      }
       function labelFits(lx, ly) {
+        if (inCaptionBand(lx, ly)) return false; // the data label yields to the caption (ADR-0303)
         for (var p = 0; p < placed.length; p++) {
           if (Math.abs(placed[p][0] - lx) < 30 && Math.abs(placed[p][1] - ly) < 13) return false;
         }
@@ -632,6 +652,11 @@
       });
       if (sfMeta && sfMeta.n > 1) layer.appendChild(sfFrameGuide(x(k), padT, H - padB));
     }
+    // Y derives from this builder's own signed-variance semantics + its unit argument.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version",
+      yLabel: "Variance (" + (unit || "units") + ", + ahead / \u2212 behind)",
+    });
     wrap.appendChild(svg);
     legend(wrap, [
       { color: "var(--ok)", label: "Ahead (favorable)" },
@@ -679,7 +704,7 @@
     return LAZY_SEGMENTS[key] ? { segment: key } : null;
   }
 
-  function stackedBarChart(title, labels, data, segments, desc) {
+  function stackedBarChart(title, labels, data, segments, desc, yLabel) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
     var maxTotal = 0;
     data.forEach(function (d) {
@@ -746,6 +771,9 @@
         layer.appendChild(sfFrameGuide(padL + k * (bw + gap) + bw / 2, padT, padT + barH));
       }
     }
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version", yLabel: yLabel || "Activities (count)",
+    });
     wrap.appendChild(svg);
     legend(wrap, segments.map(function (s) { return { color: s.color, label: s.label }; }), {
       toggle: segments.length > 1, // click a segment in the legend to show/hide it (ADR-0276)
@@ -768,7 +796,7 @@
   }
 
   // Grouped bar chart: groups is [{key, label, color}]; data is [{group values}] per version.
-  function groupedBarChart(title, labels, data, groups, desc) {
+  function groupedBarChart(title, labels, data, groups, desc, yLabel) {
     var W = 460, H = 220, padL = 34, padR = 14, padT = 26, padB = 54;
     var maxVal = 0;
     data.forEach(function (d) {
@@ -833,6 +861,9 @@
         layer.appendChild(sfFrameGuide(padL + k * (totalBw + gap) + totalBw / 2, padT, padT + barH));
       }
     }
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Schedule version", yLabel: yLabel,
+    });
     wrap.appendChild(svg);
     legend(wrap, groups.map(function (g) { return { color: g.color, label: g.label }; }), {
       toggle: groups.length > 1, // click a group in the legend to show/hide it (ADR-0276)
@@ -891,24 +922,25 @@
         function (v, i) { return data.versions[i].finish; },
         "var(--accent)",
         "How the computed project finish moves across versions, in days relative to the first version. A rising line is a slipping finish.",
-        "Project finish (Δdays)"
+        "Project finish (Δdays)",
+        "Finish vs first version (calendar days)"
       );
       lineChart("Completed activities", labels,
         data.versions.map(function (v) { return v.completed; }),
         function (v) { return String(v); }, "var(--ok)",
         "Count of activities reported 100% complete in each version (work delivered over time).",
-        "Completed");
+        "Completed", "Completed activities (count)");
       lineChart("Critical (incomplete) activities", labels,
         data.versions.map(function (v) { return v.critical; }),
         function (v) { return String(v); }, "var(--bad)",
         "Count of incomplete activities on the critical path (total float ≤ 0) per version — the size of the at-risk path.",
-        "Critical");
+        "Critical", "Critical activities (count)");
       var ml = data.quality.missing_logic;
       if (ml) {
         lineChart("Missing logic (activities)", labels, ml.values,
           function (v) { return String(v); }, "var(--warn)",
           "Activities missing a predecessor or successor link (DCMA open-ends) per version — lower is better.",
-          "Missing logic");
+          "Missing logic", "Open-ended activities (count)");
       }
 
       // ── PBIX p4 — Cross File Comparison ───────────────────────────────────────
@@ -974,7 +1006,8 @@
         });
         if (execSeries.length) {
           multiLineChart("Execution indices — BEI / CEI / HMI (are we executing the plan?)", labels, execSeries,
-            "The handbook's combined execution panel (Fig. 7-21): BEI (cumulative baseline execution), CEI (this period's forecast execution), and HMI (this period's baseline execution) on one axis. At or above 1.0 is on-plan; all three falling together is systemic slippage, while BEI healthy but CEI/HMI sagging is recent erosion the cumulative index has not caught up to yet.");
+            "The handbook's combined execution panel (Fig. 7-21): BEI (cumulative baseline execution), CEI (this period's forecast execution), and HMI (this period's baseline execution) on one axis. At or above 1.0 is on-plan; all three falling together is systemic slippage, while BEI healthy but CEI/HMI sagging is recent erosion the cumulative index has not caught up to yet.",
+            "Index (ratio — 1.0 = on plan)");
         }
 
         // Handbook Figs 7-12/7-13: the SVt (Earned-Schedule time variance) trend, zero-baselined
@@ -1007,7 +1040,8 @@
           });
           if (values.some(function (v) { return v != null; })) {
             lineChart(s.label + " across versions", labels, values,
-              function (v) { return v == null ? "—" : v.toFixed(2); }, s.color, s.desc, s.label);
+              function (v) { return v == null ? "—" : v.toFixed(2); }, s.color, s.desc, s.label,
+              "Index (ratio — 1.0 = on plan)");
           }
         });
 
@@ -1029,7 +1063,8 @@
         });
         if (feiSeries.length) {
           multiLineChart("Forecast Execution Index (FEI) across versions", labels, feiSeries,
-            "Forecast (to-go) execution vs the baseline for the REMAINING work: count of activities still forecast to start/finish ahead, over the count the baseline placed there. Above 1.0 means more work is forecast in the remaining window than baselined — a to-go bow wave.");
+            "Forecast (to-go) execution vs the baseline for the REMAINING work: count of activities still forecast to start/finish ahead, over the count the baseline placed there. Above 1.0 means more work is forecast in the remaining window than baselined — a to-go bow wave.",
+            "FEI (ratio — 1.0 = matches baseline)");
         }
 
         var hmiSeries = [
@@ -1050,7 +1085,8 @@
         });
         if (hmiSeries.length) {
           multiLineChart("Hit or Miss Index (HMI) across periods", labels, hmiSeries,
-            "Period-over-period baseline execution: of the activities the baseline placed to finish in each status period, the share that actually completed in it. The first version has no prior period. 1.0 = every commitment for that period was met.");
+            "Period-over-period baseline execution: of the activities the baseline placed to finish in each status period, the share that actually completed in it. The first version has no prior period. 1.0 = every commitment for that period was met.",
+            "HMI (ratio — 1.0 = all met)");
         }
 
         var ceiSeries = [
@@ -1074,7 +1110,8 @@
         });
         if (ceiSeries.length) {
           multiLineChart("Current Execution Index (CEI) across periods", labels, ceiSeries,
-            "Period-over-period forecast execution: of the activities the PRIOR schedule forecast to finish in each status period, the share that actually completed by the data date. The first version has no prior period. 1.0 = the team executed everything it last committed to.");
+            "Period-over-period forecast execution: of the activities the PRIOR schedule forecast to finish in each status period, the share that actually completed by the data date. The first version has no prior period. 1.0 = the team executed everything it last committed to.",
+            "CEI (ratio — 1.0 = all executed)");
         }
 
         var floatRatioSeries = [
@@ -1095,7 +1132,8 @@
         });
         if (floatRatioSeries.length) {
           multiLineChart("Float Ratio™ across periods", labels, floatRatioSeries,
-            "Average activity total float divided by remaining duration (the 'Float Ratio™' metric), over the normal planned/in-progress activities, scored per version so it reads period to period. Higher = more float per day of remaining work. Bands: <0.1 very tight, 0.1–0.3 tight, 0.3–0.6 healthy, >0.6 generous (check for missing logic). A falling ratio means the schedule is losing room; the solid line is the mean-of-ratios, the muted line the more outlier-robust ratio-of-means.");
+            "Average activity total float divided by remaining duration (the 'Float Ratio™' metric), over the normal planned/in-progress activities, scored per version so it reads period to period. Higher = more float per day of remaining work. Bands: <0.1 very tight, 0.1–0.3 tight, 0.3–0.6 healthy, >0.6 generous (check for missing logic). A falling ratio means the schedule is losing room; the solid line is the mean-of-ratios, the muted line the more outlier-robust ratio-of-means.",
+            "Float per remaining day (ratio)");
         }
 
         var sfrVals = data.versions.map(function (v) {
@@ -1108,7 +1146,8 @@
             function (v) { return v.toFixed(2); },
             "var(--focus)",
             "The ratio of activity starts to finishes per version — a sustained imbalance flags work starting faster than it finishes.",
-            "Start/Finish ratio"
+            "Start/Finish ratio",
+            "Starts \u00f7 finishes (ratio)"
           );
         }
       }
@@ -1126,7 +1165,8 @@
             { key: "total_days", label: "Total Float", color: "var(--accent)" },
             { key: "free_days",  label: "Free Float",  color: "var(--ok)" },
           ],
-          "Total and free float summed across the schedule (working days) per version — shrinking float means a tightening, more fragile plan."
+          "Total and free float summed across the schedule (working days) per version — shrinking float means a tightening, more fragile plan.",
+          "Float summed (working days)"
         );
 
         groupedBarChart(
@@ -1149,7 +1189,8 @@
             { key: "t5",  label: "<5 days", color: "var(--warn)" },
             { key: "t10", label: "<10 days", color: "var(--accent)" },
           ],
-          "Share of incomplete activities with low total float (0 / under 5 / under 10 working days) per version — more low-float work is more critical/near-critical exposure."
+          "Share of incomplete activities with low total float (0 / under 5 / under 10 working days) per version — more low-float work is more critical/near-critical exposure.",
+          "Incomplete activities (%)"
         );
 
         groupedBarChart(
@@ -1172,7 +1213,8 @@
             { key: "f5",  label: "<5 days", color: "var(--warn)" },
             { key: "f10", label: "<10 days", color: "var(--accent)" },
           ],
-          "Share of incomplete activities with low free float per version — free float is the tighter constraint, so a rising 0-day band is immediate downstream pressure."
+          "Share of incomplete activities with low free float per version — free float is the tighter constraint, so a rising 0-day band is immediate downstream pressure.",
+          "Incomplete activities (%)"
         );
       }
 

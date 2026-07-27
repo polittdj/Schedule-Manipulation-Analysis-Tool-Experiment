@@ -103,26 +103,17 @@ INCIDENTAL_SVG = {
 #: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
 #: helper, and may not be listed here unless it really renders SVG — both are asserted.
 PENDING = {
-    # ``drift.js`` was ATTEMPTED and REVERTED — do not simply re-add the call. Three facts, all
-    # measured in a browser by ``test_axis_titles_visual.py``, not reasoned about:
-    #   1. Its captions are "Forecast finish date" x "Forecast method". The patch spec's
-    #      "SCHEDULE VERSION (UPDATE)" by "SLIP AGAINST BASELINE (WORKDAYS)" is false for this
-    #      chart: X is a DATE scale and Y is three categorical forecast-method rows.
-    #   2. At the shipped row offset the Y caption overlaps the first row name by **136x6px**.
-    #      Nudging ``padT`` does NOT fix it — padT moves the caption and the rows together, so the
-    #      gap is invariant. The ROW OFFSET has to change (``padT + 14`` -> ``padT + 26``, with H
-    #      grown 12px to keep the last row's clearance), which does fix it.
-    #   3. But then the X caption overlaps the rightmost forecast value label by **75x3px** at 90%
-    #      page scale. A caption that collides is worse than none, and the helper requires both
-    #      labels or neither — so drift needs a placement answer, not another nudge.
-    # It is blocked on the same decision as ``KNOWN_COLLISIONS`` in the visual test: where does a
-    # caption go when the chart already has text at that corner?
-    "drift.js",
+    # ``drift.js`` graduated in ADR-0303 batch 3a after being attempted and reverted once. The
+    # placement answer its revert note demanded turned out to be ADR-0303's law — the caption
+    # stays fixed, the DATA yields: the method rows sit 12px lower (``padT + 26``, H grown to
+    # match) clearing the Y caption's 136x6px hit on the first row name, and the last row's
+    # forecast date label clamps to ``H - padB - 15`` clearing the X caption's 75x3px hit at
+    # 90% scale. Both collisions are MEASURED closed by ``test_axis_titles_visual.py``, which
+    # walks ``/forecast`` in every theme at every scale.
     "margin_dashboard.js",
     "sra.js",
     "sra_jcl.js",
     "sra_ssi.js",
-    "trend.js",
     "volatility.js",
 }
 

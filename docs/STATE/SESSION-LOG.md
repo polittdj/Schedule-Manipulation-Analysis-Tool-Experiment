@@ -8496,3 +8496,29 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   manufactures exactly the confidence mutation testing exists to prevent.**
 - v1.0.109 wheel + nine installers REBUILT to embed the fixed `app.js` (same version — it exists
   only on unmerged #461; one merged PR = one version).
+
+## 2026-07-27o — AXIS-TITLES batch 3a: trend.js (5 builders) + drift.js re-landed (ADR-0303 applied)
+
+- **The redesign mandate**: the operator dropped the design-handoff bundle into
+  `00_REFERENCE_INTAKE/` on `main` and directed "use it to redesign the UI, don't stop until
+  complete." Several files arrived GARBLED (both ASTROLABE .dc.html files are a PNG and an MP4;
+  CLAUDE-CODE-HANDOFF.md / DESIGN-GUIDE.md / README.md / github.md / mock-api.js are images) —
+  the usable corpus is `Mission Ops Redesign v2.dc.html` (real HTML, THE deliverable per the
+  handoff), `support.js`, the AISMAT token CSS, and the per-screen PNGs. The Mission Ops chrome
+  (rail/acts/kicker/story-footer) is already integrated, so the in-flight phase IS the chart
+  contract: AXIS-TITLES.
+- **trend.js**: all five generic builders (`lineChart`, `multiLineChart`, `varianceTrendChart`,
+  `stackedBarChart`, `groupedBarChart`) now call the ONE helper; Y captions supplied per call
+  site (ADR-0301 — derived from what each call plots; the version axis is the X everywhere).
+  The spec's `metric.unit` plumbing was NOT built — no caption needed it: every call site's
+  quantity (count/ratio/wd/%) is knowable from the code that computes its values.
+- **The first visual run found 92 problems — almost all one thing**: the X caption's corner band
+  collides with INLINE VALUE LABELS whose data point lands at the plot's bottom-right. Fixed by
+  ADR-0303's law, mechanically: the existing `labelFits` de-overlap now also refuses the caption
+  band (suppressed values keep their hover `<title>`, the contract the de-overlap already had).
+- **drift.js re-landed**: rows down 12px (`padT + 26`, H grown) closes the 136x6px Y hit; the
+  last row's date label clamps to `H - padB - 20` — the FIRST clamp (-15) left a 73x2px residue
+  because a text box extends ~3px BELOW its baseline. **LESSON: clamp text boxes, not baselines —
+  descent is real geometry.** `/forecast` joined the visual pass so both stay measured.
+- **RESULT: 648 caption renders, 4 themes x 3 scales, 5 pages, ZERO problems.** `PENDING` is 5
+  (`margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`, `volatility` — batch 3b).

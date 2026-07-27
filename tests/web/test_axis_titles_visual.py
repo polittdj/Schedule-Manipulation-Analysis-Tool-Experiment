@@ -52,7 +52,10 @@ SCALES = ("0.9", "1", "1.25")
 #: picked from its dropdown and ``/margin`` needs tasks named "margin"; with these fixtures both
 #: correctly render a "no data" note and NO chart, so a missing caption there would be a false
 #: positive rather than a defect.
-PAGES = ("/curves", "/scurve", "/cei", "/trend")
+#: ``/forecast`` joined in ADR-0303 batch 3a: drift.js's captions were attempted, reverted on
+#: two measured collisions, and re-landed with the ADR-0303 clamps — this pass is what proves
+#: those collisions stay closed.
+PAGES = ("/curves", "/scurve", "/cei", "/trend", "/forecast")
 
 #: Caption collisions accepted as debt. EMPTY, and it should stay that way — the entry below is
 #: kept as a record of why, because the wrong diagnosis here cost a full round trip.

@@ -55,19 +55,20 @@
 >   per-screen PNGs. Standing instruction: **use it to redesign the UI, phased per the bundle's
 >   own order (tokens -> chrome -> one page shell per PR -> new panels), presentation-only, no
 >   functionality lost, and keep going until complete.**
-> - **NEXT: AXIS-TITLES batch 3** — `PENDING` unchanged at **7** (`drift`, `margin_dashboard`,
->   `sra`, `sra_jcl`, `sra_ssi`, `trend`, `volatility`), and they are the hard ones, mostly
->   **multi-chart modules needing per-chart captions, not one call**: `sra.js` (4 charts),
->   `volatility.js` (10 visuals, 7 plot rects), `trend.js` (1,183 lines, **5 chart functions** —
->   `lineChart`, `multiLineChart`, `varianceTrendChart`, `stackedBarChart`, `groupedBarChart` — so
->   five call sites), `margin_dashboard.js` (2 charts + a strip), `sra_jcl.js` / `sra_ssi.js`.
->   `sra` and `margin_dashboard` can use **`y2Label`** (ADR-0302). **`drift.js` was ATTEMPTED and
->   REVERTED — do not simply re-add the call** (see the long note on `PENDING` in
->   `tests/web/test_axis_titles.py`; its X caption collides with the rightmost forecast value).
->   **SEVENTH FALSE PREMISE, still standing:** `/api/trend` emits **no `unit` field**, so the spec's
->   `metric.label + " (" + metric.unit + ")"` mechanism **does not exist client-side** — every
->   DCMA-14 metric does carry a unit (`%`, `count`, `ratio`) but it is not plumbed to the client.
->   Plumbing it is the first task of batch 3, not a caption to invent.
+> - **AXIS-TITLES batch 3a LANDED**: `trend.js` — all FIVE builders call the one helper, Y
+>   captions per call site; the spec's `metric.unit` plumbing was NOT needed (every call site's
+>   quantity is knowable from its own code). `drift.js` re-landed under ADR-0303's law (rows down
+>   12px; last row's date label clamps to `H - padB - 20` — clamp BOXES not baselines, descent is
+>   ~3px). First visual run measured 92 problems (X caption vs inline value labels at the plot's
+>   bottom-right) — fixed by teaching the existing `labelFits` de-overlap to refuse the caption
+>   band; suppressed values keep their hover title. **648 renders, 5 pages, zero problems.**
+> - **NEXT: AXIS-TITLES batch 3b** — `PENDING` now at **5** (`drift`, `margin_dashboard`,
+>   (`margin_dashboard`, `sra`, `sra_jcl`, `sra_ssi`, `volatility`): `sra.js` (4 charts),
+>   `volatility.js` (10 visuals, 7 plot rects), `margin_dashboard.js` (2 charts + a strip),
+>   `sra_jcl.js` / `sra_ssi.js` (football scatter + S-curve). `sra` and `margin_dashboard` can
+>   use **`y2Label`** (ADR-0302). Expect the batch-3a collision family — X caption vs inline
+>   value/point labels at the plot's bottom-right; the fix is the `labelFits`-refuses-the-band
+>   pattern from `trend.js`, not a placement change.
 >   **Derive every caption from the rendering code (ADR-0301) — the spec's table has been wrong for
 >   6 of 8 modules checked.** Then **CRISPNESS 11px floor ONLY**. Then GUIDED-MODE (5) +
 >   VOICE-DECISION (4), parked on the operator. Also open: monolith split phases 2-3; a DOM caption
