@@ -105,13 +105,12 @@ html[data-theme=jarvis]{
   --bad-bg:rgba(74,16,26,.55);--sum-ink:#7fb0cc;--beyond:#123146;--beyond-ink:#3f6a86;
   --done-overlay:rgba(190,240,255,.35);--line:#0d3a52;--border:#0d3a52;
   --grid-line:rgba(25,211,255,.14);--focus:#ffc857;--grid-dot:rgba(25,211,255,.12)}
-html[data-theme=jarvis] body{
-  background:
-    radial-gradient(1200px 700px at 75% -10%,rgba(25,211,255,.10),transparent 60%),
-    radial-gradient(900px 600px at -10% 110%,rgba(255,200,87,.05),transparent 55%),
-    repeating-linear-gradient(0deg,transparent 0 34px,rgba(25,211,255,.028) 34px 35px),
-    repeating-linear-gradient(90deg,transparent 0 34px,rgba(25,211,255,.028) 34px 35px),
-    var(--bg)}
+/* The JARVIS atmosphere lives in the --bgfx token (sf-themes.css, prototype-verbatim values)
+   and paints through base.css's `background:var(--bgfx,var(--bg)); background-attachment:fixed`.
+   The body rule that used to live here (higher specificity, shorthand) silently clobbered that
+   wiring — the exact clobber pattern ADR-0303's round fixed for apollo: the token was defined
+   but DEAD, the attachment computed `scroll`, and this rule's .028 alphas beat the token's .03.
+   Confirmed mechanically by the Ultracode round-1 lead; deleted so ONE source paints jarvis. */
 html[data-theme=jarvis] header{
   background:linear-gradient(95deg,#031320 0%,#04202f 60%,#031320 100%);
   border-bottom:1px solid var(--accent);
