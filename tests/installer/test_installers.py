@@ -12,8 +12,10 @@ static assets (the packaging gap the first end-to-end run caught).
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import re
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -23,6 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 TIERS = ("tier1", "tier2", "tier3")
 FAMILIES = ("ps1", "sh", "command")
 _END_CONFIG = "END TIER CONFIG"
+MPXJ_DIR = ROOT / "tools" / "mpxj"
 
 
 def _read(tier: str, family: str) -> str:
@@ -217,9 +220,158 @@ def test_installers_deploy_mpxj_and_a_single_self_stopping_icon() -> None:
     assert '"Start Schedule Forensics.lnk", "Stop Schedule Forensics.lnk"' in tpl_ps1  # cleanup
     for family in ("sh", "command"):
         tpl = (ROOT / "tools" / "installer" / f"template.{family}").read_text(encoding="utf-8")
-        assert 'cp -R "$REPO_MPXJ"' in tpl and "MpxjToMspdi.class" in tpl, family
+        assert 'cp -R "$cand"' in tpl and "MpxjToMspdi.class" in tpl, family
     for tier in TIERS:  # the generated installers carry all of it
         ps1 = _read(tier, "ps1")
         assert "MpxjToMspdi.class" in ps1 and '"Schedule Forensics.lnk"' in ps1
         for family in ("sh", "command"):
-            assert 'cp -R "$REPO_MPXJ"' in _read(tier, family), (tier, family)
+            assert 'cp -R "$cand"' in _read(tier, family), (tier, family)
+
+
+# ── ADR-0299: the one-file installer must deliver .mpp support with NO repo checkout ──────
+
+
+def _manifest(text: str) -> dict[str, str]:
+    """The embedded ``<sha256>  <relpath>`` MPXJ manifest, as {relpath: sha}."""
+    m = re.search(r"<<'SF_MPXJ_MANIFEST_EOF'\n(.*?)\nSF_MPXJ_MANIFEST_EOF", text, re.S)
+    if m is None:  # the ps1 family carries it in a single-quoted here-string
+        m = re.search(r"\$MpxjManifest = @'\n(.*?)\n'@", text, re.S)
+    assert m, "MPXJ manifest block not found"
+    out: dict[str, str] = {}
+    for line in m.group(1).splitlines():
+        if line.strip():
+            sha, rel = line.split(None, 1)
+            out[rel.strip()] = sha.lower()
+    return out
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_mpxj_manifest_covers_every_vendored_file_with_a_matching_hash(family: str) -> None:
+    """The manifest is the download's integrity contract: it must name EVERY file under
+    tools/mpxj and each SHA-256 must match the bytes on disk. Touch a jar without
+    regenerating and this fails — the MPXJ twin of the wheel-lockstep guard below."""
+    manifest = _manifest(_read("tier1", family))
+    on_disk = {
+        p.relative_to(MPXJ_DIR).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+        for p in MPXJ_DIR.rglob("*")
+        if p.is_file()
+    }
+    assert manifest == on_disk, "embedded MPXJ manifest is STALE vs tools/mpxj — regenerate"
+    assert "classes/MpxjToMspdi.class" in manifest
+    assert sum(1 for k in manifest if k.endswith(".jar")) >= 20, "dependency jars missing"
+
+
+@pytest.mark.parametrize("family", FAMILIES)
+def test_mpxj_download_url_points_at_this_repo(family: str) -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    owner_repo = re.search(r'^Repository\s*=\s*"https://github\.com/([^"]+)"', pyproject, re.M)
+    assert owner_repo
+    text = _read("tier1", family)
+    assert f"https://raw.githubusercontent.com/{owner_repo.group(1)}/" in text
+    assert "/tools/mpxj" in text
+
+
+@pytest.mark.parametrize("tier", TIERS)
+@pytest.mark.parametrize("family", FAMILIES)
+def test_mpxj_support_is_not_gated_on_a_repo_checkout(tier: str, family: str) -> None:
+    """THE REGRESSION (ADR-0299). The operator has no clone: they download ONE installer into
+    ~/Downloads and run it. The old lookup was `<installer dir>/../tools/mpxj`, which resolved
+    to ~/tools/mpxj, so native .mpp import was silently left OFF and the run still printed
+    DONE. Every installer must now carry a download fallback and verify what it fetches."""
+    text = _read(tier, family)
+    assert "SF_MPXJ_OFFLINE" in text, "no air-gap opt-out"
+    assert "raw.githubusercontent.com" in text, "no download fallback — checkout-only again"
+    lowered = text.lower()
+    assert "sha-256 verified" in lowered or "sha256" in lowered, "download is unverified"
+    assert "run the installer from the repository checkout" not in text, "checkout-only advice"
+
+
+def _mpxj_block(family: str) -> str:
+    text = _read("tier1", family)
+    start = text.index("# --- 3b. vendored MPXJ")
+    return text[start : text.index("\n# --- 4.", start)]
+
+
+def _run_mpxj_block(tmp_path: Path, *, script_dir: Path, env: dict[str, str]) -> str:
+    """Execute the REAL shipped 3b block standalone (stubbed ok/warn), no venv, no network."""
+    harness = script_dir / "mpxj_block.sh"
+    harness.write_text(
+        "set -euo pipefail\n"
+        'ok(){ echo "[ok] $*"; }\n'
+        'warn(){ echo "[!!] $*"; }\n'
+        f'INSTALL_ROOT="{tmp_path / "root"}"\n' + _mpxj_block("sh") + "\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        ["bash", str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={"PATH": "/usr/bin:/bin:/usr/local/bin", "HOME": str(tmp_path), **env},
+    )
+    return proc.stdout + proc.stderr
+
+
+def test_mpxj_block_deploys_a_local_copy_without_touching_the_network(tmp_path: Path) -> None:
+    """The checkout/offline-media path still wins — and short-circuits the download."""
+    script_dir = tmp_path / "media"
+    (script_dir / "tools" / "mpxj" / "classes").mkdir(parents=True)
+    (script_dir / "tools" / "mpxj" / "classes" / "MpxjToMspdi.class").write_bytes(b"stub")
+    # SF_MPXJ_OFFLINE stays unset: if the local copy were missed this would try to download,
+    # so a pass proves the local branch short-circuits it.
+    out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
+    assert "[ok]" in out and "native .mpp import enabled" in out, out
+    assert (tmp_path / "root" / "tools" / "mpxj" / "classes" / "MpxjToMspdi.class").exists()
+
+
+def test_a_failed_model_download_neither_aborts_the_install_nor_claims_success(
+    tmp_path: Path,
+) -> None:
+    """ADR-0299. The AI step is documented as optional ("the tool runs fully without it"), but
+    under ``set -euo pipefail`` a failing ``ollama pull`` aborted the whole installer right
+    here — before the launchers, uninstaller and README were written, so the operator was left
+    with a venv and no way to start the tool. It must warn and carry on."""
+    text = _read("tier1", "sh")
+    start = text.index("# --- 4. Ollama")
+    block = text[start : text.index("\n# --- 5.", start)].replace(
+        "read -r -p \"    Install Ollama + pull '$OLLAMA_MODEL' "
+        '(~${MODEL_DISK_GB} GB download)? [Y/n] " ans || ans="n"',
+        "true",
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "ollama"  # present, but every pull fails (disk full / daemon down)
+    stub.write_text('#!/bin/sh\n[ "$1" = pull ] && { echo boom >&2; exit 1; }\nexit 0\n')
+    stub.chmod(0o755)
+    harness = tmp_path / "ai.sh"
+    harness.write_text(
+        "set -euo pipefail\n"
+        'step(){ echo "==> $*"; }\nok(){ echo "[ok] $*"; }\nwarn(){ echo "[!!] $*"; }\n'
+        'SMOKE=0\nOLLAMA_MODEL="m"\nMODEL_DISK_GB=5\nans="y"\n'
+        + block
+        + "\necho REACHED_LAUNCHERS\n",
+        encoding="utf-8",
+    )
+    proc = subprocess.run(
+        ["bash", str(harness)],
+        capture_output=True,
+        text=True,
+        timeout=120,
+        env={"PATH": f"{bin_dir}:/usr/bin:/bin", "HOME": str(tmp_path)},
+    )
+    out = proc.stdout + proc.stderr
+    assert "REACHED_LAUNCHERS" in out, f"a failed model pull aborted the install:\n{out}"
+    assert proc.returncode == 0, out
+    assert "Model download failed" in out, out
+    assert "[ok] Model ready" not in out, "claimed a model it never got"
+
+
+def test_mpxj_block_fails_honestly_when_it_cannot_get_the_converter(tmp_path: Path) -> None:
+    """No local copy + no download allowed => an explicit OFF warning and NO false [ok],
+    and no half-written converter tree left behind (the ADR-0192 honesty rule)."""
+    script_dir = tmp_path / "downloads"
+    script_dir.mkdir()
+    out = _run_mpxj_block(tmp_path, script_dir=script_dir, env={"SF_MPXJ_OFFLINE": "1"})
+    assert "native .mpp import stays OFF" in out, out
+    assert "native .mpp import enabled" not in out, out
+    assert not (tmp_path / "root" / "tools" / "mpxj").exists()

@@ -8030,3 +8030,48 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   this sandbox cannot automate. Flagged in the ADR and the PR rather than asserted.
 - **NEXT:** batches 1-5 drive `PENDING` (16) to empty (~5 modules/PR; the spec's §3 caption strings
   are sound — only its premises were not), then CRISPNESS 11px floor (the token is already the seam).
+
+## 2026-07-27c — "Fix the downloader": the one-file installer could never open a .mpp (ADR-0299; v1.0.105)
+
+- **Model/mode:** Opus 5, targeted deep dive (ADR-0240 — a multi-path fix, not the full Ultracode
+  audit). **Branch:** `claude/downloader-fixes-jv6tjb`, fresh from `origin/main` at `c884602`.
+- **The ask was ambiguous** — "fix the downloader", no symptom, and no component in the tree is
+  named that. Asked; operator said **do all of it** and "I'm not sure" on the symptom. So all four
+  candidate download paths were swept, and **every finding was reproduced before anything changed**.
+- **FOUND (and fixed) — the real one:** the documented deploy path (download ONE installer to
+  `~/Downloads`, no clone) resolved MPXJ to `%USERPROFILE%\tools\mpxj`, missed, warned once, and
+  **still printed a green `DONE`**. The resulting install failed EVERY `.mpp` —
+  `ImporterError: MPXJ runner not found` — and the remedy in that error needs Maven + a checkout the
+  operator does not have. `.mpp` is the tool's primary input, so the operator's whole workflow was
+  dead on the only deploy path we document. ADR-0193 was right for a developer and structurally
+  impossible for the operator.
+- **Fix:** local copy first (unchanged for checkout/CI/offline media), else download the pinned set
+  from the public raw URL and **verify every file against a build-time SHA-256 manifest**.
+  Embedding was rejected (~23 MB base64 x 9 installers x every version bump); the manifest costs
+  ~3 KB. `SF_MPXJ_OFFLINE=1` opts out. Proved end-to-end: bare-dir install → downloads → verifies →
+  parses a real 145-activity `.mpp`.
+- **SECOND live defect, found by auditing the neighbours:** under `set -euo pipefail` a failed
+  `ollama pull` **aborted the installer** before the launchers/uninstaller/README were written —
+  for a step the header calls optional. Proved with a stub whose `pull` exits 1: the script died at
+  that line. The `.ps1` had the mirror bug (unconditional `Ok` after `winget install` AND after
+  `ollama pull` — a false success, the exact class ADR-0192 removed from the Java block).
+- **THIRD (latent):** `pull_model` sent a **non-streaming** multi-GB pull on the 120 s generate
+  timeout — the tier models are 2/5/43 GB, so it could only ever time out. Given its own 6 h
+  `pull_timeout`. Nothing in `web/` calls it (the app diagnoses and tells the operator to pull), so
+  this was a trap, not a live symptom — recorded as such rather than dressed up as the bug.
+- **NOT a defect — swept and left alone:** all 37 `/export/{fmt}/…` routes x xlsx+docx plus
+  `/download/{name}.json` = **76 combinations, every one 200 with a valid zip/JSON payload**. The
+  first sweep's 12 "failures" were my own harness omitting required query params; re-run with real
+  params derived from the engine, all clean. Worth recording: the sweep's first result was a false
+  alarm I had to disprove before it became a "fix".
+- **Guards proved to bite — 5 mutants, each caught by its intended assertion:** flipped manifest SHA
+  · manifest line dropped · raw-URL fallback removed · false `[ok]` on the failure path · local-copy
+  branch deleted. Used **file backups** per ADR-0298's lesson (never `git checkout` on a dirty tree)
+  and verified the tree byte-identical after.
+- **CI now runs the operator's shape:** `installer-smoke.yml` copies one installer to a bare
+  directory and fails if `classes/MpxjToMspdi.class` is absent afterwards. The existing job only
+  ever ran from the checkout — which is exactly why three months of green CI never caught this.
+- **Gate:** full suite **2,724 passed**; ruff/format/mypy-strict/bandit clean; `bash -n` on all six
+  shell installers; wheel + 9 installers regenerated at **1.0.105**. **Highest ADR 0299.**
+- **Owed, not claimed:** no `pwsh` in this sandbox, so the `.ps1` fixes are mirrors of the executed
+  bash ones plus static guards — the windows-latest smoke job is what actually exercises them.

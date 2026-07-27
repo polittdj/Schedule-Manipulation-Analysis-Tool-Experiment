@@ -115,6 +115,7 @@ class OllamaBackend:
         *,
         timeout: float = 120.0,
         probe_timeout: float = 8.0,
+        pull_timeout: float = 6.0 * 3600.0,
         opener: Opener | None = None,
     ) -> None:
         if not is_local_http_endpoint(endpoint):
@@ -132,6 +133,12 @@ class OllamaBackend:
         # each new local connection — still reads as reachable, while a truly dead/dropped port
         # can't stall the settings page indefinitely.
         self._probe_timeout = probe_timeout
+        # Pulling a model is a MULTI-GIGABYTE download (the installer tiers ship 2 / 5 / 43 GB
+        # models) issued as ONE non-streaming request, so it cannot share ``timeout``: 120 s
+        # would abort every real pull well before it finished. Generous by design — the call is
+        # operator-initiated and local, so the only thing this bound guards against is a wedged
+        # server, not a slow one (ADR-0299).
+        self._pull_timeout = pull_timeout
         self._open: Opener = opener or _urllib_opener
 
     def _get(self, path: str, *, timeout: float | None = None) -> Any:
@@ -141,9 +148,10 @@ class OllamaBackend:
             )
         )
 
-    def _post(self, path: str, payload: dict[str, Any]) -> Any:
+    def _post(self, path: str, payload: dict[str, Any], *, timeout: float | None = None) -> Any:
         data = json.dumps(payload).encode("utf-8")
-        return json.loads(self._open(f"{self.endpoint}{path}", data, self._timeout))
+        eff = self._timeout if timeout is None else timeout
+        return json.loads(self._open(f"{self.endpoint}{path}", data, eff))
 
     def is_available(self) -> bool:
         return self.unavailable_reason() is None
@@ -163,8 +171,11 @@ class OllamaBackend:
         return tuple(m["name"] for m in models if isinstance(m, dict) and "name" in m)
 
     def pull_model(self, model: str) -> None:
-        """Download a model into the local Ollama (``POST /api/pull``)."""
-        self._post("/api/pull", {"name": model, "stream": False})
+        """Download a model into the local Ollama (``POST /api/pull``).
+
+        Uses ``pull_timeout``, not the generate timeout — see ``__init__``.
+        """
+        self._post("/api/pull", {"name": model, "stream": False}, timeout=self._pull_timeout)
 
     def generate(self, prompt: str) -> str:
         """Run a non-streaming completion on the active model (``POST /api/generate``).

@@ -88,6 +88,22 @@ jobs:
           for f in installer/install-*.sh installer/install-*.command; do
             bash -n "$f" && echo "$f: parses clean"
           done
+      - name: One-file install with NO repo checkout (the operator's real deploy path, ADR-0299)
+        env:
+          SF_INSTALLER_SMOKE: "1"
+        run: |
+          # Copy ONE installer to a bare directory — exactly what downloading it from the
+          # GitHub web UI into ~/Downloads gives you. Before ADR-0299 this silently left
+          # native .mpp import OFF and still printed DONE.
+          mkdir -p "$RUNNER_TEMP/Downloads"
+          cp installer/install-tier1.sh "$RUNNER_TEMP/Downloads/"
+          export SF_INSTALL_ROOT="$RUNNER_TEMP/SFOneFile"
+          (cd "$RUNNER_TEMP/Downloads" && bash install-tier1.sh)
+          test -f "$SF_INSTALL_ROOT/tools/mpxj/classes/MpxjToMspdi.class" \
+            || { echo "::error::MPXJ converter missing — .mpp import would be dead"; exit 1; }
+          echo "MPXJ jars deployed: $(ls "$SF_INSTALL_ROOT/tools/mpxj/lib" | wc -l)"
+          bash "$SF_INSTALL_ROOT/uninstall-schedule-forensics.sh"
+
       - name: Smoke-run tier1 end-to-end (install -> serve -> static -> stop -> uninstall)
         env:
           SF_INSTALLER_SMOKE: "1"

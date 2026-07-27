@@ -13,12 +13,19 @@ Give the recipient **one** file matching their machine and OS, plus this README:
 **Linux:** `bash install-tierN.sh`. **macOS:** double-click the `.command` file (or
 `bash install-tierN.command`). The installer checks what is already present and installs only
 what is missing: Python 3.11+ → the tool in its own private environment (embedded in the file — no
-internet needed for the tool itself) → optional Java 17 (native `.mpp` only) → optional Ollama +
-the tier's AI model. It finishes by creating **Start Schedule Forensics** and **Stop Schedule
-Forensics** icons on the Desktop and Start Menu, an uninstaller, and a first-run README.
+internet needed for the tool itself) → the MPXJ converter that native `.mpp` import needs (copied
+from a repo checkout if you have one beside the file, otherwise downloaded, ~17 MB, and SHA-256
+verified against a manifest baked into the installer) → optional Java 17 (also native `.mpp` only)
+→ optional Ollama + the tier's AI model. It finishes by creating **Start Schedule Forensics** and
+**Stop Schedule Forensics** icons on the Desktop and Start Menu, an uninstaller, and a first-run
+README. Nothing optional can abort the install: a failed Java, converter, or model download is
+reported plainly and the rest still completes.
 
 **Privacy / data sovereignty:** the installed tool binds `127.0.0.1` only — schedule data never
-leaves the machine. Internet is used only during installation, for public prerequisites.
+leaves the machine. Internet is used only during installation, for public prerequisites (Python,
+Java, the MPXJ converter, Ollama and the AI model). On an air-gapped machine set
+`SF_MPXJ_OFFLINE=1` to suppress the converter download, or put a copy of `tools/mpxj` beside the
+installer (or point `SF_MPXJ_HOME` at one) and it is used instead of the network.
 
 **Uninstall:** Start Menu → Schedule Forensics → *Uninstall Schedule Forensics* (removes the app
 and shortcuts; leaves Python/Java/Ollama, with the `ollama rm` command noted for the model).

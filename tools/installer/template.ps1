@@ -10,7 +10,10 @@
    2. Ensures Python 3.11+ (winget if missing).
    3. Installs the Schedule Forensics tool into its OWN venv from the wheel embedded
       in this file (no internet needed for the tool itself).
-   4. Optionally ensures Java 17+ (only needed to open native .mpp files).
+   3b. Deploys the MPXJ converter that native .mpp import needs — copied from a repo
+      checkout beside this file if there is one, else downloaded (~17 MB) and SHA-256
+      verified against the manifest baked into this installer.
+   4. Optionally ensures Java 17+ (also needed to open native .mpp files).
    5. Installs Ollama + this tier's local AI model (skippable — the tool runs fully
       without AI).
    6. Creates Desktop + Start-Menu shortcuts: "Start Schedule Forensics" and
@@ -18,7 +21,8 @@
 
  DATA SOVEREIGNTY: the installed tool is loopback-only (127.0.0.1) — no schedule
  data ever leaves the machine. Internet is used ONLY at install time, for public
- prerequisites (Python / Java / Ollama / the AI model), never by the running tool.
+ prerequisites (Python / Java / the MPXJ converter / Ollama / the AI model), never by the
+ running tool. Set SF_MPXJ_OFFLINE=1 to suppress the MPXJ download on an air-gapped machine.
 
  Run: right-click this file -> "Run with PowerShell"
       (or:  powershell -ExecutionPolicy Bypass -File <this file>)
@@ -116,20 +120,70 @@ Ok ("Installed " + "{{WHEEL_NAME}}")
 try { & $venvPy -m pip install --quiet psutil 2>$null } catch { }
 
 # --- 3b. vendored MPXJ converter (native .mpp support) --------------------------------
-# The wheel is pure Python; the 17 MB Java converter (tools\mpxj) rides in the repository
-# next to this installer and is copied beside the venv, where the runtime's walk-up
-# discovery finds it automatically (ADR-0193). Without it every .mpp import fails with
-# "MPXJ runner not found".
-$repoMpxj = Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"
-if (Test-Path (Join-Path $repoMpxj "classes\MpxjToMspdi.class")) {
-    $destMpxj = Join-Path $InstallRoot "tools\mpxj"
-    New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
-    Copy-Item -Recurse -Force -Path (Join-Path $repoMpxj "*") -Destination $destMpxj
-    Ok "MPXJ converter deployed (native .mpp import enabled)"
-} else {
-    Warn2 "tools\mpxj not found next to this installer — native .mpp import stays OFF"
-    Warn2 "  (run the installer from the repository checkout, or set SF_MPXJ_HOME;"
-    Warn2 "  .mpp files can still be opened after exporting to MSPDI XML from MS Project)"
+# The wheel is pure Python; the 17 MB Java converter is what makes native .mpp import work,
+# and without it EVERY .mpp import fails with "MPXJ runner not found".
+#
+# ADR-0299: it is not embedded (23 MB of base64 x 9 installers, re-committed on every version
+# bump), and it must not depend on a repo checkout either — the documented deploy path is a
+# SINGLE file downloaded from the GitHub web UI into %USERPROFILE%\Downloads, where the old
+# `Split-Path -Parent $PSScriptRoot` lookup resolved to %USERPROFILE%\tools\mpxj, silently
+# left .mpp support OFF, and still printed DONE. So: prefer a local copy when one really is
+# beside this installer (repo checkout / offline media), otherwise download the pinned file
+# set and verify every byte against the SHA-256 manifest baked in at build time.
+$destMpxj = Join-Path $InstallRoot "tools\mpxj"
+$mpxjOk = $false
+$MpxjBaseUrl = "{{MPXJ_BASE_URL}}"
+$MpxjManifest = @'
+{{MPXJ_MANIFEST}}
+'@
+foreach ($cand in @(
+        $env:SF_MPXJ_HOME,
+        (Join-Path (Split-Path -Parent $PSScriptRoot) "tools\mpxj"),
+        (Join-Path $PSScriptRoot "tools\mpxj"),
+        (Join-Path $PSScriptRoot "mpxj"))) {
+    if ($cand -and (Test-Path (Join-Path $cand "classes\MpxjToMspdi.class"))) {
+        New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
+        Copy-Item -Recurse -Force -Path (Join-Path $cand "*") -Destination $destMpxj
+        Ok "MPXJ converter deployed from $cand (native .mpp import enabled)"
+        $mpxjOk = $true
+        break
+    }
+}
+if ((-not $mpxjOk) -and ($env:SF_MPXJ_OFFLINE -ne "1")) {
+    Write-Host "    Downloading the MPXJ converter (~17 MB, one time) for native .mpp import..."
+    try {
+        # Windows PowerShell 5.1 can still negotiate TLS 1.0/1.1 by default, which every modern
+        # host (raw.githubusercontent, aka.ms) refuses — the download would fail with an opaque
+        # "connection was closed". OR-ing in Tls12 only ADDS a protocol; it removes nothing.
+        try {
+            [Net.ServicePointManager]::SecurityProtocol =
+                [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+        } catch { }
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
+        New-Item -ItemType Directory -Force -Path $destMpxj | Out-Null
+        foreach ($line in ($MpxjManifest -split "`n")) {
+            $line = $line.Trim()
+            if (-not $line) { continue }
+            $sha, $rel = $line -split "\s+", 2
+            $target = Join-Path $destMpxj ($rel -replace "/", "\")
+            New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+            Invoke-WebRequest -Uri "$MpxjBaseUrl/$rel" -OutFile $target -UseBasicParsing
+            $got = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLower()
+            if ($got -ne $sha.ToLower()) { throw "checksum mismatch for $rel" }
+        }
+        if (-not (Test-Path (Join-Path $destMpxj "classes\MpxjToMspdi.class"))) {
+            throw "converter class missing after download"
+        }
+        Ok "MPXJ converter downloaded and SHA-256 verified (native .mpp import enabled)"
+        $mpxjOk = $true
+    } catch {
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj
+        Warn2 ("MPXJ download failed (" + $_.Exception.Message + ")")
+    }
+}
+if (-not $mpxjOk) {
+    Warn2 "native .mpp import stays OFF — set SF_MPXJ_HOME to an MPXJ folder, or open .mpp"
+    Warn2 "  files by exporting MSPDI XML from MS Project (File > Save As > XML) instead"
 }
 
 # a stale 'schedule-forensics' shim from ANOTHER Python (e.g. a conda/miniforge base env)
@@ -201,14 +255,23 @@ Step "Local AI ($OllamaModel) — the tool runs fully without it (skippable)"
 if ($Smoke) { $ans = "n"; Warn2 "Smoke mode: skipping AI install" }
 else { $ans = Read-Host "    Install Ollama + pull '$OllamaModel' (~$ModelDiskGB GB download)? [Y/n]" }
 if ($ans -notmatch "^[Nn]") {
+    # ADR-0299: this step is OPTIONAL, so it must never claim a success it did not get. Both
+    # halves used to print [ok] unconditionally — a winget failure (no admin, source down) and
+    # a failed pull (disk full, daemon not running, network drop) were both reported as ready,
+    # and the operator only found out when the AI features silently did nothing. Same rule as
+    # the Java block (ADR-0192): verify, then report what actually happened.
     if (-not (Get-Command ollama -ErrorAction SilentlyContinue)) {
         winget install --id Ollama.Ollama --exact --accept-source-agreements --accept-package-agreements --silent
         $env:Path = [Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [Environment]::GetEnvironmentVariable("Path","User")
-        Ok "Ollama installed"
+        if (Get-Command ollama -ErrorAction SilentlyContinue) { Ok "Ollama installed" }
+        else { Warn2 "Ollama install failed — skipping the AI model; the tool runs fully without it" }
     } else { Ok "Ollama already present" }
-    Write-Host "    Pulling $OllamaModel (this is the big download — grab a coffee)..."
-    & ollama pull $OllamaModel
-    Ok "Model ready: $OllamaModel"
+    if (Get-Command ollama -ErrorAction SilentlyContinue) {
+        Write-Host "    Pulling $OllamaModel (this is the big download — grab a coffee)..."
+        & ollama pull $OllamaModel
+        if ($LASTEXITCODE -eq 0) { Ok "Model ready: $OllamaModel" }
+        else { Warn2 "Model download failed — AI prose stays off until you run: ollama pull $OllamaModel" }
+    }
 } else {
     Warn2 "Skipped — the tool works fully offline; AI prose features stay off until a model is installed"
 }

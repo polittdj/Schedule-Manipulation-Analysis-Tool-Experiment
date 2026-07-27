@@ -126,7 +126,23 @@ def test_ollama_probes_use_a_short_timeout_but_generate_uses_the_long_one() -> N
     ob.generate("x")
     ob.pull_model("m")
     assert seen["tags"] == 2.0  # the availability/model-list probe is fast
-    assert seen["generate"] == 120.0 and seen["pull"] == 120.0  # real work keeps the long timeout
+    assert seen["generate"] == 120.0  # a completion keeps the long timeout
+    # ADR-0299: a pull is a multi-GB download in ONE non-streaming request — the tier models are
+    # 2/5/43 GB, so sharing the 120 s generate timeout aborted every real pull. It gets its own.
+    assert seen["pull"] >= 3600.0, "a model pull cannot finish inside the generate timeout"
+
+
+def test_pull_timeout_is_configurable_and_independent_of_the_generate_timeout() -> None:
+    seen: dict[str, float] = {}
+
+    def opener(url: str, data: bytes | None, timeout: float) -> str:
+        seen[url.rsplit("/", 1)[-1]] = timeout
+        return json.dumps({"response": "ok", "status": "success"})
+
+    ob = OllamaBackend(opener=opener, timeout=30.0, pull_timeout=900.0)
+    ob.generate("x")
+    ob.pull_model("m")
+    assert seen["generate"] == 30.0 and seen["pull"] == 900.0
 
 
 def test_openai_compat_rejects_remote_endpoint() -> None:
