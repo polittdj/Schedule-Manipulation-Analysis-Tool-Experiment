@@ -43,15 +43,25 @@
 >   Then **CRISPNESS 11px floor ONLY**. Then GUIDED-MODE (5) + VOICE-DECISION (4), parked on the
 >   operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the 13
 >   `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
-> - **STILL OWED:** the four-theme visual pass (console / daylight / apollo / jarvis at 90-125%),
->   outstanding since 2026-07-27b, now covering thirteen captioned modules **plus the new secondary
->   caption — which is the placement most worth eyeballing**, being newest and sitting where a
->   legend or value readout often lives (`cei.js` draws its CEI figure near that corner, though it
->   passes no `y2Label`). **A headless browser IS usable here** (verified, not assumed):
->   `pip install playwright`, then `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`
->   — the pip driver wants build 1228 and the image ships 1194, so a bare `launch()` fails with
->   "Executable doesn't exist". **The browser is verified; the pass is not.** CSP: use
->   `page.evaluate` / `eval_on_selector`, never `wait_for_function`.
+> - **✅ THE FOUR-THEME VISUAL PASS IS DONE — and it is CLEAN.** Owed since 2026-07-27b, closed by
+>   making it EXECUTABLE instead of eyeballed: `tests/web/test_axis_titles_visual.py` drives a real
+>   chromium over 4 themes x 3 scales x the 4 pages the golden fixtures chart. **144 caption
+>   renders; contrast 5.00-5.95:1** (console 5.95 · daylight 5.52 · jarvis 5.23 · apollo 5.00) —
+>   past the 3.0 floor and past WCAG AA's 4.5. No clipping, no collisions, 11px + uppercase
+>   everywhere. Mutation-verified against the real CSS (drop `text-transform`, move the token off
+>   11px — each turns it red). **Skips unless `pip install playwright`**; the runtime stays
+>   stdlib-only (Law 1) and CI has no browser.
+> - **⚠️ TWO THINGS THAT PASS BUILT WRONG FIRST — do not re-make them:** (1) **"themes only change
+>   colour" is FALSE** — apollo is `font-family:'IBM Plex Mono'`, so caption geometry genuinely
+>   differs per theme and must be measured per theme; the factoring assertion caught it only
+>   because it was asserted rather than assumed. (2) **A page with no chart is not a missing
+>   caption** — `/resources` needs a resource picked and `/margin` needs tasks named "margin"
+>   (`/api/margin` = `total 0.0`), so both correctly render a no-data note; flagging that as a
+>   defect would send the next session chasing a bug that does not exist.
+> - **⚠️ HARNESS TRAPS, all self-inflicted, all cost time:** never `wait_until="networkidle"` on
+>   this app (`heartbeat.js` polls 3s, `sysmon.js` 2s — it never settles); never pipe a long run
+>   through `| tail` (buffers to EOF, so progress prints vanish); and **never `pkill -f <pattern>`
+>   where the pattern appears in your own command line** — it kills the shell running it.
 > - **DEPLOY NOTE (operator has no local clone):** download `installer/install-tier2.ps1` from the
 >   GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.

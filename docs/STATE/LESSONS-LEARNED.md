@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27l — a task that stays owed across four ADRs is a task nobody can repeat (ADR-0302 addendum)
+- **The four-theme visual pass was owed since 2026-07-27b and survived four ADRs untouched.** Not
+  because it was hard — because it was *unrepeatable*: eyeballing four themes x three scales x
+  every chart page is ~100 screenshots, and nobody re-checks 100 screenshots. Decomposing what
+  "legible" actually asserts — contrast, computed size, real uppercase, clipping, collision — made
+  it a 22-second test that measured 144 caption renders and came back clean.
+  **LESSON (generalizes → Part V): when an item stays owed across sessions, the problem is usually
+  its FORM, not its priority. Ask what it would take to make it repeatable; a manual check that
+  nobody repeats is a check that isn't being done.**
+- **I took a shortcut for cost and encoded the assumption it rested on — which is the only reason
+  it was safe.** Factoring the matrix (colour per theme, geometry per scale) cut 72 page loads to
+  22 on the reasoning that themes only redefine colours. The step-0 assertion failed immediately:
+  apollo is `font-family:'IBM Plex Mono'`, so caption widths genuinely differ per theme, and
+  apollo's wider glyphs are the likeliest clip. **LESSON: when you optimise a check by assuming
+  two dimensions are independent, assert the independence in the same change. The shortcut then
+  invalidates itself instead of quietly halving your coverage.**
+- **A check for "X is missing" must distinguish "the thing carrying X never rendered".** The first
+  run flagged `/resources` and `/margin` as having no captions. Both were right to have none: one
+  needs a resource picked from a dropdown, the other needs tasks named "margin". **LESSON: an
+  absence assertion needs a presence precondition, or it manufactures defects — and a
+  manufactured defect costs the next session more than a missed one, because it sends them hunting
+  something that was never there.**
+- **Three self-inflicted harness traps, none of them product defects, all costing real time.**
+  `wait_until="networkidle"` never settles against an app that polls (heartbeat 3s, sysmon 2s);
+  `| tail` buffers a long run to EOF, so the progress prints added *specifically* to make it
+  observable were invisible; and **`pkill -f <pattern>` kills the shell running it** when the
+  pattern appears in that shell's own command line — which produced two "failed" runs that had
+  nothing wrong with them. **LESSON: when a job hangs or dies, suspect the harness before the
+  subject. I diagnosed the product three times before diagnosing my own tooling once.**
+
 ### 2026-07-27k — when you add an optional parameter, test the DEFAULT path (ADR-0302)
 - **The dangerous mutant was not the new feature failing — it was the new feature firing when
   nobody asked.** Adding an optional `y2Label` to the shared caption helper, the four mutants I ran
