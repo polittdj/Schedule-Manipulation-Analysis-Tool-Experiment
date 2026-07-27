@@ -8286,3 +8286,10 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Gate:** installer suite 50 → **52**; ruff / ruff format / mypy --strict / bandit clean;
   `node --check` clean; windows job `timeout-minutes` 15 → 30 for four added installs. No `src/`
   change, so the embedded wheel stays in lockstep at 1.0.105.
+- **CLOSED: #452 merged** (`0c87c61`), every check green — windows, linux, `test (3.11)`, `test
+  (3.13)`, the parity gate and both coverage gates. Four consecutive green windows runs before the
+  merge, each walking both shapes and both mutations.
+- **A count I corrected in the ADR I left uncorrected in the HANDOFF.** "eleven steps and seven
+  installs" was fixed in ADR-0300 and survived in the auto-injected read-first doc for four commits.
+  **LESSON: when you correct a number, grep for it — a figure that appears in two artefacts gets
+  fixed in one and quoted from the other.** (`ten steps, nine installer runs`, from the job log.)
