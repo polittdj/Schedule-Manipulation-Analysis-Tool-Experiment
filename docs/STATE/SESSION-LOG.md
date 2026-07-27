@@ -8184,7 +8184,30 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   conclusion the step did not verify, it is the same defect class as the installer claiming
   "stays OFF" about a machine where .mpp worked. Assert the evidence, then print the claim.**
 
-## 2026-07-27e — a symlinked source could destroy the converter and report success (ADR-0300; v1.0.106)
+## 2026-07-27e — #446 merged; #447 superseded; a drive-root abort it caught, fixed
+
+- **PR #446 merged** as `5970398` on `main` (v1.0.105, ADR-0299). Check-ins cancelled, branch
+  restarted from the merged `main` per the post-squash-merge rule.
+- **PR #447 is an independent fix for the same #445 diagnosis, from a parallel session, and it is
+  SUPERSEDED — merging it would REGRESS main.** Verified by content, not by title: its
+  `template.ps1` contains zero occurrences of `raw.githubusercontent` / `mpxj-incoming` /
+  `Invoke-SfNative`, so merging it would strip the converter download (the operator's original
+  defect), the staged-swap, and the stderr-abort guard, while adding a SECOND ADR-0299 file and
+  re-conflicting all nine installers at a version already taken.
+- **But it found a real bug mine shipped.** The candidate list was an array literal, so every
+  `Join-Path` evaluated eagerly; `Split-Path -Parent` of a drive root returns `""` and `Join-Path`
+  throws a terminating parameter-binding error on it — aborting the install after the venv and
+  before the shortcut/uninstaller/README. Ported its per-base `if ($base)` guard, plus its
+  assertion that the ZIP remedy is still real. Mutation-verified the new guard bites.
+- **A stale ADR-0193 pin had to be rewritten** because it asserted the removed eager expression
+  verbatim. **LESSON (#447 put it well): a string pin detects a REWORDING, never a FALSEHOOD.** The
+  pin that guarded the MPXJ block for months asserted the exact sentence that was the lie. Assert
+  the behaviour and the invariant; pin literals only when the literal itself is the contract.
+- **LESSON: two sessions fixing one defect in parallel produced one superset and one better test
+  idea.** The merge order decided the winner, not the quality — so before closing a duplicate,
+  diff its CONTENT against main and port what it uniquely has. Reading only its title or its PR
+  body would have lost the drive-root bug.
+## 2026-07-27f — a symlinked source could destroy the converter and report success (ADR-0300; v1.0.106)
 - **Two sessions fixed the same bug in parallel; #446 won.** While PR #447 (my ADR-0299) sat green
   as a draft, `claude/downloader-fixes-jv6tjb` merged **PR #446**, which took the diagnosis staged
   in PR #445, implemented the same three outcomes and the same `sf_realpath` self-copy guard, and
@@ -8212,11 +8235,11 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Why the existing test missed it:** it passed `SF_MPXJ_HOME` as the destination's own spelling,
   which a logical `pwd` compares equal. The guard worked for the case it was written against and
   failed one indirection away.
-- **Flagged but NOT shipped (unverified):** `template.ps1` builds its four MPXJ candidates eagerly
-  inside `@(...)`, including `Join-Path (Split-Path -Parent $PSScriptRoot) …`. Under
-  `$ErrorActionPreference = "Stop"`, `Split-Path -Parent` of a drive root returns `""` and
-  `Join-Path` may throw, aborting the install. Could not be executed here, so it is written into
-  the handoff instead of fixed on speculation.
+- **The finding I flagged as unverified was CONFIRMED and fixed by someone else.** I wrote up the
+  eager `Join-Path (Split-Path -Parent $PSScriptRoot)` / drive-root abort but declined to ship a
+  PowerShell fix I could not execute. **PR #448 verified it and shipped exactly that fix** (the
+  `$mpxjCandidates` + `if ($base)` shape), and also ported my ZIP-remedy assertion. Flagging with
+  enough detail to act on turned out to be worth more than a speculative patch would have been.
 - **Gate:** installer suite **46 passed**; full suite green; ruff/format/mypy-strict/bandit clean;
   six bash installers `bash -n` clean. Version 1.0.105 → **1.0.106**, wheel + 9 installers
   regenerated. **Highest ADR 0300.**

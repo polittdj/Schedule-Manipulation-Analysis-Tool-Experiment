@@ -79,4 +79,12 @@ its own install directory.
 - **A pin cannot catch a lie, twice over.** ADR-0299 was itself occasioned by a source pin that
   asserted the wrong sentence was present. This defect sat inside the fix for that defect, in the
   guard the ADR called load-bearing, and was found by review rather than by any test in the suite.
-- Version 1.0.105 → **1.0.106**; wheel + 9 installers regenerated.
+- **A finding this ADR flagged as unverified has since been SETTLED by someone else.** The draft
+  of this change noted that `template.ps1` built its four candidates eagerly inside `@(...)`,
+  where `Join-Path` throws on the empty string `Split-Path -Parent` returns for a drive root —
+  and declined to fix it, because this container cannot execute PowerShell. **PR #448 confirmed
+  it and shipped exactly that fix.** Flagging a suspicion with enough detail to act on was worth
+  more than a speculative patch would have been; the flag is now closed.
+- Version 1.0.105 → **1.0.106**; wheel + 9 installers regenerated **from the merged templates**
+  (this change was merged with `origin/main` `b643a91`, which carries #448's PowerShell fix —
+  generated base64 blobs must be rebuilt after a merge, never auto-merged).
