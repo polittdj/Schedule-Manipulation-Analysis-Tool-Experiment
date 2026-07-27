@@ -187,22 +187,39 @@ Classifier (re-derivable): the span from each `@app.*` decorator to the next one
   an explicit three-way ledger (exempt / DOM-visual / pending) rather than a grep heuristic — the
   heuristic missed `path.js` and `resources.js` and said nothing about the HTML-rendered visuals.
 
+**CORRECTIONS (ADR-0301, batch 1 — each verified against the rendering code, not the spec):**
+* `histogram.js` had a **third** local caption implementation, beyond the two ADR-0298 retired: a
+  centred X caption at a hard-coded 11px (`cap.textContent = "Total float (working days)"`). It is
+  now the shared convention, and the module gains a Y caption it never had. The second-convention
+  regex did not catch it — it pins the variable names `xt`/`yt`/`axisTitle`, and this one was
+  `cap`. Name-based detection cannot be completed (`a11y.js` and `trend_drill.js` use `cap` for
+  legitimate non-axis text), so the ledger reaching empty — not the regex — is what converges.
+* The patch spec's §3 caption table is **not a usable source** for four of these modules; captions
+  are derived from the rendering code instead. `curves.js` plots **activity counts**, not the
+  spec's "CUMULATIVE VALUE ($M)"; `resources.js` plots **work booked in working days** over a
+  runtime-chosen day/week/month bucket, not "DEMAND (FTE)" over "WEEK (COMMENCING)"; `cei.js` has
+  **no secondary axis** (the CEI figure is a text callout, not an axis); and `drift.js` plots
+  **forecast dates** against **three forecast methods**, not "SCHEDULE VERSION" × "SLIP AGAINST
+  BASELINE (WORKDAYS)".
+* The spec's §5 batch table was never revised after ADR-0298's correction #4, so its batch 1 is
+  4/5 DOM visuals the SVG helper cannot serve. Batches now follow the `PENDING` ledger.
+
 One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-derived):** each cell is a source-token test on the real file — (a) `axisTitle|xTitle|axisLabel`, (b) `yTitle|rotate(-90)`, (c) `legend`, (d) `takeaway|headline|howToRead|hint`, (e) `ENLARGE|EXCEL|cf-bar|chartFrame|▦|⤓|⛶`. A **yes** proves the token exists somewhere in the module, **not** that every chart in it renders the element; a **no** on (a)/(b) is a genuine gap to close.
 
 | Module | lines | Page(s) | Chart kinds | (a) X title | (b) Y title | (c) legend | (d) takeaway | (e) toolbar | DD line | `<text>` |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `gantt.js` | 512 | `/healthz` | gantt/bar/column/line | no | no | no | yes | no | yes | 0 |
-| `histogram.js` | 270 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
-| `curves.js` | 486 | `/healthz` | bar/line/box | no | no | yes | no | yes | yes | 0 |
-| `scurve.js` | 350 | `/healthz` | bar/column/line/area | no | no | yes | yes | yes | yes | 0 |
+| `histogram.js` | 270 | `/healthz` | gantt/bar/column/line | yes | yes | no | no | yes | no | 0 |
+| `curves.js` | 486 | `/healthz` | bar/line/box | yes | yes | yes | no | yes | yes | 0 |
+| `scurve.js` | 350 | `/healthz` | bar/column/line/area | yes | yes | yes | yes | yes | yes | 0 |
 | `drift.js` | 202 | `/healthz` | line/box | no | no | yes | no | no | yes | 0 |
 | `path.js` | 708 | `/healthz` | gantt/bar/column/line | no | no | no | no | no | yes | 0 |
 | `path_evolution.js` | 517 | `/healthz` | gantt/bar/column/line | no | no | yes | no | no | yes | 0 |
 | `driving_path.js` | 260 | `/healthz` | gantt/bar/column/line | no | no | no | no | no | yes | 0 |
 | `driving_tiers.js` | 200 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
-| `cei.js` | 280 | `/healthz` | bar/line/area/box | no | no | yes | no | no | yes | 0 |
+| `cei.js` | 280 | `/healthz` | bar/line/area/box | yes | yes | yes | no | no | yes | 0 |
 | `performance.js` | 532 | `/healthz` | bar/line/area/hist | yes | yes | yes | no | yes | yes | 0 |
-| `resources.js` | 257 | `/healthz` | gantt/bar/column/line | no | no | yes | no | yes | no | 0 |
+| `resources.js` | 257 | `/healthz` | gantt/bar/column/line | yes | yes | yes | no | yes | no | 0 |
 | `margin_dashboard.js` | 414 | `/healthz` | bar/line/area/box | no | no | yes | no | yes | no | 0 |
 | `margin.js` | 272 | `/healthz` | bar/line/box | no | no | yes | no | yes | no | 0 |
 | `scorecards.js` | 109 | `/healthz` | — | no | no | no | yes | no | no | 0 |

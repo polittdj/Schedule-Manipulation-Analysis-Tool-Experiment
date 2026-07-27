@@ -1,84 +1,74 @@
-# Handoff — 2026-07-27h (the windows CI leg now EXECUTES the symlink + drive-root shapes; ADR-0300 MERGED; v1.0.105)
+# Handoff — 2026-07-27i (AXIS-TITLES batch 1: PENDING 16 -> 11; the spec's caption table is not a source; ADR-0301; v1.0.106)
 
-> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0300 merged. `main` at `0c87c61`. Version **1.0.105**. Highest ADR **ADR-0300**.
-> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
-> **#451 and #452 both merged. No open PRs.** Every check green on #452's head, including the
-> parity gate (Acumen Fuse v8.11.0 + SSI golden), engine coverage ≥85% and overall ≥70%.
+> ## STATUS (current) — ADR-0301. Version **1.0.106**. Highest ADR **ADR-0301**. `main` at `8770601` (batch 1 is on the branch, PR open).
+> Branch `claude/schedule-forensics-continue-gkju7l`. #451, #452, #453 all merged before this.
 >
-> - **THE LAST UNPROVEN CLAIM FROM THE DOWNLOADER WORK IS CLOSED.** The previous handoff's option
->   (a). `installer-smoke.yml`'s windows job ran the download and from-checkout branches only, so the
->   two most recent destructive fixes — a **link-shaped MPXJ source** and a **drive-root install**,
->   both diagnosed on the operator's own Windows — rested on the executed *bash* twin plus a static
->   text guard over the `.ps1`. Both now **execute on windows-latest**, and both legs are
->   mutation-proved to be able to fail.
-> - **GREEN, AND THE LOG WAS READ, NOT TRUSTED.** Zero annotations emitted; both reparse-point
->   shapes were creatable; `subst X:` gave a usable drive root (no `C:\` fallback). The job's MPXJ
->   lines are now a full branch census of section 3b: `deployed` (checkout) · `downloaded and
->   SHA-256 verified` (one-file) · `deployed` (python-only) · `deployed` (link setup) ·
->   `already installed` ×2 (Junction, SymbolicLink) · `deployed` (mutation) · `no MPXJ converter
->   found` (drive root, offline). **Ten steps, nine installer runs** — and note that number: I first
->   wrote "eleven steps and seven installs" off the YAML, and grepping `-File` there says 14 because
->   `Get-ChildItem -Recurse -File` matches. **The job log is the only artefact that knows what the
->   job did.**
-> - **FOUR consecutive green windows runs**, each walking both shapes and both mutations. The four
->   new steps cost **~63 s** (link leg 31 s · its mutation 9 s · drive root + mutation 23 s) because
->   each re-uses the venv the step before it created. Whole job **3 m 06 s – 5 m 32 s**: the spread
->   is runner variance, not the new steps — one run spent **2 minutes inside `git config --system
->   core.longpaths`**. That is why `timeout-minutes: 30` is hang headroom and not a budget, and it is
->   worth knowing before you diagnose a "slow" windows job as your own fault.
-> - **MEASURED, NOT ASSUMED — the fact to carry forward:** Windows PowerShell 5.1's `Resolve-Path`
->   returns a reparse point's **own spelling** for a junction *and* a symlink, while `.Target` gives
->   the real destination with **no** `\??\` prefix. So `Resolve-SfPath`'s one-hop follow is both
->   necessary and sufficient, and the bash defect's cause is confirmed present in PowerShell too.
-> - **Staging's independence is now proved ON WINDOWS, not by parity:** with the self-copy skip
->   mutated to `if ($false)` and the source pointed AT the destination, the converter came back
->   byte-identical and only the message degraded to `deployed`.
-> - **⚠️ MY OWN NEW GUARD WAS WRONG FIRST, and this is the lesson to keep:** the test asserting the
->   windows job still runs both shapes **passed** with the reparse-point loop gutted to
->   `@("Directory")`, and **passed again** with every `subst` call removed — the explanatory comments
->   and a `::warning::` string satisfied it. **A guard that greps prose measures the documentation,
->   not the behaviour.** Fixed by stripping comment lines and step names first and pinning an
->   *invocation*. Six mutations now fail as required (file backups, ADR-0298).
-> - **ADR-0300 existed in 13 shipped citations but not on disk** — the previous session filed the
->   symlink defect as ADR-0299 *Addendum 2* while the installers, templates and tests all cite
->   `ADR-0300`. Now written; `test_state_docs` anchors on the highest ADR **on disk**, so a citation
->   pointing past the end of the record is invisible to it. **A dangling citation is a claim with no
->   reachable source.**
-> - **Gate:** installer suite 50 → **52**; ruff / ruff format / mypy --strict / bandit / `node
->   --check` clean; windows `timeout-minutes` 15 → 30. No `src/` change, so the embedded wheel stays
->   in lockstep at 1.0.105.
-> - **NEXT: AXIS-TITLES batch 1** — drive `PENDING` (16) toward empty, ~5 modules/PR per the spec's
->   §3 caption table in `00_REFERENCE_INTAKE/AXIS-TITLES-PATCH.md`; guard/ledger is
->   `tests/web/test_axis_titles.py`. ⚠️ That spec had **five false premises** last time — verify every
->   symbol and token it names actually exists before writing a line (ADR-0298). Then **CRISPNESS 11px
->   floor ONLY** (`--sf-fs-axis-title` is already the seam; ⚠️ its §2.1 claim that `sf-themes.css`
->   "was never committed" is FALSE). Then GUIDED-MODE (5) + VOICE-DECISION (4), parked on the
->   operator. Also open: monolith split phases 2-3; a DOM caption mechanism for the 11 `NO_SVG_AXES`
->   visuals; `_ANALYSIS_CACHE_MAX = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
-> - **STILL OWED:** AXIS-TITLES batch 0's four-theme visual pass (console / daylight / apollo /
->   jarvis at 90–125%), outstanding since 2026-07-27b. **⚠️ THE STATED BLOCKER IS FALSE IN THIS
->   CONTAINER — a headless browser IS usable, verified this session, not assumed:**
->   `pip install playwright` (PyPI is reachable), then launch with an explicit
->   `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"`. The pip-installed
->   driver expects build 1228 and the image ships **1194**, so a bare `p.chromium.launch()` fails
->   with "Executable doesn't exist"; `executable_path` is the whole fix, and
->   `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` is already set. Rendered a page and read back
->   `navigator.userAgent` to confirm. **What is verified is the BROWSER, not the whole pass** — the
->   rest of the chain (serve the app, load a schedule, screenshot each theme, judge it) is untested,
->   so treat the pass as unblocked-but-unproven. Prior sessions' CSP note still applies: use
->   `page.evaluate` / `eval_on_selector`, never `wait_for_function` (`script-src 'self'` blocks
->   string-eval — which is the air-gap working).
->   Also possible-but-not-done: a standalone PowerShell harness for the 3b block (the twin of
->   `_run_mpxj_block`) would make windows mutation cheap, but running the *whole* installer is what
->   caught the `java -version` probe abort, so it is an addition, never a substitute.
+> - **AXIS-TITLES batch 1 done: `PENDING` 16 -> 11.** Captioned `histogram`, `curves`, `scurve`,
+>   `cei`, `resources` via `SFChartFrame.axisTitles`. Guard mutation-proved three ways (deleted
+>   call · one-label caption · captioned module parked back in PENDING).
+> - **⚠️ THE BIG ONE — DO NOT TRANSCRIBE THE SPEC'S §3 CAPTION TABLE. It is wrong for four of the
+>   modules I checked**, and a caption is an assertion about what the reader is looking at:
+>   `curves.js` plots **activity counts**, not "CUMULATIVE VALUE ($M)"; `resources.js` plots **work
+>   booked in working days** over a **runtime-chosen** day/week/month bucket, not "DEMAND (FTE)" over
+>   "WEEK (COMMENCING)"; `cei.js` has **no secondary axis** (the CEI figure is a text callout);
+>   `drift.js` plots **forecast dates x three forecast methods**, not "SCHEDULE VERSION x SLIP
+>   AGAINST BASELINE". **Derive every caption from the rendering code (ADR-0301).**
+> - **⚠️ AND DO NOT FOLLOW THE SPEC'S §5 BATCH TABLE.** It was never revised after ADR-0298's
+>   correction #4, so its batch 1 is **4/5 DOM visuals** the SVG helper cannot serve. **Batches
+>   follow the `PENDING` ledger**, which is executable and current.
+> - **Two captions are COMPUTED, not constant, because the axis itself changes:** `cei.js` follows
+>   the Running-totals toggle (`top = totals ? cumTop : data.max_count`) and `resources.js` names the
+>   bucket actually rendered (`UNIT`). A constant string would be false in one of the two states.
+> - **`histogram.js` carried a THIRD local caption convention** (`cap.textContent`, hard-coded 11px)
+>   beyond the two batch 0 retired — now shared, and it gains a Y caption it never had. **The
+>   `SECOND_CONVENTION` regex cannot be completed**: widening it to `cap.textContent` fires on
+>   `a11y.js` and `trend_drill.js`. The property that converges is **the ledger reaching empty**,
+>   not the regex.
+> - **`drift.js` is deliberately still PENDING**, reasons recorded in the ledger itself: its
+>   captions need a decision (above), and its Y anchor (`T + 9`) lands **7px above** its first
+>   method-name row (`padT + 14`), so it needs a `padT` nudge — a layout change, out of scope for a
+>   caption batch.
+> - **⚠️ INCIDENTAL BUT IMPORTANT — the MPXJ download pin was on ORPHANED history.** `mpxj_ref()`
+>   pins the last commit touching `tools/mpxj`. The pin shipped in **v1.0.105 (`1f10729`) is NOT an
+>   ancestor of `main`** — it survives only on an unmerged branch, so the operator's converter
+>   download depended on that branch continuing to exist. Regenerating moved it to **`749bf07c`, a
+>   squash-merge commit ON `main`**, bytes verified byte-identical to the tree. **A squash-merge
+>   gives the same content a NEW SHA, so a pin captured pre-merge is orphaned the moment the branch
+>   goes.** Re-check `mpxj_ref()` against `main` whenever `tools/mpxj` changes.
+> - **Version 1.0.105 -> 1.0.106; wheel rebuilt, all nine installers regenerated** (ADR-0148
+>   lockstep — the static JS is packaged). Verified by watching the lockstep test fail first, then
+>   pass.
+> - **Gate:** ruff / ruff format / mypy --strict / bandit clean; `node --check` on all static JS;
+>   axis guard 29 green; installer suite 52 green; the three dashboard payload golden SHAs
+>   unchanged (a caption cannot move a payload hash); `grep -rn "rotate(-90"` empty.
+> - **NEXT: AXIS-TITLES batch 2** — take the next ~5 off `PENDING` (11 left: `drift`, `margin`,
+>   `margin_dashboard`, `path`, `sra`, `sra_jcl`, `sra_ssi`, `trend`, `trend_drill`, `volatility`,
+>   `wbs`). **Read each chart's rendering code and derive its caption; the spec's table is a
+>   suggestion, not a source.** `trend.js` + `volatility.js` need the per-metric Y caption
+>   (spec §3.1: `metric.label + " (" + metric.unit + ")"`; a metric with no unit is a
+>   **catalogue gap to report**, not a caption to invent). `trend_drill.js` has a `cap.textContent`
+>   subtitle that is NOT an axis caption — leave it. Then **CRISPNESS 11px floor ONLY**
+>   (`--sf-fs-axis-title` is the seam; its §2.1 claim that `sf-themes.css` "was never committed" is
+>   FALSE). Then GUIDED-MODE (5) + VOICE-DECISION (4), parked on the operator. Also open: monolith
+>   split phases 2-3; a DOM caption mechanism for the 11 `NO_SVG_AXES` visuals; `_ANALYSIS_CACHE_MAX
+>   = 48` (ADR-0292); the .mpp probe UI (ADR-0293).
+> - **STILL OWED:** the four-theme visual pass (console / daylight / apollo / jarvis at 90-125%),
+>   outstanding since 2026-07-27b and now covering ten captioned modules. **A headless browser IS
+>   usable in this container** (verified 2026-07-27h, not assumed): `pip install playwright`, then
+>   launch with an explicit
+>   `executable_path="/opt/pw-browsers/chromium-1194/chrome-linux/chrome"` — the pip driver expects
+>   build 1228 and the image ships 1194, so a bare `launch()` fails with "Executable doesn't exist".
+>   `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers` is already set. **The browser is verified; the pass
+>   is not.** CSP note: use `page.evaluate` / `eval_on_selector`, never `wait_for_function`
+>   (`script-src 'self'` blocks string-eval — the air-gap working).
 > - **DEPLOY NOTE (operator has no local clone):** download `installer/install-tier2.ps1` from the
 >   GitHub web UI and run
 >   `powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\Downloads\install-tier2.ps1"`.
->   That one file fetches + SHA-256-verifies the `.mpp` converter from a pinned immutable commit. An
->   existing converter is never destroyed — not by a re-run, a failed download, a self-referential
->   `SF_MPXJ_HOME`, a junction, or a symlink; and a drive root no longer aborts the install. All of
->   that is now executed on Windows in CI. Offline: Code → Download ZIP, run from inside the
->   extracted folder.
+>   One file; it fetches + SHA-256-verifies the `.mpp` converter from a pinned immutable commit
+>   (now on `main`). An existing converter is never destroyed — not by a re-run, a failed download,
+>   a self-referential `SF_MPXJ_HOME`, a junction, or a symlink; and a drive root no longer aborts
+>   the install. All executed on Windows in CI (ADR-0300). Offline: Code -> Download ZIP, run from
+>   inside the extracted folder.
 
 
 # (prior) handoffs — archived

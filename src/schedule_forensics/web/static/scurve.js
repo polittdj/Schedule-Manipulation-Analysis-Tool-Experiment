@@ -163,6 +163,12 @@
       lx += 20 + item[0].length * 6 + 24;
     });
 
+    // Axis captions via the ONE shared helper (ADR-0298). Both curves are cumulative on a LOCKED
+    // 0-100% scale (see the module header and the y() above), so the unit is a percentage.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Month",
+      yLabel: "Cumulative completion (%)",
+    });
     box.appendChild(svg);
 
     // A3 (WCAG 1.1.1): a visually-hidden data table of this version's curve values, so a

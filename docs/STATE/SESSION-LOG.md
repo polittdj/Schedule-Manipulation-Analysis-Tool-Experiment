@@ -8293,3 +8293,35 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   installs" was fixed in ADR-0300 and survived in the auto-injected read-first doc for four commits.
   **LESSON: when you correct a number, grep for it — a figure that appears in two artefacts gets
   fixed in one and quoted from the other.** (`ten steps, nine installer runs`, from the job log.)
+
+## 2026-07-27i — AXIS-TITLES batch 1: the spec's caption table is not a source (ADR-0301)
+
+- **`PENDING` 16 -> 11.** Captioned `histogram`, `curves`, `scurve`, `cei`, `resources` through
+  `SFChartFrame.axisTitles`. Guard mutation-proved three ways (deleted call · one-label caption ·
+  captioned module parked back in PENDING), file backups per ADR-0298.
+- **The spec's §3 caption table is wrong for four of the modules I checked**, and I only found it
+  by reading each chart's rendering code before writing a caption. `curves.js` plots activity
+  counts, not "CUMULATIVE VALUE ($M)"; `resources.js` plots work booked in **working days** over a
+  runtime-chosen day/week/month bucket, not "DEMAND (FTE)" over "WEEK (COMMENCING)"; `cei.js` has
+  no secondary axis at all; `drift.js` plots forecast dates against three forecast methods.
+  **LESSON: a caption is an assertion about what the reader is looking at. Transcribing one from a
+  document written without running the app is the same defect class as a false `[ok]`.**
+- **The spec's §5 batch table is 4/5 inapplicable** — never revised after ADR-0298's correction #4
+  parked eleven DOM visuals in `NO_SVG_AXES`. Batches now follow the executable `PENDING` ledger.
+  **LESSON: when a correction lands, check what ELSE in the document depended on the thing you
+  corrected. ADR-0298 fixed the census and left the batch plan derived from it untouched.**
+- **`histogram.js` carried a THIRD caption convention** (`cap.textContent`, hard-coded 11px) past
+  the two batch 0 retired. **The `SECOND_CONVENTION` regex cannot be completed** — widening it to
+  `cap.textContent` fires on `a11y.js` and `trend_drill.js`, which use `cap` for legitimate text.
+  Left as-is, limitation recorded. **LESSON: when a guard cannot be made complete, say so and name
+  the property that does converge — here, the ledger reaching empty.**
+- **`drift.js` deliberately left PENDING** with both reasons written into the ledger itself: its
+  captions need a decision, and its Y anchor lands 7px above its first category row, needing a
+  layout nudge that a caption batch may not make.
+- **⚠️ INCIDENTAL: the MPXJ download pin was on orphaned history.** v1.0.105 pinned `1f10729`,
+  which is **not an ancestor of `main`** — it survives only on an unmerged branch. Regenerating
+  moved it to `749bf07c`, a squash-merge commit on `main`, bytes verified identical. **LESSON: a
+  squash-merge gives the same content a NEW SHA, so any SHA captured from a pre-merge branch is
+  orphaned the moment that branch is deleted. `mpxj_ref()` must be re-checked against `main`.**
+- **v1.0.105 -> 1.0.106**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep, since the
+  static JS is packaged) — verified by watching the lockstep test fail first and pass after.

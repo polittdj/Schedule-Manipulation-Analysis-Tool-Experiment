@@ -236,13 +236,14 @@
         }));
       }
     });
-    // x-axis caption
-    var cap = svgEl("text", {
-      x: (padL + W - padR) / 2, y: H - 6, "text-anchor": "middle", fill: "var(--muted)",
-      "font-size": 11,
+    // Axis captions via the ONE shared helper (ADR-0298). This module drew its own centred X
+    // caption at a hard-coded 11px — a THIRD local convention, alongside the two batch 0 retired.
+    // Same wording, now right-aligned and sized from the .ch-at token; the Y axis is captioned for
+    // the first time (it has always been a count of activities per band).
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Total float band (working days)",
+      yLabel: "Activities (count)",
     });
-    cap.textContent = "Total float (working days)";
-    svg.appendChild(cap);
     box.appendChild(svg);
 
     if (window.SFA11y) {

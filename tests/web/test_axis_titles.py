@@ -86,15 +86,16 @@ NO_SVG_AXES = {
 #: is the completion signal for AXIS-TITLES. A module may not be parked here once it calls the
 #: helper, and may not be listed here unless it really renders SVG — both are asserted.
 PENDING = {
-    "cei.js",
-    "curves.js",
+    # ``drift.js`` is deliberately still here after batch 1, for two reasons worth stating so the
+    # next batch does not "just add the call": (1) its Y axis is a list of three FORECAST METHODS
+    # and its X axis is a forecast DATE — the patch spec's "SCHEDULE VERSION (UPDATE)" by
+    # "SLIP AGAINST BASELINE (WORKDAYS)" would print a false statement on the chart; (2) the Y
+    # caption anchor (``T + 9``) lands 7px above its first method-name row (``padT + 14``), so it
+    # needs a padT nudge, and moving the plot is out of scope for a caption batch.
     "drift.js",
-    "histogram.js",
     "margin.js",
     "margin_dashboard.js",
     "path.js",
-    "resources.js",
-    "scurve.js",
     "sra.js",
     "sra_jcl.js",
     "sra_ssi.js",
