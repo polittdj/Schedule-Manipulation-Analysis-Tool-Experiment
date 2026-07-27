@@ -8190,7 +8190,8 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   in PR #445, implemented the same three outcomes and the same `sf_realpath` self-copy guard, and
   went further — a SHA-256-verified download so one downloaded file delivers `.mpp` with no clone.
   Merging #447 would have created a **duplicate ADR-0299** and **reverted #446's download**. The
-  branch was reset onto `origin/main` and #447 force-pushed to an entirely different change.
+  branch was reset onto `origin/main`; **#447 was then CLOSED without merging** (correctly) and
+  this entirely different fix went to **PR #449**.
   Nothing was lost: main already carried my templates, tests, doc-drift fixes and durable-state
   updates by way of #446 crediting #445.
 - **The Codex reviewer on #447 filed a P1 against the guard — and it was real.** `sf_realpath` used

@@ -1,10 +1,11 @@
 # Handoff — 2026-07-27e (ADR-0300: a symlinked source could destroy the converter and report success; v1.0.106; highest ADR 0300)
 
-> ## STATUS (current) — ADR-0300 SHIPPED (PR #447). Version **1.0.106**. Highest ADR **0300**.
+> ## STATUS (current) — ADR-0300 in **PR #449**. Version **1.0.106**. Highest ADR **0300**.
 > Branch `claude/smat-tool-continuation-uskbh7`, **reset onto `origin/main` `5970398`** after
-> PR #446 merged. **PR #447 was force-pushed to a completely different change** — see below.
+> PR #446 merged. **PR #447 is CLOSED, not merged** — its content was the superseded parallel
+> ADR-0299, and closing it was correct. ADR-0300 is a *different* change and lives in **#449**.
 >
-> - **⚠️ TWO SESSIONS FIXED THE SAME BUG IN PARALLEL. #446 WON; #447's ORIGINAL CONTENT WAS
+> - **⚠️ TWO SESSIONS FIXED THE SAME BUG IN PARALLEL. #446 WON; #447's CONTENT WAS
 >   DISCARDED.** While PR #447 (my ADR-0299) sat green as a draft, `claude/downloader-fixes-jv6tjb`
 >   shipped **PR #446**, which took the diagnosis staged in PR #445, implemented the *same* three
 >   outcomes and the *same* `sf_realpath` self-copy guard, **and went further** (SHA-256-verified
