@@ -8402,3 +8402,6 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   tier3.ps1 a version behind tier1/tier2. **LESSON: a build step that rewrites N files is not
   interruption-safe; run it where it cannot be killed halfway, and let the cross-tier drift check
   confirm it finished.**
+- **CLOSED: #458 merged** (`abfa6ec`), all five checks green. Local full suite 2733 passed, 1
+  skipped. Running the installer regeneration in the background worked as intended — windows and
+  linux both ran against a complete, consistent set of nine at v1.0.108.

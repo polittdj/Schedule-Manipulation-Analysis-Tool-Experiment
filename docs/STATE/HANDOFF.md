@@ -1,7 +1,9 @@
 # Handoff — 2026-07-27k (the caption helper gains a secondary-axis label; ADR-0302; v1.0.108)
 
-> ## STATUS (current) — ADR-0302. Version **1.0.108**. Highest ADR **ADR-0302**. `main` at `56dcaa6` (this work on the branch, PR open).
-> Branch `claude/schedule-forensics-continue-gkju7l`. #451-#457 all merged before this.
+> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0302 merged. Version **1.0.108**. Highest ADR **ADR-0302**. `main` at `abfa6ec`.
+> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
+> **#451-#458 all merged. No open PRs.** All five checks green on #458; the background
+> regeneration produced a clean set of nine installers (windows + linux both ran against them).
 >
 > - **`SFChartFrame.axisTitles` now takes an OPTIONAL `y2Label`** for a combo chart's secondary
 >   (right) axis. **The operator was asked and chose this** over "primary axes only, permanently"
