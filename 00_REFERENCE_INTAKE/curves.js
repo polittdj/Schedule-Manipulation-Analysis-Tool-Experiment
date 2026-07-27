@@ -1,0 +1,516 @@
+:root{--bg:#0b0e14;--panel:#121826;--ink:#e6edf3;--muted:#8b98a5;--accent:#4aa3ff;
+--ok:#3fb950;--warn:#d29922;--bad:#f85149;--line:#243044;
+--header-bg:#070a10;--field-bg:#0a0f1a;--btn-ink:#04111f;--hover:#18202f;
+--dz-bg:#0e1422;--dz-over:#10203a;--ok-bg:#0d2818;--bad-bg:#3a1d1d;
+--sum-ink:#aab6c4;--beyond:#3a4759;--beyond-ink:#6b7a8d;--done-overlay:rgba(255,255,255,.45);
+--border:var(--line);--grid-line:rgba(127,127,127,.25);
+--focus:#c792ea}
+html[data-theme=light]{--bg:#f2f5f9;--panel:#ffffff;--ink:#1a2330;--muted:#5a6878;--accent:#0b6bcb;
+--ok:#17803a;--warn:#996b00;--bad:#cf222e;--line:#d6dde7;
+--header-bg:#e9eef5;--field-bg:#eef1f6;--btn-ink:#ffffff;--hover:#eef2f7;
+--dz-bg:#f6f9fc;--dz-over:#e3edfa;--ok-bg:#e6f4ea;--bad-bg:#fdecea;
+--sum-ink:#5d6b7d;--beyond:#b9c4d0;--beyond-ink:#7d8b9b;--done-overlay:rgba(0,0,0,.25);
+--border:var(--line);--grid-line:rgba(90,104,120,.22);
+--focus:#8a3fc4}
+/* Microsoft-Project Gantt palette — the operator asked for the Gantt plotting area to mirror MS
+   Project exactly: a WHITE canvas with light-gray month / darker quarter / darkest year gridlines
+   and a pale blue-gray header band. These are theme-INDEPENDENT (defined once, never overridden by
+   the dark/light blocks above) so the Gantt looks like MS Project while the rest of the page keeps
+   its theme. The dark ink/overlay/milestone tokens keep bars, milestones and the % -complete
+   overlay legible on the white canvas (var(--ink)/(--done-overlay) would vanish on white). */
+:root{--gantt-canvas:#ffffff;--gantt-grid:#dfe3e8;--gantt-grid-qtr:#c2c7cd;--gantt-grid-yr:#9aa1a8;
+--gantt-band:#eef2f7;--gantt-band-ink:#2f3742;--gantt-done:rgba(20,28,40,.30);--gantt-ms:#2a3340;
+--gantt-sum:#586471}
+/* Operator: the whole tool's text should read at the Gantt's compact 11px. This is the single base
+   size everything inherits (paragraphs, labels, tables, controls); headings keep their own larger
+   sizes for hierarchy. Bump one value here to dial the whole UI up/down. */
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);
+font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent);text-decoration:none}header{background:var(--header-bg);border-bottom:1px solid var(--line);
+/* slim band (operator 2026-07-10, ADR-0194): the globe is out of the flex flow (absolute,
+   top-right), so the header is only as tall as the brand + nav; the right padding reserves
+   the corner so nav links never slide under the globe */
+padding:10px 116px 10px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+/* frozen title bar (operator 2026-07-10, ADR-0188): the nav with all the page selections stays
+   visible while the user scrolls; anything that must cover it (dialogs, expanded charts) already
+   sits above z-index 110 */
+position:sticky;top:0;z-index:110}header h1{font-size:17px;margin:0;letter-spacing:.5px}
+/* the report-page names are the primary navigation — render them larger + semibold so each page is
+   easy to scan and identify (the operator asked for bigger, clearly identifiable page names) */
+header nav a{margin-right:14px;color:var(--ink);font-size:13px;font-weight:600}
+header nav a:hover{color:var(--accent)}
+/* handbook-framed nav groups (Overview / Assessment / Control / Risks / Reporting / Setup) — the
+   function labels are prominent (the operator asked for them to be much more visible, not faded) */
+header nav .nav-group{display:inline-block;margin-right:18px}
+header nav .nav-grp-label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--accent);opacity:1;font-weight:700;margin-right:8px}
+header nav form.navform{display:inline;margin:0 14px 0 0}
+header nav .navform button{color:var(--muted);text-decoration:none;font:inherit;cursor:pointer}
+header nav .navform button:hover{color:var(--ink)}
+header nav .targetform{white-space:nowrap}
+header nav .targetform input[type=number]{width:74px;padding:3px 7px;font-size:13px}
+header nav #themeToggle{background:none;border:0;color:var(--muted);font:inherit;cursor:pointer;padding:0}
+header nav .ui-scale-ctl{font-size:13px;color:var(--muted);white-space:nowrap}
+header nav .ui-scale-ctl select{font-size:13px;margin-left:4px}
+header nav #themeToggle:hover{color:var(--ink)}
+/* the mobile hamburger toggle (a CSS-only checkbox) is hidden on desktop — nav is always shown */
+.nav-toggle,.nav-burger{display:none}
+main{margin:0 auto;padding:24px 28px}.panel{background:var(--panel);border:1px solid var(--line);
+border-radius:10px;padding:18px 20px;margin:0 0 18px}h2{font-size:16px;margin:0 0 12px;color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:7px 10px;
+border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:600}
+.pass{color:var(--ok)}.fail{color:var(--bad)}.na{color:var(--muted)}
+.sev-HIGH{color:var(--bad);font-weight:600}.sev-MEDIUM{color:var(--warn)}.sev-LOW,.sev-INFO{color:var(--muted)}
+.banner{padding:8px 14px;border-radius:8px;margin:0 0 12px;font-weight:600}
+.banner.local{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok)}
+.banner.cloud{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
+.muted{color:var(--muted)}.cite{color:var(--muted);font-size:12px}
+button,input[type=submit]{background:var(--accent);color:var(--btn-ink);border:0;border-radius:7px;
+padding:8px 14px;font-weight:600;cursor:pointer}input,select{background:var(--field-bg);color:var(--ink);
+border:1px solid var(--line);border-radius:7px;padding:7px 9px}
+code{background:var(--field-bg);border:1px solid var(--line);border-radius:4px;padding:1px 5px;font-size:12px}
+.hero{margin:6px 2px 20px}.hero h2{font-size:22px;color:var(--ink);margin:0 0 8px}
+.hero p{max-width:760px;margin:0}
+.dropzone{border:2px dashed var(--line);border-radius:12px;padding:34px 22px;text-align:center;
+transition:border-color .15s,background .15s;background:var(--dz-bg)}
+.dropzone.over{border-color:var(--accent);background:var(--dz-over)}
+.dropzone.busy{opacity:.6;pointer-events:none}
+/* file-load indicator: a full-screen overlay shown the instant a file is dropped/picked (or the
+   example is loaded), so the operator sees the tool is importing/analyzing and not stuck. It stays
+   up until the upload POST navigates to the next page. */
+.load-overlay{position:fixed;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--bg) 78%,transparent);backdrop-filter:blur(2px)}
+.load-overlay[hidden]{display:none}
+.load-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:26px 30px;
+  text-align:center;max-width:420px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.load-spinner{width:44px;height:44px;margin:0 auto 14px;border:4px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:sf-spin .8s linear infinite}
+.load-title{font-size:16px;font-weight:700;margin:0 0 6px;color:var(--ink)}
+@keyframes sf-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.load-spinner{animation:none}}
+.dz-icon{font-size:34px;color:var(--accent);line-height:1}
+.dz-title{font-size:16px;margin:10px 0 4px}
+.dz-actions{margin-top:16px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-block;background:var(--accent);color:var(--btn-ink);border-radius:7px;padding:9px 18px;
+font-weight:600;text-decoration:none}.btn:hover{filter:brightness(1.08)}
+.btn-link{color:var(--accent);font-weight:600}
+.btn-danger{display:inline-block;background:var(--bad);color:#fff;border:0;border-radius:7px;
+padding:8px 16px;font:inherit;font-weight:600;cursor:pointer}.btn-danger:hover{filter:brightness(1.08)}
+.linkbtn{background:none;border:0;color:var(--accent);font:inherit;font-weight:600;padding:0;
+cursor:pointer;text-decoration:underline}
+.row-actions{font-size:13px}.row-actions a{color:var(--accent)}
+.notice{padding:10px 14px;border-radius:8px;margin:0 0 12px;font-size:14px}
+.notice.ok{background:var(--ok-bg);border:1px solid var(--ok);color:var(--ok)}
+.notice.err{background:var(--bad-bg);border:1px solid var(--bad);color:var(--bad)}
+.notice.warn{background:color-mix(in srgb,var(--warn) 14%,transparent);border:1px solid var(--warn);color:var(--ink)}
+.notice.info{background:color-mix(in srgb,var(--muted) 12%,transparent);border:1px solid var(--muted);color:var(--ink)}
+.inline-form{display:inline-flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 8px}
+
+/* A1 (WCAG 2.4.7): a visible, theme-aware keyboard-focus ring on every interactive element.
+   :focus-visible keeps it keyboard-only (no ring on mouse click). The --focus token was
+   defined but unused before this. */
+:where(a,button,input,select,textarea,summary,[tabindex]):focus-visible{
+  outline:2px solid var(--focus);outline-offset:2px;border-radius:3px}
+
+/* A3 (WCAG 1.1.1 / 508): visually-hidden helper for screen-reader-only chart data tables and
+   labels — present in the DOM/AT, removed from the visual layout. */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* A2 (WCAG 2.3.3): honor the OS "reduce motion" setting — neutralize CSS transitions/animations
+   (the auto-play steppers are separately gated in JS so they no longer flip frames on a timer). */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}}
+
+/* A5: print-ready output (the Diagnostic Brief / Executive Briefing advertise this). Hide the
+   chrome (nav, chart toolbars, export bars, interactive controls), force light ink on white,
+   keep panels/cards from splitting across pages, and let the scrollers print in full. */
+@media print{
+  header,.cf-bar,.export-bar,.viz-controls,#pathControls,#pathExport,#askPanel{display:none!important}
+  body{background:#fff;color:#000}
+  a{color:#000;text-decoration:none}
+  main{padding:0}
+  .panel,.stat-card,.dash-card,.forecast-method,.brief-cards .panel,.qual-offenders,.chart,
+  table,tr{break-inside:avoid}
+  .panel{border:1px solid #bbb;box-shadow:none}
+  .cf-scroll,.gantt-scroll,#grid,.path-view,.evo-gantt,#forecastRuler,.sra-grid-host{overflow:visible!important;max-height:none!important}
+  .gantt-grid thead{position:static!important}
+  .gantt-grid .sf-frozen-col{position:static!important;left:auto!important}
+  @page{margin:14mm}
+}
+
+/* A9 (WCAG 1.4.10 reflow) + a real small-screen (phone/tablet) layout: at ~200% zoom or narrow
+   widths the header collapses behind a hamburger, controls become touch-sized and stack, the card
+   grids drop to one column, and wide tables/Gantts scroll inside their panel — never a horizontal
+   PAGE scroll. CUI-safe: pure CSS/layout, no network change (the tool still runs on the device). */
+@media (max-width:760px){
+  header{position:relative;flex-wrap:wrap;gap:8px 12px;padding:10px 14px}
+  /* hamburger: a visible burger glyph with an invisible-but-FOCUSABLE checkbox overlaid on it, so
+     the menu toggles by tap AND by keyboard (Tab to it, Space to open). :checked reveals the stacked
+     menu — no JS. The two are pinned to the same top-right corner so the tap target lands on glyph. */
+  .nav-burger{display:inline-flex;align-items:center;justify-content:center;position:absolute;
+    top:10px;right:14px;min-width:44px;min-height:44px;font-size:22px;color:var(--accent);
+    background:var(--field-bg);border:1px solid var(--line);border-radius:8px}
+  .nav-toggle{display:block;position:absolute;top:10px;right:14px;width:44px;height:44px;margin:0;
+    opacity:0;cursor:pointer;z-index:3}
+  .nav-toggle:focus-visible ~ .nav-burger{outline:2px solid var(--focus);outline-offset:2px}
+  header nav{display:none;flex-basis:100%;flex-direction:column;align-items:stretch;gap:2px;
+    flex-wrap:wrap;margin-top:8px}
+  .nav-toggle:checked ~ nav{display:flex}
+  header nav .nav-group{display:block;margin:0;padding:6px 0;border-bottom:1px solid var(--line)}
+  header nav .nav-grp-label{display:block;margin:0 0 4px}
+  header nav a{display:inline-block;margin:0 2px;padding:8px 10px;min-height:40px;line-height:24px}
+  /* each header control (target / theme / size / language / wipe / quit) on its own touch-sized row */
+  header nav form.navform,header nav .navform,header nav .ui-scale-ctl,header nav .langform,
+  header nav .targetform{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:6px 0;width:100%}
+  header nav input,header nav select,header nav button,header nav .linkbtn{min-height:40px}
+  header nav .targetform input[type=number]{width:auto;flex:1 1 90px}
+  /* the decorative insignia would collide with the burger corner — drop it on phones (the AI-working
+     status still shows inline in the Ask panel) */
+  .nasa-globe{display:none}
+  main{padding:16px 14px}
+  .dash-cards,.brief-cards,.card-cols,.qual-drill-grid{grid-template-columns:1fr}
+  /* wide report tables (DCMA audit, scorecards) + Gantts scroll inside the panel, not the page */
+  .panel{overflow-x:auto}
+  .viz-controls{flex-wrap:wrap;gap:8px}
+  .viz-controls input,.viz-controls select,.viz-controls button{min-height:40px}
+}
+
+/* ── NASA theme chrome — professional command-banner header + slowly rotating meatball insignia,
+   CUI page-marking bars (NASA marking standard), and a light dotted reading grid behind charts.
+   Every asset is vendored/local (air-gap). The rotation auto-stops under prefers-reduced-motion
+   via the global media block above (animation-duration is forced to ~0). */
+:root{--nasa-blue:#0b3d91;--nasa-blue-2:#0a2d6e;--nasa-red:#fc3d21;--grid-dot:rgba(140,160,190,.16);
+  /* Mission Ops (ADR-0195): the command banner reads THEME tokens now. These :root values keep
+     the classic blue banner as the no-JS fallback; sf-themes.css re-values them per view
+     (console / daylight / apollo / jarvis) — theme.js stamps a view before first paint. */
+  --header-bg:linear-gradient(95deg,var(--nasa-blue) 0%,var(--nasa-blue-2) 70%,#081f4d 100%);
+  --header-ink:#fff;--header-muted:rgba(255,255,255,.82);--header-line:var(--nasa-red);
+  --header-shadow:0 1px 2px rgba(0,0,0,.45)}
+html[data-theme=light]{--grid-dot:rgba(60,84,120,.14)}
+
+header{background:var(--header-bg);border-bottom:3px solid var(--header-line)}
+header h1{color:var(--header-ink);text-shadow:var(--header-shadow)}
+header nav a{color:var(--header-muted)}
+header nav a:hover{color:var(--header-ink)}
+header nav .navform button,header nav #themeToggle{color:var(--header-muted)}
+header nav .navform button:hover,header nav #themeToggle:hover{color:var(--header-ink)}
+header nav .linkbtn{color:var(--header-ink)}
+header label{color:var(--header-muted)}
+
+/* The header insignia is a transparent 3D wireframe Earth (globe.js) rotating around a STATIONARY
+   "NASA" wordmark — 3x the old meatball. It also doubles as the page-wide AI status light: ask.js
+   adds .ai-thinking while the local model generates (the globe spins up + glows cyan) and .ai-error
+   on failure (red flash), so every page shows whether the AI is working. */
+/* operator 2026-07-10 (ADR-0188): no wordmark on the globe. ADR-0194: pinned to the UPPER
+   RIGHT CORNER, out of the flex flow — with flex-wrap the 132px globe used to wrap onto its
+   own row and the banner ballooned; absolute positioning lets the band collapse to the
+   brand + nav height (header is sticky, so it is the containing block). */
+.nasa-globe{position:absolute;top:4px;right:14px;width:96px;height:96px;
+  display:flex;align-items:center;justify-content:center}
+.nasa-globe canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* the page-wide AI status light (the wordmark used to carry the glow; now the canvas does):
+   cyan while the local model generates, red flash on failure */
+.nasa-globe.ai-thinking canvas{filter:drop-shadow(0 0 10px rgba(120,210,255,.55))}
+.nasa-globe.ai-error canvas{filter:drop-shadow(0 0 10px rgba(252,61,33,.65))}
+
+.cui-banner{text-align:center;font-weight:700;font-size:11px;letter-spacing:2px;
+  text-transform:uppercase;padding:3px 10px;background:#1b1b1b;color:#fff}
+.cui-banner.cui{background:#5a0d12;color:#ffd9d9}
+.cui-banner.unclassified{background:#0d2818;color:#9fe0b4}
+.cui-banner.bottom{border-top:1px solid rgba(255,255,255,.12)}
+
+/* light dotted reading grid behind every chart (chart-host wrappers + the trend per-chart cells) */
+.chart-host,.chart,.chart-note{background-image:radial-gradient(var(--grid-dot) 1.2px,transparent 1.3px);
+  background-size:22px 22px;background-position:6px 6px}
+
+/* ── Target-UID endpoint banner + Risks 5x5 matrix / ranking ──────────────────────────────── */
+.endpoint-active .endpoint-clear{display:inline}
+.endpoint-active .endpoint-clear .linkbtn{padding:0 2px}
+
+/* conventional, theme-independent risk-heat bands (semantics are fixed regardless of light/dark) */
+.rk-min{background:#2e7d32;color:#fff}
+.rk-low{background:#9e9d24;color:#fff}
+.rk-mod{background:#f9a825;color:#1b1b1b}
+.rk-high{background:#ef6c00;color:#fff}
+.rk-extreme{background:#c62828;color:#fff}
+
+.rk-score{display:inline-block;min-width:1.6em;padding:1px 6px;border-radius:10px;font-weight:700;
+  font-size:12px;text-align:center;line-height:1.5}
+.finding-quant{margin:.3em 0;font-size:13px;color:var(--muted)}
+.finding-quant b{color:var(--ink)}
+
+/* handbook stoplight / tripwire chips — one per metric, coloured by pass/fail/na (Figs 7-10..7-38) */
+.stoplight-board{display:flex;flex-wrap:wrap;gap:6px;margin:.4em 0}
+.sl-chip{display:inline-flex;align-items:baseline;gap:5px;padding:3px 9px;border-radius:12px;
+  font-size:12px;line-height:1.4;border:1px solid transparent}
+.sl-chip .sl-name{font-weight:600}
+.sl-pass{background:#2e7d32;color:#fff}
+.sl-fail{background:#c62828;color:#fff}
+.sl-na{background:var(--panel);color:var(--muted);border-color:var(--border)}
+/* informational scorecard chip — a count with no numeric pass bar (theme-token accent, ADR-0213) */
+.sl-info{background:var(--panel);color:var(--ink);border-color:var(--accent)}
+/* Assessment Scorecards detail table (issue #331): the scorecard ribbon's full read-out. */
+.scorecard-table{width:100%;border-collapse:collapse;margin:.5em 0}
+.scorecard-table th,.scorecard-table td{text-align:left;padding:5px 9px;border-bottom:1px solid var(--border);vertical-align:top}
+.scorecard-table th{color:var(--muted);font-weight:600}
+/* Shared activity drill (issue #331): a clickable "(N activities)" trigger + clickable bar
+   segments/legend keys, and the modal grid they open. Theme-token only; air-gap safe. */
+button.sf-drill{border:0;background:none;padding:0;font:inherit;color:var(--accent);
+  cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+button.sf-drill:hover,button.sf-drill:focus-visible{color:var(--ink)}
+.stack-seg.sf-drill,.stack-key.sf-drill{cursor:pointer}
+.stack-seg.sf-drill:hover,.stack-seg.sf-drill:focus-visible{outline:2px solid var(--ink);outline-offset:-1px}
+.stack-key.sf-drill{text-decoration:underline;text-underline-offset:2px}
+.stack-key.sf-drill:hover,.stack-key.sf-drill:focus-visible{color:var(--accent)}
+.sf-drill-overlay{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.55);
+  display:flex;align-items:flex-start;justify-content:center;padding:5vh 3vw;overflow:auto}
+.sf-drill-dialog{width:min(920px,96vw);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.sf-drill-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.sf-drill-head h3{margin:.1em 0}
+.sf-drill-close{font-size:16px;color:var(--muted)}
+.sf-drill-close:hover{color:var(--ink)}
+.sf-drill-grid-host{overflow-x:auto}
+.sf-drill-sortable{cursor:pointer;white-space:nowrap}
+/* the restored per-page ⟲ Reset button, sitting inline in each visual's toolbar (ADR-0186 revival) */
+.viz-controls .sf-reset-inline{color:var(--muted);cursor:pointer;margin-left:auto}
+.viz-controls .sf-reset-inline:hover,.viz-controls .sf-reset-inline:focus-visible{color:var(--accent)}
+.sl-legend{display:flex;gap:8px;flex-wrap:wrap;margin:.3em 0 .2em}
+.sl-key{padding:1px 9px;border-radius:10px;font-size:11px;font-weight:600}
+
+.risk-matrix{border-collapse:separate;border-spacing:3px;width:auto;margin:.4em 0}
+.risk-matrix .rk-corner{font-size:11px;color:var(--muted);text-align:left;font-weight:600;
+  white-space:nowrap;padding:4px 6px}
+.risk-matrix .rk-axis{font-size:12px;color:var(--ink);font-weight:600;text-align:center;
+  background:var(--panel);padding:4px 6px}
+.risk-matrix th[scope=row].rk-axis{text-align:right;white-space:nowrap}
+.rk-cell{position:relative;width:64px;height:46px;text-align:center;vertical-align:middle;
+  border-radius:5px;opacity:.78}
+.rk-cell.rk-hit{opacity:1;box-shadow:inset 0 0 0 2px rgba(255,255,255,.85)}
+.rk-cell-n{font-size:18px;font-weight:800;display:block;line-height:1}
+.rk-cell-s{position:absolute;right:4px;bottom:2px;font-size:9px;opacity:.7}
+.rk-legend{display:flex;gap:8px;flex-wrap:wrap;margin:.5em 0 0}
+.rk-key{padding:2px 9px;border-radius:10px;font-size:12px;font-weight:600}
+
+.rk-ranking{list-style:none;margin:0;padding:0}
+.rk-row{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:center;
+  padding:5px 0;border-bottom:1px solid var(--line)}
+.rk-bar-track{background:var(--line);border-radius:6px;height:14px;overflow:hidden}
+.rk-bar{height:100%;border-radius:6px}
+.rk-row-sub{font-size:12px;color:var(--muted);margin-top:2px}
+@media (max-width:760px){.rk-row{grid-template-columns:1fr}}
+
+/* progressive local-AI polish (Risks / Executive Briefing) — a quiet status line above the
+   content that gets upgraded in the background; never blocks the page */
+.ai-polish-status{font-size:12px;color:var(--accent);font-style:italic;margin:0 0 6px}
+
+/* ── Mission Ops story-spine navigation (ADR-0196) ───────────────────────────────────────────
+   The header nav is the three-act / twelve-chapter story spine. DEFAULT + daylight render it as a
+   horizontal top bar (grouped by act, chapter numbers in the keel-red accent); the three dark
+   views (console / apollo / jarvis) turn the whole header into a fixed LEFT RAIL. All colors are
+   header tokens (ADR-0195), so it re-skins per view. */
+header nav{display:flex;flex-wrap:wrap;align-items:center;gap:5px 16px;flex:1 1 auto;min-width:0}
+.nav-spine{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;min-width:0}
+.nav-sect{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 9px}
+.nav-sect-label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--header-muted);white-space:nowrap}
+.nav-chapter{display:inline-flex;align-items:baseline;gap:5px;color:var(--header-ink);
+  font-size:12px;font-weight:600;white-space:nowrap;padding:1px 3px;border-radius:4px}
+.nav-chapter .ch-num{font-size:9px;font-weight:700;color:var(--header-line);letter-spacing:.03em;
+  font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace}
+.nav-chapter:hover{color:var(--header-ink);text-decoration:underline}
+.nav-beats{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px}
+.nav-beats a{font-size:10px;font-weight:500;color:var(--header-muted);white-space:nowrap}
+.nav-beats a:hover{color:var(--header-ink)}
+.nav-controls{display:flex;flex-wrap:wrap;align-items:center;gap:5px 12px}
+/* the always-present session controls keep their compact header look in either layout */
+.nav-controls .navform{display:inline;margin:0}
+/* "or UID" measure-to box — a compact number input beside the milestone dropdown */
+.nav-controls .sf-uid-form{display:inline-flex;align-items:center;gap:5px}
+.sf-uid-ctl input{width:6em}
+
+/* ── LEFT RAIL — the three dark views, wide viewports only (mobile keeps the burger) ──────── */
+@media (min-width:761px){
+  html[data-theme=console] header,html[data-theme=apollo] header,html[data-theme=jarvis] header{
+    position:fixed;top:0;left:0;bottom:0;width:236px;flex-direction:column;align-items:stretch;
+    flex-wrap:nowrap;gap:8px;padding:16px 12px 12px;overflow-y:auto;overflow-x:hidden;z-index:110}
+  html[data-theme=console] header h1.brand,html[data-theme=apollo] header h1.brand,
+  html[data-theme=jarvis] header h1.brand{margin-bottom:2px}
+  html[data-theme=console] header nav,html[data-theme=apollo] header nav,
+  html[data-theme=jarvis] header nav{flex-direction:column;align-items:stretch;flex:1 1 auto;
+    flex-wrap:nowrap;gap:12px;min-height:0;order:3}
+  /* the 12-chapter spine scrolls INSIDE the rail (min-height:0 unlocks flex overflow) so a short
+     viewport / zoomed UI can still reach the session controls pinned below it, instead of the whole
+     column shrinking and clipping its bottom (the fixed-rail clip bug). */
+  html[data-theme=console] .nav-spine,html[data-theme=apollo] .nav-spine,
+  html[data-theme=jarvis] .nav-spine{flex-direction:column;align-items:stretch;gap:11px;
+    flex:1 1 auto;flex-wrap:nowrap;min-height:0;overflow-x:hidden;overflow-y:auto}
+  html[data-theme=console] .nav-sect,html[data-theme=apollo] .nav-sect,
+  html[data-theme=jarvis] .nav-sect{flex-direction:column;align-items:stretch;gap:1px}
+  html[data-theme=console] .nav-sect-label,html[data-theme=apollo] .nav-sect-label,
+  html[data-theme=jarvis] .nav-sect-label{margin-bottom:3px;opacity:.9}
+  html[data-theme=console] .nav-chapter,html[data-theme=apollo] .nav-chapter,
+  html[data-theme=jarvis] .nav-chapter{padding:4px 9px;border-radius:6px}
+  html[data-theme=console] .nav-chapter .ch-num,html[data-theme=apollo] .nav-chapter .ch-num,
+  html[data-theme=jarvis] .nav-chapter .ch-num{min-width:15px}
+  html[data-theme=console] .nav-beats,html[data-theme=apollo] .nav-beats,
+  html[data-theme=jarvis] .nav-beats{flex-direction:column;align-items:stretch;gap:1px;
+    padding:1px 0 2px 29px}
+  html[data-theme=console] .nav-beats a,html[data-theme=apollo] .nav-beats a,
+  html[data-theme=jarvis] .nav-beats a{padding:2px 0}
+  /* controls stay pinned at the rail foot (never shrink) while the spine above them scrolls */
+  html[data-theme=console] .nav-controls,html[data-theme=apollo] .nav-controls,
+  html[data-theme=jarvis] .nav-controls{flex-direction:column;align-items:stretch;gap:7px;
+    flex:0 0 auto;border-top:1px solid var(--header-line);padding-top:9px;margin-top:2px}
+  html[data-theme=console] .nav-controls label.ui-scale-ctl,
+  html[data-theme=apollo] .nav-controls label.ui-scale-ctl,
+  html[data-theme=jarvis] .nav-controls label.ui-scale-ctl{display:flex;justify-content:space-between;
+    align-items:center;gap:6px;min-width:0}
+  html[data-theme=console] .nav-controls .targetform label,
+  html[data-theme=apollo] .nav-controls .targetform label,
+  html[data-theme=jarvis] .nav-controls .targetform label{display:flex;flex-direction:column;gap:3px;
+    min-width:0}
+  /* the rail is a fixed 236px column with overflow-x:hidden, so flex controls MUST be allowed to
+     shrink below their widest <option>'s intrinsic width (min-width:0 releases the default
+     min-width:auto floor that otherwise defeats max-width and bleeds the select off the right). */
+  html[data-theme=console] .nav-controls select,html[data-theme=apollo] .nav-controls select,
+  html[data-theme=jarvis] .nav-controls select{max-width:100%;min-width:0;width:100%;box-sizing:border-box}
+  html[data-theme=console] .nav-controls .ui-scale-ctl select,
+  html[data-theme=apollo] .nav-controls .ui-scale-ctl select,
+  html[data-theme=jarvis] .nav-controls .ui-scale-ctl select{margin-left:0;flex:1 1 0}
+  html[data-theme=console] .nav-controls .navform,html[data-theme=apollo] .nav-controls .navform,
+  html[data-theme=jarvis] .nav-controls .navform,
+  html[data-theme=console] .nav-controls .sf-uid-form,html[data-theme=apollo] .nav-controls .sf-uid-form,
+  html[data-theme=jarvis] .nav-controls .sf-uid-form{min-width:0;max-width:100%}
+  /* rail active state (redesign): panel-hover fill + a keel-accent inset bar. Overrides the
+     top-bar yellow pill (app.css) which is tuned for the horizontal blue header. */
+  html[data-theme=console] header nav a.nav-active,html[data-theme=apollo] header nav a.nav-active,
+  html[data-theme=jarvis] header nav a.nav-active{color:var(--header-ink)!important;
+    background:color-mix(in srgb,var(--header-ink) 12%,transparent)!important;border:0!important;
+    box-shadow:inset 2px 0 0 var(--header-line)!important;border-radius:4px!important;
+    font-weight:700}
+  /* the globe rides small at the rail foot instead of the banner corner (position:relative so its
+     inset:0 canvas fills THIS 66px span, not the fixed header it would otherwise anchor to) */
+  html[data-theme=console] .nasa-globe,html[data-theme=apollo] .nasa-globe,
+  html[data-theme=jarvis] .nasa-globe{position:relative;top:auto;right:auto;width:88px;height:88px;
+    margin:2px auto 4px;order:1;flex:0 0 auto}
+  html[data-theme=console] header .brand-sub,html[data-theme=apollo] header .brand-sub,
+  html[data-theme=jarvis] header .brand-sub{display:none}
+  /* push every body-level region clear of the fixed rail */
+  html[data-theme=console] main,html[data-theme=apollo] main,html[data-theme=jarvis] main,
+  html[data-theme=console] .cui-banner,html[data-theme=apollo] .cui-banner,
+  html[data-theme=jarvis] .cui-banner,
+  html[data-theme=console] .compliance-drawer,html[data-theme=apollo] .compliance-drawer,
+  html[data-theme=jarvis] .compliance-drawer{margin-left:236px}
+}
+
+/* ── chapter kicker + Continue footer + story progress ───────────────────────────────────── */
+.chapter-kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-family:ui-monospace,"IBM Plex Mono",Consolas,monospace;margin:2px 2px 10px}
+.story-foot{margin:22px 2px 6px;padding-top:14px;border-top:1px solid var(--line);
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.story-progress{display:flex;align-items:center;gap:10px}
+.story-so-far{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted)}
+.story-dashes{display:inline-flex;gap:3px}
+.story-dash{width:16px;height:4px;border-radius:2px;background:var(--line)}
+.story-dash.visited{background:color-mix(in srgb,var(--accent) 45%,transparent)}
+.story-dash.cur{background:var(--accent)}
+.continue-foot{display:flex;align-items:center;gap:14px;margin-left:auto}
+.continue-seg{font-size:11px;color:var(--muted);max-width:44ch;text-align:right}
+.continue-btn{white-space:nowrap}
+@media (max-width:760px){
+  .story-foot{flex-direction:column;align-items:stretch}
+  .continue-foot{margin-left:0;flex-wrap:wrap}.continue-seg{text-align:left}
+}
+
+/* print: the rail is hidden (header{display:none} above) — reclaim the margin and drop nav chrome */
+@media print{
+  main,.cui-banner,.compliance-drawer{margin-left:0!important}
+  .story-foot{display:none!important}
+}
+
+/* ── Chapter page shell — takeaway h1, KPI strip, composition bars (ADR-0197) ──────────────── */
+/* the data-driven takeaway: a sentence WITH a number, the redesign's page headline voice */
+.page-takeaway{font-size:22px;line-height:1.2;font-weight:700;color:var(--ink);
+  margin:6px 2px 14px;max-width:60ch}
+.ws-kpi{margin:0 0 12px}
+/* two composition bars side by side (Activity status mix · Float remaining); stack on narrow */
+.ws-bars{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:0 0 16px}
+@media (max-width:760px){.ws-bars{grid-template-columns:1fr}.page-takeaway{font-size:19px}}
+.status-stack h2{margin-bottom:2px}
+.stack-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;background:var(--line);
+  margin:8px 0 10px;box-shadow:inset 0 0 0 1px var(--line)}
+.stack-seg{height:100%;min-width:2px}
+.stack-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 8px}
+.stack-key{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.stack-key b{color:var(--ink);font-weight:700}
+.stack-dot{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.stack-foot{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted)}
+
+/* ── SRA plain-language conclusions (ADR-0201): "what the results mean" cards ── */
+.sra-conclusions{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  gap:12px;margin:10px 0}
+.concl-card{border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:8px;
+  padding:10px 12px;background:var(--panel)}
+.concl-good{border-left-color:var(--ok)}
+.concl-info{border-left-color:var(--accent)}
+.concl-warn{border-left-color:var(--warn)}
+.concl-bad{border-left-color:var(--bad)}
+.concl-topic{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+.concl-finding{font-weight:600;margin-bottom:6px}
+.concl-meaning{font-size:.92em;margin-bottom:6px}
+.concl-evidence{font-size:.8em;color:var(--muted)}
+
+/* ── Metric Workbench (ADR-0204): Acumen-style library + ribbon + drill grid ── */
+.wb-layout{display:flex;gap:16px;align-items:flex-start;margin-top:10px}
+.wb-library{flex:0 0 230px;max-height:70vh;overflow:auto;border:1px solid var(--line);
+  border-radius:8px;padding:8px 10px;background:var(--panel)}
+.wb-family{margin-bottom:10px}
+.wb-family-head{display:flex;align-items:center;gap:8px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);margin:4px 0}
+.wb-family-head .linkbtn{font-size:10px}
+.wb-metric{display:block;font-size:.9em;padding:2px 0;cursor:pointer}
+.wb-metric input{margin-right:6px}
+.wb-ribbon-wrap{flex:1 1 auto;overflow-x:auto}
+.wb-matrix{border-collapse:collapse;width:100%;font-size:.88em}
+.wb-matrix th,.wb-matrix td{border:1px solid var(--line);padding:5px 8px;text-align:right}
+.wb-matrix thead th{position:sticky;top:0;background:var(--panel);text-align:center;z-index:1}
+.wb-matrix th[scope=row],.wb-matrix .wb-metric-name{text-align:left;position:sticky;left:0;
+  background:var(--panel);font-weight:600;z-index:1}
+.wb-ver-label{font-weight:700}.wb-ver-date{font-size:.8em;color:var(--muted)}
+.wb-fam-row th{text-align:left;background:var(--dz-bg);color:var(--muted);text-transform:uppercase;
+  font-size:10px;letter-spacing:.1em;font-weight:700}
+.wb-cell.wb-pass{color:var(--ok)}.wb-cell.wb-fail{color:var(--bad);font-weight:700}
+.wb-cell.wb-na{color:var(--muted)}
+.wb-clickable{cursor:pointer;text-decoration:underline dotted}
+.wb-clickable:hover,.wb-clickable:focus{background:var(--dz-over);outline:2px solid var(--accent)}
+.wb-drill{margin-top:14px}
+.wb-drill-bar{flex-wrap:wrap;gap:12px;align-items:end}
+.wb-grid-host{overflow-x:auto;margin-top:8px}
+.wb-count{margin:2px 0 6px}
+.wb-grid{border-collapse:collapse;width:100%;font-size:.85em}
+.wb-grid th,.wb-grid td{border:1px solid var(--line);padding:4px 8px;text-align:left}
+.wb-grid thead th{background:var(--panel);position:sticky;top:0}
+.wb-sortable{cursor:pointer;white-space:nowrap}
+.wb-grid .wb-grp th{background:var(--dz-bg);color:var(--muted);font-weight:700}
+.wb-colx{margin-left:6px;color:var(--bad)}
+.wb-arrow{color:var(--accent)}
+
+/* --- v4 F4 role-selection front page (ADR-0255): pure emphasis, tokens only ------------- */
+.role-strip{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 2px}
+.roleform{display:inline}
+.role-card{padding:8px 14px;border:1px solid var(--line);border-radius:8px;background:var(--dz-bg);
+  color:var(--ink);cursor:pointer;font-size:13px}
+.role-card:hover{border-color:var(--accent)}
+.role-card.active{border-color:var(--accent);color:var(--accent);font-weight:700;
+  box-shadow:inset 0 0 0 1px var(--accent)}
+.start-strip{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.start-card{flex:1 1 15em;min-width:14em;display:flex;flex-direction:column;gap:4px;
+  padding:10px 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none}
+.start-card:hover{border-color:var(--accent)}
+.start-card .muted{font-size:12px}
+.nav-chapter.role-hl{border-left:2px solid var(--accent);padding-left:6px}

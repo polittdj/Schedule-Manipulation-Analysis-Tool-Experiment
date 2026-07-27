@@ -1,0 +1,1957 @@
+{
+ "routes": [
+  {
+   "line": 3170,
+   "method": "POST",
+   "path": "/api/heartbeat",
+   "kind": "MUTATION",
+   "fn": "def heartbeat() -> JSONResponse:"
+  },
+  {
+   "line": 3176,
+   "method": "GET",
+   "path": "/api/system",
+   "kind": "HTML",
+   "fn": "def system_snapshot() -> JSONResponse:"
+  },
+  {
+   "line": 3186,
+   "method": "POST",
+   "path": "/api/shutdown",
+   "kind": "MUTATION",
+   "fn": "def shutdown() -> JSONResponse:"
+  },
+  {
+   "line": 3192,
+   "method": "GET",
+   "path": "/",
+   "kind": "HTML",
+   "fn": "def home() -> HTMLResponse:"
+  },
+  {
+   "line": 3285,
+   "method": "GET",
+   "path": "/api/dashboard",
+   "kind": "EXPORT",
+   "fn": "def dashboard_json() -> JSONResponse:"
+  },
+  {
+   "line": 3289,
+   "method": "POST",
+   "path": "/example",
+   "kind": "EXPORT",
+   "fn": "def load_example() -> RedirectResponse:"
+  },
+  {
+   "line": 3299,
+   "method": "GET",
+   "path": "/download/{name}",
+   "kind": "EXPORT",
+   "fn": "def download_json(name: str) -> Response:"
+  },
+  {
+   "line": 3313,
+   "method": "POST",
+   "path": "/upload",
+   "kind": "MUTATION",
+   "fn": "def upload("
+  },
+  {
+   "line": 3522,
+   "method": "GET",
+   "path": "/analysis/{name}",
+   "kind": "HTML",
+   "fn": "def analysis(name: str, erosion_field: str | None = Query(None)) -> HTMLResponse:"
+  },
+  {
+   "line": 3561,
+   "method": "GET",
+   "path": "/card/{name}",
+   "kind": "HTML",
+   "fn": "def schedule_card(name: str) -> HTMLResponse:"
+  },
+  {
+   "line": 3582,
+   "method": "GET",
+   "path": "/wbs/{name}",
+   "kind": "HTML",
+   "fn": "def wbs_breakdown_view(name: str) -> HTMLResponse:"
+  },
+  {
+   "line": 3604,
+   "method": "GET",
+   "path": "/api/wbs/{name}",
+   "kind": "JSON",
+   "fn": "def wbs_json(name: str) -> JSONResponse:"
+  },
+  {
+   "line": 3612,
+   "method": "GET",
+   "path": "/api/analysis/{name}",
+   "kind": "JSON",
+   "fn": "def analysis_json(name: str) -> JSONResponse:"
+  },
+  {
+   "line": 3624,
+   "method": "GET",
+   "path": "/api/driving/{name}",
+   "kind": "JSON",
+   "fn": "def driving_json("
+  },
+  {
+   "line": 3671,
+   "method": "GET",
+   "path": "/standards",
+   "kind": "HTML",
+   "fn": "def standards_view() -> HTMLResponse:"
+  },
+  {
+   "line": 3700,
+   "method": "GET",
+   "path": "/portfolio",
+   "kind": "HTML",
+   "fn": "def portfolio() -> HTMLResponse:"
+  },
+  {
+   "line": 3712,
+   "method": "GET",
+   "path": "/mission",
+   "kind": "HTML",
+   "fn": "def mission_view() -> HTMLResponse:"
+  },
+  {
+   "line": 3736,
+   "method": "GET",
+   "path": "/compare",
+   "kind": "HTML",
+   "fn": "def compare() -> HTMLResponse:"
+  },
+  {
+   "line": 3814,
+   "method": "GET",
+   "path": "/path",
+   "kind": "HTML",
+   "fn": "def path_view() -> HTMLResponse:"
+  },
+  {
+   "line": 3886,
+   "method": "POST",
+   "path": "/api/ask/{name}",
+   "kind": "MUTATION",
+   "fn": "def ask(name: str, question: str = Form(\"\")) -> JSONResponse:"
+  },
+  {
+   "line": 3906,
+   "method": "POST",
+   "path": "/api/ask",
+   "kind": "MUTATION",
+   "fn": "def ask_workbook(question: str = Form(\"\")) -> JSONResponse:"
+  },
+  {
+   "line": 3935,
+   "method": "GET",
+   "path": "/api/driving-path",
+   "kind": "JSON",
+   "fn": "def driving_path_answer(uid: int = Query(...), scope: str = Query(\"\")) -> JSONResponse:"
+  },
+  {
+   "line": 3983,
+   "method": "GET",
+   "path": "/trend",
+   "kind": "HTML",
+   "fn": "def trend_view(target: str | None = Query(None)) -> HTMLResponse:"
+  },
+  {
+   "line": 4007,
+   "method": "GET",
+   "path": "/api/trend",
+   "kind": "HTML",
+   "fn": "def trend_json(target: str | None = Query(None)) -> JSONResponse:"
+  },
+  {
+   "line": 4016,
+   "method": "GET",
+   "path": "/api/margin",
+   "kind": "HTML",
+   "fn": "def margin_json() -> JSONResponse:"
+  },
+  {
+   "line": 4050,
+   "method": "GET",
+   "path": "/margin",
+   "kind": "HTML",
+   "fn": "def margin_view(rate: float | None = Query(None)) -> HTMLResponse:"
+  },
+  {
+   "line": 4064,
+   "method": "GET",
+   "path": "/api/margin/dashboard",
+   "kind": "JSON",
+   "fn": "def margin_dashboard_json() -> JSONResponse:"
+  },
+  {
+   "line": 4072,
+   "method": "POST",
+   "path": "/margin/confirm",
+   "kind": "MUTATION",
+   "fn": "async def margin_confirm(request: Request) -> RedirectResponse:"
+  },
+  {
+   "line": 4112,
+   "method": "POST",
+   "path": "/margin/band",
+   "kind": "MUTATION",
+   "fn": "async def margin_band(request: Request) -> RedirectResponse:"
+  },
+  {
+   "line": 4280,
+   "method": "GET",
+   "path": "/api/margin/risk",
+   "kind": "HTML",
+   "fn": "def margin_risk_json("
+  },
+  {
+   "line": 4295,
+   "method": "GET",
+   "path": "/evm",
+   "kind": "HTML",
+   "fn": "def evm_view(group_field: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 4306,
+   "method": "GET",
+   "path": "/resources",
+   "kind": "HTML",
+   "fn": "def resources_view(bucket: str = Query(\"month\")) -> HTMLResponse:"
+  },
+  {
+   "line": 4316,
+   "method": "GET",
+   "path": "/cei",
+   "kind": "HTML",
+   "fn": "def cei_view(uids: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 4346,
+   "method": "GET",
+   "path": "/api/cei",
+   "kind": "HTML",
+   "fn": "def cei_json(uids: str = Query(\"\")) -> JSONResponse:"
+  },
+  {
+   "line": 4358,
+   "method": "GET",
+   "path": "/scurve",
+   "kind": "HTML",
+   "fn": "def scurve_view(uids: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 4380,
+   "method": "GET",
+   "path": "/api/scurve",
+   "kind": "HTML",
+   "fn": "def scurve_json("
+  },
+  {
+   "line": 4403,
+   "method": "GET",
+   "path": "/ribbon",
+   "kind": "HTML",
+   "fn": "def ribbon_view() -> HTMLResponse:"
+  },
+  {
+   "line": 4444,
+   "method": "GET",
+   "path": "/volatility",
+   "kind": "HTML",
+   "fn": "def volatility_view() -> HTMLResponse:"
+  },
+  {
+   "line": 4470,
+   "method": "GET",
+   "path": "/export/{fmt}/volatility",
+   "kind": "JSON",
+   "fn": "def export_volatility(fmt: str) -> Response:"
+  },
+  {
+   "line": 4507,
+   "method": "GET",
+   "path": "/export/{fmt}/evm",
+   "kind": "JSON",
+   "fn": "def export_evm(fmt: str) -> Response:"
+  },
+  {
+   "line": 4536,
+   "method": "GET",
+   "path": "/export/{fmt}/scurve",
+   "kind": "JSON",
+   "fn": "def export_scurve(fmt: str, uids: str = Query(\"\")) -> Response:"
+  },
+  {
+   "line": 4565,
+   "method": "GET",
+   "path": "/export/{fmt}/resources",
+   "kind": "JSON",
+   "fn": "def export_resources(fmt: str, bucket: str = Query(\"month\")) -> Response:"
+  },
+  {
+   "line": 4627,
+   "method": "GET",
+   "path": "/export/{fmt}/risks",
+   "kind": "JSON",
+   "fn": "def export_risks(fmt: str) -> Response:"
+  },
+  {
+   "line": 4656,
+   "method": "GET",
+   "path": "/export/{fmt}/mission",
+   "kind": "HTML",
+   "fn": "def export_mission(fmt: str) -> Response:"
+  },
+  {
+   "line": 4691,
+   "method": "GET",
+   "path": "/performance",
+   "kind": "HTML",
+   "fn": "def performance_view(file: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 4717,
+   "method": "GET",
+   "path": "/export/{fmt}/performance",
+   "kind": "HTML",
+   "fn": "def export_performance(fmt: str, file: str = Query(\"\")) -> Response:"
+  },
+  {
+   "line": 4752,
+   "method": "GET",
+   "path": "/evolution",
+   "kind": "HTML",
+   "fn": "def evolution_view("
+  },
+  {
+   "line": 4806,
+   "method": "GET",
+   "path": "/integrity",
+   "kind": "HTML",
+   "fn": "def integrity_view("
+  },
+  {
+   "line": 4849,
+   "method": "GET",
+   "path": "/api/evolution",
+   "kind": "HTML",
+   "fn": "def evolution_json("
+  },
+  {
+   "line": 4875,
+   "method": "GET",
+   "path": "/driving-path",
+   "kind": "HTML",
+   "fn": "def driving_path_view("
+  },
+  {
+   "line": 4941,
+   "method": "GET",
+   "path": "/groups",
+   "kind": "HTML",
+   "fn": "def groups_view(request: Request) -> HTMLResponse:"
+  },
+  {
+   "line": 5011,
+   "method": "GET",
+   "path": "/api/group-values",
+   "kind": "HTML",
+   "fn": "def group_values_json("
+  },
+  {
+   "line": 5026,
+   "method": "GET",
+   "path": "/forecast",
+   "kind": "HTML",
+   "fn": "def forecast_view(group_field: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 5050,
+   "method": "GET",
+   "path": "/export/{fmt}/field-forecast",
+   "kind": "JSON",
+   "fn": "def export_field_forecast(fmt: str, field: str = Query(...)) -> Response:"
+  },
+  {
+   "line": 5106,
+   "method": "GET",
+   "path": "/api/forecast",
+   "kind": "HTML",
+   "fn": "def forecast_json() -> JSONResponse:"
+  },
+  {
+   "line": 5114,
+   "method": "GET",
+   "path": "/curves",
+   "kind": "EXPORT",
+   "fn": "def curves_view() -> HTMLResponse:"
+  },
+  {
+   "line": 5137,
+   "method": "GET",
+   "path": "/api/curves",
+   "kind": "EXPORT",
+   "fn": "def curves_json(hide_complete: bool = Query(False)) -> JSONResponse:"
+  },
+  {
+   "line": 5182,
+   "method": "GET",
+   "path": "/export/{fmt}/analysis/{name}",
+   "kind": "JSON",
+   "fn": "def export_analysis(fmt: str, name: str) -> Response:"
+  },
+  {
+   "line": 5210,
+   "method": "GET",
+   "path": "/export/{fmt}/path/{name}",
+   "kind": "JSON",
+   "fn": "def export_path("
+  },
+  {
+   "line": 5281,
+   "method": "GET",
+   "path": "/export/{fmt}/ribbon",
+   "kind": "UNKNOWN",
+   "fn": "def export_ribbon(fmt: str) -> Response:"
+  },
+  {
+   "line": 5335,
+   "method": "GET",
+   "path": "/export/{fmt}/float-band/{name}",
+   "kind": "JSON",
+   "fn": "def export_float_band("
+  },
+  {
+   "line": 5382,
+   "method": "GET",
+   "path": "/export/{fmt}/ribbon-drill/{name}",
+   "kind": "JSON",
+   "fn": "def export_ribbon_drill("
+  },
+  {
+   "line": 5446,
+   "method": "GET",
+   "path": "/workbench",
+   "kind": "HTML",
+   "fn": "def workbench_view() -> HTMLResponse:"
+  },
+  {
+   "line": 5457,
+   "method": "GET",
+   "path": "/api/workbench",
+   "kind": "JSON",
+   "fn": "def workbench_json() -> JSONResponse:"
+  },
+  {
+   "line": 5532,
+   "method": "GET",
+   "path": "/api/workbench/drill",
+   "kind": "JSON",
+   "fn": "def workbench_drill_json(metric: str = Query(...), file: str = Query(...)) -> JSONResponse"
+  },
+  {
+   "line": 5561,
+   "method": "GET",
+   "path": "/export/{fmt}/workbench",
+   "kind": "JSON",
+   "fn": "def export_workbench(fmt: str) -> Response:"
+  },
+  {
+   "line": 5587,
+   "method": "GET",
+   "path": "/export/{fmt}/margin",
+   "kind": "UNKNOWN",
+   "fn": "def export_margin(fmt: str, zero_margin: int = Query(0)) -> Response:"
+  },
+  {
+   "line": 5768,
+   "method": "GET",
+   "path": "/export/{fmt}/workbench-drill/{name}",
+   "kind": "JSON",
+   "fn": "def export_workbench_drill("
+  },
+  {
+   "line": 5840,
+   "method": "GET",
+   "path": "/scorecards",
+   "kind": "HTML",
+   "fn": "def scorecards_view(file: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 5865,
+   "method": "GET",
+   "path": "/api/scorecards/buffer",
+   "kind": "JSON",
+   "fn": "def scorecards_buffer_json("
+  },
+  {
+   "line": 5919,
+   "method": "GET",
+   "path": "/export/{fmt}/scorecards",
+   "kind": "JSON",
+   "fn": "def export_scorecards(fmt: str, file: str = Query(\"\")) -> Response:"
+  },
+  {
+   "line": 5940,
+   "method": "GET",
+   "path": "/api/activities/drill",
+   "kind": "JSON",
+   "fn": "def activities_drill_json("
+  },
+  {
+   "line": 5960,
+   "method": "GET",
+   "path": "/export/{fmt}/activities-drill",
+   "kind": "JSON",
+   "fn": "def export_activities_drill("
+  },
+  {
+   "line": 5989,
+   "method": "GET",
+   "path": "/export/{fmt}/resource-drill",
+   "kind": "JSON",
+   "fn": "def export_resource_drill("
+  },
+  {
+   "line": 6060,
+   "method": "GET",
+   "path": "/export/{fmt}/activities/{name}",
+   "kind": "JSON",
+   "fn": "def export_activities("
+  },
+  {
+   "line": 6111,
+   "method": "GET",
+   "path": "/export/{fmt}/driving-tiers/{name}",
+   "kind": "JSON",
+   "fn": "def export_driving_tiers("
+  },
+  {
+   "line": 6200,
+   "method": "GET",
+   "path": "/export/{fmt}/whatif",
+   "kind": "JSON",
+   "fn": "def export_whatif("
+  },
+  {
+   "line": 6259,
+   "method": "GET",
+   "path": "/export/{fmt}/whatif-added",
+   "kind": "JSON",
+   "fn": "def export_whatif_added("
+  },
+  {
+   "line": 6308,
+   "method": "GET",
+   "path": "/export/{fmt}/integrity",
+   "kind": "JSON",
+   "fn": "def export_integrity(fmt: str, file: str = Query(\"\")) -> Response:"
+  },
+  {
+   "line": 6354,
+   "method": "GET",
+   "path": "/export/{fmt}/trend",
+   "kind": "JSON",
+   "fn": "def export_trend(fmt: str) -> Response:"
+  },
+  {
+   "line": 6366,
+   "method": "GET",
+   "path": "/export/{fmt}/cei",
+   "kind": "JSON",
+   "fn": "def export_cei(fmt: str) -> Response:"
+  },
+  {
+   "line": 6382,
+   "method": "GET",
+   "path": "/export/{fmt}/evolution",
+   "kind": "JSON",
+   "fn": "def export_evolution(fmt: str) -> Response:"
+  },
+  {
+   "line": 6397,
+   "method": "GET",
+   "path": "/export/{fmt}/forecast",
+   "kind": "JSON",
+   "fn": "def export_forecast(fmt: str) -> Response:"
+  },
+  {
+   "line": 6413,
+   "method": "GET",
+   "path": "/export/{fmt}/curves",
+   "kind": "JSON",
+   "fn": "def export_curves(fmt: str) -> Response:"
+  },
+  {
+   "line": 6431,
+   "method": "GET",
+   "path": "/export/{fmt}/wbs/{name}",
+   "kind": "HTML",
+   "fn": "def export_wbs(fmt: str, name: str) -> Response:"
+  },
+  {
+   "line": 6446,
+   "method": "GET",
+   "path": "/export/{fmt}/compare",
+   "kind": "HTML",
+   "fn": "def export_compare(fmt: str) -> Response:"
+  },
+  {
+   "line": 6462,
+   "method": "GET",
+   "path": "/brief",
+   "kind": "HTML",
+   "fn": "def brief_view() -> HTMLResponse:"
+  },
+  {
+   "line": 6481,
+   "method": "GET",
+   "path": "/risks",
+   "kind": "HTML",
+   "fn": "def risks_view() -> HTMLResponse:"
+  },
+  {
+   "line": 6529,
+   "method": "GET",
+   "path": "/sra",
+   "kind": "HTML",
+   "fn": "def sra_view(file: str = Query(\"\")) -> HTMLResponse:"
+  },
+  {
+   "line": 6548,
+   "method": "POST",
+   "path": "/sra/risk",
+   "kind": "MUTATION",
+   "fn": "def sra_risk("
+  },
+  {
+   "line": 6602,
+   "method": "POST",
+   "path": "/sra/risk-register",
+   "kind": "MUTATION",
+   "fn": "def sra_risk_register("
+  },
+  {
+   "line": 6666,
+   "method": "POST",
+   "path": "/sra/branch",
+   "kind": "MUTATION",
+   "fn": "def sra_branch("
+  },
+  {
+   "line": 6727,
+   "method": "POST",
+   "path": "/sra/conditional",
+   "kind": "MUTATION",
+   "fn": "def sra_conditional("
+  },
+  {
+   "line": 6838,
+   "method": "GET",
+   "path": "/api/sra",
+   "kind": "JSON",
+   "fn": "def sra_json("
+  },
+  {
+   "line": 6892,
+   "method": "POST",
+   "path": "/sra/ssi-run-config",
+   "kind": "MUTATION",
+   "fn": "def ssi_run_config("
+  },
+  {
+   "line": 6912,
+   "method": "POST",
+   "path": "/sra/correlation-matrix",
+   "kind": "MUTATION",
+   "fn": "def sra_correlation_matrix("
+  },
+  {
+   "line": 6951,
+   "method": "POST",
+   "path": "/sra/factor-table",
+   "kind": "MUTATION",
+   "fn": "def ssi_factor_table("
+  },
+  {
+   "line": 6971,
+   "method": "POST",
+   "path": "/sra/factor",
+   "kind": "MUTATION",
+   "fn": "def ssi_set_factor(uids: str = Form(\"\"), factor: int = Form(3)) -> RedirectResponse:"
+  },
+  {
+   "line": 6980,
+   "method": "POST",
+   "path": "/sra/auto-calc",
+   "kind": "MUTATION",
+   "fn": "def ssi_auto_calc(scope: str = Form(\"all\"), uids: str = Form(\"\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7003,
+   "method": "GET",
+   "path": "/api/sra/ssi",
+   "kind": "JSON",
+   "fn": "def sra_ssi_json("
+  },
+  {
+   "line": 7045,
+   "method": "POST",
+   "path": "/sra/jcl-config",
+   "kind": "MUTATION",
+   "fn": "def sra_jcl_config("
+  },
+  {
+   "line": 7098,
+   "method": "GET",
+   "path": "/api/sra/jcl",
+   "kind": "JSON",
+   "fn": "def sra_jcl_json("
+  },
+  {
+   "line": 7146,
+   "method": "GET",
+   "path": "/api/sra/oat",
+   "kind": "JSON",
+   "fn": "def sra_oat_json() -> JSONResponse:"
+  },
+  {
+   "line": 7207,
+   "method": "GET",
+   "path": "/api/sra/grid",
+   "kind": "JSON",
+   "fn": "def sra_grid_json() -> JSONResponse:"
+  },
+  {
+   "line": 7225,
+   "method": "POST",
+   "path": "/sra/grid",
+   "kind": "MUTATION",
+   "fn": "def sra_grid_save(deltas: str = Form(\"[]\")) -> JSONResponse:"
+  },
+  {
+   "line": 7288,
+   "method": "GET",
+   "path": "/sra/ssi/save",
+   "kind": "EXPORT",
+   "fn": "def sra_ssi_save() -> Response:"
+  },
+  {
+   "line": 7299,
+   "method": "POST",
+   "path": "/sra/ssi/load",
+   "kind": "MUTATION",
+   "fn": "def sra_ssi_load(setup: UploadFile) -> RedirectResponse:"
+  },
+  {
+   "line": 7313,
+   "method": "GET",
+   "path": "/export/{fmt}/sra",
+   "kind": "JSON",
+   "fn": "def export_sra(fmt: str) -> Response:"
+  },
+  {
+   "line": 7384,
+   "method": "GET",
+   "path": "/export/{fmt}/sra-registry",
+   "kind": "JSON",
+   "fn": "def export_sra_registry(fmt: str) -> Response:"
+  },
+  {
+   "line": 7429,
+   "method": "GET",
+   "path": "/export/xlsx/risk-register-template",
+   "kind": "JSON",
+   "fn": "def export_risk_register_template() -> Response:"
+  },
+  {
+   "line": 7440,
+   "method": "GET",
+   "path": "/export/xlsx/task-risk-template",
+   "kind": "JSON",
+   "fn": "def export_task_risk_template() -> Response:"
+  },
+  {
+   "line": 7451,
+   "method": "POST",
+   "path": "/sra/import/risk-register",
+   "kind": "MUTATION",
+   "fn": "def sra_import_risk_register(file: UploadFile) -> RedirectResponse:"
+  },
+  {
+   "line": 7485,
+   "method": "POST",
+   "path": "/sra/import/task-risk",
+   "kind": "MUTATION",
+   "fn": "def sra_import_task_risk(file: UploadFile) -> RedirectResponse:"
+  },
+  {
+   "line": 7519,
+   "method": "GET",
+   "path": "/export/{fmt}/brief",
+   "kind": "EXPORT",
+   "fn": "def export_brief(fmt: str) -> Response:"
+  },
+  {
+   "line": 7547,
+   "method": "GET",
+   "path": "/export/{fmt}/briefing",
+   "kind": "EXPORT",
+   "fn": "def export_briefing(fmt: str) -> Response:"
+  },
+  {
+   "line": 7572,
+   "method": "GET",
+   "path": "/briefing",
+   "kind": "HTML",
+   "fn": "def briefing_view() -> HTMLResponse:"
+  },
+  {
+   "line": 7602,
+   "method": "GET",
+   "path": "/api/ai/narrative",
+   "kind": "HTML",
+   "fn": "def api_ai_narrative(key: str = \"\") -> JSONResponse:"
+  },
+  {
+   "line": 7623,
+   "method": "GET",
+   "path": "/api/ai/briefing",
+   "kind": "HTML",
+   "fn": "def api_ai_briefing() -> JSONResponse:"
+  },
+  {
+   "line": 7647,
+   "method": "GET",
+   "path": "/settings",
+   "kind": "HTML",
+   "fn": "def settings() -> HTMLResponse:"
+  },
+  {
+   "line": 7652,
+   "method": "POST",
+   "path": "/settings",
+   "kind": "MUTATION",
+   "fn": "def update_settings("
+  },
+  {
+   "line": 7708,
+   "method": "GET",
+   "path": "/api/ai/models",
+   "kind": "JSON",
+   "fn": "def ai_models(kind: str = Query(\"ollama\"), endpoint: str = Query(\"\")) -> JSONResponse:"
+  },
+  {
+   "line": 7744,
+   "method": "POST",
+   "path": "/settings/ai-off",
+   "kind": "MUTATION",
+   "fn": "def ai_off() -> RedirectResponse:"
+  },
+  {
+   "line": 7762,
+   "method": "GET",
+   "path": "/help",
+   "kind": "HTML",
+   "fn": "def help_page() -> HTMLResponse:"
+  },
+  {
+   "line": 7786,
+   "method": "POST",
+   "path": "/target",
+   "kind": "MUTATION",
+   "fn": "def set_target(uid: str = Form(\"\"), next_url: str = Form(\"/\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7799,
+   "method": "POST",
+   "path": "/dcma/scope",
+   "kind": "MUTATION",
+   "fn": "def set_dcma_scope(parity: str = Form(\"\"), next: str = Form(\"/\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7810,
+   "method": "POST",
+   "path": "/project/select",
+   "kind": "MUTATION",
+   "fn": "def select_project(pid: str = Form(\"\"), next_url: str = Form(\"/\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7823,
+   "method": "POST",
+   "path": "/project/exclude",
+   "kind": "MUTATION",
+   "fn": "def exclude_version(key: str = Form(\"\"), excluded: str = Form(\"\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7831,
+   "method": "POST",
+   "path": "/role",
+   "kind": "MUTATION",
+   "fn": "def set_role_route(role: str = Form(\"\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7839,
+   "method": "POST",
+   "path": "/language",
+   "kind": "MUTATION",
+   "fn": "def set_language(request: Request, lang: str = Form(\"en\")) -> RedirectResponse:"
+  },
+  {
+   "line": 7848,
+   "method": "POST",
+   "path": "/api/translate",
+   "kind": "MUTATION",
+   "fn": "async def translate_api(request: Request) -> JSONResponse:"
+  },
+  {
+   "line": 7866,
+   "method": "POST",
+   "path": "/session/wipe",
+   "kind": "MUTATION",
+   "fn": "def wipe() -> RedirectResponse:"
+  },
+  {
+   "line": 7922,
+   "method": "POST",
+   "path": "/session/ram-threshold",
+   "kind": "EXPORT",
+   "fn": "def ram_threshold(gb: float = Form(...)) -> RedirectResponse:"
+  },
+  {
+   "line": 7931,
+   "method": "GET",
+   "path": "/healthz",
+   "kind": "EXPORT",
+   "fn": "def healthz(request: Request) -> JSONResponse:"
+  }
+ ],
+ "matrix": [
+  {
+   "mod": "gantt",
+   "bytes": 24064,
+   "lines": 512,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": false,
+   "dd": true,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "histogram",
+   "bytes": 11456,
+   "lines": 270,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "scatter",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "curves",
+   "bytes": 21222,
+   "lines": 486,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": true,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "scurve",
+   "bytes": 15654,
+   "lines": 350,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": true,
+   "play": true,
+   "types": [
+    "bar",
+    "column",
+    "line",
+    "area",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "drift",
+   "bytes": 9604,
+   "lines": 202,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": true,
+   "play": true,
+   "types": [
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "path",
+   "bytes": 35657,
+   "lines": 708,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": true,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "box",
+    "waterfall"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "path_evolution",
+   "bytes": 23479,
+   "lines": 517,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": true,
+   "play": true,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "driving_path",
+   "bytes": 12265,
+   "lines": 260,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": true,
+   "play": true,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "driving_tiers",
+   "bytes": 8972,
+   "lines": 200,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "cei",
+   "bytes": 13840,
+   "lines": 280,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": true,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": true,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "area",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "performance",
+   "bytes": 28610,
+   "lines": 532,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": true,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": true,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "area",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "resources",
+   "bytes": 10877,
+   "lines": 257,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "margin_dashboard",
+   "bytes": 24233,
+   "lines": 414,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": true,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line",
+    "area",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "margin",
+   "bytes": 11533,
+   "lines": 272,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "scorecards",
+   "bytes": 3993,
+   "lines": 109,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": false,
+   "dd": false,
+   "play": false,
+   "types": [],
+   "svgText": 0
+  },
+  {
+   "mod": "scatter",
+   "bytes": 7492,
+   "lines": 160,
+   "xTitle": false,
+   "yTitle": true,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line",
+    "scatter",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "globe",
+   "bytes": 12518,
+   "lines": 282,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": false,
+   "dd": false,
+   "play": false,
+   "types": [
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "ribbon_drill",
+   "bytes": 8840,
+   "lines": 203,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "hist"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "drilldown",
+   "bytes": 9484,
+   "lines": 235,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "column",
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "findings_drill",
+   "bytes": 7935,
+   "lines": 182,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "workbench",
+   "bytes": 12661,
+   "lines": 285,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "column",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "volatility",
+   "bytes": 23824,
+   "lines": 486,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": false,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "area",
+    "hist",
+    "heat",
+    "box",
+    "waterfall"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "trend",
+   "bytes": 53484,
+   "lines": 1165,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": true,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": true,
+   "play": true,
+   "types": [
+    "bar",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "trend_drill",
+   "bytes": 9880,
+   "lines": 235,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": false,
+   "play": true,
+   "types": [
+    "bar",
+    "column",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "sra",
+   "bytes": 21310,
+   "lines": 515,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line",
+    "area",
+    "hist",
+    "tornado",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "sra_grid",
+   "bytes": 24584,
+   "lines": 506,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": true,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "heat"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "sra_jcl",
+   "bytes": 14741,
+   "lines": 283,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line",
+    "scatter",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "sra_risk",
+   "bytes": 3173,
+   "lines": 81,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": false,
+   "play": false,
+   "types": [],
+   "svgText": 0
+  },
+  {
+   "mod": "sra_ssi",
+   "bytes": 21323,
+   "lines": 433,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "wbs",
+   "bytes": 6633,
+   "lines": 145,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": true,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "whatif",
+   "bytes": 7054,
+   "lines": 177,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "hist",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "timeaxis",
+   "bytes": 4615,
+   "lines": 104,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": false,
+   "toolbar": false,
+   "dd": false,
+   "play": false,
+   "types": [
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "chartframe",
+   "bytes": 15208,
+   "lines": 336,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": false,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": false,
+   "play": true,
+   "types": [
+    "gantt",
+    "bar",
+    "area",
+    "hist",
+    "tornado",
+    "box"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "legend_toggle",
+   "bytes": 6211,
+   "lines": 148,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": true,
+   "takeaway": false,
+   "toolbar": true,
+   "dd": false,
+   "play": false,
+   "types": [
+    "bar",
+    "line"
+   ],
+   "svgText": 0
+  },
+  {
+   "mod": "vizhints",
+   "bytes": 50610,
+   "lines": 637,
+   "xTitle": false,
+   "yTitle": false,
+   "ticks": false,
+   "legend": true,
+   "legendToggle": false,
+   "takeaway": true,
+   "toolbar": true,
+   "dd": true,
+   "play": true,
+   "types": [
+    "gantt",
+    "bar",
+    "column",
+    "line",
+    "scatter",
+    "hist",
+    "tornado",
+    "waterfall"
+   ],
+   "svgText": 0
+  }
+ ],
+ "typo": {
+  "base.css": {
+   "bytes": 35842,
+   "lines": 517,
+   "sizes": {
+    "17px": 1,
+    "13px": 7,
+    "12px": 11,
+    "16px": 4,
+    "14px": 2,
+    "22px": 3,
+    "34px": 1,
+    "11px": 6,
+    "18px": 1,
+    "9px": 5,
+    "10px": 5,
+    "19px": 1,
+    ".92em": 1,
+    ".8em": 2,
+    ".9em": 1,
+    ".88em": 1,
+    ".85em": 1
+   },
+   "families": {
+    "ui-monospace,\"IBM Plex Mono\",Consolas,monospace": 2
+   },
+   "fontFace": 0,
+   "themes": [
+    "[data-theme=console",
+    "[data-theme=apollo",
+    "[data-theme=jarvis"
+   ],
+   "vars": 67
+  },
+  "app.css": {
+   "bytes": 77154,
+   "lines": 1114,
+   "sizes": {
+    "15px": 5,
+    "13px": 17,
+    "14px": 9,
+    "10px": 8,
+    "9px": 5,
+    "12px": 51,
+    "11px": 30,
+    "18px": 1,
+    "0.85rem": 1,
+    "16px": 5,
+    "20px": 1,
+    "8px": 3,
+    "1.05em": 1,
+    "26px": 1,
+    "12.5px": 1,
+    "0.85em": 1
+   },
+   "families": {},
+   "fontFace": 0,
+   "themes": [],
+   "vars": 16
+  },
+  "hud.css": {
+   "bytes": 11618,
+   "lines": 170,
+   "sizes": {
+    "11px": 5,
+    "12px": 4,
+    "10px": 2,
+    "13px": 1
+   },
+   "families": {},
+   "fontFace": 0,
+   "themes": [
+    "[data-theme=jarvis"
+   ],
+   "vars": 26
+  }
+ },
+ "fontUrls": [],
+ "shas": [
+  "d62a4f9e791783701eacc6aeb47ee9b69e0ff80abf4cfeb9bfeddf7b998a58d1",
+  "8d7bcc386168f0e9c3e384bde6beb0789be5beb4b1485a81f0d96138038afc16",
+  "51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a8767c292c504cb"
+ ],
+ "shaLines": [
+  {
+   "i": 19,
+   "l": "7. The target control + endpoint banner scope to the active project (ADR-0284, Fix E — un-xfailed)."
+  },
+  {
+   "i": 49,
+   "l": "GOLDEN = Path(__file__).resolve().parents[1] / \"fixtures\" / \"golden\""
+  },
+  {
+   "i": 52,
+   "l": "# fixtures / helpers"
+  },
+  {
+   "i": 123,
+   "l": "@pytest.fixture(scope=\"module\")"
+  },
+  {
+   "i": 125,
+   "l": "\"\"\"The committed 2,126-task fixture (``ssi_uid152``) — real numbers for the payload golden.\"\"\""
+  },
+  {
+   "i": 142,
+   "l": "def test_dashboard_builds_zero_full_analyses(monkeypatch: pytest.MonkeyPatch) -> None:"
+  },
+  {
+   "i": 165,
+   "l": "def test_warm_dashboard_is_cache_served_past_the_cap(monkeypatch: pytest.MonkeyPatch) -> None:"
+  },
+  {
+   "i": 185,
+   "l": "def test_concurrent_cold_requests_compute_once(monkeypatch: pytest.MonkeyPatch) -> None:"
+  },
+  {
+   "i": 220,
+   "l": "def test_single_flight_exception_propagates_then_recovers("
+  },
+  {
+   "i": 257,
+   "l": "def test_distinct_keys_are_not_serialized(monkeypatch: pytest.MonkeyPatch) -> None:"
+  },
+  {
+   "i": 315,
+   "l": "def test_cold_analysis_computes_each_dependency_once_default("
+  },
+  {
+   "i": 324,
+   "l": "def test_cold_analysis_parity_mode_computes_each_dependency_once("
+  },
+  {
+   "i": 338,
+   "l": "def test_findings_and_narrative_follow_the_active_audit_per_mode() -> None:"
+  },
+  {
+   "i": 358,
+   "l": "_SHA_TWO_VERSION = \"d62a4f9e791783701eacc6aeb47ee9b69e0ff80abf4cfeb9bfeddf7b998a58d1\""
+  },
+  {
+   "i": 359,
+   "l": "_SHA_UNSOLVABLE = \"8d7bcc386168f0e9c3e384bde6beb0789be5beb4b1485a81f0d96138038afc16\""
+  },
+  {
+   "i": 360,
+   "l": "# Parity mode diverges from default on THIS fixture only since ADR-0283: Large Test File carries a"
+  },
+  {
+   "i": 364,
+   "l": "_SHA_TWO_VERSION_PARITY = \"51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a8767c292c504cb\""
+  },
+  {
+   "i": 367,
+   "l": "def test_dashboard_payload_two_versions_is_byte_identical(big: Schedule) -> None:"
+  },
+  {
+   "i": 376,
+   "l": "def test_dashboard_payload_parity_mode_is_byte_stable(big: Schedule) -> None:"
+  },
+  {
+   "i": 378,
+   "l": "# ADR-0281 invariant). Since ADR-0283 it differs from the default payload on this fixture by"
+  },
+  {
+   "i": 387,
+   "l": "def test_dashboard_payload_with_unsolvable_card_is_byte_identical(big: Schedule) -> None:"
+  },
+  {
+   "i": 400,
+   "l": "def test_mid_flight_wipe_does_not_repopulate(monkeypatch: pytest.MonkeyPatch) -> None:"
+  },
+  {
+   "i": 425,
+   "l": "def test_scope_epoch_key_prevents_cross_epoch_service() -> None:"
+  },
+  {
+   "i": 445,
+   "l": "# 7. (xfail until Fix E) cross-project leak in the target control + endpoint banner"
+  },
+  {
+   "i": 462,
+   "l": "def test_target_control_and_banner_scope_to_active_project() -> None:"
+  }
+ ],
+ "pkg": [
+  "python -m venv .venv && . .venv/bin/activate      # (Windows: .venv\\Scripts\\Activate.ps1)",
+  "From the activated venv, run the installer once to get a **Desktop icon** you double-click:",
+  "the tool starts with **no console window** (it runs `pythonw.exe -m schedule_forensics`),",
+  "- Portable alternative (no installer): double-click **`packaging\\windows\\Schedule Forensics.vbs`**",
+  "  — works when `pythonw` is on PATH (i.e. the venv is active/installed).",
+  "  `python packaging\\make_icon.py`.",
+  "The shortcut runs `pythonw` (no console), so a startup failure has nowhere to print. The tool now",
+  "package is no longer installed there. Re-run the installer from your venv; it re-points the icon",
+  "- **Any OS (terminal):** `schedule-forensics`  (or `python -m schedule_forensics.launcher`)"
+ ],
+ "ci": [
+  "name: CI",
+  "        python-version: [\"3.11\", \"3.13\"]",
+  "      - name: Set up Python ${{ matrix.python-version }}",
+  "        uses: actions/setup-python@v6",
+  "          python-version: ${{ matrix.python-version }}",
+  "      - name: Install (package + dev toolchain)",
+  "        run: |",
+  "          python -m pip install --upgrade pip",
+  "          python -m pip install -e '.[dev]'",
+  "      - name: Lint (ruff)",
+  "        run: ruff check .",
+  "      - name: Format check (ruff)",
+  "        run: ruff format --check .",
+  "      - name: Types (mypy, strict)",
+  "        run: mypy",
+  "      - name: Tests + overall coverage gate (>=70%)",
+  "        run: pytest --cov=schedule_forensics --cov-report=term-missing --cov-fail-under=70",
+  "      - name: Engine coverage gate (>=85%)",
+  "        run: coverage report --include='*/schedule_forensics/engine/*' --fail-under=85",
+  "      - name: Parity gate (Acumen Fuse v8.11.0 + SSI golden, §6.B)",
+  "        run: pytest -m parity -p no:cacheprovider",
+  "      - name: Security (bandit)",
+  "        run: bandit -q -r src",
+  "      - name: Dependency audit (pip-audit)",
+  "        run: pip-audit --progress-spinner=off",
+  "    name: check",
+  "      - run: echo \"all matrix jobs passed\""
+ ],
+ "smoke": [
+  "# Installer smoke tests — real-OS verification of the one-file installers.",
+  "# The build container is Linux, so the Windows installers could never be executed before",
+  "# EXECUTES tier1 in smoke mode (temp root, prompts skipped, no Ollama/Java) — embedded wheel",
+  "# .sh family plus an actual serve/stop round-trip. Triggered only when installer content",
+  "name: installer-smoke",
+  "      - \"installer/**\"",
+  "      - \"tools/installer/**\"",
+  "      - \".github/workflows/installer-smoke.yml\"",
+  "      - \"installer/**\"",
+  "      - \"tools/installer/**\"",
+  "      - name: Enable Windows long paths for checkout",
+  "        run: git config --system core.longpaths true",
+  "      - name: Parse all three PowerShell installers (syntax gate)",
+  "        run: |",
+  "          foreach ($f in Get-ChildItem installer/install-*.ps1) {",
+  "      - name: Smoke-run tier1 (embedded wheel -> venv -> import)",
+  "          SF_INSTALLER_SMOKE: \"1\"",
+  "        run: |",
+  "          powershell -ExecutionPolicy Bypass -File installer/install-tier1.ps1",
+  "          & $venvPy -c \"import schedule_forensics.web.app as a, pathlib; d = pathlib.Path(a.__file__).parent / 'static'; assert d.is_dir() and any(d.iterdir()), 'static assets missing from wheel'; print('wheel static assets OK')\"",
+  "          python-version: \"3.12\"",
+  "      - name: Smoke-run tier1 with only python.exe discoverable (no py launcher)",
+  "          SF_INSTALLER_SMOKE: \"1\"",
+  "        run: |",
+  "          powershell -ExecutionPolicy Bypass -File installer/install-tier1.ps1",
+  "      - name: Syntax-check the sh/command installers",
+  "        run: |",
+  "          for f in installer/install-*.sh installer/install-*.command; do",
+  "      - name: Smoke-run tier1 end-to-end (install -> serve -> static -> stop -> uninstall)",
+  "          SF_INSTALLER_SMOKE: \"1\"",
+  "        run: |",
+  "          bash installer/install-tier1.sh"
+ ],
+ "testpkg": [
+  "def test_os_shortcuts_present() -> None:",
+  "        \"windows/Install-Desktop-Shortcut.ps1\",  # Windows desktop-icon installer",
+  "        assert (PKG / rel).is_file(), f\"missing packaging artifact: {rel}\"",
+  "def test_windows_installer_targets_pythonw_launcher() -> None:",
+  "    assert \"pythonw\" in ps1 and \"-m schedule_forensics\" in ps1",
+  "    # so assert against the actual assignment line rather than the whole file).",
+  "    assert '\"-m schedule_forensics\"' in args_line",
+  "    assert \"schedule_forensics.launcher\" not in args_line  # the unguarded target is retired",
+  "    assert \"Desktop\" in ps1 and \".ico\" in ps1  # creates a Desktop shortcut with the icon",
+  "def test_icon_is_a_valid_multi_entry_ico() -> None:",
+  "    assert reserved == 0 and kind == 1 and count == 5  # 256/128/64/32/16 entries",
+  "        assert bpp == 32",
+  "        assert data[offset : offset + 8] == b\"\\x89PNG\\r\\n\\x1a\\n\"  # PNG-in-ICO payload",
+  "        assert size > 0 and offset + size <= len(data)",
+  "    assert sizes == [256, 128, 64, 32, 16]",
+  "def test_icon_generator_is_deterministic_and_all_copies_are_in_sync() -> None:",
+  "    assert ico == ico2 and png == png2  # deterministic",
+  "    assert (PKG / \"windows\" / \"schedule-forensics.ico\").read_bytes() == ico",
+  "    assert (PKG / \"schedule-forensics.png\").read_bytes() == png",
+  "    assert favicon.read_bytes() == ico  # browser tab == desktop icon"
+ ]
+}

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&amp;family=Barlow+Semi+Condensed:wght@600;700;800&amp;family=IBM+Plex+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#04070D;font-family:Barlow,system-ui,sans-serif}
+a{color:#4AA3FF;text-decoration:none}a:hover{color:#7FBDFF}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(255,255,255,.07);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.dv-tid{font:600 10px 'IBM Plex Mono',monospace;padding:3px 7px;background:#E7EEF7;color:#070B12;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Barlow,sans-serif;color:#E7EEF7}
+.dv-sub{font:400 11px/1.5 Barlow,sans-serif;color:#8295AB;margin:0 0 22px;max-width:880px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:30px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px 'IBM Plex Mono',monospace;padding:3px 7px;background:rgba(255,255,255,.1);color:#E7EEF7;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Barlow,sans-serif;color:#8295AB;max-width:920px}
+.dv-olabel b{color:#E7EEF7;font-weight:600}
+.dv-card{max-width:100%;background:#070B12;border:1px solid #203049;border-radius:10px;box-shadow:0 14px 44px rgba(0,0,0,.5);overflow:hidden}
+.dv-opt:target .dv-oid{background:#4AA3FF;color:#051323}
+.dv-next{margin:26px 0 0;font:12px/1.5 Barlow,sans-serif;color:#8295AB}
+.dv-grp{width:100%;font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:#4AA3FF;text-transform:uppercase;margin:8px 0 -14px}
+</style></helmet>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Phase 2 explorations — story architecture · CP Volatility · Performance Summary</span></div>
+  <p class="dv-sub">Shown in the Console theme; whichever you pick gets built into the prototype across all four themes. Nothing is removed anywhere — every one of the ten Volatility visuals and seven Performance graph families keeps its data, stepper, ▦ Data, ⤓ Excel and ⛶ Enlarge; "combined" means unified onto shared axes and cursors, with the original view one click away.</p>
+  <div class="dv-opts">
+
+    <div class="dv-grp">Story architecture — all 27 pages woven in</div>
+
+    <!-- ═══════════ 1a · STORY MAP A ═══════════ -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a><span><b>The Long Read — 12 chapters, one line.</b> Every analytics page becomes a beat inside a chapter; utilities leave the story.</span></div>
+      <div class="dv-card" style="width:640px;padding:22px 24px">
+        <div style="font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#8295AB;text-transform:uppercase;margin-bottom:12px">Rail nav — one scroll, twelve chapters</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <sc-for list="{{ mapA }}" as="ch" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:34px 190px 1fr;gap:10px;align-items:baseline;padding:7px 10px;border-left:2px solid {{ ch.edge }};background:{{ ch.bg }};margin-bottom:2px;border-radius:0 7px 7px 0">
+              <span style="font:700 10px 'IBM Plex Mono',monospace;color:{{ ch.numC }}">{{ ch.num }}</span>
+              <span style="font:600 12px Barlow,sans-serif;color:#E7EEF7">{{ ch.label }}</span>
+              <span style="display:flex;flex-wrap:wrap;gap:4px">
+                <sc-for list="{{ ch.routes }}" as="r" hint-placeholder-count="2">
+                  <span style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:2px 7px">{{ r }}</span>
+                </sc-for>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:12px;padding:9px 12px;border:1px dashed #203049;border-radius:7px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap">
+          <span style="font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:#8295AB">OFF-STORY UTILITIES</span>
+          <span style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:2px 7px">/groups · scope filter</span>
+          <span style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:2px 7px">/settings · AI</span>
+          <span style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:2px 7px">/help · metric dictionary</span>
+          <span style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:2px 7px">wipe · quit · reset view</span>
+        </div>
+        <div style="margin-top:10px;font:400 10.5px/1.55 Barlow,sans-serif;color:#8295AB">Reads like a case file: load → verdict in one straight line. "Continue" footers walk every chapter; multi-page chapters get in-chapter beats (e.g. 01 opens on the ID card, continues into the full report). Longest nav, simplest mental model.</div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 1b · STORY MAP B ═══════════ -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><span><b>Three Acts — Situation · Diagnosis · Outlook.</b> Same 12 chapters grouped into acts with cinematic act-divider screens; the rail collapses per act.</span></div>
+      <div class="dv-card" style="width:760px;padding:22px 24px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <sc-for list="{{ mapB }}" as="act" hint-placeholder-count="3">
+            <div style="border:1px solid #203049;border-radius:9px;overflow:hidden;background:#0B1220">
+              <div style="padding:10px 12px;background:linear-gradient(160deg,{{ act.hdrA }},{{ act.hdrB }});border-bottom:1px solid #203049">
+                <div style="font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.2em;color:{{ act.kick }}">{{ act.kicker }}</div>
+                <div style="font:700 15px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.04em">{{ act.name }}</div>
+                <div style="font:400 9.5px Barlow,sans-serif;color:#8295AB">{{ act.q }}</div>
+              </div>
+              <div style="padding:8px 10px;display:flex;flex-direction:column;gap:3px">
+                <sc-for list="{{ act.chapters }}" as="c" hint-placeholder-count="4">
+                  <div style="display:flex;gap:7px;align-items:baseline;padding:4px 6px;border-radius:5px;background:#0E1522">
+                    <span style="font:700 9px 'IBM Plex Mono',monospace;color:#4AA3FF">{{ c.num }}</span>
+                    <span style="font:600 10.5px Barlow,sans-serif;color:#E7EEF7;white-space:nowrap">{{ c.label }}</span>
+                    <span style="font:500 8px 'IBM Plex Mono',monospace;color:#8295AB;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.routes }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <div style="flex:1;height:44px;border:1px solid #203049;border-radius:7px;background:radial-gradient(500px 90px at 30% 120%,rgba(74,163,255,.14),transparent),#0B1220;display:flex;align-items:center;padding:0 14px;gap:12px">
+            <span style="font:800 16px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;letter-spacing:.05em">ACT II</span>
+            <span style="font:400 10px Barlow,sans-serif;color:#8295AB">act-divider interstitial — the act's one-line verdict, then Continue</span>
+          </div>
+          <div style="font:400 10.5px/1.5 Barlow,sans-serif;color:#8295AB;max-width:250px">Rail shows 3 acts; open act expands. Faster to navigate at 12 chapters; acts give the "story so far" recap a natural home.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dv-grp">CP Volatility — ten visuals, three treatments</div>
+
+    <!-- ═══════════ 1c · VOLATILITY — FLIGHT RECORDER ═══════════ -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a><span><b>Flight Recorder — aggressive combine, 10 → 4 composites.</b> One shared version cursor; gauge becomes the headline KPI; leaderboards fold into the matrix as sortable annotation columns.</span></div>
+      <div class="dv-card" style="width:920px;background:#070B12;padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:10px">
+          <div>
+            <div style="font:700 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4AA3FF;text-transform:uppercase">Chapter 04 · How stable is the path</div>
+            <div style="font:700 19px/1.15 'Barlow Semi Condensed',sans-serif;color:#E7EEF7">The critical path changed half its membership in five updates.</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <button style="background:#4AA3FF;color:#051323;border:0;border-radius:7px;padding:6px 12px;font:700 10.5px Barlow,sans-serif;cursor:pointer">▶ Play</button>
+            <button style="background:transparent;color:#8295AB;border:1px solid #203049;border-radius:7px;padding:6px 10px;font:700 10.5px Barlow,sans-serif;cursor:pointer">Step ▸</button>
+            <span style="font:600 9px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:3px 8px">V5 · DD 2026-04-06</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.05fr .95fr;gap:10px">
+          <div style="background:#0E1522;border:1px solid #203049;border-radius:9px;padding:11px 13px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 11px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">① Stability signal</span><span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">▦ DATA · ⤓ EXCEL · ⛶</span></div>
+            <div style="font:400 9.5px Barlow,sans-serif;color:#8295AB;margin:1px 0 8px">gauge + churn timeline — one panel, one truth</div>
+            <div style="display:flex;gap:14px;align-items:center">
+              <div style="text-align:center;min-width:104px">
+                <div style="font:700 30px 'Barlow Semi Condensed',sans-serif;color:#E0A62E">61%</div>
+                <div style="font:500 8.5px 'IBM Plex Mono',monospace;color:#8295AB;letter-spacing:.06em">MEAN CARRY-OVER</div>
+                <div style="margin-top:5px;display:inline-block;font:700 8.5px 'IBM Plex Mono',monospace;color:#E0A62E;border:1px solid rgba(224,166,46,.45);border-radius:9px;padding:2px 8px;background:rgba(224,166,46,.09)">WATCH BAND 50–70%</div>
+              </div>
+              <div style="flex:1;height:120px;background:#0B1220;border:1px solid #203049;border-radius:7px;position:relative;background-image:radial-gradient(rgba(140,162,192,.13) 1.2px,transparent 1.3px);background-size:22px 22px">
+                <div style="position:absolute;left:0;right:0;top:34px;border-top:1px dashed rgba(63,185,80,.6)"></div>
+                <span style="position:absolute;right:6px;top:22px;font:500 8px 'IBM Plex Mono',monospace;color:#3FB950">stable ≳70%</span>
+                <sc-for list="{{ churnPts }}" as="p" hint-placeholder-count="5">
+                  <div style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:8px;height:8px;border-radius:50%;background:{{ p.c }};transform:translate(-50%,-50%);box-shadow:0 0 0 2px #0B1220"></div>
+                  <div style="position:absolute;left:{{ p.x }}%;top:{{ p.ly }}%;transform:translateX(-50%);font:600 8px 'IBM Plex Mono',monospace;color:{{ p.c }}">{{ p.v }}</div>
+                </sc-for>
+                <div style="position:absolute;left:8%;right:12%;top:52%;border-top:2px solid #4AA3FF;transform:rotate(9deg);transform-origin:left;opacity:.75"></div>
+                <span style="position:absolute;left:8px;bottom:4px;font:500 8px 'IBM Plex Mono',monospace;color:#8295AB">v0→v1 … v4→v5 · % of path carried over</span>
+              </div>
+            </div>
+          </div>
+          <div style="background:#0E1522;border:1px solid #203049;border-radius:9px;padding:11px 13px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 11px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">② Flow of the path</span><span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">▦ · ⤓ · ⛶</span></div>
+            <div style="font:400 9.5px Barlow,sans-serif;color:#8295AB;margin:1px 0 8px">entry/exit waterfall over the stayed-vs-new composition area</div>
+            <div style="height:120px;background:#0B1220;border:1px solid #203049;border-radius:7px;position:relative;overflow:hidden;background-image:radial-gradient(rgba(140,162,192,.13) 1.2px,transparent 1.3px);background-size:22px 22px">
+              <div style="position:absolute;left:6%;right:4%;bottom:18px;top:58%;background:linear-gradient(180deg,rgba(74,163,255,.28),rgba(74,163,255,.06));clip-path:polygon(0 62%,20% 55%,40% 64%,60% 48%,80% 40%,100% 30%,100% 100%,0 100%)"></div>
+              <div style="position:absolute;left:0;right:0;top:50%;border-top:1px solid #203049"></div>
+              <sc-for list="{{ flowBars }}" as="b" hint-placeholder-count="5">
+                <div style="position:absolute;left:{{ b.x }}%;bottom:50%;width:14px;height:{{ b.up }}px;background:#FF5A52;border-radius:2px 2px 0 0"></div>
+                <div style="position:absolute;left:{{ b.x }}%;top:50%;width:14px;height:{{ b.dn }}px;background:#4AA3FF;border-radius:0 0 2px 2px"></div>
+                <div style="position:absolute;left:{{ b.x }}%;bottom:calc(50% + {{ b.up }}px + 2px);font:600 8px 'IBM Plex Mono',monospace;color:#FF5A52">+{{ b.e }}</div>
+              </sc-for>
+              <span style="position:absolute;left:8px;top:5px;font:500 8px 'IBM Plex Mono',monospace;color:#8295AB">joined ↑ red · left ↓ blue · shaded = % of path that is new</span>
+            </div>
+          </div>
+          <div style="background:#0E1522;border:1px solid #203049;border-radius:9px;padding:11px 13px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 11px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">③ Membership matrix</span><span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">SORT: TENURE ▾ · ▦ · ⤓ · ⛶</span></div>
+            <div style="font:400 9.5px Barlow,sans-serif;color:#8295AB;margin:1px 0 8px">heatmap + tenure & flip leaderboards as sortable columns · dwell strip on top · jumpers glow</div>
+            <div style="display:grid;grid-template-columns:112px 1fr 44px 30px;gap:3px;align-items:center;font:500 8px 'IBM Plex Mono',monospace;color:#8295AB">
+              <span></span>
+              <div style="display:flex;gap:3px;padding:0 1px">
+                <sc-for list="{{ dwell }}" as="d" hint-placeholder-count="6"><div style="flex:1;height:16px;display:flex;align-items:flex-end"><div style="width:100%;height:{{ d }}px;background:rgba(74,163,255,.5);border-radius:1px"></div></div></sc-for>
+              </div>
+              <span style="text-align:right">TENURE</span><span style="text-align:right">FLIPS</span>
+              <sc-for list="{{ heatRows }}" as="row" hint-placeholder-count="5">
+                <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:{{ row.nameC }}">{{ row.name }}</span>
+                <div style="display:flex;gap:3px">
+                  <sc-for list="{{ row.cells }}" as="cl" hint-placeholder-count="6"><div style="flex:1;height:13px;border-radius:2px;background:{{ cl.bg }};box-shadow:{{ cl.glow }}"></div></sc-for>
+                </div>
+                <div style="height:5px;background:#131D2F;border-radius:3px;overflow:hidden;align-self:center"><div style="height:100%;width:{{ row.ten }}%;background:#3FB950"></div></div>
+                <span style="text-align:right;color:{{ row.flipC }};font-weight:700">{{ row.flips }}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#0E1522;border:1px solid #203049;border-radius:9px;padding:11px 13px">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 11px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">④ Transition ribbons</span><span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">▦ SCOREBOARD · ⤓ · ⛶</span></div>
+            <div style="font:400 9.5px Barlow,sans-serif;color:#8295AB;margin:1px 0 8px">the animated hand-off kept intact — scoreboard docks beneath as the ▦ Data table</div>
+            <div style="height:120px;background:#0B1220;border:1px solid #203049;border-radius:7px;position:relative;overflow:hidden">
+              <div style="position:absolute;left:10%;top:18px;bottom:14px;width:9px;border-radius:4px;background:linear-gradient(180deg,#FF5A52 0 34%,#4AA3FF 34% 72%,#3FB950 72% 100%)"></div>
+              <div style="position:absolute;right:10%;top:18px;bottom:14px;width:9px;border-radius:4px;background:linear-gradient(180deg,#FF5A52 0 52%,#4AA3FF 52% 84%,#3FB950 84% 100%)"></div>
+              <div style="position:absolute;left:calc(10% + 9px);right:calc(10% + 9px);top:22px;height:26px;background:linear-gradient(90deg,rgba(255,90,82,.4),rgba(255,90,82,.16));clip-path:polygon(0 0,100% 20%,100% 90%,0 74%)"></div>
+              <div style="position:absolute;left:calc(10% + 9px);right:calc(10% + 9px);top:58px;height:20px;background:linear-gradient(90deg,rgba(74,163,255,.35),rgba(74,163,255,.12));clip-path:polygon(0 0,100% 40%,100% 92%,0 66%)"></div>
+              <span style="position:absolute;left:10%;top:3px;font:600 8px 'IBM Plex Mono',monospace;color:#8295AB">v4</span>
+              <span style="position:absolute;right:10%;top:3px;font:600 8px 'IBM Plex Mono',monospace;color:#8295AB">v5</span>
+              <span style="position:absolute;left:38%;bottom:5px;font:500 8px 'IBM Plex Mono',monospace;color:#8295AB">9 carried · 4 joined · 3 left</span>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:9px;font:500 9.5px 'IBM Plex Mono',monospace;color:#3FB950">ALL 10 VISUALS + SCOREBOARD PRESERVED · 4 PANELS · 1 SHARED CURSOR — original singles one ⛶ away</div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 1d · VOLATILITY — MISSION LOG ═══════════ -->
+    <div class="dv-opt" id="1d">
+      <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a><span><b>Mission Log — light touch, 3 tabbed clusters.</b> Charts stay exactly as built; tabs group them by question (Stability / Flow / Actors).</span></div>
+      <div class="dv-card" style="width:560px;padding:16px 18px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ clusters }}" as="k" hint-placeholder-count="3">
+            <div style="background:#0E1522;border:1px solid #203049;border-radius:9px;padding:10px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+                <span style="font:700 11px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">{{ k.q }}</span>
+                <span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">▦ · ⤓ · ⛶</span>
+              </div>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+                <sc-for list="{{ k.tabs }}" as="t" hint-placeholder-count="3">
+                  <span style="font:600 9px 'IBM Plex Mono',monospace;color:{{ t.c }};background:{{ t.bg }};border:1px solid {{ t.bd }};border-radius:9px;padding:3px 9px;cursor:pointer">{{ t.n }}</span>
+                </sc-for>
+              </div>
+              <div style="height:64px;background:#0B1220;border:1px solid #203049;border-radius:7px;background-image:radial-gradient(rgba(140,162,192,.13) 1.2px,transparent 1.3px);background-size:22px 22px;display:flex;align-items:center;justify-content:center;font:500 9px 'IBM Plex Mono',monospace;color:#8295AB">{{ k.hint }}</div>
+            </div>
+          </sc-for>
+          <div style="font:400 10.5px/1.5 Barlow,sans-serif;color:#8295AB">Zero redesign risk to the visuals themselves; page shrinks from ~10 screens of scroll to 3 panels. Master stepper stays in the headline. Tab choice persists (persist.js).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 1e · VOLATILITY — EVIDENCE WALL ═══════════ -->
+    <div class="dv-opt" id="1e">
+      <div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a><span><b>Evidence Wall — all ten as curated small-multiples.</b> Mission-wall mosaic with one scrubber rail; every tile keeps its own toolbar; scoreboard runs full-width beneath.</span></div>
+      <div class="dv-card" style="width:560px;padding:16px 18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <button style="background:#4AA3FF;color:#051323;border:0;border-radius:7px;padding:5px 11px;font:700 10px Barlow,sans-serif;cursor:pointer">▶</button>
+          <div style="flex:1;height:6px;background:#131D2F;border-radius:3px;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:83%;background:#4AA3FF;border-radius:3px"></div><div style="position:absolute;left:83%;top:-3px;width:12px;height:12px;border-radius:50%;background:#E7EEF7;transform:translateX(-50%)"></div></div>
+          <span style="font:600 8.5px 'IBM Plex Mono',monospace;color:#8295AB">V5 / V5</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+          <sc-for list="{{ wallTiles }}" as="w" hint-placeholder-count="10">
+            <div style="grid-column:span {{ w.sp }};background:#0E1522;border:1px solid #203049;border-radius:7px;padding:7px 9px;min-height:64px">
+              <div style="font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#8295AB;text-transform:uppercase;margin-bottom:4px">{{ w.n }}</div>
+              <div style="height:36px;background:#0B1220;border:1px solid #203049;border-radius:5px;background-image:radial-gradient(rgba(140,162,192,.13) 1px,transparent 1.1px);background-size:14px 14px"></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:6px;background:#0E1522;border:1px solid #203049;border-radius:7px;padding:7px 9px">
+          <div style="font:700 8px 'IBM Plex Mono',monospace;letter-spacing:.1em;color:#8295AB;text-transform:uppercase">Per-activity scoreboard — sortable · full width</div>
+        </div>
+        <div style="margin-top:10px;font:400 10.5px/1.5 Barlow,sans-serif;color:#8295AB">Most faithful to today's page; the win is curation — consistent tile sizes, the reading order numbered ①→⑩, and one scrubber instead of buried controls. Densest option.</div>
+      </div>
+    </div>
+
+    <div class="dv-grp">Performance Summary — seven graph families, two treatments</div>
+
+    <!-- ═══════════ 1f · PERFORMANCE — COMMAND DECK ═══════════ -->
+    <div class="dv-opt" id="1f">
+      <div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a><span><b>Command Deck — combine where natural, 15 charts → 5 panels + index strip.</b> Starts/finishes become a series toggle instead of duplicate charts; mirrors share axes.</span></div>
+      <div class="dv-card" style="width:920px;padding:16px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;margin-bottom:10px">
+          <div>
+            <div style="font:700 9.5px 'IBM Plex Mono',monospace;letter-spacing:.16em;color:#4AA3FF;text-transform:uppercase">Chapter 07 · How we execute</div>
+            <div style="font:700 19px/1.15 'Barlow Semi Condensed',sans-serif;color:#E7EEF7">Commitments are slipping faster than work is finishing.</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font:600 9px 'IBM Plex Mono',monospace;color:#E7EEF7;background:#131D2F;border:1px solid #203049;border-radius:9px;padding:3px 9px;cursor:pointer">FINISHES ▾</span>
+            <button style="background:#4AA3FF;color:#051323;border:0;border-radius:7px;padding:6px 12px;font:700 10.5px Barlow,sans-serif;cursor:pointer">▶ Play files</button>
+            <span style="font:600 9px 'IBM Plex Mono',monospace;color:#8295AB;border:1px solid #203049;border-radius:9px;padding:3px 8px">FILE 6/6 · V5</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <sc-for list="{{ perfKpis }}" as="k" hint-placeholder-count="4">
+            <div style="flex:1;background:#0E1522;border:1px solid #203049;border-top:2px solid {{ k.e }};border-radius:7px;padding:8px 11px">
+              <div style="font:500 8.5px 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#8295AB">{{ k.l }}</div>
+              <div style="font:700 17px 'Barlow Semi Condensed',sans-serif;color:{{ k.c }}">{{ k.v }} <span style="font:600 9px 'IBM Plex Mono',monospace;color:{{ k.tc }}">{{ k.t }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <sc-for list="{{ deckPanels }}" as="p" hint-placeholder-count="6">
+            <div style="grid-column:span {{ p.sp }};background:#0E1522;border:1px solid #203049;border-radius:9px;padding:10px 13px">
+              <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font:700 10.5px 'Barlow Semi Condensed',sans-serif;color:#E7EEF7;text-transform:uppercase;letter-spacing:.05em">{{ p.t }}</span><span style="font:600 8px 'IBM Plex Mono',monospace;color:#8295AB">{{ p.merge }}</span></div>
+              <div style="font:400 9px Barlow,sans-serif;color:#8295AB;margin:1px 0 6px">{{ p.d }}</div>
+              <div style="height:{{ p.h }}px;background:#0B1220;border:1px solid #203049;border-radius:7px;position:relative;overflow:hidden;background-image:radial-gradient(rgba(140,162,192,.13) 1.2px,transparent 1.3px);background-size:22px 22px">
+                <sc-for list="{{ p.bars }}" as="b" hint-placeholder-count="8">
+                  <div style="position:absolute;left:{{ b.x }}%;bottom:{{ b.base }}%;width:6.5%;height:{{ b.h }}px;background:{{ b.c }};border-radius:2px 2px 0 0;opacity:.9"></div>
+                </sc-for>
+                <sc-if value="{{ p.mirror }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:0;right:0;top:56%;border-top:1px solid #203049"></div></sc-if>
+                <sc-if value="{{ p.curve }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:6%;right:8%;top:30%;height:44%;border-top:2px solid #E0A62E;border-radius:100% 0 0 0;opacity:.8"></div>
+                  <div style="position:absolute;left:6%;right:8%;top:38%;height:40%;border-top:2px dashed rgba(74,163,255,.8);border-radius:100% 0 0 0"></div>
+                </sc-if>
+                <sc-if value="{{ p.quad }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;left:50%;top:6%;bottom:12%;border-left:1px dashed #203049"></div>
+                  <div style="position:absolute;left:4%;right:4%;top:50%;border-top:1px dashed #203049"></div>
+                  <sc-for list="{{ p.dots }}" as="dt" hint-placeholder-count="6"><div style="position:absolute;left:{{ dt.x }}%;top:{{ dt.y }}%;width:7px;height:7px;border-radius:50%;background:{{ dt.c }};box-shadow:{{ dt.ring }}"></div></sc-for>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:9px;font:500 9.5px 'IBM Plex Mono',monospace;color:#3FB950">ALL 7 FAMILIES PRESERVED · G1+G4 SHARE THE MONTH AXIS · STARTS/FINISHES = ONE TOGGLE · QUADS RING THE CURRENT FILE</div>
+      </div>
+    </div>
+
+    <!-- ═══════════ 1g · PERFORMANCE — REFERENCE GRID ═══════════ -->
+    <div class="dv-opt" id="1g">
+      <div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a><span><b>Reference Grid — faithful to the workbook.</b> Seven labeled family rows, all 15 charts restyled with the chart language; nothing merged.</span></div>
+      <div class="dv-card" style="width:560px;padding:16px 18px">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ gridRows }}" as="g" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:118px 1fr;gap:8px;align-items:stretch">
+              <div style="background:#0E1522;border:1px solid #203049;border-radius:7px;padding:7px 9px;display:flex;flex-direction:column;justify-content:center">
+                <span style="font:700 9px 'IBM Plex Mono',monospace;color:#4AA3FF">{{ g.id }}</span>
+                <span style="font:600 9.5px Barlow,sans-serif;color:#E7EEF7;line-height:1.25">{{ g.n }}</span>
+              </div>
+              <div style="display:flex;gap:6px">
+                <sc-for list="{{ g.cells }}" as="c" hint-placeholder-count="3">
+                  <div style="flex:1;background:#0B1220;border:1px solid #203049;border-radius:6px;min-height:44px;background-image:radial-gradient(rgba(140,162,192,.13) 1px,transparent 1.1px);background-size:14px 14px;display:flex;align-items:flex-end;padding:4px 6px"><span style="font:500 7.5px 'IBM Plex Mono',monospace;color:#8295AB">{{ c }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <div style="margin-top:6px;font:400 10.5px/1.5 Barlow,sans-serif;color:#8295AB">For teams that live in the reference workbook — chart-for-chart familiarity, restyled: takeaway titles, dotted grids, labeled DD line, master stepper pinned in the headline. Longest page of the two.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "build <a class="dv-oid" href="#1b">1b</a> with <a class="dv-oid" href="#1c">1c</a> and <a class="dv-oid" href="#1f">1f</a>" · "show <a class="dv-oid" href="#1c">1c</a> in all four themes first" · "riff on the membership matrix from <a class="dv-oid" href="#1c">1c</a>"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const AC = '#4AA3FF', OK = '#3FB950', WA = '#E0A62E', BD = '#FF5A52';
+
+    const mapA = [
+      { num: '00', label: 'Load the mission', routes: ['/ (import + versions)'] },
+      { num: '◉', label: 'Mission Control', routes: ['/mission'] },
+      { num: '01', label: 'Where we stand', routes: ['/analysis', '/card (ID card)'] },
+      { num: '02', label: 'Can we trust the plan?', routes: ['/ribbon', '/integrity'] },
+      { num: '03', label: 'What drives the date', routes: ['/path', '/driving-path'] },
+      { num: '04', label: 'How stable is the path', routes: ['/evolution + what-if', '/volatility'] },
+      { num: '05', label: 'How it moved', routes: ['/trend', 'margin burndown'] },
+      { num: '06', label: 'Work piling up', routes: ['/cei'] },
+      { num: '07', label: 'How we execute', routes: ['/performance', '/evm', '/wbs'] },
+      { num: '08', label: 'Who is overloaded', routes: ['/resources'] },
+      { num: '09', label: 'Where it lands', routes: ['/forecast', '/scurve', '/curves'] },
+      { num: '10', label: 'What changed', routes: ['/compare'] },
+      { num: '11', label: 'What could go wrong', routes: ['/risks', '/sra (Monte Carlo)'] },
+      { num: '12', label: 'The briefing', routes: ['/briefing', '/brief (diagnostic duo)'] }
+    ].map((c, i) => ({
+      ...c,
+      edge: i < 2 ? 'transparent' : AC,
+      bg: i === 1 ? 'color-mix(in srgb,#4AA3FF 7%,transparent)' : '#0B1220',
+      numC: i < 2 ? '#8295AB' : AC
+    }));
+
+    const mapB = [
+      { kicker: 'ACT I', name: 'Situation', q: 'Where does the project actually stand?', hdrA: 'rgba(74,163,255,.16)', hdrB: 'rgba(74,163,255,.03)', kick: AC,
+        chapters: [
+          { num: '00', label: 'Load', routes: '/' },
+          { num: '◉', label: 'Mission Control', routes: '/mission' },
+          { num: '01', label: 'Where we stand', routes: '/analysis · /card' },
+          { num: '02', label: 'Trust the plan?', routes: '/ribbon · /integrity' }
+        ] },
+      { kicker: 'ACT II', name: 'Diagnosis', q: 'Why is it moving — and who moves it?', hdrA: 'rgba(224,166,46,.15)', hdrB: 'rgba(224,166,46,.03)', kick: WA,
+        chapters: [
+          { num: '03', label: 'The drivers', routes: '/path · /driving-path' },
+          { num: '04', label: 'Path stability', routes: '/evolution · /volatility' },
+          { num: '05', label: 'How it moved', routes: '/trend · margin' },
+          { num: '06', label: 'Work piling up', routes: '/cei' },
+          { num: '07', label: 'How we execute', routes: '/performance · /evm · /wbs' },
+          { num: '08', label: 'Resources', routes: '/resources' }
+        ] },
+      { kicker: 'ACT III', name: 'Outlook', q: 'Where does it land — and what do we do?', hdrA: 'rgba(255,90,82,.15)', hdrB: 'rgba(255,90,82,.03)', kick: BD,
+        chapters: [
+          { num: '09', label: 'Where it lands', routes: '/forecast · /scurve · /curves' },
+          { num: '10', label: 'What changed', routes: '/compare' },
+          { num: '11', label: 'What could go wrong', routes: '/risks · /sra' },
+          { num: '12', label: 'The briefing', routes: '/briefing · /brief' }
+        ] }
+    ];
+
+    const churn = [82, 74, 66, 55, 48];
+    const churnPts = churn.map((v, i) => ({
+      v: v + '%', x: 10 + i * 19.5,
+      y: 100 - (v * 0.9 + 4), ly: 100 - (v * 0.9 + 22),
+      c: v >= 70 ? OK : v >= 50 ? WA : BD
+    }));
+
+    const flowBars = [
+      { e: 2, l: 1 }, { e: 3, l: 2 }, { e: 3, l: 3 }, { e: 5, l: 3 }, { e: 4, l: 3 }
+    ].map((b, i) => ({ x: 12 + i * 18, up: b.e * 9, dn: b.l * 9, e: b.e }));
+
+    const mkCells = (pat, jump) => pat.split('').map(ch => ({
+      bg: ch === '1' ? 'rgba(252,61,33,.75)' : ch === '2' ? 'rgba(74,163,255,.4)' : '#131D2F',
+      glow: jump && ch === '1' ? '0 0 6px rgba(252,61,33,.5)' : 'none'
+    }));
+    const heatRows = [
+      { name: 'FSW Build 3', pat: '111111', ten: 100, flips: 0, jump: false },
+      { name: 'TVAC Campaign', pat: '021111', ten: 83, flips: 1, jump: false },
+      { name: 'Avionics I&T', pat: '110011', ten: 66, flips: 2, jump: true },
+      { name: 'Battery Qual', pat: '001100', ten: 33, flips: 2, jump: true },
+      { name: 'GSE Fixture', pat: '000111', ten: 50, flips: 1, jump: false },
+      { name: 'RF Compat Test', pat: '010010', ten: 33, flips: 4, jump: true }
+    ].map(r => ({
+      name: r.name, ten: r.ten, flips: r.flips,
+      nameC: r.jump ? '#E7EEF7' : '#8295AB',
+      flipC: r.flips >= 3 ? BD : r.flips === 2 ? WA : '#8295AB',
+      cells: mkCells(r.pat, r.jump)
+    }));
+    const dwell = [14, 9, 6, 4, 3, 2];
+
+    const clusters = [
+      { q: 'How stable is it?', hint: 'active tab’s chart renders here — gauge shown', tabs: [
+        { n: 'GAUGE', on: true }, { n: 'CHURN TIMELINE', on: false } ] },
+      { q: 'How does it flow?', hint: 'entry/exit waterfall · composition · ribbons', tabs: [
+        { n: 'ENTRY/EXIT', on: true }, { n: 'COMPOSITION', on: false }, { n: 'RIBBONS', on: false } ] },
+      { q: 'Who are the actors?', hint: 'heatmap · leaderboards · dwell · strips · scoreboard', tabs: [
+        { n: 'HEATMAP', on: true }, { n: 'TENURE', on: false }, { n: 'JUMPERS', on: false }, { n: 'DWELL', on: false }, { n: 'SCOREBOARD', on: false } ] }
+    ].map(k => ({ ...k, tabs: k.tabs.map(t => ({
+      n: t.n, c: t.on ? '#051323' : '#8295AB', bg: t.on ? AC : 'transparent', bd: t.on ? AC : '#203049'
+    })) }));
+
+    const wallTiles = [
+      { n: '① Gauge', sp: 1 }, { n: '② Churn', sp: 1 }, { n: '③ Entry/Exit', sp: 1 }, { n: '④ Composition', sp: 1 },
+      { n: '⑤ Membership heatmap', sp: 2 }, { n: '⑥ Tenure', sp: 1 }, { n: '⑦ Jumpers', sp: 1 },
+      { n: '⑧ Dwell', sp: 1 }, { n: '⑨ Strips', sp: 1 }, { n: '⑩ Transition ribbons', sp: 2 }
+    ];
+
+    const perfKpis = [
+      { l: 'BEI · FINISHES', v: '0.71', t: '▼ from 0.88', e: BD, c: BD, tc: BD },
+      { l: 'HMI · ROLL-3', v: '0.64', t: '▼ from 0.90', e: BD, c: BD, tc: BD },
+      { l: 'CEI', v: '0.66', t: '▼ from 0.92', e: WA, c: WA, tc: WA },
+      { l: 'WORK TO GO', v: '54%', t: 'of active T&M', e: AC, c: '#E7EEF7', tc: '#8295AB' }
+    ];
+
+    const mkBars = (hs, c, base) => hs.map((h, i) => ({ x: 6 + i * 11, h, c, base: base ?? 4 }));
+    const deckPanels = [
+      { t: '① Census + workoff burden', merge: 'G1 + G4 MERGED', sp: 2, h: 96, mirror: true,
+        d: 'work-to-go columns above the line; the negative backlog mirror below — one month axis',
+        bars: [...mkBars([14, 18, 24, 30, 34, 38, 30, 24], AC, 46), ...mkBars([8, 10, 14, 18, 22, 26, 20, 14], 'rgba(255,90,82,.75)', 4).map(b => ({ ...b, base: 44 - b.h / 2.2, h: b.h }))] },
+      { t: '② Duration ratio', merge: 'G5 · 2→1', sp: 1, h: 96, curve: true, d: 'ratio S-curve with the middle-70% histogram docked as a flank', bars: mkBars([6, 10, 16, 12, 7], 'rgba(224,166,46,.55)', 4) },
+      { t: '③ Bow wave + cumulative S', merge: 'G2 · 3→1', sp: 1, h: 90, curve: true, d: 'starts/finishes columns under the cumulative curves', bars: mkBars([10, 14, 20, 26, 30, 24, 16, 10], 'rgba(74,163,255,.6)', 4) },
+      { t: '④ Execution indices', merge: 'G3 · 2→1', sp: 1, h: 90, curve: true, d: 'BEI + HMI + roll-3, one locked axis, series legend', bars: [] },
+      { t: '⑤ Portfolio quads', merge: '3 QUADS · CURRENT FILE RINGED', sp: 1, h: 90, quad: true, d: 'HMI vs CEI · BEI vs SPI(t) · ratio vs float', bars: [],
+        dots: [ { x: 22, y: 30, c: OK, ring: 'none' }, { x: 38, y: 44, c: WA, ring: 'none' }, { x: 55, y: 52, c: WA, ring: 'none' }, { x: 66, y: 62, c: BD, ring: 'none' }, { x: 74, y: 70, c: BD, ring: '0 0 0 3px rgba(74,163,255,.45)' } ] }
+    ];
+
+    const gridRows = [
+      { id: 'G1', n: 'Work-to-go census', cells: ['completed vs to-go', 'longest path share'] },
+      { id: 'G2', n: 'Bow wave + S-curves', cells: ['starts', 'finishes', 'cumulative'] },
+      { id: 'G3', n: 'BEI / HMI indices', cells: ['start indices', 'finish indices'] },
+      { id: 'G4', n: 'Workoff burden', cells: ['starts + mirror', 'finishes + mirror'] },
+      { id: 'G5', n: 'Duration ratio', cells: ['ratio S-curve', 'middle-70% histogram'] },
+      { id: 'QUADS', n: 'Portfolio scatter', cells: ['HMI × CEI', 'BEI × SPI(t)', 'ratio × float'] }
+    ];
+
+    return { mapA, mapB, churnPts, flowBars, heatRows, dwell, clusters, wallTiles, perfKpis, deckPanels, gridRows };
+  }
+}
+</script>
+</body>
+</html>

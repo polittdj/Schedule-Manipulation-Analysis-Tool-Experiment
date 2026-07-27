@@ -1,0 +1,74 @@
+/* AISMAT Command Deck — Instrument component styles.
+   The domain heart of the system. Namespaced aismat-*; tokens only. */
+
+/* ---- InstrumentPanel (takeaway → visual → legend + toolbar) ---- */
+.aismat-panel{background:var(--surface);border:var(--border-width) solid var(--border);border-radius:var(--radius-card);box-shadow:var(--shadow-panel);display:flex;flex-direction:column;overflow:hidden}
+.aismat-panel__head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px 0}
+.aismat-panel__eyebrow{font-family:var(--font-sans);font-size:10px;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--text-muted);font-weight:var(--fw-semibold);display:flex;align-items:center;gap:9px}
+.aismat-panel__tools{display:flex;gap:2px;align-items:center}
+.aismat-panel__takeaway{padding:9px 16px 12px;font-family:var(--font-sans);font-size:var(--fs-md);line-height:var(--lh-snug);color:var(--text-primary);font-weight:var(--fw-medium);text-wrap:pretty}
+.aismat-panel__takeaway b,.aismat-panel__takeaway strong{color:var(--text-accent);font-weight:var(--fw-semibold)}
+.aismat-panel__body{padding:2px 16px 14px;flex:1;min-height:0}
+.aismat-panel__foot{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:10px 16px;border-top:var(--border-width) solid var(--border-subtle)}
+.aismat-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.aismat-legend__item{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-sans);font-size:var(--fs-xs);color:var(--text-muted)}
+.aismat-legend__swatch{width:12px;height:3px;border-radius:2px;flex:none}
+.aismat-flag{font-family:var(--font-sans);font-size:10px;font-weight:var(--fw-semibold);text-transform:uppercase;letter-spacing:var(--ls-wide);display:inline-flex;align-items:center;gap:5px}
+.aismat-flag--suspected{color:var(--status-fail)}
+.aismat-flag--confirmed{color:var(--status-pass)}
+
+/* ---- MetricTile ---- */
+.aismat-metric{background:var(--surface);border:var(--border-width) solid var(--border);border-radius:var(--radius-card);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.aismat-metric__label{font-family:var(--font-sans);font-size:10px;text-transform:uppercase;letter-spacing:var(--ls-label);color:var(--text-muted);font-weight:var(--fw-semibold);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aismat-metric__value{font-family:var(--font-mono);font-size:var(--fs-4xl);font-weight:var(--fw-semibold);color:var(--text-primary);font-variant-numeric:var(--num-feature);line-height:1;letter-spacing:var(--ls-tight)}
+.aismat-metric__value--pass{color:var(--status-pass)}
+.aismat-metric__value--warn{color:var(--status-warn)}
+.aismat-metric__value--fail{color:var(--status-fail)}
+.aismat-metric__unit{font-family:var(--font-mono);font-size:var(--fs-lg);color:var(--text-muted);margin-left:4px;font-weight:var(--fw-medium)}
+.aismat-metric__trend{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:var(--fs-xs);font-variant-numeric:var(--num-feature)}
+.aismat-metric__trend--pass{color:var(--status-pass)}
+.aismat-metric__trend--warn{color:var(--status-warn)}
+.aismat-metric__trend--fail{color:var(--status-fail)}
+.aismat-metric__trend--neutral{color:var(--text-muted)}
+
+/* ---- ProgramTile (constellation) ---- */
+.aismat-progtile{position:relative;background:var(--surface);border:var(--border-width) solid var(--border);border-radius:var(--radius-card);padding:14px 15px;display:flex;flex-direction:column;gap:8px;cursor:pointer;overflow:hidden;text-align:left;width:100%;font-family:var(--font-sans);transition:background var(--dur-fast) var(--ease-standard),border-color var(--dur-fast) var(--ease-standard),transform var(--dur-fast) var(--ease-standard)}
+.aismat-progtile::before{content:"";position:absolute;top:-45%;right:-30%;width:130px;height:130px;border-radius:50%;pointer-events:none}
+.aismat-progtile:hover{background:var(--surface-hover);border-color:var(--border-strong);transform:translateY(-1px)}
+.aismat-progtile:focus-visible{outline:none;box-shadow:var(--ring)}
+.aismat-progtile--pass{border-color:var(--border)}
+.aismat-progtile--pass::before{background:radial-gradient(circle,rgba(67,213,133,0.16),transparent 70%)}
+.aismat-progtile--warn{border-color:var(--status-warn-border)}
+.aismat-progtile--warn::before{background:radial-gradient(circle,rgba(253,180,62,0.16),transparent 70%)}
+.aismat-progtile--fail{border-color:var(--status-fail-border)}
+.aismat-progtile--fail::before{background:radial-gradient(circle,rgba(255,107,107,0.18),transparent 70%)}
+.aismat-progtile--changed{animation:aismat-pulse var(--dur-pulse) var(--ease-in-out) infinite}
+.aismat-progtile__top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.aismat-progtile__name{font-family:var(--font-display);font-weight:var(--fw-semibold);font-size:var(--fs-lg);color:var(--text-primary);letter-spacing:var(--ls-tight)}
+.aismat-progtile__health{width:9px;height:9px;border-radius:var(--radius-pill);flex:none}
+.aismat-progtile__health--pass{background:var(--status-pass);box-shadow:var(--glow-pass)}
+.aismat-progtile__health--warn{background:var(--status-warn)}
+.aismat-progtile__health--fail{background:var(--status-fail);box-shadow:var(--glow-fail)}
+.aismat-progtile__health--neutral{background:var(--text-faint)}
+.aismat-progtile__metric{font-family:var(--font-mono);font-size:var(--fs-2xl);font-weight:var(--fw-semibold);color:var(--text-primary);font-variant-numeric:var(--num-feature);display:inline-flex;align-items:center;gap:6px;line-height:1}
+.aismat-progtile__sub{font-family:var(--font-sans);font-size:var(--fs-xs);color:var(--text-muted);position:relative}
+
+/* ---- Sparkline (svg is mostly inline) ---- */
+.aismat-spark{display:block;overflow:visible}
+.aismat-spark__line{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.aismat-spark__line--animate{animation:aismat-trend-draw var(--dur-reveal) var(--ease-out) forwards}
+
+/* ---- DcmaStrip (14 pass/fail cells) ---- */
+.aismat-dcma{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
+.aismat-dcma__cell{min-width:22px;height:24px;padding:0 4px;border-radius:2px;border:var(--border-width) solid;display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;font-weight:var(--fw-semibold);font-variant-numeric:var(--num-feature);cursor:default}
+.aismat-dcma__cell--pass{background:var(--status-pass-bg);border-color:var(--status-pass-border);color:var(--status-pass)}
+.aismat-dcma__cell--warn{background:var(--status-warn-bg);border-color:var(--status-warn-border);color:var(--status-warn)}
+.aismat-dcma__cell--fail{background:var(--status-fail-bg);border-color:var(--status-fail-border);color:var(--status-fail)}
+.aismat-dcma__cell--na{background:var(--surface-hover);border-color:var(--border);color:var(--text-faint)}
+
+/* ---- CitationChip ---- */
+.aismat-cite{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-mono);font-size:var(--fs-2xs);font-weight:var(--fw-medium);padding:2px 7px;border-radius:var(--radius-chip);background:var(--accent-muted);color:var(--text-accent);border:var(--border-width) solid var(--accent-border);cursor:pointer;letter-spacing:var(--ls-mono);transition:box-shadow var(--dur-fast) var(--ease-standard),background var(--dur-fast) var(--ease-standard)}
+.aismat-cite:hover{box-shadow:var(--glow-cyan)}
+.aismat-cite:focus-visible{outline:none;box-shadow:var(--ring)}
+.aismat-cite--suspected{background:var(--status-warn-bg);color:var(--status-warn);border-color:var(--status-warn-border)}
+.aismat-cite--suspected:hover{box-shadow:var(--glow-warn)}

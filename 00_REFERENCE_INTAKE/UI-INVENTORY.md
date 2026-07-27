@@ -1,363 +1,143 @@
-# UI-INVENTORY — Schedule Forensics web UI, as built
+# RENAME-PLAN — mechanical package rename (NAMES PROPOSED, awaiting your choice)
 
-Report only — no repo file was created or modified to produce it.
+Per PROMPT 5 §1 this stops at the name choice. §2's blast-radius plan is below and is name-agnostic — it uses `<pkg>` (import name, snake_case), `<dist>` (distribution name, kebab-case) and `<Display>` (the human name) so it applies verbatim once you choose.
 
-- **Source** `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` @ tree `10b2cc1b0625` (`main`), read 2026-07-24T21:20Z. `app.py` = **19,081 lines / 969,729 B**, above GitHub's 512 KB search cap, so it was parsed line-by-line rather than searched.
-- **Governing law, read first:** repo `CLAUDE.md` and `docs/DESIGN-SYSTEM.md`. The two design laws they impose are the acceptance bar used in §2 — *nothing styles itself* (tokens only; a hex in page markup is a build failure) and *every visual is an instrument* (takeaway headline + labelled data-date line + legend + ▦ DATA / ⤓ EXCEL / ⛶ ENLARGE toolbar, or it is not done).
-- **INFERRED** marks anything derived by heuristic rather than read directly. Do not promote an INFERRED cell to a contract without eyes on the rendered page.
+*This workspace has no Python runtime and no network, so §5's gate must run in the repo. Every file class in §3 was verified against the repo at tree `10b2cc1b0625` (version `1.0.95`).*
 
 ---
 
-## 1. Every route in `web/app.py` — 133 total
+## 0. Recommendation first: consider **never**
 
-**41** EXPORT · **1** EXPORT (POST) · **32** HTML · **27** JSON · **32** MUTATION
+The prompt already says it — zero user-visible benefit, ~350–400 files, and it can break the lockstep gate. Two facts sharpen that:
 
-Classifier (re-derivable): the span from each `@app.*` decorator to the next one is inspected. `FileResponse`/`StreamingResponse`/`Content-Disposition`/`openpyxl`/`Workbook(` in the span, **or** an export-shaped path (`export|download|xlsx|csv|docx`) → EXPORT. Otherwise non-GET → MUTATION; `HTMLResponse` or a `_page()/_html()/_shell()` return → HTML; `JSONResponse`, `-> dict/list` or an `/api/` path → JSON. **INFERRED** where a handler delegates its response class to a helper this parser cannot follow.
+1. **The user-visible name is already decoupled.** The UI shows a display name from the header chrome, not the package name; DESIGN-SYSTEM §2 only forbids the word "NASA". You can ship `<Display>` on every screen, in every export and in the CUI-marked briefing **today**, with a one-line copy change and zero rename risk.
+2. **The rename's real cost is in the gates, not the code.** `tests/test_packaging.py` asserts on the literal filenames `schedule-forensics.desktop` / `.command` / `.bat` / `.ico` / `.png` **and** on the exact string `"-m schedule_forensics"` inside the Windows shortcut arguments (L14–16, L30–31), while `tests/installer/test_installers.py` asserts the embedded wheel is named `schedule_forensics-{version}` (L82–83) and byte-compares every packaged `schedule_forensics/**` path against the source tree (L120). A rename rewrites all of those simultaneously — which is exactly the "indistinguishable failure" the prompt wants to avoid, and it is why this must be one commit that either goes fully green or is reverted whole.
 
-### 1.1 HTML pages — 32
+**My advice: do the display-name change now, and only rename the package if it must be the import name in someone else's environment** (a second tool importing it, an external distribution, or a legal/branding requirement). If you accept that, PROMPT 5 becomes a 20-minute copy change and this plan goes in the drawer.
 
-| Route | line | Handler |
-|---|---|---|
-| `GET /` | 3192 | `home()` |
-| `GET /analysis/{name}` | 3522 | `analysis()` |
-| `GET /card/{name}` | 3561 | `schedule_card()` |
-| `GET /wbs/{name}` | 3582 | `wbs_breakdown_view()` |
-| `GET /standards` | 3671 | `standards_view()` |
-| `GET /portfolio` | 3700 | `portfolio()` |
-| `GET /mission` | 3712 | `mission_view()` |
-| `GET /compare` | 3736 | `compare()` |
-| `GET /path` | 3814 | `path_view()` |
-| `GET /trend` | 3983 | `trend_view()` |
-| `GET /margin` | 4050 | `margin_view()` |
-| `GET /evm` | 4295 | `evm_view()` |
-| `GET /resources` | 4306 | `resources_view()` |
-| `GET /cei` | 4316 | `cei_view()` |
-| `GET /scurve` | 4358 | `scurve_view()` |
-| `GET /ribbon` | 4403 | `ribbon_view()` |
-| `GET /volatility` | 4444 | `volatility_view()` |
-| `GET /performance` | 4691 | `performance_view()` |
-| `GET /evolution` | 4752 | `evolution_view()` |
-| `GET /integrity` | 4806 | `integrity_view()` |
-| `GET /driving-path` | 4875 | `driving_path_view()` |
-| `GET /groups` | 4941 | `groups_view()` |
-| `GET /forecast` | 5026 | `forecast_view()` |
-| `GET /curves` | 5114 | `curves_view()` |
-| `GET /workbench` | 5446 | `workbench_view()` |
-| `GET /scorecards` | 5840 | `scorecards_view()` |
-| `GET /brief` | 6462 | `brief_view()` |
-| `GET /risks` | 6481 | `risks_view()` |
-| `GET /sra` | 6529 | `sra_view()` |
-| `GET /briefing` | 7572 | `briefing_view()` |
-| `GET /settings` | 7647 | `settings()` |
-| `GET /help` | 7762 | `help_page()` |
-
-### 1.2 JSON APIs — 27
-
-| Route | line | Handler |
-|---|---|---|
-| `GET /api/system` | 3176 | `system_snapshot()` |
-| `GET /api/dashboard` | 3285 | `dashboard_json()` |
-| `GET /api/wbs/{name}` | 3604 | `wbs_json()` |
-| `GET /api/analysis/{name}` | 3612 | `analysis_json()` |
-| `GET /api/driving/{name}` | 3624 | `driving_json()` |
-| `GET /api/driving-path` | 3935 | `driving_path_answer()` |
-| `GET /api/trend` | 4007 | `trend_json()` |
-| `GET /api/margin` | 4016 | `margin_json()` |
-| `GET /api/margin/dashboard` | 4064 | `margin_dashboard_json()` |
-| `GET /api/margin/risk` | 4280 | `margin_risk_json()` |
-| `GET /api/cei` | 4346 | `cei_json()` |
-| `GET /api/scurve` | 4380 | `scurve_json()` |
-| `GET /api/evolution` | 4849 | `evolution_json()` |
-| `GET /api/group-values` | 5011 | `group_values_json()` |
-| `GET /api/forecast` | 5106 | `forecast_json()` |
-| `GET /api/workbench` | 5457 | `workbench_json()` |
-| `GET /api/workbench/drill` | 5532 | `workbench_drill_json()` |
-| `GET /api/scorecards/buffer` | 5865 | `scorecards_buffer_json()` |
-| `GET /api/activities/drill` | 5940 | `activities_drill_json()` |
-| `GET /api/sra` | 6838 | `sra_json()` |
-| `GET /api/sra/ssi` | 7003 | `sra_ssi_json()` |
-| `GET /api/sra/jcl` | 7098 | `sra_jcl_json()` |
-| `GET /api/sra/oat` | 7146 | `sra_oat_json()` |
-| `GET /api/sra/grid` | 7207 | `sra_grid_json()` |
-| `GET /api/ai/narrative` | 7602 | `api_ai_narrative()` |
-| `GET /api/ai/briefing` | 7623 | `api_ai_briefing()` |
-| `GET /api/ai/models` | 7708 | `ai_models()` |
-
-### 1.3 Exports — 42
-
-**37 of these are one family** — `GET /export/{fmt}/<panel>` with `fmt` = xlsx|csv — which is the "everything is exportable to Excel" law expressed in code, one endpoint per panel/grid/matrix. **Three rows are context false positives** to correct by hand: `GET /api/curves`, `GET /healthz` and `GET /sra/ssi/save` were flagged only because `Content-Disposition` appears inside the parsed span; the first two are JSON, the third is the SSI grid save/export path. Corrected counts: **39 exports, 28 JSON APIs**.
-
-| Route | line | Handler |
-|---|---|---|
-| `GET /download/{name}` | 3299 | `download_json()` |
-| `GET /export/{fmt}/volatility` | 4470 | `export_volatility()` |
-| `GET /export/{fmt}/evm` | 4507 | `export_evm()` |
-| `GET /export/{fmt}/scurve` | 4536 | `export_scurve()` |
-| `GET /export/{fmt}/resources` | 4565 | `export_resources()` |
-| `GET /export/{fmt}/risks` | 4627 | `export_risks()` |
-| `GET /export/{fmt}/mission` | 4656 | `export_mission()` |
-| `GET /export/{fmt}/performance` | 4717 | `export_performance()` |
-| `GET /export/{fmt}/field-forecast` | 5050 | `export_field_forecast()` |
-| `GET /api/curves` | 5137 | `curves_json()` |
-| `GET /export/{fmt}/analysis/{name}` | 5182 | `export_analysis()` |
-| `GET /export/{fmt}/path/{name}` | 5210 | `export_path()` |
-| `GET /export/{fmt}/ribbon` | 5281 | `export_ribbon()` |
-| `GET /export/{fmt}/float-band/{name}` | 5335 | `export_float_band()` |
-| `GET /export/{fmt}/ribbon-drill/{name}` | 5382 | `export_ribbon_drill()` |
-| `GET /export/{fmt}/workbench` | 5561 | `export_workbench()` |
-| `GET /export/{fmt}/margin` | 5587 | `export_margin()` |
-| `GET /export/{fmt}/workbench-drill/{name}` | 5768 | `export_workbench_drill()` |
-| `GET /export/{fmt}/scorecards` | 5919 | `export_scorecards()` |
-| `GET /export/{fmt}/activities-drill` | 5960 | `export_activities_drill()` |
-| `GET /export/{fmt}/resource-drill` | 5989 | `export_resource_drill()` |
-| `GET /export/{fmt}/activities/{name}` | 6060 | `export_activities()` |
-| `GET /export/{fmt}/driving-tiers/{name}` | 6111 | `export_driving_tiers()` |
-| `GET /export/{fmt}/whatif` | 6200 | `export_whatif()` |
-| `GET /export/{fmt}/whatif-added` | 6259 | `export_whatif_added()` |
-| `GET /export/{fmt}/integrity` | 6308 | `export_integrity()` |
-| `GET /export/{fmt}/trend` | 6354 | `export_trend()` |
-| `GET /export/{fmt}/cei` | 6366 | `export_cei()` |
-| `GET /export/{fmt}/evolution` | 6382 | `export_evolution()` |
-| `GET /export/{fmt}/forecast` | 6397 | `export_forecast()` |
-| `GET /export/{fmt}/curves` | 6413 | `export_curves()` |
-| `GET /export/{fmt}/wbs/{name}` | 6431 | `export_wbs()` |
-| `GET /export/{fmt}/compare` | 6446 | `export_compare()` |
-| `GET /sra/ssi/save` | 7288 | `sra_ssi_save()` |
-| `GET /export/{fmt}/sra` | 7313 | `export_sra()` |
-| `GET /export/{fmt}/sra-registry` | 7384 | `export_sra_registry()` |
-| `GET /export/xlsx/risk-register-template` | 7429 | `export_risk_register_template()` |
-| `GET /export/xlsx/task-risk-template` | 7440 | `export_task_risk_template()` |
-| `GET /export/{fmt}/brief` | 7519 | `export_brief()` |
-| `GET /export/{fmt}/briefing` | 7547 | `export_briefing()` |
-| `GET /healthz` | 7931 | `healthz()` |
-| `POST /api/ask` | 3906 | `ask_workbook()` |
-
-### 1.4 POST mutations — 32
-
-| Route | line | Handler |
-|---|---|---|
-| `POST /api/heartbeat` | 3170 | `heartbeat()` |
-| `POST /api/shutdown` | 3186 | `shutdown()` |
-| `POST /example` | 3289 | `load_example()` |
-| `POST /upload` | 3313 | `upload()` |
-| `POST /api/ask/{name}` | 3886 | `ask()` |
-| `POST /margin/confirm` | 4072 | `margin_confirm()` |
-| `POST /margin/band` | 4112 | `margin_band()` |
-| `POST /sra/risk` | 6548 | `sra_risk()` |
-| `POST /sra/risk-register` | 6602 | `sra_risk_register()` |
-| `POST /sra/branch` | 6666 | `sra_branch()` |
-| `POST /sra/conditional` | 6727 | `sra_conditional()` |
-| `POST /sra/ssi-run-config` | 6892 | `ssi_run_config()` |
-| `POST /sra/correlation-matrix` | 6912 | `sra_correlation_matrix()` |
-| `POST /sra/factor-table` | 6951 | `ssi_factor_table()` |
-| `POST /sra/factor` | 6971 | `ssi_set_factor()` |
-| `POST /sra/auto-calc` | 6980 | `ssi_auto_calc()` |
-| `POST /sra/jcl-config` | 7045 | `sra_jcl_config()` |
-| `POST /sra/grid` | 7225 | `sra_grid_save()` |
-| `POST /sra/ssi/load` | 7299 | `sra_ssi_load()` |
-| `POST /sra/import/risk-register` | 7451 | `sra_import_risk_register()` |
-| `POST /sra/import/task-risk` | 7485 | `sra_import_task_risk()` |
-| `POST /settings` | 7652 | `update_settings()` |
-| `POST /settings/ai-off` | 7744 | `ai_off()` |
-| `POST /target` | 7786 | `set_target()` |
-| `POST /dcma/scope` | 7799 | `set_dcma_scope()` |
-| `POST /project/select` | 7810 | `select_project()` |
-| `POST /project/exclude` | 7823 | `exclude_version()` |
-| `POST /role` | 7831 | `set_role_route()` |
-| `POST /language` | 7839 | `set_language()` |
-| `POST /api/translate` | 7848 | `translate_api()` |
-| `POST /session/wipe` | 7866 | `wipe()` |
-| `POST /session/ram-threshold` | 7922 | `ram_threshold()` |
+If you still want the rename, everything below is ready.
 
 ---
 
-## 2. Every chart and visualization — the regression contract
+## 1. Five names
 
-**CORRECTIONS (ADR-0298, verified against the source — not grep):**
-* `margin.js` (a)/(b) were scored **yes** in an earlier draft of the axis-titles spec: that was a
-  false positive on the substring `xLabel`. Its `xLabels()` (L32) is a **tick-label generator**, not
-  an axis caption. The row below is correct at **no/no** — it is a real gap, and `margin.js` is in
-  `tests/web/test_axis_titles.py`'s `PENDING` ledger.
-* `scatter.js` was described as having a rotated **Y caption only**. It had **both** — a centred X
-  caption (L100) and a rotated Y caption (L103). Both are now the shared convention, so (a) and (b)
-  are **yes**.
-* `performance.js` (a)/(b) flip to **yes**: its captions were always there, drawn locally; they now
-  come from `SFChartFrame.axisTitles`.
-* Columns (a)/(b) are enforced from ADR-0298 onward by `tests/web/test_axis_titles.py`, which keeps
-  an explicit three-way ledger (exempt / DOM-visual / pending) rather than a grep heuristic — the
-  heuristic missed `path.js` and `resources.js` and said nothing about the HTML-rendered visuals.
+| # | `<Display>` | `<dist>` | `<pkg>` | Why | Risk |
+|---|---|---|---|---|---|
+| 1 | **Astrolabe** | `astrolabe-forensics` | `astrolabe` | The name already carried by the design prototype and the redesigned UI — renaming to it makes the code match the product the operator has been reviewing. An astrolabe is an instrument for fixing your position from fixed bodies: exactly what the tool does with a schedule | `astrolabe` exists on PyPI; irrelevant while `Private :: Do Not Upload` holds, but the dist name is kept distinct anyway |
+| 2 | **Orrery** | `orrery` | `orrery` | A geared model that shows where bodies are *and predicts where they will be* — the closest single word to "past, present and forecast of a schedule". Short, memorable, near-certainly unclaimed | Slightly obscure; people mispronounce it (OR-uh-ree) |
+| 3 | **Plumbline** | `plumbline` | `plumbline` | The forensic metaphor: a plumb line cannot be argued with. Reads well in a claim or deposition context | Less evocative of schedule/time |
+| 4 | **Sextant** | `sextant-sf` | `sextant` | Navigation instrument; fits the mission-ops chrome and the "instruments, not widgets" doctrine | Common word, several existing tools/products use it |
+| 5 | **Keelson** | `keelson` | `keelson` | The structural spine a hull is built on — the schedule as the spine of a programme. Almost certainly collision-free | Hard to spell and say; weakest of the five, listed for completeness |
 
-**CORRECTIONS (ADR-0301, batch 1 — each verified against the rendering code, not the spec):**
-* `histogram.js` had a **third** local caption implementation, beyond the two ADR-0298 retired: a
-  centred X caption at a hard-coded 11px (`cap.textContent = "Total float (working days)"`). It is
-  now the shared convention, and the module gains a Y caption it never had. The second-convention
-  regex did not catch it — it pins the variable names `xt`/`yt`/`axisTitle`, and this one was
-  `cap`. Name-based detection cannot be completed (`a11y.js` and `trend_drill.js` use `cap` for
-  legitimate non-axis text), so the ledger reaching empty — not the regex — is what converges.
-* The patch spec's §3 caption table is **not a usable source** for four of these modules; captions
-  are derived from the rendering code instead. `curves.js` plots **activity counts**, not the
-  spec's "CUMULATIVE VALUE ($M)"; `resources.js` plots **work booked in working days** over a
-  runtime-chosen day/week/month bucket, not "DEMAND (FTE)" over "WEEK (COMMENCING)"; `cei.js` has
-  **no secondary axis** (the CEI figure is a text callout, not an axis); and `drift.js` plots
-  **forecast dates** against **three forecast methods**, not "SCHEDULE VERSION" × "SLIP AGAINST
-  BASELINE (WORKDAYS)".
-* The spec's §5 batch table was never revised after ADR-0298's correction #4, so its batch 1 is
-  4/5 DOM visuals the SVG helper cannot serve. Batches now follow the `PENDING` ledger.
-
-One row per module under `src/schedule_forensics/web/static/`. **INFERRED (grep-derived):** each cell is a source-token test on the real file — (a) `axisTitle|xTitle|axisLabel`, (b) `yTitle|rotate(-90)`, (c) `legend`, (d) `takeaway|headline|howToRead|hint`, (e) `ENLARGE|EXCEL|cf-bar|chartFrame|▦|⤓|⛶`. A **yes** proves the token exists somewhere in the module, **not** that every chart in it renders the element; a **no** on (a)/(b) is a genuine gap to close.
-
-| Module | lines | Page(s) | Chart kinds | (a) X title | (b) Y title | (c) legend | (d) takeaway | (e) toolbar | DD line | `<text>` |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `gantt.js` | 512 | `/healthz` | gantt/bar/column/line | no | no | no | yes | no | yes | 0 |
-| `histogram.js` | 270 | `/healthz` | gantt/bar/column/line | yes | yes | no | no | yes | no | 0 |
-| `curves.js` | 486 | `/healthz` | bar/line/box | yes | yes | yes | no | yes | yes | 0 |
-| `scurve.js` | 350 | `/healthz` | bar/column/line/area | yes | yes | yes | yes | yes | yes | 0 |
-| `drift.js` | 202 | `/healthz` | line/box | no | no | yes | no | no | yes | 0 |
-| `path.js` | 708 | `/healthz` | gantt/bar/column/line | no | no | no | no | no | yes | 0 |
-| `path_evolution.js` | 517 | `/healthz` | gantt/bar/column/line | no | no | yes | no | no | yes | 0 |
-| `driving_path.js` | 260 | `/healthz` | gantt/bar/column/line | no | no | no | no | no | yes | 0 |
-| `driving_tiers.js` | 200 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
-| `cei.js` | 280 | `/healthz` | bar/line/area/box | yes | yes | yes | no | no | yes | 0 |
-| `performance.js` | 532 | `/healthz` | bar/line/area/hist | yes | yes | yes | no | yes | yes | 0 |
-| `resources.js` | 257 | `/healthz` | gantt/bar/column/line | yes | yes | yes | no | yes | no | 0 |
-| `margin_dashboard.js` | 414 | `/healthz` | bar/line/area/box | no | no | yes | no | yes | no | 0 |
-| `margin.js` | 272 | `/healthz` | bar/line/box | yes | yes | yes | no | yes | no | 0 |
-| `scorecards.js` | 109 | `/healthz` | — | no | no | no | yes | no | no | 0 |
-| `scatter.js` | 160 | `/healthz` | bar/line/scatter/box | yes | yes | yes | no | yes | no | 0 |
-| `globe.js` | 282 |  | line | no | no | no | yes | no | no | 0 |
-| `ribbon_drill.js` | 203 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
-| `drilldown.js` | 235 |  | bar/column/line | no | no | no | no | yes | no | 0 |
-| `findings_drill.js` | 182 | `/healthz` | gantt/bar/column/line | no | no | no | no | yes | no | 0 |
-| `workbench.js` | 285 | `/healthz` | bar/column/box | no | no | no | no | yes | no | 0 |
-| `volatility.js` | 486 | `/healthz` | bar/line/area/hist | no | no | no | no | no | no | 0 |
-| `trend.js` | 1165 | `/healthz` | bar/line/box | no | no | yes | yes | yes | yes | 0 |
-| `trend_drill.js` | 235 | `/healthz` | bar/column/line/box | yes | yes | yes | yes | yes | no | 0 |
-| `sra.js` | 515 | `/healthz` | bar/line/area/hist | no | no | no | no | yes | no | 0 |
-| `sra_grid.js` | 506 | `/healthz` | gantt/bar/column/line | no | no | yes | yes | yes | yes | 0 |
-| `sra_jcl.js` | 283 | `/healthz` | bar/line/scatter/box | no | no | no | no | yes | no | 0 |
-| `sra_risk.js` | 81 | `/healthz` | — | no | no | no | no | no | no | 0 |
-| `sra_ssi.js` | 433 | `/healthz` | gantt/bar/column/line | no | no | yes | no | yes | no | 0 |
-| `wbs.js` | 145 | `/healthz` | bar/line/box | yes | yes | yes | no | no | no | 0 |
-| `whatif.js` | 177 | `/healthz` | gantt/bar/column/hist | no | no | no | no | yes | no | 0 |
-| `timeaxis.js` | 104 | `/healthz` | line | no | no | no | no | no | no | 0 |
-| `chartframe.js` | 336 |  | gantt/bar/area/hist | no | no | no | yes | yes | no | 0 |
-| `legend_toggle.js` | 148 |  | bar/line | no | no | yes | no | yes | no | 0 |
-| `vizhints.js` | 637 |  | gantt/bar/column/line | no | no | yes | yes | yes | yes | 0 |
-
-### 2.1 What the shared frame already provides
-
-- **`chartframe.js`** (336 lines) owns the ▦ / ⤓ / ⛶ strip and the play-all coordinator `window.SFPlayAll` (ADR-0275). Modules rendering through it inherit (e) even when their own source shows `no`.
-- **`legend_toggle.js`** (148 lines) — interactive legend show/hide (ADR-0276).
-- **`vizhints.js`** (637 lines) — the "how to read this" copy; the largest UI text asset in the repo.
-- **`timeaxis.js`** (104 lines) + `timescale.js` — the shared time ruler and the stacked Year/Quarter/Month/Week/Day dialog. `taskinfo.js` — the 7-tab Task Information dialog.
-
-### 2.2 Read this before any restyle
-
-The count of modules that draw their own `<text>` nodes (right-hand column) is how much axis labelling is hand-rolled per module rather than inherited. That is the surface area of the "every chart needs a titled X and Y axis" requirement.
+**My pick: Astrolabe** — it is the only one that removes an existing inconsistency (prototype/UI say one thing, package says another) rather than adding a new name to remember. Note the knock-on: the voice clips in `docs/VOICE-DECISION.md` bake a spoken name, so choosing here settles that question too.
 
 ---
 
-## 3. Tests that fail if the dashboard JSON payload changes shape
+## 2. Scope rule
 
-**Primary gate — `tests/web/test_dashboard_perf_contract.py`** (478 lines, 14 tests). Canonical payload hashed at line 134 with `hashlib.sha256(canonical.encode()).hexdigest()`; three pinned constants:
+One commit. Zero behaviour change. No feature work, no formatting sweep, no import reordering beyond what the rename forces, no version-content change other than the bump. If `git diff` shows a line that is not a name, it does not belong in this commit.
 
-| Constant | SHA-256 | line |
+---
+
+## 3. Every file class that changes (verified)
+
+### 3.1 `pyproject.toml` — 6 sites, and two the prompt lists that do **not** need changing
+
+| Site | Now | Becomes |
 |---|---|---|
-| `_SHA_TWO_VERSION` | `d62a4f9e791783701eacc6aeb47ee9b69e0ff80abf4cfeb9bfeddf7b998a58d1` | 358 |
-| `_SHA_UNSOLVABLE` | `8d7bcc386168f0e9c3e384bde6beb0789be5beb4b1485a81f0d96138038afc16` | 359 |
-| `_SHA_TWO_VERSION_PARITY` | `51691cb7edb1d510ab5a189d989d010ebc93344e182c5adb0a8767c292c504cb` | 364 |
+| `[project] name` | `"schedule-forensics"` | `"<dist>"` |
+| `[project] version` | `"1.0.95"` | bumped (§5) |
+| `[project.scripts]` #1 | `schedule-forensics = "schedule_forensics.launcher:main"` | `<dist> = "<pkg>.launcher:main"` |
+| `[project.scripts]` #2 | `schedule-forensics-report = "schedule_forensics.exhibits.cli:main"` | `<dist>-report = "<pkg>.exhibits.cli:main"` |
+| `[tool.setuptools.package-data]` key | `schedule_forensics = ["web/static/*", "web/examples/*"]` | `<pkg> = [...]` — **if this key is missed the wheel installs and the app crashes mounting `/static`**, which is the failure the Linux end-to-end run caught on 2026-07-02 |
+| `[tool.ruff.lint.per-file-ignores]` | `"src/schedule_forensics/web/app.py" = ["E501"]` | `"src/<pkg>/web/app.py"` — miss it and ruff fails on ~19k lines of embedded HTML |
+| `[tool.coverage.run] source` | `["schedule_forensics"]` | `["<pkg>"]` — miss it and coverage reports 0% and the ≥70 gate fails |
+| `[tool.mypy]` | `files = ["src"]` | **no change** — path-based, not name-based (the prompt assumed otherwise) |
+| `[tool.bandit] exclude_dirs` | `["tests", ".venv", "tools"]` | **no change** — path-based |
+| `[project.urls]`, description, keywords | mention the old name/product | judgement call: update description and `<Display>`; leaving the GitHub URLs alone is correct if the repo is not renamed |
 
-Fixtures the file runs against: `first.json`, `second.json` (the two-version session behind `_SHA_TWO_VERSION` and `_SHA_TWO_VERSION_PARITY`), `cyclic.json` and `r.json` (the unsolvable-network case behind `_SHA_UNSOLVABLE`), plus `Large_Test_File.mspdi.xml` / `Large_Test_File_v2.mspdi.xml`. **INFERRED:** the constant→fixture pairing is by name proximity; confirm with `pytest tests/web/test_dashboard_perf_contract.py -q`.
+### 3.2 The package directory — the bulk of the diff
 
-Tests present: `test_dashboard_builds_zero_full_analyses`, `test_warm_dashboard_is_cache_served_past_the_cap`, `test_concurrent_cold_requests_compute_once`, `test_single_flight_exception_propagates_then_recovers`, `test_distinct_keys_are_not_serialized`, `test_cold_analysis_computes_each_dependency_once_default`, `test_cold_analysis_parity_mode_computes_each_dependency_once`, `test_findings_and_narrative_follow_the_active_audit_per_mode`, `test_dashboard_payload_two_versions_is_byte_identical`, `test_dashboard_payload_parity_mode_is_byte_stable`, `test_dashboard_payload_with_unsolvable_card_is_byte_identical`, `test_mid_flight_wipe_does_not_repopulate`, `test_scope_epoch_key_prevents_cross_epoch_service`, `test_target_control_and_banner_scope_to_active_project`.
+`git mv src/schedule_forensics src/<pkg>`, then rewrite intra-package imports. Repo tree reports **180 files under `src/schedule_forensics/`**. Count the actual import surface before starting, and again after, so the numbers must match:
 
-**Secondary payload-shape gates (INFERRED from suite layout — run to confirm):** `tests/web/` (136 files, golden dashboard payloads) · `tests/exhibits/test_exhibits.py:194` (SHA-256 digest per emitted exhibit, fixture `tests/exhibits/fixtures/payload_small.json`) · `tests/parity/` (7 files, `pytest -m parity`) · `tests/guards/` (3 files) · `tests/test_state_docs.py` (docs/state sync).
+```bash
+grep -rn "schedule_forensics" src/ tests/ tools/ packaging/ .github/ docs/ *.md *.toml | wc -l
+grep -rln "^\(from\|import\) schedule_forensics" src/ tests/ | wc -l
+```
 
----
+`web/app.py` alone carries **88** occurrences of the literal (measured), so do not hand-edit it — use a scripted replace and review the diff.
 
-## 4. Regenerating the wheel and the 9 installers
+**Two name-bearing runtime paths that are easy to miss:** `src/<pkg>/net_guard.py` (the egress guard, asserted by `tests/guards/test_egress.py`) and `src/<pkg>/__main__.py` (the guarded `-m <pkg>` bootstrap that `tests/test_packaging.py` asserts on by literal string).
 
-**9 = 3 tiers × 3 families.** `tools/installer/build_installers.py` writes `installer/install-tier{1,2,3}.{ps1,sh,command}` from `tools/installer/template.{ps1,sh,command}` with the wheel base64-embedded. Tier config is the only per-tier content: tier1 16 GB / no GPU / `llama3.2:3b` / 2 GB · tier2 64 GB / GPU / `llama3.1:8b` / 5 GB · tier3 128 GB / GPU / `llama3.3:70b` / 43 GB.
+### 3.3 `packaging/` — filenames encode the name
+
+`packaging/schedule-forensics.png` · `packaging/windows/schedule-forensics.ico` · the generated `schedule-forensics.desktop` / `.command` / `.bat` / `.vbs` · `packaging/make_icon.py` (writes those filenames) · `packaging/README.md` (**8** name-bearing lines, measured).
+
+`tests/test_packaging.py` asserts these exact filenames (L14–16, L36, L64–65) **and** that `favicon.ico` at `src/schedule_forensics/web/static/favicon.ico` byte-matches the packaging icon (L66) — so the icon move and the test update are the same edit.
+
+### 3.4 The installer templates and the 9 generated installers
+
+`tools/installer/template.ps1` · `template.sh` · `template.command` encode: the wheel filename, `-m schedule_forensics`, the install-root name, and the generated helper scripts `start-` / `stop-` / `uninstall-schedule-forensics.{sh,ps1}` (visible in `installer-smoke.yml` L97/L101/L106). `tools/installer/build_installers.py` defaults to the glob `dist/wheel/schedule_forensics-*.whl`.
+
+The **9 installers are build output** — they are regenerated, never hand-edited:
 
 ```bash
 python -m build --wheel --outdir dist/wheel
-python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl
+python tools/installer/build_installers.py dist/wheel/<pkg>-*.whl
 ```
 
-**Lockstep enforcement — `tests/installer/test_installers.py` (11,954 B):**
+### 3.5 CI
 
-| Test | line | What it enforces |
-|---|---|---|
-| `test_embedded_wheel_is_in_lockstep_with_the_source_tree` | 120 | every packaged `schedule_forensics/**` file in the embedded wheel byte-matches the source tree (ADR-0148); the assertion message is the regenerate command. This is the gate that catches "reinstalled and got the OLD JS" |
-| `test_embedded_wheel_decodes_byte_exact_with_static_assets` | 68 | CRC-valid zip · version matches `pyproject.toml` · **≥30** `/web/static/` entries · a `/web/examples/` file present |
-| `test_shared_body_is_identical_across_tiers_no_drift` | 60 | no tier drift inside a family |
-| `test_all_families_embed_the_same_wheel` | 86 | ps1/sh/command carry the same wheel |
-| `test_three_tiers_exist_with_the_specced_configs` | 45 | tier configs match `docs/PLAN/INSTALLER-SPEC.md` |
-| `test_no_cui_or_secret_shaped_content_in_installers` | 112 | no CUI/secret-shaped strings in the script head |
-| `test_installers_deploy_mpxj_and_a_single_self_stopping_icon` | 204 | MPXJ deployed; one self-stopping icon (ADR-0193) |
+`.github/workflows/ci.yml` — 2 lines (`--cov=schedule_forensics`, `--include='*/schedule_forensics/engine/*'`).
+`.github/workflows/installer-smoke.yml` — **6** lines, including the two import probes `import schedule_forensics; from schedule_forensics.launcher import main` (L57) and the static-assets check `import schedule_forensics.web.app as a` (L58), plus the three generated helper-script names (L97, L101, L106).
 
-CI: `.github/workflows/ci.yml` — ruff check → ruff format --check → mypy (strict) → `pytest --cov=schedule_forensics --cov-fail-under=70` → engine coverage ≥85% → `pytest -m parity -p no:cacheprovider` → bandit → pip-audit, on Python 3.11 + 3.13, aggregate branch-protection context `check`. Plus `.github/workflows/installer-smoke.yml`.
+### 3.6 Tests that assert on the name (expect these to fail first)
 
----
+`tests/test_packaging.py` (12 lines) · `tests/installer/test_installers.py` (wheel name L82–83, packaged-path comparison L120) · `tests/guards/test_egress.py` · `tests/test_launcher.py` · `tests/test_startup_bootstrap.py` · `tests/web/test_docs.py` (regenerates `docs/METRIC-DICTIONARY.md` from `<pkg>.web.help`) · `tests/test_state_docs.py`.
 
-## 5. Typography audit
+### 3.7 Docs
 
-`base.css` 517 lines / 67 custom-property declarations · `app.css` 1114 / 16 · `hud.css` 170 / 26.
-
-### 5.1 Distinct px font-sizes, with rule counts (all three files)
-
-| size | rules | verdict |
-|---|---|---|
-| 8px | 3 | **BELOW 11px — FLAGGED** |
-| 9px | 10 | **BELOW 11px — FLAGGED** |
-| 10px | 15 | **BELOW 11px — FLAGGED** |
-| 11px | 41 | base — operator compact standard |
-| 12px | 66 |  |
-| 12.5px | 1 |  |
-| 13px | 25 |  |
-| 14px | 11 |  |
-| 15px | 5 |  |
-| 16px | 9 |  |
-| 17px | 1 |  |
-| 18px | 2 |  |
-| 19px | 1 |  |
-| 20px | 1 |  |
-| 22px | 3 |  |
-| 26px | 1 |  |
-| 34px | 1 |  |
-
-Relative sizes (they compound with the 11px base **and** the 90–125% UI-scale control, so effective px varies): `.92em` ×1 · `.8em` ×2 · `.9em` ×1 · `.88em` ×1 · `.85em` ×1 · `0.85rem` ×1 · `1.05em` ×1 · `0.85em` ×1.
-
-**3 distinct sizes are below 11px — 8px, 9px, 10px — across 28 rules.** DESIGN-SYSTEM §1 allows an 8px floor for **mono labels only**; every non-label rule in that set is a violation candidate, and at 90% UI scale an 8px rule renders ~7.2px.
-
-### 5.2 Font stacks, and whether the font exists in the repo
-
-**The base type is set with the `font:` shorthand, not `font-family`** — `base.css` carries `font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif`, so the entire UI face is the **OS system stack**, and the 11px base size does not appear in the `font-size` histogram above. Everything else inherits (`font:inherit` is the only other shorthand in all three files).
-
-| `font-family` stack | rules |
-|---|---|
-| `ui-monospace,"IBM Plex Mono",Consolas,monospace` | 2 |
-
-- `@font-face` blocks across the three files: **0**. `url(...)` asset references: **0**. Font binaries anywhere in the repo (tree scan for `.woff`/`.woff2`/`.ttf`/`.otf`): **0 files**. Remote font references: **none** — no CDN and no Google Fonts, so the air-gap law currently holds.
-- DESIGN-SYSTEM §1 specifies **Barlow** (400/600/700), **Barlow Semi Condensed 700** and **IBM Plex Mono**. Grepping all three stylesheets: **"Barlow" appears 0 times** and **"Barlow Semi Condensed" 0 times**; `IBM Plex Mono` appears only as a *name inside the mono stack* (`ui-monospace,"IBM Plex Mono",Consolas,monospace`) with no `@font-face` behind it. So two of the three specified faces are not merely un-vendored — they are **not referenced at all**, and the display/UI face is the system stack. Vendoring them is simultaneously the fidelity fix, the air-gap prerequisite, and the highest-leverage available answer to "everything looks fussy".
+`CLAUDE.md` · `README.md` · `docs/DESIGN-SYSTEM.md` · `docs/USER-GUIDE.md` · `docs/METRIC-DICTIONARY.md` (**generated** — regenerate, do not edit) · `installer/README-DISTRIBUTABLE.md` · `packaging/README.md` · `docs/UI-INVENTORY.md` (all its `src/schedule_forensics/...` paths) · the 288 ADRs — **do not rewrite history**: ADRs record what was true when written; add one new ADR recording the rename instead.
 
 ---
 
-## 6. What "Jarvis"/high-tech theming already exists
+## 4. Execution order (one commit, but do it in this sequence locally)
 
-- **`hud.css`** — 170 lines, 26 custom properties, scoped to `[data-theme=jarvis]`. The HUD skin exists today; it is not a new idea.
-- **`base.css`** carries token blocks for `console`, `apollo`, `jarvis` with `daylight` as the `:root` set — all four appearance modes named in DESIGN-SYSTEM §1 are implemented in tokens.
-- **`theme.js`** (107 lines) — the header View dropdown, `localStorage` keys `sf-theme` / `sf-theme-dark`, legacy migrations `light→daylight` and `dark→console`, and the #themeToggle daylight↔last-dark mapping.
-- **`globe.js`** (282 lines) — the wireframe-globe insignia that doubles as the AI status light (DESIGN-SYSTEM §2). **`sysmon.js`**, **`heartbeat.js`**, **`hints.js`**, **`a11y.js`** supply the live telemetry, hints and focus behaviour a HUD page would read from.
-- **`sf-themes.css` is not committed** — the tokens live in `base.css`. Any instruction that says "drop in sf-themes.css" is out of date; treat `base.css` as the token file.
-- Consequence for anything new: `jarvis` is a **token remap of the same markup**, and law 1 forbids hand-styling over it. A new high-tech view must be a page built from those tokens, not a second theme system.
+1. `git checkout -b rename/<pkg>` — and change nothing else on this branch, ever.
+2. `git mv src/schedule_forensics src/<pkg>`; `git mv` the four `packaging/` assets.
+3. Scripted replace of `schedule_forensics` → `<pkg>` and `schedule-forensics` → `<dist>` across `src/ tests/ tools/ packaging/ .github/ docs/` and the root `*.md`/`*.toml`, **excluding `docs/adr/`**.
+4. Hand-check the six `pyproject.toml` sites in §3.1 (a scripted replace gets five of them; the ruff per-file-ignores path is the one that silently survives).
+5. Regenerate what is generated: `docs/METRIC-DICTIONARY.md`, the icons if `make_icon.py` output filenames changed, then the wheel and the 9 installers (§3.4).
+6. Bump `[project] version` — `1.0.95` → `1.1.0` (a rename is not a patch).
+7. Add `docs/adr/0285-package-rename-to-<pkg>.md`: what changed, what did not (no behaviour, no engine, no payload), and the fact that ADRs 0001–0284 keep the old name deliberately.
+8. Run the full gate (§5). One commit, one PR.
 
 ---
 
-## 7. What this report could not settle without running the app
+## 5. Gate — all of it, or revert
 
-1. Per-chart truth for columns (a)–(e) — needs rendered pages, not grep. 35 modules to walk, 32 HTML routes to open.
-2. Which of the 27 JSON endpoints are fetched by more than one page (duplicate full-analysis fetches are the scale risk ADR-0281 addresses).
-3. Whether any of the 28 sub-11px rules apply to non-label text at 90% UI scale.
-4. The constant→fixture pairing in §3, and whether the parity SHA is regenerated by `pytest -m parity`.
-5. `installer/` currently commits only `README-DISTRIBUTABLE.md` — the 9 generated scripts are build output, so confirm whether they are expected in-tree or produced per release.
+```bash
+ruff check . && ruff format --check . && mypy
+pytest --cov=<pkg> --cov-report=term-missing --cov-fail-under=70
+coverage report --include='*/<pkg>/engine/*' --fail-under=85
+pytest -m parity -p no:cacheprovider
+bandit -q -r src && pip-audit --progress-spinner=off
+python -m build --wheel --outdir dist/wheel
+python tools/installer/build_installers.py dist/wheel/<pkg>-*.whl
+pytest tests/installer/test_installers.py tests/test_packaging.py -q
+grep -rn "schedule_forensics\|schedule-forensics" --exclude-dir=docs/adr --exclude-dir=.git . | grep -v "^docs/adr" | wc -l   # expect 0
+```
+
+Plus, per the prompt: **installer-smoke green on both `windows-latest` and Linux** — that workflow is the only place the renamed wheel is actually installed and imported (`installer-smoke.yml` L57–58), so a green unit suite with a red smoke run means the rename is not done.
+
+**Invariants that must not move:**
+- The three dashboard goldens — `_SHA_TWO_VERSION` `d62a4f9e…58d1`, `_SHA_UNSOLVABLE` `8d7bcc38…fc16`, `_SHA_TWO_VERSION_PARITY` `51691cb7…504cb`. A rename cannot touch a payload; if one moves, something non-mechanical happened.
+- Parity results (`pytest -m parity`), engine coverage ≥85%, DCMA counts (173 parity / 182 default on the reference file).
+
+**Revert rule:** if any gate is red after one honest debugging pass, `git checkout main && git branch -D rename/<pkg>`. Do not land a partial rename, do not `# type: ignore` a rename, do not relax an installer assertion to make the wheel name match. A half-renamed package is worse than no rename — that is the prompt's rule and it is the right one.
+
+---
+
+## STOP — one decision
+
+**Which name?** (Or "never", and I do the display-name-only change instead.) Nothing will be moved until you answer, and once you do, this becomes a single mechanical branch with the gate above as its only definition of done.

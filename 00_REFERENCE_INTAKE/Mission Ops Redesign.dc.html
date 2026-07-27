@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&amp;family=Barlow+Semi+Condensed:wght@600;700;800&amp;family=IBM+Plex+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#070B12}
+a{color:#4AA3FF;text-decoration:none}
+a:hover{color:#8FD0FF;text-decoration:underline}
+@keyframes sfOrbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes sfScan{from{background-position:0 -240px}to{background-position:0 100vh}}
+@keyframes sfPulse{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes sfDrawA{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@keyframes sfDrawB{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+@media print{[data-noprint]{display:none !important}}
+</style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;background:var(--bgfx);color:var(--ink);font:11px/1.5 var(--f);--bg:#070B12;--bgfx:radial-gradient(1100px 520px at 70% -12%,rgba(30,80,160,.16),transparent 60%),#070B12;--pn:#0E1522;--pn2:#131D2F;--ink:#E7EEF7;--mut:#8295AB;--ln:#203049;--ac:#4AA3FF;--ac2:#8FD0FF;--ok:#3FB950;--wa:#E0A62E;--bd:#FF5A52;--rd:#FC3D21;--fld:#0A111D;--bink:#051323;--hgrad:linear-gradient(95deg,#0B3D91,#0A2D6E 55%,#071F4D);--hink:#FFFFFF;--hmut:rgba(255,255,255,.78);--hline:#FC3D21;--nav:#0A101C;--cnv:#0B1220;--cgrid:rgba(130,149,171,.16);--dot:rgba(140,162,192,.13);--r:10px;--rs:7px;--f:'Barlow',system-ui,sans-serif;--fd:'Barlow Semi Condensed','Barlow',sans-serif;--fm:'IBM Plex Mono',ui-monospace,monospace;--tt:none;--glow:none{{ themeVars }}">
+<div style="display:contents">
+
+<sc-if value="{{ isJarvis }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;inset:0;pointer-events:none;z-index:40;background:linear-gradient(180deg,transparent,rgba(25,211,255,.045) 50%,transparent);background-size:100% 240px;animation:sfScan 9s linear infinite;mix-blend-mode:screen"></div>
+</sc-if>
+
+<!-- ══ CUI marking bar (top) ══ -->
+<div style="background:{{ markBg }};color:#FFFFFF;text-align:center;font:700 10px/1 var(--fm);letter-spacing:.22em;padding:5px 10px;text-transform:uppercase">{{ markText }}</div>
+<details data-noprint="1" style="background:color-mix(in srgb,var(--pn) 70%,#241035);border-bottom:1px solid var(--ln);font-size:10px">
+  <summary style="cursor:pointer;padding:3px 12px;color:var(--mut);text-align:center;letter-spacing:.08em;list-style:none">Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
+  <div style="max-width:960px;margin:0 auto;padding:10px 16px 12px;color:var(--ink);line-height:1.6">
+    <div style="font:700 10px var(--fm);letter-spacing:.1em;color:var(--ac);margin-bottom:4px">CONTROLLED UNCLASSIFIED INFORMATION</div>
+    <p style="margin:0 0 6px">Schedule content processed by this tool may constitute CUI and may be subject to export control under ITAR (22 CFR 120–130) or EAR (15 CFR 730–774). Analysis runs entirely on this machine: imports parse locally, the report renders locally, and the AI narrative uses a loopback-only model server. No schedule data, task name, date, UniqueID, or derived metric ever leaves the box.</p>
+    <p style="margin:0;color:var(--mut)">Marking bars follow the agency page-marking standard. Verify handling caveats with your ISSO before exporting any report product.</p>
+  </div>
+</details>
+
+<!-- ══ Header ══ -->
+<header data-noprint="1" style="background:var(--hgrad);border-bottom:3px solid var(--hline);display:flex;align-items:center;gap:16px;padding:10px 20px;flex-wrap:wrap">
+  <div style="display:flex;align-items:center;gap:12px;min-width:0">
+    <svg viewBox="0 0 48 48" style="width:42px;height:42px;flex:0 0 auto" aria-hidden="true">
+      <circle cx="24" cy="24" r="21" fill="none" stroke="var(--hink)" stroke-opacity="0.9" stroke-width="1.6"></circle>
+      <circle cx="24" cy="24" r="8.5" fill="none" stroke="var(--hink)" stroke-opacity="0.55" stroke-width="1"></circle>
+      <circle cx="15" cy="15" r="1.1" fill="var(--hink)"></circle>
+      <circle cx="33.5" cy="13.5" r="0.9" fill="var(--hink)"></circle>
+      <circle cx="35" cy="31" r="1" fill="var(--hink)"></circle>
+      <path d="M24 12 L29 30 L24 26 L19 30 Z" fill="var(--hline)"></path>
+      <g style="transform-origin:24px 24px;animation:sfOrbit 26s linear infinite">
+        <ellipse cx="24" cy="24" rx="20" ry="7.5" fill="none" stroke="var(--hink)" stroke-opacity="0.7" stroke-width="1" transform="rotate(-18 24 24)"></ellipse>
+        <circle cx="43.2" cy="18.4" r="1.7" fill="var(--hink)"></circle>
+      </g>
+    </svg>
+    <div style="min-width:0">
+      <div style="font:700 17px/1.1 var(--fd);letter-spacing:.07em;color:var(--hink);text-transform:uppercase">Schedule Forensics</div>
+      <div style="font:500 9.5px var(--fm);letter-spacing:.14em;color:var(--hmut);text-transform:uppercase">Manipulation Analysis Console · Flight Projects</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid color-mix(in srgb,var(--hink) 30%,transparent);border-radius:var(--rs);background:rgba(0,0,0,.14)">
+    <span style="width:7px;height:7px;border-radius:50%;background:var(--wa);flex:0 0 auto"></span>
+    <div>
+      <div style="font:600 11px var(--fm);color:var(--hink);letter-spacing:.04em">KESTREL-3 · I&amp;T CAMPAIGN</div>
+      <div style="font:500 9px var(--fm);color:var(--hmut);letter-spacing:.08em">6 VERSIONS · CURRENT v5 · DD 2026-04-06</div>
+    </div>
+  </div>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <span title="Data sovereignty: nothing leaves this machine" style="display:inline-flex;align-items:center;gap:6px;font:600 9px var(--fm);letter-spacing:.12em;color:var(--hmut);border:1px solid color-mix(in srgb,var(--hink) 25%,transparent);border-radius:20px;padding:4px 9px">
+      <span style="width:6px;height:6px;border-radius:50%;background:var(--ok);animation:sfPulse 2.4s ease-in-out infinite"></span>LOCAL · 127.0.0.1
+    </span>
+    <label style="display:inline-flex;align-items:center;gap:6px;font:600 9px var(--fm);letter-spacing:.1em;color:var(--hmut);text-transform:uppercase">Text
+      <select value="{{ uiScale }}" onChange="{{ onScale }}" style="background:rgba(0,0,0,.22);color:var(--hink);border:1px solid color-mix(in srgb,var(--hink) 30%,transparent);border-radius:var(--rs);padding:4px 6px;font:600 10px var(--fm)">
+        <option value="90">90%</option>
+        <option value="100">100%</option>
+        <option value="110">110%</option>
+        <option value="125">125%</option>
+      </select>
+    </label>
+    <label style="display:inline-flex;align-items:center;gap:6px;font:600 9px var(--fm);letter-spacing:.1em;color:var(--hmut);text-transform:uppercase">View
+      <select value="{{ theme }}" onChange="{{ onTheme }}" style="background:rgba(0,0,0,.22);color:var(--hink);border:1px solid color-mix(in srgb,var(--hink) 30%,transparent);border-radius:var(--rs);padding:4px 6px;font:600 10px var(--fm)">
+        <option value="console">CONSOLE — mission control</option>
+        <option value="daylight">DAYLIGHT — clean light</option>
+        <option value="apollo">APOLLO — retro CRT</option>
+        <option value="jarvis">JARVIS — HUD</option>
+      </select>
+    </label>
+    <button onClick="{{ onMode }}" title="Toggle dark / light" style="background:rgba(0,0,0,.22);color:var(--hink);border:1px solid color-mix(in srgb,var(--hink) 30%,transparent);border-radius:var(--rs);padding:4px 9px;font:600 11px var(--fm);cursor:pointer">{{ modeIcon }}</button>
+    <button onClick="{{ onQuit }}" title="Stops the local server immediately" style="background:transparent;color:var(--hmut);border:1px solid color-mix(in srgb,var(--hink) 25%,transparent);border-radius:var(--rs);padding:4px 10px;font:600 10px var(--f);cursor:pointer;text-transform:var(--tt)">Quit</button>
+  </div>
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="flex-basis:100%;text-align:right;font:600 10px var(--fm);color:var(--wa)">{{ toast }}</div>
+  </sc-if>
+</header>
+
+<!-- ══ Body: nav + main ══ -->
+<div style="flex:1;display:flex;align-items:stretch;min-height:0">
+
+  <sc-if value="{{ railNav }}" hint-placeholder-val="{{ true }}">
+  <nav data-noprint="1" style="width:212px;flex:0 0 auto;background:var(--nav);border-right:1px solid var(--ln);padding:14px 10px 12px;display:flex;flex-direction:column;gap:14px;overflow-y:auto">
+    <sc-for list="{{ navGroups }}" as="g" hint-placeholder-count="3">
+      <div>
+        <div style="font:700 9px var(--fm);letter-spacing:.18em;color:var(--mut);text-transform:uppercase;padding:0 8px 5px">{{ g.label }}</div>
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="2">
+            <button onClick="{{ it.go }}" style="{{ it.style }}">
+              <span style="font:700 9px var(--fm);color:{{ it.numColor }};letter-spacing:.06em;width:20px;flex:0 0 auto">{{ it.num }}</span>
+              <span style="text-transform:var(--tt)">{{ it.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <div style="margin-top:auto;border-top:1px solid var(--ln);padding:10px 8px 0">
+      <div style="font:700 9px var(--fm);letter-spacing:.18em;color:var(--mut);text-transform:uppercase;margin-bottom:6px">Story so far</div>
+      <div style="display:flex;gap:5px;margin-bottom:7px">
+        <sc-for list="{{ storyDots }}" as="d" hint-placeholder-count="7">
+          <span style="width:16px;height:4px;border-radius:2px;background:{{ d.c }}"></span>
+        </sc-for>
+      </div>
+      <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ currentTake }}</div>
+    </div>
+  </nav>
+  </sc-if>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;min-height:0">
+    <sc-if value="{{ topNav }}" hint-placeholder-val="{{ false }}">
+      <nav data-noprint="1" style="background:var(--nav);border-bottom:1px solid var(--ln);padding:7px 18px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+        <sc-for list="{{ flatNav }}" as="it" hint-placeholder-count="9">
+          <button onClick="{{ it.go }}" style="{{ it.topStyle }}">
+            <span style="font:700 9px var(--fm);color:{{ it.numColor }};margin-right:5px">{{ it.num }}</span>{{ it.label }}
+          </button>
+        </sc-for>
+      </nav>
+    </sc-if>
+
+    <main ref="{{ mainRef }}" style="flex:1;overflow-y:auto;min-height:0">
+    <div style="max-width:1240px;margin:0 auto;padding:20px 24px 28px">
+
+    <!-- ════════ 00 · IMPORT ════════ -->
+    <sc-if value="{{ isImp }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="00 Import">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Prologue · Load</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Load the mission.</h1>
+      <p style="margin:0 0 16px;font:500 12px var(--f);color:var(--mut);max-width:720px">Drop every status version of the schedule — the story lives in how the versions differ. Everything parses on this machine.</p>
+
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start">
+        <div>
+          <div style="border:2px dashed var(--ln);border-radius:var(--r);background:var(--pn);padding:30px 22px;text-align:center">
+            <svg viewBox="0 0 48 48" style="width:40px;height:40px;opacity:.9" aria-hidden="true">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="var(--ac)" stroke-width="1.4"></circle>
+              <ellipse cx="24" cy="24" rx="19" ry="7" fill="none" stroke="var(--ac)" stroke-opacity=".5" stroke-width="1" transform="rotate(-18 24 24)"></ellipse>
+              <path d="M24 15 L28 28 L24 25 L20 28 Z" fill="var(--ac)"></path>
+            </svg>
+            <div style="font:700 14px var(--fd);margin:8px 0 3px;text-transform:var(--tt)">Drop schedule files</div>
+            <div style="font:500 10.5px var(--f);color:var(--mut)">up to 20 at once — each becomes a version on the timeline</div>
+            <div style="display:flex;gap:6px;justify-content:center;margin:10px 0 14px;flex-wrap:wrap">
+              <sc-for list="{{ imp.formats }}" as="f" hint-placeholder-count="6">
+                <span style="font:600 9.5px var(--fm);color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">{{ f }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+              <button style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Choose files…</button>
+              <button onClick="{{ imp.loadExample }}" style="background:transparent;color:var(--ac);border:1px solid var(--ac);border-radius:var(--rs);padding:7px 14px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Load KESTREL-3 example</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:9px;align-items:center;border:1px solid color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 9%,transparent);border-radius:var(--rs);padding:9px 12px">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--ok);flex:0 0 auto"></span>
+            <div style="font:600 10.5px var(--f);color:var(--ink)">DATA SOVEREIGNTY — imports parse locally · no network egress · AI on loopback only · closing the last window stops the server</div>
+          </div>
+        </div>
+
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:14px 16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+            <h2 style="margin:0;font:700 13px var(--fd);letter-spacing:.05em;color:var(--ink);text-transform:uppercase">Loaded versions</h2>
+            <span style="font:600 9.5px var(--fm);color:var(--mut)">6 FILES · ONE SCHEDULE</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ imp.versions }}" as="v" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--ln);border-radius:var(--rs);padding:7px 10px;background:{{ v.bg }}">
+                <span style="font:700 10px var(--fm);color:{{ v.idColor }};width:22px;flex:0 0 auto">{{ v.id }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font:600 11px var(--fm);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ v.file }}</div>
+                  <div style="font:500 9.5px var(--fm);color:var(--mut)">DD {{ v.dd }} · CPM finish {{ v.fin }}</div>
+                </div>
+                <span style="font:700 10px var(--fm);color:{{ v.dColor }};flex:0 0 auto">{{ v.dLab }}</span>
+                <button onClick="{{ v.open }}" style="background:transparent;color:var(--ac);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9.5px var(--f);cursor:pointer;flex:0 0 auto;text-transform:var(--tt)">Open</button>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:9px;font:500 10px var(--f);color:var(--mut)">Each import is validated on arrival — parse failures surface here with the reason, never silently.</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">The versions are loaded — see the whole picture first.</span>
+        <button onClick="{{ goCtl }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Continue → Mission Control</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ MISSION CONTROL (overview) ════════ -->
+    <sc-if value="{{ isCtl }}" hint-placeholder-val="{{ true }}">
+    <section data-screen-label="Mission Control">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Mission Control · The big picture</div>
+          <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">KESTREL-3 is 49 days behind — and the trend is accelerating.</h1>
+          <p style="margin:0;font:500 12px var(--f);color:var(--mut);max-width:760px">Five updates, five slips. Every panel below is one chapter of the story — read left to right, or open a chapter for the evidence.</p>
+        </div>
+        <div style="display:flex;gap:8px" data-noprint="1">
+          <button onClick="{{ ctl.playAll }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:7px 14px;font:700 11px var(--f);cursor:pointer;text-transform:var(--tt)">{{ ctl.playLabel }}</button>
+          <button onClick="{{ ctl.stepAll }}" style="background:transparent;color:var(--ink);border:1px solid var(--ln);border-radius:var(--rs);padding:6px 12px;font:600 11px var(--f);cursor:pointer;text-transform:var(--tt)">Step ▸</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <sc-for list="{{ ctl.kpis }}" as="k" hint-placeholder-count="4">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:11px 14px;border-top:2px solid {{ k.edge }}">
+            <div style="font:700 9px var(--fm);letter-spacing:.14em;color:var(--mut);text-transform:uppercase">{{ k.label }}</div>
+            <div style="font:700 20px/1.2 var(--fd);color:{{ k.color }};margin:2px 0 1px">{{ k.value }}</div>
+            <div style="font:500 9.5px var(--fm);color:var(--mut)">{{ k.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <sc-for list="{{ ctl.tiles }}" as="t" hint-placeholder-count="6">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px;display:flex;flex-direction:column;gap:8px;grid-column:{{ t.span }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div style="font:700 11px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase"><span style="color:var(--ac);font:700 9.5px var(--fm);margin-right:6px">{{ t.num }}</span>{{ t.title }}</div>
+              <div style="display:flex;gap:4px;align-items:center" data-noprint="1">
+                <button onClick="{{ t.fr.tglData }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ t.fr.dataLab }}</button>
+                <button onClick="{{ t.exp }}" title="Export this visual's data — opens in Excel" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+                <button onClick="{{ t.fr.tglBig }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ t.fr.bigLab }}</button>
+                <button onClick="{{ t.go }}" style="background:none;border:0;color:var(--ac);font:600 10px var(--f);cursor:pointer;padding:0 0 0 4px;white-space:nowrap">{{ t.link }} →</button>
+              </div>
+            </div>
+            <sc-if value="{{ t.isSlope }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+                  <line x1="{{ slope.x0 }}" y1="{{ slope.baseY }}" x2="{{ slope.x1 }}" y2="{{ slope.baseY }}" stroke="var(--mut)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                  <path d="{{ slope.d }}" fill="none" stroke="var(--bd)" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" stroke-dasharray="1" style="animation:{{ drawName }} 1.1s ease both"></path>
+                </svg>
+                <sc-for list="{{ slope.pts }}" as="p" hint-placeholder-count="6">
+                  <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--bd);border:1.5px solid var(--pn)"></span>
+                  <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-160%);font:600 8.5px var(--fm);color:{{ p.lc }};white-space:nowrap">{{ p.dlab }}</span>
+                  <span style="position:absolute;left:{{ p.x }}%;bottom:2px;transform:translateX(-50%);font:500 8px var(--fm);color:var(--mut)">{{ p.xlab }}</span>
+                </sc-for>
+                <span style="position:absolute;left:{{ slope.baseLabX }}%;top:{{ slope.baseY }}%;transform:translate(0,-120%);font:600 8.5px var(--fm);color:var(--mut)">BASELINE 09-14</span>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+            <sc-if value="{{ t.isBow }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;display:flex;align-items:flex-end;gap:2.5%;padding:20px 8px 16px">
+                <sc-for list="{{ bowMini.bars }}" as="b" hint-placeholder-count="14">
+                  <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative">
+                    <div style="height:{{ b.h }}%;background:{{ b.c }};border-radius:2px 2px 0 0;transition:height .45s ease,background .45s ease"></div>
+                  </div>
+                </sc-for>
+                <div style="position:absolute;top:8px;bottom:14px;left:{{ bowMini.ddX }}%;width:0;border-left:1.5px solid var(--rd);transition:left .45s ease"></div>
+                <span style="position:absolute;top:4px;left:{{ bowMini.ddX }}%;transform:translateX(-50%);font:700 8px var(--fm);color:var(--rd);letter-spacing:.08em;transition:left .45s ease">DD</span>
+                <span style="position:absolute;top:4px;right:8px;font:600 9px var(--fm);color:var(--mut)">{{ bowMini.frameLab }}</span>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+            <sc-if value="{{ t.isScurve }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+                  <path d="{{ scurve.dBase }}" fill="none" stroke="var(--mut)" stroke-dasharray="4 3" stroke-width="1.4" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ scurve.dFc }}" fill="none" stroke="var(--wa)" stroke-dasharray="2 3" stroke-width="1.6" vector-effect="non-scaling-stroke"></path>
+                  <path d="{{ scurve.dAct }}" fill="none" stroke="var(--ac)" stroke-width="2.2" vector-effect="non-scaling-stroke" pathLength="1" stroke-dasharray="1" style="animation:{{ drawName }} 1.1s ease both"></path>
+                  <line x1="{{ scurve.ddX }}" y1="6" x2="{{ scurve.ddX }}" y2="97" stroke="var(--rd)" stroke-width="1.2" vector-effect="non-scaling-stroke"></line>
+                </svg>
+                <span style="position:absolute;left:{{ scurve.ddX }}%;top:2px;transform:translateX(-50%);font:700 8px var(--fm);color:var(--rd)">DD</span>
+                <span style="position:absolute;right:6px;top:{{ scurve.baseEndY }}%;font:600 8.5px var(--fm);color:var(--mut)">PLAN</span>
+                <span style="position:absolute;left:{{ scurve.actLabX }}%;top:{{ scurve.actLabY }}%;font:600 8.5px var(--fm);color:var(--ac)">ACTUAL {{ scurve.actNow }}%</span>
+                <span style="position:absolute;right:6px;top:{{ scurve.fcEndY }}%;font:600 8.5px var(--fm);color:var(--wa)">FORECAST</span>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+            <sc-if value="{{ t.isCei }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+                  <line x1="6" y1="{{ cei.goodY }}" x2="97" y2="{{ cei.goodY }}" stroke="var(--ok)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+                  <path d="{{ cei.d }}" fill="none" stroke="var(--wa)" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" stroke-dasharray="1" style="animation:{{ drawName }} 1.1s ease both"></path>
+                </svg>
+                <sc-for list="{{ cei.pts }}" as="p" hint-placeholder-count="5">
+                  <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--wa);border:1.5px solid var(--pn)"></span>
+                  <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-170%);font:600 8.5px var(--fm);color:var(--ink)">{{ p.lab }}</span>
+                  <span style="position:absolute;left:{{ p.x }}%;bottom:2px;transform:translateX(-50%);font:500 8px var(--fm);color:var(--mut)">{{ p.xlab }}</span>
+                </sc-for>
+                <span style="position:absolute;left:8px;top:{{ cei.goodY }}%;transform:translateY(-120%);font:600 8px var(--fm);color:var(--ok)">1.00 = EXECUTING TO PLAN</span>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+            <sc-if value="{{ t.isFc }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;padding:0">
+                <div style="position:absolute;left:{{ fcMini.bandX }}%;width:{{ fcMini.bandW }}%;top:34%;height:32%;background:color-mix(in srgb,var(--wa) 16%,transparent);border:1px solid color-mix(in srgb,var(--wa) 45%,transparent);border-radius:4px"></div>
+                <div style="position:absolute;left:0;right:0;top:50%;border-top:1px solid var(--cgrid)"></div>
+                <sc-for list="{{ fcMini.marks }}" as="m" hint-placeholder-count="4">
+                  <div style="position:absolute;left:{{ m.x }}%;top:38%;height:24%;width:0;border-left:2px solid {{ m.c }}"></div>
+                  <span style="position:absolute;left:{{ m.x }}%;top:{{ m.ly }}%;transform:translateX(-50%);font:600 8.5px var(--fm);color:{{ m.c }};white-space:nowrap">{{ m.lab }}</span>
+                </sc-for>
+                <span style="position:absolute;left:8px;bottom:4px;font:500 8px var(--fm);color:var(--mut)">SEP 2026</span>
+                <span style="position:absolute;right:8px;bottom:4px;font:500 8px var(--fm);color:var(--mut)">JAN 2027</span>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+            <sc-if value="{{ t.isDcma }}" hint-placeholder-val="{{ false }}">
+              <div style="position:relative;min-height:{{ t.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;padding:12px;display:flex;flex-direction:column;gap:8px;justify-content:center">
+                <div style="display:flex;flex-wrap:wrap;gap:4px">
+                  <sc-for list="{{ dcma.chips }}" as="c" hint-placeholder-count="14">
+                    <span title="{{ c.tip }}" style="font:600 8.5px var(--fm);letter-spacing:.03em;padding:3px 7px;border-radius:10px;background:{{ c.bg }};color:{{ c.ink }};border:1px solid {{ c.bc }}">{{ c.name }}</span>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:12px;font:600 9.5px var(--fm)">
+                  <span style="color:var(--ok)">● {{ dcma.pass }} PASS</span>
+                  <span style="color:var(--bd)">● {{ dcma.fail }} FAIL</span>
+                  <span style="color:var(--mut)">● {{ dcma.na }} N/A</span>
+                </div>
+              </div>
+              <div style="font:500 10px/1.5 var(--f);color:var(--mut)">{{ t.read }}</div>
+            <sc-if value="{{ t.fr.data }}" hint-placeholder-val="{{ false }}">
+              <div style="max-height:170px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+                <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                  <thead><tr><sc-for list="{{ t.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                  <tbody><sc-for list="{{ t.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+                </table>
+              </div>
+            </sc-if>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:18px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">Now the story, chapter by chapter — starting with where the program stands today.</span>
+        <button onClick="{{ goSt }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Begin Chapter 01 → Where we stand</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 01 · STATUS ════════ -->
+    <sc-if value="{{ isSt }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="01 Where we stand">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 01 · Where we stand</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Six months in: 46% complete — and the margin is gone.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">Status through the v5 data date. Every number below is computed from the file, never typed in — click any finding for its citation.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:12px">
+        <sc-for list="{{ st.kpis }}" as="k" hint-placeholder-count="6">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:9px 12px">
+            <div style="font:700 8.5px var(--fm);letter-spacing:.12em;color:var(--mut);text-transform:uppercase">{{ k.label }}</div>
+            <div style="font:700 18px/1.2 var(--fd);color:var(--ink);margin:1px 0">{{ k.value }}</div>
+            <div style="font:500 9px var(--fm);color:var(--mut)">{{ k.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
+            <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Activity status mix</h2>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="font:500 9px var(--fm);color:var(--mut)">BY COUNT · 17 ACTIVITIES</span><button onClick="{{ st.mixExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button></span>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Share of activities complete / in work / not started. Earned progress (46%) runs on duration weight, not count.</p>
+          <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;border:1px solid var(--ln)">
+            <sc-for list="{{ st.mix }}" as="m" hint-placeholder-count="3">
+              <div style="width:{{ m.w }}%;background:{{ m.c }}"></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:14px;margin-top:7px;flex-wrap:wrap">
+            <sc-for list="{{ st.mix }}" as="m" hint-placeholder-count="3">
+              <span style="display:inline-flex;align-items:center;gap:5px;font:600 9.5px var(--fm);color:var(--mut)"><span style="width:8px;height:8px;border-radius:2px;background:{{ m.c }}"></span>{{ m.lab }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px">
+            <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Float remaining</h2>
+            <span style="display:inline-flex;align-items:center;gap:6px"><span style="font:500 9px var(--fm);color:var(--mut)">14 INCOMPLETE ACTIVITIES</span><button onClick="{{ st.bandExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button></span>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">How much schedule cushion each remaining activity holds. Nearly two-thirds have none at all.</p>
+          <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;border:1px solid var(--ln)">
+            <sc-for list="{{ st.bands }}" as="b" hint-placeholder-count="3">
+              <div style="width:{{ b.w }}%;background:{{ b.c }}"></div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:14px;margin-top:7px;flex-wrap:wrap">
+            <sc-for list="{{ st.bands }}" as="b" hint-placeholder-count="3">
+              <span style="display:inline-flex;align-items:center;gap:5px;font:600 9.5px var(--fm);color:var(--mut)"><span style="width:8px;height:8px;border-radius:2px;background:{{ b.c }}"></span>{{ b.lab }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+          <div>
+            <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Integration &amp; test timeline</h2>
+            <p style="margin:2px 0 0;font:500 10px var(--f);color:var(--mut)">Bars show planned span with earned progress filled solid. Red bars carry the launch date — they have zero float.</p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end" data-noprint="1">
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+              <sc-for list="{{ st.legend }}" as="l" hint-placeholder-count="4">
+                <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:{{ l.line }};border-radius:2px;background:{{ l.c }}"></span>{{ l.lab }}</span>
+              </sc-for>
+            </div>
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+              <span style="font:700 8.5px var(--fm);letter-spacing:.1em;color:var(--mut)">COLUMNS</span>
+              <sc-for list="{{ st.colChips }}" as="c" hint-placeholder-count="6">
+                <button onClick="{{ c.tgl }}" style="{{ c.style }}">{{ c.lab }}</button>
+              </sc-for>
+              <select value="{{ st.gZoom }}" onChange="{{ st.onZoom }}" style="background:var(--fld);color:var(--ink);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 6px;font:600 9px var(--fm)">
+                <option value="full">FULL RANGE</option>
+                <option value="y26">2026 ONLY</option>
+                <option value="win">EXECUTION WINDOW</option>
+              </select>
+              <button onClick="{{ st.onHide }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ st.hideLabel }}</button>
+              <button onClick="{{ st.onCrit }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--ac);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ st.critLabel }}</button>
+              <button onClick="{{ st.fg.tglData }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ st.fg.dataLab }}</button>
+              <button onClick="{{ st.gExp }}" title="Export the full activity grid — opens in Excel" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">⤓ EXCEL</button>
+              <button onClick="{{ st.fg.tglBig }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ st.fg.bigLab }}</button>
+            </div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:{{ st.gGrid }};gap:0 8px;align-items:end;border-bottom:1px solid var(--ln);padding-bottom:2px">
+          <span style="font:700 8.5px var(--fm);letter-spacing:.12em;color:var(--mut)">ACTIVITY</span>
+          <sc-for list="{{ st.gHead }}" as="h" hint-placeholder-count="3">
+            <span style="font:700 8px var(--fm);letter-spacing:.06em;color:var(--mut);text-align:right">{{ h }}</span>
+          </sc-for>
+          <div style="position:relative;height:18px">
+            <sc-for list="{{ st.months }}" as="m" hint-placeholder-count="16">
+              <span style="position:absolute;left:{{ m.x }}%;bottom:0;font:600 8px var(--fm);color:var(--mut);padding-left:3px;border-left:1px solid var(--cgrid)">{{ m.lab }}</span>
+            </sc-for>
+            <span style="position:absolute;left:{{ st.ddX }}%;top:-3px;transform:translateX(-50%);font:700 8px var(--fm);color:var(--rd);letter-spacing:.06em;display:{{ st.ddShow }}">DD 04-06</span>
+          </div>
+        </div>
+        <div>
+          <sc-for list="{{ st.rows }}" as="r" hint-placeholder-count="10">
+            <div style="display:grid;grid-template-columns:{{ st.gGrid }};gap:0 8px;align-items:center;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent)">
+              <span style="font:600 10.5px var(--f);color:{{ r.nameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:var(--tt);padding:3px 0">{{ r.name }}</span>
+              <sc-for list="{{ r.cells }}" as="c">
+                <span style="font:500 9px var(--fm);color:{{ c.c }};text-align:right;font-variant-numeric:tabular-nums">{{ c.v }}</span>
+              </sc-for>
+              <div style="position:relative;height:{{ st.rowH }}px;background-image:linear-gradient(90deg,var(--cgrid) 0,var(--cgrid) 1px,transparent 1px);background-size:{{ st.gBgSize }}">
+                <sc-if value="{{ r.bar }}" hint-placeholder-val="{{ true }}">
+                  <div style="position:absolute;left:{{ r.x }}%;width:{{ r.w }}%;top:{{ st.barT }}px;height:{{ st.barH }}px;border-radius:3px;background:{{ r.track }};overflow:hidden">
+                    <div style="height:100%;width:{{ r.fill }}%;background:{{ r.solid }}"></div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ r.ms }}" hint-placeholder-val="{{ false }}">
+                  <span style="position:absolute;left:{{ r.x }}%;top:{{ st.msT }}px;width:{{ st.msS }}px;height:{{ st.msS }}px;margin-left:-4px;transform:rotate(45deg);background:{{ r.solid }}"></span>
+                </sc-if>
+                <div style="position:absolute;top:0;bottom:0;left:{{ st.ddX }}%;border-left:1.5px solid var(--rd);opacity:.75;display:{{ st.ddShow }}"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ st.fg.data }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:8px;max-height:220px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+            <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+              <thead><tr><sc-for list="{{ st.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+              <tbody><sc-for list="{{ st.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+            </table>
+          </div>
+        </sc-if>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Findings — severity ordered</h2>
+            <button onClick="{{ st.findExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Each finding cites its file, UniqueID and task — nothing here is opinion.</p>
+          <div style="display:flex;flex-direction:column;gap:7px">
+            <sc-for list="{{ st.findings }}" as="f" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:52px 1fr;gap:9px;align-items:start;border:1px solid color-mix(in srgb,var(--ln) 70%,transparent);border-left:3px solid {{ f.c }};border-radius:var(--rs);padding:7px 10px;background:color-mix(in srgb,var(--pn2) 60%,transparent)">
+                <span style="font:700 9px var(--fm);color:{{ f.c }};letter-spacing:.08em;padding-top:1px">{{ f.sev }}</span>
+                <div>
+                  <div style="font:500 11px/1.5 var(--f);color:var(--ink)">{{ f.text }}</div>
+                  <div style="font:500 9px var(--fm);color:var(--mut);margin-top:2px">⌖ {{ f.cite }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">DCMA-14 audit</h2>
+            <button onClick="{{ st.dcmaExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Structural health of the network itself. Hover a chip for the threshold detail.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px">
+            <sc-for list="{{ dcma.chips }}" as="c" hint-placeholder-count="14">
+              <span title="{{ c.tip }}" style="font:600 8.5px var(--fm);letter-spacing:.03em;padding:3px 8px;border-radius:10px;background:{{ c.bg }};color:{{ c.ink }};border:1px solid {{ c.bc }}">{{ c.name }}</span>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:12px;font:600 9.5px var(--fm);margin-bottom:10px">
+            <span style="color:var(--ok)">● {{ dcma.pass }} PASS</span><span style="color:var(--bd)">● {{ dcma.fail }} FAIL</span><span style="color:var(--mut)">● {{ dcma.na }} N/A</span>
+          </div>
+          <div style="border-top:1px solid var(--ln);padding-top:8px;display:flex;flex-direction:column;gap:6px">
+            <div style="font:500 10.5px/1.5 var(--f);color:var(--ink)"><b style="color:var(--bd)">NEG FLOAT</b> — 3 tasks sit later than the committed LRR date allows.</div>
+            <div style="font:500 10.5px/1.5 var(--f);color:var(--ink)"><b style="color:var(--bd)">HIGH DUR</b> — 2 remaining tasks exceed the 44-day threshold and hide detail.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">The margin went somewhere. Next: the one chain of work that now sets the date.</span>
+        <button onClick="{{ goDr }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 02 → What drives the date</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 02 · DRIVERS ════════ -->
+    <sc-if value="{{ isDr }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="02 What drives the date">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 02 · What drives the date</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">One chain holds the launch date.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">The driving path to the target, SSI-style: zero-float tasks in red, then everything within your day-bands. Change the target to interrogate a different endpoint.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 300px;gap:10px;align-items:start">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font:700 9px var(--fm);letter-spacing:.12em;color:var(--mut);text-transform:uppercase">Target</span>
+              <select value="{{ dr.target }}" onChange="{{ dr.onTarget }}" style="background:var(--fld);color:var(--ink);border:1px solid var(--ln);border-radius:var(--rs);padding:4px 8px;font:600 10.5px var(--fm)">
+                <option value="lrr">Launch Readiness Review · UID 1190</option>
+                <option value="psr">Pre-Ship Review · UID 1160</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--bd)"></span>DRIVING · TF 0</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--wa)"></span>≤ 5 D</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--ac)"></span>≤ 10 D</span>
+            </div>
+            <div style="display:flex;gap:4px" data-noprint="1">
+              <button onClick="{{ dr.exp }}" title="Export the driving path — opens in Excel" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">⤓ EXCEL</button>
+              <button onClick="{{ dr.fr.tglBig }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ dr.fr.bigLab }}</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ dr.rows }}" as="r" hint-placeholder-count="12">
+              <div>
+                <sc-if value="{{ r.isSep }}" hint-placeholder-val="{{ false }}">
+                  <div style="font:700 8.5px var(--fm);letter-spacing:.14em;color:var(--mut);padding:10px 0 4px;border-bottom:1px solid var(--ln);margin-bottom:2px">{{ r.label }}</div>
+                </sc-if>
+                <sc-if value="{{ r.isBar }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:grid;grid-template-columns:230px 1fr;align-items:center;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent)">
+                    <div style="display:flex;align-items:center;gap:6px;padding:3px 6px 3px 0;min-width:0">
+                      <span style="font:700 8.5px var(--fm);color:{{ r.tierC }};border:1px solid {{ r.tierC }};border-radius:3px;width:14px;text-align:center;flex:0 0 auto">{{ r.tier }}</span>
+                      <span style="flex:1;font:600 10.5px var(--f);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:var(--tt)">{{ r.name }}</span>
+                      <span style="font:500 8.5px var(--fm);color:var(--mut)">{{ r.uid }}</span>
+                      <span style="font:700 8.5px var(--fm);color:{{ r.slackC }};flex:0 0 auto">{{ r.slackLab }}</span>
+                    </div>
+                    <div style="position:relative;height:{{ dr.rowH }}px;overflow:visible;background-image:linear-gradient(90deg,var(--cgrid) 0,var(--cgrid) 1px,transparent 1px);background-size:8.333% 100%">
+                      <sc-if value="{{ r.conn.show }}" hint-placeholder-val="{{ false }}">
+                        <div style="position:absolute;left:{{ r.conn.x }}%;width:{{ r.conn.w }}%;top:-1px;height:12px;border-left:1.5px dashed {{ r.tierC }};border-bottom:1.5px dashed {{ r.tierC }};opacity:.65"></div>
+                      </sc-if>
+                      <sc-if value="{{ r.msFlag }}" hint-placeholder-val="{{ false }}">
+                        <span style="position:absolute;left:{{ r.x }}%;top:8px;width:9px;height:9px;margin-left:-4.5px;transform:rotate(45deg);background:{{ r.color }}"></span>
+                      </sc-if>
+                      <sc-if value="{{ r.barFlag }}" hint-placeholder-val="{{ true }}">
+                        <div style="position:absolute;left:{{ r.x }}%;width:{{ r.w }}%;top:{{ dr.barT }}px;height:{{ dr.barH }}px;border-radius:3px;background:{{ r.track }};overflow:hidden">
+                          <div style="height:100%;width:{{ r.fill }}%;background:{{ r.color }}"></div>
+                        </div>
+                      </sc-if>
+                      <div style="position:absolute;top:0;bottom:0;left:{{ dr.ddX }}%;border-left:1.5px solid var(--rd);opacity:.6"></div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:6px;font:500 9.5px var(--fm);color:var(--mut);text-align:right">RED LINE = DATA DATE 2026-04-06 · CONNECTORS SHOW THE HAND-OFFS THAT CARRY THE DATE</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+            <h2 style="margin:0 0 8px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Why this chain</h2>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <sc-for list="{{ dr.facts }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);padding-bottom:5px">
+                  <span style="font:600 10px var(--f);color:var(--mut);flex:0 0 auto">{{ f.k }}</span>
+                  <span style="font:600 10.5px/1.45 var(--fm);color:{{ f.vc }};text-align:right">{{ f.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Where the days went</h2>
+            <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Drag: how much each item alone is delaying the target.</p>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ dr.drag }}" as="d" hint-placeholder-count="3">
+                <div>
+                  <div style="display:flex;justify-content:space-between;font:600 10px var(--f);color:var(--ink);margin-bottom:2px"><span style="text-transform:var(--tt)">{{ d.name }}</span><span style="font:700 10px var(--fm);color:var(--bd)">{{ d.dLab }}</span></div>
+                  <div style="height:8px;border-radius:4px;background:color-mix(in srgb,var(--ln) 60%,transparent);overflow:hidden"><div style="height:100%;width:{{ d.w }}%;background:var(--bd);border-radius:4px"></div></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:9px;border-top:1px solid var(--ln);padding-top:7px;font:500 10px/1.55 var(--f);color:var(--mut)"><b style="color:var(--ink)">Counterfactual:</b> fix FSW Build 3 alone and the finish improves only 12 d — the TVAC queue becomes the new driver. Fixes must come in pairs.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">That's today's chain. Next: how the date has been moving, version over version.</span>
+        <button onClick="{{ goTr }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 03 → How it moved</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 03 · TREND ════════ -->
+    <sc-if value="{{ isTr }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="03 How it moved">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 03 · How it moved</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Five updates, five slips — and the slips aren't shrinking.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">Every version ordered by data date. An honestly-run project slips too — the tell is <i>how</i> it slips. Scrub the versions to see what changed in each update.</p>
+
+      <div style="display:grid;grid-template-columns:1.2fr .8fr;gap:10px;align-items:start;margin-bottom:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Computed finish, by version</h2>
+            <div style="display:flex;gap:4px;align-items:baseline" data-noprint="1">
+              <span style="font:600 9px var(--fm);color:var(--bd);margin-right:5px">{{ tr.cum }}</span>
+              <button onClick="{{ tr.fr.tglData }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ tr.fr.dataLab }}</button>
+              <button onClick="{{ tr.exp }}" title="Export the trend series — opens in Excel" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+              <button onClick="{{ tr.fr.tglBig }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ tr.fr.bigLab }}</button>
+            </div>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Each point is the CPM finish computed from that version. The dashed line is the baseline commitment.</p>
+          <div style="position:relative;height:{{ tr.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+            <sc-for list="{{ tr.ticks }}" as="tk" hint-placeholder-count="4">
+              <div style="position:absolute;left:0;right:0;top:{{ tk.y }}%;border-top:1px solid var(--cgrid)"></div>
+              <span style="position:absolute;left:6px;top:{{ tk.y }}%;transform:translateY(-110%);font:500 8.5px var(--fm);color:var(--mut)">{{ tk.lab }}</span>
+            </sc-for>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;overflow:visible">
+              <line x1="{{ slope.x0 }}" y1="{{ slope.baseY }}" x2="{{ slope.x1 }}" y2="{{ slope.baseY }}" stroke="var(--mut)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              <path d="{{ slope.d }}" fill="none" stroke="var(--bd)" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" stroke-dasharray="1" style="animation:{{ drawName }} 1.1s ease both"></path>
+            </svg>
+            <sc-for list="{{ slope.pts }}" as="p" hint-placeholder-count="6">
+              <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--bd);border:1.5px solid var(--pn)"></span>
+              <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-165%);font:600 9px var(--fm);color:{{ p.lc }}">{{ p.dlab }}</span>
+            </sc-for>
+            <sc-for list="{{ tr.xlabs }}" as="x" hint-placeholder-count="6">
+              <span style="position:absolute;left:{{ x.x }}%;bottom:14px;transform:translateX(-50%);font:600 9px var(--fm);color:var(--ink)">{{ x.lab }}</span>
+              <span style="position:absolute;left:{{ x.x }}%;bottom:3px;transform:translateX(-50%);font:500 8px var(--fm);color:var(--mut)">{{ x.sub }}</span>
+            </sc-for>
+            <span style="position:absolute;left:8%;top:{{ slope.baseY }}%;transform:translateY(-120%);font:600 8.5px var(--fm);color:var(--mut)">BASELINE 2026-09-14</span>
+          </div>
+          <sc-if value="{{ tr.fr.data }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:8px;max-height:180px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+              <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+                <thead><tr><sc-for list="{{ tr.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+                <tbody><sc-for list="{{ tr.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+              </table>
+            </div>
+          </sc-if>
+        </div>
+
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Net finish impact, per update</h2>
+            <button onClick="{{ tr.wExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <p style="margin:0 0 10px;font:500 10px var(--f);color:var(--mut)">The +49 days, split by update. Color = what the diff engine found inside that update.</p>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ tr.pairs }}" as="p" hint-placeholder-count="5">
+              <div style="display:grid;grid-template-columns:64px 1fr 44px;gap:8px;align-items:center">
+                <span style="font:600 9.5px var(--fm);color:var(--mut)">{{ p.lab }}</span>
+                <div style="position:relative;height:16px;background:color-mix(in srgb,var(--ln) 45%,transparent);border-radius:3px">
+                  <div style="position:absolute;left:{{ p.x }}%;width:{{ p.w }}%;top:0;bottom:0;background:{{ p.c }};border-radius:3px"></div>
+                </div>
+                <span style="font:700 10px var(--fm);color:{{ p.c }};text-align:right">{{ p.dLab }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;justify-content:space-between;font:500 8.5px var(--fm);color:var(--mut);margin-top:4px"><span>0</span><span>+49 cal days</span></div>
+          <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--ok)"></span>CLEAN SLIP</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--wa)"></span>SIGNALS</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font:600 9px var(--fm);color:var(--mut)"><span style="width:9px;height:9px;border-radius:2px;background:var(--bd)"></span>HIGH-SEVERITY SIGNALS</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Inside update {{ tr.selLab }}</h2>
+          <span style="font:600 9.5px var(--fm);color:var(--mut)">DD {{ tr.selDate }} · NET FINISH IMPACT <b style="color:var(--bd)">{{ tr.selNfi }}</b></span>
+        </div>
+        <input type="range" min="1" max="5" step="1" value="{{ tr.v }}" onChange="{{ tr.onScrub }}" style="width:100%;accent-color:var(--ac);margin:10px 0 4px" data-noprint="1">
+        <div style="display:flex;justify-content:space-between;font:500 8.5px var(--fm);color:var(--mut);margin-bottom:10px"><span>v0→v1</span><span>v1→v2</span><span>v2→v3</span><span>v3→v4</span><span>v4→v5</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+          <div>
+            <div style="font:700 9px var(--fm);letter-spacing:.12em;color:var(--mut);text-transform:uppercase;margin-bottom:6px">Manipulation signals</div>
+            <sc-if value="{{ tr.selClean }}" hint-placeholder-val="{{ false }}">
+              <div style="display:inline-flex;align-items:center;gap:7px;border:1px solid color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 10%,transparent);border-radius:var(--rs);padding:6px 10px;font:600 10.5px var(--f);color:var(--ok)">✓ No signals — honest progress raises no flags</div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <sc-for list="{{ tr.selSigs }}" as="s" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--ln) 70%,transparent);border-left:3px solid {{ s.c }};border-radius:var(--rs);padding:6px 10px">
+                  <span style="font:700 8.5px var(--fm);color:{{ s.c }}">{{ s.sev }}</span>
+                  <span style="font:500 10.5px var(--f);color:var(--ink)">{{ s.t }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <div style="font:700 9px var(--fm);letter-spacing:.12em;color:var(--mut);text-transform:uppercase;margin-bottom:6px">What it means</div>
+            <p style="margin:0;font:500 11px/1.6 var(--f);color:var(--ink)">{{ tr.selQuality }}</p>
+            <p style="margin:6px 0 0;font:500 9px var(--fm);color:var(--mut)">⌖ diff {{ tr.selLab }} · change-effects engine</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">The slips accelerate after v2. Next: watch where the unfinished work is going.</span>
+        <button onClick="{{ goBw }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 04 → Work piling up</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 04 · BOW WAVE ════════ -->
+    <sc-if value="{{ isBw }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="04 Work piling up">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 04 · Work piling up</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Unfinished work is piling up against the data date.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">Planned finishes per month, per version. Play the sequence: work that doesn't finish doesn't disappear — it stacks up just right of the data date and rolls forward. That's the bow wave.</p>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px" data-noprint="1">
+            <button onClick="{{ bw.play }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:6px 13px;font:700 11px var(--f);cursor:pointer;text-transform:var(--tt)">{{ bw.playLabel }}</button>
+            <button onClick="{{ bw.step }}" style="background:transparent;color:var(--ink);border:1px solid var(--ln);border-radius:var(--rs);padding:5px 11px;font:600 11px var(--f);cursor:pointer;text-transform:var(--tt)">Step ▸</button>
+            <div style="display:flex;gap:3px;margin-left:6px">
+              <sc-for list="{{ bw.frames }}" as="fr" hint-placeholder-count="6">
+                <button onClick="{{ fr.go }}" style="{{ fr.style }}">{{ fr.lab }}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;align-items:center" data-noprint="1">
+            <span style="font:600 10px var(--fm);color:var(--mut);margin-right:5px">{{ bw.frameLab }}</span>
+            <button onClick="{{ bw.fr.tglData }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ bw.fr.dataLab }}</button>
+            <button onClick="{{ bw.exp }}" title="Export all versions × months — opens in Excel" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+            <button onClick="{{ bw.fr.tglBig }}" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">{{ bw.fr.bigLab }}</button>
+          </div>
+        </div>
+        <div style="position:relative;height:{{ bw.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px;display:flex;align-items:flex-end;gap:1.8%;padding:30px 12px 22px;transition:height .3s ease">
+          <sc-for list="{{ bw.bars }}" as="b" hint-placeholder-count="14">
+            <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;position:relative">
+              <span style="font:700 10px var(--fm);color:{{ b.nc }};margin-bottom:3px">{{ b.nLab }}</span>
+              <div style="width:100%;height:{{ b.h }}%;background:{{ b.c }};border-radius:3px 3px 0 0;transition:height .45s ease,background .45s ease"></div>
+              <span style="position:absolute;bottom:-18px;font:600 8.5px var(--fm);color:var(--mut)">{{ b.m }}</span>
+            </div>
+          </sc-for>
+          <div style="position:absolute;top:12px;bottom:0;left:{{ bw.ddX }}%;width:0;border-left:2px solid var(--rd);transition:left .45s ease"></div>
+          <span style="position:absolute;top:4px;left:{{ bw.ddX }}%;transform:translateX(-50%);font:700 9px var(--fm);color:var(--rd);letter-spacing:.1em;transition:left .45s ease">DATA DATE</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:22px;font:600 8.5px var(--fm);color:var(--mut)"><span>2025</span><span>2026</span></div>
+        <sc-if value="{{ bw.fr.data }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:8px;max-height:200px;overflow:auto;border:1px solid var(--ln);border-radius:var(--rs)">
+            <table style="width:100%;border-collapse:collapse;font:500 9.5px var(--fm)">
+              <thead><tr><sc-for list="{{ bw.tbl.head }}" as="h"><th style="text-align:left;padding:3px 8px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8px var(--fm);letter-spacing:.08em;position:sticky;top:0;background:var(--pn)">{{ h }}</th></sc-for></tr></thead>
+              <tbody><sc-for list="{{ bw.tbl.rows }}" as="row"><tr><sc-for list="{{ row }}" as="cell"><td style="padding:3px 8px;border-bottom:1px solid color-mix(in srgb,var(--ln) 40%,transparent);color:var(--ink)">{{ cell }}</td></sc-for></tr></sc-for></tbody>
+            </table>
+          </div>
+        </sc-if>
+        <div style="margin-top:6px;font:500 10.5px/1.5 var(--f);color:var(--ink)"><b style="color:var(--ac)">This frame:</b> {{ bw.note }}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Current Execution Index</h2>
+            <button onClick="{{ bw.ceiExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Of the work each update promised for its window, how much actually finished. 1.00 = kept every promise.</p>
+          <div style="position:relative;height:170px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%">
+              <line x1="6" y1="{{ cei.goodY }}" x2="97" y2="{{ cei.goodY }}" stroke="var(--ok)" stroke-dasharray="3 3" stroke-width="1" vector-effect="non-scaling-stroke"></line>
+              <path d="{{ cei.d }}" fill="none" stroke="var(--wa)" stroke-width="2" vector-effect="non-scaling-stroke" pathLength="1" stroke-dasharray="1" style="animation:{{ drawName }} 1.1s ease both"></path>
+            </svg>
+            <sc-for list="{{ cei.pts }}" as="p" hint-placeholder-count="5">
+              <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--wa);border:1.5px solid var(--pn)"></span>
+              <span style="position:absolute;left:{{ p.x }}%;top:{{ p.y }}%;transform:translate(-50%,-170%);font:600 9px var(--fm);color:var(--ink)">{{ p.lab }}</span>
+              <span style="position:absolute;left:{{ p.x }}%;bottom:3px;transform:translateX(-50%);font:500 8.5px var(--fm);color:var(--mut)">{{ p.xlab }}</span>
+            </sc-for>
+            <span style="position:absolute;left:8px;top:{{ cei.goodY }}%;transform:translateY(-120%);font:600 8.5px var(--fm);color:var(--ok)">1.00 = EXECUTING TO PLAN</span>
+          </div>
+          <table style="width:100%;border-collapse:collapse;margin-top:10px;font:500 10px var(--fm)">
+            <thead><tr>
+              <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">UPDATE</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">PROMISED</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">DELIVERED</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">CEI</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ bw.ceiRows }}" as="r" hint-placeholder-count="5">
+                <tr>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink)">{{ r.pair }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--mut);text-align:right">{{ r.prom }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--mut);text-align:right">{{ r.done }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:{{ r.c }};text-align:right;font-weight:700">{{ r.cei }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <h2 style="margin:0 0 8px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">How to read this</h2>
+          <div style="display:flex;flex-direction:column;gap:10px;font:500 11px/1.6 var(--f);color:var(--ink)">
+            <div><b style="color:var(--ac)">The wave.</b> Bars right of the red line are commitments. When a month's bar shrinks without the work completing, it reappears one or two months later — taller. Watch May 2026 empty into June–August.</div>
+            <div><b style="color:var(--wa)">The index.</b> CEI has fallen every update: v4→v5 delivered 8 of 12 promised completions. A third of every month's plan now rolls forward.</div>
+            <div><b style="color:var(--bd)">Why it matters.</b> A bow wave compounds: crews and facilities planned for a spread workload meet it all at once — right when TVAC and vibe need them.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">If a third of each month rolls forward, where does the finish really land?</span>
+        <button onClick="{{ goFc }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 05 → Where it lands</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 05 · FORECAST ════════ -->
+    <sc-if value="{{ isFc }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="05 Where it lands">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 05 · Where it lands</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Three independent methods. None of them says September.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">Each forecast uses different inputs and different assumptions — when they agree, believe them. Missing inputs show "—", never a fabricated date.</p>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+          <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Where the finish lands</h2>
+          <button onClick="{{ fc.fr.tglBig }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:3px 8px;font:600 9px var(--fm);cursor:pointer">{{ fc.fr.bigLab }}</button>
+        </div>
+        <div style="position:relative;height:{{ fc.h }}px;background:var(--cnv);border:1px solid var(--ln);border-radius:var(--rs);background-image:radial-gradient(var(--dot) 1.2px,transparent 1.3px);background-size:22px 22px">
+          <sc-for list="{{ fc.ticks }}" as="tk" hint-placeholder-count="5">
+            <div style="position:absolute;top:14px;bottom:14px;left:{{ tk.x }}%;border-left:1px solid var(--cgrid)"></div>
+            <span style="position:absolute;left:{{ tk.x }}%;bottom:3px;transform:translateX(-50%);font:500 8.5px var(--fm);color:var(--mut)">{{ tk.lab }}</span>
+          </sc-for>
+          <div style="position:absolute;left:{{ fc.bandX }}%;width:{{ fc.bandW }}%;top:36%;height:28%;background:color-mix(in srgb,var(--wa) 14%,transparent);border:1px solid color-mix(in srgb,var(--wa) 40%,transparent);border-radius:5px"></div>
+          <span style="position:absolute;left:{{ fc.bandMid }}%;top:66%;transform:translateX(-50%);font:600 8.5px var(--fm);color:var(--wa)">FORECAST WINDOW P10–P90</span>
+          <div style="position:absolute;left:0;right:0;top:50%;border-top:1.5px solid var(--cgrid)"></div>
+          <sc-for list="{{ fc.marks }}" as="m" hint-placeholder-count="4">
+            <div style="position:absolute;left:{{ m.x }}%;top:40%;height:20%;width:0;border-left:2.5px solid {{ m.c }}"></div>
+            <span style="position:absolute;left:{{ m.x }}%;top:{{ m.ly }}%;transform:translateX(-50%);font:700 9px var(--fm);color:{{ m.c }};white-space:nowrap">{{ m.lab }}</span>
+            <span style="position:absolute;left:{{ m.x }}%;top:{{ m.ly2 }}%;transform:translateX(-50%);font:500 8.5px var(--fm);color:var(--mut);white-space:nowrap">{{ m.sub }}</span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">
+        <sc-for list="{{ fc.methods }}" as="m" hint-placeholder-count="3">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-top:2px solid {{ m.c }};border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+            <div style="font:700 9px var(--fm);letter-spacing:.12em;color:{{ m.c }};text-transform:uppercase">{{ m.id }}</div>
+            <div style="font:700 12px var(--fd);color:var(--ink);margin:1px 0 2px;text-transform:var(--tt)">{{ m.name }}</div>
+            <div style="font:700 19px var(--fd);color:{{ m.c }}">{{ m.date }}</div>
+            <div style="font:500 9px var(--fm);color:var(--mut);margin:3px 0 6px">INPUTS · {{ m.inputs }}</div>
+            <div style="font:500 10.5px/1.55 var(--f);color:var(--ink)">{{ m.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Forecast drift, by version</h2>
+            <button onClick="{{ fc.driftExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">The same three forecasts recomputed at every data date. The spread widens as compression accumulates — trust erodes with it.</p>
+          <table style="width:100%;border-collapse:collapse;font:500 10px var(--fm)">
+            <thead><tr>
+              <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">VERSION</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--ac);font:700 8.5px var(--fm);letter-spacing:.1em">CPM</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--wa);font:700 8.5px var(--fm);letter-spacing:.1em">RATE</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--bd);font:700 8.5px var(--fm);letter-spacing:.1em">EARNED SCHED</th>
+              <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">SPREAD</th>
+            </tr></thead>
+            <tbody>
+              <sc-for list="{{ fc.drift }}" as="r" hint-placeholder-count="6">
+                <tr style="background:{{ r.bg }}">
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);font-weight:600">{{ r.v }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);text-align:right">{{ r.cpm }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);text-align:right">{{ r.rate }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);text-align:right">{{ r.es }}</td>
+                  <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:{{ r.sc }};text-align:right;font-weight:700">{{ r.spread }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <h2 style="margin:0 0 8px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Which to believe</h2>
+          <div style="display:flex;flex-direction:column;gap:10px;font:500 11px/1.6 var(--f);color:var(--ink)">
+            <div><b style="color:var(--ac)">CPM is the floor.</b> It believes the file — including the 12 durations that were cut without evidence. Treat 2026-11-02 as the best case.</div>
+            <div><b style="color:var(--wa)">Rate is the pattern.</b> It ignores promises and projects what the team has actually done: 7.7% per month says late November.</div>
+            <div><b style="color:var(--bd)">Earned schedule is the discipline.</b> SPI(t) of 0.79 prices in the execution record. If nothing changes, December 8.</div>
+            <div style="border-top:1px solid var(--ln);padding-top:8px;color:var(--mut)">Plan to the window, not a date: <b style="color:var(--ink)">Nov 2 – Dec 8, 2026</b>. September is no longer a defensible commitment.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">The dates say slip. The diffs say something else too — here's the evidence.</span>
+        <button onClick="{{ goCp }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 06 → What changed</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 06 · COMPARE ════════ -->
+    <sc-if value="{{ isCp }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="06 What changed">
+      <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 06 · What changed</div>
+      <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">v4 → v5: nine baseline edits, one new constraint, seven days.</h1>
+      <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:780px">The two most recent versions, diffed field by field. Honest progress raises no flags — these are structural edits, not status.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+            <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">What moved</h2>
+            <button onClick="{{ cp.movedExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <sc-for list="{{ cp.moved }}" as="m" hint-placeholder-count="4">
+              <div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;align-items:center;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);padding-bottom:5px">
+                <span style="font:600 10.5px var(--f);color:var(--mut)">{{ m.k }}</span>
+                <span style="font:600 10.5px var(--fm);color:var(--ink)">{{ m.a }}</span>
+                <span style="font:600 10px var(--fm);color:var(--mut)">→</span>
+                <span style="font:700 10.5px var(--fm);color:var(--ink)">{{ m.b }}</span>
+                <span style="font:700 10px var(--fm);color:{{ m.c }};min-width:44px;text-align:right">{{ m.dLab }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top:10px;display:flex;align-items:center;gap:9px;border:1px solid color-mix(in srgb,var(--bd) 40%,transparent);background:color-mix(in srgb,var(--bd) 8%,transparent);border-radius:var(--rs);padding:8px 11px">
+            <span style="font:700 15px var(--fd);color:var(--bd)">+7</span>
+            <span style="font:600 10.5px var(--f);color:var(--ink)">calendar days Net Finish Impact — after unwinding the baseline edits, true drift this update is <b style="color:var(--bd)">18 days</b>.</span>
+          </div>
+        </div>
+        <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px">
+            <h2 style="margin:0;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Manipulation scan</h2>
+            <button onClick="{{ cp.scanExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <sc-for list="{{ cp.scan }}" as="s" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:9px;border:1px solid color-mix(in srgb,var(--ln) 60%,transparent);border-left:3px solid {{ s.c }};border-radius:var(--rs);padding:6px 10px">
+                <span style="font:700 13px var(--fm);color:{{ s.c }};min-width:20px;text-align:center">{{ s.n }}</span>
+                <div style="flex:1">
+                  <div style="font:600 10.5px var(--f);color:var(--ink);text-transform:var(--tt)">{{ s.name }}</div>
+                  <div style="font:500 9.5px var(--f);color:var(--mut)">{{ s.note }}</div>
+                </div>
+                <span style="font:700 8.5px var(--fm);color:{{ s.c }};letter-spacing:.08em">{{ s.sev }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">
+          <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">The nine baseline edits</h2>
+          <button onClick="{{ cp.editsExp }}" data-noprint="1" style-hover="color:var(--ink);border-color:var(--ac)" style="background:transparent;color:var(--mut);border:1px solid var(--ln);border-radius:var(--rs);padding:2px 7px;font:600 8.5px var(--fm);cursor:pointer">⤓ EXCEL</button>
+        </div>
+        <p style="margin:0 0 8px;font:500 10px var(--f);color:var(--mut)">Field-level evidence — five shown. Every edit moved a baseline finish <i>later</i>, shrinking reported variance without any progress.</p>
+        <table style="width:100%;border-collapse:collapse;font:500 10px var(--fm)">
+          <thead><tr>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">UID</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">TASK</th>
+            <th style="text-align:left;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">FIELD</th>
+            <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">v4</th>
+            <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">v5</th>
+            <th style="text-align:right;padding:4px 6px;border-bottom:1px solid var(--ln);color:var(--mut);font:700 8.5px var(--fm);letter-spacing:.1em">SHIFT</th>
+          </tr></thead>
+          <tbody>
+            <sc-for list="{{ cp.edits }}" as="e" hint-placeholder-count="5">
+              <tr>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--mut)">{{ e.uid }}</td>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);font-family:var(--f);font-weight:600">{{ e.task }}</td>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--mut)">{{ e.field }}</td>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);text-align:right">{{ e.a }}</td>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--ink);text-align:right">{{ e.b }}</td>
+                <td style="padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);color:var(--bd);text-align:right;font-weight:700">{{ e.shift }}</td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">All seven chapters, one page, every line cited — ready for the review board.</span>
+        <button onClick="{{ goBr }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:8px 16px;font:700 11.5px var(--f);cursor:pointer;text-transform:var(--tt)">Chapter 07 → The briefing</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!-- ════════ 07 · BRIEFING ════════ -->
+    <sc-if value="{{ isBr }}" hint-placeholder-val="{{ false }}">
+    <section data-screen-label="07 The briefing">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div>
+          <div style="font:700 10px var(--fm);letter-spacing:.16em;color:var(--ac);text-transform:uppercase">Chapter 07 · The briefing</div>
+          <h1 style="margin:4px 0 2px;font:700 22px/1.15 var(--fd);color:var(--ink);text-transform:var(--tt)">Executive diagnostic briefing.</h1>
+          <p style="margin:0 0 14px;font:500 12px var(--f);color:var(--mut);max-width:720px">Print-ready. Every claim resolves to a file, a UniqueID, and a task — generated locally, cited automatically.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center" data-noprint="1">
+          <span style="display:inline-flex;align-items:center;gap:6px;font:600 9px var(--fm);color:var(--mut);border:1px solid var(--ln);border-radius:20px;padding:4px 10px"><span style="width:6px;height:6px;border-radius:50%;background:var(--ok)"></span>AI · LOCAL · CITED</span>
+          <button onClick="{{ br.docx }}" title="Export as a Word document" style="background:transparent;color:var(--ac);border:1px solid var(--ac);border-radius:var(--rs);padding:6px 13px;font:700 11px var(--f);cursor:pointer;text-transform:var(--tt)">⤓ Word (.doc)</button>
+          <button onClick="{{ br.print }}" style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:7px 14px;font:700 11px var(--f);cursor:pointer;text-transform:var(--tt)">⎙ Print / PDF</button>
+        </div>
+      </div>
+
+      <div style="background:var(--pn);border:1px solid var(--ln);border-left:4px solid var(--rd);border-radius:var(--r);box-shadow:var(--glow);padding:14px 18px;margin-bottom:10px;display:flex;gap:18px;align-items:center;flex-wrap:wrap">
+        <div>
+          <div style="font:700 9px var(--fm);letter-spacing:.14em;color:var(--mut);text-transform:uppercase">Verdict · KESTREL-3 I&amp;T Campaign · DD 2026-04-06</div>
+          <div style="font:800 24px/1.1 var(--fd);color:var(--rd);letter-spacing:.02em;margin-top:2px">BEHIND · DETERIORATING · PARTIALLY MASKED</div>
+        </div>
+        <div style="margin-left:auto;font:600 11px/1.6 var(--fm);color:var(--ink);text-align:right">FORECAST WINDOW<br><span style="font:700 16px var(--fd);color:var(--wa)">2026-11-02 → 2026-12-08</span></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.15fr .85fr;gap:10px">
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ br.paras }}" as="p" hint-placeholder-count="3">
+            <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:14px 16px">
+              <h2 style="margin:0 0 6px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ac);text-transform:uppercase">{{ p.h }}</h2>
+              <p style="margin:0 0 8px;font:500 11.5px/1.7 var(--f);color:var(--ink)">{{ p.t }}</p>
+              <div style="display:flex;gap:5px;flex-wrap:wrap">
+                <sc-for list="{{ p.cites }}" as="c" hint-placeholder-count="2">
+                  <span style="font:500 8.5px var(--fm);color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">⌖ {{ c }}</span>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px">
+            <h2 style="margin:0 0 8px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Recommended actions</h2>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ br.recs }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;gap:9px;align-items:flex-start;border-bottom:1px solid color-mix(in srgb,var(--ln) 45%,transparent);padding-bottom:7px">
+                  <span style="font:700 8.5px var(--fm);color:{{ r.c }};border:1px solid {{ r.c }};border-radius:4px;padding:2px 6px;flex:0 0 auto;letter-spacing:.06em">{{ r.when }}</span>
+                  <div>
+                    <div style="font:600 11px var(--f);color:var(--ink)">{{ r.t }}</div>
+                    <div style="font:500 9.5px var(--f);color:var(--mut)">{{ r.why }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="background:var(--pn);border:1px solid var(--ln);border-radius:var(--r);box-shadow:var(--glow);padding:12px 14px" data-noprint="1">
+            <h2 style="margin:0 0 2px;font:700 12px var(--fd);letter-spacing:.06em;color:var(--ink);text-transform:uppercase">Ask the analyst</h2>
+            <p style="margin:0 0 8px;font:500 9.5px var(--f);color:var(--mut)">Grounded in this workbook only — cited, never an invented number. Runs on the loopback model server.</p>
+            <div style="border:1px solid var(--ln);border-radius:var(--rs);padding:8px 11px;background:color-mix(in srgb,var(--ac) 6%,transparent);font:600 10.5px var(--f);color:var(--ink);margin-bottom:7px">“What single action most improves the launch date?”</div>
+            <div style="font:500 10.5px/1.65 var(--f);color:var(--ink)">No single action recovers the committed date. The largest lever is an FSW Build 3 recovery plan — worth up to 12 days — but the counterfactual shows the TVAC queue becomes the driver immediately after. Pair the FSW audit with a committed chamber window to recover ≈21 days.</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">
+              <span style="font:500 8.5px var(--fm);color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">⌖ counterfactual · UID 1080</span>
+              <span style="font:500 8.5px var(--fm);color:var(--mut);border:1px solid var(--ln);border-radius:4px;padding:2px 7px">⌖ path v5 · UID 1140</span>
+            </div>
+            <div style="display:flex;gap:7px;margin-top:9px">
+              <input placeholder="Ask about this schedule…" style="flex:1;background:var(--fld);color:var(--ink);border:1px solid var(--ln);border-radius:var(--rs);padding:6px 10px;font:500 10.5px var(--f)">
+              <button style="background:var(--ac);color:var(--bink);border:0;border-radius:var(--rs);padding:6px 13px;font:700 10.5px var(--f);cursor:pointer;text-transform:var(--tt)">Ask</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;border-top:1px solid var(--ln);padding-top:9px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font:500 9px var(--fm);color:var(--mut)">
+        <span>GENERATED LOCALLY · CITATIONS RESOLVE TO FILE + UNIQUEID · NOTHING LEFT THIS MACHINE</span>
+        <span>KESTREL-3 · v0–v5 · PRINTED FROM SCHEDULE FORENSICS</span>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:14px" data-noprint="1">
+        <span style="font:500 10.5px var(--f);color:var(--mut)">End of the story — back to the wall.</span>
+        <button onClick="{{ goCtl }}" style="background:transparent;color:var(--ac);border:1px solid var(--ac);border-radius:var(--rs);padding:7px 14px;font:700 11px var(--f);cursor:pointer;text-transform:var(--tt)">↩ Mission Control</button>
+      </div>
+    </section>
+    </sc-if>
+
+    <!--SCREENS-MORE-->
+
+    </div>
+    </main>
+  </div>
+</div>
+
+<!-- ══ CUI marking bar (bottom) ══ -->
+<div style="background:{{ markBg }};color:#FFFFFF;text-align:center;font:700 10px/1 var(--fm);letter-spacing:.22em;padding:5px 10px;text-transform:uppercase;border-top:1px solid rgba(255,255,255,.14)">{{ markText }}</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;marking&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;CUI&quot;, &quot;UNCLASSIFIED&quot;], &quot;default&quot;: &quot;CUI&quot;, &quot;section&quot;: &quot;Compliance&quot;, &quot;tsType&quot;: &quot;string&quot; },
+  &quot;density&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;compact&quot;, &quot;comfortable&quot;], &quot;default&quot;: &quot;compact&quot;, &quot;section&quot;: &quot;Layout&quot;, &quot;tsType&quot;: &quot;string&quot; },
+  &quot;chartDots&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;section&quot;: &quot;Layout&quot;, &quot;tsType&quot;: &quot;boolean&quot; }
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { screen: 'ctl', theme: 'console', lastDark: 'console', bwFrame: 5, bwPlay: false, drawKey: 0, trendV: 5, target: 'lrr', critOnly: false, toast: '', uiScale: 100, big: {}, data: {}, gZoom: 'full', hideDone: false, gCols: { uid: true, tf: true, pct: true, start: false, finish: false, dur: false } };
+    this.mainRef = React.createRef();
+    this.buildStatic();
+  }
+
+  // ── date helpers ──────────────────────────────────────────────
+  N(iso) { const p = iso.split('-'); return Date.UTC(+p[0], +p[1] - 1, +p[2]) / 864e5; }
+  pctIn(iso, a, b) { return +(((this.N(iso) - this.N(a)) / (this.N(b) - this.N(a))) * 100).toFixed(2); }
+
+  buildStatic() {
+    // ── the mission dataset: KESTREL-3 lunar comms relay, I&T campaign ──
+    this.versions = [
+      { id: 'v0', file: 'KESTREL3_v0_BASELINE.xer', dd: '2025-11-03', fin: '2026-09-14', d: 0, note: 'Performance measurement baseline' },
+      { id: 'v1', file: 'KESTREL3_v1.xer', dd: '2025-12-01', fin: '2026-09-20', d: 6, note: 'Honest progress — structure weld rework' },
+      { id: 'v2', file: 'KESTREL3_v2.xer', dd: '2026-01-05', fin: '2026-10-01', d: 11, note: '4 driving-path links deleted' },
+      { id: 'v3', file: 'KESTREL3_v3.xer', dd: '2026-02-02', fin: '2026-10-12', d: 11, note: '12 durations cut >30% — no scope change' },
+      { id: 'v4', file: 'KESTREL3_v4.xer', dd: '2026-03-02', fin: '2026-10-26', d: 14, note: '5 out-of-sequence actuals' },
+      { id: 'v5', file: 'KESTREL3_v5.xer', dd: '2026-04-06', fin: '2026-11-02', d: 7, note: '9 baseline edits + SNET constraint on TVAC' }
+    ];
+    this.DD = '2026-04-06';
+
+    this.tasks = [
+      { uid: 1010, name: 'Critical Design Review', s: '2025-10-20', f: '2025-10-20', pct: 100, crit: false, ms: true },
+      { uid: 1020, name: 'Flight Structure Fab', s: '2025-10-21', f: '2026-01-09', pct: 100, crit: false },
+      { uid: 1030, name: 'Propulsion Module Integ', s: '2025-12-01', f: '2026-02-20', pct: 100, crit: false },
+      { uid: 1040, name: 'Avionics Box Deliveries', s: '2026-01-05', f: '2026-04-24', pct: 78, crit: false, slack: 2 },
+      { uid: 1050, name: 'Harness Fab & Routing', s: '2026-02-02', f: '2026-05-01', pct: 55, crit: false, slack: 4 },
+      { uid: 1080, name: 'Flight Software Build 3', s: '2026-01-12', f: '2026-05-22', pct: 62, crit: true, slack: 0 },
+      { uid: 1090, name: 'Ka-Band Payload Integ', s: '2026-03-02', f: '2026-05-15', pct: 35, crit: false, slack: 6 },
+      { uid: 1100, name: 'FSW Qualification Test', s: '2026-05-25', f: '2026-07-03', pct: 0, crit: true, slack: 0 },
+      { uid: 1110, name: 'Payload Calibration', s: '2026-05-18', f: '2026-06-12', pct: 0, crit: false, slack: 9 },
+      { uid: 1120, name: 'Vehicle Functional Test', s: '2026-07-06', f: '2026-07-31', pct: 0, crit: true, slack: 0 },
+      { uid: 1130, name: 'EMI / EMC', s: '2026-08-03', f: '2026-08-21', pct: 0, crit: false, slack: 8 },
+      { uid: 1140, name: 'TVAC Campaign', s: '2026-08-24', f: '2026-09-25', pct: 0, crit: true, slack: 0 },
+      { uid: 1150, name: 'Vibe & Acoustics', s: '2026-09-28', f: '2026-10-09', pct: 0, crit: true, slack: 0 },
+      { uid: 1160, name: 'Pre-Ship Review', s: '2026-10-13', f: '2026-10-13', pct: 0, crit: true, ms: true, slack: 0 },
+      { uid: 1170, name: 'Ship to Range', s: '2026-10-14', f: '2026-10-21', pct: 0, crit: true, slack: 0 },
+      { uid: 1180, name: 'Launch Campaign', s: '2026-10-22', f: '2026-10-30', pct: 0, crit: true, slack: 0 },
+      { uid: 1190, name: 'Launch Readiness Review', s: '2026-11-02', f: '2026-11-02', pct: 0, crit: true, ms: true, slack: 0 }
+    ];
+
+    // bow-wave: planned finishes per month (Nov-25 … Dec-26), per version
+    this.bowMonths = ['N', 'D', 'J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    this.bowMonthsFull = ['NOV 25', 'DEC 25', 'JAN 26', 'FEB 26', 'MAR 26', 'APR 26', 'MAY 26', 'JUN 26', 'JUL 26', 'AUG 26', 'SEP 26', 'OCT 26', 'NOV 26', 'DEC 26'];
+    this.bowFrames = [
+      { dd: 0, bars: [0, 1, 1, 1, 1, 2, 3, 2, 2, 2, 2, 0, 0, 0] },
+      { dd: 1, bars: [0, 1, 1, 1, 1, 2, 2, 3, 2, 2, 2, 0, 0, 0] },
+      { dd: 2, bars: [0, 1, 1, 1, 1, 1, 2, 3, 3, 2, 1, 1, 0, 0] },
+      { dd: 3, bars: [0, 1, 1, 1, 1, 1, 1, 3, 3, 3, 1, 1, 0, 0] },
+      { dd: 4, bars: [0, 1, 1, 1, 1, 1, 1, 2, 3, 2, 2, 1, 1, 0] },
+      { dd: 5, bars: [0, 1, 1, 1, 1, 1, 0, 2, 3, 3, 2, 1, 1, 0] }
+    ];
+    this.ceiVals = [0.92, 0.84, 0.78, 0.71, 0.66];
+
+    // s-curve, monthly cumulative % (Nov-25 … Dec-26)
+    this.scBase = [2, 6, 12, 20, 29, 40, 52, 64, 76, 87, 95, 100, 100, 100];
+    this.scAct = [1, 5, 10, 16, 23, 31];
+    this.scFc = [31, 38, 46, 55, 65, 75, 85, 94, 100];
+
+    this.forecast = { base: '2026-09-14', cpm: '2026-11-02', rate: '2026-11-20', es: '2026-12-08', p10: '2026-10-26', p90: '2026-12-19' };
+
+    this.dcmaList = [
+      { name: 'LOGIC', st: 'pass' }, { name: 'LEADS', st: 'pass' }, { name: 'LAGS', st: 'pass' },
+      { name: 'REL TYPES', st: 'pass' }, { name: 'HARD CONSTR', st: 'pass' }, { name: 'HIGH FLOAT', st: 'pass' },
+      { name: 'NEG FLOAT', st: 'fail', tip: '3 tasks hold negative float against the LRR constraint' },
+      { name: 'HIGH DUR', st: 'fail', tip: '2 remaining tasks exceed 44-day threshold' },
+      { name: 'INVALID DATES', st: 'pass' }, { name: 'RESOURCES', st: 'na', tip: 'No cost loading in source file' },
+      { name: 'MISSED TASKS', st: 'pass' }, { name: 'CP TEST', st: 'pass' }, { name: 'CPLI', st: 'pass' }, { name: 'BEI', st: 'pass' }
+    ];
+
+    // chapter definitions (the story spine)
+    this.chapters = [
+      { id: 'st', num: '01', label: 'Where we stand', take: '46% complete · finish +49 d vs baseline' },
+      { id: 'dr', num: '02', label: 'What drives the date', take: 'FSW Build 3 → TVAC chain holds zero slack' },
+      { id: 'tr', num: '03', label: 'How it moved', take: 'Five slips in five updates — accelerating' },
+      { id: 'bw', num: '04', label: 'Work piling up', take: 'Unfinished work stacking right of the DD · CEI 0.66' },
+      { id: 'fc', num: '05', label: 'Where it lands', take: 'Three methods agree: Nov 2 – Dec 8 window' },
+      { id: 'cp', num: '06', label: 'What changed', take: 'v4→v5: 9 baseline edits mask 11 d of slip' },
+      { id: 'br', num: '07', label: 'The briefing', take: 'Verdict: behind, deteriorating, with masking behavior' }
+    ];
+
+    this.themeVarSets = {
+      console: '',
+      daylight: ';--bg:#F2F5F9;--bgfx:linear-gradient(180deg,#FFFFFF,#F2F5F9 260px);--pn:#FFFFFF;--pn2:#F5F8FC;--ink:#16202E;--mut:#5B6A7E;--ln:#D9E1EC;--ac:#0B62C6;--ac2:#0B3D91;--ok:#178039;--wa:#9A6B00;--bd:#CF222E;--rd:#E03C31;--fld:#EEF2F8;--bink:#FFFFFF;--hgrad:#FFFFFF;--hink:#0B3D91;--hmut:#4A5B72;--hline:#E03C31;--nav:#FFFFFF;--cnv:#FFFFFF;--cgrid:rgba(90,104,120,.15);--dot:rgba(60,84,120,.10);--glow:0 1px 3px rgba(16,32,64,.07)',
+      apollo: ';--bg:#080A06;--bgfx:repeating-linear-gradient(0deg,rgba(168,240,119,.03) 0 1px,transparent 1px 3px),radial-gradient(900px 480px at 50% -10%,rgba(168,240,119,.07),transparent 60%),#080A06;--pn:#0C0F09;--pn2:#111509;--ink:#A8F077;--mut:#6E8A57;--ln:#2A3B20;--ac:#FFB000;--ac2:#FFD24D;--ok:#7DE86B;--wa:#FFB000;--bd:#FF5533;--rd:#FF5533;--fld:#0A0D07;--bink:#0A0D07;--hgrad:linear-gradient(180deg,#0E1209,#080A06);--hink:#A8F077;--hmut:#6E8A57;--hline:#FFB000;--nav:#0A0D07;--cnv:#0A0D07;--cgrid:rgba(168,240,119,.13);--dot:rgba(168,240,119,.08);--r:0px;--rs:0px;--f:var(--fm);--fd:var(--fm);--tt:uppercase;--glow:inset 0 0 0 1px rgba(168,240,119,.05)',
+      jarvis: ';--bg:#02070E;--bgfx:radial-gradient(1200px 700px at 75% -10%,rgba(25,211,255,.10),transparent 60%),radial-gradient(900px 600px at -10% 110%,rgba(255,200,87,.05),transparent 55%),repeating-linear-gradient(0deg,transparent 0 34px,rgba(25,211,255,.03) 34px 35px),repeating-linear-gradient(90deg,transparent 0 34px,rgba(25,211,255,.03) 34px 35px),#02070E;--pn:rgba(7,25,40,.80);--pn2:rgba(11,34,54,.75);--ink:#C4EAFF;--mut:#6291AC;--ln:rgba(25,163,220,.35);--ac:#19D3FF;--ac2:#8FE9FF;--ok:#27F2A4;--wa:#FFC857;--bd:#FF4F66;--rd:#FF4F66;--fld:rgba(3,16,28,.9);--bink:#032030;--hgrad:linear-gradient(95deg,#031320,#04202F 60%,#031320);--hink:#19D3FF;--hmut:#6FA9C4;--hline:#19D3FF;--nav:rgba(3,14,24,.72);--cnv:rgba(4,15,26,.55);--cgrid:rgba(25,211,255,.13);--dot:rgba(25,211,255,.09);--r:4px;--rs:3px;--glow:0 0 18px rgba(25,211,255,.08)'
+    };
+  }
+
+  componentDidMount() {
+    try {
+      const t = localStorage.getItem('sfredux-theme'); if (t && this.themeVarSets[t] !== undefined) this.setState({ theme: t, lastDark: t === 'daylight' ? this.state.lastDark : t });
+      const s = localStorage.getItem('sfredux-screen'); if (s) this.setState({ screen: s });
+      const g = localStorage.getItem('sfredux-gopts');
+      if (g) { const o = JSON.parse(g); this.setState({ gCols: o.gCols || this.state.gCols, gZoom: o.gZoom || 'full', hideDone: !!o.hideDone, critOnly: !!o.critOnly, uiScale: o.uiScale || 100 }); }
+    } catch (e) { }
+  }
+  componentWillUnmount() { if (this.bwTimer) clearInterval(this.bwTimer); }
+
+  setScreen(id) {
+    this.setState({ screen: id });
+    try { localStorage.setItem('sfredux-screen', id); } catch (e) { }
+    if (this.mainRef.current) this.mainRef.current.scrollTop = 0;
+    if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+  }
+  setTheme(t) {
+    const patch = { theme: t }; if (t !== 'daylight') patch.lastDark = t;
+    this.setState(patch);
+    try { localStorage.setItem('sfredux-theme', t); } catch (e) { }
+  }
+
+  // ── functional chrome: expand / data / export ─────────────────
+  fr(id) {
+    const big = !!this.state.big[id], data = !!this.state.data[id];
+    return {
+      big, data,
+      bigLab: big ? '⛶ SHRINK' : '⛶ ENLARGE', dataLab: data ? '▦ HIDE DATA' : '▦ DATA',
+      tglBig: () => this.setState(s => ({ big: { ...s.big, [id]: !s.big[id] } })),
+      tglData: () => this.setState(s => ({ data: { ...s.data, [id]: !s.data[id] } }))
+    };
+  }
+  dl(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 800);
+  }
+  csv(name, head, rows) {
+    const esc = v => { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const txt = [head].concat(rows).map(r => r.map(esc).join(',')).join('\r\n');
+    this.dl(new Blob(['\ufeff' + txt], { type: 'text/csv;charset=utf-8' }), name + '.csv');
+    this.setState({ toast: 'Exported ' + name + '.csv — opens directly in Excel. (The shipped tool also writes native .xlsx.)' });
+    setTimeout(() => this.setState({ toast: '' }), 3200);
+  }
+  saveG(patch) {
+    this.setState(patch, () => {
+      try {
+        const S = this.state;
+        localStorage.setItem('sfredux-gopts', JSON.stringify({ gCols: S.gCols, gZoom: S.gZoom, hideDone: S.hideDone, critOnly: S.critOnly, uiScale: S.uiScale }));
+      } catch (e) { }
+    });
+  }
+  tileTbl(t) {
+    if (t.isSlope) return { name: 'kestrel3_finish_trend', head: ['VERSION', 'DATA DATE', 'CPM FINISH', 'SLIP D'], rows: this.versions.map(v => [v.id, v.dd, v.fin, v.d]) };
+    if (t.isBow) { const fr = this.bowFrames[this.state.bwFrame]; return { name: 'kestrel3_bow_wave_' + this.versions[this.state.bwFrame].id, head: ['MONTH', 'PLANNED FINISHES'], rows: fr.bars.map((n, i) => [this.bowMonthsFull[i], n]) }; }
+    if (t.isScurve) return { name: 'kestrel3_scurve', head: ['MONTH', 'PLAN %', 'ACTUAL %', 'FORECAST %'], rows: this.scBase.map((b, i) => [this.bowMonthsFull[i], b, i < this.scAct.length ? this.scAct[i] : '', i >= 5 && this.scFc[i - 5] != null ? this.scFc[i - 5] : '']) };
+    if (t.isCei) return { name: 'kestrel3_cei', head: ['UPDATE', 'CEI'], rows: this.ceiVals.map((v, i) => ['v' + i + '→v' + (i + 1), v.toFixed(2)]) };
+    if (t.isFc) return { name: 'kestrel3_forecast_window', head: ['METHOD', 'FORECAST FINISH'], rows: [['Baseline commitment', this.forecast.base], ['CPM network logic', this.forecast.cpm], ['Completion rate', this.forecast.rate], ['Earned schedule IEAC(t)', this.forecast.es]] };
+    return { name: 'kestrel3_dcma14', head: ['CHECK', 'STATUS'], rows: this.dcmaList.map(c => [c.name, c.st.toUpperCase()]) };
+  }
+  exportBrief() {
+    const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const b = this.buildBrief();
+    let h = '<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>KESTREL-3 Executive Briefing</title></head><body style="font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#1a1a1a">';
+    h += '<p style="font-size:8pt;letter-spacing:3px;color:#502B85;text-align:center"><b>CUI — CONTROLLED UNCLASSIFIED INFORMATION</b></p>';
+    h += '<h1 style="font-size:16pt;margin:8pt 0 2pt">KESTREL-3 — Executive Diagnostic Briefing</h1>';
+    h += '<p style="font-size:9pt;color:#666">I&amp;T Campaign · Data date 2026-04-06 · Generated locally by Schedule Forensics</p>';
+    h += '<p><b style="color:#B00020">VERDICT: BEHIND · DETERIORATING · PARTIALLY MASKED</b><br>Forecast window: <b>2026-11-02 → 2026-12-08</b></p>';
+    b.paras.forEach(p => { h += '<h2 style="font-size:12pt;margin:10pt 0 3pt">' + esc(p.h) + '</h2><p style="margin:0 0 4pt">' + esc(p.t) + '</p><p style="font-size:8pt;color:#666;margin:0">Citations: ' + p.cites.map(esc).join(' · ') + '</p>'; });
+    h += '<h2 style="font-size:12pt;margin:10pt 0 3pt">Recommended actions</h2><ul>';
+    b.recs.forEach(r => { h += '<li><b>[' + esc(r.when) + ']</b> ' + esc(r.t) + ' — <span style="color:#666">' + esc(r.why) + '</span></li>'; });
+    h += '</ul><p style="font-size:8pt;color:#666">Citations resolve to file + UniqueID · Nothing left this machine</p>';
+    h += '<p style="font-size:8pt;letter-spacing:3px;color:#502B85;text-align:center"><b>CUI</b></p></body></html>';
+    this.dl(new Blob(['\ufeff', h], { type: 'application/msword' }), 'KESTREL3_Executive_Briefing.doc');
+    this.setState({ toast: 'Exported briefing as Word .doc — the shipped tool writes native .docx.' });
+    setTimeout(() => this.setState({ toast: '' }), 3200);
+  }
+
+  // ── shared chart builders ─────────────────────────────────────
+  buildSlope() {
+    const dom = ['2026-08-25', '2026-12-05'];
+    const y = iso => +(88 - ((this.N(iso) - this.N(dom[0])) / (this.N(dom[1]) - this.N(dom[0]))) * 72).toFixed(1);
+    const xs = [10, 26, 42, 58, 74, 90];
+    const pts = this.versions.map((v, i) => ({
+      x: xs[i], y: y(v.fin),
+      dlab: i === 0 ? 'BASE' : '+' + v.d + 'd',
+      lc: i === 0 ? 'var(--mut)' : (v.d >= 11 ? 'var(--bd)' : 'var(--wa)'),
+      xlab: v.id
+    }));
+    return {
+      d: 'M' + pts.map(p => p.x + ' ' + p.y).join(' L'),
+      pts, baseY: y('2026-09-14'), x0: 6, x1: 94, baseLabX: 8
+    };
+  }
+  buildScurve() {
+    const n = this.scBase.length;
+    const X = i => +(4 + (i / (n - 1)) * 92).toFixed(1);
+    const Y = v => +(92 - (v / 100) * 80).toFixed(1);
+    const seg = (arr, i0) => 'M' + arr.map((v, i) => X(i0 + i) + ' ' + Y(v)).join(' L');
+    return {
+      dBase: seg(this.scBase, 0), dAct: seg(this.scAct, 0), dFc: seg(this.scFc, 5),
+      ddX: X(5), baseEndY: Y(100) - 6, fcEndY: Y(100) + 4, actLabX: X(5) + 2, actLabY: Y(31) + 4, actNow: 31
+    };
+  }
+  buildCei() {
+    const X = i => 12 + i * 19, Y = v => +(90 - ((v - 0.5) / 0.55) * 74).toFixed(1);
+    const pts = this.ceiVals.map((v, i) => ({ x: X(i), y: Y(v), lab: v.toFixed(2), xlab: 'v' + (i + 1) }));
+    return { d: 'M' + pts.map(p => p.x + ' ' + p.y).join(' L'), pts, goodY: Y(1) };
+  }
+  buildFcMini() {
+    const dom = ['2026-08-15', '2027-01-05'];
+    const X = iso => this.pctIn(iso, dom[0], dom[1]);
+    const f = this.forecast;
+    return {
+      bandX: X(f.p10), bandW: +(X(f.p90) - X(f.p10)).toFixed(2),
+      marks: [
+        { x: X(f.base), c: 'var(--mut)', lab: 'BASELINE 09-14', ly: 22 },
+        { x: X(f.cpm), c: 'var(--ac)', lab: 'CPM 11-02', ly: 70 },
+        { x: X(f.rate), c: 'var(--wa)', lab: 'RATE 11-20', ly: 22 },
+        { x: X(f.es), c: 'var(--bd)', lab: 'ES 12-08', ly: 70 }
+      ]
+    };
+  }
+  buildBow(frameIdx, playing) {
+    const fr = this.bowFrames[frameIdx];
+    const max = 3.4;
+    const bars = fr.bars.map((c, i) => {
+      const done = i <= fr.dd;
+      let col = done ? 'color-mix(in srgb,var(--mut) 55%,transparent)' : 'var(--ac)';
+      if (!done && c >= 3) col = 'var(--bd)'; else if (!done && c === 2 && i <= fr.dd + 4) col = 'var(--wa)';
+      return { h: Math.round((c / max) * 100), c: col, n: c, m: this.bowMonths[i], mf: this.bowMonthsFull[i] };
+    });
+    return { bars, ddX: +(((fr.dd + 1) / fr.bars.length) * 100).toFixed(1), frameLab: this.versions[frameIdx].id.toUpperCase() + ' · DD ' + this.versions[frameIdx].dd, note: this.versions[frameIdx].note };
+  }
+  buildDcma() {
+    const chips = this.dcmaList.map(c => ({
+      name: c.name, tip: c.tip || c.name + ': ' + c.st.toUpperCase(),
+      bg: c.st === 'pass' ? 'color-mix(in srgb,var(--ok) 16%,transparent)' : c.st === 'fail' ? 'color-mix(in srgb,var(--bd) 18%,transparent)' : 'transparent',
+      ink: c.st === 'pass' ? 'var(--ok)' : c.st === 'fail' ? 'var(--bd)' : 'var(--mut)',
+      bc: c.st === 'pass' ? 'color-mix(in srgb,var(--ok) 45%,transparent)' : c.st === 'fail' ? 'color-mix(in srgb,var(--bd) 50%,transparent)' : 'var(--ln)'
+    }));
+    return { chips, pass: this.dcmaList.filter(c => c.st === 'pass').length, fail: this.dcmaList.filter(c => c.st === 'fail').length, na: this.dcmaList.filter(c => c.st === 'na').length };
+  }
+
+  buildStatus() {
+    const S = this.state;
+    const doms = { full: ['2025-10-01', '2027-01-01'], y26: ['2026-01-01', '2026-12-31'], win: ['2026-02-01', '2026-09-01'] };
+    const dom = doms[S.gZoom] || doms.full;
+    const X = iso => this.pctIn(iso, dom[0], dom[1]);
+    const NAMES = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const months = [];
+    let md = new Date(dom[0] + 'T00:00:00Z'); const mEnd = new Date(dom[1] + 'T00:00:00Z');
+    while (md < mEnd) {
+      const iso = md.toISOString().slice(0, 10); const mx = X(iso);
+      if (mx >= 0 && mx < 99) months.push({ lab: NAMES[md.getUTCMonth()] + (md.getUTCMonth() === 0 || !months.length ? ' ' + String(md.getUTCFullYear()).slice(2) : ''), x: +mx.toFixed(2) });
+      md = new Date(Date.UTC(md.getUTCFullYear(), md.getUTCMonth() + 1, 1));
+    }
+    const colDefs = [
+      { k: 'uid', lab: 'UID', w: '42px', v: t => String(t.uid) },
+      { k: 'tf', lab: 'TF', w: '34px', v: t => t.pct === 100 ? '—' : t.slack == null ? '—' : t.slack + 'd' },
+      { k: 'start', lab: 'START', w: '58px', v: t => t.s.slice(2) },
+      { k: 'finish', lab: 'FINISH', w: '58px', v: t => t.f.slice(2) },
+      { k: 'pct', lab: '%', w: '34px', v: t => t.pct + '%' },
+      { k: 'dur', lab: 'DUR', w: '40px', v: t => Math.round(this.N(t.f) - this.N(t.s)) + 'd' }
+    ];
+    const on = colDefs.filter(c => S.gCols[c.k]);
+    const fg = this.fr('gantt');
+    const rowH = fg.big ? 30 : 22, barH = fg.big ? 13 : 10;
+    const barT = Math.round((rowH - barH) / 2), msS = fg.big ? 11 : 8, msT = Math.round((rowH - msS) / 2);
+    const list = this.tasks.filter(t => (!S.critOnly || t.crit) && (!S.hideDone || t.pct < 100));
+    const rows = list.map(t => {
+      const done = t.pct === 100;
+      const base = t.crit ? 'var(--bd)' : done ? 'var(--mut)' : 'var(--ac)';
+      const x0 = X(t.s), x1 = X(t.f), vis = x1 > 0.2 && x0 < 99.8;
+      const cx = Math.max(x0, 0);
+      return {
+        name: t.name, ms: !!t.ms && vis, bar: !t.ms && vis,
+        x: +cx.toFixed(2), w: +Math.max(Math.min(x1, 100) - cx, 0.4).toFixed(2), fill: t.pct,
+        track: 'color-mix(in srgb,' + base + ' 30%,transparent)', solid: base,
+        nameColor: done ? 'var(--mut)' : 'var(--ink)',
+        cells: on.map(c => ({ v: c.v(t), c: c.k === 'tf' && !done && t.slack === 0 ? 'var(--bd)' : 'var(--mut)' }))
+      };
+    });
+    const ddXr = X(this.DD);
+    return {
+      gGrid: 'minmax(150px,210px) ' + on.map(c => c.w).join(' ') + (on.length ? ' ' : '') + 'minmax(240px,1fr)',
+      gHead: on.map(c => c.lab),
+      gBgSize: (100 / (months.length || 1)).toFixed(3) + '% 100%',
+      rowH, barT, barH, msS, msT, fg,
+      ddShow: ddXr > 0 && ddXr < 100 ? 'block' : 'none',
+      colChips: colDefs.map(c => ({
+        lab: c.lab,
+        tgl: () => this.saveG({ gCols: { ...S.gCols, [c.k]: !S.gCols[c.k] } }),
+        style: 'background:' + (S.gCols[c.k] ? 'color-mix(in srgb,var(--ac) 18%,transparent)' : 'transparent') + ';color:' + (S.gCols[c.k] ? 'var(--ac)' : 'var(--mut)') + ';border:1px solid ' + (S.gCols[c.k] ? 'var(--ac)' : 'var(--ln)') + ';border-radius:var(--rs);padding:3px 8px;font:600 8.5px var(--fm);cursor:pointer;letter-spacing:.05em'
+      })),
+      gZoom: S.gZoom, onZoom: e => this.saveG({ gZoom: e.target.value }),
+      hideLabel: S.hideDone ? 'Show completed' : 'Hide completed',
+      onHide: () => this.saveG({ hideDone: !S.hideDone }),
+      gExp: () => this.csv('kestrel3_gantt', ['UID', 'ACTIVITY', 'START', 'FINISH', 'PCT_COMPLETE', 'TOTAL_FLOAT_D', 'CRITICAL', 'MILESTONE'], this.tasks.map(t => [t.uid, t.name, t.s, t.f, t.pct, t.slack == null ? '' : t.slack, t.crit ? 'Y' : 'N', t.ms ? 'Y' : 'N'])),
+      tbl: { head: ['UID', 'ACTIVITY', 'START', 'FINISH', '%', 'TF'], rows: this.tasks.map(t => [t.uid, t.name, t.s, t.f, t.pct + '%', t.slack == null ? '—' : t.slack + 'd']) },
+      mixExp: () => this.csv('kestrel3_status_mix', ['STATUS', 'COUNT'], [['Complete', 3], ['In progress', 4], ['Planned', 10]]),
+      bandExp: () => this.csv('kestrel3_float_bands', ['BAND', 'COUNT'], [['0 d', 9], ['1-4 d', 2], ['5-9 d', 3]]),
+      findExp: () => this.csv('kestrel3_findings', ['SEVERITY', 'FINDING', 'CITATION'], this.findingsData().map(f => [f.sev, f.text, f.cite])),
+      dcmaExp: () => this.csv('kestrel3_dcma14', ['CHECK', 'STATUS'], this.dcmaList.map(c => [c.name, c.st.toUpperCase()])),
+      kpis: [
+        { label: 'Activities', value: '17', sub: 'incl. 3 milestones' },
+        { label: 'Earned', value: '46%', sub: 'plan at DD: 61%' },
+        { label: 'Critical', value: '9', sub: '64% of remaining work' },
+        { label: 'CPM finish', value: '11-02', sub: '2026 · computed from logic' },
+        { label: 'vs baseline', value: '+49d', sub: 'commitment 2026-09-14' },
+        { label: 'Data date', value: '04-06', sub: 'v5 · status through here' }
+      ],
+      mix: [{ w: 17.6, c: 'var(--ok)', lab: 'Complete · 3' }, { w: 23.6, c: 'var(--wa)', lab: 'In progress · 4' }, { w: 58.8, c: 'var(--ac)', lab: 'Planned · 10' }],
+      bands: [{ w: 64.3, c: 'var(--bd)', lab: '0 d float · 9' }, { w: 14.3, c: 'var(--wa)', lab: '1–4 d · 2' }, { w: 21.4, c: 'var(--ac)', lab: '5–9 d · 3' }],
+      findings: this.findingsData(),
+      months, rows, ddX: +Math.min(Math.max(ddXr, 0), 100).toFixed(2),
+      critLabel: S.critOnly ? 'Show all' : 'Critical only',
+      onCrit: () => this.saveG({ critOnly: !S.critOnly }),
+      legend: [
+        { c: 'var(--ac)', lab: 'IN WORK / PLANNED', line: '9px' },
+        { c: 'var(--bd)', lab: 'CRITICAL PATH', line: '9px' },
+        { c: 'var(--mut)', lab: 'COMPLETE', line: '9px' },
+        { c: 'var(--rd)', lab: 'DATA DATE', line: '2px' }
+      ]
+    };
+  }
+
+  findingsData() {
+    return [
+      { sev: 'HIGH', c: 'var(--bd)', text: 'Driving-path slack fully consumed — FSW Build 3 slipped 18 working days since v3 and now sets the launch date.', cite: 'KESTREL3_v5.xer · UID 1080 · Flight Software Build 3' },
+      { sev: 'HIGH', c: 'var(--bd)', text: '9 baseline dates edited between v4 and v5, hiding 11 days of slip from the variance report.', cite: 'diff v4→v5 · baseline_finish edits · 9 tasks' },
+      { sev: 'MED', c: 'var(--wa)', text: 'TVAC campaign holds zero float on a single-thread facility — any chamber-queue slip goes straight to the launch date.', cite: 'KESTREL3_v5.xer · UID 1140 · TVAC Campaign' },
+      { sev: 'MED', c: 'var(--wa)', text: '12 remaining durations shortened >30% in v3 with no scope note — completion-rate history does not support them.', cite: 'diff v2→v3 · duration edits · 12 tasks' },
+      { sev: 'LOW', c: 'var(--mut)', text: 'SNET constraint added to TVAC in v5 pins the bar in place of repaired logic.', cite: 'KESTREL3_v5.xer · UID 1140 · constraint SNET 2026-08-24' }
+    ];
+  }
+
+  buildDrivers() {
+    const dom = ['2025-12-01', '2026-11-20'];
+    const X = iso => this.pctIn(iso, dom[0], dom[1]);
+    const path = [1080, 1100, 1120, 1140, 1150, 1160, 1170, 1180, 1190];
+    const cut = this.state.target === 'psr' ? path.slice(0, path.indexOf(1160) + 1) : path;
+    const byUid = u => this.tasks.find(t => t.uid === u);
+    const rows = []; let prev = null;
+    cut.forEach(u => {
+      const t = byUid(u);
+      const row = {
+        isBar: true, isSep: false, tier: 'P', tierC: 'var(--bd)', name: t.name, uid: String(t.uid), s: t.s, f: t.f,
+        msFlag: !!t.ms, barFlag: !t.ms,
+        x: X(t.s), w: Math.max(+(X(t.f) - X(t.s)).toFixed(2), 0.5), fx: X(t.f),
+        color: 'var(--bd)', track: 'color-mix(in srgb,var(--bd) 26%,transparent)', fill: t.pct,
+        slackLab: 'TF 0d', slackC: 'var(--bd)',
+        conn: prev ? { x: prev.fx, w: Math.max(+(X(t.s) - prev.fx).toFixed(2), 0), show: X(t.s) - prev.fx > 0.2 } : { show: false }
+      };
+      rows.push(row); prev = row;
+    });
+    const band = (list, tier, color, secLab) => {
+      rows.push({ isSep: true, isBar: false, label: secLab, conn: { show: false } });
+      list.forEach(o => {
+        const t = byUid(o.uid);
+        rows.push({
+          isBar: true, isSep: false, tier, tierC: color, name: t.name, uid: String(t.uid), s: t.s, f: t.f,
+          msFlag: false, barFlag: true,
+          x: X(t.s), w: Math.max(+(X(t.f) - X(t.s)).toFixed(2), 0.5), fx: X(t.f),
+          color, track: 'color-mix(in srgb,' + color + ' 22%,transparent)', fill: t.pct,
+          slackLab: 'TF ' + o.slack + 'd', slackC: color, conn: { show: false }
+        });
+      });
+    };
+    band([{ uid: 1040, slack: 2 }, { uid: 1050, slack: 4 }], 'S', 'var(--wa)', 'NEAR-CRITICAL · WITHIN 5 DAYS');
+    band([{ uid: 1110, slack: 9 }, { uid: 1130, slack: 8 }], 'T', 'var(--ac)', 'TERTIARY · WITHIN 10 DAYS');
+    const fd = this.fr('drv');
+    return {
+      rows, ddX: X(this.DD),
+      fr: fd, rowH: fd.big ? 32 : 24, barT: fd.big ? 10 : 7, barH: fd.big ? 14 : 11,
+      exp: () => this.csv('kestrel3_driving_path_' + this.state.target, ['TIER', 'UID', 'ACTIVITY', 'START', 'FINISH', 'TOTAL_FLOAT'], rows.filter(r => r.isBar).map(r => [r.tier, r.uid, r.name, r.s, r.f, r.slackLab.replace('TF ', '')])),
+      target: this.state.target, onTarget: e => this.setState({ target: e.target.value }),
+      facts: [
+        { k: 'Path to target', v: this.state.target === 'psr' ? '6 tasks · 224 days' : '9 tasks · 244 days', vc: 'var(--ink)' },
+        { k: 'Total float on path', v: '0 days', vc: 'var(--bd)' },
+        { k: 'Biggest drag', v: 'FSW Build 3 · 18 d', vc: 'var(--ink)' },
+        { k: 'Single-thread risk', v: 'TVAC chamber — no alternate', vc: 'var(--wa)' },
+        { k: 'Hand-offs with zero gap', v: '7 of 8 — no recovery room', vc: 'var(--ink)' }
+      ],
+      drag: [
+        { name: 'FSW Build 3', dLab: '+18 d', w: 100 },
+        { name: 'TVAC chamber queue', dLab: '+9 d', w: 50 },
+        { name: 'Avionics box deliveries', dLab: '+5 d', w: 28 }
+      ]
+    };
+  }
+
+  buildTrend() {
+    const dom = ['2026-08-25', '2026-12-05'];
+    const yOf = iso => +(88 - ((this.N(iso) - this.N(dom[0])) / (this.N(dom[1]) - this.N(dom[0]))) * 72).toFixed(1);
+    const ticks = [['2026-09-01', 'SEP 1'], ['2026-10-01', 'OCT 1'], ['2026-11-01', 'NOV 1'], ['2026-12-01', 'DEC 1']].map(t => ({ y: yOf(t[0]), lab: t[1] }));
+    const slopePts = this.buildSlope().pts;
+    const xlabs = this.versions.map((v, i) => ({ x: slopePts[i].x, lab: v.id.toUpperCase(), sub: v.dd.slice(5) }));
+    const pairSigs = [
+      { sigs: [], quality: 'Clean update — durations burned as planned, logic untouched. This is what honest slip looks like: visible, explained, and small.' },
+      { sigs: [{ t: '4 driving-path links deleted', sev: 'HIGH' }], quality: 'The finish improved on paper while progress stalled — the removed relationships were the ones carrying the slip.' },
+      { sigs: [{ t: '12 durations cut >30%, no scope change', sev: 'HIGH' }, { t: 'Float regained without progress', sev: 'MED' }], quality: 'Remaining work was compressed instead of resequenced; the completion-rate history does not support the new durations.' },
+      { sigs: [{ t: '5 out-of-sequence actuals', sev: 'MED' }], quality: 'Actuals were posted ahead of their predecessors — progress is being recorded out of logical order.' },
+      { sigs: [{ t: '9 baseline dates edited', sev: 'HIGH' }, { t: 'SNET constraint added to TVAC', sev: 'MED' }], quality: 'The baseline itself moved to meet the slip. Variance reports after v5 understate true drift by 11 days.' }
+    ];
+    let cum = 0;
+    const pairs = this.versions.slice(1).map((v, i) => {
+      const x0 = cum / 49 * 100; cum += v.d;
+      return {
+        lab: 'v' + i + '→v' + (i + 1), x: +x0.toFixed(1), w: +(v.d / 49 * 100).toFixed(1), dLab: '+' + v.d + 'd',
+        c: pairSigs[i].sigs.some(g => g.sev === 'HIGH') ? 'var(--bd)' : pairSigs[i].sigs.length ? 'var(--wa)' : 'var(--ok)'
+      };
+    });
+    const vi = this.state.trendV;
+    const sel = pairSigs[vi - 1];
+    const ft = this.fr('trend');
+    return {
+      ticks, xlabs, pairs, cum: '+49 CAL DAYS TOTAL',
+      fr: ft, h: ft.big ? 430 : 250,
+      tbl: { head: ['VERSION', 'DATA DATE', 'CPM FINISH', 'SLIP D'], rows: this.versions.map(v => [v.id, v.dd, v.fin, v.d]) },
+      exp: () => this.csv('kestrel3_finish_trend', ['VERSION', 'DATA_DATE', 'CPM_FINISH', 'SLIP_D', 'NOTE'], this.versions.map(v => [v.id, v.dd, v.fin, v.d, v.note])),
+      wExp: () => this.csv('kestrel3_net_finish_impact', ['UPDATE', 'NFI_CAL_D', 'NOTE'], this.versions.slice(1).map((v, i) => ['v' + i + '→v' + (i + 1), v.d, v.note])),
+      v: vi, onScrub: e => this.setState({ trendV: +e.target.value }),
+      selLab: 'v' + (vi - 1) + ' → v' + vi, selDate: this.versions[vi].dd, selNfi: '+' + this.versions[vi].d + ' cal days',
+      selSigs: sel.sigs.map(g => ({ t: g.t, sev: g.sev, c: g.sev === 'HIGH' ? 'var(--bd)' : 'var(--wa)' })),
+      selClean: sel.sigs.length === 0,
+      selQuality: sel.quality
+    };
+  }
+
+  toggleBwPlay() {
+    if (this.bwTimer) { clearInterval(this.bwTimer); this.bwTimer = null; this.setState({ bwPlay: false }); return; }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      this.setState(s => ({ bwFrame: (s.bwFrame + 1) % 6, drawKey: s.drawKey + 1 })); return;
+    }
+    this.setState({ bwPlay: true });
+    this.bwTimer = setInterval(() => this.setState(s => ({ bwFrame: (s.bwFrame + 1) % 6, drawKey: s.drawKey + 1 })), 1500);
+  }
+
+  buildBowScreen() {
+    const S = this.state;
+    const base = this.buildBow(S.bwFrame, S.bwPlay);
+    const bars = base.bars.map(b => ({ ...b, nLab: b.n ? String(b.n) : '', nc: b.n >= 3 ? 'var(--bd)' : 'var(--mut)' }));
+    const ceiData = [['v0→v1', 12, 11, '0.92'], ['v1→v2', 13, 11, '0.84'], ['v2→v3', 9, 7, '0.78'], ['v3→v4', 14, 10, '0.71'], ['v4→v5', 12, 8, '0.66']];
+    const fb = this.fr('bow');
+    return {
+      bars, ddX: base.ddX, frameLab: base.frameLab, note: base.note,
+      fr: fb, h: fb.big ? 410 : 240,
+      tbl: { head: ['MONTH', 'PLANNED FINISHES · ' + this.versions[S.bwFrame].id.toUpperCase()], rows: base.bars.map((b, i) => [this.bowMonthsFull[i], b.n]) },
+      exp: () => this.csv('kestrel3_bow_wave_all_versions', ['MONTH'].concat(this.versions.map(v => v.id.toUpperCase())), this.bowMonthsFull.map((m, i) => [m].concat(this.bowFrames.map(f => f.bars[i])))),
+      ceiExp: () => this.csv('kestrel3_cei', ['UPDATE', 'PROMISED', 'DELIVERED', 'CEI'], ceiData),
+      play: () => this.toggleBwPlay(),
+      playLabel: S.bwPlay ? '⏸ Pause' : '▶ Play the wave',
+      step: () => this.setState(s => ({ bwFrame: (s.bwFrame + 1) % 6, drawKey: s.drawKey + 1 })),
+      frames: this.versions.map((v, i) => ({
+        lab: v.id, go: () => this.setState({ bwFrame: i }),
+        style: 'background:' + (i === S.bwFrame ? 'var(--ac)' : 'transparent') + ';color:' + (i === S.bwFrame ? 'var(--bink)' : 'var(--mut)') + ';border:1px solid ' + (i === S.bwFrame ? 'var(--ac)' : 'var(--ln)') + ';border-radius:var(--rs);padding:3px 8px;font:700 9.5px var(--fm);cursor:pointer'
+      })),
+      ceiRows: ceiData.map(r => ({ pair: r[0], prom: r[1], done: r[2], cei: r[3], c: +r[3] >= 0.85 ? 'var(--ok)' : +r[3] >= 0.75 ? 'var(--wa)' : 'var(--bd)' }))
+    };
+  }
+
+  buildForecastScreen() {
+    const ff = this.fr('fcr');
+    const dom = ['2026-08-15', '2027-01-05'];
+    const X = iso => this.pctIn(iso, dom[0], dom[1]);
+    const f = this.forecast;
+    const ticks = [['2026-09-01', 'SEP'], ['2026-10-01', 'OCT'], ['2026-11-01', 'NOV'], ['2026-12-01', 'DEC'], ['2027-01-01', 'JAN 27']].map(t => ({ x: X(t[0]), lab: t[1] }));
+    const drift = [
+      { v: 'v1', cpm: '09-20', rate: '10-02', es: '09-28', spread: '12d' },
+      { v: 'v2', cpm: '10-01', rate: '10-18', es: '10-14', spread: '17d' },
+      { v: 'v3', cpm: '10-12', rate: '11-01', es: '11-04', spread: '23d' },
+      { v: 'v4', cpm: '10-26', rate: '11-12', es: '11-24', spread: '29d' },
+      { v: 'v5 · current', cpm: '11-02', rate: '11-20', es: '12-08', spread: '36d' }
+    ].map((r, i) => ({ ...r, bg: i === 4 ? 'color-mix(in srgb,var(--ac) 7%,transparent)' : 'transparent', sc: i >= 3 ? 'var(--bd)' : 'var(--wa)' }));
+    return {
+      ticks,
+      fr: ff, h: ff.big ? 280 : 152,
+      driftExp: () => this.csv('kestrel3_forecast_drift', ['VERSION', 'CPM', 'RATE', 'EARNED_SCHEDULE', 'SPREAD_D'], drift.map(r => [r.v, r.cpm, r.rate, r.es, r.spread])),
+      bandX: X(f.p10), bandW: +(X(f.p90) - X(f.p10)).toFixed(2), bandMid: +((X(f.p10) + X(f.p90)) / 2).toFixed(1),
+      marks: [
+        { x: X(f.base), c: 'var(--mut)', lab: 'BASELINE', sub: '09-14', ly: 16, ly2: 25 },
+        { x: X(f.cpm), c: 'var(--ac)', lab: 'CPM', sub: '11-02', ly: 16, ly2: 25 },
+        { x: X(f.rate), c: 'var(--wa)', lab: 'RATE', sub: '11-20', ly: 76, ly2: 85 },
+        { x: X(f.es), c: 'var(--bd)', lab: 'EARNED SCHED', sub: '12-08', ly: 16, ly2: 25 }
+      ],
+      methods: [
+        { id: 'Method A', name: 'CPM network logic', date: '2026-11-02', inputs: '17 tasks · 31 links · 5d/wk cal', note: 'Believes the file: remaining durations, logic and calendar. When durations were compressed without evidence, this is a floor — not a forecast.', c: 'var(--ac)' },
+        { id: 'Method B', name: 'Completion-rate extrapolation', date: '2026-11-20', inputs: '6 status points · 7.7%/mo', note: 'Ignores promises. Projects the observed earn rate over the remaining 54% of work.', c: 'var(--wa)' },
+        { id: 'Method C', name: 'Earned schedule IEAC(t)', date: '2026-12-08', inputs: 'PV/EV curves · SPI(t) 0.79', note: 'Time-based earned value: applies the execution record to the remaining planned duration.', c: 'var(--bd)' }
+      ],
+      drift
+    };
+  }
+
+  buildCompare() {
+    const o = {
+      moved: [
+        { k: 'CPM finish', a: '2026-10-26', b: '2026-11-02', dLab: '+7d', c: 'var(--bd)' },
+        { k: 'Earned complete', a: '41%', b: '46%', dLab: '+5 pts', c: 'var(--ok)' },
+        { k: 'Critical activities', a: '8', b: '9', dLab: '+1', c: 'var(--wa)' },
+        { k: 'Total float, remaining work', a: '214 d', b: '168 d', dLab: '−46 d', c: 'var(--bd)' },
+        { k: 'Reported finish variance', a: '+42 d', b: '+38 d', dLab: '−4 d ⚑', c: 'var(--bd)' }
+      ],
+      scan: [
+        { name: 'Deleted tasks', n: '0', sev: 'CLEAN', c: 'var(--ok)', note: 'No scope removed between versions' },
+        { name: 'Deleted relationships', n: '1', sev: 'MED', c: 'var(--wa)', note: 'FS link dropped ahead of vibe — check intent' },
+        { name: 'Durations shortened', n: '3', sev: 'MED', c: 'var(--wa)', note: 'Avg −38% · no basis-of-estimate note' },
+        { name: 'Baseline date edits', n: '9', sev: 'HIGH', c: 'var(--bd)', note: 'All later · variance shrinks without progress' },
+        { name: 'Actual-date edits', n: '2', sev: 'MED', c: 'var(--wa)', note: 'Posted actuals moved after the fact' },
+        { name: 'New hard constraints', n: '1', sev: 'MED', c: 'var(--wa)', note: 'SNET on TVAC pins the bar in place of logic' }
+      ],
+      edits: [
+        { uid: '1140', task: 'TVAC Campaign', field: 'baseline_finish', a: '08-28', b: '09-25', shift: '+28d' },
+        { uid: '1100', task: 'FSW Qualification Test', field: 'baseline_finish', a: '06-05', b: '07-03', shift: '+28d' },
+        { uid: '1120', task: 'Vehicle Functional Test', field: 'baseline_finish', a: '07-10', b: '07-31', shift: '+21d' },
+        { uid: '1150', task: 'Vibe & Acoustics', field: 'baseline_finish', a: '09-18', b: '10-09', shift: '+21d' },
+        { uid: '1170', task: 'Ship to Range', field: 'baseline_finish', a: '09-30', b: '10-21', shift: '+21d' }
+      ]
+    };
+    o.movedExp = () => this.csv('kestrel3_compare_moved', ['METRIC', 'V4', 'V5', 'DELTA'], o.moved.map(m => [m.k, m.a, m.b, m.dLab]));
+    o.scanExp = () => this.csv('kestrel3_manipulation_scan', ['CATEGORY', 'COUNT', 'SEVERITY', 'NOTE'], o.scan.map(s => [s.name, s.n, s.sev, s.note]));
+    o.editsExp = () => this.csv('kestrel3_baseline_edits', ['UID', 'TASK', 'FIELD', 'V4', 'V5', 'SHIFT'], o.edits.map(e => [e.uid, e.task, e.field, e.a, e.b, e.shift]));
+    return o;
+  }
+
+  buildBrief() {
+    return {
+      print: () => window.print(),
+      docx: () => this.exportBrief(),
+      paras: [
+        { h: 'Where it stands', t: 'KESTREL-3 is 46% complete against a plan that called for 61% by the April data date. The computed finish is 2026-11-02 — 49 calendar days past the committed baseline of 2026-09-14 — and every one of the last five status updates moved the date later.', cites: ['v5 · schedule card', 'v0→v5 · trend series'] },
+        { h: 'Why', t: 'The launch date is carried by a single zero-float chain: Flight Software Build 3 through qualification, vehicle functional test, TVAC, vibe, and the ship-to-range campaign. FSW Build 3 alone contributes 18 working days of drag; the TVAC chamber is single-thread with no alternate. The slip accelerated alongside structural edits — driving-path links deleted in v2, twelve unsupported duration cuts in v3, and nine baseline-date edits in v5 that hide 11 days of variance.', cites: ['v5 · UID 1080', 'v5 · UID 1140', 'diff v2→v3', 'diff v4→v5'] },
+        { h: 'What changes the outcome', t: 'No single fix recovers the date. Pairing an FSW build audit with a committed TVAC window recovers roughly 21 of the 49 days; the remainder requires scope relief on payload calibration or acceptance of a November readiness date. Three independent forecasts converge on 2026-11-02 to 2026-12-08 — planning to September is no longer defensible.', cites: ['counterfactual engine', 'forecast · 3 methods'] }
+      ],
+      recs: [
+        { when: 'NOW', c: 'var(--bd)', t: 'Freeze baseline edits behind change control', why: 'Stops the masking pattern observed in v4→v5' },
+        { when: 'NOW', c: 'var(--bd)', t: 'Independent audit of FSW Build 3 remaining durations', why: 'Largest single drag — 18 working days' },
+        { when: '30 D', c: 'var(--wa)', t: 'Secure a committed TVAC chamber window', why: 'Single-thread facility holding zero float' },
+        { when: '30 D', c: 'var(--wa)', t: 'Convene a re-baseline review board', why: 'Restores a defensible variance basis before further commitments' }
+      ]
+    };
+  }
+
+  renderVals() {
+    const S = this.state;
+    const density = this.props.density ?? 'compact';
+    const marking = this.props.marking ?? 'CUI';
+    const dots = this.props.chartDots ?? true;
+    let tv = this.themeVarSets[S.theme] || '';
+    const basePx = (density === 'comfortable' ? 12 : 11) * (S.uiScale / 100);
+    tv += ';font-size:' + basePx.toFixed(1) + 'px';
+    if (!dots) tv += ';--dot:transparent';
+
+    const chIdx = this.chapters.findIndex(c => c.id === S.screen);
+    const navDefs = [
+      { label: 'Load', items: [{ id: 'imp', num: '00', label: 'Import versions' }] },
+      { label: 'Overview', items: [{ id: 'ctl', num: '◉', label: 'Mission Control' }] },
+      { label: 'The story', items: this.chapters.slice(0, 5).map(c => ({ id: c.id, num: c.num, label: c.label })) },
+      { label: 'The evidence', items: this.chapters.slice(5).map(c => ({ id: c.id, num: c.num, label: c.label })) }
+    ];
+    const mkItem = it => {
+      const on = S.screen === it.id;
+      return {
+        ...it, go: () => this.setScreen(it.id),
+        style: 'display:flex;align-items:center;gap:6px;width:100%;text-align:left;background:' + (on ? 'var(--pn2)' : 'transparent') + ';border:0;border-radius:var(--rs);padding:6px 8px;font:600 11px var(--f);color:' + (on ? 'var(--ink)' : 'var(--mut)') + ';cursor:pointer;box-shadow:' + (on ? 'inset 2px 0 0 var(--ac)' : 'none'),
+        topStyle: 'background:' + (on ? 'var(--pn2)' : 'transparent') + ';border:1px solid ' + (on ? 'var(--ln)' : 'transparent') + ';border-radius:var(--rs);padding:4px 10px;font:600 11px var(--f);color:' + (on ? 'var(--ink)' : 'var(--mut)') + ';cursor:pointer',
+        numColor: on ? 'var(--ac)' : 'var(--mut)'
+      };
+    };
+    const navGroups = navDefs.map(g => ({ label: g.label, items: g.items.map(mkItem) }));
+    const flatNav = navDefs.flatMap(g => g.items).map(mkItem);
+
+    const imp = {
+      formats: ['.mpp', '.mpt', '.xer', '.xml', '.mspdi', '.json'],
+      loadExample: () => this.setScreen('ctl'),
+      versions: this.versions.map((v, i) => ({
+        ...v,
+        idColor: i === 5 ? 'var(--ac)' : 'var(--mut)',
+        bg: i === 5 ? 'color-mix(in srgb,var(--ac) 7%,transparent)' : 'transparent',
+        dLab: v.d === 0 ? 'BASE' : '+' + v.d + 'd',
+        dColor: v.d === 0 ? 'var(--mut)' : v.d >= 11 ? 'var(--bd)' : 'var(--wa)',
+        open: () => this.setScreen('st')
+      }))
+    };
+
+    const ctl = {
+      playAll: () => this.toggleBwPlay(),
+      playLabel: S.bwPlay ? '⏸ Pause the story' : '▶ Play the story',
+      stepAll: () => this.setState(s => ({ bwFrame: (s.bwFrame + 1) % 6, drawKey: s.drawKey + 1 })),
+      kpis: [
+        { label: 'CPM finish', value: '2026-11-02', sub: '+49 cal days vs baseline 09-14', edge: 'var(--bd)', color: 'var(--ink)' },
+        { label: 'Percent complete', value: '46%', sub: 'plan at DD: 61% — 15 pts behind', edge: 'var(--wa)', color: 'var(--ink)' },
+        { label: 'Current Execution Index', value: '0.66', sub: 'fell from 0.92 over five updates', edge: 'var(--bd)', color: 'var(--bd)' },
+        { label: 'Verdict', value: 'BEHIND', sub: 'deteriorating · masking signals in v4→v5', edge: 'var(--rd)', color: 'var(--rd)' }
+      ],
+      tiles: [
+        { num: '03', title: 'Finish trend', link: 'Open 03', go: () => this.setScreen('tr'), isSlope: true, read: 'Every update pushed the finish later — the line only climbs. Slips are not shrinking.' },
+        { num: '04', title: 'Bow wave', link: 'Open 04', go: () => this.setScreen('bw'), isBow: true, read: 'Planned finishes per month. Watch unfinished work pile up just right of the data date.' },
+        { num: '01', title: 'Progress s-curve', link: 'Open 01', go: () => this.setScreen('st'), isScurve: true, read: 'Actual progress (blue) runs 15 points under plan (dashed). The amber path is the forecast.' },
+        { num: '04', title: 'Execution index', link: 'Open 04', go: () => this.setScreen('bw'), isCei: true, read: 'CEI = work finished when promised. 0.66 means a third of commitments slip each month.' },
+        { num: '05', title: 'Forecast window', link: 'Open 05', go: () => this.setScreen('fc'), isFc: true, read: 'Three independent methods land Nov 2 – Dec 8. The baseline date is no longer credible.' },
+        { num: '01', title: 'Schedule quality', link: 'Open 01', go: () => this.setScreen('st'), isDcma: true, read: 'DCMA-14 health: structurally sound network, but negative float and long tasks flag pressure.' }
+      ]
+    };
+    ctl.tiles = ctl.tiles.map(t => {
+      const fr = this.fr('tl-' + t.title);
+      const tbl = this.tileTbl(t);
+      return { ...t, fr, tbl, span: fr.big ? '1 / -1' : 'auto', h: fr.big ? 320 : 150, exp: () => this.csv(tbl.name, tbl.head, tbl.rows) };
+    });
+
+    return {
+      themeVars: tv,
+      theme: S.theme,
+      isJarvis: S.theme === 'jarvis',
+      markBg: marking === 'CUI' ? '#502B85' : '#007A33',
+      markText: marking === 'CUI' ? 'CUI — Controlled Unclassified Information · Local processing only' : 'Unclassified — for official use in demonstration',
+      onTheme: e => this.setTheme(e.target.value),
+      uiScale: String(S.uiScale), onScale: e => this.saveG({ uiScale: +e.target.value }),
+      onMode: () => this.setTheme(S.theme === 'daylight' ? (S.lastDark || 'console') : 'daylight'),
+      modeIcon: S.theme === 'daylight' ? '☾' : '☀',
+      onQuit: () => { this.setState({ toast: 'Server stops when the last window closes — Quit stops it now (mock).' }); setTimeout(() => this.setState({ toast: '' }), 3200); },
+      toast: S.toast,
+      mainRef: this.mainRef,
+      railNav: S.theme !== 'daylight',
+      topNav: S.theme === 'daylight',
+      navGroups, flatNav,
+      storyDots: this.chapters.map((c, i) => ({ c: i === chIdx ? 'var(--ac)' : i < chIdx ? 'color-mix(in srgb,var(--ac) 45%,transparent)' : 'var(--ln)' })),
+      currentTake: chIdx >= 0 ? this.chapters[chIdx].take : (S.screen === 'ctl' ? 'The whole picture on one wall — then read chapter by chapter.' : 'Load every version — the story is in the differences.'),
+      isImp: S.screen === 'imp', isCtl: S.screen === 'ctl', isSt: S.screen === 'st', isDr: S.screen === 'dr', isTr: S.screen === 'tr', isBw: S.screen === 'bw', isFc: S.screen === 'fc', isCp: S.screen === 'cp', isBr: S.screen === 'br',
+      goCtl: () => this.setScreen('ctl'), goSt: () => this.setScreen('st'), goDr: () => this.setScreen('dr'), goTr: () => this.setScreen('tr'), goBw: () => this.setScreen('bw'), goFc: () => this.setScreen('fc'), goCp: () => this.setScreen('cp'), goBr: () => this.setScreen('br'),
+      imp, ctl,
+      slope: this.buildSlope(),
+      scurve: this.buildScurve(),
+      cei: this.buildCei(),
+      fcMini: this.buildFcMini(),
+      bowMini: this.buildBow(S.bwFrame, S.bwPlay),
+      dcma: this.buildDcma(),
+      drawName: S.drawKey % 2 ? 'sfDrawA' : 'sfDrawB',
+      st: this.buildStatus ? this.buildStatus() : {},
+      dr: this.buildDrivers ? this.buildDrivers() : {},
+      tr: this.buildTrend ? this.buildTrend() : {},
+      bw: this.buildBowScreen ? this.buildBowScreen() : {},
+      fc: this.buildForecastScreen ? this.buildForecastScreen() : {},
+      cp: this.buildCompare ? this.buildCompare() : {},
+      br: this.buildBrief ? this.buildBrief() : {}
+    };
+  }
+}
+</script>
+</body>
+</html>

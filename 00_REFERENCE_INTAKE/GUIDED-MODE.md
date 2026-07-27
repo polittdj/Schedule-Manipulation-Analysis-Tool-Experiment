@@ -1,187 +1,208 @@
-# GUIDED-MODE — the five-Act teaching layer (SPEC ONLY, awaiting approval)
+# CRISPNESS-PATCH — vendored type + an 11px floor
 
-**Nothing has been built.** Per PROMPT 3 §1 this is the spec, and it stops for approval before any code. Governing law: repo `CLAUDE.md` + `docs/DESIGN-SYSTEM.md`. Source inventory: `docs/UI-INVENTORY.md`.
+Applyable spec for PROMPT 1. Governing law: repo `CLAUDE.md` and `docs/DESIGN-SYSTEM.md` — tokens only, air-gap absolute, no engine change, no displayed number changed, nothing renamed, no features added.
 
-**Two corrections before the spec starts.**
-1. **Route count is 133, not 128** (`docs/UI-INVENTORY.md` §1: 32 HTML · 28 JSON · 39 export · 32 POST, parsed line-by-line from the 19,081-line `app.py`). All 133 must keep working; the additive rule is unchanged, the number is just larger than the prompt assumed.
-2. **Tooltip text does not need new dictionary fields.** `MetricDoc` in `src/schedule_forensics/web/help.py` already carries `definition`, `formula`, `source`, `importance`, `indicates`, `threshold`, `example_ok`, `example_fail`, `use_case`, `citation_basis`. The required what / how / decision triple is a **projection of existing fields** (§4), so guided mode is a renderer, not a documentation migration.
-
-*This workspace has no Python runtime, no app and no network: the gates, the 200-check sweep and the screenshots run in the repo.*
+**What I could not execute from here, and who must:** this workspace has no network egress, no Python runtime and no running app, so it cannot (1) download the font binaries, (2) run `pytest`/`ruff`/`mypy`/`bandit`/`pip-audit`, (3) build the wheel or regenerate the 9 installers, or (4) screenshot the 4 themes × 2 densities × 3 zoom levels. Everything else — the verification of the diagnosis, the licence verdicts, the `@font-face` block, the token ramp, and the complete line-exact patch list — is below and is ready to apply verbatim.
 
 ---
 
-## 1. Design rules that bind every Act
+## 1. The diagnosis, verified against the real files
 
-| Rule | Value |
-|---|---|
-| Visuals per Act | **≤ 3** (hard cap) |
-| Headline per Act | **exactly 1** — a sentence with a number in it, per DESIGN-SYSTEM §2 |
-| Metric readouts per Act | **≤ 5**, each with a tooltip |
-| Everything else | **not removed — deep-linked.** Each visual carries "see the full view →" to the existing page, which keeps every current control (column pickers, zoom, filters, play, ▦/⤓/⛶) exactly one click away |
-| New charts | **none.** Every visual is an existing module rendered against an existing endpoint |
-| New engine calls | **none.** Guided mode reads what the page it links to already reads |
-| Reading order | Act *n* unlocks Act *n+1*'s Continue footer; any Act is still directly addressable by URL |
+**(a) The type scale bottoms out at 8–9px — confirmed.** All px type declarations across `base.css`, `app.css`, `hud.css` (`font-size` **and** the `font:` shorthand): **197 declarations**, distributed 8px ×3 · 9px ×10 · 10px ×15 · 11px ×42 · 12px ×66 · 12.5px ×1 · 13px ×25 · 14px ×11 · 15px ×5 · 16px ×9 · 17px ×1 · 18px ×2 · 19px ×1 · 20px ×1 · 22px ×3 · 26px ×1 · 34px ×1. **28 of them are below 11px** (3 × 8px, 10 × 9px, 15 × 10px) — full list in §5.
 
-The density fix is structural: today a report page carries 6–12 panels; an Act carries 3. Nothing is deleted — the other 9 live on the page the Act links to.
+**Worse, and not in the original diagnosis: the charts are the main offender, and they bypass CSS entirely.** The SVG/DOM chart modules set type as an *attribute or inline style in JavaScript*: **40 sub-11px sizes across 12 modules** (§6). Those are the axis ticks and bar labels — exactly the text that reads as "fussy" — and because they are not CSS they will survive any change to the stylesheets and they violate DESIGN-SYSTEM Law 1 (nothing styles itself) today.
+
+**(b) No `@font-face` exists and the designed typography has never rendered — confirmed, and it is worse than "not vendored".** `@font-face` blocks in all three stylesheets: **0**. `url(...)` references: **0**. Font binaries in the repo (`.woff`/`.woff2`/`.ttf`/`.otf`): **0 files**. Grepping the stylesheets for the three faces DESIGN-SYSTEM §1 specifies: **"Barlow" 0 hits · "Barlow Semi Condensed" 0 hits · "IBM Plex Mono" appears only as a name inside `ui-monospace,"IBM Plex Mono",Consolas,monospace`**. The UI face is not a designed font at all — `base.css` sets `font:11px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif`, i.e. the OS system stack, and everything else inherits.
 
 ---
 
-## 2. The five Acts
+## 2. Three conflicts to settle before this is applied
 
-### Act 1 — What is this project?
-
-*Teaches: a schedule is a network of activities joined by logic, not a list of dates; the data date splits history from forecast; float is spare time.*
-
-| Slot | Visual | Existing module | Route it deep-links to | Endpoint |
-|---|---|---|---|---|
-| 1 | Driving-path Gantt (bars + data-date line) | `gantt.js` | `/analysis/{name}` | existing analysis payload |
-| 2 | Total-float distribution | `histogram.js` | `/analysis/{name}` | same |
-| 3 | Schedule ID card (population / calendars / constraints / open ends / baseline) — a **table**, not a new chart | existing analysis fields | `/analysis/{name}` | same |
-
-Metric readouts (dictionary ids): activity population · data date · min total float · open ends (`DCMA01`) · hard constraints (`DCMA05`).
-Headline pattern: *"N activities, M of them decide the finish date — and K of those already have negative float."*
-Deliberately omitted here: every quality percentage, every trend, every forecast. A first-time reader gets shape and vocabulary only.
-Continue segue: *"You can read the plan. Next: whether it can be trusted."*
-
-### Act 2 — Is it healthy?
-
-*Teaches: structural quality is a separate question from lateness; DCMA-14 inspects the file, not the progress; margin is reserve, not float.*
-
-| Slot | Visual | Module | Deep-links to |
-|---|---|---|---|
-| 1 | DCMA-14 ribbon (the "must stay below" checks) | `ribbon_drill.js` | `/ribbon` |
-| 2 | Execution indices strip (SPI · SPI(t) · CPI · BEI · CPLI · TCPI) | `performance.js` | `/performance` |
-| 3 | Margin burn-down vs guideline | `margin.js` / `margin_dashboard.js` | `/margin` |
-
-Metric readouts: `DCMA01` · `DCMA09` · `DCMA13` (CPLI) · `DCMA14` (BEI) · margin remaining.
-Headline pattern: *"X of 14 quality checks fail and Y% of the approved reserve is spent."*
-Note for implementation: the ribbon has **two axis conventions** (ten checks with a 5% ceiling; the FS-relationship check with a 90% floor). Act 2 shows the ten-check ribbon only and links the FS check to `/ribbon`; mixing them on one axis is the defect `docs/AXIS-TITLES-PATCH.md` and the operator's own review already flagged.
-Continue segue: *"You know its condition. Next: when it started going wrong."*
-
-### Act 3 — What went wrong and when?
-
-*Teaches: one version tells you where you are, the chain of versions tells you where you are going; deferred work accumulates.*
-
-| Slot | Visual | Module | Deep-links to |
-|---|---|---|---|
-| 1 | Milestone drift across versions | `drift.js` (or `trend.js`) | `/trend` |
-| 2 | Driving-path churn / CP evolution | `path_evolution.js` | `/evolution` |
-| 3 | Bow wave + current execution index | `cei.js` | `/cei` |
-
-Metric readouts: forecast slip vs baseline · churn % · CEI · BEI (`DCMA14`) · min-float trend.
-Headline pattern: *"The finish has moved N workdays across M updates, and the remaining plan now needs P× the demonstrated throughput."*
-Continue segue: *"You know the trend. Next: whether the trend was managed or edited."*
-
-### Act 4 — Was it manipulated?
-
-*Teaches: a date can improve two ways — work, or editing; concentration of edits on the driving path is the forensic signal; SUSPECTED is a legitimate answer.*
-
-| Slot | Visual | Module | Deep-links to |
-|---|---|---|---|
-| 1 | Version-pair change signals (duration cuts · logic removed · lags added · constraints added · baseline edits) | compare diff view | `/compare` |
-| 2 | Integrity findings ledger (old → new → shift rows) | `findings_drill.js` / `drilldown.js` | `/integrity` |
-| 3 | Float erosion / negative-float emergence | `volatility.js` | `/volatility` |
-
-Metric readouts: relationships changed · driving-path edits · constraints added (`DCMA05`) · invalid dates (`DCMA09`) · min total float.
-Headline pattern: *"N edits between the last two updates moved the reported finish earlier while no work completed; M of them landed on the driving path."*
-**Honesty rule for this Act specifically:** every claim renders its `⌖ file · UID` citation and any engine-flagged uncertainty stays visible as `SUSPECTED`. Guided mode may not soften a flag to keep a story tidy.
-Continue segue: *"You know what changed. Next: what to do about it."*
-
-### Act 5 — What has to happen now?
-
-*Teaches: a forecast is defensible when independent methods agree; commit to a confidence level, not a date; reserve is sized from the distribution.*
-
-| Slot | Visual | Module | Deep-links to |
-|---|---|---|---|
-| 1 | Three-method forecast S-curve | `scurve.js` / `curves.js` | `/forecast` |
-| 2 | Simulated finish distribution + cumulative P-curve (P50/P80) | `sra.js` | `/sra` |
-| 3 | Recommended actions with citations (existing briefing content) | briefing view | `/brief` |
-
-Metric readouts: P50 · P80 · P(target met) · reserve required vs held · joint confidence (where cost-loaded).
-Headline pattern: *"P50 is <date>, P80 is <date>, and holding the committed date needs N more workdays of reserve than remain."*
-**Caveat that must render:** when the SRA runs on auto-default uncertainty, Act 5 shows the existing "screening placeholder, not SME-validated" warning verbatim. It is the last screen a reader sees; it may not be the one where the caveat is dropped.
-Closing segue: *"You have the whole story. Leave guided mode to work the detail →"* (links to `/mission`).
+1. **`sf-themes.css` does not exist in the repo.** PROMPT 1 §3 says all sizes come from custom properties in `sf-themes.css`; the audit found the token layer lives in **`base.css`** (`:root` + `[data-theme=console|apollo|jarvis]` blocks) and `sf-themes.css` was never committed. **Recommendation:** put the ramp in `base.css` beside the existing tokens — one token layer, no import-order risk — and update DESIGN-SYSTEM to name `base.css` as the token file. If you want the separate file, create it and `@import` it first from `base.css`; do not split the ramp across both.
+2. **The 40 chart sizes are JS attributes, not CSS**, so "all sizes come from custom properties" cannot be met by editing stylesheets. The fix that satisfies Law 1: delete the numeric `font-size` attribute/inline style at each site, give the element the semantic class it already deserves (`.ch-xl`, `.ch-yl`, `.g-tick`, `.g-barlabel`, …), and let CSS set `font-size: var(--sf-fs-label)`. Several of those classes already exist (`app.css:349`, `app.css:824`) — they are simply not used everywhere.
+3. **Density.** Raising the floor costs vertical space. Do **not** buy it back by shrinking type in the compact density; buy it back in padding/line-height only. Compact must remain a *spacing* mode, per DESIGN-SYSTEM §7.
 
 ---
 
-## 3. What guided mode is, technically (and why the goldens cannot move)
+## 3. Fonts — licences verified, then vendored
 
-**New surface, 6 routes:**
+| Face | Licence | Redistributable in-repo? | Upstream |
+|---|---|---|---|
+| **Barlow** (400/500/600/700) | SIL Open Font License 1.1 | **Yes** — OFL explicitly permits bundling and redistribution, with or without modification | `github.com/jpt/barlow` (also on Google Fonts) |
+| **Barlow Semi Condensed** (600/700) | SIL Open Font License 1.1 | **Yes** — same family/licence | `github.com/jpt/barlow` |
+| **IBM Plex Mono** (400/600) | SIL Open Font License 1.1 | **Yes** — IBM released the whole Plex family under OFL 1.1 | `github.com/IBM/plex` |
+
+No substitution is needed: all three intended faces are OFL 1.1, so nothing in this change requires shipping something we cannot legally vendor.
+
+**One OFL caveat, and how to stay clean:** OFL 1.1 forbids using a Reserved Font Name on a *modified* version. Format conversion and subsetting are technically modifications. Ship the **unmodified upstream woff2 builds** and keep the family names — that is unambiguously compliant. Only subset if the payload actually hurts, and then rename per OFL §3 (e.g. `SF Mono Deck`) rather than shipping "IBM Plex Mono" altered.
+
+**Vendor to** `src/schedule_forensics/web/static/fonts/` — 8 files, all woff2, all committed:
 
 ```
-GET  /guided                 -> Act picker + progress (HTML)
-GET  /guided/act/{n}         -> Act n, n in 1..5 (HTML)
-POST /guided/dismiss         -> sets the opt-out, redirects to /mission
+barlow-400.woff2  barlow-500.woff2  barlow-600.woff2  barlow-700.woff2
+barlow-semicondensed-600.woff2  barlow-semicondensed-700.woff2
+ibm-plex-mono-400.woff2  ibm-plex-mono-600.woff2
 ```
 
-- Each Act template **includes the existing chart modules** and fetches **the endpoints those charts already use**. No new JSON endpoint, no new field, no serializer touched, no engine function called that the linked page does not already call.
-- **Therefore `/api/dashboard` is untouched and the three goldens are byte-identical by construction** — `_SHA_TWO_VERSION` `d62a4f9e…58d1`, `_SHA_UNSOLVABLE` `8d7bcc38…fc16`, `_SHA_TWO_VERSION_PARITY` `51691cb7…504cb`. Re-pinning a golden is not an option in this task; if an Act appears to need a payload change, see §5 and stop.
-- Existing routes: **zero diffs**. Guided mode adds nav entries and one post-ingest prompt; it changes no existing handler's response. The one interaction with existing behaviour is the landing rule, and it defers: **an ingest with errors still lands on the manifest** (ADR-0255/0267) regardless of guided mode.
+**`@font-face` block — add at the very top of `base.css`, above the token blocks:**
 
-**Opt-in / dismissible:**
-- Trigger: after a *clean* first ingest, `/` offers "Explain this project to me" beside the existing role cards. It is an offer, never a redirect.
-- State: `localStorage["sf-guided"]` = `"on" | "off"`, matching the `sf-*` convention `theme.js` already uses (`sf-theme`, `sf-theme-dark`). Absent = off.
-- Dismiss: a persistent "Leave guided mode" control on every Act; `POST /guided/dismiss` sets `off` and returns the user to `/mission`. Re-entry is always available from the nav.
-- Power users are unaffected: with `sf-guided` unset, every landing, nav target and page is exactly today's.
+```css
+/* Vendored locally (SIL OFL 1.1) — no CDN, no network. Air-gap law, CLAUDE.md §4. */
+@font-face{font-family:Barlow;src:url("/static/fonts/barlow-400.woff2")format("woff2");font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:Barlow;src:url("/static/fonts/barlow-500.woff2")format("woff2");font-weight:500;font-style:normal;font-display:block}
+@font-face{font-family:Barlow;src:url("/static/fonts/barlow-600.woff2")format("woff2");font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:Barlow;src:url("/static/fonts/barlow-700.woff2")format("woff2");font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url("/static/fonts/barlow-semicondensed-600.woff2")format("woff2");font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url("/static/fonts/barlow-semicondensed-700.woff2")format("woff2");font-weight:700;font-style:normal;font-display:block}
+@font-face{font-family:"IBM Plex Mono";src:url("/static/fonts/ibm-plex-mono-400.woff2")format("woff2");font-weight:400;font-style:normal;font-display:block}
+@font-face{font-family:"IBM Plex Mono";src:url("/static/fonts/ibm-plex-mono-600.woff2")format("woff2");font-weight:600;font-style:normal;font-display:block}
 
-**Files touched:** `web/app.py` (+6 routes, +1 offer block on `/`), one new template shell, one new `web/static/guided.js` (Act navigation + tooltip wiring only — it draws nothing), `base.css` (Act layout tokens), nav definitions, `docs/DESIGN-SYSTEM.md` (§2 gains the Act layer), `docs/UI-INVENTORY.md` (§1 gains the 6 routes).
+:root{
+  --sf-font-ui:Barlow,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sf-font-display:"Barlow Semi Condensed",Barlow,-apple-system,"Segoe UI",sans-serif;
+  --sf-font-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+```
+
+`font-display:block` (not `swap`) is deliberate: a local file loads in single-digit milliseconds, and `block` prevents the system-stack flash that would make a dense table reflow on every page load.
+
+**Air-gap:** these are same-origin `/static/` URLs, so `tests/web/test_airgap.py` stays green. Add one assertion to it while you are there: every `url(...)` in the shipped CSS must start with `/static/`. Also confirm the wheel picks the new directory up — `tests/installer/test_installers.py:68` already asserts **≥30** `/web/static/` entries; 8 font files raise the count, they do not break it, but check `pyproject.toml` package-data globs include `web/static/fonts/*.woff2`.
 
 ---
 
-## 4. Tooltip contract — a projection of `MetricDoc`, nothing invented
+## 4. The type ramp (rescaled whole, not patched at the offenders)
 
-`MetricDoc` (in `web/help.py`) is the single source. Guided mode renders exactly three beats:
+```css
+:root{
+  /* Type ramp — single source of truth. 11px floor, no exceptions. */
+  --sf-fs-label:11px;  --sf-fs-micro:12px; --sf-fs-sm:13px;   --sf-fs-base:14px;
+  --sf-fs-md:15px;     --sf-fs-lg:16px;    --sf-fs-xl:18px;   --sf-fs-2xl:20px;
+  --sf-fs-3xl:24px;    --sf-fs-4xl:30px;   --sf-fs-5xl:38px;
+  --sf-lh-tight:1.2;   --sf-lh-data:1.35;  --sf-lh-body:1.5;
+}
+```
 
-| Tooltip beat | Field(s) used | Fallback |
+| was | becomes | role |
 |---|---|---|
-| **What it means** | `definition` (title = `name`) | none — a metric with no definition is a doc bug, fail loudly |
-| **How to read it** | `formula` + `threshold`, and `indicates` when a value is failing | `formula` alone |
-| **What decision it supports** | `use_case` | `importance`, then `indicates` |
-| footer | `source` + `citation_basis` | — |
-| on a failing value | `example_fail`; on a passing value `example_ok` | omit |
+| 8px | `--sf-fs-label` → 11px | mono tick / micro-label |
+| 9px | `--sf-fs-label` → 11px | mono tick / micro-label |
+| 10px | `--sf-fs-micro` → 12px | kickers, chips, nav beats, table heads |
+| 11px | `--sf-fs-sm` → 13px | compact body (old base) |
+| 12px / 12.5px | `--sf-fs-base` → 14px | UI + body default |
+| 13px | `--sf-fs-md` → 15px | emphasised body |
+| 14px / 15px | `--sf-fs-lg` → 16px | panel h2, lead-in |
+| 16px / 17px | `--sf-fs-xl` → 18px | section heads |
+| 18px / 19px / 20px | `--sf-fs-2xl` → 20px | page h1 (unchanged at the top end) |
+| 22px | `--sf-fs-3xl` → 24px | takeaway h1 |
+| 26px | `--sf-fs-4xl` → 30px | hero metric |
+| 34px | `--sf-fs-5xl` → 38px | hero metric large |
 
-Rules:
-- Tooltips read `METRIC_DICTIONARY` **from `web/help.py`**, never from `docs/METRIC-DICTIONARY.md` — the `.md` is *generated* from `help.py` and `tests/web/test_docs.py::test_metric_dictionary_doc_is_in_sync` exists to prove it.
-- **Do not add metric ids.** `tests/engine/test_aft_formula_audit.py:843` asserts `set(audited) == set(METRIC_DICTIONARY)`; a new id fails there too. Guided mode documents no new metric — it explains existing ones.
-- Where `use_case` is empty, fill it **in `help.py`** with one plain sentence naming the decision, then regenerate the doc with the command the sync test prints. That keeps `test_docs`, `test_help` (every emitted metric documented) and `test_visuals` (DCMA entries) green, and adds no ids.
-- Audit first: `python -c "from schedule_forensics.web.help import METRIC_DICTIONARY as M; print([k for k,v in M.items() if not v.use_case])"` — that list is the content backlog for this task, and it is the only `help.py` edit guided mode is allowed to make.
+**Why 8px and 9px collapse into one token rather than becoming two sizes:** the audit shows 8px appearing 3 times and 9px 10 times, spread across three files and three unrelated component families (SSI chart labels, nav section labels, stack feet). That is drift, not a semantic level — there is no page where an 8px label and a 9px label are meant to read as different ranks. Collapsing them into `--sf-fs-label` removes a distinction that was never intentional, and the ramp still has eleven distinct steps.
+
+**Hierarchy check:** every adjacent pair in the new ramp keeps a ≥1px / ≥7% step, and the top end moves least (34→38, 22→24) so headline-to-body contrast *increases* slightly rather than flattening. The 90–125% UI-scale control multiplies the base as it does today; at 90% the floor renders 9.9px, so if that is unacceptable, clamp the scale control's lower bound to 100% for `--sf-fs-label` with `font-size:max(11px, calc(var(--sf-fs-label) * var(--sf-ui-scale)))`.
 
 ---
 
-## 5. Gap register — the only things the Acts want that the app may not already produce
+## 5. Patch list A — the 28 sub-11px CSS rules
 
-| # | Gap | Resolution that needs **no** payload change |
+| site | now | replace with | rule |
+|---|---|---|---|
+| `base.css:292` | 9px | `var(--sf-fs-label)` (11px) | `.rk-cell-s{position:absolute;right:4px;bottom:2px;font-size:9px;opacity:.7}` |
+| `base.css:316` | 9px | `var(--sf-fs-label)` (11px) | `.nav-sect-label{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:up` |
+| `base.css:320` | 9px | `var(--sf-fs-label)` (11px) | `.nav-chapter .ch-num{font-size:9px;font-weight:700;color:var(--header-line);letter-s` |
+| `base.css:324` | 10px | `var(--sf-fs-micro)` (12px) | `.nav-beats a{font-size:10px;font-weight:500;color:var(--header-muted);white-space:no` |
+| `base.css:409` | 10px | `var(--sf-fs-micro)` (12px) | `.chapter-kicker{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:u` |
+| `base.css:414` | 9px | `var(--sf-fs-label)` (11px) | `.story-so-far{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppe` |
+| `base.css:450` | 9px | `var(--sf-fs-label)` (11px) | `.stack-foot{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:upperc` |
+| `base.css:462` | 10px | `var(--sf-fs-micro)` (12px) | `.concl-topic{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppe` |
+| `base.css:475` | 10px | `var(--sf-fs-micro)` (12px) | `.wb-family-head .linkbtn{font-size:10px}` |
+| `base.css:486` | 10px | `var(--sf-fs-micro)` (12px) | `font-size:10px;letter-spacing:.1em;font-weight:700}` |
+| `app.css:60` | 10px | `var(--sf-fs-micro)` (12px) | `.g-tick { position: absolute; bottom: 2px; transform: translateX(-50%); font-size: 1` |
+| `app.css:95` | 9px | `var(--sf-fs-label)` (11px) | `.g-barlabel { position: absolute; top: 1px; font-size: 9px; line-height: 14px; color` |
+| `app.css:155` | 9px | `var(--sf-fs-label)` (11px) | `.pv-tick-label { position: absolute; top: 1px; font-size: 9px; color: var(--muted); ` |
+| `app.css:167` | 10px | `var(--sf-fs-micro)` (12px) | `box-sizing: border-box; text-align: center; white-space: nowrap; font-size: 10px;` |
+| `app.css:339` | 10px | `var(--sf-fs-micro)` (12px) | `.ut-badge { display: inline-block; font-weight: 700; font-size: 10px; text-transform` |
+| `app.css:349` | 9px | `var(--sf-fs-label)` (11px) | `.res-svg .res-yl, .res-svg .res-xl { font-size: 9px; fill: #5a6878; }` |
+| `app.css:469` | 10px | `var(--sf-fs-micro)` (12px) | `.ev-badge { background: var(--warn); color: #000; border-radius: 3px; padding: 0 4px` |
+| `app.css:765` | 10px | `var(--sf-fs-micro)` (12px) | `.nm-chead { font-size: 10px; text-align: center; padding: 1px 2px; vertical-align: b` |
+| `app.css:767` | 9px | `var(--sf-fs-label)` (11px) | `.nm-clab { font-size: 9px; color: var(--muted); max-width: 64px; }` |
+| `app.css:770` | 9px | `var(--sf-fs-label)` (11px) | `.nm-rlab { font-size: 9px; color: var(--muted); }` |
+| `app.css:777` | 10px | `var(--sf-fs-micro)` (12px) | `border-radius: 8px; background: #10202e; color: #fff; font-size: 10px; font-weight: ` |
+| `app.css:789` | 10px | `var(--sf-fs-micro)` (12px) | `.nm-leg-item { font-size: 10px; color: var(--ink); display: inline-flex; align-items` |
+| `app.css:814` | 10px | `var(--sf-fs-micro)` (12px) | `.ssi-chart-t { font-size: 10px; font-weight: 700; color: var(--ink); margin-bottom: ` |
+| `app.css:824` | 8px | `var(--sf-fs-label)` (11px) | `.ssi-svg .ch-yl, .ssi-svg .ch-xl { font-size: 8px; fill: #5a6878; }` |
+| `app.css:832` | 8px | `var(--sf-fs-label)` (11px) | `.ssi-svg .ch-ql { font-size: 8px; font-weight: 700; fill: #5a6878; }` |
+| `app.css:998` | 8px | `var(--sf-fs-label)` (11px) | `.brand-sub { font-size: 8px; font-weight: 600; letter-spacing: .24em; text-transform` |
+| `hud.css:44` | 10px | `var(--sf-fs-micro)` (12px) | `margin-left:5px;border-radius:50%;font-size:10px;font-weight:700;cursor:help;` |
+| `hud.css:145` | 10px | `var(--sf-fs-micro)` (12px) | `html[data-theme=jarvis] table th{color:var(--warn);text-transform:uppercase;font-siz` |
+
+Then sweep the remaining 169 px declarations onto the ramp using the §4 mapping (they are not floor violations, but Law 1 requires them to be tokens): `grep -n "font-size:\s*[0-9]" src/schedule_forensics/web/static/*.css` must return **zero** raw px values when you are done, and `base.css`'s `font:11px/1.5 …` shorthand becomes `font:var(--sf-fs-base)/var(--sf-lh-body) var(--sf-font-ui)`.
+
+---
+
+## 6. Patch list B — the 40 sub-11px chart type sizes set from JavaScript
+
+These are the ones that actually make the charts look fussy. Replace each numeric size with a class on the element and let CSS carry the token.
+
+| module | count | sites |
 |---|---|---|
-| 1 | An Act-level headline sentence with numbers in it | Compose in the **template** from values the linked page already renders. Never a new payload field; if a number isn't already on screen somewhere, the Act does not claim it |
-| 2 | Reading progress (which Acts a user has seen) | Client-side `localStorage`, same as theme. No server state, no payload |
-| 3 | "What changed since the last update" in one sentence for Act 4 | The existing `/compare` view already computes the signal counts; the Act quotes them |
-| 4 | Per-Act "teach" copy (the three teaching lines) | Static template copy, reviewed by the operator — it is UI text, not data |
-| 5 | `use_case` text for tooltips where empty | `help.py` content fill + doc regeneration (§4) |
+| `cei.js` | 6 | 10px@L90, 9px@L123, 10px@L135, 10px@L146, 10px@L157, 9px@L180 |
+| `curves.js` | 2 | 10px@L295, 10px@L309 |
+| `drift.js` | 2 | 10px@L71, 10px@L83 |
+| `histogram.js` | 1 | 10px@L184 |
+| `margin.js` | 3 | 10px@L164, 10px@L169, 10px@L179 |
+| `scatter.js` | 3 | 10px@L79, 10px@L87, 10px@L95 |
+| `scurve.js` | 3 | 10px@L87, 10px@L98, 9px@L131 |
+| `sra.js` | 4 | 10px@L66, 10px@L77, 10px@L167, 10px@L188 |
+| `timeaxis.js` | 1 | 10px@L89 |
+| `trend.js` | 10 | 10px@L375, 10px@L461, 10px@L506, 9px@L579, 10px@L588, 10px@L626, 9px@L687, 10px@L697, 9px@L775, 10px@L785 |
+| `trend_drill.js` | 1 | 10px@L65 |
+| `wbs.js` | 4 | 10px@L56, 10px@L63, 10px@L71, 10px@L91 |
 
-If implementation hits a sixth gap that genuinely requires a payload change: **stop, write it here with the failing Act and the field needed, and ask** — do not re-pin a golden.
+Full occurrence census across the 37 chart modules: **9px ×6 · 10px ×34 · 11px ×19 · 12px ×4 · 16px ×3 · 18px ×1**. Note there is no size above 18px anywhere in the chart layer — every chart label in the product is between 9 and 18px today.
 
----
+Recommended class vocabulary (reuse what exists in `app.css`, add the rest in one block): `.ch-xl` / `.ch-yl` axis tick labels · `.ch-at` / `.ch-atv` axis **titles** · `.ch-ql` quartile/annotation · `.g-tick` / `.g-barlabel` bar labels · `.ch-legend` legend text. All get `font-family:var(--sf-font-mono)` and `font-size:var(--sf-fs-label)`, with `font-variant-numeric:tabular-nums` on every one that renders a number.
 
-## 6. Definition of done
-
-Same gate as PROMPT 1, plus:
-
-- [ ] The three dashboard goldens **byte-identical** (no re-pinning).
-- [ ] Every pre-existing route returns 200 with unchanged content: sweep all 133 (`docs/UI-INVENTORY.md` §1 is the list) and diff each HTML/JSON body against `main`. A new test — `tests/web/test_guided_is_additive.py` — should assert the route table's size and that no existing handler's response changed for a fixed fixture session.
-- [ ] `/guided`, `/guided/act/{1..5}` and `POST /guided/dismiss` render in all four themes, both densities, 90/100/125%.
-- [ ] With `sf-guided` unset, every landing and nav target is identical to today (screenshot diff `/`, `/mission`, `/trend`).
-- [ ] Each Act: ≤3 visuals, exactly 1 headline, ≤5 readouts, every readout tooltip renders all three beats, every claim cites `file · UID`, `SUSPECTED` flags visible, SRA caveat present in Act 5.
-- [ ] Ingest-with-errors still lands on the manifest (ADR-0255/0267), guided mode or not.
-- [ ] `docs/DESIGN-SYSTEM.md` records the Act layer; `docs/UI-INVENTORY.md` §1 lists the 6 new routes; `engine/` untouched; nothing renamed.
+While you are in these 12 modules: `docs/UI-INVENTORY.md` §2 flags that titled X/Y axes are not universal. Adding the `.ch-at` class here is the natural moment to give every one of them an axis title — but that is a **separate PR** under PROMPT 2, not this one. Do not mix it in.
 
 ---
 
-## STOP — five decisions needed before code
+## 7. Verification matrix (4 themes × 2 densities × 3 zooms)
 
-1. **Act 3 primary visual:** `drift.js` (milestone drift, simpler) or `trend.js` (the full trend engine, richer but 1,165 lines)? I recommend `drift.js` for the lean page and a link into `/trend`.
-2. **Act 4 slot 2:** `findings_drill.js` (integrity findings) or `drilldown.js` (activity-level diff)? Recommend findings — it reads as a ledger, which is the forensic register a reader can follow.
-3. **Margin in Act 2:** `margin.js` (compact) or `margin_dashboard.js` (full burn-down + erosion)? Recommend `margin.js` compact, deep-linking `/margin`.
-4. **Where guided mode lives in the nav:** its own top group above "Load", or an entry inside the existing story spine? Recommend its own group, so the twelve chapters keep their numbering untouched.
-5. **The `use_case` backlog:** do you want to review the filled sentences before they land in `help.py` (they become the tooltip "what decision it supports" text, and they end up in the generated dictionary doc)?
+Themes `console` · `daylight` · `apollo` · `jarvis` (`html[data-theme=…]`, set from the header View dropdown; `theme.js` persists `sf-theme`). Densities comfortable · compact. Browser zoom 90% · 100% · 125%.
 
-No code will be written until these are answered.
+Screenshot before/after, same window size, for at least: `/mission` · `/trend` · `/analysis/<key>` (Gantt + float histogram) · `/sra` (the 8px SSI labels live here) · `/margin`. That is 5 pages × 4 themes × 2 densities × 3 zooms = **120 captures**; the honest minimum is 5 pages × 4 themes at 100%/comfortable (20) plus `/trend` and `/sra` at all 3 zooms in both densities (12).
+
+Specific things to look at, because they are where this change can go wrong:
+- `/sra` SSI chart labels (`app.css:824`, `:832`) — 8px → 11px in a fixed-width grid; check nothing clips.
+- `/trend` — 10 of the 40 JS sites are in `trend.js`; check tick collision at 90% zoom after the rescale, and thin ticks if they now overlap (that is a **spacing** fix, never a size fix).
+- `apollo` theme forces mono + uppercase; uppercase at 11px is wider — check the nav section labels (`base.css:316`) and stack feet (`:450`).
+- `jarvis` `table th` (`hud.css:145`) at 10px → 12px, and the help-dot (`hud.css:44`).
+- Print/export: CUI bars must still fit their bar height with the larger type.
+
+---
+
+## 8. Definition of done
+
+```bash
+ruff check . && ruff format --check . && mypy
+pytest --cov=schedule_forensics --cov-report=term-missing --cov-fail-under=70
+coverage report --include='*/schedule_forensics/engine/*' --fail-under=85
+pytest -m parity -p no:cacheprovider
+bandit -q -r src && pip-audit --progress-spinner=off
+pytest tests/web/test_airgap.py tests/web/test_dashboard_perf_contract.py -q
+python -m build --wheel --outdir dist/wheel
+python tools/installer/build_installers.py dist/wheel/schedule_forensics-*.whl
+pytest tests/installer/test_installers.py -q
+```
+
+- [ ] Full suite green; ruff / ruff format / mypy (strict) / bandit / pip-audit clean.
+- [ ] The three dashboard goldens **unchanged** — `_SHA_TWO_VERSION` `d62a4f9e…58d1`, `_SHA_UNSOLVABLE` `8d7bcc38…fc16`, `_SHA_TWO_VERSION_PARITY` `51691cb7…504cb`. A styling change that moves one of these means a payload was touched — revert and find out why.
+- [ ] `grep -rn "font-size:\s*[0-9]" src/schedule_forensics/web/static/*.css` → empty; `grep -rn "font-size" src/…/static/*.js` → no numeric literals.
+- [ ] No text below 11px in any theme, density or zoom ≥100%.
+- [ ] 8 woff2 files committed under `web/static/fonts/`; `pyproject.toml` package-data includes them; wheel + 9 installers regenerated **in the same commit** (lockstep test 120 is what catches you otherwise); version bumped in `pyproject.toml`.
+- [ ] `docs/DESIGN-SYSTEM.md` §1 updated — replace "Type (vendor locally for air-gap — NOT yet done; system stacks in use)" with:
+
+> **Type (vendored locally, air-gap clean).** Barlow 400/500/600/700 · Barlow Semi Condensed 600/700 · IBM Plex Mono 400/600, all SIL OFL 1.1, shipped as unmodified woff2 under `web/static/fonts/` and declared with `@font-face` in `base.css`. Families come from `--sf-font-ui` / `--sf-font-display` / `--sf-font-mono`; sizes come from the `--sf-fs-*` ramp (`label` 11 · `micro` 12 · `sm` 13 · `base` 14 · `md` 15 · `lg` 16 · `xl` 18 · `2xl` 20 · `3xl` 24 · `4xl` 30 · `5xl` 38). **Floor is 11px everywhere, including chart labels drawn from JavaScript** — the former 8px mono-label exception is withdrawn. A raw px size in CSS or a numeric `font-size` in a chart module is a build failure.
+
+- [ ] Nothing renamed, no feature added, `engine/` untouched, no displayed number changed.

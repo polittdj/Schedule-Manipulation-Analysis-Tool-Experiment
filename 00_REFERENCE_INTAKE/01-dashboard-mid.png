@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+/* Density + containment overrides — copied verbatim from app.py _LAYOUT (ADR-0150) */
+.panel{padding:10px 14px;margin:10px 0}
+.panel h2{margin:.15em 0 .35em}
+.panel h3{margin:.5em 0 .25em}
+td,th{padding:3px 8px}
+p{margin:.4em 0}
+p.muted{margin:.3em 0}
+.brief-card,.brief-cards .panel,.dash-card,.stat-card{min-width:0}
+.brief-card{overflow-x:auto}
+.brief-card table{width:100%}
+.brief-card th{white-space:nowrap}
+.brief-card td{overflow-wrap:break-word;word-break:normal}
+.cite{overflow-wrap:break-word}
+</style>
+<link rel="stylesheet" href="src/schedule_forensics/web/static/base.css">
+<link rel="stylesheet" href="src/schedule_forensics/web/static/app.css">
+<link rel="stylesheet" href="src/schedule_forensics/web/static/hud.css">
+<script src="recreation/mock-api.js"></script>
+<script src="recreation/mock-analysis.js"></script>
+</helmet>
+<div data-screen-label="Analysis — MLC-3 IMS 2026-06">
+<div class="cui-banner cui" data-no-i18n>Controlled Unclassified Information • CUI</div>
+<details class="compliance-drawer" id="complianceDrawer">
+<summary>Handling &amp; export-control notice — click to review (CUI / ITAR / EAR)</summary>
+<div class="compliance-body">
+<h3>Controlled Unclassified Information (CUI)</h3>
+<p>Treat every loaded schedule and every derived metric on these pages as CUI unless the project
+is explicitly marked UNCLASSIFIED in AI Settings. Handle per 32 CFR Part 2002 and your
+organization's CUI program: store on approved systems only, share only with a lawful government
+purpose, and destroy per records schedules. This tool enforces the technical side — it binds
+127.0.0.1 only and no schedule content ever leaves this machine.</p>
+<h3>Export control (ITAR / EAR)</h3>
+<p>WARNING — Schedules for defense or space programs may contain technical data subject to the
+International Traffic in Arms Regulations (ITAR, 22 CFR 120–130) or the Export
+Administration Regulations (EAR, 15 CFR 730–774). Do not export, release, or disclose such
+data to foreign persons, in the U.S. or abroad, without proper authorization. Violations carry
+severe criminal and civil penalties.</p>
+<h3>Your responsibility</h3>
+<p>The markings above reflect the session's declared classification — not a review of your
+data. You remain responsible for confirming the actual sensitivity, markings, and distribution
+statements of every file you load and every report you export.</p>
+</div>
+</details>
+<header><h1 class="brand" data-no-i18n aria-label="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules" title="POLARIS — Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules">
+<svg class="brand-mark" viewBox="0 0 344 72" aria-hidden="true" focusable="false">
+<g class="brand-strokes" fill="none" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+<path d="M6 62 V10 H20 A13 13 0 0 1 20 36 H6"></path>
+<rect x="54" y="10" width="28" height="52" rx="14"></rect>
+<path d="M102 10 V62 H128"></path>
+<path d="M150 62 V28 A14 14 0 0 1 178 28 V62"></path>
+<path d="M198 62 V10 H212 A13 13 0 0 1 212 36 H198 M212 36 L226 62"></path>
+<path d="M248 10 V62"></path>
+<path d="M299 12 H285 A12 12 0 0 0 285 36 H287 A12 12 0 0 1 287 60 H273"></path>
+</g>
+<path class="brand-star" d="M328 6 Q329.5 16.5 340 18 Q329.5 19.5 328 30 Q326.5 19.5 316 18 Q326.5 16.5 328 6 Z"></path>
+</svg>
+<span class="brand-sub">Program Oversight &amp; Logic Analysis for Risk &amp; Integrity of Schedules</span>
+</h1>
+<input type="checkbox" id="navToggle" class="nav-toggle" aria-label="Toggle navigation menu">
+<label for="navToggle" class="nav-burger" title="Menu" data-no-i18n><span aria-hidden="true">☰</span></label>
+<nav>
+<span class="nav-group"><span class="nav-grp-label">Overview</span><a href="/">Dashboard</a><a href="/mission">Mission Control</a></span>
+<span class="nav-group"><span class="nav-grp-label">Assessment</span><a href="/ribbon">Quality Ribbon</a><a href="/path">Path Analysis</a><a href="/driving-path">Driving Path</a><a href="/evolution">Critical-Path Evolution</a><a href="/volatility">CP Volatility</a><a href="/performance">Performance Summary</a></span>
+<span class="nav-group"><span class="nav-grp-label">Control</span><a href="/trend">Trend</a><a href="/cei">Bow Wave / CEI</a><a href="/curves">Finish &amp; Slippage</a><a href="/scurve">S-Curve</a><a href="/forecast">Forecast</a><a href="/evm">EVM</a><a href="/resources">Resources</a></span>
+<span class="nav-group"><span class="nav-grp-label">Risks</span><a href="/risks">Risks &amp; Opportunities</a><a href="/sra">Risk Analysis</a><a href="/integrity">Schedule Integrity</a></span>
+<span class="nav-group"><span class="nav-grp-label">Reporting</span><a href="/brief">Diagnostic Brief</a><a href="/briefing">Executive Briefing</a><a href="/help">Metric Dictionary</a></span>
+<span class="nav-group"><span class="nav-grp-label">Setup</span><a href="/groups">Groups &amp; Filters</a><a href="/settings">AI Settings</a></span>
+<form action="/session/wipe" method="post" class="navform"><button type="submit" class="linkbtn">Wipe Session</button></form>
+<a href="#" onclick="return false" title="Stop the local server and exit">Quit</a>
+<form action="/target" method="post" class="navform targetform" title="Focus every view on one activity (blank = clear)" data-sf-hint="Type an activity's Unique ID and press Set: every page then treats that activity as the schedule's endpoint — metrics, paths and charts all focus on what drives IT. Blank + Set clears the focus.">
+<input type="hidden" name="next_url" value="/">
+<label>Target UID: <input name="uid" type="number" min="1" value="" placeholder="any"></label>
+<button type="submit" class="linkbtn">Set</button></form>
+<button id="themeToggle" type="button" class="linkbtn" title="Cycle theme: Light, Dark, JARVIS HUD" data-sf-hint="Cycles the look: professional Light and Dark, plus the JARVIS heads-up display with live system telemetry.">Theme</button>
+<label class="ui-scale-ctl" title="Rescale the whole page — text and layout together">Size
+<select id="uiScale" data-no-i18n>
+<option value="0.9">90%</option><option value="1" selected>100%</option><option value="1.1">110%</option>
+<option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option>
+</select></label>
+<form action="/language" method="post" class="navform langform" title="Display language for the UI and AI results">
+<label>Language: <select name="lang" data-no-i18n><option value="en" selected>English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option></select></label>
+</form>
+</nav>
+<span class="nasa-globe" data-no-i18n title="NASA"><canvas width="132" height="132" aria-hidden="true"></canvas><span class="nasa-globe-text">NASA</span></span>
+</header>
+<main>
+<div class="banner local">Local-only — no data leaves this machine.</div>
+<div class="src-banner" data-no-i18n>📄 Data on this page is computed from the 3 loaded files (oldest first): <b>MLC3_IMS_2026-04.mpp</b> → <b>MLC3_IMS_2026-05.mpp</b> → <b>MLC3_IMS_2026-06.mpp</b> — each visual/table names its own file scope, and animated visuals caption the file shown at each step.</div>
+<div class="export-bar"><a href="/export/xlsx/analysis/MLC-3%20IMS%202026-06">⬇ Excel</a><a href="/export/docx/analysis/MLC-3%20IMS%202026-06">⬇ Word</a></div>
+<div class="panel"><h2>Interactive analysis</h2>
+<div class="guide-tip" data-tip-id="user-tip"><b>User Tip:</b> Click a column header to sort, use the per-column <b>Filter</b> dropdowns to scope the rows, and drag a column edge to resize it. The data columns stay locked on the left while the Gantt timeline scrolls.</div>
+<div id="viz" data-name="MLC-3 IMS 2026-06">
+<div class="charts chart-host" id="charts"></div>
+<p class="muted" aria-label="chart color legend" style="margin:4px 0 8px">
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#2e7d32"></span> pass / on time &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#f9a825"></span> late / warning &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#c62828"></span> fail / missed &nbsp;
+<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#9e9e9e"></span> not applicable</p>
+<div class="viz-controls">Driving path to target UID:
+<input id="targetUid" type="number" min="1" placeholder="UID" value="">
+secondary≤<input id="secMax" type="number" value="10">d
+tertiary≤<input id="terMax" type="number" value="20">d
+<button id="ganttBtn" type="button">Trace</button>
+<label><input id="showDone" type="checkbox" checked> show completed tasks</label>
+<label><input id="showLinks" type="checkbox" checked> links</label>
+<label>Tier <span id="ganttTier" class="tier-filter"></span></label>
+<label>Scale <input id="vizZoom" type="range" min="0.2" max="40" step="0.05" value="8" title="pixels per day — drag to zoom both timelines (fine steps: 0.05 px/day)"></label>
+<button id="fitBtn" type="button" title="Zoom out so the entire project fits on screen">Fit project</button>
+<button id="timescaleBtn" type="button" title="Modify the timescale: tiers, units (years to hours), labels, count, alignment, fiscal year, tick lines, size and non-working-time shading (like Microsoft Project)">Timescale…</button>
+<label>Find UID <input id="gridFind" type="number" min="1" placeholder="UID" title="Jump to a UniqueID in the grid"></label>
+<span id="gridFindStatus" class="muted" aria-live="polite"></span>
+<label>Outline <select id="gridOutline" title="Show tasks up to this outline level (like MS Project)"></select></label>
+<label title="Show the start/finish dates at the ends of the Gantt bars (MS Project bar text)"><input id="gridBarDates" type="checkbox"> dates on bars</label></div>
+<div id="gantt"></div>
+<h3>Activities &amp; Gantt <span class="muted">(add/remove columns; the right-hand timeline is
+scalable — drag <b>Scale</b> to zoom (pixels/day) and scroll horizontally; red = critical,
+diamonds = milestones, thin = summaries, amber line = data date; click a row to drill into its
+metadata)</span></h3>
+<div id="fieldToggles"></div><div id="grid"></div><div id="drill" class="drill"></div>
+</div></div>
+<div class="panel"><h2>Activity scatter — float vs duration</h2>
+<p class="muted">Source: <b>MLC3_IMS_2026-06.mpp</b>. One dot per activity: <b>total float</b> (x) against <b>duration</b> (y), red = critical (progress-aware), diamonds = milestones. Long-duration, low-float activities sit at the lower-left — the schedule's pressure points a count metric never reveals. The full activity grid above is the accessible data table.</p>
+<p><b>What this data says:</b> of the <b>100</b> incomplete activities, <b>36</b> (36.0%) have zero-or-negative float (no room to slip), <b>16</b> more sit within 10 working days of it, and <b>29</b> (29.0%) carry more than 44 wd of float — float that high usually means missing logic (DCMA-06), not genuine slack. The median float is <b>9 wd</b>. The schedule's ability to absorb a slip rests on how the low-float band is managed; the table below names the biggest pressure points — the longest tasks with the least room.</p>
+<details><summary class="btn-link">Top pressure points (longest low-float work)</summary><table><tbody><tr><th scope="col">UID</th><th scope="col">Activity</th><th scope="col">Duration (wd)</th><th scope="col">Float (wd)</th><th scope="col">%</th></tr>
+<tr><td>2222</td><td>Vehicle — Integrated Vehicle Test (IVT)</td><td>8</td><td>0</td><td>0%</td></tr>
+<tr><td>2156</td><td>LCM — Acoustic Blanket Install</td><td>5</td><td>-4</td><td>0%</td></tr>
+<tr><td>2239</td><td>Vehicle — WDR Data Review &amp; Scrub Fixes</td><td>5</td><td>0</td><td>0%</td></tr>
+<tr><td>2244</td><td>Vehicle — Final Vehicle Closeouts</td><td>5</td><td>0</td><td>0%</td></tr>
+<tr><td>2247</td><td>Schedule Margin — Pad Ops</td><td>5</td><td>0</td><td>0%</td></tr>
+</tbody></table></details>
+<div class="chart-host" id="scatterChart" data-name="MLC-3 IMS 2026-06"></div></div>
+<div class="panel"><h2>Total-float distribution</h2>
+<p class="muted">Activities binned by <b>total float</b> (working days), in DCMA-aligned bands. Mass at <b>0 / &lt; 0</b> is the critical-and-behind core; a spike in the <b>&gt; 44 d</b> band is float padding or missing successor logic (DCMA-06). <b>Click a bar</b> to list that band's activities on the right; add columns with the selector and export the selection to Excel.</p>
+<div class="hist-split">
+<div class="chart-host hist-left" id="floatHist" data-name="MLC-3 IMS 2026-06"></div>
+<div class="hist-right" id="floatHistDrill"><p class="muted">Click a histogram bar to see the activities in that float band here.</p></div>
+</div></div>
+<div class="panel"><h2>Working calendar</h2>
+<p class="muted">The time basis behind every computed date, float, and day-denominated
+threshold — imported from the file's project calendar (the standard 8h/Mon-Fri default
+when the file carries none).</p>
+<table><tbody>
+<tr><th scope="col">Calendar</th><td>MLC Standard 5x8</td></tr>
+<tr><th scope="col">Working day</th><td>8 h/day (480 min)</td></tr>
+<tr><th scope="col">Work week</th><td>Monday, Tuesday, Wednesday, Thursday, Friday</td></tr>
+<tr><th scope="col">Holidays</th><td>5 — 07/03/2026, 09/07/2026, 11/26/2026, 11/27/2026, 12/25/2026</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Float analysis — low-float bands</h2>
+<p class="muted">Of the 100 incomplete activities, how many are running out of room: at 0 days
+of float (critical or negative), under 5, and under 10 working days — cumulative bands on
+this schedule's calendar. A swelling low-float band is the early warning that the schedule is
+losing its ability to absorb slips.</p>
+<table><tbody><tr><th scope="col"></th><th scope="col">0 days</th><th scope="col">&lt; 5 days</th><th scope="col">&lt; 10 days</th></tr>
+<tr><th scope="col" class="metric-th"><span class="dcma-metric mhelp" tabindex="0" role="button" title="Total float — the working days an activity can slip before it delays the project finish.">Total float <span class="dcma-info" aria-hidden="true">ⓘ</span></span></th><td>36 <span class="muted">(36%)</span></td><td>41 <span class="muted">(41%)</span></td><td>52 <span class="muted">(52%)</span></td></tr>
+<tr><th scope="col" class="metric-th"><span class="dcma-metric mhelp" tabindex="0" role="button" title="Free float — the working days an activity can slip before it delays its immediate successor.">Free float <span class="dcma-info" aria-hidden="true">ⓘ</span></span></th><td>43 <span class="muted">(43%)</span></td><td>74 <span class="muted">(74%)</span></td><td>89 <span class="muted">(89%)</span></td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Completion performance</h2>
+<p class="muted">How the completed work actually performed against its baseline: the
+ahead / on-schedule / behind split, the days gained and lost, and actual-vs-baseline
+durations. Day variances are calendar days.</p>
+<table><tbody>
+<tr><th scope="col" class="metric-th">Completed ahead of baseline</th><td>16 of 150 (10.7%)</td></tr>
+<tr><th scope="col" class="metric-th">Completed on schedule</th><td>98 of 150 (65.3%)</td></tr>
+<tr><th scope="col" class="metric-th">Completed behind baseline</th><td>36 of 150 (24%)</td></tr>
+<tr><th scope="col" class="metric-th">Average days ahead (early finishers)</th><td>2 days (over 16)</td></tr>
+<tr><th scope="col" class="metric-th">Average days late (late finishers)</th><td>6.8 days (over 36)</td></tr>
+<tr><th scope="col" class="metric-th">Average completion variance (+ = late)</th><td>1.4 days (over 150)</td></tr>
+<tr><th scope="col" class="metric-th">Activities longer than planned</th><td>22 of 150 (14.7%)</td></tr>
+<tr><th scope="col" class="metric-th">Activities shorter than baseline</th><td>9 of 150 (6%)</td></tr>
+<tr><th scope="col" class="metric-th">Duration ratio (actual / baseline) — min</th><td>0.8</td></tr>
+<tr><th scope="col" class="metric-th">Duration ratio — average</th><td>1.12</td></tr>
+<tr><th scope="col" class="metric-th">Duration ratio — max</th><td>1.9</td></tr>
+<tr><th scope="col" class="metric-th">MEI (milestones finished / milestones due)</th><td>1</td></tr>
+<tr><th scope="col" class="metric-th">EPI (execution events recorded / events expected)</th><td>0.91</td></tr>
+<tr><th scope="col" class="metric-th">Start-to-Finish Ratio (scheduled pairs / actual pairs)</th><td>1.04</td></tr>
+<tr><th scope="col" class="metric-th">Schedule elapsed since latest actual finish</th><td>3 days (over 3)</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Structural health checks</h2>
+<p class="muted">Deterministic schedule-construction checks from the NASA Schedule Management Handbook (Fig. 6-9), beyond DCMA-14 — green = clear, otherwise the count and the first offending activities (the activity grid above is the full record).</p>
+<div class="finding sev-MEDIUM"><div class="finding-head"><span class="rk-score rk-high">3</span> <b>Critical merge hotspots</b></div><p>Critical activities with more than two predecessors — a delay in any feeder hits the critical path; a fragile convergence point.</p><p class="cite">UID 2220, UID 2226, UID 9001</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Critical diverge hotspots</b></div><p>Critical activities driving more than two successors — a slip here fans out across many downstream paths.</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Level-of-effort on the critical path</b></div><p>Level-of-effort (support) tasks should never be on the critical path — the handbook says the critical path cannot include LOE; their presence signals broken logic.</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Milestones with duration</b></div><p>Milestones are zero-duration events; a milestone carrying duration is mis-typed and distorts counts and logic.</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Zero-duration tasks (non-milestone)</b></div><p>Non-milestone activities with zero duration are usually mis-typed milestones or placeholders and should be reviewed.</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Hidden duration (lag &gt; 35% of duration)</b></div><p>A predecessor lag longer than 35% of the activity's duration hides real work inside a relationship, where it escapes status and risk — model it as an activity instead.</p></div>
+<div class="finding sev-MEDIUM"><div class="finding-head"><span class="rk-score rk-high">4</span> <b>Estimated (placeholder) durations</b></div><p>Activities whose duration is still flagged 'Estimated' in MS Project are placeholders the planner has not firmed up — an under-developed estimate that should be replaced with a basis-backed duration before the schedule is relied upon.</p><p class="cite">UID 2262, UID 2263, UID 2264, UID 2266</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Missing WBS</b></div><p>Activities with no WBS code drop out of WBS rollups and traceability — every activity should map to the work-breakdown structure.</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Missing baseline finish</b></div><p>Without a baseline finish an activity can't be measured for execution (BEI, variance) — the schedule is not fully baselined.</p></div>
+</div>
+<div class="panel"><h2>Logic integrity</h2>
+<p class="muted">Forensic logic-construction checks from the NASA Schedule Management Handbook (Fig. 6-9), beyond DCMA-14 — <b>out-of-sequence</b> progress (work recorded in an order the logic forbids) and <b>redundant logic</b> (a direct link a longer path already implies). Green = clear, otherwise the count and the first offending links (written predecessor→successor by UniqueID).</p>
+<div class="finding sev-MEDIUM"><div class="finding-head"><span class="rk-score rk-high">2</span> <b>Out-of-sequence logic (FS)</b><span class="muted"> of 186 link(s)</span></div><p>Finish-to-start successors that recorded progress before their predecessor finished (the successor's actual start precedes the predecessor's actual finish, or the predecessor has no recorded finish while the successor has already started) — work done in an order the logic forbids, a status-override / broken-logic signature.</p><p class="cite">2140→2141, 2172→2173</p></div>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Redundant logic links</b><span class="muted"> of 186 link(s)</span></div><p>Direct links made superfluous because a longer path between the same two activities already exists, so the link constrains nothing the network did not already imply. Redundant logic clutters the model and masks the true driving path (Handbook Fig. 6-9).</p></div>
+</div>
+<div class="panel"><h2>Constraint health</h2>
+<p class="muted">How imposed dates fare against the network logic (NASA Schedule Management Handbook, Fig. 6-9): a <b>hard constraint</b> the CPM date runs past cannot be honored, and a <b>deadline</b> the logic finish overruns is artificial negative float. Green = clear, otherwise the count and the first offending activities.</p>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Unsatisfied date constraints</b><span class="muted"> of 1</span></div><p>Hard-constrained activities whose imposed no-later-than / must date the logic already runs past (the CPM early date exceeds the constraint date) — the date cannot be honored without negative float. Resolve the logic or relax the date.</p></div>
+<div class="finding sev-MEDIUM"><div class="finding-head"><span class="rk-score rk-high">1</span> <b>Deadlines breached (negative float)</b><span class="muted"> of 1</span></div><p>Activities whose logic finish runs past a set deadline (early finish &gt; deadline) — the artificial negative float a deadline imposes, signalling the plan can't meet a committed date on the current logic.</p><p class="cite">UID 1107</p></div>
+</div>
+<div class="panel"><h2>Vertical integration</h2>
+<p class="muted">Whether each summary (rollup) bar envelopes the detail activities beneath it (by WBS nesting), using the schedule's stored dates — the handbook's vertical-traceability check. A parent that starts after its earliest child or finishes before its latest is an inconsistent rollup.</p>
+<div class="finding sev-INFO"><div class="finding-head"><span class="rk-score rk-min">✓ clear</span> <b>Inconsistent vertical integration</b><span class="muted"> of 38 summary group(s)</span></div><p>Every summary's stored span envelopes the stored dates of the work beneath it.</p></div>
+</div>
+<div class="panel"><h2>Schedule variance (time)</h2>
+<p class="muted">The NASA Schedule Management Handbook (§7.3.3.1) time view of progress. <b>SVt = ES − AT</b> (Earned Schedule minus Actual Time): positive is <b>ahead</b> of plan (favorable), negative is <b>behind</b> (unfavorable) — the count-based Earned-Schedule companion to SPI(t). Per-activity <b>finish</b> variance is a completed activity's actual finish minus its baseline finish; <b>start</b> variance is a started activity's actual start minus its baseline start (in working days, positive = late) — the latter surfaces in-progress slippage before tasks complete.</p>
+<div class="stat-grid">
+<div class="stat-card"><div class="stat-value">-9.4 wd (behind)</div><div class="stat-label">Schedule variance (SVt = ES - AT)</div></div>
+<div class="stat-card"><div class="stat-value">98.6 wd</div><div class="stat-label">Earned Schedule (ES)</div></div>
+<div class="stat-card"><div class="stat-value">108 wd</div><div class="stat-label">Actual Time (AT)</div></div>
+<div class="stat-card"><div class="stat-value">150</div><div class="stat-label">Completed (finish variance)</div></div>
+<div class="stat-card"><div class="stat-value">+1.4 wd</div><div class="stat-label">Mean finish variance</div></div>
+<div class="stat-card"><div class="stat-value">156</div><div class="stat-label">Started (start variance)</div></div>
+<div class="stat-card"><div class="stat-value">+1.1 wd</div><div class="stat-label">Mean start variance</div></div>
+</div>
+<h3>Largest finish variances (actual − baseline)</h3>
+<table><tbody><tr><th scope="col">UID</th><th scope="col">Activity</th><th scope="col">Finish variance (wd)</th></tr>
+<tr><td>2093</td><td>Stage 2 — Avionics Functional Test</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2094</td><td>Stage 2 — Functional Test Data Review</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2091</td><td>Stage 2 — Flight Computer Swap (FCA-2)</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2092</td><td>Stage 2 — Harness Continuity Check</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2130</td><td>LCM — End-to-End Comms Test</td><td class="rk-score rk-high">+6</td></tr>
+</tbody></table>
+<h3>Largest start variances (actual − baseline)</h3>
+<table><tbody><tr><th scope="col">UID</th><th scope="col">Activity</th><th scope="col">Start variance (wd)</th></tr>
+<tr><td>2090</td><td>Stage 2 — Avionics Bay Access</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2091</td><td>Stage 2 — Flight Computer Swap (FCA-2)</td><td class="rk-score rk-high">+12</td></tr>
+<tr><td>2128</td><td>LCM — Solar Array Deployment Test</td><td class="rk-score rk-high">+6</td></tr>
+<tr><td>2129</td><td>LCM — Battery Conditioning</td><td class="rk-score rk-high">+6</td></tr>
+<tr><td>2181</td><td>Water Deluge — System Refurbishment</td><td class="rk-score rk-high">+4</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Float erosion by WBS</h2>
+<form method="get" class="viz-controls" style="margin:.3em 0"><label>Group by field: <select name="erosion_field" data-no-i18n><option value="WBS" selected>WBS</option><option value="CA-WBS">CA-WBS</option></select></label> <span class="muted">use a custom field (e.g. an outline code) if your WBS lives there</span></form>
+<p class="muted">Grouping field: <b>WBS</b> (top-level dotted segment). Total float grouped by top-level WBS (NASA Schedule Management Handbook) — where buffer is thinning before the project-level margin is hit. The stoplight is on each group's <b>minimum</b> total float: <b>red</b> below 0 (eroded / behind a constraint), <b>amber</b> 0–10 working days (thin buffer), <b>green</b> above 10. Float is read progress-aware (the source tool's stored Total Slack when present).</p>
+<div class="stat-grid">
+<div class="stat-card"><div class="stat-value">-4 wd</div><div class="stat-label">Lowest total float (any WBS)</div></div>
+<div class="stat-card"><div class="stat-value">7</div><div class="stat-label">WBS groups</div></div>
+<div class="stat-card"><div class="stat-value">1</div><div class="stat-label">Eroded groups (min float &lt; 0)</div></div>
+</div>
+<table><tbody><tr><th scope="col">WBS</th><th scope="col">Activities</th><th scope="col">Min float (wd)</th><th scope="col">Avg float (wd)</th><th scope="col">Critical</th></tr>
+<tr><td>1</td><td>5</td><td class="rk-score rk-mod">0</td><td>0</td><td>5</td></tr>
+<tr><td>4</td><td>1</td><td class="rk-score rk-mod">7</td><td>7</td><td>0</td></tr>
+<tr><td>5</td><td>17</td><td class="rk-score rk-extreme">-4</td><td>2.2</td><td>10</td></tr>
+<tr><td>6</td><td>32</td><td class="rk-score rk-min">18</td><td>50.5</td><td>0</td></tr>
+<tr><td>7</td><td>19</td><td class="rk-score rk-mod">0</td><td>3.3</td><td>10</td></tr>
+<tr><td>8</td><td>11</td><td class="rk-score rk-mod">0</td><td>0</td><td>11</td></tr>
+<tr><td>9</td><td>15</td><td class="rk-score rk-mod">4</td><td>19.9</td><td>0</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Schedule margin</h2>
+<p class="muted">Explicit buffer activities that protect the project finish (NASA Schedule Management Handbook). <b>Total margin</b> is the sum of the margin activities' durations; <b>effective margin</b> is how far the finish would pull in if all margin were removed — the buffer actually protecting the finish (margin sitting on a path with slack protects nothing and counts toward total but not effective).</p>
+<div class="stat-grid">
+<div class="stat-card"><div class="stat-value">5 wd</div><div class="stat-label">Total margin</div></div>
+<div class="stat-card"><div class="stat-value">5 wd</div><div class="stat-label">Effective margin</div></div>
+<div class="stat-card"><div class="stat-value">1 of 1 on the critical path</div><div class="stat-label">Margin activities</div></div>
+</div>
+<table><tbody><tr><th scope="col">UID</th><th scope="col">Name</th><th scope="col">Days</th><th scope="col">On critical path?</th></tr>
+<tr><td>2247</td><td>Schedule Margin — Pad Ops</td><td>5</td><td class="rk-score rk-high">Yes</td></tr>
+</tbody></table>
+<p class="muted">Margin tasks are identified by the operator convention: a non-summary activity whose name contains the word "margin" (case-insensitive).</p></div>
+<div class="panel"><h2>MLC-3 IMS 2026-06 — DCMA-14 audit</h2>
+<p class="muted">10 passed · 6 failed · 0 N/A.
+Each row shows the <b>count</b> and the <b>percentage</b> of its population,
+not just a pass/fail colour. <b>Hover or focus a check name</b> for its definition, pass/fail
+criteria, why it matters, and what it indicates; full formulas + citations are in the
+<a href="/help">Metric Dictionary</a>.</p>
+<div class="stoplight-board" role="list" aria-label="DCMA-14 stoplight"><span class="sl-chip sl-fail" title="Logic: 14% vs threshold (≤ 5%) — FAIL"><span class="sl-name">Logic</span> <b>14%</b></span><span class="sl-chip sl-pass" title="Leads: 0% vs threshold (≤ 0%) — PASS"><span class="sl-name">Leads</span> <b>0%</b></span><span class="sl-chip sl-pass" title="Lags: 0% vs threshold (≤ 5%) — PASS"><span class="sl-name">Lags</span> <b>0%</b></span><span class="sl-chip sl-pass" title="FS Relationships: 100% vs threshold (≤ 90%) — PASS"><span class="sl-name">FS Relationships</span> <b>100%</b></span><span class="sl-chip sl-pass" title="SS/FF Relationships: 0% vs threshold n/a — PASS"><span class="sl-name">SS/FF Relationships</span> <b>0%</b></span><span class="sl-chip sl-pass" title="SF Relationships: 0% vs threshold n/a — PASS"><span class="sl-name">SF Relationships</span> <b>0%</b></span><span class="sl-chip sl-pass" title="Hard Constraints: 0.4% vs threshold (≤ 5%) — PASS"><span class="sl-name">Hard Constraints</span> <b>0.4%</b></span><span class="sl-chip sl-fail" title="High Float: 29% vs threshold (≤ 5%) — FAIL"><span class="sl-name">High Float</span> <b>29%</b></span><span class="sl-chip sl-fail" title="Negative Float: 5% vs threshold (≤ 0%) — FAIL"><span class="sl-name">Negative Float</span> <b>5%</b></span><span class="sl-chip sl-pass" title="High Duration: 0% vs threshold (≤ 5%) — PASS"><span class="sl-name">High Duration</span> <b>0%</b></span><span class="sl-chip sl-pass" title="Invalid Dates: 0% vs threshold (≤ 0%) — PASS"><span class="sl-name">Invalid Dates</span> <b>0%</b></span><span class="sl-chip sl-pass" title="Resources: 0% vs threshold (≤ 5%) — PASS"><span class="sl-name">Resources</span> <b>0%</b></span><span class="sl-chip sl-fail" title="Missed Activities: 13.7% vs threshold (≤ 5%) — FAIL"><span class="sl-name">Missed Activities</span> <b>13.7%</b></span><span class="sl-chip sl-pass" title="Critical Path Test: 1 vs threshold n/a — PASS"><span class="sl-name">Critical Path Test</span> <b>1</b></span><span class="sl-chip sl-fail" title="CPLI: 0.91ratio vs threshold (≤ 0.95ratio) — FAIL"><span class="sl-name">CPLI</span> <b>0.91ratio</b></span><span class="sl-chip sl-fail" title="BEI: 0.87ratio vs threshold (≤ 0.95ratio) — FAIL"><span class="sl-name">BEI</span> <b>0.87ratio</b></span></div><div class="sl-legend"><span class="sl-key sl-pass">pass</span><span class="sl-key sl-fail">fail</span><span class="sl-key sl-na">n/a</span></div>
+<table><tbody><tr><th scope="col">Check</th><th scope="col">Status</th><th scope="col">Count</th><th scope="col">% of tasks</th>
+<th scope="col">What it measures (how)</th>
+<th scope="col">Suggested improvement</th></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Incomplete activities missing a predecessor and/or successor. Threshold: No more than 5% of incomplete activities may be missing a predecessor or a successor.">DCMA 01 — Logic <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num">14 <span class="muted">of 100</span></td><td class="num">14.0%</td><td class="dcma-def">Incomplete activities missing a predecessor and/or successor. <span class="muted">How: count(incomplete without pred or succ) / incomplete &lt;= 5%</span></td><td class="muted">Add the missing predecessor/successor logic so every incomplete activity is driven by and drives the network (no danglers).</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Relationships with a negative lag (a lead). Threshold: Zero relationships may carry a negative lag (a lead).">DCMA 02 — Leads <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 186</span></td><td class="num">0.0%</td><td class="dcma-def">Relationships with a negative lag (a lead). Counted as DISTINCT incomplete-successor activities (the Fuse-validated activity scope), not raw relationships: a task with two lead predecessors is ONE offender (QC audit D22). <span class="muted">How: count(distinct incomplete successors of lag &lt; 0 links) == 0</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Relationships with a positive lag into an incomplete successor. Threshold: No more than 5% of relationships may carry a positive lag.">DCMA 03 — Lags <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 186</span></td><td class="num">0.0%</td><td class="dcma-def">Relationships with a positive lag into an incomplete successor. Counted as DISTINCT incomplete-successor activities over a total-links denominator (the Fuse-validated scope): a task with two lagged predecessors is ONE offender (QC audit D22). <span class="muted">How: count(distinct incomplete successors of lag &gt; 0 links) / links &lt;= 5%</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Share of relationships that are Finish-to-Start. Threshold: At least 90% of relationships must be Finish-to-Start.">DCMA 04 FS — FS Relationships <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">186 <span class="muted">of 186</span></td><td class="num">100.0%</td><td class="dcma-def">Share of relationships that are Finish-to-Start. <span class="muted">How: count(FS) / links &gt;= 90%</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Start-Start / Finish-Finish links into incomplete work. Threshold: Informational.">DCMA 04 SSFF — SS/FF Relationships <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 186</span></td><td class="num">0.0%</td><td class="dcma-def">Start-Start / Finish-Finish links into incomplete work. <span class="muted">How: count(SS|FF into incomplete)</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Start-to-Finish relationships (discouraged). Threshold: Zero Start-to-Finish relationships (they are almost never correct).">DCMA 04 SF — SF Relationships <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 186</span></td><td class="num">0.0%</td><td class="dcma-def">Start-to-Finish relationships (discouraged). <span class="muted">How: count(SF into incomplete)</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Activities with a hard/mandatory constraint (MSO/MFO/SNLT/FNLT). Threshold: No more than 5% of activities may carry a hard constraint.">DCMA 05 — Hard Constraints <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">1 <span class="muted">of 250</span></td><td class="num">0.4%</td><td class="dcma-def">Activities with a hard/mandatory constraint (MSO/MFO/SNLT/FNLT). <span class="muted">How: count(hard constraint) / activities &lt;= 5%</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Incomplete activities with total float &gt; 44 working days. Threshold: No more than 5% of incomplete activities may have total float over 44 working days.">DCMA 06 — High Float <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num">29 <span class="muted">of 100</span></td><td class="num">29.0%</td><td class="dcma-def">Incomplete activities with total float &gt; 44 working days. <span class="muted">How: count(total_float &gt; 44d) / incomplete &lt;= 5%</span></td><td class="muted">Investigate activities with &gt; 44 working days of total float — usually missing successor logic; tie them back into the network.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Incomplete activities with total float &lt; 0. Threshold: Zero incomplete activities may have negative total float.">DCMA 07 — Negative Float <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num">5 <span class="muted">of 100</span></td><td class="num">5.0%</td><td class="dcma-def">Incomplete activities with total float &lt; 0. <span class="muted">How: count(total_float &lt; 0) == 0</span></td><td class="muted">Resolve negative float by recovering logic, durations, or the imposed finish; negative float means the plan is already behind its constraint.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Incomplete activities with baseline duration &gt; 44 working days. Threshold: No more than 5%.">DCMA 08 — High Duration <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 100</span></td><td class="num">0.0%</td><td class="dcma-def">Incomplete activities with baseline duration &gt; 44 working days. <span class="muted">How: count(baseline_dur &gt; 44d) / incomplete &lt;= 5%</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Actuals after the status date, or a stored forecast date already in the past without the matching actual. Threshold: zero.">DCMA 09 — Invalid Dates <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 250</span></td><td class="num">0.0%</td><td class="dcma-def">Actuals after the status date, or a stored forecast (early) date already in the past without the matching actual — the Bible's Invalid Forecast Dates conditions, scored on the file's OWN stored start/finish dates (Acumen basis, ADR-0176). <span class="muted">How: ((EarlyStart&lt;Now)*(ActualStart="")) + ((EarlyFinish&lt;Now)*(ActualFinish="")) + actuals after Now == 0</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Incomplete, real-duration activities with no resource assigned. Threshold: No more than 5%.">DCMA 10 — Resources <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num">0 <span class="muted">of 94</span></td><td class="num">0.0%</td><td class="dcma-def">Incomplete, real-duration activities with no resource assigned. <span class="muted">How: count(no resource) / incomplete-with-duration &lt;= 5%</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Baselined-due-by-status activities not finished on time. Threshold: No more than 5% of activities baselined to finish by the data date may still be unfinished.">DCMA 11 — Missed Activities <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num">21 <span class="muted">of 153</span></td><td class="num">13.7%</td><td class="dcma-def">Baselined-due-by-status activities not finished on time. <span class="muted">How: count(due not finished on time) / due &lt;= 5%</span></td><td class="muted">Address missed activities: re-plan or recover the work baselined to finish by the data date that has not completed.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="A delay on a critical activity must flow to the project finish. Threshold: the finish must move by the injected delay.">DCMA 12 — Critical Path Test <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="pass">PASS</td><td class="num"><span class="muted">—</span></td><td class="num"><span class="muted">—</span></td><td class="dcma-def">A delay on a critical activity must flow to the project finish. <span class="muted">How: inject delay on critical task -&gt; finish moves by the delay</span></td><td class="muted">Within the DCMA tolerance — no action required.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Critical Path Length Index. Threshold: at least 0.95.">DCMA 13 — CPLI <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num"><span class="muted">—</span></td><td class="num">0.91</td><td class="dcma-def">Critical Path Length Index. <span class="muted">How: (remaining crit-path length + project total float) / remaining crit-path length &gt;= 0.95</span></td><td class="muted">Improve the Critical Path Length Index toward &gt;= 0.95 by recovering the controlling path's negative float.</td></tr>
+<tr><td class="dcma-cell"><span class="dcma-metric" tabindex="0" role="button" title="Baseline Execution Index. Threshold: at least 0.95.">DCMA 14 — BEI <span class="dcma-info" aria-hidden="true">ⓘ</span></span></td><td class="fail">FAIL</td><td class="num"><span class="muted">—</span></td><td class="num">0.87</td><td class="dcma-def">Baseline Execution Index (BEI - Value Tasks; Normal activities only). Cumulative: BOTH terms score the same baselined-due population (ADR-0176). <span class="muted">How: complete among baselined-due / Normal tasks baselined-to-finish-by-status &gt;= 0.95</span></td><td class="muted">Raise the Baseline Execution Index toward &gt;= 0.95 by completing the work baselined to finish by the data date.</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>Risks, opportunities &amp; concerns</h2>
+<table><tbody><tr><th scope="col">Severity</th><th scope="col">Type</th><th scope="col">Finding</th><th scope="col">Course of action</th><th scope="col">Citations</th></tr>
+<tr><td class="sev-HIGH">HIGH</td><td>Risk</td><td>Negative float on the fairing-encapsulation chain (−4 wd)</td><td class="muted">Resequence the acoustic-blanket install parallel to fairing-half prep, or add a second shift to the encapsulation crew; confirm the pad-ops margin task still protects the launch window after recovery.</td><td class="cite">LCM — Payload Fairing Encapsulation (UID 2158, MLC3_IMS_2026-06.mpp); LCM — Acoustic Blanket Install (UID 2156, MLC3_IMS_2026-06.mpp)</td></tr>
+<tr><td class="sev-HIGH">HIGH</td><td>Risk</td><td>BEI 0.87 — throughput below the 0.95 execution bar</td><td class="muted">Force-rank the 21 missed baselined-due activities and clear the avionics retest backlog before the Integration Readiness Review; re-check BEI at the next data date.</td><td class="cite">Stage 2 — Avionics Functional Test (UID 2093, MLC3_IMS_2026-06.mpp)</td></tr>
+<tr><td class="sev-MEDIUM">MEDIUM</td><td>Concern</td><td>29 incomplete activities carry &gt; 44 wd of float (possible missing successors)</td><td class="muted">Tie the ground-systems refurbishment chains into their pad-need dates (rollout, WDR) so their true float — and risk — is visible.</td><td class="cite">Recovery — Recovery Vessel Refit (UID 2266, MLC3_IMS_2026-06.mpp)</td></tr>
+<tr><td class="sev-MEDIUM">MEDIUM</td><td>Concern</td><td>21 baselined-due activities not finished by the data date (DCMA-11 13.7%)</td><td class="muted">Re-plan the missed work with the responsible IPTs; if the baseline is no longer executable, process a baseline change request rather than letting variances accumulate.</td><td class="cite">Stage 2 — Flight Computer Swap (FCA-2) (UID 2091, MLC3_IMS_2026-06.mpp)</td></tr>
+<tr><td class="sev-LOW">LOW</td><td>Opportunity</td><td>Mobile Launcher refurb float (30 wd) could absorb a payload-chain resequence</td><td class="muted">If encapsulation slips further, resequence ML umbilical retest ahead of need and free Integration Crew B for the payload chain.</td><td class="cite">ML-2 — Swing Arm Actuator Refurb (UID 2192, MLC3_IMS_2026-06.mpp)</td></tr>
+</tbody></table></div>
+<div class="panel"><h2>AI narrative (local, cited)</h2>
+<ul class="story" data-ai-endpoint="/api/ai/narrative?key=MLC-3%20IMS%202026-06">
+<li>MLC3_IMS_2026-06.mpp contains 250 activities (38 summary rollups excluded), statused to a data date of 06/05/2026 with 150 complete and 100 to go. [MLC-3 Flight Campaign (UID 1000, MLC3_IMS_2026-06.mpp)]</li>
+<li>The computed finish is 12/21/2026 — 33 calendar days later than the 11/18/2026 finish computed from IMS 2026-04. [MLC-3 Launch (UID 9001, MLC3_IMS_2026-06.mpp)]</li>
+<li>The controlling path runs through Lunar Cargo Module servicing and fairing encapsulation into vehicle stacking, integrated test, wet dress rehearsal and the launch-readiness reviews. [Vehicle — Integrated Vehicle Test (IVT) (UID 2222, MLC3_IMS_2026-06.mpp)]</li>
+<li>Five activities on the fairing-encapsulation chain carry −4 working days of total float: the chain is already behind the launch window without recovery. [LCM — Payload Fairing Encapsulation (UID 2158, MLC3_IMS_2026-06.mpp)]</li>
+<li>Six of the 16 DCMA-14 checks fail: Logic (14%), High Float (29%), Negative Float (5%), Missed Activities (13.7%), CPLI (0.91) and BEI (0.87). [MLC-3 Flight Campaign (UID 1000, MLC3_IMS_2026-06.mpp)]</li>
+<li>Baseline throughput is the leading indicator: BEI 0.87 means work is completing 13% slower than baselined, concentrated in the Stage 2 avionics retest chain (+12 wd finish variance). [Stage 2 — Avionics Functional Test (UID 2093, MLC3_IMS_2026-06.mpp)]</li>
+<li>A single 5-working-day margin activity protects the launch window and it sits on the critical path — the program is spending its last buffer. [Schedule Margin — Pad Ops (UID 2247, MLC3_IMS_2026-06.mpp)]</li>
+</ul></div>
+<div class="panel" id="askPanel"><h2>Ask the AI</h2>
+<p class="muted"><b>AI can err — verify against citations.</b> Ask anything about the loaded
+data: with a local model active (Ollama) you get a full written analysis grounded in the
+engine's computed, cited facts — the matching facts are always shown alongside. With no
+local model active you get the cited facts themselves; <a href="/settings">enable Ollama in AI
+Settings</a> for interpretation.</p>
+<p class="muted"><b>Figure check is role-aware.</b> In <i>strict</i> and <i>annotate</i> modes a number
+the model writes is matched against the figures in the cited facts, and a digit that appears only in
+an activity <i>name</i> or <i>ID</i> (e.g. "Milestone 2099", UID&nbsp;6077) — never as an engine
+value — is treated as an identifier the model has re-used in another role (a finish year, a
+count): <i>strict</i> discards that answer and <i>annotate</i> flags it — and the identifier
+check runs <i>before</i> the derived-figure check, so a re-used ID can never pass as a coincidental
+derivation. Writing an ID <i>as</i> an ID ("UID&nbsp;143", a quoted activity name) is fine; dates
+count as whole dates, not digit fragments; a derived whole number must reconstruct exactly; and a
+figure re-written with a <i>different explicit unit</i> than the engine stated (a "5%" re-used as
+"5&nbsp;days") is likewise discarded/flagged. A digit
+that is also a genuine value is untouched (collision-safe). <i>Interpretive</i> mode is not
+figure-gated at all. Read any figure against the cited facts — the meaning, not just the
+number.</p>
+<div class="viz-controls">
+<label>About <select id="askScope"><option value="">Workbook — all 3 versions</option><option value="MLC-3 IMS 2026-04">MLC-3 IMS 2026-04</option><option value="MLC-3 IMS 2026-05">MLC-3 IMS 2026-05</option><option value="MLC-3 IMS 2026-06" selected>MLC-3 IMS 2026-06</option></select></label>
+<input id="askInput" type="text" size="60" maxlength="500" placeholder="e.g. Why is the finish slipping? How many critical activities?">
+<button id="askBtn" type="button">Ask</button></div>
+<div class="viz-controls"><span class="muted">Driving path (exact, no AI):</span>
+<label>to UID <input id="drivePathUid" type="number" min="1" step="1" style="width:7em" placeholder="UID"></label>
+<button id="drivePathBtn" type="button">Show driving path</button></div>
+<div id="askOut"></div></div>
+</main>
+<div class="cui-banner cui bottom" data-no-i18n>Controlled Unclassified Information • CUI</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    window.SF_PAGE_MAP = Object.assign(window.SF_PAGE_MAP || {}, {
+      "/": "Recreation — Dashboard.dc.html",
+      "/analysis/MLC-3%20IMS%202026-06": "Recreation — Analysis.dc.html",
+      "/analysis/MLC-3%20IMS%202026-05": "Recreation — Analysis.dc.html",
+      "/analysis/MLC-3%20IMS%202026-04": "Recreation — Analysis.dc.html",
+    });
+    var probe = new URLSearchParams(location.search).get("boot");
+    var scripts = [
+      "theme.js", "checklist.js", "gantt.js", "timescale.js", "colresize.js", "a11y.js",
+      "translate.js", "app.js", "scatter.js", "histogram.js", "ai_polish.js", "ask.js",
+      "heartbeat.js", "chartframe.js", "target.js", "globe.js", "sysmon.js", "hints.js",
+      "vizhints.js",
+    ];
+    if (probe) scripts = scripts.slice(0, Number(probe));
+    console.log("SFBoot starting", scripts.length, "scripts");
+    window.SFBoot(scripts, function () { console.log("SFBoot done"); });
+  }
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
