@@ -8371,3 +8371,7 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   pipe an artefact-WRITING command into `head`/`grep -m`; redirect to a file and summarise after.
   A half-finished artefact set is worse than none because it looks complete.** This is the exact
   ADR-0148 incident the lockstep test exists for.
+- **CLOSED: #456 merged** (`c9cbe4a`), all five checks green. Windows + linux both passed against
+  the regenerated nine installers — the independent confirmation that the v1.0.107 rebuild is
+  internally consistent, which matters because the first regeneration attempt was interrupted
+  mid-write and left tier3.ps1 a version behind.
