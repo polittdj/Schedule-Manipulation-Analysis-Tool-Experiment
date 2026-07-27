@@ -435,6 +435,52 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27c — "is this an issue?" was the highest-value question of the week; and a fix that would have opened a destructive edge
+- **The operator asked whether an installer warning mattered, and the honest answer was "not the way
+  you fear, but yes — worse than you think."** They saw `native .mpp import stays OFF` on a machine
+  where `.mpp` import was demonstrably ON. My first instinct was to reassure ("benign on the upgrade
+  path — the else branch only warns"), and that was true but incomplete. **LESSON: "harmless" and
+  "correct" are different findings. An installer that misreports the capability of the tool it just
+  installed is a correctness defect on a testimony tool, even when nothing is broken. Finish the
+  question before closing it — the reassuring half of an answer is where defects hide.**
+- **I executed the shipped code instead of reading it.** Rather than reasoning about the PowerShell,
+  I lifted the `# --- 3b.` block verbatim out of the *generated* `install-tier2.sh`, stubbed the
+  three names it borrows, and ran it under the installer's own `set -euo pipefail` against four
+  machine layouts. The bug appeared as a table row where the printed sentence and the filesystem
+  disagreed. **LESSON (reinforces ADR-0289): shell and installer logic is as testable as Python —
+  extract the real section from the ARTIFACT THAT SHIPS, stub the ambient names, and run it. A
+  source-pin test (`assert "…" in template`) would never have found this, and indeed the existing
+  pin asserted the *wrong sentence* was present and passed for months.**
+- **The right assertion was an invariant, not a string.** The test I drafted does not check that a
+  message appears; it checks that *whatever the installer claims about native `.mpp`, the filesystem
+  agrees* — looked up exactly where the runtime's walk-up discovery looks. **LESSON: when guarding a
+  report, assert the agreement between the report and the reality it describes. String pins ossify
+  the wording and are blind to the lie.**
+- **My own fix would have destroyed operator data, and only a mutation caught it.** Widening the
+  converter search to `SF_MPXJ_HOME`/CWD quietly made the *already-installed* copy selectable as the
+  source — and the copy step `rm -rf`s the destination before copying. A re-run would have deleted
+  the operator's only converter. Guard added, then mutation-tested both ways to prove it was
+  load-bearing. **LESSON: widening a search path is not a safe, additive change when the consumer of
+  that path is destructive. Whenever you add candidates to a lookup, ask what happens if a candidate
+  IS the target — and prove the answer with a mutant, not an argument.**
+- **Verify the advice, not just the code.** The new message tells the operator to download the
+  repository ZIP; before writing it I checked `git ls-files tools/mpxj` and confirmed all 28 files
+  (converter class + 24 jars, no LFS) are tracked, so the ZIP really carries them. That check is now
+  a test, so the advice cannot rot silently. **LESSON: remediation text is a claim the tool makes.
+  Test it like one — the previous message advised setting `SF_MPXJ_HOME`, which the installer never
+  read.**
+- **The bad instruction was mine, in a durable doc.** The DEPLOY NOTE I had been carrying forward in
+  every handoff told the operator to download the single `.ps1` into `Downloads` — the one layout
+  that guarantees the converter is not found. It rode along unchallenged for many sessions because
+  it *looked* like settled knowledge. **LESSON (reinforces Part V): a handoff line repeated often
+  enough starts reading as verified fact. Re-derive load-bearing operational instructions against
+  the code they drive, especially the ones you have copied forward more than twice.**
+- **Stopped mid-flight without losing the work.** The session was called to a handoff before the fix
+  landed, so the evidence, both ready-to-apply blocks and the drafted test went into
+  `docs/PLAN/MPXJ-CAPABILITY-REPORT.md` rather than a scratchpad that dies with the session.
+  **LESSON: when a session ends with a diagnosis but no patch, the diagnosis is the deliverable —
+  commit it in enough detail that the next session applies rather than re-derives.**
+
 ### 2026-07-27b — a spec written without a runtime had five false premises; the mutants caught my guard, not my code (ADR-0298)
 - The AXIS-TITLES spec is genuinely good work — its census of 58 modules is exact and its caption
   wording is sound. But it was authored with **no Python, no app, no network** (it says so), and
