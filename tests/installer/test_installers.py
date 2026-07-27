@@ -1,8 +1,11 @@
 """Structural verification of the nine one-file installers (INSTALLER-SPEC; 3 tiers x 3 OSes).
 
 pwsh is not available in the build container, so true Windows execution happens in the
-windows-latest smoke workflow (.github/workflows/installer-smoke.yml); the Linux/macOS bash
-family is additionally executed end-to-end in CI and was executed in-container during the build.
+windows-latest smoke workflow (.github/workflows/installer-smoke.yml) — which since ADR-0300 also
+runs the two shapes that used to be signed off on parity with bash: a link-shaped MPXJ source and
+an install from a drive root, each followed by a mutation step proving the leg can fail. The
+Linux/macOS bash family is additionally executed end-to-end in CI (including the 3b block itself,
+below) and was executed in-container during the build.
 These tests verify everything verifiable statically: every tier/OS file exists, each OS family
 shares an IDENTICAL body (no tier drift), tier configs match the spec, and the embedded wheel
 decodes byte-for-byte to a valid zip that matches the pyproject version AND carries the web
@@ -580,3 +583,61 @@ def test_the_local_copy_is_staged_before_the_destination_is_touched(tmp_path: Pa
     assert ps1.index("Copy-Item -Recurse -Force -Path (Join-Path $srcMpxj") < ps1.index(
         "Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $destMpxj"
     ), "ps1: destination removed before the source was staged"
+
+
+def _windows_job(*, code_only: bool = False) -> str:
+    """The windows job of the installer smoke workflow, as text (no yaml dependency).
+
+    ``code_only`` drops comment lines and step names. A shape named in PROSE is not a shape that
+    RUNS: the first draft of the guard below still passed with the reparse-point loop mutated to
+    ``@("Directory")``, because every explanatory comment naming the shapes was still there.
+    """
+    text = (ROOT / ".github" / "workflows" / "installer-smoke.yml").read_text(encoding="utf-8")
+    start = text.index("  windows:")
+    job = text[start : text.index("\n  linux:", start)]
+    if not code_only:
+        return job
+    return "\n".join(
+        line
+        for line in job.splitlines()
+        if not line.lstrip().startswith("#") and not re.match(r"\s*-?\s*name:", line)
+    )
+
+
+def test_windows_executes_the_two_shapes_it_used_to_only_assert() -> None:
+    """ADR-0300. A link-shaped source and a drive-root install both destroyed something on the
+    operator's own platform, and both were then signed off by executing the BASH twin plus a
+    static text guard over the ``.ps1``. Every other test in this file is evidence about *text*;
+    only windows-latest is evidence about *Windows*, and "proven by parity" was wrong twice in one
+    session. So the windows job must actually run both shapes."""
+    job = _windows_job(code_only=True)
+    for shape in ("Junction", "SymbolicLink"):
+        assert shape in job, f"the windows job no longer points an MPXJ source at a {shape}"
+    # each check below pins an INVOCATION, not a word. Naming subst in a ::warning:: string, or
+    # SF_MPXJ_HOME in a message, satisfied the first draft of every one of these.
+    assert re.search(r"New-Item[^\n]*-Target", job), "no reparse point is actually created"
+    assert re.search(r"\$env:SF_MPXJ_HOME\s*=", job), "no link is fed to the installer as a source"
+    assert re.search(r"(&\s*subst|subst\.exe)\b", job), (
+        "the windows job no longer maps a drive root — if the mechanism changed, pin the new one "
+        "here; the shape itself must keep running"
+    )
+
+
+def test_every_windows_mutation_still_bites_the_real_installers() -> None:
+    """The new legs each carry a MUTATION step that breaks the guard in a scratch copy and
+    requires the leg's own assertion to fire — a green leg that could never fail proves nothing.
+    Those steps locate the guard by verbatim text, so a reworded guard turns the mutation into a
+    silent no-op: the step then re-runs the *unmutated* installer and reports success. The
+    workflow catches that itself, but only after a ~20-minute windows round trip, and only when
+    something under ``installer/`` changed. Catch it here instead, in milliseconds.
+    """
+    needles = re.findall(r"\.Replace\(\s*'([^']*)'", _windows_job())
+    assert len(needles) >= 2, "the windows legs no longer mutation-prove themselves"
+    for needle in needles:
+        for tier in TIERS:
+            assert needle in _read(tier, "ps1"), (
+                f"the windows job mutates {needle!r}, which install-{tier}.ps1 does not contain "
+                "verbatim — the mutation would no-op and the leg would stop proving anything"
+            )
+    assert any("Resolve-SfPath" in n for n in needles), "self-copy skip no longer mutation-proved"
+    assert any("mpxjCandidates" in n for n in needles), "empty-base guard no longer mutation-proved"

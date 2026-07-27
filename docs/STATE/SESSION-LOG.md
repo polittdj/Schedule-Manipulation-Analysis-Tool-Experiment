@@ -8245,3 +8245,44 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   so the two fixes that matter most for the operator's platform rest on bash execution + parity —
   the same class of claim that was wrong twice today. Named in the handoff as the top next task
   rather than quietly closed.
+
+## 2026-07-27h — the windows CI leg now EXECUTES the two shapes it inferred from bash (ADR-0300)
+
+- **Merged #451** (docs-only close-out) and restarted the branch from `main` (`4f3916b`).
+- **Took the operator's option (a):** close the gap the previous session named and deliberately left
+  open. `installer-smoke.yml`'s windows job ran the download and from-checkout branches only, so the
+  two most recent destructive fixes — a **link-shaped MPXJ source** and a **drive-root install**,
+  both diagnosed on the operator's own Windows — rested on the executed *bash* twin plus a static
+  text guard over the `.ps1`. That is evidence about text offered as evidence about Windows, and
+  "proven by parity" had already been wrong twice in one session.
+- **Two new windows legs.** A link-shaped source, in both reparse-point flavours (`Junction` and
+  `SymbolicLink`), asserting the converter is **byte-identical and the same file count** afterwards
+  *and* that the run took the self-copy branch (`already installed`) — survival alone would pass
+  while the installer announced a deploy that never happened. And a real drive root (`subst`,
+  falling back to `C:\`), asserting exit 0 **plus** the artefacts written after 3b, because exit 0
+  never proved it got past the abort point.
+- **Three details are load-bearing, and each was a trap avoided by reading first:** the installer
+  must be copied OUT of the checkout (run in place, `$PSScriptRoot`'s parent is the workspace, whose
+  real `tools\mpxj` would be chosen and the link never reached); `SF_MPXJ_OFFLINE=1` is not a
+  speed-up but the thing that lets the leg **fail** (a reachable fetch would silently re-download a
+  destroyed converter); and the reparse point is deleted with `[IO.Directory]::Delete($link,$false)`,
+  never `Remove-Item -Recurse`, which can empty the target — the very accident under test.
+- **Each leg carries a permanent MUTATION step.** Break the guard in a scratch copy of the installer
+  and require the leg's own assertion to fire: self-copy skip → `if ($false)` must still return the
+  converter byte-identical (proving on **Windows**, not by parity, that ADR-0299 rule 1's two layers
+  are independent); `if ($base)` guard removed must make the drive-root install **die**. Each
+  mutation asserts it actually applied — a stale needle would re-run the *unmutated* installer and
+  report success.
+- **My own new guard was wrong first, in this repo's recurring way.** The shape guard PASSED with
+  the reparse-point loop gutted to `@("Directory")`, and PASSED again with every `subst` call
+  removed: the explanatory comments and a `::warning::` string satisfied it. **LESSON: a guard that
+  greps prose measures the documentation, not the behaviour.** Fixed by stripping comment lines and
+  step names before asserting, and by pinning an *invocation* (`& subst`, `$env:SF_MPXJ_HOME =`,
+  `New-Item … -Target`) rather than a word. Six mutations now fail as required.
+- **Wrote ADR-0300, which 13 shipped sites already cited and which did not exist on disk.** The
+  previous session recorded the symlink defect as ADR-0299 Addendum 2 while the installers,
+  templates and tests all cite `ADR-0300`. **LESSON: a dangling citation is the same defect class as
+  an uncited figure — on a testimony tool, both are a claim with no reachable source.**
+- **Gate:** installer suite 50 → **52**; ruff / ruff format / mypy --strict / bandit clean;
+  `node --check` clean; windows job `timeout-minutes` 15 → 30 for four added installs. No `src/`
+  change, so the embedded wheel stays in lockstep at 1.0.105.
