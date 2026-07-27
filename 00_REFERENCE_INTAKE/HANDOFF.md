@@ -1,80 +1,298 @@
-# HANDOFF.md — AISMAT Portfolio/Data-Integrity prompt-authoring session
+# Project Handoff — Schedule Forensics UI Redesign
 
-**Status:** COMPLETE for this session's actual ask (read-only prompt authoring). Nothing built yet.
-**Model / meter:** claude-sonnet-5 (Cowork). `CONTEXT_CEILING` set to 1,000,000 per Papicito's explicit
-statement this session — UNVERIFIED against Anthropic's actual published spec, treated as a working
-assumption per his instruction. token_audit.py written to `/mnt/user-data/working/` (recreate if a future
-session finds the container wiped — it always is between sessions).
+**Read this first. It is the complete state, scope, and history so a new chat loses nothing.**
 
-## Goal
-Papicito dumped a large, unstructured set of new feature asks (Portfolio page w/ NASA site map, multi-file
-project-grouping by MPP metadata, duplicate/revision detection, Where-We-Stand per-file correctness, Gantt
-filter-button bug + task-search feature) plus new session-governance rules (850K/1M token stop, HANDOFF
-cadence). Task was explicitly **read-only, no code, no repo changes** — restructure it into an executable,
-phased master prompt so a future Claude Code session can build it without blowing context or re-litigating
-already-known facts.
+---
 
-## What was done
-- Confirmed no live repo is mounted in this sandbox — "the repository" available for this task was the
-  Claude Project's own doc set. Read all AISMAT/SMAT planning docs already in the project (HANDOFF,
-  NEW-SESSION-PROMPT, CLOUD-ENV-PACKAGE, ROLES-AND-ORCHESTRATION, UI-CLAUDE-DESIGN-NOTE, SMAT-MASTER-PROMPT,
-  SMAT-SANDBOX-SETUP, SMAT-DEEP-DIVE-ANALYSIS) to avoid re-deriving established facts (roster, two laws,
-  operating loop, token economy, known backlog items U1–U4, P1–P10, C1–C5).
-- Confirmed via `project_search` that "Portfolio page," "Where We Stand page," MPP Company-field grouping,
-  and duplicate-file detection are **not** documented anywhere in this project yet — these are genuinely new
-  requirements, not something a prior session already scoped. Flagged as UNVERIFIED against the live app
-  everywhere it matters (see the new master prompt's §8).
-- Authored `claude/AISMAT-PORTFOLIO-DATA-INTEGRITY-MASTER-PROMPT.md` (delivered to project + Papicito):
-  restates every requirement from the raw prompt, grouped into Phase 0 (mandatory recon) → 1 (file-grouping
-  and dedup data model) → 2 (per-file page correctness / no-mixing-outside-Portfolio) → 3 (Portfolio page +
-  candidate metrics) → 4 (Gantt filter fix + task search) → 5 (ongoing hardening), plus a governance section
-  reconciling the 850K/1,000,000 token rule and formalizing the HANDOFF cadence as a standing rule.
-- Deliberately tied new asks into **existing** backlog items instead of creating parallel scope: Gantt
-  fixes → U2 (inline handlers) + U3 (shared charting module); "make it look cool" → U1 (design tokens);
-  duplicate-file "no silent failures" → same principle as existing importer defects P4/P5.
+## What this project is
 
-## Decisions (with why)
-- **850K (not the generic 90%) is the hard stop for this workstream** — Papicito's explicit instruction this
-  session overrides the standing 90%-of-ceiling default; more conservative number wins where they conflict.
-- **New project doc, not an edit to SMAT-MASTER-PROMPT.md or ROLES-AND-ORCHESTRATION.md** — this is a
-  separate workstream layered on top; the existing docs stay canonical for roster/laws/token-economy and are
-  referenced, not duplicated, to keep this new doc lean.
-- **Portfolio metrics proposed, not committed** — Papicito asked me to "come up with" them; I proposed a
-  candidate list reusing already-established metric vocabulary (BEI/CEI/HMI/CPLI/DCMA-14) rather than
-  inventing new formulas, and flagged they need FLIGHT+SCHED sign-off before Phase 3 build starts.
+A full UI redesign of the **Schedule Forensics** tool — GitHub repo
+`polittdj/Schedule-Manipulation-Analysis-Tool-Experiment` (default branch `main`, NOT the
+"…-Experiment8" name the user first gave — that 404s; the real repo has no "8"). It is a
+FastAPI + Jinja2 app (`src/schedule_forensics/web/app.py`, ~12k lines) with
+dependency-free vanilla-JS charts in `web/static/`. It ingests multiple **versions of one
+project's schedule** (`.xer`/MS-Project files), each with its own data date, and analyzes
+schedule quality, critical-path behavior, forecasts, and manipulation signals. Local-only,
+air-gapped, with a loopback AI ("Ask the analyst").
 
-## File inventory (this session)
-- `/mnt/user-data/working/token_audit.py` — token guardian meter, recreated per standing instruction.
-- `/mnt/user-data/working/HANDOFF.md` — this file.
-- `/mnt/user-data/working/AISMAT-PORTFOLIO-DATA-INTEGRITY-MASTER-PROMPT.md` — the deliverable, also saved to
-  the project at `claude/AISMAT-PORTFOLIO-DATA-INTEGRITY-MASTER-PROMPT.md` and sent to Papicito directly. Now
-  at v2: added §0.1 (repo confirmed at v1.0.66/PR #396/ADR-0257, ~90 PRs past the prior audits — every old
-  `file:line` is presumptively stale), §7 (reproduces Papicito's separate Deep Performance next-session prompt
-  in full, with explicit cross-references into §2–§5 so both workstreams don't collide on `web/app.py`'s
-  cache/lock machinery), §8 (placeholder for the promised Claude Design prompt — not yet received; confirmed
-  what the `DesignSync` tool / `/design-sync` skill actually does — pushes local component previews **up** to
-  a claude.ai Design-System project, does not pull a design down into the repo), and renumbered old §7→§9 with
-  the Playwright browser-verification + wheel/installer-lockstep rules folded in from the Deep Performance
-  prompt's working rules.
+The repo IS readable via the github_* tools (access was granted). `app.py`, several
+modules, and static JS were copied into `src/…` in this project for local grep — read
+those for engine truth. **Never** re-derive from memory; read the source.
 
-## Open questions / UNVERIFIED (full list is in the master prompt's §10 — not duplicated here in full)
-- Whether Portfolio/Where-We-Stand pages and routes exist yet, under what names.
-- Real MPXJ/XER field names for Company/Title-style project metadata.
-- Actual symptom of the filename-equals-folder-name bug (unreproduced).
-- Which existing JS module (if any) is the "version comparison animation" Papicito referenced.
-- Real context ceiling for claude-sonnet-5 in this Cowork environment (1,000,000 is Papicito-asserted only).
-- Whether the Gantt filter-button bug (§5) is the same control PR #396's "alphabetical filters/groups
-  dropdowns" already touched — a regression, a different surface, or already fixed.
-- Full scope of the promised Claude Design prompt (§8) — awaiting Papicito's paste, not yet received.
+## The user's standing requirements (all honored — keep honoring)
 
-## Deferred / declined prompts
-- None outright declined. One item is **awaiting input, not deferred by choice**: Papicito said a "Claude
-  design prompt" is coming to fold in as well — it has not been pasted yet as of this update. §8 is scaffolded
-  as a placeholder so the next pass drops it straight in instead of re-deriving context.
+1. **Never change how anything is calculated.** Presentation layer only. Every number is
+   read from the engine payload.
+2. **Never remove functionality or visuals.** May *combine* visuals when it makes sense
+   (nothing dropped, original one click away). All Gantt controls (column picker, zoom,
+   filter, format, resize), export, enlarge, data toggles, persist/reset, print, text
+   scale, CUI bars stay.
+3. **Remove the "NASA" wordmark** everywhere (done). Keep the neutral command-banner look.
+4. **4 independent themes** the user can switch between; ≥1 futuristic "mission control".
+5. **Story-like experience** — loading project files walks the user logically through
+   screens, telling the story of the data's past/present/forecast state.
+6. **Keep "Ask the AI"** functionality.
+7. **Provide options at each phase**; act as expert graphic/UI designer.
+8. **Every visual**: X/Y axes with labels+values, a legend, hover callouts + a show-values
+   option, and a crystal-clear source/version chip; user can pick the version where
+   applicable; user can change time granularity (day/week/month/qtr/yr).
+9. **Max automation / SRA input parity** — all real SRA inputs incl. MS-Project column
+   paste + auto-calc; all real inputs of every visual mirrored.
+10. **Global target UID** drives all calcs/analysis (driving-path endpoint, SRA focus,
+    forecast, briefing).
 
-## Carry-over rules (unchanged, restated for the next session that reads this file)
-Run token_audit.py each turn; keep this file current continuously, not just at the trip point. Two laws +
-sandbox guard + verification rules 1–7 always apply once code work starts. Persona: "Hola Papicito!", sassy in
-chat / clean in repo and project files, no glazing, stress-test first, attack every plan before building it.
-The separate CLOUD-ENV-PACKAGE workstream (see `claude/AISMAT-HANDOFF.md`) is still PENDING and unrelated to
-this one — don't conflate the two when picking up work.
+## Chosen design directions (locked)
+
+- Story architecture **1b** — **Three Acts**: I Situation · II Diagnosis · III Outlook,
+  over **12 chapters**, utilities in a **Setup** nav group off-spine.
+- CP Volatility **1c** — **Flight Recorder** (10 visuals → 4 composites, one cursor).
+- Performance **1f** — **Command Deck** (7 graph families → 5 panels + index strip).
+- 4 themes: `console` (default dark mission-control), `daylight` (light), `apollo` (CRT),
+  `jarvis` (HUD). Selected via header **View** dropdown; persisted to localStorage.
+
+## Files in THIS project
+
+- **`Mission Ops Redesign v2.dc.html`** — THE deliverable. Current, feature-complete,
+  verified loading clean. Single Design Component (template + `class Component` logic).
+  Uses `support.js` (the DC runtime — do not edit).
+- `Mission Ops Redesign.dc.html` — v1 (7-chapter), kept as historical fallback. Don't edit.
+- `Redesign Explorations.dc.html` — the options canvas (story maps 1a/1b, volatility
+  1c/1d/1e, performance 1f/1g). Historical.
+- `Recreation - Analysis.dc.html`, `Recreation - Dashboard.dc.html` — early recreations of
+  the original UI (pre-redesign reference). Historical.
+- `src/schedule_forensics/…` — copied repo source for grepping engine truth.
+- `design_handoff_mission_ops_redesign/` — the **Claude Code handoff bundle** (see below).
+- `handoff/` — older theme-only handoff (superseded by the folder above).
+
+## The dataset in the prototype (mock, consistent across all screens)
+
+KESTREL-3 lunar comms relay I&T campaign. **6 versions v0–v5** (v0 baseline
+`KESTREL3_v0_BASELINE.xer` … v5 `KESTREL3_v5.xer`, DD 2026-04-06). Finish slipped +49 d vs
+baseline. Critical chain: FSW Build 3 (UID 1080) → FSW Qual (1100) → Vehicle Functional
+(1120) → TVAC (1140) → Vibe & Acoustics (1150) → Pre-Ship Review (1160) → … → Launch
+Readiness Review (1190). Target UIDs: 1190 LRR (default), 1180 Launch Campaign, 1160
+Pre-Ship, 1140 TVAC, 0 = project finish. These UIDs/names must stay consistent if you add
+screens.
+
+## What is BUILT in v2 (all verified, no console errors)
+
+**Chrome:** command banner (no NASA), global **Target** selector + **Text** scale +
+**View** theme in header, three-act rail nav (left on dark, top on daylight), Continue
+footers, CUI bars, "⌖ ASK" drawer (grounded, cited, per-screen context) floating on every
+screen.
+
+**Chapters (all designed, all with the chart contract):**
+- 00 Import · Mission Control (overview wall)
+- 01 Where we stand — Schedule ID card + KPIs + status mix + float bands + I&T Gantt (+P80 whiskers)
+- 02 Can we trust the plan — quality board 13×6 (click-drill) + integrity scan per version pair
+- 03 What drives the date — tiered driving-path corridor + **critical-path drag (Devaux)** + **merge hotspots**; in-panel + global target
+- 04 How stable is the path — Flight Recorder: stability signal, flow, membership matrix (→Task Info), transition ribbons, evolution corridor + what-if ledger; version cursor + play
+- 05 How it moved — finish-trend slope + NFI + **margin burndown** + **float-erosion trend**
+- 06 Work piling up — bow wave (grain MO/QTR/YR) + CEI
+- 07 How we execute — Command Deck: census+burden (WK/MO/QTR), bow+S curves, BEI/HMI/roll-3, duration-ratio, portfolio quads, EVM ledger, SPI(t)/ES WBS combo, **compression index** KPI; Finishes/Starts toggle + file stepper
+- 08 Who is overloaded — resources histogram (DAY/WEEK/MONTH) + drill + roster
+- 09 Where it lands — forecast window (3 methods) + **progress S-curve & finish walk**; measured-to-target chip
+- 10 What changed — change-effects / manipulation signals
+- 11 What could go wrong — **the full SRA** (see below)
+- 12 The briefing — one-page verdict
+- Setup: Groups & Filters · AI Settings · Metric Dictionary
+
+**SRA (Ch 11) — inputs:** file picker; uncertainty best/most-likely/worst % + presets;
+iterations (guidance: ~2,500 working / 10,000 final); Triangular/PERT/**Uniform/Normal**;
+**Monte-Carlo vs Latin-Hypercube + stop-at-convergence**; **resource-leveling-per-iteration
+toggle**; **risk banding** (common ranges by activity type, editable bands);
+**BRANCHING tab** — probabilistic (fail % → FIX-IT/RETEST O/M/P, bimodal warning) and
+conditional (Plan-B cutoff rule + scenario compare table, exportable);
+correlation ρ slider; unified risk register with **days↔% auto-derive + lock flags**; SSI
+factors (focus event synced to global target, occurrence mode, editable factor table,
+auto-calc); **editable SSI grid with MS-Project column-paste** (paste Factor column → fills
+down → auto-calcs BC/WC → every cell still hand-editable; Save/Reload/Excel/show-completed;
+row→Task Info); per-activity 3-point overrides.
+**SRA — outputs:** confidence S-curve (P10/50/80/90 + deterministic marker); **pre/post-
+mitigation overlay** ("23 days earlier at P80"); duration-sensitivity tornado with
+**sensitivity↔cruciality lens toggle**; **Risk Driver Method marginal-impact tornado**;
+discrete risk-driver tornado; SSI focus results; **5×5 risk + opportunity matrices**; OAT
+deterministic sensitivity. All Excel-exportable.
+
+**Shared dialogs:** Task Information (7 tabs) from any row; Timescale (tier stack); Ask drawer.
+
+**Chart contract applied to every visual:** axes+values, legend, hover callouts, `SOURCE:
+file · DD` chip (+version pickers/labels, measured-to-target chips), ▦ Data / ⤓ Excel / ⛶
+Enlarge, grain chips where time-binned, takeaway headline.
+
+## Build conventions (how v2 is authored — follow these)
+
+- It is ONE Design Component. Template edits via `dc_html_str_replace`; logic edits via
+  `dc_js_str_replace` (hot-reloads, preserves state). Read before editing.
+- **Inline styles only**, all via CSS custom-property tokens (`var(--ac)`, `var(--ink)`,
+  `var(--pn)`, `var(--mut)`, `var(--ln)`, `var(--bd)`=red, `var(--ok)`=green, `var(--wa)`=
+  amber, `var(--fm)`=mono font, `var(--fd)`=display, `var(--f)`=body, `var(--rs)`/`var(--r)`
+  radii, `var(--cnv)` chart canvas, `var(--dot)` grid dots). Never hard-code a hex that
+  should be a token — themes depend on it.
+- Screens are `<sc-if value="{{ isXx }}">` blocks; `isXx`/`goXx` handlers + `screen` state
+  drive nav. Each builder is `buildXxx()` returning flat renderVals; wire into the big
+  return map (`xx: this.buildXxx ? this.buildXxx() : {}`).
+- Every chart builder exposes `fr` frame helpers (`this.fr('key')` → tglBig/tglData/
+  span/bigLab/dataLab) and a `this.csv(name, headers, rows)` export.
+- Charts drawn with divs/SVG + `title=""` hover; NO chart libs.
+- `this.grainChips(id, allowed, def)` + `this.regroup(vals, grain)` for granularity.
+- Global target: `this.state.targetUid`, `this.targetDefs()`, `this.targetOf()`,
+  `this.setTarget(uid)` (syncs driving-path, sraFocus, sraFocusGrid; persists).
+- After edits, `ready_for_verification({path})`; use `skip_verifier_agent:true` for small
+  changes, full verify for big ones. It loads clean today.
+- NOTE: tool output warns `support.js` is older than the current DC runtime — harmless, it
+  loads and runs clean. Don't "fix" it by overwriting unless something actually breaks.
+
+## The Claude Code handoff bundle (`design_handoff_mission_ops_redesign/`)
+
+Delivered for the user to drop into the repo so Claude Code rewrites the real app to match
+and follows the style forever. Contains:
+- **`CLAUDE.md`** — the operating brief: TASK 1 rewrite order (tokens → chrome → one page/
+  PR → new panels), non-negotiables, the chart contract, global target, structure, "how to
+  add a feature later" recipe, Definition-of-Done checklist. Claude Code auto-loads it.
+- `README.md` — screen specs + page-mapping table (chapter → repo route) + tokens + copy.
+- `DESIGN-GUIDE.md` — design rulebook (→ repo `docs/DESIGN-SYSTEM.md`).
+- `sf-themes.css` — all four themes as drop-in tokens.
+- `Mission Ops Redesign v2.dc.html` + `support.js` — current prototype copy.
+Keep this bundle in sync with v2 if the prototype changes materially.
+
+## Status / open items
+
+**Later additions (after this file was first written — all built + verified):**
+- **Global chrome:** ❓ GUIDE ME on every screen (what/when-why/example/how-to-read, Next-chapter walk, auto-opens first run); ◎ SHOW UIDs visibility overlay (≤20 UIDs + target pins that slide as versions play — bow wave, Ch07 census, float-erosion lines; never affects calcs).
+- **Ch 03:** “Path between two points” — pick Start+End UID, watch the driving chain re-form across v0–v5 (+JOINED/−LEFT), Excel/enlarge.
+- **Ch 05:** one version cursor animates slope + margin + float erosion; Ch 02 ▶ Play pairs.
+- **Ch 01 Gantt:** searchable ⊞ COLUMNS dropdown (standard + custom fields, ＋ADD field), ⤓ EXCEL of the configured grid; Groups & Filters = grouped dropdowns.
+- **Reference-doc additions** (from refs/*.txt — concepts_a, advanced_sra/Hulett, int02_advanced/GAO-DCMA): six-step SRA workflow strip + READINESS chips; “In plain language” brief box; P95; risk-critical-vs-CPM ⚠ flags; merge-bias joint-probability copy; CPLI as 14th quality measure + drill; per-measure DCMA threshold tooltips; dictionary entries (te, banding, branching, CPLI, LOE/hammock, scenario lottery); reserve-vs-mitigation rule on margin burndown. 5×5 matrices wrap responsively (verifier overflow fix).
+
+**Metric Lab + universal Data Explorer + Beyond-the-Schedule (latest — built + verified):**
+- **Library ▤ Metric Lab** (new nav group "Library"): Acumen-Fuse-style. Left = searchable
+  metric library grouped into 4 families — **Schedule Quality** (FROM FILE / metadata),
+  **Progress & Performance** (FROM FILE), **Risk & Realism** (schedule + your risk inputs),
+  **Project Vitals · beyond the schedule** (metadata + you-provide + external). Each metric
+  carries what/why/how + a source tag (FROM FILE / YOU PROVIDE / EXTERNAL). Right = a
+  **ribbon**: every version v0–v5 as an independent schedule in data-date order, one card
+  each, coloured against the metric's threshold, with Δ-vs-prior + a bar; ⤓ Excel of the
+  ribbon; ▤ family matrix toggle. Click a version card → its **underlying tasks/records**
+  drop into the drill grid.
+- **Universal Data Explorer** — one grid engine (`gridBuild(ns, dataset, colDefs, exName)`
+  + `gridSort/gridToggleCol/gridAddCol`, `taskColDefs()`, `augTask()`, `taskMetaMap()`).
+  Powers the Metric Lab drill inline AND a global **⊞ EXPLORE** dialog (`openExplorer` /
+  `buildExplorer`, state ns `dx`). Features: text **filter**, **add columns** (full standard
+  + custom catalog, incl. ＋add-custom-field), **sort** (click header), **group-by** any
+  groupable field, **export to Excel**, drill row → Task Information. ⊞ EXPLORE wired onto
+  Ch01 Gantt, Ch03 drivers, Ch06 bow wave, Ch07 exec, Ch08 resources (dataset per visual).
+  Metric Lab drill uses ns `ml`.
+- **Library ◇ Beyond the Schedule** (new screen `bs`): the you-provide inputs the file can't
+  supply — **Staffing coverage** (available vs required heads), **Funding alignment**
+  (budget-to-go vs work-to-go), **Technical Performance Measures** (margin + in-tolerance
+  toggle). Editable controlled inputs → `state.bsStaff/bsFund/bsTpm`; the three USER
+  Project-Vitals metrics recompute their **v5 (current) ribbon value live** from these
+  (earlier versions stay as historical trend). Crystal-clear what/why/tells-you per panel,
+  live coloured readouts, ⤓ export inputs, "View on the ribbon →" per section.
+- **Instructions + tooltips:** ⓘ how-to banners on Metric Lab (3-step) and Beyond
+  (you-know-the-schedule-doesn't); what/why/how cards per metric; title tooltips on every
+  ribbon card, grid control, and input field. Guide (GUIDE ME) entries for `ml` + `bs`; Ask
+  drawer context for `ml`; 8 new dictionary entries (Metric Lab, Data Explorer, update
+  discipline, baseline volatility, staffing coverage, funding alignment, TPM, requirements
+  volatility). NO calc changes — vitals defaults mirror existing screens; ribbon numbers for
+  quality/perf/risk reuse the exact per-version values already on other chapters.
+
+**Grounded metric library + Segment Forecast + 10-filter One Filter (latest — built + verified):**
+- **Metric Lab re-grounded on the real repo library** (`docs/METRIC-DICTIONARY.md`, the NASA
+  Acumen "Bible"). The `.aft` file the user named is NOT in the pushed `main` branch — the
+  dictionary (33 KB, ~80 metrics) is the authoritative source and was used. Library is now
+  organised by the four NASA Handbook **reliability dimensions** as tabbed "pages"
+  (Comprehensiveness · Construction · Realism · Affordability) + a **Project Vitals** page.
+  ~40 metrics, each with real name, **formula** chip, definition, provenance citation, source
+  tag, a 6-version ribbon, a sparkline trend, and a task/record drill. `metricCatalog()`,
+  `metricFamilies()`, `srcTag()` rewritten (run_script splice); `buildMetricLab()` adds
+  `dimTabs`/`spark`/`metricFormula`/`metricProv`; state `mlDim`.
+- **Library ∑ Segment Forecast** (`buildSegForecast`, screen `wf`): pick ANY field
+  (resource/IPT/subsystem/CA/WBS/critical/phase/calendar/…) → per-segment BEI, CEI, SPI(t),
+  %complete, remaining-work weight, and a segment forecast finish. **Weighted forecast:**
+  PF = SPI(t) clamped 0.30–1.50; segment forecast = data date + remaining span ÷ PF; segments
+  weighted by remaining working days; **weighted all-work forecast** = DD + project remaining ÷
+  work-weighted composite PF; **project driving forecast** = latest (worst) segment. **No-actuals
+  fallback (industry practice, per requirement):** a segment with no completed work inherits the
+  project composite PF capped at 1.0 (conservative EVM convention), flagged ◊ INH — never
+  dropped. One-timeline viz (dot size = weight, colour = PF), full Explorer drill + Excel.
+- **The "One Filter" upgraded to up to TEN rules + group-by** (`buildGroups`): each rule =
+  field · operator · value over any schedule field (`filterFieldCatalog`), AND-combined;
+  `activeTasks()` applies them; live match count; group-by field; "open filtered/grouped
+  results" → Data Explorer; "forecast this scope" → Segment Forecast. State `gFilters`
+  (≤10), `gGroupField`, `segField`. Helpers: `passesFilter`, `opsFor`, `setFilterRow`/
+  `addFilterRow`/`removeFilterRow`, `activeFilterCount`. Guide/nav entries for `wf`.
+
+**Executive briefing redesign + manipulation forensics + tiered driving path + any-UID target (latest — built + verified):**
+- **Briefing (Ch 12) drastically redesigned** (`buildBrief`): masthead (project · N files · DD range · copy says it scales to 31), 4 verdict cards (status/trend/execution/integrity, each drills), a finish-forecast walk across all versions, 3 cited situation paras each with a ⊞ Verify button (opens the exact activities in the Explorer), an **Outliers** panel (statistically computed — duration σ, largest single-step NFI, steepest float erosion, driving segment), the **manipulation forensic panel**, and a recovery plan with impact/owner + Excel export.
+- **Schedule-manipulation forensics** (`manipulationTests`): 16 research-backed measures (baseline/actual-date edits, driving-logic deletion, relationship-type conversion, lag insertion, unsupported duration compression, calendar switching, hard-constraint injection, constraint-driven finish, float suppression, out-of-sequence actuals, %-complete stall, bow-wave, critical-path instability, irregular cadence, delete/re-add). Each: category, severity, per-version firing strip, offending UIDs, what/how/plain/refs (DCMA-14, GAO SAG, PASEG, Acumen Fuse, Hulett). Aggregated to a **Schedule Integrity Index** (0–100, penalty Σ sev×fires) + tier. Excel export. State `brTest`.
+- **Any UID as global target**: `targetInfo(uid)` resolves curated milestones OR any activity OR project finish; header `targetGroups()` lists Key milestones + every activity UID as optgroups. `targetOf`/`setTarget` generalised.
+- **Ch 03 driving path MS-Project-style + interactive** (`buildDrivers`; state `drvVer`/`drvSec`/`drvTer`/`drvPlay`, `toggleDrvPlay`): user-set **secondary/tertiary total-float thresholds** (sliders) reclassify Driving (TF≤0)/Secondary(≤sec)/Tertiary(≤ter); **version cursor + Play** replays v0–v5; each row has a 6-cell **tier strip**; a per-version-float `model` drives the **On/off the driving path** panel naming what **JOINED / LEFT / RETURNED** and why; month-header Gantt matching Ch 01, tier bars, connectors, Explore/Excel.
+
+**Repo re-audit + four new screens (2026-07-24 — latest):** the repo moved a long way
+past the first design pass (now v1.0.91, highest ADR 0282, tree `df68be7b`). Audited it and
+added the pages that did not exist when this project started — each grounded in its ADR, all
+presentation-only:
+- **Control · Margin Dashboard** (`mg` → `/margin`, ADR-0222/0230/0253/0254/0266) —
+  cited MARGIN/CONTINGENCY/FLOAT glossary; operator Gold-Rule rate; Fig 5-30 band toggle;
+  8 KPIs incl. **dual numbers** (effective margin AND Σ margin-activity durations);
+  burn-down (stacked margin+contingency, per-column requirement line, planned notch, red
+  bar = trigger, `⌃` at 50% consumed, `◇` below band); erosion trend with a **real
+  least-squares fit** (R² disclosed, no projection when flat/growing); the confirmed
+  margin-activity overlay (primary pre-ticked, near-misses unticked, clearing all restores
+  the name default); the SRA sufficiency read with editable Watch/Corrective percentiles
+  labelled as handbook *examples*; full workbook table (D/E/G/I/Σ/J/O/Q/R/T/F) + Excel.
+- **Control · Standards & Execution Indices** (`sd` → `/standards`, ADR-0237/0238) — three
+  family tabs (DCMA-14 16 rows · Fuse indices 14 · SEM 10); row = ref · value · status ·
+  threshold · verbatim formula · source; latest-file provenance; `—`/N-A for unscorable;
+  INFO for no-published-bar; Excel across all families.
+- **Control · Assessment Scorecards** (`sk` → `/scorecards`, ADR-0213) — NASA STAT / GAO-10 /
+  SRA-readiness ribbons, each line carrying its **provenance string** and a `⊞ n` drill into
+  the Explorer; INFO lines excluded from the score with the count stated; reserve-sizing card
+  (editable committed date → P50/70/80/90 reserve in wd + cal d, nearest-rank off the
+  existing SRA CDF).
+- **Library · Metric Workbench** (`wb` → `/workbench`, ADR-0204/0219/0223) — the real
+  ADR-0204 shape my Metric Lab did not cover: **multi-select checkbox library** (4 families,
+  per-family ALL/NONE, search, n/total) → **metrics × versions matrix** oldest→newest with
+  threshold colouring, Δ v0→v5 coloured by *worse*, `—` for NA, and a click-to-drill grid
+  (filter · sort · group-by · add columns · Task Info · Excel) reusing `gridBuild('wb', …)`.
+- **Role strip on Import** (ADR-0255) — five roles + Show everything, Start-here cards, and
+  the stated contract (never a mode; errors outrank the role landing). State `role`.
+- Metric Lab is retained as the single-metric focus view of the same route (documented).
+
+Nav gained a **Control** group (Margin · Standards · Scorecards); Workbench heads **Library**.
+Guide + plain-language + Ask entries added for all four screens.
+
+**Handoff bundle rewritten for Claude Code** — `CLAUDE.md` §8 is now a full route→screen
+inventory (26 routes, with the repo assets and ADR per row) plus §8.1 "cross-cutting repo
+behaviours the redesign must preserve" (play-all coordinator + the `isTrusted` guard,
+interactive legend toggles, Acumen parity mode / DCMA milestone scope / CPLI stored float,
+active-project scoping, hash dedup + same-date review, ignore toggles, calendar disclosures,
+roles, the scale/cache tiers). README's page-mapping table replaced and a "New screens
+(post-sync)" spec section added. Corrected the future-candidates line: **JCL/FICSM (0269),
+correlation-matrix feasibility (0270), LHS (0271), probabilistic + conditional branching
+(0273/0274) are BUILT in the repo** — restyle work now, not new features. `github.md` written
+at the project root as the sync receipt (repo/branch/tree/version/ADR + screen map).
+
+**Everything the user has asked for is built, verified, and documented. Nothing is
+outstanding.** Decisions on record:
+- Static screenshot set for the bundle: **intentionally skipped** — automated capture times
+  out on this large page; README points reviewers to the live file. (User chose this.)
+- Screenshots in `design_handoff_mission_ops_redesign/screenshots/` are from the OLD
+  7-chapter v1 cut — README flags this. Regenerate from v2 only if the user asks.
+
+**Known future candidates the user may request** (researched, not yet built; build them on
+real engine data with the full chart contract): cost-loaded JCL (FICSM per JA CSRUH), probabilistic weather
+calendars, series-vs-parallel risk mapping, realistic (non-early-start) simulation,
+probabilistic branching.
+
+## How to resume
+
+1. Read this file, then open `Mission Ops Redesign v2.dc.html` (the user is viewing it).
+2. For engine/behavior questions, grep `src/schedule_forensics/web/app.py` + `web/static/`
+   locally, or use github_* on `polittdj/Schedule-Manipulation-Analysis-Tool-Experiment@main`.
+3. Make targeted edits with `dc_html_str_replace` / `dc_js_str_replace`; keep the
+   conventions above; verify; keep the Claude Code bundle current if the change is material.
+4. Preserve every requirement in "standing requirements" — especially: no calc changes, no
+   lost functionality, tokens-only styling, chart contract on every visual.
