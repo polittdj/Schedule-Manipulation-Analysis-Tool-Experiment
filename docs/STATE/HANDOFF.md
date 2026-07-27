@@ -1,7 +1,10 @@
 # Handoff — 2026-07-27j (AXIS-TITLES batch 2: PENDING 11 -> 7; a ledger entry that was never a chart; ADR-0301 addendum; v1.0.107)
 
-> ## STATUS (current) — ADR-0301 + batch-2 addendum. Version **1.0.107**. Highest ADR **ADR-0301**. `main` at `8990c49` (batch 2 on the branch, PR open).
-> Branch `claude/schedule-forensics-continue-gkju7l`. #451-#455 all merged before this.
+> ## STATUS (current) — NOTHING IN FLIGHT. ADR-0301 + batch-2 addendum merged. Version **1.0.107**. Highest ADR **ADR-0301**. `main` at `c9cbe4a`.
+> Branch `claude/schedule-forensics-continue-gkju7l`, restarted from merged `main`, tree clean.
+> **#451-#456 all merged. No open PRs.** All five checks green on #456 — windows and linux
+> both passed against the regenerated nine installers, which is the independent check that
+> the v1.0.107 rebuild is internally consistent.
 >
 > - **AXIS-TITLES batch 2: `PENDING` 11 -> 7** (`drift`, `margin_dashboard`, `sra`, `sra_jcl`,
 >   `sra_ssi`, `trend`, `volatility` remain). Captioned `margin`, `trend_drill`, `wbs` — and
