@@ -2180,6 +2180,33 @@ def create_app(
         st = session()
         flash = _flash_html(st.flash)
         st.flash = None  # one-shot: clear after rendering
+        versions = st.all_versions()  # every loaded file (manifest), oldest first
+        n_versions = len(versions)
+        latest_name, latest_sch = versions[-1] if versions else ("", None)
+        latest_file = (latest_sch.source_file or latest_name) if latest_sch is not None else ""
+        latest_dd = (
+            latest_sch.status_date.date().isoformat()
+            if latest_sch is not None and latest_sch.status_date is not None
+            else "—"
+        )
+        # Screen header (Mission Ops slice 1, prototype screen 'imp' / PROLOGUE · LOAD): kicker +
+        # complete-sentence takeaway (the number lives IN the sentence) + muted lede. Presentation
+        # only — every figure below is already computed by the session manifest.
+        if n_versions:
+            noun = "version" if n_versions == 1 else "versions"
+            takeaway = (
+                f"{n_versions} {noun} loaded from {_e(latest_file)} &mdash; every number in "
+                "this report is computed, never typed."
+            )
+        else:
+            takeaway = "Load a schedule to begin &mdash; nothing you load ever leaves this machine."
+        screen_head = (
+            "<div class=page-kicker data-no-i18n>PROLOGUE · LOAD</div>"
+            f'<h1 class="page-takeaway" data-no-i18n>{takeaway}</h1>'
+            '<p class="page-lede">Drop one project&rsquo;s versions &mdash; or several projects at '
+            "once. Every file parses on this machine; nothing is uploaded, and the full forensic "
+            "report is one click from every loaded version.</p>"
+        )
         rows = "".join(
             f'<tr><td><a href="/analysis/{quote(name)}">{_e(name)}</a></td>'
             f"<td>{len(non_summary(sch))}</td><td class=muted>{_e(sch.source_file or '-')}</td>"
@@ -2189,6 +2216,10 @@ def create_app(
             f' &middot; <a href="/download/{quote(name)}.json">Save .json</a></td></tr>'
             for name, sch in st.all_versions()  # every loaded file (manifest), oldest first
         )
+        file_noun = "FILE" if n_versions == 1 else "FILES"
+        prov_chip = (
+            f"<span class=prov-chip data-no-i18n>SOURCE: {_e(latest_file)} · DD {latest_dd}</span>"
+        )
         loaded = (
             "<div class=panel><h2>Schedule health</h2>"
             "<p class=muted>A health snapshot per loaded schedule &mdash; activity status mix, "
@@ -2196,7 +2227,18 @@ def create_app(
             "glance. Click any card to dive into its full report.</p>"
             "<div id=dashboardHealth class=dash-cards></div></div>"
             '<script src="/static/dashboard.js"></script>'
-            "<div class=panel><h2>Loaded schedules</h2>"
+            # Panel shell (Mission Ops slice 1): headline strip + ⤓/⛶ tools + provenance chip.
+            # ▦ DATA is deliberately omitted — the table below IS the data drawer. The ⤓ EXCEL
+            # export reuses the existing quality-ribbon endpoint (one row per loaded file).
+            '<div class=panel data-export="/export/xlsx/ribbon"><div class=panel-head>'
+            f"<h2>LOADED VERSIONS &mdash; {n_versions} {file_noun}</h2>"
+            "<div class=sf-tools data-noprint=1>"
+            "<button type=button data-sf-excel "
+            'title="Export the quality ribbon for every loaded file — opens in Excel" '
+            'aria-label="Export the loaded versions to Excel">⤓ EXCEL</button>'
+            "<button type=button data-sf-big aria-pressed=false "
+            'aria-label="Enlarge this panel">⛶ ENLARGE</button>'
+            f"</div>{prov_chip}</div>"
             "<table><tr><th scope=col>Schedule</th><th scope=col>Activities</th><th scope=col>Source</th><th scope=col></th></tr>"
             f"{rows}</table>"
             + (
@@ -2219,6 +2261,7 @@ def create_app(
         )
         body = f"""
 {flash}
+{screen_head}
 <section class=hero>
   <h2>Forensic schedule analysis &mdash; entirely on your machine</h2>
   <p class=muted>Open or import a Microsoft&nbsp;Project / Primavera schedule to get a DCMA-14 audit,
@@ -2258,7 +2301,8 @@ def create_app(
   </div>
 </div>
 {loaded}
-<script src="/static/home.js"></script>"""
+<script src="/static/home.js"></script>
+<script src="/static/panelkit.js"></script>"""
         tip = _guide(
             "dash-start",
             "Load two or more versions of the same schedule to unlock the cross-version views "
