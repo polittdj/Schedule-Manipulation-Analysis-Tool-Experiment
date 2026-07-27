@@ -41,6 +41,20 @@
 >   And still: **run the regeneration in the BACKGROUND** (120s foreground timeout truncates it).
 > - **Version 1.0.108 -> 1.0.109**, wheel rebuilt, nine installers regenerated (ADR-0148 lockstep —
 >   `chartframe.js` / `cei.js` / `trend_drill.js` are packaged), all three tiers verified at 1.0.109.
+> - **The stranded "DCMA 14 — BEI" float tip is FIXED** (operator screenshot, 2026-07-27): the
+>   `.dcma-tip-float` overview tooltip is position:fixed at z-index 10000 and outlived its row via
+>   the FOCUS/touch path (`tabindex=0` + no blur on scroll) and a degenerate 0x0 anchor that
+>   dropped it at the viewport's top-left, over the nav rail (z-index 110). Fixes in `app.js`:
+>   document-level capture scroll-hide (mutation-proven via
+>   `tests/web/test_float_tip_scroll.py`), a 0x0-anchor refusal, a rail-floor clamp, and a stale
+>   hover-timer re-check. First theory (hover+scroll) was falsified by the browser — chromium
+>   self-heals hover on scroll. Wheel + installers REBUILT at 1.0.109 to embed the fix.
+> - **THE OPERATOR DROPPED THE FULL DESIGN-HANDOFF BUNDLE into `00_REFERENCE_INTAKE/` on `main`**
+>   (merged into this branch): `CLAUDE-CODE-HANDOFF.md`, `DESIGN-GUIDE.md`, `UI-INVENTORY.md`,
+>   `README.md`, `INDEX.md`, `Mission Ops Redesign v2.dc.html`, ASTROLABE variants, `support.js`,
+>   per-screen PNGs. Standing instruction: **use it to redesign the UI, phased per the bundle's
+>   own order (tokens -> chrome -> one page shell per PR -> new panels), presentation-only, no
+>   functionality lost, and keep going until complete.**
 > - **NEXT: AXIS-TITLES batch 3** — `PENDING` unchanged at **7** (`drift`, `margin_dashboard`,
 >   `sra`, `sra_jcl`, `sra_ssi`, `trend`, `volatility`), and they are the hard ones, mostly
 >   **multi-chart modules needing per-chart captions, not one call**: `sra.js` (4 charts),

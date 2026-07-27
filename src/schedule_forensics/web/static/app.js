@@ -57,9 +57,22 @@
   // lets the tip ESCAPE the chart frame's overflow clip — the old in-flow absolute tooltip was
   // cut off behind the Gantt (operator bug report).
   function placeFloatTip(tip, row) {
-    tip.style.display = "block"; // must be visible to measure its size
     const pad = 6;
     const r = row.getBoundingClientRect();
+    // A detached or display:none row measures 0x0, and a tip anchored to it lands on the
+    // clamps' floor — the viewport's TOP-LEFT CORNER, painting over the nav rail (that corner
+    // is exactly where the operator screenshotted the stranded "DCMA 14 — BEI" callout,
+    // 2026-07-27). No anchor, no tip.
+    if (r.width === 0 && r.height === 0) return;
+    tip.style.display = "block"; // must be visible to measure its size
+    // Never slide left of the fixed nav rail (console/apollo/jarvis >=761px lay the header out
+    // as a fixed 236px left column, z-index 110 — far below this tip's 10000, so the tip WOULD
+    // paint over it). Shrink to the space right of the rail rather than covering it.
+    const header = document.querySelector("header");
+    const floor = header && getComputedStyle(header).position === "fixed"
+      ? header.getBoundingClientRect().right + pad
+      : pad;
+    tip.style.maxWidth = Math.max(180, window.innerWidth - floor - 2 * pad) + "px";
     const t = tip.getBoundingClientRect();
     let left = r.left;
     if (left + t.width > window.innerWidth - pad) left = window.innerWidth - pad - t.width;
@@ -68,9 +81,26 @@
       const above = r.top - 4 - t.height;
       top = above >= pad ? above : Math.max(pad, window.innerHeight - pad - t.height);
     }
-    tip.style.left = Math.max(pad, left) + "px";
+    tip.style.left = Math.max(floor, left) + "px";
     tip.style.top = Math.max(pad, top) + "px";
   }
+
+  // A position:fixed tip ignores scroll: the page slides under a STATIONARY pointer with no
+  // mouseleave (the browser fires boundary events for pointer movement, not for content moving
+  // beneath the pointer), so a shown tip stayed pinned to the viewport and floated over whatever
+  // scrolled under it — the operator caught "DCMA 14 — BEI" sitting over the nav rail
+  // (2026-07-27). Any scroll hides every float tip; the next hover/focus re-shows it. Capture
+  // phase, because scrolls inside nested scrollable panes don't bubble. Same guard the shared
+  // cf-tip has carried since ADR-0190 — this older mechanism predates it and never got one.
+  document.addEventListener(
+    "scroll",
+    () => {
+      Array.prototype.forEach.call(document.querySelectorAll(".dcma-tip-float"), (n) => {
+        n.style.display = "none";
+      });
+    },
+    true
+  );
 
   function dcmaPanel(container, dcma) {
     // a prior render's floating tips live on <body>; clear them before rebuilding
@@ -118,11 +148,24 @@
       // focus is already a deliberate act, and a delay there would just feel broken.
       const delay = window.SF_TIP_DELAY_MS || 0;
       let timer = null;
+      let px = 0, py = 0; // last pointer position over the row, for the stale-timer check
       const clear = () => { if (timer !== null) { clearTimeout(timer); timer = null; } };
       const hide = () => { clear(); tip.style.display = "none"; };
       const show = () => { clear(); placeFloatTip(tip, row); };
-      const showLater = () => { clear(); timer = setTimeout(show, delay); };
+      // The timer path re-checks the pointer is STILL over the row before showing: a wheel
+      // scroll during the hover-intent delay moves the row away without a mouseleave, and the
+      // timer would otherwise pop the tip over whatever replaced it (the scroll-hide above
+      // only covers a tip that is already showing). Keyboard focus shows unconditionally —
+      // focus is a deliberate act and survives scrolling on purpose.
+      const showIfStillHovered = () => {
+        clear();
+        const at = document.elementFromPoint(px, py);
+        if (at && row.contains(at)) placeFloatTip(tip, row);
+      };
+      const track = (e) => { px = e.clientX; py = e.clientY; };
+      const showLater = (e) => { track(e); clear(); timer = setTimeout(showIfStillHovered, delay); };
       row.addEventListener("mouseenter", showLater);
+      row.addEventListener("mousemove", track);
       row.addEventListener("mouseleave", hide);
       row.addEventListener("focus", show);
       row.addEventListener("blur", hide);

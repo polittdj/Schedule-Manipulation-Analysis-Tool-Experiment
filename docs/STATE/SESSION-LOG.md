@@ -8471,3 +8471,28 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   `tests/installer/test_installers.py:89` does pin the embedded version to `pyproject`, so the gate
   catches it — **LESSON: a silent no-op is the failure mode to fear from a defaulted path
   argument; check the artefact, not the exit code.**
+
+## 2026-07-27n — the stranded "DCMA 14 — BEI" callout (operator screenshot)
+
+- **The bug.** The DCMA overview float tip (`.dcma-tip-float`, `position:fixed` on `<body>`,
+  z-index 10000) painted over the fixed nav rail (z-index 110) and stayed there. **First theory
+  (hover + scroll) did not survive the browser**: chromium synthesizes a mousemove when content
+  scrolls under a stationary pointer, so the hover path self-heals — a mutation with the guard
+  removed still passed a hover-scroll probe. The REACHABLE stuck path is **focus/touch**: the
+  rows are `tabindex=0`, click/tap focuses one (tip shows instantly), and neither wheel- nor
+  touch-scroll fires `blur` — the fixed tip floats over whatever scrolls beneath it. A second,
+  degenerate path: a 0x0 row anchors the tip at the clamps' floor — the viewport's top-left
+  corner, exactly where the operator's screenshot shows it.
+- **The fix (`app.js`)**: a document-level capture-phase scroll listener hides every float tip
+  (the same guard the shared cf-tip has had since ADR-0190 — this older mechanism predates it);
+  `placeFloatTip` refuses a 0x0 anchor, clamps `left` to the fixed rail's right edge, and
+  shrinks to the space beside the rail; the hover-intent timer re-checks
+  `document.elementFromPoint` before showing.
+- **Test**: `tests/web/test_float_tip_scroll.py` — focus-shows the tip (no pointer, like touch),
+  asserts it sits clear of the rail, scrolls, asserts it hides. **Mutation-proven for the
+  scroll-hide** (gutting it fails the test in 2.7s, deterministically). The zero-rect guard is
+  defensive and NOT claimed as covered — its first mutation "kill" was a flake that vanished on
+  re-run. **LESSON: re-run a surprising mutation kill before believing it; a flaky kill
+  manufactures exactly the confidence mutation testing exists to prevent.**
+- v1.0.109 wheel + nine installers REBUILT to embed the fixed `app.js` (same version — it exists
+  only on unmerged #461; one merged PR = one version).

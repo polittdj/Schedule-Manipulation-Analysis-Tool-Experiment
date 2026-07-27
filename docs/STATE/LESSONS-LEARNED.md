@@ -435,6 +435,19 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27n — the first theory of a UI bug must survive the browser; and re-run surprising mutation kills
+
+- **Diagnosing the stranded float tip, the first theory (hover + scroll) was falsified by its own
+  mutation test**: chromium synthesizes mouse events on scroll, so the hover path self-heals and
+  the "fix" was untestable. The reachable path was focus/touch (`tabindex=0` rows + no `blur` on
+  scroll) plus a degenerate 0x0 anchor. **LESSON: for event-lifecycle bugs, enumerate every path
+  that SHOWS the artifact (hover, focus, touch, timer) and every event that can END each one —
+  the stuck state is whichever show-path has no reachable hide-event.**
+- **A mutation "kill" flaked**: removing a defensive guard failed the test once (6.5s run) and
+  passed on re-run (2.6s). Claiming that guard as mutation-proven would have been false.
+  **LESSON: a surprising mutation kill gets one immediate re-run before it is believed — a flaky
+  kill manufactures exactly the confidence mutation testing exists to prevent.**
+
 ### 2026-07-27m — a collision report names TWO boxes; I read one and assumed the other (ADR-0303)
 
 - **The failure.** The four-theme visual pass reported two caption collisions (`/cei` 14x6px,
