@@ -8171,3 +8171,15 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
   `$PWD\tools\mpxj` matched the checkout and it took the local-copy branch instead of downloading
   — the very contamination I had just fixed in my local harness. Now `Set-Location`s to the bare
   download folder first.
+- **Check-in (04:5x): PR #446 is 5/5 green and `mergeable_state: clean`.** The windows no-checkout
+  leg's own output on the final head confirms the fetch — `Downloading the MPXJ converter…` →
+  `[ok] MPXJ converter downloaded and SHA-256 verified` — while the from-checkout leg in the same
+  job correctly reports `deployed`, so both branches are exercised once each.
+- **One last self-misdescription found while verifying that, and fixed.** Both no-checkout CI legs
+  printed `MPXJ jars downloaded + SHA-256 verified: 24` **unconditionally** — they would have said
+  "downloaded" even having taken the local-copy branch, which is exactly what the windows leg did
+  on its first run. Presence of the converter is not proof of the fetch. Both legs now grep the
+  installer's own output for `downloaded and SHA-256 verified` and fail if it is absent.
+  **LESSON: the summary line a CI leg prints IS what future readers will trust — if it states a
+  conclusion the step did not verify, it is the same defect class as the installer claiming
+  "stays OFF" about a machine where .mpp worked. Assert the evidence, then print the claim.**

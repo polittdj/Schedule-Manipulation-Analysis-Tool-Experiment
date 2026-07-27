@@ -75,7 +75,8 @@ jobs:
           # running from the repo root silently satisfies the local-copy branch and the download
           # is never exercised (the first run of this leg did exactly that).
           Set-Location $dl
-          powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1")
+          $out = powershell -ExecutionPolicy Bypass -File (Join-Path $dl "install-tier1.ps1") 2>&1 |
+            ForEach-Object { $line = "$_"; Write-Host $line; $line }
           # Assert the installer's OWN exit code. The two legs above end with `& $venvPy -c ...`,
           # which resets $LASTEXITCODE — so a mid-run abort (java -version writing to stderr under
           # $ErrorActionPreference = "Stop") was invisible for as long as it has existed. Never let
@@ -87,6 +88,15 @@ jobs:
           $cls = Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\classes\MpxjToMspdi.class"
           if (-not (Test-Path $cls)) {
             Write-Host "::error::MPXJ converter missing — .mpp import would be dead on the operator's path"
+            exit 1
+          }
+          # Assert the installer actually took the DOWNLOAD branch. Presence of the converter is
+          # not enough: `$PWD\tools\mpxj` is a search candidate, so this leg once satisfied itself
+          # from the checkout while appearing to prove the fetch. A summary line that says
+          # "downloaded" regardless of which branch ran is the same class of self-misdescription
+          # ADR-0299 exists to remove — so make the claim conditional on the evidence.
+          if (-not ($out -match "MPXJ converter downloaded and SHA-256 verified")) {
+            Write-Host "::error::the converter was NOT downloaded — this leg proved nothing about the fetch"
             exit 1
           }
           $jars = (Get-ChildItem (Join-Path $env:SF_INSTALL_ROOT "tools\mpxj\lib")).Count
@@ -133,10 +143,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/Downloads"
           cp installer/install-tier1.sh "$RUNNER_TEMP/Downloads/"
           export SF_INSTALL_ROOT="$RUNNER_TEMP/SFOneFile"
-          (cd "$RUNNER_TEMP/Downloads" && bash install-tier1.sh)
+          (cd "$RUNNER_TEMP/Downloads" && bash install-tier1.sh) | tee "$RUNNER_TEMP/onefile.log"
           test -f "$SF_INSTALL_ROOT/tools/mpxj/classes/MpxjToMspdi.class" \
             || { echo "::error::MPXJ converter missing — .mpp import would be dead"; exit 1; }
-          echo "MPXJ jars deployed: $(ls "$SF_INSTALL_ROOT/tools/mpxj/lib" | wc -l)"
+          # presence is not proof of the FETCH: `$PWD/tools/mpxj` is a search candidate, so this
+          # leg can satisfy itself from a checkout while appearing to prove the download. Claim
+          # only what the run actually did (ADR-0299).
+          grep -q "MPXJ converter downloaded and SHA-256 verified" "$RUNNER_TEMP/onefile.log" \
+            || { echo "::error::converter not downloaded — this leg proved nothing about the fetch"; exit 1; }
+          echo "MPXJ jars downloaded + SHA-256 verified: $(ls "$SF_INSTALL_ROOT/tools/mpxj/lib" | wc -l)"
           bash "$SF_INSTALL_ROOT/uninstall-schedule-forensics.sh"
 
       - name: Smoke-run tier1 end-to-end (install -> serve -> static -> stop -> uninstall)
