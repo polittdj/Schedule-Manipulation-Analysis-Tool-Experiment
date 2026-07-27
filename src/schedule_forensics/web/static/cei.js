@@ -214,6 +214,14 @@
     ctrl.appendChild(svgEl("rect", { x: lx, y: H - 14, width: 58, height: 15, fill: "transparent" }));
     svg.appendChild(ctrl);
 
+    // Axis captions via the ONE shared helper (ADR-0298). The Y caption follows the Running-totals
+    // toggle, because the axis itself changes with it: per-month counts vs a locked cumulative
+    // axis (`top = totals ? cumTop : data.max_count`, above). A caption that ignored the toggle
+    // would be false in one of the two modes.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Month",
+      yLabel: totals ? "Activities finished (cumulative count)" : "Activities finishing (count)",
+    });
     box.appendChild(svg);
 
     // A3 (WCAG 1.1.1): a visually-hidden data table of this snapshot's monthly finish counts,

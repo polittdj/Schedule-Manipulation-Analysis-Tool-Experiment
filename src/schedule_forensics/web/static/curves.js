@@ -343,6 +343,13 @@
       svg.appendChild(strip);
     }
 
+    // Axis captions via the ONE shared helper (ADR-0298). All three charts this function draws
+    // (Finishes, DATA Date Finishes, Slippage) share the month axis and a COUNT axis — "lockTop
+    // pins the count axis", above — so one pair serves them all.
+    SFChartFrame.axisTitles(svg, { L: padL, R: W - padR, T: padT, B: H - padB }, {
+      xLabel: "Month",
+      yLabel: "Activities (count)",
+    });
     if (window.SFA11y) SFA11y.label(svg, name || "Chart");
     box.appendChild(svg);
     // E: the clickable, keyboard-operable show/hide legend (replaces the old static in-SVG one)

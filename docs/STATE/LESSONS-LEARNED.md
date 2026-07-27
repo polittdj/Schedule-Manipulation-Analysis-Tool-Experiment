@@ -435,6 +435,42 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27i — a caption is an assertion; a spec written without running the app cannot make it (ADR-0301)
+- **Four of the five captions I was told to apply were wrong about what the chart plots.** The
+  applyable spec's §3 table said `curves.js` plots cumulative dollars (it plots activity counts),
+  `resources.js` plots FTE demand per week (it plots work booked in **working days** over a
+  runtime-chosen day/week/month bucket), `cei.js` has a secondary ratio axis (it has none — the CEI
+  figure is a text callout), and `drift.js` plots version-vs-slip (it plots forecast **dates**
+  against three forecast **methods**). Every one was caught by reading the rendering code before
+  writing the caption. **LESSON (generalizes → Part VI): a caption is an assertion about what the
+  reader is looking at. On a testimony tool, transcribing one from a document written without a
+  running app is the same defect class as a false `[ok]` — our own output stating something we
+  could have checked and didn't. Derive labels from the code that draws the pixels.**
+- **A correction landed and the things derived from it were left standing.** ADR-0298 corrected the
+  census — eleven modules render no SVG — but the spec's §5 *batch table*, which is derived from
+  that census, was never revised. So its batch 1 is 4/5 DOM visuals the SVG helper cannot serve, and
+  anyone following it would have written five calls that could not work. **LESSON: when you correct
+  a premise, grep for what depended on it.** This is the same shape as yesterday's "correcting a
+  figure is a grep, not an edit", one level up: it applies to premises, not just numbers.
+- **A guard that cannot be completed should say so and name what does converge.** `histogram.js`
+  turned out to carry a *third* local caption implementation past the two ADR-0298 retired; the
+  `SECOND_CONVENTION` regex missed it because the regex pins variable names (`xt`, `yt`) and this
+  one used `cap`. Widening it to `cap.textContent` would fire on two modules that use `cap` for
+  legitimate non-axis text — a name-based regex simply cannot decide whether a `<text>` node is an
+  axis caption. **LESSON: rather than widen a guard until it produces false positives, record the
+  limitation and name the property that actually converges — here, the `PENDING` ledger reaching
+  empty, at which point every SVG chart provably calls the helper.**
+- **Defer with the reason written into the artefact, not the PR.** `drift.js` needs a caption
+  decision *and* a layout nudge its batch may not make, so it stays in `PENDING` with both reasons
+  as a comment in the ledger — where the next session reads it, rather than in a merged PR body
+  nobody re-opens.
+- **A squash-merge orphans any SHA captured before it.** `mpxj_ref()` pins the last commit touching
+  `tools/mpxj`; the pin shipped in v1.0.105 is **not an ancestor of `main`**, surviving only on an
+  unmerged branch, so the operator's converter download depended on that branch not being deleted.
+  Regenerating moved it onto `main`. **LESSON: a squash-merge gives identical content a NEW SHA. Any
+  workflow that captures a commit SHA as a durable pointer must re-resolve it against `main` after
+  the merge, or it is pinning something that can vanish.**
+
 ### 2026-07-27h — a guard that greps prose measures the documentation, not the behaviour (ADR-0300)
 - **The guard I wrote to prevent a CI leg from being silently deleted passed with the leg gutted.**
   It asserted that the windows job mentioned `Junction`, `SymbolicLink` and `subst`. Mutating the

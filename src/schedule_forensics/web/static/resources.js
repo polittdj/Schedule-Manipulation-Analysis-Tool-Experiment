@@ -236,6 +236,14 @@
     // capacity legend
     s.appendChild(txt(svg("text", { x: ml, y: H - 6, class: "res-xl" }),
       "bars = work booked (days); dash = per-" + UNIT + " capacity; red = over-allocated; click a bar to drill"));
+    // Axis captions via the ONE shared helper (ADR-0298). The bucket width is chosen at runtime
+    // (UNIT = day / week / month), so the X caption names the bucket actually rendered rather than
+    // assuming one. The Y axis is work booked in WORKING DAYS — the gridline labels and every
+    // tooltip say "d booked", so any other unit here would contradict the chart it labels.
+    SFChartFrame.axisTitles(s, { L: ml, R: W - mr, T: mt, B: H - mb }, {
+      xLabel: "Period (" + UNIT + " commencing)",
+      yLabel: "Work booked (working days)",
+    });
     host.appendChild(s);
 
     if (status) {
