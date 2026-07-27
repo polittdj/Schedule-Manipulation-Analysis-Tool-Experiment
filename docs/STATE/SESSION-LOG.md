@@ -8228,3 +8228,20 @@ Detailed / Quick Add + two Forensic comparisons, programmatically verified row-i
 - **Meta-lesson on the parallel sessions:** #447 was regressive and #449 is additive — identical
   branch, opposite verdicts. Both were only distinguishable by diffing CONTENT against `main`.
   Never judge a duplicate PR by its title, its ADR number, or its own description.
+
+## 2026-07-27g — session close: downloader complete, #450 merged, #447/#449 closed
+
+- **Final state:** `main` at `de62332`; #446/#448/#450 merged; #447/#449 closed as superseded; no
+  open PRs; tree clean. Session ended at operator request at ~80% of the (assumed) context wall.
+- **Correction recorded rather than carried:** the closing audit found I had reported the installer
+  suite as **54** in a handoff, a PR body and a commit message. 54 was the COMBINED count with
+  `test_state_docs`; `pytest tests/installer/` alone is **50** (48 → 50 for #450). Fixed in the
+  handoff. **LESSON: a number repeated across three artifacts is not corroborated — it is one
+  unverified claim copied three times. Re-derive counts at close, do not restate them.**
+- **Six defects, three mine, none of mine found by my own testing.** #445's report caught the
+  `rm -rf`; #449 caught the drive-root abort and the symlink destruction; my new CI leg caught the
+  stderr probe abort. My own sweeps found only the defects in code I was replacing.
+- **The gap left open on purpose:** the windows CI leg never runs from a symlink or a drive root,
+  so the two fixes that matter most for the operator's platform rest on bash execution + parity —
+  the same class of claim that was wrong twice today. Named in the handoff as the top next task
+  rather than quietly closed.

@@ -435,6 +435,36 @@ those fixed defects in earlier "closed" fixes:
 
 ## Part VIII — Daily update entries (newest first)
 
+### 2026-07-27g — I found the bugs I was replacing and missed the ones I was introducing (ADR-0299)
+- Across three PRs, six installer defects were fixed. **Three were mine, and an outside check caught
+  every one** — a parallel session's report, that session's PR (twice), and a CI leg I had just
+  added. My own verification was real and extensive, and it was systematically blind in one
+  direction: I exercised the paths I was BUILDING (fresh install, download, offline) and not the
+  states a user could already BE IN (an existing converter, a drive root, a symlink).
+  **LESSON: enumerate the pre-existing states your change can encounter, not just the flows it
+  adds. "Does my new path work?" is a different question from "what can my new path now reach?"**
+- **Widening what a step may SELECT widens what it may DESTROY.** All three of my defects came from
+  the same root: I broadened the converter search, and each new candidate became a new thing the
+  `rm -rf` could point at. I fixed it twice with better path comparison and was wrong both times.
+  **What held was staging: read and verify the source completely, THEN swap.** Proved independent
+  by mutation — with the path guard disabled the converter still survived, only the message
+  degraded. **A detection must be correct on every platform to protect anything; a staging step
+  protects even when the detection is wrong. Prefer the defence that fails safe.**
+- **Three literal test pins broke on CORRECT fixes in one session.** The worst had guarded the MPXJ
+  block for months while asserting the exact sentence that was the lie (`"native .mpp import stays
+  OFF"`). **LESSON: a string pin detects a REWORDING, never a FALSEHOOD. Pin a literal only when
+  the literal itself is the contract; otherwise assert the behaviour or the invariant.**
+- **A green check only proves the branch the job actually walked.** Twice a passing CI leg hid the
+  thing it existed to prove: `$PWD/tools/mpxj` is a search candidate, so both my local harness and
+  the first windows leg silently satisfied themselves from the repo checkout while appearing to
+  test the download. **Read the log for which branch ran; and make the leg ASSERT the branch, not
+  just the outcome.**
+- **Judge a duplicate PR by its content, never its title.** Two PRs from one parallel session on one
+  branch needed OPPOSITE verdicts — #447 was regressive (merging it would have stripped the
+  download from main), #449 was additive and correct. Only `git show <branch>:<file> | grep` for the
+  markers of the shipped work distinguished them. Reading either PR's own description would have
+  gotten it wrong.
+
 ### 2026-07-27c — three months of green CI never ran the way the operator actually installs (ADR-0299)
 - **The bug was not in the code; it was in the shape CI never tested.** The installer deployed the
   MPXJ converter from `<installer dir>/../tools/mpxj`. Every test and every CI job ran it **from the
